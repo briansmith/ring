@@ -39,14 +39,16 @@ bool PEMTokenizer::GetNext() {
   while (pos_ != std::string_view::npos) {
     // Scan for the beginning of the next PEM encoded block.
     pos_ = str_.find(kPEMHeaderBeginBlock, pos_);
-    if (pos_ == std::string_view::npos)
+    if (pos_ == std::string_view::npos) {
       return false;  // No more PEM blocks
+    }
 
     std::vector<PEMType>::const_iterator it;
     // Check to see if it is of an acceptable block type.
     for (it = block_types_.begin(); it != block_types_.end(); ++it) {
-      if (!bssl::string_util::StartsWith(str_.substr(pos_), it->header))
+      if (!bssl::string_util::StartsWith(str_.substr(pos_), it->header)) {
         continue;
+      }
 
       // Look for a footer matching the header. If none is found, then all
       // data following this point is invalid and should not be parsed.
@@ -77,8 +79,9 @@ bool PEMTokenizer::GetNext() {
     // continue the search. Otherwise, |pos_| has been updated to the most
     // appropriate search position to continue searching from and should not
     // be adjusted.
-    if (it == block_types_.end())
+    if (it == block_types_.end()) {
       pos_ += kPEMHeaderBeginBlock.size();
+    }
   }
 
   return false;

@@ -172,8 +172,9 @@ void RunTbsCertificateTestGivenVersion(const std::string &file_name,
   EXPECT_EQ(expected_result, actual_result);
   VerifyCertErrors(expected_errors, errors, test_file_path);
 
-  if (!expected_result || !actual_result)
+  if (!expected_result || !actual_result) {
     return;
+  }
 
   // Ensure that the ParsedTbsCertificate matches expectations.
   EXPECT_EQ(expected_version, parsed.version);
@@ -673,12 +674,14 @@ class ParseCrlDistributionPointsTest : public ::testing::Test {
             cert_bytes.size(), nullptr)),
         {}, &errors);
 
-    if (!cert)
+    if (!cert) {
       return false;
+    }
 
     auto it = cert->extensions().find(der::Input(kCrlDistributionPointsOid));
-    if (it == cert->extensions().end())
+    if (it == cert->extensions().end()) {
       return false;
+    }
 
     der::Input crl_dp_tlv = it->second.value;
 

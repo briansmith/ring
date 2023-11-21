@@ -214,13 +214,15 @@ bool VerifySignedData(SignatureAlgorithm algorithm,
       break;
   }
 
-  if (expected_pkey_id != EVP_PKEY_id(public_key))
+  if (expected_pkey_id != EVP_PKEY_id(public_key)) {
     return false;
+  }
 
   // For the supported algorithms the signature value must be a whole
   // number of bytes.
-  if (signature_value.unused_bits() != 0)
+  if (signature_value.unused_bits() != 0) {
     return false;
+  }
   const der::Input &signature_value_bytes = signature_value.bytes();
 
   std::string cache_key;
@@ -244,8 +246,9 @@ bool VerifySignedData(SignatureAlgorithm algorithm,
   bssl::ScopedEVP_MD_CTX ctx;
   EVP_PKEY_CTX *pctx = nullptr;  // Owned by |ctx|.
 
-  if (!EVP_DigestVerifyInit(ctx.get(), &pctx, digest, nullptr, public_key))
+  if (!EVP_DigestVerifyInit(ctx.get(), &pctx, digest, nullptr, public_key)) {
     return false;
+  }
 
   if (is_rsa_pss) {
     // All supported RSASSA-PSS algorithms match signing and MGF-1 digest. They
@@ -279,8 +282,9 @@ bool VerifySignedData(SignatureAlgorithm algorithm,
                       const der::Input &public_key_spki,
                       SignatureVerifyCache *cache) {
   bssl::UniquePtr<EVP_PKEY> public_key;
-  if (!ParsePublicKey(public_key_spki, &public_key))
+  if (!ParsePublicKey(public_key_spki, &public_key)) {
     return false;
+  }
   return VerifySignedData(algorithm, signed_data, signature_value,
                           public_key.get(), cache);
 }

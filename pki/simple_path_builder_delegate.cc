@@ -84,8 +84,9 @@ bool SimplePathBuilderDelegate::IsPublicKeyAcceptable(EVP_PKEY *public_key,
   if (pkey_id == EVP_PKEY_RSA) {
     // Extract the modulus length from the key.
     RSA *rsa = EVP_PKEY_get0_RSA(public_key);
-    if (!rsa)
+    if (!rsa) {
       return false;
+    }
     unsigned int modulus_length_bits = RSA_bits(rsa);
 
     if (modulus_length_bits < min_rsa_modulus_length_bits_) {
@@ -102,8 +103,9 @@ bool SimplePathBuilderDelegate::IsPublicKeyAcceptable(EVP_PKEY *public_key,
   if (pkey_id == EVP_PKEY_EC) {
     // Extract the curve name.
     EC_KEY *ec = EVP_PKEY_get0_EC_KEY(public_key);
-    if (!ec)
+    if (!ec) {
       return false;  // Unexpected.
+    }
     int curve_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
 
     if (!IsAcceptableCurveForEcdsa(curve_nid)) {

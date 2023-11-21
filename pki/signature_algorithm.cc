@@ -131,12 +131,14 @@ const uint8_t kOidMgf1[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
 [[nodiscard]] bool IsNull(const der::Input &input) {
   der::Parser parser(input);
   der::Input null_value;
-  if (!parser.ReadTag(der::kNull, &null_value))
+  if (!parser.ReadTag(der::kNull, &null_value)) {
     return false;
+  }
 
   // NULL values are TLV encoded; the value is expected to be empty.
-  if (!IsEmpty(null_value))
+  if (!IsEmpty(null_value)) {
     return false;
+  }
 
   // By definition of this function, the entire input must be a NULL.
   return !parser.HasMore();
@@ -175,12 +177,14 @@ const uint8_t kOidMgf1[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
                                          DigestAlgorithm *mgf1_hash) {
   der::Input oid;
   der::Input params;
-  if (!ParseAlgorithmIdentifier(input, &oid, &params))
+  if (!ParseAlgorithmIdentifier(input, &oid, &params)) {
     return false;
+  }
 
   // MGF1 is the only supported mask generation algorithm.
-  if (oid != der::Input(kOidMgf1))
+  if (oid != der::Input(kOidMgf1)) {
     return false;
+  }
 
   return ParseHashAlgorithm(params, mgf1_hash);
 }
@@ -275,17 +279,20 @@ std::optional<SignatureAlgorithm> ParseRsaPss(const der::Input &params) {
   der::Parser parser(input);
 
   der::Parser algorithm_identifier_parser;
-  if (!parser.ReadSequence(&algorithm_identifier_parser))
+  if (!parser.ReadSequence(&algorithm_identifier_parser)) {
     return false;
+  }
 
   // There shouldn't be anything after the sequence. This is by definition,
   // as the input to this function is expected to be a single
   // AlgorithmIdentifier.
-  if (parser.HasMore())
+  if (parser.HasMore()) {
     return false;
+  }
 
-  if (!algorithm_identifier_parser.ReadTag(der::kOid, algorithm))
+  if (!algorithm_identifier_parser.ReadTag(der::kOid, algorithm)) {
     return false;
+  }
 
   // Read the optional parameters to a der::Input. The parameters can be at
   // most one TLV (for instance NULL or a sequence).

@@ -56,14 +56,17 @@ enum WildcardMatchType { WILDCARD_PARTIAL_MATCH, WILDCARD_FULL_MATCH };
 bool DNSNameMatches(std::string_view name, std::string_view dns_constraint,
                     WildcardMatchType wildcard_matching) {
   // Everything matches the empty DNS name constraint.
-  if (dns_constraint.empty())
+  if (dns_constraint.empty()) {
     return true;
+  }
 
   // Normalize absolute DNS names by removing the trailing dot, if any.
-  if (!name.empty() && *name.rbegin() == '.')
+  if (!name.empty() && *name.rbegin() == '.') {
     name.remove_suffix(1);
-  if (!dns_constraint.empty() && *dns_constraint.rbegin() == '.')
+  }
+  if (!dns_constraint.empty() && *dns_constraint.rbegin() == '.') {
     dns_constraint.remove_suffix(1);
+  }
 
   // Wildcard partial-match handling ("*.bar.com" matching name constraint
   // "foo.bar.com"). This only handles the case where the the dnsname and the
@@ -89,13 +92,15 @@ bool DNSNameMatches(std::string_view name, std::string_view dns_constraint,
   }
 
   // Exact match.
-  if (name.size() == dns_constraint.size())
+  if (name.size() == dns_constraint.size()) {
     return true;
+  }
   // If dNSName constraint starts with a dot, only subdomains should match.
   // (e.g., "foo.bar.com" matches constraint ".bar.com", but "bar.com" doesn't.)
   // RFC 5280 is ambiguous, but this matches the behavior of other platforms.
-  if (!dns_constraint.empty() && dns_constraint[0] == '.')
+  if (!dns_constraint.empty() && dns_constraint[0] == '.') {
     dns_constraint.remove_prefix(1);
+  }
   // Subtree match.
   if (name.size() > dns_constraint.size() &&
       name[name.size() - dns_constraint.size() - 1] == '.') {
@@ -127,16 +132,19 @@ bool DNSNameMatches(std::string_view name, std::string_view dns_constraint,
   // BaseDistance ::= INTEGER (0..MAX)
   der::Parser sequence_parser(value);
   // The GeneralSubtrees sequence should have at least 1 element.
-  if (!sequence_parser.HasMore())
+  if (!sequence_parser.HasMore()) {
     return false;
+  }
   while (sequence_parser.HasMore()) {
     der::Parser subtree_sequence;
-    if (!sequence_parser.ReadSequence(&subtree_sequence))
+    if (!sequence_parser.ReadSequence(&subtree_sequence)) {
       return false;
+    }
 
     der::Input raw_general_name;
-    if (!subtree_sequence.ReadRawTLV(&raw_general_name))
+    if (!subtree_sequence.ReadRawTLV(&raw_general_name)) {
       return false;
+    }
 
     if (!ParseGeneralName(raw_general_name,
                           GeneralNames::IP_ADDRESS_AND_NETMASK, subtrees,
@@ -157,8 +165,9 @@ bool DNSNameMatches(std::string_view name, std::string_view dns_constraint,
     // fail if a name of this type actually appears in a subsequent cert and
     // this extension was marked critical. However the minimum and maximum
     // fields appear uncommon enough that implementing that isn't useful.
-    if (subtree_sequence.HasMore())
+    if (subtree_sequence.HasMore()) {
       return false;
+    }
   }
   return true;
 }
@@ -273,8 +282,9 @@ std::unique_ptr<NameConstraints> NameConstraints::Create(
   BSSL_CHECK(errors);
 
   auto name_constraints = std::make_unique<NameConstraints>();
-  if (!name_constraints->Parse(extension_value, is_critical, errors))
+  if (!name_constraints->Parse(extension_value, is_critical, errors)) {
     return nullptr;
+  }
   return name_constraints;
 }
 
@@ -288,10 +298,12 @@ bool NameConstraints::Parse(const der::Input &extension_value, bool is_critical,
   // NameConstraints ::= SEQUENCE {
   //      permittedSubtrees       [0]     GeneralSubtrees OPTIONAL,
   //      excludedSubtrees        [1]     GeneralSubtrees OPTIONAL }
-  if (!extension_parser.ReadSequence(&sequence_parser))
+  if (!extension_parser.ReadSequence(&sequence_parser)) {
     return false;
-  if (extension_parser.HasMore())
+  }
+  if (extension_parser.HasMore()) {
     return false;
+  }
 
   std::optional<der::Input> permitted_subtrees_value;
   if (!sequence_parser.ReadOptionalTag(der::ContextSpecificConstructed(0),
@@ -325,11 +337,13 @@ bool NameConstraints::Parse(const der::Input &extension_value, bool is_critical,
   // Conforming CAs MUST NOT issue certificates where name constraints is an
   // empty sequence. That is, either the permittedSubtrees field or the
   // excludedSubtrees MUST be present.
-  if (!permitted_subtrees_value && !excluded_subtrees_value)
+  if (!permitted_subtrees_value && !excluded_subtrees_value) {
     return false;
+  }
 
-  if (sequence_parser.HasMore())
+  if (sequence_parser.HasMore()) {
     return false;
+  }
 
   return true;
 }
@@ -488,8 +502,9 @@ void NameConstraints::IsPermittedCert(const der::Input &subject_rdn_sequence,
   // This code assumes that criticality condition is checked by the caller, and
   // therefore only needs to avoid the IsPermittedDirectoryName check against an
   // empty subject in such a case.
-  if (subject_alt_names && subject_rdn_sequence.Length() == 0)
+  if (subject_alt_names && subject_rdn_sequence.Length() == 0) {
     return;
+  }
 
   if (!IsPermittedDirectoryName(subject_rdn_sequence)) {
     errors->AddError(cert_errors::kNotPermittedByNameConstraints);
@@ -608,21 +623,24 @@ bool NameConstraints::IsPermittedDNSName(std::string_view name) const {
     // When matching wildcard hosts against excluded subtrees, consider it a
     // match if the constraint would match any expansion of the wildcard. Eg,
     // *.bar.com should match a constraint of foo.bar.com.
-    if (DNSNameMatches(name, excluded_name, WILDCARD_PARTIAL_MATCH))
+    if (DNSNameMatches(name, excluded_name, WILDCARD_PARTIAL_MATCH)) {
       return false;
+    }
   }
 
   // If permitted subtrees are not constrained, any name that is not excluded is
   // allowed.
-  if (!(permitted_subtrees_.present_name_types & GENERAL_NAME_DNS_NAME))
+  if (!(permitted_subtrees_.present_name_types & GENERAL_NAME_DNS_NAME)) {
     return true;
+  }
 
   for (const auto &permitted_name : permitted_subtrees_.dns_names) {
     // When matching wildcard hosts against permitted subtrees, consider it a
     // match only if the constraint would match all expansions of the wildcard.
     // Eg, *.bar.com should match a constraint of bar.com, but not foo.bar.com.
-    if (DNSNameMatches(name, permitted_name, WILDCARD_FULL_MATCH))
+    if (DNSNameMatches(name, permitted_name, WILDCARD_FULL_MATCH)) {
       return true;
+    }
   }
 
   return false;
@@ -631,18 +649,21 @@ bool NameConstraints::IsPermittedDNSName(std::string_view name) const {
 bool NameConstraints::IsPermittedDirectoryName(
     const der::Input &name_rdn_sequence) const {
   for (const auto &excluded_name : excluded_subtrees_.directory_names) {
-    if (VerifyNameInSubtree(name_rdn_sequence, excluded_name))
+    if (VerifyNameInSubtree(name_rdn_sequence, excluded_name)) {
       return false;
+    }
   }
 
   // If permitted subtrees are not constrained, any name that is not excluded is
   // allowed.
-  if (!(permitted_subtrees_.present_name_types & GENERAL_NAME_DIRECTORY_NAME))
+  if (!(permitted_subtrees_.present_name_types & GENERAL_NAME_DIRECTORY_NAME)) {
     return true;
+  }
 
   for (const auto &permitted_name : permitted_subtrees_.directory_names) {
-    if (VerifyNameInSubtree(name_rdn_sequence, permitted_name))
+    if (VerifyNameInSubtree(name_rdn_sequence, permitted_name)) {
       return true;
+    }
   }
 
   return false;

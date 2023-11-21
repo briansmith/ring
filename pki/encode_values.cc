@@ -13,8 +13,9 @@ namespace bssl::der {
 namespace {
 
 bool WriteFourDigit(uint16_t value, uint8_t out[4]) {
-  if (value >= 10000)
+  if (value >= 10000) {
     return false;
+  }
   out[3] = '0' + (value % 10);
   value /= 10;
   out[2] = '0' + (value % 10);
@@ -26,8 +27,9 @@ bool WriteFourDigit(uint16_t value, uint8_t out[4]) {
 }
 
 bool WriteTwoDigit(uint8_t value, uint8_t out[2]) {
-  if (value >= 100)
+  if (value >= 100) {
     return false;
+  }
   out[0] = '0' + (value / 10);
   out[1] = '0' + (value % 10);
   return true;
@@ -82,12 +84,14 @@ bool EncodeGeneralizedTime(const GeneralizedTime &time,
 }
 
 bool EncodeUTCTime(const GeneralizedTime &time, uint8_t out[kUTCTimeLength]) {
-  if (!time.InUTCTimeRange())
+  if (!time.InUTCTimeRange()) {
     return false;
+  }
 
   uint16_t year = time.year - 1900;
-  if (year >= 100)
+  if (year >= 100) {
     year -= 100;
+  }
 
   if (!WriteTwoDigit(year, out) || !WriteTwoDigit(time.month, out + 2) ||
       !WriteTwoDigit(time.day, out + 4) ||

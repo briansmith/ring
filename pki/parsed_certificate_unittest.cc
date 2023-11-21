@@ -48,8 +48,9 @@ std::shared_ptr<const ParsedCertificate> ParseCertificateFromFile(
   // The errors are baselined for |!allow_invalid_serial_numbers|. So if
   // requesting a non-default option skip the error checks.
   // TODO(eroman): This is ugly.
-  if (!options.allow_invalid_serial_numbers)
+  if (!options.allow_invalid_serial_numbers) {
     VerifyCertErrors(expected_errors, errors, test_file_path);
+  }
 
   // Every parse failure being tested should emit error information.
   if (!cert) {

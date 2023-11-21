@@ -52,8 +52,9 @@ std::string CertError::ToDebugString() const {
   result += CertErrorIdToDebugString(id);
   result += +"\n";
 
-  if (params)
+  if (params) {
     AppendLinesWithIndentation(params->ToDebugString(), "  ", &result);
+  }
 
   return result;
 }
@@ -84,16 +85,18 @@ void CertErrors::AddWarning(CertErrorId id) { AddWarning(id, nullptr); }
 
 std::string CertErrors::ToDebugString() const {
   std::string result;
-  for (const CertError &node : nodes_)
+  for (const CertError &node : nodes_) {
     result += node.ToDebugString();
+  }
 
   return result;
 }
 
 bool CertErrors::ContainsError(CertErrorId id) const {
   for (const CertError &node : nodes_) {
-    if (node.id == id)
+    if (node.id == id) {
       return true;
+    }
   }
   return false;
 }
@@ -101,8 +104,9 @@ bool CertErrors::ContainsError(CertErrorId id) const {
 bool CertErrors::ContainsAnyErrorWithSeverity(
     CertError::Severity severity) const {
   for (const CertError &node : nodes_) {
-    if (node.severity == severity)
+    if (node.severity == severity) {
       return true;
+    }
   }
   return false;
 }
@@ -115,14 +119,16 @@ CertPathErrors &CertPathErrors::operator=(CertPathErrors &&) = default;
 CertPathErrors::~CertPathErrors() = default;
 
 CertErrors *CertPathErrors::GetErrorsForCert(size_t cert_index) {
-  if (cert_index >= cert_errors_.size())
+  if (cert_index >= cert_errors_.size()) {
     cert_errors_.resize(cert_index + 1);
+  }
   return &cert_errors_[cert_index];
 }
 
 const CertErrors *CertPathErrors::GetErrorsForCert(size_t cert_index) const {
-  if (cert_index >= cert_errors_.size())
+  if (cert_index >= cert_errors_.size()) {
     return nullptr;
+  }
   return &cert_errors_[cert_index];
 }
 
@@ -130,12 +136,14 @@ CertErrors *CertPathErrors::GetOtherErrors() { return &other_errors_; }
 
 bool CertPathErrors::ContainsError(CertErrorId id) const {
   for (const CertErrors &errors : cert_errors_) {
-    if (errors.ContainsError(id))
+    if (errors.ContainsError(id)) {
       return true;
+    }
   }
 
-  if (other_errors_.ContainsError(id))
+  if (other_errors_.ContainsError(id)) {
     return true;
+  }
 
   return false;
 }
@@ -143,12 +151,14 @@ bool CertPathErrors::ContainsError(CertErrorId id) const {
 bool CertPathErrors::ContainsAnyErrorWithSeverity(
     CertError::Severity severity) const {
   for (const CertErrors &errors : cert_errors_) {
-    if (errors.ContainsAnyErrorWithSeverity(severity))
+    if (errors.ContainsAnyErrorWithSeverity(severity)) {
       return true;
+    }
   }
 
-  if (other_errors_.ContainsAnyErrorWithSeverity(severity))
+  if (other_errors_.ContainsAnyErrorWithSeverity(severity)) {
     return true;
+  }
 
   return false;
 }
@@ -162,8 +172,9 @@ std::string CertPathErrors::ToDebugString(
     // then continue.
     const CertErrors &errors = cert_errors_[i];
     std::string cert_errors_string = errors.ToDebugString();
-    if (cert_errors_string.empty())
+    if (cert_errors_string.empty()) {
       continue;
+    }
 
     // Add a header that identifies which certificate this CertErrors pertains
     // to.

@@ -43,8 +43,9 @@ std::string CertDebugString(const ParsedCertificate *cert) {
   RDNSequence subject;
   std::string subject_str;
   if (!ParseName(cert->tbs().subject_tlv, &subject) ||
-      !ConvertToRFC2253(subject, &subject_str))
+      !ConvertToRFC2253(subject, &subject_str)) {
     subject_str = "???";
+  }
 
   return FingerPrintParsedCertificate(cert) + " " + subject_str;
 }
@@ -52,8 +53,9 @@ std::string CertDebugString(const ParsedCertificate *cert) {
 std::string PathDebugString(const ParsedCertificateList &certs) {
   std::string s;
   for (const auto &cert : certs) {
-    if (!s.empty())
+    if (!s.empty()) {
       s += "\n";
+    }
     s += " " + CertDebugString(cert.get());
   }
   return s;
@@ -84,8 +86,9 @@ enum KeyIdentifierMatch {
 // values indicate higer priority.
 KeyIdentifierMatch CalculateKeyIdentifierMatch(
     const ParsedCertificate *target, const ParsedCertificate *issuer) {
-  if (!target->authority_key_identifier())
+  if (!target->authority_key_identifier()) {
     return kNoData;
+  }
 
   // TODO(crbug.com/635205): If issuer does not have a subjectKeyIdentifier,
   // could try synthesizing one using the standard SHA-1 method. Ideally in a
@@ -301,8 +304,9 @@ void CertIssuersIter::GetNextIssuer(IssuerEntry *out) {
 void CertIssuersIter::AddIssuers(ParsedCertificateList new_issuers) {
   for (std::shared_ptr<const ParsedCertificate> &issuer : new_issuers) {
     if (present_issuers_.find(issuer->der_cert().AsStringView()) !=
-        present_issuers_.end())
+        present_issuers_.end()) {
       continue;
+    }
     present_issuers_.insert(issuer->der_cert().AsStringView());
 
     // Look up the trust for this issuer.
@@ -332,8 +336,9 @@ void CertIssuersIter::DoAsyncIssuerQuery() {
 }
 
 void CertIssuersIter::SortRemainingIssuers() {
-  if (!issuers_needs_sort_)
+  if (!issuers_needs_sort_) {
     return;
+  }
 
   std::stable_sort(
       issuers_.begin() + cur_issuer_, issuers_.end(),
@@ -392,8 +397,9 @@ class CertIssuerIterPath {
   // Copies the ParsedCertificate elements of the current path to |*out_path|.
   void CopyPath(ParsedCertificateList *out_path) {
     out_path->clear();
-    for (const auto &node : cur_path_)
+    for (const auto &node : cur_path_) {
       out_path->push_back(node->reference_cert());
+    }
   }
 
   // Returns true if the path is empty.
@@ -408,8 +414,9 @@ class CertIssuerIterPath {
   std::string PathDebugString() {
     std::string s;
     for (const auto &node : cur_path_) {
-      if (!s.empty())
+      if (!s.empty()) {
         s += "\n";
+      }
       s += " " + CertDebugString(node->cert());
     }
     return s;
@@ -440,8 +447,9 @@ class CertIssuerIterPath {
 }  // namespace
 
 const ParsedCertificate *CertPathBuilderResultPath::GetTrustedCert() const {
-  if (certs.empty())
+  if (certs.empty()) {
     return nullptr;
+  }
 
   switch (last_cert_trust.type) {
     case CertificateTrustType::TRUSTED_ANCHOR:
@@ -531,8 +539,9 @@ bool CertPathIter::GetNextPath(ParsedCertificateList *out_certs,
         // If the deadline is already expired before the first call to
         // GetNextPath, cur_path_ will be empty. Return the leaf cert in that
         // case.
-        if (next_issuer_.cert)
+        if (next_issuer_.cert) {
           out_certs->push_back(next_issuer_.cert);
+        }
       } else {
         cur_path_.CopyPath(out_certs);
       }
@@ -698,8 +707,9 @@ bool CertPathBuilder::Result::HasValidPath() const {
 
 bool CertPathBuilder::Result::AnyPathContainsError(CertErrorId error_id) const {
   for (const auto &path : paths) {
-    if (path->errors.ContainsError(error_id))
+    if (path->errors.ContainsError(error_id)) {
       return true;
+    }
   }
 
   return false;
@@ -709,8 +719,9 @@ const CertPathBuilderResultPath *CertPathBuilder::Result::GetBestValidPath()
     const {
   const CertPathBuilderResultPath *result_path = GetBestPathPossiblyInvalid();
 
-  if (result_path && result_path->IsValid())
+  if (result_path && result_path->IsValid()) {
     return result_path;
+  }
 
   return nullptr;
 }
@@ -720,8 +731,9 @@ CertPathBuilder::Result::GetBestPathPossiblyInvalid() const {
   BSSL_CHECK((paths.empty() && best_result_index == 0) ||
              best_result_index < paths.size());
 
-  if (best_result_index >= paths.size())
+  if (best_result_index >= paths.size()) {
     return nullptr;
+  }
 
   return paths[best_result_index].get();
 }

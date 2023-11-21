@@ -64,10 +64,12 @@ namespace {
   CertErrors errors;
   name_constraints->IsPermittedCert(subject_rdn_sequence, subject_alt_names,
                                     &errors);
-  if (!errors.ContainsAnyErrorWithSeverity(CertError::SEVERITY_HIGH))
+  if (!errors.ContainsAnyErrorWithSeverity(CertError::SEVERITY_HIGH)) {
     return ::testing::AssertionSuccess();
-  if (!errors.ContainsError(cert_errors::kNotPermittedByNameConstraints))
+  }
+  if (!errors.ContainsError(cert_errors::kNotPermittedByNameConstraints)) {
     ADD_FAILURE() << "unexpected error " << errors.ToDebugString();
+  }
   return ::testing::AssertionFailure();
 }
 

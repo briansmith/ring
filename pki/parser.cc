@@ -31,8 +31,9 @@ bool Parser::PeekTagAndValue(Tag *tag, Input *out) {
 }
 
 bool Parser::Advance() {
-  if (advance_len_ == 0)
+  if (advance_len_ == 0) {
     return false;
+  }
   bool ret = !!CBS_skip(&cbs_, advance_len_);
   advance_len_ = 0;
   return ret;
@@ -42,15 +43,17 @@ bool Parser::HasMore() { return CBS_len(&cbs_) > 0; }
 
 bool Parser::ReadRawTLV(Input *out) {
   CBS tmp_out;
-  if (!CBS_get_any_asn1_element(&cbs_, &tmp_out, nullptr, nullptr))
+  if (!CBS_get_any_asn1_element(&cbs_, &tmp_out, nullptr, nullptr)) {
     return false;
+  }
   *out = Input(CBS_data(&tmp_out), CBS_len(&tmp_out));
   return true;
 }
 
 bool Parser::ReadTagAndValue(Tag *tag, Input *out) {
-  if (!PeekTagAndValue(tag, out))
+  if (!PeekTagAndValue(tag, out)) {
     return false;
+  }
   BSSL_CHECK(Advance());
   return true;
 }
@@ -77,8 +80,9 @@ bool Parser::ReadOptionalTag(Tag tag, std::optional<Input> *out) {
 
 bool Parser::ReadOptionalTag(Tag tag, Input *out, bool *present) {
   std::optional<Input> tmp_out;
-  if (!ReadOptionalTag(tag, &tmp_out))
+  if (!ReadOptionalTag(tag, &tmp_out)) {
     return false;
+  }
   *present = tmp_out.has_value();
   *out = tmp_out.value_or(der::Input());
   return true;
@@ -108,11 +112,13 @@ bool Parser::SkipTag(Tag tag) {
 // Type-specific variants of ReadTag
 
 bool Parser::ReadConstructed(Tag tag, Parser *out) {
-  if (!IsConstructed(tag))
+  if (!IsConstructed(tag)) {
     return false;
+  }
   Input data;
-  if (!ReadTag(tag, &data))
+  if (!ReadTag(tag, &data)) {
     return false;
+  }
   *out = Parser(data);
   return true;
 }
@@ -123,29 +129,33 @@ bool Parser::ReadSequence(Parser *out) {
 
 bool Parser::ReadUint8(uint8_t *out) {
   Input encoded_int;
-  if (!ReadTag(kInteger, &encoded_int))
+  if (!ReadTag(kInteger, &encoded_int)) {
     return false;
+  }
   return ParseUint8(encoded_int, out);
 }
 
 bool Parser::ReadUint64(uint64_t *out) {
   Input encoded_int;
-  if (!ReadTag(kInteger, &encoded_int))
+  if (!ReadTag(kInteger, &encoded_int)) {
     return false;
+  }
   return ParseUint64(encoded_int, out);
 }
 
 std::optional<BitString> Parser::ReadBitString() {
   Input value;
-  if (!ReadTag(kBitString, &value))
+  if (!ReadTag(kBitString, &value)) {
     return std::nullopt;
+  }
   return ParseBitString(value);
 }
 
 bool Parser::ReadGeneralizedTime(GeneralizedTime *out) {
   Input value;
-  if (!ReadTag(kGeneralizedTime, &value))
+  if (!ReadTag(kGeneralizedTime, &value)) {
     return false;
+  }
   return ParseGeneralizedTime(value, out);
 }
 

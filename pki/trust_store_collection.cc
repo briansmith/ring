@@ -35,8 +35,9 @@ CertificateTrust TrustStoreCollection::GetTrust(const ParsedCertificate *cert) {
     //   last one
     if (!cur_trust.HasUnspecifiedTrust()) {
       result = cur_trust;
-      if (result.IsDistrusted())
+      if (result.IsDistrusted()) {
         break;
+      }
     }
   }
 

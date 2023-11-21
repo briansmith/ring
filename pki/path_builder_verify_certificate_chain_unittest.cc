@@ -24,8 +24,9 @@ class PathBuilderTestDelegate {
     trust_store.AddCertificate(test.chain.back(), test.last_cert_trust);
 
     CertIssuerSourceStatic intermediate_cert_issuer_source;
-    for (size_t i = 1; i < test.chain.size(); ++i)
+    for (size_t i = 1; i < test.chain.size(); ++i) {
       intermediate_cert_issuer_source.AddCert(test.chain[i]);
+    }
 
     // First cert in the |chain| is the target.
     CertPathBuilder path_builder(

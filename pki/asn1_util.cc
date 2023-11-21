@@ -36,15 +36,18 @@ bool SeekToSubject(der::Input in, der::Parser *tbs_certificate) {
 
   der::Parser parser(in);
   der::Parser certificate;
-  if (!parser.ReadSequence(&certificate))
+  if (!parser.ReadSequence(&certificate)) {
     return false;
+  }
 
   // We don't allow junk after the certificate.
-  if (parser.HasMore())
+  if (parser.HasMore()) {
     return false;
+  }
 
-  if (!certificate.ReadSequence(tbs_certificate))
+  if (!certificate.ReadSequence(tbs_certificate)) {
     return false;
+  }
 
   bool unused;
   if (!tbs_certificate->SkipOptionalTag(
@@ -53,17 +56,21 @@ bool SeekToSubject(der::Input in, der::Parser *tbs_certificate) {
   }
 
   // serialNumber
-  if (!tbs_certificate->SkipTag(der::kInteger))
+  if (!tbs_certificate->SkipTag(der::kInteger)) {
     return false;
+  }
   // signature
-  if (!tbs_certificate->SkipTag(der::kSequence))
+  if (!tbs_certificate->SkipTag(der::kSequence)) {
     return false;
+  }
   // issuer
-  if (!tbs_certificate->SkipTag(der::kSequence))
+  if (!tbs_certificate->SkipTag(der::kSequence)) {
     return false;
+  }
   // validity
-  if (!tbs_certificate->SkipTag(der::kSequence))
+  if (!tbs_certificate->SkipTag(der::kSequence)) {
     return false;
+  }
   return true;
 }
 
@@ -89,8 +96,9 @@ bool SeekToExtensions(der::Input in, bool *extensions_present,
                       der::Parser *extensions_parser) {
   bool present;
   der::Parser tbs_cert_parser;
-  if (!SeekToSPKI(in, &tbs_cert_parser))
+  if (!SeekToSPKI(in, &tbs_cert_parser)) {
     return false;
+  }
 
   // From RFC 5280, section 4.1
   // TBSCertificate  ::=  SEQUENCE  {
@@ -101,8 +109,9 @@ bool SeekToExtensions(der::Input in, bool *extensions_present,
   //      extensions      [3]  EXPLICIT Extensions OPTIONAL }
 
   // subjectPublicKeyInfo
-  if (!tbs_cert_parser.SkipTag(der::kSequence))
+  if (!tbs_cert_parser.SkipTag(der::kSequence)) {
     return false;
+  }
   // issuerUniqueID
   if (!tbs_cert_parser.SkipOptionalTag(der::kTagContextSpecific | 1,
                                        &present)) {
@@ -134,11 +143,13 @@ bool SeekToExtensions(der::Input in, bool *extensions_present,
   // |extensions| was EXPLICITly tagged, so we still need to remove the
   // ASN.1 SEQUENCE header.
   der::Parser explicit_extensions_parser(extensions.value());
-  if (!explicit_extensions_parser.ReadSequence(extensions_parser))
+  if (!explicit_extensions_parser.ReadSequence(extensions_parser)) {
     return false;
+  }
 
-  if (explicit_extensions_parser.HasMore())
+  if (explicit_extensions_parser.HasMore()) {
     return false;
+  }
 
   *extensions_present = true;
   return true;
@@ -154,8 +165,9 @@ bool ExtractExtensionWithOID(std::string_view cert, der::Input extension_oid,
                              ParsedExtension *out_extension) {
   der::Parser extensions;
   bool extensions_present;
-  if (!SeekToExtensions(der::Input(cert), &extensions_present, &extensions))
+  if (!SeekToExtensions(der::Input(cert), &extensions_present, &extensions)) {
     return false;
+  }
   if (!extensions_present) {
     *out_extension_present = false;
     return true;
@@ -183,22 +195,26 @@ bool ExtractExtensionWithOID(std::string_view cert, der::Input extension_oid,
 bool ExtractSubjectFromDERCert(std::string_view cert,
                                std::string_view *subject_out) {
   der::Parser parser;
-  if (!SeekToSubject(der::Input(cert), &parser))
+  if (!SeekToSubject(der::Input(cert), &parser)) {
     return false;
+  }
   der::Input subject;
-  if (!parser.ReadRawTLV(&subject))
+  if (!parser.ReadRawTLV(&subject)) {
     return false;
+  }
   *subject_out = subject.AsStringView();
   return true;
 }
 
 bool ExtractSPKIFromDERCert(std::string_view cert, std::string_view *spki_out) {
   der::Parser parser;
-  if (!SeekToSPKI(der::Input(cert), &parser))
+  if (!SeekToSPKI(der::Input(cert), &parser)) {
     return false;
+  }
   der::Input spki;
-  if (!parser.ReadRawTLV(&spki))
+  if (!parser.ReadRawTLV(&spki)) {
     return false;
+  }
   *spki_out = spki.AsStringView();
   return true;
 }
@@ -217,17 +233,20 @@ bool ExtractSubjectPublicKeyFromSPKI(std::string_view spki,
   // Step into SubjectPublicKeyInfo sequence.
   der::Parser parser((der::Input(spki)));
   der::Parser spki_parser;
-  if (!parser.ReadSequence(&spki_parser))
+  if (!parser.ReadSequence(&spki_parser)) {
     return false;
+  }
 
   // Step over algorithm field (a SEQUENCE).
-  if (!spki_parser.SkipTag(der::kSequence))
+  if (!spki_parser.SkipTag(der::kSequence)) {
     return false;
+  }
 
   // Extract the subjectPublicKey field.
   der::Input spk;
-  if (!spki_parser.ReadTag(der::kBitString, &spk))
+  if (!spki_parser.ReadTag(der::kBitString, &spk)) {
     return false;
+  }
   *spk_out = spk.AsStringView();
   return true;
 }
@@ -273,12 +292,14 @@ bool ExtractSignatureAlgorithmsFromDERCert(
 
   der::Parser parser((der::Input(cert)));
   der::Parser certificate;
-  if (!parser.ReadSequence(&certificate))
+  if (!parser.ReadSequence(&certificate)) {
     return false;
+  }
 
   der::Parser tbs_certificate;
-  if (!certificate.ReadSequence(&tbs_certificate))
+  if (!certificate.ReadSequence(&tbs_certificate)) {
     return false;
+  }
 
   bool unused;
   if (!tbs_certificate.SkipOptionalTag(
@@ -287,16 +308,19 @@ bool ExtractSignatureAlgorithmsFromDERCert(
   }
 
   // serialNumber
-  if (!tbs_certificate.SkipTag(der::kInteger))
+  if (!tbs_certificate.SkipTag(der::kInteger)) {
     return false;
+  }
   // signature
   der::Input tbs_algorithm;
-  if (!tbs_certificate.ReadRawTLV(&tbs_algorithm))
+  if (!tbs_certificate.ReadRawTLV(&tbs_algorithm)) {
     return false;
+  }
 
   der::Input cert_algorithm;
-  if (!certificate.ReadRawTLV(&cert_algorithm))
+  if (!certificate.ReadRawTLV(&cert_algorithm)) {
     return false;
+  }
 
   *cert_signature_algorithm_sequence = cert_algorithm.AsStringView();
   *tbs_signature_algorithm_sequence = tbs_algorithm.AsStringView();
@@ -314,10 +338,12 @@ bool ExtractExtensionFromDERCert(std::string_view cert,
 
   ParsedExtension extension;
   if (!ExtractExtensionWithOID(cert, der::Input(extension_oid),
-                               out_extension_present, &extension))
+                               out_extension_present, &extension)) {
     return false;
-  if (!*out_extension_present)
+  }
+  if (!*out_extension_present) {
     return true;
+  }
 
   *out_extension_critical = extension.critical;
   *out_contents = extension.value.AsStringView();

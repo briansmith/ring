@@ -25,19 +25,24 @@ namespace {
 
 bool IsHandledCriticalExtension(const ParsedExtension &extension,
                                 const ParsedCertificate &cert) {
-  if (extension.oid == der::Input(kBasicConstraintsOid))
+  if (extension.oid == der::Input(kBasicConstraintsOid)) {
     return true;
+  }
   // Key Usage is NOT processed for end-entity certificates (this is the
   // responsibility of callers), however it is considered "handled" here in
   // order to allow being marked as critical.
-  if (extension.oid == der::Input(kKeyUsageOid))
+  if (extension.oid == der::Input(kKeyUsageOid)) {
     return true;
-  if (extension.oid == der::Input(kExtKeyUsageOid))
+  }
+  if (extension.oid == der::Input(kExtKeyUsageOid)) {
     return true;
-  if (extension.oid == der::Input(kNameConstraintsOid))
+  }
+  if (extension.oid == der::Input(kNameConstraintsOid)) {
     return true;
-  if (extension.oid == der::Input(kSubjectAltNameOid))
+  }
+  if (extension.oid == der::Input(kSubjectAltNameOid)) {
     return true;
+  }
   if (extension.oid == der::Input(kCertificatePoliciesOid)) {
     // Policy qualifiers are skipped during processing, so if the
     // extension is marked critical need to ensure there weren't any
@@ -56,12 +61,15 @@ bool IsHandledCriticalExtension(const ParsedExtension &extension,
 
     // TODO(eroman): Give a better error message.
   }
-  if (extension.oid == der::Input(kPolicyMappingsOid))
+  if (extension.oid == der::Input(kPolicyMappingsOid)) {
     return true;
-  if (extension.oid == der::Input(kPolicyConstraintsOid))
+  }
+  if (extension.oid == der::Input(kPolicyConstraintsOid)) {
     return true;
-  if (extension.oid == der::Input(kInhibitAnyPolicyOid))
+  }
+  if (extension.oid == der::Input(kInhibitAnyPolicyOid)) {
     return true;
+  }
   if (extension.oid == der::Input(kMSApplicationPoliciesOid)) {
     // Per https://crbug.com/1439638 and
     // https://learn.microsoft.com/en-us/windows/win32/seccertenroll/supported-extensions#msapplicationpolicies
@@ -111,11 +119,13 @@ void VerifyNoUnconsumedCriticalExtensions(const ParsedCertificate &cert,
 //    notBefore through notAfter, inclusive.
 void VerifyTimeValidity(const ParsedCertificate &cert,
                         const der::GeneralizedTime &time, CertErrors *errors) {
-  if (time < cert.tbs().validity_not_before)
+  if (time < cert.tbs().validity_not_before) {
     errors->AddError(cert_errors::kValidityFailedNotBefore);
+  }
 
-  if (cert.tbs().validity_not_after < time)
+  if (cert.tbs().validity_not_after < time) {
     errors->AddError(cert_errors::kValidityFailedNotAfter);
+  }
 }
 
 // Adds errors to |errors| if |cert| has internally inconsistent signature
@@ -145,8 +155,9 @@ bool VerifySignatureAlgorithmsMatch(const ParsedCertificate &cert,
 
   // Ensure that the two DER-encoded signature algorithms are byte-for-byte
   // equal.
-  if (alg1_tlv == alg2_tlv)
+  if (alg1_tlv == alg2_tlv) {
     return true;
+  }
 
   // But make a compatibility concession if alternate encodings are used
   // TODO(eroman): Turn this warning into an error.
@@ -874,19 +885,22 @@ void PathVerifier::VerifyPolicies(const ParsedCertificate &cert,
 
   //  (e)  If the certificate policies extension is not present, set the
   //       valid_policy_tree to NULL.
-  if (!cert.has_policy_oids())
+  if (!cert.has_policy_oids()) {
     valid_policy_graph_.SetNull();
+  }
 
   //  (f)  Verify that either explicit_policy is greater than 0 or the
   //       valid_policy_tree is not equal to NULL;
-  if (!((explicit_policy_ > 0) || !valid_policy_graph_.IsNull()))
+  if (!((explicit_policy_ > 0) || !valid_policy_graph_.IsNull())) {
     errors->AddError(cert_errors::kNoValidPolicy);
+  }
 }
 
 void PathVerifier::VerifyPolicyMappings(const ParsedCertificate &cert,
                                         CertErrors *errors) {
-  if (!cert.has_policy_mappings())
+  if (!cert.has_policy_mappings()) {
     return;
+  }
 
   // From RFC 5280 section 6.1.4:
   //
@@ -1030,8 +1044,9 @@ void PathVerifier::BasicCertificateProcessing(
       errors->AddError(cert_errors::kVerifySignedDataFailed);
     }
   }
-  if (*shortcircuit_chain_validation)
+  if (*shortcircuit_chain_validation) {
     return;
+  }
 
   // Check the time range for the certificate's validity, ensuring it is valid
   // at |time|.
@@ -1044,8 +1059,9 @@ void PathVerifier::BasicCertificateProcessing(
 
   // Verify the certificate's issuer name matches the issuing certificate's
   // subject name. (RFC 5280 section 6.1.3 step a.4)
-  if (cert.normalized_issuer() != working_normalized_issuer_name_)
+  if (cert.normalized_issuer() != working_normalized_issuer_name_) {
     errors->AddError(cert_errors::kSubjectDoesNotMatchIssuer);
+  }
 
   // Name constraints (RFC 5280 section 6.1.3 step b & c)
   // If certificate i is self-issued and it is not the final certificate in the
@@ -1089,24 +1105,28 @@ void PathVerifier::PrepareForNextCertificate(const ParsedCertificate &cert,
   // of |working_spki|.
 
   // From RFC 5280 section 6.1.4 step g:
-  if (cert.has_name_constraints())
+  if (cert.has_name_constraints()) {
     name_constraints_list_.push_back(&cert.name_constraints());
+  }
 
   //     (h)  If certificate i is not self-issued:
   if (!IsSelfIssued(cert)) {
     //         (1)  If explicit_policy is not 0, decrement explicit_policy by
     //              1.
-    if (explicit_policy_ > 0)
+    if (explicit_policy_ > 0) {
       explicit_policy_ -= 1;
+    }
 
     //         (2)  If policy_mapping is not 0, decrement policy_mapping by 1.
-    if (policy_mapping_ > 0)
+    if (policy_mapping_ > 0) {
       policy_mapping_ -= 1;
+    }
 
     //         (3)  If inhibit_anyPolicy is not 0, decrement inhibit_anyPolicy
     //              by 1.
-    if (inhibit_any_policy_ > 0)
+    if (inhibit_any_policy_ > 0) {
       inhibit_any_policy_ -= 1;
+    }
   }
 
   // RFC 5280 section 6.1.4 step i-j:
@@ -1203,8 +1223,9 @@ void PathVerifier::WrapUp(const ParsedCertificate &cert,
                           CertErrors *errors) {
   // From RFC 5280 section 6.1.5:
   //      (a)  If explicit_policy is not 0, decrement explicit_policy by 1.
-  if (explicit_policy_ > 0)
+  if (explicit_policy_ > 0) {
     explicit_policy_ -= 1;
+  }
 
   //      (b)  If a policy constraints extension is included in the
   //           certificate and requireExplicitPolicy is present and has a
@@ -1299,8 +1320,9 @@ void PathVerifier::ApplyTrustAnchorConstraints(const ParsedCertificate &cert,
   // The following enforcements follow from RFC 5937 (primarily section 3.2):
 
   // Initialize name constraints initial-permitted/excluded-subtrees.
-  if (cert.has_name_constraints())
+  if (cert.has_name_constraints()) {
     name_constraints_list_.push_back(&cert.name_constraints());
+  }
 
   if (cert.has_basic_constraints()) {
     // Enforce CA=true if basicConstraints is present. This matches behavior of
@@ -1353,8 +1375,9 @@ void PathVerifier::ProcessRootCertificate(const ParsedCertificate &cert,
     case CertificateTrustType::TRUSTED_ANCHOR_OR_LEAF:
       break;
   }
-  if (*shortcircuit_chain_validation)
+  if (*shortcircuit_chain_validation) {
     return;
+  }
 
   if (trust.enforce_anchor_expiry) {
     VerifyTimeValidity(cert, time, errors);
@@ -1441,8 +1464,9 @@ bssl::UniquePtr<EVP_PKEY> PathVerifier::ParseAndCheckPublicKey(
   }
 
   // Check if the key is acceptable by the delegate.
-  if (!delegate_->IsPublicKeyAcceptable(pkey.get(), errors))
+  if (!delegate_->IsPublicKeyAcceptable(pkey.get(), errors)) {
     errors->AddError(cert_errors::kUnacceptablePublicKey);
+  }
 
   return pkey;
 }

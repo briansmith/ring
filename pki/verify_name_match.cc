@@ -72,8 +72,9 @@ enum CharsetEnforcement {
       // multiple whitespace chars to a single space, otherwise ignore trailing
       // whitespace.
       std::string::const_iterator next_iter = read_iter + 1;
-      if (next_iter != output->end() && *next_iter != ' ')
+      if (next_iter != output->end() && *next_iter != ' ') {
         *(write_iter++) = ' ';
+      }
     } else if (c >= 'A' && c <= 'Z') {
       // Fold case.
       *(write_iter++) = c + ('a' - 'A');
@@ -85,12 +86,14 @@ enum CharsetEnforcement {
           // See NormalizePrintableStringValue comment for the acceptable list
           // of characters.
           if (!((c >= 'a' && c <= 'z') || (c >= '\'' && c <= ':') || c == '=' ||
-                c == '?'))
+                c == '?')) {
             return false;
+          }
           break;
         case ENFORCE_ASCII:
-          if (c > 0x7F)
+          if (c > 0x7F) {
             return false;
+          }
           break;
         case NO_ENFORCEMENT:
           break;
@@ -98,8 +101,9 @@ enum CharsetEnforcement {
       *(write_iter++) = c;
     }
   }
-  if (write_iter != output->end())
+  if (write_iter != output->end()) {
     output->erase(write_iter, output->end());
+  }
   return true;
 }
 
@@ -177,13 +181,15 @@ bool VerifyValueMatch(X509NameAttribute a, X509NameAttribute b) {
     // TODO(eroman): Plumb this down.
     CertErrors unused_errors;
     if (!NormalizeValue(a, &a_normalized, &unused_errors) ||
-        !NormalizeValue(b, &b_normalized, &unused_errors))
+        !NormalizeValue(b, &b_normalized, &unused_errors)) {
       return false;
+    }
     return a_normalized == b_normalized;
   }
   // Attributes encoded with different types may be assumed to be unequal.
-  if (a.value_tag != b.value_tag)
+  if (a.value_tag != b.value_tag) {
     return false;
+  }
   // All other types use binary comparison.
   return a.value == b.value;
 }
@@ -194,15 +200,17 @@ bool VerifyValueMatch(X509NameAttribute a, X509NameAttribute b) {
 bool VerifyRdnMatch(der::Parser *a_parser, der::Parser *b_parser) {
   RelativeDistinguishedName a_type_and_values, b_type_and_values;
   if (!ReadRdn(a_parser, &a_type_and_values) ||
-      !ReadRdn(b_parser, &b_type_and_values))
+      !ReadRdn(b_parser, &b_type_and_values)) {
     return false;
+  }
 
   // RFC 5280 section 7.1:
   // Two relative distinguished names RDN1 and RDN2 match if they have the same
   // number of naming attributes and for each naming attribute in RDN1 there is
   // a matching naming attribute in RDN2.
-  if (a_type_and_values.size() != b_type_and_values.size())
+  if (a_type_and_values.size() != b_type_and_values.size()) {
     return false;
+  }
 
   // The ordering of elements may differ due to denormalized values sorting
   // differently in the DER encoding. Since the number of elements should be
@@ -216,8 +224,9 @@ bool VerifyRdnMatch(der::Parser *a_parser, der::Parser *b_parser) {
         break;
       }
     }
-    if (b_iter == b_type_and_values.end())
+    if (b_iter == b_type_and_values.end()) {
       return false;
+    }
     // Remove the matched element from b_type_and_values to ensure duplicate
     // elements in a_type_and_values can't match the same element in
     // b_type_and_values multiple times.
@@ -273,10 +282,12 @@ bool VerifyNameMatchInternal(const der::Input &a, const der::Input &b,
   // If doing exact match and either of the sequences has more elements than the
   // other, not a match. If doing a subtree match, the first Name may have more
   // RDNs than the second.
-  if (b_rdn_sequence_counter.HasMore())
+  if (b_rdn_sequence_counter.HasMore()) {
     return false;
-  if (match_type == EXACT_MATCH && a_rdn_sequence_counter.HasMore())
+  }
+  if (match_type == EXACT_MATCH && a_rdn_sequence_counter.HasMore()) {
     return false;
+  }
 
   // Verify that RDNs in |a| and |b| match.
   der::Parser a_rdn_sequence(a);
@@ -287,8 +298,9 @@ bool VerifyNameMatchInternal(const der::Input &a, const der::Input &b,
         !b_rdn_sequence.ReadConstructed(der::kSet, &b_rdn)) {
       return false;
     }
-    if (!VerifyRdnMatch(&a_rdn, &b_rdn))
+    if (!VerifyRdnMatch(&a_rdn, &b_rdn)) {
       return false;
+    }
   }
 
   return true;
@@ -305,21 +317,25 @@ bool NormalizeName(const der::Input &name_rdn_sequence,
   der::Parser rdn_sequence_parser(name_rdn_sequence);
 
   bssl::ScopedCBB cbb;
-  if (!CBB_init(cbb.get(), 0))
+  if (!CBB_init(cbb.get(), 0)) {
     return false;
+  }
 
   while (rdn_sequence_parser.HasMore()) {
     // RelativeDistinguishedName ::= SET SIZE (1..MAX) OF AttributeTypeAndValue
     der::Parser rdn_parser;
-    if (!rdn_sequence_parser.ReadConstructed(der::kSet, &rdn_parser))
+    if (!rdn_sequence_parser.ReadConstructed(der::kSet, &rdn_parser)) {
       return false;
+    }
     RelativeDistinguishedName type_and_values;
-    if (!ReadRdn(&rdn_parser, &type_and_values))
+    if (!ReadRdn(&rdn_parser, &type_and_values)) {
       return false;
+    }
 
     CBB rdn_cbb;
-    if (!CBB_add_asn1(cbb.get(), &rdn_cbb, CBS_ASN1_SET))
+    if (!CBB_add_asn1(cbb.get(), &rdn_cbb, CBS_ASN1_SET)) {
       return false;
+    }
 
     for (const auto &type_and_value : type_and_values) {
       // AttributeTypeAndValue ::= SEQUENCE {
@@ -342,30 +358,35 @@ bool NormalizeName(const der::Input &name_rdn_sequence,
       // AttributeValue ::= ANY -- DEFINED BY AttributeType
       if (IsNormalizableDirectoryString(type_and_value.value_tag)) {
         std::string normalized_value;
-        if (!NormalizeValue(type_and_value, &normalized_value, errors))
+        if (!NormalizeValue(type_and_value, &normalized_value, errors)) {
           return false;
+        }
         if (!CBB_add_asn1(&attribute_type_and_value_cbb, &value_cbb,
                           CBS_ASN1_UTF8STRING) ||
             !CBB_add_bytes(
                 &value_cbb,
                 reinterpret_cast<const uint8_t *>(normalized_value.data()),
-                normalized_value.size()))
+                normalized_value.size())) {
           return false;
+        }
       } else {
         if (!CBB_add_asn1(&attribute_type_and_value_cbb, &value_cbb,
                           type_and_value.value_tag) ||
             !CBB_add_bytes(&value_cbb, type_and_value.value.UnsafeData(),
-                           type_and_value.value.Length()))
+                           type_and_value.value.Length())) {
           return false;
+        }
       }
 
-      if (!CBB_flush(&rdn_cbb))
+      if (!CBB_flush(&rdn_cbb)) {
         return false;
+      }
     }
 
     // Ensure the encoded AttributeTypeAndValue values in the SET OF are sorted.
-    if (!CBB_flush_asn1_set_of(&rdn_cbb) || !CBB_flush(cbb.get()))
+    if (!CBB_flush_asn1_set_of(&rdn_cbb) || !CBB_flush(cbb.get())) {
       return false;
+    }
   }
 
   normalized_rdn_sequence->assign(CBB_data(cbb.get()),
@@ -392,12 +413,14 @@ bool FindEmailAddressesInName(
   der::Parser rdn_sequence_parser(name_rdn_sequence);
   while (rdn_sequence_parser.HasMore()) {
     der::Parser rdn_parser;
-    if (!rdn_sequence_parser.ReadConstructed(der::kSet, &rdn_parser))
+    if (!rdn_sequence_parser.ReadConstructed(der::kSet, &rdn_parser)) {
       return false;
+    }
 
     RelativeDistinguishedName type_and_values;
-    if (!ReadRdn(&rdn_parser, &type_and_values))
+    if (!ReadRdn(&rdn_parser, &type_and_values)) {
       return false;
+    }
 
     for (const auto &type_and_value : type_and_values) {
       if (type_and_value.type == der::Input(kTypeEmailAddressOid)) {

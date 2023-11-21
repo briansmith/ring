@@ -86,8 +86,9 @@ class AsyncCertIssuerSourceStatic : public CertIssuerSource {
     ~StaticAsyncRequest() override = default;
 
     void GetNext(ParsedCertificateList *out_certs) override {
-      if (issuers_iter_ != issuers_.end())
+      if (issuers_iter_ != issuers_.end()) {
         out_certs->push_back(std::move(*issuers_iter_++));
+      }
     }
 
     ParsedCertificateList issuers_;
@@ -142,8 +143,9 @@ class AsyncCertIssuerSourceStatic : public CertIssuerSource {
   std::string der;
   ::testing::AssertionResult r = ReadTestPem(
       "testdata/ssl/certificates/" + file_name, "CERTIFICATE", &der);
-  if (!r)
+  if (!r) {
     return r;
+  }
   CertErrors errors;
   *result = ParsedCertificate::Create(
       bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
@@ -594,11 +596,13 @@ TEST_F(PathBuilderMultiRootTest, TestCertIssuerOrdering) {
         b_by_c_, b_by_f_, f_by_e_, c_by_d_, c_by_e_};
     CertIssuerSourceStatic sync_certs;
     if (reverse_order) {
-      for (auto it = certs.rbegin(); it != certs.rend(); ++it)
+      for (auto it = certs.rbegin(); it != certs.rend(); ++it) {
         sync_certs.AddCert(*it);
+      }
     } else {
-      for (const auto &cert : certs)
+      for (const auto &cert : certs) {
         sync_certs.AddCert(cert);
+      }
     }
 
     CertPathBuilder path_builder(
@@ -1756,10 +1760,12 @@ class PathBuilderSimpleChainTest : public ::testing::Test {
     // Set up the trust store such that |distrusted_cert| is blocked, and
     // the root is trusted (except if it was |distrusted_cert|).
     TrustStoreInMemory trust_store;
-    if (distrusted_cert != test_.chain.back())
+    if (distrusted_cert != test_.chain.back()) {
       trust_store.AddTrustAnchor(test_.chain.back());
-    if (distrusted_cert)
+    }
+    if (distrusted_cert) {
       trust_store.AddDistrustedCertificateForTest(distrusted_cert);
+    }
 
     // Add the single intermediate.
     CertIssuerSourceStatic intermediates;
@@ -1817,8 +1823,9 @@ TEST_F(PathBuilderDistrustTest, TargetIntermediateRoot) {
     // The built path should be identical the the one read from disk.
     const auto &path = *result.GetBestValidPath();
     ASSERT_EQ(test_.chain.size(), path.certs.size());
-    for (size_t i = 0; i < test_.chain.size(); ++i)
+    for (size_t i = 0; i < test_.chain.size(); ++i) {
       EXPECT_EQ(test_.chain[i], path.certs[i]);
+    }
   }
 
   // Try path building when only the target is blocked - should fail.

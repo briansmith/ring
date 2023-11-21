@@ -34,8 +34,9 @@ namespace {
   ::testing::AssertionResult r =
       ReadTestPem("testdata/cert_issuer_source_static_unittest/" + file_name,
                   "CERTIFICATE", &der);
-  if (!r)
+  if (!r) {
     return r;
+  }
   CertErrors errors;
   *result = ParsedCertificate::Create(
       bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
@@ -95,17 +96,20 @@ class CertIssuerSourceSyncTest : public ::testing::Test {
     source().SyncGetIssuersOf(cert.get(), &matches);
 
     std::vector<der::Input> der_result_matches;
-    for (const auto &it : matches)
+    for (const auto &it : matches) {
       der_result_matches.push_back(it->der_cert());
+    }
     std::sort(der_result_matches.begin(), der_result_matches.end());
 
     std::vector<der::Input> der_expected_matches;
-    for (const auto &it : expected_matches)
+    for (const auto &it : expected_matches) {
       der_expected_matches.push_back(it->der_cert());
+    }
     std::sort(der_expected_matches.begin(), der_expected_matches.end());
 
-    if (der_expected_matches == der_result_matches)
+    if (der_expected_matches == der_result_matches) {
       return true;
+    }
 
     // Print some extra information for debugging.
     EXPECT_EQ(der_expected_matches, der_result_matches);

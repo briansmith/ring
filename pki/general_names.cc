@@ -103,8 +103,9 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
   der::Parser parser(input);
   der::Tag tag;
   der::Input value;
-  if (!parser.ReadTagAndValue(&tag, &value))
+  if (!parser.ReadTagAndValue(&tag, &value)) {
     return false;
+  }
   GeneralNameTypes name_type = GENERAL_NAME_NONE;
   if (tag == der::ContextSpecificConstructed(0)) {
     // otherName                       [0]     OtherName,
@@ -140,8 +141,9 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
     // only the value portion.
     der::Parser name_parser(value);
     der::Input name_value;
-    if (!name_parser.ReadTag(der::kSequence, &name_value) || parser.HasMore())
+    if (!name_parser.ReadTag(der::kSequence, &name_value) || parser.HasMore()) {
       return false;
+    }
     subtrees->directory_names.push_back(name_value);
   } else if (tag == der::ContextSpecificConstructed(5)) {
     // ediPartyName                    [5]     EDIPartyName,

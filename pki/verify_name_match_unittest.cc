@@ -32,8 +32,9 @@ namespace {
 }
 
 bool TypesAreComparable(const std::string &type_1, const std::string &type_2) {
-  if (type_1 == type_2)
+  if (type_1 == type_2) {
     return true;
+  }
   if ((type_1 == "PRINTABLESTRING" || type_1 == "UTF8" ||
        type_1 == "BMPSTRING" || type_1 == "UNIVERSALSTRING") &&
       (type_2 == "PRINTABLESTRING" || type_2 == "UTF8" ||

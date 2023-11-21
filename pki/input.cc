@@ -34,16 +34,18 @@ ByteReader::ByteReader(const Input &in)
     : data_(in.UnsafeData()), len_(in.Length()) {}
 
 bool ByteReader::ReadByte(uint8_t *byte_p) {
-  if (!HasMore())
+  if (!HasMore()) {
     return false;
+  }
   *byte_p = *data_;
   Advance(1);
   return true;
 }
 
 bool ByteReader::ReadBytes(size_t len, Input *out) {
-  if (len > len_)
+  if (len > len_) {
     return false;
+  }
   *out = Input(data_, len);
   Advance(len);
   return true;

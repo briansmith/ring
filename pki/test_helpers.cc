@@ -28,8 +28,9 @@ namespace {
 
 bool GetValue(std::string_view prefix, std::string_view line,
               std::string *value, bool *has_value) {
-  if (!bssl::string_util::StartsWith(line, prefix))
+  if (!bssl::string_util::StartsWith(line, prefix)) {
     return false;
+  }
 
   if (*has_value) {
     ADD_FAILURE() << "Duplicated " << prefix;
@@ -195,8 +196,9 @@ bool ReadCertChainFromFile(const std::string &file_path_ascii,
   *chain = ParsedCertificateList();
 
   std::string file_data = ReadTestFileToString(file_path_ascii);
-  if (file_data.empty())
+  if (file_data.empty()) {
     return false;
+  }
 
   std::vector<std::string> pem_headers = {"CERTIFICATE"};
 
@@ -221,10 +223,12 @@ bool ReadCertChainFromFile(const std::string &file_path_ascii,
 std::shared_ptr<const ParsedCertificate> ReadCertFromFile(
     const std::string &file_path_ascii) {
   ParsedCertificateList chain;
-  if (!ReadCertChainFromFile(file_path_ascii, &chain))
+  if (!ReadCertChainFromFile(file_path_ascii, &chain)) {
     return nullptr;
-  if (chain.size() != 1)
+  }
+  if (chain.size() != 1) {
     return nullptr;
+  }
   return chain[0];
 }
 
@@ -234,8 +238,9 @@ bool ReadVerifyCertChainTestFromFile(const std::string &file_path_ascii,
   *test = {};
 
   std::string file_data = ReadTestFileToString(file_path_ascii);
-  if (file_data.empty())
+  if (file_data.empty()) {
     return false;
+  }
 
   bool has_chain = false;
   bool has_trust = false;

@@ -44,8 +44,9 @@ void TrustStoreInMemory::AddCertificateWithUnspecifiedTrust(
 void TrustStoreInMemory::SyncGetIssuersOf(const ParsedCertificate *cert,
                                           ParsedCertificateList *issuers) {
   auto range = entries_.equal_range(cert->normalized_issuer().AsStringView());
-  for (auto it = range.first; it != range.second; ++it)
+  for (auto it = range.first; it != range.second; ++it) {
     issuers->push_back(it->second.cert);
+  }
 }
 
 CertificateTrust TrustStoreInMemory::GetTrust(const ParsedCertificate *cert) {

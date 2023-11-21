@@ -58,8 +58,9 @@ DEFINE_CERT_ERROR_ID(kFailedParsingSubjectKeyIdentifier,
 
 bool ParsedCertificate::GetExtension(const der::Input &extension_oid,
                                      ParsedExtension *parsed_extension) const {
-  if (!tbs_.extensions_tlv)
+  if (!tbs_.extensions_tlv) {
     return false;
+  }
 
   auto it = extensions_.find(extension_oid);
   if (it == extensions_.end()) {
@@ -81,8 +82,9 @@ std::shared_ptr<const ParsedCertificate> ParsedCertificate::Create(
   // |errors| is an optional parameter, but to keep the code simpler, use a
   // dummy object when one wasn't provided.
   CertErrors unused_errors;
-  if (!errors)
+  if (!errors) {
     errors = &unused_errors;
+  }
 
   auto result = std::make_shared<ParsedCertificate>(PrivateConstructor{});
   result->cert_data_ = std::move(backing_data);
@@ -284,8 +286,9 @@ bool ParsedCertificate::CreateAndAddToVector(
     CertErrors *errors) {
   std::shared_ptr<const ParsedCertificate> cert(
       Create(std::move(cert_data), options, errors));
-  if (!cert)
+  if (!cert) {
     return false;
+  }
   chain->push_back(std::move(cert));
   return true;
 }

@@ -43,8 +43,9 @@ class CrlCheckingPathBuilderDelegate : public SimplePathBuilderDelegate {
                                   CertPathBuilderResultPath *path) override {
     SimplePathBuilderDelegate::CheckPathAfterVerification(path_builder, path);
 
-    if (!path->IsValid())
+    if (!path->IsValid()) {
       return;
+    }
 
     // It would be preferable if this test could use
     // CheckValidatedChainRevocation somehow, but that only supports getting
@@ -56,8 +57,9 @@ class CrlCheckingPathBuilderDelegate : public SimplePathBuilderDelegate {
 
       // Trust anchors bypass OCSP/CRL revocation checks. (The only way to
       // revoke trust anchors is via CRLSet or the built-in SPKI block list).
-      if (reverse_i == 0 && path->last_cert_trust.IsTrustAnchor())
+      if (reverse_i == 0 && path->last_cert_trust.IsTrustAnchor()) {
         continue;
+      }
 
       // RFC 5280 6.3.3.  [If the CRL was not specified in a distribution
       //                  point], assume a DP with both the reasons and the
@@ -91,8 +93,9 @@ class CrlCheckingPathBuilderDelegate : public SimplePathBuilderDelegate {
         }
         // If there were only DistributionPoints with reasons, just use the
         // first one.
-        if (cert_dp == &fake_cert_dp && !distribution_points.empty())
+        if (cert_dp == &fake_cert_dp && !distribution_points.empty()) {
           cert_dp = &distribution_points[0];
+        }
       }
 
       bool cert_good = false;
@@ -154,8 +157,9 @@ class PathBuilderPkitsTestDelegate {
 
     // TODO(mattm): test with other irrelevant certs in cert_issuer_sources?
     CertIssuerSourceStatic cert_issuer_source;
-    for (size_t i = 1; i < cert_ders.size() - 1; ++i)
+    for (size_t i = 1; i < cert_ders.size() - 1; ++i) {
       cert_issuer_source.AddCert(certs[i]);
+    }
 
     std::shared_ptr<const ParsedCertificate> target_cert(certs.back());
 

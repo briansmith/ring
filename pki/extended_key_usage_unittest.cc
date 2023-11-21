@@ -15,8 +15,9 @@ namespace {
 // Helper method to check if an EKU is present in a std::vector of EKUs.
 bool HasEKU(const std::vector<der::Input> &list, const der::Input &eku) {
   for (const auto &oid : list) {
-    if (oid == eku)
+    if (oid == eku) {
       return true;
+    }
   }
   return false;
 }
