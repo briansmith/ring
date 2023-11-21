@@ -487,7 +487,7 @@ OPENSSL_EXPORT int X509_add1_trust_object(X509 *x509, const ASN1_OBJECT *obj);
 // associated with an |X509_TRUST| object.
 OPENSSL_EXPORT int X509_add1_reject_object(X509 *x509, const ASN1_OBJECT *obj);
 
-// X509_reject_clear clears the list of OIDs for which |x509| is trusted. See
+// X509_trust_clear clears the list of OIDs for which |x509| is trusted. See
 // also |X509_add1_trust_object|.
 OPENSSL_EXPORT void X509_trust_clear(X509 *x509);
 
@@ -1902,8 +1902,8 @@ OPENSSL_EXPORT int i2d_NETSCAPE_SPKAC(const NETSCAPE_SPKAC *spkac,
 // discouraged. The parameters structure is very complex, and it takes more
 // bytes to merely encode parameters than an entire P-256 ECDSA signature.
 
-// An RSA_PSS_PARAMS represents a parsed RSASSA-PSS-params structure, as defined
-// in (RFC 4055).
+// An rsa_pss_params_st, aka |RSA_PSS_PARAMS|, represents a parsed
+// RSASSA-PSS-params structure, as defined in (RFC 4055).
 struct rsa_pss_params_st {
   X509_ALGOR *hashAlgorithm;
   X509_ALGOR *maskGenAlgorithm;
