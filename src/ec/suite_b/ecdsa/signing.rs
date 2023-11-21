@@ -105,6 +105,7 @@ impl EcdsaKeyPair {
     pub fn from_pkcs8(
         alg: &'static EcdsaSigningAlgorithm,
         pkcs8: &[u8],
+        rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::KeyRejected> {
         let key_pair = ec::suite_b::key_pair_from_pkcs8(
             alg.curve,
@@ -112,9 +113,7 @@ impl EcdsaKeyPair {
             untrusted::Input::from(pkcs8),
             cpu::features(),
         )?;
-        // This was changed to a parameter, regressed for compatibility with previous version
-        let rng = rand::SystemRandom::new();
-        Self::new(alg, key_pair, &rng)
+        Self::new(alg, key_pair, rng)
     }
 
     /// Constructs an ECDSA key pair from the private key and public key bytes

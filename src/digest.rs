@@ -262,8 +262,7 @@ impl core::fmt::Debug for Digest {
 
 /// A digest algorithm.
 pub struct Algorithm {
-    /// The length of a finalized digest.
-    pub output_len: usize, // changed to pub for compatibility with previous version
+    output_len: usize,
     chaining_len: usize,
     block_len: usize,
 
