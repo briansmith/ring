@@ -14,8 +14,7 @@ repository = "https://github.com/briansmith/ring"
 rust-version = "1.61.0"
 
 # Keep in sync with `links` below.
-#version = "0.17.5"
-version = "0.16.30"
+version = "0.17.5"
 
 # Keep in sync with `version` above.
 #
@@ -24,7 +23,7 @@ version = "0.16.30"
 # build.rs uses this to derive the prefix for FFI symbols and the file names
 # of the FFI libraries, so it must be a valid identifier prefix and a valid
 # filename prefix.
-links = "ring_core_0_16_30"
+links = "ring_core_0_17_5"
 
 include = [
     "LICENSE",
@@ -173,13 +172,13 @@ name = "ring"
 
 [dependencies]
 getrandom = { version = "0.2.10" }
-untrusted = { version = "0.7" } # changed this for compatibility with other users of untrusted
+untrusted = { version = "0.9" }
 
 [target.'cfg(any(target_arch = "x86",target_arch = "x86_64", all(any(target_arch = "aarch64", target_arch = "arm"), any(target_os = "android", target_os = "fuchsia", target_os = "linux", target_os = "windows"))))'.dependencies]
 spin = { version = "0.9.8", default-features = false, features = ["once"] }
 
 [target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
-libc = { version = "0.2.144", default-features = false }
+libc = { version = "0.2.148", default-features = false }
 
 [target.'cfg(all(target_arch = "aarch64", target_os = "windows"))'.dependencies]
 windows-sys = { version = "0.48", features = ["Win32_Foundation", "Win32_System_Threading"] }
@@ -188,7 +187,7 @@ windows-sys = { version = "0.48", features = ["Win32_Foundation", "Win32_System_
 wasm-bindgen-test = { version = "0.3.37", default-features = false }
 
 [target.'cfg(any(unix, windows, target_os = "wasi"))'.dev-dependencies]
-libc = { version = "0.2.144", default-features = false }
+libc = { version = "0.2.148", default-features = false }
 
 [build-dependencies]
 cc = { version = "1.0.83", default-features = false }
