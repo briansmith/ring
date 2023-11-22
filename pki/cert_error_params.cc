@@ -3,11 +3,11 @@
 // found in the LICENSE file.
 
 #include "cert_error_params.h"
-#include "fillins/openssl_util.h"
 
 #include <memory>
 
 #include <openssl/base.h>
+
 #include "input.h"
 #include "string_util.h"
 

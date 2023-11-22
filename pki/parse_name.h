@@ -6,8 +6,8 @@
 #define BSSL_PKI_PARSE_NAME_H_
 
 #include <vector>
-#include "fillins/openssl_util.h"
 
+#include <openssl/base.h>
 
 #include "input.h"
 #include "parser.h"

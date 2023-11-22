@@ -5,9 +5,9 @@
 #ifndef BSSL_PKI_VERIFY_SIGNED_DATA_H_
 #define BSSL_PKI_VERIFY_SIGNED_DATA_H_
 
-#include "fillins/openssl_util.h"
-
+#include <openssl/base.h>
 #include <openssl/evp.h>
+
 #include "signature_algorithm.h"
 #include "signature_verify_cache.h"
 

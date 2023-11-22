@@ -6,14 +6,14 @@
 #define BSSL_PKI_PARSE_CERTIFICATE_H_
 
 #include <stdint.h>
-#include "fillins/openssl_util.h"
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
+#include <openssl/base.h>
 
-#include <optional>
 #include "general_names.h"
 #include "input.h"
 #include "parse_values.h"

@@ -6,8 +6,8 @@
 #define BSSL_PKI_EXTENDED_KEY_USAGE_H_
 
 #include <vector>
-#include "fillins/openssl_util.h"
 
+#include <openssl/base.h>
 
 #include "input.h"
 

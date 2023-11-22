@@ -5,14 +5,11 @@
 #ifndef BSSL_PKI_STRING_UTIL_H_
 #define BSSL_PKI_STRING_UTIL_H_
 
-#include "fillins/openssl_util.h"
-
-
-#include <stdint.h>
-
 #include <cstdint>
 #include <string_view>
 #include <vector>
+
+#include <openssl/base.h>
 
 namespace bssl::string_util {
 

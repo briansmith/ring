@@ -8,7 +8,8 @@
 #include <memory>
 #include <string_view>
 #include <vector>
-#include "fillins/openssl_util.h"
+
+#include <openssl/base.h>
 
 
 #include "cert_error_id.h"

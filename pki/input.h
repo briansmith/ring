@@ -7,12 +7,11 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "fillins/openssl_util.h"
 
 #include <string>
 #include <string_view>
 
-
+#include <openssl/base.h>
 #include <openssl/span.h>
 
 namespace bssl::der {

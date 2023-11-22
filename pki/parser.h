@@ -6,11 +6,12 @@
 #define BSSL_DER_PARSER_H_
 
 #include <stdint.h>
-#include "fillins/openssl_util.h"
 
-
-#include <openssl/bytestring.h>
 #include <optional>
+
+#include <openssl/base.h>
+#include <openssl/bytestring.h>
+
 #include "input.h"
 #include "tag.h"
 

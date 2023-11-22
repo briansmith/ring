@@ -5,7 +5,6 @@
 // ----------------------------
 // Overview of error design
 // ----------------------------
-#include "fillins/openssl_util.h"
 //
 // Certificate path building/validation/parsing may emit a sequence of errors
 // and warnings.
@@ -50,6 +49,7 @@
 #include <memory>
 #include <vector>
 
+#include <openssl/base.h>
 
 #include "cert_error_id.h"
 #include "parsed_certificate.h"

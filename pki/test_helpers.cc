@@ -91,7 +91,7 @@ std::vector<std::string> SplitString(std::string_view str) {
   return out;
 }
 
-  bool ReadFileToString(const std::string &path, std::string *out) {
+bool ReadFileToString(const std::string &path, std::string *out) {
   std::ifstream file(path, std::ios::binary);
   file.unsetf(std::ios::skipws);
 

@@ -5,11 +5,10 @@
 #ifndef BSSL_PKI_REVOCATION_UTIL_H_
 #define BSSL_PKI_REVOCATION_UTIL_H_
 
-#include "fillins/openssl_util.h"
-
+#include <cstdint>
 #include <optional>
 
-#include <cstdint>
+#include <openssl/base.h>
 
 namespace bssl {
 

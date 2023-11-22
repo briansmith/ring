@@ -6,8 +6,8 @@
 #define BSSL_PKI_NAME_CONSTRAINTS_H_
 
 #include <memory>
-#include "fillins/openssl_util.h"
 
+#include <openssl/base.h>
 
 #include "general_names.h"
 

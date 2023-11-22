@@ -7,9 +7,8 @@
 
 #include <memory>
 #include <string>
-#include "fillins/openssl_util.h"
 
-
+#include <openssl/base.h>
 
 namespace bssl {
 

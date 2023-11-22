@@ -5,7 +5,7 @@
 #ifndef BSSL_PKI_COMMON_CERT_ERRORS_H_
 #define BSSL_PKI_COMMON_CERT_ERRORS_H_
 
-#include "fillins/openssl_util.h"
+#include <openssl/base.h>
 
 #include "cert_errors.h"
 

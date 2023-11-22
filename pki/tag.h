@@ -6,9 +6,8 @@
 #define BSSL_DER_TAG_H_
 
 #include <stdint.h>
-#include "fillins/openssl_util.h"
 
-
+#include <openssl/base.h>
 #include <openssl/bytestring.h>
 
 namespace bssl::der {

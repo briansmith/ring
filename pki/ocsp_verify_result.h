@@ -5,7 +5,7 @@
 #ifndef BSSL_PKI_OCSP_VERIFY_RESULT_H_
 #define BSSL_PKI_OCSP_VERIFY_RESULT_H_
 
-#include "fillins/openssl_util.h"
+#include <openssl/base.h>
 
 #include "ocsp_revocation_status.h"
 

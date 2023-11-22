@@ -7,8 +7,8 @@
 
 #include <memory>
 #include <vector>
-#include "fillins/openssl_util.h"
 
+#include <openssl/base.h>
 
 #include "cert_errors.h"
 #include "input.h"

@@ -6,10 +6,10 @@
 #define BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_H_
 
 #include <set>
-#include "fillins/openssl_util.h"
 
-
+#include <openssl/base.h>
 #include <openssl/evp.h>
+
 #include "cert_errors.h"
 #include "input.h"
 #include "parsed_certificate.h"

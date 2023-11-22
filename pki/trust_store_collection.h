@@ -5,7 +5,7 @@
 #ifndef BSSL_PKI_TRUST_STORE_COLLECTION_H_
 #define BSSL_PKI_TRUST_STORE_COLLECTION_H_
 
-#include "fillins/openssl_util.h"
+#include <openssl/base.h>
 
 #include "trust_store.h"
 

@@ -6,12 +6,12 @@
 #define BSSL_PKI_OCSP_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
-#include "fillins/openssl_util.h"
 
+#include <openssl/base.h>
 
-#include <optional>
 #include "input.h"
 #include "ocsp_revocation_status.h"
 #include "ocsp_verify_result.h"

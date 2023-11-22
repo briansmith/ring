@@ -358,7 +358,6 @@ set(
   pki/crl.cc
   pki/encode_values.cc
   pki/extended_key_usage.cc
-  pki/fillins/openssl_util.cc
   pki/general_names.cc
   pki/input.cc
   pki/ip_util.cc

@@ -7,8 +7,8 @@
 
 #include <memory>
 #include <vector>
-#include "fillins/openssl_util.h"
 
+#include <openssl/base.h>
 
 #include "parsed_certificate.h"
 

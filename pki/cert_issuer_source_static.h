@@ -6,8 +6,8 @@
 #define BSSL_PKI_CERT_ISSUER_SOURCE_STATIC_H_
 
 #include <unordered_map>
-#include "fillins/openssl_util.h"
 
+#include <openssl/base.h>
 
 #include "cert_issuer_source.h"
 

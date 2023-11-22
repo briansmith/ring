@@ -6,14 +6,12 @@
 #define BSSL_PKI_PEM_H_
 
 #include <stddef.h>
-#include "fillins/openssl_util.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
-#include <string_view>
-
-
+#include <openssl/base.h>
 
 namespace bssl {
 

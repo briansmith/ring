@@ -6,8 +6,6 @@
 #define BSSL_PKI_CERTIFICATE_POLICIES_H_
 
 #include <stdint.h>
-#include "fillins/openssl_util.h"
-
 #include <vector>
 
 

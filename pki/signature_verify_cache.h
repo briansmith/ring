@@ -5,8 +5,8 @@
 #ifndef BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_
 #define BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_
 
+#include <openssl/base.h>
 #include <string>
-#include "fillins/openssl_util.h"
 
 namespace bssl {
 

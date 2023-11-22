@@ -7,9 +7,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "fillins/openssl_util.h"
 
-
+#include <openssl/base.h>
 
 namespace bssl::der {
 

@@ -7,12 +7,11 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
-#include "fillins/openssl_util.h"
-
 
 #include <openssl/base.h>
-#include <optional>
+
 #include "certificate_policies.h"
 #include "input.h"
 #include "parse_certificate.h"

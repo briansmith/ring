@@ -5,9 +5,10 @@
 #ifndef BSSL_PKI_TRUST_STORE_H_
 #define BSSL_PKI_TRUST_STORE_H_
 
-#include "fillins/openssl_util.h"
-
 #include <optional>
+
+#include <openssl/base.h>
+
 #include "cert_issuer_source.h"
 #include "parsed_certificate.h"
 
