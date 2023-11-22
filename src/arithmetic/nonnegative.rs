@@ -16,7 +16,7 @@ use crate::{
     bits, error,
     limb::{self, Limb, LimbMask, LIMB_BYTES},
 };
-use alloc::{boxed::Box, vec, vec::Vec};
+use alloc::{vec, vec::Vec};
 
 /// Nonnegative integers.
 pub(crate) struct Nonnegative {
@@ -44,10 +44,5 @@ impl Nonnegative {
     #[inline]
     pub fn limbs(&self) -> &[Limb] {
         &self.limbs
-    }
-
-    #[inline]
-    pub fn into_limbs(self) -> Box<[Limb]> {
-        self.limbs.into_boxed_slice()
     }
 }

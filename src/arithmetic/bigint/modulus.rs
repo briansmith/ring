@@ -14,7 +14,7 @@
 
 use super::{
     super::{montgomery::RR, n0::N0},
-    BoxedLimbs, Elem, Nonnegative, One, PublicModulus, SmallerModulus, Unencoded,
+    BoxedLimbs, Elem, One, PublicModulus, SmallerModulus, Unencoded,
 };
 use crate::{
     bits::BitLength,
@@ -110,14 +110,6 @@ impl<M> OwnedModulusWithOne<M> {
         cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
         let limbs = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
-        Self::from_boxed_limbs(limbs, cpu_features)
-    }
-
-    pub(crate) fn from_nonnegative(
-        n: Nonnegative,
-        cpu_features: cpu::Features,
-    ) -> Result<Self, error::KeyRejected> {
-        let limbs = BoxedLimbs::new_unchecked(n.into_limbs());
         Self::from_boxed_limbs(limbs, cpu_features)
     }
 
