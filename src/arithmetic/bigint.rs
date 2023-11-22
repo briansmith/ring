@@ -38,7 +38,7 @@
 
 use self::boxed_limbs::BoxedLimbs;
 pub(crate) use self::{
-    modulus::{Modulus, OwnedModulusWithOne, MODULUS_MAX_LIMBS},
+    modulus::{Modulus, OwnedModulus, MODULUS_MAX_LIMBS},
     private_exponent::PrivateExponent,
 };
 use super::n0::N0;
@@ -274,7 +274,7 @@ impl<M> One<M, RR> {
     // values, using `LIMB_BITS` here, rather than `N0::LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0::LIMBS_USED` is either one or two.
-    fn newRR(m: &Modulus<M>) -> Self {
+    pub(crate) fn newRR(m: &Modulus<M>) -> Self {
         // The number of limbs in the numbers involved.
         let w = m.limbs().len();
 
@@ -808,8 +808,8 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m_ = consume_modulus::<M>(test_case, "M", cpu_features);
-                let m = m_.modulus();
+                let m = consume_modulus::<M>(test_case, "M", cpu_features);
+                let m = m.modulus();
                 let expected_result = consume_elem(test_case, "ModExp", &m);
                 let base = consume_elem(test_case, "A", &m);
                 let e = {
@@ -817,7 +817,7 @@ mod tests {
                     PrivateExponent::from_be_bytes_for_test_only(untrusted::Input::from(&bytes), &m)
                         .expect("valid exponent")
                 };
-                let base = into_encoded(base, &m_);
+                let base = into_encoded(base, &m);
                 let actual_result = elem_exp_consttime(base, &e, &m).unwrap();
                 assert_elem_eq(&actual_result, &expected_result);
 
@@ -838,14 +838,14 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m_ = consume_modulus::<M>(test_case, "M", cpu_features);
-                let m = m_.modulus();
+                let m = consume_modulus::<M>(test_case, "M", cpu_features);
+                let m = m.modulus();
                 let expected_result = consume_elem(test_case, "ModMul", &m);
                 let a = consume_elem(test_case, "A", &m);
                 let b = consume_elem(test_case, "B", &m);
 
-                let b = into_encoded(b, &m_);
-                let a = into_encoded(a, &m_);
+                let b = into_encoded(b, &m);
+                let a = into_encoded(a, &m);
                 let actual_result = elem_mul(&a, b, &m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
@@ -863,12 +863,12 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m_ = consume_modulus::<M>(test_case, "M", cpu_features);
-                let m = m_.modulus();
+                let m = consume_modulus::<M>(test_case, "M", cpu_features);
+                let m = m.modulus();
                 let expected_result = consume_elem(test_case, "ModSquare", &m);
                 let a = consume_elem(test_case, "A", &m);
 
-                let a = into_encoded(a, &m_);
+                let a = into_encoded(a, &m);
                 let actual_result = elem_squared(a, &m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
@@ -896,7 +896,7 @@ mod tests {
                 let other_modulus_len_bits = m_.len_bits();
 
                 let actual_result = elem_reduced(&a, &m, other_modulus_len_bits);
-                let oneRR = m_.oneRR();
+                let oneRR = One::newRR(&m);
                 let actual_result = elem_mul(oneRR.as_ref(), actual_result, &m);
                 assert_elem_eq(&actual_result, &expected_result);
 
@@ -930,7 +930,7 @@ mod tests {
 
     #[test]
     fn test_modulus_debug() {
-        let modulus = OwnedModulusWithOne::<M>::from_be_bytes(
+        let modulus = OwnedModulus::<M>::from_be_bytes(
             untrusted::Input::from(&[0xff; LIMB_BYTES * MODULUS_MIN_LIMBS]),
             cpu::features(),
         )
@@ -965,9 +965,9 @@ mod tests {
         test_case: &mut test::TestCase,
         name: &str,
         cpu_features: cpu::Features,
-    ) -> OwnedModulusWithOne<M> {
+    ) -> OwnedModulus<M> {
         let value = test_case.consume_bytes(name);
-        OwnedModulusWithOne::from_be_bytes(untrusted::Input::from(&value), cpu_features).unwrap()
+        OwnedModulus::from_be_bytes(untrusted::Input::from(&value), cpu_features).unwrap()
     }
 
     fn consume_nonnegative(test_case: &mut test::TestCase, name: &str) -> Nonnegative {
@@ -983,7 +983,8 @@ mod tests {
         }
     }
 
-    fn into_encoded<M>(a: Elem<M, Unencoded>, m: &OwnedModulusWithOne<M>) -> Elem<M, R> {
-        elem_mul(m.oneRR().as_ref(), a, &m.modulus())
+    fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
+        let oneRR = One::newRR(m);
+        elem_mul(oneRR.as_ref(), a, m)
     }
 }

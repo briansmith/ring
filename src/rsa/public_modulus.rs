@@ -1,10 +1,15 @@
-use crate::{arithmetic::bigint, bits, cpu, error, rsa::N};
+use crate::{
+    arithmetic::{bigint, montgomery::RR},
+    bits, cpu, error,
+    rsa::N,
+};
 use core::ops::RangeInclusive;
 
 /// The modulus (n) of an RSA public key.
 #[derive(Clone)]
 pub struct PublicModulus {
-    value: bigint::OwnedModulusWithOne<N>,
+    value: bigint::OwnedModulus<N>,
+    oneRR: bigint::One<N, RR>,
 }
 
 /*
@@ -32,7 +37,7 @@ impl PublicModulus {
         const MIN_BITS: bits::BitLength = bits::BitLength::from_usize_bits(1024);
 
         // Step 3 / Step c for `n` (out of order).
-        let value = bigint::OwnedModulusWithOne::from_be_bytes(n, cpu_features)?;
+        let value = bigint::OwnedModulus::from_be_bytes(n, cpu_features)?;
         let bits = value.len_bits();
 
         // Step 1 / Step a. XXX: SP800-56Br1 and SP800-89 require the length of
@@ -47,8 +52,9 @@ impl PublicModulus {
         if bits > max_bits {
             return Err(error::KeyRejected::too_large());
         }
+        let oneRR = bigint::One::newRR(&value.modulus());
 
-        Ok(Self { value })
+        Ok(Self { value, oneRR })
     }
 
     /// The big-endian encoding of the modulus.
@@ -63,7 +69,11 @@ impl PublicModulus {
         self.value.len_bits()
     }
 
-    pub(super) fn value(&self) -> &bigint::OwnedModulusWithOne<N> {
-        &self.value
+    pub(super) fn value(&self) -> bigint::Modulus<N> {
+        self.value.modulus()
+    }
+
+    pub(super) fn oneRR(&self) -> &bigint::Elem<N, RR> {
+        self.oneRR.as_ref()
     }
 }
