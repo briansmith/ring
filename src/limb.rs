@@ -334,19 +334,17 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
 }
 
 #[inline]
+pub(crate) fn limbs_add_mod(r: &mut [Limb], a: &[Limb], b: &[Limb], m: &[Limb]) {
+    debug_assert_eq!(r.len(), m.len());
+    debug_assert_eq!(a.len(), m.len());
+    debug_assert_eq!(b.len(), m.len());
+    unsafe { LIMBS_add_mod(r.as_mut_ptr(), a.as_ptr(), b.as_ptr(), m.as_ptr(), m.len()) }
+}
+
+#[inline]
 pub(crate) fn limbs_add_assign_mod(a: &mut [Limb], b: &[Limb], m: &[Limb]) {
     debug_assert_eq!(a.len(), m.len());
     debug_assert_eq!(b.len(), m.len());
-    prefixed_extern! {
-        // `r` and `a` may alias.
-        fn LIMBS_add_mod(
-            r: *mut Limb,
-            a: *const Limb,
-            b: *const Limb,
-            m: *const Limb,
-            num_limbs: c::size_t,
-        );
-    }
     unsafe { LIMBS_add_mod(a.as_mut_ptr(), a.as_ptr(), b.as_ptr(), m.as_ptr(), m.len()) }
 }
 
@@ -376,6 +374,14 @@ pub(crate) fn limbs_negative_odd(r: &mut [Limb], a: &[Limb]) {
 
 prefixed_extern! {
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+    // `r` and `a` may alias.
+    fn LIMBS_add_mod(
+        r: *mut Limb,
+        a: *const Limb,
+        b: *const Limb,
+        m: *const Limb,
+        num_limbs: c::size_t,
+    );
     fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
 }
