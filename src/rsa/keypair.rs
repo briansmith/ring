@@ -252,11 +252,6 @@ impl KeyPair {
         let dQ = untrusted::Input::from(dQ);
         let qInv = untrusted::Input::from(qInv);
 
-        let (p, _p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)
-            .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
-        let (q, _q_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(q)
-            .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
-
         // XXX: Some steps are done out of order, but the NIST steps are worded
         // in such a way that it is clear that NIST intends for them to be done
         // in order. TODO: Does this matter at all?
@@ -410,12 +405,12 @@ impl<M> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
     fn new(
-        p: bigint::Nonnegative,
+        p: untrusted::Input,
         dP: untrusted::Input,
         n_bits: BitLength,
         cpu_features: cpu::Features,
     ) -> Result<Self, KeyRejected> {
-        let p = bigint::OwnedModulusWithOne::from_nonnegative(p, cpu_features)?;
+        let p = bigint::OwnedModulusWithOne::from_be_bytes(p, cpu_features)?;
 
         // 5.c / 5.g:
         //
