@@ -393,16 +393,16 @@ pub fn scalar_parse_big_endian_variable(
 
 pub fn scalar_parse_big_endian_partially_reduced_variable_consttime(
     ops: &CommonOps,
-    allow_zero: AllowZero,
     bytes: untrusted::Input,
 ) -> Result<Scalar, error::Unspecified> {
     let mut r = Scalar::zero();
-    parse_big_endian_in_range_partially_reduced_and_pad_consttime(
-        bytes,
-        allow_zero,
-        &ops.n.limbs[..ops.num_limbs],
-        &mut r.limbs[..ops.num_limbs],
-    )?;
+
+    {
+        let r = &mut r.limbs[..ops.num_limbs];
+        parse_big_endian_and_pad_consttime(bytes, r)?;
+        limbs_reduce_once_constant_time(r, &ops.n.limbs[..ops.num_limbs]);
+    }
+
     Ok(r)
 }
 

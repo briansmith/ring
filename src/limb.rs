@@ -141,28 +141,6 @@ pub enum AllowZero {
     Yes,
 }
 
-/// Parses `input` into `result`, reducing it via conditional subtraction
-/// (mod `m`). Assuming 2**((self.num_limbs * LIMB_BITS) - 1) < m and
-/// m < 2**(self.num_limbs * LIMB_BITS), the value will be reduced mod `m` in
-/// constant time so that the result is in the range [0, m) if `allow_zero` is
-/// `AllowZero::Yes`, or [1, m) if `allow_zero` is `AllowZero::No`. `result` is
-/// padded with zeros to its length.
-pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
-    input: untrusted::Input,
-    allow_zero: AllowZero,
-    m: &[Limb],
-    result: &mut [Limb],
-) -> Result<(), error::Unspecified> {
-    parse_big_endian_and_pad_consttime(input, result)?;
-    limbs_reduce_once_constant_time(result, m);
-    if allow_zero != AllowZero::Yes {
-        if limbs_are_zero_constant_time(result) != LimbMask::False {
-            return Err(error::Unspecified);
-        }
-    }
-    Ok(())
-}
-
 /// Parses `input` into `result`, verifies that the value is less than
 /// `max_exclusive`, and pads `result` with zeros to its length. If `allow_zero`
 /// is not `AllowZero::Yes`, zero values are rejected.
