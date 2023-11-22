@@ -209,8 +209,8 @@ X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v, const X509_LOOKUP_METHOD *m) {
   return lu;
 }
 
-int X509_STORE_get_by_subject(X509_STORE_CTX *vs, int type, X509_NAME *name,
-                              X509_OBJECT *ret) {
+int X509_STORE_CTX_get_by_subject(X509_STORE_CTX *vs, int type, X509_NAME *name,
+                                  X509_OBJECT *ret) {
   X509_STORE *ctx = vs->ctx;
   X509_OBJECT stmp;
   CRYPTO_MUTEX_lock_write(&ctx->objs_lock);
@@ -395,7 +395,7 @@ STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(X509_STORE *st) {
   return st->objs;
 }
 
-STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm) {
+STACK_OF(X509) *X509_STORE_CTX_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm) {
   int cnt;
   STACK_OF(X509) *sk = sk_X509_new_null();
   if (sk == NULL) {
@@ -408,7 +408,7 @@ STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm) {
     // cache
     X509_OBJECT xobj;
     CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
-    if (!X509_STORE_get_by_subject(ctx, X509_LU_X509, nm, &xobj)) {
+    if (!X509_STORE_CTX_get_by_subject(ctx, X509_LU_X509, nm, &xobj)) {
       sk_X509_free(sk);
       return NULL;
     }
@@ -435,7 +435,8 @@ STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm) {
   return sk;
 }
 
-STACK_OF(X509_CRL) *X509_STORE_get1_crls(X509_STORE_CTX *ctx, X509_NAME *nm) {
+STACK_OF(X509_CRL) *X509_STORE_CTX_get1_crls(X509_STORE_CTX *ctx,
+                                             X509_NAME *nm) {
   int cnt;
   X509_OBJECT xobj;
   STACK_OF(X509_CRL) *sk = sk_X509_CRL_new_null();
@@ -444,7 +445,7 @@ STACK_OF(X509_CRL) *X509_STORE_get1_crls(X509_STORE_CTX *ctx, X509_NAME *nm) {
   }
 
   // Always do lookup to possibly add new CRLs to cache.
-  if (!X509_STORE_get_by_subject(ctx, X509_LU_CRL, nm, &xobj)) {
+  if (!X509_STORE_CTX_get_by_subject(ctx, X509_LU_CRL, nm, &xobj)) {
     sk_X509_CRL_free(sk);
     return NULL;
   }
@@ -513,7 +514,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   int idx, ret;
   size_t i;
   xn = X509_get_issuer_name(x);
-  if (!X509_STORE_get_by_subject(ctx, X509_LU_X509, xn, &obj)) {
+  if (!X509_STORE_CTX_get_by_subject(ctx, X509_LU_X509, xn, &obj)) {
     return 0;
   }
   // If certificate matches all OK

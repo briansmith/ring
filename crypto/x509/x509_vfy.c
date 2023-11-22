@@ -139,7 +139,7 @@ static X509 *lookup_cert_match(X509_STORE_CTX *ctx, X509 *x) {
   X509 *xtmp = NULL;
   size_t i;
   // Lookup all certs with matching subject name
-  certs = X509_STORE_get1_certs(ctx, X509_get_subject_name(x));
+  certs = X509_STORE_CTX_get1_certs(ctx, X509_get_subject_name(x));
   if (certs == NULL) {
     return NULL;
   }
@@ -1143,7 +1143,7 @@ static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x) {
   }
 
   // Lookup CRLs from store
-  skcrl = X509_STORE_get1_crls(ctx, nm);
+  skcrl = X509_STORE_CTX_get1_crls(ctx, nm);
 
   // If no CRLs found and a near match from get_crl_sk use that
   if (!skcrl && crl) {

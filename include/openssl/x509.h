@@ -2833,6 +2833,11 @@ OPENSSL_EXPORT void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx);
 // X509V3_add_standard_extensions returns one.
 OPENSSL_EXPORT int X509V3_add_standard_extensions(void);
 
+// The following symbols are legacy aliases for |X509_STORE_CTX| functions.
+#define X509_STORE_get_by_subject X509_STORE_CTX_get_by_subject
+#define X509_STORE_get1_certs X509_STORE_CTX_get1_certs
+#define X509_STORE_get1_crls X509_STORE_CTX_get1_crls
+
 
 // Private structures.
 
@@ -3161,10 +3166,10 @@ OPENSSL_EXPORT int X509_STORE_up_ref(X509_STORE *store);
 OPENSSL_EXPORT void X509_STORE_free(X509_STORE *store);
 
 OPENSSL_EXPORT STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(X509_STORE *st);
-OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *st,
-                                                     X509_NAME *nm);
-OPENSSL_EXPORT STACK_OF(X509_CRL) *X509_STORE_get1_crls(X509_STORE_CTX *st,
-                                                        X509_NAME *nm);
+OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get1_certs(X509_STORE_CTX *st,
+                                                         X509_NAME *nm);
+OPENSSL_EXPORT STACK_OF(X509_CRL) *X509_STORE_CTX_get1_crls(X509_STORE_CTX *st,
+                                                            X509_NAME *nm);
 
 // X509_STORE_set_flags enables all values in |flags| in |store|'s verification
 // flags.
@@ -3278,8 +3283,9 @@ OPENSSL_EXPORT const X509_LOOKUP_METHOD *X509_LOOKUP_file(void);
 OPENSSL_EXPORT int X509_STORE_add_cert(X509_STORE *ctx, X509 *x);
 OPENSSL_EXPORT int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x);
 
-OPENSSL_EXPORT int X509_STORE_get_by_subject(X509_STORE_CTX *vs, int type,
-                                             X509_NAME *name, X509_OBJECT *ret);
+OPENSSL_EXPORT int X509_STORE_CTX_get_by_subject(X509_STORE_CTX *vs, int type,
+                                                 X509_NAME *name,
+                                                 X509_OBJECT *ret);
 
 OPENSSL_EXPORT int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc,
                                     long argl, char **ret);
