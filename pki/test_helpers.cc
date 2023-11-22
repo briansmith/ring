@@ -4,10 +4,13 @@
 
 #include "test_helpers.h"
 
+#include <fstream>
+#include <iostream>
 #include <sstream>
+#include <streambuf>
+#include <string>
 #include <string_view>
 
-#include "fillins/file_util.h"
 #include "fillins/path_service.h"
 
 #include <gtest/gtest.h>
@@ -88,6 +91,23 @@ std::vector<std::string> SplitString(std::string_view str) {
     out.push_back(StripString(s));
   }
   return out;
+}
+
+bool ReadFileToString(const fillins::FilePath &path, std::string *out) {
+  std::ifstream file(path.value(), std::ios::binary);
+  file.unsetf(std::ios::skipws);
+
+  file.seekg(0, std::ios::end);
+  if (file.tellg() == -1) {
+    return false;
+  }
+  out->reserve(file.tellg());
+  file.seekg(0, std::ios::beg);
+
+  out->assign(std::istreambuf_iterator<char>(file),
+              std::istreambuf_iterator<char>());
+
+  return true;
 }
 
 }  // namespace
@@ -422,7 +442,7 @@ std::string ReadTestFileToString(const std::string &file_path_ascii) {
 
   // Read the full contents of the file.
   std::string file_data;
-  if (!fillins::ReadFileToString(filepath, &file_data)) {
+  if (!ReadFileToString(filepath, &file_data)) {
     ADD_FAILURE() << "Couldn't read file: " << filepath.value();
     return std::string();
   }
