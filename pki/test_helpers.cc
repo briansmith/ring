@@ -11,8 +11,6 @@
 #include <string>
 #include <string_view>
 
-#include "fillins/path_service.h"
-
 #include <gtest/gtest.h>
 #include <openssl/bytestring.h>
 #include <openssl/mem.h>
@@ -93,8 +91,8 @@ std::vector<std::string> SplitString(std::string_view str) {
   return out;
 }
 
-bool ReadFileToString(const fillins::FilePath &path, std::string *out) {
-  std::ifstream file(path.value(), std::ios::binary);
+  bool ReadFileToString(const std::string &path, std::string *out) {
+  std::ifstream file(path, std::ios::binary);
   file.unsetf(std::ios::skipws);
 
   file.seekg(0, std::ios::end);
@@ -108,6 +106,24 @@ bool ReadFileToString(const fillins::FilePath &path, std::string *out) {
               std::istreambuf_iterator<char>());
 
   return true;
+}
+
+std::string AppendComponent(const std::string &path,
+                            const std::string &component) {
+  // Append a path component to a path. Use the \ separator if this appears to
+  // be a Windows path, otherwise the Unix one.
+  if (path.find(":\\") != std::string::npos) {
+    return path + "\\" + component;
+  }
+  return path + "/" + component;
+}
+
+std::string GetTestRoot(void) {
+  // We expect our test data to live in "pki" underneath a
+  // test root directory, or in the current directry.
+  char *root_from_env = getenv("BORINGSSL_TEST_DATA_ROOT");
+  std::string root = root_from_env ? root_from_env : ".";
+  return AppendComponent(root, "pki");
 }
 
 }  // namespace
@@ -436,14 +452,13 @@ bool ReadVerifyCertChainTestFromFile(const std::string &file_path_ascii,
 
 std::string ReadTestFileToString(const std::string &file_path_ascii) {
   // Compute the full path, relative to the src/ directory.
-  fillins::FilePath src_root;
-  bssl::fillins::PathService::Get(fillins::BSSL_TEST_DATA_ROOT, &src_root);
-  fillins::FilePath filepath = src_root.AppendASCII(file_path_ascii);
+  std::string src_root = GetTestRoot();
+  std::string filepath = AppendComponent(src_root, file_path_ascii);
 
   // Read the full contents of the file.
   std::string file_data;
   if (!ReadFileToString(filepath, &file_data)) {
-    ADD_FAILURE() << "Couldn't read file: " << filepath.value();
+    ADD_FAILURE() << "Couldn't read file: " << filepath;
     return std::string();
   }
 

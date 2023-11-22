@@ -19,8 +19,6 @@
 #include "trust_store.h"
 #include "verify_certificate_chain.h"
 
-#include "fillins/path_service.h"
-
 namespace bssl {
 
 namespace der {
