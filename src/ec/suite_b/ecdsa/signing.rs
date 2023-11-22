@@ -266,7 +266,7 @@ impl EcdsaKeyPair {
             // Step 6.
             let s = {
                 let dr = scalar_ops.scalar_product(&self.d, &r);
-                let e_plus_dr = scalar_sum(cops, &e, &dr);
+                let e_plus_dr = scalar_sum(cops, &e, dr);
                 scalar_ops.scalar_product(&k_inv, &e_plus_dr)
             };
             if cops.is_zero(&s) {
