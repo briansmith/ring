@@ -12,10 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    super::{montgomery::RR, n0::N0},
-    BoxedLimbs, Elem, One, PublicModulus, SmallerModulus, Unencoded,
-};
+use super::{super::n0::N0, BoxedLimbs, Elem, PublicModulus, SmallerModulus, Unencoded};
 use crate::{
     bits::BitLength,
     cpu, error,
@@ -37,7 +34,7 @@ pub const MODULUS_MAX_LIMBS: usize = super::super::BIGINT_MODULUS_MAX_LIMBS;
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
 /// the modular inversion code.
-pub struct OwnedModulusWithOne<M> {
+pub struct OwnedModulus<M> {
     limbs: BoxedLimbs<M>, // Also `value >= 3`.
 
     // n0 * N == -1 (mod r).
@@ -77,26 +74,23 @@ pub struct OwnedModulusWithOne<M> {
     // calculations instead of double-precision `u64` calculations.
     n0: N0,
 
-    oneRR: One<M, RR>,
-
     len_bits: BitLength,
 
     cpu_features: cpu::Features,
 }
 
-impl<M: PublicModulus> Clone for OwnedModulusWithOne<M> {
+impl<M: PublicModulus> Clone for OwnedModulus<M> {
     fn clone(&self) -> Self {
         Self {
             limbs: self.limbs.clone(),
             n0: self.n0,
-            oneRR: self.oneRR.clone(),
             len_bits: self.len_bits,
             cpu_features: self.cpu_features,
         }
     }
 }
 
-impl<M: PublicModulus> core::fmt::Debug for OwnedModulusWithOne<M> {
+impl<M: PublicModulus> core::fmt::Debug for OwnedModulus<M> {
     fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> Result<(), ::core::fmt::Error> {
         fmt.debug_struct("Modulus")
             // TODO: Print modulus value.
@@ -104,7 +98,7 @@ impl<M: PublicModulus> core::fmt::Debug for OwnedModulusWithOne<M> {
     }
 }
 
-impl<M> OwnedModulusWithOne<M> {
+impl<M> OwnedModulus<M> {
     pub(crate) fn from_be_bytes(
         input: untrusted::Input,
         cpu_features: cpu::Features,
@@ -151,29 +145,13 @@ impl<M> OwnedModulusWithOne<M> {
         };
 
         let len_bits = limb::limbs_minimal_bits(&n);
-        let oneRR = {
-            let partial = Modulus {
-                limbs: &n,
-                n0,
-                len_bits,
-                m: PhantomData,
-                cpu_features,
-            };
-
-            One::newRR(&partial)
-        };
 
         Ok(Self {
             limbs: n,
             n0,
-            oneRR,
             len_bits,
             cpu_features,
         })
-    }
-
-    pub fn oneRR(&self) -> &One<M, RR> {
-        &self.oneRR
     }
 
     pub fn to_elem<L>(&self, l: &Modulus<L>) -> Elem<L, Unencoded>
@@ -202,7 +180,7 @@ impl<M> OwnedModulusWithOne<M> {
     }
 }
 
-impl<M: PublicModulus> OwnedModulusWithOne<M> {
+impl<M: PublicModulus> OwnedModulus<M> {
     pub fn be_bytes(&self) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + '_> {
         LeadingZerosStripped::new(limb::unstripped_be_bytes(&self.limbs))
     }

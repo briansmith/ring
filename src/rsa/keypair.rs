@@ -18,7 +18,10 @@ use super::{
 
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
-    arithmetic::{bigint, montgomery::R},
+    arithmetic::{
+        bigint,
+        montgomery::{R, RR},
+    },
     bits::BitLength,
     cpu, digest,
     error::{self, KeyRejected},
@@ -281,8 +284,8 @@ impl KeyPair {
             cpu_features,
         )?;
 
-        let n_one = public_key.inner().n().value().oneRR();
-        let n = &public_key.inner().n().value().modulus();
+        let n_one = public_key.inner().n().oneRR();
+        let n = &public_key.inner().n().value();
 
         // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
 
@@ -316,7 +319,7 @@ impl KeyPair {
         // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
         let q_mod_n = q.modulus.to_elem(n);
         let p_mod_n = p.modulus.to_elem(n);
-        let p_mod_n = bigint::elem_mul(n_one.as_ref(), p_mod_n, n);
+        let p_mod_n = bigint::elem_mul(n_one, p_mod_n, n);
         let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, n);
         if !pq_mod_n.is_zero() {
             return Err(KeyRejected::inconsistent_components());
@@ -357,9 +360,9 @@ impl KeyPair {
         // with an even modulus.
 
         // Step 7.f.
-        let qInv = bigint::elem_mul(p.modulus.oneRR().as_ref(), qInv, pm);
+        let qInv = bigint::elem_mul(p.oneRR.as_ref(), qInv, pm);
         let q_mod_p = bigint::elem_reduced(&q_mod_n, pm, q.modulus.len_bits());
-        let q_mod_p = bigint::elem_mul(p.modulus.oneRR().as_ref(), q_mod_p, pm);
+        let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(), q_mod_p, pm);
         bigint::verify_inverses_consttime(&qInv, q_mod_p, pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
@@ -397,7 +400,8 @@ impl signature::KeyPair for KeyPair {
 }
 
 struct PrivatePrime<M> {
-    modulus: bigint::OwnedModulusWithOne<M>,
+    modulus: bigint::OwnedModulus<M>,
+    oneRR: bigint::One<M, RR>,
     exponent: bigint::PrivateExponent,
 }
 
@@ -410,7 +414,7 @@ impl<M> PrivatePrime<M> {
         n_bits: BitLength,
         cpu_features: cpu::Features,
     ) -> Result<Self, KeyRejected> {
-        let p = bigint::OwnedModulusWithOne::from_be_bytes(p, cpu_features)?;
+        let p = bigint::OwnedModulus::from_be_bytes(p, cpu_features)?;
 
         // 5.c / 5.g:
         //
@@ -445,8 +449,11 @@ impl<M> PrivatePrime<M> {
             return Err(error::KeyRejected::private_modulus_len_not_multiple_of_512_bits());
         }
 
+        let oneRR = bigint::One::newRR(&p.modulus());
+
         Ok(Self {
             modulus: p,
+            oneRR,
             exponent: dP,
         })
     }
@@ -461,8 +468,8 @@ fn elem_exp_consttime<M>(
     let c_mod_m = bigint::elem_reduced(c, m, other_prime_len_bits);
     // We could precompute `oneRRR = elem_squared(&p.oneRR`) as mentioned
     // in the Smooth CRT-RSA paper.
-    let c_mod_m = bigint::elem_mul(p.modulus.oneRR().as_ref(), c_mod_m, m);
-    let c_mod_m = bigint::elem_mul(p.modulus.oneRR().as_ref(), c_mod_m, m);
+    let c_mod_m = bigint::elem_mul(p.oneRR.as_ref(), c_mod_m, m);
+    let c_mod_m = bigint::elem_mul(p.oneRR.as_ref(), c_mod_m, m);
     bigint::elem_exp_consttime(c_mod_m, &p.exponent, m)
 }
 
@@ -537,9 +544,8 @@ impl KeyPair {
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
 
-        let n = self.public.inner().n().value();
-        let n_one = n.oneRR();
-        let n = &n.modulus();
+        let n = &self.public.inner().n().value();
+        let n_one = self.public.inner().n().oneRR();
 
         // Step 1. The value zero is also rejected.
         let base = bigint::Elem::from_be_bytes_padded(untrusted::Input::from(base), n)?;
@@ -568,7 +574,7 @@ impl KeyPair {
         // non-modular arithmetic.
         let h = bigint::elem_widen(h, n);
         let q_mod_n = self.q.modulus.to_elem(n);
-        let q_mod_n = bigint::elem_mul(n_one.as_ref(), q_mod_n, n);
+        let q_mod_n = bigint::elem_mul(n_one, q_mod_n, n);
         let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
         let m_2 = bigint::elem_widen(m_2, n);
         let m = bigint::elem_add(m_2, q_times_h, n);
