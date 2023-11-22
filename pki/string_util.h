@@ -57,6 +57,11 @@ OPENSSL_EXPORT std::string NumberToDecimalString(int i);
 OPENSSL_EXPORT std::vector<std::string_view> SplitString(std::string_view str,
                                                          char split_char);
 
+// Collapess whitespace in |text| to a single space and returns the result.
+OPENSSL_EXPORT std::string CollapseWhitespaceASCII(
+    std::string_view text, bool trim_sequences_with_line_breaks);
+
+
 }  // namespace bssl::string_util
 
 #endif  // BSSL_PKI_STRING_UTIL_H_

@@ -360,7 +360,6 @@ set(
   pki/extended_key_usage.cc
   pki/fillins/fillins_base64.cc
   pki/fillins/openssl_util.cc
-  pki/fillins/fillins_string_util.cc
   pki/general_names.cc
   pki/input.cc
   pki/ip_util.cc

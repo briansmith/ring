@@ -8,8 +8,6 @@
 #include <string_view>
 #include "fillins/fillins_base64.h"
 
-#include "fillins/fillins_string_util.h"
-
 namespace {
 
 constexpr std::string_view kPEMHeaderBeginBlock = "-----BEGIN ";
@@ -66,7 +64,7 @@ bool PEMTokenizer::GetNext() {
       std::string_view encoded =
           str_.substr(data_begin, footer_pos - data_begin);
       if (!fillins::Base64Decode(
-              fillins::CollapseWhitespaceASCII(encoded, true), &data_)) {
+              string_util::CollapseWhitespaceASCII(encoded, true), &data_)) {
         // The most likely cause for a decode failure is a datatype that
         // includes PEM headers, which are not supported.
         break;
