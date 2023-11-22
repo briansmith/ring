@@ -6,7 +6,6 @@
 #include "string_util.h"
 
 #include <string_view>
-#include "fillins/fillins_base64.h"
 
 namespace {
 
@@ -63,7 +62,7 @@ bool PEMTokenizer::GetNext() {
 
       std::string_view encoded =
           str_.substr(data_begin, footer_pos - data_begin);
-      if (!fillins::Base64Decode(
+      if (!string_util::Base64Decode(
               string_util::CollapseWhitespaceASCII(encoded, true), &data_)) {
         // The most likely cause for a decode failure is a datatype that
         // includes PEM headers, which are not supported.
@@ -107,7 +106,7 @@ void PEMTokenizer::Init(std::string_view str,
 
 std::string PEMEncode(std::string_view data, const std::string &type) {
   std::string b64_encoded;
-  fillins::Base64Encode(data, &b64_encoded);
+  string_util::Base64Encode(data, &b64_encoded);
 
   // Divide the Base-64 encoded data into 64-character chunks, as per
   // 4.3.2.4 of RFC 1421.

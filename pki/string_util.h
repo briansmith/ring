@@ -61,6 +61,15 @@ OPENSSL_EXPORT std::vector<std::string_view> SplitString(std::string_view str,
 OPENSSL_EXPORT std::string CollapseWhitespaceASCII(
     std::string_view text, bool trim_sequences_with_line_breaks);
 
+// Base64 encodes |input| into |output| returning true on success,
+// false otherwise.
+OPENSSL_EXPORT bool Base64Encode(const std::string_view &input,
+                                 std::string *output);
+
+// Base64 decodes |input| into |output| returning true on success,
+// false otherwise.
+OPENSSL_EXPORT bool Base64Decode(const std::string_view &input,
+                                 std::string *output);
 
 }  // namespace bssl::string_util
 
