@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{arithmetic::limbs_from_hex, arithmetic::montgomery::*, c, error, limb::*};
+use crate::{arithmetic::limbs_from_hex, arithmetic::montgomery::*, error, limb::*};
 use core::marker::PhantomData;
 
 pub use self::elem::*;
@@ -326,18 +326,13 @@ pub fn elem_reduced_to_scalar(ops: &CommonOps, elem: &Elem<Unencoded>) -> Scalar
     }
 }
 
-pub fn scalar_sum(ops: &CommonOps, a: &Scalar, b: &Scalar) -> Scalar {
-    let mut r = Scalar::zero();
-    unsafe {
-        LIMBS_add_mod(
-            r.limbs.as_mut_ptr(),
-            a.limbs.as_ptr(),
-            b.limbs.as_ptr(),
-            ops.n.limbs.as_ptr(),
-            ops.num_limbs,
-        )
-    }
-    r
+pub fn scalar_sum(ops: &CommonOps, a: &Scalar, mut b: Scalar) -> Scalar {
+    limbs_add_assign_mod(
+        &mut b.limbs[..ops.num_limbs],
+        &a.limbs[..ops.num_limbs],
+        &ops.n.limbs[..ops.num_limbs],
+    );
+    b
 }
 
 // Returns (`a` squared `squarings` times) * `b`.
@@ -423,16 +418,6 @@ fn parse_big_endian_fixed_consttime<M>(
         &mut r.limbs[..ops.num_limbs],
     )?;
     Ok(r)
-}
-
-prefixed_extern! {
-    fn LIMBS_add_mod(
-        r: *mut Limb,
-        a: *const Limb,
-        b: *const Limb,
-        m: *const Limb,
-        num_limbs: c::size_t,
-    );
 }
 
 #[cfg(test)]
