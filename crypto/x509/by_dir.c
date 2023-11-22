@@ -92,14 +92,16 @@ static void free_dir(X509_LOOKUP *lu);
 static int add_cert_dir(BY_DIR *ctx, const char *dir, int type);
 static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                                X509_OBJECT *ret);
-static X509_LOOKUP_METHOD x509_dir_lookup = {
+static const X509_LOOKUP_METHOD x509_dir_lookup = {
     new_dir,              // new
     free_dir,             // free
     dir_ctrl,             // ctrl
     get_cert_by_subject,  // get_by_subject
 };
 
-X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void) { return &x509_dir_lookup; }
+const X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void) {
+  return &x509_dir_lookup;
+}
 
 static int dir_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
                     char **retp) {

@@ -65,14 +65,14 @@
 
 static int by_file_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
                         char **ret);
-static X509_LOOKUP_METHOD x509_file_lookup = {
+static const X509_LOOKUP_METHOD x509_file_lookup = {
     NULL,          // new
     NULL,          // free
     by_file_ctrl,  // ctrl
     NULL,          // get_by_subject
 };
 
-X509_LOOKUP_METHOD *X509_LOOKUP_file(void) { return &x509_file_lookup; }
+const X509_LOOKUP_METHOD *X509_LOOKUP_file(void) { return &x509_file_lookup; }
 
 static int by_file_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
                         char **ret) {

@@ -345,7 +345,7 @@ struct x509_store_st {
 
 // This is the functions plus an instance of the local variables.
 struct x509_lookup_st {
-  X509_LOOKUP_METHOD *method;  // the functions
+  const X509_LOOKUP_METHOD *method;  // the functions
   void *method_data;           // method data
 
   X509_STORE *store_ctx;  // who owns us

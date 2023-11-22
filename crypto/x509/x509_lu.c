@@ -73,12 +73,12 @@ static X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
                                                X509_OBJECT *x);
 static int X509_OBJECT_up_ref_count(X509_OBJECT *a);
 
-static X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method,
+static X509_LOOKUP *X509_LOOKUP_new(const X509_LOOKUP_METHOD *method,
                                     X509_STORE *store);
 static int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
                                   X509_OBJECT *ret);
 
-static X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method,
+static X509_LOOKUP *X509_LOOKUP_new(const X509_LOOKUP_METHOD *method,
                                     X509_STORE *store) {
   X509_LOOKUP *ret = OPENSSL_zalloc(sizeof(X509_LOOKUP));
   if (ret == NULL) {
@@ -191,7 +191,7 @@ void X509_STORE_free(X509_STORE *vfy) {
   OPENSSL_free(vfy);
 }
 
-X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v, X509_LOOKUP_METHOD *m) {
+X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v, const X509_LOOKUP_METHOD *m) {
   STACK_OF(X509_LOOKUP) *sk = v->get_cert_methods;
   for (size_t i = 0; i < sk_X509_LOOKUP_num(sk); i++) {
     X509_LOOKUP *lu = sk_X509_LOOKUP_value(sk, i);
