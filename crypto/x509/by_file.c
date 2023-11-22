@@ -263,3 +263,7 @@ err:
   sk_X509_INFO_pop_free(inf, X509_INFO_free);
   return count;
 }
+
+int X509_LOOKUP_load_file(X509_LOOKUP *lookup, const char *name, int type) {
+  return X509_LOOKUP_ctrl(lookup, X509_L_FILE_LOAD, name, type, NULL);
+}

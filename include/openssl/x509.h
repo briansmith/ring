@@ -2844,10 +2844,6 @@ struct X509_algor_st {
 
 // Functions below this point have not yet been organized into sections.
 
-#define X509_FILETYPE_PEM 1
-#define X509_FILETYPE_ASN1 2
-#define X509_FILETYPE_DEFAULT 3
-
 #define X509v3_KU_DIGITAL_SIGNATURE 0x0080
 #define X509v3_KU_NON_REPUDIATION 0x0040
 #define X509v3_KU_KEY_ENCIPHERMENT 0x0020
@@ -2997,11 +2993,27 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_L_FILE_LOAD 1
 #define X509_L_ADD_DIR 2
 
-#define X509_LOOKUP_load_file(x, name, type) \
-  X509_LOOKUP_ctrl((x), X509_L_FILE_LOAD, (name), (long)(type), NULL)
+// The following constants are used to specify the format of files in an
+// |X509_LOOKUP|.
+#define X509_FILETYPE_PEM 1
+#define X509_FILETYPE_ASN1 2
+#define X509_FILETYPE_DEFAULT 3
 
-#define X509_LOOKUP_add_dir(x, name, type) \
-  X509_LOOKUP_ctrl((x), X509_L_ADD_DIR, (name), (long)(type), NULL)
+// X509_LOOKUP_load_file configures |lookup| to load information from the file
+// at |path|. It returns one on success and zero on error. |type| should be one
+// of the |X509_FILETYPE_*| constants to determine if the contents are PEM or
+// DER. If |type| is |X509_FILETYPE_DEFAULT|, |path| is ignored and instead some
+// default system path is used.
+OPENSSL_EXPORT int X509_LOOKUP_load_file(X509_LOOKUP *lookup, const char *path,
+                                         int type);
+
+// X509_LOOKUP_add_dir configures |lookup| to load information from the
+// directory at |path|. It returns one on success and zero on error. |type|
+// should be one of the |X509_FILETYPE_*| constants to determine if the contents
+// are PEM or DER. If |type| is |X509_FILETYPE_DEFAULT|, |path| is ignored and
+// instead some default system path is used.
+OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
+                                       int type);
 
 #define X509_V_OK 0
 #define X509_V_ERR_UNSPECIFIED 1

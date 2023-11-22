@@ -397,3 +397,7 @@ finish:
   BUF_MEM_free(b);
   return ok;
 }
+
+int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *name, int type) {
+  return X509_LOOKUP_ctrl(lookup, X509_L_ADD_DIR, name, type, NULL);
+}
