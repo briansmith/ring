@@ -56,18 +56,6 @@ mod boxed_limbs;
 mod modulus;
 mod private_exponent;
 
-/// A modulus *s* that is smaller than another modulus *l* so every element of
-/// ℤ/sℤ is also an element of ℤ/lℤ.
-///
-/// # Safety
-///
-/// Some logic may assume that the invariant holds when accessing limbs within
-/// a value, e.g. by assuming the larger modulus has at least as many limbs.
-/// TODO: Any such logic should be encapsulated here, or this trait should be
-/// made non-`unsafe`. (In retrospect, this shouldn't have been made an `unsafe`
-/// trait preemptively.)
-pub unsafe trait SmallerModulus<L> {}
-
 pub trait PublicModulus {}
 
 /// Elements of ℤ/mℤ for some modulus *m*.
@@ -224,13 +212,17 @@ where
     }
 }
 
-pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
+pub fn elem_widen<Larger, Smaller>(
     a: Elem<Smaller, Unencoded>,
     m: &Modulus<Larger>,
-) -> Elem<Larger, Unencoded> {
+    smaller_modulus_bits: BitLength,
+) -> Result<Elem<Larger, Unencoded>, error::Unspecified> {
+    if smaller_modulus_bits >= m.len_bits() {
+        return Err(error::Unspecified);
+    }
     let mut r = m.zero();
     r.limbs[..a.limbs.len()].copy_from_slice(&a.limbs);
-    r
+    Ok(r)
 }
 
 // TODO: Document why this works for all Montgomery factors.
