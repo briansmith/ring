@@ -9,8 +9,6 @@
 #include <set>
 #include <unordered_set>
 
-#include "fillins/log.h"
-
 #include <openssl/base.h>
 #include <openssl/sha.h>
 #include "cert_issuer_source.h"
@@ -246,9 +244,7 @@ CertIssuersIter::CertIssuersIter(
     CertIssuerSources *cert_issuer_sources, TrustStore *trust_store)
     : cert_(std::move(in_cert)),
       cert_issuer_sources_(cert_issuer_sources),
-      trust_store_(trust_store) {
-  DVLOG(2) << "CertIssuersIter created for " << CertDebugString(cert());
-}
+      trust_store_(trust_store) {}
 
 void CertIssuersIter::GetNextIssuer(IssuerEntry *out) {
   if (!did_initial_query_) {
@@ -286,8 +282,6 @@ void CertIssuersIter::GetNextIssuer(IssuerEntry *out) {
   if (HasCurrentIssuer()) {
     SortRemainingIssuers();
 
-    DVLOG(2) << "CertIssuersIter returning issuer " << cur_issuer_ << " of "
-             << issuers_.size() << " for " << CertDebugString(cert());
     // Still have issuers that haven't been returned yet, return the highest
     // priority one (head of remaining list). A reference to the returned issuer
     // is retained, since |present_issuers_| points to data owned by it.
@@ -295,8 +289,6 @@ void CertIssuersIter::GetNextIssuer(IssuerEntry *out) {
     return;
   }
 
-  DVLOG(2) << "CertIssuersIter reached the end of all available issuers for "
-           << CertDebugString(cert());
   // Reached the end of all available issuers.
   *out = IssuerEntry();
 }
@@ -329,7 +321,6 @@ void CertIssuersIter::DoAsyncIssuerQuery() {
     std::unique_ptr<CertIssuerSource::Request> request;
     cert_issuer_source->AsyncGetIssuersOf(cert(), &request);
     if (request) {
-      DVLOG(1) << "AsyncGetIssuersOf pending for " << CertDebugString(cert());
       pending_async_requests_.push_back(std::move(request));
     }
   }
