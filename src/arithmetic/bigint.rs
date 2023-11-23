@@ -346,6 +346,12 @@ impl<M> One<M, RR> {
     }
 }
 
+impl<M> One<M, RRR> {
+    pub(crate) fn newRRR(One(oneRR): One<M, RR>, m: &Modulus<M>) -> Self {
+        Self(elem_squared(oneRR, m))
+    }
+}
+
 impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
     fn as_ref(&self) -> &Elem<M, E> {
         &self.0

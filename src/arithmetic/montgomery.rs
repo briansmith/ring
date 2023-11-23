@@ -22,6 +22,12 @@ pub enum Unencoded {}
 #[derive(Copy, Clone)]
 pub enum R {}
 
+// Indicates the element is encoded three times; the value has three
+// *R* factors that need to be canceled out.
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Copy, Clone)]
+pub enum RRR {}
+
 // Indicates the element is encoded twice; the value has two *R*
 // factors that need to be canceled out.
 #[derive(Copy, Clone)]
@@ -34,6 +40,7 @@ pub enum RInverse {}
 
 pub trait Encoding {}
 
+impl Encoding for RRR {}
 impl Encoding for RR {}
 impl Encoding for R {}
 impl Encoding for Unencoded {}
@@ -42,6 +49,10 @@ impl Encoding for RInverse {}
 /// The encoding of the result of a reduction.
 pub trait ReductionEncoding {
     type Output: Encoding;
+}
+
+impl ReductionEncoding for RRR {
+    type Output = RR;
 }
 
 impl ReductionEncoding for RR {
@@ -67,6 +78,10 @@ impl<E: Encoding> ProductEncoding for (R, E) {
     type Output = E;
 }
 
+impl ProductEncoding for (RR, RR) {
+    type Output = RRR;
+}
+
 impl<E: ReductionEncoding> ProductEncoding for (RInverse, E)
 where
     E::Output: ReductionEncoding,
@@ -85,6 +100,10 @@ impl ProductEncoding for (RR, Unencoded) {
 }
 impl ProductEncoding for (RR, RInverse) {
     type Output = <(RInverse, RR) as ProductEncoding>::Output;
+}
+
+impl ProductEncoding for (RRR, RInverse) {
+    type Output = <(RInverse, RRR) as ProductEncoding>::Output;
 }
 
 #[allow(unused_imports)]
