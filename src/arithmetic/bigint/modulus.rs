@@ -90,14 +90,6 @@ impl<M: PublicModulus> Clone for OwnedModulus<M> {
     }
 }
 
-impl<M: PublicModulus> core::fmt::Debug for OwnedModulus<M> {
-    fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> Result<(), ::core::fmt::Error> {
-        fmt.debug_struct("Modulus")
-            // TODO: Print modulus value.
-            .finish()
-    }
-}
-
 impl<M> OwnedModulus<M> {
     pub(crate) fn from_be_bytes(
         input: untrusted::Input,
