@@ -146,13 +146,18 @@ impl<M> OwnedModulus<M> {
         })
     }
 
-    pub fn to_elem<L>(&self, l: &Modulus<L>) -> Result<Elem<L, Unencoded>, error::Unspecified> {
+    pub fn verify_less_than<L>(&self, l: &Modulus<L>) -> Result<(), error::Unspecified> {
         if self.len_bits() > l.len_bits()
             || (self.limbs.len() == l.limbs().len()
                 && limb::limbs_less_than_limbs_consttime(&self.limbs, l.limbs()) != LimbMask::True)
         {
             return Err(error::Unspecified);
         }
+        Ok(())
+    }
+
+    pub fn to_elem<L>(&self, l: &Modulus<L>) -> Result<Elem<L, Unencoded>, error::Unspecified> {
+        self.verify_less_than(l)?;
         let mut limbs = BoxedLimbs::zero(l.limbs.len());
         limbs[..self.limbs.len()].copy_from_slice(&self.limbs);
         Ok(Elem {
