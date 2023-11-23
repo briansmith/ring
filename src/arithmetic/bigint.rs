@@ -791,9 +791,8 @@ prefixed_extern! {
 
 #[cfg(test)]
 mod tests {
-    use super::{modulus::MODULUS_MIN_LIMBS, *};
-    use crate::{limb::LIMB_BYTES, test};
-    use alloc::format;
+    use super::*;
+    use crate::test;
 
     // Type-level representation of an arbitrary modulus.
     struct M {}
@@ -926,16 +925,6 @@ mod tests {
                 Ok(())
             },
         )
-    }
-
-    #[test]
-    fn test_modulus_debug() {
-        let modulus = OwnedModulus::<M>::from_be_bytes(
-            untrusted::Input::from(&[0xff; LIMB_BYTES * MODULUS_MIN_LIMBS]),
-            cpu::features(),
-        )
-        .unwrap();
-        assert_eq!("Modulus", format!("{:?}", modulus));
     }
 
     fn consume_elem<M>(
