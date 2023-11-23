@@ -20,7 +20,7 @@ use super::{
 use crate::{
     arithmetic::{
         bigint,
-        montgomery::{R, RR},
+        montgomery::{R, RR, RRR},
     },
     bits::BitLength,
     cpu, digest,
@@ -443,7 +443,7 @@ impl<M> PrivatePrime<M> {
 
 struct PrivateCrtPrime<M> {
     modulus: bigint::OwnedModulus<M>,
-    oneRR: bigint::One<M, RR>,
+    oneRRR: bigint::One<M, RRR>,
     exponent: bigint::PrivateExponent,
 }
 
@@ -451,8 +451,9 @@ impl<M> PrivateCrtPrime<M> {
     /// Constructs a `PrivateCrtPrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
     fn new(p: PrivatePrime<M>, dP: untrusted::Input) -> Result<Self, KeyRejected> {
+        let m = &p.modulus.modulus();
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
-        let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, &p.modulus.modulus())
+        let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, m)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // XXX: Steps 7.d and 7.e are omitted. We don't check that
@@ -464,9 +465,11 @@ impl<M> PrivateCrtPrime<M> {
         // and `e`. TODO: Either prove that what we do is sufficient, or make
         // it so.
 
+        let oneRRR = bigint::One::newRRR(p.oneRR, m);
+
         Ok(Self {
             modulus: p.modulus,
-            oneRR: p.oneRR,
+            oneRRR,
             exponent: dP,
         })
     }
@@ -479,10 +482,7 @@ fn elem_exp_consttime<M>(
 ) -> Result<bigint::Elem<M>, error::Unspecified> {
     let m = &p.modulus.modulus();
     let c_mod_m = bigint::elem_reduced(c, m, other_prime_len_bits);
-    // We could precompute `oneRRR = elem_squared(&p.oneRR`) as mentioned
-    // in the Smooth CRT-RSA paper.
-    let c_mod_m = bigint::elem_mul(p.oneRR.as_ref(), c_mod_m, m);
-    let c_mod_m = bigint::elem_mul(p.oneRR.as_ref(), c_mod_m, m);
+    let c_mod_m = bigint::elem_mul(p.oneRRR.as_ref(), c_mod_m, m);
     bigint::elem_exp_consttime(c_mod_m, &p.exponent, m)
 }
 
