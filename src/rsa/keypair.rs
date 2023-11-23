@@ -31,8 +31,8 @@ use crate::{
 
 /// An RSA key pair, used for signing.
 pub struct KeyPair {
-    p: PrivatePrime<P>,
-    q: PrivatePrime<Q>,
+    p: PrivateCrtPrime<P>,
+    q: PrivateCrtPrime<Q>,
     qInv: bigint::Elem<P, R>,
     public: PublicKey,
 }
@@ -303,8 +303,8 @@ impl KeyPair {
 
         let n_bits = public_key.inner().n().len_bits();
 
-        let p = PrivatePrime::new(p, dP, n_bits, cpu_features)?;
-        let q = PrivatePrime::new(q, dQ, n_bits, cpu_features)?;
+        let p = PrivatePrime::new(p, n_bits, cpu_features)?;
+        let q = PrivatePrime::new(q, n_bits, cpu_features)?;
 
         // TODO: Step 5.i
         //
@@ -368,6 +368,9 @@ impl KeyPair {
 
         // This should never fail since `n` and `e` were validated above.
 
+        let p = PrivateCrtPrime::new(p, dP)?;
+        let q = PrivateCrtPrime::new(q, dQ)?;
+
         Ok(Self {
             p,
             q,
@@ -402,15 +405,11 @@ impl signature::KeyPair for KeyPair {
 struct PrivatePrime<M> {
     modulus: bigint::OwnedModulus<M>,
     oneRR: bigint::One<M, RR>,
-    exponent: bigint::PrivateExponent,
 }
 
 impl<M> PrivatePrime<M> {
-    /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
-    /// dP == d % (p - 1).
     fn new(
         p: untrusted::Input,
-        dP: untrusted::Input,
         n_bits: BitLength,
         cpu_features: cpu::Features,
     ) -> Result<Self, KeyRejected> {
@@ -427,13 +426,33 @@ impl<M> PrivatePrime<M> {
             return Err(KeyRejected::inconsistent_components());
         }
 
+        if p.len_bits().as_usize_bits() % 512 != 0 {
+            return Err(error::KeyRejected::private_modulus_len_not_multiple_of_512_bits());
+        }
+
         // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
         // TODO: Step 5.h: Verify GCD(q - 1, e) == 1.
 
         // Steps 5.e and 5.f are omitted as explained above.
 
+        let oneRR = bigint::One::newRR(&p.modulus());
+
+        Ok(Self { modulus: p, oneRR })
+    }
+}
+
+struct PrivateCrtPrime<M> {
+    modulus: bigint::OwnedModulus<M>,
+    oneRR: bigint::One<M, RR>,
+    exponent: bigint::PrivateExponent,
+}
+
+impl<M> PrivateCrtPrime<M> {
+    /// Constructs a `PrivateCrtPrime` from the private prime `p` and `dP` where
+    /// dP == d % (p - 1).
+    fn new(p: PrivatePrime<M>, dP: untrusted::Input) -> Result<Self, KeyRejected> {
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
-        let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, &p.modulus())
+        let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, &p.modulus.modulus())
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // XXX: Steps 7.d and 7.e are omitted. We don't check that
@@ -445,15 +464,9 @@ impl<M> PrivatePrime<M> {
         // and `e`. TODO: Either prove that what we do is sufficient, or make
         // it so.
 
-        if p.len_bits().as_usize_bits() % 512 != 0 {
-            return Err(error::KeyRejected::private_modulus_len_not_multiple_of_512_bits());
-        }
-
-        let oneRR = bigint::One::newRR(&p.modulus());
-
         Ok(Self {
-            modulus: p,
-            oneRR,
+            modulus: p.modulus,
+            oneRR: p.oneRR,
             exponent: dP,
         })
     }
@@ -461,7 +474,7 @@ impl<M> PrivatePrime<M> {
 
 fn elem_exp_consttime<M>(
     c: &bigint::Elem<N>,
-    p: &PrivatePrime<M>,
+    p: &PrivateCrtPrime<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<bigint::Elem<M>, error::Unspecified> {
     let m = &p.modulus.modulus();
