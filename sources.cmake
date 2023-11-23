@@ -359,6 +359,7 @@ set(
   pki/cert_error_params.cc
   pki/cert_errors.cc
   pki/cert_issuer_source_static.cc
+  pki/certificate.cc
   pki/certificate_policies.cc
   pki/common_cert_errors.cc
   pki/crl.cc
@@ -395,6 +396,7 @@ set(
 
   crypto/test/gtest_main.cc
   pki/cert_issuer_source_static_unittest.cc
+  pki/certificate_unittest.cc
   pki/certificate_policies_unittest.cc
   pki/crl_unittest.cc
   pki/encode_values_unittest.cc
