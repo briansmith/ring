@@ -497,11 +497,9 @@ fn elem_exp_consttime<M>(
 
 #[derive(Copy, Clone)]
 enum P {}
-unsafe impl bigint::SmallerModulus<N> for P {}
 
 #[derive(Copy, Clone)]
 enum Q {}
-unsafe impl bigint::SmallerModulus<N> for Q {}
 
 impl KeyPair {
     /// Computes the signature of `msg` and writes it into `signature`.
@@ -591,11 +589,12 @@ impl KeyPair {
         // necessary because `h < p` and `p * q == n` implies `h * q < n`.
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
-        let h = bigint::elem_widen(h, n);
+        let p_bits = self.p.modulus.len_bits();
+        let h = bigint::elem_widen(h, n, p_bits)?;
         let q_mod_n = self.q.modulus.to_elem(n)?;
         let q_mod_n = bigint::elem_mul(n_one, q_mod_n, n);
         let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
-        let m_2 = bigint::elem_widen(m_2, n);
+        let m_2 = bigint::elem_widen(m_2, n, q_bits)?;
         let m = bigint::elem_add(m_2, q_times_h, n);
 
         // Step 2.b.v isn't needed since there are only two primes.
