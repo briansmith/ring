@@ -338,18 +338,15 @@ impl KeyPair {
         // First, validate `2**half_n_bits < d`. Since 2**half_n_bits has a bit
         // length of half_n_bits + 1, this check gives us 2**half_n_bits <= d,
         // and knowing d is odd makes the inequality strict.
-        let (d, d_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(d)
-            .map_err(|_| error::KeyRejected::invalid_encoding())?;
-        if !(n_bits.half_rounded_up() < d_bits) {
+        let d = bigint::OwnedModulus::<D>::from_be_bytes(d, cpu_features)
+            .map_err(|_| error::KeyRejected::invalid_component())?;
+        if !(n_bits.half_rounded_up() < d.len_bits()) {
             return Err(KeyRejected::inconsistent_components());
         }
         // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we don't have
         // a good way of calculating LCM, so it is omitted, as explained above.
-        d.verify_less_than_modulus(n)
+        d.verify_less_than(n)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
-        if !d.is_odd() {
-            return Err(KeyRejected::invalid_component());
-        }
 
         // Step 6.b is omitted as explained above.
 
@@ -500,6 +497,8 @@ enum P {}
 
 #[derive(Copy, Clone)]
 enum Q {}
+
+enum D {}
 
 impl KeyPair {
     /// Computes the signature of `msg` and writes it into `signature`.

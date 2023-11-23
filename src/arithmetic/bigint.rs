@@ -42,7 +42,6 @@ pub(crate) use self::{
     private_exponent::PrivateExponent,
 };
 use super::n0::N0;
-pub(crate) use super::nonnegative::Nonnegative;
 use crate::{
     arithmetic::montgomery::*,
     bits::BitLength,
@@ -703,21 +702,6 @@ pub fn elem_verify_equal_consttime<M, E>(
     }
 }
 
-// TODO: Move these methods from `Nonnegative` to `Modulus`.
-impl Nonnegative {
-    pub fn verify_less_than_modulus<M>(&self, m: &Modulus<M>) -> Result<(), error::Unspecified> {
-        if self.limbs().len() > m.limbs().len() {
-            return Err(error::Unspecified);
-        }
-        if self.limbs().len() == m.limbs().len() {
-            if limb::limbs_less_than_limbs_consttime(self.limbs(), m.limbs()) != LimbMask::True {
-                return Err(error::Unspecified);
-            }
-        }
-        Ok(())
-    }
-}
-
 /// r *= a
 fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0, _cpu_features: cpu::Features) {
     debug_assert_eq!(r.len(), m.len());
@@ -789,7 +773,7 @@ prefixed_extern! {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{super::nonnegative::Nonnegative, *};
     use crate::test;
 
     // Type-level representation of an arbitrary modulus.

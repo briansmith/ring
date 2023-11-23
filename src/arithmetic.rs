@@ -20,7 +20,7 @@ pub mod bigint;
 pub mod montgomery;
 mod n0;
 
-#[cfg(feature = "alloc")]
+#[cfg(all(test, feature = "alloc"))]
 mod nonnegative;
 
 #[allow(dead_code)]

@@ -14,7 +14,7 @@
 
 use crate::{
     bits, error,
-    limb::{self, Limb, LimbMask, LIMB_BYTES},
+    limb::{self, Limb, LIMB_BYTES},
 };
 use alloc::{vec, vec::Vec};
 
@@ -37,10 +37,6 @@ impl Nonnegative {
         Ok((Self { limbs }, r_bits))
     }
 
-    #[inline]
-    pub fn is_odd(&self) -> bool {
-        limb::limbs_are_even_constant_time(&self.limbs) != LimbMask::True
-    }
     #[inline]
     pub fn limbs(&self) -> &[Limb] {
         &self.limbs
