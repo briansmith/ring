@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{super::n0::N0, BoxedLimbs, Elem, PublicModulus, SmallerModulus, Unencoded};
+use super::{super::n0::N0, BoxedLimbs, Elem, PublicModulus, Unencoded};
 use crate::{
     bits::BitLength,
     cpu, error,
@@ -146,16 +146,19 @@ impl<M> OwnedModulus<M> {
         })
     }
 
-    pub fn to_elem<L>(&self, l: &Modulus<L>) -> Elem<L, Unencoded>
-    where
-        M: SmallerModulus<L>,
-    {
+    pub fn to_elem<L>(&self, l: &Modulus<L>) -> Result<Elem<L, Unencoded>, error::Unspecified> {
+        if self.len_bits() > l.len_bits()
+            || (self.limbs.len() == l.limbs().len()
+                && limb::limbs_less_than_limbs_consttime(&self.limbs, l.limbs()) != LimbMask::True)
+        {
+            return Err(error::Unspecified);
+        }
         let mut limbs = BoxedLimbs::zero(l.limbs.len());
         limbs[..self.limbs.len()].copy_from_slice(&self.limbs);
-        Elem {
+        Ok(Elem {
             limbs,
             encoding: PhantomData,
-        }
+        })
     }
     pub fn modulus(&self) -> Modulus<M> {
         Modulus {

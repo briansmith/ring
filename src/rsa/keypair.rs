@@ -317,8 +317,14 @@ impl KeyPair {
         // 0 < q < p < n. We check that q and p are close to sqrt(n) and then
         // assume that these preconditions are enough to let us assume that
         // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
-        let q_mod_n = q.modulus.to_elem(n);
-        let p_mod_n = p.modulus.to_elem(n);
+        let q_mod_n = q
+            .modulus
+            .to_elem(n)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
+        let p_mod_n = p
+            .modulus
+            .to_elem(n)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
         let p_mod_n = bigint::elem_mul(n_one, p_mod_n, n);
         let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, n);
         if !pq_mod_n.is_zero() {
@@ -586,7 +592,7 @@ impl KeyPair {
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
         let h = bigint::elem_widen(h, n);
-        let q_mod_n = self.q.modulus.to_elem(n);
+        let q_mod_n = self.q.modulus.to_elem(n)?;
         let q_mod_n = bigint::elem_mul(n_one, q_mod_n, n);
         let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
         let m_2 = bigint::elem_widen(m_2, n);
