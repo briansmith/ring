@@ -492,10 +492,8 @@ fn elem_exp_consttime<M>(
 // Type-level representations of the different moduli used in RSA signing, in
 // addition to `super::N`. See `super::bigint`'s modulue-level documentation.
 
-#[derive(Copy, Clone)]
 enum P {}
 
-#[derive(Copy, Clone)]
 enum Q {}
 
 enum D {}
