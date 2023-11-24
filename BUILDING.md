@@ -34,6 +34,14 @@ If you (locally) have “Build Tools for Visual Studio 2022” instead, use:
 $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\Llvm\x64\bin"
 ```
 
+Alternatively, if the host machine is already a Windows ARM64 then use:
+
+```
+$env:Path += ";C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\ARM64\bin"
+```
+
+# Windows ARM64
+
 Packaged Builds
 ---------------
 
