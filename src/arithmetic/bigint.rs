@@ -773,7 +773,7 @@ prefixed_extern! {
 
 #[cfg(test)]
 mod tests {
-    use super::{super::nonnegative::Nonnegative, *};
+    use super::*;
     use crate::test;
 
     // Type-level representation of an arbitrary modulus.
@@ -923,9 +923,10 @@ mod tests {
         name: &str,
         num_limbs: usize,
     ) -> Elem<M, Unencoded> {
-        let value = consume_nonnegative(test_case, name);
+        let bytes = test_case.consume_bytes(name);
         let mut limbs = BoxedLimbs::zero(num_limbs);
-        limbs[0..value.limbs().len()].copy_from_slice(value.limbs());
+        limb::parse_big_endian_and_pad_consttime(untrusted::Input::from(&bytes), &mut limbs)
+            .unwrap();
         Elem {
             limbs,
             encoding: PhantomData,
@@ -939,13 +940,6 @@ mod tests {
     ) -> OwnedModulus<M> {
         let value = test_case.consume_bytes(name);
         OwnedModulus::from_be_bytes(untrusted::Input::from(&value), cpu_features).unwrap()
-    }
-
-    fn consume_nonnegative(test_case: &mut test::TestCase, name: &str) -> Nonnegative {
-        let bytes = test_case.consume_bytes(name);
-        let (r, _r_bits) =
-            Nonnegative::from_be_bytes_with_bit_length(untrusted::Input::from(&bytes)).unwrap();
-        r
     }
 
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
