@@ -52,15 +52,7 @@ pub(crate) fn features() -> Features {
                 }
             }
 
-            #[cfg(all(
-                any(target_arch = "aarch64", target_arch = "arm"),
-                any(
-                    target_os = "android",
-                    target_os = "fuchsia",
-                    all(target_os = "linux", not(target_env = "uclibc")),
-                    target_os = "windows"
-                )
-            ))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
             {
                 unsafe { arm::initialize_OPENSSL_armcap_P() }
             }
