@@ -3136,12 +3136,6 @@ OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
 // verification.
 #define X509_V_FLAG_NO_CHECK_TIME 0x200000
 
-#define X509_VP_FLAG_DEFAULT 0x1
-#define X509_VP_FLAG_OVERWRITE 0x2
-#define X509_VP_FLAG_RESET_FLAGS 0x4
-#define X509_VP_FLAG_LOCKED 0x8
-#define X509_VP_FLAG_ONCE 0x10
-
 // X509_OBJECT_new returns a newly-allocated, empty |X509_OBJECT| or NULL on
 // error.
 OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
@@ -3171,17 +3165,43 @@ OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *st,
                                                      X509_NAME *nm);
 OPENSSL_EXPORT STACK_OF(X509_CRL) *X509_STORE_get1_crls(X509_STORE_CTX *st,
                                                         X509_NAME *nm);
-OPENSSL_EXPORT int X509_STORE_set_flags(X509_STORE *ctx, unsigned long flags);
-OPENSSL_EXPORT int X509_STORE_set_purpose(X509_STORE *ctx, int purpose);
-OPENSSL_EXPORT int X509_STORE_set_trust(X509_STORE *ctx, int trust);
-OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *ctx,
-                                         X509_VERIFY_PARAM *pm);
 
-// X509_STORE_get0_param returns |store|'s default verification parameters. This
-// object is mutable and may be modified by the caller.
+// X509_STORE_set_flags enables all values in |flags| in |store|'s verification
+// flags.
 //
-// TODO(crbug.com/boringssl/441): Discuss the semantics of this notion of
-// "default".
+// WARNING: These flags will be combined with default flags when copied to an
+// |X509_STORE_CTX|. This means it is impossible to unset those defaults from
+// the |X509_STORE|. See discussion in |X509_STORE_get0_param|.
+OPENSSL_EXPORT int X509_STORE_set_flags(X509_STORE *store, unsigned long flags);
+
+OPENSSL_EXPORT int X509_STORE_set_purpose(X509_STORE *store, int purpose);
+OPENSSL_EXPORT int X509_STORE_set_trust(X509_STORE *store, int trust);
+
+// |X509_STORE_set1_param| copies verification parameters from |param| as in
+// |X509_VERIFY_PARAM_set1|. It returns one on success and zero on error.
+OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *store,
+                                         const X509_VERIFY_PARAM *param);
+
+// X509_STORE_get0_param returns |store|'s verification parameters. This object
+// is mutable and may be modified by the caller. For an individual certificate
+// verification operation, |X509_STORE_CTX_init| initializes the
+// |X509_STORE_CTX|'s parameters with these parameters.
+//
+// WARNING: |X509_STORE_CTX_init| applies some default parameters (as in
+// |X509_VERIFY_PARAM_inherit|) after copying |store|'s parameters. This means
+// it is impossible to leave some parameters unset at |store|. They must be
+// explicitly unset after creating the |X509_STORE_CTX|.
+//
+// As of writing these late defaults are a depth limit (see
+// |X509_VERIFY_PARAM_set_depth|) and the |X509_V_FLAG_TRUSTED_FIRST| flag. This
+// warning does not apply if the parameters were set in |store|. That is,
+// callers may safely set a concrete depth limit in |store|, but unlimited depth
+// must be configured at |X509_STORE_CTX|.
+//
+// TODO(crbug.com/boringssl/441): This behavior is very surprising. Can we
+// remove this notion of late defaults? A depth limit of 100 can probably be
+// applied unconditionally. |X509_V_FLAG_TRUSTED_FIRST| is mostly a workaround
+// for poor path-building.
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *store);
 
 // X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
@@ -3217,6 +3237,14 @@ OPENSSL_EXPORT int X509_STORE_CTX_get1_issuer(X509 **issuer,
 // X509_STORE_CTX_free releases memory associated with |ctx|.
 OPENSSL_EXPORT void X509_STORE_CTX_free(X509_STORE_CTX *ctx);
 
+// X509_STORE_CTX_init initializes |ctx| to verify |x509|, using trusted
+// certificates and parameters in |store|. It returns one on success and zero on
+// error. |chain| is a list of untrusted intermediate certificates to use in
+// verification.
+//
+// |ctx| stores pointers to |store|, |x509|, and |chain|. Each of these objects
+// must outlive |ctx| and may not be mutated for the duration of the certificate
+// verification.
 OPENSSL_EXPORT int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
                                        X509 *x509, STACK_OF(X509) *chain);
 
@@ -3287,6 +3315,9 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_trust(X509_STORE_CTX *ctx, int trust);
 OPENSSL_EXPORT int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx,
                                                   int def_purpose, int purpose,
                                                   int trust);
+
+// X509_STORE_CTX_set_flags enables all values in |flags| in |ctx|'s
+// verification flags.
 OPENSSL_EXPORT void X509_STORE_CTX_set_flags(X509_STORE_CTX *ctx,
                                              unsigned long flags);
 
@@ -3332,11 +3363,21 @@ OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_CTX_get0_param(
 // and takes ownership of |param|. After this function returns, the caller
 // should not free |param|.
 //
-// TODO(crbug.com/boringssl/441): The bug notes some odd interactions with
-// the different notions of default. Discuss this.
+// WARNING: This function discards any values which were previously applied in
+// |ctx|, including the "default" parameters applied late in
+// |X509_STORE_CTX_init|. These late defaults are not applied to parameters
+// created standalone by |X509_VERIFY_PARAM_new|.
+//
+// TODO(crbug.com/boringssl/441): This behavior is very surprising. Should we
+// re-apply the late defaults in |param|, or somehow avoid this notion of late
+// defaults altogether?
 OPENSSL_EXPORT void X509_STORE_CTX_set0_param(X509_STORE_CTX *ctx,
                                               X509_VERIFY_PARAM *param);
 
+// X509_STORE_CTX_set_default looks up the set of parameters named |name| and
+// applies those default verification parameters for |ctx|. As in
+// |X509_VERIFY_PARAM_inherit|, only unset parameters are changed. This function
+// returns one on success and zero on error.
 OPENSSL_EXPORT int X509_STORE_CTX_set_default(X509_STORE_CTX *ctx,
                                               const char *name);
 
@@ -3349,16 +3390,34 @@ OPENSSL_EXPORT X509_VERIFY_PARAM *X509_VERIFY_PARAM_new(void);
 // X509_VERIFY_PARAM_free releases memory associated with |param|.
 OPENSSL_EXPORT void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *param);
 
+// X509_VERIFY_PARAM_inherit applies |from| as the default values for |to|. That
+// is, for each parameter that is unset in |to|, it copies the value in |from|.
+// This function returns one on success and zero on error.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *to,
                                              const X509_VERIFY_PARAM *from);
+
+// X509_VERIFY_PARAM_set1 copies parameters from |from| to |to|. If a parameter
+// is unset in |from|, the existing value in |to| is preserved. This function
+// returns one on success and zero on error.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1(X509_VERIFY_PARAM *to,
                                           const X509_VERIFY_PARAM *from);
+
+// X509_VERIFY_PARAM_set_flags enables all values in |flags| in |param|'s
+// verification flags and returns one. |flags| should be a combination of
+// |X509_V_FLAG_*| constants.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_flags(X509_VERIFY_PARAM *param,
                                                unsigned long flags);
+
+// X509_VERIFY_PARAM_clear_flags disables all values in |flags| in |param|'s
+// verification flags and returns one. |flags| should be a combination of
+// |X509_V_FLAG_*| constants.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_clear_flags(X509_VERIFY_PARAM *param,
                                                  unsigned long flags);
+
+// X509_VERIFY_PARAM_get_flags returns |param|'s verification flags.
 OPENSSL_EXPORT unsigned long X509_VERIFY_PARAM_get_flags(
-    X509_VERIFY_PARAM *param);
+    const X509_VERIFY_PARAM *param);
+
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *param,
                                                  int purpose);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_trust(X509_VERIFY_PARAM *param,

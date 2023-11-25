@@ -121,9 +121,6 @@ X509_VERIFY_PARAM *X509_VERIFY_PARAM_new(void) {
     return NULL;
   }
   param->depth = -1;
-  // TODO(crbug.com/boringssl/441): This line was commented out. Figure out what
-  // this was for:
-  // param->inh_flags = X509_VP_FLAG_DEFAULT;
   return param;
 }
 
@@ -138,143 +135,98 @@ void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *param) {
   OPENSSL_free(param);
 }
 
-//-
-// This function determines how parameters are "inherited" from one structure
-// to another. There are several different ways this can happen.
-//
-// 1. If a child structure needs to have its values initialized from a parent
-//    they are simply copied across. For example SSL_CTX copied to SSL.
-// 2. If the structure should take on values only if they are currently unset.
-//    For example the values in an SSL structure will take appropriate value
-//    for SSL servers or clients but only if the application has not set new
-//    ones.
-//
-// The "inh_flags" field determines how this function behaves.
-//
-// Normally any values which are set in the default are not copied from the
-// destination and verify flags are ORed together.
-//
-// If X509_VP_FLAG_DEFAULT is set then anything set in the source is copied
-// to the destination. Effectively the values in "to" become default values
-// which will be used only if nothing new is set in "from".
-//
-// If X509_VP_FLAG_OVERWRITE is set then all value are copied across whether
-// they are set or not. Flags is still Ored though.
-//
-// If X509_VP_FLAG_RESET_FLAGS is set then the flags value is copied instead
-// of ORed.
-//
-// If X509_VP_FLAG_LOCKED is set then no values are copied.
-//
-// If X509_VP_FLAG_ONCE is set then the current inh_flags setting is zeroed
-// after the next call.
-
-// Macro to test if a field should be copied from src to dest
-
-#define test_x509_verify_param_copy(field, def) \
-  (to_overwrite ||                              \
-   ((src->field != (def)) && (to_default || (dest->field == (def)))))
-
-// Macro to test and copy a field if necessary
-
-#define x509_verify_param_copy(field, def)     \
-  if (test_x509_verify_param_copy(field, def)) \
-  dest->field = src->field
-
-int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *dest,
-                              const X509_VERIFY_PARAM *src) {
-  unsigned long inh_flags;
-  int to_default, to_overwrite;
-  if (!src) {
-    return 1;
-  }
-  inh_flags = dest->inh_flags | src->inh_flags;
-
-  if (inh_flags & X509_VP_FLAG_ONCE) {
-    dest->inh_flags = 0;
+static int should_copy(int dest_is_set, int src_is_set, int prefer_src) {
+  if (prefer_src) {
+    // We prefer the source, so as long as there is a value to copy, copy it.
+    return src_is_set;
   }
 
-  if (inh_flags & X509_VP_FLAG_LOCKED) {
+  // We prefer the destination, so only copy if the destination is unset.
+  return src_is_set && !dest_is_set;
+}
+
+static void copy_int_param(int *dest, const int *src, int default_val,
+                           int prefer_src) {
+  if (should_copy(*dest != default_val, *src != default_val, prefer_src)) {
+    *dest = *src;
+  }
+}
+
+// x509_verify_param_copy copies fields from |src| to |dest|. If both |src| and
+// |dest| have some field set, |prefer_src| determines whether |src| or |dest|'s
+// version is used.
+static int x509_verify_param_copy(X509_VERIFY_PARAM *dest,
+                                  const X509_VERIFY_PARAM *src,
+                                  int prefer_src) {
+  if (src == NULL) {
     return 1;
   }
 
-  if (inh_flags & X509_VP_FLAG_DEFAULT) {
-    to_default = 1;
-  } else {
-    to_default = 0;
-  }
+  copy_int_param(&dest->purpose, &src->purpose, /*default_val=*/0, prefer_src);
+  copy_int_param(&dest->trust, &src->trust, /*default_val=*/0, prefer_src);
+  copy_int_param(&dest->depth, &src->depth, /*default_val=*/-1, prefer_src);
 
-  if (inh_flags & X509_VP_FLAG_OVERWRITE) {
-    to_overwrite = 1;
-  } else {
-    to_overwrite = 0;
-  }
-
-  x509_verify_param_copy(purpose, 0);
-  x509_verify_param_copy(trust, 0);
-  x509_verify_param_copy(depth, -1);
-
-  // If overwrite or check time not set, copy across
-
-  if (to_overwrite || !(dest->flags & X509_V_FLAG_USE_CHECK_TIME)) {
+  // |check_time|, unlike all other parameters, does not honor |prefer_src|.
+  // This means |X509_VERIFY_PARAM_set1| will not overwrite it. This behavior
+  // comes from OpenSSL but may have been a bug.
+  if (!(dest->flags & X509_V_FLAG_USE_CHECK_TIME)) {
     dest->check_time = src->check_time;
-    dest->flags &= ~X509_V_FLAG_USE_CHECK_TIME;
-    // Don't need to copy flag: that is done below
-  }
-
-  if (inh_flags & X509_VP_FLAG_RESET_FLAGS) {
-    dest->flags = 0;
+    // The source |X509_V_FLAG_USE_CHECK_TIME| flag, if set, is copied below.
   }
 
   dest->flags |= src->flags;
 
-  if (test_x509_verify_param_copy(policies, NULL)) {
+  if (should_copy(dest->policies != NULL, src->policies != NULL, prefer_src)) {
     if (!X509_VERIFY_PARAM_set1_policies(dest, src->policies)) {
       return 0;
     }
   }
 
-  // Copy the host flags if and only if we're copying the host list
-  if (test_x509_verify_param_copy(hosts, NULL)) {
-    if (dest->hosts) {
-      sk_OPENSSL_STRING_pop_free(dest->hosts, str_free);
-      dest->hosts = NULL;
-    }
+  if (should_copy(dest->hosts != NULL, src->hosts != NULL, prefer_src)) {
+    sk_OPENSSL_STRING_pop_free(dest->hosts, str_free);
+    dest->hosts = NULL;
     if (src->hosts) {
       dest->hosts =
           sk_OPENSSL_STRING_deep_copy(src->hosts, OPENSSL_strdup, str_free);
       if (dest->hosts == NULL) {
         return 0;
       }
+      // Copy the host flags if and only if we're copying the host list. Note
+      // this means mechanisms like |X509_STORE_CTX_set_default| cannot be used
+      // to set host flags. E.g. we cannot change the defaults using
+      // |kDefaultParam| below.
       dest->hostflags = src->hostflags;
     }
   }
 
-  if (test_x509_verify_param_copy(email, NULL)) {
+  if (should_copy(dest->email != NULL, src->email != NULL, prefer_src)) {
     if (!X509_VERIFY_PARAM_set1_email(dest, src->email, src->emaillen)) {
       return 0;
     }
   }
 
-  if (test_x509_verify_param_copy(ip, NULL)) {
+  if (should_copy(dest->ip != NULL, src->ip != NULL, prefer_src)) {
     if (!X509_VERIFY_PARAM_set1_ip(dest, src->ip, src->iplen)) {
       return 0;
     }
   }
 
   dest->poison = src->poison;
-
   return 1;
+}
+
+int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *dest,
+                              const X509_VERIFY_PARAM *src) {
+  // Prefer the destination. That is, this function only changes unset
+  // parameters in |dest|.
+  return x509_verify_param_copy(dest, src, /*prefer_src=*/0);
 }
 
 int X509_VERIFY_PARAM_set1(X509_VERIFY_PARAM *to,
                            const X509_VERIFY_PARAM *from) {
-  unsigned long save_flags = to->inh_flags;
-  int ret;
-  to->inh_flags |= X509_VP_FLAG_DEFAULT;
-  ret = X509_VERIFY_PARAM_inherit(to, from);
-  to->inh_flags = save_flags;
-  return ret;
+  // Prefer the source. That is, values in |to| are only preserved if they were
+  // unset in |from|.
+  return x509_verify_param_copy(to, from, /*prefer_src=*/1);
 }
 
 static int int_x509_param_set1(char **pdest, size_t *pdestlen, const char *src,
@@ -312,7 +264,7 @@ int X509_VERIFY_PARAM_clear_flags(X509_VERIFY_PARAM *param,
   return 1;
 }
 
-unsigned long X509_VERIFY_PARAM_get_flags(X509_VERIFY_PARAM *param) {
+unsigned long X509_VERIFY_PARAM_get_flags(const X509_VERIFY_PARAM *param) {
   return param->flags;
 }
 

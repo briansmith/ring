@@ -569,7 +569,7 @@ int X509_STORE_set_trust(X509_STORE *ctx, int trust) {
   return X509_VERIFY_PARAM_set_trust(ctx->param, trust);
 }
 
-int X509_STORE_set1_param(X509_STORE *ctx, X509_VERIFY_PARAM *param) {
+int X509_STORE_set1_param(X509_STORE *ctx, const X509_VERIFY_PARAM *param) {
   return X509_VERIFY_PARAM_set1(ctx->param, param);
 }
 
