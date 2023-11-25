@@ -4027,7 +4027,16 @@ OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
 
 OPENSSL_EXPORT int X509_check_ca(X509 *x);
 OPENSSL_EXPORT int X509_check_purpose(X509 *x, int id, int ca);
+
+// X509_supported_extension returns one if |ex| is a critical X.509 certificate
+// extension, supported by |X509_verify_cert|, and zero otherwise.
+//
+// Note this function only reports certificate extensions (as opposed to CRL or
+// CRL extensions), and only extensions that are expected to be marked critical.
+// Additionally, |X509_verify_cert| checks for unsupported critical extensions
+// internally, so most callers will not need to call this function separately.
 OPENSSL_EXPORT int X509_supported_extension(const X509_EXTENSION *ex);
+
 OPENSSL_EXPORT int X509_PURPOSE_set(int *p, int purpose);
 OPENSSL_EXPORT int X509_check_issued(X509 *issuer, X509 *subject);
 OPENSSL_EXPORT int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid);

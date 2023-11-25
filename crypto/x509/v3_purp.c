@@ -310,43 +310,18 @@ char *X509_PURPOSE_get0_sname(const X509_PURPOSE *xp) { return xp->sname; }
 
 int X509_PURPOSE_get_trust(const X509_PURPOSE *xp) { return xp->trust; }
 
-static int nid_cmp(const void *void_a, const void *void_b) {
-  const int *a = void_a, *b = void_b;
-
-  return *a - *b;
-}
-
 int X509_supported_extension(const X509_EXTENSION *ex) {
-  // This table is a list of the NIDs of supported extensions: that is
-  // those which are used by the verify process. If an extension is
-  // critical and doesn't appear in this list then the verify process will
-  // normally reject the certificate. The list must be kept in numerical
-  // order because it will be searched using bsearch.
-
-  static const int supported_nids[] = {
-      NID_netscape_cert_type,    // 71
-      NID_key_usage,             // 83
-      NID_subject_alt_name,      // 85
-      NID_basic_constraints,     // 87
-      NID_certificate_policies,  // 89
-      NID_ext_key_usage,         // 126
-      NID_policy_constraints,    // 401
-      NID_name_constraints,      // 666
-      NID_policy_mappings,       // 747
-      NID_inhibit_any_policy     // 748
-  };
-
-  int ex_nid = OBJ_obj2nid(X509_EXTENSION_get_object(ex));
-
-  if (ex_nid == NID_undef) {
-    return 0;
-  }
-
-  if (bsearch(&ex_nid, supported_nids, sizeof(supported_nids) / sizeof(int),
-              sizeof(int), nid_cmp) != NULL) {
-    return 1;
-  }
-  return 0;
+  int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ex));
+  return nid == NID_netscape_cert_type ||    //
+         nid == NID_key_usage ||             //
+         nid == NID_subject_alt_name ||      //
+         nid == NID_basic_constraints ||     //
+         nid == NID_certificate_policies ||  //
+         nid == NID_ext_key_usage ||         //
+         nid == NID_policy_constraints ||    //
+         nid == NID_name_constraints ||      //
+         nid == NID_policy_mappings ||       //
+         nid == NID_inhibit_any_policy;
 }
 
 static int setup_dp(X509 *x, DIST_POINT *dp) {
