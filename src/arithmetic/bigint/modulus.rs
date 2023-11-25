@@ -95,14 +95,7 @@ impl<M> OwnedModulus<M> {
         input: untrusted::Input,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
-        let limbs = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
-        Self::from_boxed_limbs(limbs, cpu_features)
-    }
-
-    fn from_boxed_limbs(
-        n: BoxedLimbs<M>,
-        cpu_features: cpu::Features,
-    ) -> Result<Self, error::KeyRejected> {
+        let n = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
