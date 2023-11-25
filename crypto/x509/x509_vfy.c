@@ -1717,11 +1717,9 @@ void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *ctx, STACK_OF(X509) *sk) {
 }
 
 void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx) {
-  X509_VERIFY_PARAM_free(ctx->param);
-  ctx->param = NULL;
-  sk_X509_pop_free(ctx->chain, X509_free);
-  ctx->chain = NULL;
   CRYPTO_free_ex_data(&g_ex_data_class, ctx, &(ctx->ex_data));
+  X509_VERIFY_PARAM_free(ctx->param);
+  sk_X509_pop_free(ctx->chain, X509_free);
   OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
 }
 

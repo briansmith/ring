@@ -163,10 +163,11 @@ OPENSSL_EXPORT void *TYPE_get_ex_data(const TYPE *t, int index);
 // callback has been passed to |SSL_get_ex_new_index| then it may be called each
 // time an |SSL*| is destroyed.
 //
-// The callback is passed the new object (i.e. the |SSL*|) in |parent|. The
-// arguments |argl| and |argp| contain opaque values that were given to
-// |CRYPTO_get_ex_new_index|. The callback should return one on success, but
-// the value is ignored.
+// The callback is passed the to-be-destroyed object (i.e. the |SSL*|) in
+// |parent|. As |parent| will shortly be destroyed, callers must not perform
+// operations that would increment its reference count, pass ownership, or
+// assume the object outlives the function call. The arguments |argl| and |argp|
+// contain opaque values that were given to |CRYPTO_get_ex_new_index|.
 //
 // This callback may be called with a NULL value for |ptr| if |parent| has no
 // value set for this index. However, the callbacks may also be skipped entirely
