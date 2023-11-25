@@ -3207,6 +3207,8 @@ OPENSSL_EXPORT void X509_STORE_set_check_crl(
 OPENSSL_EXPORT X509_STORE_CTX_check_crl_fn
 X509_STORE_get_check_crl(X509_STORE *ctx);
 
+// X509_STORE_CTX_new returns a newly-allocated, empty |X509_STORE_CTX|, or NULL
+// on error.
 OPENSSL_EXPORT X509_STORE_CTX *X509_STORE_CTX_new(void);
 
 OPENSSL_EXPORT int X509_STORE_CTX_get1_issuer(X509 **issuer,
@@ -4041,9 +4043,25 @@ OPENSSL_EXPORT int X509_PURPOSE_set(int *p, int purpose);
 OPENSSL_EXPORT int X509_check_issued(X509 *issuer, X509 *subject);
 OPENSSL_EXPORT int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid);
 
-OPENSSL_EXPORT uint32_t X509_get_extension_flags(X509 *x);
-OPENSSL_EXPORT uint32_t X509_get_key_usage(X509 *x);
-OPENSSL_EXPORT uint32_t X509_get_extended_key_usage(X509 *x);
+OPENSSL_EXPORT uint32_t X509_get_extension_flags(X509 *x509);
+
+// X509_get_key_usage returns a bitmask of key usages (see Section 4.2.1.3 of
+// RFC 5280) which |x509| is valid for. The result will be a combination of
+// |KU_*| constants.
+//
+// If |x509| has no key usage extension, all key usages are valid and this
+// function returns |UINT32_MAX|. If there was an error processing |x509|'s
+// extensions, this function returns zero.
+OPENSSL_EXPORT uint32_t X509_get_key_usage(X509 *x509);
+
+// X509_get_extended_key_usage returns a bitmask of extended key usages (see
+// Section 4.2.1.12 of RFC 5280) which |x509| is valid for. The result will be
+// a combination of |XKU_*| constants.
+//
+// If |x509| has no extended key usage extension, all extended key usages are
+// valid and this function returns |UINT32_MAX|. If there was an error
+// processing |x509|'s extensions, this function returns zero.
+OPENSSL_EXPORT uint32_t X509_get_extended_key_usage(X509 *x509);
 
 // X509_get0_subject_key_id returns |x509|'s subject key identifier, if present.
 // (See RFC 5280, section 4.2.1.2.) It returns NULL if the extension is not
