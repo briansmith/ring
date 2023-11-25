@@ -118,6 +118,8 @@ use {
     target_arch = "x86",
     target_arch = "x86_64"
 )))]
+// TODO: Stop calling this from C and un-export it.
+#[allow(deprecated)]
 prefixed_export! {
     unsafe fn bn_mul_mont(
         r: *mut Limb,
