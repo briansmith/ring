@@ -133,7 +133,6 @@ void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *param) {
   }
   sk_ASN1_OBJECT_pop_free(param->policies, ASN1_OBJECT_free);
   sk_OPENSSL_STRING_pop_free(param->hosts, str_free);
-  OPENSSL_free(param->peername);
   OPENSSL_free(param->email);
   OPENSSL_free(param->ip);
   OPENSSL_free(param);
@@ -394,10 +393,6 @@ int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param, const char *name,
 void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
                                      unsigned int flags) {
   param->hostflags = flags;
-}
-
-char *X509_VERIFY_PARAM_get0_peername(X509_VERIFY_PARAM *param) {
-  return param->peername;
 }
 
 int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param, const char *email,

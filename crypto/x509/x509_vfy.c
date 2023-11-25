@@ -692,14 +692,9 @@ static int check_hosts(X509 *x, X509_VERIFY_PARAM *param) {
   size_t n = sk_OPENSSL_STRING_num(param->hosts);
   char *name;
 
-  if (param->peername != NULL) {
-    OPENSSL_free(param->peername);
-    param->peername = NULL;
-  }
   for (i = 0; i < n; ++i) {
     name = sk_OPENSSL_STRING_value(param->hosts, i);
-    if (X509_check_host(x, name, strlen(name), param->hostflags,
-                        &param->peername) > 0) {
+    if (X509_check_host(x, name, strlen(name), param->hostflags, NULL) > 0) {
       return 1;
     }
   }
