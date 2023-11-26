@@ -84,7 +84,7 @@ fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mu
 
     #[cfg(target_arch = "x86_64")]
     let in_out = {
-        if !aes_key.is_aes_hw() || !auth.is_avx2() {
+        if !aes_key.is_aes_hw() || !auth.is_avx() {
             in_out
         } else {
             use crate::c;
@@ -164,7 +164,7 @@ fn aes_gcm_open(
 
     #[cfg(target_arch = "x86_64")]
     let in_out = {
-        if !aes_key.is_aes_hw() || !auth.is_avx2() {
+        if !aes_key.is_aes_hw() || !auth.is_avx() {
             in_out
         } else {
             use crate::c;
