@@ -177,17 +177,11 @@ untrusted = { version = "0.9" }
 [target.'cfg(any(target_arch = "x86",target_arch = "x86_64", all(any(target_arch = "aarch64", target_arch = "arm"), any(target_os = "android", target_os = "fuchsia", target_os = "linux", target_os = "windows"))))'.dependencies]
 spin = { version = "0.9.8", default-features = false, features = ["once"] }
 
-[target.'cfg(all(any(target_os = "android", target_os = "linux"), any(target_arch = "aarch64", target_arch = "arm")))'.dependencies]
-libc = { version = "0.2.148", default-features = false }
-
 [target.'cfg(all(target_arch = "aarch64", target_os = "windows"))'.dependencies]
 windows-sys = { version = "0.48", features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen-test = { version = "0.3.37", default-features = false }
-
-[target.'cfg(any(unix, windows, target_os = "wasi"))'.dev-dependencies]
-libc = { version = "0.2.148", default-features = false }
 
 [build-dependencies]
 cc = { version = "1.0.83", default-features = false }
