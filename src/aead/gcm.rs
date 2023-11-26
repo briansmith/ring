@@ -244,7 +244,7 @@ impl Context {
     }
 
     #[cfg(target_arch = "x86_64")]
-    pub(super) fn is_avx2(&self) -> bool {
+    pub(super) fn is_avx(&self) -> bool {
         match detect_implementation(self.cpu_features) {
             Implementation::CLMUL => has_avx_movbe(self.cpu_features),
             _ => false,
