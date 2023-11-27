@@ -1450,6 +1450,15 @@ OPENSSL_INLINE int CRYPTO_is_ADX_capable(void) {
 #endif
 }
 
+// SHA-1 and SHA-256 are defined as a single extension.
+OPENSSL_INLINE int CRYPTO_is_x86_SHA_capable(void) {
+#if defined(__SHA__)
+  return 1;
+#else
+  return (OPENSSL_get_ia32cap(2) & (1u << 29)) != 0;
+#endif
+}
+
 #endif  // OPENSSL_X86 || OPENSSL_X86_64
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
@@ -1516,6 +1525,41 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
   return 0;
 #else
   return (OPENSSL_get_armcap() & ARMV8_PMULL) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA1_capable(void) {
+  // SHA-1 and SHA-2 (only) share |__ARM_FEATURE_SHA2| but otherwise
+  // are dealt with independently.
+#if defined(OPENSSL_STATIC_ARMCAP_SHA1) || defined(__ARM_FEATURE_SHA2)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
+  return (OPENSSL_get_armcap() & ARMV8_SHA1) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA256_capable(void) {
+  // SHA-1 and SHA-2 (only) share |__ARM_FEATURE_SHA2| but otherwise
+  // are dealt with independently.
+#if defined(OPENSSL_STATIC_ARMCAP_SHA256) || defined(__ARM_FEATURE_SHA2)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
+  return (OPENSSL_get_armcap() & ARMV8_SHA256) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA512_capable(void) {
+  // There is no |OPENSSL_STATIC_ARMCAP_SHA512|.
+#if defined(__ARM_FEATURE_SHA512)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
+  return (OPENSSL_get_armcap() & ARMV8_SHA512) != 0;
 #endif
 }
 
