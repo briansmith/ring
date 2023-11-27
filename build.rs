@@ -893,6 +893,8 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "CRYPTO_poly1305_update",
         "CRYPTO_poly1305_update_neon",
         "ChaCha20_ctr32",
+        "ChaCha20_ctr32_fallback",
+        "ChaCha20_ctr32_neon",
         "LIMBS_add_mod",
         "LIMBS_are_even",
         "LIMBS_are_zero",

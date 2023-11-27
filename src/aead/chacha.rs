@@ -88,12 +88,61 @@ impl Key {
     /// Only call this with `src` equal to `0..` or from `encrypt_within`.
     #[inline]
     fn encrypt_less_safe(&self, counter: Counter, in_out: &mut [u8], src: RangeFrom<usize>) {
-        #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86",
-            target_arch = "x86_64"
-        ))]
+        #[cfg(target_arch = "aarch64")]
+        #[inline(always)]
+        pub(super) fn ChaCha20_ctr32(
+            key: &Key,
+            counter: Counter,
+            in_out: &mut [u8],
+            src: RangeFrom<usize>,
+        ) {
+            let in_out_len = in_out.len().checked_sub(src.start).unwrap();
+
+            // There's no need to worry if `counter` is incremented because it is
+            // owned here and we drop immediately after the call.
+
+            if in_out_len >= 192 && cpu::arm::NEON.available(key.cpu_features) {
+                prefixed_extern! {
+                    fn ChaCha20_ctr32_neon(
+                        out: *mut u8,
+                        in_: *const u8,
+                        in_len: crate::c::size_t,
+                        key: &[u32; KEY_LEN / 4],
+                        counter: &Counter,
+                    );
+                }
+                unsafe {
+                    ChaCha20_ctr32_neon(
+                        in_out.as_mut_ptr(),
+                        in_out[src].as_ptr(),
+                        in_out_len,
+                        key.words_less_safe(),
+                        &counter,
+                    )
+                }
+            } else if in_out_len > 0 {
+                prefixed_extern! {
+                    fn ChaCha20_ctr32_fallback(
+                        out: *mut u8,
+                        in_: *const u8,
+                        in_len: crate::c::size_t,
+                        key: &[u32; KEY_LEN / 4],
+                        counter: &Counter,
+                    );
+                }
+                unsafe {
+                    ChaCha20_ctr32_fallback(
+                        in_out.as_mut_ptr(),
+                        in_out[src].as_ptr(),
+                        in_out_len,
+                        key.words_less_safe(),
+                        &counter,
+                    )
+                }
+            }
+        }
+
+        #[cfg(any(target_arch = "arm", target_arch = "x86", target_arch = "x86_64"))]
         #[inline(always)]
         pub(super) fn ChaCha20_ctr32(
             key: &Key,
