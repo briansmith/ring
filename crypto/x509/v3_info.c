@@ -67,6 +67,9 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
+#include "internal.h"
+
+
 static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
     const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *ret);
 static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
@@ -205,9 +208,4 @@ static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
 err:
   sk_ACCESS_DESCRIPTION_pop_free(ainfo, ACCESS_DESCRIPTION_free);
   return NULL;
-}
-
-int i2a_ACCESS_DESCRIPTION(BIO *bp, const ACCESS_DESCRIPTION *a) {
-  i2a_ASN1_OBJECT(bp, a->method);
-  return 2;
 }

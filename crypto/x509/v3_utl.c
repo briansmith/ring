@@ -555,7 +555,7 @@ static int sk_strcmp(const char *const *a, const char *const *b) {
   return strcmp(*a, *b);
 }
 
-STACK_OF(OPENSSL_STRING) *X509_get1_email(X509 *x) {
+STACK_OF(OPENSSL_STRING) *X509_get1_email(const X509 *x) {
   GENERAL_NAMES *gens;
   STACK_OF(OPENSSL_STRING) *ret;
 
@@ -565,7 +565,7 @@ STACK_OF(OPENSSL_STRING) *X509_get1_email(X509 *x) {
   return ret;
 }
 
-STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x) {
+STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(const X509 *x) {
   AUTHORITY_INFO_ACCESS *info;
   STACK_OF(OPENSSL_STRING) *ret = NULL;
   size_t i;
@@ -588,7 +588,7 @@ STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x) {
   return ret;
 }
 
-STACK_OF(OPENSSL_STRING) *X509_REQ_get1_email(X509_REQ *x) {
+STACK_OF(OPENSSL_STRING) *X509_REQ_get1_email(const X509_REQ *x) {
   GENERAL_NAMES *gens;
   STACK_OF(X509_EXTENSION) *exts;
   STACK_OF(OPENSSL_STRING) *ret;
@@ -1143,12 +1143,8 @@ ASN1_OCTET_STRING *a2i_IPADDRESS_NC(const char *ipasc) {
   return ret;
 
 err:
-  if (iptmp) {
-    OPENSSL_free(iptmp);
-  }
-  if (ret) {
-    ASN1_OCTET_STRING_free(ret);
-  }
+  OPENSSL_free(iptmp);
+  ASN1_OCTET_STRING_free(ret);
   return NULL;
 }
 

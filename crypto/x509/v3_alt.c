@@ -446,10 +446,10 @@ GENERAL_NAME *v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method,
   return v2i_GENERAL_NAME_ex(NULL, method, ctx, cnf, 0);
 }
 
-GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
-                               const X509V3_EXT_METHOD *method,
-                               const X509V3_CTX *ctx, int gen_type,
-                               const char *value, int is_nc) {
+static GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
+                                      const X509V3_EXT_METHOD *method,
+                                      const X509V3_CTX *ctx, int gen_type,
+                                      const char *value, int is_nc) {
   if (!value) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_MISSING_VALUE);
     return NULL;

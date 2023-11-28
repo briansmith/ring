@@ -1198,7 +1198,7 @@ static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
   if (issuer) {
     // Check for cRLSign bit if keyUsage present
     if ((issuer->ex_flags & EXFLAG_KUSAGE) &&
-        !(issuer->ex_kusage & KU_CRL_SIGN)) {
+        !(issuer->ex_kusage & X509v3_KU_CRL_SIGN)) {
       ctx->error = X509_V_ERR_KEYUSAGE_NO_CRL_SIGN;
       ok = ctx->verify_cb(0, ctx);
       if (!ok) {

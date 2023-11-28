@@ -567,6 +567,16 @@ OPENSSL_EXPORT int GENERAL_NAME_cmp(const GENERAL_NAME *a,
 // |name|, or NULL if no such name is defined.
 const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name);
 
+GENERAL_NAME *v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method,
+                               const X509V3_CTX *ctx, const CONF_VALUE *cnf);
+GENERAL_NAME *v2i_GENERAL_NAME_ex(GENERAL_NAME *out,
+                                  const X509V3_EXT_METHOD *method,
+                                  const X509V3_CTX *ctx, const CONF_VALUE *cnf,
+                                  int is_nc);
+GENERAL_NAMES *v2i_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
+                                 const X509V3_CTX *ctx,
+                                 const STACK_OF(CONF_VALUE) *nval);
+
 
 #if defined(__cplusplus)
 }  // extern C

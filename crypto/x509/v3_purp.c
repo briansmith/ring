@@ -498,7 +498,7 @@ int x509v3_cache_extensions(X509 *x) {
     x->ex_flags |= EXFLAG_SI;
     // If SKID matches AKID also indicate self signed
     if (X509_check_akid(x, x->akid) == X509_V_OK &&
-        !ku_reject(x, KU_KEY_CERT_SIGN)) {
+        !ku_reject(x, X509v3_KU_KEY_CERT_SIGN)) {
       x->ex_flags |= EXFLAG_SS;
     }
   }
@@ -534,7 +534,7 @@ int x509v3_cache_extensions(X509 *x) {
 // otherwise.
 static int check_ca(const X509 *x) {
   // keyUsage if present should allow cert signing
-  if (ku_reject(x, KU_KEY_CERT_SIGN)) {
+  if (ku_reject(x, X509v3_KU_KEY_CERT_SIGN)) {
     return 0;
   }
   // Version 1 certificates are considered CAs and don't have extensions.
@@ -561,7 +561,7 @@ static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
     return check_ca(x);
   }
   // We need to do digital signatures or key agreement
-  if (ku_reject(x, KU_DIGITAL_SIGNATURE | KU_KEY_AGREEMENT)) {
+  if (ku_reject(x, X509v3_KU_DIGITAL_SIGNATURE | X509v3_KU_KEY_AGREEMENT)) {
     return 0;
   }
   // nsCertType if present should allow SSL client use
@@ -574,7 +574,9 @@ static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
 // Key usage needed for TLS/SSL server: digital signature, encipherment or
 // key agreement. The ssl code can check this more thoroughly for individual
 // key types.
-#define KU_TLS (KU_DIGITAL_SIGNATURE | KU_KEY_ENCIPHERMENT | KU_KEY_AGREEMENT)
+#define X509v3_KU_TLS                                         \
+  (X509v3_KU_DIGITAL_SIGNATURE | X509v3_KU_KEY_ENCIPHERMENT | \
+   X509v3_KU_KEY_AGREEMENT)
 
 static int check_purpose_ssl_server(const X509_PURPOSE *xp, const X509 *x,
                                     int ca) {
@@ -588,7 +590,7 @@ static int check_purpose_ssl_server(const X509_PURPOSE *xp, const X509 *x,
   if (ns_reject(x, NS_SSL_SERVER)) {
     return 0;
   }
-  if (ku_reject(x, KU_TLS)) {
+  if (ku_reject(x, X509v3_KU_TLS)) {
     return 0;
   }
 
@@ -603,7 +605,7 @@ static int check_purpose_ns_ssl_server(const X509_PURPOSE *xp, const X509 *x,
     return ret;
   }
   // We need to encipher or Netscape complains
-  if (ku_reject(x, KU_KEY_ENCIPHERMENT)) {
+  if (ku_reject(x, X509v3_KU_KEY_ENCIPHERMENT)) {
     return 0;
   }
   return ret;
@@ -636,7 +638,7 @@ static int check_purpose_smime_sign(const X509_PURPOSE *xp, const X509 *x,
   if (!ret || ca) {
     return ret;
   }
-  if (ku_reject(x, KU_DIGITAL_SIGNATURE | KU_NON_REPUDIATION)) {
+  if (ku_reject(x, X509v3_KU_DIGITAL_SIGNATURE | X509v3_KU_NON_REPUDIATION)) {
     return 0;
   }
   return ret;
@@ -649,7 +651,7 @@ static int check_purpose_smime_encrypt(const X509_PURPOSE *xp, const X509 *x,
   if (!ret || ca) {
     return ret;
   }
-  if (ku_reject(x, KU_KEY_ENCIPHERMENT)) {
+  if (ku_reject(x, X509v3_KU_KEY_ENCIPHERMENT)) {
     return 0;
   }
   return ret;
@@ -660,7 +662,7 @@ static int check_purpose_crl_sign(const X509_PURPOSE *xp, const X509 *x,
   if (ca) {
     return check_ca(x);
   }
-  if (ku_reject(x, KU_CRL_SIGN)) {
+  if (ku_reject(x, X509v3_KU_CRL_SIGN)) {
     return 0;
   }
   return 1;
@@ -691,8 +693,10 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
   // and/or nonRepudiation (other values are not consistent and shall
   // be rejected).
   if ((x->ex_flags & EXFLAG_KUSAGE) &&
-      ((x->ex_kusage & ~(KU_NON_REPUDIATION | KU_DIGITAL_SIGNATURE)) ||
-       !(x->ex_kusage & (KU_NON_REPUDIATION | KU_DIGITAL_SIGNATURE)))) {
+      ((x->ex_kusage &
+        ~(X509v3_KU_NON_REPUDIATION | X509v3_KU_DIGITAL_SIGNATURE)) ||
+       !(x->ex_kusage &
+         (X509v3_KU_NON_REPUDIATION | X509v3_KU_DIGITAL_SIGNATURE)))) {
     return 0;
   }
 
@@ -739,7 +743,7 @@ int X509_check_issued(X509 *issuer, X509 *subject) {
     }
   }
 
-  if (ku_reject(issuer, KU_KEY_CERT_SIGN)) {
+  if (ku_reject(issuer, X509v3_KU_KEY_CERT_SIGN)) {
     return X509_V_ERR_KEYUSAGE_NO_CERTSIGN;
   }
   return X509_V_OK;
@@ -798,6 +802,9 @@ uint32_t X509_get_key_usage(X509 *x) {
   if (x->ex_flags & EXFLAG_KUSAGE) {
     return x->ex_kusage;
   }
+  // If there is no extension, key usage is unconstrained, so set all bits to
+  // one. Note that, although we use |UINT32_MAX|, |ex_kusage| only contains the
+  // first 16 bits when the extension is present.
   return UINT32_MAX;
 }
 
@@ -808,6 +815,8 @@ uint32_t X509_get_extended_key_usage(X509 *x) {
   if (x->ex_flags & EXFLAG_XKUSAGE) {
     return x->ex_xkusage;
   }
+  // If there is no extension, extended key usage is unconstrained, so set all
+  // bits to one.
   return UINT32_MAX;
 }
 
