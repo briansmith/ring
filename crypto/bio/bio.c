@@ -69,6 +69,9 @@
 #include "../internal.h"
 
 
+static CRYPTO_EX_DATA_CLASS g_ex_data_class =
+    CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
+
 BIO *BIO_new(const BIO_METHOD *method) {
   BIO *ret = OPENSSL_zalloc(sizeof(BIO));
   if (ret == NULL) {
@@ -78,6 +81,7 @@ BIO *BIO_new(const BIO_METHOD *method) {
   ret->method = method;
   ret->shutdown = 1;
   ret->references = 1;
+  CRYPTO_new_ex_data(&ret->ex_data);
 
   if (method->create != NULL && !method->create(ret)) {
     OPENSSL_free(ret);
@@ -101,6 +105,7 @@ int BIO_free(BIO *bio) {
       bio->method->destroy(bio);
     }
 
+    CRYPTO_free_ex_data(&g_ex_data_class, bio, &bio->ex_data);
     OPENSSL_free(bio);
   }
   return 1;
@@ -703,4 +708,24 @@ int BIO_get_shutdown(BIO *bio) { return bio->shutdown; }
 int BIO_meth_set_puts(BIO_METHOD *method, int (*puts)(BIO *, const char *)) {
   // Ignore the parameter. We implement |BIO_puts| using |BIO_write|.
   return 1;
+}
+
+int BIO_get_ex_new_index(long argl, void *argp,
+                                    CRYPTO_EX_unused *unused,
+                                    CRYPTO_EX_dup *dup_unused,
+                                    CRYPTO_EX_free *free_func) {
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp,
+                               free_func)) {
+    return -1;
+  }
+  return index;
+}
+
+int BIO_set_ex_data(BIO *bio, int idx, void *data) {
+  return CRYPTO_set_ex_data(&bio->ex_data, idx, data);
+}
+
+void *BIO_get_ex_data(const BIO *bio, int idx) {
+  return CRYPTO_get_ex_data(&bio->ex_data, idx);
 }
