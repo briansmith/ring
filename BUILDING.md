@@ -1,5 +1,9 @@
 # Building BoringSSL
 
+## Checking out BoringSSL
+
+    git clone "https://boringssl.googlesource.com/boringssl"
+
 ## Build Prerequisites
 
 The standalone CMake build is primarily intended for developers. If embedding
