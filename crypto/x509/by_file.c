@@ -76,35 +76,24 @@ X509_LOOKUP_METHOD *X509_LOOKUP_file(void) { return &x509_file_lookup; }
 
 static int by_file_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
                         char **ret) {
-  int ok = 0;
-  const char *file;
-
-  switch (cmd) {
-    case X509_L_FILE_LOAD:
-      if (argl == X509_FILETYPE_DEFAULT) {
-        file = getenv(X509_get_default_cert_file_env());
-        if (file) {
-          ok = (X509_load_cert_crl_file(ctx, file, X509_FILETYPE_PEM) != 0);
-        }
-
-        else {
-          ok = (X509_load_cert_crl_file(ctx, X509_get_default_cert_file(),
-                                        X509_FILETYPE_PEM) != 0);
-        }
-
-        if (!ok) {
-          OPENSSL_PUT_ERROR(X509, X509_R_LOADING_DEFAULTS);
-        }
-      } else {
-        if (argl == X509_FILETYPE_PEM) {
-          ok = (X509_load_cert_crl_file(ctx, argp, X509_FILETYPE_PEM) != 0);
-        } else {
-          ok = (X509_load_cert_file(ctx, argp, (int)argl) != 0);
-        }
-      }
-      break;
+  if (cmd != X509_L_FILE_LOAD) {
+    return 0;
   }
-  return ok;
+  const char *file = argp;
+  int type = argl;
+  if (argl == X509_FILETYPE_DEFAULT) {
+    if ((file = getenv(X509_get_default_cert_file_env())) == NULL) {
+      file = X509_get_default_cert_file();
+    }
+    type = X509_FILETYPE_PEM;
+  }
+  if (X509_load_cert_crl_file(ctx, file, type) != 0) {
+    return 1;
+  }
+  if (argl == X509_FILETYPE_DEFAULT) {
+    OPENSSL_PUT_ERROR(X509, X509_R_LOADING_DEFAULTS);
+  }
+  return 0;
 }
 
 int X509_load_cert_file(X509_LOOKUP *ctx, const char *file, int type) {
