@@ -100,17 +100,59 @@ int SHA1_Update(SHA_CTX *c, const void *data, size_t len) {
   return 1;
 }
 
+static void sha1_output_state(uint8_t out[SHA_DIGEST_LENGTH],
+                              const SHA_CTX *ctx) {
+  CRYPTO_store_u32_be(out, ctx->h[0]);
+  CRYPTO_store_u32_be(out + 4, ctx->h[1]);
+  CRYPTO_store_u32_be(out + 8, ctx->h[2]);
+  CRYPTO_store_u32_be(out + 12, ctx->h[3]);
+  CRYPTO_store_u32_be(out + 16, ctx->h[4]);
+}
+
 int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
   crypto_md32_final(&sha1_block_data_order, c->h, c->data, SHA_CBLOCK, &c->num,
                     c->Nh, c->Nl, /*is_big_endian=*/1);
 
-  CRYPTO_store_u32_be(out, c->h[0]);
-  CRYPTO_store_u32_be(out + 4, c->h[1]);
-  CRYPTO_store_u32_be(out + 8, c->h[2]);
-  CRYPTO_store_u32_be(out + 12, c->h[3]);
-  CRYPTO_store_u32_be(out + 16, c->h[4]);
+  sha1_output_state(out, c);
   FIPS_service_indicator_update_state();
   return 1;
+}
+
+void CRYPTO_fips_186_2_prf(uint8_t *out, size_t out_len,
+                           const uint8_t xkey[SHA_DIGEST_LENGTH]) {
+  // XKEY and XVAL are 160-bit values, but are internally right-padded up to
+  // block size. See FIPS 186-2, Appendix 3.3. This buffer maintains both the
+  // current value of XKEY and the padding.
+  uint8_t block[SHA_CBLOCK] = {0};
+  OPENSSL_memcpy(block, xkey, SHA_DIGEST_LENGTH);
+
+  while (out_len != 0) {
+    // We always use a zero XSEED, so we can merge the inner and outer loops.
+    // XVAL is also always equal to XKEY.
+    SHA_CTX ctx;
+    SHA1_Init(&ctx);
+    SHA1_Transform(&ctx, block);
+
+    // XKEY = (1 + XKEY + w_i) mod 2^b
+    uint64_t carry = 1;
+    for (int i = 4; i >= 0; i--) {
+      carry += CRYPTO_load_u32_be(block + i * 4);
+      carry += ctx.h[i];
+      CRYPTO_store_u32_be(block + i * 4, (uint32_t)carry);
+      carry >>= 32;
+    }
+
+    // Output w_i.
+    if (out_len < SHA_DIGEST_LENGTH) {
+      uint8_t buf[SHA_DIGEST_LENGTH];
+      sha1_output_state(buf, &ctx);
+      OPENSSL_memcpy(out, buf, out_len);
+      break;
+    }
+    sha1_output_state(out, &ctx);
+    out += SHA_DIGEST_LENGTH;
+    out_len -= SHA_DIGEST_LENGTH;
+  }
 }
 
 #define Xupdate(a, ix, ia, ib, ic, id)    \
