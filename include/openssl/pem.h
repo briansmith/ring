@@ -347,27 +347,26 @@ OPENSSL_EXPORT int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name,
                                       unsigned char *kstr, int klen,
                                       pem_password_cb *cb, void *u);
 
-struct private_key_st {
-  EVP_PKEY *dec_pkey;
-} /* X509_PKEY */;
-
-struct X509_info_st {
-  X509 *x509;
-  X509_CRL *crl;
-  X509_PKEY *x_pkey;
-
-  EVP_CIPHER_INFO enc_cipher;
-  int enc_len;
-  char *enc_data;
-} /* X509_INFO */;
-
-DEFINE_STACK_OF(X509_INFO)
-
-// X509_INFO_free releases memory associated with |info|.
-OPENSSL_EXPORT void X509_INFO_free(X509_INFO *info);
-
+// PEM_X509_INFO_read_bio reads PEM blocks from |bp| and decodes any
+// certificates, CRLs, and private keys found. It returns a
+// |STACK_OF(X509_INFO)| structure containing the results, or NULL on error.
+//
+// If |sk| is NULL, the result on success will be a newly-allocated
+// |STACK_OF(X509_INFO)| structure which should be released with
+// |sk_X509_INFO_pop_free| and |X509_INFO_free| when done.
+//
+// If |sk| is non-NULL, it appends the results to |sk| instead and returns |sk|
+// on success. In this case, the caller retains ownership of |sk| in both
+// success and failure.
 OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(
     BIO *bp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb, void *u);
+
+// PEM_X509_INFO_read behaves like |PEM_X509_INFO_read_bio| but reads from a
+// |FILE|.
+OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read(FILE *fp,
+                                                       STACK_OF(X509_INFO) *sk,
+                                                       pem_password_cb *cb,
+                                                       void *u);
 
 OPENSSL_EXPORT int PEM_read(FILE *fp, char **name, char **header,
                             unsigned char **data, long *len);
@@ -379,10 +378,6 @@ OPENSSL_EXPORT int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp,
                                   void *x, const EVP_CIPHER *enc,
                                   unsigned char *kstr, int klen,
                                   pem_password_cb *callback, void *u);
-OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read(FILE *fp,
-                                                       STACK_OF(X509_INFO) *sk,
-                                                       pem_password_cb *cb,
-                                                       void *u);
 
 // PEM_def_callback treats |userdata| as a string and copies it into |buf|,
 // assuming its |size| is sufficient. Returns the length of the string, or 0
@@ -474,17 +469,6 @@ OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey(FILE *fp, const EVP_PKEY *x,
 
 #ifdef __cplusplus
 }  // extern "C"
-
-#if !defined(BORINGSSL_NO_CXX)
-extern "C++" {
-BSSL_NAMESPACE_BEGIN
-
-BORINGSSL_MAKE_DELETER(X509_INFO, X509_INFO_free)
-
-BSSL_NAMESPACE_END
-}  // extern "C++"
-#endif  // !BORINGSSL_NO_CXX
-
 #endif
 
 #define PEM_R_BAD_BASE64_DECODE 100
