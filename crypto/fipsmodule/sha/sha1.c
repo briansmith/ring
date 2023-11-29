@@ -134,12 +134,11 @@ void CRYPTO_fips_186_2_prf(uint8_t *out, size_t out_len,
     SHA1_Transform(&ctx, block);
 
     // XKEY = (1 + XKEY + w_i) mod 2^b
-    uint64_t carry = 1;
+    uint32_t carry = 1;
     for (int i = 4; i >= 0; i--) {
-      carry += CRYPTO_load_u32_be(block + i * 4);
-      carry += ctx.h[i];
-      CRYPTO_store_u32_be(block + i * 4, (uint32_t)carry);
-      carry >>= 32;
+      uint32_t tmp = CRYPTO_load_u32_be(block + i * 4);
+      tmp = CRYPTO_addc_u32(tmp, ctx.h[i], carry, &carry);
+      CRYPTO_store_u32_be(block + i * 4, tmp);
     }
 
     // Output w_i.

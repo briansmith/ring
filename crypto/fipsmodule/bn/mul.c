@@ -143,17 +143,13 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
     // in |a| were zeros.
     dl = -dl;
     for (int i = 0; i < dl; i++) {
-      r[i] = 0u - b[i] - borrow;
-      borrow |= r[i] != 0;
+      r[i] = CRYPTO_subc_w(0, b[i], borrow, &borrow);
     }
   } else {
     // |b| is shorter than |a|. Complete the subtraction as if the excess words
     // in |b| were zeros.
     for (int i = 0; i < dl; i++) {
-      // |r| and |a| may alias, so use a temporary.
-      BN_ULONG tmp = a[i];
-      r[i] = a[i] - borrow;
-      borrow = tmp < r[i];
+      r[i] = CRYPTO_subc_w(a[i], 0, borrow, &borrow);
     }
   }
 
