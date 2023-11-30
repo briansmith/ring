@@ -1,7 +1,7 @@
 # BoringSSL API Conventions
 
 This document describes conventions for BoringSSL APIs. The [style
-guide](/STYLE.md) also includes guidelines, but this document is targeted at
+guide](./STYLE.md) also includes guidelines, but this document is targeted at
 both API consumers and developers.
 
 

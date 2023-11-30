@@ -21,7 +21,7 @@ would be a sandbox escape.
 
 This document attempts to describe these baseline OS dependencies and long-lived
 internal resources. These dependencies may change over time, but we aim to
-[work with sandboxed consumers](/BREAKING-CHANGES.md) when they do. However,
+[work with sandboxed consumers](./BREAKING-CHANGES.md) when they do. However,
 each sandbox imposes different constraints, so, above all, sandboxed consumers
 must have ample test coverage to detect issues as they arise.
 
