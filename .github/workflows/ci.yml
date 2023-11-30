@@ -12,14 +12,12 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: rustfmt
+      - run: rustup --version
+
       - uses: briansmith/actions-checkout@v2
         with:
           persist-credentials: false
+
       - run: cargo fmt --all -- --check
 
   clippy:
@@ -29,11 +27,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: clippy
+      - run: rustup --version
 
       - uses: briansmith/actions-checkout@v2
         with:
@@ -48,10 +42,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
+      - run: rustup --version
 
       - uses: briansmith/actions-cache@v2
         with:
@@ -79,10 +70,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
+      - run: rustup --version
 
       - uses: briansmith/actions-cache@v2
         with:
@@ -107,22 +95,8 @@ jobs:
 
     runs-on: ubuntu-22.04
 
-    strategy:
-      matrix:
-        rust_channel:
-          - stable
-          - beta
-          - nightly
-
-        include:
-          - target: x86_64-unknown-linux-gnu
-
     steps:
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          override: true
-          target: ${{ matrix.target }}
-          toolchain: ${{ matrix.rust_channel }}
+      - run: rustup --version
 
       - uses: briansmith/actions-checkout@v2
         with:
@@ -144,10 +118,7 @@ jobs:
 
       - run: ./mk/install-build-tools.ps1
 
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
+      - run: rustup --version
 
       - run: echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
         shell: bash
@@ -340,10 +311,7 @@ jobs:
 
       - run: mk/install-build-tools.sh --target=x86_64-unknown-linux-gnu
 
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          override: true
-          toolchain: stable
+      - run: rustup --version
 
       - run: cargo test -p ring-bench --all-features --all-targets
 
