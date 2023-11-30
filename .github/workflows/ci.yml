@@ -252,17 +252,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }}
+      - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
+
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: ./mk/install-build-tools.ps1
-
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          override: true
-          target: ${{ matrix.target }}
-          toolchain: ${{ matrix.rust_channel }}
 
       - if: ${{ matrix.target == 'aarch64-pc-windows-msvc' }}
         run: |
@@ -272,17 +269,17 @@ jobs:
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
-          mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: |
-          cargo test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          cargo +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       # --all-targets doesn't run doctests: https://github.com/rust-lang/cargo/issues/6669
       # Run doctests only on x86_64 to avoid cross-compilation hassles with `--no-run`.
       - if: ${{ !contains(matrix.host_os, 'windows') && contains(matrix.target, 'x86_64') }}
         run: |
-          mk/cargo.sh test -vv --doc --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          mk/cargo.sh +${{ matrix.rust_channel }} test -vv --doc --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
@@ -361,17 +358,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }}
+      - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
+
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: ./mk/install-build-tools.ps1
-
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          override: true
-          target: ${{ matrix.target }}
-          toolchain: ${{ matrix.rust_channel }}
 
       - if: ${{ matrix.target == 'aarch64-pc-windows-msvc' }}
         run: |
@@ -380,17 +374,17 @@ jobs:
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
-          mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: |
-          cargo test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          cargo +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       # --all-targets doesn't run doctests: https://github.com/rust-lang/cargo/issues/6669
       # Run doctests only on x86_64 to avoid cross-compilation hassles with `--no-run`.
       - if: ${{ !contains(matrix.host_os, 'windows') && contains(matrix.target, 'x86_64') }}
         run: |
-          mk/cargo.sh test -vv --doc --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          mk/cargo.sh +${{ matrix.rust_channel }} test -vv --doc --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
@@ -445,18 +439,15 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: cargo generate-lockfile
+      - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }}
+      - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
+
+      - run: cargo +${{ matrix.rust_channel }} generate-lockfile
 
       - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          override: true
-          target: ${{ matrix.target }}
-          toolchain: ${{ matrix.rust_channel }}
-
       - run: |
-          ${{ matrix.webdriver }} mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
+          ${{ matrix.webdriver }} mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
@@ -537,14 +528,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }}
+      - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
+
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: RING_COVERAGE=1 mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
-
-      - uses: briansmith/actions-rs-toolchain@v1
-        with:
-          override: true
-          target: ${{ matrix.target }}
-          toolchain: ${{ matrix.rust_channel }}
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
