@@ -217,7 +217,7 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
   bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
              uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     Array<uint8_t> secret;
-    if (!secret.Init(32 + 32)) {
+    if (!secret.Init(32 + KYBER_SHARED_SECRET_BYTES)) {
       return false;
     }
 
@@ -241,8 +241,7 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
     }
 
     uint8_t kyber_ciphertext[KYBER_CIPHERTEXT_BYTES];
-    KYBER_encap(kyber_ciphertext, secret.data() + 32, secret.size() - 32,
-                &peer_kyber_pub);
+    KYBER_encap(kyber_ciphertext, secret.data() + 32, &peer_kyber_pub);
 
     if (!CBB_add_bytes(out_ciphertext, x25519_public_key,
                        sizeof(x25519_public_key)) ||
@@ -260,7 +259,7 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
     *out_alert = SSL_AD_INTERNAL_ERROR;
 
     Array<uint8_t> secret;
-    if (!secret.Init(32 + 32)) {
+    if (!secret.Init(32 + KYBER_SHARED_SECRET_BYTES)) {
       return false;
     }
 
@@ -271,7 +270,7 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
       return false;
     }
 
-    KYBER_decap(secret.data() + 32, secret.size() - 32, ciphertext.data() + 32,
+    KYBER_decap(secret.data() + 32, ciphertext.data() + 32,
                 &kyber_private_key_);
     *out_secret = std::move(secret);
     return true;

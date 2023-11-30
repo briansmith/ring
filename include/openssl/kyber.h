@@ -23,6 +23,9 @@ extern "C" {
 
 
 // Kyber768.
+//
+// This implements the round-3 specification of Kyber, defined at
+// https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
 
 
 // KYBER_public_key contains a Kyber768 public key. The contents of this
@@ -47,6 +50,12 @@ struct KYBER_private_key {
 // key.
 #define KYBER_PUBLIC_KEY_BYTES 1184
 
+// KYBER_SHARED_SECRET_BYTES is the number of bytes in the Kyber768 shared
+// secret. Although the round-3 specification has a variable-length output, the
+// final ML-KEM construction is expected to use a fixed 32-byte output. To
+// simplify the future transition, we apply the same restriction.
+#define KYBER_SHARED_SECRET_BYTES 32
+
 // KYBER_generate_key generates a random public/private key pair, writes the
 // encoded public key to |out_encoded_public_key| and sets |out_private_key| to
 // the private key.
@@ -65,25 +74,24 @@ OPENSSL_EXPORT void KYBER_public_from_private(
 // KYBER_CIPHERTEXT_BYTES is number of bytes in the Kyber768 ciphertext.
 #define KYBER_CIPHERTEXT_BYTES 1088
 
-// KYBER_encap encrypts a random secret key of length |out_shared_secret_len| to
-// |public_key|, writes the ciphertext to |ciphertext|, and writes the random
-// key to |out_shared_secret|. The party calling |KYBER_decap| must already know
-// the correct value of |out_shared_secret_len|.
-OPENSSL_EXPORT void KYBER_encap(uint8_t out_ciphertext[KYBER_CIPHERTEXT_BYTES],
-                                uint8_t *out_shared_secret,
-                                size_t out_shared_secret_len,
-                                const struct KYBER_public_key *public_key);
+// KYBER_encap encrypts a random shared secret for |public_key|, writes the
+// ciphertext to |out_ciphertext|, and writes the random shared secret to
+// |out_shared_secret|.
+OPENSSL_EXPORT void KYBER_encap(
+    uint8_t out_ciphertext[KYBER_CIPHERTEXT_BYTES],
+    uint8_t out_shared_secret[KYBER_SHARED_SECRET_BYTES],
+    const struct KYBER_public_key *public_key);
 
-// KYBER_decap decrypts a key of length |out_shared_secret_len| from
-// |ciphertext| using |private_key| and writes it to |out_shared_secret|. If
-// |ciphertext| is invalid, |out_shared_secret| is filled with a key that
-// will always be the same for the same |ciphertext| and |private_key|, but
-// which appears to be random unless one has access to |private_key|. These
-// alternatives occur in constant time. Any subsequent symmetric encryption
-// using |out_shared_secret| must use an authenticated encryption scheme in
-// order to discover the decapsulation failure.
+// KYBER_decap decrypts a shared secret from |ciphertext| using |private_key|
+// and writes it to |out_shared_secret|. If |ciphertext| is invalid,
+// |out_shared_secret| is filled with a key that will always be the same for the
+// same |ciphertext| and |private_key|, but which appears to be random unless
+// one has access to |private_key|. These alternatives occur in constant time.
+// Any subsequent symmetric encryption using |out_shared_secret| must use an
+// authenticated encryption scheme in order to discover the decapsulation
+// failure.
 OPENSSL_EXPORT void KYBER_decap(
-    uint8_t *out_shared_secret, size_t out_shared_secret_len,
+    uint8_t *out_shared_secret,
     const uint8_t ciphertext[KYBER_CIPHERTEXT_BYTES],
     const struct KYBER_private_key *private_key);
 

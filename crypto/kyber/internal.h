@@ -42,15 +42,15 @@ OPENSSL_EXPORT void KYBER_generate_key_external_entropy(
     struct KYBER_private_key *out_private_key,
     const uint8_t entropy[KYBER_GENERATE_KEY_ENTROPY]);
 
-// KYBER_encap_external_entropy is a deterministic function to encapsulate
-// |out_shared_secret_len| bytes of |out_shared_secret| to |ciphertext|, using
-// |KYBER_ENCAP_ENTROPY| bytes of |entropy| for randomization. The
-// decapsulating side will be able to recover |entropy| in full. This
-// function is should only be used for tests, regular callers should use the
-// non-deterministic |KYBER_encap| directly.
+// KYBER_encap_external_entropy behaves like |KYBER_encap|, but uses
+// |KYBER_ENCAP_ENTROPY| bytes of |entropy| for randomization. The decapsulating
+// side will be able to recover |entropy| in full. This function should only be
+// used for tests, regular callers should use the non-deterministic
+// |KYBER_encap| directly.
 OPENSSL_EXPORT void KYBER_encap_external_entropy(
-    uint8_t out_ciphertext[KYBER_CIPHERTEXT_BYTES], uint8_t *out_shared_secret,
-    size_t out_shared_secret_len, const struct KYBER_public_key *public_key,
+    uint8_t out_ciphertext[KYBER_CIPHERTEXT_BYTES],
+    uint8_t out_shared_secret[KYBER_SHARED_SECRET_BYTES],
+    const struct KYBER_public_key *public_key,
     const uint8_t entropy[KYBER_ENCAP_ENTROPY]);
 
 #if defined(__cplusplus)
