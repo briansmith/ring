@@ -99,41 +99,43 @@ fn seal_in_place_separate_tag(c: &mut Criterion) {
 fn open_in_place(c: &mut Criterion) {
     let rng = SystemRandom::new();
 
-    for ((alg_name, algorithm), record_len) in ALGORITHMS.iter().zip(RECORD_LENGTHS.iter()) {
-        c.bench_with_input(
-            bench_id("open_in_place", alg_name, *record_len),
-            record_len,
-            |b, _record_len| {
-                let mut key_bytes = vec![0u8; algorithm.key_len()];
-                rng.fill(&mut key_bytes).unwrap();
-                let unbound_key = aead::UnboundKey::new(algorithm, &key_bytes).unwrap();
-                let key = aead::LessSafeKey::new(unbound_key);
+    for &(alg_name, algorithm) in ALGORITHMS {
+        for record_len in RECORD_LENGTHS {
+            c.bench_with_input(
+                bench_id("open_in_place", alg_name, *record_len),
+                record_len,
+                |b, _record_len| {
+                    let mut key_bytes = vec![0u8; algorithm.key_len()];
+                    rng.fill(&mut key_bytes).unwrap();
+                    let unbound_key = aead::UnboundKey::new(algorithm, &key_bytes).unwrap();
+                    let key = aead::LessSafeKey::new(unbound_key);
 
-                let ciphertext = {
-                    let nonce = aead::Nonce::assume_unique_for_key(NONCE);
-                    let aad = aead::Aad::from(&TLS_AD);
-                    let mut in_out = vec![0u8; *record_len];
-                    key.seal_in_place_append_tag(nonce, aad, &mut in_out)
-                        .unwrap();
-                    in_out
-                };
-                let num_batches = (core::cmp::max(1, 8192 / ciphertext.len()) * 10) as u64;
-
-                b.iter_batched(
-                    || ciphertext.clone(),
-                    |mut ciphertext| -> Result<(), ring::error::Unspecified> {
-                        // Optimizes out
+                    let ciphertext = {
                         let nonce = aead::Nonce::assume_unique_for_key(NONCE);
+                        let aad = aead::Aad::from(&TLS_AD);
+                        let mut in_out = vec![0u8; *record_len];
+                        key.seal_in_place_append_tag(nonce, aad, &mut in_out)
+                            .unwrap();
+                        in_out
+                    };
+                    let num_batches = (core::cmp::max(1, 8192 / ciphertext.len()) * 10) as u64;
 
-                        let aad = aead::Aad::from(black_box(&TLS_AD));
-                        let _result = key.open_in_place(nonce, aad, &mut ciphertext)?;
+                    b.iter_batched(
+                        || ciphertext.clone(),
+                        |mut ciphertext| -> Result<(), ring::error::Unspecified> {
+                            // Optimizes out
+                            let nonce = aead::Nonce::assume_unique_for_key(NONCE);
 
-                        Ok(())
-                    },
-                    BatchSize::NumBatches(num_batches),
-                )
-            },
-        );
+                            let aad = aead::Aad::from(black_box(&TLS_AD));
+                            let _result = key.open_in_place(nonce, aad, &mut ciphertext)?;
+
+                            Ok(())
+                        },
+                        BatchSize::NumBatches(num_batches),
+                    )
+                },
+            );
+        }
     }
 }
 
