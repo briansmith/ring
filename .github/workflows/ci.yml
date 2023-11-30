@@ -44,7 +44,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-cache@v2
+      - uses: briansmith/actions-cache@v3
         with:
           path: |
             ~/.cargo/bin/cargo-audit
@@ -72,7 +72,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-cache@v2
+      - uses: briansmith/actions-cache@v3
         with:
           path: |
             ~/.cargo/bin/cargo-deny
