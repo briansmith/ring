@@ -3429,11 +3429,6 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip_asc(X509_VERIFY_PARAM *param,
 
 OPENSSL_EXPORT int X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *param);
 
-// X509_VERIFY_PARAM_lookup returns a pre-defined |X509_VERIFY_PARAM| named by
-// |name|, or NULL if no such name is defined.
-OPENSSL_EXPORT const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(
-    const char *name);
-
 // Forward reference
 struct v3_ext_method;
 struct v3_ext_ctx;

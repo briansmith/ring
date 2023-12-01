@@ -564,6 +564,10 @@ STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line);
 OPENSSL_EXPORT int GENERAL_NAME_cmp(const GENERAL_NAME *a,
                                     const GENERAL_NAME *b);
 
+// X509_VERIFY_PARAM_lookup returns a pre-defined |X509_VERIFY_PARAM| named by
+// |name|, or NULL if no such name is defined.
+const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name);
+
 
 #if defined(__cplusplus)
 }  // extern C
