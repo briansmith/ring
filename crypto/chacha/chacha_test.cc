@@ -359,6 +359,21 @@ static void check_abi(uint8_t *out, const uint8_t *in, size_t in_len,
     CHECK_ABI(ChaCha20_ctr32_neon, out, in, in_len, key, counter);
   }
 #endif
+#if defined(CHACHA20_ASM_AVX2)
+  if (ChaCha20_ctr32_avx2_capable(in_len)) {
+    CHECK_ABI(ChaCha20_ctr32_avx2, out, in, in_len, key, counter);
+  }
+#endif
+#if defined(CHACHA20_ASM_SSSE3_4X)
+  if (ChaCha20_ctr32_ssse3_4x_capable(in_len)) {
+    CHECK_ABI(ChaCha20_ctr32_ssse3_4x, out, in, in_len, key, counter);
+  }
+#endif
+#if defined(CHACHA20_ASM_SSSE3)
+  if (ChaCha20_ctr32_ssse3_capable(in_len)) {
+    CHECK_ABI(ChaCha20_ctr32_ssse3, out, in, in_len, key, counter);
+  }
+#endif
 #if defined(CHACHA20_ASM_NOHW)
   if (in_len > 0) {
     CHECK_ABI(ChaCha20_ctr32_nohw, out, in, in_len, key, counter);
