@@ -22,6 +22,16 @@ pub(crate) struct Feature {
     mask: u32,
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub(super) unsafe fn init_global_shared_with_assembly() {
+    prefixed_extern! {
+        fn OPENSSL_cpuid_setup();
+    }
+    unsafe {
+        OPENSSL_cpuid_setup();
+    }
+}
+
 impl Feature {
     #[allow(clippy::needless_return)]
     #[inline(always)]

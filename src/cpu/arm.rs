@@ -269,7 +269,7 @@ features! {
 //   `INIT`.
 // - See the safety invariants of `OPENSSL_armcap_P` below.
 #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
-pub unsafe fn initialize_OPENSSL_armcap_P() {
+pub unsafe fn init_global_shared_with_assembly() {
     let detected = detect_features();
     let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
         AES.mask | SHA256.mask | PMULL.mask
