@@ -91,7 +91,7 @@ OPENSSL_EXPORT void KYBER_encap(
 // authenticated encryption scheme in order to discover the decapsulation
 // failure.
 OPENSSL_EXPORT void KYBER_decap(
-    uint8_t *out_shared_secret,
+    uint8_t out_shared_secret[KYBER_SHARED_SECRET_BYTES],
     const uint8_t ciphertext[KYBER_CIPHERTEXT_BYTES],
     const struct KYBER_private_key *private_key);
 
