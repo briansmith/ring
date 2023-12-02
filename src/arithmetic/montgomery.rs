@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+pub use super::n0::N0;
+
 // Indicates that the element is not encoded; there is no *R* factor
 // that needs to be canceled out.
 #[derive(Copy, Clone)]
@@ -107,10 +109,7 @@ impl ProductEncoding for (RRR, RInverse) {
 }
 
 #[allow(unused_imports)]
-use {
-    super::n0::N0,
-    crate::{bssl, c, limb::Limb},
-};
+use crate::{bssl, c, limb::Limb};
 
 #[cfg(not(any(
     target_arch = "aarch64",

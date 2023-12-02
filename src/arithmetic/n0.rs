@@ -16,16 +16,14 @@ use crate::limb::Limb;
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-pub(in super::super) struct N0([Limb; 2]);
+pub struct N0([Limb; 2]);
 
 impl N0 {
     #[cfg(feature = "alloc")]
     pub(super) const LIMBS_USED: usize = 64 / crate::limb::LIMB_BITS;
-}
 
-impl From<u64> for N0 {
     #[inline]
-    fn from(n0: u64) -> Self {
+    pub const fn precalculated(n0: u64) -> Self {
         #[cfg(target_pointer_width = "64")]
         {
             Self([n0, 0])

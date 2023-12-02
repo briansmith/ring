@@ -41,7 +41,6 @@ pub(crate) use self::{
     modulus::{Modulus, OwnedModulus, MODULUS_MAX_LIMBS},
     private_exponent::PrivateExponent,
 };
-use super::n0::N0;
 use crate::{
     arithmetic::montgomery::*,
     bits::BitLength,

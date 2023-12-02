@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{super::n0::N0, BoxedLimbs, Elem, PublicModulus, Unencoded};
+use super::{BoxedLimbs, Elem, PublicModulus, Unencoded, N0};
 use crate::{
     bits::BitLength,
     cpu, error,
@@ -126,7 +126,7 @@ impl<M> OwnedModulus<M> {
                 debug_assert_eq!(LIMB_BITS, 32);
                 n_mod_r |= u64::from(n[1]) << 32;
             }
-            N0::from(unsafe { bn_neg_inv_mod_r_u64(n_mod_r) })
+            N0::precalculated(unsafe { bn_neg_inv_mod_r_u64(n_mod_r) })
         };
 
         let len_bits = limb::limbs_minimal_bits(&n);
