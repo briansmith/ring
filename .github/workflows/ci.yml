@@ -175,12 +175,12 @@ jobs:
 
         include:
           - target: aarch64-apple-darwin
-            host_os: macos-12
+            host_os: macos-13
             # GitHub Actions doesn't have a way to run this target yet.
             cargo_options: --no-run
 
           - target: aarch64-apple-ios
-            host_os: macos-12
+            host_os: macos-13
             # GitHub Actions doesn't have a way to run this target yet.
             cargo_options: --no-run
 
@@ -236,7 +236,7 @@ jobs:
             host_os: windows-latest
 
           - target: x86_64-apple-darwin
-            host_os: macos-12
+            host_os: macos-13
 
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-22.04
