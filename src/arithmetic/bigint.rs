@@ -44,7 +44,7 @@ pub(crate) use self::{
 use crate::{
     arithmetic::montgomery::*,
     bits::BitLength,
-    c, cpu, error,
+    c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS},
 };
 use alloc::vec;
@@ -491,7 +491,7 @@ pub fn elem_exp_consttime<M>(
     exponent: &PrivateExponent,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    use crate::limb::LIMB_BYTES;
+    use crate::{cpu, limb::LIMB_BYTES};
 
     // Pretty much all the math here requires CPU feature detection to have
     // been done. `cpu_features` isn't threaded through all the internal
@@ -701,67 +701,10 @@ pub fn elem_verify_equal_consttime<M, E>(
     }
 }
 
-/// r *= a
-fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0, _cpu_features: cpu::Features) {
-    debug_assert_eq!(r.len(), m.len());
-    debug_assert_eq!(a.len(), m.len());
-    unsafe {
-        bn_mul_mont(
-            r.as_mut_ptr(),
-            r.as_ptr(),
-            a.as_ptr(),
-            m.as_ptr(),
-            n0,
-            r.len(),
-        )
-    }
-}
-
-/// r = a * b
-#[cfg(not(target_arch = "x86_64"))]
-fn limbs_mont_product(
-    r: &mut [Limb],
-    a: &[Limb],
-    b: &[Limb],
-    m: &[Limb],
-    n0: &N0,
-    _cpu_features: cpu::Features,
-) {
-    debug_assert_eq!(r.len(), m.len());
-    debug_assert_eq!(a.len(), m.len());
-    debug_assert_eq!(b.len(), m.len());
-
-    unsafe {
-        bn_mul_mont(
-            r.as_mut_ptr(),
-            a.as_ptr(),
-            b.as_ptr(),
-            m.as_ptr(),
-            n0,
-            r.len(),
-        )
-    }
-}
-
-/// r = r**2
-fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0, _cpu_features: cpu::Features) {
-    debug_assert_eq!(r.len(), m.len());
-    unsafe {
-        bn_mul_mont(
-            r.as_mut_ptr(),
-            r.as_ptr(),
-            r.as_ptr(),
-            m.as_ptr(),
-            n0,
-            r.len(),
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test;
+    use crate::{cpu, test};
 
     // Type-level representation of an arbitrary modulus.
     struct M {}
