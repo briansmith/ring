@@ -94,9 +94,6 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
 static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca);
 static int ocsp_helper(const X509_PURPOSE *xp, const X509 *x, int ca);
 
-static int xp_cmp(const X509_PURPOSE *const *a, const X509_PURPOSE *const *b);
-static void xptable_free(X509_PURPOSE *p);
-
 static X509_PURPOSE xstandard[] = {
     {X509_PURPOSE_SSL_CLIENT, X509_TRUST_SSL_CLIENT, 0,
      check_purpose_ssl_client, (char *)"SSL client", (char *)"sslclient", NULL},
@@ -120,14 +117,6 @@ static X509_PURPOSE xstandard[] = {
      check_purpose_timestamp_sign, (char *)"Time Stamp signing",
      (char *)"timestampsign", NULL},
 };
-
-#define X509_PURPOSE_COUNT (sizeof(xstandard) / sizeof(X509_PURPOSE))
-
-static STACK_OF(X509_PURPOSE) *xptable = NULL;
-
-static int xp_cmp(const X509_PURPOSE *const *a, const X509_PURPOSE *const *b) {
-  return (*a)->purpose - (*b)->purpose;
-}
 
 // As much as I'd like to make X509_check_purpose use a "const" X509* I
 // really can't because it does recalculate hashes and do other non-const
@@ -159,21 +148,13 @@ int X509_PURPOSE_set(int *p, int purpose) {
   return 1;
 }
 
-int X509_PURPOSE_get_count(void) {
-  if (!xptable) {
-    return X509_PURPOSE_COUNT;
-  }
-  return sk_X509_PURPOSE_num(xptable) + X509_PURPOSE_COUNT;
-}
+int X509_PURPOSE_get_count(void) { return OPENSSL_ARRAY_SIZE(xstandard); }
 
 X509_PURPOSE *X509_PURPOSE_get0(int idx) {
-  if (idx < 0) {
+  if (idx < 0 || (size_t)idx >= OPENSSL_ARRAY_SIZE(xstandard)) {
     return NULL;
   }
-  if (idx < (int)X509_PURPOSE_COUNT) {
-    return xstandard + idx;
-  }
-  return sk_X509_PURPOSE_value(xptable, idx - X509_PURPOSE_COUNT);
+  return xstandard + idx;
 }
 
 int X509_PURPOSE_get_by_sname(const char *sname) {
@@ -188,118 +169,10 @@ int X509_PURPOSE_get_by_sname(const char *sname) {
 }
 
 int X509_PURPOSE_get_by_id(int purpose) {
-  X509_PURPOSE tmp;
-  size_t idx;
-
-  if ((purpose >= X509_PURPOSE_MIN) && (purpose <= X509_PURPOSE_MAX)) {
+  if (purpose >= X509_PURPOSE_MIN && purpose <= X509_PURPOSE_MAX) {
     return purpose - X509_PURPOSE_MIN;
   }
-  tmp.purpose = purpose;
-  if (!xptable) {
-    return -1;
-  }
-
-  if (!sk_X509_PURPOSE_find(xptable, &idx, &tmp)) {
-    return -1;
-  }
-  return idx + X509_PURPOSE_COUNT;
-}
-
-int X509_PURPOSE_add(int id, int trust, int flags,
-                     int (*ck)(const X509_PURPOSE *, const X509 *, int),
-                     const char *name, const char *sname, void *arg) {
-  X509_PURPOSE *ptmp;
-  char *name_dup, *sname_dup;
-
-  // This is set according to what we change: application can't set it
-  flags &= ~X509_PURPOSE_DYNAMIC;
-  // This will always be set for application modified trust entries
-  flags |= X509_PURPOSE_DYNAMIC_NAME;
-  // Get existing entry if any
-  int idx = X509_PURPOSE_get_by_id(id);
-  // Need a new entry
-  if (idx == -1) {
-    if (!(ptmp = OPENSSL_malloc(sizeof(X509_PURPOSE)))) {
-      return 0;
-    }
-    ptmp->flags = X509_PURPOSE_DYNAMIC;
-  } else {
-    ptmp = X509_PURPOSE_get0(idx);
-  }
-
-  // Duplicate the supplied names.
-  name_dup = OPENSSL_strdup(name);
-  sname_dup = OPENSSL_strdup(sname);
-  if (name_dup == NULL || sname_dup == NULL) {
-    if (name_dup != NULL) {
-      OPENSSL_free(name_dup);
-    }
-    if (sname_dup != NULL) {
-      OPENSSL_free(sname_dup);
-    }
-    if (idx == -1) {
-      OPENSSL_free(ptmp);
-    }
-    return 0;
-  }
-
-  // OPENSSL_free existing name if dynamic
-  if (ptmp->flags & X509_PURPOSE_DYNAMIC_NAME) {
-    OPENSSL_free(ptmp->name);
-    OPENSSL_free(ptmp->sname);
-  }
-  // dup supplied name
-  ptmp->name = name_dup;
-  ptmp->sname = sname_dup;
-  // Keep the dynamic flag of existing entry
-  ptmp->flags &= X509_PURPOSE_DYNAMIC;
-  // Set all other flags
-  ptmp->flags |= flags;
-
-  ptmp->purpose = id;
-  ptmp->trust = trust;
-  ptmp->check_purpose = ck;
-  ptmp->usr_data = arg;
-
-  // If its a new entry manage the dynamic table
-  if (idx == -1) {
-    // TODO(davidben): This should be locked. Alternatively, remove the dynamic
-    // registration mechanism entirely. The trouble is there no way to pass in
-    // the various parameters into an |X509_VERIFY_PARAM| directly. You can only
-    // register it in the global table and get an ID.
-    if (!xptable && !(xptable = sk_X509_PURPOSE_new(xp_cmp))) {
-      xptable_free(ptmp);
-      return 0;
-    }
-    if (!sk_X509_PURPOSE_push(xptable, ptmp)) {
-      xptable_free(ptmp);
-      return 0;
-    }
-    sk_X509_PURPOSE_sort(xptable);
-  }
-  return 1;
-}
-
-static void xptable_free(X509_PURPOSE *p) {
-  if (!p) {
-    return;
-  }
-  if (p->flags & X509_PURPOSE_DYNAMIC) {
-    if (p->flags & X509_PURPOSE_DYNAMIC_NAME) {
-      OPENSSL_free(p->name);
-      OPENSSL_free(p->sname);
-    }
-    OPENSSL_free(p);
-  }
-}
-
-void X509_PURPOSE_cleanup(void) {
-  unsigned int i;
-  sk_X509_PURPOSE_pop_free(xptable, xptable_free);
-  for (i = 0; i < X509_PURPOSE_COUNT; i++) {
-    xptable_free(xstandard + i);
-  }
-  xptable = NULL;
+  return -1;
 }
 
 int X509_PURPOSE_get_id(const X509_PURPOSE *xp) { return xp->purpose; }

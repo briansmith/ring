@@ -59,11 +59,9 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
+#include "../internal.h"
 #include "internal.h"
 
-
-static int tr_cmp(const X509_TRUST *const *a, const X509_TRUST *const *b);
-static void trtable_free(X509_TRUST *p);
 
 static int trust_1oidany(X509_TRUST *trust, X509 *x, int flags);
 static int trust_1oid(X509_TRUST *trust, X509 *x, int flags);
@@ -92,14 +90,6 @@ static X509_TRUST trstandard[] = {
     {X509_TRUST_TSA, 0, trust_1oidany, (char *)"TSA server", NID_time_stamp,
      NULL}};
 
-#define X509_TRUST_COUNT (sizeof(trstandard) / sizeof(X509_TRUST))
-
-static STACK_OF(X509_TRUST) *trtable = NULL;
-
-static int tr_cmp(const X509_TRUST *const *a, const X509_TRUST *const *b) {
-  return (*a)->trust - (*b)->trust;
-}
-
 int X509_check_trust(X509 *x, int id, int flags) {
   X509_TRUST *pt;
   int idx;
@@ -123,38 +113,20 @@ int X509_check_trust(X509 *x, int id, int flags) {
   return pt->check_trust(pt, x, flags);
 }
 
-int X509_TRUST_get_count(void) {
-  if (!trtable) {
-    return X509_TRUST_COUNT;
-  }
-  return sk_X509_TRUST_num(trtable) + X509_TRUST_COUNT;
-}
+int X509_TRUST_get_count(void) { return OPENSSL_ARRAY_SIZE(trstandard); }
 
 X509_TRUST *X509_TRUST_get0(int idx) {
-  if (idx < 0) {
+  if (idx < 0 || (size_t)idx >= OPENSSL_ARRAY_SIZE(trstandard)) {
     return NULL;
   }
-  if (idx < (int)X509_TRUST_COUNT) {
-    return trstandard + idx;
-  }
-  return sk_X509_TRUST_value(trtable, idx - X509_TRUST_COUNT);
+  return trstandard + idx;
 }
 
 int X509_TRUST_get_by_id(int id) {
-  X509_TRUST tmp;
-  size_t idx;
-
-  if ((id >= X509_TRUST_MIN) && (id <= X509_TRUST_MAX)) {
+  if (id >= X509_TRUST_MIN && id <= X509_TRUST_MAX) {
     return id - X509_TRUST_MIN;
   }
-  tmp.trust = id;
-  if (!trtable) {
-    return -1;
-  }
-  if (!sk_X509_TRUST_find(trtable, &idx, &tmp)) {
-    return -1;
-  }
-  return idx + X509_TRUST_COUNT;
+  return -1;
 }
 
 int X509_TRUST_set(int *t, int trust) {
@@ -164,92 +136,6 @@ int X509_TRUST_set(int *t, int trust) {
   }
   *t = trust;
   return 1;
-}
-
-int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
-                   const char *name, int arg1, void *arg2) {
-  int idx;
-  X509_TRUST *trtmp;
-  char *name_dup;
-
-  // This is set according to what we change: application can't set it
-  flags &= ~X509_TRUST_DYNAMIC;
-  // This will always be set for application modified trust entries
-  flags |= X509_TRUST_DYNAMIC_NAME;
-  // Get existing entry if any
-  idx = X509_TRUST_get_by_id(id);
-  // Need a new entry
-  if (idx == -1) {
-    if (!(trtmp = OPENSSL_malloc(sizeof(X509_TRUST)))) {
-      return 0;
-    }
-    trtmp->flags = X509_TRUST_DYNAMIC;
-  } else {
-    trtmp = X509_TRUST_get0(idx);
-  }
-
-  // Duplicate the supplied name.
-  name_dup = OPENSSL_strdup(name);
-  if (name_dup == NULL) {
-    if (idx == -1) {
-      OPENSSL_free(trtmp);
-    }
-    return 0;
-  }
-
-  // OPENSSL_free existing name if dynamic
-  if (trtmp->flags & X509_TRUST_DYNAMIC_NAME) {
-    OPENSSL_free(trtmp->name);
-  }
-  trtmp->name = name_dup;
-  // Keep the dynamic flag of existing entry
-  trtmp->flags &= X509_TRUST_DYNAMIC;
-  // Set all other flags
-  trtmp->flags |= flags;
-
-  trtmp->trust = id;
-  trtmp->check_trust = ck;
-  trtmp->arg1 = arg1;
-  trtmp->arg2 = arg2;
-
-  // If its a new entry manage the dynamic table
-  if (idx == -1) {
-    // TODO(davidben): This should be locked. Alternatively, remove the dynamic
-    // registration mechanism entirely. The trouble is there no way to pass in
-    // the various parameters into an |X509_VERIFY_PARAM| directly. You can only
-    // register it in the global table and get an ID.
-    if (!trtable && !(trtable = sk_X509_TRUST_new(tr_cmp))) {
-      trtable_free(trtmp);
-      return 0;
-    }
-    if (!sk_X509_TRUST_push(trtable, trtmp)) {
-      trtable_free(trtmp);
-      return 0;
-    }
-    sk_X509_TRUST_sort(trtable);
-  }
-  return 1;
-}
-
-static void trtable_free(X509_TRUST *p) {
-  if (!p) {
-    return;
-  }
-  if (p->flags & X509_TRUST_DYNAMIC) {
-    if (p->flags & X509_TRUST_DYNAMIC_NAME) {
-      OPENSSL_free(p->name);
-    }
-    OPENSSL_free(p);
-  }
-}
-
-void X509_TRUST_cleanup(void) {
-  unsigned int i;
-  for (i = 0; i < X509_TRUST_COUNT; i++) {
-    trtable_free(trstandard + i);
-  }
-  sk_X509_TRUST_pop_free(trtable, trtable_free);
-  trtable = NULL;
 }
 
 int X509_TRUST_get_flags(const X509_TRUST *xp) { return xp->flags; }

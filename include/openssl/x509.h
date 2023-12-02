@@ -3137,11 +3137,6 @@ DEFINE_STACK_OF(X509_TRUST)
 #define X509_TRUST_MIN 1
 #define X509_TRUST_MAX 8
 
-
-// trust_flags values
-#define X509_TRUST_DYNAMIC 1
-#define X509_TRUST_DYNAMIC_NAME 2
-
 // check_trust return codes
 
 #define X509_TRUST_TRUSTED 1
@@ -3184,10 +3179,6 @@ OPENSSL_EXPORT int X509_check_trust(X509 *x, int id, int flags);
 OPENSSL_EXPORT int X509_TRUST_get_count(void);
 OPENSSL_EXPORT X509_TRUST *X509_TRUST_get0(int idx);
 OPENSSL_EXPORT int X509_TRUST_get_by_id(int id);
-OPENSSL_EXPORT int X509_TRUST_add(int id, int flags,
-                                  int (*ck)(X509_TRUST *, X509 *, int),
-                                  const char *name, int arg1, void *arg2);
-OPENSSL_EXPORT void X509_TRUST_cleanup(void);
 OPENSSL_EXPORT int X509_TRUST_get_flags(const X509_TRUST *xp);
 OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
 OPENSSL_EXPORT int X509_TRUST_get_trust(const X509_TRUST *xp);
@@ -3967,9 +3958,6 @@ struct ISSUING_DIST_POINT_st {
 #define NS_OBJSIGN_CA 0x01
 #define NS_ANY_CA (NS_SSL_CA | NS_SMIME_CA | NS_OBJSIGN_CA)
 
-#define X509_PURPOSE_DYNAMIC 0x1
-#define X509_PURPOSE_DYNAMIC_NAME 0x2
-
 typedef struct x509_purpose_st {
   int purpose;
   int trust;  // Default trust ID
@@ -4237,15 +4225,9 @@ OPENSSL_EXPORT int X509_PURPOSE_get_count(void);
 OPENSSL_EXPORT X509_PURPOSE *X509_PURPOSE_get0(int idx);
 OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(const char *sname);
 OPENSSL_EXPORT int X509_PURPOSE_get_by_id(int id);
-OPENSSL_EXPORT int X509_PURPOSE_add(int id, int trust, int flags,
-                                    int (*ck)(const X509_PURPOSE *,
-                                              const X509 *, int),
-                                    const char *name, const char *sname,
-                                    void *arg);
 OPENSSL_EXPORT char *X509_PURPOSE_get0_name(const X509_PURPOSE *xp);
 OPENSSL_EXPORT char *X509_PURPOSE_get0_sname(const X509_PURPOSE *xp);
 OPENSSL_EXPORT int X509_PURPOSE_get_trust(const X509_PURPOSE *xp);
-OPENSSL_EXPORT void X509_PURPOSE_cleanup(void);
 OPENSSL_EXPORT int X509_PURPOSE_get_id(const X509_PURPOSE *);
 
 // Flags for X509_check_* functions
