@@ -175,9 +175,7 @@ jobs:
 
         include:
           - target: aarch64-apple-darwin
-            host_os: macos-13
-            # GitHub Actions doesn't have a way to run this target yet.
-            cargo_options: --no-run
+            host_os: macos-13-xlarge
 
           - target: aarch64-apple-ios
             host_os: macos-13
