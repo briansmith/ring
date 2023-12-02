@@ -179,7 +179,7 @@ jobs:
 
           - target: aarch64-apple-ios
             host_os: macos-13
-            # GitHub Actions doesn't have a way to run this target yet.
+            # TODO: Run in the emulator.
             cargo_options: --no-run
 
           - target: aarch64-linux-android
