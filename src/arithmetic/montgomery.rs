@@ -120,7 +120,7 @@ use crate::{bssl, c, limb::Limb};
 // TODO: Stop calling this from C and un-export it.
 #[allow(deprecated)]
 prefixed_export! {
-    unsafe fn bn_mul_mont(
+    pub(super) unsafe fn bn_mul_mont(
         r: *mut Limb,
         a: *const Limb,
         b: *const Limb,
@@ -216,6 +216,24 @@ prefixed_extern! {
     // `r` must not alias `a`
     #[must_use]
     fn limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
+}
+
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "x86_64",
+    target_arch = "x86"
+))]
+prefixed_extern! {
+    // `r` and/or 'a' and/or 'b' may alias.
+    pub(super) fn bn_mul_mont(
+        r: *mut Limb,
+        a: *const Limb,
+        b: *const Limb,
+        n: *const Limb,
+        n0: &N0,
+        num_limbs: c::size_t,
+    );
 }
 
 #[cfg(test)]
