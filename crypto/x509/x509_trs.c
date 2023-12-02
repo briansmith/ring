@@ -63,9 +63,9 @@
 #include "internal.h"
 
 
-static int trust_1oidany(X509_TRUST *trust, X509 *x, int flags);
-static int trust_1oid(X509_TRUST *trust, X509 *x, int flags);
-static int trust_compat(X509_TRUST *trust, X509 *x, int flags);
+static int trust_1oidany(const X509_TRUST *trust, X509 *x, int flags);
+static int trust_1oid(const X509_TRUST *trust, X509 *x, int flags);
+static int trust_compat(const X509_TRUST *trust, X509 *x, int flags);
 
 static int obj_trust(int id, X509 *x, int flags);
 
@@ -73,7 +73,7 @@ static int obj_trust(int id, X509 *x, int flags);
 // any gaps so we can just subtract the minimum trust value to get an index
 // into the table
 
-static X509_TRUST trstandard[] = {
+static const X509_TRUST trstandard[] = {
     {X509_TRUST_COMPAT, 0, trust_compat, (char *)"compatible", 0, NULL},
     {X509_TRUST_SSL_CLIENT, 0, trust_1oidany, (char *)"SSL Client",
      NID_client_auth, NULL},
@@ -91,7 +91,6 @@ static X509_TRUST trstandard[] = {
      NULL}};
 
 int X509_check_trust(X509 *x, int id, int flags) {
-  X509_TRUST *pt;
   int idx;
   if (id == -1) {
     return 1;
@@ -109,13 +108,13 @@ int X509_check_trust(X509 *x, int id, int flags) {
   if (idx == -1) {
     return obj_trust(id, x, flags);
   }
-  pt = X509_TRUST_get0(idx);
+  const X509_TRUST *pt = X509_TRUST_get0(idx);
   return pt->check_trust(pt, x, flags);
 }
 
 int X509_TRUST_get_count(void) { return OPENSSL_ARRAY_SIZE(trstandard); }
 
-X509_TRUST *X509_TRUST_get0(int idx) {
+const X509_TRUST *X509_TRUST_get0(int idx) {
   if (idx < 0 || (size_t)idx >= OPENSSL_ARRAY_SIZE(trstandard)) {
     return NULL;
   }
@@ -144,7 +143,7 @@ char *X509_TRUST_get0_name(const X509_TRUST *xp) { return xp->name; }
 
 int X509_TRUST_get_trust(const X509_TRUST *xp) { return xp->trust; }
 
-static int trust_1oidany(X509_TRUST *trust, X509 *x, int flags) {
+static int trust_1oidany(const X509_TRUST *trust, X509 *x, int flags) {
   if (x->aux && (x->aux->trust || x->aux->reject)) {
     return obj_trust(trust->arg1, x, flags);
   }
@@ -153,14 +152,14 @@ static int trust_1oidany(X509_TRUST *trust, X509 *x, int flags) {
   return trust_compat(trust, x, flags);
 }
 
-static int trust_1oid(X509_TRUST *trust, X509 *x, int flags) {
+static int trust_1oid(const X509_TRUST *trust, X509 *x, int flags) {
   if (x->aux) {
     return obj_trust(trust->arg1, x, flags);
   }
   return X509_TRUST_UNTRUSTED;
 }
 
-static int trust_compat(X509_TRUST *trust, X509 *x, int flags) {
+static int trust_compat(const X509_TRUST *trust, X509 *x, int flags) {
   if (!x509v3_cache_extensions(x)) {
     return X509_TRUST_UNTRUSTED;
   }

@@ -3112,7 +3112,7 @@ DECLARE_STACK_OF(GENERAL_NAME)
 struct x509_trust_st {
   int trust;
   int flags;
-  int (*check_trust)(struct x509_trust_st *, X509 *, int);
+  int (*check_trust)(const X509_TRUST *, X509 *, int);
   char *name;
   int arg1;
   void *arg2;
@@ -3177,7 +3177,7 @@ OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
 OPENSSL_EXPORT int X509_check_trust(X509 *x, int id, int flags);
 OPENSSL_EXPORT int X509_TRUST_get_count(void);
-OPENSSL_EXPORT X509_TRUST *X509_TRUST_get0(int idx);
+OPENSSL_EXPORT const X509_TRUST *X509_TRUST_get0(int idx);
 OPENSSL_EXPORT int X509_TRUST_get_by_id(int id);
 OPENSSL_EXPORT int X509_TRUST_get_flags(const X509_TRUST *xp);
 OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
@@ -4222,7 +4222,7 @@ OPENSSL_EXPORT int X509_check_issued(X509 *issuer, X509 *subject);
 OPENSSL_EXPORT int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid);
 
 OPENSSL_EXPORT int X509_PURPOSE_get_count(void);
-OPENSSL_EXPORT X509_PURPOSE *X509_PURPOSE_get0(int idx);
+OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int idx);
 OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(const char *sname);
 OPENSSL_EXPORT int X509_PURPOSE_get_by_id(int id);
 OPENSSL_EXPORT char *X509_PURPOSE_get0_name(const X509_PURPOSE *xp);

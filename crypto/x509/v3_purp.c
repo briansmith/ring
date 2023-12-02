@@ -94,7 +94,7 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
 static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca);
 static int ocsp_helper(const X509_PURPOSE *xp, const X509 *x, int ca);
 
-static X509_PURPOSE xstandard[] = {
+static const X509_PURPOSE xstandard[] = {
     {X509_PURPOSE_SSL_CLIENT, X509_TRUST_SSL_CLIENT, 0,
      check_purpose_ssl_client, (char *)"SSL client", (char *)"sslclient", NULL},
     {X509_PURPOSE_SSL_SERVER, X509_TRUST_SSL_SERVER, 0,
@@ -150,7 +150,7 @@ int X509_PURPOSE_set(int *p, int purpose) {
 
 int X509_PURPOSE_get_count(void) { return OPENSSL_ARRAY_SIZE(xstandard); }
 
-X509_PURPOSE *X509_PURPOSE_get0(int idx) {
+const X509_PURPOSE *X509_PURPOSE_get0(int idx) {
   if (idx < 0 || (size_t)idx >= OPENSSL_ARRAY_SIZE(xstandard)) {
     return NULL;
   }
@@ -158,7 +158,7 @@ X509_PURPOSE *X509_PURPOSE_get0(int idx) {
 }
 
 int X509_PURPOSE_get_by_sname(const char *sname) {
-  X509_PURPOSE *xptmp;
+  const X509_PURPOSE *xptmp;
   for (int i = 0; i < X509_PURPOSE_get_count(); i++) {
     xptmp = X509_PURPOSE_get0(i);
     if (!strcmp(xptmp->sname, sname)) {
