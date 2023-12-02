@@ -758,18 +758,6 @@ fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0, _cpu_features: cpu::Fe
     }
 }
 
-prefixed_extern! {
-    // `r` and/or 'a' and/or 'b' may alias.
-    fn bn_mul_mont(
-        r: *mut Limb,
-        a: *const Limb,
-        b: *const Limb,
-        n: *const Limb,
-        n0: &N0,
-        num_limbs: c::size_t,
-    );
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
