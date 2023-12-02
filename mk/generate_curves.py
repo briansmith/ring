@@ -209,6 +209,8 @@ unsafe extern "C" fn p%(bits)s_elem_sqr_mont(
     p%(bits)d_elem_mul_mont(r, a, a);
 }
 
+mul_mont! { p%(bits)s_scalar_mul_mont(n0: 0x_6ed46089_e88fdc45; modulus: &COMMON_OPS.n) }
+
 prefixed_extern! {
     fn p%(bits)s_elem_mul_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
@@ -226,12 +228,6 @@ prefixed_extern! {
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
-    );
-
-    fn p%(bits)s_scalar_mul_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        b: *const Limb, // [COMMON_OPS.num_limbs]
     );
 }"""
 
@@ -323,6 +319,7 @@ def generate_rs(g, out_dir):
         "q_minus_n" : q - n,
         "oneRR_mod_n": rr(n),
         "n_minus_2": n_minus_2,
+        "n_n0": format_n0_rs(n),
     }
 
     out_path = os.path.join(out_dir, "%s.rs" % name)
@@ -359,10 +356,6 @@ static const BN_ULONG Q[P%(bits)d_LIMBS] = {
 %(q)s
 };
 
-static const BN_ULONG N[P%(bits)d_LIMBS] = {
-%(n)s
-};
-
 static const BN_ULONG ONE[P%(bits)d_LIMBS] = {
 %(q_one)s
 };
@@ -373,10 +366,6 @@ static const Elem Q_PLUS_1_SHR_1 = {
 
 static const BN_ULONG Q_N0[] = {
   %(q_n0)s
-};
-
-static const BN_ULONG N_N0[] = {
-  %(n_n0)s
 };
 
 """
@@ -417,11 +406,17 @@ def format_big_int(x, limb_count):
   %s
 #endif""" % (big, small)
 
-def format_n0(p):
+def format_n0_c(p):
     value = modinv(-p, 2**64)
     hi = value // (2**32)
     lo = value % (2**32)
     return "BN_MONT_CTX_N0(%s, %s)" % (format_limb(hi), format_limb(lo))
+
+def format_n0_rs(p):
+    value = modinv(-p, 2**64)
+    hi = value // (2**32)
+    lo = value % (2**32)
+    return "0x_%08x_%08x" % (hi, lo)
 
 def const(value):
     return lambda _limb_bits: value
@@ -438,11 +433,9 @@ def generate_c(g, out_dir):
     output = c_template % {
         "bits": q.bit_length(),
         "q" : format_big_int(const(q), big_int_limbs(q)),
-        "q_n0": format_n0(q),
+        "q_n0": format_n0_c(q),
         "q_one" : format_big_int(lambda limb_bits: to_montgomery_value(1, q, limb_bits), big_int_limbs(q)),
         "q_plus_1_shr_1": format_big_int(const((q + 1) >> 1), big_int_limbs(q)),
-        "n" : format_big_int(const(n), big_int_limbs(q)),
-        "n_n0": format_n0(n),
     }
 
     out_path = os.path.join(out_dir, "gfp_%s.c" % name)

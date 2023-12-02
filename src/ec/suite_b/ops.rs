@@ -687,22 +687,10 @@ mod tests {
         })
     }
 
-    #[test]
-    fn p256_scalar_square_test() {
-        prefixed_extern! {
-            fn p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: Limb);
-        }
-        scalar_square_test(
-            &p256::SCALAR_OPS,
-            p256_scalar_sqr_rep_mont,
-            test_file!("ops/p256_scalar_square_tests.txt"),
-        );
-    }
-
     // XXX: There's no `p384_scalar_square_test()` because there's no dedicated
     // `p384_scalar_sqr_rep_mont()`.
 
-    fn scalar_square_test(
+    pub(super) fn scalar_square_test(
         ops: &ScalarOps,
         sqr_rep: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, rep: Limb),
         test_file: test::File,
@@ -1154,5 +1142,7 @@ mod tests {
 }
 
 mod elem;
+#[macro_use]
+mod boilerplate;
 pub mod p256;
 pub mod p384;

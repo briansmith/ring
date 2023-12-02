@@ -120,7 +120,7 @@ use crate::{bssl, c, limb::Limb};
 // TODO: Stop calling this from C and un-export it.
 #[allow(deprecated)]
 prefixed_export! {
-    pub(super) unsafe fn bn_mul_mont(
+    pub unsafe fn bn_mul_mont(
         r: *mut Limb,
         a: *const Limb,
         b: *const Limb,
@@ -226,7 +226,7 @@ prefixed_extern! {
 ))]
 prefixed_extern! {
     // `r` and/or 'a' and/or 'b' may alias.
-    pub(super) fn bn_mul_mont(
+    pub fn bn_mul_mont(
         r: *mut Limb,
         a: *const Limb,
         b: *const Limb,

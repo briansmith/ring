@@ -39,16 +39,6 @@ static const BN_ULONG Q[P384_LIMBS] = {
 #endif
 };
 
-static const BN_ULONG N[P384_LIMBS] = {
-#if defined(OPENSSL_64_BIT)
-  0xecec196accc52973, 0x581a0db248b0a77a, 0xc7634d81f4372ddf, 0xffffffffffffffff,
-  0xffffffffffffffff, 0xffffffffffffffff
-#else
-  0xccc52973, 0xecec196a, 0x48b0a77a, 0x581a0db2, 0xf4372ddf, 0xc7634d81,
-  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
-#endif
-};
-
 static const BN_ULONG ONE[P384_LIMBS] = {
 #if defined(OPENSSL_64_BIT)
   0xffffffff00000001, 0xffffffff, 1, 0, 0
@@ -69,10 +59,6 @@ static const Elem Q_PLUS_1_SHR_1 = {
 
 static const BN_ULONG Q_N0[] = {
   BN_MONT_CTX_N0(1, 1)
-};
-
-static const BN_ULONG N_N0[] = {
-  BN_MONT_CTX_N0(0x6ed46089, 0xe88fdc45)
 };
 
 /* XXX: MSVC for x86 warns when it fails to inline these functions it should
@@ -209,13 +195,6 @@ void p384_elem_neg(Elem r, const Elem a) {
   for (size_t i = 0; i < P384_LIMBS; ++i) {
     r[i] = constant_time_select_w(is_zero, 0, r[i]);
   }
-}
-
-
-void p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
-                              const ScalarMont b) {
-  /* XXX: Inefficient. TODO: Add dedicated multiplication routine. */
-  bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
 }
 
 

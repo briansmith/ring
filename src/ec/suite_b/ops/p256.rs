@@ -307,21 +307,52 @@ prefixed_extern! {
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
     );
-
-    fn p256_scalar_mul_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        b: *const Limb, // [COMMON_OPS.num_limbs]
-    );
-    fn p256_scalar_sqr_rep_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        rep: Limb,
-    );
 }
+
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+mod scalar_ops {
+    use crate::limb::Limb;
+
+    prefixed_extern! {
+        pub(super) fn p256_scalar_mul_mont(
+            r: *mut Limb,   // [COMMON_OPS.num_limbs]
+            a: *const Limb, // [COMMON_OPS.num_limbs]
+            b: *const Limb, // [COMMON_OPS.num_limbs]
+        );
+        pub(super) fn p256_scalar_sqr_rep_mont(
+            r: *mut Limb,   // [COMMON_OPS.num_limbs]
+            a: *const Limb, // [COMMON_OPS.num_limbs]
+            rep: Limb,
+        );
+    }
+}
+
+#[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
+mod scalar_ops {
+    use super::COMMON_OPS;
+    use crate::limb::Limb;
+
+    mul_mont! { pub(super) p256_scalar_mul_mont(n0: 0x_ccd1c8aa_ee00bc4f; modulus: &COMMON_OPS.n) }
+
+    pub(super) unsafe extern "C" fn p256_scalar_sqr_rep_mont(
+        r: *mut Limb,
+        a: *const Limb,
+        rep: Limb,
+    ) {
+        debug_assert!(rep >= 1);
+        p256_scalar_mul_mont(r, a, a);
+        for _ in 1..rep {
+            p256_scalar_mul_mont(r, r, r);
+        }
+    }
+}
+
+use scalar_ops::*;
 
 #[cfg(test)]
 mod tests {
+    use super::{super::tests::scalar_square_test, *};
+
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     #[test]
     fn p256_point_mul_base_vartime_test() {
@@ -330,6 +361,15 @@ mod tests {
             &PRIVATE_KEY_OPS,
             point_mul_base_vartime,
             test_file!("p256_point_mul_base_tests.txt"),
+        );
+    }
+
+    #[test]
+    fn p256_scalar_square_test() {
+        scalar_square_test(
+            &p256::SCALAR_OPS,
+            p256_scalar_sqr_rep_mont,
+            test_file!("p256_scalar_square_tests.txt"),
         );
     }
 }
