@@ -156,10 +156,7 @@ impl EcdsaKeyPair {
     ) -> Result<Self, error::KeyRejected> {
         let (seed, public_key) = key_pair.split();
         let d = private_key::private_key_as_scalar(alg.private_key_ops, &seed);
-        let d = alg
-            .private_scalar_ops
-            .scalar_ops
-            .scalar_product(&d, &alg.private_scalar_ops.oneRR_mod_n);
+        let d = alg.private_scalar_ops.to_mont(&d);
 
         let nonce_key = NonceRandomKey::new(alg, &seed, rng)?;
         Ok(Self {
