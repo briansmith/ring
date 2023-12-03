@@ -67,6 +67,12 @@ pub struct CommonOps {
 }
 
 impl CommonOps {
+    // The length of a field element, which is the same as the length of a
+    // scalar, in bytes.
+    pub fn len(&self) -> usize {
+        self.num_limbs * LIMB_BYTES
+    }
+
     #[inline]
     pub fn elem_add<E: Encoding>(&self, a: &mut Elem<E>, b: &Elem<E>) {
         let num_limbs = self.num_limbs;
@@ -213,7 +219,7 @@ impl PublicKeyOps {
     // implements NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers
     // in the interval [0, p-1] in the case that q is an odd prime p[.]"
     pub fn elem_parse(&self, input: &mut untrusted::Reader) -> Result<Elem<R>, error::Unspecified> {
-        let encoded_value = input.read_bytes(self.common.num_limbs * LIMB_BYTES)?;
+        let encoded_value = input.read_bytes(self.common.len())?;
         let parsed = elem_parse_big_endian_fixed_consttime(self.common, encoded_value)?;
         let mut r = Elem::zero();
         // Montgomery encode (elem_to_mont).
@@ -241,7 +247,7 @@ pub struct ScalarOps {
 impl ScalarOps {
     // The (maximum) length of a scalar, not including any padding.
     pub fn scalar_bytes_len(&self) -> usize {
-        self.common.num_limbs * LIMB_BYTES
+        self.common.len()
     }
 
     /// Returns the modular inverse of `a` (mod `n`). Panics of `a` is zero,
@@ -407,7 +413,7 @@ fn parse_big_endian_fixed_consttime<M>(
     allow_zero: AllowZero,
     max_exclusive: &[Limb],
 ) -> Result<elem::Elem<M, Unencoded>, error::Unspecified> {
-    if bytes.len() != ops.num_limbs * LIMB_BYTES {
+    if bytes.len() != ops.len() {
         return Err(error::Unspecified);
     }
     let mut r = elem::Elem::zero();
@@ -928,9 +934,9 @@ mod tests {
 
             let product = priv_ops.point_mul(&p_scalar, &p);
 
-            let mut actual_result = vec![4u8; 1 + (2 * (cops.num_limbs * LIMB_BYTES))];
+            let mut actual_result = vec![4u8; 1 + (2 * cops.len())];
             {
-                let (x, y) = actual_result[1..].split_at_mut(cops.num_limbs * LIMB_BYTES);
+                let (x, y) = actual_result[1..].split_at_mut(cops.len());
                 super::super::private_key::big_endian_affine_from_jacobian(
                     priv_ops,
                     Some(x),
@@ -1147,7 +1153,7 @@ mod tests {
         name: &str,
     ) -> Vec<u8> {
         let unpadded_bytes = test_case.consume_bytes(name);
-        let mut bytes = vec![0; (ops.num_limbs * LIMB_BYTES) - unpadded_bytes.len()];
+        let mut bytes = vec![0; ops.len() - unpadded_bytes.len()];
         bytes.extend(&unpadded_bytes);
         bytes
     }
