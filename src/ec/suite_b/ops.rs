@@ -321,7 +321,13 @@ impl PublicScalarOps {
 pub struct PrivateScalarOps {
     pub scalar_ops: &'static ScalarOps,
 
-    pub oneRR_mod_n: Scalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
+    oneRR_mod_n: Scalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
+}
+
+impl PrivateScalarOps {
+    pub fn to_mont(&self, s: &Scalar<Unencoded>) -> Scalar<R> {
+        self.scalar_ops.scalar_product(s, &self.oneRR_mod_n)
+    }
 }
 
 // XXX: Inefficient and unnecessarily depends on `PrivateKeyOps`. TODO: implement interleaved wNAF
