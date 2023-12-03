@@ -386,10 +386,10 @@ fn format_rs_fixed(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u
     let scalar_len = ops.scalar_bytes_len();
 
     let (r_out, rest) = out.split_at_mut(scalar_len);
-    limb::big_endian_from_limbs(&r.limbs[..ops.common.num_limbs], r_out);
+    limb::big_endian_from_limbs(ops.leak_limbs(r), r_out);
 
     let (s_out, _) = rest.split_at_mut(scalar_len);
-    limb::big_endian_from_limbs(&s.limbs[..ops.common.num_limbs], s_out);
+    limb::big_endian_from_limbs(ops.leak_limbs(s), s_out);
 
     2 * scalar_len
 }
@@ -400,7 +400,7 @@ fn format_rs_asn1(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8
     fn format_integer_tlv(ops: &ScalarOps, a: &Scalar, out: &mut [u8]) -> usize {
         let mut fixed = [0u8; ec::SCALAR_MAX_BYTES + 1];
         let fixed = &mut fixed[..(ops.scalar_bytes_len() + 1)];
-        limb::big_endian_from_limbs(&a.limbs[..ops.common.num_limbs], &mut fixed[1..]);
+        limb::big_endian_from_limbs(ops.leak_limbs(a), &mut fixed[1..]);
 
         // Since `a_fixed_out` is an extra byte long, it is guaranteed to start
         // with a zero.

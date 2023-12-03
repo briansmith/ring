@@ -183,14 +183,13 @@ pub fn big_endian_affine_from_jacobian(
     p: &Point,
 ) -> Result<(), error::Unspecified> {
     let (x_aff, y_aff) = affine_from_jacobian(ops, p)?;
-    let num_limbs = ops.common.num_limbs;
     if let Some(x_out) = x_out {
         let x = ops.common.elem_unencoded(&x_aff);
-        limb::big_endian_from_limbs(&x.limbs[..num_limbs], x_out);
+        limb::big_endian_from_limbs(ops.leak_limbs(&x), x_out);
     }
     if let Some(y_out) = y_out {
         let y = ops.common.elem_unencoded(&y_aff);
-        limb::big_endian_from_limbs(&y.limbs[..num_limbs], y_out);
+        limb::big_endian_from_limbs(ops.leak_limbs(&y), y_out);
     }
 
     Ok(())

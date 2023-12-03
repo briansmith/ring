@@ -52,7 +52,7 @@ impl Point {
 
 /// Operations and values needed by all curve operations.
 pub struct CommonOps {
-    pub num_limbs: usize,
+    num_limbs: usize,
     q: Modulus,
     n: Elem<Unencoded>,
 
@@ -186,6 +186,10 @@ pub struct PrivateKeyOps {
 }
 
 impl PrivateKeyOps {
+    pub fn leak_limbs<'a>(&self, a: &'a Elem<Unencoded>) -> &'a [Limb] {
+        &a.limbs[..self.common.num_limbs]
+    }
+
     #[inline(always)]
     pub fn point_mul_base(&self, a: &Scalar) -> Point {
         (self.point_mul_base_impl)(a)
@@ -253,6 +257,10 @@ impl ScalarOps {
     // The (maximum) length of a scalar, not including any padding.
     pub fn scalar_bytes_len(&self) -> usize {
         self.common.len()
+    }
+
+    pub fn leak_limbs<'s>(&self, s: &'s Scalar) -> &'s [Limb] {
+        &s.limbs[..self.common.num_limbs]
     }
 
     /// Returns the modular inverse of `a` (mod `n`). Panics of `a` is zero,

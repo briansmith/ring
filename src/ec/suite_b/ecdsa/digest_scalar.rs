@@ -95,7 +95,6 @@ mod tests {
                     }
                 };
 
-                let num_limbs = ops.public_key_ops.common.num_limbs;
                 assert_eq!(input.len(), digest_alg.output_len());
                 assert_eq!(output.len(), ops.scalar_ops.scalar_bytes_len());
 
@@ -107,7 +106,10 @@ mod tests {
                 .unwrap();
 
                 let actual = digest_bytes_scalar(ops.scalar_ops, &input);
-                assert_eq!(actual.limbs[..num_limbs], expected.limbs[..num_limbs]);
+                assert_eq!(
+                    ops.scalar_ops.leak_limbs(&actual),
+                    ops.scalar_ops.leak_limbs(&expected)
+                );
 
                 Ok(())
             },
