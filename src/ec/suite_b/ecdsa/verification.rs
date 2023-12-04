@@ -157,10 +157,7 @@ impl EcdsaVerificationAlgorithm {
             return Ok(());
         }
         if self.ops.elem_less_than(&r, &self.ops.q_minus_n) {
-            self.ops
-                .scalar_ops
-                .common
-                .elem_add(&mut r, &public_key_ops.common.n);
+            self.ops.scalar_ops.common.elem_add(&mut r, self.ops.n());
             if sig_r_equals_x(self.ops, &r, &x, &z2) {
                 return Ok(());
             }
