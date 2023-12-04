@@ -127,7 +127,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     q_minus_n: Elem::from_hex("389cb27e0bc8d21fa7e5f24cb74f58851313e696333ad68c"),
 
     // TODO: Use an optimized variable-time implementation.
-    scalar_inv_to_mont_vartime: p384_scalar_inv_to_mont,
+    scalar_inv_to_mont_vartime: |s| PRIVATE_SCALAR_OPS.scalar_inv_to_mont(s),
 };
 
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
@@ -137,7 +137,7 @@ pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_inv_to_mont: p384_scalar_inv_to_mont,
 };
 
-fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
+fn p384_scalar_inv_to_mont(a: Scalar<R>) -> Scalar<R> {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:
     //
@@ -179,15 +179,6 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
         binary_op_assign(p384_scalar_mul_mont, acc, b)
     }
 
-    fn to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
-        static N_RR: Scalar<Unencoded> = Scalar {
-            limbs: PRIVATE_SCALAR_OPS.oneRR_mod_n.limbs,
-            m: PhantomData,
-            encoding: PhantomData,
-        };
-        binary_op(p384_scalar_mul_mont, a, &N_RR)
-    }
-
     // Indexes into `d`.
     const B_1: usize = 0;
     const B_11: usize = 1;
@@ -200,7 +191,7 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     const DIGIT_COUNT: usize = 8;
 
     let mut d = [Scalar::zero(); DIGIT_COUNT];
-    d[B_1] = to_mont(a);
+    d[B_1] = a;
     let b_10 = sqr(&d[B_1]);
     for i in B_11..DIGIT_COUNT {
         d[i] = mul(&d[i - 1], &b_10);

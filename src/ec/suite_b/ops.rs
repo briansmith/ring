@@ -319,7 +319,7 @@ pub struct PrivateScalarOps {
     pub scalar_ops: &'static ScalarOps,
 
     oneRR_mod_n: Scalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
-    scalar_inv_to_mont: fn(a: &Scalar) -> Scalar<R>,
+    scalar_inv_to_mont: fn(a: Scalar<R>) -> Scalar<R>,
 }
 
 impl PrivateScalarOps {
@@ -330,6 +330,7 @@ impl PrivateScalarOps {
     /// Returns the modular inverse of `a` (mod `n`). Panics if `a` is zero.
     pub fn scalar_inv_to_mont(&self, a: &Scalar) -> Scalar<R> {
         assert!(!self.scalar_ops.common.is_zero(a));
+        let a = self.to_mont(a);
         (self.scalar_inv_to_mont)(a)
     }
 }
