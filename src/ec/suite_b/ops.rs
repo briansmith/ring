@@ -54,7 +54,7 @@ impl Point {
 pub struct CommonOps {
     pub num_limbs: usize,
     q: Modulus,
-    pub n: Elem<Unencoded>,
+    n: Elem<Unencoded>,
 
     pub a: Elem<R>, // Must be -3 mod q
     pub b: Elem<R>,
@@ -71,6 +71,11 @@ impl CommonOps {
     // scalar, in bytes.
     pub fn len(&self) -> usize {
         self.num_limbs * LIMB_BYTES
+    }
+
+    #[cfg(test)]
+    pub(super) fn n_limbs(&self) -> &[Limb] {
+        &self.n.limbs[..self.num_limbs]
     }
 
     #[inline]
@@ -280,6 +285,10 @@ pub struct PublicScalarOps {
 }
 
 impl PublicScalarOps {
+    pub fn n(&self) -> &Elem<Unencoded> {
+        &self.scalar_ops.common.n
+    }
+
     #[inline]
     pub fn scalar_as_elem(&self, a: &Scalar) -> Elem<Unencoded> {
         Elem {
