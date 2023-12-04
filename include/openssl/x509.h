@@ -3143,8 +3143,6 @@ DEFINE_STACK_OF(X509_TRUST)
 #define X509_TRUST_REJECTED 2
 #define X509_TRUST_UNTRUSTED 3
 
-DECLARE_STACK_OF(GENERAL_NAMES)
-
 // X509_verify_cert_error_string returns |err| as a human-readable string, where
 // |err| should be one of the |X509_V_*| values. If |err| is unknown, it returns
 // a default description.
@@ -3206,9 +3204,7 @@ certificate chain.
 #define X509_LU_CRL 2
 #define X509_LU_PKEY 3
 
-DEFINE_STACK_OF(X509_LOOKUP)
 DEFINE_STACK_OF(X509_OBJECT)
-DEFINE_STACK_OF(X509_VERIFY_PARAM)
 
 typedef int (*X509_STORE_CTX_verify_cb)(int, X509_STORE_CTX *);
 typedef int (*X509_STORE_CTX_get_issuer_fn)(X509 **issuer, X509_STORE_CTX *ctx,
@@ -3827,8 +3823,6 @@ struct GENERAL_NAME_st {
     ASN1_OBJECT *rid;       // registeredID
   } d;
 } /* GENERAL_NAME */;
-
-DEFINE_STACK_OF(GENERAL_NAMES)
 
 typedef struct ACCESS_DESCRIPTION_st {
   ASN1_OBJECT *method;

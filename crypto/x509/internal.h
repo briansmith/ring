@@ -318,6 +318,8 @@ struct x509_lookup_method_st {
                         X509_OBJECT *ret);
 } /* X509_LOOKUP_METHOD */;
 
+DEFINE_STACK_OF(X509_LOOKUP)
+
 // This is used to hold everything.  It is used for all certificate
 // validation.  Once we have a certificate chain, the 'verify'
 // function is then called to actually check the cert chain.
