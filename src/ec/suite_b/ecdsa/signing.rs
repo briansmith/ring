@@ -240,7 +240,7 @@ impl EcdsaKeyPair {
             // XXX: iteration conut?
             // Step 1.
             let k = private_key::random_scalar(self.alg.private_key_ops, rng)?;
-            let k_inv = scalar_ops.scalar_inv_to_mont(&k);
+            let k_inv = ops.scalar_inv_to_mont(&k);
 
             // Step 2.
             let r = private_key_ops.point_mul_base(&k);

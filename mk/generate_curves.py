@@ -102,7 +102,6 @@ pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
 
 pub static SCALAR_OPS: ScalarOps = ScalarOps {
     common: &COMMON_OPS,
-    scalar_inv_to_mont_impl: p%(bits)s_scalar_inv_to_mont,
     scalar_mul_mont: p%(bits)s_scalar_mul_mont,
 };
 
@@ -114,12 +113,16 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     },
 
     q_minus_n: Elem::from_hex("%(q_minus_n)x"),
+
+    // TODO: Use an optimized variable-time implementation.
+    scalar_inv_to_mont_vartime: p%(bits)s_scalar_inv_to_mont,
 };
 
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
     oneRR_mod_n: Scalar::from_hex(%(oneRR_mod_n)s),
+    scalar_inv_to_mont: p%(bits)s_scalar_inv_to_mont,
 };
 
 fn p%(bits)s_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {

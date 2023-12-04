@@ -114,7 +114,6 @@ pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
 
 pub static SCALAR_OPS: ScalarOps = ScalarOps {
     common: &COMMON_OPS,
-    scalar_inv_to_mont_impl: p384_scalar_inv_to_mont,
     scalar_mul_mont: p384_scalar_mul_mont,
 };
 
@@ -126,12 +125,16 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     },
 
     q_minus_n: Elem::from_hex("389cb27e0bc8d21fa7e5f24cb74f58851313e696333ad68c"),
+
+    // TODO: Use an optimized variable-time implementation.
+    scalar_inv_to_mont_vartime: p384_scalar_inv_to_mont,
 };
 
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
     oneRR_mod_n: Scalar::from_hex("c84ee012b39bf213fb05b7a28266895d40d49174aab1cc5bc3e483afcb82947ff3d81e5df1aa4192d319b2419b409a9"),
+    scalar_inv_to_mont: p384_scalar_inv_to_mont,
 };
 
 fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
