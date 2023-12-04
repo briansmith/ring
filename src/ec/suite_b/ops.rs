@@ -249,7 +249,6 @@ impl PublicKeyOps {
 pub struct ScalarOps {
     pub common: &'static CommonOps,
 
-    scalar_inv_to_mont_impl: fn(a: &Scalar) -> Scalar<R>,
     scalar_mul_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
 }
 
@@ -261,13 +260,6 @@ impl ScalarOps {
 
     pub fn leak_limbs<'s>(&self, s: &'s Scalar) -> &'s [Limb] {
         &s.limbs[..self.common.num_limbs]
-    }
-
-    /// Returns the modular inverse of `a` (mod `n`). Panics of `a` is zero,
-    /// because zero isn't invertible.
-    pub fn scalar_inv_to_mont(&self, a: &Scalar) -> Scalar<R> {
-        assert!(!self.common.is_zero(a));
-        (self.scalar_inv_to_mont_impl)(a)
     }
 
     #[inline]
@@ -289,6 +281,7 @@ pub struct PublicScalarOps {
     pub public_key_ops: &'static PublicKeyOps,
 
     pub twin_mul: fn(g_scalar: &Scalar, p_scalar: &Scalar, p_xy: &(Elem<R>, Elem<R>)) -> Point,
+    pub scalar_inv_to_mont_vartime: fn(s: &Scalar<Unencoded>) -> Scalar<R>,
     pub q_minus_n: Elem<Unencoded>,
 }
 
@@ -315,6 +308,10 @@ impl PublicScalarOps {
         let num_limbs = self.public_key_ops.common.num_limbs;
         limbs_less_than_limbs_vartime(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
     }
+
+    pub fn scalar_inv_to_mont_vartime(&self, s: &Scalar<Unencoded>) -> Scalar<R> {
+        (self.scalar_inv_to_mont_vartime)(s)
+    }
 }
 
 #[allow(non_snake_case)]
@@ -322,11 +319,18 @@ pub struct PrivateScalarOps {
     pub scalar_ops: &'static ScalarOps,
 
     oneRR_mod_n: Scalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
+    scalar_inv_to_mont: fn(a: &Scalar) -> Scalar<R>,
 }
 
 impl PrivateScalarOps {
     pub fn to_mont(&self, s: &Scalar<Unencoded>) -> Scalar<R> {
         self.scalar_ops.scalar_product(s, &self.oneRR_mod_n)
+    }
+
+    /// Returns the modular inverse of `a` (mod `n`). Panics if `a` is zero.
+    pub fn scalar_inv_to_mont(&self, a: &Scalar) -> Scalar<R> {
+        assert!(!self.scalar_ops.common.is_zero(a));
+        (self.scalar_inv_to_mont)(a)
     }
 }
 
@@ -764,15 +768,15 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "!self.common.is_zero(a)")]
+    #[should_panic(expected = "!self.scalar_ops.common.is_zero(a)")]
     fn p256_scalar_inv_to_mont_zero_panic_test() {
-        let _ = p256::SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
+        let _ = p256::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
     }
 
     #[test]
-    #[should_panic(expected = "!self.common.is_zero(a)")]
+    #[should_panic(expected = "!self.scalar_ops.common.is_zero(a)")]
     fn p384_scalar_inv_to_mont_zero_panic_test() {
-        let _ = p384::SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
+        let _ = p384::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
     }
 
     #[test]

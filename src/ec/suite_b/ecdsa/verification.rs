@@ -113,7 +113,7 @@ impl EcdsaVerificationAlgorithm {
 
         // NSA Guide Step 4: "Compute w = s**−1 mod n, using the routine in
         // Appendix B.1."
-        let w = scalar_ops.scalar_inv_to_mont(&s);
+        let w = self.ops.scalar_inv_to_mont_vartime(&s);
 
         // NSA Guide Step 5: "Compute u1 = (e * w) mod n, and compute
         // u2 = (r * w) mod n."
