@@ -97,7 +97,7 @@ fn from_montgomery_amm<M>(limbs: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, Unenc
     let mut one = [0; MODULUS_MAX_LIMBS];
     one[0] = 1;
     let one = &one[..m.limbs().len()];
-    limbs_mont_mul(&mut limbs, one, m.limbs(), m.n0(), m.cpu_features());
+    limbs_mont_mul(&mut limbs, one, m.limbs(), m.n0(), m.cpu_features()).unwrap();
     Elem {
         limbs,
         encoding: PhantomData,
@@ -142,7 +142,7 @@ pub fn elem_mul<M, AF, BF>(
 where
     (AF, BF): ProductEncoding,
 {
-    limbs_mont_mul(&mut b.limbs, &a.limbs, m.limbs(), m.n0(), m.cpu_features());
+    limbs_mont_mul(&mut b.limbs, &a.limbs, m.limbs(), m.n0(), m.cpu_features()).unwrap();
     Elem {
         limbs: b.limbs,
         encoding: PhantomData,
@@ -203,7 +203,7 @@ fn elem_squared<M, E>(
 where
     (E, E): ProductEncoding,
 {
-    limbs_mont_square(&mut a.limbs, m.limbs(), m.n0(), m.cpu_features());
+    limbs_mont_square(&mut a.limbs, m.limbs(), m.n0(), m.cpu_features()).unwrap();
     Elem {
         limbs: a.limbs,
         encoding: PhantomData,
@@ -465,7 +465,7 @@ pub fn elem_exp_consttime<M>(
         let src1 = entry(previous, src1, num_limbs);
         let src2 = entry(previous, src2, num_limbs);
         let dst = entry_mut(rest, 0, num_limbs);
-        limbs_mont_product(dst, src1, src2, m.limbs(), m.n0(), m.cpu_features());
+        limbs_mont_product(dst, src1, src2, m.limbs(), m.n0(), m.cpu_features())?;
     }
 
     let tmp = m.zero();
@@ -629,15 +629,16 @@ pub fn elem_exp_consttime<M>(
         mut i: Window,
         num_limbs: usize,
         cpu_features: cpu::Features,
-    ) {
+    ) -> Result<(), error::Unspecified> {
         loop {
             scatter(table, acc, i, num_limbs);
             i *= 2;
             if i >= (TABLE_ENTRIES as Window) {
                 break;
             }
-            limbs_mont_square(acc, m_cached, n0, cpu_features);
+            limbs_mont_square(acc, m_cached, n0, cpu_features)?;
         }
+        Ok(())
     }
 
     // All entries in `table` will be Montgomery encoded.
@@ -650,12 +651,12 @@ pub fn elem_exp_consttime<M>(
     acc.copy_from_slice(base_cached);
 
     // Fill in entries 1, 2, 4, 8, 16.
-    scatter_powers_of_2(table, acc, m_cached, n0, 1, num_limbs, cpu_features);
+    scatter_powers_of_2(table, acc, m_cached, n0, 1, num_limbs, cpu_features)?;
     // Fill in entries 3, 6, 12, 24; 5, 10, 20, 30; 7, 14, 28; 9, 18; 11, 22; 13, 26; 15, 30;
     // 17; 19; 21; 23; 25; 27; 29; 31.
     for i in (3..(TABLE_ENTRIES as Window)).step_by(2) {
         limbs_mul_mont_gather5_amm(table, acc, base_cached, m_cached, n0, i - 1, num_limbs);
-        scatter_powers_of_2(table, acc, m_cached, n0, i, num_limbs, cpu_features);
+        scatter_powers_of_2(table, acc, m_cached, n0, i, num_limbs, cpu_features)?;
     }
 
     let acc = limb::fold_5_bit_windows(
