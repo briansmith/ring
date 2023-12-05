@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{BoxedLimbs, Elem, PublicModulus, Unencoded, N0};
+use super::{super::montgomery, BoxedLimbs, Elem, PublicModulus, Unencoded, N0};
 use crate::{
     bits::BitLength,
     cpu, error,
@@ -20,13 +20,6 @@ use crate::{
     polyfill::LeadingZerosStripped,
 };
 use core::marker::PhantomData;
-
-/// The x86 implementation of `bn_mul_mont`, at least, requires at least 4
-/// limbs. For a long time we have required 4 limbs for all targets, though
-/// this may be unnecessary. TODO: Replace this with
-/// `n.len() < 256 / LIMB_BITS` so that 32-bit and 64-bit platforms behave the
-/// same.
-pub const MODULUS_MIN_LIMBS: usize = 4;
 
 pub const MODULUS_MAX_LIMBS: usize = super::super::BIGINT_MODULUS_MAX_LIMBS;
 
@@ -93,7 +86,7 @@ impl<M> OwnedModulus<M> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
-        if n.len() < MODULUS_MIN_LIMBS {
+        if n.len() < montgomery::MIN_LIMBS {
             return Err(error::KeyRejected::unexpected_error());
         }
         if limb::limbs_are_even_constant_time(&n) != LimbMask::False {

@@ -112,17 +112,24 @@ impl ProductEncoding for (RRR, RInverse) {
 #[allow(unused_imports)]
 use crate::{bssl, c, limb::Limb};
 
+/// The x86 implementation of `bn_mul_mont`, at least, requires at least 4
+/// limbs. For a long time we have required 4 limbs for all targets, though
+/// this may be unnecessary. TODO: Replace this with
+/// `n.len() < 256 / LIMB_BITS` so that 32-bit and 64-bit platforms behave the
+/// same.
+pub const MIN_LIMBS: usize = 4;
+
 #[inline(always)]
 unsafe fn mul_mont(
     r: *mut Limb,
     a: *const Limb,
     b: *const Limb,
-    n: *const Limb,
+    m: &[Limb],
     n0: &N0,
-    num_limbs: c::size_t,
     _: cpu::Features,
 ) {
-    bn_mul_mont(r, a, b, n, n0, num_limbs)
+    debug_assert!(m.len() >= MIN_LIMBS);
+    bn_mul_mont(r, a, b, m.as_ptr(), n0, m.len())
 }
 
 #[cfg(not(any(
@@ -260,17 +267,7 @@ pub(super) fn limbs_mont_mul(
 ) {
     debug_assert_eq!(r.len(), m.len());
     debug_assert_eq!(a.len(), m.len());
-    unsafe {
-        mul_mont(
-            r.as_mut_ptr(),
-            r.as_ptr(),
-            a.as_ptr(),
-            m.as_ptr(),
-            n0,
-            r.len(),
-            cpu_features,
-        )
-    }
+    unsafe { mul_mont(r.as_mut_ptr(), r.as_ptr(), a.as_ptr(), m, n0, cpu_features) }
 }
 
 /// r = a * b
@@ -287,33 +284,13 @@ pub(super) fn limbs_mont_product(
     debug_assert_eq!(a.len(), m.len());
     debug_assert_eq!(b.len(), m.len());
 
-    unsafe {
-        mul_mont(
-            r.as_mut_ptr(),
-            a.as_ptr(),
-            b.as_ptr(),
-            m.as_ptr(),
-            n0,
-            r.len(),
-            cpu_features,
-        )
-    }
+    unsafe { mul_mont(r.as_mut_ptr(), a.as_ptr(), b.as_ptr(), m, n0, cpu_features) }
 }
 
 /// r = r**2
 pub(super) fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0, cpu_features: cpu::Features) {
     debug_assert_eq!(r.len(), m.len());
-    unsafe {
-        mul_mont(
-            r.as_mut_ptr(),
-            r.as_ptr(),
-            r.as_ptr(),
-            m.as_ptr(),
-            n0,
-            r.len(),
-            cpu_features,
-        )
-    }
+    unsafe { mul_mont(r.as_mut_ptr(), r.as_ptr(), r.as_ptr(), m, n0, cpu_features) }
 }
 #[cfg(test)]
 mod tests {
