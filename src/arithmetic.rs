@@ -20,8 +20,4 @@ pub mod bigint;
 pub mod montgomery;
 
 mod n0;
-
-#[allow(dead_code)]
-const BIGINT_MODULUS_MAX_LIMBS: usize = 8192 / crate::limb::LIMB_BITS;
-
 pub use constant::limbs_from_hex;

@@ -21,7 +21,7 @@ use crate::{
 };
 use core::marker::PhantomData;
 
-pub const MODULUS_MAX_LIMBS: usize = super::super::BIGINT_MODULUS_MAX_LIMBS;
+pub const MODULUS_MAX_LIMBS: usize = montgomery::MAX_LIMBS;
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd

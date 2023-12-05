@@ -15,7 +15,7 @@
 use crate::{
     arithmetic::{
         limbs_from_hex,
-        montgomery::{Encoding, ProductEncoding},
+        montgomery::{self, Encoding, ProductEncoding},
     },
     limb::{Limb, LIMB_BITS},
 };
@@ -129,3 +129,6 @@ pub fn unary_op_from_binary_op_assign<M, E: Encoding>(
 }
 
 pub const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
+
+#[allow(clippy::assertions_on_constants)]
+const _MAX_LIMBS_IS_LESS_THAN_MAX_LIMBS: () = assert!(MAX_LIMBS <= montgomery::MAX_LIMBS);

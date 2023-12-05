@@ -94,7 +94,7 @@ fn from_montgomery_amm<M>(limbs: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, Unenc
     debug_assert_eq!(limbs.len(), m.limbs().len());
 
     let mut limbs = limbs;
-    let mut one = [0; MODULUS_MAX_LIMBS];
+    let mut one = [0; MAX_LIMBS];
     one[0] = 1;
     let one = &one[..m.limbs().len()];
     limbs_mont_mul(&mut limbs, one, m.limbs(), m.n0(), m.cpu_features()).unwrap();
@@ -187,7 +187,7 @@ pub fn elem_reduced<Larger, Smaller>(
     // `limbs_from_mont_in_place` requires this.
     assert_eq!(a.limbs.len(), m.limbs().len() * 2);
 
-    let mut tmp = [0; MODULUS_MAX_LIMBS];
+    let mut tmp = [0; MAX_LIMBS];
     let tmp = &mut tmp[..a.limbs.len()];
     tmp.copy_from_slice(&a.limbs);
 

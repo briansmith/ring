@@ -12,7 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{arithmetic::limbs_from_hex, arithmetic::montgomery::*, error, limb::*};
+use crate::{
+    arithmetic::limbs_from_hex,
+    arithmetic::montgomery::{Encoding, ProductEncoding, Unencoded, R, RR},
+    error,
+    limb::*,
+};
 use core::marker::PhantomData;
 
 pub use self::elem::*;

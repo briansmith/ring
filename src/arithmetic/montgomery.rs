@@ -119,6 +119,12 @@ use crate::{bssl, c, limb::Limb};
 /// same.
 pub const MIN_LIMBS: usize = 4;
 
+/// Many functions, including assembly functions, will stack allocate
+/// `n * MAX_LIMBS` (for some `n`) limbs to store temporary values. Reduce the
+/// chance of stack overflows by limiting these functions according to the
+/// maximum size of modulus we wish to support.
+pub const MAX_LIMBS: usize = 8192 / crate::limb::LIMB_BITS;
+
 #[inline(always)]
 unsafe fn mul_mont(
     r: *mut Limb,
@@ -128,7 +134,7 @@ unsafe fn mul_mont(
     n0: &N0,
     _: cpu::Features,
 ) -> Result<(), error::Unspecified> {
-    if m.len() < MIN_LIMBS {
+    if m.len() < MIN_LIMBS || m.len() > MAX_LIMBS {
         return Err(error::Unspecified);
     }
     bn_mul_mont(r, a, b, m.as_ptr(), n0, m.len());
@@ -159,7 +165,7 @@ prefixed_export! {
         // Nothing aliases `n`
         let n = unsafe { core::slice::from_raw_parts(n, num_limbs) };
 
-        let mut tmp = [0; 2 * super::BIGINT_MODULUS_MAX_LIMBS];
+        let mut tmp = [0; 2 * MAX_LIMBS];
         let tmp = &mut tmp[..(2 * num_limbs)];
         {
             let a: &[Limb] = unsafe { core::slice::from_raw_parts(a, num_limbs) };
@@ -326,7 +332,7 @@ mod tests {
         ];
 
         for (i, (r_input, a, w, expected_retval, expected_r)) in TEST_CASES.iter().enumerate() {
-            let mut r = [0; super::super::BIGINT_MODULUS_MAX_LIMBS];
+            let mut r = [0; MAX_LIMBS];
             let r = {
                 let r = &mut r[..r_input.len()];
                 r.copy_from_slice(r_input);
