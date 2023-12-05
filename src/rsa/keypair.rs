@@ -21,6 +21,7 @@ use crate::{
     arithmetic::{
         bigint,
         montgomery::{R, RR, RRR},
+        ImpossibleLengthError,
     },
     bits::BitLength,
     cpu, digest,
@@ -487,7 +488,7 @@ fn elem_exp_consttime<M>(
     p: &PrivateCrtPrime<M>,
     other_prime_len_bits: BitLength,
     cpu_features: cpu::Features,
-) -> Result<bigint::Elem<M>, error::Unspecified> {
+) -> Result<bigint::Elem<M>, ImpossibleLengthError> {
     let m = &p.modulus.modulus(cpu_features);
     let c_mod_m = bigint::elem_reduced(c, m, other_prime_len_bits);
     let c_mod_m = bigint::elem_mul(p.oneRRR.as_ref(), c_mod_m, m);

@@ -41,6 +41,7 @@ pub(crate) use self::{
     modulus::{Modulus, OwnedModulus, MODULUS_MAX_LIMBS},
     private_exponent::PrivateExponent,
 };
+use super::ImpossibleLengthError;
 use crate::{
     arithmetic::montgomery::*,
     bits::BitLength,
@@ -404,7 +405,7 @@ pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
     m: &Modulus<M>,
-) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+) -> Result<Elem<M, Unencoded>, ImpossibleLengthError> {
     use crate::{bssl, limb::Window};
 
     const WINDOW_BITS: usize = 5;
@@ -490,7 +491,7 @@ pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
     m: &Modulus<M>,
-) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+) -> Result<Elem<M, Unencoded>, ImpossibleLengthError> {
     use crate::{cpu, limb::LIMB_BYTES};
 
     // Pretty much all the math here requires CPU feature detection to have
@@ -629,7 +630,7 @@ pub fn elem_exp_consttime<M>(
         mut i: Window,
         num_limbs: usize,
         cpu_features: cpu::Features,
-    ) -> Result<(), error::Unspecified> {
+    ) -> Result<(), ImpossibleLengthError> {
         loop {
             scatter(table, acc, i, num_limbs);
             i *= 2;

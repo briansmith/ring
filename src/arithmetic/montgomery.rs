@@ -13,7 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub use super::n0::N0;
-use crate::{cpu, error};
+use super::ImpossibleLengthError;
+use crate::cpu;
 
 // Indicates that the element is not encoded; there is no *R* factor
 // that needs to be canceled out.
@@ -133,9 +134,9 @@ unsafe fn mul_mont(
     m: &[Limb],
     n0: &N0,
     _: cpu::Features,
-) -> Result<(), error::Unspecified> {
+) -> Result<(), ImpossibleLengthError> {
     if m.len() < MIN_LIMBS || m.len() > MAX_LIMBS {
-        return Err(error::Unspecified);
+        return Err(ImpossibleLengthError::new());
     }
     bn_mul_mont(r, a, b, m.as_ptr(), n0, m.len());
     Ok(())
@@ -273,9 +274,9 @@ pub(super) fn limbs_mont_mul(
     m: &[Limb],
     n0: &N0,
     cpu_features: cpu::Features,
-) -> Result<(), error::Unspecified> {
+) -> Result<(), ImpossibleLengthError> {
     if r.len() != m.len() || a.len() != m.len() {
-        return Err(error::Unspecified);
+        return Err(ImpossibleLengthError::new());
     }
     unsafe { mul_mont(r.as_mut_ptr(), r.as_ptr(), a.as_ptr(), m, n0, cpu_features) }
 }
@@ -289,9 +290,9 @@ pub(super) fn limbs_mont_product(
     m: &[Limb],
     n0: &N0,
     cpu_features: cpu::Features,
-) -> Result<(), error::Unspecified> {
+) -> Result<(), ImpossibleLengthError> {
     if r.len() != m.len() || a.len() != m.len() || b.len() != m.len() {
-        return Err(error::Unspecified);
+        return Err(ImpossibleLengthError::new());
     }
     unsafe { mul_mont(r.as_mut_ptr(), a.as_ptr(), b.as_ptr(), m, n0, cpu_features) }
 }
@@ -302,9 +303,9 @@ pub(super) fn limbs_mont_square(
     m: &[Limb],
     n0: &N0,
     cpu_features: cpu::Features,
-) -> Result<(), error::Unspecified> {
+) -> Result<(), ImpossibleLengthError> {
     if r.len() != m.len() {
-        return Err(error::Unspecified);
+        return Err(ImpossibleLengthError::new());
     }
     unsafe { mul_mont(r.as_mut_ptr(), r.as_ptr(), r.as_ptr(), m, n0, cpu_features) }
 }

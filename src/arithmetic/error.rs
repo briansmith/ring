@@ -1,4 +1,4 @@
-// Copyright 2017-2023 Brian Smith.
+// Copyright 2023 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,14 +12,21 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-mod constant;
+use crate::error;
 
-#[cfg(feature = "alloc")]
-pub mod bigint;
+/// `ImpossibleLengthError` should never occur.
+#[derive(Debug)]
+pub struct ImpossibleLengthError(());
 
-mod error;
-pub mod montgomery;
+impl ImpossibleLengthError {
+    pub(super) fn new() -> Self {
+        // unreachable!();
+        Self(())
+    }
+}
 
-mod n0;
-pub use constant::limbs_from_hex;
-pub(crate) use error::ImpossibleLengthError;
+impl From<ImpossibleLengthError> for error::Unspecified {
+    fn from(_: ImpossibleLengthError) -> Self {
+        Self
+    }
+}
