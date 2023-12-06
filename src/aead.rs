@@ -134,13 +134,20 @@ impl hkdf::KeyType for &'static Algorithm {
 pub struct Algorithm {
     init: fn(key: &[u8], cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified>,
 
-    seal: fn(key: &KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mut [u8]) -> Tag,
+    seal: fn(
+        key: &KeyInner,
+        nonce: Nonce,
+        aad: Aad<&[u8]>,
+        in_out: &mut [u8],
+        cpu_features: cpu::Features,
+    ) -> Tag,
     open: fn(
         key: &KeyInner,
         nonce: Nonce,
         aad: Aad<&[u8]>,
         in_out: &mut [u8],
         src: RangeFrom<usize>,
+        cpu_features: cpu::Features,
     ) -> Tag,
 
     key_len: usize,
