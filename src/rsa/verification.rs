@@ -35,6 +35,7 @@ impl signature::VerificationAlgorithm for RsaParameters {
             ),
             msg,
             signature,
+            cpu::features(),
         )
     }
 }
@@ -184,6 +185,7 @@ where
             ),
             untrusted::Input::from(message),
             untrusted::Input::from(signature),
+            cpu::features(),
         )
     }
 }
@@ -193,6 +195,7 @@ pub(crate) fn verify_rsa_(
     (n, e): (untrusted::Input, untrusted::Input),
     msg: untrusted::Input,
     signature: untrusted::Input,
+    cpu_features: cpu::Features,
 ) -> Result<(), error::Unspecified> {
     let max_bits: bits::BitLength =
         bits::BitLength::from_usize_bytes(PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;
@@ -207,12 +210,12 @@ pub(crate) fn verify_rsa_(
         params.min_bits,
         max_bits,
         PublicExponent::_3,
-        cpu::features(),
+        cpu_features,
     )?;
 
     // RFC 8017 Section 5.2.2: RSAVP1.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
-    let decoded = key.exponentiate(signature, &mut decoded)?;
+    let decoded = key.exponentiate(signature, &mut decoded, cpu_features)?;
 
     // Verify the padded message is correct.
     let m_hash = digest::digest(params.padding_alg.digest_alg(), msg.as_slice_less_safe());
