@@ -1336,8 +1336,7 @@ DEFINE_STACK_OF(X509_NAME)
 // type is |X509_NAME*|.
 DECLARE_ASN1_ITEM(X509_NAME)
 
-// X509_NAME_new returns a new, empty |X509_NAME_new|, or NULL on
-// error.
+// X509_NAME_new returns a new, empty |X509_NAME|, or NULL on error.
 OPENSSL_EXPORT X509_NAME *X509_NAME_new(void);
 
 // X509_NAME_free releases memory associated with |name|.
@@ -1468,8 +1467,7 @@ OPENSSL_EXPORT int X509_NAME_add_entry_by_txt(X509_NAME *name,
                                               ossl_ssize_t len, int loc,
                                               int set);
 
-// X509_NAME_ENTRY_new returns a new, empty |X509_NAME_ENTRY_new|, or NULL on
-// error.
+// X509_NAME_ENTRY_new returns a new, empty |X509_NAME_ENTRY|, or NULL on error.
 OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_new(void);
 
 // X509_NAME_ENTRY_free releases memory associated with |entry|.
@@ -1767,6 +1765,181 @@ OPENSSL_EXPORT X509_EXTENSION *X509v3_delete_ext(STACK_OF(X509_EXTENSION) *x,
 // list.
 OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509v3_add_ext(
     STACK_OF(X509_EXTENSION) **x, const X509_EXTENSION *ex, int loc);
+
+
+// General names.
+//
+// A |GENERAL_NAME| represents an X.509 GeneralName structure, defined in RFC
+// 5280, Section 4.2.1.6. General names are distinct from names (|X509_NAME|). A
+// general name is a CHOICE type which may contain one of several name types,
+// most commonly a DNS name or an IP address. General names most commonly appear
+// in the subject alternative name (SAN) extension, though they are also used in
+// other extensions.
+//
+// Many extensions contain a SEQUENCE OF GeneralName, or GeneralNames, so
+// |STACK_OF(GENERAL_NAME)| is defined and aliased to |GENERAL_NAMES|.
+
+typedef struct otherName_st {
+  ASN1_OBJECT *type_id;
+  ASN1_TYPE *value;
+} OTHERNAME;
+
+typedef struct EDIPartyName_st {
+  ASN1_STRING *nameAssigner;
+  ASN1_STRING *partyName;
+} EDIPARTYNAME;
+
+// GEN_* are constants for the |type| field of |GENERAL_NAME|, defined below.
+#define GEN_OTHERNAME 0
+#define GEN_EMAIL 1
+#define GEN_DNS 2
+#define GEN_X400 3
+#define GEN_DIRNAME 4
+#define GEN_EDIPARTY 5
+#define GEN_URI 6
+#define GEN_IPADD 7
+#define GEN_RID 8
+
+// A |GENERAL_NAME_st|, aka |GENERAL_NAME|, represents an X.509 GeneralName. The
+// |type| field determines which member of |d| is active. A |GENERAL_NAME| may
+// also be empty, in which case |type| is -1 and |d| is NULL. Empty
+// |GENERAL_NAME|s are invalid and will never be returned from the parser, but
+// may be created temporarily, e.g. by |GENERAL_NAME_new|.
+struct GENERAL_NAME_st {
+  int type;
+  union {
+    char *ptr;
+    OTHERNAME *otherName;
+    ASN1_IA5STRING *rfc822Name;
+    ASN1_IA5STRING *dNSName;
+    ASN1_STRING *x400Address;
+    X509_NAME *directoryName;
+    EDIPARTYNAME *ediPartyName;
+    ASN1_IA5STRING *uniformResourceIdentifier;
+    ASN1_OCTET_STRING *iPAddress;
+    ASN1_OBJECT *registeredID;
+
+    // Old names
+    ASN1_OCTET_STRING *ip;  // iPAddress
+    X509_NAME *dirn;        // dirn
+    ASN1_IA5STRING *ia5;    // rfc822Name, dNSName, uniformResourceIdentifier
+    ASN1_OBJECT *rid;       // registeredID
+  } d;
+} /* GENERAL_NAME */;
+
+// GENERAL_NAME_new returns a new, empty |GENERAL_NAME|, or NULL on error.
+OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_new(void);
+
+// GENERAL_NAME_free releases memory associated with |gen|.
+OPENSSL_EXPORT void GENERAL_NAME_free(GENERAL_NAME *gen);
+
+// d2i_GENERAL_NAME parses up to |len| bytes from |*inp| as a DER-encoded X.509
+// GeneralName (RFC 5280), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT GENERAL_NAME *d2i_GENERAL_NAME(GENERAL_NAME **out,
+                                              const uint8_t **inp, long len);
+
+// i2d_GENERAL_NAME marshals |in| as a DER-encoded X.509 GeneralName (RFC 5280),
+// as described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |in| is an
+// directoryName and the |X509_NAME| has been modified.
+OPENSSL_EXPORT int i2d_GENERAL_NAME(GENERAL_NAME *in, uint8_t **outp);
+
+// GENERAL_NAME_dup returns a newly-allocated copy of |gen|, or NULL on error.
+// This function works by serializing the structure, so it will fail if |gen| is
+// empty.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |gen| is an
+// directoryName and the |X509_NAME| has been modified.
+OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_dup(GENERAL_NAME *gen);
+
+// GENERAL_NAMES_new returns a new, empty |GENERAL_NAMES|, or NULL on error.
+OPENSSL_EXPORT GENERAL_NAMES *GENERAL_NAMES_new(void);
+
+// GENERAL_NAMES_free releases memory associated with |gens|.
+OPENSSL_EXPORT void GENERAL_NAMES_free(GENERAL_NAMES *gens);
+
+// d2i_GENERAL_NAMES parses up to |len| bytes from |*inp| as a DER-encoded
+// SEQUENCE OF GeneralName, as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT GENERAL_NAMES *d2i_GENERAL_NAMES(GENERAL_NAMES **out,
+                                                const uint8_t **inp, long len);
+
+// i2d_GENERAL_NAMES marshals |in| as a DER-encoded SEQUENCE OF GeneralName, as
+// described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if some element
+// of |in| is an directoryName and the |X509_NAME| has been modified.
+OPENSSL_EXPORT int i2d_GENERAL_NAMES(GENERAL_NAMES *in, uint8_t **outp);
+
+// OTHERNAME_new returns a new, empty |OTHERNAME|, or NULL on error.
+OPENSSL_EXPORT OTHERNAME *OTHERNAME_new(void);
+
+// OTHERNAME_free releases memory associated with |name|.
+OPENSSL_EXPORT void OTHERNAME_free(OTHERNAME *name);
+
+// EDIPARTYNAME_new returns a new, empty |EDIPARTYNAME|, or NULL on error.
+// EDIPartyName is rarely used in practice, so callers are unlikely to need this
+// function.
+OPENSSL_EXPORT EDIPARTYNAME *EDIPARTYNAME_new(void);
+
+// EDIPARTYNAME_free releases memory associated with |name|. EDIPartyName is
+// rarely used in practice, so callers are unlikely to need this function.
+OPENSSL_EXPORT void EDIPARTYNAME_free(EDIPARTYNAME *name);
+
+// GENERAL_NAME_set0_value set |gen|'s type and value to |type| and |value|.
+// |type| must be a |GEN_*| constant and |value| must be an object of the
+// corresponding type. |gen| takes ownership of |value|, so |value| must have
+// been an allocated object.
+//
+// WARNING: |gen| must be empty (typically as returned from |GENERAL_NAME_new|)
+// before calling this function. If |gen| already contained a value, the
+// previous contents will be leaked.
+OPENSSL_EXPORT void GENERAL_NAME_set0_value(GENERAL_NAME *gen, int type,
+                                            void *value);
+
+// GENERAL_NAME_get0_value returns the in-memory representation of |gen|'s
+// contents and, |out_type| is not NULL, sets |*out_type| to the type of |gen|,
+// which will be a |GEN_*| constant. If |gen| is incomplete, the return value
+// will be NULL and the type will be -1.
+//
+// WARNING: Casting the result of this function to the wrong type is a
+// potentially exploitable memory error. Callers must check |gen|'s type, either
+// via |*out_type| or checking |gen->type| directly, before inspecting the
+// result.
+//
+// WARNING: This function is not const-correct. The return value should be
+// const. Callers shoudl not mutate the returned object.
+OPENSSL_EXPORT void *GENERAL_NAME_get0_value(const GENERAL_NAME *gen,
+                                             int *out_type);
+
+// GENERAL_NAME_set0_othername sets |gen| to be an OtherName with type |oid| and
+// value |value|. On success, it returns one and takes ownership of |oid| and
+// |value|, which must be created in a way compatible with |ASN1_OBJECT_free|
+// and |ASN1_TYPE_free|, respectively. On allocation failure, it returns zero.
+// In the failure case, the caller retains ownership of |oid| and |value| and
+// must release them when done.
+//
+// WARNING: |gen| must be empty (typically as returned from |GENERAL_NAME_new|)
+// before calling this function. If |gen| already contained a value, the
+// previously contents will be leaked.
+OPENSSL_EXPORT int GENERAL_NAME_set0_othername(GENERAL_NAME *gen,
+                                               ASN1_OBJECT *oid,
+                                               ASN1_TYPE *value);
+
+// GENERAL_NAME_get0_otherName, if |gen| is an OtherName, sets |*out_oid| and
+// |*out_value| to the OtherName's type-id and value, respectively, and returns
+// one. If |gen| is not an OtherName, it returns zero and leaves |*out_oid| and
+// |*out_value| unmodified. Either of |out_oid| or |out_value| may be NULL to
+// ignore the value.
+//
+// WARNING: This function is not const-correct. |out_oid| and |out_value| are
+// not const, but callers should not mutate the resulting objects.
+OPENSSL_EXPORT int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen,
+                                               ASN1_OBJECT **out_oid,
+                                               ASN1_TYPE **out_value);
 
 
 // Algorithm identifiers.
@@ -3105,7 +3278,6 @@ struct X509_algor_st {
 // the end of the certificate itself
 
 DECLARE_STACK_OF(DIST_POINT)
-DECLARE_STACK_OF(GENERAL_NAME)
 
 // This is used for a table of trust checking functions
 
@@ -3781,49 +3953,6 @@ struct BASIC_CONSTRAINTS_st {
   ASN1_INTEGER *pathlen;
 };
 
-
-typedef struct otherName_st {
-  ASN1_OBJECT *type_id;
-  ASN1_TYPE *value;
-} OTHERNAME;
-
-typedef struct EDIPartyName_st {
-  ASN1_STRING *nameAssigner;
-  ASN1_STRING *partyName;
-} EDIPARTYNAME;
-
-struct GENERAL_NAME_st {
-#define GEN_OTHERNAME 0
-#define GEN_EMAIL 1
-#define GEN_DNS 2
-#define GEN_X400 3
-#define GEN_DIRNAME 4
-#define GEN_EDIPARTY 5
-#define GEN_URI 6
-#define GEN_IPADD 7
-#define GEN_RID 8
-
-  int type;
-  union {
-    char *ptr;
-    OTHERNAME *otherName;  // otherName
-    ASN1_IA5STRING *rfc822Name;
-    ASN1_IA5STRING *dNSName;
-    ASN1_STRING *x400Address;
-    X509_NAME *directoryName;
-    EDIPARTYNAME *ediPartyName;
-    ASN1_IA5STRING *uniformResourceIdentifier;
-    ASN1_OCTET_STRING *iPAddress;
-    ASN1_OBJECT *registeredID;
-
-    // Old names
-    ASN1_OCTET_STRING *ip;  // iPAddress
-    X509_NAME *dirn;        // dirn
-    ASN1_IA5STRING *ia5;    // rfc822Name, dNSName, uniformResourceIdentifier
-    ASN1_OBJECT *rid;       // registeredID
-  } d;
-} /* GENERAL_NAME */;
-
 typedef struct ACCESS_DESCRIPTION_st {
   ASN1_OBJECT *method;
   GENERAL_NAME *location;
@@ -3982,27 +4111,6 @@ DECLARE_ASN1_FUNCTIONS_const(BASIC_CONSTRAINTS)
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(AUTHORITY_KEYID)
-
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(GENERAL_NAME)
-OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_dup(GENERAL_NAME *a);
-
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(GENERAL_NAMES)
-
-DECLARE_ASN1_FUNCTIONS_const(OTHERNAME)
-DECLARE_ASN1_FUNCTIONS_const(EDIPARTYNAME)
-OPENSSL_EXPORT void GENERAL_NAME_set0_value(GENERAL_NAME *a, int type,
-                                            void *value);
-OPENSSL_EXPORT void *GENERAL_NAME_get0_value(const GENERAL_NAME *a, int *ptype);
-OPENSSL_EXPORT int GENERAL_NAME_set0_othername(GENERAL_NAME *gen,
-                                               ASN1_OBJECT *oid,
-                                               ASN1_TYPE *value);
-OPENSSL_EXPORT int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen,
-                                               ASN1_OBJECT **poid,
-                                               ASN1_TYPE **pvalue);
 
 DECLARE_ASN1_FUNCTIONS_const(EXTENDED_KEY_USAGE)
 

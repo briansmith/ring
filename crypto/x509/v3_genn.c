@@ -70,7 +70,7 @@ ASN1_SEQUENCE(OTHERNAME) = {
     ASN1_EXP(OTHERNAME, value, ASN1_ANY, 0),
 } ASN1_SEQUENCE_END(OTHERNAME)
 
-IMPLEMENT_ASN1_FUNCTIONS_const(OTHERNAME)
+IMPLEMENT_ASN1_ALLOC_FUNCTIONS(OTHERNAME)
 
 ASN1_SEQUENCE(EDIPARTYNAME) = {
     // DirectoryString is a CHOICE type, so use explicit tagging.
@@ -78,7 +78,7 @@ ASN1_SEQUENCE(EDIPARTYNAME) = {
     ASN1_EXP(EDIPARTYNAME, partyName, DIRECTORYSTRING, 1),
 } ASN1_SEQUENCE_END(EDIPARTYNAME)
 
-IMPLEMENT_ASN1_FUNCTIONS_const(EDIPARTYNAME)
+IMPLEMENT_ASN1_ALLOC_FUNCTIONS(EDIPARTYNAME)
 
 ASN1_CHOICE(GENERAL_NAME) = {
     ASN1_IMP(GENERAL_NAME, d.otherName, OTHERNAME, GEN_OTHERNAME),
@@ -208,9 +208,9 @@ void GENERAL_NAME_set0_value(GENERAL_NAME *a, int type, void *value) {
   a->type = type;
 }
 
-void *GENERAL_NAME_get0_value(const GENERAL_NAME *a, int *ptype) {
-  if (ptype) {
-    *ptype = a->type;
+void *GENERAL_NAME_get0_value(const GENERAL_NAME *a, int *out_type) {
+  if (out_type) {
+    *out_type = a->type;
   }
   switch (a->type) {
     case GEN_X400:
@@ -255,16 +255,16 @@ int GENERAL_NAME_set0_othername(GENERAL_NAME *gen, ASN1_OBJECT *oid,
   return 1;
 }
 
-int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen, ASN1_OBJECT **poid,
-                                ASN1_TYPE **pvalue) {
+int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen, ASN1_OBJECT **out_oid,
+                                ASN1_TYPE **out_value) {
   if (gen->type != GEN_OTHERNAME) {
     return 0;
   }
-  if (poid) {
-    *poid = gen->d.otherName->type_id;
+  if (out_oid != NULL) {
+    *out_oid = gen->d.otherName->type_id;
   }
-  if (pvalue) {
-    *pvalue = gen->d.otherName->value;
+  if (out_value != NULL) {
+    *out_value = gen->d.otherName->value;
   }
   return 1;
 }
