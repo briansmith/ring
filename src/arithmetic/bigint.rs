@@ -827,11 +827,12 @@ mod tests {
                 struct M {}
                 struct O {}
                 let m = consume_modulus::<M>(test_case, "m", cpu_features);
-                let a = consume_elem_unchecked::<O>(test_case, "a", m.modulus().limbs().len());
-                let expected_result = consume_elem::<M>(test_case, "r", &m.modulus());
-                let other_modulus_len_bits = m.modulus().len_bits();
+                let m = m.modulus();
+                let a = consume_elem_unchecked::<O>(test_case, "a", m.limbs().len());
+                let expected_result = consume_elem::<M>(test_case, "r", &m);
+                let other_modulus_len_bits = m.len_bits();
 
-                let actual_result = elem_reduced_once(&a, &m.modulus(), other_modulus_len_bits);
+                let actual_result = elem_reduced_once(&a, &m, other_modulus_len_bits);
                 assert_elem_eq(&actual_result, &expected_result);
 
                 Ok(())
