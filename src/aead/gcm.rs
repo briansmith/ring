@@ -25,7 +25,6 @@ mod gcm_nohw;
 #[derive(Clone)]
 pub struct Key {
     h_table: HTable,
-    cpu_features: cpu::Features,
 }
 
 impl Key {
@@ -36,7 +35,6 @@ impl Key {
             h_table: HTable {
                 Htable: [u128 { hi: 0, lo: 0 }; HTABLE_LEN],
             },
-            cpu_features,
         };
         let h_table = &mut key.h_table;
 
@@ -92,13 +90,13 @@ pub struct Context {
 }
 
 impl Context {
-    pub(crate) fn new(key: &Key, aad: Aad<&[u8]>) -> Self {
+    pub(crate) fn new(key: &Key, aad: Aad<&[u8]>, cpu_features: cpu::Features) -> Self {
         let mut ctx = Self {
             inner: ContextInner {
                 Xi: Xi(Block::zero()),
                 Htable: key.h_table.clone(),
             },
-            cpu_features: key.cpu_features,
+            cpu_features,
         };
 
         for ad in aad.0.chunks(BLOCK_LEN) {

@@ -63,13 +63,22 @@ fn init(
     cpu_features: cpu::Features,
 ) -> Result<aead::KeyInner, error::Unspecified> {
     let aes_key = aes::Key::new(key, variant, cpu_features)?;
-    let gcm_key = gcm::Key::new(aes_key.encrypt_block(Block::zero()), cpu_features);
+    let gcm_key = gcm::Key::new(
+        aes_key.encrypt_block(Block::zero(), cpu_features),
+        cpu_features,
+    );
     Ok(aead::KeyInner::AesGcm(Key { gcm_key, aes_key }))
 }
 
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
-fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mut [u8]) -> Tag {
+fn aes_gcm_seal(
+    key: &aead::KeyInner,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    in_out: &mut [u8],
+    cpu_features: cpu::Features,
+) -> Tag {
     let Key { gcm_key, aes_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
@@ -80,11 +89,11 @@ fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mu
 
     let total_in_out_len = in_out.len();
     let aad_len = aad.0.len();
-    let mut auth = gcm::Context::new(gcm_key, aad);
+    let mut auth = gcm::Context::new(gcm_key, aad, cpu_features);
 
     #[cfg(target_arch = "x86_64")]
     let in_out = {
-        if !aes_key.is_aes_hw() || !auth.is_avx() {
+        if !aes_key.is_aes_hw(cpu_features) || !auth.is_avx() {
             in_out
         } else {
             use crate::c;
@@ -124,20 +133,27 @@ fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mu
     };
 
     for chunk in whole.chunks_mut(CHUNK_BLOCKS * BLOCK_LEN) {
-        aes_key.ctr32_encrypt_within(chunk, 0.., &mut ctr);
+        aes_key.ctr32_encrypt_within(chunk, 0.., &mut ctr, cpu_features);
         auth.update_blocks(chunk);
     }
 
     if !remainder.is_empty() {
         let mut input = Block::zero();
         input.overwrite_part_at(0, remainder);
-        let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input);
+        let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input, cpu_features);
         output.zero_from(remainder.len());
         auth.update_block(output);
         remainder.copy_from_slice(&output.as_ref()[..remainder.len()]);
     }
 
-    finish(aes_key, auth, tag_iv, aad_len, total_in_out_len)
+    finish(
+        aes_key,
+        auth,
+        tag_iv,
+        aad_len,
+        total_in_out_len,
+        cpu_features,
+    )
 }
 
 fn aes_gcm_open(
@@ -146,6 +162,7 @@ fn aes_gcm_open(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     src: RangeFrom<usize>,
+    cpu_features: cpu::Features,
 ) -> Tag {
     let Key { gcm_key, aes_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
@@ -156,7 +173,7 @@ fn aes_gcm_open(
     let tag_iv = ctr.increment();
 
     let aad_len = aad.0.len();
-    let mut auth = gcm::Context::new(gcm_key, aad);
+    let mut auth = gcm::Context::new(gcm_key, aad, cpu_features);
 
     let in_prefix_len = src.start;
 
@@ -164,7 +181,7 @@ fn aes_gcm_open(
 
     #[cfg(target_arch = "x86_64")]
     let in_out = {
-        if !aes_key.is_aes_hw() || !auth.is_avx() {
+        if !aes_key.is_aes_hw(cpu_features) || !auth.is_avx() {
             in_out
         } else {
             use crate::c;
@@ -218,6 +235,7 @@ fn aes_gcm_open(
                 &mut in_out[output..][..(chunk_len + in_prefix_len)],
                 in_prefix_len..,
                 &mut ctr,
+                cpu_features,
             );
             output += chunk_len;
             input += chunk_len;
@@ -229,10 +247,17 @@ fn aes_gcm_open(
         let mut input = Block::zero();
         input.overwrite_part_at(0, remainder);
         auth.update_block(input);
-        aes_key.encrypt_iv_xor_block(ctr.into(), input)
+        aes_key.encrypt_iv_xor_block(ctr.into(), input, cpu_features)
     });
 
-    finish(aes_key, auth, tag_iv, aad_len, total_in_out_len)
+    finish(
+        aes_key,
+        auth,
+        tag_iv,
+        aad_len,
+        total_in_out_len,
+        cpu_features,
+    )
 }
 
 fn finish(
@@ -241,6 +266,7 @@ fn finish(
     tag_iv: aes::Iv,
     aad_len: usize,
     in_out_len: usize,
+    cpu_features: cpu::Features,
 ) -> Tag {
     // Authenticate the final block containing the input lengths.
     let aad_bits = polyfill::u64_from_usize(aad_len) << 3;
@@ -251,7 +277,7 @@ fn finish(
 
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag| {
-        let encrypted_iv = aes_key.encrypt_block(tag_iv.into_block_less_safe());
+        let encrypted_iv = aes_key.encrypt_block(tag_iv.into_block_less_safe(), cpu_features);
         let tag = pre_tag ^ encrypted_iv;
         Tag(*tag.as_ref())
     })

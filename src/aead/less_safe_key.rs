@@ -171,7 +171,8 @@ fn open_within_<'in_out>(
     let ciphertext_len = in_out.get(src.clone()).ok_or(error::Unspecified)?.len();
     check_per_nonce_max_bytes(key.algorithm, ciphertext_len)?;
 
-    let Tag(calculated_tag) = (key.algorithm.open)(&key.inner, nonce, aad, in_out, src);
+    let Tag(calculated_tag) =
+        (key.algorithm.open)(&key.inner, nonce, aad, in_out, src, cpu::features());
 
     if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag.as_ref())
         .is_err()
@@ -198,7 +199,13 @@ pub(super) fn seal_in_place_separate_tag_(
     in_out: &mut [u8],
 ) -> Result<Tag, error::Unspecified> {
     check_per_nonce_max_bytes(key.algorithm(), in_out.len())?;
-    Ok((key.algorithm.seal)(&key.inner, nonce, aad, in_out))
+    Ok((key.algorithm.seal)(
+        &key.inner,
+        nonce,
+        aad,
+        in_out,
+        cpu::features(),
+    ))
 }
 
 fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize) -> Result<(), error::Unspecified> {

@@ -14,7 +14,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{quic::Sample, Nonce};
-use crate::cpu;
 
 #[cfg(any(
     test,
@@ -33,19 +32,13 @@ use core::ops::RangeFrom;
 #[derive(Clone)]
 pub struct Key {
     words: [u32; KEY_LEN / 4],
-    cpu_features: cpu::Features,
 }
 
 impl Key {
-    pub(super) fn new(value: [u8; KEY_LEN], cpu_features: cpu::Features) -> Self {
+    pub(super) fn new(value: [u8; KEY_LEN]) -> Self {
         Self {
             words: value.array_split_map(u32::from_le_bytes),
-            cpu_features,
         }
-    }
-
-    pub(super) fn cpu_features(&self) -> cpu::Features {
-        self.cpu_features
     }
 }
 
@@ -261,7 +254,7 @@ mod tests {
 
             let key = test_case.consume_bytes("Key");
             let key: &[u8; KEY_LEN] = key.as_slice().try_into()?;
-            let key = Key::new(*key, cpu::features());
+            let key = Key::new(*key);
 
             let ctr = test_case.consume_usize("Ctr");
             let nonce = test_case.consume_bytes("Nonce");

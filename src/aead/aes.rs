@@ -29,7 +29,6 @@ use core::ops::RangeFrom;
 #[derive(Clone)]
 pub(super) struct Key {
     inner: AES_KEY,
-    cpu_features: cpu::Features,
 }
 
 macro_rules! set_encrypt_key {
@@ -172,15 +171,12 @@ impl Key {
             }
         };
 
-        Ok(Self {
-            inner: key,
-            cpu_features,
-        })
+        Ok(Self { inner: key })
     }
 
     #[inline]
-    pub fn encrypt_block(&self, a: Block) -> Block {
-        match detect_implementation(self.cpu_features) {
+    pub fn encrypt_block(&self, a: Block, cpu_features: cpu::Features) -> Block {
+        match detect_implementation(cpu_features) {
             #[cfg(any(
                 target_arch = "aarch64",
                 target_arch = "arm",
@@ -203,8 +199,8 @@ impl Key {
     }
 
     #[inline]
-    pub fn encrypt_iv_xor_block(&self, iv: Iv, input: Block) -> Block {
-        let encrypted_iv = self.encrypt_block(iv.into_block_less_safe());
+    pub fn encrypt_iv_xor_block(&self, iv: Iv, input: Block, cpu_features: cpu::Features) -> Block {
+        let encrypted_iv = self.encrypt_block(iv.into_block_less_safe(), cpu_features);
         encrypted_iv ^ input
     }
 
@@ -214,12 +210,13 @@ impl Key {
         in_out: &mut [u8],
         src: RangeFrom<usize>,
         ctr: &mut Counter,
+        cpu_features: cpu::Features,
     ) {
         let in_out_len = in_out[src.clone()].len();
 
         assert_eq!(in_out_len % BLOCK_LEN, 0);
 
-        match detect_implementation(self.cpu_features) {
+        match detect_implementation(cpu_features) {
             #[cfg(any(
                 target_arch = "aarch64",
                 target_arch = "arm",
@@ -271,7 +268,7 @@ impl Key {
             #[cfg(target_arch = "x86")]
             Implementation::VPAES_BSAES => {
                 super::shift::shift_full_blocks(in_out, src, |input| {
-                    self.encrypt_iv_xor_block(ctr.increment(), Block::from(input))
+                    self.encrypt_iv_xor_block(ctr.increment(), Block::from(input), cpu_features)
                 });
             }
 
@@ -283,7 +280,7 @@ impl Key {
     }
 
     pub fn new_mask(&self, sample: Sample) -> [u8; 5] {
-        let block = self.encrypt_block(Block::from(&sample));
+        let block = self.encrypt_block(Block::from(&sample), cpu::features());
 
         let mut out: [u8; 5] = [0; 5];
         out.copy_from_slice(&block.as_ref()[..5]);
@@ -293,11 +290,8 @@ impl Key {
 
     #[cfg(target_arch = "x86_64")]
     #[must_use]
-    pub fn is_aes_hw(&self) -> bool {
-        matches!(
-            detect_implementation(self.cpu_features),
-            Implementation::HWAES
-        )
+    pub fn is_aes_hw(&self, cpu_features: cpu::Features) -> bool {
+        matches!(detect_implementation(cpu_features), Implementation::HWAES)
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -445,6 +439,7 @@ mod tests {
 
     #[test]
     pub fn test_aes() {
+        let cpu_features = cpu::features();
         test::run(test_file!("aes_tests.txt"), |section, test_case| {
             assert_eq!(section, "");
             let key = consume_key(test_case, "Key");
@@ -453,7 +448,7 @@ mod tests {
             let expected_output = test_case.consume_bytes("Output");
 
             let block = Block::from(input);
-            let output = key.encrypt_block(block);
+            let output = key.encrypt_block(block, cpu_features);
             assert_eq!(output.as_ref(), &expected_output[..]);
 
             Ok(())
