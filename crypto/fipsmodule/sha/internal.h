@@ -126,7 +126,8 @@ void sha1_block_data_order_ssse3(uint32_t *state, const uint8_t *data,
 
 #define SHA256_ASM_HW
 OPENSSL_INLINE int sha256_hw_capable(void) {
-  return CRYPTO_is_x86_SHA_capable();
+  // Note that the original assembly did not check SSSE3.
+  return CRYPTO_is_x86_SHA_capable() && CRYPTO_is_SSSE3_capable();
 }
 
 #define SHA256_ASM_AVX
