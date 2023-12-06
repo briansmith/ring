@@ -36,6 +36,10 @@ void TrustStoreInMemory::AddDistrustedCertificateForTest(
   AddCertificate(std::move(cert), CertificateTrust::ForDistrusted());
 }
 
+void TrustStoreInMemory::AddDistrustedCertificateBySPKI(std::string spki) {
+  distrusted_spkis_.insert(std::move(spki));
+}
+
 void TrustStoreInMemory::AddCertificateWithUnspecifiedTrust(
     std::shared_ptr<const ParsedCertificate> cert) {
   AddCertificate(std::move(cert), CertificateTrust::ForUnspecified());
@@ -50,6 +54,12 @@ void TrustStoreInMemory::SyncGetIssuersOf(const ParsedCertificate *cert,
 }
 
 CertificateTrust TrustStoreInMemory::GetTrust(const ParsedCertificate *cert) {
+  // Check SPKI distrust first.
+  if (distrusted_spkis_.find(cert->tbs().spki_tlv.AsString()) !=
+      distrusted_spkis_.end()) {
+    return CertificateTrust::ForDistrusted();
+  }
+
   const Entry *entry = GetEntry(cert);
   return entry ? entry->trust : CertificateTrust::ForUnspecified();
 }
