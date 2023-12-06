@@ -262,7 +262,6 @@ jobs:
       - if: ${{ matrix.target == 'aarch64-pc-windows-msvc' }}
         run: |
           echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
-          echo "RUSTFLAGS=-C target-feature=+crt-static" >> $GITHUB_ENV
         shell: bash
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
