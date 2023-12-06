@@ -144,8 +144,9 @@ impl Inner {
         &self,
         base: untrusted::Input,
         out_buffer: &'out mut [u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN],
+        cpu_features: cpu::Features,
     ) -> Result<&'out [u8], error::Unspecified> {
-        let n = &self.n.value();
+        let n = &self.n.value(cpu_features);
 
         // The encoded value of the base must be the same length as the modulus,
         // in bytes.
@@ -162,7 +163,7 @@ impl Inner {
         }
 
         // Step 2.
-        let m = self.exponentiate_elem(&s);
+        let m = self.exponentiate_elem(&s, cpu_features);
 
         // Step 3.
         Ok(fill_be_bytes_n(m, self.n.len_bits(), out_buffer))
@@ -171,13 +172,17 @@ impl Inner {
     /// Calculates base**e (mod n).
     ///
     /// This is constant-time with respect to `base` only.
-    pub(super) fn exponentiate_elem(&self, base: &bigint::Elem<N>) -> bigint::Elem<N> {
+    pub(super) fn exponentiate_elem(
+        &self,
+        base: &bigint::Elem<N>,
+        cpu_features: cpu::Features,
+    ) -> bigint::Elem<N> {
         // The exponent was already checked to be at least 3.
         let exponent_without_low_bit = NonZeroU64::try_from(self.e.value().get() & !1).unwrap();
         // The exponent was already checked to be odd.
         debug_assert_ne!(exponent_without_low_bit, self.e.value());
 
-        let n = &self.n.value();
+        let n = &self.n.value(cpu_features);
 
         let base_r = bigint::elem_mul(self.n.oneRR(), base.clone(), n);
 

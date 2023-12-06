@@ -719,8 +719,8 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m = consume_modulus::<M>(test_case, "M", cpu_features);
-                let m = m.modulus();
+                let m = consume_modulus::<M>(test_case, "M");
+                let m = m.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModExp", &m);
                 let base = consume_elem(test_case, "A", &m);
                 let e = {
@@ -749,8 +749,8 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m = consume_modulus::<M>(test_case, "M", cpu_features);
-                let m = m.modulus();
+                let m = consume_modulus::<M>(test_case, "M");
+                let m = m.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModMul", &m);
                 let a = consume_elem(test_case, "A", &m);
                 let b = consume_elem(test_case, "B", &m);
@@ -774,8 +774,8 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m = consume_modulus::<M>(test_case, "M", cpu_features);
-                let m = m.modulus();
+                let m = consume_modulus::<M>(test_case, "M");
+                let m = m.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModSquare", &m);
                 let a = consume_elem(test_case, "A", &m);
 
@@ -799,8 +799,8 @@ mod tests {
 
                 struct M {}
 
-                let m_ = consume_modulus::<M>(test_case, "M", cpu_features);
-                let m = m_.modulus();
+                let m_ = consume_modulus::<M>(test_case, "M");
+                let m = m_.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "R", &m);
                 let a =
                     consume_elem_unchecked::<M>(test_case, "A", expected_result.limbs.len() * 2);
@@ -826,8 +826,8 @@ mod tests {
 
                 struct M {}
                 struct O {}
-                let m = consume_modulus::<M>(test_case, "m", cpu_features);
-                let m = m.modulus();
+                let m = consume_modulus::<M>(test_case, "m");
+                let m = m.modulus(cpu_features);
                 let a = consume_elem_unchecked::<O>(test_case, "a", m.limbs().len());
                 let expected_result = consume_elem::<M>(test_case, "r", &m);
                 let other_modulus_len_bits = m.len_bits();
@@ -864,13 +864,9 @@ mod tests {
         }
     }
 
-    fn consume_modulus<M>(
-        test_case: &mut test::TestCase,
-        name: &str,
-        cpu_features: cpu::Features,
-    ) -> OwnedModulus<M> {
+    fn consume_modulus<M>(test_case: &mut test::TestCase, name: &str) -> OwnedModulus<M> {
         let value = test_case.consume_bytes(name);
-        OwnedModulus::from_be_bytes(untrusted::Input::from(&value), cpu_features).unwrap()
+        OwnedModulus::from_be_bytes(untrusted::Input::from(&value)).unwrap()
     }
 
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
