@@ -592,14 +592,6 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
 
 static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca) { return 1; }
 
-// Various checks to see if one certificate issued the second. This can be
-// used to prune a set of possible issuer certificates which have been looked
-// up using some simple method such as by subject name. These are: 1. Check
-// issuer_name(subject) == subject_name(issuer) 2. If akid(subject) exists
-// check it matches issuer 3. If key_usage(issuer) exists check it supports
-// certificate signing returns 0 for OK, positive for reason for mismatch,
-// reasons match codes for X509_verify_cert()
-
 int X509_check_issued(X509 *issuer, X509 *subject) {
   if (X509_NAME_cmp(X509_get_subject_name(issuer),
                     X509_get_issuer_name(subject))) {
@@ -622,7 +614,7 @@ int X509_check_issued(X509 *issuer, X509 *subject) {
   return X509_V_OK;
 }
 
-int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid) {
+int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid) {
   if (!akid) {
     return X509_V_OK;
   }

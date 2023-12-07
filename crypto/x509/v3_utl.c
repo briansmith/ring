@@ -942,6 +942,9 @@ static int do_check_string(const ASN1_STRING *a, int cmp_type, equal_fn equal,
     }
     if (rv > 0 && peername) {
       *peername = OPENSSL_strndup((char *)a->data, a->length);
+      if (*peername == NULL) {
+        return -1;
+      }
     }
   } else {
     int astrlen;
@@ -960,13 +963,16 @@ static int do_check_string(const ASN1_STRING *a, int cmp_type, equal_fn equal,
     }
     if (rv > 0 && peername) {
       *peername = OPENSSL_strndup((char *)astr, astrlen);
+      if (*peername == NULL) {
+        return -1;
+      }
     }
     OPENSSL_free(astr);
   }
   return rv;
 }
 
-static int do_x509_check(X509 *x, const char *chk, size_t chklen,
+static int do_x509_check(const X509 *x, const char *chk, size_t chklen,
                          unsigned int flags, int check_type, char **peername) {
   int cnid = NID_undef;
   int alt_type;
@@ -1033,8 +1039,8 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
   return 0;
 }
 
-int X509_check_host(X509 *x, const char *chk, size_t chklen, unsigned int flags,
-                    char **peername) {
+int X509_check_host(const X509 *x, const char *chk, size_t chklen,
+                    unsigned int flags, char **peername) {
   if (chk == NULL) {
     return -2;
   }
@@ -1044,7 +1050,7 @@ int X509_check_host(X509 *x, const char *chk, size_t chklen, unsigned int flags,
   return do_x509_check(x, chk, chklen, flags, GEN_DNS, peername);
 }
 
-int X509_check_email(X509 *x, const char *chk, size_t chklen,
+int X509_check_email(const X509 *x, const char *chk, size_t chklen,
                      unsigned int flags) {
   if (chk == NULL) {
     return -2;
@@ -1055,15 +1061,15 @@ int X509_check_email(X509 *x, const char *chk, size_t chklen,
   return do_x509_check(x, chk, chklen, flags, GEN_EMAIL, NULL);
 }
 
-int X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
+int X509_check_ip(const X509 *x, const unsigned char *chk, size_t chklen,
                   unsigned int flags) {
   if (chk == NULL) {
     return -2;
   }
-  return do_x509_check(x, (char *)chk, chklen, flags, GEN_IPADD, NULL);
+  return do_x509_check(x, (const char *)chk, chklen, flags, GEN_IPADD, NULL);
 }
 
-int X509_check_ip_asc(X509 *x, const char *ipasc, unsigned int flags) {
+int X509_check_ip_asc(const X509 *x, const char *ipasc, unsigned int flags) {
   unsigned char ipout[16];
   size_t iplen;
 
@@ -1074,7 +1080,7 @@ int X509_check_ip_asc(X509 *x, const char *ipasc, unsigned int flags) {
   if (iplen == 0) {
     return -2;
   }
-  return do_x509_check(x, (char *)ipout, iplen, flags, GEN_IPADD, NULL);
+  return do_x509_check(x, (const char *)ipout, iplen, flags, GEN_IPADD, NULL);
 }
 
 // Convert IP addresses both IPv4 and IPv6 into an OCTET STRING compatible

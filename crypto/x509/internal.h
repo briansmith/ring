@@ -587,6 +587,10 @@ GENERAL_NAMES *v2i_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
                                  const X509V3_CTX *ctx,
                                  const STACK_OF(CONF_VALUE) *nval);
 
+// TODO(https://crbug.com/boringssl/407): Make |issuer| const once the
+// |X509_NAME| issue is resolved.
+int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid);
+
 
 #if defined(__cplusplus)
 }  // extern C
