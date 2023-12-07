@@ -54,6 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <inttypes.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -68,7 +69,7 @@
 #include "internal.h"
 
 typedef struct lookup_dir_hashes_st {
-  unsigned long hash;
+  uint32_t hash;
   int suffix;
 } BY_DIR_HASH;
 
@@ -246,8 +247,8 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
   int ok = 0;
   size_t i;
   int j, k;
-  unsigned long h;
-  unsigned long hash_array[2];
+  uint32_t h;
+  uint32_t hash_array[2];
   int hash_index;
   BUF_MEM *b = NULL;
   X509_OBJECT stmp, *tmp;
@@ -309,7 +310,8 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         hent = NULL;
       }
       for (;;) {
-        snprintf(b->data, b->max, "%s/%08lx.%s%d", ent->dir, h, postfix, k);
+        snprintf(b->data, b->max, "%s/%08" PRIx32 ".%s%d", ent->dir, h, postfix,
+                 k);
 #ifndef OPENSSL_NO_POSIX_IO
 #if defined(_WIN32) && !defined(stat)
 #define stat _stat

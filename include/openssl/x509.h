@@ -2831,6 +2831,22 @@ OPENSSL_EXPORT int X509_subject_name_cmp(const X509 *a, const X509 *b);
 // CRL, only the issuer fields using |X509_NAME_cmp|.
 OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
 
+// X509_issuer_name_hash returns the hash of |x509|'s issuer name with
+// |X509_NAME_hash|.
+OPENSSL_EXPORT uint32_t X509_issuer_name_hash(X509 *x509);
+
+// X509_subject_name_hash returns the hash of |x509|'s subject name with
+// |X509_NAME_hash|.
+OPENSSL_EXPORT uint32_t X509_subject_name_hash(X509 *x509);
+
+// X509_issuer_name_hash returns the hash of |x509|'s issuer name with
+// |X509_NAME_hash_old|.
+OPENSSL_EXPORT uint32_t X509_issuer_name_hash_old(X509 *x509);
+
+// X509_usjbect_name_hash returns the hash of |x509|'s usjbect name with
+// |X509_NAME_hash_old|.
+OPENSSL_EXPORT uint32_t X509_subject_name_hash_old(X509 *x509);
+
 
 // ex_data functions.
 //
@@ -3443,16 +3459,24 @@ OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
 
 OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
 
-OPENSSL_EXPORT unsigned long X509_issuer_name_hash(X509 *a);
-
-OPENSSL_EXPORT unsigned long X509_subject_name_hash(X509 *x);
-
-OPENSSL_EXPORT unsigned long X509_issuer_name_hash_old(X509 *a);
-OPENSSL_EXPORT unsigned long X509_subject_name_hash_old(X509 *x);
-
 OPENSSL_EXPORT int X509_cmp(const X509 *a, const X509 *b);
-OPENSSL_EXPORT unsigned long X509_NAME_hash(X509_NAME *x);
-OPENSSL_EXPORT unsigned long X509_NAME_hash_old(X509_NAME *x);
+
+// X509_NAME_hash returns a hash of |name|, or zero on error. This is the new
+// hash used by |X509_LOOKUP_hash_dir|.
+//
+// TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
+// but currently is neither, notably if |name| was modified from its parsed
+// value.
+OPENSSL_EXPORT uint32_t X509_NAME_hash(X509_NAME *name);
+
+// X509_NAME_hash_old returns a hash of |name|, or zero on error. This is the
+// legacy hash used by |X509_LOOKUP_hash_dir|, which is still supported for
+// compatibility.
+//
+// TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
+// but currently is neither, notably if |name| was modified from its parsed
+// value.
+OPENSSL_EXPORT uint32_t X509_NAME_hash_old(X509_NAME *name);
 
 OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
 

@@ -2582,8 +2582,8 @@ TEST(X509Test, X509NameSet) {
 TEST(X509Test, NameHash) {
   struct {
     std::vector<uint8_t> name_der;
-    unsigned long hash;
-    unsigned long hash_old;
+    uint32_t hash;
+    uint32_t hash_old;
   } kTests[] = {
       // SEQUENCE {
       //   SET {
