@@ -645,7 +645,7 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_file: &Path) -> Command
         std::path::MAIN_SEPARATOR,
     )));
 
-    let mut c = Command::new("nasm"); // nasm now assumed to be installed and in PATH
+    let mut c = Command::new("./target/tools/windows/nasm/nasm");
     let _ = c
         .arg("-o")
         .arg(out_file.to_str().expect("Invalid path"))
