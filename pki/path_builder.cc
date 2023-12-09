@@ -818,6 +818,12 @@ CertPathBuilder::Result CertPathBuilder::Run() {
           result_path->errors.GetOtherErrors()->AddError(
               cert_errors::kInternalError);
         }
+
+        // Allow the delegate to do any processing or logging of the partial
+        // path. (This is for symmetry for the other CheckPathAfterVerification
+        // which also gets called on partial paths.)
+        delegate_->CheckPathAfterVerification(*this, result_path.get());
+
         AddResultPath(std::move(result_path));
       }
       out_result_.iteration_count = iteration_count;
@@ -838,11 +844,6 @@ CertPathBuilder::Result CertPathBuilder::Run() {
           key_purpose_, initial_explicit_policy_, user_initial_policy_set_,
           initial_policy_mapping_inhibit_, initial_any_policy_inhibit_,
           &result_path->user_constrained_policy_set, &result_path->errors);
-    }
-
-    if (delegate_->IsDebugLogEnabled()) {
-      delegate_->DebugLog("CertPathBuilder VerifyCertificateChain errors:\n" +
-                 result_path->errors.ToDebugString(result_path->certs));
     }
 
     // Give the delegate a chance to add errors to the path.

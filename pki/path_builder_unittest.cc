@@ -60,6 +60,24 @@ class TestPathBuilderDelegate : public SimplePathBuilderDelegate {
   MockSignatureVerifyCache cache_;
 };
 
+class CertPathBuilderDelegateBase : public SimplePathBuilderDelegate {
+ public:
+  CertPathBuilderDelegateBase()
+      : SimplePathBuilderDelegate(
+            1024, SimplePathBuilderDelegate::DigestPolicy::kWeakAllowSha1) {}
+  void CheckPathAfterVerification(const CertPathBuilder &path_builder,
+                                  CertPathBuilderResultPath *path) override {
+    ADD_FAILURE() << "Tests must override this";
+  }
+};
+
+class MockPathBuilderDelegate : public CertPathBuilderDelegateBase {
+ public:
+  MOCK_METHOD2(CheckPathAfterVerification,
+               void(const CertPathBuilder &path_builder,
+                    CertPathBuilderResultPath *path));
+};
+
 // AsyncCertIssuerSourceStatic always returns its certs asynchronously.
 class AsyncCertIssuerSourceStatic : public CertIssuerSource {
  public:
@@ -628,8 +646,13 @@ TEST_F(PathBuilderMultiRootTest, TestIterationLimit) {
   for (const bool insufficient_limit : {true, false}) {
     SCOPED_TRACE(insufficient_limit);
 
+    StrictMock<MockPathBuilderDelegate> mock_delegate;
+    // The CheckPathAfterVerification delegate should be called regardless if
+    // the iteration limit is reached.
+    EXPECT_CALL(mock_delegate, CheckPathAfterVerification(_, _));
+
     CertPathBuilder path_builder(
-        a_by_b_, &trust_store, &delegate_, time_, KeyPurpose::ANY_EKU,
+        a_by_b_, &trust_store, &mock_delegate, time_, KeyPurpose::ANY_EKU,
         initial_explicit_policy_, user_initial_policy_set_,
         initial_policy_mapping_inhibit_, initial_any_policy_inhibit_);
     path_builder.AddCertIssuerSource(&sync_certs);
@@ -1871,24 +1894,6 @@ TEST_F(PathBuilderDistrustTest, TargetIntermediateRoot) {
 // what CheckPathAfterVerification() does.
 class PathBuilderCheckPathAfterVerificationTest
     : public PathBuilderSimpleChainTest {};
-
-class CertPathBuilderDelegateBase : public SimplePathBuilderDelegate {
- public:
-  CertPathBuilderDelegateBase()
-      : SimplePathBuilderDelegate(
-            1024, SimplePathBuilderDelegate::DigestPolicy::kWeakAllowSha1) {}
-  void CheckPathAfterVerification(const CertPathBuilder &path_builder,
-                                  CertPathBuilderResultPath *path) override {
-    ADD_FAILURE() << "Tests must override this";
-  }
-};
-
-class MockPathBuilderDelegate : public CertPathBuilderDelegateBase {
- public:
-  MOCK_METHOD2(CheckPathAfterVerification,
-               void(const CertPathBuilder &path_builder,
-                    CertPathBuilderResultPath *path));
-};
 
 TEST_F(PathBuilderCheckPathAfterVerificationTest, NoOpToValidPath) {
   StrictMock<MockPathBuilderDelegate> delegate;

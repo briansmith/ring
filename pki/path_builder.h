@@ -88,10 +88,13 @@ struct OPENSSL_EXPORT CertPathBuilderResultPath {
 class OPENSSL_EXPORT CertPathBuilderDelegate
     : public VerifyCertificateChainDelegate {
  public:
-  // This is called during path building on candidate paths which have already
-  // been run through RFC 5280 verification. |path| may already have errors
-  // and warnings set on it. Delegates can "reject" a candidate path from path
-  // building by adding high severity errors.
+  // This is called during path building on candidate paths. These are either
+  // paths which have already been run through RFC 5280 verification, or
+  // partial paths that the path builder cannot continue either due to not
+  // finding a matching issuer or reaching a configured pathbuilding limit.
+  // |path| may already have errors and warnings set on it. Delegates can
+  // "reject" a candidate path from path building by adding high severity
+  // errors.
   virtual void CheckPathAfterVerification(const CertPathBuilder &path_builder,
                                           CertPathBuilderResultPath *path) = 0;
 
