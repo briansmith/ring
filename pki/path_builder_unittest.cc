@@ -21,7 +21,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/pool.h>
-#include "testdata/test_certificate_data.h"
 
 namespace bssl {
 
@@ -30,13 +29,7 @@ namespace bssl {
 namespace {
 
 using ::testing::_;
-using ::testing::ElementsAre;
-using ::testing::Exactly;
 using ::testing::Invoke;
-using ::testing::NiceMock;
-using ::testing::Return;
-using ::testing::SaveArg;
-using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 
 class TestPathBuilderDelegate : public SimplePathBuilderDelegate {
@@ -139,7 +132,7 @@ class AsyncCertIssuerSourceStatic : public CertIssuerSource {
     std::shared_ptr<const ParsedCertificate> *result) {
   std::string der;
   ::testing::AssertionResult r = ReadTestPem(
-      "testdata/ssl/certificates/" + file_name, "CERTIFICATE", &der);
+      "testdata/path_builder_unittest/" + file_name, "CERTIFICATE", &der);
   if (!r) {
     return r;
   }
