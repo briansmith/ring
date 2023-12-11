@@ -395,14 +395,16 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     )))]
     let _cpu_features = cpu_features;
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86_64",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
     {
-        if cpu::intel::AES.available(cpu_features) || cpu::arm::AES.available(cpu_features) {
+        if cpu::arm::AES.available(cpu_features) {
+            return Implementation::HWAES;
+        }
+    }
+
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    {
+        if cpu::intel::AES.available(cpu_features) {
             return Implementation::HWAES;
         }
     }

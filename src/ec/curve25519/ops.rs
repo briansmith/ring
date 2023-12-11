@@ -157,12 +157,20 @@ fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>) -> EncodedPoint {
     bytes
 }
 
-#[inline]
-pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
-    cfg!(all(target_arch = "x86_64", not(target_os = "windows")))
-        && cpu::intel::ADX.available(cpu)
-        && cpu::intel::BMI1.available(cpu)
-        && cpu::intel::BMI2.available(cpu)
+cfg_if::cfg_if! {
+    if #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))] {
+        #[inline(always)]
+        pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
+            cpu::intel::ADX.available(cpu)
+            && cpu::intel::BMI1.available(cpu)
+            && cpu::intel::BMI2.available(cpu)
+        }
+    } else {
+        #[inline(always)]
+        pub (super) fn has_fe25519_adx(_cpu: cpu::Features) -> bool {
+            false
+        }
+    }
 }
 
 prefixed_extern! {

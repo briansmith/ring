@@ -59,7 +59,7 @@ fn chacha20_poly1305_seal(
 
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     {
-        if cpu::intel::SSE41.available(cpu_features) || cpu::arm::NEON.available(cpu_features) {
+        if has_integrated(cpu_features) {
             // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
             // structure, but Rust can't do that yet; see
             // https://github.com/rust-lang/rust/issues/73557.
@@ -141,7 +141,7 @@ fn chacha20_poly1305_open(
 
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     {
-        if cpu::intel::SSE41.available(cpu_features) || cpu::arm::NEON.available(cpu_features) {
+        if has_integrated(cpu_features) {
             // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
             // structure, but Rust can't do that yet; see
             // https://github.com/rust-lang/rust/issues/73557.
@@ -202,6 +202,21 @@ fn chacha20_poly1305_open(
     poly1305_update_padded_16(&mut auth, &in_out[src.clone()]);
     chacha20_key.encrypt_within(counter, in_out, src.clone());
     finish(auth, aad.as_ref().len(), in_out[src].len())
+}
+
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[allow(clippy::needless_return)]
+#[inline(always)]
+fn has_integrated(cpu_features: cpu::Features) -> bool {
+    #[cfg(target_arch = "aarch64")]
+    {
+        return cpu::arm::NEON.available(cpu_features);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    {
+        return cpu::intel::SSE41.available(cpu_features);
+    }
 }
 
 fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
