@@ -41,8 +41,6 @@ pub(crate) struct BlockContext {
 
     /// The context's algorithm.
     pub algorithm: &'static Algorithm,
-
-    cpu_features: cpu::Features,
 }
 
 impl BlockContext {
@@ -51,7 +49,6 @@ impl BlockContext {
             state: algorithm.initial_state,
             completed_data_blocks: 0,
             algorithm,
-            cpu_features: cpu::features(),
         }
     }
 
@@ -62,7 +59,7 @@ impl BlockContext {
 
         if num_blocks > 0 {
             unsafe {
-                self.block_data_order(input.as_ptr(), num_blocks);
+                self.block_data_order(input.as_ptr(), num_blocks, cpu::features());
             }
             self.completed_data_blocks = self
                 .completed_data_blocks
@@ -82,7 +79,7 @@ impl BlockContext {
 
         if padding_pos > block_len - self.algorithm.len_len {
             pending[padding_pos..block_len].fill(0);
-            unsafe { self.block_data_order(pending.as_ptr(), 1) };
+            unsafe { self.block_data_order(pending.as_ptr(), 1, cpu::features()) };
             // We don't increase |self.completed_data_blocks| because the
             // padding isn't data, and so it isn't included in the data length.
             padding_pos = 0;
@@ -101,7 +98,7 @@ impl BlockContext {
             .unwrap();
         pending[(block_len - 8)..block_len].copy_from_slice(&u64::to_be_bytes(completed_data_bits));
 
-        unsafe { self.block_data_order(pending.as_ptr(), 1) };
+        unsafe { self.block_data_order(pending.as_ptr(), 1, cpu::features()) };
 
         Digest {
             algorithm: self.algorithm,
@@ -109,9 +106,13 @@ impl BlockContext {
         }
     }
 
-    unsafe fn block_data_order(&mut self, pending: *const u8, num_blocks: usize) {
+    unsafe fn block_data_order(
+        &mut self,
+        pending: *const u8,
+        num_blocks: usize,
+        _cpu_features: cpu::Features,
+    ) {
         // CPU features are inspected by assembly implementations.
-        let _cpu_features = self.cpu_features;
         unsafe {
             (self.algorithm.block_data_order)(&mut self.state, pending, num_blocks);
         }
@@ -582,7 +583,6 @@ mod tests {
                     state: alg.initial_state,
                     completed_data_blocks: max_blocks - 1,
                     algorithm: alg,
-                    cpu_features: crate::cpu::features(),
                 },
                 pending: [0u8; digest::MAX_BLOCK_LEN],
                 num_pending: 0,
