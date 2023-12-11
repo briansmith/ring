@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <limits.h>
+
 #include <algorithm>
 #include <functional>
 #include <string>
@@ -1180,33 +1182,37 @@ TEST(X509Test, TestVerify) {
   // though in different ways.
   for (bool trusted_first : {true, false}) {
     SCOPED_TRACE(trusted_first);
-    std::function<void(X509_VERIFY_PARAM *)> configure_callback;
-    if (!trusted_first) {
+    bool override_depth = false;
+    int depth = -1;
+    auto configure_callback = [&](X509_VERIFY_PARAM *param) {
       // Note we need the callback to clear the flag. Setting |flags| to zero
       // only skips setting new flags.
-      configure_callback = [&](X509_VERIFY_PARAM *param) {
+      if (!trusted_first) {
         X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
-      };
-    }
+      }
+      if (override_depth) {
+        X509_VERIFY_PARAM_set_depth(param, depth);
+      }
+    };
 
     // No trust anchors configured.
-    ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+    EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
               Verify(leaf.get(), /*roots=*/{}, /*intermediates=*/{},
                      /*crls=*/{}, /*flags=*/0, configure_callback));
-    ASSERT_EQ(
+    EXPECT_EQ(
         X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
         Verify(leaf.get(), /*roots=*/{}, {intermediate.get()}, /*crls=*/{},
                /*flags=*/0, configure_callback));
 
     // Each chain works individually.
-    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
                                 /*crls=*/{}, /*flags=*/0, configure_callback));
-    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {cross_signing_root.get()},
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {cross_signing_root.get()},
                                 {intermediate.get(), root_cross_signed.get()},
                                 /*crls=*/{}, /*flags=*/0, configure_callback));
 
     // When both roots are available, we pick one or the other.
-    ASSERT_EQ(X509_V_OK,
+    EXPECT_EQ(X509_V_OK,
               Verify(leaf.get(), {cross_signing_root.get(), root.get()},
                      {intermediate.get(), root_cross_signed.get()}, /*crls=*/{},
                      /*flags=*/0, configure_callback));
@@ -1215,7 +1221,7 @@ TEST(X509Test, TestVerify) {
     // the cross-sign in the intermediates. With |trusted_first|, we
     // preferentially stop path-building at |intermediate|. Without
     // |trusted_first|, the "altchains" logic repairs it.
-    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
                                 {intermediate.get(), root_cross_signed.get()},
                                 /*crls=*/{}, /*flags=*/0, configure_callback));
 
@@ -1226,7 +1232,7 @@ TEST(X509Test, TestVerify) {
     // This test exists to confirm our current behavior, but these modes are
     // just workarounds for not having an actual path-building verifier. If we
     // fix it, this test can be removed.
-    ASSERT_EQ(trusted_first ? X509_V_OK
+    EXPECT_EQ(trusted_first ? X509_V_OK
                             : X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
               Verify(leaf.get(), {root.get()},
                      {intermediate.get(), root_cross_signed.get()}, /*crls=*/{},
@@ -1234,18 +1240,45 @@ TEST(X509Test, TestVerify) {
 
     // |forgery| is signed by |leaf_no_key_usage|, but is rejected because the
     // leaf is not a CA.
-    ASSERT_EQ(X509_V_ERR_INVALID_CA,
+    EXPECT_EQ(X509_V_ERR_INVALID_CA,
               Verify(forgery.get(), {intermediate_self_signed.get()},
                      {leaf_no_key_usage.get()}, /*crls=*/{}, /*flags=*/0,
                      configure_callback));
 
     // Test that one cannot skip Basic Constraints checking with a contorted set
     // of roots and intermediates. This is a regression test for CVE-2015-1793.
-    ASSERT_EQ(X509_V_ERR_INVALID_CA,
+    EXPECT_EQ(X509_V_ERR_INVALID_CA,
               Verify(forgery.get(),
                      {intermediate_self_signed.get(), root_cross_signed.get()},
                      {leaf_no_key_usage.get(), intermediate.get()}, /*crls=*/{},
                      /*flags=*/0, configure_callback));
+
+    // Test depth limits. |configure_callback| looks at |override_depth| and
+    // |depth|. Negative numbers have historically worked, so test those too.
+    for (int d : {-4, -3, -2, -1, 0, 1, 2, 3, 4, INT_MAX - 3, INT_MAX - 2,
+                  INT_MAX - 1, INT_MAX}) {
+      SCOPED_TRACE(d);
+      override_depth = true;
+      depth = d;
+      // A chain with a leaf, two intermediates, and a root is depth two.
+      EXPECT_EQ(
+          depth >= 2 ? X509_V_OK : X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+          Verify(leaf.get(), {cross_signing_root.get()},
+                 {intermediate.get(), root_cross_signed.get()},
+                 /*crls=*/{}, /*flags=*/0, configure_callback));
+
+      // A chain with a leaf, a root, and no intermediates is depth zero.
+      EXPECT_EQ(
+          depth >= 0 ? X509_V_OK : X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+          Verify(root_cross_signed.get(), {cross_signing_root.get()}, {},
+                 /*crls=*/{}, /*flags=*/0, configure_callback));
+
+      // An explicitly trusted self-signed certificate is unaffected by depth
+      // checks.
+      EXPECT_EQ(X509_V_OK,
+                Verify(cross_signing_root.get(), {cross_signing_root.get()}, {},
+                       /*crls=*/{}, /*flags=*/0, configure_callback));
+    }
   }
 }
 

@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include <ctype.h>
+#include <limits.h>
 #include <string.h>
 #include <time.h>
 
@@ -160,11 +161,11 @@ static X509 *lookup_cert_match(X509_STORE_CTX *ctx, X509 *x) {
 }
 
 int X509_verify_cert(X509_STORE_CTX *ctx) {
-  X509 *x, *xtmp, *xtmp2, *chain_ss = NULL;
+  X509 *xtmp, *xtmp2, *chain_ss = NULL;
   int bad_chain = 0;
   X509_VERIFY_PARAM *param = ctx->param;
-  int depth, i, ok = 0;
-  int num, j, retry, trust;
+  int i, ok = 0;
+  int j, retry, trust;
   STACK_OF(X509) *sktmp = NULL;
 
   if (ctx->cert == NULL) {
@@ -207,17 +208,17 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
     goto end;
   }
 
-  num = (int)sk_X509_num(ctx->chain);
-  x = sk_X509_value(ctx->chain, num - 1);
-  depth = param->depth;
+  int num = (int)sk_X509_num(ctx->chain);
+  X509 *x = sk_X509_value(ctx->chain, num - 1);
+  // |param->depth| does not include the leaf certificate or the trust anchor,
+  // so the maximum size is 2 more.
+  int max_chain = param->depth >= INT_MAX - 2 ? INT_MAX : param->depth + 2;
 
   for (;;) {
-    // If we have enough, we break
-    if (depth < num) {
-      break;  // FIXME: If this happens, we should take
-              // note of it and, if appropriate, use the
-              // X509_V_ERR_CERT_CHAIN_TOO_LONG error code
-              // later.
+    if (num >= max_chain) {
+      // FIXME: If this happens, we should take note of it and, if appropriate,
+      // use the X509_V_ERR_CERT_CHAIN_TOO_LONG error code later.
+      break;
     }
 
     int is_self_signed;
@@ -321,8 +322,9 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
     }
     // We now lookup certs from the certificate store
     for (;;) {
-      // If we have enough, we break
-      if (depth < num) {
+      if (num >= max_chain) {
+        // FIXME: If this happens, we should take note of it and, if
+        // appropriate, use the X509_V_ERR_CERT_CHAIN_TOO_LONG error code later.
         break;
       }
       if (!cert_self_signed(x, &is_self_signed)) {

@@ -379,9 +379,8 @@ struct x509_store_ctx_st {
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
   // The following is built up
-  int valid;               // if 0, rebuild chain
-  int last_untrusted;      // index of last untrusted cert
-  STACK_OF(X509) *chain;   // chain of X509s - built up and trusted
+  int last_untrusted;     // index of last untrusted cert
+  STACK_OF(X509) *chain;  // chain of X509s - built up and trusted
 
   // When something goes wrong, this is why
   int error_depth;
