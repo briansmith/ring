@@ -51,16 +51,19 @@ impl Feature {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) const ADX: Feature = Feature {
     word: 2,
     mask: 1 << 19,
 };
 
+#[allow(dead_code)]
 pub(crate) const BMI1: Feature = Feature {
     word: 2,
     mask: 1 << 3,
 };
 
+#[allow(dead_code)]
 pub(crate) const BMI2: Feature = Feature {
     word: 2,
     mask: 1 << 8,

@@ -171,6 +171,7 @@ all-features = true
 name = "ring"
 
 [dependencies]
+cfg-if = { version = "1.0.0", default-features = false }
 getrandom = { version = "0.2.10" }
 untrusted = { version = "0.9" }
 
