@@ -213,10 +213,16 @@ class OPENSSL_EXPORT CertPathBuilder {
   // to root. Setting |limit| to 0 disables this limit, which is the default.
   void SetDepthLimit(uint32_t limit);
 
-  // If |explore_all_paths| is false (the default), path building will stop as
-  // soon as a valid path is found. If |explore_all_paths| is true, path
-  // building will continue until all possible paths have been exhausted (or
-  // iteration limit / deadline is exceeded).
+  // Set the limit of valid paths returned by the path builder to |limit|.  If
+  // |limit| is non zero, path building will stop once |limit| valid paths have
+  // been found. Setting |limit| to 0 disables the limit, meaning path building
+  // will continue until all possible paths have been exhausted (or iteration
+  // limit / deadline is exceeded).  The default limit is 1.
+  void SetValidPathLimit(size_t limit);
+
+  // If |explore_all_paths| is false, this is equivalent to calling
+  // SetValidPathLimit(1). If |explore_all_paths| is true, this is equivalent to
+  // calling SetValidPathLimit(0).
   void SetExploreAllPaths(bool explore_all_paths);
 
   // Executes verification of the target certificate.
@@ -241,7 +247,8 @@ class OPENSSL_EXPORT CertPathBuilder {
   const InitialAnyPolicyInhibit initial_any_policy_inhibit_;
   uint32_t max_iteration_count_ = 0;
   uint32_t max_path_building_depth_ = 0;
-  bool explore_all_paths_ = false;
+  size_t valid_path_limit_ = 1;
+  size_t valid_path_count_ = 0;
 };
 
 }  // namespace bssl

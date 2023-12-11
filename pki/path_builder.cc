@@ -787,8 +787,12 @@ void CertPathBuilder::SetDepthLimit(uint32_t limit) {
   max_path_building_depth_ = limit;
 }
 
+void CertPathBuilder::SetValidPathLimit(size_t limit) {
+  valid_path_limit_ = limit;
+}
+
 void CertPathBuilder::SetExploreAllPaths(bool explore_all_paths) {
-  explore_all_paths_ = explore_all_paths;
+  valid_path_limit_ = explore_all_paths ? 0 : 1;
 }
 
 CertPathBuilder::Result CertPathBuilder::Run() {
@@ -853,10 +857,13 @@ CertPathBuilder::Result CertPathBuilder::Run() {
 
     AddResultPath(std::move(result_path));
 
-    if (path_is_good && !explore_all_paths_) {
-      out_result_.iteration_count = iteration_count;
-      // Found a valid path, return immediately.
-      return std::move(out_result_);
+    if (path_is_good) {
+      valid_path_count_++;
+      if (valid_path_limit_ > 0 && valid_path_count_ == valid_path_limit_) {
+        out_result_.iteration_count = iteration_count;
+        // Found enough paths, return immediately.
+        return std::move(out_result_);
+      }
     }
     // Path did not verify. Try more paths.
   }
