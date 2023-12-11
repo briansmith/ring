@@ -81,6 +81,7 @@ pub(crate) const SSSE3: Feature = Feature {
     mask: 1 << 9,
 };
 
+#[allow(dead_code)]
 pub(crate) const SSE41: Feature = Feature {
     word: 1,
     mask: 1 << 19,
