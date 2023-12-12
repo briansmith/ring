@@ -198,7 +198,7 @@ $code.=<<___;
 .long	1,0,0,0
 #if __ARM_MAX_ARCH__>=7
 .LOPENSSL_armcap:
-.word   OPENSSL_armcap_P-.LChaCha20_ctr32
+.word   OPENSSL_armcap_P-.Lsigma
 #else
 .word	-1
 #endif
@@ -210,11 +210,7 @@ ChaCha20_ctr32:
 .LChaCha20_ctr32:
 	ldr	r12,[sp,#0]		@ pull pointer to counter and nonce
 	stmdb	sp!,{r0-r2,r4-r11,lr}
-#if __ARM_ARCH<7 && !defined(__thumb2__)
-	sub	r14,pc,#16		@ ChaCha20_ctr32
-#else
-	adr	r14,.LChaCha20_ctr32
-#endif
+	adr	r14,.Lsigma
 	cmp	r2,#0			@ len==0?
 #ifdef	__thumb2__
 	itt	eq
@@ -224,7 +220,7 @@ ChaCha20_ctr32:
 #if __ARM_MAX_ARCH__>=7
 	cmp	r2,#192			@ test len
 	bls	.Lshort
-	ldr	r4,[r14,#-32]
+	ldr	r4,[r14,#32]
 	ldr	r4,[r14,r4]
 # ifdef	__APPLE__
 	ldr	r4,[r4]
@@ -235,7 +231,6 @@ ChaCha20_ctr32:
 #endif
 	ldmia	r12,{r4-r7}		@ load counter and nonce
 	sub	sp,sp,#4*(16)		@ off-load area
-	sub	r14,r14,#64		@ .Lsigma
 	stmdb	sp!,{r4-r7}		@ copy counter and nonce
 	ldmia	r3,{r4-r11}		@ load key
 	ldmia	r14,{r0-r3}		@ load sigma
