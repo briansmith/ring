@@ -516,6 +516,12 @@ static void sha512_block_data_order(uint64_t *state, const uint8_t *data,
     return;
   }
 #endif
+#if defined(SHA512_ASM_NEON)
+  if (CRYPTO_is_NEON_capable()) {
+    sha512_block_data_order_neon(state, data, num);
+    return;
+  }
+#endif
   sha512_block_data_order_nohw(state, data, num);
 }
 

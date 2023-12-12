@@ -410,6 +410,12 @@ static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
     return;
   }
 #endif
+#if defined(SHA1_ASM_NEON)
+  if (CRYPTO_is_NEON_capable()) {
+    sha1_block_data_order_neon(state, data, num);
+    return;
+  }
+#endif
   sha1_block_data_order_nohw(state, data, num);
 }
 
