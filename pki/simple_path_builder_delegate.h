@@ -8,10 +8,10 @@
 #include <stddef.h>
 
 #include <openssl/base.h>
+#include <openssl/pki/signature_verify_cache.h>
 
 #include "path_builder.h"
 #include "signature_algorithm.h"
-#include "signature_verify_cache.h"
 
 namespace bssl {
 

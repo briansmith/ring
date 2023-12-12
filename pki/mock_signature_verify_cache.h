@@ -11,8 +11,7 @@
 #include <string_view>
 #include <unordered_map>
 
-
-#include "signature_verify_cache.h"
+#include <openssl/pki/signature_verify_cache.h>
 
 namespace bssl {
 
