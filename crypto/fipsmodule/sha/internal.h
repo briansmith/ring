@@ -26,7 +26,7 @@ extern "C" {
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
 // defined in assembly.
 
-#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_ARM))
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86)
 
 #define SHA1_ASM
 #define SHA256_ASM
@@ -38,6 +38,35 @@ void sha256_block_data_order(uint32_t *state, const uint8_t *data,
                              size_t num_blocks);
 void sha512_block_data_order(uint64_t *state, const uint8_t *data,
                              size_t num_blocks);
+
+#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM)
+
+#define SHA1_ASM_NOHW
+#define SHA256_ASM_NOHW
+#define SHA512_ASM_NOHW
+
+#define SHA1_ASM_HW
+OPENSSL_INLINE int sha1_hw_capable(void) {
+  return CRYPTO_is_ARMv8_SHA1_capable();
+}
+
+#define SHA1_ASM_NEON
+void sha1_block_data_order_neon(uint32_t *state, const uint8_t *data,
+                                size_t num);
+
+#define SHA256_ASM_HW
+OPENSSL_INLINE int sha256_hw_capable(void) {
+  return CRYPTO_is_ARMv8_SHA256_capable();
+}
+
+#define SHA256_ASM_NEON
+void sha256_block_data_order_neon(uint32_t *state, const uint8_t *data,
+                                  size_t num);
+
+// Armv8.2 SHA-512 instructions are not available in 32-bit.
+#define SHA512_ASM_NEON
+void sha512_block_data_order_neon(uint64_t *state, const uint8_t *data,
+                                  size_t num);
 
 #elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
 
@@ -149,6 +178,7 @@ void sha256_block_data_order_nohw(uint32_t *state, const uint8_t *data,
 void sha512_block_data_order_hw(uint64_t *state, const uint8_t *data,
                                 size_t num);
 #endif
+
 #if defined(SHA512_ASM_NOHW)
 void sha512_block_data_order_nohw(uint64_t *state, const uint8_t *data,
                                   size_t num);
