@@ -208,6 +208,12 @@
 #endif
 #endif
 
+// Disable 32-bit Arm assembly on Apple platforms. The last iOS version that
+// supported 32-bit Arm was iOS 10.
+#if defined(OPENSSL_APPLE) && defined(OPENSSL_ARM)
+#define OPENSSL_ASM_INCOMPATIBLE
+#endif
+
 #if defined(OPENSSL_ASM_INCOMPATIBLE)
 #undef OPENSSL_ASM_INCOMPATIBLE
 #if !defined(OPENSSL_NO_ASM)
