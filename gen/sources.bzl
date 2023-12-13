@@ -1060,6 +1060,7 @@ pki_sources = [
   "pki/trust_store.cc",
   "pki/trust_store_collection.cc",
   "pki/trust_store_in_memory.cc",
+  "pki/verify.cc",
   "pki/verify_certificate_chain.cc",
   "pki/verify_error.cc",
   "pki/verify_name_match.cc",
@@ -1149,6 +1150,7 @@ pki_test_sources = [
   "pki/verify_certificate_chain_unittest.cc",
   "pki/verify_name_match_unittest.cc",
   "pki/verify_signed_data_unittest.cc",
+  "pki/verify_unittest.cc",
 ]
 
 pki_test_data = [
@@ -2559,7 +2561,15 @@ pki_test_data = [
   "pki/testdata/verify_signed_data_unittest/rsa-pss-sha256.pem",
   "pki/testdata/verify_signed_data_unittest/rsa-using-ec-key.pem",
   "pki/testdata/verify_signed_data_unittest/rsa2048-pkcs1-sha512.pem",
+  "pki/testdata/verify_unittest/google-intermediate1.der",
+  "pki/testdata/verify_unittest/google-intermediate2.der",
   "pki/testdata/verify_unittest/google-leaf.der",
+  "pki/testdata/verify_unittest/lencr-intermediate-r3.der",
+  "pki/testdata/verify_unittest/lencr-leaf.der",
+  "pki/testdata/verify_unittest/lencr-root-dst-x3.der",
+  "pki/testdata/verify_unittest/lencr-root-x1-cross-signed.der",
+  "pki/testdata/verify_unittest/lencr-root-x1.der",
+  "pki/testdata/verify_unittest/mozilla_roots.der",
   "pki/testdata/verify_unittest/self-issued.pem",
 ]
 

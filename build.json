@@ -603,6 +603,7 @@
             "pki/trust_store.cc",
             "pki/verify_certificate_chain.cc",
             "pki/verify_error.cc",
+            "pki/verify.cc",
             "pki/verify_name_match.cc",
             "pki/verify_signed_data.cc"
         ],
@@ -925,7 +926,8 @@
             "pki/verify_certificate_chain_pkits_unittest.cc",
             "pki/verify_certificate_chain_unittest.cc",
             "pki/verify_name_match_unittest.cc",
-            "pki/verify_signed_data_unittest.cc"
+            "pki/verify_signed_data_unittest.cc",
+            "pki/verify_unittest.cc"
         ],
         "data": [
             "pki/testdata/cert_issuer_source_static_unittest/*.pem",
@@ -944,7 +946,7 @@
             "pki/testdata/verify_certificate_chain_unittest/pkits_errors/*.txt",
             "pki/testdata/verify_name_match_unittest/names/*.pem",
             "pki/testdata/verify_signed_data_unittest/*.pem",
-            "pki/testdata/verify_unittest/google-leaf.der",
+            "pki/testdata/verify_unittest/*.der",
             "pki/testdata/verify_unittest/self-issued.pem"
         ]
     },
