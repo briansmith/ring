@@ -400,6 +400,29 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
 // inputs.
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+
+#if defined(OPENSSL_X86_64)
+int bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                     const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+OPENSSL_INLINE int bn_mul4x_mont_capable(size_t num) {
+  return (num >= 8) && ((num & 3) == 0);
+}
+int bn_mul4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                  const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+OPENSSL_INLINE int bn_mulx4x_mont_capable(size_t num) {
+  // MULX is in BMI2.
+  return bn_mul4x_mont_capable(num) && CRYPTO_is_BMI2_capable() &&
+         CRYPTO_is_ADX_capable();
+}
+int bn_mulx4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                   const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+OPENSSL_INLINE int bn_sqr8x_mont_capable(size_t num) {
+  return (num >= 8) && ((num & 7) == 0);
+}
+int bn_sqr8x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *unused_bp,
+                  const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+#endif // defined(OPENSSL_X86_64)
+
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
