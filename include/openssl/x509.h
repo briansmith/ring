@@ -2101,20 +2101,20 @@ OPENSSL_EXPORT int X509_ATTRIBUTE_set1_object(X509_ATTRIBUTE *attr,
 // X509_ATTRIBUTE_set1_data appends a value to |attr|'s value set and returns
 // one on success or zero on error. The value is determined as follows:
 //
-// If |attrtype| is a |MBSTRING_*| constant, the value is an ASN.1 string. The
-// string is determined by decoding |len| bytes from |data| in the encoding
-// specified by |attrtype|, and then re-encoding it in a form appropriate for
-// |attr|'s type. If |len| is -1, |strlen(data)| is used instead. See
-// |ASN1_STRING_set_by_NID| for details.
+// If |attrtype| is zero, this function returns one and does nothing. This form
+// may be used when calling |X509_ATTRIBUTE_create_by_*| to create an attribute
+// with an empty value set. Such attributes are invalid, but OpenSSL supports
+// creating them.
+//
+// Otherwise, if |attrtype| is a |MBSTRING_*| constant, the value is an ASN.1
+// string. The string is determined by decoding |len| bytes from |data| in the
+// encoding specified by |attrtype|, and then re-encoding it in a form
+// appropriate for |attr|'s type. If |len| is -1, |strlen(data)| is used
+// instead. See |ASN1_STRING_set_by_NID| for details.
 //
 // Otherwise, if |len| is not -1, the value is an ASN.1 string. |attrtype| is an
 // |ASN1_STRING| type value and the |len| bytes from |data| are copied as the
 // type-specific representation of |ASN1_STRING|. See |ASN1_STRING| for details.
-//
-// WARNING: If this form is used to construct a negative INTEGER or ENUMERATED,
-// |attrtype| includes the |V_ASN1_NEG| flag for |ASN1_STRING|, but the function
-// forgets to clear the flag for |ASN1_TYPE|. This matches OpenSSL but is
-// probably a bug. For now, do not use this form with negative values.
 //
 // Otherwise, if |len| is -1, the value is constructed by passing |attrtype| and
 // |data| to |ASN1_TYPE_set1|. That is, |attrtype| is an |ASN1_TYPE| type value,

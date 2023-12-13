@@ -210,6 +210,10 @@ void asn1_encoding_clear(ASN1_ENCODING *enc);
 // a pointer.
 const void *asn1_type_value_as_pointer(const ASN1_TYPE *a);
 
+// asn1_type_set0_string sets |a|'s value to the object represented by |str| and
+// takes ownership of |str|.
+void asn1_type_set0_string(ASN1_TYPE *a, ASN1_STRING *str);
+
 // asn1_type_cleanup releases memory associated with |a|'s value, without
 // freeing |a| itself.
 void asn1_type_cleanup(ASN1_TYPE *a);

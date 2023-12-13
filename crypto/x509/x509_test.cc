@@ -3832,46 +3832,62 @@ TEST(X509Test, X509AlgorExtract) {
 
 // Test the various |X509_ATTRIBUTE| creation functions.
 TEST(X509Test, Attribute) {
-  // The friendlyName attribute has a BMPString value. See RFC 2985,
-  // section 5.5.1.
+  // The expected attribute values are:
+  // 1. BMPString U+2603
+  // 2. BMPString "test"
+  // 3. INTEGER -1 (not valid for friendlyName)
   static const uint8_t kTest1[] = {0x26, 0x03};  // U+2603 SNOWMAN
   static const uint8_t kTest1UTF8[] = {0xe2, 0x98, 0x83};
   static const uint8_t kTest2[] = {0, 't', 0, 'e', 0, 's', 0, 't'};
 
-  auto check_attribute = [&](X509_ATTRIBUTE *attr, bool has_test2) {
+  constexpr uint32_t kTest1Mask = 1 << 0;
+  constexpr uint32_t kTest2Mask = 1 << 1;
+  constexpr uint32_t kTest3Mask = 1 << 2;
+  auto check_attribute = [&](X509_ATTRIBUTE *attr, uint32_t mask) {
     EXPECT_EQ(NID_friendlyName, OBJ_obj2nid(X509_ATTRIBUTE_get0_object(attr)));
 
-    EXPECT_EQ(has_test2 ? 2 : 1, X509_ATTRIBUTE_count(attr));
+    int idx = 0;
+    if (mask & kTest1Mask) {
+      // The first attribute should contain |kTest1|.
+      const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, idx);
+      ASSERT_TRUE(value);
+      EXPECT_EQ(V_ASN1_BMPSTRING, value->type);
+      EXPECT_EQ(Bytes(kTest1),
+                Bytes(ASN1_STRING_get0_data(value->value.bmpstring),
+                      ASN1_STRING_length(value->value.bmpstring)));
 
-    // The first attribute should contain |kTest1|.
-    const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, 0);
-    ASSERT_TRUE(value);
-    EXPECT_EQ(V_ASN1_BMPSTRING, value->type);
-    EXPECT_EQ(Bytes(kTest1),
-              Bytes(ASN1_STRING_get0_data(value->value.bmpstring),
-                    ASN1_STRING_length(value->value.bmpstring)));
+      // |X509_ATTRIBUTE_get0_data| requires the type match.
+      EXPECT_FALSE(
+          X509_ATTRIBUTE_get0_data(attr, idx, V_ASN1_OCTET_STRING, nullptr));
+      const ASN1_BMPSTRING *bmpstring = static_cast<const ASN1_BMPSTRING *>(
+          X509_ATTRIBUTE_get0_data(attr, idx, V_ASN1_BMPSTRING, nullptr));
+      ASSERT_TRUE(bmpstring);
+      EXPECT_EQ(Bytes(kTest1), Bytes(ASN1_STRING_get0_data(bmpstring),
+                                     ASN1_STRING_length(bmpstring)));
+      idx++;
+    }
 
-    // |X509_ATTRIBUTE_get0_data| requires the type match.
-    EXPECT_FALSE(
-        X509_ATTRIBUTE_get0_data(attr, 0, V_ASN1_OCTET_STRING, nullptr));
-    const ASN1_BMPSTRING *bmpstring = static_cast<const ASN1_BMPSTRING *>(
-        X509_ATTRIBUTE_get0_data(attr, 0, V_ASN1_BMPSTRING, nullptr));
-    ASSERT_TRUE(bmpstring);
-    EXPECT_EQ(Bytes(kTest1), Bytes(ASN1_STRING_get0_data(bmpstring),
-                                   ASN1_STRING_length(bmpstring)));
-
-    if (has_test2) {
-      value = X509_ATTRIBUTE_get0_type(attr, 1);
+    if (mask & kTest2Mask) {
+      const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, idx);
       ASSERT_TRUE(value);
       EXPECT_EQ(V_ASN1_BMPSTRING, value->type);
       EXPECT_EQ(Bytes(kTest2),
                 Bytes(ASN1_STRING_get0_data(value->value.bmpstring),
                       ASN1_STRING_length(value->value.bmpstring)));
-    } else {
-      EXPECT_FALSE(X509_ATTRIBUTE_get0_type(attr, 1));
+      idx++;
     }
 
-    EXPECT_FALSE(X509_ATTRIBUTE_get0_type(attr, 2));
+    if (mask & kTest3Mask) {
+      const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, idx);
+      ASSERT_TRUE(value);
+      EXPECT_EQ(V_ASN1_INTEGER, value->type);
+      int64_t v;
+      ASSERT_TRUE(ASN1_INTEGER_get_int64(&v, value->value.integer));
+      EXPECT_EQ(v, -1);
+      idx++;
+    }
+
+    EXPECT_FALSE(X509_ATTRIBUTE_get0_type(attr, idx));
   };
 
   bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(V_ASN1_BMPSTRING));
@@ -3883,7 +3899,7 @@ TEST(X509Test, Attribute) {
       X509_ATTRIBUTE_create(NID_friendlyName, V_ASN1_BMPSTRING, str.get()));
   ASSERT_TRUE(attr);
   str.release();  // |X509_ATTRIBUTE_create| takes ownership on success.
-  check_attribute(attr.get(), /*has_test2=*/false);
+  check_attribute(attr.get(), kTest1Mask);
 
   // Test the |MBSTRING_*| form of |X509_ATTRIBUTE_set1_data|.
   attr.reset(X509_ATTRIBUTE_new());
@@ -3892,12 +3908,19 @@ TEST(X509Test, Attribute) {
       X509_ATTRIBUTE_set1_object(attr.get(), OBJ_nid2obj(NID_friendlyName)));
   ASSERT_TRUE(X509_ATTRIBUTE_set1_data(attr.get(), MBSTRING_UTF8, kTest1UTF8,
                                        sizeof(kTest1UTF8)));
-  check_attribute(attr.get(), /*has_test2=*/false);
+  check_attribute(attr.get(), kTest1Mask);
 
   // Test the |ASN1_STRING| form of |X509_ATTRIBUTE_set1_data|.
   ASSERT_TRUE(X509_ATTRIBUTE_set1_data(attr.get(), V_ASN1_BMPSTRING, kTest2,
                                        sizeof(kTest2)));
-  check_attribute(attr.get(), /*has_test2=*/true);
+  check_attribute(attr.get(), kTest1Mask | kTest2Mask);
+
+  // The |ASN1_STRING| form of |X509_ATTRIBUTE_set1_data| should correctly
+  // handle negative integers.
+  const uint8_t kOne = 1;
+  ASSERT_TRUE(
+      X509_ATTRIBUTE_set1_data(attr.get(), V_ASN1_NEG_INTEGER, &kOne, 1));
+  check_attribute(attr.get(), kTest1Mask | kTest2Mask | kTest3Mask);
 
   // Test the |ASN1_TYPE| form of |X509_ATTRIBUTE_set1_data|.
   attr.reset(X509_ATTRIBUTE_new());
@@ -3909,7 +3932,13 @@ TEST(X509Test, Attribute) {
   ASSERT_TRUE(ASN1_STRING_set(str.get(), kTest1, sizeof(kTest1)));
   ASSERT_TRUE(
       X509_ATTRIBUTE_set1_data(attr.get(), V_ASN1_BMPSTRING, str.get(), -1));
-  check_attribute(attr.get(), /*has_test2=*/false);
+  check_attribute(attr.get(), kTest1Mask);
+
+  // An |attrtype| of zero leaves the attribute empty.
+  attr.reset(X509_ATTRIBUTE_create_by_NID(
+      nullptr, NID_friendlyName, /*attrtype=*/0, /*data=*/nullptr, /*len=*/0));
+  ASSERT_TRUE(attr);
+  check_attribute(attr.get(), 0);
 }
 
 // Test that, by default, |X509_V_FLAG_TRUSTED_FIRST| is set, which means we'll
