@@ -16,6 +16,7 @@ use super::{
     block::{Block, BLOCK_LEN},
     nonce::Nonce,
     quic::Sample,
+    InOut,
 };
 use crate::{
     bits::BitLength,
@@ -24,7 +25,7 @@ use crate::{
     error,
     polyfill::{self, ArraySplitMap},
 };
-use core::ops::RangeFrom;
+use core::mem::MaybeUninit;
 
 #[derive(Clone)]
 pub(super) struct Key {
@@ -79,49 +80,47 @@ fn encrypt_block_(
 }
 
 macro_rules! ctr32_encrypt_blocks {
-    ($name:ident, $in_out:expr, $src:expr, $key:expr, $ivec:expr ) => {{
+    ($name:ident, $in_out:expr, $key:expr, $ivec:expr ) => {{
         prefixed_extern! {
             fn $name(
                 input: *const [u8; BLOCK_LEN],
-                output: *mut [u8; BLOCK_LEN],
+                output: *mut MaybeUninit<[u8; BLOCK_LEN]>,
                 blocks: c::size_t,
                 key: &AES_KEY,
                 ivec: &Counter,
             );
         }
-        ctr32_encrypt_blocks_($name, $in_out, $src, $key, $ivec)
+        ctr32_encrypt_blocks_($name, $in_out, $key, $ivec)
     }};
 }
 
 #[inline]
-fn ctr32_encrypt_blocks_(
+fn ctr32_encrypt_blocks_<'o>(
     f: unsafe extern "C" fn(
         input: *const [u8; BLOCK_LEN],
-        output: *mut [u8; BLOCK_LEN],
+        output: *mut MaybeUninit<[u8; BLOCK_LEN]>,
         blocks: c::size_t,
         key: &AES_KEY,
         ivec: &Counter,
     ),
-    in_out: &mut [u8],
-    src: RangeFrom<usize>,
+    in_out: InOut<'_, 'o>,
     key: &AES_KEY,
     ctr: &mut Counter,
-) {
-    let in_out_len = in_out[src.clone()].len();
-    assert_eq!(in_out_len % BLOCK_LEN, 0);
-
-    let blocks = in_out_len / BLOCK_LEN;
+) -> Result<&'o mut [u8], error::Unspecified> {
+    assert_eq!(in_out.len() % BLOCK_LEN, 0);
+    let blocks = in_out.len() / BLOCK_LEN;
     #[allow(clippy::cast_possible_truncation)]
     let blocks_u32 = blocks as u32;
     assert_eq!(blocks, polyfill::usize_from_u32(blocks_u32));
 
-    let input = in_out[src].as_ptr().cast::<[u8; BLOCK_LEN]>();
-    let output = in_out.as_mut_ptr().cast::<[u8; BLOCK_LEN]>();
-
-    unsafe {
-        f(input, output, blocks, key, ctr);
-    }
+    let input = in_out.input_ptr();
+    let output = in_out.into_output();
+    let output = unsafe {
+        f(input.cast(), output.as_mut_ptr().cast(), blocks, key, ctr);
+        polyfill::maybeuninit::slice_assume_init_mut(output)
+    };
     ctr.increment_by_less_safe(blocks_u32);
+    Ok(output)
 }
 
 impl Key {
@@ -205,16 +204,13 @@ impl Key {
     }
 
     #[inline]
-    pub(super) fn ctr32_encrypt_within(
+    pub(super) fn ctr32_encrypt_within<'o>(
         &self,
-        in_out: &mut [u8],
-        src: RangeFrom<usize>,
+        in_out: InOut<'_, 'o>,
         ctr: &mut Counter,
         cpu_features: cpu::Features,
-    ) {
-        let in_out_len = in_out[src.clone()].len();
-
-        assert_eq!(in_out_len % BLOCK_LEN, 0);
+    ) -> Result<&'o mut [u8], error::Unspecified> {
+        assert_eq!(in_out.len() % BLOCK_LEN, 0);
 
         match detect_implementation(cpu_features) {
             #[cfg(any(
@@ -224,14 +220,22 @@ impl Key {
                 target_arch = "x86"
             ))]
             Implementation::HWAES => {
-                ctr32_encrypt_blocks!(aes_hw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+                ctr32_encrypt_blocks!(aes_hw_ctr32_encrypt_blocks, in_out, &self.inner, ctr)
             }
 
-            #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
             Implementation::VPAES_BSAES => {
+                ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr)
+            }
+
+            #[cfg(target_arch = "arm")]
+            Implementation::VPAES_BSAES => {
+                let mut in_out = in_out;
+                let result_ptr = in_out.output_ptr_less_safe();
+                let in_out_len = in_out.len();
+
                 // 8 blocks is the cut-off point where it's faster to use BSAES.
-                #[cfg(target_arch = "arm")]
-                let in_out = if in_out_len >= 8 * BLOCK_LEN {
+                if in_out_len >= 8 * BLOCK_LEN {
                     let remainder = in_out_len % (8 * BLOCK_LEN);
                     let bsaes_in_out_len = if remainder < (4 * BLOCK_LEN) {
                         in_out_len - remainder
@@ -239,42 +243,44 @@ impl Key {
                         in_out_len
                     };
 
-                    let mut bsaes_key = AES_KEY {
-                        rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
-                        rounds: 0,
-                    };
-                    prefixed_extern! {
-                        fn vpaes_encrypt_key_to_bsaes(bsaes_key: &mut AES_KEY, vpaes_key: &AES_KEY);
-                    }
-                    unsafe {
-                        vpaes_encrypt_key_to_bsaes(&mut bsaes_key, &self.inner);
-                    }
-                    ctr32_encrypt_blocks!(
-                        bsaes_ctr32_encrypt_blocks,
-                        &mut in_out[..(src.start + bsaes_in_out_len)],
-                        src.clone(),
-                        &bsaes_key,
-                        ctr
-                    );
+                    let _: &mut [u8] = in_out.advance_after(bsaes_in_out_len, |chunk| {
+                        let mut bsaes_key = AES_KEY {
+                            rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
+                            rounds: 0,
+                        };
+                        prefixed_extern! {
+                            fn vpaes_encrypt_key_to_bsaes(bsaes_key: &mut AES_KEY, vpaes_key: &AES_KEY);
+                        }
+                        unsafe {
+                            vpaes_encrypt_key_to_bsaes(&mut bsaes_key, &self.inner);
+                        }
+                        ctr32_encrypt_blocks!(
+                            bsaes_ctr32_encrypt_blocks,
+                            chunk,
+                            &bsaes_key,
+                            ctr
+                        )
+                    })??;
+                }
 
-                    &mut in_out[bsaes_in_out_len..]
-                } else {
-                    in_out
+                let _: &mut [u8] =
+                    ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr)?;
+                let output = unsafe {
+                    polyfill::maybeuninit::slice_assume_init_mut(core::slice::from_raw_parts_mut(
+                        result_ptr, in_out_len,
+                    ))
                 };
-
-                ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+                Ok(output)
             }
 
             #[cfg(target_arch = "x86")]
-            Implementation::VPAES_BSAES => {
-                super::shift::shift_full_blocks(in_out, src, |input| {
-                    self.encrypt_iv_xor_block(ctr.increment(), Block::from(input), cpu_features)
-                });
-            }
+            Implementation::VPAES_BSAES => super::shift::shift_full_blocks(in_out, |input| {
+                self.encrypt_iv_xor_block(ctr.increment(), Block::from(input), cpu_features)
+            }),
 
             #[cfg(not(target_arch = "aarch64"))]
             Implementation::NOHW => {
-                ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+                ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, &self.inner, ctr)
             }
         }
     }

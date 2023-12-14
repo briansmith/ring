@@ -12,39 +12,37 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::block::{Block, BLOCK_LEN};
+#![cfg(target_arch = "x86")]
 
-#[cfg(target_arch = "x86")]
-pub fn shift_full_blocks(
-    in_out: &mut [u8],
-    src: core::ops::RangeFrom<usize>,
+use super::{
+    block::{Block, BLOCK_LEN},
+    InOut,
+};
+use crate::{error, polyfill};
+
+pub fn shift_full_blocks<'o>(
+    mut in_out: InOut<'_, 'o>,
     mut transform: impl for<'a> FnMut(&'a [u8; BLOCK_LEN]) -> Block,
-) {
-    let in_out_len = in_out[src.clone()].len();
+) -> Result<&'o mut [u8], error::Unspecified> {
+    let result_ptr = in_out.output_ptr_less_safe();
+    let result_len = in_out.len();
 
-    for i in (0..in_out_len).step_by(BLOCK_LEN) {
-        let block = {
-            let input =
-                <&[u8; BLOCK_LEN]>::try_from(&in_out[(src.start + i)..][..BLOCK_LEN]).unwrap();
-            transform(input)
-        };
-        let output = <&mut [u8; BLOCK_LEN]>::try_from(&mut in_out[i..][..BLOCK_LEN]).unwrap();
-        *output = *block.as_ref();
+    while in_out.len() > 0 {
+        in_out.advance_after(BLOCK_LEN, |chunk| {
+            let input = <&[u8; BLOCK_LEN]>::try_from(chunk.input()).unwrap();
+            let block = transform(input);
+            let input: *const u8 = block.as_ref().as_ptr();
+            let output: *mut u8 = chunk.into_output_ptr().cast();
+            unsafe {
+                core::ptr::copy_nonoverlapping(input, output, BLOCK_LEN);
+            }
+        })?;
     }
-}
 
-pub fn shift_partial<F>((in_prefix_len, in_out): (usize, &mut [u8]), transform: F)
-where
-    F: FnOnce(&[u8]) -> Block,
-{
-    let (block, in_out_len) = {
-        let input = &in_out[in_prefix_len..];
-        let in_out_len = input.len();
-        if in_out_len == 0 {
-            return;
-        }
-        debug_assert!(in_out_len < BLOCK_LEN);
-        (transform(input), in_out_len)
+    let output = unsafe {
+        polyfill::maybeuninit::slice_assume_init_mut(core::slice::from_raw_parts_mut(
+            result_ptr, result_len,
+        ))
     };
-    in_out[..in_out_len].copy_from_slice(&block.as_ref()[..in_out_len]);
+    Ok(output)
 }

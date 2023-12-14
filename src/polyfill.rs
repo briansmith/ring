@@ -31,6 +31,8 @@ mod array_split_map;
 #[cfg(feature = "alloc")]
 mod leading_zeros_skipped;
 
+pub mod maybeuninit;
+
 #[cfg(test)]
 mod test;
 

@@ -116,6 +116,7 @@ mod endian;
 pub mod error;
 pub mod hkdf;
 pub mod hmac;
+mod inout;
 mod limb;
 pub mod pbkdf2;
 pub mod pkcs8;

@@ -34,6 +34,8 @@ pub use self::{
     unbound_key::UnboundKey,
 };
 
+type InOut<'i, 'o> = crate::inout::InOut<'i, 'o, u8>;
+
 /// A sequences of unique nonces.
 ///
 /// A given `NonceSequence` must never return the same `Nonce` twice from
