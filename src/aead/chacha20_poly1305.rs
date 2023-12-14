@@ -75,7 +75,7 @@ fn chacha20_poly1305_seal(
             extra_ciphertext_len: usize,
         }
 
-        let mut data = InOut {
+        let mut data = ffi::InOut {
             input: seal_data_in {
                 key: *chacha20_key.words_less_safe(),
                 counter: 0,
@@ -93,7 +93,7 @@ fn chacha20_poly1305_seal(
                 plaintext_len: usize,
                 ad: *const u8,
                 ad_len: usize,
-                data: &mut InOut<seal_data_in>,
+                data: &mut ffi::InOut<seal_data_in>,
             );
         }
 
@@ -153,7 +153,7 @@ fn chacha20_poly1305_open(
             nonce: [u8; super::NONCE_LEN],
         }
 
-        let mut data = InOut {
+        let mut data = ffi::InOut {
             input: open_data_in {
                 key: *chacha20_key.words_less_safe(),
                 counter: 0,
@@ -169,7 +169,7 @@ fn chacha20_poly1305_open(
                 plaintext_len: usize,
                 ad: *const u8,
                 ad_len: usize,
-                data: &mut InOut<open_data_in>,
+                data: &mut ffi::InOut<open_data_in>,
             );
         }
 
@@ -225,27 +225,29 @@ fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag
 
 pub type Key = chacha::Key;
 
-// Keep in sync with BoringSSL's `chacha20_poly1305_open_data` and
-// `chacha20_poly1305_seal_data`.
-#[repr(C)]
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-union InOut<T>
-where
-    T: Copy,
-{
-    input: T,
-    out: Out,
-}
+mod ffi {
+    // Keep in sync with BoringSSL's `chacha20_poly1305_open_data` and
+    // `chacha20_poly1305_seal_data`.
+    #[repr(C)]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    pub union InOut<T>
+    where
+        T: Copy,
+    {
+        pub input: T,
+        pub out: Out,
+    }
 
-// It isn't obvious whether the assembly code works for tags that aren't
-// 16-byte aligned. In practice it will always be 16-byte aligned because it
-// is embedded in a union where the other member of the union is 16-byte
-// aligned.
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-#[derive(Clone, Copy)]
-#[repr(align(16), C)]
-struct Out {
-    tag: [u8; super::TAG_LEN],
+    // It isn't obvious whether the assembly code works for tags that aren't
+    // 16-byte aligned. In practice it will always be 16-byte aligned because it
+    // is embedded in a union where the other member of the union is 16-byte
+    // aligned.
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[derive(Clone, Copy)]
+    #[repr(align(16), C)]
+    pub struct Out {
+        pub tag: [u8; super::super::TAG_LEN],
+    }
 }
 
 #[inline]
