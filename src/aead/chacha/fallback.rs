@@ -21,7 +21,7 @@ use core::ops::RangeFrom;
 pub(super) fn ChaCha20_ctr32(
     key: &Key,
     counter: Counter,
-    in_out: &mut [u8],
+    mut in_out: &mut [u8],
     src: RangeFrom<usize>,
 ) {
     const SIGMA: [u32; 4] = [
@@ -39,25 +39,19 @@ pub(super) fn ChaCha20_ctr32(
         key[6], key[7], counter[0], counter[1], counter[2], counter[3],
     ];
 
-    let mut in_out_len = in_out.len().checked_sub(src.start).unwrap();
-    let mut input = in_out[src].as_ptr();
-    let mut output = in_out.as_mut_ptr();
-
     let mut buf = [0u8; BLOCK_LEN];
-    while in_out_len > 0 {
+    while src.start < in_out.len() {
         chacha_core(&mut buf, &state);
         state[12] += 1;
 
-        let todo = core::cmp::min(BLOCK_LEN, in_out_len);
-        for (i, &b) in buf[..todo].iter().enumerate() {
-            let input = unsafe { *input.add(i) };
-            let b = input ^ b;
-            unsafe { *output.add(i) = b };
-        }
-
-        in_out_len -= todo;
-        input = unsafe { input.add(todo) };
-        output = unsafe { output.add(todo) };
+        let zipped = buf.iter_mut().zip(in_out[src.clone()].iter().copied());
+        let todo = zipped.len();
+        zipped.for_each(|(b, input)| {
+            *b ^= input;
+        });
+        let (current, next) = in_out.split_at_mut(todo);
+        current.copy_from_slice(&buf[..todo]);
+        in_out = next;
     }
 }
 
