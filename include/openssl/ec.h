@@ -121,10 +121,10 @@ OPENSSL_EXPORT const EC_GROUP *EC_group_p521(void);
 // calling |EC_GROUP_free| is optional.
 //
 // The supported NIDs are:
-//   NID_secp224r1 (P-224),
-//   NID_X9_62_prime256v1 (P-256),
-//   NID_secp384r1 (P-384),
-//   NID_secp521r1 (P-521)
+// - |NID_secp224r1| (P-224)
+// - |NID_X9_62_prime256v1| (P-256)
+// - |NID_secp384r1| (P-384)
+// - |NID_secp521r1| (P-521)
 //
 // Calling this function causes all four curves to be linked into the binary.
 // Prefer calling |EC_group_*| to allow the static linker to drop unused curves.
