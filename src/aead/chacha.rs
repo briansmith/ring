@@ -14,6 +14,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{quic::Sample, Nonce};
+use crate::polyfill::ArraySplitMap;
+use core::ops::RangeFrom;
 
 #[cfg(any(
     test,
@@ -25,9 +27,6 @@ use super::{quic::Sample, Nonce};
     ))
 ))]
 mod fallback;
-
-use crate::polyfill::ArraySplitMap;
-use core::ops::RangeFrom;
 
 #[derive(Clone)]
 pub struct Key {
