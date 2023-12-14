@@ -14,7 +14,7 @@
 
 use super::{
     chacha::{self, Counter, Iv},
-    poly1305, Aad, Nonce, Tag,
+    poly1305, Aad, InOut, Nonce, Tag,
 };
 use crate::{
     aead, cpu, error,
@@ -52,6 +52,16 @@ fn chacha20_poly1305_seal(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
+    seal(key, nonce, aad, InOut::overwrite(in_out), cpu_features).unwrap()
+}
+
+fn seal(
+    key: &aead::KeyInner,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    mut in_out: InOut,
+    cpu_features: cpu::Features,
+) -> Result<Tag, error::Unspecified> {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
@@ -88,7 +98,7 @@ fn chacha20_poly1305_seal(
         // Encrypts `plaintext_len` bytes from `plaintext` and writes them to `out_ciphertext`.
         prefixed_extern! {
             fn chacha20_poly1305_seal(
-                out_ciphertext: *mut u8,
+                out_ciphertext: *mut core::mem::MaybeUninit<u8>,
                 plaintext: *const u8,
                 plaintext_len: usize,
                 ad: *const u8,
@@ -97,11 +107,13 @@ fn chacha20_poly1305_seal(
             );
         }
 
+        let input = in_out.input_ptr();
+        let len = in_out.len();
         let out = unsafe {
             chacha20_poly1305_seal(
-                in_out.as_mut_ptr(),
-                in_out.as_ptr(),
-                in_out.len(),
+                in_out.into_output_ptr(),
+                input,
+                len,
                 aad.as_ref().as_ptr(),
                 aad.as_ref().len(),
                 &mut data,
@@ -109,8 +121,10 @@ fn chacha20_poly1305_seal(
             &data.out
         };
 
-        return Tag(out.tag);
+        return Ok(Tag(out.tag));
     }
+
+    let total_in_out_len = in_out.len();
 
     let mut counter = Counter::zero(nonce);
     let mut auth = {
@@ -119,9 +133,12 @@ fn chacha20_poly1305_seal(
     };
 
     poly1305_update_padded_16(&mut auth, aad.as_ref());
-    chacha20_key.encrypt_in_place(counter, in_out);
-    poly1305_update_padded_16(&mut auth, in_out);
-    finish(auth, aad.as_ref().len(), in_out.len())
+    let ciphertext = in_out.advance_after(in_out.len(), |chunk| {
+        chacha20_key.encrypt_within(counter, chunk)
+    })?;
+    poly1305_update_padded_16(&mut auth, ciphertext);
+
+    Ok(finish(auth, aad.as_ref().len(), total_in_out_len))
 }
 
 fn chacha20_poly1305_open(
@@ -132,6 +149,23 @@ fn chacha20_poly1305_open(
     src: RangeFrom<usize>,
     cpu_features: cpu::Features,
 ) -> Tag {
+    open(
+        key,
+        nonce,
+        aad,
+        InOut::overlapping(in_out, src).unwrap(),
+        cpu_features,
+    )
+    .unwrap()
+}
+
+fn open(
+    key: &aead::KeyInner,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    in_out: InOut,
+    cpu_features: cpu::Features,
+) -> Result<Tag, error::Unspecified> {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
@@ -164,7 +198,7 @@ fn chacha20_poly1305_open(
         // Decrypts `plaintext_len` bytes from `ciphertext` and writes them to `out_plaintext`.
         prefixed_extern! {
             fn chacha20_poly1305_open(
-                out_plaintext: *mut u8,
+                out_plaintext: *mut core::mem::MaybeUninit<u8>,
                 ciphertext: *const u8,
                 plaintext_len: usize,
                 ad: *const u8,
@@ -173,11 +207,14 @@ fn chacha20_poly1305_open(
             );
         }
 
+        let input = in_out.input_ptr();
+        let len = in_out.len();
+
         let out = unsafe {
             chacha20_poly1305_open(
-                in_out.as_mut_ptr(),
-                in_out.as_ptr().add(src.start),
-                in_out.len() - src.start,
+                in_out.into_output_ptr(),
+                input,
+                len,
                 aad.as_ref().as_ptr(),
                 aad.as_ref().len(),
                 &mut data,
@@ -185,7 +222,7 @@ fn chacha20_poly1305_open(
             &data.out
         };
 
-        return Tag(out.tag);
+        return Ok(Tag(out.tag));
     }
 
     let mut counter = Counter::zero(nonce);
@@ -195,9 +232,9 @@ fn chacha20_poly1305_open(
     };
 
     poly1305_update_padded_16(&mut auth, aad.as_ref());
-    poly1305_update_padded_16(&mut auth, &in_out[src.clone()]);
-    chacha20_key.encrypt_within(counter, in_out, src.clone());
-    finish(auth, aad.as_ref().len(), in_out[src].len())
+    poly1305_update_padded_16(&mut auth, in_out.input());
+    let plaintext = chacha20_key.encrypt_within(counter, in_out);
+    Ok(finish(auth, aad.as_ref().len(), plaintext.len()))
 }
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]

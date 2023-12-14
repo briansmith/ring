@@ -1,6 +1,6 @@
 // TODO: header.
 
-use crate::error;
+use crate::{error, polyfill};
 use core::{convert::TryInto, marker::PhantomData, mem::MaybeUninit, ops::RangeFrom};
 
 pub struct InOut<'i, 'o, T> {
@@ -53,7 +53,6 @@ impl<T> InOut<'_, '_, T> {
         self.output
     }
 
-    #[allow(dead_code)]
     #[inline(always)]
     pub fn into_output_ptr(self) -> *mut MaybeUninit<T> {
         self.output
@@ -123,5 +122,13 @@ impl<'o, T> InOut<'_, 'o, T> {
     pub fn into_output(self) -> &'o mut [MaybeUninit<T>] {
         // TODO: Safety comment
         unsafe { core::slice::from_raw_parts_mut(self.output, self.len()) }
+    }
+
+    pub fn copy_within(self) -> &'o mut [T] {
+        unsafe {
+            core::ptr::copy(self.input, self.output.cast(), self.len());
+        }
+        let output = self.into_output();
+        unsafe { polyfill::maybeuninit::slice_assume_init_mut(output) }
     }
 }

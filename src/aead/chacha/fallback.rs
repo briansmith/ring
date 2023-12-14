@@ -15,15 +15,23 @@
 // Adapted from the public domain, estream code by D. Bernstein.
 // Adapted from the BoringSSL crypto/chacha/chacha.c.
 
-use super::{Counter, Key, BLOCK_LEN};
-use core::ops::RangeFrom;
+use super::{super::InOut, Counter, Key, BLOCK_LEN};
+use crate::{error, polyfill};
+use core::cmp::min;
 
-pub(super) fn ChaCha20_ctr32(
+pub(super) fn ChaCha20_ctr32<'o>(
     key: &Key,
     counter: Counter,
-    mut in_out: &mut [u8],
-    src: RangeFrom<usize>,
-) {
+    in_out: InOut<'_, 'o>,
+) -> &'o mut [u8] {
+    ChaCha20_ctr32_(key, counter, in_out).unwrap()
+}
+
+fn ChaCha20_ctr32_<'o>(
+    key: &Key,
+    counter: Counter,
+    mut in_out: InOut<'_, 'o>,
+) -> Result<&'o mut [u8], error::Unspecified> {
     const SIGMA: [u32; 4] = [
         u32::from_le_bytes(*b"expa"),
         u32::from_le_bytes(*b"nd 3"),
@@ -40,19 +48,31 @@ pub(super) fn ChaCha20_ctr32(
     ];
 
     let mut buf = [0u8; BLOCK_LEN];
-    while src.start < in_out.len() {
-        chacha_core(&mut buf, &state);
-        state[12] += 1;
+    let result_ptr = in_out.output_ptr_less_safe();
+    let result_len = in_out.len();
+    while in_out.len() > 0 {
+        let todo = min(buf.len(), in_out.len());
+        in_out.advance_after(todo, |chunk| {
+            chacha_core(&mut buf, &state);
+            state[12] += 1;
 
-        let zipped = buf.iter_mut().zip(in_out[src.clone()].iter().copied());
-        let todo = zipped.len();
-        zipped.for_each(|(b, input)| {
-            *b ^= input;
-        });
-        let (current, next) = in_out.split_at_mut(todo);
-        current.copy_from_slice(&buf[..todo]);
-        in_out = next;
+            buf.iter_mut()
+                .zip(chunk.input().iter().copied())
+                .for_each(|(b, input)| {
+                    *b ^= input;
+                });
+            let output = chunk.into_output_ptr();
+            unsafe {
+                core::ptr::copy_nonoverlapping(buf.as_ptr(), output.cast(), todo);
+            }
+        })?;
     }
+    let output = unsafe {
+        polyfill::maybeuninit::slice_assume_init_mut(core::slice::from_raw_parts_mut(
+            result_ptr, result_len,
+        ))
+    };
+    Ok(output)
 }
 
 // Performs 20 rounds of ChaCha on `input`, storing the result in `output`.
