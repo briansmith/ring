@@ -58,60 +58,58 @@ fn chacha20_poly1305_seal(
     };
 
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-    {
-        if has_integrated(cpu_features) {
-            // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
-            // structure, but Rust can't do that yet; see
-            // https://github.com/rust-lang/rust/issues/73557.
-            //
-            // Keep in sync with the anonymous struct of BoringSSL's
-            // `chacha20_poly1305_seal_data`.
-            #[repr(align(16), C)]
-            #[derive(Clone, Copy)]
-            struct seal_data_in {
-                key: [u32; chacha::KEY_LEN / 4],
-                counter: u32,
-                nonce: [u8; super::NONCE_LEN],
-                extra_ciphertext: *const u8,
-                extra_ciphertext_len: usize,
-            }
-
-            let mut data = InOut {
-                input: seal_data_in {
-                    key: *chacha20_key.words_less_safe(),
-                    counter: 0,
-                    nonce: *nonce.as_ref(),
-                    extra_ciphertext: core::ptr::null(),
-                    extra_ciphertext_len: 0,
-                },
-            };
-
-            // Encrypts `plaintext_len` bytes from `plaintext` and writes them to `out_ciphertext`.
-            prefixed_extern! {
-                fn chacha20_poly1305_seal(
-                    out_ciphertext: *mut u8,
-                    plaintext: *const u8,
-                    plaintext_len: usize,
-                    ad: *const u8,
-                    ad_len: usize,
-                    data: &mut InOut<seal_data_in>,
-                );
-            }
-
-            let out = unsafe {
-                chacha20_poly1305_seal(
-                    in_out.as_mut_ptr(),
-                    in_out.as_ptr(),
-                    in_out.len(),
-                    aad.as_ref().as_ptr(),
-                    aad.as_ref().len(),
-                    &mut data,
-                );
-                &data.out
-            };
-
-            return Tag(out.tag);
+    if has_integrated(cpu_features) {
+        // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
+        // structure, but Rust can't do that yet; see
+        // https://github.com/rust-lang/rust/issues/73557.
+        //
+        // Keep in sync with the anonymous struct of BoringSSL's
+        // `chacha20_poly1305_seal_data`.
+        #[repr(align(16), C)]
+        #[derive(Clone, Copy)]
+        struct seal_data_in {
+            key: [u32; chacha::KEY_LEN / 4],
+            counter: u32,
+            nonce: [u8; super::NONCE_LEN],
+            extra_ciphertext: *const u8,
+            extra_ciphertext_len: usize,
         }
+
+        let mut data = InOut {
+            input: seal_data_in {
+                key: *chacha20_key.words_less_safe(),
+                counter: 0,
+                nonce: *nonce.as_ref(),
+                extra_ciphertext: core::ptr::null(),
+                extra_ciphertext_len: 0,
+            },
+        };
+
+        // Encrypts `plaintext_len` bytes from `plaintext` and writes them to `out_ciphertext`.
+        prefixed_extern! {
+            fn chacha20_poly1305_seal(
+                out_ciphertext: *mut u8,
+                plaintext: *const u8,
+                plaintext_len: usize,
+                ad: *const u8,
+                ad_len: usize,
+                data: &mut InOut<seal_data_in>,
+            );
+        }
+
+        let out = unsafe {
+            chacha20_poly1305_seal(
+                in_out.as_mut_ptr(),
+                in_out.as_ptr(),
+                in_out.len(),
+                aad.as_ref().as_ptr(),
+                aad.as_ref().len(),
+                &mut data,
+            );
+            &data.out
+        };
+
+        return Tag(out.tag);
     }
 
     let mut counter = Counter::zero(nonce);
@@ -140,56 +138,54 @@ fn chacha20_poly1305_open(
     };
 
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-    {
-        if has_integrated(cpu_features) {
-            // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
-            // structure, but Rust can't do that yet; see
-            // https://github.com/rust-lang/rust/issues/73557.
-            //
-            // Keep in sync with the anonymous struct of BoringSSL's
-            // `chacha20_poly1305_open_data`.
-            #[derive(Copy, Clone)]
-            #[repr(align(16), C)]
-            struct open_data_in {
-                key: [u32; chacha::KEY_LEN / 4],
-                counter: u32,
-                nonce: [u8; super::NONCE_LEN],
-            }
-
-            let mut data = InOut {
-                input: open_data_in {
-                    key: *chacha20_key.words_less_safe(),
-                    counter: 0,
-                    nonce: *nonce.as_ref(),
-                },
-            };
-
-            // Decrypts `plaintext_len` bytes from `ciphertext` and writes them to `out_plaintext`.
-            prefixed_extern! {
-                fn chacha20_poly1305_open(
-                    out_plaintext: *mut u8,
-                    ciphertext: *const u8,
-                    plaintext_len: usize,
-                    ad: *const u8,
-                    ad_len: usize,
-                    data: &mut InOut<open_data_in>,
-                );
-            }
-
-            let out = unsafe {
-                chacha20_poly1305_open(
-                    in_out.as_mut_ptr(),
-                    in_out.as_ptr().add(src.start),
-                    in_out.len() - src.start,
-                    aad.as_ref().as_ptr(),
-                    aad.as_ref().len(),
-                    &mut data,
-                );
-                &data.out
-            };
-
-            return Tag(out.tag);
+    if has_integrated(cpu_features) {
+        // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
+        // structure, but Rust can't do that yet; see
+        // https://github.com/rust-lang/rust/issues/73557.
+        //
+        // Keep in sync with the anonymous struct of BoringSSL's
+        // `chacha20_poly1305_open_data`.
+        #[derive(Copy, Clone)]
+        #[repr(align(16), C)]
+        struct open_data_in {
+            key: [u32; chacha::KEY_LEN / 4],
+            counter: u32,
+            nonce: [u8; super::NONCE_LEN],
         }
+
+        let mut data = InOut {
+            input: open_data_in {
+                key: *chacha20_key.words_less_safe(),
+                counter: 0,
+                nonce: *nonce.as_ref(),
+            },
+        };
+
+        // Decrypts `plaintext_len` bytes from `ciphertext` and writes them to `out_plaintext`.
+        prefixed_extern! {
+            fn chacha20_poly1305_open(
+                out_plaintext: *mut u8,
+                ciphertext: *const u8,
+                plaintext_len: usize,
+                ad: *const u8,
+                ad_len: usize,
+                data: &mut InOut<open_data_in>,
+            );
+        }
+
+        let out = unsafe {
+            chacha20_poly1305_open(
+                in_out.as_mut_ptr(),
+                in_out.as_ptr().add(src.start),
+                in_out.len() - src.start,
+                aad.as_ref().as_ptr(),
+                aad.as_ref().len(),
+                &mut data,
+            );
+            &data.out
+        };
+
+        return Tag(out.tag);
     }
 
     let mut counter = Counter::zero(nonce);

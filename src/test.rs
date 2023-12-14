@@ -346,16 +346,14 @@ where
         }
 
         #[cfg(feature = "test_logging")]
-        {
-            if let Err(msg) = result {
-                std::println!("{}: {}", test_file.file_name, msg);
+        if let Err(msg) = result {
+            std::println!("{}: {}", test_file.file_name, msg);
 
-                for (name, value, consumed) in test_case.attributes {
-                    let consumed_str = if consumed { "" } else { " (unconsumed)" };
-                    std::println!("{}{} = {}", name, consumed_str, value);
-                }
-            };
-        }
+            for (name, value, consumed) in test_case.attributes {
+                let consumed_str = if consumed { "" } else { " (unconsumed)" };
+                std::println!("{}{} = {}", name, consumed_str, value);
+            }
+        };
     }
 
     if failed {
@@ -405,10 +403,8 @@ fn parse_test_case(
         let line = lines.next();
 
         #[cfg(feature = "test_logging")]
-        {
-            if let Some(text) = &line {
-                std::println!("Line: {}", text);
-            }
+        if let Some(text) = &line {
+            std::println!("Line: {}", text);
         }
 
         match line {
