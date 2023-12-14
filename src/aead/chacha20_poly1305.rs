@@ -20,7 +20,6 @@ use crate::{
     aead, cpu, error,
     polyfill::{self, ArrayFlatten},
 };
-use core::ops::RangeFrom;
 
 /// ChaCha20-Poly1305 as described in [RFC 8439].
 ///
@@ -29,30 +28,17 @@ use core::ops::RangeFrom;
 /// [RFC 8439]: https://tools.ietf.org/html/rfc8439
 pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     key_len: chacha::KEY_LEN,
-    init: chacha20_poly1305_init,
-    seal: chacha20_poly1305_seal,
-    open: chacha20_poly1305_open,
+    init,
+    seal,
+    open,
     id: aead::AlgorithmID::CHACHA20_POLY1305,
     max_input_len: super::max_input_len(64, 1),
 };
 
 /// Copies |key| into |ctx_buf|.
-fn chacha20_poly1305_init(
-    key: &[u8],
-    _cpu_features: cpu::Features,
-) -> Result<aead::KeyInner, error::Unspecified> {
+fn init(key: &[u8], _cpu_features: cpu::Features) -> Result<aead::KeyInner, error::Unspecified> {
     let key: [u8; chacha::KEY_LEN] = key.try_into()?;
     Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::new(key)))
-}
-
-fn chacha20_poly1305_seal(
-    key: &aead::KeyInner,
-    nonce: Nonce,
-    aad: Aad<&[u8]>,
-    in_out: &mut [u8],
-    cpu_features: cpu::Features,
-) -> Tag {
-    seal(key, nonce, aad, InOut::overwrite(in_out), cpu_features).unwrap()
 }
 
 fn seal(
@@ -139,24 +125,6 @@ fn seal(
     poly1305_update_padded_16(&mut auth, ciphertext);
 
     Ok(finish(auth, aad.as_ref().len(), total_in_out_len))
-}
-
-fn chacha20_poly1305_open(
-    key: &aead::KeyInner,
-    nonce: Nonce,
-    aad: Aad<&[u8]>,
-    in_out: &mut [u8],
-    src: RangeFrom<usize>,
-    cpu_features: cpu::Features,
-) -> Tag {
-    open(
-        key,
-        nonce,
-        aad,
-        InOut::overlapping(in_out, src).unwrap(),
-        cpu_features,
-    )
-    .unwrap()
 }
 
 fn open(

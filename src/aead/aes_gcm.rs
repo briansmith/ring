@@ -21,14 +21,14 @@ use crate::{
     aead, cpu, error,
     polyfill::{self},
 };
-use core::{ops::RangeFrom, ptr};
+use core::ptr;
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
     key_len: 16,
     init: init_128,
-    seal: aes_gcm_seal,
-    open: aes_gcm_open,
+    seal,
+    open,
     id: aead::AlgorithmID::AES_128_GCM,
     max_input_len: AES_GCM_MAX_INPUT_LEN,
 };
@@ -37,8 +37,8 @@ pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
 pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     key_len: 32,
     init: init_256,
-    seal: aes_gcm_seal,
-    open: aes_gcm_open,
+    seal,
+    open,
     id: aead::AlgorithmID::AES_256_GCM,
     max_input_len: AES_GCM_MAX_INPUT_LEN,
 };
@@ -72,16 +72,6 @@ fn init(
 
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 const STRIDE_LEN: usize = CHUNK_BLOCKS * BLOCK_LEN;
-
-fn aes_gcm_seal(
-    key: &aead::KeyInner,
-    nonce: Nonce,
-    aad: Aad<&[u8]>,
-    in_out: &mut [u8],
-    cpu_features: cpu::Features,
-) -> Tag {
-    seal(key, nonce, aad, InOut::overwrite(in_out), cpu_features).unwrap()
-}
 
 fn seal(
     key: &aead::KeyInner,
@@ -167,24 +157,6 @@ fn seal(
         total_in_out_len,
         cpu_features,
     )
-}
-
-fn aes_gcm_open(
-    key: &aead::KeyInner,
-    nonce: Nonce,
-    aad: Aad<&[u8]>,
-    in_out: &mut [u8],
-    src: RangeFrom<usize>,
-    cpu_features: cpu::Features,
-) -> Tag {
-    open(
-        key,
-        nonce,
-        aad,
-        InOut::overlapping(in_out, src).unwrap(),
-        cpu_features,
-    )
-    .unwrap()
 }
 
 fn open(
