@@ -67,7 +67,9 @@ extern "C" {
 #endif
 
 
-// Config files look like:
+// Config files.
+//
+// This library handles OpenSSL's config files, which look like:
 //
 //   # Comment
 //
@@ -81,6 +83,7 @@ extern "C" {
 // discouraged. It is a remnant of the OpenSSL command-line tool. Parsing an
 // untrusted input as a config file risks string injection and denial of service
 // vulnerabilities.
+
 
 struct conf_value_st {
   char *section;
