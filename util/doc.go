@@ -649,7 +649,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
           {{range .Comment}}
             <p>{{. | markupPipeWords | newlinesToBR | markupFirstWord | markupRFC}}</p>
           {{end}}
-          <pre>{{.Decl}}</pre>
+          {{if .Decl}}<pre>{{.Decl}}</pre>{{end}}
           </div>
         {{end}}
         </div>
