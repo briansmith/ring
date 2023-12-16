@@ -641,7 +641,11 @@ func markupComment(allDecls map[string]string, comment []CommentBlock) template.
 
 		switch block.Type {
 		case CommentParagraph:
-			b.WriteString("<p>")
+			if strings.HasPrefix(block.Paragraph, "WARNING:") {
+				b.WriteString("<p class=\"warning\">")
+			} else {
+				b.WriteString("<p>")
+			}
 			b.WriteString(string(markupParagraph(allDecls, block.Paragraph)))
 			b.WriteString("</p>")
 		case CommentOrderedListItem, CommentBulletListItem:
