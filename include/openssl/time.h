@@ -23,6 +23,10 @@
 extern "C" {
 #endif
 
+
+// Time functions.
+
+
 // OPENSSL_posix_to_tm converts a int64_t POSIX time value in |time|, which must
 // be in the range of year 0000 to 9999, to a broken out time value in |tm|. It
 // returns one on success and zero on error.
