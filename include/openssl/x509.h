@@ -603,7 +603,9 @@ OPENSSL_EXPORT int X509_set1_signature_value(X509 *x509, const uint8_t *sig,
 // Unlike similarly-named functions, this function does not output a single
 // ASN.1 element. Directly embedding the output in a larger ASN.1 structure will
 // not behave correctly.
-OPENSSL_EXPORT int i2d_X509_AUX(X509 *x509, unsigned char **outp);
+//
+// TODO(crbug.com/boringssl/407): |x509| should be const.
+OPENSSL_EXPORT int i2d_X509_AUX(X509 *x509, uint8_t **outp);
 
 // d2i_X509_AUX parses up to |length| bytes from |*inp| as a DER-encoded X.509
 // Certificate (RFC 5280), followed optionally by a separate, OpenSSL-specific
@@ -615,19 +617,19 @@ OPENSSL_EXPORT int i2d_X509_AUX(X509 *x509, unsigned char **outp);
 // Unlike similarly-named functions, this function does not parse a single
 // ASN.1 element. Trying to parse data directly embedded in a larger ASN.1
 // structure will not behave correctly.
-OPENSSL_EXPORT X509 *d2i_X509_AUX(X509 **x509, const unsigned char **inp,
+OPENSSL_EXPORT X509 *d2i_X509_AUX(X509 **x509, const uint8_t **inp,
                                   long length);
 
 // X509_alias_set1 sets |x509|'s alias to |len| bytes from |name|. If |name| is
 // NULL, the alias is cleared instead. Aliases are not part of the certificate
 // itself and will not be serialized by |i2d_X509|.
-OPENSSL_EXPORT int X509_alias_set1(X509 *x509, const unsigned char *name,
+OPENSSL_EXPORT int X509_alias_set1(X509 *x509, const uint8_t *name,
                                    ossl_ssize_t len);
 
 // X509_keyid_set1 sets |x509|'s key ID to |len| bytes from |id|. If |id| is
 // NULL, the key ID is cleared instead. Key IDs are not part of the certificate
 // itself and will not be serialized by |i2d_X509|.
-OPENSSL_EXPORT int X509_keyid_set1(X509 *x509, const unsigned char *id,
+OPENSSL_EXPORT int X509_keyid_set1(X509 *x509, const uint8_t *id,
                                    ossl_ssize_t len);
 
 // X509_alias_get0 looks up |x509|'s alias. If found, it sets |*out_len| to the
@@ -642,7 +644,7 @@ OPENSSL_EXPORT int X509_keyid_set1(X509 *x509, const unsigned char *id,
 // WARNING: In OpenSSL, this function did not set |*out_len| when the alias was
 // missing. Callers that target both OpenSSL and BoringSSL should set the value
 // to zero before calling this function.
-OPENSSL_EXPORT unsigned char *X509_alias_get0(X509 *x509, int *out_len);
+OPENSSL_EXPORT const uint8_t *X509_alias_get0(const X509 *x509, int *out_len);
 
 // X509_keyid_get0 looks up |x509|'s key ID. If found, it sets |*out_len| to the
 // key ID's length and returns a pointer to a buffer containing the contents. If
@@ -652,7 +654,7 @@ OPENSSL_EXPORT unsigned char *X509_alias_get0(X509 *x509, int *out_len);
 // WARNING: In OpenSSL, this function did not set |*out_len| when the alias was
 // missing. Callers that target both OpenSSL and BoringSSL should set the value
 // to zero before calling this function.
-OPENSSL_EXPORT unsigned char *X509_keyid_get0(X509 *x509, int *out_len);
+OPENSSL_EXPORT const uint8_t *X509_keyid_get0(const X509 *x509, int *out_len);
 
 // X509_add1_trust_object configures |x509| as a valid trust anchor for |obj|.
 // It returns one on success and zero on error. |obj| should be a certificate
