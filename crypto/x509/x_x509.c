@@ -299,6 +299,54 @@ err:
   return -1;
 }
 
+static int x509_new_cb(ASN1_VALUE **pval, const ASN1_ITEM *it) {
+  *pval = (ASN1_VALUE *)X509_new();
+  return *pval != NULL;
+}
+
+static void x509_free_cb(ASN1_VALUE **pval, const ASN1_ITEM *it) {
+  X509_free((X509 *)*pval);
+  *pval = NULL;
+}
+
+static int x509_d2i_cb(ASN1_VALUE **pval, const unsigned char **in, long len,
+                       const ASN1_ITEM *it, int opt, ASN1_TLC *ctx) {
+  if (len < 0) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, *in, len);
+  if (opt && !CBS_peek_asn1_tag(&cbs, CBS_ASN1_SEQUENCE)) {
+    return -1;
+  }
+
+  X509 *ret = x509_parse(&cbs, NULL);
+  if (ret == NULL) {
+    return 0;
+  }
+
+  *in = CBS_data(&cbs);
+  X509_free((X509 *)*pval);
+  *pval = (ASN1_VALUE *)ret;
+  return 1;
+}
+
+static int x509_i2d_cb(ASN1_VALUE **pval, unsigned char **out,
+                       const ASN1_ITEM *it) {
+  return i2d_X509((X509 *)*pval, out);
+}
+
+static const ASN1_EXTERN_FUNCS x509_extern_funcs = {
+    x509_new_cb,
+    x509_free_cb,
+    x509_d2i_cb,
+    x509_i2d_cb,
+};
+
+IMPLEMENT_EXTERN_ASN1(X509, V_ASN1_SEQUENCE, x509_extern_funcs)
+
 X509 *X509_dup(X509 *x509) {
   uint8_t *der = NULL;
   int len = i2d_X509(x509, &der);
