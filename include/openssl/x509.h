@@ -1630,6 +1630,10 @@ OPENSSL_EXPORT const ASN1_BIT_STRING *X509_PUBKEY_get0_public_key(
 // determined by the extension type. This library represents extensions with the
 // |X509_EXTENSION| type.
 
+// X509_EXTENSION is an |ASN1_ITEM| whose ASN.1 type is X.509 Extension (RFC
+// 5280) and C type is |X509_EXTENSION*|.
+DECLARE_ASN1_ITEM(X509_EXTENSION)
+
 // X509_EXTENSION_new returns a newly-allocated, empty |X509_EXTENSION| object
 // or NULL on error.
 OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_new(void);
