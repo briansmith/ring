@@ -30,11 +30,12 @@ void CRYPTO_hchacha20(uint8_t out[32], const uint8_t key[32],
                       const uint8_t nonce[16]);
 
 #if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM))
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 
 #define CHACHA20_ASM
 
-#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
+#elif !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
 
 #define CHACHA20_ASM_NOHW
 
