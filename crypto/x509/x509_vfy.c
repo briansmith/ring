@@ -1668,11 +1668,9 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
     goto err;
   }
 
-  if (store->get_issuer) {
-    ctx->get_issuer = store->get_issuer;
-  } else {
-    ctx->get_issuer = X509_STORE_CTX_get1_issuer;
-  }
+  // TODO(davidben): Remove this pointer. It only exists to be overwritten by
+  // X509_STORE_CTX_set0_trusted_stack.
+  ctx->get_issuer = X509_STORE_CTX_get1_issuer;
 
   if (store->verify_cb) {
     ctx->verify_cb = store->verify_cb;

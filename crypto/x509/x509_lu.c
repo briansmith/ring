@@ -581,35 +581,14 @@ void X509_STORE_set_verify_cb(X509_STORE *ctx,
   ctx->verify_cb = verify_cb;
 }
 
-X509_STORE_CTX_verify_cb X509_STORE_get_verify_cb(X509_STORE *ctx) {
-  return ctx->verify_cb;
-}
-
-void X509_STORE_set_get_issuer(X509_STORE *ctx,
-                               X509_STORE_CTX_get_issuer_fn get_issuer) {
-  ctx->get_issuer = get_issuer;
-}
-
-X509_STORE_CTX_get_issuer_fn X509_STORE_get_get_issuer(X509_STORE *ctx) {
-  return ctx->get_issuer;
-}
-
 void X509_STORE_set_get_crl(X509_STORE *ctx,
                             X509_STORE_CTX_get_crl_fn get_crl) {
   ctx->get_crl = get_crl;
 }
 
-X509_STORE_CTX_get_crl_fn X509_STORE_get_get_crl(X509_STORE *ctx) {
-  return ctx->get_crl;
-}
-
 void X509_STORE_set_check_crl(X509_STORE *ctx,
                               X509_STORE_CTX_check_crl_fn check_crl) {
   ctx->check_crl = check_crl;
-}
-
-X509_STORE_CTX_check_crl_fn X509_STORE_get_check_crl(X509_STORE *ctx) {
-  return ctx->check_crl;
 }
 
 X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx) { return ctx->ctx; }
