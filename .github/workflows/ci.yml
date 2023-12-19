@@ -290,10 +290,16 @@ jobs:
       #       Unknown attribute kind (528)
       #       (Producer: 'LLVM12.0.0-rust-1.54.0-nightly'
       #       Reader: 'LLVM APPLE_1_1200.0.32.29_0')
+
+      - if: ${{ matrix.target != 'aarch64-apple-ios' &&
+          !contains(matrix.host_os, 'windows') &&
+          (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
+        run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
+
       - if: ${{ matrix.target != 'aarch64-apple-ios' &&
                 !contains(matrix.host_os, 'windows') &&
                 (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
-        run: mk/check-symbol-prefixes.sh --target=${{ matrix.target }}
+        run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   test-bench:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
@@ -419,11 +425,16 @@ jobs:
       #       Unknown attribute kind (528)
       #       (Producer: 'LLVM12.0.0-rust-1.54.0-nightly'
       #       Reader: 'LLVM APPLE_1_1200.0.32.29_0')
+
       - if: ${{ matrix.target != 'aarch64-apple-ios' &&
           !contains(matrix.host_os, 'windows') &&
           (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
-        run: mk/check-symbol-prefixes.sh --target=${{ matrix.target }}
+        run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
 
+      - if: ${{ matrix.target != 'aarch64-apple-ios' &&
+          !contains(matrix.host_os, 'windows') &&
+          (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
+        run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   # The wasm32-unknown-unknown targets have a different set of feature sets and
   # an additional `webdriver` dimension.
@@ -477,7 +488,8 @@ jobs:
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
-      - run: mk/check-symbol-prefixes.sh --target=${{ matrix.target }}
+      - run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
+      - run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   coverage:
     # Don't run duplicate `push` jobs for the repo owner's PRs.

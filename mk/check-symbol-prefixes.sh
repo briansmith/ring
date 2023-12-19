@@ -22,20 +22,16 @@ for arg in $*; do
     --target=*)
       target=${arg#*=}
       ;;
+    +*)
+      toolchain=${arg#*+}
+      ;;
     *)
       ;;
   esac
 done
 
-case "$OSTYPE" in
-darwin*)
-  nm_exe=nm
-  ;;
-*)
-  llvm_version=16
-  nm_exe=llvm-nm-$llvm_version
-  ;;
-esac
+# Use the host target-libdir, not the target target-libdir.
+nm_exe=$(rustc +${toolchain} --print target-libdir)/../bin/llvm-nm
 
 # TODO: This should only look in one target directory.
 # TODO: This isn't as strict as it should be.
