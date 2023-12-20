@@ -109,13 +109,13 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 /// `fill()` once at a non-latency-sensitive time to minimize latency for
 /// future calls.
 #[derive(Clone, Debug)]
-pub struct SystemRandom(());
+pub struct SystemRandom;
 
 impl SystemRandom {
     /// Constructs a new `SystemRandom`.
     #[inline(always)]
     pub fn new() -> Self {
-        Self(())
+        Self
     }
 }
 
