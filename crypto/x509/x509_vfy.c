@@ -110,6 +110,7 @@ static int check_revocation(X509_STORE_CTX *ctx);
 static int check_cert(X509_STORE_CTX *ctx);
 static int check_policy(X509_STORE_CTX *ctx);
 
+static int get_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x);
 static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
                          X509 *x);
 static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x);
@@ -233,7 +234,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
     }
     // If asked see if we can find issuer in trusted store first
     if (ctx->param->flags & X509_V_FLAG_TRUSTED_FIRST) {
-      ok = ctx->get_issuer(&xtmp, ctx, x);
+      ok = get_issuer(&xtmp, ctx, x);
       if (ok < 0) {
         ctx->error = X509_V_ERR_STORE_LOOKUP;
         goto end;
@@ -290,7 +291,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
         // We have a single self signed certificate: see if we can
         // find it in the store. We must have an exact match to avoid
         // possible impersonation.
-        ok = ctx->get_issuer(&xtmp, ctx, x);
+        ok = get_issuer(&xtmp, ctx, x);
         if ((ok <= 0) || X509_cmp(x, xtmp)) {
           ctx->error = X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT;
           ctx->current_cert = x;
@@ -335,7 +336,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
       if (is_self_signed) {
         break;
       }
-      ok = ctx->get_issuer(&xtmp, ctx, x);
+      ok = get_issuer(&xtmp, ctx, x);
 
       if (ok < 0) {
         ctx->error = X509_V_ERR_STORE_LOOKUP;
@@ -372,7 +373,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
         !(ctx->param->flags & X509_V_FLAG_NO_ALT_CHAINS)) {
       while (j-- > 1) {
         xtmp2 = sk_X509_value(ctx->chain, j - 1);
-        ok = ctx->get_issuer(&xtmp, ctx, xtmp2);
+        ok = get_issuer(&xtmp, ctx, xtmp2);
         if (ok < 0) {
           goto end;
         }
@@ -511,16 +512,18 @@ int x509_check_issued_with_callback(X509_STORE_CTX *ctx, X509 *x,
   return ctx->verify_cb(0, ctx);
 }
 
-// Alternative lookup method: look from a STACK stored in other_ctx
-
-static int get_issuer_sk(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
-  *issuer = find_issuer(ctx, ctx->other_ctx, x);
-  if (*issuer) {
-    X509_up_ref(*issuer);
-    return 1;
-  } else {
+static int get_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
+  if (ctx->trusted_stack != NULL) {
+    // Ignore the store and use the configured stack instead.
+    *issuer = find_issuer(ctx, ctx->trusted_stack, x);
+    if (*issuer) {
+      X509_up_ref(*issuer);
+      return 1;
+    }
     return 0;
   }
+
+  return X509_STORE_CTX_get1_issuer(issuer, ctx, x);
 }
 
 // Check a certificate chains extensions for consistency with the supplied
@@ -803,11 +806,7 @@ static int check_cert(X509_STORE_CTX *ctx) {
   ctx->current_crl_score = 0;
 
   // Try to retrieve relevant CRL
-  if (ctx->get_crl) {
-    ok = ctx->get_crl(ctx, &crl, x);
-  } else {
-    ok = get_crl(ctx, &crl, x);
-  }
+  ok = ctx->get_crl(ctx, &crl, x);
   // If error looking up CRL, nothing we can do except notify callback
   if (!ok) {
     ctx->error = X509_V_ERR_UNABLE_TO_GET_CRL;
@@ -1668,10 +1667,6 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
     goto err;
   }
 
-  // TODO(davidben): Remove this pointer. It only exists to be overwritten by
-  // X509_STORE_CTX_set0_trusted_stack.
-  ctx->get_issuer = X509_STORE_CTX_get1_issuer;
-
   if (store->verify_cb) {
     ctx->verify_cb = store->verify_cb;
   } else {
@@ -1681,7 +1676,7 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
   if (store->get_crl) {
     ctx->get_crl = store->get_crl;
   } else {
-    ctx->get_crl = NULL;
+    ctx->get_crl = get_crl;
   }
 
   if (store->check_crl) {
@@ -1707,8 +1702,7 @@ err:
 
 void X509_STORE_CTX_set0_trusted_stack(X509_STORE_CTX *ctx,
                                        STACK_OF(X509) *sk) {
-  ctx->other_ctx = sk;
-  ctx->get_issuer = get_issuer_sk;
+  ctx->trusted_stack = sk;
 }
 
 void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *ctx, STACK_OF(X509) *sk) {

@@ -348,9 +348,6 @@ struct x509_store_st {
   CRYPTO_refcount_t references;
 } /* X509_STORE */;
 
-typedef int (*X509_STORE_CTX_get_issuer_fn)(X509 **issuer, X509_STORE_CTX *ctx,
-                                            X509 *x);
-
 // This is the functions plus an instance of the local variables.
 struct x509_lookup_st {
   const X509_LOOKUP_METHOD *method;  // the functions
@@ -371,11 +368,13 @@ struct x509_store_ctx_st {
   STACK_OF(X509_CRL) *crls;   // set of CRLs passed in
 
   X509_VERIFY_PARAM *param;
-  void *other_ctx;  // Other info for use with get_issuer()
+
+  // trusted_stack, if non-NULL, is a set of trusted certificates to consider
+  // instead of those from |X509_STORE|.
+  STACK_OF(X509) *trusted_stack;
 
   // Callbacks for various operations
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
-  X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
   X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
