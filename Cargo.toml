@@ -173,6 +173,7 @@ name = "ring"
 [dependencies]
 cfg-if = { version = "1.0.0", default-features = false }
 getrandom = { version = "0.2.10" }
+rand = { version = "0.8.5", default-features = false, optional = true }
 untrusted = { version = "0.9" }
 
 [target.'cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86",target_arch = "x86_64"))'.dependencies]
@@ -205,6 +206,7 @@ unstable-testing-arm-no-hw = []
 unstable-testing-arm-no-neon = []
 test_logging = []
 wasm32_unknown_unknown_js = ["getrandom/js"]
+rand-api = ["dep:rand"]
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 

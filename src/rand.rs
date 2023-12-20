@@ -18,6 +18,10 @@
 //! parameter to make it clear which functions are non-deterministic.
 
 use crate::error;
+#[cfg(feature = "rand-api")]
+use core::num::NonZeroU32;
+#[cfg(feature = "rand-api")]
+use rand::RngCore;
 
 /// A secure random number generator.
 pub trait SecureRandom: sealed::SecureRandom {
@@ -116,6 +120,36 @@ impl SystemRandom {
     #[inline(always)]
     pub const fn new() -> Self {
         Self
+    }
+}
+
+#[cfg(feature = "rand-api")]
+impl RngCore for SystemRandom {
+    fn next_u32(&mut self) -> u32 {
+        let buf = &mut [0u8; 4];
+        // Unwrapping because should be infallible unless things have gone very very wrong;
+        self.fill(buf).unwrap();
+        u32::from_ne_bytes(*buf)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let buf = &mut [0u8; 8];
+        self.fill(buf).unwrap();
+        u64::from_ne_bytes(*buf)
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.fill(dest).unwrap();
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+        if self.fill(dest).is_err() {
+            Err(rand::Error::from(
+                NonZeroU32::new(rand::Error::CUSTOM_START).unwrap(),
+            ))
+        } else {
+            Ok(())
+        }
     }
 }
 
