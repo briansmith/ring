@@ -114,7 +114,7 @@ pub struct SystemRandom;
 impl SystemRandom {
     /// Constructs a new `SystemRandom`.
     #[inline(always)]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
