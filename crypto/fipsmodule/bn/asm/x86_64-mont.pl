@@ -85,8 +85,6 @@ $m1="%rbp";
 $code=<<___;
 .text
 
-.extern	OPENSSL_ia32cap_P
-
 .globl	bn_mul_mont_nohw
 .type	bn_mul_mont_nohw,\@function,6
 .align	16
@@ -785,7 +783,7 @@ ___
 # int bn_sqr8x_mont(
 my $rptr="%rdi";	# const BN_ULONG *rptr,
 my $aptr="%rsi";	# const BN_ULONG *aptr,
-my $bptr="%rdx";	# not used
+my $mulx_adx_capable="%rdx"; # Different than upstream!
 my $nptr="%rcx";	# const BN_ULONG *nptr,
 my $n0  ="%r8";		# const BN_ULONG *n0);
 my $num ="%r9";		# int num, has to be divisible by 8
@@ -886,11 +884,8 @@ bn_sqr8x_mont:
 	movq	%r10, %xmm3		# -$num
 ___
 $code.=<<___ if ($addx);
-	leaq	OPENSSL_ia32cap_P(%rip),%rax
-	mov	8(%rax),%eax
-	and	\$0x80100,%eax
-	cmp	\$0x80100,%eax
-	jne	.Lsqr8x_nox
+	test	$mulx_adx_capable,$mulx_adx_capable
+	jz	.Lsqr8x_nox
 
 	call	bn_sqrx8x_internal	# see x86_64-mont5 module
 					# %rax	top-most carry

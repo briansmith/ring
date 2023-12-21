@@ -510,7 +510,7 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, size_t num)
 {
   if (ap == bp && bn_sqr8x_mont_capable(num)) {
-    return bn_sqr8x_mont(rp, ap, bp, np, n0, num);
+    return bn_sqr8x_mont(rp, ap, bn_mulx_adx_capable(), np, n0, num);
   }
   if (bn_mulx4x_mont_capable(num)) {
     return bn_mulx4x_mont(rp, ap, bp, np, n0, num);

@@ -402,6 +402,10 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 
 #if defined(OPENSSL_X86_64)
+OPENSSL_INLINE int bn_mulx_adx_capable(void) {
+  // MULX is in BMI2.
+  return CRYPTO_is_BMI2_capable() && CRYPTO_is_ADX_capable();
+}
 int bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                      const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 OPENSSL_INLINE int bn_mul4x_mont_capable(size_t num) {
@@ -410,16 +414,14 @@ OPENSSL_INLINE int bn_mul4x_mont_capable(size_t num) {
 int bn_mul4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                   const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 OPENSSL_INLINE int bn_mulx4x_mont_capable(size_t num) {
-  // MULX is in BMI2.
-  return bn_mul4x_mont_capable(num) && CRYPTO_is_BMI2_capable() &&
-         CRYPTO_is_ADX_capable();
+  return bn_mul4x_mont_capable(num) && bn_mulx_adx_capable();
 }
 int bn_mulx4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                    const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 OPENSSL_INLINE int bn_sqr8x_mont_capable(size_t num) {
   return (num >= 8) && ((num & 7) == 0);
 }
-int bn_sqr8x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *unused_bp,
+int bn_sqr8x_mont(BN_ULONG *rp, const BN_ULONG *ap, BN_ULONG mulx_adx_capable,
                   const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 #endif // defined(OPENSSL_X86_64)
 
