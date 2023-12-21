@@ -1620,7 +1620,7 @@ static bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
   if (!bc) {
     return nullptr;
   }
-  bc->ca = is_ca ? 0xff : 0x00;
+  bc->ca = is_ca ? ASN1_BOOLEAN_TRUE : ASN1_BOOLEAN_FALSE;
   if (!X509_add1_ext_i2d(cert.get(), NID_basic_constraints, bc.get(),
                          /*crit=*/1, /*flags=*/0)) {
     return nullptr;
@@ -4173,6 +4173,172 @@ TEST(X509Test, Expiry) {
                                     {}, {}, flags));
     }
   }
+}
+
+TEST(X509Test, SignatureVerification) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  struct Certs {
+    bssl::UniquePtr<X509> valid;
+    bssl::UniquePtr<X509> bad_key_type, bad_key;
+    bssl::UniquePtr<X509> bad_sig_type, bad_sig;
+  };
+  auto make_certs = [&](const char *issuer, const char *subject,
+                        bool is_ca) -> Certs {
+    Certs certs;
+    certs.valid = MakeTestCert(issuer, subject, key.get(), is_ca);
+    if (certs.valid == nullptr ||
+        !X509_sign(certs.valid.get(), key.get(), EVP_sha256())) {
+      return Certs{};
+    }
+
+    static const uint8_t kInvalid[] = {'i', 'n', 'v', 'a', 'l', 'i', 'd'};
+
+    // Extracting the algorithm identifier from |certs.valid|'s SPKI, with
+    // OpenSSL's API, is very tedious. Instead, we'll just rely on knowing it is
+    // ecPublicKey with P-256 as parameters.
+    const ASN1_BIT_STRING *pubkey = X509_get0_pubkey_bitstr(certs.valid.get());
+    int pubkey_len = ASN1_STRING_length(pubkey);
+
+    // Sign a copy of the certificate where the key type is an unsupported OID.
+    bssl::UniquePtr<uint8_t> pubkey_data(static_cast<uint8_t *>(
+        OPENSSL_memdup(ASN1_STRING_get0_data(pubkey), pubkey_len)));
+    certs.bad_key_type = MakeTestCert(issuer, subject, key.get(), is_ca);
+    if (pubkey_data == nullptr || certs.bad_key_type == nullptr ||
+        !X509_PUBKEY_set0_param(X509_get_X509_PUBKEY(certs.bad_key_type.get()),
+                                OBJ_nid2obj(NID_subject_alt_name), V_ASN1_UNDEF,
+                                /*param_value=*/nullptr, pubkey_data.release(),
+                                pubkey_len) ||
+        !X509_sign(certs.bad_key_type.get(), key.get(), EVP_sha256())) {
+      return Certs{};
+    }
+
+    // Sign a copy of the certificate where the key data is unparsable.
+    pubkey_data.reset(
+        static_cast<uint8_t *>(OPENSSL_memdup(kInvalid, sizeof(kInvalid))));
+    certs.bad_key = MakeTestCert(issuer, subject, key.get(), is_ca);
+    if (pubkey_data == nullptr || certs.bad_key == nullptr ||
+        !X509_PUBKEY_set0_param(X509_get_X509_PUBKEY(certs.bad_key.get()),
+                                OBJ_nid2obj(NID_X9_62_id_ecPublicKey),
+                                V_ASN1_OBJECT,
+                                OBJ_nid2obj(NID_X9_62_prime256v1),
+                                pubkey_data.release(), sizeof(kInvalid)) ||
+        !X509_sign(certs.bad_key.get(), key.get(), EVP_sha256())) {
+      return Certs{};
+    }
+
+    bssl::UniquePtr<X509_ALGOR> wrong_algo(X509_ALGOR_new());
+    if (wrong_algo == nullptr ||
+        !X509_ALGOR_set0(wrong_algo.get(), OBJ_nid2obj(NID_subject_alt_name),
+                         V_ASN1_NULL, nullptr)) {
+      return Certs{};
+    }
+
+    certs.bad_sig_type.reset(X509_dup(certs.valid.get()));
+    if (certs.bad_sig_type == nullptr ||
+        !X509_set1_signature_algo(certs.bad_sig_type.get(), wrong_algo.get())) {
+      return Certs{};
+    }
+
+    certs.bad_sig.reset(X509_dup(certs.valid.get()));
+    if (certs.bad_sig == nullptr ||
+        !X509_set1_signature_value(certs.bad_sig.get(), kInvalid,
+                                   sizeof(kInvalid))) {
+      return Certs{};
+    }
+
+    return certs;
+  };
+
+  Certs root(make_certs("Root", "Root", /*is_ca=*/true));
+  ASSERT_TRUE(root.valid);
+  Certs intermediate(make_certs("Root", "Intermediate", /*is_ca=*/true));
+  ASSERT_TRUE(intermediate.valid);
+  Certs leaf(make_certs("Intermediate", "Leaf", /*is_ca=*/false));
+  ASSERT_TRUE(leaf.valid);
+
+  // Check the base chain.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.valid.get(), {root.valid.get()},
+                              {intermediate.valid.get()}, {}));
+
+  // An invalid or unsupported signature in the leaf or intermediate is noticed.
+  EXPECT_EQ(X509_V_ERR_CERT_SIGNATURE_FAILURE,
+            Verify(leaf.bad_sig.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_CERT_SIGNATURE_FAILURE,
+            Verify(leaf.bad_sig_type.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_CERT_SIGNATURE_FAILURE,
+            Verify(leaf.valid.get(), {root.valid.get()},
+                   {intermediate.bad_sig.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_CERT_SIGNATURE_FAILURE,
+            Verify(leaf.valid.get(), {root.valid.get()},
+                   {intermediate.bad_sig_type.get()}, {}));
+
+  // By default, the redundant root signature is not checked.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.valid.get(), {root.bad_sig.get()},
+                              {intermediate.valid.get()}, {}));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.valid.get(), {root.bad_sig_type.get()},
+                              {intermediate.valid.get()}, {}));
+
+  // The caller can request checking it, although it's pointless.
+  EXPECT_EQ(
+      X509_V_ERR_CERT_SIGNATURE_FAILURE,
+      Verify(leaf.valid.get(), {root.bad_sig.get()}, {intermediate.valid.get()},
+             {}, X509_V_FLAG_CHECK_SS_SIGNATURE));
+  EXPECT_EQ(
+      X509_V_ERR_CERT_SIGNATURE_FAILURE,
+      Verify(leaf.valid.get(), {root.bad_sig_type.get()},
+             {intermediate.valid.get()}, {}, X509_V_FLAG_CHECK_SS_SIGNATURE));
+
+  // The above also applies when accepting a trusted, self-signed root as the
+  // target certificate.
+  EXPECT_EQ(X509_V_OK,
+            Verify(root.bad_sig.get(), {root.bad_sig.get()}, {}, {}));
+  EXPECT_EQ(X509_V_OK,
+            Verify(root.bad_sig_type.get(), {root.bad_sig_type.get()}, {}, {}));
+  EXPECT_EQ(X509_V_ERR_CERT_SIGNATURE_FAILURE,
+            Verify(root.bad_sig.get(), {root.bad_sig.get()}, {}, {},
+                   X509_V_FLAG_CHECK_SS_SIGNATURE));
+  EXPECT_EQ(X509_V_ERR_CERT_SIGNATURE_FAILURE,
+            Verify(root.bad_sig_type.get(), {root.bad_sig_type.get()}, {}, {},
+                   X509_V_FLAG_CHECK_SS_SIGNATURE));
+
+  // If an intermediate is a trust anchor, the redundant signature is always
+  // ignored, even with |X509_V_FLAG_CHECK_SS_SIGNATURE|. (We cannot check the
+  // signature without the key.)
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.valid.get(), {intermediate.bad_sig.get()}, {}, {},
+                   X509_V_FLAG_CHECK_SS_SIGNATURE | X509_V_FLAG_PARTIAL_CHAIN));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.valid.get(), {intermediate.bad_sig_type.get()}, {}, {},
+                   X509_V_FLAG_CHECK_SS_SIGNATURE | X509_V_FLAG_PARTIAL_CHAIN));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.valid.get(), {intermediate.bad_sig.get()},
+                              {}, {}, X509_V_FLAG_PARTIAL_CHAIN));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.valid.get(), {intermediate.bad_sig_type.get()}, {}, {},
+                   X509_V_FLAG_PARTIAL_CHAIN));
+
+  // Bad keys in the root and intermediate are rejected.
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+            Verify(leaf.valid.get(), {root.bad_key.get()},
+                   {intermediate.valid.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+            Verify(leaf.valid.get(), {root.bad_key_type.get()},
+                   {intermediate.valid.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+            Verify(leaf.valid.get(), {root.valid.get()},
+                   {intermediate.bad_key.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+            Verify(leaf.valid.get(), {root.valid.get()},
+                   {intermediate.bad_key_type.get()}, {}));
+
+  // Bad keys in the leaf are ignored. The leaf's key is used by the caller.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.bad_key.get(), {root.valid.get()},
+                              {intermediate.valid.get()}, {}));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.bad_key_type.get(), {root.valid.get()},
+                              {intermediate.valid.get()}, {}));
 }
 
 // kConstructedBitString is an X.509 certificate where the signature is encoded
