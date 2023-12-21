@@ -6993,3 +6993,24 @@ TEST(X509Test, ParamInheritance) {
     EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 10);
   }
 }
+
+TEST(X509Test, PublicKeyCache) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  X509_PUBKEY *pub = nullptr;
+  ASSERT_TRUE(X509_PUBKEY_set(&pub, key.get()));
+  bssl::UniquePtr<X509_PUBKEY> free_pub(pub);
+
+  bssl::UniquePtr<EVP_PKEY> key2(X509_PUBKEY_get(pub));
+  ASSERT_TRUE(key2);
+  EXPECT_EQ(1, EVP_PKEY_cmp(key.get(), key2.get()));
+
+  // Replace |pub| with different (garbage) values.
+  ASSERT_TRUE(X509_PUBKEY_set0_param(pub, OBJ_nid2obj(NID_subject_alt_name),
+                                     V_ASN1_NULL, nullptr, nullptr, 0));
+
+  // The cached key should no longer be returned.
+  key2.reset(X509_PUBKEY_get(pub));
+  EXPECT_FALSE(key2);
+}

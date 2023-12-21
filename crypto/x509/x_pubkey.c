@@ -70,6 +70,15 @@
 #include "../internal.h"
 #include "internal.h"
 
+
+static void x509_pubkey_changed(X509_PUBKEY *pub) {
+  // TODO(davidben): Instead of just dropping the key, also compute the new
+  // cached key. This will let us implement |X509_get0_pubkey| and remove the
+  // need for a mutex.
+  EVP_PKEY_free(pub->pkey);
+  pub->pkey = NULL;
+}
+
 // Minor tweak to operation: free up EVP_PKEY
 static int pubkey_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                      void *exarg) {
@@ -190,6 +199,8 @@ int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *obj, int param_type,
   // Set the number of unused bits to zero.
   pub->public_key->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
   pub->public_key->flags |= ASN1_STRING_FLAG_BITS_LEFT;
+
+  x509_pubkey_changed(pub);
   return 1;
 }
 
