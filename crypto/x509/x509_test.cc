@@ -4061,87 +4061,117 @@ TEST(X509Test, Expiry) {
   bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
   ASSERT_TRUE(key);
 
-  // The following are measured in seconds relative to kReferenceTime. The
-  // validity periods are staggered so we can independently test both leaf and
-  // root time checks.
-  const int64_t kSecondsInDay = 24 * 3600;
-  const int64_t kRootStart = -30 * kSecondsInDay;
-  const int64_t kIntermediateStart = -20 * kSecondsInDay;
-  const int64_t kLeafStart = -10 * kSecondsInDay;
-  const int64_t kIntermediateEnd = 10 * kSecondsInDay;
-  const int64_t kLeafEnd = 20 * kSecondsInDay;
-  const int64_t kRootEnd = 30 * kSecondsInDay;
-
-  bssl::UniquePtr<X509> root =
-      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
-  ASSERT_TRUE(root);
-  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notBefore(root.get()), kReferenceTime,
-                            /*offset_day=*/0,
-                            /*offset_sec=*/kRootStart));
-  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notAfter(root.get()), kReferenceTime,
-                            /*offset_day=*/0,
-                            /*offset_sec=*/kRootEnd));
-  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
-
-  bssl::UniquePtr<X509> intermediate =
-      MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
-  ASSERT_TRUE(intermediate);
-  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notBefore(intermediate.get()),
-                            kReferenceTime,
-                            /*offset_day=*/0,
-                            /*offset_sec=*/kIntermediateStart));
-  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notAfter(intermediate.get()),
-                            kReferenceTime,
-                            /*offset_day=*/0,
-                            /*offset_sec=*/kIntermediateEnd));
-  ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
-
-  bssl::UniquePtr<X509> leaf =
-      MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
-  ASSERT_TRUE(leaf);
-  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notBefore(leaf.get()), kReferenceTime,
-                            /*offset_day=*/0,
-                            /*offset_sec=*/kLeafStart));
-  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notAfter(leaf.get()), kReferenceTime,
-                            /*offset_day=*/0,
-                            /*offset_sec=*/kLeafEnd));
-  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
-
-  struct VerifyAt {
-    int64_t time;
-    void operator()(X509_VERIFY_PARAM *param) const {
-      X509_VERIFY_PARAM_set_time_posix(param, time);
+  auto make_cert = [&](const char *issuer, const char *subject, bool is_ca,
+                       int not_before_offset,
+                       int not_after_offset) -> bssl::UniquePtr<X509> {
+    bssl::UniquePtr<X509> cert =
+        MakeTestCert(issuer, subject, key.get(), is_ca);
+    if (cert == nullptr ||
+        !ASN1_TIME_adj(X509_getm_notBefore(cert.get()), kReferenceTime,
+                       /*offset_day=*/not_before_offset,
+                       /*offset_sec=*/0) ||
+        !ASN1_TIME_adj(X509_getm_notAfter(cert.get()), kReferenceTime,
+                       /*offset_day=*/not_after_offset,
+                       /*offset_sec=*/0) ||
+        !X509_sign(cert.get(), key.get(), EVP_sha256())) {
+      return nullptr;
     }
+    return cert;
   };
+
+  struct Certs {
+    bssl::UniquePtr<X509> not_yet_valid, valid, expired;
+  };
+  auto make_certs = [&](const char *issuer, const char *subject,
+                        bool is_ca) -> Certs {
+    Certs certs;
+    certs.not_yet_valid =
+        make_cert(issuer, subject, is_ca, /*not_before_offset=*/1,
+                  /*not_after_offset=*/2);
+    certs.valid = make_cert(issuer, subject, is_ca, /*not_before_offset=*/-1,
+                            /*not_after_offset=*/1);
+    certs.expired = make_cert(issuer, subject, is_ca, /*not_before_offset=*/-2,
+                              /*not_after_offset=*/-1);
+    if (certs.not_yet_valid == nullptr || certs.valid == nullptr ||
+        certs.expired == nullptr) {
+      return Certs{};
+    }
+    return certs;
+  };
+
+  Certs root = make_certs("Root", "Root", /*is_ca=*/true);
+  ASSERT_TRUE(root.valid);
+  Certs root_cross = make_certs("Root 2", "Root", /*is_ca=*/true);
+  ASSERT_TRUE(root_cross.valid);
+  Certs intermediate = make_certs("Root", "Intermediate", /*is_ca=*/true);
+  ASSERT_TRUE(intermediate.valid);
+  Certs leaf = make_certs("Intermediate", "Leaf", /*is_ca=*/false);
+  ASSERT_TRUE(leaf.valid);
 
   for (bool check_time : {true, false}) {
     SCOPED_TRACE(check_time);
-    unsigned long flags = check_time ? 0 : X509_V_FLAG_NO_CHECK_TIME;
-    int not_yet_valid = check_time ? X509_V_ERR_CERT_NOT_YET_VALID : X509_V_OK;
-    int has_expired = check_time ? X509_V_ERR_CERT_HAS_EXPIRED : X509_V_OK;
+    for (bool partial_chain : {true, false}) {
+      SCOPED_TRACE(partial_chain);
+      unsigned long flags = 0;
+      if (!check_time) {
+        flags |= X509_V_FLAG_NO_CHECK_TIME;
+      }
+      if (partial_chain) {
+        flags |= X509_V_FLAG_PARTIAL_CHAIN;
+      }
 
-    EXPECT_EQ(not_yet_valid,
-              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
-                     VerifyAt{kReferenceTime + kRootStart - 1}));
-    EXPECT_EQ(not_yet_valid,
-              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
-                     VerifyAt{kReferenceTime + kIntermediateStart - 1}));
-    EXPECT_EQ(not_yet_valid,
-              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
-                     VerifyAt{kReferenceTime + kLeafStart - 1}));
+      int not_yet_valid =
+          check_time ? X509_V_ERR_CERT_NOT_YET_VALID : X509_V_OK;
+      int has_expired = check_time ? X509_V_ERR_CERT_HAS_EXPIRED : X509_V_OK;
 
-    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
-                                {}, flags, VerifyAt{kReferenceTime}));
+      EXPECT_EQ(not_yet_valid,
+                Verify(leaf.not_yet_valid.get(), {root.valid.get()},
+                       {intermediate.valid.get()}, {}, flags));
+      EXPECT_EQ(not_yet_valid,
+                Verify(leaf.valid.get(), {root.valid.get()},
+                       {intermediate.not_yet_valid.get()}, {}, flags));
+      EXPECT_EQ(not_yet_valid,
+                Verify(leaf.valid.get(), {root.not_yet_valid.get()},
+                       {intermediate.valid.get()}, {}, flags));
 
-    EXPECT_EQ(has_expired,
-              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
-                     VerifyAt{kReferenceTime + kRootEnd + 1}));
-    EXPECT_EQ(has_expired,
-              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
-                     VerifyAt{kReferenceTime + kIntermediateEnd + 1}));
-    EXPECT_EQ(has_expired,
-              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
-                     VerifyAt{kReferenceTime + kLeafEnd + 1}));
+      EXPECT_EQ(X509_V_OK, Verify(leaf.valid.get(), {root.valid.get()},
+                                  {intermediate.valid.get()}, {}, flags));
+
+      EXPECT_EQ(has_expired, Verify(leaf.expired.get(), {root.valid.get()},
+                                    {intermediate.valid.get()}, {}, flags));
+      EXPECT_EQ(has_expired, Verify(leaf.valid.get(), {root.valid.get()},
+                                    {intermediate.expired.get()}, {}, flags));
+      EXPECT_EQ(has_expired, Verify(leaf.valid.get(), {root.expired.get()},
+                                    {intermediate.valid.get()}, {}, flags));
+
+      if (!partial_chain) {
+        // By default, non-self-signed certificates are not valid trust anchors.
+        EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
+                  Verify(leaf.valid.get(), {root_cross.valid.get()},
+                         {intermediate.valid.get()}, {}, flags));
+      } else {
+        // |X509_V_FLAG_PARTIAL_CHAIN| allows non-self-signed trust anchors.
+        EXPECT_EQ(X509_V_OK, Verify(leaf.valid.get(), {root_cross.valid.get()},
+                                    {intermediate.valid.get()}, {}, flags));
+        // Expiry of the trust anchor must still be checked.
+        EXPECT_EQ(not_yet_valid,
+                  Verify(leaf.valid.get(), {root_cross.not_yet_valid.get()},
+                         {intermediate.valid.get()}, {}, flags));
+        EXPECT_EQ(has_expired,
+                  Verify(leaf.valid.get(), {root_cross.expired.get()},
+                         {intermediate.valid.get()}, {}, flags));
+      }
+
+      // When the trust anchor is the target certificate, expiry should also be
+      // checked.
+      EXPECT_EQ(X509_V_OK,
+                Verify(root.valid.get(), {root.valid.get()}, {}, {}, flags));
+      EXPECT_EQ(not_yet_valid,
+                Verify(root.not_yet_valid.get(), {root.not_yet_valid.get()}, {},
+                       {}, flags));
+      EXPECT_EQ(has_expired, Verify(root.expired.get(), {root.expired.get()},
+                                    {}, {}, flags));
+    }
   }
 }
 
