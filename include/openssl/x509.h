@@ -3517,6 +3517,12 @@ OPENSSL_EXPORT uint32_t X509_NAME_hash_old(X509_NAME *name);
 
 OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
 
+// X509_verify_cert performs certifice verification with |ctx|, which must have
+// been initialized with |X509_STORE_CTX_init|. It returns one on success and
+// zero on error. On success, |X509_STORE_CTX_get0_chain| or
+// |X509_STORE_CTX_get1_chain| may be used to return the verified certificate
+// chain. On error, |X509_STORE_CTX_get_error| may be used to return additional
+// error information.
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
 OPENSSL_EXPORT int X509_check_trust(X509 *x, int id, int flags);
@@ -3863,14 +3869,52 @@ OPENSSL_EXPORT int X509_load_cert_crl_file(X509_LOOKUP *ctx, const char *file,
 OPENSSL_EXPORT int X509_STORE_load_locations(X509_STORE *ctx, const char *file,
                                              const char *dir);
 OPENSSL_EXPORT int X509_STORE_set_default_paths(X509_STORE *ctx);
+
+// X509_STORE_CTX_get_error, after |X509_verify_cert| returns, returns
+// |X509_V_OK| if verification succeeded or an |X509_V_ERR_*| describing why
+// verification failed. This will be consistent with |X509_verify_cert|'s return
+// value, unless the caller used the deprecated verification callback (see
+// |X509_STORE_CTX_set_verify_cb|) in a way that breaks |ctx|'s invariants.
+//
+// If called during the deprecated verification callback when |ok| is zero, it
+// returns the current error under consideration.
 OPENSSL_EXPORT int X509_STORE_CTX_get_error(X509_STORE_CTX *ctx);
-OPENSSL_EXPORT void X509_STORE_CTX_set_error(X509_STORE_CTX *ctx, int s);
+
+// X509_STORE_CTX_set_error sets |ctx|'s error to |err|, which should be
+// |X509_V_OK| or an |X509_V_ERR_*| constant. It is not expected to be called in
+// typical |X509_STORE_CTX| usage, but may be used in callback APIs where
+// applications synthesize |X509_STORE_CTX| error conditions. See also
+// |X509_STORE_CTX_set_verify_cb| and |SSL_CTX_set_cert_verify_callback|.
+OPENSSL_EXPORT void X509_STORE_CTX_set_error(X509_STORE_CTX *ctx, int err);
+
+// X509_STORE_CTX_get_error_depth returns the depth at which the error returned
+// by |X509_STORE_CTX_get_error| occured. This is zero-indexed integer into the
+// certificate chain. Zero indicates the target certificate, one its issuer, and
+// so on.
 OPENSSL_EXPORT int X509_STORE_CTX_get_error_depth(X509_STORE_CTX *ctx);
+
 OPENSSL_EXPORT X509 *X509_STORE_CTX_get_current_cert(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT X509_CRL *X509_STORE_CTX_get0_current_crl(X509_STORE_CTX *ctx);
+
+// X509_STORE_CTX_get_chain is a legacy alias for |X509_STORE_CTX_get0_chain|.
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get_chain(X509_STORE_CTX *ctx);
+
+// X509_STORE_CTX_get0_chain, after a successful |X509_verify_cert| call,
+// returns the verified certificate chain. The chain begins with the leaf and
+// ends with trust anchor.
+//
+// At other points, such as after a failed verification or during the deprecated
+// verification callback, it returns the partial chain built so far. Callers
+// should avoid relying on this as this exposes unstable library implementation
+// details.
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_chain(X509_STORE_CTX *ctx);
+
+// X509_STORE_CTX_get1_chain behaves like |X509_STORE_CTX_get0_chain| but
+// returns a newly-allocated |STACK_OF(X509)| containing the completed chain,
+// with each certificate's reference count incremented. Callers must free the
+// result with |sk_X509_pop_free| and |X509_free| when done.
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get1_chain(X509_STORE_CTX *ctx);
+
 OPENSSL_EXPORT void X509_STORE_CTX_set_cert(X509_STORE_CTX *c, X509 *x);
 OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *c,
                                              STACK_OF(X509) *sk);
@@ -3907,7 +3951,8 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx,
 // preserves the default behavior. Returning one when |ok| is zero will proceed
 // past some error. The callback may inspect |ctx| and the error queue to
 // attempt to determine the current stage of certificate verification, but this
-// is often unreliable.
+// is often unreliable. When synthesizing an error, callbacks should use
+// |X509_STORE_CTX_set_error| to set a corresponding error.
 //
 // WARNING: Do not use this function. It is extremely fragile and unpredictable.
 // This callback exposes implementation details of certificate verification,
