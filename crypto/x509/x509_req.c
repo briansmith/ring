@@ -77,37 +77,47 @@ X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req) {
 }
 
 EVP_PKEY *X509_REQ_get_pubkey(const X509_REQ *req) {
-  if ((req == NULL) || (req->req_info == NULL)) {
+  if (req == NULL) {
     return NULL;
   }
-  return (X509_PUBKEY_get(req->req_info->pubkey));
+  return X509_PUBKEY_get(req->req_info->pubkey);
 }
 
-int X509_REQ_check_private_key(X509_REQ *x, const EVP_PKEY *k) {
-  EVP_PKEY *xk = NULL;
-  int ok = 0;
+EVP_PKEY *X509_REQ_get0_pubkey(const X509_REQ *req) {
+  if (req == NULL) {
+    return NULL;
+  }
+  return X509_PUBKEY_get0(req->req_info->pubkey);
+}
 
-  xk = X509_REQ_get_pubkey(x);
-  switch (EVP_PKEY_cmp(xk, k)) {
-    case 1:
-      ok = 1;
-      break;
+int X509_REQ_check_private_key(const X509_REQ *x, const EVP_PKEY *k) {
+  const EVP_PKEY *xk = X509_REQ_get0_pubkey(x);
+  if (xk == NULL) {
+    return 0;
+  }
+
+  int ret = EVP_PKEY_cmp(xk, k);
+  if (ret > 0) {
+    return 1;
+  }
+
+  switch (ret) {
     case 0:
       OPENSSL_PUT_ERROR(X509, X509_R_KEY_VALUES_MISMATCH);
-      break;
+      return 0;
     case -1:
       OPENSSL_PUT_ERROR(X509, X509_R_KEY_TYPE_MISMATCH);
-      break;
+      return 0;
     case -2:
       if (EVP_PKEY_id(k) == EVP_PKEY_EC) {
         OPENSSL_PUT_ERROR(X509, ERR_R_EC_LIB);
-        break;
+      } else {
+        OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
       }
-      OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
+      return 0;
   }
 
-  EVP_PKEY_free(xk);
-  return ok;
+  return 0;
 }
 
 int X509_REQ_extension_nid(int req_nid) {

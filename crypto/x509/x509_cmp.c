@@ -218,6 +218,13 @@ X509 *X509_find_by_subject(const STACK_OF(X509) *sk, X509_NAME *name) {
   return NULL;
 }
 
+EVP_PKEY *X509_get0_pubkey(const X509 *x) {
+  if (x == NULL) {
+    return NULL;
+  }
+  return X509_PUBKEY_get0(x->cert_info->key);
+}
+
 EVP_PKEY *X509_get_pubkey(const X509 *x) {
   if (x == NULL) {
     return NULL;
@@ -232,36 +239,29 @@ ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x) {
   return x->cert_info->key->public_key;
 }
 
-int X509_check_private_key(X509 *x, const EVP_PKEY *k) {
-  EVP_PKEY *xk;
-  int ret;
-
-  xk = X509_get_pubkey(x);
-
-  if (xk) {
-    ret = EVP_PKEY_cmp(xk, k);
-  } else {
-    ret = -2;
+int X509_check_private_key(const X509 *x, const EVP_PKEY *k) {
+  const EVP_PKEY *xk = X509_get0_pubkey(x);
+  if (xk == NULL) {
+    return 0;
   }
 
-  switch (ret) {
-    case 1:
-      break;
-    case 0:
-      OPENSSL_PUT_ERROR(X509, X509_R_KEY_VALUES_MISMATCH);
-      break;
-    case -1:
-      OPENSSL_PUT_ERROR(X509, X509_R_KEY_TYPE_MISMATCH);
-      break;
-    case -2:
-      OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
-  }
-  if (xk) {
-    EVP_PKEY_free(xk);
-  }
+  int ret = EVP_PKEY_cmp(xk, k);
   if (ret > 0) {
     return 1;
   }
+
+  switch (ret) {
+    case 0:
+      OPENSSL_PUT_ERROR(X509, X509_R_KEY_VALUES_MISMATCH);
+      return 0;
+    case -1:
+      OPENSSL_PUT_ERROR(X509, X509_R_KEY_TYPE_MISMATCH);
+      return 0;
+    case -2:
+      OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
+      return 0;
+  }
+
   return 0;
 }
 

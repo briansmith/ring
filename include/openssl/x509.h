@@ -219,7 +219,8 @@ OPENSSL_EXPORT ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x509);
 
 // X509_check_private_key returns one if |x509|'s public key matches |pkey| and
 // zero otherwise.
-OPENSSL_EXPORT int X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
+OPENSSL_EXPORT int X509_check_private_key(const X509 *x509,
+                                          const EVP_PKEY *pkey);
 
 // X509_get0_uids sets |*out_issuer_uid| to a non-owning pointer to the
 // issuerUID field of |x509|, or NULL if |x509| has no issuerUID. It similarly
@@ -1128,7 +1129,7 @@ OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(const X509_REQ *req);
 
 // X509_REQ_check_private_key returns one if |req|'s public key matches |pkey|
 // and zero otherwise.
-OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *req,
+OPENSSL_EXPORT int X509_REQ_check_private_key(const X509_REQ *req,
                                               const EVP_PKEY *pkey);
 
 // X509_REQ_get_attr_count returns the number of attributes in |req|.

@@ -1171,8 +1171,6 @@ done:
 // Check CRL validity
 static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
   X509 *issuer = NULL;
-  EVP_PKEY *ikey = NULL;
-  int ok = 0;
   int cnum = ctx->error_depth;
   int chnum = (int)sk_X509_num(ctx->chain) - 1;
   // if we have an alternative CRL issuer cert use that
@@ -1189,9 +1187,8 @@ static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
     // If not self signed, can't check signature
     if (!x509_check_issued_with_callback(ctx, issuer, issuer)) {
       ctx->error = X509_V_ERR_UNABLE_TO_GET_CRL_ISSUER;
-      ok = ctx->verify_cb(0, ctx);
-      if (!ok) {
-        goto err;
+      if (!ctx->verify_cb(0, ctx)) {
+        return 0;
       }
     }
   }
@@ -1201,61 +1198,50 @@ static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
     if ((issuer->ex_flags & EXFLAG_KUSAGE) &&
         !(issuer->ex_kusage & X509v3_KU_CRL_SIGN)) {
       ctx->error = X509_V_ERR_KEYUSAGE_NO_CRL_SIGN;
-      ok = ctx->verify_cb(0, ctx);
-      if (!ok) {
-        goto err;
+      if (!ctx->verify_cb(0, ctx)) {
+        return 0;
       }
     }
 
     if (!(ctx->current_crl_score & CRL_SCORE_SCOPE)) {
       ctx->error = X509_V_ERR_DIFFERENT_CRL_SCOPE;
-      ok = ctx->verify_cb(0, ctx);
-      if (!ok) {
-        goto err;
+      if (!ctx->verify_cb(0, ctx)) {
+        return 0;
       }
     }
 
     if (crl->idp_flags & IDP_INVALID) {
       ctx->error = X509_V_ERR_INVALID_EXTENSION;
-      ok = ctx->verify_cb(0, ctx);
-      if (!ok) {
-        goto err;
+      if (!ctx->verify_cb(0, ctx)) {
+        return 0;
       }
     }
 
     if (!(ctx->current_crl_score & CRL_SCORE_TIME)) {
-      ok = check_crl_time(ctx, crl, 1);
-      if (!ok) {
-        goto err;
+      if (!check_crl_time(ctx, crl, 1)) {
+        return 0;
       }
     }
 
     // Attempt to get issuer certificate public key
-    ikey = X509_get_pubkey(issuer);
-
+    EVP_PKEY *ikey = X509_get0_pubkey(issuer);
     if (!ikey) {
       ctx->error = X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY;
-      ok = ctx->verify_cb(0, ctx);
-      if (!ok) {
-        goto err;
+      if (!ctx->verify_cb(0, ctx)) {
+        return 0;
       }
     } else {
       // Verify CRL signature
       if (X509_CRL_verify(crl, ikey) <= 0) {
         ctx->error = X509_V_ERR_CRL_SIGNATURE_FAILURE;
-        ok = ctx->verify_cb(0, ctx);
-        if (!ok) {
-          goto err;
+        if (!ctx->verify_cb(0, ctx)) {
+          return 0;
         }
       }
     }
   }
 
-  ok = 1;
-
-err:
-  EVP_PKEY_free(ikey);
-  return ok;
+  return 1;
 }
 
 // Check certificate against CRL
@@ -1365,7 +1351,6 @@ static int check_cert_time(X509_STORE_CTX *ctx, X509 *x) {
 static int internal_verify(X509_STORE_CTX *ctx) {
   int ok = 0;
   X509 *xs, *xi;
-  EVP_PKEY *pkey = NULL;
 
   int n = (int)sk_X509_num(ctx->chain);
   ctx->error_depth = n - 1;
@@ -1399,7 +1384,8 @@ static int internal_verify(X509_STORE_CTX *ctx) {
     // explicitly asked for. It doesn't add any security and just wastes
     // time.
     if (xs != xi || (ctx->param->flags & X509_V_FLAG_CHECK_SS_SIGNATURE)) {
-      if ((pkey = X509_get_pubkey(xi)) == NULL) {
+      EVP_PKEY *pkey = X509_get0_pubkey(xi);
+      if (pkey == NULL) {
         ctx->error = X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY;
         ctx->current_cert = xi;
         ok = ctx->verify_cb(0, ctx);
@@ -1411,12 +1397,9 @@ static int internal_verify(X509_STORE_CTX *ctx) {
         ctx->current_cert = xs;
         ok = ctx->verify_cb(0, ctx);
         if (!ok) {
-          EVP_PKEY_free(pkey);
           goto end;
         }
       }
-      EVP_PKEY_free(pkey);
-      pkey = NULL;
     }
 
   check_cert:
