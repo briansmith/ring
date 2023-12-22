@@ -4360,6 +4360,23 @@ TEST(X509Test, SignatureVerification) {
                               {intermediate.valid.get()}, {}));
   EXPECT_EQ(X509_V_OK, Verify(leaf.bad_key_type.get(), {root.valid.get()},
                               {intermediate.valid.get()}, {}));
+
+  // At the time we go to verify signatures, it is possible that we have a
+  // single-element certificate chain with a certificate that isn't self-signed.
+  // This does not seem to be reachable except if missing trust anchors are
+  // suppressed with the verify callback, but exercise this codepath anyway.
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE,
+            Verify(leaf.valid.get(), {}, {}, {}, 0, [](X509_STORE_CTX *ctx) {
+              X509_STORE_CTX_set_verify_cb(
+                  ctx, [](int ok, X509_STORE_CTX *ctx_inner) -> int {
+                    if (ok) {
+                      return ok;
+                    }
+                    // Suppress the missing issuer certificate.
+                    int err = X509_STORE_CTX_get_error(ctx_inner);
+                    return err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY;
+                  });
+            }));
 }
 
 // kConstructedBitString is an X.509 certificate where the signature is encoded
