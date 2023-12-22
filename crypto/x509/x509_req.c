@@ -76,7 +76,7 @@ X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req) {
   return req->req_info->subject;
 }
 
-EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req) {
+EVP_PKEY *X509_REQ_get_pubkey(const X509_REQ *req) {
   if ((req == NULL) || (req->req_info == NULL)) {
     return NULL;
   }

@@ -198,11 +198,16 @@ OPENSSL_EXPORT X509_NAME *X509_get_subject_name(const X509 *x509);
 // object.
 OPENSSL_EXPORT X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509);
 
-// X509_get_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
-// public key was unsupported or could not be decoded. This function returns a
-// reference to the |EVP_PKEY|. The caller must release the result with
-// |EVP_PKEY_free| when done.
-OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(X509 *x509);
+// X509_get0_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
+// public key was unsupported or could not be decoded. The |EVP_PKEY| is cached
+// in |x509|, so callers must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_get0_pubkey(const X509 *x509);
+
+// X509_get_pubkey behaves like |X509_get0_pubkey| but increments the reference
+// count on the |EVP_PKEY|. The caller must release the result with
+// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |x509|, so callers
+// must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(const X509 *x509);
 
 // X509_get0_pubkey_bitstr returns the BIT STRING portion of |x509|'s public
 // key. Note this does not contain the AlgorithmIdentifier portion.
@@ -1110,11 +1115,16 @@ OPENSSL_EXPORT long X509_REQ_get_version(const X509_REQ *req);
 // not const-correct for legacy reasons.
 OPENSSL_EXPORT X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req);
 
-// X509_REQ_get_pubkey returns |req|'s public key as an |EVP_PKEY|, or NULL if
-// the public key was unsupported or could not be decoded. This function returns
-// a reference to the |EVP_PKEY|. The caller must release the result with
-// |EVP_PKEY_free| when done.
-OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
+// X509_REQ_get0_pubkey returns |req|'s public key as an |EVP_PKEY|, or NULL if
+// the public key was unsupported or could not be decoded. The |EVP_PKEY| is
+// cached in |req|, so callers must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_REQ_get0_pubkey(const X509_REQ *req);
+
+// X509_REQ_get_pubkey behaves like |X509_REQ_get0_pubkey| but increments the
+// reference count on the |EVP_PKEY|. The caller must release the result with
+// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |req|, so callers must
+// not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(const X509_REQ *req);
 
 // X509_REQ_check_private_key returns one if |req|'s public key matches |pkey|
 // and zero otherwise.
@@ -1578,11 +1588,16 @@ OPENSSL_EXPORT int i2d_X509_PUBKEY(const X509_PUBKEY *key, uint8_t **outp);
 // object, and returns one. Otherwise, it returns zero.
 OPENSSL_EXPORT int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey);
 
-// X509_PUBKEY_get decodes the public key in |key| and returns an |EVP_PKEY| on
-// success, or NULL on error or unrecognized algorithm. The caller must release
-// the result with |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |key|,
-// so callers must not mutate the result.
-OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
+// X509_PUBKEY_get0 returns |key| as an |EVP_PKEY|, or NULL if |key| either
+// could not be parsed or is an unrecognized algorithm. The |EVP_PKEY| is cached
+// in |key|, so callers must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get0(const X509_PUBKEY *key);
+
+// X509_PUBKEY_get behaves like |X509_PUBKEY_get0| but increments the reference
+// count on the |EVP_PKEY|. The caller must release the result with
+// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |key|, so callers must
+// not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(const X509_PUBKEY *key);
 
 // X509_PUBKEY_set0_param sets |pub| to a key with AlgorithmIdentifier
 // determined by |obj|, |param_type|, and |param_value|, and an encoded
@@ -2218,7 +2233,7 @@ OPENSSL_EXPORT char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki);
 // NETSCAPE_SPKI_get_pubkey decodes and returns the public key in |spki| as an
 // |EVP_PKEY|, or NULL on error. The caller takes ownership of the resulting
 // pointer and must call |EVP_PKEY_free| when done.
-OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *spki);
+OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(const NETSCAPE_SPKI *spki);
 
 // NETSCAPE_SPKI_set_pubkey sets |spki|'s public key to |pkey|. It returns one
 // on success or zero on error. This function does not take ownership of |pkey|,

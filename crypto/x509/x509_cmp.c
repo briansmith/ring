@@ -218,11 +218,11 @@ X509 *X509_find_by_subject(const STACK_OF(X509) *sk, X509_NAME *name) {
   return NULL;
 }
 
-EVP_PKEY *X509_get_pubkey(X509 *x) {
-  if ((x == NULL) || (x->cert_info == NULL)) {
+EVP_PKEY *X509_get_pubkey(const X509 *x) {
+  if (x == NULL) {
     return NULL;
   }
-  return (X509_PUBKEY_get(x->cert_info->key));
+  return X509_PUBKEY_get(x->cert_info->key);
 }
 
 ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x) {
