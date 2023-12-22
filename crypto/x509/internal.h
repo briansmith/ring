@@ -386,10 +386,10 @@ struct x509_store_ctx_st {
   int error_depth;
   int error;
   X509 *current_cert;
-  X509 *current_issuer;   // cert currently being tested as valid issuer
   X509_CRL *current_crl;  // current CRL
 
-  int current_crl_score;         // score of current CRL
+  X509 *current_crl_issuer;  // issuer of current CRL
+  int current_crl_score;     // score of current CRL
 
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
