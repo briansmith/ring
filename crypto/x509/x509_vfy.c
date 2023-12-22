@@ -400,7 +400,10 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
       }
       ctx->current_cert = x;
     } else {
-      sk_X509_push(ctx->chain, chain_ss);
+      if (!sk_X509_push(ctx->chain, chain_ss)) {
+        ctx->error = X509_V_ERR_OUT_OF_MEM;
+        goto end;
+      }
       num++;
       ctx->last_untrusted = num;
       ctx->current_cert = chain_ss;
