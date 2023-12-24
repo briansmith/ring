@@ -4289,12 +4289,6 @@ OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(
 OPENSSL_EXPORT void X509_STORE_CTX_set0_crls(X509_STORE_CTX *c,
                                              STACK_OF(X509_CRL) *sk);
 
-// X509_STORE_CTX_purpose_inherit is an internal implementation detail that will
-// shortly be removed.
-OPENSSL_EXPORT int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx,
-                                                  int def_purpose, int purpose,
-                                                  int trust);
-
 // X509_STORE_CTX_set_flags enables all values in |flags| in |ctx|'s
 // verification flags. |flags| should be a combination of |X509_V_FLAG_*|
 // constants.

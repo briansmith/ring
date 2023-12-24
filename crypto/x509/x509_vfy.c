@@ -1480,62 +1480,40 @@ void X509_STORE_CTX_set0_crls(X509_STORE_CTX *ctx, STACK_OF(X509_CRL) *sk) {
 }
 
 int X509_STORE_CTX_set_purpose(X509_STORE_CTX *ctx, int purpose) {
-  return X509_STORE_CTX_purpose_inherit(ctx, 0, purpose, 0);
+  // If |purpose| is zero, this function historically silently did nothing.
+  if (purpose == 0) {
+    return 1;
+  }
+
+  int idx = X509_PURPOSE_get_by_id(purpose);
+  if (idx == -1) {
+    OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_PURPOSE_ID);
+    return 0;
+  }
+
+  int trust = X509_PURPOSE_get_trust(X509_PURPOSE_get0(idx));
+  if (!X509_STORE_CTX_set_trust(ctx, trust)) {
+    return 0;
+  }
+
+  if (ctx->param->purpose == 0) {
+    ctx->param->purpose = purpose;
+  }
+  return 1;
 }
 
 int X509_STORE_CTX_set_trust(X509_STORE_CTX *ctx, int trust) {
-  return X509_STORE_CTX_purpose_inherit(ctx, 0, 0, trust);
-}
-
-// This function is used to set the X509_STORE_CTX purpose and trust values.
-// This is intended to be used when another structure has its own trust and
-// purpose values which (if set) will be inherited by the ctx. If they aren't
-// set then we will usually have a default purpose in mind which should then
-// be used to set the trust value. An example of this is SSL use: an SSL
-// structure will have its own purpose and trust settings which the
-// application can set: if they aren't set then we use the default of SSL
-// client/server.
-
-int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx, int def_purpose,
-                                   int purpose, int trust) {
-  int idx;
-  // If purpose not set use default
-  if (!purpose) {
-    purpose = def_purpose;
-  }
-  // If we have a purpose then check it is valid
-  if (purpose) {
-    idx = X509_PURPOSE_get_by_id(purpose);
-    if (idx == -1) {
-      OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_PURPOSE_ID);
-      return 0;
-    }
-    const X509_PURPOSE *ptmp = X509_PURPOSE_get0(idx);
-    if (ptmp->trust == X509_TRUST_DEFAULT) {
-      idx = X509_PURPOSE_get_by_id(def_purpose);
-      if (idx == -1) {
-        OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_PURPOSE_ID);
-        return 0;
-      }
-      ptmp = X509_PURPOSE_get0(idx);
-    }
-    // If trust not set then get from purpose default
-    if (!trust) {
-      trust = ptmp->trust;
-    }
-  }
-  if (trust) {
-    idx = X509_TRUST_get_by_id(trust);
-    if (idx == -1) {
-      OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_TRUST_ID);
-      return 0;
-    }
+  // If |trust| is zero, this function historically silently did nothing.
+  if (trust == 0) {
+    return 1;
   }
 
-  if (purpose && !ctx->param->purpose) {
-    ctx->param->purpose = purpose;
+  if (X509_TRUST_get_by_id(trust) == -1) {
+    OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_TRUST_ID);
+    return 0;
   }
-  if (trust && !ctx->param->trust) {
+
+  if (ctx->param->trust == 0) {
     ctx->param->trust = trust;
   }
   return 1;
