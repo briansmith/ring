@@ -334,16 +334,17 @@ diyu0fZ/bPAM3VAGawatf/SyWfBMyKpoPXEG39oAzmjjOj8en82psn7m474IGaho
 
 static const char kRevokedCRL[] = R"(
 -----BEGIN X509 CRL-----
-MIIBvjCBpwIBATANBgkqhkiG9w0BAQsFADBOMQswCQYDVQQGEwJVUzETMBEGA1UE
+MIIB6DCB0QIBATANBgkqhkiG9w0BAQsFADBOMQswCQYDVQQGEwJVUzETMBEGA1UE
 CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJ
-Qm9yaW5nU1NMFw0xNjA5MjYxNTEyNDRaFw0xNjEwMjYxNTEyNDRaMBUwEwICEAAX
-DTE2MDkyNjE1MTIyNlqgDjAMMAoGA1UdFAQDAgECMA0GCSqGSIb3DQEBCwUAA4IB
-AQCUGaM4DcWzlQKrcZvI8TMeR8BpsvQeo5BoI/XZu2a8h//PyRyMwYeaOM+3zl0d
-sjgCT8b3C1FPgT+P2Lkowv7rJ+FHJRNQkogr+RuqCSPTq65ha4WKlRGWkMFybzVH
-NloxC+aU3lgp/NlX9yUtfqYmJek1CDrOOGPrAEAwj1l/BUeYKNGqfBWYJQtPJu+5
-OaSvIYGpETCZJscUWODmLEb/O3DM438vLvxonwGqXqS0KX37+CHpUlyhnSovxXxp
-Pz4aF+L7OtczxL0GYtD2fR9B7TDMqsNmHXgQrixvvOY7MUdLGbd4RfJL3yA53hyO
-xzfKY2TzxLiOmctG0hXFkH5J
+Qm9yaW5nU1NMFw0xNjA5MjYxNTEyNDRaFw0xNjEwMjYxNTEyNDRaMD8wEwICEAAX
+DTE2MDkyNjE1MTIyNlowEwICD/8XDTE2MDkyNjE1MTIyNlowEwICEAEXDTE2MDky
+NjE1MTIyNlqgDjAMMAoGA1UdFAQDAgECMA0GCSqGSIb3DQEBCwUAA4IBAQAuepA9
+byX4PkpJcYKb+Ofn6f/mgB4Sh1BBRp0HMFm7Q3jryXB6yPZYp7UtwAufZUzbV42U
+kOifOtDyQbu+fcpnpb4D9oWoFlr4DGQ+n23wujHizoTEYhhcZMj4U5yooDfmK4lI
+GU6zzQZKG+1PaS6Dm4f6+kA+ekVUP+ZVjPqHP/K7Uv6akSKV7gAWs49N5QjrJKMQ
+3Igrbg4Et2ipaYgThGj8t1MUZdVY4UPtQ8oltSHkFEvH4PxOW/xKpHT4QQMl/WTT
+QsQqOlRJBG2ci7pu1fzOylY35YFEAApkND/MkQjQfylNNgCzDWWAPQx0pDvVKQ0v
+WXdfcGJRL1D3xRXk
 -----END X509 CRL-----
 )";
 
@@ -1300,6 +1301,86 @@ TEST(X509Test, VerifyThreads) {
       EXPECT_EQ(X509_V_OK,
                 Verify(leaf.get(), {root.get()}, {intermediate.get()},
                        /*crls=*/{}));
+    });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+}
+
+// Using the same CRL on two threads should be safe.
+TEST(X509Test, CRLThreads) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kCRLTestLeaf));
+  bssl::UniquePtr<X509_CRL> basic_crl(CRLFromPEM(kBasicCRL));
+  bssl::UniquePtr<X509_CRL> revoked_crl(CRLFromPEM(kRevokedCRL));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(basic_crl);
+  ASSERT_TRUE(revoked_crl);
+
+  const size_t kNumThreads = 10;
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kNumThreads; i++) {
+    threads.emplace_back([&] {
+      EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
+                                  {basic_crl.get()}, X509_V_FLAG_CRL_CHECK));
+    });
+    threads.emplace_back([&] {
+      EXPECT_EQ(X509_V_ERR_CERT_REVOKED,
+                Verify(leaf.get(), {root.get()}, {root.get()},
+                       {revoked_crl.get()}, X509_V_FLAG_CRL_CHECK));
+    });
+  }
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  // TODO(crbug.com/boringssl/600): Add a thread that iterates
+  // |X509_CRL_get_REVOKED| and a thread that calls |X509_CRL_print|. Those
+  // currently do not work correctly.
+}
+
+TEST(X509Test, StoreThreads) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kRootCAPEM));
+  bssl::UniquePtr<X509> intermediate(CertFromPEM(kIntermediatePEM));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(leaf);
+
+  bssl::UniquePtr<STACK_OF(X509)> intermediates =
+      CertsToStack({intermediate.get()});
+  ASSERT_TRUE(intermediates);
+
+  // Some unrelated certificates.
+  bssl::UniquePtr<X509> other1(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<X509> other2(CertFromPEM(kCRLTestLeaf));
+  ASSERT_TRUE(other1);
+  ASSERT_TRUE(other2);
+
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
+
+  const size_t kNumThreads = 10;
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kNumThreads; i++) {
+    threads.emplace_back([&] {
+      bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+      ASSERT_TRUE(ctx);
+      ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
+                                      intermediates.get()));
+      X509_STORE_CTX_set_time_posix(ctx.get(), /*flags=*/0, kReferenceTime);
+      ASSERT_TRUE(X509_verify_cert(ctx.get()));
+      ASSERT_EQ(X509_STORE_CTX_get_error(ctx.get()), X509_V_OK);
+    });
+    threads.emplace_back([&] {
+      ASSERT_TRUE(X509_STORE_add_cert(store.get(), other1.get()));
+    });
+    threads.emplace_back([&] {
+      ASSERT_TRUE(X509_STORE_add_cert(store.get(), other2.get()));
     });
   }
   for (auto &thread : threads) {
