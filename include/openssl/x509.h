@@ -277,7 +277,7 @@ OPENSSL_EXPORT uint32_t X509_get_extension_flags(X509 *x509);
 //
 // TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
 // invalid extensions. To detect the error case, call
-// |X509_get_extensions_flags| and check the |EXFLAG_INVALID| bit.
+// |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
 OPENSSL_EXPORT long X509_get_pathlen(X509 *x509);
 
 // X509v3_KU_* are key usage bits returned from |X509_get_key_usage|.
@@ -336,7 +336,7 @@ OPENSSL_EXPORT uint32_t X509_get_extended_key_usage(X509 *x509);
 //
 // TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
 // invalid extensions. To detect the error case, call
-// |X509_get_extensions_flags| and check the |EXFLAG_INVALID| bit.
+// |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
 OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_subject_key_id(X509 *x509);
 
 // X509_get0_authority_key_id returns keyIdentifier of |x509|'s authority key
@@ -347,7 +347,7 @@ OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_subject_key_id(X509 *x509);
 //
 // TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
 // invalid extensions. To detect the error case, call
-// |X509_get_extensions_flags| and check the |EXFLAG_INVALID| bit.
+// |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
 OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_authority_key_id(X509 *x509);
 
 DEFINE_STACK_OF(GENERAL_NAME)
@@ -361,7 +361,7 @@ typedef STACK_OF(GENERAL_NAME) GENERAL_NAMES;
 //
 // TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
 // invalid extensions. To detect the error case, call
-// |X509_get_extensions_flags| and check the |EXFLAG_INVALID| bit.
+// |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
 OPENSSL_EXPORT const GENERAL_NAMES *X509_get0_authority_issuer(X509 *x509);
 
 // X509_get0_authority_serial returns the authorityCertSerialNumber of |x509|'s
@@ -372,7 +372,7 @@ OPENSSL_EXPORT const GENERAL_NAMES *X509_get0_authority_issuer(X509 *x509);
 //
 // TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
 // invalid extensions. To detect the error case, call
-// |X509_get_extensions_flags| and check the |EXFLAG_INVALID| bit.
+// |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
 OPENSSL_EXPORT const ASN1_INTEGER *X509_get0_authority_serial(X509 *x509);
 
 // X509_get0_extensions returns |x509|'s extension list, or NULL if |x509| omits
@@ -1392,12 +1392,17 @@ OPENSSL_EXPORT X509_NAME *X509_NAME_dup(X509_NAME *name);
 // Although even the library itself passes this to a sorting function.
 OPENSSL_EXPORT int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b);
 
-// X509_NAME_get0_der sets |*out_der| and |*out_der_len|
+// X509_NAME_get0_der marshals |name| as a DER-encoded X.509 Name (RFC 5280). On
+// success, it returns one and sets |*out_der| and |*out_der_len| to a buffer
+// containing the result. Otherwise, it returns zero. |*out_der| is owned by
+// |name| and must not be freed by the caller. It is invalidated after |name| is
+// mutated or freed.
 //
 // Avoid this function and prefer |i2d_X509_NAME|. It is one of the reasons
-// these functions are not consistently thread-safe or const-correct. Depending
-// on the resolution of https://crbug.com/boringssl/407, this function may be
-// removed or cause poor performance.
+// |X509_NAME| functions, including this one, are not consistently thread-safe
+// or const-correct. Depending on the resolution of
+// https://crbug.com/boringssl/407, this function may be removed or cause poor
+// performance.
 OPENSSL_EXPORT int X509_NAME_get0_der(X509_NAME *name, const uint8_t **out_der,
                                       size_t *out_der_len);
 
@@ -3835,7 +3840,7 @@ OPENSSL_EXPORT STACK_OF(X509_CRL) *X509_STORE_CTX_get1_crls(X509_STORE_CTX *st,
                                                             X509_NAME *nm);
 
 // X509_STORE_set_flags enables all values in |flags| in |store|'s verification
-// flags.
+// flags. |flags| should be a combination of |X509_V_FLAG_*| constants.
 //
 // WARNING: These flags will be combined with default flags when copied to an
 // |X509_STORE_CTX|. This means it is impossible to unset those defaults from
@@ -3989,7 +3994,8 @@ OPENSSL_EXPORT int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx,
                                                   int trust);
 
 // X509_STORE_CTX_set_flags enables all values in |flags| in |ctx|'s
-// verification flags.
+// verification flags. |flags| should be a combination of |X509_V_FLAG_*|
+// constants.
 OPENSSL_EXPORT void X509_STORE_CTX_set_flags(X509_STORE_CTX *ctx,
                                              unsigned long flags);
 

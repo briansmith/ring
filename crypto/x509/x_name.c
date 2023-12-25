@@ -511,17 +511,17 @@ int X509_NAME_set(X509_NAME **xn, X509_NAME *name) {
 
 int X509_NAME_ENTRY_set(const X509_NAME_ENTRY *ne) { return ne->set; }
 
-int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **pder,
-                       size_t *pderlen) {
+int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **out_der,
+                       size_t *out_der_len) {
   // Make sure encoding is valid
   if (i2d_X509_NAME(nm, NULL) <= 0) {
     return 0;
   }
-  if (pder != NULL) {
-    *pder = (unsigned char *)nm->bytes->data;
+  if (out_der != NULL) {
+    *out_der = (unsigned char *)nm->bytes->data;
   }
-  if (pderlen != NULL) {
-    *pderlen = nm->bytes->length;
+  if (out_der_len != NULL) {
+    *out_der_len = nm->bytes->length;
   }
   return 1;
 }
