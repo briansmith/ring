@@ -3396,7 +3396,7 @@ OPENSSL_EXPORT int X509_NAME_get_text_by_NID(const X509_NAME *name, int nid,
 
 // X509_STORE_CTX_get0_parent_ctx returns NULL.
 OPENSSL_EXPORT X509_STORE_CTX *X509_STORE_CTX_get0_parent_ctx(
-    X509_STORE_CTX *ctx);
+    const X509_STORE_CTX *ctx);
 
 // X509_OBJECT_free_contents sets |obj| to the empty object, freeing any values
 // that were previously there.
@@ -3430,7 +3430,8 @@ OPENSSL_EXPORT int X509V3_add_standard_extensions(void);
 #define X509_STORE_get1_crls X509_STORE_CTX_get1_crls
 
 // X509_STORE_CTX_get_chain is a legacy alias for |X509_STORE_CTX_get0_chain|.
-OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get_chain(X509_STORE_CTX *ctx);
+OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get_chain(
+    const X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_trusted_stack is a deprecated alias for
 // |X509_STORE_CTX_set0_trusted_stack|.
@@ -3899,11 +3900,11 @@ OPENSSL_EXPORT void X509_STORE_CTX_set0_trusted_stack(X509_STORE_CTX *ctx,
                                                       STACK_OF(X509) *sk);
 
 // X509_STORE_CTX_get0_store returns the |X509_STORE| that |ctx| uses.
-OPENSSL_EXPORT X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx);
+OPENSSL_EXPORT X509_STORE *X509_STORE_CTX_get0_store(const X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_get0_cert returns the leaf certificate that |ctx| is
 // verifying.
-OPENSSL_EXPORT X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx);
+OPENSSL_EXPORT X509 *X509_STORE_CTX_get0_cert(const X509_STORE_CTX *ctx);
 
 OPENSSL_EXPORT X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v,
                                                   const X509_LOOKUP_METHOD *m);
@@ -3940,7 +3941,7 @@ OPENSSL_EXPORT int X509_STORE_set_default_paths(X509_STORE *ctx);
 //
 // If called during the deprecated verification callback when |ok| is zero, it
 // returns the current error under consideration.
-OPENSSL_EXPORT int X509_STORE_CTX_get_error(X509_STORE_CTX *ctx);
+OPENSSL_EXPORT int X509_STORE_CTX_get_error(const X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_set_error sets |ctx|'s error to |err|, which should be
 // |X509_V_OK| or an |X509_V_ERR_*| constant. It is not expected to be called in
@@ -3953,10 +3954,11 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_error(X509_STORE_CTX *ctx, int err);
 // by |X509_STORE_CTX_get_error| occured. This is zero-indexed integer into the
 // certificate chain. Zero indicates the target certificate, one its issuer, and
 // so on.
-OPENSSL_EXPORT int X509_STORE_CTX_get_error_depth(X509_STORE_CTX *ctx);
+OPENSSL_EXPORT int X509_STORE_CTX_get_error_depth(const X509_STORE_CTX *ctx);
 
-OPENSSL_EXPORT X509 *X509_STORE_CTX_get_current_cert(X509_STORE_CTX *ctx);
-OPENSSL_EXPORT X509_CRL *X509_STORE_CTX_get0_current_crl(X509_STORE_CTX *ctx);
+OPENSSL_EXPORT X509 *X509_STORE_CTX_get_current_cert(const X509_STORE_CTX *ctx);
+OPENSSL_EXPORT X509_CRL *X509_STORE_CTX_get0_current_crl(
+    const X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_get0_chain, after a successful |X509_verify_cert| call,
 // returns the verified certificate chain. The chain begins with the leaf and
@@ -3966,16 +3968,18 @@ OPENSSL_EXPORT X509_CRL *X509_STORE_CTX_get0_current_crl(X509_STORE_CTX *ctx);
 // verification callback, it returns the partial chain built so far. Callers
 // should avoid relying on this as this exposes unstable library implementation
 // details.
-OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_chain(X509_STORE_CTX *ctx);
+OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_chain(
+    const X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_get1_chain behaves like |X509_STORE_CTX_get0_chain| but
 // returns a newly-allocated |STACK_OF(X509)| containing the completed chain,
 // with each certificate's reference count incremented. Callers must free the
 // result with |sk_X509_pop_free| and |X509_free| when done.
-OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get1_chain(X509_STORE_CTX *ctx);
+OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get1_chain(
+    const X509_STORE_CTX *ctx);
 
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(
-    X509_STORE_CTX *ctx);
+    const X509_STORE_CTX *ctx);
 OPENSSL_EXPORT void X509_STORE_CTX_set0_crls(X509_STORE_CTX *c,
                                              STACK_OF(X509_CRL) *sk);
 OPENSSL_EXPORT int X509_STORE_CTX_set_purpose(X509_STORE_CTX *ctx, int purpose);

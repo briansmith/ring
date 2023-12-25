@@ -587,4 +587,6 @@ void X509_STORE_set_check_crl(X509_STORE *ctx,
   ctx->check_crl = check_crl;
 }
 
-X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx) { return ctx->ctx; }
+X509_STORE *X509_STORE_CTX_get0_store(const X509_STORE_CTX *ctx) {
+  return ctx->ctx;
+}

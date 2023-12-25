@@ -1427,40 +1427,40 @@ void *X509_STORE_CTX_get_ex_data(X509_STORE_CTX *ctx, int idx) {
   return CRYPTO_get_ex_data(&ctx->ex_data, idx);
 }
 
-int X509_STORE_CTX_get_error(X509_STORE_CTX *ctx) { return ctx->error; }
+int X509_STORE_CTX_get_error(const X509_STORE_CTX *ctx) { return ctx->error; }
 
 void X509_STORE_CTX_set_error(X509_STORE_CTX *ctx, int err) {
   ctx->error = err;
 }
 
-int X509_STORE_CTX_get_error_depth(X509_STORE_CTX *ctx) {
+int X509_STORE_CTX_get_error_depth(const X509_STORE_CTX *ctx) {
   return ctx->error_depth;
 }
 
-X509 *X509_STORE_CTX_get_current_cert(X509_STORE_CTX *ctx) {
+X509 *X509_STORE_CTX_get_current_cert(const X509_STORE_CTX *ctx) {
   return ctx->current_cert;
 }
 
-STACK_OF(X509) *X509_STORE_CTX_get_chain(X509_STORE_CTX *ctx) {
+STACK_OF(X509) *X509_STORE_CTX_get_chain(const X509_STORE_CTX *ctx) {
   return ctx->chain;
 }
 
-STACK_OF(X509) *X509_STORE_CTX_get0_chain(X509_STORE_CTX *ctx) {
+STACK_OF(X509) *X509_STORE_CTX_get0_chain(const X509_STORE_CTX *ctx) {
   return ctx->chain;
 }
 
-STACK_OF(X509) *X509_STORE_CTX_get1_chain(X509_STORE_CTX *ctx) {
+STACK_OF(X509) *X509_STORE_CTX_get1_chain(const X509_STORE_CTX *ctx) {
   if (!ctx->chain) {
     return NULL;
   }
   return X509_chain_up_ref(ctx->chain);
 }
 
-X509_CRL *X509_STORE_CTX_get0_current_crl(X509_STORE_CTX *ctx) {
+X509_CRL *X509_STORE_CTX_get0_current_crl(const X509_STORE_CTX *ctx) {
   return ctx->current_crl;
 }
 
-X509_STORE_CTX *X509_STORE_CTX_get0_parent_ctx(X509_STORE_CTX *ctx) {
+X509_STORE_CTX *X509_STORE_CTX_get0_parent_ctx(const X509_STORE_CTX *ctx) {
   // In OpenSSL, an |X509_STORE_CTX| sometimes has a parent context during CRL
   // path validation for indirect CRLs. We require the CRL to be issued
   // somewhere along the certificate path, so this is always NULL.
@@ -1471,7 +1471,7 @@ void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx, STACK_OF(X509) *sk) {
   ctx->untrusted = sk;
 }
 
-STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(X509_STORE_CTX *ctx) {
+STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(const X509_STORE_CTX *ctx) {
   return ctx->untrusted;
 }
 
@@ -1650,9 +1650,7 @@ void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx, unsigned long flags,
   X509_STORE_CTX_set_time_posix(ctx, flags, t);
 }
 
-X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx) {
-  return ctx->cert;
-}
+X509 *X509_STORE_CTX_get0_cert(const X509_STORE_CTX *ctx) { return ctx->cert; }
 
 void X509_STORE_CTX_set_verify_cb(X509_STORE_CTX *ctx,
                                   int (*verify_cb)(int, X509_STORE_CTX *)) {
