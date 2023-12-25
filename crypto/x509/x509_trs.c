@@ -54,6 +54,9 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#include <assert.h>
+#include <limits.h>
+
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
@@ -68,10 +71,6 @@ static int trust_1oid(const X509_TRUST *trust, X509 *x, int flags);
 static int trust_compat(const X509_TRUST *trust, X509 *x, int flags);
 
 static int obj_trust(int id, X509 *x, int flags);
-
-// WARNING: the following table should be kept in order of trust and without
-// any gaps so we can just subtract the minimum trust value to get an index
-// into the table
 
 static const X509_TRUST trstandard[] = {
     {X509_TRUST_COMPAT, 0, trust_compat, (char *)"compatible", 0, NULL},
@@ -122,8 +121,12 @@ const X509_TRUST *X509_TRUST_get0(int idx) {
 }
 
 int X509_TRUST_get_by_id(int id) {
-  if (id >= X509_TRUST_MIN && id <= X509_TRUST_MAX) {
-    return id - X509_TRUST_MIN;
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(trstandard); i++) {
+    if (trstandard[i].trust == id) {
+      static_assert(OPENSSL_ARRAY_SIZE(trstandard) <= INT_MAX,
+                    "indices must fit in int");
+      return (int)i;
+    }
   }
   return -1;
 }

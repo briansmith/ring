@@ -54,8 +54,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <stdio.h>
-
+#include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/digest.h>
@@ -169,8 +169,12 @@ int X509_PURPOSE_get_by_sname(const char *sname) {
 }
 
 int X509_PURPOSE_get_by_id(int purpose) {
-  if (purpose >= X509_PURPOSE_MIN && purpose <= X509_PURPOSE_MAX) {
-    return purpose - X509_PURPOSE_MIN;
+  for (size_t i = 0; i <OPENSSL_ARRAY_SIZE(xstandard); i++) {
+    if (xstandard[i].purpose == purpose) {
+      static_assert(OPENSSL_ARRAY_SIZE(xstandard) <= INT_MAX,
+                    "indices must fit in int");
+      return (int)i;
+    }
   }
   return -1;
 }

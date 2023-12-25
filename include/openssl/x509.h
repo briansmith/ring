@@ -3561,10 +3561,6 @@ DEFINE_STACK_OF(X509_TRUST)
 #define X509_TRUST_OCSP_REQUEST 7
 #define X509_TRUST_TSA 8
 
-// Keep these up to date!
-#define X509_TRUST_MIN 1
-#define X509_TRUST_MAX 8
-
 // check_trust return codes
 
 #define X509_TRUST_TRUSTED 1
@@ -4375,9 +4371,6 @@ typedef struct x509_purpose_st {
 #define X509_PURPOSE_ANY 7
 #define X509_PURPOSE_OCSP_HELPER 8
 #define X509_PURPOSE_TIMESTAMP_SIGN 9
-
-#define X509_PURPOSE_MIN 1
-#define X509_PURPOSE_MAX 9
 
 DEFINE_STACK_OF(X509_PURPOSE)
 
