@@ -85,20 +85,18 @@ static const X509_TRUST trstandard[] = {
      NULL}};
 
 int X509_check_trust(X509 *x, int id, int flags) {
-  int idx;
   if (id == -1) {
-    return 1;
+    return X509_TRUST_TRUSTED;
   }
   // We get this as a default value
   if (id == 0) {
-    int rv;
-    rv = obj_trust(NID_anyExtendedKeyUsage, x, 0);
+    int rv = obj_trust(NID_anyExtendedKeyUsage, x, 0);
     if (rv != X509_TRUST_UNTRUSTED) {
       return rv;
     }
     return trust_compat(NULL, x, 0);
   }
-  idx = X509_TRUST_get_by_id(id);
+  int idx = X509_TRUST_get_by_id(id);
   if (idx == -1) {
     return obj_trust(id, x, flags);
   }

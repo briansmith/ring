@@ -1658,8 +1658,7 @@ void X509_STORE_CTX_set_verify_cb(X509_STORE_CTX *ctx,
 }
 
 int X509_STORE_CTX_set_default(X509_STORE_CTX *ctx, const char *name) {
-  const X509_VERIFY_PARAM *param;
-  param = X509_VERIFY_PARAM_lookup(name);
+  const X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_lookup(name);
   if (!param) {
     return 0;
   }

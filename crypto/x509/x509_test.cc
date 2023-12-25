@@ -1725,6 +1725,46 @@ static bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
   return cert;
 }
 
+static bool AddExtendedKeyUsage(X509 *x509, const std::vector<int> &eku_nids) {
+  bssl::UniquePtr<STACK_OF(ASN1_OBJECT)> objs(sk_ASN1_OBJECT_new_null());
+  if (objs == nullptr) {
+    return false;
+  }
+  for (int nid : eku_nids) {
+    if (!sk_ASN1_OBJECT_push(objs.get(), OBJ_nid2obj(nid))) {
+      return false;
+    }
+  }
+  return X509_add1_ext_i2d(x509, NID_ext_key_usage, objs.get(), /*crit=*/1,
+                           /*flags=*/0);
+}
+
+enum class KeyUsage : int {
+  kDigitalSignature = 0,
+  kNonRepudiation = 1,
+  kKeyEncipherment = 2,
+  kDataEncipherment = 3,
+  kKeyAgreement = 4,
+  kKeyCertSign = 5,
+  kCRLSign = 6,
+  kEncipherOnly = 7,
+  kDecipherOnly = 8,
+};
+
+static bool AddKeyUsage(X509 *x509, const std::vector<KeyUsage> usages) {
+  bssl::UniquePtr<ASN1_BIT_STRING> str(ASN1_BIT_STRING_new());
+  if (str == nullptr) {
+    return false;
+  }
+  for (KeyUsage usage : usages) {
+    if (!ASN1_BIT_STRING_set_bit(str.get(), static_cast<int>(usage), 1)) {
+      return false;
+    }
+  }
+  return X509_add1_ext_i2d(x509, NID_key_usage, str.get(), /*crit=*/1,
+                           /*flags=*/0);
+}
+
 TEST(X509Test, NameConstraints) {
   bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
   ASSERT_TRUE(key);
@@ -2780,6 +2820,15 @@ TEST(X509Test, NoBasicConstraintsCertSign) {
   // basicConstraints.
   EXPECT_EQ(X509_V_ERR_INVALID_CA,
             Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // |X509_check_purpose| with |X509_PURPOSE_ANY| and purpose -1 do not check
+  // basicConstraints, but other purpose types do. (This is redundant with the
+  // actual basicConstraints check, but |X509_check_purpose| is public API.)
+  EXPECT_TRUE(X509_check_purpose(intermediate.get(), -1, /*ca=*/1));
+  EXPECT_TRUE(
+      X509_check_purpose(intermediate.get(), X509_PURPOSE_ANY, /*ca=*/1));
+  EXPECT_FALSE(X509_check_purpose(intermediate.get(), X509_PURPOSE_SSL_SERVER,
+                                  /*ca=*/1));
 }
 
 TEST(X509Test, NoBasicConstraintsNetscapeCA) {
@@ -7308,4 +7357,361 @@ TEST(X509Test, PublicKeyCache) {
   // The cached key should no longer be returned.
   key2.reset(X509_PUBKEY_get(pub));
   EXPECT_FALSE(key2);
+}
+
+// Tests some unusual behavior in |X509_STORE_CTX_set_purpose| and
+// |X509_STORE_CTX_set_trust|.
+TEST(X509Test, ContextTrustAndPurpose) {
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(leaf);
+
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+
+  // Initially, neither parameter is set.
+  EXPECT_EQ(ctx->param->purpose, 0);
+  EXPECT_EQ(ctx->param->trust, 0);
+
+  // Invalid purpose and trust types fail.
+  EXPECT_FALSE(X509_STORE_CTX_set_purpose(ctx.get(), 999));
+  EXPECT_FALSE(X509_STORE_CTX_set_trust(ctx.get(), 999));
+
+  // It is not possible to set |X509_PURPOSE_ANY| with this API, because there
+  // is no corresponding trust.
+  EXPECT_FALSE(X509_STORE_CTX_set_purpose(ctx.get(), X509_PURPOSE_ANY));
+
+  // Setting a purpose also sets the corresponding trust.
+  ASSERT_TRUE(X509_STORE_CTX_set_purpose(ctx.get(), X509_PURPOSE_SSL_SERVER));
+  EXPECT_EQ(ctx->param->purpose, X509_PURPOSE_SSL_SERVER);
+  EXPECT_EQ(ctx->param->trust, X509_TRUST_SSL_SERVER);
+
+  // Once set, the functions silently do nothing.
+  ASSERT_TRUE(X509_STORE_CTX_set_purpose(ctx.get(), X509_PURPOSE_SSL_CLIENT));
+  ASSERT_TRUE(X509_STORE_CTX_set_trust(ctx.get(), X509_TRUST_SSL_CLIENT));
+  EXPECT_EQ(ctx->param->purpose, X509_PURPOSE_SSL_SERVER);
+  EXPECT_EQ(ctx->param->trust, X509_TRUST_SSL_SERVER);
+
+  // Start over.
+  ctx.reset(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+  EXPECT_EQ(ctx->param->purpose, 0);
+  EXPECT_EQ(ctx->param->trust, 0);
+
+  // Setting trust leaves purpose unset.
+  ASSERT_TRUE(X509_STORE_CTX_set_trust(ctx.get(), X509_TRUST_SSL_SERVER));
+  EXPECT_EQ(ctx->param->purpose, 0);
+  EXPECT_EQ(ctx->param->trust, X509_TRUST_SSL_SERVER);
+
+  // If trust is set, but not purpose, |X509_STORE_CTX_set_purpose| only sets
+  // purpose.
+  ASSERT_TRUE(X509_STORE_CTX_set_purpose(ctx.get(), X509_PURPOSE_SSL_CLIENT));
+  EXPECT_EQ(ctx->param->purpose, X509_PURPOSE_SSL_CLIENT);
+  EXPECT_EQ(ctx->param->trust, X509_TRUST_SSL_SERVER);
+
+  // Start over.
+  ctx.reset(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+  EXPECT_EQ(ctx->param->purpose, 0);
+  EXPECT_EQ(ctx->param->trust, 0);
+
+  // If purpose is set, but not trust, |X509_STORE_CTX_set_purpose| only sets
+  // trust.
+  ASSERT_TRUE(X509_VERIFY_PARAM_set_purpose(
+      X509_STORE_CTX_get0_param(ctx.get()), X509_PURPOSE_SSL_CLIENT));
+  EXPECT_EQ(ctx->param->purpose, X509_PURPOSE_SSL_CLIENT);
+  EXPECT_EQ(ctx->param->trust, 0);
+
+  ASSERT_TRUE(X509_STORE_CTX_set_purpose(ctx.get(), X509_PURPOSE_SSL_SERVER));
+  EXPECT_EQ(ctx->param->purpose, X509_PURPOSE_SSL_CLIENT);
+  EXPECT_EQ(ctx->param->trust, X509_TRUST_SSL_SERVER);
+}
+
+TEST(X509Test, Purpose) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  struct {
+    int purpose;
+    int eku_nid;
+    std::vector<KeyUsage> key_usages;
+  } kTests[] = {
+      {X509_PURPOSE_SSL_CLIENT,
+       NID_client_auth,
+       {KeyUsage::kDigitalSignature, KeyUsage::kKeyAgreement}},
+      {X509_PURPOSE_SSL_SERVER,
+       NID_server_auth,
+       {KeyUsage::kDigitalSignature, KeyUsage::kKeyAgreement,
+        KeyUsage::kKeyEncipherment}},
+      {X509_PURPOSE_NS_SSL_SERVER,
+       NID_server_auth,
+       {KeyUsage::kKeyEncipherment}},
+      {X509_PURPOSE_SMIME_SIGN,
+       NID_email_protect,
+       {KeyUsage::kDigitalSignature, KeyUsage::kNonRepudiation}},
+      {X509_PURPOSE_SMIME_ENCRYPT,
+       NID_email_protect,
+       {KeyUsage::kKeyEncipherment}},
+      {X509_PURPOSE_CRL_SIGN, NID_undef, {KeyUsage::kCRLSign}},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.purpose);
+
+    auto configure_callback = [&](X509_STORE_CTX *ctx) {
+      X509_STORE_CTX_set_purpose(ctx, t.purpose);
+    };
+
+    // An unconstrained cert chain is valid.
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+    bssl::UniquePtr<X509> intermediate =
+        MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(intermediate);
+    ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+
+    bssl::UniquePtr<X509> leaf =
+        MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+    ASSERT_TRUE(leaf);
+    ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                                {}, 0, configure_callback));
+
+    // A leaf and intermediate with compatible constraints is valid.
+    intermediate =
+        MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(intermediate);
+    ASSERT_TRUE(AddKeyUsage(intermediate.get(), {KeyUsage::kKeyCertSign}));
+    if (t.eku_nid != NID_undef) {
+      ASSERT_TRUE(AddExtendedKeyUsage(intermediate.get(), {t.eku_nid}));
+    }
+    ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+
+    leaf = MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+    ASSERT_TRUE(leaf);
+    if (t.eku_nid != NID_undef) {
+      ASSERT_TRUE(AddExtendedKeyUsage(leaf.get(), {t.eku_nid}));
+    }
+    ASSERT_TRUE(AddKeyUsage(leaf.get(), t.key_usages));
+    ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                                {}, 0, configure_callback));
+
+    // Each key usage asserted individually is valid.
+    for (KeyUsage usage : t.key_usages) {
+      SCOPED_TRACE(static_cast<int>(usage));
+      leaf = MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      if (t.eku_nid != NID_undef) {
+        ASSERT_TRUE(AddExtendedKeyUsage(leaf.get(), {t.eku_nid}));
+      }
+      ASSERT_TRUE(AddKeyUsage(leaf.get(), {usage}));
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      EXPECT_EQ(X509_V_OK,
+                Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0,
+                       configure_callback));
+    }
+
+    // A leaf with the wrong EKU is invalid.
+    if (t.eku_nid != NID_undef) {
+      leaf = MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      ASSERT_TRUE(AddExtendedKeyUsage(leaf.get(), {NID_rsaEncryption}));
+      ASSERT_TRUE(AddKeyUsage(leaf.get(), t.key_usages));
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      EXPECT_EQ(X509_V_ERR_INVALID_PURPOSE,
+                Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0,
+                       configure_callback));
+    }
+
+    // A leaf without any of the requested key usages is invalid.
+    std::vector<KeyUsage> usages;
+    for (int i = 0; i < 10; i++) {
+      auto k = static_cast<KeyUsage>(i);
+      if (std::find(t.key_usages.begin(), t.key_usages.end(), k) ==
+          t.key_usages.end()) {
+        usages.push_back(k);
+      }
+    }
+    leaf = MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+    ASSERT_TRUE(leaf);
+    if (t.eku_nid != NID_undef) {
+      ASSERT_TRUE(AddExtendedKeyUsage(leaf.get(), {t.eku_nid}));
+    }
+    ASSERT_TRUE(AddKeyUsage(leaf.get(), usages));
+    ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+    EXPECT_EQ(X509_V_ERR_INVALID_PURPOSE,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0,
+                     configure_callback));
+
+    // Extra EKUs and key usages are fine.
+    usages.clear();
+    for (int i = 0; i < 10; i++) {
+      usages.push_back(static_cast<KeyUsage>(i));
+    }
+    leaf = MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+    ASSERT_TRUE(leaf);
+    if (t.eku_nid != NID_undef) {
+      ASSERT_TRUE(
+          AddExtendedKeyUsage(leaf.get(), {t.eku_nid, NID_rsaEncryption}));
+    }
+    ASSERT_TRUE(AddKeyUsage(leaf.get(), usages));
+    ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                                {}, 0, configure_callback));
+
+    // anyExtendedKeyUsage is not allowed in place of a concrete EKU.
+    if (t.eku_nid != NID_undef) {
+      leaf = MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+      ASSERT_TRUE(leaf);
+      ASSERT_TRUE(AddExtendedKeyUsage(leaf.get(), {NID_anyExtendedKeyUsage}));
+      ASSERT_TRUE(AddKeyUsage(leaf.get(), t.key_usages));
+      ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+      EXPECT_EQ(X509_V_ERR_INVALID_PURPOSE,
+                Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0,
+                       configure_callback));
+    }
+
+    // Restore |leaf| to a valid option.
+    leaf = MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+    ASSERT_TRUE(leaf);
+    ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+    // The intermediate must have the keyCertSign bit. This bit is checked in
+    // multiple places. The first place that fails is in looking for candidate
+    // issuers.
+    intermediate =
+        MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(intermediate);
+    ASSERT_TRUE(AddKeyUsage(intermediate.get(), {KeyUsage::kDigitalSignature}));
+    if (t.eku_nid != NID_undef) {
+      ASSERT_TRUE(AddExtendedKeyUsage(intermediate.get(), {t.eku_nid}));
+    }
+    ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+    EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0,
+                     configure_callback));
+
+    // The intermediate must have the EKU asserted.
+    if (t.eku_nid != NID_undef) {
+      intermediate =
+          MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
+      ASSERT_TRUE(intermediate);
+      ASSERT_TRUE(AddKeyUsage(intermediate.get(), {KeyUsage::kKeyCertSign}));
+      ASSERT_TRUE(AddExtendedKeyUsage(intermediate.get(), {NID_rsaEncryption}));
+      ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+      EXPECT_EQ(X509_V_ERR_INVALID_PURPOSE,
+                Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0,
+                       configure_callback));
+    }
+  }
+}
+
+TEST(X509Test, Trust) {
+  struct Certs {
+    bssl::UniquePtr<X509> normal;
+    bssl::UniquePtr<X509> trusted_server, distrusted_server;
+    bssl::UniquePtr<X509> trusted_any, distrusted_any;
+  };
+  auto certs_from_pem = [](const char *pem) -> Certs {
+    Certs certs;
+    certs.normal = CertFromPEM(pem);
+    certs.trusted_server = CertFromPEM(pem);
+    certs.distrusted_server = CertFromPEM(pem);
+    certs.trusted_any = CertFromPEM(pem);
+    certs.distrusted_any = CertFromPEM(pem);
+    if (certs.normal == nullptr || certs.trusted_server == nullptr ||
+        certs.distrusted_server == nullptr || certs.trusted_any == nullptr ||
+        certs.distrusted_any == nullptr ||
+        !X509_add1_trust_object(certs.trusted_server.get(),
+                                OBJ_nid2obj(NID_server_auth)) ||
+        !X509_add1_reject_object(certs.distrusted_server.get(),
+                                 OBJ_nid2obj(NID_server_auth)) ||
+        !X509_add1_trust_object(certs.trusted_any.get(),
+                                OBJ_nid2obj(NID_anyExtendedKeyUsage)) ||
+        !X509_add1_reject_object(certs.distrusted_any.get(),
+                                 OBJ_nid2obj(NID_anyExtendedKeyUsage))) {
+      return Certs{};
+    }
+    return certs;
+  };
+
+  Certs root = certs_from_pem(kRootCAPEM);
+  Certs intermediate = certs_from_pem(kIntermediatePEM);
+  Certs leaf = certs_from_pem(kLeafPEM);
+  ASSERT_TRUE(root.normal);
+  ASSERT_TRUE(intermediate.normal);
+  ASSERT_TRUE(leaf.normal);
+
+  // By default, trust is determined by a combination of self-signedness and
+  // NID_anyExtendedKeyUsage.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.normal.get(), {root.normal.get()},
+                              {intermediate.normal.get()}, {}));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.normal.get(), {root.trusted_any.get()},
+                              {intermediate.normal.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
+            Verify(leaf.normal.get(), {root.distrusted_any.get()},
+                   {intermediate.normal.get()}, {}));
+
+  // Intermediate certificates are not self-signed, so must have an
+  // NID_anyExtendedKeyUsage trust setting.
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
+            Verify(leaf.normal.get(), {intermediate.normal.get()}, {}, {}));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.normal.get(),
+                              {intermediate.trusted_any.get()}, {}, {}));
+  EXPECT_EQ(
+      X509_V_ERR_CERT_REJECTED,
+      Verify(leaf.normal.get(), {intermediate.distrusted_any.get()}, {}, {}));
+
+  // If a certificate has trust settings, but only for a different OID, the
+  // self-signed rule still takes effect.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.normal.get(), {root.trusted_server.get()},
+                              {intermediate.normal.get()}, {}));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.normal.get(), {root.distrusted_server.get()},
+                              {intermediate.normal.get()}, {}));
+  EXPECT_EQ(
+      X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
+      Verify(leaf.normal.get(), {intermediate.trusted_server.get()}, {}, {}));
+
+  // |X509_TRUST_SSL_SERVER| should instead look at self-signedness and
+  // |NID_server_auth|.
+  auto set_server_trust = [](X509_STORE_CTX *ctx) {
+    X509_STORE_CTX_set_trust(ctx, X509_TRUST_SSL_SERVER);
+  };
+  EXPECT_EQ(X509_V_OK, Verify(leaf.normal.get(), {root.normal.get()},
+                              {intermediate.normal.get()}, {}, /*flags=*/0,
+                              set_server_trust));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.normal.get(), {root.trusted_server.get()},
+                              {intermediate.normal.get()}, {}, /*flags=*/0,
+                              set_server_trust));
+  EXPECT_EQ(
+      X509_V_ERR_CERT_REJECTED,
+      Verify(leaf.normal.get(), {root.distrusted_server.get()},
+             {intermediate.normal.get()}, {}, /*flags=*/0, set_server_trust));
+
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
+            Verify(leaf.normal.get(), {intermediate.normal.get()}, {}, {},
+                   /*flags=*/0, set_server_trust));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.normal.get(),
+                              {intermediate.trusted_server.get()}, {}, {},
+                              /*flags=*/0, set_server_trust));
+  EXPECT_EQ(X509_V_ERR_CERT_REJECTED,
+            Verify(leaf.normal.get(), {intermediate.distrusted_server.get()},
+                   {}, {}, /*flags=*/0, set_server_trust));
+
+  // NID_anyExtendedKeyUsage is just an unrelated OID to X509_TRUST_SSL_SERVER.
+  // Unlike the default behavior, once a certificate has explicit trust settings
+  // for any OID, the self-signed check is disabled.
+  EXPECT_EQ(
+      X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
+      Verify(leaf.normal.get(), {root.trusted_any.get()},
+             {intermediate.normal.get()}, {}, /*flags=*/0, set_server_trust));
 }
