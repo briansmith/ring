@@ -240,9 +240,6 @@ OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
 #define EXFLAG_KUSAGE 0x2
 // EXFLAG_XKUSAGE indicates the certifcate has an extended key usage extension.
 #define EXFLAG_XKUSAGE 0x4
-// EXFLAG_NSCERT indicates the certificate has a legacy Netscape certificate
-// type extension.
-#define EXFLAG_NSCERT 0x8
 // EXFLAG_CA indicates the certificate has a basic constraints extension with
 // the CA bit set.
 #define EXFLAG_CA 0x10

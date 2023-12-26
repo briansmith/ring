@@ -73,8 +73,6 @@
   (((x)->ex_flags & EXFLAG_KUSAGE) && !((x)->ex_kusage & (usage)))
 #define xku_reject(x, usage) \
   (((x)->ex_flags & EXFLAG_XKUSAGE) && !((x)->ex_xkusage & (usage)))
-#define ns_reject(x, usage) \
-  (((x)->ex_flags & EXFLAG_NSCERT) && !((x)->ex_nscert & (usage)))
 
 static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
                                     int ca);
@@ -186,8 +184,7 @@ int X509_PURPOSE_get_trust(const X509_PURPOSE *xp) { return xp->trust; }
 
 int X509_supported_extension(const X509_EXTENSION *ex) {
   int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ex));
-  return nid == NID_netscape_cert_type ||    //
-         nid == NID_key_usage ||             //
+  return nid == NID_key_usage ||             //
          nid == NID_subject_alt_name ||      //
          nid == NID_basic_constraints ||     //
          nid == NID_certificate_policies ||  //
@@ -234,7 +231,6 @@ static int setup_crldp(X509 *x) {
 int x509v3_cache_extensions(X509 *x) {
   BASIC_CONSTRAINTS *bs;
   ASN1_BIT_STRING *usage;
-  ASN1_BIT_STRING *ns;
   EXTENDED_KEY_USAGE *extusage;
   size_t i;
   int j;
@@ -348,17 +344,6 @@ int x509v3_cache_extensions(X509 *x) {
     x->ex_flags |= EXFLAG_INVALID;
   }
 
-  if ((ns = X509_get_ext_d2i(x, NID_netscape_cert_type, &j, NULL))) {
-    if (ns->length > 0) {
-      x->ex_nscert = ns->data[0];
-    } else {
-      x->ex_nscert = 0;
-    }
-    x->ex_flags |= EXFLAG_NSCERT;
-    ASN1_BIT_STRING_free(ns);
-  } else if (j != -1) {
-    x->ex_flags |= EXFLAG_INVALID;
-  }
   x->skid = X509_get_ext_d2i(x, NID_subject_key_identifier, &j, NULL);
   if (x->skid == NULL && j != -1) {
     x->ex_flags |= EXFLAG_INVALID;
@@ -442,10 +427,6 @@ static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
   if (ku_reject(x, X509v3_KU_DIGITAL_SIGNATURE | X509v3_KU_KEY_AGREEMENT)) {
     return 0;
   }
-  // nsCertType if present should allow SSL client use
-  if (ns_reject(x, NS_SSL_CLIENT)) {
-    return 0;
-  }
   return 1;
 }
 
@@ -465,9 +446,6 @@ static int check_purpose_ssl_server(const X509_PURPOSE *xp, const X509 *x,
     return check_ca(x);
   }
 
-  if (ns_reject(x, NS_SSL_SERVER)) {
-    return 0;
-  }
   if (ku_reject(x, X509v3_KU_TLS)) {
     return 0;
   }
@@ -495,15 +473,7 @@ static int purpose_smime(const X509 *x, int ca) {
     return 0;
   }
   if (ca) {
-    // check nsCertType if present
-    if ((x->ex_flags & EXFLAG_NSCERT) && (x->ex_nscert & NS_SMIME_CA) == 0) {
-      return 0;
-    }
-
     return check_ca(x);
-  }
-  if (x->ex_flags & EXFLAG_NSCERT) {
-    return (x->ex_nscert & NS_SMIME) == NS_SMIME;
   }
   return 1;
 }

@@ -7715,3 +7715,29 @@ TEST(X509Test, Trust) {
       Verify(leaf.normal.get(), {root.trusted_any.get()},
              {intermediate.normal.get()}, {}, /*flags=*/0, set_server_trust));
 }
+
+TEST(X509Test, CriticalExtension) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  // Issue a certificate with a critical Netscape certificate type extension. We
+  // do not recognize this extension, so this certificate should be rejected.
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Root", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<ASN1_BIT_STRING> cert_type(ASN1_BIT_STRING_new());
+  ASSERT_TRUE(cert_type);
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(cert_type.get(), /*n=*/0, /*value=*/1));
+  ASSERT_TRUE(X509_add1_ext_i2d(leaf.get(), NID_netscape_cert_type,
+                                cert_type.get(),
+                                /*crit=*/1, /*flags=*/0));
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(leaf.get(), {root.get()}, {}, {}));
+}

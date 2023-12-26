@@ -170,7 +170,6 @@ struct x509_st {
   uint32_t ex_flags;
   uint32_t ex_kusage;
   uint32_t ex_xkusage;
-  uint32_t ex_nscert;
   ASN1_OCTET_STRING *skid;
   AUTHORITY_KEYID *akid;
   STACK_OF(DIST_POINT) *crldp;
