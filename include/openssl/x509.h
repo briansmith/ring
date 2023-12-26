@@ -1832,6 +1832,170 @@ OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509v3_add_ext(
     STACK_OF(X509_EXTENSION) **x, const X509_EXTENSION *ex, int loc);
 
 
+// Built-in extensions.
+//
+// Several functions in the library encode and decode extension values into a
+// C structure to that extension. The following extensions are supported:
+//
+// - |NID_authority_key_identifier| with type |AUTHORITY_KEYID|
+// - |NID_basic_constraints| with type |BASIC_CONSTRAINTS|
+// - |NID_certificate_issuer| with type |GENERAL_NAMES|
+// - |NID_certificate_policies| with type |CERTIFICATEPOLICIES|
+// - |NID_crl_distribution_points| with type |CRL_DIST_POINTS|
+// - |NID_crl_number| with type |ASN1_INTEGER|
+// - |NID_crl_reason| with type |ASN1_ENUMERATED|
+// - |NID_delta_crl| with type |ASN1_INTEGER|
+// - |NID_ext_key_usage| with type |EXTENDED_KEY_USAGE|
+// - |NID_freshest_crl| with type |ISSUING_DIST_POINT|
+// - |NID_id_pkix_OCSP_noCheck| with type |ASN1_NULL|
+// - |NID_info_access| with type |AUTHORITY_INFO_ACCESS|
+// - |NID_inhibit_any_policy| with type |ASN1_INTEGER|
+// - |NID_invalidity_date| with type |ASN1_GENERALIZEDTIME|
+// - |NID_issuer_alt_name| with type |GENERAL_NAMES|
+// - |NID_issuing_distribution_point| with type |ISSUING_DIST_POINT|
+// - |NID_key_usage| with type |ASN1_BIT_STRING|
+// - |NID_name_constraints| with type |NAME_CONSTRAINTS|
+// - |NID_netscape_base_url| with type |ASN1_IA5STRING|
+// - |NID_netscape_ca_policy_url| with type |ASN1_IA5STRING|
+// - |NID_netscape_ca_revocation_url| with type |ASN1_IA5STRING|
+// - |NID_netscape_cert_type| with type |ASN1_BIT_STRING|
+// - |NID_netscape_comment| with type |ASN1_IA5STRING|
+// - |NID_netscape_renewal_url| with type |ASN1_IA5STRING|
+// - |NID_netscape_revocation_url| with type |ASN1_IA5STRING|
+// - |NID_netscape_ssl_server_name| with type |ASN1_IA5STRING|
+// - |NID_policy_constraints| with type |POLICY_CONSTRAINTS|
+// - |NID_policy_mappings| with type |POLICY_MAPPINGS|
+// - |NID_sinfo_access| with type |AUTHORITY_INFO_ACCESS|
+// - |NID_subject_alt_name| with type |GENERAL_NAMES|
+// - |NID_subject_key_identifier| with type |ASN1_OCTET_STRING|
+//
+// If an extension does not appear in this list, e.g. for a custom extension,
+// callers can instead use functions such as |X509_get_ext_by_OBJ|,
+// |X509_EXTENSION_get_data|, and |X509_EXTENSION_create_by_OBJ| to inspect or
+// create extensions directly. Although the |X509V3_EXT_METHOD| mechanism allows
+// registering custom extensions, doing so is deprecated and may result in
+// threading or memory errors.
+
+// X509V3_EXT_d2i decodes |ext| and returns a pointer to a newly-allocated
+// structure, with type dependent on the type of the extension. It returns NULL
+// if |ext| is an unsupported extension or if there was a syntax error in the
+// extension. The caller should cast the return value to the expected type and
+// free the structure when done.
+//
+// WARNING: Casting the return value to the wrong type is a potentially
+// exploitable memory error, so callers must not use this function before
+// checking |ext| is of a known type. See the list at the top of this section
+// for the correct types.
+OPENSSL_EXPORT void *X509V3_EXT_d2i(const X509_EXTENSION *ext);
+
+// X509V3_get_d2i finds and decodes the extension in |extensions| of type |nid|.
+// If found, it decodes it and returns a newly-allocated structure, with type
+// dependent on |nid|. If the extension is not found or on error, it returns
+// NULL. The caller may distinguish these cases using the |out_critical| value.
+//
+// If |out_critical| is not NULL, this function sets |*out_critical| to one if
+// the extension is found and critical, zero if it is found and not critical, -1
+// if it is not found, and -2 if there is an invalid duplicate extension. Note
+// this function may set |*out_critical| to one or zero and still return NULL if
+// the extension is found but has a syntax error.
+//
+// If |out_idx| is not NULL, this function looks for the first occurrence of the
+// extension after |*out_idx|. It then sets |*out_idx| to the index of the
+// extension, or -1 if not found. If |out_idx| is non-NULL, duplicate extensions
+// are not treated as an error. Callers, however, should not rely on this
+// behavior as it may be removed in the future. Duplicate extensions are
+// forbidden in RFC 5280.
+//
+// WARNING: This function is difficult to use correctly. Callers should pass a
+// non-NULL |out_critical| and check both the return value and |*out_critical|
+// to handle errors. If the return value is NULL and |*out_critical| is not -1,
+// there was an error. Otherwise, the function succeeded and but may return NULL
+// for a missing extension. Callers should pass NULL to |out_idx| so that
+// duplicate extensions are handled correctly.
+//
+// Additionally, casting the return value to the wrong type is a potentially
+// exploitable memory error, so callers must ensure the cast and |nid| match.
+// See the list at the top of this section for the correct types.
+OPENSSL_EXPORT void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions,
+                                    int nid, int *out_critical, int *out_idx);
+
+// X509V3_EXT_free casts |ext_data| into the type that corresponds to |nid| and
+// releases memory associated with it. It returns one on success and zero if
+// |nid| is not a known extension.
+//
+// WARNING: Casting |ext_data| to the wrong type is a potentially exploitable
+// memory error, so callers must ensure |ext_data|'s type matches |nid|. See the
+// list at the top of this section for the correct types.
+//
+// TODO(davidben): OpenSSL upstream no longer exposes this function. Remove it?
+OPENSSL_EXPORT int X509V3_EXT_free(int nid, void *ext_data);
+
+// X509V3_EXT_i2d casts |ext_struc| into the type that corresponds to
+// |ext_nid|, serializes it, and returns a newly-allocated |X509_EXTENSION|
+// object containing the serialization, or NULL on error. The |X509_EXTENSION|
+// has OID |ext_nid| and is critical if |crit| is one.
+//
+// WARNING: Casting |ext_struc| to the wrong type is a potentially exploitable
+// memory error, so callers must ensure |ext_struct|'s type matches |ext_nid|.
+// See the list at the top of this section for the correct types.
+OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
+                                              void *ext_struc);
+
+// The following constants control the behavior of |X509V3_add1_i2d| and related
+// functions.
+
+// X509V3_ADD_OP_MASK can be ANDed with the flags to determine how duplicate
+// extensions are processed.
+#define X509V3_ADD_OP_MASK 0xfL
+
+// X509V3_ADD_DEFAULT causes the function to fail if the extension was already
+// present.
+#define X509V3_ADD_DEFAULT 0L
+
+// X509V3_ADD_APPEND causes the function to unconditionally appended the new
+// extension to to the extensions list, even if there is a duplicate.
+#define X509V3_ADD_APPEND 1L
+
+// X509V3_ADD_REPLACE causes the function to replace the existing extension, or
+// append if it is not present.
+#define X509V3_ADD_REPLACE 2L
+
+// X509V3_ADD_REPLACE_EXISTING causes the function to replace the existing
+// extension and fail if it is not present.
+#define X509V3_ADD_REPLACE_EXISTING 3L
+
+// X509V3_ADD_KEEP_EXISTING causes the function to succeed without replacing the
+// extension if already present.
+#define X509V3_ADD_KEEP_EXISTING 4L
+
+// X509V3_ADD_DELETE causes the function to remove the matching extension. No
+// new extension is added. If there is no matching extension, the function
+// fails. The |value| parameter is ignored in this mode.
+#define X509V3_ADD_DELETE 5L
+
+// X509V3_ADD_SILENT may be ORed into one of the values above to indicate the
+// function should not add to the error queue on duplicate or missing extension.
+// The function will continue to return zero in those cases, and it will
+// continue to return -1 and add to the error queue on other errors.
+#define X509V3_ADD_SILENT 0x10
+
+// X509V3_add1_i2d casts |value| to the type that corresponds to |nid|,
+// serializes it, and appends it to the extension list in |*x|. If |*x| is NULL,
+// it will set |*x| to a newly-allocated |STACK_OF(X509_EXTENSION)| as needed.
+// The |crit| parameter determines whether the new extension is critical.
+// |flags| may be some combination of the |X509V3_ADD_*| constants to control
+// the function's behavior on duplicate extension.
+//
+// This function returns one on success, zero if the operation failed due to a
+// missing or duplicate extension, and -1 on other errors.
+//
+// WARNING: Casting |value| to the wrong type is a potentially exploitable
+// memory error, so callers must ensure |value|'s type matches |nid|. See the
+// list at the top of this section for the correct types.
+OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
+                                   void *value, int crit, unsigned long flags);
+
+
 // General names.
 //
 // A |GENERAL_NAME| represents an X.509 GeneralName structure, defined in RFC
@@ -3994,6 +4158,120 @@ DEFINE_STACK_OF(X509_INFO)
 OPENSSL_EXPORT void X509_INFO_free(X509_INFO *info);
 
 
+// Deprecated custom extension registration.
+//
+// The following functions allow callers to register custom extensions for use
+// with |X509V3_EXT_d2i| and related functions. This mechanism is deprecated and
+// will be removed in the future. As discussed in |X509V3_EXT_add|, it is not
+// possible to safely register a custom extension without risking race
+// conditions and memory errors when linked with other users of BoringSSL.
+//
+// Moreover, it is not necessary to register a custom extension to process
+// extensions unknown to BoringSSL. Registration does not impact certificate
+// verification. Caller should instead use functions such as
+// |ASN1_OBJECT_create|, |X509_get_ext_by_OBJ|, |X509_EXTENSION_get_data|, and
+// |X509_EXTENSION_create_by_OBJ| to inspect or create extensions directly.
+
+// The following function pointer types are used in |X509V3_EXT_METHOD|.
+typedef void *(*X509V3_EXT_NEW)(void);
+typedef void (*X509V3_EXT_FREE)(void *ext);
+typedef void *(*X509V3_EXT_D2I)(void *ext, const uint8_t **inp, long len);
+typedef int (*X509V3_EXT_I2D)(void *ext, uint8_t **outp);
+typedef STACK_OF(CONF_VALUE) *(*X509V3_EXT_I2V)(const X509V3_EXT_METHOD *method,
+                                                void *ext,
+                                                STACK_OF(CONF_VALUE) *extlist);
+typedef void *(*X509V3_EXT_V2I)(const X509V3_EXT_METHOD *method,
+                                const X509V3_CTX *ctx,
+                                const STACK_OF(CONF_VALUE) *values);
+typedef char *(*X509V3_EXT_I2S)(const X509V3_EXT_METHOD *method, void *ext);
+typedef void *(*X509V3_EXT_S2I)(const X509V3_EXT_METHOD *method,
+                                const X509V3_CTX *ctx, const char *str);
+typedef int (*X509V3_EXT_I2R)(const X509V3_EXT_METHOD *method, void *ext,
+                              BIO *out, int indent);
+typedef void *(*X509V3_EXT_R2I)(const X509V3_EXT_METHOD *method,
+                                const X509V3_CTX *ctx, const char *str);
+
+// A v3_ext_method, aka |X509V3_EXT_METHOD|, is a deprecated type which defines
+// a custom extension.
+struct v3_ext_method {
+  // ext_nid is the NID of the extension.
+  int ext_nid;
+
+  // ext_flags is a combination of |X509V3_EXT_*| constants.
+  int ext_flags;
+
+  // it determines how values of this extension are allocated, released, parsed,
+  // and marshalled. This must be non-NULL.
+  ASN1_ITEM_EXP *it;
+
+  // The following functions are ignored in favor of |it|. They are retained in
+  // the struct only for source compatibility with existing struct definitions.
+  X509V3_EXT_NEW ext_new;
+  X509V3_EXT_FREE ext_free;
+  X509V3_EXT_D2I d2i;
+  X509V3_EXT_I2D i2d;
+
+  // The following functions are used for string extensions.
+  X509V3_EXT_I2S i2s;
+  X509V3_EXT_S2I s2i;
+
+  // The following functions are used for multi-valued extensions.
+  X509V3_EXT_I2V i2v;
+  X509V3_EXT_V2I v2i;
+
+  // The following functions are used for "raw" extensions, which implement
+  // custom printing behavior.
+  X509V3_EXT_I2R i2r;
+  X509V3_EXT_R2I r2i;
+
+  void *usr_data;  // Any extension specific data
+} /* X509V3_EXT_METHOD */;
+
+// X509V3_EXT_MULTILINE causes the result of an |X509V3_EXT_METHOD|'s |i2v|
+// function to be printed on separate lines, rather than separated by commas.
+#define X509V3_EXT_MULTILINE 0x4
+
+// X509V3_EXT_get returns the |X509V3_EXT_METHOD| corresponding to |ext|'s
+// extension type, or NULL if none was registered.
+OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get(
+    const X509_EXTENSION *ext);
+
+// X509V3_EXT_get_nid returns the |X509V3_EXT_METHOD| corresponding to |nid|, or
+// NULL if none was registered.
+OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid);
+
+// X509V3_EXT_add registers |ext| as a custom extension for the extension type
+// |ext->ext_nid|. |ext| must be valid for the remainder of the address space's
+// lifetime. It returns one on success and zero on error.
+//
+// WARNING: This function modifies global state. If other code in the same
+// address space also registers an extension with type |ext->ext_nid|, the two
+// registrations will conflict. Which registration takes effect is undefined. If
+// the two registrations use incompatible in-memory representations, code
+// expecting the other registration will then cast a type to the wrong type,
+// resulting in a potentially exploitable memory error. This conflict can also
+// occur if BoringSSL later adds support for |ext->ext_nid|, with a different
+// in-memory representation than the one expected by |ext|.
+//
+// This function, additionally, is not thread-safe and cannot be called
+// concurrently with any other BoringSSL function.
+//
+// As a result, it is impossible to safely use this function. Registering a
+// custom extension has no impact on certificate verification so, instead,
+// callers should simply handle the custom extension with the byte-based
+// |X509_EXTENSION| APIs directly. Registering |ext| with the library has little
+// practical value.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
+
+// X509V3_EXT_add_alias registers a custom extension with NID |nid_to|. The
+// corresponding ASN.1 type is copied from |nid_from|. It returns one on success
+// and zero on error.
+//
+// WARNING: Do not use this function. See |X509V3_EXT_add|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int X509V3_EXT_add_alias(int nid_to,
+                                                           int nid_from);
+
+
 // Deprecated config-based extension creation.
 //
 // The following functions allow specifying X.509 extensions using OpenSSL's
@@ -4566,63 +4844,8 @@ OPENSSL_EXPORT int X509_STORE_load_locations(X509_STORE *ctx, const char *file,
                                              const char *dir);
 OPENSSL_EXPORT int X509_STORE_set_default_paths(X509_STORE *ctx);
 
-typedef void *(*X509V3_EXT_NEW)(void);
-typedef void (*X509V3_EXT_FREE)(void *);
-typedef void *(*X509V3_EXT_D2I)(void *, const unsigned char **, long);
-typedef int (*X509V3_EXT_I2D)(void *, unsigned char **);
-typedef STACK_OF(CONF_VALUE) *(*X509V3_EXT_I2V)(const X509V3_EXT_METHOD *method,
-                                                void *ext,
-                                                STACK_OF(CONF_VALUE) *extlist);
-typedef void *(*X509V3_EXT_V2I)(const X509V3_EXT_METHOD *method,
-                                const X509V3_CTX *ctx,
-                                const STACK_OF(CONF_VALUE) *values);
-typedef char *(*X509V3_EXT_I2S)(const X509V3_EXT_METHOD *method, void *ext);
-typedef void *(*X509V3_EXT_S2I)(const X509V3_EXT_METHOD *method,
-                                const X509V3_CTX *ctx, const char *str);
-typedef int (*X509V3_EXT_I2R)(const X509V3_EXT_METHOD *method, void *ext,
-                              BIO *out, int indent);
-typedef void *(*X509V3_EXT_R2I)(const X509V3_EXT_METHOD *method,
-                                const X509V3_CTX *ctx, const char *str);
-
-// V3 extension structure
-
-struct v3_ext_method {
-  int ext_nid;
-  int ext_flags;
-
-  // it determines how values of this extension are allocated, released, parsed,
-  // and marshalled. This must be non-NULL.
-  ASN1_ITEM_EXP *it;
-
-  // The following functions are ignored in favor of |it|. They are retained in
-  // the struct only for source compatibility with existing struct definitions.
-  X509V3_EXT_NEW ext_new;
-  X509V3_EXT_FREE ext_free;
-  X509V3_EXT_D2I d2i;
-  X509V3_EXT_I2D i2d;
-
-  // The following pair is used for string extensions
-  X509V3_EXT_I2S i2s;
-  X509V3_EXT_S2I s2i;
-
-  // The following pair is used for multi-valued extensions
-  X509V3_EXT_I2V i2v;
-  X509V3_EXT_V2I v2i;
-
-  // The following are used for raw extensions
-  X509V3_EXT_I2R i2r;
-  X509V3_EXT_R2I r2i;
-
-  void *usr_data;  // Any extension specific data
-};
-
-DEFINE_STACK_OF(X509V3_EXT_METHOD)
-
-#define X509V3_EXT_CTX_DEP 0x2
-#define X509V3_EXT_MULTILINE 0x4
-
 struct BASIC_CONSTRAINTS_st {
-  int ca;
+  ASN1_BOOLEAN ca;
   ASN1_INTEGER *pathlen;
 };
 
@@ -4786,155 +5009,6 @@ DECLARE_ASN1_ALLOC_FUNCTIONS(NAME_CONSTRAINTS)
 
 DECLARE_ASN1_ALLOC_FUNCTIONS(POLICY_CONSTRAINTS)
 DECLARE_ASN1_ITEM(POLICY_CONSTRAINTS)
-
-// X509V3_EXT_add registers |ext| as a custom extension for the extension type
-// |ext->ext_nid|. |ext| must be valid for the remainder of the address space's
-// lifetime. It returns one on success and zero on error.
-//
-// WARNING: This function modifies global state. If other code in the same
-// address space also registers an extension with type |ext->ext_nid|, the two
-// registrations will conflict. Which registration takes effect is undefined. If
-// the two registrations use incompatible in-memory representations, code
-// expecting the other registration will then cast a type to the wrong type,
-// resulting in a potentially exploitable memory error. This conflict can also
-// occur if BoringSSL later adds support for |ext->ext_nid|, with a different
-// in-memory representation than the one expected by |ext|.
-//
-// This function, additionally, is not thread-safe and cannot be called
-// concurrently with any other BoringSSL function.
-//
-// As a result, it is impossible to safely use this function. Registering a
-// custom extension has no impact on certificate verification so, instead,
-// callers should simply handle the custom extension with the byte-based
-// |X509_EXTENSION| APIs directly. Registering |ext| with the library has little
-// practical value.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
-
-// X509V3_EXT_add_alias registers a custom extension with NID |nid_to|. The
-// corresponding ASN.1 type is copied from |nid_from|. It returns one on success
-// and zero on error.
-//
-// WARNING: Do not use this function. See |X509V3_EXT_add|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int X509V3_EXT_add_alias(int nid_to,
-                                                           int nid_from);
-
-OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get(
-    const X509_EXTENSION *ext);
-OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid);
-
-// X509V3_EXT_d2i decodes |ext| and returns a pointer to a newly-allocated
-// structure, with type dependent on the type of the extension. It returns NULL
-// if |ext| is an unsupported extension or if there was a syntax error in the
-// extension. The caller should cast the return value to the expected type and
-// free the structure when done.
-//
-// WARNING: Casting the return value to the wrong type is a potentially
-// exploitable memory error, so callers must not use this function before
-// checking |ext| is of a known type.
-OPENSSL_EXPORT void *X509V3_EXT_d2i(const X509_EXTENSION *ext);
-
-// X509V3_get_d2i finds and decodes the extension in |extensions| of type |nid|.
-// If found, it decodes it and returns a newly-allocated structure, with type
-// dependent on |nid|. If the extension is not found or on error, it returns
-// NULL. The caller may distinguish these cases using the |out_critical| value.
-//
-// If |out_critical| is not NULL, this function sets |*out_critical| to one if
-// the extension is found and critical, zero if it is found and not critical, -1
-// if it is not found, and -2 if there is an invalid duplicate extension. Note
-// this function may set |*out_critical| to one or zero and still return NULL if
-// the extension is found but has a syntax error.
-//
-// If |out_idx| is not NULL, this function looks for the first occurrence of the
-// extension after |*out_idx|. It then sets |*out_idx| to the index of the
-// extension, or -1 if not found. If |out_idx| is non-NULL, duplicate extensions
-// are not treated as an error. Callers, however, should not rely on this
-// behavior as it may be removed in the future. Duplicate extensions are
-// forbidden in RFC 5280.
-//
-// WARNING: This function is difficult to use correctly. Callers should pass a
-// non-NULL |out_critical| and check both the return value and |*out_critical|
-// to handle errors. If the return value is NULL and |*out_critical| is not -1,
-// there was an error. Otherwise, the function succeeded and but may return NULL
-// for a missing extension. Callers should pass NULL to |out_idx| so that
-// duplicate extensions are handled correctly.
-//
-// Additionally, casting the return value to the wrong type is a potentially
-// exploitable memory error, so callers must ensure the cast and |nid| match.
-OPENSSL_EXPORT void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions,
-                                    int nid, int *out_critical, int *out_idx);
-
-// X509V3_EXT_free casts |ext_data| into the type that corresponds to |nid| and
-// releases memory associated with it. It returns one on success and zero if
-// |nid| is not a known extension.
-//
-// WARNING: Casting |ext_data| to the wrong type is a potentially exploitable
-// memory error, so callers must ensure |ext_data|'s type matches |nid|.
-//
-// TODO(davidben): OpenSSL upstream no longer exposes this function. Remove it?
-OPENSSL_EXPORT int X509V3_EXT_free(int nid, void *ext_data);
-
-// X509V3_EXT_i2d casts |ext_struc| into the type that corresponds to
-// |ext_nid|, serializes it, and returns a newly-allocated |X509_EXTENSION|
-// object containing the serialization, or NULL on error. The |X509_EXTENSION|
-// has OID |ext_nid| and is critical if |crit| is one.
-//
-// WARNING: Casting |ext_struc| to the wrong type is a potentially exploitable
-// memory error, so callers must ensure |ext_struct|'s type matches |ext_nid|.
-OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
-                                              void *ext_struc);
-
-// The following constants control the behavior of |X509V3_add1_i2d| and related
-// functions.
-
-// X509V3_ADD_OP_MASK can be ANDed with the flags to determine how duplicate
-// extensions are processed.
-#define X509V3_ADD_OP_MASK 0xfL
-
-// X509V3_ADD_DEFAULT causes the function to fail if the extension was already
-// present.
-#define X509V3_ADD_DEFAULT 0L
-
-// X509V3_ADD_APPEND causes the function to unconditionally appended the new
-// extension to to the extensions list, even if there is a duplicate.
-#define X509V3_ADD_APPEND 1L
-
-// X509V3_ADD_REPLACE causes the function to replace the existing extension, or
-// append if it is not present.
-#define X509V3_ADD_REPLACE 2L
-
-// X509V3_ADD_REPLACE_EXISTING causes the function to replace the existing
-// extension and fail if it is not present.
-#define X509V3_ADD_REPLACE_EXISTING 3L
-
-// X509V3_ADD_KEEP_EXISTING causes the function to succeed without replacing the
-// extension if already present.
-#define X509V3_ADD_KEEP_EXISTING 4L
-
-// X509V3_ADD_DELETE causes the function to remove the matching extension. No
-// new extension is added. If there is no matching extension, the function
-// fails. The |value| parameter is ignored in this mode.
-#define X509V3_ADD_DELETE 5L
-
-// X509V3_ADD_SILENT may be ORed into one of the values above to indicate the
-// function should not add to the error queue on duplicate or missing extension.
-// The function will continue to return zero in those cases, and it will
-// continue to return -1 and add to the error queue on other errors.
-#define X509V3_ADD_SILENT 0x10
-
-// X509V3_add1_i2d casts |value| to the type that corresponds to |nid|,
-// serializes it, and appends it to the extension list in |*x|. If |*x| is NULL,
-// it will set |*x| to a newly-allocated |STACK_OF(X509_EXTENSION)| as needed.
-// The |crit| parameter determines whether the new extension is critical.
-// |flags| may be some combination of the |X509V3_ADD_*| constants to control
-// the function's behavior on duplicate extension.
-//
-// This function returns one on success, zero if the operation failed due to a
-// missing or duplicate extension, and -1 on other errors.
-//
-// WARNING: Casting |value| to the wrong type is a potentially exploitable
-// memory error, so callers must ensure |value|'s type matches |nid|.
-OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
-                                   void *value, int crit, unsigned long flags);
 
 
 #if defined(__cplusplus)

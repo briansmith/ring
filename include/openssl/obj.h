@@ -194,8 +194,8 @@ OPENSSL_EXPORT int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
 // duplicate OIDs, short names, or long names. If two callers in the same
 // address space add conflicting values, only one registration will take effect.
 // Avoid this function if possible. Instead, callers can process OIDs unknown to
-// BoringSSL by acting on the byte representation directly. See |OBJ_get0_data|
-// and |OBJ_length|.
+// BoringSSL by acting on the byte representation directly. See
+// |ASN1_OBJECT_create|, |OBJ_get0_data|, and |OBJ_length|.
 OPENSSL_EXPORT int OBJ_create(const char *oid, const char *short_name,
                               const char *long_name);
 
