@@ -68,6 +68,14 @@
 #include "../internal.h"
 #include "internal.h"
 
+
+struct x509_purpose_st {
+  int purpose;
+  int trust;  // Default trust ID
+  int (*check_purpose)(const struct x509_purpose_st *, const X509 *, int);
+  const char *sname;
+} /* X509_PURPOSE */;
+
 #define V1_ROOT (EXFLAG_V1 | EXFLAG_SS)
 #define ku_reject(x, usage) \
   (((x)->ex_flags & EXFLAG_KUSAGE) && !((x)->ex_kusage & (usage)))
@@ -97,29 +105,24 @@ static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca);
 #define X509_TRUST_NONE (-1)
 
 static const X509_PURPOSE xstandard[] = {
-    {X509_PURPOSE_SSL_CLIENT, X509_TRUST_SSL_CLIENT, 0,
-     check_purpose_ssl_client, (char *)"SSL client", (char *)"sslclient", NULL},
-    {X509_PURPOSE_SSL_SERVER, X509_TRUST_SSL_SERVER, 0,
-     check_purpose_ssl_server, (char *)"SSL server", (char *)"sslserver", NULL},
-    {X509_PURPOSE_NS_SSL_SERVER, X509_TRUST_SSL_SERVER, 0,
-     check_purpose_ns_ssl_server, (char *)"Netscape SSL server",
-     (char *)"nssslserver", NULL},
-    {X509_PURPOSE_SMIME_SIGN, X509_TRUST_EMAIL, 0, check_purpose_smime_sign,
-     (char *)"S/MIME signing", (char *)"smimesign", NULL},
-    {X509_PURPOSE_SMIME_ENCRYPT, X509_TRUST_EMAIL, 0,
-     check_purpose_smime_encrypt, (char *)"S/MIME encryption",
-     (char *)"smimeencrypt", NULL},
-    {X509_PURPOSE_CRL_SIGN, X509_TRUST_COMPAT, 0, check_purpose_crl_sign,
-     (char *)"CRL signing", (char *)"crlsign", NULL},
-    {X509_PURPOSE_ANY, X509_TRUST_NONE, 0, no_check, (char *)"Any Purpose",
-     (char *)"any", NULL},
+    {X509_PURPOSE_SSL_CLIENT, X509_TRUST_SSL_CLIENT, check_purpose_ssl_client,
+     "sslclient"},
+    {X509_PURPOSE_SSL_SERVER, X509_TRUST_SSL_SERVER, check_purpose_ssl_server,
+     "sslserver"},
+    {X509_PURPOSE_NS_SSL_SERVER, X509_TRUST_SSL_SERVER,
+     check_purpose_ns_ssl_server, "nssslserver"},
+    {X509_PURPOSE_SMIME_SIGN, X509_TRUST_EMAIL, check_purpose_smime_sign,
+     "smimesign"},
+    {X509_PURPOSE_SMIME_ENCRYPT, X509_TRUST_EMAIL, check_purpose_smime_encrypt,
+     "smimeencrypt"},
+    {X509_PURPOSE_CRL_SIGN, X509_TRUST_COMPAT, check_purpose_crl_sign,
+     "crlsign"},
+    {X509_PURPOSE_ANY, X509_TRUST_NONE, no_check, "any"},
     // |X509_PURPOSE_OCSP_HELPER| performs no actual checks. OpenSSL's OCSP
     // implementation relied on the caller performing EKU and KU checks.
-    {X509_PURPOSE_OCSP_HELPER, X509_TRUST_COMPAT, 0, no_check,
-     (char *)"OCSP helper", (char *)"ocsphelper", NULL},
-    {X509_PURPOSE_TIMESTAMP_SIGN, X509_TRUST_TSA, 0,
-     check_purpose_timestamp_sign, (char *)"Time Stamp signing",
-     (char *)"timestampsign", NULL},
+    {X509_PURPOSE_OCSP_HELPER, X509_TRUST_COMPAT, no_check, "ocsphelper"},
+    {X509_PURPOSE_TIMESTAMP_SIGN, X509_TRUST_TSA, check_purpose_timestamp_sign,
+     "timestampsign"},
 };
 
 int X509_check_purpose(X509 *x, int id, int ca) {
@@ -156,8 +159,6 @@ int X509_PURPOSE_set(int *p, int purpose) {
   return 1;
 }
 
-int X509_PURPOSE_get_count(void) { return OPENSSL_ARRAY_SIZE(xstandard); }
-
 const X509_PURPOSE *X509_PURPOSE_get0(int idx) {
   if (idx < 0 || (size_t)idx >= OPENSSL_ARRAY_SIZE(xstandard)) {
     return NULL;
@@ -166,9 +167,8 @@ const X509_PURPOSE *X509_PURPOSE_get0(int idx) {
 }
 
 int X509_PURPOSE_get_by_sname(const char *sname) {
-  const X509_PURPOSE *xptmp;
-  for (int i = 0; i < X509_PURPOSE_get_count(); i++) {
-    xptmp = X509_PURPOSE_get0(i);
+  for (int i = 0; i < (int)OPENSSL_ARRAY_SIZE(xstandard); i++) {
+    const X509_PURPOSE *xptmp = X509_PURPOSE_get0(i);
     if (!strcmp(xptmp->sname, sname)) {
       return i;
     }
@@ -188,10 +188,6 @@ int X509_PURPOSE_get_by_id(int purpose) {
 }
 
 int X509_PURPOSE_get_id(const X509_PURPOSE *xp) { return xp->purpose; }
-
-char *X509_PURPOSE_get0_name(const X509_PURPOSE *xp) { return xp->name; }
-
-char *X509_PURPOSE_get0_sname(const X509_PURPOSE *xp) { return xp->sname; }
 
 int X509_PURPOSE_get_trust(const X509_PURPOSE *xp) { return xp->trust; }
 

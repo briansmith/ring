@@ -655,14 +655,14 @@ OPENSSL_EXPORT const uint8_t *X509_keyid_get0(const X509 *x509, int *out_len);
 
 // X509_add1_trust_object configures |x509| as a valid trust anchor for |obj|.
 // It returns one on success and zero on error. |obj| should be a certificate
-// usage OID associated with an |X509_TRUST| object.
+// usage OID associated with an |X509_TRUST_*| constant.
 //
 // See |X509_VERIFY_PARAM_set_trust| for details on how this value is evaluated.
 OPENSSL_EXPORT int X509_add1_trust_object(X509 *x509, const ASN1_OBJECT *obj);
 
 // X509_add1_reject_object configures |x509| as distrusted for |obj|. It returns
 // one on success and zero on error. |obj| should be a certificate usage OID
-// associated with an |X509_TRUST| object.
+// associated with an |X509_TRUST_*| constant.
 //
 // See |X509_VERIFY_PARAM_set_trust| for details on how this value is evaluated.
 OPENSSL_EXPORT int X509_add1_reject_object(X509 *x509, const ASN1_OBJECT *obj);
@@ -4331,19 +4331,6 @@ struct X509_algor_st {
 
 DECLARE_STACK_OF(DIST_POINT)
 
-// This is used for a table of trust checking functions
-
-struct x509_trust_st {
-  int trust;
-  int flags;
-  int (*check_trust)(const X509_TRUST *, X509 *, int);
-  char *name;
-  int arg1;
-  void *arg2;
-} /* X509_TRUST */;
-
-DEFINE_STACK_OF(X509_TRUST)
-
 OPENSSL_EXPORT const char *X509_get_default_cert_area(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_dir(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_file(void);
@@ -4351,8 +4338,6 @@ OPENSSL_EXPORT const char *X509_get_default_cert_dir_env(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_file_env(void);
 OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
 
-
-OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
 
 OPENSSL_EXPORT int X509_cmp(const X509 *a, const X509 *b);
 
@@ -4383,13 +4368,6 @@ OPENSSL_EXPORT uint32_t X509_NAME_hash(X509_NAME *name);
 OPENSSL_EXPORT uint32_t X509_NAME_hash_old(X509_NAME *name);
 
 OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
-
-OPENSSL_EXPORT int X509_TRUST_get_count(void);
-OPENSSL_EXPORT const X509_TRUST *X509_TRUST_get0(int idx);
-OPENSSL_EXPORT int X509_TRUST_get_by_id(int id);
-OPENSSL_EXPORT int X509_TRUST_get_flags(const X509_TRUST *xp);
-OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
-OPENSSL_EXPORT int X509_TRUST_get_trust(const X509_TRUST *xp);
 
 
 /*
@@ -4682,18 +4660,6 @@ struct ISSUING_DIST_POINT_st {
 #define NS_OBJSIGN_CA 0x01
 #define NS_ANY_CA (NS_SSL_CA | NS_SMIME_CA | NS_OBJSIGN_CA)
 
-typedef struct x509_purpose_st {
-  int purpose;
-  int trust;  // Default trust ID
-  int flags;
-  int (*check_purpose)(const struct x509_purpose_st *, const X509 *, int);
-  char *name;
-  char *sname;
-  void *usr_data;
-} X509_PURPOSE;
-
-DEFINE_STACK_OF(X509_PURPOSE)
-
 DECLARE_ASN1_FUNCTIONS_const(BASIC_CONSTRAINTS)
 
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
@@ -4893,16 +4859,9 @@ OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
 OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
                                    void *value, int crit, unsigned long flags);
 
-OPENSSL_EXPORT int X509_PURPOSE_set(int *p, int purpose);
-
-OPENSSL_EXPORT int X509_PURPOSE_get_count(void);
-OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int idx);
 OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(const char *sname);
-OPENSSL_EXPORT int X509_PURPOSE_get_by_id(int id);
-OPENSSL_EXPORT char *X509_PURPOSE_get0_name(const X509_PURPOSE *xp);
-OPENSSL_EXPORT char *X509_PURPOSE_get0_sname(const X509_PURPOSE *xp);
-OPENSSL_EXPORT int X509_PURPOSE_get_trust(const X509_PURPOSE *xp);
-OPENSSL_EXPORT int X509_PURPOSE_get_id(const X509_PURPOSE *);
+OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int idx);
+OPENSSL_EXPORT int X509_PURPOSE_get_id(const X509_PURPOSE *purpose);
 
 
 #if defined(__cplusplus)

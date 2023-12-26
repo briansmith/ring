@@ -66,23 +66,28 @@
 #include "internal.h"
 
 
+typedef struct x509_trust_st X509_TRUST;
+
+struct x509_trust_st {
+  int trust;
+  int (*check_trust)(const X509_TRUST *, X509 *, int);
+  int nid;
+} /* X509_TRUST */;
+
+static const X509_TRUST *X509_TRUST_get0(int idx);
+
 static int trust_1oidany(const X509_TRUST *trust, X509 *x, int flags);
 static int trust_compat(const X509_TRUST *trust, X509 *x, int flags);
 
 static int obj_trust(int id, X509 *x, int flags);
 
 static const X509_TRUST trstandard[] = {
-    {X509_TRUST_COMPAT, 0, trust_compat, (char *)"compatible", 0, NULL},
-    {X509_TRUST_SSL_CLIENT, 0, trust_1oidany, (char *)"SSL Client",
-     NID_client_auth, NULL},
-    {X509_TRUST_SSL_SERVER, 0, trust_1oidany, (char *)"SSL Server",
-     NID_server_auth, NULL},
-    {X509_TRUST_EMAIL, 0, trust_1oidany, (char *)"S/MIME email",
-     NID_email_protect, NULL},
-    {X509_TRUST_OBJECT_SIGN, 0, trust_1oidany, (char *)"Object Signer",
-     NID_code_sign, NULL},
-    {X509_TRUST_TSA, 0, trust_1oidany, (char *)"TSA server", NID_time_stamp,
-     NULL}};
+    {X509_TRUST_COMPAT, trust_compat, 0},
+    {X509_TRUST_SSL_CLIENT, trust_1oidany, NID_client_auth},
+    {X509_TRUST_SSL_SERVER, trust_1oidany, NID_server_auth},
+    {X509_TRUST_EMAIL, trust_1oidany, NID_email_protect},
+    {X509_TRUST_OBJECT_SIGN, trust_1oidany, NID_code_sign},
+    {X509_TRUST_TSA, trust_1oidany, NID_time_stamp}};
 
 int X509_check_trust(X509 *x, int id, int flags) {
   if (id == -1) {
@@ -104,9 +109,7 @@ int X509_check_trust(X509 *x, int id, int flags) {
   return pt->check_trust(pt, x, flags);
 }
 
-int X509_TRUST_get_count(void) { return OPENSSL_ARRAY_SIZE(trstandard); }
-
-const X509_TRUST *X509_TRUST_get0(int idx) {
+static const X509_TRUST *X509_TRUST_get0(int idx) {
   if (idx < 0 || (size_t)idx >= OPENSSL_ARRAY_SIZE(trstandard)) {
     return NULL;
   }
@@ -133,15 +136,9 @@ int X509_TRUST_set(int *t, int trust) {
   return 1;
 }
 
-int X509_TRUST_get_flags(const X509_TRUST *xp) { return xp->flags; }
-
-char *X509_TRUST_get0_name(const X509_TRUST *xp) { return xp->name; }
-
-int X509_TRUST_get_trust(const X509_TRUST *xp) { return xp->trust; }
-
 static int trust_1oidany(const X509_TRUST *trust, X509 *x, int flags) {
   if (x->aux && (x->aux->trust || x->aux->reject)) {
-    return obj_trust(trust->arg1, x, flags);
+    return obj_trust(trust->nid, x, flags);
   }
   // we don't have any trust settings: for compatibility we return trusted
   // if it is self signed
@@ -160,24 +157,21 @@ static int trust_compat(const X509_TRUST *trust, X509 *x, int flags) {
 }
 
 static int obj_trust(int id, X509 *x, int flags) {
-  ASN1_OBJECT *obj;
-  size_t i;
-  X509_CERT_AUX *ax;
-  ax = x->aux;
+  X509_CERT_AUX *ax = x->aux;
   if (!ax) {
     return X509_TRUST_UNTRUSTED;
   }
   if (ax->reject) {
-    for (i = 0; i < sk_ASN1_OBJECT_num(ax->reject); i++) {
-      obj = sk_ASN1_OBJECT_value(ax->reject, i);
+    for (size_t i = 0; i < sk_ASN1_OBJECT_num(ax->reject); i++) {
+      const ASN1_OBJECT *obj = sk_ASN1_OBJECT_value(ax->reject, i);
       if (OBJ_obj2nid(obj) == id) {
         return X509_TRUST_REJECTED;
       }
     }
   }
   if (ax->trust) {
-    for (i = 0; i < sk_ASN1_OBJECT_num(ax->trust); i++) {
-      obj = sk_ASN1_OBJECT_value(ax->trust, i);
+    for (size_t i = 0; i < sk_ASN1_OBJECT_num(ax->trust); i++) {
+      const ASN1_OBJECT *obj = sk_ASN1_OBJECT_value(ax->trust, i);
       if (OBJ_obj2nid(obj) == id) {
         return X509_TRUST_TRUSTED;
       }
