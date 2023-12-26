@@ -4344,10 +4344,6 @@ struct x509_trust_st {
 
 DEFINE_STACK_OF(X509_TRUST)
 
-// standard trust ids
-
-#define X509_TRUST_DEFAULT (-1)  // Only valid in purpose settings
-
 OPENSSL_EXPORT const char *X509_get_default_cert_area(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_dir(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_file(void);

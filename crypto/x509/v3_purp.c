@@ -91,6 +91,11 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
                                         int ca);
 static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca);
 
+// X509_TRUST_NONE is not a valid |X509_TRUST_*| constant. It is used by
+// |X509_PURPOSE_ANY| to indicate that it has no corresponding trust type and
+// cannot be used with |X509_STORE_CTX_set_purpose|.
+#define X509_TRUST_NONE (-1)
+
 static const X509_PURPOSE xstandard[] = {
     {X509_PURPOSE_SSL_CLIENT, X509_TRUST_SSL_CLIENT, 0,
      check_purpose_ssl_client, (char *)"SSL client", (char *)"sslclient", NULL},
@@ -106,7 +111,7 @@ static const X509_PURPOSE xstandard[] = {
      (char *)"smimeencrypt", NULL},
     {X509_PURPOSE_CRL_SIGN, X509_TRUST_COMPAT, 0, check_purpose_crl_sign,
      (char *)"CRL signing", (char *)"crlsign", NULL},
-    {X509_PURPOSE_ANY, X509_TRUST_DEFAULT, 0, no_check, (char *)"Any Purpose",
+    {X509_PURPOSE_ANY, X509_TRUST_NONE, 0, no_check, (char *)"Any Purpose",
      (char *)"any", NULL},
     // |X509_PURPOSE_OCSP_HELPER| performs no actual checks. OpenSSL's OCSP
     // implementation relied on the caller performing EKU and KU checks.
