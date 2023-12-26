@@ -4313,6 +4313,31 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx,
 OPENSSL_EXPORT STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(
     X509_STORE *store);
 
+// X509_PURPOSE_get_by_sname returns the |X509_PURPOSE_*| constant corresponding
+// a short name |sname|, or -1 if |sname| was not recognized.
+//
+// Use |X509_PURPOSE_*| constants directly instead. The short names used by this
+// function look like "sslserver" or "smimeencrypt", so they do not make
+// especially good APIs.
+//
+// This function differs from OpenSSL, which returns an "index" to be passed to
+// |X509_PURPOSE_get0|, followed by |X509_PURPOSE_get_id|, to finally obtain an
+// |X509_PURPOSE_*| value suitable for use with |X509_VERIFY_PARAM_set_purpose|.
+OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(const char *sname);
+
+// X509_PURPOSE_get0 returns the |X509_PURPOSE| object corresponding to |id|,
+// which should be one of the |X509_PURPOSE_*| constants, or NULL if none
+// exists.
+//
+// This function differs from OpenSSL, which takes an "index", returned from
+// |X509_PURPOSE_get_by_sname|. In BoringSSL, indices and |X509_PURPOSE_*| IDs
+// are the same.
+OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int id);
+
+// X509_PURPOSE_get_id returns |purpose|'s ID. This will be one of the
+// |X509_PURPOSE_*| constants.
+OPENSSL_EXPORT int X509_PURPOSE_get_id(const X509_PURPOSE *purpose);
+
 
 // Private structures.
 
@@ -4858,10 +4883,6 @@ OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
 // memory error, so callers must ensure |value|'s type matches |nid|.
 OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
                                    void *value, int crit, unsigned long flags);
-
-OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(const char *sname);
-OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int idx);
-OPENSSL_EXPORT int X509_PURPOSE_get_id(const X509_PURPOSE *purpose);
 
 
 #if defined(__cplusplus)

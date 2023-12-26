@@ -54,9 +54,6 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <assert.h>
-#include <limits.h>
-
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
@@ -74,8 +71,6 @@ struct x509_trust_st {
   int nid;
 } /* X509_TRUST */;
 
-static const X509_TRUST *X509_TRUST_get0(int idx);
-
 static int trust_1oidany(const X509_TRUST *trust, X509 *x, int flags);
 static int trust_compat(const X509_TRUST *trust, X509 *x, int flags);
 
@@ -89,6 +84,15 @@ static const X509_TRUST trstandard[] = {
     {X509_TRUST_OBJECT_SIGN, trust_1oidany, NID_code_sign},
     {X509_TRUST_TSA, trust_1oidany, NID_time_stamp}};
 
+static const X509_TRUST *X509_TRUST_get0(int id) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(trstandard); i++) {
+    if (trstandard[i].trust == id) {
+      return &trstandard[i];
+    }
+  }
+  return NULL;
+}
+
 int X509_check_trust(X509 *x, int id, int flags) {
   if (id == -1) {
     return X509_TRUST_TRUSTED;
@@ -101,39 +105,18 @@ int X509_check_trust(X509 *x, int id, int flags) {
     }
     return trust_compat(NULL, x, 0);
   }
-  int idx = X509_TRUST_get_by_id(id);
-  if (idx == -1) {
+  const X509_TRUST *pt = X509_TRUST_get0(id);
+  if (pt == NULL) {
+    // Unknown trust IDs are silently reintrepreted as NIDs. This is unreachable
+    // from the certificate verifier itself, but wpa_supplicant relies on it.
+    // Note this relies on commonly-used NIDs and trust IDs not colliding.
     return obj_trust(id, x, flags);
   }
-  const X509_TRUST *pt = X509_TRUST_get0(idx);
   return pt->check_trust(pt, x, flags);
 }
 
-static const X509_TRUST *X509_TRUST_get0(int idx) {
-  if (idx < 0 || (size_t)idx >= OPENSSL_ARRAY_SIZE(trstandard)) {
-    return NULL;
-  }
-  return trstandard + idx;
-}
-
-int X509_TRUST_get_by_id(int id) {
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(trstandard); i++) {
-    if (trstandard[i].trust == id) {
-      static_assert(OPENSSL_ARRAY_SIZE(trstandard) <= INT_MAX,
-                    "indices must fit in int");
-      return (int)i;
-    }
-  }
-  return -1;
-}
-
-int X509_TRUST_set(int *t, int trust) {
-  if (X509_TRUST_get_by_id(trust) == -1) {
-    OPENSSL_PUT_ERROR(X509, X509_R_INVALID_TRUST);
-    return 0;
-  }
-  *t = trust;
-  return 1;
+int X509_is_valid_trust_id(int trust) {
+  return X509_TRUST_get0(trust) != NULL;
 }
 
 static int trust_1oidany(const X509_TRUST *trust, X509 *x, int flags) {

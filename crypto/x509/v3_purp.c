@@ -54,8 +54,6 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <assert.h>
-#include <limits.h>
 #include <string.h>
 
 #include <openssl/digest.h>
@@ -135,8 +133,8 @@ int X509_check_purpose(X509 *x, int id, int ca) {
   if (id == -1) {
     return 1;
   }
-  int idx = X509_PURPOSE_get_by_id(id);
-  if (idx == -1) {
+  const X509_PURPOSE *pt = X509_PURPOSE_get0(id);
+  if (pt == NULL) {
     return 0;
   }
   // Historically, |check_purpose| implementations other than |X509_PURPOSE_ANY|
@@ -146,42 +144,22 @@ int X509_check_purpose(X509 *x, int id, int ca) {
   if (ca && id != X509_PURPOSE_ANY && !check_ca(x)) {
     return 0;
   }
-  const X509_PURPOSE *pt = X509_PURPOSE_get0(idx);
   return pt->check_purpose(pt, x, ca);
 }
 
-int X509_PURPOSE_set(int *p, int purpose) {
-  if (X509_PURPOSE_get_by_id(purpose) == -1) {
-    OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_PURPOSE);
-    return 0;
+const X509_PURPOSE *X509_PURPOSE_get0(int id) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(xstandard); i++) {
+    if (xstandard[i].purpose == id) {
+      return &xstandard[i];
+    }
   }
-  *p = purpose;
-  return 1;
-}
-
-const X509_PURPOSE *X509_PURPOSE_get0(int idx) {
-  if (idx < 0 || (size_t)idx >= OPENSSL_ARRAY_SIZE(xstandard)) {
-    return NULL;
-  }
-  return xstandard + idx;
+  return NULL;
 }
 
 int X509_PURPOSE_get_by_sname(const char *sname) {
-  for (int i = 0; i < (int)OPENSSL_ARRAY_SIZE(xstandard); i++) {
-    const X509_PURPOSE *xptmp = X509_PURPOSE_get0(i);
-    if (!strcmp(xptmp->sname, sname)) {
-      return i;
-    }
-  }
-  return -1;
-}
-
-int X509_PURPOSE_get_by_id(int purpose) {
-  for (size_t i = 0; i <OPENSSL_ARRAY_SIZE(xstandard); i++) {
-    if (xstandard[i].purpose == purpose) {
-      static_assert(OPENSSL_ARRAY_SIZE(xstandard) <= INT_MAX,
-                    "indices must fit in int");
-      return (int)i;
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(xstandard); i++) {
+    if (strcmp(xstandard[i].sname, sname) == 0) {
+      return xstandard[i].purpose;
     }
   }
   return -1;

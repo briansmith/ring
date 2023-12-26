@@ -1485,13 +1485,13 @@ int X509_STORE_CTX_set_purpose(X509_STORE_CTX *ctx, int purpose) {
     return 1;
   }
 
-  int idx = X509_PURPOSE_get_by_id(purpose);
-  if (idx == -1) {
+  const X509_PURPOSE *pobj = X509_PURPOSE_get0(purpose);
+  if (pobj == NULL) {
     OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_PURPOSE_ID);
     return 0;
   }
 
-  int trust = X509_PURPOSE_get_trust(X509_PURPOSE_get0(idx));
+  int trust = X509_PURPOSE_get_trust(pobj);
   if (!X509_STORE_CTX_set_trust(ctx, trust)) {
     return 0;
   }
@@ -1508,7 +1508,7 @@ int X509_STORE_CTX_set_trust(X509_STORE_CTX *ctx, int trust) {
     return 1;
   }
 
-  if (X509_TRUST_get_by_id(trust) == -1) {
+  if (!X509_is_valid_trust_id(trust)) {
     OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_TRUST_ID);
     return 0;
   }
