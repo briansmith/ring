@@ -2647,6 +2647,70 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *to,
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1(X509_VERIFY_PARAM *to,
                                           const X509_VERIFY_PARAM *from);
 
+// X509_V_FLAG_* are flags for |X509_VERIFY_PARAM_set_flags| and
+// |X509_VERIFY_PARAM_clear_flags|.
+
+// X509_V_FLAG_CB_ISSUER_CHECK causes the deprecated verify callback (see
+// |X509_STORE_CTX_set_verify_cb|) to be called for errors while matching
+// subject and issuer certificates.
+#define X509_V_FLAG_CB_ISSUER_CHECK 0x1
+// X509_V_FLAG_USE_CHECK_TIME is an internal flag used to track whether
+// |X509_STORE_CTX_set_time| has been used. If cleared, the system time is
+// restored.
+#define X509_V_FLAG_USE_CHECK_TIME 0x2
+// X509_V_FLAG_CRL_CHECK enables CRL lookup and checking for the leaf.
+#define X509_V_FLAG_CRL_CHECK 0x4
+// X509_V_FLAG_CRL_CHECK_ALL enables CRL lookup and checking for the entire
+// certificate chain. |X509_V_FLAG_CRL_CHECK| must be set for this flag to take
+// effect.
+#define X509_V_FLAG_CRL_CHECK_ALL 0x8
+// X509_V_FLAG_IGNORE_CRITICAL ignores unhandled critical extensions. Do not use
+// this option. Critical extensions ensure the verifier does not bypass
+// unrecognized security restrictions in certificates.
+#define X509_V_FLAG_IGNORE_CRITICAL 0x10
+// X509_V_FLAG_X509_STRICT does nothing. Its functionality has been enabled by
+// default.
+#define X509_V_FLAG_X509_STRICT 0x00
+// X509_V_FLAG_ALLOW_PROXY_CERTS does nothing. Proxy certificate support has
+// been removed.
+#define X509_V_FLAG_ALLOW_PROXY_CERTS 0x40
+// X509_V_FLAG_POLICY_CHECK does nothing. Policy checking is always enabled.
+#define X509_V_FLAG_POLICY_CHECK 0x80
+// X509_V_FLAG_EXPLICIT_POLICY requires some policy OID to be asserted by the
+// final certificate chain. See initial-explicit-policy from RFC 5280,
+// section 6.1.1.
+#define X509_V_FLAG_EXPLICIT_POLICY 0x100
+// X509_V_FLAG_INHIBIT_ANY inhibits the anyPolicy OID. See
+// initial-any-policy-inhibit from RFC 5280, section 6.1.1.
+#define X509_V_FLAG_INHIBIT_ANY 0x200
+// X509_V_FLAG_INHIBIT_MAP inhibits policy mapping. See
+// initial-policy-mapping-inhibit from RFC 5280, section 6.1.1.
+#define X509_V_FLAG_INHIBIT_MAP 0x400
+// X509_V_FLAG_NOTIFY_POLICY does nothing. Its functionality has been removed.
+#define X509_V_FLAG_NOTIFY_POLICY 0x800
+// X509_V_FLAG_EXTENDED_CRL_SUPPORT causes all verifications to fail. Extended
+// CRL features have been removed.
+#define X509_V_FLAG_EXTENDED_CRL_SUPPORT 0x1000
+// X509_V_FLAG_USE_DELTAS causes all verifications to fail. Delta CRL support
+// has been removed.
+#define X509_V_FLAG_USE_DELTAS 0x2000
+// X509_V_FLAG_CHECK_SS_SIGNATURE checks the redundant signature on self-signed
+// trust anchors. This check provides no security benefit and only wastes CPU.
+#define X509_V_FLAG_CHECK_SS_SIGNATURE 0x4000
+// X509_V_FLAG_TRUSTED_FIRST, during path-building, checks for a match in the
+// trust store before considering an untrusted intermediate. This flag is
+// enabled by default.
+#define X509_V_FLAG_TRUSTED_FIRST 0x8000
+// X509_V_FLAG_PARTIAL_CHAIN treats all trusted certificates as trust anchors,
+// independent of the |X509_VERIFY_PARAM_set_trust| setting.
+#define X509_V_FLAG_PARTIAL_CHAIN 0x80000
+// X509_V_FLAG_NO_ALT_CHAINS disables building alternative chains if the initial
+// one was rejected.
+#define X509_V_FLAG_NO_ALT_CHAINS 0x100000
+// X509_V_FLAG_NO_CHECK_TIME disables all time checks in certificate
+// verification.
+#define X509_V_FLAG_NO_CHECK_TIME 0x200000
+
 // X509_VERIFY_PARAM_set_flags enables all values in |flags| in |param|'s
 // verification flags and returns one. |flags| should be a combination of
 // |X509_V_FLAG_*| constants.
@@ -2867,6 +2931,10 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *param,
 // OID. If the certificate is not explicitly trusted or distrusted for this OID,
 // it is trusted if self-signed instead. Note this slightly differs from the
 // above.
+//
+// If the |X509_V_FLAG_PARTIAL_CHAIN| is set, every certificate from
+// |X509_STORE| is a trust anchor, unless it was explicitly distrusted for the
+// OID.
 //
 // It is currently not possible to configure custom trust OIDs. Contact the
 // BoringSSL maintainers if your application needs to do so. OpenSSL had an
@@ -4440,53 +4508,6 @@ OPENSSL_EXPORT int X509_LOOKUP_load_file(X509_LOOKUP *lookup, const char *path,
 // instead some default system path is used.
 OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
                                        int type);
-
-// Certificate verify flags
-
-// Send issuer+subject checks to verify_cb
-#define X509_V_FLAG_CB_ISSUER_CHECK 0x1
-// Use check time instead of current time
-#define X509_V_FLAG_USE_CHECK_TIME 0x2
-// Lookup CRLs
-#define X509_V_FLAG_CRL_CHECK 0x4
-// Lookup CRLs for whole chain
-#define X509_V_FLAG_CRL_CHECK_ALL 0x8
-// Ignore unhandled critical extensions
-#define X509_V_FLAG_IGNORE_CRITICAL 0x10
-// Does nothing as its functionality has been enabled by default.
-#define X509_V_FLAG_X509_STRICT 0x00
-// This flag does nothing as proxy certificate support has been removed.
-#define X509_V_FLAG_ALLOW_PROXY_CERTS 0x40
-// Does nothing as its functionality has been enabled by default.
-#define X509_V_FLAG_POLICY_CHECK 0x80
-// Policy variable require-explicit-policy
-#define X509_V_FLAG_EXPLICIT_POLICY 0x100
-// Policy variable inhibit-any-policy
-#define X509_V_FLAG_INHIBIT_ANY 0x200
-// Policy variable inhibit-policy-mapping
-#define X509_V_FLAG_INHIBIT_MAP 0x400
-// Does nothing
-#define X509_V_FLAG_NOTIFY_POLICY 0x800
-// Causes all verifications to fail. Extended CRL features have been removed.
-#define X509_V_FLAG_EXTENDED_CRL_SUPPORT 0x1000
-// Causes all verifications to fail. Delta CRL support has been removed.
-#define X509_V_FLAG_USE_DELTAS 0x2000
-// Check selfsigned CA signature
-#define X509_V_FLAG_CHECK_SS_SIGNATURE 0x4000
-// Use trusted store first
-#define X509_V_FLAG_TRUSTED_FIRST 0x8000
-
-// Allow partial chains if at least one certificate is in trusted store
-#define X509_V_FLAG_PARTIAL_CHAIN 0x80000
-
-// If the initial chain is not trusted, do not attempt to build an alternative
-// chain. Alternate chain checking was introduced in 1.0.2b. Setting this flag
-// will force the behaviour to match that of previous versions.
-#define X509_V_FLAG_NO_ALT_CHAINS 0x100000
-
-// X509_V_FLAG_NO_CHECK_TIME disables all time checks in certificate
-// verification.
-#define X509_V_FLAG_NO_CHECK_TIME 0x200000
 
 OPENSSL_EXPORT X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v,
                                                   const X509_LOOKUP_METHOD *m);
