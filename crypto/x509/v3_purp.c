@@ -74,13 +74,13 @@
 #define xku_reject(x, usage) \
   (((x)->ex_flags & EXFLAG_XKUSAGE) && !((x)->ex_xkusage & (usage)))
 
+static int check_ca(const X509 *x);
 static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
                                     int ca);
 static int check_purpose_ssl_server(const X509_PURPOSE *xp, const X509 *x,
                                     int ca);
 static int check_purpose_ns_ssl_server(const X509_PURPOSE *xp, const X509 *x,
                                        int ca);
-static int purpose_smime(const X509 *x, int ca);
 static int check_purpose_smime_sign(const X509_PURPOSE *xp, const X509 *x,
                                     int ca);
 static int check_purpose_smime_encrypt(const X509_PURPOSE *xp, const X509 *x,
@@ -90,7 +90,6 @@ static int check_purpose_crl_sign(const X509_PURPOSE *xp, const X509 *x,
 static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
                                         int ca);
 static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca);
-static int ocsp_helper(const X509_PURPOSE *xp, const X509 *x, int ca);
 
 static const X509_PURPOSE xstandard[] = {
     {X509_PURPOSE_SSL_CLIENT, X509_TRUST_SSL_CLIENT, 0,
@@ -109,7 +108,9 @@ static const X509_PURPOSE xstandard[] = {
      (char *)"CRL signing", (char *)"crlsign", NULL},
     {X509_PURPOSE_ANY, X509_TRUST_DEFAULT, 0, no_check, (char *)"Any Purpose",
      (char *)"any", NULL},
-    {X509_PURPOSE_OCSP_HELPER, X509_TRUST_COMPAT, 0, ocsp_helper,
+    // |X509_PURPOSE_OCSP_HELPER| performs no actual checks. OpenSSL's OCSP
+    // implementation relied on the caller performing EKU and KU checks.
+    {X509_PURPOSE_OCSP_HELPER, X509_TRUST_COMPAT, 0, no_check,
      (char *)"OCSP helper", (char *)"ocsphelper", NULL},
     {X509_PURPOSE_TIMESTAMP_SIGN, X509_TRUST_TSA, 0,
      check_purpose_timestamp_sign, (char *)"Time Stamp signing",
@@ -128,6 +129,13 @@ int X509_check_purpose(X509 *x, int id, int ca) {
   }
   int idx = X509_PURPOSE_get_by_id(id);
   if (idx == -1) {
+    return 0;
+  }
+  // Historically, |check_purpose| implementations other than |X509_PURPOSE_ANY|
+  // called |check_ca|. This is redundant with the |X509_V_ERR_INVALID_CA|
+  // logic, but |X509_check_purpose| is public API, so we preserve this
+  // behavior.
+  if (ca && id != X509_PURPOSE_ANY && !check_ca(x)) {
     return 0;
   }
   const X509_PURPOSE *pt = X509_PURPOSE_get0(idx);
@@ -411,23 +419,28 @@ int X509_check_ca(X509 *x) {
   return check_ca(x);
 }
 
+// check_purpose returns one if |x| is a valid part of a certificate path for
+// extended key usage |required_xku| and at least one of key usages in
+// |required_kus|. |ca| indicates whether |x| is a CA or end-entity certificate.
+static int check_purpose(const X509 *x, int ca, int required_xku,
+                         int required_kus) {
+  // Check extended key usage on the entire chain.
+  if (required_xku != 0 && xku_reject(x, required_xku)) {
+    return 0;
+  }
+
+  // Check key usages only on the end-entity certificate.
+  return ca || !ku_reject(x, required_kus);
+}
+
 static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
                                     int ca) {
-  if (xku_reject(x, XKU_SSL_CLIENT)) {
-    return 0;
-  }
-  if (ca) {
-    // TODO(davidben): Move the various |check_ca| calls out of the
-    // |check_purpose| callbacks. Those checks are purpose-independent. They are
-    // also redundant when called from |X509_verify_cert|, though
-    // not when |X509_check_purpose| is called directly.
-    return check_ca(x);
-  }
-  // We need to do digital signatures or key agreement
-  if (ku_reject(x, X509v3_KU_DIGITAL_SIGNATURE | X509v3_KU_KEY_AGREEMENT)) {
-    return 0;
-  }
-  return 1;
+  // We need to do digital signatures or key agreement.
+  //
+  // TODO(davidben): We do not implement any TLS client certificate modes based
+  // on key agreement.
+  return check_purpose(x, ca, XKU_SSL_CLIENT,
+                       X509v3_KU_DIGITAL_SIGNATURE | X509v3_KU_KEY_AGREEMENT);
 }
 
 // Key usage needed for TLS/SSL server: digital signature, encipherment or
@@ -439,96 +452,35 @@ static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
 
 static int check_purpose_ssl_server(const X509_PURPOSE *xp, const X509 *x,
                                     int ca) {
-  if (xku_reject(x, XKU_SSL_SERVER)) {
-    return 0;
-  }
-  if (ca) {
-    return check_ca(x);
-  }
-
-  if (ku_reject(x, X509v3_KU_TLS)) {
-    return 0;
-  }
-
-  return 1;
+  return check_purpose(x, ca, XKU_SSL_SERVER, X509v3_KU_TLS);
 }
 
 static int check_purpose_ns_ssl_server(const X509_PURPOSE *xp, const X509 *x,
                                        int ca) {
-  int ret = check_purpose_ssl_server(xp, x, ca);
-  if (!ret || ca) {
-    return ret;
-  }
-  // We need to encipher or Netscape complains
-  if (ku_reject(x, X509v3_KU_KEY_ENCIPHERMENT)) {
-    return 0;
-  }
-  return ret;
-}
-
-// purpose_smime returns one if |x| is a valid S/MIME leaf (|ca| is zero) or CA
-// (|ca| is one) certificate, and zero otherwise.
-static int purpose_smime(const X509 *x, int ca) {
-  if (xku_reject(x, XKU_SMIME)) {
-    return 0;
-  }
-  if (ca) {
-    return check_ca(x);
-  }
-  return 1;
+  // We need to encipher or Netscape complains.
+  return check_purpose(x, ca, XKU_SSL_SERVER, X509v3_KU_KEY_ENCIPHERMENT);
 }
 
 static int check_purpose_smime_sign(const X509_PURPOSE *xp, const X509 *x,
                                     int ca) {
-  int ret = purpose_smime(x, ca);
-  if (!ret || ca) {
-    return ret;
-  }
-  if (ku_reject(x, X509v3_KU_DIGITAL_SIGNATURE | X509v3_KU_NON_REPUDIATION)) {
-    return 0;
-  }
-  return ret;
+  return check_purpose(x, ca, XKU_SMIME,
+                       X509v3_KU_DIGITAL_SIGNATURE | X509v3_KU_NON_REPUDIATION);
 }
 
 static int check_purpose_smime_encrypt(const X509_PURPOSE *xp, const X509 *x,
                                        int ca) {
-  int ret = purpose_smime(x, ca);
-  if (!ret || ca) {
-    return ret;
-  }
-  if (ku_reject(x, X509v3_KU_KEY_ENCIPHERMENT)) {
-    return 0;
-  }
-  return ret;
+  return check_purpose(x, ca, XKU_SMIME, X509v3_KU_KEY_ENCIPHERMENT);
 }
 
 static int check_purpose_crl_sign(const X509_PURPOSE *xp, const X509 *x,
                                   int ca) {
-  if (ca) {
-    return check_ca(x);
-  }
-  if (ku_reject(x, X509v3_KU_CRL_SIGN)) {
-    return 0;
-  }
-  return 1;
-}
-
-// OCSP helper: this is *not* a full OCSP check. It just checks that each CA
-// is valid. Additional checks must be made on the chain.
-
-static int ocsp_helper(const X509_PURPOSE *xp, const X509 *x, int ca) {
-  if (ca) {
-    return check_ca(x);
-  }
-  // leaf certificate is checked in OCSP_verify()
-  return 1;
+  return check_purpose(x, ca, /*required_xku=*/0, X509v3_KU_CRL_SIGN);
 }
 
 static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
                                         int ca) {
-  // If ca is true we must return if this is a valid CA certificate.
   if (ca) {
-    return check_ca(x);
+    return 1;
   }
 
   // Check the optional key usage field:
@@ -544,6 +496,8 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
   }
 
   // Only time stamp key usage is permitted and it's required.
+  //
+  // TODO(davidben): Should we check EKUs up the chain like the other cases?
   if (!(x->ex_flags & EXFLAG_XKUSAGE) || x->ex_xkusage != XKU_TIMESTAMP) {
     return 0;
   }
