@@ -479,7 +479,7 @@ void VerifyCertPathErrors(const std::string &expected_errors_str,
                   << "ACTUAL:\n\n"
                   << actual_errors_str << "\n"
                   << "===> Use "
-                     "testdata/verify_certificate_chain_unittest/"
+                     "pki/testdata/verify_certificate_chain_unittest/"
                      "rebase-errors.py to rebaseline.\n";
   }
 }
@@ -497,7 +497,7 @@ void VerifyCertErrors(const std::string &expected_errors_str,
                   << "ACTUAL:\n\n"
                   << actual_errors_str << "\n"
                   << "===> Use "
-                     "testdata/parse_certificate_unittest/"
+                     "pki/testdata/parse_certificate_unittest/"
                      "rebase-errors.py to rebaseline.\n";
   }
 }

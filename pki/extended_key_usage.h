@@ -68,12 +68,6 @@ inline constexpr uint8_t kTimeStamping[] = {0x2b, 0x06, 0x01, 0x05,
 inline constexpr uint8_t kOCSPSigning[] = {0x2b, 0x06, 0x01, 0x05,
                                            0x05, 0x07, 0x03, 0x09};
 
-// Netscape Server Gated Crypto (2.16.840.1.113730.4.1) is a deprecated OID
-// which in some situations is considered equivalent to the serverAuth key
-// purpose.
-inline constexpr uint8_t kNetscapeServerGatedCrypto[] = {
-    0x60, 0x86, 0x48, 0x01, 0x86, 0xf8, 0x42, 0x04, 0x01};
-
 // Parses |extension_value|, which contains the extnValue field of an X.509v3
 // Extended Key Usage extension, and populates |eku_oids| with the list of
 // DER-encoded OID values (that is, without tag and length). Returns false if

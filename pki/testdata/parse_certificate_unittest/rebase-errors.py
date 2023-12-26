@@ -11,8 +11,8 @@ error format.
 To use this run the affected tests, and then pass the input to this script
 (either via stdin, or as the first argument). For instance:
 
-  $ ./out/Release/net_unittests --gtest_filter="*ParseCertificate*" | \
-     net/data/parse_certificate_unittest/rebase-errors.py
+  $ ./build/pki_test --gtest_filter="*ParseCertificate*:*ParsedCertificate*:" | \
+     pki/testdata/parse_certificate_unittest/rebase-errors.py
 
 The script works by scanning the stdout looking for gtest failures having a
 particular format. The C++ test side should have been instrumented to dump
@@ -21,17 +21,10 @@ out the test file's path on mismatch.
 This script will then update the corresponding .pem file
 """
 
-import sys
+import base64
 import os
-
-script_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path += [os.path.join(script_dir, '..')]
-
-import gencerts
-
-import os
-import sys
 import re
+import sys
 
 # Regular expression to find the failed errors in test stdout.
 #  * Group 1 of the match is file path (relative to //src) where the
@@ -46,7 +39,7 @@ EXPECTED:
 ACTUAL:
 
 ((?:.|\n)*?)
-===> Use net/data/parse_certificate_unittest/rebase-errors.py to rebaseline.
+===> Use pki/testdata/parse_certificate_unittest/rebase-errors.py to rebaseline.
 """, re.MULTILINE)
 
 
@@ -81,11 +74,18 @@ def replace_string(original, start, end, replacement):
   return original[0:start] + replacement + original[end:]
 
 
+def text_data_to_pem(block_header, text_data):
+  # b64encode takes in bytes and returns bytes.
+  pem_data = base64.b64encode(text_data.encode('utf8')).decode('utf8')
+  return '%s\n-----BEGIN %s-----\n%s\n-----END %s-----\n' % (
+      text_data, block_header, pem_data, block_header)
+
+
 def fixup_pem_file(path, actual_errors):
   """Updates the ERRORS block in the test .pem file"""
   contents = read_file_to_string(path)
 
-  errors_block_text = '\n' + gencerts.text_data_to_pem('ERRORS', actual_errors)
+  errors_block_text = '\n' + text_data_to_pem('ERRORS', actual_errors)
   # Strip the trailing newline.
   errors_block_text = errors_block_text[:-1]
 
@@ -102,15 +102,17 @@ def fixup_pem_file(path, actual_errors):
 
 
 def get_src_root():
-  """Returns the path to the enclosing //src directory. This assumes the
+  """Returns the path to BoringSSL source tree. This assumes the
   current script is inside the source tree."""
   cur_dir = os.path.dirname(os.path.realpath(__file__))
 
   while True:
-    parent_dir, dirname = os.path.split(cur_dir)
-    # Check if it looks like the src/ root.
-    if dirname == "src" and os.path.isdir(os.path.join(cur_dir, "net")):
+    # Check if it looks like the BoringSSL root.
+    if os.path.isdir(os.path.join(cur_dir, "crypto")) and \
+       os.path.isdir(os.path.join(cur_dir, "pki")) and \
+       os.path.isdir(os.path.join(cur_dir, "ssl")):
       return cur_dir
+    parent_dir, _ = os.path.split(cur_dir)
     if not parent_dir or parent_dir == cur_dir:
       break
     cur_dir = parent_dir
@@ -138,7 +140,7 @@ def main():
     test_stdout = sys.stdin.read()
 
   for m in failed_test_regex.finditer(test_stdout):
-    src_relative_errors_path = m.group(1)
+    src_relative_errors_path = "pki/" + m.group(1)
     errors_path = get_abs_path(src_relative_errors_path)
     actual_errors = m.group(2)
 

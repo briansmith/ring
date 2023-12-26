@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2016 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -11,8 +11,8 @@ error format.
 To use this run the affected tests, and then pass the input to this script
 (either via stdin, or as the first argument). For instance:
 
-  $ ./out/Release/net_unittests --gtest_filter="*VerifyCertificateChain*" | \
-     net/data/verify_certificate_chain_unittest/rebase-errors.py
+  $ ./build/pki_test --gtest_filter="*VerifyCertificateChain*" | \
+     pki/testdata/verify_certificate_chain_unittest/rebase-errors.py
 
 The script works by scanning the stdout looking for gtest failures having a
 particular format.  The C++ test side should have been instrumented to dump out
@@ -39,7 +39,7 @@ EXPECTED:
 ACTUAL:
 
 ((?:.|\n)*?)
-===> Use net/data/verify_certificate_chain_unittest/rebase-errors.py to rebaseline.
+===> Use pki/testdata/verify_certificate_chain_unittest/rebase-errors.py to rebaseline.
 """, re.MULTILINE)
 
 
@@ -57,15 +57,17 @@ def write_string_to_file(data, path):
 
 
 def get_src_root():
-  """Returns the path to the enclosing //src directory. This assumes the
+  """Returns the path to BoringSSL source tree. This assumes the
   current script is inside the source tree."""
   cur_dir = os.path.dirname(os.path.realpath(__file__))
 
   while True:
-    parent_dir, dirname = os.path.split(cur_dir)
-    # Check if it looks like the src/ root.
-    if dirname == "src" and os.path.isdir(os.path.join(cur_dir, "net")):
+    # Check if it looks like the BoringSSL root.
+    if os.path.isdir(os.path.join(cur_dir, "crypto")) and \
+       os.path.isdir(os.path.join(cur_dir, "pki")) and \
+       os.path.isdir(os.path.join(cur_dir, "ssl")):
       return cur_dir
+    parent_dir, _ = os.path.split(cur_dir)
     if not parent_dir or parent_dir == cur_dir:
       break
     cur_dir = parent_dir
@@ -109,7 +111,7 @@ def main():
     test_stdout = sys.stdin.read()
 
   for m in failed_test_regex.finditer(test_stdout):
-    src_relative_errors_path = m.group(1)
+    src_relative_errors_path = "pki/" + m.group(1)
     errors_path = get_abs_path(src_relative_errors_path)
     actual_errors = m.group(2)
 

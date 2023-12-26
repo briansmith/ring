@@ -108,10 +108,6 @@ OPENSSL_EXPORT extern const CertErrorId kUnacceptableSignatureAlgorithm;
 // What constitutes as "acceptable" is determined by the verification delegate.
 OPENSSL_EXPORT extern const CertErrorId kUnacceptablePublicKey;
 
-// The certificate's EKU is missing serverAuth. However Netscape Server Gated
-// Crypto is present instead.
-OPENSSL_EXPORT extern const CertErrorId kEkuLacksServerAuthButHasGatedCrypto;
-
 // The certificate's EKU is missing serverAuth. However EKU ANY is present
 // instead.
 OPENSSL_EXPORT extern const CertErrorId kEkuLacksServerAuthButHasAnyEKU;
