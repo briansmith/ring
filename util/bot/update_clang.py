@@ -29,8 +29,8 @@ except ImportError:
 # CLANG_REVISION and CLANG_SUB_REVISION determine the build of clang
 # to use. These should be synced with tools/clang/scripts/update.py in
 # Chromium.
-CLANG_REVISION = 'llvmorg-18-init-7785-geef35c28'
-CLANG_SUB_REVISION = 1
+CLANG_REVISION = 'llvmorg-18-init-14420-gea3a3b25'
+CLANG_SUB_REVISION = 3
 
 PACKAGE_VERSION = '%s-%s' % (CLANG_REVISION, CLANG_SUB_REVISION)
 

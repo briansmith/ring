@@ -26,9 +26,9 @@ vars = {
   #  cipd describe PACKAGE_NAME -version latest
 
   # infra/3pp/tools/cmake/linux-amd64
-  'cmake_version': 'version:2@3.27.7.chromium.8',
+  'cmake_version': 'version:2@3.28.1.chromium.8',
   # infra/3pp/tools/go/linux-amd64
-  'go_version': 'version:2@1.21.2',
+  'go_version': 'version:2@1.21.5',
   # infra/3pp/tools/perl/windows-amd64
   'perl_version': 'version:2@5.32.1.1',
 
@@ -36,8 +36,8 @@ vars = {
   # https://chromium.googlesource.com/chromium/src/+/main/DEPS
   'android_sdk_platform-tools_version': 'HWVsGs2HCKgSVv41FsOcsfJbNcB0UFiNrF6Tc4yRArYC',
   'libfuzzer_revision': '758bd21f103a501b362b1ca46fa8fcb692eaa303',
-  'libcxx_revision': '8fc17971d629c19a17b006d0c4fc41e721cc2f7f',
-  'libcxxabi_revision': 'db9800c042df3ee2691031a58b5e37e89a7356a3',
+  'libcxx_revision': 'd0429f0628dd5c2c83a197012b2153b979aff674',
+  'libcxxabi_revision': '8806fb8bb26e20206241ea2dfcee4fd2d4157b83',
   'ninja_version': 'version:2@1.11.1.chromium.6',
 
   # The Android NDK cannot be updated on CI for two reasons:
