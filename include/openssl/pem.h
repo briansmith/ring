@@ -142,26 +142,26 @@ extern "C" {
                           NULL, 0, NULL, NULL);                             \
   }
 
-#define IMPLEMENT_PEM_write_cb_fp(name, type, str, asn1)                       \
-  static int pem_write_##name##_i2d(const void *x, unsigned char **outp) {     \
-    return i2d_##asn1((type *)x, outp);                                        \
-  }                                                                            \
-  OPENSSL_EXPORT int PEM_write_##name(                                         \
-      FILE *fp, type *x, const EVP_CIPHER *enc, unsigned char *kstr, int klen, \
-      pem_password_cb *cb, void *u) {                                          \
-    return PEM_ASN1_write(pem_write_##name##_i2d, str, fp, x, enc, kstr, klen, \
-                          cb, u);                                              \
+#define IMPLEMENT_PEM_write_cb_fp(name, type, str, asn1)                   \
+  static int pem_write_##name##_i2d(const void *x, unsigned char **outp) { \
+    return i2d_##asn1((type *)x, outp);                                    \
+  }                                                                        \
+  OPENSSL_EXPORT int PEM_write_##name(                                     \
+      FILE *fp, type *x, const EVP_CIPHER *enc, const unsigned char *pass, \
+      int pass_len, pem_password_cb *cb, void *u) {                        \
+    return PEM_ASN1_write(pem_write_##name##_i2d, str, fp, x, enc, pass,   \
+                          pass_len, cb, u);                                \
   }
 
-#define IMPLEMENT_PEM_write_cb_fp_const(name, type, str, asn1)                 \
-  static int pem_write_##name##_i2d(const void *x, unsigned char **outp) {     \
-    return i2d_##asn1((const type *)x, outp);                                  \
-  }                                                                            \
-  OPENSSL_EXPORT int PEM_write_##name(                                         \
-      FILE *fp, type *x, const EVP_CIPHER *enc, unsigned char *kstr, int klen, \
-      pem_password_cb *cb, void *u) {                                          \
-    return PEM_ASN1_write(pem_write_##name##_i2d, str, fp, x, enc, kstr, klen, \
-                          cb, u);                                              \
+#define IMPLEMENT_PEM_write_cb_fp_const(name, type, str, asn1)             \
+  static int pem_write_##name##_i2d(const void *x, unsigned char **outp) { \
+    return i2d_##asn1((const type *)x, outp);                              \
+  }                                                                        \
+  OPENSSL_EXPORT int PEM_write_##name(                                     \
+      FILE *fp, type *x, const EVP_CIPHER *enc, const unsigned char *pass, \
+      int pass_len, pem_password_cb *cb, void *u) {                        \
+    return PEM_ASN1_write(pem_write_##name##_i2d, str, fp, x, enc, pass,   \
+                          pass_len, cb, u);                                \
   }
 
 
@@ -199,10 +199,10 @@ extern "C" {
     return i2d_##asn1((type *)x, outp);                                        \
   }                                                                            \
   OPENSSL_EXPORT int PEM_write_bio_##name(                                     \
-      BIO *bp, type *x, const EVP_CIPHER *enc, unsigned char *kstr, int klen,  \
-      pem_password_cb *cb, void *u) {                                          \
+      BIO *bp, type *x, const EVP_CIPHER *enc, const unsigned char *pass,      \
+      int pass_len, pem_password_cb *cb, void *u) {                            \
     return PEM_ASN1_write_bio(pem_write_bio_##name##_i2d, str, bp, x, enc,     \
-                              kstr, klen, cb, u);                              \
+                              pass, pass_len, cb, u);                          \
   }
 
 #define IMPLEMENT_PEM_write_cb_bio_const(name, type, str, asn1)                \
@@ -210,10 +210,10 @@ extern "C" {
     return i2d_##asn1((const type *)x, outp);                                  \
   }                                                                            \
   OPENSSL_EXPORT int PEM_write_bio_##name(                                     \
-      BIO *bp, type *x, const EVP_CIPHER *enc, unsigned char *kstr, int klen,  \
-      pem_password_cb *cb, void *u) {                                          \
+      BIO *bp, type *x, const EVP_CIPHER *enc, const unsigned char *pass,      \
+      int pass_len, pem_password_cb *cb, void *u) {                            \
     return PEM_ASN1_write_bio(pem_write_bio_##name##_i2d, str, bp, (void *)x,  \
-                              enc, kstr, klen, cb, u);                         \
+                              enc, pass, pass_len, cb, u);                     \
   }
 
 #define IMPLEMENT_PEM_write(name, type, str, asn1) \
@@ -260,10 +260,10 @@ extern "C" {
 #define DECLARE_PEM_write_fp_const(name, type) \
   OPENSSL_EXPORT int PEM_write_##name(FILE *fp, const type *x);
 
-#define DECLARE_PEM_write_cb_fp(name, type)                                    \
-  OPENSSL_EXPORT int PEM_write_##name(                                         \
-      FILE *fp, type *x, const EVP_CIPHER *enc, unsigned char *kstr, int klen, \
-      pem_password_cb *cb, void *u);
+#define DECLARE_PEM_write_cb_fp(name, type)                                \
+  OPENSSL_EXPORT int PEM_write_##name(                                     \
+      FILE *fp, type *x, const EVP_CIPHER *enc, const unsigned char *pass, \
+      int pass_len, pem_password_cb *cb, void *u);
 
 #define DECLARE_PEM_read_bio(name, type)                      \
   OPENSSL_EXPORT type *PEM_read_bio_##name(BIO *bp, type **x, \
@@ -275,10 +275,10 @@ extern "C" {
 #define DECLARE_PEM_write_bio_const(name, type) \
   OPENSSL_EXPORT int PEM_write_bio_##name(BIO *bp, const type *x);
 
-#define DECLARE_PEM_write_cb_bio(name, type)                                  \
-  OPENSSL_EXPORT int PEM_write_bio_##name(                                    \
-      BIO *bp, type *x, const EVP_CIPHER *enc, unsigned char *kstr, int klen, \
-      pem_password_cb *cb, void *u);
+#define DECLARE_PEM_write_cb_bio(name, type)                              \
+  OPENSSL_EXPORT int PEM_write_bio_##name(                                \
+      BIO *bp, type *x, const EVP_CIPHER *enc, const unsigned char *pass, \
+      int pass_len, pem_password_cb *cb, void *u);
 
 
 #define DECLARE_PEM_write(name, type) \
@@ -344,7 +344,7 @@ OPENSSL_EXPORT void *PEM_ASN1_read_bio(d2i_of_void *d2i, const char *name,
                                        void *u);
 OPENSSL_EXPORT int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name,
                                       BIO *bp, void *x, const EVP_CIPHER *enc,
-                                      unsigned char *kstr, int klen,
+                                      const unsigned char *pass, int pass_len,
                                       pem_password_cb *cb, void *u);
 
 // PEM_X509_INFO_read_bio reads PEM blocks from |bp| and decodes any
@@ -381,7 +381,7 @@ OPENSSL_EXPORT void *PEM_ASN1_read(d2i_of_void *d2i, const char *name, FILE *fp,
                                    void **x, pem_password_cb *cb, void *u);
 OPENSSL_EXPORT int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp,
                                   void *x, const EVP_CIPHER *enc,
-                                  unsigned char *kstr, int klen,
+                                  const unsigned char *pass, int pass_len,
                                   pem_password_cb *callback, void *u);
 
 // PEM_def_callback treats |userdata| as a string and copies it into |buf|,
@@ -436,42 +436,45 @@ DECLARE_PEM_rw_cb(PrivateKey, EVP_PKEY)
 DECLARE_PEM_rw(PUBKEY, EVP_PKEY)
 
 OPENSSL_EXPORT int PEM_write_bio_PKCS8PrivateKey_nid(BIO *bp, const EVP_PKEY *x,
-                                                     int nid, char *kstr,
-                                                     int klen,
+                                                     int nid, const char *pass,
+                                                     int pass_len,
                                                      pem_password_cb *cb,
                                                      void *u);
-OPENSSL_EXPORT int PEM_write_bio_PKCS8PrivateKey(BIO *, const EVP_PKEY *,
-                                                 const EVP_CIPHER *, char *,
-                                                 int, pem_password_cb *,
-                                                 void *);
+OPENSSL_EXPORT int PEM_write_bio_PKCS8PrivateKey(BIO *bp, const EVP_PKEY *x,
+                                                 const EVP_CIPHER *enc,
+                                                 const char *pass, int pass_len,
+                                                 pem_password_cb *cb, void *u);
 OPENSSL_EXPORT int i2d_PKCS8PrivateKey_bio(BIO *bp, const EVP_PKEY *x,
-                                           const EVP_CIPHER *enc, char *kstr,
-                                           int klen, pem_password_cb *cb,
-                                           void *u);
+                                           const EVP_CIPHER *enc,
+                                           const char *pass, int pass_len,
+                                           pem_password_cb *cb, void *u);
 OPENSSL_EXPORT int i2d_PKCS8PrivateKey_nid_bio(BIO *bp, const EVP_PKEY *x,
-                                               int nid, char *kstr, int klen,
+                                               int nid, const char *pass,
+                                               int pass_len,
                                                pem_password_cb *cb, void *u);
 OPENSSL_EXPORT EVP_PKEY *d2i_PKCS8PrivateKey_bio(BIO *bp, EVP_PKEY **x,
                                                  pem_password_cb *cb, void *u);
 
 OPENSSL_EXPORT int i2d_PKCS8PrivateKey_fp(FILE *fp, const EVP_PKEY *x,
-                                          const EVP_CIPHER *enc, char *kstr,
-                                          int klen, pem_password_cb *cb,
-                                          void *u);
+                                          const EVP_CIPHER *enc,
+                                          const char *pass, int pass_len,
+                                          pem_password_cb *cb, void *u);
 OPENSSL_EXPORT int i2d_PKCS8PrivateKey_nid_fp(FILE *fp, const EVP_PKEY *x,
-                                              int nid, char *kstr, int klen,
-                                              pem_password_cb *cb, void *u);
+                                              int nid, const char *pass,
+                                              int pass_len, pem_password_cb *cb,
+                                              void *u);
 OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey_nid(FILE *fp, const EVP_PKEY *x,
-                                                 int nid, char *kstr, int klen,
+                                                 int nid, const char *pass,
+                                                 int pass_len,
                                                  pem_password_cb *cb, void *u);
 
 OPENSSL_EXPORT EVP_PKEY *d2i_PKCS8PrivateKey_fp(FILE *fp, EVP_PKEY **x,
                                                 pem_password_cb *cb, void *u);
 
 OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey(FILE *fp, const EVP_PKEY *x,
-                                             const EVP_CIPHER *enc, char *kstr,
-                                             int klen, pem_password_cb *cd,
-                                             void *u);
+                                             const EVP_CIPHER *enc,
+                                             const char *pass, int pass_len,
+                                             pem_password_cb *cd, void *u);
 
 
 #ifdef __cplusplus
