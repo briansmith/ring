@@ -358,6 +358,11 @@ OPENSSL_EXPORT int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name,
 // If |sk| is non-NULL, it appends the results to |sk| instead and returns |sk|
 // on success. In this case, the caller retains ownership of |sk| in both
 // success and failure.
+//
+// WARNING: If the input contains "TRUSTED CERTIFICATE" PEM blocks, this
+// function parses auxiliary properties as in |d2i_X509_AUX|. Passing untrusted
+// input to this function allows an attacker to influence those properties. See
+// |d2i_X509_AUX| for details.
 OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(
     BIO *bp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb, void *u);
 
@@ -390,6 +395,8 @@ OPENSSL_EXPORT int PEM_def_callback(char *buf, int size, int rwflag,
 
 DECLARE_PEM_rw(X509, X509)
 
+// TODO(crbug.com/boringssl/426): When documenting these, copy the warning
+// about auxiliary properties from |PEM_X509_INFO_read_bio|.
 DECLARE_PEM_rw(X509_AUX, X509)
 
 DECLARE_PEM_rw(X509_REQ, X509_REQ)

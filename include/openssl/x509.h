@@ -608,8 +608,11 @@ OPENSSL_EXPORT int i2d_X509_AUX(X509 *x509, uint8_t **outp);
 // Certificate (RFC 5280), followed optionally by a separate, OpenSSL-specific
 // structure with auxiliary properties. It behaves as described in |d2i_SAMPLE|.
 //
-// Some auxiliary properties affect trust decisions, so this function should not
-// be used with untrusted input.
+// WARNING: Passing untrusted input to this function allows an attacker to
+// control auxiliary properties. This can allow unexpected influence over the
+// application if the certificate is used in a context that reads auxiliary
+// properties. This includes PKCS#12 serialization, trusted certificates in
+// |X509_STORE|, and callers of |X509_alias_get0| or |X509_keyid_get0|.
 //
 // Unlike similarly-named functions, this function does not parse a single
 // ASN.1 element. Trying to parse data directly embedded in a larger ASN.1
@@ -619,7 +622,9 @@ OPENSSL_EXPORT X509 *d2i_X509_AUX(X509 **x509, const uint8_t **inp,
 
 // X509_alias_set1 sets |x509|'s alias to |len| bytes from |name|. If |name| is
 // NULL, the alias is cleared instead. Aliases are not part of the certificate
-// itself and will not be serialized by |i2d_X509|.
+// itself and will not be serialized by |i2d_X509|. If |x509| is serialized in
+// a PKCS#12 structure, the friendlyName attribute (RFC 2985) will contain this
+// alias.
 OPENSSL_EXPORT int X509_alias_set1(X509 *x509, const uint8_t *name,
                                    ossl_ssize_t len);
 
@@ -658,6 +663,8 @@ OPENSSL_EXPORT const uint8_t *X509_keyid_get0(const X509 *x509, int *out_len);
 // usage OID associated with an |X509_TRUST_*| constant.
 //
 // See |X509_VERIFY_PARAM_set_trust| for details on how this value is evaluated.
+// Note this only takes effect if |x509| was configured as a trusted certificate
+// via |X509_STORE|.
 OPENSSL_EXPORT int X509_add1_trust_object(X509 *x509, const ASN1_OBJECT *obj);
 
 // X509_add1_reject_object configures |x509| as distrusted for |obj|. It returns
@@ -665,6 +672,8 @@ OPENSSL_EXPORT int X509_add1_trust_object(X509 *x509, const ASN1_OBJECT *obj);
 // associated with an |X509_TRUST_*| constant.
 //
 // See |X509_VERIFY_PARAM_set_trust| for details on how this value is evaluated.
+// Note this only takes effect if |x509| was configured as a trusted certificate
+// via |X509_STORE|.
 OPENSSL_EXPORT int X509_add1_reject_object(X509 *x509, const ASN1_OBJECT *obj);
 
 // X509_trust_clear clears the list of OIDs for which |x509| is trusted. See
