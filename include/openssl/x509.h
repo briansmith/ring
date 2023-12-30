@@ -2532,7 +2532,7 @@ OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *obj);
 //
 // The result will include all certificates and CRLs added via
 // |X509_STORE_add_cert| and |X509_STORE_add_crl|, as well as any cached objects
-// added by |X509_LOOKUP_hash_dir|. The last of these may change over time, as
+// added by |X509_LOOKUP_add_dir|. The last of these may change over time, as
 // different objects are loaded from the filesystem. Callers should not depend
 // on this caching behavior. The objects are returned in no particular order.
 OPENSSL_EXPORT STACK_OF(X509_OBJECT) *X509_STORE_get1_objects(
@@ -3139,6 +3139,201 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *param,
 // state, so we removed it.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_trust(X509_VERIFY_PARAM *param,
                                                int trust);
+
+
+// Filesystem-based certificate stores.
+//
+// An |X509_STORE| may be configured to get its contents from the filesystem.
+// This is done by adding |X509_LOOKUP| structures to the |X509_STORE| with
+// |X509_STORE_add_lookup| and then configuring the |X509_LOOKUP| with paths.
+//
+// Most cases can use |X509_STORE_load_locations|, which configures the same
+// thing but is simpler to use.
+
+// X509_STORE_load_locations configures |store| to load data from filepaths
+// |file| and |dir|. It returns one on success and zero on error. Either of
+// |file| or |dir| may be NULL, but at least one must be non-NULL.
+//
+// If |file| is non-NULL, it loads CRLs and trusted certificates in PEM format
+// from the file at |file|, and them to |store|, as in |X509_load_cert_crl_file|
+// with |X509_FILETYPE_PEM|.
+//
+// If |dir| is non-NULL, it configures |store| to load CRLs and trusted
+// certificates from the directory at |dir| in PEM format, as in
+// |X509_LOOKUP_add_dir| with |X509_FILETYPE_PEM|.
+OPENSSL_EXPORT int X509_STORE_load_locations(X509_STORE *store,
+                                             const char *file, const char *dir);
+
+// X509_STORE_add_lookup returns an |X509_LOOKUP| associated with |store| with
+// type |method|, or NULL on error. The result is owned by |store|, so callers
+// are not expected to free it. This may be used with |X509_LOOKUP_add_dir| or
+// |X509_LOOKUP_load_file|, depending on |method|, to configure |store|.
+//
+// A single |X509_LOOKUP| may be configured with multiple paths, and an
+// |X509_STORE| only contains one |X509_LOOKUP| of each type, so there is no
+// need to call this function multiple times for a single type. Calling it
+// multiple times will return the previous |X509_LOOKUP| of that type.
+OPENSSL_EXPORT X509_LOOKUP *X509_STORE_add_lookup(
+    X509_STORE *store, const X509_LOOKUP_METHOD *method);
+
+// X509_LOOKUP_hash_dir creates |X509_LOOKUP|s that may be used with
+// |X509_LOOKUP_add_dir|.
+OPENSSL_EXPORT const X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void);
+
+// X509_LOOKUP_file creates |X509_LOOKUP|s that may be used with
+// |X509_LOOKUP_load_file|.
+//
+// Although this is modeled as an |X509_LOOKUP|, this function is redundant. It
+// has the same effect as loading a certificate or CRL from the filesystem, in
+// the caller's desired format, and then adding it with |X509_STORE_add_cert|
+// and |X509_STORE_add_crl|.
+OPENSSL_EXPORT const X509_LOOKUP_METHOD *X509_LOOKUP_file(void);
+
+// The following constants are used to specify the format of files in an
+// |X509_LOOKUP|.
+#define X509_FILETYPE_PEM 1
+#define X509_FILETYPE_ASN1 2
+#define X509_FILETYPE_DEFAULT 3
+
+// X509_LOOKUP_load_file calls |X509_load_cert_crl_file|. |lookup| must have
+// been constructed with |X509_LOOKUP_file|.
+//
+// If |type| is |X509_FILETYPE_DEFAULT|, it ignores |file| and instead uses some
+// default system path with |X509_FILETYPE_PEM|. See also
+// |X509_STORE_set_default_paths|.
+OPENSSL_EXPORT int X509_LOOKUP_load_file(X509_LOOKUP *lookup, const char *file,
+                                         int type);
+
+// X509_LOOKUP_add_dir configures |lookup| to load CRLs and trusted certificates
+// from the directories in |path|. It returns one on success and zero on error.
+// |lookup| must have been constructed with |X509_LOOKUP_hash_dir|.
+//
+// WARNING: |path| is interpreted as a colon-separated (semicolon-separated on
+// Windows) list of paths. It is not possible to configure a path containing the
+// separator character. https://crbug.com/boringssl/691 tracks removing this
+// behavior.
+//
+// |type| should be one of the |X509_FILETYPE_*| constants and determines the
+// format of the files. If |type| is |X509_FILETYPE_DEFAULT|, |path| is ignored
+// and some default system path is used with |X509_FILETYPE_PEM|. See also
+// |X509_STORE_set_default_paths|.
+//
+// Trusted certificates should be named HASH.N and CRLs should be
+// named HASH.rN. HASH is |X509_NAME_hash| of the certificate subject and CRL
+// issuer, respectively, in hexadecimal. N is in decimal and counts hash
+// collisions consecutively, starting from zero. For example, "002c0b4f.0" and
+// "002c0b4f.r0".
+//
+// WARNING: Objects from |path| are loaded on demand, but cached in memory on
+// the |X509_STORE|. If a CA is removed from the directory, existing
+// |X509_STORE|s will continue to trust it. Cache entries are not evicted for
+// the lifetime of the |X509_STORE|.
+//
+// WARNING: This mechanism is also not well-suited for CRL updates.
+// |X509_STORE|s rely on this cache and never load the same CRL file twice. CRL
+// updates must use a new file, with an incremented suffix, to be reflected in
+// existing |X509_STORE|s. However, this means each CRL update will use
+// additional storage and memory. Instead, configure inputs that vary per
+// verification, such as CRLs, on each |X509_STORE_CTX| separately, using
+// functions like |X509_STORE_CTX_set0_crl|.
+OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
+                                       int type);
+
+// X509_L_* are commands for |X509_LOOKUP_ctrl|.
+#define X509_L_FILE_LOAD 1
+#define X509_L_ADD_DIR 2
+
+// X509_LOOKUP_ctrl implements commands on |lookup|. |cmd| specifies the
+// command. The other arguments specify the operation in a command-specific way.
+// Use |X509_LOOKUP_load_file| or |X509_LOOKUP_add_dir| instead.
+OPENSSL_EXPORT int X509_LOOKUP_ctrl(X509_LOOKUP *lookup, int cmd,
+                                    const char *argc, long argl, char **ret);
+
+// X509_load_cert_file loads trusted certificates from |file| and adds them to
+// |lookup|'s |X509_STORE|. It returns one on success and zero on error.
+//
+// If |type| is |X509_FILETYPE_ASN1|, it loads a single DER-encoded certificate.
+// If |type| is |X509_FILETYPE_PEM|, it loads a sequence of PEM-encoded
+// certificates. |type| may not be |X509_FILETYPE_DEFAULT|.
+OPENSSL_EXPORT int X509_load_cert_file(X509_LOOKUP *lookup, const char *file,
+                                       int type);
+
+// X509_load_crl_file loads CRLs from |file| and add them it to |lookup|'s
+// |X509_STORE|. It returns one on success and zero on error.
+//
+// If |type| is |X509_FILETYPE_ASN1|, it loads a single DER-encoded CRL. If
+// |type| is |X509_FILETYPE_PEM|, it loads a sequence of PEM-encoded CRLs.
+// |type| may not be |X509_FILETYPE_DEFAULT|.
+OPENSSL_EXPORT int X509_load_crl_file(X509_LOOKUP *lookup, const char *file,
+                                      int type);
+
+// X509_load_cert_crl_file loads CRLs and trusted certificates from |file| and
+// adds them to |lookup|'s |X509_STORE|. It returns one on success and zero on
+// error.
+//
+// If |type| is |X509_FILETYPE_ASN1|, it loads a single DER-encoded certificate.
+// This function cannot be used to load a DER-encoded CRL. If |type| is
+// |X509_FILETYPE_PEM|, it loads a sequence of PEM-encoded certificates and
+// CRLs. |type| may not be |X509_FILETYPE_DEFAULT|.
+OPENSSL_EXPORT int X509_load_cert_crl_file(X509_LOOKUP *lookup,
+                                           const char *file, int type);
+
+// X509_NAME_hash returns a hash of |name|, or zero on error. This is the new
+// hash used by |X509_LOOKUP_add_dir|.
+//
+// This hash is specific to the |X509_LOOKUP_add_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions. It also depends on an OpenSSL-specific
+// canonicalization process.
+//
+// TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
+// but currently is neither, notably if |name| was modified from its parsed
+// value.
+OPENSSL_EXPORT uint32_t X509_NAME_hash(X509_NAME *name);
+
+// X509_NAME_hash_old returns a hash of |name|, or zero on error. This is the
+// legacy hash used by |X509_LOOKUP_add_dir|, which is still supported for
+// compatibility.
+//
+// This hash is specific to the |X509_LOOKUP_add_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions.
+//
+// TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
+// but currently is neither, notably if |name| was modified from its parsed
+// value.
+OPENSSL_EXPORT uint32_t X509_NAME_hash_old(X509_NAME *name);
+
+// X509_STORE_set_default_paths configures |store| to read from some "default"
+// filesystem paths. It returns one on success and zero on error. The filesystem
+// paths are determined by a combination of hardcoded paths and the SSL_CERT_DIR
+// and SSL_CERT_FILE environment variables.
+//
+// Using this function is not recommended. In OpenSSL, these defaults are
+// determined by OpenSSL's install prefix. There is no corresponding concept for
+// BoringSSL. Future versions of BoringSSL may change or remove this
+// functionality.
+OPENSSL_EXPORT int X509_STORE_set_default_paths(X509_STORE *store);
+
+// The following functions return filesystem paths used to determine the above
+// "default" paths, when the corresponding environment variables are not set.
+//
+// Using these functions is not recommended. In OpenSSL, these defaults are
+// determined by OpenSSL's install prefix. There is no corresponding concept for
+// BoringSSL. Future versions of BoringSSL may change or remove this
+// functionality.
+OPENSSL_EXPORT const char *X509_get_default_cert_area(void);
+OPENSSL_EXPORT const char *X509_get_default_cert_dir(void);
+OPENSSL_EXPORT const char *X509_get_default_cert_file(void);
+OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
+
+// X509_get_default_cert_dir_env returns "SSL_CERT_DIR", an environment variable
+// used to determine the above "default" paths.
+OPENSSL_EXPORT const char *X509_get_default_cert_dir_env(void);
+
+// X509_get_default_cert_file_env returns "SSL_CERT_FILE", an environment
+// variable used to determine the above "default" paths.
+OPENSSL_EXPORT const char *X509_get_default_cert_file_env(void);
 
 
 // SignedPublicKeyAndChallenge structures.
@@ -3821,7 +4016,7 @@ OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
 // X509_issuer_name_hash returns the hash of |x509|'s issuer name with
 // |X509_NAME_hash|.
 //
-// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// This hash is specific to the |X509_LOOKUP_add_dir| filesystem format and is
 // not suitable for general-purpose X.509 name processing. It is very short, so
 // there will be hash collisions. It also depends on an OpenSSL-specific
 // canonicalization process.
@@ -3830,7 +4025,7 @@ OPENSSL_EXPORT uint32_t X509_issuer_name_hash(X509 *x509);
 // X509_subject_name_hash returns the hash of |x509|'s subject name with
 // |X509_NAME_hash|.
 //
-// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// This hash is specific to the |X509_LOOKUP_add_dir| filesystem format and is
 // not suitable for general-purpose X.509 name processing. It is very short, so
 // there will be hash collisions. It also depends on an OpenSSL-specific
 // canonicalization process.
@@ -3839,7 +4034,7 @@ OPENSSL_EXPORT uint32_t X509_subject_name_hash(X509 *x509);
 // X509_issuer_name_hash_old returns the hash of |x509|'s issuer name with
 // |X509_NAME_hash_old|.
 //
-// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// This hash is specific to the |X509_LOOKUP_add_dir| filesystem format and is
 // not suitable for general-purpose X.509 name processing. It is very short, so
 // there will be hash collisions.
 OPENSSL_EXPORT uint32_t X509_issuer_name_hash_old(X509 *x509);
@@ -3847,7 +4042,7 @@ OPENSSL_EXPORT uint32_t X509_issuer_name_hash_old(X509 *x509);
 // X509_subject_name_hash_old returns the hash of |x509|'s usjbect name with
 // |X509_NAME_hash_old|.
 //
-// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// This hash is specific to the |X509_LOOKUP_add_dir| filesystem format and is
 // not suitable for general-purpose X.509 name processing. It is very short, so
 // there will be hash collisions.
 OPENSSL_EXPORT uint32_t X509_subject_name_hash_old(X509 *x509);
@@ -4689,7 +4884,7 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx,
 // WARNING: This function is not thread-safe. If |store| is shared across
 // multiple threads, callers cannot safely inspect the result of this function,
 // because another thread may have concurrently added to it. In particular,
-// |X509_LOOKUP_hash_dir| treats this list as a cache and may add to it in the
+// |X509_LOOKUP_add_dir| treats this list as a cache and may add to it in the
 // course of certificate verification. This API additionally prevents fixing
 // some quadratic worst-case behavior in |X509_STORE| and may be removed in the
 // future. Use |X509_STORE_get1_objects| instead.
@@ -4735,114 +4930,7 @@ struct X509_algor_st {
 // TODO(https://crbug.com/boringssl/426): Functions below this point have not
 // yet been documented or organized into sections.
 
-// This stuff is certificate "auxiliary info"
-// it contains details which are useful in certificate
-// stores and databases. When used this is tagged onto
-// the end of the certificate itself
-
 DECLARE_STACK_OF(DIST_POINT)
-
-OPENSSL_EXPORT const char *X509_get_default_cert_area(void);
-OPENSSL_EXPORT const char *X509_get_default_cert_dir(void);
-OPENSSL_EXPORT const char *X509_get_default_cert_file(void);
-OPENSSL_EXPORT const char *X509_get_default_cert_dir_env(void);
-OPENSSL_EXPORT const char *X509_get_default_cert_file_env(void);
-OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
-
-// X509_NAME_hash returns a hash of |name|, or zero on error. This is the new
-// hash used by |X509_LOOKUP_hash_dir|.
-//
-// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
-// not suitable for general-purpose X.509 name processing. It is very short, so
-// there will be hash collisions. It also depends on an OpenSSL-specific
-// canonicalization process.
-//
-// TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
-// but currently is neither, notably if |name| was modified from its parsed
-// value.
-OPENSSL_EXPORT uint32_t X509_NAME_hash(X509_NAME *name);
-
-// X509_NAME_hash_old returns a hash of |name|, or zero on error. This is the
-// legacy hash used by |X509_LOOKUP_hash_dir|, which is still supported for
-// compatibility.
-//
-// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
-// not suitable for general-purpose X.509 name processing. It is very short, so
-// there will be hash collisions.
-//
-// TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
-// but currently is neither, notably if |name| was modified from its parsed
-// value.
-OPENSSL_EXPORT uint32_t X509_NAME_hash_old(X509_NAME *name);
-
-/*
-SSL_CTX -> X509_STORE
-                -> X509_LOOKUP
-                        ->X509_LOOKUP_METHOD
-                -> X509_LOOKUP
-                        ->X509_LOOKUP_METHOD
-
-SSL	-> X509_STORE_CTX
-                ->X509_STORE
-
-The X509_STORE holds the tables etc for verification stuff.
-A X509_STORE_CTX is used while validating a single certificate.
-The X509_STORE has X509_LOOKUPs for looking up certs.
-The X509_STORE then calls a function to actually verify the
-certificate chain.
-*/
-
-#define X509_L_FILE_LOAD 1
-#define X509_L_ADD_DIR 2
-
-// The following constants are used to specify the format of files in an
-// |X509_LOOKUP|.
-#define X509_FILETYPE_PEM 1
-#define X509_FILETYPE_ASN1 2
-#define X509_FILETYPE_DEFAULT 3
-
-// X509_LOOKUP_load_file configures |lookup| to load information from the file
-// at |path|. It returns one on success and zero on error. |type| should be one
-// of the |X509_FILETYPE_*| constants to determine if the contents are PEM or
-// DER. If |type| is |X509_FILETYPE_DEFAULT|, |path| is ignored and instead some
-// default system path is used.
-OPENSSL_EXPORT int X509_LOOKUP_load_file(X509_LOOKUP *lookup, const char *path,
-                                         int type);
-
-// X509_LOOKUP_add_dir configures |lookup| to load information from the
-// directory at |path|. It returns one on success and zero on error. |type|
-// should be one of the |X509_FILETYPE_*| constants to determine if the contents
-// are PEM or DER. If |type| is |X509_FILETYPE_DEFAULT|, |path| is ignored and
-// instead some default system path is used.
-//
-// WARNING: |path| is interpreted as a colon-separated (semicolon-separated on
-// Windows) list of paths. It is not possible to configure a path containing the
-// separator character.
-//
-// TODO(crbug.com/boringssl/691): The colon handling is surprising. Consider
-// removing it.
-OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
-                                       int type);
-
-OPENSSL_EXPORT X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v,
-                                                  const X509_LOOKUP_METHOD *m);
-
-OPENSSL_EXPORT const X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void);
-OPENSSL_EXPORT const X509_LOOKUP_METHOD *X509_LOOKUP_file(void);
-
-OPENSSL_EXPORT int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc,
-                                    long argl, char **ret);
-
-OPENSSL_EXPORT int X509_load_cert_file(X509_LOOKUP *ctx, const char *file,
-                                       int type);
-OPENSSL_EXPORT int X509_load_crl_file(X509_LOOKUP *ctx, const char *file,
-                                      int type);
-OPENSSL_EXPORT int X509_load_cert_crl_file(X509_LOOKUP *ctx, const char *file,
-                                           int type);
-
-OPENSSL_EXPORT int X509_STORE_load_locations(X509_STORE *ctx, const char *file,
-                                             const char *dir);
-OPENSSL_EXPORT int X509_STORE_set_default_paths(X509_STORE *ctx);
 
 struct BASIC_CONSTRAINTS_st {
   ASN1_BOOLEAN ca;
@@ -4951,8 +5039,6 @@ struct ISSUING_DIST_POINT_st {
   ASN1_BOOLEAN indirectCRL;
   ASN1_BOOLEAN onlyattr;
 };
-
-// X509_PURPOSE stuff
 
 #define NS_SSL_CLIENT 0x80
 #define NS_SSL_SERVER 0x40
