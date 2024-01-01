@@ -4742,9 +4742,6 @@ DECLARE_ASN1_FUNCTIONS(DIST_POINT_NAME)
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(ISSUING_DIST_POINT)
 
-OPENSSL_EXPORT int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn,
-                                         X509_NAME *iname);
-
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(ACCESS_DESCRIPTION)
