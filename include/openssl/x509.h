@@ -3903,11 +3903,11 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx,
 
 // X509_STORE_CTX_set_verify_cb configures a callback function for |ctx| that is
 // called multiple times during |X509_verify_cert|. The callback returns zero to
-// fail verification and non-zero to proceed. Typically, it will return |ok|,
-// which preserves the default behavior. Returning one when |ok| is zero will
-// proceed past some error. The callback may inspect |ctx| and the error queue
-// to attempt to determine the current stage of certificate verification, but
-// this is often unreliable.
+// fail verification and one to proceed. Typically, it will return |ok|, which
+// preserves the default behavior. Returning one when |ok| is zero will proceed
+// past some error. The callback may inspect |ctx| and the error queue to
+// attempt to determine the current stage of certificate verification, but this
+// is often unreliable.
 //
 // WARNING: Do not use this function. It is extremely fragile and unpredictable.
 // This callback exposes implementation details of certificate verification,
