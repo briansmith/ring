@@ -503,12 +503,8 @@ static X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
   return NULL;
 }
 
-// Try to get issuer certificate from store. Due to limitations of the API
-// this can only retrieve a single certificate matching a given subject name.
-// However it will fill the cache with all matching certificates, so we can
-// examine the cache for all matches. Return values are: 1 lookup
-// successful.  0 certificate not found. -1 some other error.
-int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
+int X509_STORE_CTX_get1_issuer(X509 **out_issuer, X509_STORE_CTX *ctx,
+                               X509 *x) {
   X509_NAME *xn;
   X509_OBJECT obj, *pobj;
   int idx, ret;
@@ -519,7 +515,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   }
   // If certificate matches all OK
   if (x509_check_issued_with_callback(ctx, x, obj.data.x509)) {
-    *issuer = obj.data.x509;
+    *out_issuer = obj.data.x509;
     return 1;
   }
   X509_OBJECT_free_contents(&obj);
@@ -542,7 +538,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
         break;
       }
       if (x509_check_issued_with_callback(ctx, x, pobj->data.x509)) {
-        *issuer = pobj->data.x509;
+        *out_issuer = pobj->data.x509;
         X509_OBJECT_up_ref_count(pobj);
         ret = 1;
         break;

@@ -3071,6 +3071,19 @@ OPENSSL_EXPORT int X509_check_ip(const X509 *x509, const uint8_t *chk,
 OPENSSL_EXPORT int X509_check_ip_asc(const X509 *x509, const char *ipasc,
                                      unsigned int flags);
 
+// X509_STORE_CTX_get1_issuer looks up a candidate trusted issuer for |x509| out
+// of |ctx|'s |X509_STORE|, based on the criteria in |X509_check_issued|. If one
+// was found, it returns one and sets |*out_issuer| to the issuer. The caller
+// must release |*out_issuer| with |X509_free| when done. If none was found, it
+// returns zero and leaves |*out_issuer| unchanged.
+//
+// This function only searches for trusted issuers. It does not consider
+// untrusted intermediates passed in to |X509_STORE_CTX_init|.
+//
+// TODO(crbug.com/boringssl/407): |x509| should be const.
+OPENSSL_EXPORT int X509_STORE_CTX_get1_issuer(X509 **out_issuer,
+                                              X509_STORE_CTX *ctx, X509 *x509);
+
 
 // X.509 information.
 //
@@ -3786,9 +3799,6 @@ OPENSSL_EXPORT void X509_STORE_set_check_crl(
 // X509_STORE_CTX_new returns a newly-allocated, empty |X509_STORE_CTX|, or NULL
 // on error.
 OPENSSL_EXPORT X509_STORE_CTX *X509_STORE_CTX_new(void);
-
-OPENSSL_EXPORT int X509_STORE_CTX_get1_issuer(X509 **issuer,
-                                              X509_STORE_CTX *ctx, X509 *x);
 
 // X509_STORE_CTX_free releases memory associated with |ctx|.
 OPENSSL_EXPORT void X509_STORE_CTX_free(X509_STORE_CTX *ctx);
