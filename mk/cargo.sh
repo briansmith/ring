@@ -231,11 +231,18 @@ if [ -n "${RING_COVERAGE-}" ]; then
       ;;
   esac
 
+  additional_rustflags=""
+  case "$target" in
+    powerpc-unknown-linux-gnu)
+      additional_rustflags="-latomic"
+    ;;
+  esac
+
   runner_var=CARGO_TARGET_${target_upper}_RUNNER
   declare -x "${runner_var}=mk/runner ${!runner_var-}"
 
   rustflags_var=CARGO_TARGET_${target_upper}_RUSTFLAGS
-  declare -x "${rustflags_var}=-Cinstrument-coverage ${!rustflags_var-}"
+  declare -x "${rustflags_var}=${additional_rustflags} -Cinstrument-coverage ${!rustflags_var-}"
 fi
 
 if [ -n "${use_clang}" ]; then
