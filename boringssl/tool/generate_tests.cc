@@ -26,17 +26,40 @@
 #include <openssl/nid.h>
 #include <openssl/sha.h>
 
-#include "ecp_nistz256_precomp.h"
-#include "../crypto/bn/internal.h"
-#include "../crypto/ec/internal.h"
+#include "../crypto/fipsmodule/bn/internal.h"
+#include "../crypto/fipsmodule/ec/internal.h"
 
 #include "internal.h"
 
 enum ECDSASigFormat { Fixed, ASN1 };
 enum Affinification { MakeAffineAllZero, MakeAffineToken, Unchanged };
 
-extern "C" int digest_to_bn(BIGNUM *out, const uint8_t *digest,
-                            size_t digest_len, const BIGNUM *order);
+
+static void digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
+                         const BIGNUM *order) {
+  size_t num_bits = BN_num_bits(order);
+  // Need to truncate digest if it is too long: first truncate whole bytes.
+  size_t num_bytes = (num_bits + 7) / 8;
+  if (digest_len > num_bytes) {
+    digest_len = num_bytes;
+  }
+
+  bn_big_endian_to_words(out->d, order->width, digest, digest_len);
+
+  // If it is still too long, truncate remaining bits with a shift.
+  if (8 * digest_len > num_bits) {
+    bn_rshift_words(out->d, out->d, 8 - (num_bits & 0x7), order->width);
+  }
+
+  // |out| now has the same bit width as |order|, but this only bounds by
+  // 2*|order|. Subtract the order if out of range.
+  //
+  // Montgomery multiplication accepts the looser bounds, so this isn't strictly
+  // necessary, but it is a cleaner abstraction and has no performance impact.
+  BN_ULONG tmp[EC_MAX_WORDS];
+  bn_reduce_once_in_place(out->d, 0 /* no carry */, order->d, tmp,
+                          order->width);
+}
 
 static bool format_ecdsa_sig(uint8_t *out_sig, unsigned int *out_sig_len,
                              const ECDSA_SIG *sig, const EC_GROUP *group,
@@ -78,27 +101,27 @@ static bool ecdsa_sign(uint8_t *sig, unsigned int *sig_len, EC_KEY *key,
                        const uint8_t *digest, size_t digest_len,
                        ECDSASigFormat fmt, int i) {
   if (fmt == ASN1) {
-    if (!ECDSA_sign_ex(0, digest, digest_len, sig, sig_len, NULL, NULL,
-                       key, i)) {
+    if (!ECDSA_sign(0, digest, digest_len, sig, sig_len, key)) {
       printf("failed\n");
       return false;
     }
   } else {
     assert(fmt == Fixed);
-    bssl::UniquePtr<ECDSA_SIG>
-        ecdsa_sig(ECDSA_do_sign_ex(digest, digest_len, NULL, NULL, key, i));
-    format_ecdsa_sig(sig, sig_len, ecdsa_sig.get(), EC_KEY_get0_group(key), fmt);
+    bssl::UniquePtr<ECDSA_SIG> ecdsa_sig(
+        ECDSA_do_sign(digest, digest_len, key));
+    format_ecdsa_sig(sig, sig_len, ecdsa_sig.get(), EC_KEY_get0_group(key),
+                     fmt);
   }
   return true;
 }
 
-void print_hex(FILE *f, const uint8_t *data, size_t len) {
+static void print_hex(FILE *f, const uint8_t *data, size_t len) {
   for (size_t i = 0; i < len; i++) {
     fprintf(f, "%02x", data[i]);
   }
 }
 
-void print_bn(const BIGNUM *b) {
+static void print_bn(const BIGNUM *b) {
   if (BN_is_zero(b)) {
     printf("00");
     return;
@@ -109,7 +132,7 @@ void print_bn(const BIGNUM *b) {
     abort();
   }
   printf("%s", hex);
-  free(hex);
+  OPENSSL_free(hex);
 }
 
 static bool print_ecdsa_sig(const ECDSA_SIG *sig, const EC_GROUP *group,
@@ -139,8 +162,7 @@ static bool GenerateTestsForRS(const EC_GROUP *group, const char *curve_name,
   }
 
   bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
-  if (!sig ||
-      !BN_nnmod(sig->r, r, EC_GROUP_get0_order(group), ctx)) {
+  if (!sig || !BN_nnmod(sig->r, r, EC_GROUP_get0_order(group), ctx)) {
     return false;
   }
   sig->s = BN_dup(s);
@@ -176,17 +198,16 @@ static bool GenerateTestsForRS(const EC_GROUP *group, const char *curve_name,
   }
 
   bssl::UniquePtr<BIGNUM> z_neg(BN_new());
-  if (!z_neg ||
-      !digest_to_bn(z_neg.get(), digest, digest_len,
-                    EC_GROUP_get0_order(group))) {
+  if (!z_neg) {
     return false;
   }
+  digest_to_bn(z_neg.get(), digest, digest_len, EC_GROUP_get0_order(group));
+
   BN_set_negative(z_neg.get(), true);
 
   bssl::UniquePtr<EC_POINT> intermediate(EC_POINT_new(group));
-  if (!intermediate ||
-      !EC_POINT_mul(group, intermediate.get(), z_neg.get(), pub_key.get(),
-                    sig->s, NULL)) {
+  if (!intermediate || !EC_POINT_mul(group, intermediate.get(), z_neg.get(),
+                                     pub_key.get(), sig->s, NULL)) {
     return false;
   }
   bssl::UniquePtr<BIGNUM> r_inv(BN_new());
@@ -195,15 +216,14 @@ static bool GenerateTestsForRS(const EC_GROUP *group, const char *curve_name,
     return false;
   }
   bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group));
-  if (!result ||
-      !EC_POINT_mul(group, point.get(), NULL, intermediate.get(), r_inv.get(),
-                    NULL)) {
+  if (!result || !EC_POINT_mul(group, point.get(), NULL, intermediate.get(),
+                               r_inv.get(), NULL)) {
     return false;
   }
   uint8_t pub_key_encoded[1024];
   size_t pub_key_encoded_len =
-    EC_POINT_point2oct(group, point.get(), POINT_CONVERSION_UNCOMPRESSED,
-                       pub_key_encoded, sizeof(pub_key_encoded), NULL);
+      EC_POINT_point2oct(group, point.get(), POINT_CONVERSION_UNCOMPRESSED,
+                         pub_key_encoded, sizeof(pub_key_encoded), NULL);
   if (pub_key_encoded_len == 0) {
     return false;
   }
@@ -233,7 +253,8 @@ static bool GenerateMaxwellTestsForCurve(int nid, const char *curve_name,
   bssl::UniquePtr<BIGNUM> wrong_r(BN_new());
   bssl::UniquePtr<BIGNUM> s(BN_new());
   if (!group || !r || !q || !q_minus_n || !q_minus_n_ish || !wrong_r || !s ||
-      !EC_GROUP_get_curve_GFp(group.get(), q.get(), nullptr, nullptr, nullptr) ||
+      !EC_GROUP_get_curve_GFp(group.get(), q.get(), nullptr, nullptr,
+                              nullptr) ||
       !BN_sub(q_minus_n.get(), q.get(), EC_GROUP_get0_order(group.get())) ||
       !BN_copy(q_minus_n_ish.get(), q_minus_n.get()) ||
       !BN_add_word(q_minus_n_ish.get(), offset) ||
@@ -244,49 +265,62 @@ static bool GenerateMaxwellTestsForCurve(int nid, const char *curve_name,
   }
 
   if (!BN_set_word(r.get(), r_word) ||
-      !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr, s.get(),
-                          fmt, ctx, "P (0 )",
-      "# The signature has r < q - n. This is the control case for the next\n"
-      "# test case; this signature is the same but the public key is\n"
-      "# different. Notice that both public keys work for the same signature!\n"
-      "# This signature will validate even if the implementation doesn't\n"
-      "# reduce the X coordinate of the multiplication result (mod n).")) {
+      !GenerateTestsForRS(
+          group.get(), curve_name, r.get(), nullptr, s.get(), fmt, ctx,
+          "P (0 )",
+          "# The signature has r < q - n. This is the control case for the "
+          "next\n"
+          "# test case; this signature is the same but the public key is\n"
+          "# different. Notice that both public keys work for the same "
+          "signature!\n"
+          "# This signature will validate even if the implementation doesn't\n"
+          "# reduce the X coordinate of the multiplication result (mod n).")) {
     return false;
   }
   if (!BN_add(r.get(), r.get(), EC_GROUP_get0_order(group.get())) ||
-      !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr, s.get(),
-                          fmt, ctx, "P (0 )",
-      "# The signature has r < q - n. s Since r < q - n, r + n < q. Notice\n"
-      "# that this signature is the same as the signature in the preceding\n"
-      "# test case, but the public key is different. That the signature\n"
-      "# validates for this case too is what's special about the case where\n"
-      "# r < q - n. If this test case fails it is likely that the\n"
-      "# implementation doesn't reduce the X coordinate of the multiplication\n"
-      "# result (mod n), or it is missing the second step of Gregory\n"
-      "# Maxwell's trick.")) {
+      !GenerateTestsForRS(
+          group.get(), curve_name, r.get(), nullptr, s.get(), fmt, ctx,
+          "P (0 )",
+          "# The signature has r < q - n. s Since r < q - n, r + n < q. "
+          "Notice\n"
+          "# that this signature is the same as the signature in the "
+          "preceding\n"
+          "# test case, but the public key is different. That the signature\n"
+          "# validates for this case too is what's special about the case "
+          "where\n"
+          "# r < q - n. If this test case fails it is likely that the\n"
+          "# implementation doesn't reduce the X coordinate of the "
+          "multiplication\n"
+          "# result (mod n), or it is missing the second step of Gregory\n"
+          "# Maxwell's trick.")) {
     return false;
   }
 
-  if (!GenerateTestsForRS(group.get(), curve_name, q_minus_n_ish.get(),
-                          nullptr, s.get(), fmt, ctx, "P (0 )",
-      "# The signature has r > q - n. The signature is for the public key\n"
-      "# recovered from r. r + n > q since r > q - n. This is the control\n"
-      "# for the next test case; this signature is the same as the signature\n"
-      "# in the following test case but the public key is different.")) {
+  if (!GenerateTestsForRS(
+          group.get(), curve_name, q_minus_n_ish.get(), nullptr, s.get(), fmt,
+          ctx, "P (0 )",
+          "# The signature has r > q - n. The signature is for the public key\n"
+          "# recovered from r. r + n > q since r > q - n. This is the control\n"
+          "# for the next test case; this signature is the same as the "
+          "signature\n"
+          "# in the following test case but the public key is different.")) {
     return false;
   }
 
-  if (!GenerateTestsForRS(group.get(), curve_name, q_minus_n_ish.get(),
-                          wrong_r.get(), s.get(), fmt, ctx, "F",
-      "# The signature has r > q - n. The signature is for the public key\n"
-      "# recovered from r + n (mod q). r + n > q since r > q - n, and so\n"
-      "# r + n (mod q) < r because r + n (mod n) != r + n (mod q). Notice\n"
-      "# that this signature is the same as the signature in the preceding\n"
-      "# test case but the public key is different. Also, notice that the\n"
-      "# signature fails to validate in this case, unlike other related test\n"
-      "# cases. If this test case fails (the signature validates), it is\n"
-      "# likely that the implementation didn't guard the second case of\n"
-      "# Gregory Maxwell's trick on the condition r < q - n.")) {
+  if (!GenerateTestsForRS(
+          group.get(), curve_name, q_minus_n_ish.get(), wrong_r.get(), s.get(),
+          fmt, ctx, "F",
+          "# The signature has r > q - n. The signature is for the public key\n"
+          "# recovered from r + n (mod q). r + n > q since r > q - n, and so\n"
+          "# r + n (mod q) < r because r + n (mod n) != r + n (mod q). Notice\n"
+          "# that this signature is the same as the signature in the "
+          "preceding\n"
+          "# test case but the public key is different. Also, notice that the\n"
+          "# signature fails to validate in this case, unlike other related "
+          "test\n"
+          "# cases. If this test case fails (the signature validates), it is\n"
+          "# likely that the implementation didn't guard the second case of\n"
+          "# Gregory Maxwell's trick on the condition r < q - n.")) {
     return false;
   }
 
@@ -295,17 +329,18 @@ static bool GenerateMaxwellTestsForCurve(int nid, const char *curve_name,
 
 static bool GenerateMaxwellTests(ECDSASigFormat fmt, BN_CTX *ctx) {
   printf(
-    "# Test vectors for Gregory Maxwell's trick.\n"
-    "#\n"
-    "# In all cases, the `s` component of the signature was selected\n"
-    "# arbitrarily as 4 and then the `r` component was chosen to be the\n"
-    "# smallest value where the public key recovery from the signature\n"
-    "# works.\n");
+      "# Test vectors for Gregory Maxwell's trick.\n"
+      "#\n"
+      "# In all cases, the `s` component of the signature was selected\n"
+      "# arbitrarily as 4 and then the `r` component was chosen to be the\n"
+      "# smallest value where the public key recovery from the signature\n"
+      "# works.\n");
 
   // The numbers (6, 0) and (3, 2) were determined using the guess-and-check
   // method. Using smaller/different numbers causes the public key recovery
   // from the signature to fail.
-  if (!GenerateMaxwellTestsForCurve(NID_X9_62_prime256v1, "P-256", 6, 0, fmt, ctx) ||
+  if (!GenerateMaxwellTestsForCurve(NID_X9_62_prime256v1, "P-256", 6, 0, fmt,
+                                    ctx) ||
       !GenerateMaxwellTestsForCurve(NID_secp384r1, "P-384", 3, 2, fmt, ctx)) {
     return false;
   }
@@ -315,8 +350,7 @@ static bool GenerateMaxwellTests(ECDSASigFormat fmt, BN_CTX *ctx) {
 static bool GenerateShortSTestsForCurve(int nid, const char *curve_name,
                                         ECDSASigFormat fmt, BN_CTX *ctx) {
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
-  if (!key ||
-      !EC_KEY_generate_key(key.get())) {
+  if (!key || !EC_KEY_generate_key(key.get())) {
     return false;
   }
   const EC_GROUP *group = EC_KEY_get0_group(key.get());
@@ -328,25 +362,24 @@ static bool GenerateShortSTestsForCurve(int nid, const char *curve_name,
   size_t digest_len;
   const char *digest_name;
   switch (order_bits) {
-  case 256:
+    case 256:
       SHA256(MSG, MSG_LEN, digest);
       digest_len = SHA256_DIGEST_LENGTH;
       digest_name = "SHA256";
       break;
-  case 384:
+    case 384:
       SHA384(MSG, MSG_LEN, digest);
       digest_len = SHA384_DIGEST_LENGTH;
       digest_name = "SHA384";
       break;
-  default:
-    abort();
+    default:
+      abort();
   }
 
   uint8_t pub_key_encoded[1024];
-  size_t pub_key_encoded_len =
-    EC_POINT_point2oct(group, EC_KEY_get0_public_key(key.get()),
-                       POINT_CONVERSION_UNCOMPRESSED, pub_key_encoded,
-                       sizeof(pub_key_encoded), NULL);
+  size_t pub_key_encoded_len = EC_POINT_point2oct(
+      group, EC_KEY_get0_public_key(key.get()), POINT_CONVERSION_UNCOMPRESSED,
+      pub_key_encoded, sizeof(pub_key_encoded), NULL);
   if (pub_key_encoded_len == 0) {
     return false;
   }
@@ -403,8 +436,7 @@ static bool GenerateECDSATestsForCurve(int nid, const char *curve_name,
     return false;
   }
   bssl::UniquePtr<BIGNUM> one(BN_new());
-  if (!one ||
-      !BN_one(one.get())) {
+  if (!one || !BN_one(one.get())) {
     return false;
   }
   bssl::UniquePtr<BIGNUM> zero(BN_new());
@@ -415,23 +447,20 @@ static bool GenerateECDSATestsForCurve(int nid, const char *curve_name,
 
   const BIGNUM *n = EC_GROUP_get0_order(group.get());
   bssl::UniquePtr<BIGNUM> n_minus_1(BN_new());
-  if (!n_minus_1 ||
-      !BN_copy(n_minus_1.get(), n) ||
+  if (!n_minus_1 || !BN_copy(n_minus_1.get(), n) ||
       !BN_sub_word(n_minus_1.get(), 1)) {
     return false;
   }
 
-  if (!GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr,
-                          zero.get(), fmt, ctx, "F",
-                          "# s == 0 (out of range)") ||
+  if (!GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr, zero.get(),
+                          fmt, ctx, "F", "# s == 0 (out of range)") ||
+      !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr, one.get(),
+                          fmt, ctx, "P (0 )", "# s == 1 (minimum allowed)") ||
+      !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr, n, fmt,
+                          ctx, "F", "# s == n (out of range)") ||
       !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr,
-                          one.get(), fmt, ctx, "P (0 )",
-                          "# s == 1 (minimum allowed)") ||
-      !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr, n, fmt, ctx,
-                          "F", "# s == n (out of range)") ||
-      !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr,
-                          n_minus_1.get(), fmt, ctx,
-                          "P (0 )", "# s == n - 1 (maximum allowed)")) {
+                          n_minus_1.get(), fmt, ctx, "P (0 )",
+                          "# s == n - 1 (maximum allowed)")) {
     return false;
   }
   return true;
@@ -443,7 +472,7 @@ static bool GenerateECDSATests(ECDSASigFormat fmt, BN_CTX *ctx) {
   }
 
   printf(
-    "\n\n# Generated Test vectors edge cases of signature (r, s) values.\n");
+      "\n\n# Generated Test vectors edge cases of signature (r, s) values.\n");
 
   if (!GenerateECDSATestsForCurve(NID_X9_62_prime256v1, "P-256", 6, fmt, ctx) ||
       !GenerateECDSATestsForCurve(NID_secp384r1, "P-384", 3, fmt, ctx)) {
@@ -467,14 +496,26 @@ static void GenerateECCPublicKeyTestEncoded(const char *curve_name,
   printf("Result = %s\n", result);
 }
 
+static int EC_POINT_make_affine(const EC_GROUP *group, EC_POINT *point,
+                                BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  bssl::UniquePtr<BIGNUM> y(BN_new());
+
+  if (!EC_POINT_get_affine_coordinates(group, point, x.get(), y.get(), ctx)) {
+    return false;
+  }
+
+  return EC_POINT_set_affine_coordinates(group, point, x.get(), y.get(), ctx);
+}
+
 static bool GenerateECCPublicKeyTest(const char *curve_name,
                                      const EC_GROUP *group,
                                      const EC_POINT *point, const char *result,
                                      const char *comment) {
   uint8_t pub_key_encoded[1024];
   size_t pub_key_encoded_len =
-    EC_POINT_point2oct(group, point, POINT_CONVERSION_UNCOMPRESSED,
-                       pub_key_encoded, sizeof(pub_key_encoded), NULL);
+      EC_POINT_point2oct(group, point, POINT_CONVERSION_UNCOMPRESSED,
+                         pub_key_encoded, sizeof(pub_key_encoded), NULL);
   if (pub_key_encoded_len == 0) {
     return false;
   }
@@ -494,7 +535,7 @@ static bool GenerateECCPublicKeyTestWithAffineDecodedCoordinates(
   size_t pub_key_encoded_len = 1 + (2 * coord_len);
   assert(pub_key_encoded_len <= sizeof(pub_key_encoded));
 
-  pub_key_encoded[0] = 0x04; // Uncompressed
+  pub_key_encoded[0] = 0x04;  // Uncompressed
   if (!BN_bn2bin_padded(&pub_key_encoded[1], coord_len, x) ||
       !BN_bn2bin_padded(&pub_key_encoded[1 + coord_len], coord_len, y)) {
     return false;
@@ -510,8 +551,7 @@ static bool GenerateECCPublicKeyTestsForCurve(int nid, const char *curve_name,
                                               BN_CTX *ctx) {
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(nid));
   bssl::UniquePtr<BIGNUM> q(BN_new());
-  if (!group ||
-      !q ||
+  if (!group || !q ||
       !EC_GROUP_get_curve_GFp(group.get(), q.get(), NULL, NULL, NULL)) {
     return false;
   }
@@ -532,42 +572,41 @@ static bool GenerateECCPublicKeyTestsForCurve(int nid, const char *curve_name,
   }
 
   if (!EC_POINT_set_compressed_coordinates_GFp(group.get(), point.get(),
-      zero.get(), 0, ctx) ||
-      !GenerateECCPublicKeyTest(curve_name, group.get(), point.get(), "P",
-      "# X == 0, decompressed with y_bit == 0. This verifies that the\n"
-      "# implementation doesn't reject zero-valued field elements (they\n"
-      "# aren't scalars).")) {
+                                               zero.get(), 0, ctx) ||
+      !GenerateECCPublicKeyTest(
+          curve_name, group.get(), point.get(), "P",
+          "# X == 0, decompressed with y_bit == 0. This verifies that the\n"
+          "# implementation doesn't reject zero-valued field elements (they\n"
+          "# aren't scalars).")) {
     return false;
   }
 
   if (!EC_POINT_get_affine_coordinates_GFp(group.get(), point.get(), NULL,
                                            y.get(), ctx) ||
-      !GenerateECCPublicKeyTestWithAffineDecodedCoordinates(curve_name,
-                                                            group.get(),
-                                                            q.get(), y.get(),
-      "F (X is out of range)",
-      "# X == q. This is invalid because q isn't a valid field element. Some\n"
-      "# broken implementations might accept this if they reduce X mod q\n"
-      "# since q mod q == 0 and the Y coordinate matches the one from the\n"
-      "# x == 0 test case above.")) {
+      !GenerateECCPublicKeyTestWithAffineDecodedCoordinates(
+          curve_name, group.get(), q.get(), y.get(), "F (X is out of range)",
+          "# X == q. This is invalid because q isn't a valid field element. "
+          "Some\n"
+          "# broken implementations might accept this if they reduce X mod q\n"
+          "# since q mod q == 0 and the Y coordinate matches the one from the\n"
+          "# x == 0 test case above.")) {
     return false;
   }
 
   if (!EC_POINT_set_compressed_coordinates_GFp(group.get(), point.get(),
                                                zero.get(), 1, ctx) ||
       !GenerateECCPublicKeyTest(curve_name, group.get(), point.get(), "P",
-      "# X == 0, decompressed with y_bit == 1.")) {
+                                "# X == 0, decompressed with y_bit == 1.")) {
     return false;
   }
 
   if (!EC_POINT_get_affine_coordinates_GFp(group.get(), point.get(), NULL,
                                            y.get(), ctx) ||
-      !GenerateECCPublicKeyTestWithAffineDecodedCoordinates(curve_name,
-                                                            group.get(),
-                                                            q.get(), y.get(),
-      "F (X is out of range)",
-      "# X == q, decompressed with y_bit == 1. See the previous X == q test\n"
-      "# case.")) {
+      !GenerateECCPublicKeyTestWithAffineDecodedCoordinates(
+          curve_name, group.get(), q.get(), y.get(), "F (X is out of range)",
+          "# X == q, decompressed with y_bit == 1. See the previous X == q "
+          "test\n"
+          "# case.")) {
     return false;
   }
 
@@ -586,9 +625,11 @@ static bool GenerateECCPublicKeyTestsForCurve(int nid, const char *curve_name,
   } while (!EC_POINT_set_compressed_coordinates_GFp(group.get(), point.get(),
                                                     largest_x.get(), 0, ctx));
   if (!GenerateECCPublicKeyTest(curve_name, group.get(), point.get(), "P",
-      "# The largest valid X coordinate, decompressed with y_bit == 0. This\n"
-      "# helps ensure that the upper bound on coordinate values is not too\n"
-      "# low.")) {
+                                "# The largest valid X coordinate, "
+                                "decompressed with y_bit == 0. This\n"
+                                "# helps ensure that the upper bound on "
+                                "coordinate values is not too\n"
+                                "# low.")) {
     return false;
   }
 
@@ -597,12 +638,12 @@ static bool GenerateECCPublicKeyTestsForCurve(int nid, const char *curve_name,
 
 static bool GenerateECCPublicKeyTests(BN_CTX *ctx) {
   printf(
-    "# Test vectors for Public Key Point Validation.\n"
-    "#\n"
-    "# These test vectors were generated by applying the patch in\n"
-    "# util/generate-tests.patch to BoringSSL, and then running\n"
-    "# `bssl generate-tests ecc-public-key`.\n"
-    "#\n");
+      "# Test vectors for Public Key Point Validation.\n"
+      "#\n"
+      "# These test vectors were generated by applying the patch in\n"
+      "# util/generate-tests.patch to BoringSSL, and then running\n"
+      "# `bssl generate-tests ecc-public-key`.\n"
+      "#\n");
 
   if (!GenerateECCPublicKeyTestsForCurve(NID_X9_62_prime256v1, "P-256", ctx) ||
       !GenerateECCPublicKeyTestsForCurve(NID_secp384r1, "P-384", ctx)) {
@@ -621,27 +662,23 @@ struct InterestingPoints {
     }
 
     g_inv.reset(EC_POINT_dup(g(), group.get()));
-    if (!g_inv ||
-        !EC_POINT_invert(group.get(), g_inv.get(), ctx)) {
+    if (!g_inv || !EC_POINT_invert(group.get(), g_inv.get(), ctx)) {
       return;
     }
 
     inf.reset(EC_POINT_new(group.get()));
-    if (!inf ||
-        !EC_POINT_set_to_infinity(group.get(), inf.get())) {
+    if (!inf || !EC_POINT_set_to_infinity(group.get(), inf.get())) {
       return;
     }
     inf_n_g.reset(EC_POINT_new(group.get()));
     if (!inf_n_g ||
         !EC_POINT_mul(group.get(), inf_n_g.get(),
-        EC_GROUP_get0_order(group.get()), NULL, NULL, ctx)) {
+                      EC_GROUP_get0_order(group.get()), NULL, NULL, ctx)) {
       return;
     }
     bssl::UniquePtr<BIGNUM> nm1(BN_dup(EC_GROUP_get0_order(group.get())));
     nm1_g.reset(EC_POINT_new(group.get()));
-    if (!nm1 ||
-        !BN_sub_word(nm1.get(), 1) ||
-        !nm1_g ||
+    if (!nm1 || !BN_sub_word(nm1.get(), 1) || !nm1_g ||
         !EC_POINT_mul(group.get(), nm1_g.get(), nm1.get(), NULL, NULL, ctx)) {
       return;
     }
@@ -652,8 +689,7 @@ struct InterestingPoints {
     }
 
     nm1_g_inv.reset(EC_POINT_dup(nm1_g.get(), group.get()));
-    if (!nm1_g_inv ||
-        !EC_POINT_invert(group.get(), nm1_g_inv.get(), ctx)) {
+    if (!nm1_g_inv || !EC_POINT_invert(group.get(), nm1_g_inv.get(), ctx)) {
       return;
     }
     nm1_g_inv_aff.reset(EC_POINT_dup(nm1_g_inv.get(), group.get()));
@@ -669,33 +705,31 @@ struct InterestingPoints {
     *valid = true;
   }
 
-  const EC_POINT *g() const {
-    return EC_GROUP_get0_generator(group.get());
-  }
+  const EC_POINT *g() const { return EC_GROUP_get0_generator(group.get()); }
 
   bssl::UniquePtr<EC_GROUP> group;
   std::string curve_name;
   bssl::UniquePtr<EC_POINT> inf;
-  bssl::UniquePtr<EC_POINT> g_inv; // -G
-  bssl::UniquePtr<EC_POINT> nm1_g; // (n - 1) * G
-  bssl::UniquePtr<EC_POINT> nm1_g_aff; // (n - 1) * G (affine)
-  bssl::UniquePtr<EC_POINT> nm1_g_inv; // inverse of (n - 1) * G
-  bssl::UniquePtr<EC_POINT> nm1_g_inv_aff; // inverse of (n - 1) * G (affine)
-  bssl::UniquePtr<EC_POINT> inf_n_g; // n * (affine) G
+  bssl::UniquePtr<EC_POINT> g_inv;          // -G
+  bssl::UniquePtr<EC_POINT> nm1_g;          // (n - 1) * G
+  bssl::UniquePtr<EC_POINT> nm1_g_aff;      // (n - 1) * G (affine)
+  bssl::UniquePtr<EC_POINT> nm1_g_inv;      // inverse of (n - 1) * G
+  bssl::UniquePtr<EC_POINT> nm1_g_inv_aff;  // inverse of (n - 1) * G (affine)
+  bssl::UniquePtr<EC_POINT> inf_n_g;        // n * (affine) G
 };
 
 static bool print_point(const EC_GROUP *group, const char *name,
                         const EC_POINT *p, Affinification aff, BN_CTX *ctx) {
   uint8_t buf[1024];
   uint8_t num_bytes = (EC_GROUP_get_degree(group) + 7) / 8;
-  assert(num_bytes <= sizeof(buf));
+  assert((unsigned long)num_bytes <= sizeof(buf));
 
   bssl::UniquePtr<EC_POINT> p_aff;
+  bssl::UniquePtr<BIGNUM> t(BN_new());
   bool is_infinity = EC_POINT_is_at_infinity(group, p);
   if (aff != Unchanged && !is_infinity) {
     p_aff.reset(EC_POINT_dup(p, group));
-    if (!p_aff ||
-        !EC_POINT_make_affine(group, p_aff.get(), ctx)) {
+    if (!p_aff || !EC_POINT_make_affine(group, p_aff.get(), ctx)) {
       return false;
     }
     p = p_aff.get();
@@ -715,18 +749,23 @@ static bool print_point(const EC_GROUP *group, const char *name,
     printf(", ");
     print_hex(stdout, buf, num_bytes);
   } else {
-    if (!BN_bn2bin_padded(buf, num_bytes, &p->X)) {
+    if (!ec_felem_to_bignum(group, t.get(), &p->raw.X)) {
+      return false;
+    }
+    if (!BN_bn2bin_padded(buf, num_bytes, t.get())) {
       return false;
     }
     print_hex(stdout, buf, num_bytes);
     printf(", ");
-    if (!BN_bn2bin_padded(buf, num_bytes, &p->Y)) {
+    ec_felem_to_bignum(group, t.get(), &p->raw.Y);
+    if (!BN_bn2bin_padded(buf, num_bytes, t.get())) {
       return false;
     }
     print_hex(stdout, buf, num_bytes);
   }
   if (aff == Unchanged) {
-    if (!BN_bn2bin_padded(buf, num_bytes, &p->Z)) {
+    ec_felem_to_bignum(group, t.get(), &p->raw.Z);
+    if (!BN_bn2bin_padded(buf, num_bytes, t.get())) {
       return false;
     }
     printf(", ");
@@ -737,8 +776,8 @@ static bool print_point(const EC_GROUP *group, const char *name,
 }
 
 static bool GenerateECCPointDoubleTest(const InterestingPoints &points,
-                                       size_t n, const EC_POINT *a,
-                                       BN_CTX *ctx, const char *comment) {
+                                       size_t n, const EC_POINT *a, BN_CTX *ctx,
+                                       const char *comment) {
   const EC_GROUP *group = points.group.get();
   bssl::UniquePtr<EC_POINT> r(EC_POINT_dup(a, group));
   if (!r) {
@@ -763,17 +802,21 @@ static bool GenerateECCPointDoubleTest(const InterestingPoints &points,
 static bool GenerateECCPointDoubleTestsForCurve(InterestingPoints &points,
                                                 BN_CTX *ctx) {
   if (!GenerateECCPointDoubleTest(points, 1, points.g(), ctx,
-      "# G doubled once.") ||
-      !GenerateECCPointDoubleTest(points, 1, points.inf.get(), ctx,
-      "# Point at infinity doubled. This uses the (0, 0, 0) representation of\n"
-      "# the point at infinity instead of the classic (1, 1, 0)\n"
-      "# representation.") ||
-      !GenerateECCPointDoubleTest(points, 1, points.inf_n_g.get(), ctx,
-      "# Point at infinity doubled. This form is the result of multiplying\n"
-      "# n * G (affine), which is more interesting than the above case\n"
-      "# because only the Z coordinate is zero.") ||
+                                  "# G doubled once.") ||
+      !GenerateECCPointDoubleTest(
+          points, 1, points.inf.get(), ctx,
+          "# Point at infinity doubled. This uses the (0, 0, 0) representation "
+          "of\n"
+          "# the point at infinity instead of the classic (1, 1, 0)\n"
+          "# representation.") ||
+      !GenerateECCPointDoubleTest(
+          points, 1, points.inf_n_g.get(), ctx,
+          "# Point at infinity doubled. This form is the result of "
+          "multiplying\n"
+          "# n * G (affine), which is more interesting than the above case\n"
+          "# because only the Z coordinate is zero.") ||
       !GenerateECCPointDoubleTest(points, 1, points.nm1_g.get(), ctx,
-      "# (n - 1) * G doubled.")) {
+                                  "# (n - 1) * G doubled.")) {
   }
 
   return true;
@@ -782,8 +825,8 @@ static bool GenerateECCPointDoubleTestsForCurve(InterestingPoints &points,
 
 static bool GenerateECCPointAddTest(InterestingPoints &points,
                                     const EC_POINT *a, const EC_POINT *b,
-                                    Affinification b_make_aff,
-                                    BN_CTX *ctx, const char *comment) {
+                                    Affinification b_make_aff, BN_CTX *ctx,
+                                    const char *comment) {
   if (b_make_aff != Unchanged) {
     assert(b_make_aff != MakeAffineToken);
     // We never try affine addition when b is the point at infinity since we'd
@@ -818,41 +861,40 @@ static bool GenerateECCPointAddTestsForCurve(InterestingPoints &points,
                                              Affinification b_aff,
                                              BN_CTX *ctx) {
   if (!GenerateECCPointAddTest(points, points.inf.get(), points.inf.get(),
-                               b_aff, ctx,
-      "# inf + inf == 2 * inf == inf") ||
+                               b_aff, ctx, "# inf + inf == 2 * inf == inf") ||
       !GenerateECCPointAddTest(points, points.inf_n_g.get(),
                                points.inf_n_g.get(), b_aff, ctx,
-      "# inf (n*G) + inf (n*G) == 2 * inf == inf") ||
+                               "# inf (n*G) + inf (n*G) == 2 * inf == inf") ||
       !GenerateECCPointAddTest(points, points.inf_n_g.get(), points.inf.get(),
                                b_aff, ctx,
-      "# inf (n*G) + inf == 2 * inf == inf") ||
+                               "# inf (n*G) + inf == 2 * inf == inf") ||
       !GenerateECCPointAddTest(points, points.inf.get(), points.inf_n_g.get(),
                                b_aff, ctx,
-      "# inf + inf (n*G) == 2 * inf == inf") ||
+                               "# inf + inf (n*G) == 2 * inf == inf") ||
       !GenerateECCPointAddTest(points, points.g(), points.inf.get(), b_aff, ctx,
-      "# G + inf == G") ||
-      !GenerateECCPointAddTest(points, points.g(), points.inf_n_g.get(), b_aff, ctx,
-      "# G + inf (n*G) == G") ||
+                               "# G + inf == G") ||
+      !GenerateECCPointAddTest(points, points.g(), points.inf_n_g.get(), b_aff,
+                               ctx, "# G + inf (n*G) == G") ||
       !GenerateECCPointAddTest(points, points.inf.get(), points.g(), b_aff, ctx,
-      "# inf + G == G") ||
+                               "# inf + G == G") ||
       !GenerateECCPointAddTest(points, points.inf_n_g.get(), points.g(), b_aff,
-                               ctx,
-      "# inf (n*G) + G == G")) {
+                               ctx, "# inf (n*G) + G == G")) {
     return false;
   }
 
   if (b_aff == Affinification::Unchanged) {
     if (!GenerateECCPointAddTest(points, points.g(), points.g(), b_aff, ctx,
                                  "# G + G == 2*G") ||
-        !GenerateECCPointAddTest(points, points.nm1_g.get(), points.g(), b_aff, ctx,
-                                 "# (n-1)*G + G == inf; note that -G is (n-1)*G")) {
+        !GenerateECCPointAddTest(
+            points, points.nm1_g.get(), points.g(), b_aff, ctx,
+            "# (n-1)*G + G == inf; note that -G is (n-1)*G")) {
       return false;
     }
   }
 
-  if (!GenerateECCPointAddTest(points, points.g(), points.nm1_g.get(), b_aff,
-                               ctx,
-      "# G + (n-1)*G == inf; note that -G is (n-1)*G")) {
+  if (!GenerateECCPointAddTest(
+          points, points.g(), points.nm1_g.get(), b_aff, ctx,
+          "# G + (n-1)*G == inf; note that -G is (n-1)*G")) {
     return false;
   }
 
@@ -869,65 +911,69 @@ static bool GenerateECCPointAddTestsForCurve(InterestingPoints &points,
 
   if (!GenerateECCPointAddTest(points, points.nm1_g.get(),
                                points.nm1_g_inv.get(), b_aff, ctx,
-      "# (n-1)*G + -(n-1)*G == inf") ||
+                               "# (n-1)*G + -(n-1)*G == inf") ||
       !GenerateECCPointAddTest(points, points.nm1_g_inv.get(),
                                points.nm1_g.get(), b_aff, ctx,
-      "# -(n-1)*G + (n-1)*G == inf") ||
+                               "# -(n-1)*G + (n-1)*G == inf") ||
       !GenerateECCPointAddTest(points, points.nm1_g_inv.get(),
                                points.nm1_g.get(), b_aff, ctx,
-      "# -(n-1)*G (affine) + (n-1)*G == inf") ||
-      !GenerateECCPointAddTest(points, points.nm1_g_inv.get(),
-                               points.g_inv.get(), b_aff, ctx,
-      "# -(n-1)*G + -G == inf; note that -G is (n-1)*G (affine)") ||
-      !GenerateECCPointAddTest(points, points.g_inv.get(),
-                               points.nm1_g_inv.get(), b_aff, ctx,
-      "# -G + -(n-1)*G == inf; note that -G is (n-1)*G (affine)")) {
+                               "# -(n-1)*G (affine) + (n-1)*G == inf") ||
+      !GenerateECCPointAddTest(
+          points, points.nm1_g_inv.get(), points.g_inv.get(), b_aff, ctx,
+          "# -(n-1)*G + -G == inf; note that -G is (n-1)*G (affine)") ||
+      !GenerateECCPointAddTest(
+          points, points.g_inv.get(), points.nm1_g_inv.get(), b_aff, ctx,
+          "# -G + -(n-1)*G == inf; note that -G is (n-1)*G (affine)")) {
     return false;
   }
 
   if (b_aff == Affinification::Unchanged) {
-    if (!GenerateECCPointAddTest(points, points.nm1_g.get(), points.g_inv.get(),
-                                 b_aff, ctx,
-                                 "# (n-1)*G + -G; == -2*G; note that -G == (n-1)*G (affine)") ||
-        !GenerateECCPointAddTest(points, points.g_inv.get(), points.nm1_g.get(),
-                                 b_aff, ctx,
-                                 "# -G + (n-1)*G == -2*G; note that -G is (n-1)*G (affine)") ||
-        !GenerateECCPointAddTest(points, points.nm1_g.get(), points.g_inv.get(),
-                                 b_aff, ctx,
-                                 "# (n-1)*G + -G == -2*G; note that -G is (n-1)*G (affine)") ||
-        !GenerateECCPointAddTest(points, points.g_inv.get(),
-                                 points.nm1_g.get(), b_aff, ctx,
-                                 "# -G + (n-1)*G == -2*G; note that -G = (n-1)*G")) {
+    if (!GenerateECCPointAddTest(
+            points, points.nm1_g.get(), points.g_inv.get(), b_aff, ctx,
+            "# (n-1)*G + -G; == -2*G; note that -G == (n-1)*G (affine)") ||
+        !GenerateECCPointAddTest(
+            points, points.g_inv.get(), points.nm1_g.get(), b_aff, ctx,
+            "# -G + (n-1)*G == -2*G; note that -G is (n-1)*G (affine)") ||
+        !GenerateECCPointAddTest(
+            points, points.nm1_g.get(), points.g_inv.get(), b_aff, ctx,
+            "# (n-1)*G + -G == -2*G; note that -G is (n-1)*G (affine)") ||
+        !GenerateECCPointAddTest(
+            points, points.g_inv.get(), points.nm1_g.get(), b_aff, ctx,
+            "# -G + (n-1)*G == -2*G; note that -G = (n-1)*G")) {
       return false;
     }
   }
 
-  if (!GenerateECCPointAddTest(points, points.g_inv.get(), points.g(), b_aff, ctx,
-      "# -G + G == inf; note that -G is (n-1)*G (affine)") ||
-      !GenerateECCPointAddTest(points, points.g(),
-                               points.g_inv.get(), b_aff, ctx,
-      "# G + -G == inf; note that -G is (n-1)*G (affine)")) {
+  if (!GenerateECCPointAddTest(
+          points, points.g_inv.get(), points.g(), b_aff, ctx,
+          "# -G + G == inf; note that -G is (n-1)*G (affine)") ||
+      !GenerateECCPointAddTest(
+          points, points.g(), points.g_inv.get(), b_aff, ctx,
+          "# G + -G == inf; note that -G is (n-1)*G (affine)")) {
     return false;
   }
 
   return true;
 }
 
-bool GeneratePointMulTest(const InterestingPoints &points,
-                          const BIGNUM *g_scalar, const BIGNUM *p_scalar,
-                          const EC_POINT *p, BN_CTX *ctx) {
+static bool GeneratePointMulTest(const InterestingPoints &points,
+                                 const BIGNUM *g_scalar, const BIGNUM *p_scalar,
+                                 const EC_POINT *p, BN_CTX *ctx) {
   bssl::UniquePtr<EC_POINT> result(EC_POINT_new(points.group.get()));
-  if (!result ||
-      !EC_POINT_mul(points.group.get(), result.get(), g_scalar, p, p_scalar,
-                    ctx)) {
+  if (!result || !EC_POINT_mul(points.group.get(), result.get(), g_scalar, p,
+                               p_scalar, ctx)) {
     return false;
   }
 
   if (g_scalar != NULL) {
-    printf("g_scalar = "); print_bn(g_scalar); printf("\n");
+    printf("g_scalar = ");
+    print_bn(g_scalar);
+    printf("\n");
   }
   if (p_scalar != NULL) {
-    printf("p_scalar = "); print_bn(p_scalar); printf("\n");
+    printf("p_scalar = ");
+    print_bn(p_scalar);
+    printf("\n");
     if (!print_point(points.group.get(), "p", p, MakeAffineToken, ctx)) {
       return false;
     }
@@ -935,7 +981,8 @@ bool GeneratePointMulTest(const InterestingPoints &points,
   if (EC_POINT_is_at_infinity(points.group.get(), result.get())) {
     printf("r = inf\n");
   } else {
-    if (!print_point(points.group.get(), "r", result.get(), MakeAffineToken, ctx)) {
+    if (!print_point(points.group.get(), "r", result.get(), MakeAffineToken,
+                     ctx)) {
       return false;
     }
   }
@@ -944,8 +991,8 @@ bool GeneratePointMulTest(const InterestingPoints &points,
 }
 
 
-bool GeneratePointMulTests(const InterestingPoints &points, bool generator,
-                           bool do_p, BN_CTX *ctx) {
+static bool GeneratePointMulTests(const InterestingPoints &points,
+                                  bool generator, bool do_p, BN_CTX *ctx) {
   const int SHIFT = 7;
   const BN_ULONG N = (1 << SHIFT);
   const size_t NUM_SCALARS = (N + 1) + (N - 1) + N;
@@ -960,8 +1007,7 @@ bool GeneratePointMulTests(const InterestingPoints &points, bool generator,
     const BIGNUM *n = EC_GROUP_get0_order(points.group.get());
     for (i = 0; i <= N; ++i) {
       scalars[i].reset(BN_new());
-      if (!scalars[i] ||
-          !BN_set_word(scalars[i].get(), i)) {
+      if (!scalars[i] || !BN_set_word(scalars[i].get(), i)) {
         return false;
       }
 
@@ -986,15 +1032,14 @@ bool GeneratePointMulTests(const InterestingPoints &points, bool generator,
 
   bssl::UniquePtr<EC_POINT> p;
   if (do_p) {
-    bssl::UniquePtr<BIGNUM> n_minus_1(BN_dup(EC_GROUP_get0_order(points.group.get())));
-    if (!n_minus_1 ||
-        !BN_sub_word(n_minus_1.get(), 1)) {
+    bssl::UniquePtr<BIGNUM> n_minus_1(
+        BN_dup(EC_GROUP_get0_order(points.group.get())));
+    if (!n_minus_1 || !BN_sub_word(n_minus_1.get(), 1)) {
       return false;
     }
     p.reset(EC_POINT_new(points.group.get()));
-    if (!p ||
-        !EC_POINT_mul(points.group.get(), p.get(), n_minus_1.get(), NULL, NULL,
-                      ctx)) {
+    if (!p || !EC_POINT_mul(points.group.get(), p.get(), n_minus_1.get(), NULL,
+                            NULL, ctx)) {
       return false;
     }
   }
@@ -1026,8 +1071,8 @@ bool GeneratePointMulTests(const InterestingPoints &points, bool generator,
   return true;
 }
 
-bool GeneratePointMulTwinTests(const InterestingPoints &points, bool generator,
-                               bool do_p, BN_CTX *ctx) {
+static bool GeneratePointMulTwinTests(const InterestingPoints &points,
+                                      bool generator, bool do_p, BN_CTX *ctx) {
   const int SHIFT = 5;
   const BN_ULONG N = (1 << SHIFT);
   const size_t NUM_SCALARS = (N + 1) + (N - 1) + N;
@@ -1042,8 +1087,7 @@ bool GeneratePointMulTwinTests(const InterestingPoints &points, bool generator,
     const BIGNUM *n = EC_GROUP_get0_order(points.group.get());
     for (i = 0; i <= N; ++i) {
       scalars[i].reset(BN_new());
-      if (!scalars[i] ||
-          !BN_set_word(scalars[i].get(), i)) {
+      if (!scalars[i] || !BN_set_word(scalars[i].get(), i)) {
         return false;
       }
 
@@ -1074,9 +1118,8 @@ bool GeneratePointMulTwinTests(const InterestingPoints &points, bool generator,
       return false;
     }
     p.reset(EC_POINT_new(points.group.get()));
-    if (!p ||
-        !EC_POINT_mul(points.group.get(), p.get(), n_half.get(), NULL, NULL,
-                      ctx)) {
+    if (!p || !EC_POINT_mul(points.group.get(), p.get(), n_half.get(), NULL,
+                            NULL, ctx)) {
       return false;
     }
   }
@@ -1088,7 +1131,7 @@ bool GeneratePointMulTwinTests(const InterestingPoints &points, bool generator,
         printf("# p_scalar = n - %d\n", (int)(N - (j - START_BIG)));
       }
       if (!GeneratePointMulTest(points, generator ? scalars[i].get() : NULL,
-          scalars[j].get(), p.get(), ctx)) {
+                                scalars[j].get(), p.get(), ctx)) {
         return false;
       }
     }
@@ -1101,7 +1144,7 @@ bool GeneratePointMulTwinTests(const InterestingPoints &points, bool generator,
         printf("# p_scalar = n - %d\n", (int)(N - (j - START_BIG)));
       }
       if (!GeneratePointMulTest(points, generator ? scalars[i].get() : NULL,
-          scalars[j].get(), p.get(), ctx)) {
+                                scalars[j].get(), p.get(), ctx)) {
         return false;
       }
     }
@@ -1110,241 +1153,41 @@ bool GeneratePointMulTwinTests(const InterestingPoints &points, bool generator,
   return true;
 }
 
-
-void print_coordinate(const BIGNUM *b, size_t num_limbs) {
+/*
+static void print_coordinate(const BIGNUM *b, size_t num_limbs) {
   // XXX: This only works for 64-bit platforms now.
 
-  uint64_t n = (0 < b->top) ? b->d[0] : 0;
-  printf(" TOBN(0x%08" PRIx32 ", 0x%08" PRIx32 "),",
-         (uint32_t)(n >> 32), (uint32_t)n);
+  uint64_t n = (0 < b->width) ? b->d[0] : 0;
+  printf(" TOBN(0x%08" PRIx32 ", 0x%08" PRIx32 "),", (uint32_t)(n >> 32),
+         (uint32_t)n);
 
-  n = (1 < b->top) ? b->d[1] : 0;
-  printf(" TOBN(0x%08" PRIx32 ", 0x%08" PRIx32 "),\n",
-         (uint32_t)(n >> 32), (uint32_t)n);
+  n = (1 < b->width) ? b->d[1] : 0;
+  printf(" TOBN(0x%08" PRIx32 ", 0x%08" PRIx32 "),\n", (uint32_t)(n >> 32),
+         (uint32_t)n);
 
   for (size_t i = 2; i < num_limbs; ++i) {
-    n = (i < b->top) ? b->d[i] : 0;
-    printf("      TOBN(0x%08" PRIx32 ", 0x%08" PRIx32 "),",
-      (uint32_t)(n >> 32), (uint32_t)n);
+    n = (i < (size_t)b->width) ? b->d[i] : 0;
+    printf("      TOBN(0x%08" PRIx32 ", 0x%08" PRIx32 "),", (uint32_t)(n >> 32),
+           (uint32_t)n);
 
     ++i;
 
-    n = (i < b->top) ? b->d[i] : 0;
-    printf(" TOBN(0x%08" PRIx32 ", 0x%08" PRIx32 "),\n",
-      (uint32_t)(n >> 32), (uint32_t)n);
+    n = (i < (size_t)b->width) ? b->d[i] : 0;
+    printf(" TOBN(0x%08" PRIx32 ", 0x%08" PRIx32 "),\n", (uint32_t)(n >> 32),
+           (uint32_t)n);
   }
 }
+*/
 
-bool GeneratePrecomp(const InterestingPoints &points, const char *curve_id,
-                     size_t tables, size_t num_limbs, size_t alignment,
-                     BN_CTX *ctx) {
-  EC_POINT **precomp = new EC_POINT*[tables * 64];
-  if (!precomp) {
-    return false;
-  }
-  for (size_t i = 0; i < tables; ++i) {
-    for (size_t j = 0; j < 64; ++j) {
-      precomp[(i * 64) + j] = nullptr;
-    }
-  }
-
-  bool ret = false;
-
-  if (!ecp_nistz_mult_precompute(points.group.get(), tables, precomp, ctx) ||
-      !EC_POINTs_make_affine(points.group.get(), tables * 64, precomp, ctx)) {
-    goto err;
-  }
-
-  printf("const alignas(%zu) GFp_Limb \\\n"
-         "    GFp_%s_PRECOMPUTED[%zu][64 * 2 * %s_LIMBS] = {\n",
-         alignment, curve_id, tables, curve_id);
-  for (size_t i = 0; i < tables; ++i) {
-    printf("  { /* Table %zu */\n", i);
-    for (size_t j = 0; j < 64; ++j) {
-      if (j != 0) {
-        printf("\n");
-      }
-      const EC_POINT *p = precomp[(i * 64) + j];
-      print_coordinate(&p->X, num_limbs);
-      print_coordinate(&p->Y, num_limbs);
-    }
-    printf("  },\n");
-  }
-
-  printf("};\n");
-  printf("\n");
-  printf("const size_t GFp_%s_TABLES = %zu;\n", curve_id, tables);
-
-  ret = true;
-
-err:
-  for (size_t i = 0; i < tables * 64; ++i) {
-    EC_POINT_free(precomp[i]);
-  }
-  delete[] precomp;
-
-  return ret;
-}
-
-static const size_t KNormalPrecomputedTableSize = 64;
-
-bool GeneratePrecompP384(const InterestingPoints &points,
-                         const char *curve_id, size_t num_limbs,
-                         size_t alignment, BN_CTX *ctx) {
-  assert(KNormalPrecomputedTableSize % 4 == 0);
-  static const size_t ODD_BASE = KNormalPrecomputedTableSize / 2;
-  static const size_t kTotalSize =
-      ODD_BASE + KNormalPrecomputedTableSize;
-
-  EC_POINT **precomp = new EC_POINT*[kTotalSize];
-  if (!precomp) {
-    return false;
-  }
-  for (size_t j = 0; j < kTotalSize; ++j) {
-    precomp[j] = nullptr;
-  }
-
-  bool ret = false;
-
-  precomp[ODD_BASE] = EC_POINT_dup(EC_GROUP_get0_generator(points.group.get()),
-                                   points.group.get());
-  if (precomp[ODD_BASE] == NULL) {
-    goto err;
-  }
-
-  precomp[0] = EC_POINT_new(points.group.get());
-  if (precomp[0] == NULL ||
-      !EC_POINT_dbl(points.group.get(), precomp[0],
-                    EC_GROUP_get0_generator(points.group.get()), NULL)) {
-    goto err;
-  }
-
-  const EC_POINT *two_g = precomp[0]; // Weak pointer.
-
-  for (size_t j = 1; j < kTotalSize; ++j) {
-    if (j == ODD_BASE) {
-      continue;
-    }
-    precomp[j] = EC_POINT_new(points.group.get());
-    if (precomp[j] == NULL ||
-        !EC_POINT_add(points.group.get(), precomp[j], precomp[j - 1], two_g,
-                      NULL)) {
-      goto err;
-    }
-  }
-
-  if (!EC_POINTs_make_affine(points.group.get(), kTotalSize, precomp, ctx)) {
-    goto err;
-  }
-
-  printf("const alignas(%zu) %s_POINT_AFFINE GFp_%s_PRECOMPUTED[%zu] = {\n",
-         alignment, curve_id, curve_id, kTotalSize);
-  for (size_t j = 0; j < kTotalSize; ++j) {
-    if (j == 0) {
-      printf("  /* Even Multiples */\n");
-    } else if (j == ODD_BASE) {
-      printf("  /* Odd Multiples */\n");
-    }
-    printf("  { { /* [%zu] %zu * G */\n     ",
-           (j < ODD_BASE) ? j : (j - ODD_BASE),
-           (j < ODD_BASE) ? ((j + 1) * 2) : (((j - ODD_BASE) * 2) + 1));
-    const EC_POINT *p = precomp[j];
-    print_coordinate(&p->X, num_limbs);
-    printf("    },");
-    printf("\n    {");
-    print_coordinate(&p->Y, num_limbs);
-    printf("    },\n");
-    printf("  },\n");
-  }
-  printf("};\n");
-
-  ret = true;
-
-err:
-  for (size_t i = 0; i < kTotalSize; ++i) {
-    EC_POINT_free(precomp[i]);
-  }
-  delete[] precomp;
-
-  return ret;
-}
-
-
-bool GeneratePrecompOdd(const InterestingPoints &points,
-                        const char *curve_id, size_t num_limbs,
-                        size_t alignment, BN_CTX *ctx) {
-  static const size_t kTotalSize = 256;
-
-  EC_POINT **precomp = new EC_POINT*[kTotalSize];
-  if (!precomp) {
-    return false;
-  }
-  for (size_t j = 0; j < kTotalSize; ++j) {
-    precomp[j] = nullptr;
-  }
-
-  bool ret = false;
-
-  bssl::UniquePtr<EC_POINT> two_g(EC_POINT_new(points.group.get()));
-  if (two_g == NULL ||
-      !EC_POINT_dbl(points.group.get(), two_g.get(),
-                    EC_GROUP_get0_generator(points.group.get()), NULL)) {
-    goto err;
-  };
-
-  precomp[0] = EC_POINT_dup(EC_GROUP_get0_generator(points.group.get()),
-                            points.group.get());
-  if (precomp[0] == NULL) {
-    goto err;
-  }
-
-  for (size_t j = 1; j < kTotalSize; ++j) {
-    precomp[j] = EC_POINT_new(points.group.get());
-    if (precomp[j] == NULL ||
-        !EC_POINT_add(points.group.get(), precomp[j], precomp[j - 1],
-                      two_g.get(), NULL)) {
-      goto err;
-    }
-  }
-
-  if (!EC_POINTs_make_affine(points.group.get(), kTotalSize, precomp, ctx)) {
-    goto err;
-  }
-
-  printf("const alignas(%zu) %s_POINT_AFFINE GFp_%s_PRECOMPUTED_ODD[%zu] = {\n",
-         alignment, curve_id, curve_id, kTotalSize);
-  printf("  /* Odd Multiples */\n");
-
-  for (size_t j = 0; j < kTotalSize; ++j) {
-    printf("  { { /* [%zu] %zu * G */\n     ", j, (j * 2) + 1);
-    const EC_POINT *p = precomp[j];
-    print_coordinate(&p->X, num_limbs);
-    printf("    },");
-    printf("\n    {");
-    print_coordinate(&p->Y, num_limbs);
-    printf("    },\n");
-    printf("  },\n");
-  }
-  printf("};\n");
-
-  ret = true;
-
-err:
-  for (size_t i = 0; i < kTotalSize; ++i) {
-    EC_POINT_free(precomp[i]);
-  }
-  delete[] precomp;
-
-  return ret;
-}
 
 static bool GenerateSumTest(const InterestingPoints &points,
-                            const bssl::UniquePtr<BIGNUM> &a, const bssl::UniquePtr<BIGNUM> &b,
-                            const bssl::UniquePtr<BIGNUM> *r, const bssl::UniquePtr<BIGNUM> &m,
+                            const bssl::UniquePtr<BIGNUM> &a,
+                            const bssl::UniquePtr<BIGNUM> &b,
+                            const bssl::UniquePtr<BIGNUM> *r,
+                            const bssl::UniquePtr<BIGNUM> &m,
                             const bssl::UniquePtr<BIGNUM> &p) {
   bssl::UniquePtr<BIGNUM> actualR(BN_new());
-  if (!actualR ||
-      !BN_add(actualR.get(), a.get(), b.get())) {
+  if (!actualR || !BN_add(actualR.get(), a.get(), b.get())) {
     return false;
   }
 
@@ -1367,14 +1210,21 @@ static bool GenerateSumTest(const InterestingPoints &points,
     printf("\n");
     printf("given R: ");
     print_bn(r->get());
-    printf("\n");;
+    printf("\n");
+    ;
     return false;
   }
 
   printf("\n");
-  printf("a = "); print_bn(a.get()); printf("\n");
-  printf("b = "); print_bn(b.get()); printf("\n");
-  printf("r = "); print_bn(actualR.get()); printf("\n");
+  printf("a = ");
+  print_bn(a.get());
+  printf("\n");
+  printf("b = ");
+  print_bn(b.get());
+  printf("\n");
+  printf("r = ");
+  print_bn(actualR.get());
+  printf("\n");
 
   return 1;
 }
@@ -1397,31 +1247,20 @@ static bool GenerateElemSumTests(const InterestingPoints &points, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> tmp2(BN_new());
   if (!q ||
       !EC_GROUP_get_curve_GFp(points.group.get(), q.get(), NULL, NULL, ctx) ||
-      !zero ||
-      !one ||
-      !BN_set_word(one.get(), 1) ||
-      !two ||
-      !BN_set_word(two.get(), 2) ||
-      !three ||
-      !BN_set_word(three.get(), 3) ||
-      !p_div_2 ||
-      !BN_div(p_div_2.get(), NULL, q.get(), two.get(), ctx) ||
+      !zero || !one || !BN_set_word(one.get(), 1) || !two ||
+      !BN_set_word(two.get(), 2) || !three || !BN_set_word(three.get(), 3) ||
+      !p_div_2 || !BN_div(p_div_2.get(), NULL, q.get(), two.get(), ctx) ||
       !p_div_2_plus_1 ||
       !BN_add(p_div_2_plus_1.get(), p_div_2.get(), BN_value_one()) ||
       !highest_bit_set ||
-      !BN_lshift(highest_bit_set.get(), BN_value_one(), BN_num_bits(q.get()) - 1) ||
-      !max ||
-      !BN_sub(max.get(), q.get(), BN_value_one()) ||
-      !two_to_the_b ||
+      !BN_lshift(highest_bit_set.get(), BN_value_one(),
+                 BN_num_bits(q.get()) - 1) ||
+      !max || !BN_sub(max.get(), q.get(), BN_value_one()) || !two_to_the_b ||
       !BN_lshift(two_to_the_b.get(), BN_value_one(), BN_num_bits(q.get())) ||
       !two_to_the_b_minus_1 ||
       !BN_sub(two_to_the_b_minus_1.get(), two_to_the_b.get(), BN_value_one()) ||
-      !q_plus_1 ||
-      !BN_add(q_plus_1.get(), q.get(), one.get()) ||
-      !q_plus_1 ||
-      !BN_add(q_plus_2.get(), q.get(), two.get()) ||
-      !tmp1 ||
-      !tmp2) {
+      !q_plus_1 || !BN_add(q_plus_1.get(), q.get(), one.get()) || !q_plus_1 ||
+      !BN_add(q_plus_2.get(), q.get(), two.get()) || !tmp1 || !tmp2) {
     return false;
   }
   BN_zero(zero.get());
@@ -1471,8 +1310,7 @@ static bool GenerateElemSumTests(const InterestingPoints &points, BN_CTX *ctx) {
 
   {
     bssl::UniquePtr<BIGNUM> a(BN_new());
-    if (!a ||
-        !BN_set_word(a.get(), 0xff)) {
+    if (!a || !BN_set_word(a.get(), 0xff)) {
       return false;
     }
     while (BN_cmp(a.get(), q.get()) < 0) {
@@ -1480,8 +1318,7 @@ static bool GenerateElemSumTests(const InterestingPoints &points, BN_CTX *ctx) {
         return false;
       }
 
-      if (!BN_mul_word(a.get(), 2) ||
-          !BN_add_word(a.get(), 0x1)) {
+      if (!BN_mul_word(a.get(), 2) || !BN_add_word(a.get(), 0x1)) {
         return false;
       }
     }
@@ -1490,13 +1327,14 @@ static bool GenerateElemSumTests(const InterestingPoints &points, BN_CTX *ctx) {
   return true;
 }
 
-static bool GenerateMulTest(const bssl::UniquePtr<BIGNUM> &a, const bssl::UniquePtr<BIGNUM> &b,
-                            const bssl::UniquePtr<BIGNUM> *r,
-                            const BIGNUM *m,
-                            const bssl::UniquePtr<BN_MONT_CTX> &mont, BN_CTX *ctx) {
+static bool GenerateMulTest(const bssl::UniquePtr<BIGNUM> &a,
+                            const bssl::UniquePtr<BIGNUM> &b,
+                            const bssl::UniquePtr<BIGNUM> *r, const BIGNUM *m,
+                            const bssl::UniquePtr<BN_MONT_CTX> &mont,
+                            BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> actualR(BN_new());
-  if (!actualR ||
-      !BN_mod_mul_montgomery(actualR.get(), a.get(), b.get(), mont.get(), ctx)) {
+  if (!actualR || !BN_mod_mul_montgomery(actualR.get(), a.get(), b.get(),
+                                         mont.get(), ctx)) {
     return false;
   }
 
@@ -1512,14 +1350,21 @@ static bool GenerateMulTest(const bssl::UniquePtr<BIGNUM> &a, const bssl::Unique
     printf("\n");
     printf("given R: ");
     print_bn(r->get());
-    printf("\n");;
+    printf("\n");
+    ;
     return false;
   }
 
   printf("\n");
-  printf("a = "); print_bn(a.get()); printf("\n");
-  printf("b = "); print_bn(b.get()); printf("\n");
-  printf("r = "); print_bn(actualR.get()); printf("\n");
+  printf("a = ");
+  print_bn(a.get());
+  printf("\n");
+  printf("b = ");
+  print_bn(b.get());
+  printf("\n");
+  printf("r = ");
+  print_bn(actualR.get());
+  printf("\n");
 
   return 1;
 }
@@ -1539,29 +1384,18 @@ static bool GenerateModMulTests(const BIGNUM *p, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> two_to_the_b_minus_1(BN_new());
   bssl::UniquePtr<BIGNUM> tmp1(BN_new());
   bssl::UniquePtr<BIGNUM> tmp2(BN_new());
-  if (!mont ||
-      !BN_MONT_CTX_set(mont.get(), p, ctx) ||
-      !zero ||
-      !one ||
-      !BN_set_word(one.get(), 1) ||
-      !two ||
-      !BN_set_word(two.get(), 2) ||
-      !three ||
-      !BN_set_word(three.get(), 3) ||
-      !p_div_2 ||
-      !BN_div(p_div_2.get(), NULL, p, two.get(), ctx) ||
-      !p_div_2_plus_1 ||
+  if (!mont || !BN_MONT_CTX_set(mont.get(), p, ctx) || !zero || !one ||
+      !BN_set_word(one.get(), 1) || !two || !BN_set_word(two.get(), 2) ||
+      !three || !BN_set_word(three.get(), 3) || !p_div_2 ||
+      !BN_div(p_div_2.get(), NULL, p, two.get(), ctx) || !p_div_2_plus_1 ||
       !BN_add(p_div_2_plus_1.get(), p_div_2.get(), BN_value_one()) ||
       !highest_bit_set ||
       !BN_lshift(highest_bit_set.get(), BN_value_one(), BN_num_bits(p) - 1) ||
-      !max ||
-      !BN_sub(max.get(), p, BN_value_one()) ||
-      !two_to_the_b ||
+      !max || !BN_sub(max.get(), p, BN_value_one()) || !two_to_the_b ||
       !BN_lshift(two_to_the_b.get(), BN_value_one(), BN_num_bits(p)) ||
       !two_to_the_b_minus_1 ||
       !BN_sub(two_to_the_b_minus_1.get(), two_to_the_b.get(), BN_value_one()) ||
-      !tmp1 ||
-      !tmp2) {
+      !tmp1 || !tmp2) {
     return false;
   }
   BN_zero(zero.get());
@@ -1587,10 +1421,11 @@ static bool GenerateModMulTests(const BIGNUM *p, BN_CTX *ctx) {
 static bool GenerateSquareTest(const bssl::UniquePtr<BIGNUM> &a,
                                const bssl::UniquePtr<BIGNUM> *r,
                                const BIGNUM *m,
-                               const bssl::UniquePtr<BN_MONT_CTX> &mont, BN_CTX *ctx) {
+                               const bssl::UniquePtr<BN_MONT_CTX> &mont,
+                               BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> actualR(BN_new());
-  if (!actualR ||
-      !BN_mod_mul_montgomery(actualR.get(), a.get(), a.get(), mont.get(), ctx)) {
+  if (!actualR || !BN_mod_mul_montgomery(actualR.get(), a.get(), a.get(),
+                                         mont.get(), ctx)) {
     return false;
   }
 
@@ -1603,19 +1438,24 @@ static bool GenerateSquareTest(const bssl::UniquePtr<BIGNUM> &a,
     printf("\n");
     printf("given R: ");
     print_bn(r->get());
-    printf("\n");;
+    printf("\n");
+    ;
     return false;
   }
 
   printf("\n");
-  printf("a = "); print_bn(a.get()); printf("\n");
-  printf("r = "); print_bn(actualR.get()); printf("\n");
+  printf("a = ");
+  print_bn(a.get());
+  printf("\n");
+  printf("r = ");
+  print_bn(actualR.get());
+  printf("\n");
 
   return 1;
 }
 
 static bool GenerateModSquareTests(const BIGNUM *p, BN_CTX *ctx,
-    const char *sqrt) {
+                                   const char *sqrt) {
   bssl::UniquePtr<BN_MONT_CTX> mont(BN_MONT_CTX_new());
   bssl::UniquePtr<BIGNUM> zero(BN_new());
   bssl::UniquePtr<BIGNUM> one(BN_dup(BN_value_one()));
@@ -1630,27 +1470,16 @@ static bool GenerateModSquareTests(const BIGNUM *p, BN_CTX *ctx,
   bssl::UniquePtr<BIGNUM> two_to_the_b_minus_1(BN_new());
   bssl::UniquePtr<BIGNUM> tmp1(BN_new());
   bssl::UniquePtr<BIGNUM> tmp2(BN_new());
-  if (!mont ||
-      !BN_MONT_CTX_set(mont.get(), p, ctx) ||
-      !zero ||
-      !one ||
-      !BN_set_word(one.get(), 1) ||
-      !two ||
-      !BN_set_word(two.get(), 2) ||
-      !three ||
-      !BN_set_word(three.get(), 3) ||
-      !p_sqrt ||
-      !p_sqrt_plus_1 ||
+  if (!mont || !BN_MONT_CTX_set(mont.get(), p, ctx) || !zero || !one ||
+      !BN_set_word(one.get(), 1) || !two || !BN_set_word(two.get(), 2) ||
+      !three || !BN_set_word(three.get(), 3) || !p_sqrt || !p_sqrt_plus_1 ||
       !highest_bit_set ||
       !BN_lshift(highest_bit_set.get(), BN_value_one(), BN_num_bits(p) - 1) ||
-      !max ||
-      !BN_sub(max.get(), p, BN_value_one()) ||
-      !two_to_the_b ||
+      !max || !BN_sub(max.get(), p, BN_value_one()) || !two_to_the_b ||
       !BN_lshift(two_to_the_b.get(), BN_value_one(), BN_num_bits(p)) ||
       !two_to_the_b_minus_1 ||
       !BN_sub(two_to_the_b_minus_1.get(), two_to_the_b.get(), BN_value_one()) ||
-      !tmp1 ||
-      !tmp2) {
+      !tmp1 || !tmp2) {
     return false;
   }
   BN_zero(zero.get());
@@ -1675,7 +1504,6 @@ static bool GenerateModSquareTests(const BIGNUM *p, BN_CTX *ctx,
       !GenerateSquareTest(p_sqrt, NULL, m, mont, ctx) ||
       !GenerateSquareTest(p_sqrt_plus_1, NULL, m, mont, ctx) ||
       !GenerateSquareTest(highest_bit_set, NULL, m, mont, ctx)) {
-    __debugbreak();
     return false;
   }
 
@@ -1693,30 +1521,34 @@ static bool GenerateElemMulTests(const InterestingPoints &points, BN_CTX *ctx) {
   return GenerateModMulTests(q.get(), ctx);
 }
 
-static bool GenerateScalarMulTests(const InterestingPoints &points, BN_CTX *ctx) {
+static bool GenerateScalarMulTests(const InterestingPoints &points,
+                                   BN_CTX *ctx) {
   return GenerateModMulTests(EC_GROUP_get0_order(points.group.get()), ctx);
 }
 
-static bool GenerateScalarSquareTests(const InterestingPoints &points, BN_CTX *ctx,
-    const char *sqrt) {
-  return GenerateModSquareTests(EC_GROUP_get0_order(points.group.get()), ctx, sqrt);
+static bool GenerateScalarSquareTests(const InterestingPoints &points,
+                                      BN_CTX *ctx, const char *sqrt) {
+  return GenerateModSquareTests(EC_GROUP_get0_order(points.group.get()), ctx,
+                                sqrt);
 }
 
-bool GenerateDivBy2Test(const bssl::UniquePtr<BIGNUM> &a, const bssl::UniquePtr<BIGNUM> &p,
-                        BN_CTX *ctx) {
+static bool GenerateDivBy2Test(const bssl::UniquePtr<BIGNUM> &a,
+                               const bssl::UniquePtr<BIGNUM> &p, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> half(BN_new());
   bssl::UniquePtr<BIGNUM> r(BN_new());
-  if (!half ||
-      !BN_set_word(half.get(), 2) ||
-      !BN_mod_inverse(half.get(), half.get(), p.get(), ctx) ||
-      !r ||
+  if (!half || !BN_set_word(half.get(), 2) ||
+      !BN_mod_inverse(half.get(), half.get(), p.get(), ctx) || !r ||
       !BN_mod_mul(r.get(), a.get(), half.get(), p.get(), ctx)) {
     return false;
   }
 
   printf("\n");
-  printf("a = "); print_bn(a.get()); printf("\n");
-  printf("r = "); print_bn(r.get()); printf("\n");
+  printf("a = ");
+  print_bn(a.get());
+  printf("\n");
+  printf("r = ");
+  print_bn(r.get());
+  printf("\n");
 
   return true;
 }
@@ -1738,41 +1570,29 @@ static bool GenerateDivBy2Tests(const InterestingPoints &points, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> tmp2(BN_new());
   if (!q ||
       !EC_GROUP_get_curve_GFp(points.group.get(), q.get(), NULL, NULL, ctx) ||
-      !mont ||
-      !BN_MONT_CTX_set(mont.get(), q.get(), ctx) ||
-      !zero ||
-      !one ||
-      !BN_set_word(one.get(), 1) ||
-      !two ||
-      !BN_set_word(two.get(), 2) ||
-      !three ||
-      !BN_set_word(three.get(), 3) ||
-      !p_div_2 ||
+      !mont || !BN_MONT_CTX_set(mont.get(), q.get(), ctx) || !zero || !one ||
+      !BN_set_word(one.get(), 1) || !two || !BN_set_word(two.get(), 2) ||
+      !three || !BN_set_word(three.get(), 3) || !p_div_2 ||
       !BN_div(p_div_2.get(), NULL, q.get(), two.get(), ctx) ||
       !p_div_2_plus_1 ||
       !BN_add(p_div_2_plus_1.get(), p_div_2.get(), BN_value_one()) ||
       !highest_bit_set ||
-      !BN_lshift(highest_bit_set.get(), BN_value_one(), BN_num_bits(q.get()) - 1) ||
-      !max ||
-      !BN_sub(max.get(), q.get(), BN_value_one()) ||
-      !two_to_the_b ||
+      !BN_lshift(highest_bit_set.get(), BN_value_one(),
+                 BN_num_bits(q.get()) - 1) ||
+      !max || !BN_sub(max.get(), q.get(), BN_value_one()) || !two_to_the_b ||
       !BN_lshift(two_to_the_b.get(), BN_value_one(), BN_num_bits(q.get())) ||
       !two_to_the_b_minus_1 ||
       !BN_sub(two_to_the_b_minus_1.get(), two_to_the_b.get(), BN_value_one()) ||
-      !tmp1 ||
-      !tmp2) {
+      !tmp1 || !tmp2) {
     return false;
   }
   BN_zero(zero.get());
 
   const bssl::UniquePtr<BIGNUM> &m = q;
 
-  if (!GenerateDivBy2Test(zero, m, ctx) ||
-      !GenerateDivBy2Test(zero, m, ctx) ||
-      !GenerateDivBy2Test(one, m, ctx) ||
-      !GenerateDivBy2Test(two, m, ctx) ||
-      !GenerateDivBy2Test(three, m, ctx) ||
-      !GenerateDivBy2Test(max, m, ctx) ||
+  if (!GenerateDivBy2Test(zero, m, ctx) || !GenerateDivBy2Test(zero, m, ctx) ||
+      !GenerateDivBy2Test(one, m, ctx) || !GenerateDivBy2Test(two, m, ctx) ||
+      !GenerateDivBy2Test(three, m, ctx) || !GenerateDivBy2Test(max, m, ctx) ||
       !GenerateDivBy2Test(p_div_2, m, ctx) ||
       !GenerateDivBy2Test(p_div_2_plus_1, m, ctx) ||
       !GenerateDivBy2Test(highest_bit_set, m, ctx)) {
@@ -1782,8 +1602,8 @@ static bool GenerateDivBy2Tests(const InterestingPoints &points, BN_CTX *ctx) {
   return true;
 }
 
-bool GenerateNegTest(const bssl::UniquePtr<BIGNUM> &a,
-                     const bssl::UniquePtr<BIGNUM> &m, BN_CTX *ctx) {
+static bool GenerateNegTest(const bssl::UniquePtr<BIGNUM> &a,
+                            const bssl::UniquePtr<BIGNUM> &m, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> b(BN_dup(a.get()));
   if (!b) {
     return false;
@@ -1791,8 +1611,7 @@ bool GenerateNegTest(const bssl::UniquePtr<BIGNUM> &a,
 
 
   if (BN_cmp(b.get(), m.get()) >= 0) {
-    if (!BN_sub(b.get(), a.get(), m.get()) ||
-        BN_cmp(b.get(), m.get()) >= 0) {
+    if (!BN_sub(b.get(), a.get(), m.get()) || BN_cmp(b.get(), m.get()) >= 0) {
       return false;
     }
   }
@@ -1804,8 +1623,12 @@ bool GenerateNegTest(const bssl::UniquePtr<BIGNUM> &a,
   }
 
   printf("\n");
-  printf("a = "); print_bn(a.get()); printf("\n");
-  printf("b = "); print_bn(b.get()); printf("\n");
+  printf("a = ");
+  print_bn(a.get());
+  printf("\n");
+  printf("b = ");
+  print_bn(b.get());
+  printf("\n");
 
   return true;
 }
@@ -1828,41 +1651,29 @@ static bool GenerateNegTests(const InterestingPoints &points, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> p_plus_1(BN_new());
   if (!q ||
       !EC_GROUP_get_curve_GFp(points.group.get(), q.get(), NULL, NULL, ctx) ||
-      !mont ||
-      !BN_MONT_CTX_set(mont.get(), q.get(), ctx) ||
-      !zero ||
-      !one ||
-      !BN_set_word(one.get(), 1) ||
-      !two ||
-      !BN_set_word(two.get(), 2) ||
-      !three ||
-      !BN_set_word(three.get(), 3) ||
-      !p_div_2 ||
+      !mont || !BN_MONT_CTX_set(mont.get(), q.get(), ctx) || !zero || !one ||
+      !BN_set_word(one.get(), 1) || !two || !BN_set_word(two.get(), 2) ||
+      !three || !BN_set_word(three.get(), 3) || !p_div_2 ||
       !BN_div(p_div_2.get(), NULL, q.get(), two.get(), ctx) ||
       !p_div_2_plus_1 ||
       !BN_add(p_div_2_plus_1.get(), p_div_2.get(), BN_value_one()) ||
       !highest_bit_set ||
-      !BN_lshift(highest_bit_set.get(), BN_value_one(), BN_num_bits(q.get()) - 1) ||
-      !max ||
-      !BN_sub(max.get(), q.get(), BN_value_one()) ||
-      !two_to_the_b ||
+      !BN_lshift(highest_bit_set.get(), BN_value_one(),
+                 BN_num_bits(q.get()) - 1) ||
+      !max || !BN_sub(max.get(), q.get(), BN_value_one()) || !two_to_the_b ||
       !BN_lshift(two_to_the_b.get(), BN_value_one(), BN_num_bits(q.get())) ||
       !two_to_the_b_minus_1 ||
       !BN_sub(two_to_the_b_minus_1.get(), two_to_the_b.get(), BN_value_one()) ||
-      !p_plus_1 ||
-      !BN_add(p_plus_1.get(), q.get(), one.get())) {
+      !p_plus_1 || !BN_add(p_plus_1.get(), q.get(), one.get())) {
     return false;
   }
   BN_zero(zero.get());
 
   const bssl::UniquePtr<BIGNUM> &m = q;
 
-  if (!GenerateNegTest(zero, m, ctx) ||
-      !GenerateNegTest(one, m, ctx) ||
-      !GenerateNegTest(two, m, ctx) ||
-      !GenerateNegTest(three, m, ctx) ||
-      !GenerateNegTest(max, m, ctx) ||
-      !GenerateNegTest(p_div_2, m, ctx) ||
+  if (!GenerateNegTest(zero, m, ctx) || !GenerateNegTest(one, m, ctx) ||
+      !GenerateNegTest(two, m, ctx) || !GenerateNegTest(three, m, ctx) ||
+      !GenerateNegTest(max, m, ctx) || !GenerateNegTest(p_div_2, m, ctx) ||
       !GenerateNegTest(p_div_2_plus_1, m, ctx) ||
       !GenerateNegTest(highest_bit_set, m, ctx)) {
     return false;
@@ -1901,8 +1712,8 @@ bool GenerateTests(const std::vector<std::string> &args) {
   }
 
   bool valid_points = false;
-  InterestingPoints p256_points(&valid_points, NID_X9_62_prime256v1,
-                                "P-256", ctx.get());
+  InterestingPoints p256_points(&valid_points, NID_X9_62_prime256v1, "P-256",
+                                ctx.get());
   if (!valid_points) {
     return false;
   }
@@ -1924,25 +1735,17 @@ bool GenerateTests(const std::vector<std::string> &args) {
     return GenerateECCPointAddTestsForCurve(p256_points, Unchanged, ctx.get());
   }
   if (args[0] == "ecc-p384-point-sum") {
-      return GenerateECCPointAddTestsForCurve(p384_points, Unchanged, ctx.get());
+    return GenerateECCPointAddTestsForCurve(p384_points, Unchanged, ctx.get());
   }
 
   if (args[0] == "ecc-p256-point-sum-mixed") {
-    return GenerateECCPointAddTestsForCurve(p256_points, MakeAffineAllZero, ctx.get());
+    return GenerateECCPointAddTestsForCurve(p256_points, MakeAffineAllZero,
+                                            ctx.get());
   }
 
   if (args[0] == "ecc-p384-point-sum-mixed") {
-      return GenerateECCPointAddTestsForCurve(p384_points, MakeAffineAllZero, ctx.get());
-  }
-
-  if (args[0] == "ecc-precompute-p384") {
-    return GeneratePrecompP384(p384_points, "P384", 6, 64, ctx.get());
-  }
-  if (args[0] == "ecc-precompute-p256-nistz") {
-    return GeneratePrecomp(p256_points, "P256", 37, 4, 4096, ctx.get());
-  }
-  if (args[0] == "ecc-precompute-p256-gfp") {
-    return GeneratePrecompOdd(p256_points, "P256", 4, 64, ctx.get());
+    return GenerateECCPointAddTestsForCurve(p384_points, MakeAffineAllZero,
+                                            ctx.get());
   }
 
   if (args[0] == "ecc-p256-sums") {
@@ -1974,8 +1777,9 @@ bool GenerateTests(const std::vector<std::string> &args) {
   }
 
   if (args[0] == "ecc-p384-n-square") {
-    return GenerateScalarSquareTests(p384_points, ctx.get(),
-                                     "ffffffffffffffffffffffffffffffffffffffffffffffff");
+    return GenerateScalarSquareTests(
+        p384_points, ctx.get(),
+        "ffffffffffffffffffffffffffffffffffffffffffffffff");
   }
 
   if (args[0] == "ecc-p384-div_by_2") {
@@ -2007,7 +1811,6 @@ bool GenerateTests(const std::vector<std::string> &args) {
   }
 
   if (args[0] == "ecc-p256-point-mul-twin") {
-
     return GeneratePointMulTwinTests(p256_points, true, true, ctx.get());
   }
 
