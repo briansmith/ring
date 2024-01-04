@@ -128,6 +128,12 @@ case $target in
     libc6-dev-riscv64-cross \
     qemu-user
   ;;
+--target=riscv32gc-unknown-linux-gnu)
+  use_clang=1
+  install_packages \
+    #https://github.com/riscv-collab/riscv-gnu-toolchain#installation-newliblinux-multilib
+    qemu-user
+  ;;
 --target=s390x-unknown-linux-gnu)
   # Clang is needed for code coverage.
   use_clang=1

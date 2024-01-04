@@ -26,6 +26,7 @@ qemu_powerpc="qemu-ppc -L /usr/powerpc-linux-gnu"
 qemu_powerpc64="qemu-ppc64 -L /usr/powerpc64-linux-gnu"
 qemu_powerpc64le="qemu-ppc64le -L /usr/powerpc64le-linux-gnu"
 qemu_riscv64="qemu-riscv64 -L /usr/riscv64-linux-gnu"
+qemu_riscv32="qemu-riscv32 -L /usr/riscv32-linux-gnu"
 qemu_s390x="qemu-s390x -L /usr/s390x-linux-gnu"
 
 # Avoid putting the Android tools in `$PATH` because there are tools in this
@@ -144,6 +145,12 @@ case $target in
     export AR_riscv64gc_unknown_linux_gnu=llvm-ar-$llvm_version
     export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc
     export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER="$qemu_riscv64"
+    ;;
+  riscv32gc-unknown-linux-gnu)
+    export CC_riscv32gc_unknown_linux_gnu=clang-$llvm_version
+    export AR_riscv32gc_unknown_linux_gnu=llvm-ar-$llvm_version
+    export CARGO_TARGET_RISCV32GC_UNKNOWN_LINUX_GNU_LINKER=riscv32-linux-gnu-gcc
+    export CARGO_TARGET_RISCV32GC_UNKNOWN_LINUX_GNU_RUNNER="$qemu_riscv32"
     ;;
   s390x-unknown-linux-gnu)
     export CC_s390x_unknown_linux_gnu=clang-$llvm_version

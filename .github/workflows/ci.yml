@@ -153,6 +153,7 @@ jobs:
           - i686-unknown-linux-musl
           - powerpc-unknown-linux-gnu
           - riscv64gc-unknown-linux-gnu
+          - riscv32gc-unknown-linux-gnu
           - wasm32-wasi
           - x86_64-pc-windows-gnu
           - x86_64-pc-windows-msvc
@@ -221,6 +222,9 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: riscv64gc-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
+          - target: riscv32gc-unknown-linux-gnu
             host_os: ubuntu-22.04
 
           - target: wasm32-wasi
@@ -494,6 +498,7 @@ jobs:
           - powerpc64-unknown-linux-gnu    # No assembly 64-bit big-endian with flags
           - powerpc64le-unknown-linux-gnu  # No assembly 64-bit little-endian with flags
           - riscv64gc-unknown-linux-gnu    # No assembly 64-bit little-endian without flags
+          - riscv32gc-unknown-linux-gnu    # No assembly 32-bit little-endian without flags
           - s390x-unknown-linux-gnu        # No assembly 64-bit big-endian
           - x86_64-unknown-linux-musl      # Has assembly
 
@@ -525,6 +530,9 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: riscv64gc-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
+          - target: riscv32gc-unknown-linux-gnu
             host_os: ubuntu-22.04
 
           - target: s390x-unknown-linux-gnu
