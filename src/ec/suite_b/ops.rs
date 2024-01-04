@@ -1022,7 +1022,7 @@ mod tests {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let g_scalar = consume_scalar(ops.common, test_case, "g_scalar");
-            let expected_result: TestPoint<R> = consume_point(ops, test_case, "r");
+            let expected_result: TestPoint<Unencoded> = consume_point(ops, test_case, "r");
             let actual_result = f(&g_scalar);
             assert_point_actual_equals_expected(ops, &actual_result, &expected_result);
             Ok(())
