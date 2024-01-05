@@ -12,8 +12,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-use crate::digest::Md;
+use crate::digest;
 use crate::digest::{Sha256, Sha512};
+use crate::sealed;
 use crate::{CSlice, CSliceMut, ForeignTypeRef};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
@@ -31,15 +32,15 @@ pub struct InvalidLength;
 
 /// Implementation of HKDF operations which are generic over a provided hashing functions. Type
 /// aliases are provided above for convenience of commonly used hashes
-pub struct Hkdf<M: Md> {
+pub struct Hkdf<MD: digest::Algorithm> {
     salt: Option<Vec<u8>>,
     ikm: Vec<u8>,
-    _marker: PhantomData<M>,
+    _marker: PhantomData<MD>,
 }
 
-impl<M: Md> Hkdf<M> {
+impl<MD: digest::Algorithm> Hkdf<MD> {
     /// The max length of the output key material used for expanding
-    pub const MAX_OUTPUT_LENGTH: usize = M::OUTPUT_SIZE * 255;
+    pub const MAX_OUTPUT_LENGTH: usize = MD::OUTPUT_LEN * 255;
 
     /// Creates a new instance of HKDF from a salt and key material
     pub fn new(salt: Option<&[u8]>, ikm: &[u8]) -> Self {
@@ -79,7 +80,7 @@ impl<M: Md> Hkdf<M> {
                     bssl_sys::HKDF(
                         okm_cslice.as_mut_ptr(),
                         okm_cslice.len(),
-                        M::get_md().as_ptr(),
+                        MD::get_md(sealed::Sealed).as_ptr(),
                         CSlice::from(self.ikm.as_slice()).as_ptr(),
                         self.ikm.as_slice().len(),
                         CSlice::from(salt).as_ptr(),

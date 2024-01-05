@@ -13,8 +13,9 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 use crate::{
-    digest::{Md, Sha256, Sha512},
-    CSlice, ForeignTypeRef as _,
+    digest,
+    digest::{Sha256, Sha512},
+    sealed, CSlice, ForeignTypeRef as _,
 };
 use core::{
     ffi::{c_uint, c_void},
@@ -154,11 +155,11 @@ pub struct MacError;
 
 /// Private generically implemented function for computing hmac as a oneshot operation.
 /// This should only be exposed publicly by types with the correct output size `N` which corresponds
-/// to the output size of the provided generic hash function. Ideally `N` would just come from `M`,
+/// to the output size of the provided generic hash function. Ideally `N` would just come from `MD`,
 /// but this is not possible until the Rust language can support the `min_const_generics` feature.
 /// Until then we will have to pass both separately: https://github.com/rust-lang/rust/issues/60551
 #[inline]
-fn hmac<const N: usize, M: Md>(key: &[u8], data: &[u8]) -> [u8; N] {
+fn hmac<const N: usize, MD: digest::Algorithm>(key: &[u8], data: &[u8]) -> [u8; N] {
     let mut out = [0_u8; N];
     let mut size: c_uint = 0;
 
@@ -167,7 +168,7 @@ fn hmac<const N: usize, M: Md>(key: &[u8], data: &[u8]) -> [u8; N] {
     // - If NULL is returned on error we panic immediately
     let result = unsafe {
         bssl_sys::HMAC(
-            M::get_md().as_ptr(),
+            MD::get_md(sealed::Sealed).as_ptr(),
             CSlice::from(key).as_ptr(),
             key.len(),
             CSlice::from(data).as_ptr(),
@@ -184,15 +185,15 @@ fn hmac<const N: usize, M: Md>(key: &[u8], data: &[u8]) -> [u8; N] {
 /// Private generically implemented hmac  instance given a generic hash function and a length `N`,
 /// where `N` is the output size of the hash function. This should only be exposed publicly by
 /// wrapper types with the correct output size `N` which corresponds to the output size of the
-/// provided generic hash function. Ideally `N` would just come from `M`, but this is not possible
+/// provided generic hash function. Ideally `N` would just come from `MD`, but this is not possible
 /// until the Rust language can support the `min_const_generics` feature. Until then we will have to
 /// pass both separately: https://github.com/rust-lang/rust/issues/60551
-struct Hmac<const N: usize, M: Md> {
+struct Hmac<const N: usize, MD: digest::Algorithm> {
     ctx: *mut bssl_sys::HMAC_CTX,
-    _marker: PhantomData<M>,
+    _marker: PhantomData<MD>,
 }
 
-impl<const N: usize, M: Md> Hmac<N, M> {
+impl<const N: usize, MD: digest::Algorithm> Hmac<N, MD> {
     /// Creates a new HMAC operation from a fixed-length key.
     fn new(key: [u8; N]) -> Self {
         Self::new_from_slice(&key)
@@ -219,7 +220,7 @@ impl<const N: usize, M: Md> Hmac<N, M> {
                 ctx,
                 CSlice::from(key).as_ptr() as *const c_void,
                 key.len(),
-                M::get_md().as_ptr(),
+                MD::get_md(sealed::Sealed).as_ptr(),
                 ptr::null_mut(),
             )
         };
@@ -311,7 +312,7 @@ impl<const N: usize, M: Md> Hmac<N, M> {
                 self.ctx,
                 ptr::null_mut(),
                 0,
-                M::get_md().as_ptr(),
+                MD::get_md(sealed::Sealed).as_ptr(),
                 ptr::null_mut(),
             )
         };
@@ -319,7 +320,7 @@ impl<const N: usize, M: Md> Hmac<N, M> {
     }
 }
 
-impl<const N: usize, M: Md> Drop for Hmac<N, M> {
+impl<const N: usize, MD: digest::Algorithm> Drop for Hmac<N, MD> {
     fn drop(&mut self) {
         unsafe { bssl_sys::HMAC_CTX_free(self.ctx) }
     }

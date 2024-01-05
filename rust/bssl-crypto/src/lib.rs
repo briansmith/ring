@@ -30,6 +30,9 @@ extern crate core;
 
 use core::ffi::c_void;
 
+#[macro_use]
+mod macros;
+
 /// Authenticated Encryption with Additional Data algorithms.
 pub mod aead;
 
@@ -39,7 +42,6 @@ pub mod aes;
 /// Ciphers.
 pub mod cipher;
 
-/// Hash functions.
 pub mod digest;
 
 /// Ed25519, a signature scheme.
@@ -247,6 +249,20 @@ unsafe trait ForeignType {
     fn as_ptr(&self) -> *mut Self::CType;
 }
 
+/// Returns a BoringSSL structure that is initialized by some function.
+/// Requires that the given function completely initializes the value.
+///
+/// (Tagged `unsafe` because a no-op argument would otherwise expose
+/// uninitialized memory.)
+unsafe fn initialized_struct<T, F>(init: F) -> T
+where
+    F: FnOnce(*mut T),
+{
+    let mut out_uninit = core::mem::MaybeUninit::<T>::uninit();
+    init(out_uninit.as_mut_ptr());
+    unsafe { out_uninit.assume_init() }
+}
+
 /// Wrap a closure that initializes an output buffer and return that buffer as
 /// an array. Requires that the closure fully initialize the given buffer.
 ///
@@ -289,4 +305,9 @@ where
     } else {
         None
     }
+}
+
+/// Used to prevent external implementations of internal traits.
+mod sealed {
+    pub struct Sealed;
 }
