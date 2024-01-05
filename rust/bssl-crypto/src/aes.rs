@@ -122,8 +122,10 @@ fn new_decrypt_key<const N: usize>(key: [u8; N]) -> AesDecryptKey {
 
 #[cfg(test)]
 mod tests {
-    use crate::aes::{Aes, AesDecryptKey, AesEncryptKey};
-    use crate::test_helpers::decode_hex;
+    use crate::{
+        aes::{Aes, AesDecryptKey, AesEncryptKey},
+        test_helpers::decode_hex,
+    };
 
     // test data from https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf F.1.1
     #[test]

@@ -18,8 +18,7 @@
 //! externally.
 
 use crate::{ec::EcKey, CSliceMut, ForeignType};
-use alloc::borrow::ToOwned;
-use alloc::string::String;
+use alloc::{borrow::ToOwned, string::String};
 
 pub(crate) struct Pkey {
     ptr: *mut bssl_sys::EVP_PKEY,

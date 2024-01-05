@@ -12,10 +12,11 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-use crate::digest;
-use crate::digest::{Sha256, Sha512};
-use crate::sealed;
-use crate::{CSlice, CSliceMut, ForeignTypeRef};
+use crate::{
+    digest,
+    digest::{Sha256, Sha512},
+    sealed, CSlice, CSliceMut, ForeignTypeRef,
+};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
@@ -103,8 +104,10 @@ impl<MD: digest::Algorithm> Hkdf<MD> {
     clippy::unwrap_used
 )]
 mod tests {
-    use crate::hkdf::{HkdfSha256, HkdfSha512};
-    use crate::test_helpers::{decode_hex, decode_hex_into_vec};
+    use crate::{
+        hkdf::{HkdfSha256, HkdfSha512},
+        test_helpers::{decode_hex, decode_hex_into_vec},
+    };
     use core::iter;
 
     struct Test {

@@ -44,9 +44,7 @@
 //! // real protocols from a Diffie-Hellman primitive.
 //! ```
 
-use crate::with_output_array;
-use crate::with_output_array_fallible;
-use crate::FfiSlice;
+use crate::{with_output_array, with_output_array_fallible, FfiSlice};
 
 /// Number of bytes in a private key in X25519
 pub const PRIVATE_KEY_LEN: usize = bssl_sys::X25519_PRIVATE_KEY_LEN as usize;
