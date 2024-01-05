@@ -1467,8 +1467,6 @@ X509_STORE_CTX *X509_STORE_CTX_get0_parent_ctx(X509_STORE_CTX *ctx) {
   return NULL;
 }
 
-void X509_STORE_CTX_set_cert(X509_STORE_CTX *ctx, X509 *x) { ctx->cert = x; }
-
 void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx, STACK_OF(X509) *sk) {
   ctx->untrusted = sk;
 }
