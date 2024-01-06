@@ -13,242 +13,268 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-use crate::{CSlice, CSliceMut};
-use alloc::vec::Vec;
-use bssl_sys::{EVP_AEAD, EVP_AEAD_CTX};
+//! Authenticated Encryption with Additional Data.
+//!
+//! AEAD couples confidentiality and integrity in a single primitive. AEAD
+//! algorithms take a key and then can seal and open individual messages. Each
+//! message has a unique, per-message nonce and, optionally, additional data
+//! which is authenticated but not included in the ciphertext.
+//!
+//! No two distinct plaintexts must ever be sealed using the same (key, nonce)
+//! pair. It is up to the user of these algorithms to ensure this. For example,
+//! when encrypting a stream of messages (e.g. over a TCP socket) a message
+//! counter can provide distinct nonces as long as the key is randomly generated
+//! for the specific connection and is distinct in each direction.
+//!
+//! To implement that example:
+//!
+//! ```
+//! use bssl_crypto::aead::{Aead, Aes256Gcm};
+//!
+//! let key = [0u8; 32];
+//! let aead = Aes256Gcm::new(&key);
+//!
+//! let mut message_counter: u64 = 0;
+//! let mut nonce = [0u8; 12];
+//! nonce[4..].copy_from_slice(message_counter.to_be_bytes().as_slice());
+//! message_counter += 1;
+//! let plaintext = b"message";
+//! let ciphertext = aead.seal(&nonce, plaintext, b"");
+//!
+//! let decrypted = aead.open(&nonce, ciphertext.as_slice(), b"");
+//! assert_eq!(plaintext, decrypted.unwrap().as_slice());
+//! ```
 
-/// Error returned in the event of an unsuccessful AEAD operation.
+use crate::{with_output_array, with_output_vec, with_output_vec_fallible, FfiMutSlice, FfiSlice};
+use alloc::vec::Vec;
+
+/// The error type returned when a fallible, in-place operation fails.
 #[derive(Debug)]
-pub struct AeadError;
+pub struct InvalidCiphertext;
 
 /// Authenticated Encryption with Associated Data (AEAD) algorithm trait.
 pub trait Aead {
-    /// The size of the auth tag for the given AEAD implementation. This is the amount of bytes
-    /// appended to the data when it is encrypted.
-    const TAG_SIZE: usize;
+    /// The type of tags produced by this AEAD. Generally a u8 array of fixed
+    /// length.
+    type Tag: AsRef<[u8]>;
 
-    /// The byte array nonce type which specifies the size of the nonce used in the aes operations.
+    /// The type of nonces used by this AEAD. Generally a u8 array of fixed
+    /// length.
     type Nonce: AsRef<[u8]>;
 
-    /// Encrypt the given buffer containing a plaintext message. On success returns the encrypted
-    /// `msg` and appended auth tag, which will result in a Vec which is  `Self::TAG_SIZE` bytes
-    /// greater than the initial message.
-    fn encrypt(&self, msg: &[u8], aad: &[u8], nonce: &Self::Nonce) -> Result<Vec<u8>, AeadError>;
+    /// Encrypt and authenticate `plaintext`, and authenticate `ad`, returning
+    /// the result as a freshly allocated [`Vec`]. The `nonce` must never
+    /// be used in any sealing operation with the same key, ever again.
+    fn seal(&self, nonce: &Self::Nonce, plaintext: &[u8], ad: &[u8]) -> Vec<u8>;
 
-    /// Decrypt the message, returning the decrypted plaintext or an error in the event the
-    /// provided authentication tag does not match the given ciphertext. On success the returned
-    /// Vec will only contain the plaintext and so will be `Self::TAG_SIZE` bytes less than the
-    /// initial message.
-    fn decrypt(&self, msg: &[u8], aad: &[u8], nonce: &Self::Nonce) -> Result<Vec<u8>, AeadError>;
+    /// Encrypt and authenticate `plaintext`, and authenticate `ad`, writing
+    /// the ciphertext over `plaintext` and additionally returning the calculated
+    /// tag, which is usually appended to the ciphertext. The `nonce` must never
+    /// be used in any sealing operation with the same key, ever again.
+    fn seal_in_place(&self, nonce: &Self::Nonce, plaintext: &mut [u8], ad: &[u8]) -> Self::Tag;
+
+    /// Authenticate `ciphertext` and `ad` and, if valid, decrypt `ciphertext`,
+    /// returning the original plaintext in a newly allocated [`Vec`]. The `nonce`
+    /// must be the same value as given to the sealing operation that produced
+    /// `ciphertext`.
+    fn open(&self, nonce: &Self::Nonce, ciphertext: &[u8], ad: &[u8]) -> Option<Vec<u8>>;
+
+    /// Authenticate `ciphertext` and `ad` using `tag` and, if valid, decrypt
+    /// `ciphertext` in place. The `nonce` must be the same value as given to
+    /// the sealing operation that produced `ciphertext`.
+    fn open_in_place(
+        &self,
+        nonce: &Self::Nonce,
+        ciphertext: &mut [u8],
+        tag: &Self::Tag,
+        ad: &[u8],
+    ) -> Result<(), InvalidCiphertext>;
 }
 
-/// AES-GCM-SIV implementation.
-pub struct AesGcmSiv(AeadImpl<12, 16>);
+/// AES-128 in Galois Counter Mode.
+pub struct Aes128Gcm(EvpAead<16, 12, 16>);
+aead_algo!(Aes128Gcm, EVP_aead_aes_128_gcm, 16, 12, 16);
 
-/// Instantiates a new AES-128-GCM-SIV instance from key material.
-pub fn new_aes_128_gcm_siv(key: &[u8; 16]) -> AesGcmSiv {
-    AesGcmSiv(AeadImpl::new::<EvpAes128GcmSiv>(key))
-}
+/// AES-256 in Galois Counter Mode.
+pub struct Aes256Gcm(EvpAead<32, 12, 16>);
+aead_algo!(Aes256Gcm, EVP_aead_aes_256_gcm, 32, 12, 16);
 
-/// Instantiates a new AES-256-GCM-SIV instance from key material.
-pub fn new_aes_256_gcm_siv(key: &[u8; 32]) -> AesGcmSiv {
-    AesGcmSiv(AeadImpl::new::<EvpAes256GcmSiv>(key))
-}
+/// AES-128 in GCM-SIV mode (which is different from SIV mode!).
+pub struct Aes128GcmSiv(EvpAead<16, 12, 16>);
+aead_algo!(Aes128GcmSiv, EVP_aead_aes_128_gcm_siv, 16, 12, 16);
 
-impl Aead for AesGcmSiv {
-    const TAG_SIZE: usize = 16;
-    type Nonce = [u8; 12];
+/// AES-256 in GCM-SIV mode (which is different from SIV mode!).
+pub struct Aes256GcmSiv(EvpAead<32, 12, 16>);
+aead_algo!(Aes256GcmSiv, EVP_aead_aes_256_gcm_siv, 32, 12, 16);
 
-    fn encrypt(&self, msg: &[u8], aad: &[u8], nonce: &[u8; 12]) -> Result<Vec<u8>, AeadError> {
-        self.0.encrypt(msg, aad, nonce)
+/// The AEAD built from ChaCha20 and Poly1305 as described in <https://datatracker.ietf.org/doc/html/rfc8439>.
+pub struct Chacha20Poly1305(EvpAead<32, 12, 16>);
+aead_algo!(Chacha20Poly1305, EVP_aead_chacha20_poly1305, 32, 12, 16);
+
+/// Chacha20Poly1305 with an extended nonce that makes random generation of nonces safe.
+pub struct XChacha20Poly1305(EvpAead<32, 24, 16>);
+aead_algo!(XChacha20Poly1305, EVP_aead_xchacha20_poly1305, 32, 24, 16);
+
+/// An internal struct that implements AEAD operations given an `EVP_AEAD`.
+struct EvpAead<const KEY_LEN: usize, const NONCE_LEN: usize, const TAG_LEN: usize>(
+    *mut bssl_sys::EVP_AEAD_CTX,
+);
+
+#[allow(clippy::unwrap_used)]
+impl<const KEY_LEN: usize, const NONCE_LEN: usize, const TAG_LEN: usize>
+    EvpAead<KEY_LEN, NONCE_LEN, TAG_LEN>
+{
+    // Tagged unsafe because `evp_aead` must be valid.
+    unsafe fn new(key: &[u8; KEY_LEN], evp_aead: *const bssl_sys::EVP_AEAD) -> Self {
+        // `evp_aead` is assumed to be valid. The function will validate
+        // the other lengths and return NULL on error. In that case we
+        // crash the address space because that should never happen.
+        let ptr =
+            unsafe { bssl_sys::EVP_AEAD_CTX_new(evp_aead, key.as_ffi_ptr(), key.len(), TAG_LEN) };
+        assert!(!ptr.is_null());
+        Self(ptr)
     }
 
-    fn decrypt(&self, msg: &[u8], aad: &[u8], nonce: &[u8; 12]) -> Result<Vec<u8>, AeadError> {
-        self.0.decrypt(msg, aad, nonce)
-    }
-}
-
-trait EvpAeadType {
-    type Key: AsRef<[u8]>;
-    fn evp_aead() -> *const EVP_AEAD;
-}
-
-struct EvpAes128GcmSiv;
-impl EvpAeadType for EvpAes128GcmSiv {
-    type Key = [u8; 16];
-
-    fn evp_aead() -> *const EVP_AEAD {
-        // Safety:
-        // - this just returns a constant value
-        unsafe { bssl_sys::EVP_aead_aes_128_gcm_siv() }
-    }
-}
-
-struct EvpAes256GcmSiv;
-impl EvpAeadType for EvpAes256GcmSiv {
-    type Key = [u8; 32];
-
-    fn evp_aead() -> *const EVP_AEAD {
-        // Safety:
-        // - this just returns a constant value
-        unsafe { bssl_sys::EVP_aead_aes_256_gcm_siv() }
-    }
-}
-
-/// AES-GCM implementation.
-pub struct AesGcm(AeadImpl<12, 16>);
-
-/// Instantiates a new AES-128-GCM instance from key material.
-pub fn new_aes_128_gcm(key: &[u8; 16]) -> AesGcm {
-    AesGcm(AeadImpl::new::<EvpAes128Gcm>(key))
-}
-
-/// Instantiates a new AES-256-GCM instance from key material.
-pub fn new_aes_256_gcm(key: &[u8; 32]) -> AesGcm {
-    AesGcm(AeadImpl::new::<EvpAes256Gcm>(key))
-}
-
-impl Aead for AesGcm {
-    const TAG_SIZE: usize = 16;
-    type Nonce = [u8; 12];
-
-    fn encrypt(&self, msg: &[u8], aad: &[u8], nonce: &[u8; 12]) -> Result<Vec<u8>, AeadError> {
-        self.0.encrypt(msg, aad, nonce)
-    }
-
-    fn decrypt(&self, msg: &[u8], aad: &[u8], nonce: &[u8; 12]) -> Result<Vec<u8>, AeadError> {
-        self.0.decrypt(msg, aad, nonce)
-    }
-}
-
-struct EvpAes128Gcm;
-impl EvpAeadType for EvpAes128Gcm {
-    type Key = [u8; 16];
-
-    fn evp_aead() -> *const EVP_AEAD {
-        // Safety:
-        // - this just returns a constant value
-        unsafe { bssl_sys::EVP_aead_aes_128_gcm() }
-    }
-}
-
-struct EvpAes256Gcm;
-impl EvpAeadType for EvpAes256Gcm {
-    type Key = [u8; 32];
-
-    fn evp_aead() -> *const EVP_AEAD {
-        // Safety:
-        // - this just returns a constant value
-        unsafe { bssl_sys::EVP_aead_aes_256_gcm() }
-    }
-}
-
-// Private  implementation of an AEAD which is generic over Nonce size and Tag size. This should
-// only be exposed publicly by wrapper types which provide the correctly sized const generics for
-// the given aead algorithm.
-struct AeadImpl<const N: usize, const T: usize>(*mut EVP_AEAD_CTX);
-
-impl<const N: usize, const T: usize> AeadImpl<N, T> {
-    // Create a new AeadImpl instance from key material and for a supported AeadType.
-    fn new<A: EvpAeadType>(key: &A::Key) -> Self {
-        let key_cslice = CSlice::from(key.as_ref());
-
-        // Safety:
-        // - This is always safe as long as the correct key size is set by the wrapper type.
-        let ctx = unsafe {
-            bssl_sys::EVP_AEAD_CTX_new(
-                A::evp_aead(),
-                key_cslice.as_ptr(),
-                key_cslice.len(),
-                bssl_sys::EVP_AEAD_DEFAULT_TAG_LENGTH as usize,
-            )
-        };
-        assert!(!ctx.is_null());
-        AeadImpl(ctx)
-    }
-
-    // Encrypts msg in-place, adding enough space to msg for the auth tag.
-    fn encrypt(&self, msg: &[u8], aad: &[u8], nonce: &[u8; N]) -> Result<Vec<u8>, AeadError> {
-        let mut out = Vec::new();
-        out.resize(msg.len() + T, 0u8);
-
-        let mut out_cslice = CSliceMut::from(out.as_mut_slice());
-        let msg_cslice = CSlice::from(msg);
-        let aad_cslice = CSlice::from(aad);
-        let nonce_cslice = CSlice::from(nonce.as_slice());
-        let mut out_len = 0usize;
-
-        // Safety:
-        // - The buffers are all valid, with corresponding ptr and length
-        let result = unsafe {
-            bssl_sys::EVP_AEAD_CTX_seal(
-                self.0,
-                out_cslice.as_mut_ptr(),
-                &mut out_len,
-                out_cslice.len(),
-                nonce_cslice.as_ptr(),
-                nonce_cslice.len(),
-                msg_cslice.as_ptr(),
-                msg_cslice.len(),
-                aad_cslice.as_ptr(),
-                aad_cslice.len(),
-            )
-        };
-
-        if result == 1 {
-            // Verify the correct number of bytes were written.
-            assert_eq!(out_len, out.len());
-            Ok(out)
-        } else {
-            Err(AeadError)
+    fn seal(&self, nonce: &[u8; NONCE_LEN], plaintext: &[u8], ad: &[u8]) -> Vec<u8> {
+        let max_output = plaintext.len() + TAG_LEN;
+        unsafe {
+            with_output_vec(max_output, |out_buf| {
+                let mut out_len = 0usize;
+                // Safety: the input buffers are all valid, with corresponding
+                // ptr and length. The output buffer has at least `max_output`
+                // bytes of space and that maximum is passed to
+                // `EVP_AEAD_CTX_seal` as a limit.
+                let result = bssl_sys::EVP_AEAD_CTX_seal(
+                    self.0,
+                    out_buf,
+                    &mut out_len,
+                    max_output,
+                    nonce.as_ffi_ptr(),
+                    nonce.len(),
+                    plaintext.as_ffi_ptr(),
+                    plaintext.len(),
+                    ad.as_ffi_ptr(),
+                    ad.len(),
+                );
+                // Sealing never fails unless there's a programmer error.
+                assert_eq!(result, 1);
+                // For the implemented AEADs, we should always have calculated
+                // the overhead exactly.
+                assert_eq!(out_len, max_output);
+                // Safety: `out_len` bytes have been written to.
+                out_len
+            })
         }
     }
 
-    // Decrypts msg in-place, on success msg will contain the plain text alone, without the auth
-    // tag.
-    fn decrypt(&self, msg: &[u8], aad: &[u8], nonce: &[u8; N]) -> Result<Vec<u8>, AeadError> {
-        if msg.len() < T {
-            return Err(AeadError);
+    fn seal_in_place(
+        &self,
+        nonce: &[u8; NONCE_LEN],
+        plaintext: &mut [u8],
+        ad: &[u8],
+    ) -> [u8; TAG_LEN] {
+        // Safety: the buffers are all valid, with corresponding ptr and length.
+        // `tag_len` is passed at the maximum size of `tag` and `out_tag_len`
+        // is checked to ensure that the whole output was written to.
+        unsafe {
+            with_output_array(|tag, tag_len| {
+                let mut out_tag_len = 0usize;
+                let result = bssl_sys::EVP_AEAD_CTX_seal_scatter(
+                    self.0,
+                    plaintext.as_mut_ffi_ptr(),
+                    tag,
+                    &mut out_tag_len,
+                    tag_len,
+                    nonce.as_ffi_ptr(),
+                    nonce.len(),
+                    plaintext.as_ffi_ptr(),
+                    plaintext.len(),
+                    /*extra_in=*/ core::ptr::null(),
+                    /*extra_in_len=*/ 0,
+                    ad.as_ffi_ptr(),
+                    ad.len(),
+                );
+                // Failure indicates that one of the configured lengths was wrong.
+                // Crashing is a good answer in that case.
+                assert_eq!(result, 1);
+                // The whole output must have been written to.
+                assert_eq!(out_tag_len, TAG_LEN);
+            })
         }
-        let mut out = Vec::new();
-        out.resize(msg.len() - T, 0u8);
+    }
 
-        let mut out_cslice = CSliceMut::from(out.as_mut_slice());
-        let aad_cslice = CSlice::from(aad);
-        let msg_cslice = CSlice::from(msg);
-        let mut out_len = 0usize;
+    fn open(&self, nonce: &[u8; NONCE_LEN], ciphertext: &[u8], ad: &[u8]) -> Option<Vec<u8>> {
+        if ciphertext.len() < TAG_LEN {
+            return None;
+        }
+        let max_output = ciphertext.len() - TAG_LEN;
 
+        unsafe {
+            with_output_vec_fallible(max_output, |out_buf| {
+                let mut out_len = 0usize;
+                // Safety: the input buffers are all valid, with corresponding
+                // ptr and length. The output buffer has at least `max_output`
+                // bytes of space and that maximum is passed to
+                // `EVP_AEAD_CTX_open` as a limit.
+                let result = bssl_sys::EVP_AEAD_CTX_open(
+                    self.0,
+                    out_buf,
+                    &mut out_len,
+                    max_output,
+                    nonce.as_ffi_ptr(),
+                    nonce.len(),
+                    ciphertext.as_ffi_ptr(),
+                    ciphertext.len(),
+                    ad.as_ffi_ptr(),
+                    ad.len(),
+                );
+                if result == 1 {
+                    // Safety: `out_len` bytes have been written to.
+                    Some(out_len)
+                } else {
+                    None
+                }
+            })
+        }
+    }
+
+    fn open_in_place(
+        &self,
+        nonce: &[u8; NONCE_LEN],
+        ciphertext: &mut [u8],
+        tag: &[u8; TAG_LEN],
+        ad: &[u8],
+    ) -> Result<(), InvalidCiphertext> {
         // Safety:
         // - The buffers are all valid, with corresponding ptr and length
         let result = unsafe {
-            bssl_sys::EVP_AEAD_CTX_open(
+            bssl_sys::EVP_AEAD_CTX_open_gather(
                 self.0,
-                out_cslice.as_mut_ptr(),
-                &mut out_len,
-                out_cslice.len(),
-                nonce.as_ptr(),
+                ciphertext.as_mut_ffi_ptr(),
+                nonce.as_ffi_ptr(),
                 nonce.len(),
-                msg_cslice.as_ptr(),
-                msg_cslice.len(),
-                aad_cslice.as_ptr(),
-                aad_cslice.len(),
+                ciphertext.as_ffi_ptr(),
+                ciphertext.len(),
+                tag.as_ffi_ptr(),
+                tag.len(),
+                ad.as_ffi_ptr(),
+                ad.len(),
             )
         };
-
         if result == 1 {
-            // Verify the correct number of bytes were written.
-            assert_eq!(out_len, out.len());
-            Ok(out)
+            Ok(())
         } else {
-            Err(AeadError)
+            Err(InvalidCiphertext)
         }
     }
 }
 
-impl<const N: usize, const T: usize> Drop for AeadImpl<N, T> {
+impl<const KEY_LEN: usize, const NONCE_LEN: usize, const TAG_LEN: usize> Drop
+    for EvpAead<KEY_LEN, NONCE_LEN, TAG_LEN>
+{
     fn drop(&mut self) {
-        // Safety:
-        // - `self.0` was allocated by `EVP_AEAD_CTX_new` and has not yet been freed.
+        // Safety: `self.0` was initialized by `EVP_AEAD_CTX_init` because all
+        // paths to create an `EvpAead` do so.
         unsafe { bssl_sys::EVP_AEAD_CTX_free(self.0) }
     }
 }
@@ -256,168 +282,216 @@ impl<const N: usize, const T: usize> Drop for AeadImpl<N, T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_helpers::decode_hex;
+    use crate::test_helpers::{decode_hex, decode_hex_into_vec};
 
-    #[test]
-    fn aes_128_gcm_siv_tests() {
-        // https://github.com/google/wycheproof/blob/master/testvectors/aes_gcm_siv_test.json
-        // TC1 - Empty Message
-        let key = decode_hex("01000000000000000000000000000000");
-        let nonce = decode_hex("030000000000000000000000");
-        let tag: [u8; 16] = decode_hex("dc20e2d83f25705bb49e439eca56de25");
-        let mut buf = Vec::from(&[] as &[u8]);
-        let aes = new_aes_128_gcm_siv(&key);
-        let result = aes.encrypt(&mut buf, b"", &nonce);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), &tag);
+    fn check_aead_invariants<
+        const NONCE_LEN: usize,
+        const TAG_LEN: usize,
+        A: Aead<Nonce = [u8; NONCE_LEN], Tag = [u8; TAG_LEN]>,
+    >(
+        aead: A,
+    ) {
+        let plaintext = b"plaintext";
+        let ad = b"additional data";
+        let nonce: A::Nonce = [0u8; NONCE_LEN];
 
-        // TC2
-        let msg: [u8; 8] = decode_hex("0100000000000000");
-        let ct: [u8; 8] = decode_hex("b5d839330ac7b786");
-        let tag: [u8; 16] = decode_hex("578782fff6013b815b287c22493a364c");
-        let result = aes.encrypt(&msg, b"", &nonce);
-        assert!(result.is_ok());
-        let mut result_vec = result.unwrap();
-        assert_eq!(&result_vec[..8], &ct);
-        assert_eq!(&result_vec[8..], &tag);
-        let result = aes.decrypt(result_vec.as_mut_slice(), b"", &nonce);
-        assert!(result.is_ok());
-        assert_eq!(&result.unwrap(), &msg);
+        let mut ciphertext = aead.seal(&nonce, plaintext, ad);
+        let plaintext2 = aead
+            .open(&nonce, ciphertext.as_slice(), ad)
+            .expect("should decrypt");
+        assert_eq!(plaintext, plaintext2.as_slice());
 
-        // TC14 contains associated data
-        let msg: [u8; 4] = decode_hex("02000000");
-        let ct: [u8; 4] = decode_hex("a8fe3e87");
-        let aad: [u8; 12] = decode_hex("010000000000000000000000");
-        let tag: [u8; 16] = decode_hex("07eb1f84fb28f8cb73de8e99e2f48a14");
-        let result = aes.encrypt(&msg, &aad, &nonce);
-        assert!(result.is_ok());
-        let mut result_vec = result.unwrap();
-        assert_eq!(&result_vec[..4], &ct);
-        assert_eq!(&result_vec[4..], &tag);
-        let result = aes.decrypt(result_vec.as_mut_slice(), &aad, &nonce);
-        assert!(result.is_ok());
-        assert_eq!(&result.unwrap(), &msg);
+        ciphertext[0] ^= 1;
+        assert!(aead.open(&nonce, ciphertext.as_slice(), ad).is_none());
+        ciphertext[0] ^= 1;
+
+        let (ciphertext_in_place, tag_slice) =
+            ciphertext.as_mut_slice().split_at_mut(plaintext.len());
+        let tag: [u8; TAG_LEN] = tag_slice.try_into().unwrap();
+        aead.open_in_place(&nonce, ciphertext_in_place, &tag, ad)
+            .expect("should decrypt");
+        assert_eq!(plaintext, ciphertext_in_place);
+
+        let tag = aead.seal_in_place(&nonce, ciphertext_in_place, ad);
+        aead.open_in_place(&nonce, ciphertext_in_place, &tag, ad)
+            .expect("should decrypt");
+        assert_eq!(plaintext, ciphertext_in_place);
+
+        assert!(aead.open(&nonce, b"tooshort", b"").is_none());
     }
 
     #[test]
-    fn aes_256_gcm_siv_tests() {
-        // https://github.com/google/wycheproof/blob/master/testvectors/aes_gcm_siv_test.json
-        // TC77
-        let test_key =
-            decode_hex("0100000000000000000000000000000000000000000000000000000000000000");
-        let nonce = decode_hex("030000000000000000000000");
-        let aes = new_aes_256_gcm_siv(&test_key);
-        let mut msg: [u8; 8] = decode_hex("0100000000000000");
-        let ct: [u8; 8] = decode_hex("c2ef328e5c71c83b");
-        let tag: [u8; 16] = decode_hex("843122130f7364b761e0b97427e3df28");
-        let enc_result = aes.encrypt(&mut msg, b"", &nonce);
-        assert!(enc_result.is_ok());
-        let mut enc_data = enc_result.unwrap();
-        assert_eq!(&enc_data[..8], &ct);
-        assert_eq!(&enc_data[8..], &tag);
-        let result = aes.decrypt(enc_data.as_mut_slice(), b"", &nonce);
-        assert!(result.is_ok());
-        assert_eq!(&result.unwrap(), &msg);
-
-        // TC78
-        let mut msg: [u8; 12] = decode_hex("010000000000000000000000");
-        let ct: [u8; 12] = decode_hex("9aab2aeb3faa0a34aea8e2b1");
-        let tag: [u8; 16] = decode_hex("8ca50da9ae6559e48fd10f6e5c9ca17e");
-        let enc_result = aes.encrypt(&mut msg, b"", &nonce);
-        assert!(enc_result.is_ok());
-        let mut enc_data = enc_result.unwrap();
-        assert_eq!(&enc_data[..12], &ct);
-        assert_eq!(&enc_data[12..], &tag);
-        let result = aes.decrypt(enc_data.as_mut_slice(), b"", &nonce);
-        assert!(result.is_ok());
-        assert_eq!(&result.unwrap(), &msg);
-
-        // TC89 contains associated data
-        let mut msg: [u8; 4] = decode_hex("02000000");
-        let ct: [u8; 4] = decode_hex("22b3f4cd");
-        let tag: [u8; 16] = decode_hex("1835e517741dfddccfa07fa4661b74cf");
-        let aad: [u8; 12] = decode_hex("010000000000000000000000");
-        let enc_result = aes.encrypt(&mut msg, &aad, &nonce);
-        assert!(enc_result.is_ok());
-        let mut enc_data = enc_result.unwrap();
-        assert_eq!(&enc_data[..4], &ct);
-        assert_eq!(&enc_data[4..], &tag);
-        let result = aes.decrypt(enc_data.as_mut_slice(), &aad, &nonce);
-        assert!(result.is_ok());
-        assert_eq!(&result.unwrap(), &msg);
+    fn aes_128_gcm_invariants() {
+        check_aead_invariants(Aes128Gcm::new(&[0u8; 16]));
     }
 
     #[test]
-    fn aes_128_gcm_tests() {
-        // TC 1 from crypto/cipher_extra/test/aes_128_gcm_tests.txt
-        let key = decode_hex("d480429666d48b400633921c5407d1d1");
-        let nonce = decode_hex("3388c676dc754acfa66e172a");
-        let tag: [u8; 16] = decode_hex("7d7daf44850921a34e636b01adeb104f");
-        let mut buf = Vec::from(&[] as &[u8]);
-        let aes = new_aes_128_gcm(&key);
-        let result = aes.encrypt(&mut buf, b"", &nonce);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), &tag);
-
-        // TC2
-        let key = decode_hex("3881e7be1bb3bbcaff20bdb78e5d1b67");
-        let nonce = decode_hex("dcf5b7ae2d7552e2297fcfa9");
-        let msg: [u8; 5] = decode_hex("0a2714aa7d");
-        let ad: [u8; 5] = decode_hex("c60c64bbf7");
-        let ct: [u8; 5] = decode_hex("5626f96ecb");
-        let tag: [u8; 16] = decode_hex("ff4c4f1d92b0abb1d0820833d9eb83c7");
-
-        let mut buf = Vec::from(msg.as_slice());
-        let aes = new_aes_128_gcm(&key);
-        let result = aes.encrypt(&mut buf, &ad, &nonce);
-        assert!(result.is_ok());
-        let mut data = result.unwrap();
-        assert_eq!(&data[..5], &ct);
-        assert_eq!(&data[5..], &tag);
-        let result = aes.decrypt(data.as_mut_slice(), &ad, &nonce);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), &msg);
+    fn aes_256_gcm_invariants() {
+        check_aead_invariants(Aes256Gcm::new(&[0u8; 32]));
     }
 
     #[test]
-    fn aes_256_gcm_tests() {
-        // TC 1 from crypto/cipher_extra/test/aes_256_gcm_tests.txt
-        let key = decode_hex("e5ac4a32c67e425ac4b143c83c6f161312a97d88d634afdf9f4da5bd35223f01");
-        let nonce = decode_hex("5bf11a0951f0bfc7ea5c9e58");
-        let tag: [u8; 16] = decode_hex("d7cba289d6d19a5af45dc13857016bac");
-        let mut buf = Vec::from(&[] as &[u8]);
-        let aes = new_aes_256_gcm(&key);
-        let result = aes.encrypt(&mut buf, b"", &nonce);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), &tag);
-
-        // TC2
-        let key = decode_hex("73ad7bbbbc640c845a150f67d058b279849370cd2c1f3c67c4dd6c869213e13a");
-        let nonce = decode_hex("a330a184fc245812f4820caa");
-        let msg: [u8; 5] = decode_hex("f0535fe211");
-        let ad: [u8; 5] = decode_hex("e91428be04");
-        let ct: [u8; 5] = decode_hex("e9b8a896da");
-        let tag: [u8; 16] = decode_hex("9115ed79f26a030c14947b3e454db9e7");
-
-        let mut buf = Vec::from(msg.as_slice());
-        let aes = new_aes_256_gcm(&key);
-        let result = aes.encrypt(&mut buf, &ad, &nonce);
-        assert!(result.is_ok());
-        let mut data = result.unwrap();
-        assert_eq!(&data[..5], &ct);
-        assert_eq!(&data[5..], &tag);
-        let result = aes.decrypt(data.as_mut_slice(), &ad, &nonce);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), &msg);
+    fn aes_128_gcm_siv_invariants() {
+        check_aead_invariants(Aes128GcmSiv::new(&[0u8; 16]));
     }
 
     #[test]
-    fn test_invalid_data_length_decrypt() {
-        let key = decode_hex("00000000000000000000000000000000");
-        let nonce = decode_hex("000000000000000000000000");
-        let buf = Vec::from(&[] as &[u8]);
-        let aes = new_aes_128_gcm_siv(&key);
-        let result = aes.decrypt(&buf, b"", &nonce);
-        assert!(result.is_err());
+    fn aes_256_gcm_siv_invariants() {
+        check_aead_invariants(Aes256GcmSiv::new(&[0u8; 32]));
+    }
+
+    #[test]
+    fn chacha20_poly1305_invariants() {
+        check_aead_invariants(Chacha20Poly1305::new(&[0u8; 32]));
+    }
+
+    #[test]
+    fn xchacha20_poly1305_invariants() {
+        check_aead_invariants(XChacha20Poly1305::new(&[0u8; 32]));
+    }
+
+    struct TestCase<const KEY_LEN: usize, const NONCE_LEN: usize> {
+        key: [u8; KEY_LEN],
+        nonce: [u8; NONCE_LEN],
+        msg: Vec<u8>,
+        ad: Vec<u8>,
+        ciphertext: Vec<u8>,
+    }
+
+    fn check_test_cases<
+        const KEY_LEN: usize,
+        const NONCE_LEN: usize,
+        const TAG_LEN: usize,
+        F: Fn(&[u8; KEY_LEN]) -> Box<dyn Aead<Nonce = [u8; NONCE_LEN], Tag = [u8; TAG_LEN]>>,
+    >(
+        new_func: F,
+        test_cases: &[TestCase<KEY_LEN, NONCE_LEN>],
+    ) {
+        for (test_num, test) in test_cases.iter().enumerate() {
+            let ctx = new_func(&test.key);
+            let ciphertext = ctx.seal(&test.nonce, test.msg.as_slice(), test.ad.as_slice());
+            assert_eq!(ciphertext, test.ciphertext, "Failed on test #{}", test_num);
+
+            let plaintext = ctx
+                .open(&test.nonce, ciphertext.as_slice(), test.ad.as_slice())
+                .unwrap();
+            assert_eq!(plaintext, test.msg, "Decrypt failed on test #{}", test_num);
+        }
+    }
+
+    #[test]
+    fn aes_128_gcm_siv() {
+        let test_cases: &[TestCase<16, 12>] = &[
+            TestCase {
+                // https://github.com/google/wycheproof/blob/master/testvectors/aes_gcm_siv_test.json
+                // TC1 - Empty Message
+                key: decode_hex("01000000000000000000000000000000"),
+                nonce: decode_hex("030000000000000000000000"),
+                msg: Vec::new(),
+                ad: Vec::new(),
+                ciphertext: decode_hex_into_vec("dc20e2d83f25705bb49e439eca56de25"),
+            },
+            TestCase {
+                // TC2
+                key: decode_hex("01000000000000000000000000000000"),
+                nonce: decode_hex("030000000000000000000000"),
+                msg: decode_hex_into_vec("0100000000000000"),
+                ad: Vec::new(),
+                ciphertext: decode_hex_into_vec("b5d839330ac7b786578782fff6013b815b287c22493a364c"),
+            },
+            TestCase {
+                // TC14
+                key: decode_hex("01000000000000000000000000000000"),
+                nonce: decode_hex("030000000000000000000000"),
+                msg: decode_hex_into_vec("02000000"),
+                ad: decode_hex_into_vec("010000000000000000000000"),
+                ciphertext: decode_hex_into_vec("a8fe3e8707eb1f84fb28f8cb73de8e99e2f48a14"),
+            },
+        ];
+
+        check_test_cases(|key| Box::new(Aes128GcmSiv::new(key)), test_cases);
+    }
+
+    #[test]
+    fn aes_256_gcm_siv() {
+        let test_cases: &[TestCase<32, 12>] = &[
+            TestCase {
+                // https://github.com/google/wycheproof/blob/master/testvectors/aes_gcm_siv_test.json
+                // TC77
+                key: decode_hex("0100000000000000000000000000000000000000000000000000000000000000"),
+                nonce: decode_hex("030000000000000000000000"),
+                msg: decode_hex_into_vec("0100000000000000"),
+                ad: Vec::new(),
+                ciphertext: decode_hex_into_vec("c2ef328e5c71c83b843122130f7364b761e0b97427e3df28"),
+            },
+            TestCase {
+                // TC78
+                key: decode_hex("0100000000000000000000000000000000000000000000000000000000000000"),
+                nonce: decode_hex("030000000000000000000000"),
+                msg: decode_hex_into_vec("010000000000000000000000"),
+                ad: Vec::new(),
+                ciphertext: decode_hex_into_vec(
+                    "9aab2aeb3faa0a34aea8e2b18ca50da9ae6559e48fd10f6e5c9ca17e",
+                ),
+            },
+            TestCase {
+                // TC89 contains associated data
+                key: decode_hex("0100000000000000000000000000000000000000000000000000000000000000"),
+                nonce: decode_hex("030000000000000000000000"),
+                msg: decode_hex_into_vec("02000000"),
+                ad: decode_hex_into_vec("010000000000000000000000"),
+                ciphertext: decode_hex_into_vec("22b3f4cd1835e517741dfddccfa07fa4661b74cf"),
+            },
+        ];
+
+        check_test_cases(|key| Box::new(Aes256GcmSiv::new(key)), test_cases);
+    }
+
+    #[test]
+    fn aes_128_gcm() {
+        let test_cases: &[TestCase<16, 12>] = &[
+            TestCase {
+                // TC 1 from crypto/cipher_extra/test/aes_128_gcm_tests.txt
+                key: decode_hex("d480429666d48b400633921c5407d1d1"),
+                nonce: decode_hex("3388c676dc754acfa66e172a"),
+                msg: Vec::new(),
+                ad: Vec::new(),
+                ciphertext: decode_hex_into_vec("7d7daf44850921a34e636b01adeb104f"),
+            },
+            TestCase {
+                // TC2
+                key: decode_hex("3881e7be1bb3bbcaff20bdb78e5d1b67"),
+                nonce: decode_hex("dcf5b7ae2d7552e2297fcfa9"),
+                msg: decode_hex_into_vec("0a2714aa7d"),
+                ad: decode_hex_into_vec("c60c64bbf7"),
+                ciphertext: decode_hex_into_vec("5626f96ecbff4c4f1d92b0abb1d0820833d9eb83c7"),
+            },
+        ];
+
+        check_test_cases(|key| Box::new(Aes128Gcm::new(key)), test_cases);
+    }
+
+    #[test]
+    fn aes_256_gcm() {
+        let test_cases: &[TestCase<32, 12>] = &[
+            TestCase {
+                // TC 1 from crypto/cipher_extra/test/aes_128_gcm_tests.txt
+                key: decode_hex("e5ac4a32c67e425ac4b143c83c6f161312a97d88d634afdf9f4da5bd35223f01"),
+                nonce: decode_hex("5bf11a0951f0bfc7ea5c9e58"),
+                msg: Vec::new(),
+                ad: Vec::new(),
+                ciphertext: decode_hex_into_vec("d7cba289d6d19a5af45dc13857016bac"),
+            },
+            TestCase {
+                // TC2
+                key: decode_hex("73ad7bbbbc640c845a150f67d058b279849370cd2c1f3c67c4dd6c869213e13a"),
+                nonce: decode_hex("a330a184fc245812f4820caa"),
+                msg: decode_hex_into_vec("f0535fe211"),
+                ad: decode_hex_into_vec("e91428be04"),
+                ciphertext: decode_hex_into_vec("e9b8a896da9115ed79f26a030c14947b3e454db9e7"),
+            },
+        ];
+
+        check_test_cases(|key| Box::new(Aes256Gcm::new(key)), test_cases);
     }
 }

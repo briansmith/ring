@@ -28,12 +28,12 @@ extern crate alloc;
 
 extern crate core;
 
+use alloc::vec::Vec;
 use core::ffi::c_void;
 
 #[macro_use]
 mod macros;
 
-/// Authenticated Encryption with Additional Data algorithms.
 pub mod aead;
 
 /// AES block operations.
@@ -266,6 +266,24 @@ where
     unsafe { out_uninit.assume_init() }
 }
 
+/// Returns a BoringSSL structure that is initialized by some function.
+/// Requires that the given function completely initializes the value or else
+/// returns a value other than one.
+///
+/// (Tagged `unsafe` because a no-op argument would otherwise expose
+/// uninitialized memory.)
+unsafe fn initialized_struct_fallible<T, F>(init: F) -> Option<T>
+where
+    F: FnOnce(*mut T) -> core::ffi::c_int,
+{
+    let mut out_uninit = core::mem::MaybeUninit::<T>::uninit();
+    if init(out_uninit.as_mut_ptr()) == 1 {
+        Some(unsafe { out_uninit.assume_init() })
+    } else {
+        None
+    }
+}
+
 /// Wrap a closure that initializes an output buffer and return that buffer as
 /// an array. Requires that the closure fully initialize the given buffer.
 ///
@@ -308,6 +326,44 @@ where
     } else {
         None
     }
+}
+
+/// Wrap a closure that writes at most `max_output` bytes to fill a vector.
+/// It must return the number of bytes written.
+#[allow(clippy::unwrap_used)]
+unsafe fn with_output_vec<F>(max_output: usize, func: F) -> Vec<u8>
+where
+    F: FnOnce(*mut u8) -> usize,
+{
+    unsafe {
+        with_output_vec_fallible(max_output, |out_buf| Some(func(out_buf)))
+            // The closure cannot fail and thus neither can
+            // `with_output_array_fallible`.
+            .unwrap()
+    }
+}
+
+/// Wrap a closure that writes at most `max_output` bytes to fill a vector.
+/// If successful, it must return the number of bytes written.
+unsafe fn with_output_vec_fallible<F>(max_output: usize, func: F) -> Option<Vec<u8>>
+where
+    F: FnOnce(*mut u8) -> Option<usize>,
+{
+    let mut ret = Vec::with_capacity(max_output);
+    let out = ret.spare_capacity_mut();
+    let out_buf = out
+        .get_mut(0)
+        .map_or(core::ptr::null_mut(), |x| x.as_mut_ptr());
+
+    let num_written = func(out_buf)?;
+    assert!(num_written <= ret.capacity());
+
+    unsafe {
+        // Safety: `num_written` bytes have been written to.
+        ret.set_len(num_written);
+    }
+
+    Some(ret)
 }
 
 /// Used to prevent external implementations of internal traits.
