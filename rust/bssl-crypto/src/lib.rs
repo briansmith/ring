@@ -49,7 +49,6 @@ pub mod ed25519;
 
 pub mod hkdf;
 
-/// HMAC, a hash-based message authentication code.
 pub mod hmac;
 
 /// Random number generation.
@@ -69,6 +68,11 @@ pub(crate) mod pkey;
 
 #[cfg(test)]
 mod test_helpers;
+
+/// Error type for when a "signature" (either a public-key signature or a MAC)
+/// is incorrect.
+#[derive(Debug)]
+pub struct InvalidSignatureError;
 
 /// FfiSlice exists to provide `as_ffi_ptr` on slices. Calling `as_ptr` on an
 /// empty Rust slice may return the alignment of the type, rather than NULL, as
