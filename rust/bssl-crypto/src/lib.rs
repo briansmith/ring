@@ -47,7 +47,6 @@ pub mod digest;
 /// Ed25519, a signature scheme.
 pub mod ed25519;
 
-/// HKDF, a hash-based key derivation function.
 pub mod hkdf;
 
 /// HMAC, a hash-based message authentication code.
