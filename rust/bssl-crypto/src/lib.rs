@@ -36,7 +36,6 @@ mod macros;
 
 pub mod aead;
 
-/// AES block operations.
 pub mod aes;
 
 /// Ciphers.
@@ -268,16 +267,16 @@ where
 
 /// Returns a BoringSSL structure that is initialized by some function.
 /// Requires that the given function completely initializes the value or else
-/// returns a value other than one.
+/// returns false.
 ///
 /// (Tagged `unsafe` because a no-op argument would otherwise expose
 /// uninitialized memory.)
 unsafe fn initialized_struct_fallible<T, F>(init: F) -> Option<T>
 where
-    F: FnOnce(*mut T) -> core::ffi::c_int,
+    F: FnOnce(*mut T) -> bool,
 {
     let mut out_uninit = core::mem::MaybeUninit::<T>::uninit();
-    if init(out_uninit.as_mut_ptr()) == 1 {
+    if init(out_uninit.as_mut_ptr()) {
         Some(unsafe { out_uninit.assume_init() })
     } else {
         None
