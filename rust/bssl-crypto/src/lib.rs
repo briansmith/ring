@@ -55,15 +55,13 @@ pub mod rand;
 
 pub mod x25519;
 
-/// Memory-manipulation operations.
-pub mod mem;
-
-/// Elliptic curve diffie-hellman operations.
+pub mod ec;
 pub mod ecdh;
 
-pub(crate) mod bn;
-pub(crate) mod ec;
-pub(crate) mod pkey;
+mod scoped;
+
+mod mem;
+pub use mem::constant_time_compare;
 
 #[cfg(test)]
 mod test_helpers;
@@ -363,6 +361,85 @@ where
     }
 
     Some(ret)
+}
+
+/// Buffer represents an owned chunk of memory on the BoringSSL heap.
+/// Call `as_ref()` to get a `&[u8]` from it.
+pub struct Buffer {
+    // This pointer is always allocated by BoringSSL and must be freed using
+    // `OPENSSL_free`.
+    pub(crate) ptr: *mut u8,
+    pub(crate) len: usize,
+}
+
+impl AsRef<[u8]> for Buffer {
+    fn as_ref(&self) -> &[u8] {
+        if self.len == 0 {
+            return &[];
+        }
+        // Safety: `ptr` and `len` describe a valid area of memory and `ptr`
+        // must be Rust-valid because `len` is non-zero.
+        unsafe { core::slice::from_raw_parts(self.ptr, self.len) }
+    }
+}
+
+impl Drop for Buffer {
+    fn drop(&mut self) {
+        // Safety: `ptr` is owned by this object and is on the BoringSSL heap.
+        unsafe {
+            bssl_sys::OPENSSL_free(self.ptr as *mut core::ffi::c_void);
+        }
+    }
+}
+
+/// Calls `parse_func` with a `CBS` structure pointing at `data`.
+/// If that returns a null pointer then it returns [None].
+/// Otherwise, if there's still data left in CBS, it calls `free_func` on the
+/// pointer and returns [None]. Otherwise it returns the pointer.
+fn parse_with_cbs<T, Parse, Free>(data: &[u8], free_func: Free, parse_func: Parse) -> Option<*mut T>
+where
+    Parse: FnOnce(*mut bssl_sys::CBS) -> *mut T,
+    Free: FnOnce(*mut T),
+{
+    // Safety: type checking ensures that `cbs` is the correct size.
+    let mut cbs =
+        unsafe { initialized_struct(|cbs| bssl_sys::CBS_init(cbs, data.as_ffi_ptr(), data.len())) };
+    let ptr = parse_func(&mut cbs);
+    if ptr.is_null() {
+        return None;
+    }
+    // Safety: `cbs` is still valid after parsing.
+    if unsafe { bssl_sys::CBS_len(&cbs) } != 0 {
+        // Safety: `ptr` is still owned by this function.
+        free_func(ptr);
+        return None;
+    }
+    Some(ptr)
+}
+
+/// Calls `func` with a `CBB` pointer and returns a [Buffer] of the ultimate
+/// contents of that CBB.
+#[allow(clippy::unwrap_used)]
+fn cbb_to_buffer<F: FnOnce(*mut bssl_sys::CBB)>(initial_capacity: usize, func: F) -> Buffer {
+    // Safety: type checking ensures that `cbb` is the correct size.
+    let mut cbb = unsafe {
+        initialized_struct_fallible(|cbb| bssl_sys::CBB_init(cbb, initial_capacity) == 1)
+    }
+    // `CBB_init` only fails if out of memory, which isn't something that this crate handles.
+    .unwrap();
+    func(&mut cbb);
+
+    let mut ptr: *mut u8 = core::ptr::null_mut();
+    let mut len: usize = 0;
+    // `CBB_finish` only fails on programming error, which we convert into a
+    // panic.
+    assert_eq!(1, unsafe {
+        bssl_sys::CBB_finish(&mut cbb, &mut ptr, &mut len)
+    });
+
+    // Safety: `ptr` is on the BoringSSL heap and ownership is returned by
+    // `CBB_finish`.
+    Buffer { ptr, len }
 }
 
 /// Used to prevent external implementations of internal traits.
