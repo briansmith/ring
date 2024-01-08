@@ -31,6 +31,7 @@
 //! ```
 
 use crate::{sealed, FfiSlice, ForeignTypeRef};
+use alloc::vec::Vec;
 use bssl_sys;
 
 #[non_exhaustive]
@@ -49,6 +50,9 @@ pub trait Algorithm {
     /// Gets a reference to a message digest algorithm to be used by the HKDF implementation.
     #[doc(hidden)]
     fn get_md(_: sealed::Sealed) -> &'static MdRef;
+
+    /// Hashes a message.
+    fn hash_to_vec(input: &[u8]) -> Vec<u8>;
 }
 
 /// The insecure SHA-1 hash algorithm.
