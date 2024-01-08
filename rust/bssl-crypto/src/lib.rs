@@ -24,8 +24,8 @@
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 
 //! Rust BoringSSL bindings
-extern crate alloc;
 
+extern crate alloc;
 extern crate core;
 
 use alloc::vec::Vec;
@@ -35,37 +35,31 @@ use core::ffi::c_void;
 mod macros;
 
 pub mod aead;
-
 pub mod aes;
 
 /// Ciphers.
 pub mod cipher;
 
 pub mod digest;
-
-pub mod ed25519;
-
-pub mod hkdf;
-
-pub mod hmac;
-
-pub mod x25519;
-
 pub mod ec;
 pub mod ecdh;
 pub mod ecdsa;
+pub mod ed25519;
+pub mod hkdf;
+pub mod hmac;
 pub mod rsa;
+pub mod x25519;
 
 mod scoped;
+
+#[cfg(test)]
+mod test_helpers;
 
 mod mem;
 pub use mem::constant_time_compare;
 
 mod rand;
 pub use rand::{rand_array, rand_bytes};
-
-#[cfg(test)]
-mod test_helpers;
 
 /// Error type for when a "signature" (either a public-key signature or a MAC)
 /// is incorrect.
