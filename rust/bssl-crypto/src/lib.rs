@@ -43,7 +43,6 @@ pub mod cipher;
 
 pub mod digest;
 
-/// Ed25519, a signature scheme.
 pub mod ed25519;
 
 pub mod hkdf;

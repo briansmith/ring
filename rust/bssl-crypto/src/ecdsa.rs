@@ -34,7 +34,7 @@
 //! assert!(public_key.verify(signed_message, sig.as_slice()).is_ok());
 //! ```
 
-use crate::{ec, sealed, with_output_vec, Buffer, FfiSlice};
+use crate::{ec, sealed, with_output_vec, Buffer, FfiSlice, InvalidSignatureError};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
@@ -43,10 +43,6 @@ pub struct PublicKey<C: ec::Curve> {
     point: ec::Point,
     marker: PhantomData<C>,
 }
-
-/// InvalidSignature is a [`Result`] error type when a signature fails to verify.
-#[derive(Debug)]
-pub struct InvalidSignature;
 
 impl<C: ec::Curve> PublicKey<C> {
     /// Parse a public key in uncompressed X9.62 format. (This is the common
@@ -83,7 +79,7 @@ impl<C: ec::Curve> PublicKey<C> {
     /// with this public key. SHA-256 will be used to produce the digest if the
     /// curve of this public key is P-256. SHA-384 will be used to produce the
     /// digest if the curve of this public key is P-384.
-    pub fn verify(&self, signed_msg: &[u8], signature: &[u8]) -> Result<(), InvalidSignature> {
+    pub fn verify(&self, signed_msg: &[u8], signature: &[u8]) -> Result<(), InvalidSignatureError> {
         let digest = C::hash(signed_msg);
         let result = self.point.with_point_as_ec_key(|ec_key| unsafe {
             // Safety: `ec_key` is valid per `with_point_as_ec_key`.
@@ -99,7 +95,7 @@ impl<C: ec::Curve> PublicKey<C> {
         if result == 1 {
             Ok(())
         } else {
-            Err(InvalidSignature)
+            Err(InvalidSignatureError)
         }
     }
 }
