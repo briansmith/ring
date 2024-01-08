@@ -151,6 +151,16 @@ impl PublicKey {
     }
 }
 
+// Safety:
+//
+// An `RSA` is safe to use from multiple threads so long as no mutating
+// operations are performed. (Reference count changes don't count as mutating.)
+// No mutating operations are performed. `RSA_verify` takes a non-const pointer
+// but the BoringSSL docs specifically say that "these functions are considered
+// non-mutating for thread-safety purposes and may be used concurrently."
+unsafe impl Sync for PublicKey {}
+unsafe impl Send for PublicKey {}
+
 impl Drop for PublicKey {
     fn drop(&mut self) {
         // Safety: this object owns `self.0`.
@@ -278,6 +288,16 @@ impl PrivateKey {
         PublicKey(self.0)
     }
 }
+
+// Safety:
+//
+// An `RSA` is safe to use from multiple threads so long as no mutating
+// operations are performed. (Reference count changes don't count as mutating.)
+// No mutating operations are performed. `RSA_sign` takes a non-const pointer
+// but the BoringSSL docs specifically say that "these functions are considered
+// non-mutating for thread-safety purposes and may be used concurrently."
+unsafe impl Sync for PrivateKey {}
+unsafe impl Send for PrivateKey {}
 
 impl Drop for PrivateKey {
     fn drop(&mut self) {

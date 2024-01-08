@@ -242,6 +242,18 @@ impl Point {
     }
 }
 
+// Safety:
+//
+// An `EC_POINT` can be used concurrently from multiple threads so long as no
+// mutating operations are performed. The mutating operations used here are
+// `EC_POINT_mul` and `EC_POINT_oct2point` (which can be observed by setting
+// `point` to be `*const` in the struct and seeing what errors trigger.
+//
+// Both those operations are done internally, however, before a `Point` is
+// returned. So, after construction, callers cannot mutate the `EC_POINT`.
+unsafe impl Sync for Point {}
+unsafe impl Send for Point {}
+
 impl Drop for Point {
     fn drop(&mut self) {
         // Safety: `self.point` must be valid because only valid `Point`s can
@@ -433,6 +445,19 @@ impl Key {
         unsafe { to_der_subject_public_key_info(self.0) }
     }
 }
+
+// Safety:
+//
+// An `EC_KEY` is safe to use from multiple threads so long as no mutating
+// operations are performed. (Reference count changes don't count as mutating.)
+// The mutating operations used here are:
+//   * EC_KEY_generate_key
+//   * EC_KEY_oct2priv
+//   * EC_KEY_set_public_key
+// But those are all done internally, before a `Key` is returned. So, once
+// constructed, callers cannot mutate the `EC_KEY`.
+unsafe impl Sync for Key {}
+unsafe impl Send for Key {}
 
 impl Drop for Key {
     fn drop(&mut self) {
