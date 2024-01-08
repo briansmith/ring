@@ -50,9 +50,6 @@ pub mod hkdf;
 
 pub mod hmac;
 
-/// Random number generation.
-pub mod rand;
-
 pub mod x25519;
 
 pub mod ec;
@@ -62,6 +59,9 @@ mod scoped;
 
 mod mem;
 pub use mem::constant_time_compare;
+
+mod rand;
+pub use rand::{rand_array, rand_bytes};
 
 #[cfg(test)]
 mod test_helpers;
