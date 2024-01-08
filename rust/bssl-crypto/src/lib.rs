@@ -54,6 +54,7 @@ pub mod x25519;
 
 pub mod ec;
 pub mod ecdh;
+pub mod ecdsa;
 
 mod scoped;
 

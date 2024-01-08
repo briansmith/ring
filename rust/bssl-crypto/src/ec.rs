@@ -21,13 +21,18 @@
 // [`Curve`] trait, which is shared by ECDH and ECDSA.
 
 use crate::{cbb_to_buffer, parse_with_cbs, scoped, sealed, Buffer, FfiSlice};
-use alloc::fmt::Debug;
+use alloc::{fmt::Debug, vec::Vec};
 use core::ptr::{null, null_mut};
 
 /// An elliptic curve.
 pub trait Curve: Debug {
     #[doc(hidden)]
     fn group(_: sealed::Sealed) -> Group;
+
+    /// Hash `data` using a hash function suitable for the curve. (I.e.
+    /// SHA-256 for P-256 and SHA-384 for P-384.)
+    #[doc(hidden)]
+    fn hash(data: &[u8]) -> Vec<u8>;
 }
 
 /// The NIST P-256 curve, also called secp256r1.
@@ -38,6 +43,10 @@ impl Curve for P256 {
     fn group(_: sealed::Sealed) -> Group {
         Group::P256
     }
+
+    fn hash(data: &[u8]) -> Vec<u8> {
+        crate::digest::Sha256::hash(data).to_vec()
+    }
 }
 
 /// The NIST P-384 curve, also called secp384r1.
@@ -47,6 +56,10 @@ pub struct P384;
 impl Curve for P384 {
     fn group(_: sealed::Sealed) -> Group {
         Group::P384
+    }
+
+    fn hash(data: &[u8]) -> Vec<u8> {
+        crate::digest::Sha384::hash(data).to_vec()
     }
 }
 
