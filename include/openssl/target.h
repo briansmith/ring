@@ -83,7 +83,8 @@
 #endif
 
 // Trusty and Android baremetal aren't Linux but currently define __linux__.
-// As a workaround, we exclude them here. We also exclude nanolibc. nanolibc
+// As a workaround, we exclude them here.
+// We also exclude nanolibc/CrOS EC/Zephyr. nanolibc/CrOS EC/Zephyr
 // sometimes build for a non-Linux target (which should not define __linux__),
 // but also sometimes build for Linux. Although technically running in Linux
 // userspace, this lacks all the libc APIs we'd normally expect on Linux, so we
@@ -93,7 +94,8 @@
 // TODO(b/291101350): Remove this workaround once Android baremetal no longer
 // defines it.
 #if defined(__linux__) && !defined(__TRUSTY__) && \
-    !defined(ANDROID_BAREMETAL) && !defined(OPENSSL_NANOLIBC)
+    !defined(ANDROID_BAREMETAL) && !defined(OPENSSL_NANOLIBC) && \
+    !defined(CROS_EC) && !defined(CROS_ZEPHYR)
 #define OPENSSL_LINUX
 #endif
 
