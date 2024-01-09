@@ -635,8 +635,8 @@ static void gcm_siv_polyval(
   }
 
   uint8_t length_block[16];
-  CRYPTO_store_u64_le(length_block, ad_len * 8);
-  CRYPTO_store_u64_le(length_block + 8, in_len * 8);
+  CRYPTO_store_u64_le(length_block, ((uint64_t) ad_len) * 8);
+  CRYPTO_store_u64_le(length_block + 8, ((uint64_t) in_len) * 8);
   CRYPTO_POLYVAL_update_blocks(&polyval_ctx, length_block,
                                sizeof(length_block));
 
