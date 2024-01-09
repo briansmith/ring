@@ -1257,14 +1257,15 @@ ___
 .L${labelPrefix}_dec_start:
     vzeroupper
     vmovdqa ($POL), $T
+    # The claimed tag is provided after the current calculated tag value.
+    # CTRBLKs is made from it.
+    vmovdqu 16($POL), $CTR
+    vpor OR_MASK(%rip), $CTR, $CTR      # CTR = [1]TAG[126...32][00..00]
     movq $POL, $secureBuffer
 
     leaq 32($secureBuffer), $secureBuffer
     leaq 32($Htbl), $Htbl
 
-    # make CTRBLKs from given tag.
-    vmovdqu ($CT,$LEN), $CTR
-    vpor OR_MASK(%rip), $CTR, $CTR      # CTR = [1]TAG[126...32][00..00]
     andq \$~15, $LEN
 
     # If less then 6 blocks, make singles
