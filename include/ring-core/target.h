@@ -37,6 +37,19 @@
 #elif defined(__loongarch_lp64)
 #define OPENSSL_64_BIT
 #define OPENSSL_LOONGARCH64
+#elif defined(__riscv) && __SIZEOF_POINTER__ == 8
+#define OPENSSL_64_BIT
+#define OPENSSL_RISCV64
+#elif defined(__wasm__)
+#define OPENSSL_32_BIT
+// All of following architectures are only supported when `__BYTE_ORDER__` can be used to detect
+// endianness (in crypto/internal.h).
+#elif !defined(__BYTE_ORDER__)
+#error "Cannot determine endianness because __BYTE_ORDER__ is not defined"
+// Targets are assumed to be little-endian unless __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__.
+#elif !(defined(__ORDER_LITTLE_ENDIAN__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)) && \
+      !(defined(__ORDER_BIG_ENDIAN__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))
+#error "Unsupported endianness"
 #elif defined(__MIPSEL__) && !defined(__LP64__)
 #define OPENSSL_32_BIT
 #define OPENSSL_MIPS
@@ -45,21 +58,12 @@
 #define OPENSSL_MIPS64
 #elif defined(__PPC64__) || defined(__powerpc64__)
 #define OPENSSL_64_BIT
-#elif (defined(__PPC__) || defined(__powerpc__)) && defined(_BIG_ENDIAN)
+#elif (defined(__PPC__) || defined(__powerpc__))
 #define OPENSSL_32_BIT
-#elif defined(__riscv) && __SIZEOF_POINTER__ == 8
-#define OPENSSL_64_BIT
-#define OPENSSL_RISCV64
 #elif defined(__s390x__)
 #define OPENSSL_64_BIT
 #define OPENSSL_S390X
-#elif defined(__wasm__)
-#define OPENSSL_32_BIT
 #else
-// Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
-// little-endian architectures. Functions will not produce the correct answer
-// on other systems. Run the crypto_test binary, notably
-// crypto/compiler_test.cc, before adding a new architecture.
 #error "Unknown target CPU"
 #endif
 
