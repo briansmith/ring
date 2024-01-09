@@ -143,6 +143,7 @@ impl crate::sealed::Sealed for SystemRandom {}
     target_os = "tvos",
     target_os = "vita",
     target_os = "windows",
+    target_os = "espidf",
     all(
         target_arch = "wasm32",
         any(
