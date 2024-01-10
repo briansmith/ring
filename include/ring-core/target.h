@@ -52,7 +52,6 @@
 #define OPENSSL_RISCV64
 #elif defined(__riscv) && __SIZEOF_POINTER__ == 4
 #define OPENSSL_32_BIT
-#define OPENSSL_RISCV32
 #elif defined(__s390x__)
 #define OPENSSL_64_BIT
 #define OPENSSL_S390X
