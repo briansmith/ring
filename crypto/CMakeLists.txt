@@ -342,7 +342,11 @@ if(WIN32)
   target_link_libraries(crypto ws2_32)
 endif()
 
-if(NOT ANDROID)
+# CMAKE_SYSTEM_NAME is "Generic" for embedded OSes:
+# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html#toolchain-files
+#
+# For now we assume embedded OSes do not have threads.
+if(NOT (ANDROID OR CMAKE_SYSTEM_NAME STREQUAL "Generic"))
   find_package(Threads REQUIRED)
   target_link_libraries(crypto Threads::Threads)
 endif()
