@@ -132,6 +132,14 @@
 #include <stdalign.h>
 #endif
 
+#if defined(__clang__) || defined(__GNUC__)
+#define RING_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define RING_NOINLINE __declspec(noinline)
+#else
+#define RING_NOINLINE
+#endif
+
 // Some C compilers require a useless cast when dealing with arrays for the
 // reason explained in
 // https://gustedt.wordpress.com/2011/02/12/const-and-arrays/
