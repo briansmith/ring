@@ -52,6 +52,8 @@
 #define OPENSSL_32_BIT
 #elif defined(__MIPSEL__) && defined(__LP64__)
 #define OPENSSL_64_BIT
+#elif defined(__MIPSEB__) && !defined(__LP64__)
+#define OPENSSL_32_BIT
 #elif defined(__PPC64__) || defined(__powerpc64__)
 #define OPENSSL_64_BIT
 #elif (defined(__PPC__) || defined(__powerpc__))
