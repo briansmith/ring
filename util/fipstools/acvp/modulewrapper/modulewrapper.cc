@@ -344,7 +344,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "algorithm": "ACVP-AES-GCM",
         "revision": "1.0",
         "direction": ["encrypt", "decrypt"],
-        "keyLen": [128, 192, 256],
+        "keyLen": [128, 256],
         "payloadLen": [{
           "min": 0, "max": 65536, "increment": 8
         }],
@@ -353,7 +353,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }],
         "tagLen": [32, 64, 96, 104, 112, 120, 128],
         "ivLen": [96],
-        "ivGen": "external"
+        "ivGen": "internal",
+        "ivGenMode": "8.2.2"
       },
       {
         "algorithm": "ACVP-AES-GMAC",
@@ -1148,13 +1149,12 @@ static bool AES_CTR(const Span<const uint8_t> args[], ReplyCallback write_reply)
 
 static bool AESGCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
                         Span<const uint8_t> key) {
-  uint32_t tag_len_32;
-  if (tag_len_span.size() != sizeof(tag_len_32)) {
+  if (tag_len_span.size() != sizeof(uint32_t)) {
     LOG_ERROR("Tag size value is %u bytes, not an uint32_t\n",
               static_cast<unsigned>(tag_len_span.size()));
     return false;
   }
-  memcpy(&tag_len_32, tag_len_span.data(), sizeof(tag_len_32));
+  const uint32_t tag_len_32 = CRYPTO_load_u32_le(tag_len_span.data());
 
   const EVP_AEAD *aead;
   switch (key.size()) {
@@ -1168,12 +1168,48 @@ static bool AESGCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
       aead = EVP_aead_aes_256_gcm();
       break;
     default:
-      LOG_ERROR("Bad AES-GCM key length %u\n", static_cast<unsigned>(key.size()));
+      LOG_ERROR("Bad AES-GCM key length %u\n",
+                static_cast<unsigned>(key.size()));
       return false;
   }
 
   if (!EVP_AEAD_CTX_init(ctx, aead, key.data(), key.size(), tag_len_32,
                          nullptr)) {
+    LOG_ERROR("Failed to setup AES-GCM with tag length %u\n",
+              static_cast<unsigned>(tag_len_32));
+    return false;
+  }
+
+  return true;
+}
+
+static bool AESGCMRandNonceSetup(EVP_AEAD_CTX *ctx,
+                                 Span<const uint8_t> tag_len_span,
+                                 Span<const uint8_t> key) {
+  if (tag_len_span.size() != sizeof(uint32_t)) {
+    LOG_ERROR("Tag size value is %u bytes, not an uint32_t\n",
+              static_cast<unsigned>(tag_len_span.size()));
+    return false;
+  }
+  const uint32_t tag_len_32 = CRYPTO_load_u32_le(tag_len_span.data());
+
+  const EVP_AEAD *aead;
+  switch (key.size()) {
+    case 16:
+      aead = EVP_aead_aes_128_gcm_randnonce();
+      break;
+    case 32:
+      aead = EVP_aead_aes_256_gcm_randnonce();
+      break;
+    default:
+      LOG_ERROR("Bad AES-GCM key length %u\n",
+                static_cast<unsigned>(key.size()));
+      return false;
+  }
+
+  constexpr size_t kNonceLength = 12;
+  if (!EVP_AEAD_CTX_init(ctx, aead, key.data(), key.size(),
+                         tag_len_32 + kNonceLength, nullptr)) {
     LOG_ERROR("Failed to setup AES-GCM with tag length %u\n",
               static_cast<unsigned>(tag_len_32));
     return false;
@@ -2123,6 +2159,8 @@ static constexpr struct {
     {"AES-CTR/decrypt", 4, AES_CTR},
     {"AES-GCM/seal", 5, AEADSeal<AESGCMSetup>},
     {"AES-GCM/open", 5, AEADOpen<AESGCMSetup>},
+    {"AES-GCM-randnonce/seal", 5, AEADSeal<AESGCMRandNonceSetup>},
+    {"AES-GCM-randnonce/open", 5, AEADOpen<AESGCMRandNonceSetup>},
     {"AES-KW/seal", 5, AESKeyWrapSeal},
     {"AES-KW/open", 5, AESKeyWrapOpen},
     {"AES-KWP/seal", 5, AESPaddedKeyWrapSeal},
