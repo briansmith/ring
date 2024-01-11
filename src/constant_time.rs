@@ -14,25 +14,44 @@
 
 //! Constant-time operations.
 
-use crate::{c, error};
+use crate::error;
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
 /// The comparison of `a` and `b` is done in constant time with respect to the
 /// contents of each, but NOT in constant time with respect to the lengths of
 /// `a` and `b`.
 pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecified> {
+    verify_all_bytes_are_equal(a.iter().copied(), b.iter().copied())
+}
+
+// TODO: Use this in internal callers, in favor of `verify_slices_are_equal`.
+#[inline]
+pub(crate) fn verify_all_bytes_are_equal(
+    a: impl ExactSizeIterator<Item = u8>,
+    b: impl ExactSizeIterator<Item = u8>,
+) -> Result<(), error::Unspecified> {
     if a.len() != b.len() {
         return Err(error::Unspecified);
     }
-    let result = unsafe { CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len()) };
-    match result {
+    let zero_if_equal = a.zip(b).fold(0, |accum, (a, b)| accum | (a ^ b));
+    let zero_if_equal = unsafe { RING_value_barrier_w(Word::from(zero_if_equal)) };
+    match zero_if_equal {
         0 => Ok(()),
         _ => Err(error::Unspecified),
     }
 }
 
+/// The integer type that's the "natural" unsigned machine word size.
+pub(crate) type Word = CryptoWord;
+
+// Keep in sync with `crypto_word_t` in crypto/internal.h.
+#[cfg(target_pointer_width = "32")]
+type CryptoWord = u32;
+#[cfg(target_pointer_width = "64")]
+type CryptoWord = u64;
+
 prefixed_extern! {
-    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
+    fn RING_value_barrier_w(a: CryptoWord) -> CryptoWord;
 }
 
 #[cfg(test)]

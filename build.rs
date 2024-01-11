@@ -34,6 +34,7 @@ const ARM: &str = "arm";
 
 #[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
+    (&[], "crypto/constant_time.c"),
     (&[], "crypto/curve25519/curve25519.c"),
     (&[], "crypto/fipsmodule/aes/aes_nohw.c"),
     (&[], "crypto/fipsmodule/bn/montgomery.c"),
@@ -910,6 +911,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "OPENSSL_armcap_P",
         "OPENSSL_cpuid_setup",
         "OPENSSL_ia32cap_P",
+        "RING_value_barrier_w",
         "aes_hw_ctr32_encrypt_blocks",
         "aes_hw_encrypt",
         "aes_hw_set_encrypt_key",
