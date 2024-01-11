@@ -21,6 +21,7 @@ rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
 qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 qemu_arm_gnueabi="qemu-arm -L /usr/arm-linux-gnueabi"
 qemu_arm_gnueabihf="qemu-arm -L /usr/arm-linux-gnueabihf"
+qemu_mips="qemu-mips -L /usr/mips-linux-gnu"
 qemu_mipsel="qemu-mipsel -L /usr/mipsel-linux-gnu"
 qemu_powerpc="qemu-ppc -L /usr/powerpc-linux-gnu"
 qemu_powerpc64="qemu-ppc64 -L /usr/powerpc64-linux-gnu"
@@ -111,6 +112,12 @@ case $target in
     export CC_i686_unknown_linux_musl=clang-$llvm_version
     export AR_i686_unknown_linux_musl=llvm-ar-$llvm_version
     export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
+    ;;
+  mips-unknown-linux-gnu)
+    export CC_mips_unknown_linux_gnu=mips-linux-gnu-gcc
+    export AR_mips_unknown_linux_gnu=mips-linux-gnu-gcc-ar
+    export CARGO_TARGET_MIPS_UNKNOWN_LINUX_GNU_LINKER=mips-linux-gnu-gcc
+    export CARGO_TARGET_MIPS_UNKNOWN_LINUX_GNU_RUNNER="$qemu_mips"
     ;;
   mipsel-unknown-linux-gnu)
     export CC_mipsel_unknown_linux_gnu=mipsel-linux-gnu-gcc
