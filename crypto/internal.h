@@ -1407,13 +1407,10 @@ OPENSSL_INLINE int CRYPTO_is_AVX_capable(void) {
 }
 
 OPENSSL_INLINE int CRYPTO_is_RDRAND_capable(void) {
-  // The GCC/Clang feature name and preprocessor symbol for RDRAND are "rdrnd"
-  // and |__RDRND__|, respectively.
-#if defined(__RDRND__)
-  return 1;
-#else
+  // We intentionally do not check |__RDRND__| here. On some AMD processors, we
+  // will act as if the hardware is RDRAND-incapable, even it actually supports
+  // it. See cpu_intel.c.
   return (OPENSSL_get_ia32cap(1) & (1u << 30)) != 0;
-#endif
 }
 
 // See Intel manual, volume 2A, table 3-8.
