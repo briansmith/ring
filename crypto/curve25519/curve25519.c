@@ -396,8 +396,13 @@ static void fe_invert(fe *out, const fe *z) {
 // return 0 if f == 0
 // return 1 if f != 0
 static int fe_isnonzero_vartime(const fe_loose *f) {
-  for (unsigned i = 0; i < FE_NUM_LIMBS; i++) {
-    if (f->v[i] != 0) {
+  fe tight;
+  fe_carry(&tight, f);
+  uint8_t s[32];
+  fe_tobytes(s, &tight);
+
+  for (unsigned i = 0; i < 32; i++) {
+    if (s[i] != 0) {
       return 1;
     }
   }
