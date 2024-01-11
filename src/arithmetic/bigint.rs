@@ -491,7 +491,9 @@ pub fn elem_exp_consttime<M>(
     exponent: &PrivateExponent,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    use crate::{cpu, limb::LIMB_BYTES};
+    use crate::cpu;
+    use alloc::vec::Vec;
+    use core::mem;
 
     // Pretty much all the math here requires CPU feature detection to have
     // been done. `cpu_features` isn't threaded through all the internal
@@ -512,13 +514,19 @@ pub fn elem_exp_consttime<M>(
 
     let num_limbs = m.limbs().len();
 
+    // This alignment was inherited from upstream. Assume that some of the
+    // assembly language functions require it for correctness and/or for
+    // performance.
     const ALIGNMENT: usize = 64;
-    assert_eq!(ALIGNMENT % LIMB_BYTES, 0);
-    let mut table = vec![0; ((TABLE_ENTRIES + 3) * num_limbs) + ALIGNMENT];
+    const _ALIGNMENT_IS_MULTIPLE_OF_LIMB_SIZE: () =
+        assert!(ALIGNMENT % mem::size_of::<Limb>() == 0);
+    const _ALIGNMENT_IS_MULTIPLE_OF_LIMB_ALIGNMENT: () =
+        assert!(ALIGNMENT % mem::align_of::<Limb>() == 0);
+    const EXTRA_FOR_ALIGNMENT: usize = (ALIGNMENT / mem::size_of::<Limb>()) - 1;
+    let mut table: Vec<Limb> = vec![0; ((TABLE_ENTRIES + 3) * num_limbs) + EXTRA_FOR_ALIGNMENT];
     let (table, state) = {
-        let misalignment = (table.as_ptr() as usize) % ALIGNMENT;
-        let table = &mut table[((ALIGNMENT - misalignment) / LIMB_BYTES)..];
-        assert_eq!((table.as_ptr() as usize) % ALIGNMENT, 0);
+        let align_offset = table.as_ptr().align_offset(ALIGNMENT);
+        let table = &mut table[align_offset..];
         table.split_at_mut(TABLE_ENTRIES * num_limbs)
     };
 
