@@ -344,7 +344,7 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
 
     #[cfg(target_arch = "aarch64")]
     {
-        return Implementation::NEON;
+        Implementation::NEON
     }
 
     #[cfg(not(target_arch = "aarch64"))]
