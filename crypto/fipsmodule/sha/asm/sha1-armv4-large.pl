@@ -197,11 +197,24 @@ $code=<<___;
 .code	32
 #endif
 
-.global	sha1_block_data_order_nohw
-.type	sha1_block_data_order_nohw,%function
+.global	sha1_block_data_order
+.type	sha1_block_data_order,%function
 
 .align	5
-sha1_block_data_order_nohw:
+sha1_block_data_order:
+#if __ARM_MAX_ARCH__>=7
+.Lsha1_block:
+	adr	r3,.Lsha1_block
+	ldr	r12,.LOPENSSL_armcap
+	ldr	r12,[r3,r12]		@ OPENSSL_armcap_P
+#ifdef	__APPLE__
+	ldr	r12,[r12]
+#endif
+	tst	r12,#ARMV8_SHA1
+	bne	.LARMv8
+	tst	r12,#ARMV7_NEON
+	bne	.LNEON
+#endif
 	stmdb	sp!,{r4-r12,lr}
 	add	$len,$inp,$len,lsl#6	@ $len to point at the end of $inp
 	ldmia	$ctx,{$a,$b,$c,$d,$e}
@@ -291,13 +304,17 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	sha1_block_data_order_nohw,.-sha1_block_data_order_nohw
+.size	sha1_block_data_order,.-sha1_block_data_order
 
 .align	5
 .LK_00_19:	.word	0x5a827999
 .LK_20_39:	.word	0x6ed9eba1
 .LK_40_59:	.word	0x8f1bbcdc
 .LK_60_79:	.word	0xca62c1d6
+#if __ARM_MAX_ARCH__>=7
+.LOPENSSL_armcap:
+.word	OPENSSL_armcap_P-.Lsha1_block
+#endif
 .asciz	"SHA1 block transform for ARMv4/NEON/ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 .align	5
 ___
@@ -513,10 +530,10 @@ $code.=<<___;
 .arch	armv7-a
 .fpu	neon
 
-.global	sha1_block_data_order_neon
 .type	sha1_block_data_order_neon,%function
 .align	4
 sha1_block_data_order_neon:
+.LNEON:
 	stmdb	sp!,{r4-r12,lr}
 	add	$len,$inp,$len,lsl#6	@ $len to point at the end of $inp
 	@ dmb				@ errata #451034 on early Cortex A8
@@ -608,10 +625,10 @@ $code.=<<___;
 #  define INST(a,b,c,d)	.byte	a,b,c,d|0x10
 # endif
 
-.global	sha1_block_data_order_hw
-.type	sha1_block_data_order_hw,%function
+.type	sha1_block_data_order_armv8,%function
 .align	5
-sha1_block_data_order_hw:
+sha1_block_data_order_armv8:
+.LARMv8:
 	vstmdb	sp!,{d8-d15}		@ ABI specification says so
 
 	veor	$E,$E,$E
@@ -676,10 +693,16 @@ $code.=<<___;
 
 	vldmia	sp!,{d8-d15}
 	ret					@ bx lr
-.size	sha1_block_data_order_hw,.-sha1_block_data_order_hw
+.size	sha1_block_data_order_armv8,.-sha1_block_data_order_armv8
 #endif
 ___
 }}}
+$code.=<<___;
+#if __ARM_MAX_ARCH__>=7
+.comm	OPENSSL_armcap_P,4,4
+.hidden	OPENSSL_armcap_P
+#endif
+___
 
 {   my  %opcode = (
 	"sha1c"		=> 0xf2000c40,	"sha1p"		=> 0xf2100c40,
