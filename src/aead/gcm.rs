@@ -19,7 +19,6 @@ use super::{
 use crate::{cpu, polyfill::ArraySplitMap};
 use core::ops::BitXorAssign;
 
-#[cfg(not(target_arch = "aarch64"))]
 mod gcm_nohw;
 
 #[derive(Clone)]
@@ -74,7 +73,6 @@ impl Key {
                 }
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 h_table.Htable[0] = gcm_nohw::init(h);
             }
@@ -185,7 +183,6 @@ impl Context {
                 }
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 gcm_nohw::ghash(xi, h_table.Htable[0], input);
             }
@@ -227,7 +224,6 @@ impl Context {
                 }
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 gcm_nohw::gmult(xi, h_table.Htable[0]);
             }
@@ -305,7 +301,6 @@ enum Implementation {
     #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
     NEON,
 
-    #[cfg(not(target_arch = "aarch64"))]
     Fallback,
 }
 
@@ -335,19 +330,13 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
         }
     }
 
-    #[cfg(target_arch = "arm")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
     {
         if cpu::arm::NEON.available(cpu_features) {
             return Implementation::NEON;
         }
     }
 
-    #[cfg(target_arch = "aarch64")]
-    {
-        return Implementation::NEON;
-    }
-
-    #[cfg(not(target_arch = "aarch64"))]
     Implementation::Fallback
 }
 
