@@ -174,7 +174,7 @@ jobs:
 
         include:
           - target: aarch64-apple-darwin
-            host_os: macos-13-xlarge
+            host_os: macos-13-large
 
           - target: aarch64-apple-ios
             host_os: macos-13
