@@ -20,6 +20,30 @@
 // However, due to conflicts, some deprecated symbols are defined here.
 #include <openssl/x509.h>
 
+
+// CRL reason constants.
+
+// TODO(davidben): These constants live here because strongswan defines
+// conflicting symbols and has been relying on them only being defined in
+// <openssl/x509v3.h>. Defining the constants in <openssl/x509.h> would break
+// strongswan, but we would also like for new code to only need
+// <openssl/x509.h>. Introduce properly namespaced versions of these constants
+// and, separately, see if we can fix strongswan to similarly avoid the
+// conflict. Between OpenSSL, strongswan, and wincrypt.h all defining these
+// constants, it seems best for everyone to just avoid them going forward.
+#define CRL_REASON_NONE (-1)
+#define CRL_REASON_UNSPECIFIED 0
+#define CRL_REASON_KEY_COMPROMISE 1
+#define CRL_REASON_CA_COMPROMISE 2
+#define CRL_REASON_AFFILIATION_CHANGED 3
+#define CRL_REASON_SUPERSEDED 4
+#define CRL_REASON_CESSATION_OF_OPERATION 5
+#define CRL_REASON_CERTIFICATE_HOLD 6
+#define CRL_REASON_REMOVE_FROM_CRL 8
+#define CRL_REASON_PRIVILEGE_WITHDRAWN 9
+#define CRL_REASON_AA_COMPROMISE 10
+
+
 // Deprecated constants.
 
 // The following constants are legacy aliases for |X509v3_KU_*|. They are
