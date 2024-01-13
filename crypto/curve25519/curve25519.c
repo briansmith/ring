@@ -19,8 +19,6 @@
 //
 // The field functions are shared by Ed25519 and X25519 where possible.
 
-#include <ring-core/mem.h>
-
 #include "internal.h"
 #include "../internal.h"
 
@@ -403,8 +401,13 @@ static int fe_isnonzero(const fe_loose *f) {
   uint8_t s[32];
   fe_tobytes(s, &tight);
 
-  static const uint8_t zero[32] = {0};
-  return CRYPTO_memcmp(s, zero, sizeof(zero)) != 0;
+  for (size_t i = 0; i < sizeof(s); i++) {
+    if (s[i] != 0) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 // return 1 if f is in {1,3,5,...,q-2}
