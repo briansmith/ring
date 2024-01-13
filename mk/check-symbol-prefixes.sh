@@ -17,6 +17,16 @@
 set -eux -o pipefail
 IFS=$'\n\t'
 
+for arg in $*; do
+  case $arg in
+    --target=*)
+      target=${arg#*=}
+      ;;
+    *)
+      ;;
+  esac
+done
+
 case "$OSTYPE" in
 darwin*)
   nm_exe=nm
@@ -35,7 +45,7 @@ esac
 #
 # This is very liberal in filtering out symbols that "look like"
 # Rust-compiler-generated symbols.
-find target -type f -name libring-*.rlib | while read -r infile; do
+find target/$target -type f -name libring-*.rlib | while read -r infile; do
   bad=$($nm_exe --defined-only --extern-only --print-file-name "$infile" \
     | ( grep -v -E " . _?(__imp__ZN4ring|ring_core_|__rustc|_ZN|DW.ref.rust_eh_personality)" || [[ $? == 1 ]] ))
   if [ ! -z "${bad-}" ]; then
