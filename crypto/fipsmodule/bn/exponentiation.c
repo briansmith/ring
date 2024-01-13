@@ -898,7 +898,9 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
-  if (a->neg || BN_ucmp(a, m) >= 0) {
+  // |a| is secret, but it is required to be in range, so these comparisons may
+  // be leaked.
+  if (a->neg || constant_time_declassify_int(BN_ucmp(a, m) >= 0)) {
     OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
     return 0;
   }

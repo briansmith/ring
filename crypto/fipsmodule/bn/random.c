@@ -281,8 +281,14 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
     out[words - 1] &= mask;
 
     // If out >= max_exclusive or out < min_inclusive, retry. This implements
-    // the equivalent of steps 6 and 7 without leaking the value of |out|.
-  } while (!bn_in_range_words(out, min_inclusive, max_exclusive, words));
+    // the equivalent of steps 6 and 7 without leaking the value of |out|. The
+    // result of this comparison may be treated as public. It only reveals how
+    // many attempts were needed before we found a value in range. This is
+    // independent of the final secret output, and has a distribution that
+    // depends only on |min_inclusive| and |max_exclusive|, both of which are
+    // public.
+  } while (!constant_time_declassify_int(
+      bn_in_range_words(out, min_inclusive, max_exclusive, words)));
   return 1;
 }
 

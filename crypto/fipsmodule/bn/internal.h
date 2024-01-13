@@ -269,6 +269,18 @@ int bn_copy_words(BN_ULONG *out, size_t num, const BIGNUM *bn);
 // validation.
 void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num);
 
+// bn_secret marks |bn|'s contents, but not its width or sign, as secret. See
+// |CONSTTIME_SECRET| for details.
+OPENSSL_INLINE void bn_secret(BIGNUM *bn) {
+  CONSTTIME_SECRET(bn->d, bn->width * sizeof(BN_ULONG));
+}
+
+// bn_declassify marks |bn|'s value as public. See |CONSTTIME_DECLASSIFY| for
+// details.
+OPENSSL_INLINE void bn_declassify(BIGNUM *bn) {
+  CONSTTIME_DECLASSIFY(bn->d, bn->width * sizeof(BN_ULONG));
+}
+
 // bn_mul_add_words multiples |ap| by |w|, adds the result to |rp|, and places
 // the result in |rp|. |ap| and |rp| must both be |num| words long. It returns
 // the carry word of the operation. |ap| and |rp| may be equal but otherwise may

@@ -1906,6 +1906,8 @@ int ED25519_sign(uint8_t out_sig[64], const uint8_t *message,
   x25519_sc_reduce(hram);
   sc_muladd(out_sig + 32, hram, az, nonce);
 
+  // The signature is computed from the private key, but is public.
+  CONSTTIME_DECLASSIFY(out_sig, 64);
   return 1;
 }
 
@@ -1983,6 +1985,8 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[32],
   ge_p3 A;
   x25519_ge_scalarmult_base(&A, az);
   ge_p3_tobytes(out_public_key, &A);
+  // The public key is derived from the private key, but it is public.
+  CONSTTIME_DECLASSIFY(out_public_key, 32);
 
   OPENSSL_memcpy(out_private_key, seed, 32);
   OPENSSL_memcpy(out_private_key + 32, out_public_key, 32);

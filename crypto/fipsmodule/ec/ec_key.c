@@ -314,8 +314,10 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
       OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       return 0;
     }
-    if (!ec_GFp_simple_points_equal(eckey->group, &point,
-                                    &eckey->pub_key->raw)) {
+    // Leaking this comparison only leaks whether |eckey|'s public key was
+    // correct.
+    if (!constant_time_declassify_int(ec_GFp_simple_points_equal(
+            eckey->group, &point, &eckey->pub_key->raw))) {
       OPENSSL_PUT_ERROR(EC, EC_R_INVALID_PRIVATE_KEY);
       return 0;
     }
@@ -499,6 +501,14 @@ int EC_KEY_generate_key(EC_KEY *key) {
     ec_wrapped_scalar_free(priv_key);
     return 0;
   }
+
+  // The public key is derived from the private key, but it is public.
+  //
+  // TODO(crbug.com/boringssl/677): This isn't quite right. While |pub_key|
+  // represents a public point, it is still in Jacobian form and the exact
+  // Jacobian representation is secret. We need to make it affine first. See
+  // discussion in the bug.
+  CONSTTIME_DECLASSIFY(&pub_key->raw, sizeof(pub_key->raw));
 
   ec_wrapped_scalar_free(key->priv_key);
   key->priv_key = priv_key;
