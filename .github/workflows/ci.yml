@@ -151,7 +151,6 @@ jobs:
           - i686-pc-windows-msvc
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
-          - powerpc-unknown-linux-gnu
           - riscv64gc-unknown-linux-gnu
           - wasm32-wasi
           - x86_64-pc-windows-gnu
@@ -240,9 +239,26 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: powerpc-unknown-linux-gnu
+            mode: --release
+            rust_channel: stable
+            host_os: ubuntu-22.04
+
+          - target: powerpc64-unknown-linux-gnu
+            mode: --release
+            rust_channel: stable
+            host_os: ubuntu-22.04
+
+          - target: powerpc64le-unknown-linux-gnu
+            mode: --release
+            rust_channel: stable
             host_os: ubuntu-22.04
 
           - target: riscv64gc-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
+          - target: s390x-unknown-linux-gnu
+            mode: --release
+            rust_channel: stable
             host_os: ubuntu-22.04
 
           - target: wasm32-wasi
