@@ -233,6 +233,11 @@ jobs:
             rust_channel: 1.71.0 # No prebuilt toolchain for later versions.
             host_os: ubuntu-22.04
 
+          - target: mips64el-unknown-linux-gnuabi64
+            mode: --release
+            rust_channel: 1.71.0 # No prebuilt toolchain for later versions.
+            host_os: ubuntu-22.04
+
           - target: mipsel-unknown-linux-gnu
             mode: --release
             rust_channel: 1.71.0 # No prebuilt toolchain for later versions.
