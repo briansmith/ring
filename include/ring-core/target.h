@@ -56,7 +56,7 @@
 #define OPENSSL_32_BIT
 #elif defined(__PPC64__) || defined(__powerpc64__)
 #define OPENSSL_64_BIT
-#elif (defined(__PPC__) || defined(__powerpc__))
+#elif (defined(__PPC__) || defined(__powerpc__)) && defined(_BIG_ENDIAN)
 #define OPENSSL_32_BIT
 #elif defined(__s390x__)
 #define OPENSSL_64_BIT
