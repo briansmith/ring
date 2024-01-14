@@ -63,7 +63,11 @@ fn x25519_public_from_private(
     let private_key: &[u8; SCALAR_LEN] = private_key.bytes_less_safe().try_into()?;
     let private_key = ops::MaskedScalar::from_bytes_masked(*private_key);
 
-    #[cfg(all(not(target_os = "ios"), target_arch = "arm"))]
+    #[cfg(all(
+        target_arch = "arm",
+        not(target_os = "ios"),
+        not(target_os = "watchos")
+    ))]
     {
         if cpu::arm::NEON.available(cpu_features) {
             static MONTGOMERY_BASE_POINT: [u8; 32] = [
@@ -109,7 +113,11 @@ fn x25519_ecdh(
         point: &ops::EncodedPoint,
         #[allow(unused_variables)] cpu_features: cpu::Features,
     ) {
-        #[cfg(all(not(target_os = "ios"), target_arch = "arm"))]
+        #[cfg(all(
+            target_arch = "arm",
+            not(target_os = "ios"),
+            not(target_os = "watchos")
+        ))]
         {
             if cpu::arm::NEON.available(cpu_features) {
                 return x25519_neon(out, scalar, point);
@@ -158,7 +166,11 @@ fn x25519_ecdh(
     Ok(())
 }
 
-#[cfg(all(not(target_os = "ios"), target_arch = "arm"))]
+#[cfg(all(
+    target_arch = "arm",
+    not(target_os = "ios"),
+    not(target_os = "watchos")
+))]
 fn x25519_neon(out: &mut ops::EncodedPoint, scalar: &ops::MaskedScalar, point: &ops::EncodedPoint) {
     prefixed_extern! {
         fn x25519_NEON(
