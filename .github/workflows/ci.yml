@@ -285,20 +285,13 @@ jobs:
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
-      # TODO: Check iOS too.
-      # TODO: Do this on Apple-hosted release builds too; currently these fail with:
-      #       Unknown attribute kind (528)
-      #       (Producer: 'LLVM12.0.0-rust-1.54.0-nightly'
-      #       Reader: 'LLVM APPLE_1_1200.0.32.29_0')
 
-      - if: ${{ matrix.target != 'aarch64-apple-ios' &&
-          !contains(matrix.host_os, 'windows') &&
-          (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
+      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.61.0') &&
+                !contains(matrix.host_os, 'windows') }}
         run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
 
-      - if: ${{ matrix.target != 'aarch64-apple-ios' &&
-                !contains(matrix.host_os, 'windows') &&
-                (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
+      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.61.0') &&
+                !contains(matrix.host_os, 'windows') }}
         run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   test-bench:
@@ -420,20 +413,13 @@ jobs:
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
-      # TODO: Check iOS too.
-      # TODO: Do this on Apple-hosted release builds too; currently these fail with:
-      #       Unknown attribute kind (528)
-      #       (Producer: 'LLVM12.0.0-rust-1.54.0-nightly'
-      #       Reader: 'LLVM APPLE_1_1200.0.32.29_0')
 
-      - if: ${{ matrix.target != 'aarch64-apple-ios' &&
-          !contains(matrix.host_os, 'windows') &&
-          (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
+      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.61.0') &&
+          !contains(matrix.host_os, 'windows') }}
         run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
 
-      - if: ${{ matrix.target != 'aarch64-apple-ios' &&
-          !contains(matrix.host_os, 'windows') &&
-          (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
+      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.61.0') &&
+          !contains(matrix.host_os, 'windows') }}
         run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   # The wasm32-unknown-unknown targets have a different set of feature sets and
