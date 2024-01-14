@@ -100,6 +100,18 @@ case $target in
     libc6-dev-mips-cross \
     qemu-user
   ;;
+--target=mips64-unknown-linux-gnuabi64)
+  install_packages \
+    gcc-mips64-linux-gnuabi64 \
+    libc6-dev-mips64-cross \
+    qemu-user
+  ;;
+--target=mips64el-unknown-linux-gnuabi64)
+  install_packages \
+    gcc-mips64el-linux-gnuabi64 \
+    libc6-dev-mips64el-cross \
+    qemu-user
+  ;;
 --target=mipsel-unknown-linux-gnu)
   install_packages \
     gcc-mipsel-linux-gnu \
