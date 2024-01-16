@@ -17,6 +17,27 @@
     allow(dead_code)
 )]
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+mod abi_assumptions {
+    // TOOD: Support targets that do not have SSE and SSE2 enabled, such as
+    // x86_64-unknown-linux-none. See
+    // https://github.com/briansmith/ring/issues/1793#issuecomment-1793243725,
+    // https://github.com/briansmith/ring/issues/1832,
+    // https://github.com/briansmith/ring/issues/1833.
+    const _ASSUMES_SSE2: () =
+        assert!(cfg!(target_feature = "sse") && cfg!(target_feature = "sse2"));
+
+    #[cfg(target_arch = "x86_64")]
+    const _ASSUMED_POINTER_SIZE: usize = 8;
+    #[cfg(target_arch = "x86")]
+    const _ASSUMED_POINTER_SIZE: usize = 4;
+    const _ASSUMED_USIZE_SIZE: () = assert!(core::mem::size_of::<usize>() == _ASSUMED_POINTER_SIZE);
+    const _ASSUMED_REF_SIZE: () =
+        assert!(core::mem::size_of::<&'static u8>() == _ASSUMED_POINTER_SIZE);
+
+    const _ASSUMED_ENDIANNESS: () = assert!(cfg!(target_endian = "little"));
+}
+
 pub(crate) struct Feature {
     word: usize,
     mask: u32,

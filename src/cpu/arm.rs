@@ -17,6 +17,25 @@
     allow(dead_code)
 )]
 
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+mod abi_assumptions {
+    // TODO: Support ARM64_32; see
+    // https://github.com/briansmith/ring/issues/1832#issuecomment-1892928147. This also requires
+    // replacing all `cfg(target_pointer_width)` logic for non-pointer/reference things
+    // (`N0`, `Limb`, `LimbMask`, `crypto_word_t` etc.).
+    #[cfg(target_arch = "aarch64")]
+    const _ASSUMED_POINTER_SIZE: usize = 8;
+    #[cfg(target_arch = "arm")]
+    const _ASSUMED_POINTER_SIZE: usize = 4;
+    const _ASSUMED_USIZE_SIZE: () = assert!(core::mem::size_of::<usize>() == _ASSUMED_POINTER_SIZE);
+    const _ASSUMED_REF_SIZE: () =
+        assert!(core::mem::size_of::<&'static u8>() == _ASSUMED_POINTER_SIZE);
+
+    // To support big-endian, we'd need to make several changes as described in
+    // https://github.com/briansmith/ring/issues/1832.
+    const _ASSUMED_ENDIANNESS: () = assert!(cfg!(target_endian = "little"));
+}
+
 // uclibc: When linked statically, uclibc doesn't provide getauxval.
 // When linked dynamically, recent versions do provide it, but we
 // want to support older versions too. Assume that if uclibc is being
