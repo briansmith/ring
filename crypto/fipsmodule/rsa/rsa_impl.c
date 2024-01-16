@@ -1003,20 +1003,25 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
     // retrying. That is, we reject a negligible fraction of primes that are
     // within the FIPS bound, but we will never accept a prime outside the
     // bound, ensuring the resulting RSA key is the right size.
-    if (BN_cmp(out, sqrt2) <= 0) {
+    //
+    // Values over the threshold are discarded, so it is safe to leak this
+    // comparison.
+    if (constant_time_declassify_int(BN_cmp(out, sqrt2) <= 0)) {
       continue;
     }
 
     // RSA key generation's bottleneck is discarding composites. If it fails
     // trial division, do not bother computing a GCD or performing Miller-Rabin.
     if (!bn_odd_number_is_obviously_composite(out)) {
-      // Check gcd(out-1, e) is one (steps 4.5 and 5.6).
+      // Check gcd(out-1, e) is one (steps 4.5 and 5.6). Leaking the final
+      // result of this comparison is safe because, if not relatively prime, the
+      // value will be discarded.
       int relatively_prime;
-      if (!BN_sub(tmp, out, BN_value_one()) ||
+      if (!bn_usub_consttime(tmp, out, BN_value_one()) ||
           !bn_is_relatively_prime(&relatively_prime, tmp, e, ctx)) {
         goto err;
       }
-      if (relatively_prime) {
+      if (constant_time_declassify_int(relatively_prime)) {
         // Test |out| for primality (steps 4.5.1 and 5.6.1).
         int is_probable_prime;
         if (!BN_primality_test(&is_probable_prime, out,
@@ -1174,8 +1179,9 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
     }
 
     // Retry if |rsa->d| <= 2^|prime_bits|. See appendix B.3.1's guidance on
-    // values for d.
-  } while (BN_cmp(rsa->d, pow2_prime_bits) <= 0);
+    // values for d. When we retry, p and q are discarded, so it is safe to leak
+    // this comparison.
+  } while (constant_time_declassify_int(BN_cmp(rsa->d, pow2_prime_bits) <= 0));
 
   assert(BN_num_bits(pm1) == (unsigned)prime_bits);
   assert(BN_num_bits(qm1) == (unsigned)prime_bits);
@@ -1188,6 +1194,9 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
     goto bn_err;
   }
   bn_set_minimal_width(rsa->n);
+
+  // |rsa->n| is computed from the private key, but is public.
+  bn_declassify(rsa->n);
 
   // Sanity-check that |rsa->n| has the specified size. This is implied by
   // |generate_prime|'s bounds.

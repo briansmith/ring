@@ -314,7 +314,10 @@ int bn_mod_inverse_consttime(BIGNUM *r, int *out_no_inverse, const BIGNUM *a,
   }
 
   assert(BN_is_zero(v));
-  if (!BN_is_one(u)) {
+  // While the inputs and output are secret, this function considers whether the
+  // input was invertible to be public. It is used as part of RSA key
+  // generation, where inputs are chosen to already be invertible.
+  if (constant_time_declassify_int(!BN_is_one(u))) {
     *out_no_inverse = 1;
     OPENSSL_PUT_ERROR(BN, BN_R_NO_INVERSE);
     goto err;
