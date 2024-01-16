@@ -60,13 +60,12 @@ Using Make (does not work on Windows):
     cmake -B build
     make -C build
 
-You usually don't need to run `cmake` again after changing `CMakeLists.txt`
-files because the build scripts will detect changes to them and rebuild
-themselves automatically.
+This produces a debug build by default. Optimisation isn't enabled, and debug
+assertions are included. Pass `-DCMAKE_BUILD_TYPE=Release` to `cmake` to
+configure a release build:
 
-Note that the default build flags in the top-level `CMakeLists.txt` are for
-debugging—optimisation isn't enabled. Pass `-DCMAKE_BUILD_TYPE=Release` to
-`cmake` to configure a release build.
+    cmake -GNinja -B build -DCMAKE_BUILD_TYPE=Release
+    ninja -C build
 
 If you want to cross-compile then there is an example toolchain file for 32-bit
 Intel in `util/`. Wipe out the build directory, run `cmake` like this:
@@ -84,6 +83,10 @@ remove some code that is especially large.
 
 See [CMake's documentation](https://cmake.org/cmake/help/v3.4/manual/cmake-variables.7.html)
 for other variables which may be used to configure the build.
+
+You usually don't need to run `cmake` again after changing `CMakeLists.txt`
+files because the build scripts will detect changes to them and rebuild
+themselves automatically.
 
 ### Building for Android
 
