@@ -32,6 +32,8 @@ const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
 
+const APPLE: &str = "apple";
+
 #[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/curve25519/curve25519.c"),
@@ -335,6 +337,14 @@ fn ring_build_rs_main() {
         force_warnings_into_errors,
     };
     let pregenerated = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
+
+    // See the definition of `x25519_neon`.
+    // XXX: This should use an allowlist approach based on the target ABI, instead of a denylist
+    // approach based on vendor.
+    let vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
+    if target.arch == ARM && vendor != APPLE {
+        println!("cargo:rustc-cfg=ring_x25519_neon");
+    }
 
     build_c_code(
         &target,
