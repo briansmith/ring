@@ -168,7 +168,7 @@ jobs:
           # Keep in sync with Cargo.toml and similar `rust_channel` sections.
           - 1.61.0 # MSRV
           # TODO: Move these to a daily/pre-release job.
-          # - nightly
+          - nightly
           # - beta
 
         include:
@@ -392,9 +392,11 @@ jobs:
 
         rust_channel:
           - stable
-          - nightly
           # Keep in sync with Cargo.toml and similar `rust_channel` sections.
           - 1.61.0 # MSRV
+          # TODO: Move these to a daily/pre-release job.
+          - nightly
+          - beta
 
         include:
           - target: aarch64-unknown-linux-musl
