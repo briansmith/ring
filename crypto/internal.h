@@ -1453,11 +1453,27 @@ OPENSSL_INLINE int CRYPTO_is_ADX_capable(void) {
 
 // SHA-1 and SHA-256 are defined as a single extension.
 OPENSSL_INLINE int CRYPTO_is_x86_SHA_capable(void) {
-#if defined(__SHA__)
-  return 1;
-#else
+  // We should check __SHA__ here, but for now we ignore it. We've run into a
+  // few places where projects build with -march=goldmont, but need a build that
+  // does not require SHA extensions:
+  //
+  // - Some CrOS toolchain definitions are incorrect and build with
+  //   -march=goldmont when targetting boards that are not Goldmont. b/320482539
+  //   tracks fixing this.
+  //
+  // - Sometimes projects build with -march=goldmont as a rough optimized
+  //   baseline. However, Intel CPU capabilities are not strictly linear, so
+  //   this does not quite work. Some combination of -mtune and
+  //   -march=x86-64-v{1,2,3,4} would be a better strategy here.
+  //
+  // - QEMU versions before 8.2 do not support SHA extensions and disable it
+  //   with a warning. Projects that target Goldmont and test on QEMU will
+  //   break. The long-term fix is to update to 8.2. A principled short-term fix
+  //   would be -march=goldmont -mno-sha, to reflect that the binary needs to
+  //   run on both QEMU-8.1-Goldmont and actual-Goldmont.
+  //
+  // TODO(b/320482539): Once the CrOS toolchain is fixed, try this again.
   return (OPENSSL_get_ia32cap(2) & (1u << 29)) != 0;
-#endif
 }
 
 // CRYPTO_cpu_perf_is_like_silvermont returns one if, based on a heuristic, the
