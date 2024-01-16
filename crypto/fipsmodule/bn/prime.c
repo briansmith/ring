@@ -773,7 +773,7 @@ int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w, int checks,
     }
   }
 
-  assert(uniform_iterations >= (crypto_word_t)checks);
+  declassify_assert(uniform_iterations >= (crypto_word_t)checks);
   *out_is_probably_prime = 1;
   ret = 1;
 

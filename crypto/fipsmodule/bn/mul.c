@@ -292,7 +292,7 @@ static void bn_mul_recursive(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   }
 
   // The product should fit without carries.
-  assert(c == 0);
+  declassify_assert(c == 0);
 }
 
 // bn_mul_part_recursive sets |r| to |a| * |b|, using |t| as scratch space. |r|
@@ -406,7 +406,7 @@ static void bn_mul_part_recursive(BN_ULONG *r, const BN_ULONG *a,
   }
 
   // The product should fit without carries.
-  assert(c == 0);
+  declassify_assert(c == 0);
 }
 
 // bn_mul_impl implements |BN_mul| and |bn_mul_consttime|. Note this function

@@ -339,7 +339,8 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
   // If the value is not in range, force it to be in range.
   r->d[0] |= constant_time_select_w(in_range, 0, min_inclusive);
   r->d[words - 1] &= constant_time_select_w(in_range, BN_MASK2, mask >> 1);
-  assert(bn_in_range_words(r->d, min_inclusive, max_exclusive->d, words));
+  declassify_assert(
+      bn_in_range_words(r->d, min_inclusive, max_exclusive->d, words));
 
   r->neg = 0;
   r->width = (int)words;

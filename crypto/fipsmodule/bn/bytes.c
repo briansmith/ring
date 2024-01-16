@@ -186,7 +186,7 @@ void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num) {
 void bn_words_to_big_endian(uint8_t *out, size_t out_len, const BN_ULONG *in,
                             size_t in_len) {
   // The caller should have selected an output length without truncation.
-  assert(fits_in_bytes(in, in_len, out_len));
+  declassify_assert(fits_in_bytes(in, in_len, out_len));
 
   // We only support little-endian platforms, so the internal representation is
   // also little-endian as bytes. We can simply copy it in reverse.

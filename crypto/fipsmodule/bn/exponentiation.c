@@ -1013,7 +1013,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   // Prepare a^1 in the Montgomery domain.
   assert(!a->neg);
-  assert(BN_ucmp(a, m) < 0);
+  declassify_assert(BN_ucmp(a, m) < 0);
   if (!BN_to_montgomery(&am, a, mont, ctx) ||
       !bn_resize_words(&am, top)) {
     goto err;
