@@ -151,6 +151,13 @@ TEST(PKCS12Test, TestEmptyPassword) {
   TestImpl("EmptyPassword (empty password)", StringToBytes(data), "", nullptr);
   TestImpl("EmptyPassword (null password)", StringToBytes(data), nullptr,
            nullptr);
+
+  // The above input, modified to have a constructed string.
+  data = GetTestData("crypto/pkcs8/test/empty_password_ber.p12");
+  TestImpl("EmptyPassword (BER, empty password)", StringToBytes(data), "",
+           nullptr);
+  TestImpl("EmptyPassword (BER, null password)", StringToBytes(data), nullptr,
+           nullptr);
 }
 
 TEST(PKCS12Test, TestNullPassword) {

@@ -147,6 +147,7 @@ set(
   crypto/keccak/keccak_tests.txt
   crypto/kyber/kyber_tests.txt
   crypto/pkcs8/test/empty_password.p12
+  crypto/pkcs8/test/empty_password_ber.p12
   crypto/pkcs8/test/no_encryption.p12
   crypto/pkcs8/test/nss.p12
   crypto/pkcs8/test/null_password.p12
