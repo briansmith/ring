@@ -452,6 +452,7 @@ set(
   tool/speed.cc
   tool/tool.cc
   tool/transport_common.cc
+  tool/generate_tests.cc
 )
 
 set(

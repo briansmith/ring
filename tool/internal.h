@@ -140,6 +140,7 @@ bool SHA512256Sum(const std::vector<std::string> &args);
 bool Server(const std::vector<std::string> &args);
 bool Sign(const std::vector<std::string> &args);
 bool Speed(const std::vector<std::string> &args);
+bool GenerateTests(const std::vector<std::string> &args);
 
 // These values are DER encoded, RSA private keys.
 extern const uint8_t kDERRSAPrivate2048[];
