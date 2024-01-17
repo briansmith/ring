@@ -18,13 +18,10 @@
 #include <string.h>
 
 #include "internal.h"
-#include "../internal.h"
 
 
-// kMaxDepth is a just a sanity limit. The code should be such that the length
-// of the input being processes always decreases. None the less, a very large
-// input could otherwise cause the stack to overflow.
-static const uint32_t kMaxDepth = 2048;
+// kMaxDepth limits the recursion depth to avoid overflowing the stack.
+static const uint32_t kMaxDepth = 128;
 
 // is_string_type returns one if |tag| is a string type and zero otherwise. It
 // ignores the constructed bit.

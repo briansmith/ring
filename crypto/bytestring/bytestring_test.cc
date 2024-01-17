@@ -730,6 +730,22 @@ TEST(CBSTest, BerConvert) {
   ExpectBerConvert("kWrappedIndefBER", kWrappedIndefDER, kWrappedIndefBER);
   ExpectBerConvert("kWrappedConstructedStringBER", kWrappedConstructedStringDER,
                    kWrappedConstructedStringBER);
+
+  // indef_overflow is 200 levels deep of an indefinite-length-encoded SEQUENCE.
+  // This will exceed our recursion limits and fail to be converted.
+  std::vector<uint8_t> indef_overflow;
+  for (int i = 0; i < 200; i++) {
+    indef_overflow.push_back(0x30);
+    indef_overflow.push_back(0x80);
+  }
+  for (int i = 0; i < 200; i++) {
+    indef_overflow.push_back(0x00);
+    indef_overflow.push_back(0x00);
+  }
+  CBS in, out;
+  CBS_init(&in, indef_overflow.data(), indef_overflow.size());
+  uint8_t *storage;
+  ASSERT_FALSE(CBS_asn1_ber_to_der(&in, &out, &storage));
 }
 
 struct BERTest {
