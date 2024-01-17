@@ -265,8 +265,9 @@ const LINUX_ABI: &[&str] = &[
 
 /// Operating systems that have the same ABI as macOS on every architecture
 /// mentioned in `ASM_TARGETS`.
-const MACOS_ABI: &[&str] = &["ios", "macos", "tvos"];
+const MACOS_ABI: &[&str] = &["ios", MACOS, "tvos"];
 
+const MACOS: &str = "macos";
 const WINDOWS: &str = "windows";
 
 /// Read an environment variable and tell Cargo that we depend on it.
@@ -589,7 +590,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
         let _ = c.flag(f);
     }
 
-    if target.os.as_str() == "macos" {
+    if target.os.as_str() == MACOS {
         // ``-gfull`` is required for Darwin's |-dead_strip|.
         let _ = c.flag("-gfull");
     } else if !compiler.is_like_msvc() {
