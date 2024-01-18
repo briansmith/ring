@@ -311,7 +311,7 @@ where
 /// Safety: the closure must fully initialize the array if it returns one.
 unsafe fn with_output_array_fallible<const N: usize, F>(func: F) -> Option<[u8; N]>
 where
-    F: FnOnce(*mut u8, usize) -> core::ffi::c_int,
+    F: FnOnce(*mut u8, usize) -> bool,
 {
     let mut out_uninit = core::mem::MaybeUninit::<[u8; N]>::uninit();
     let out_ptr = if N != 0 {
@@ -319,7 +319,7 @@ where
     } else {
         core::ptr::null_mut()
     };
-    if func(out_ptr, N) == 1 {
+    if func(out_ptr, N) {
         // Safety: `func` promises to fill all of `out_uninit` if it returns one.
         unsafe { Some(out_uninit.assume_init()) }
     } else {

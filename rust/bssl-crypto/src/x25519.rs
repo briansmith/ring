@@ -76,7 +76,7 @@ impl PrivateKey {
         // Safety: `X25519` indeed writes `SHARED_KEY_LEN` bytes.
         unsafe {
             with_output_array_fallible(|out, _| {
-                bssl_sys::X25519(out, self.0.as_ffi_ptr(), other_public_key.as_ffi_ptr())
+                bssl_sys::X25519(out, self.0.as_ffi_ptr(), other_public_key.as_ffi_ptr()) == 1
             })
         }
     }
