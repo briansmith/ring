@@ -234,6 +234,10 @@ fn hmac<const N: usize, MD: digest::Algorithm>(key: &[u8], data: &[u8]) -> [u8; 
 /// until the Rust language can support the `min_const_generics` feature. Until then we will have to
 /// pass both separately: https://github.com/rust-lang/rust/issues/60551
 struct Hmac<const N: usize, MD: digest::Algorithm> {
+    // Safety: this relies on HMAC_CTX being relocatable via `memcpy`, which is
+    // not generally true of BoringSSL types. This is fine to rely on only
+    // because we do not allow any version skew between bssl-crypto and
+    // BoringSSL. It is *not* safe to copy this code in any other project.
     ctx: bssl_sys::HMAC_CTX,
     _marker: PhantomData<MD>,
 }
@@ -366,6 +370,7 @@ impl<const N: usize, MD: digest::Algorithm> Drop for Hmac<N, MD> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::boxed::Box;
 
     #[test]
     fn hmac_sha256() {
@@ -401,10 +406,13 @@ mod tests {
         let mut hmac = HmacSha256::new_from_slice(&key);
         hmac.update(&data[..1]);
         let mut hmac2 = hmac.clone();
+        let mut hmac3 = Box::new(hmac2.clone());
         hmac.update(&data[1..]);
         hmac2.update(&data[1..]);
+        hmac3.update(&data[1..]);
         assert_eq!(hmac.digest(), expected);
         assert_eq!(hmac2.digest(), expected);
+        assert_eq!(hmac3.digest(), expected);
     }
 
     #[test]
@@ -458,9 +466,12 @@ mod tests {
         let mut hmac = HmacSha512::new_from_slice(&key);
         hmac.update(&data[..1]);
         let mut hmac2 = hmac.clone();
+        let mut hmac3 = Box::new(hmac.clone());
         hmac.update(&data[1..]);
         hmac2.update(&data[1..]);
+        hmac3.update(&data[1..]);
         assert_eq!(hmac.digest(), expected);
         assert_eq!(hmac2.digest(), expected);
+        assert_eq!(hmac3.digest(), expected);
     }
 }
