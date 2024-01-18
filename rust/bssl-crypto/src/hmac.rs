@@ -30,7 +30,7 @@
 //! ```
 //! use bssl_crypto::hmac::HmacSha256;
 //!
-//! let key = [0u8; 32];
+//! let key = bssl_crypto::rand_array();
 //! let mut ctx = HmacSha256::new(&key);
 //! ctx.update(b"hel");
 //! ctx.update(b"lo");
@@ -46,7 +46,7 @@
 //! ```
 //! use bssl_crypto::hmac::HmacSha256;
 //!
-//! let key = [0u8; 32];
+//! let key = bssl_crypto::rand_array();
 //! let mut keyed_ctx = HmacSha256::new(&key);
 //! let mut ctx1 = keyed_ctx.clone();
 //! ctx1.update(b"foo");

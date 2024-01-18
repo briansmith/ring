@@ -29,7 +29,7 @@
 //! ```
 //! use bssl_crypto::aes;
 //!
-//! let key_bytes = [0u8; 32];
+//! let key_bytes = bssl_crypto::rand_array();
 //! let enc_key = aes::EncryptKey::new_256(&key_bytes);
 //! let block = [0u8; aes::BLOCK_SIZE];
 //! let mut transformed_block = enc_key.encrypt(&block);

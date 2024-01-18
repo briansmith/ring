@@ -31,11 +31,11 @@
 //! ```
 //! use bssl_crypto::aead::{Aead, Aes256Gcm};
 //!
-//! let key = [0u8; 32];
+//! let key = bssl_crypto::rand_array();
 //! let aead = Aes256Gcm::new(&key);
 //!
 //! let mut message_counter: u64 = 0;
-//! let mut nonce = [0u8; 12];
+//! let mut nonce = bssl_crypto::rand_array();
 //! nonce[4..].copy_from_slice(message_counter.to_be_bytes().as_slice());
 //! message_counter += 1;
 //! let plaintext = b"message";
