@@ -990,86 +990,6 @@ static bool GeneratePointMulTest(const InterestingPoints &points,
 }
 
 
-static bool GeneratePointMulTests(const InterestingPoints &points,
-                                  bool generator, bool do_p, BN_CTX *ctx) {
-  const int SHIFT = 7;
-  const BN_ULONG N = (1 << SHIFT);
-  const size_t NUM_SCALARS = (N + 1) + (N - 1) + N;
-  bssl::UniquePtr<BIGNUM> scalars[NUM_SCALARS];
-  size_t START_SMALL_HIGH = N + 1;
-  size_t START_BIG = START_SMALL_HIGH + (N - 1);
-
-  int order_bits = EC_GROUP_get_degree(points.group.get());
-
-  {
-    size_t i;
-    const BIGNUM *n = EC_GROUP_get0_order(points.group.get());
-    for (i = 0; i <= N; ++i) {
-      scalars[i].reset(BN_new());
-      if (!scalars[i] || !BN_set_word(scalars[i].get(), i)) {
-        return false;
-      }
-
-      if (i != 0 && i != N) {
-        scalars[START_SMALL_HIGH + i - 1].reset(BN_new());
-        BIGNUM *small_high = scalars[START_SMALL_HIGH + i - 1].get();
-        if (!small_high ||
-            !BN_lshift(small_high, scalars[i].get(), order_bits - SHIFT)) {
-          return false;
-        }
-      }
-
-      if (i != N) {
-        scalars[START_BIG + i].reset(BN_dup(n));
-        if (!scalars[START_BIG + i] ||
-            !BN_sub_word(scalars[START_BIG + i].get(), N - i)) {
-          return false;
-        }
-      }
-    }
-  }
-
-  bssl::UniquePtr<EC_POINT> p;
-  if (do_p) {
-    bssl::UniquePtr<BIGNUM> n_minus_1(
-        BN_dup(EC_GROUP_get0_order(points.group.get())));
-    if (!n_minus_1 || !BN_sub_word(n_minus_1.get(), 1)) {
-      return false;
-    }
-    p.reset(EC_POINT_new(points.group.get()));
-    if (!p || !EC_POINT_mul(points.group.get(), p.get(), n_minus_1.get(), NULL,
-                            NULL, ctx)) {
-      return false;
-    }
-  }
-
-  for (size_t i = 0; i < (generator ? NUM_SCALARS : 1); ++i) {
-    if (p) {
-      for (size_t j = 0; j < NUM_SCALARS; ++j) {
-        printf("\n");
-        if (j >= START_BIG) {
-          printf("# p_scalar = n - %d\n", (int)(N - (j - START_BIG)));
-        }
-        if (!GeneratePointMulTest(points, generator ? scalars[i].get() : NULL,
-                                  scalars[j].get(), p.get(), ctx)) {
-          return false;
-        }
-      }
-    } else {
-      assert(generator);
-      printf("\n");
-      if (i >= START_BIG) {
-        printf("# g_scalar = n - %d\n", (int)(N - (i - START_BIG)));
-      }
-      if (!GeneratePointMulTest(points, scalars[i].get(), NULL, NULL, ctx)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 static bool GeneratePointMulTwinTests(const InterestingPoints &points,
                                       bool generator, bool do_p, BN_CTX *ctx) {
   const int SHIFT = 5;
@@ -1764,22 +1684,6 @@ bool GenerateTests(const std::vector<std::string> &args) {
 
   if (args[0] == "ecc-p384-neg") {
     return GenerateNegTests(p384_points, ctx.get());
-  }
-
-  if (args[0] == "ecc-p256-point-mul-base") {
-    return GeneratePointMulTests(p256_points, true, false, ctx.get());
-  }
-
-  if (args[0] == "ecc-p384-point-mul-base") {
-    return GeneratePointMulTests(p384_points, true, false, ctx.get());
-  }
-
-  if (args[0] == "ecc-p256-point-mul") {
-    return GeneratePointMulTests(p256_points, false, true, ctx.get());
-  }
-
-  if (args[0] == "ecc-p384-point-mul") {
-    return GeneratePointMulTests(p384_points, false, true, ctx.get());
   }
 
   if (args[0] == "ecc-p256-point-mul-twin") {
