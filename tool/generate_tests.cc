@@ -1447,7 +1447,6 @@ static bool GenerateModSquareTests(const BIGNUM *p, BN_CTX *ctx,
       !GenerateSquareTest(p_sqrt, NULL, m, mont, ctx) ||
       !GenerateSquareTest(p_sqrt_plus_1, NULL, m, mont, ctx) ||
       !GenerateSquareTest(highest_bit_set, NULL, m, mont, ctx)) {
-    __debugbreak();
     return false;
   }
 
