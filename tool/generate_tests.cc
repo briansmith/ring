@@ -243,19 +243,19 @@ static bool GenerateMaxwellTestsForCurve(int nid, const char *curve_name,
     return false;
   }
 
-  if (!BN_set_word(r.get(), r_word) ||
-      !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr, s.get(),
-                          fmt, ctx, "P (0 )",
+  static const char kLessThanControlComment[] =
       "# The signature has r < q - n. This is the control case for the next\n"
       "# test case; this signature is the same but the public key is\n"
       "# different. Notice that both public keys work for the same signature!\n"
       "# This signature will validate even if the implementation doesn't\n"
-      "# reduce the X coordinate of the multiplication result (mod n).")) {
+      "# reduce the X coordinate of the multiplication result (mod n).";
+  if (!BN_set_word(r.get(), r_word) ||
+      !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr, s.get(),
+                          fmt, ctx, "P (0 )", kLessThanControlComment)) {
     return false;
   }
-  if (!BN_add(r.get(), r.get(), EC_GROUP_get0_order(group.get())) ||
-      !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr, s.get(),
-                          fmt, ctx, "P (0 )",
+
+  static const char kLessThanComment[] =
       "# The signature has r < q - n. s Since r < q - n, r + n < q. Notice\n"
       "# that this signature is the same as the signature in the preceding\n"
       "# test case, but the public key is different. That the signature\n"
@@ -263,21 +263,25 @@ static bool GenerateMaxwellTestsForCurve(int nid, const char *curve_name,
       "# r < q - n. If this test case fails it is likely that the\n"
       "# implementation doesn't reduce the X coordinate of the multiplication\n"
       "# result (mod n), or it is missing the second step of Gregory\n"
-      "# Maxwell's trick.")) {
+      "# Maxwell's trick.";
+  if (!BN_add(r.get(), r.get(), EC_GROUP_get0_order(group.get())) ||
+      !GenerateTestsForRS(group.get(), curve_name, r.get(), nullptr, s.get(),
+                          fmt, ctx, "P (0 )", kLessThanComment)) {
     return false;
   }
 
-  if (!GenerateTestsForRS(group.get(), curve_name, q_minus_n_ish.get(),
-                          nullptr, s.get(), fmt, ctx, "P (0 )",
+  static const char kGreaterThanControlComment[] =
       "# The signature has r > q - n. The signature is for the public key\n"
       "# recovered from r. r + n > q since r > q - n. This is the control\n"
       "# for the next test case; this signature is the same as the signature\n"
-      "# in the following test case but the public key is different.")) {
+      "# in the following test case but the public key is different.";
+  if (!GenerateTestsForRS(group.get(), curve_name, q_minus_n_ish.get(), nullptr,
+                          s.get(), fmt, ctx, "P (0 )",
+                          kGreaterThanControlComment)) {
     return false;
   }
 
-  if (!GenerateTestsForRS(group.get(), curve_name, q_minus_n_ish.get(),
-                          wrong_r.get(), s.get(), fmt, ctx, "F",
+  static const char kGreaterThanComment[] =
       "# The signature has r > q - n. The signature is for the public key\n"
       "# recovered from r + n (mod q). r + n > q since r > q - n, and so\n"
       "# r + n (mod q) < r because r + n (mod n) != r + n (mod q). Notice\n"
@@ -286,7 +290,10 @@ static bool GenerateMaxwellTestsForCurve(int nid, const char *curve_name,
       "# signature fails to validate in this case, unlike other related test\n"
       "# cases. If this test case fails (the signature validates), it is\n"
       "# likely that the implementation didn't guard the second case of\n"
-      "# Gregory Maxwell's trick on the condition r < q - n.")) {
+      "# Gregory Maxwell's trick on the condition r < q - n.";
+  if (!GenerateTestsForRS(group.get(), curve_name, q_minus_n_ish.get(),
+                          wrong_r.get(), s.get(), fmt, ctx, "F",
+                          kGreaterThanComment)) {
     return false;
   }
 
@@ -531,25 +538,30 @@ static bool GenerateECCPublicKeyTestsForCurve(int nid, const char *curve_name,
     return false;
   }
 
+  static const char kXEquals0Comment[] =
+      "# X == 0, decompressed with y_bit == 0. This verifies that the\n"
+      "# implementation doesn't reject zero-valued field elements (they\n"
+      "# aren't scalars).";
+
   if (!EC_POINT_set_compressed_coordinates_GFp(group.get(), point.get(),
       zero.get(), 0, ctx) ||
       !GenerateECCPublicKeyTest(curve_name, group.get(), point.get(), "P",
-      "# X == 0, decompressed with y_bit == 0. This verifies that the\n"
-      "# implementation doesn't reject zero-valued field elements (they\n"
-      "# aren't scalars).")) {
+      kXEquals0Comment)) {
     return false;
   }
 
+  static const char kXEqualsQComment[] =
+      "# X == q. This is invalid because q isn't a valid field element. Some\n"
+      "# broken implementations might accept this if they reduce X mod q\n"
+      "# since q mod q == 0 and the Y coordinate matches the one from the\n"
+      "# x == 0 test case above.";
   if (!EC_POINT_get_affine_coordinates_GFp(group.get(), point.get(), NULL,
                                            y.get(), ctx) ||
       !GenerateECCPublicKeyTestWithAffineDecodedCoordinates(curve_name,
                                                             group.get(),
                                                             q.get(), y.get(),
       "F (X is out of range)",
-      "# X == q. This is invalid because q isn't a valid field element. Some\n"
-      "# broken implementations might accept this if they reduce X mod q\n"
-      "# since q mod q == 0 and the Y coordinate matches the one from the\n"
-      "# x == 0 test case above.")) {
+      kXEqualsQComment)) {
     return false;
   }
 
@@ -560,14 +572,16 @@ static bool GenerateECCPublicKeyTestsForCurve(int nid, const char *curve_name,
     return false;
   }
 
+  static const char kXEqualsCYBit1Comment[] =
+      "# X == q, decompressed with y_bit == 1. See the previous X == q test\n"
+      "# case.";
   if (!EC_POINT_get_affine_coordinates_GFp(group.get(), point.get(), NULL,
                                            y.get(), ctx) ||
       !GenerateECCPublicKeyTestWithAffineDecodedCoordinates(curve_name,
                                                             group.get(),
                                                             q.get(), y.get(),
       "F (X is out of range)",
-      "# X == q, decompressed with y_bit == 1. See the previous X == q test\n"
-      "# case.")) {
+      kXEqualsCYBit1Comment)) {
     return false;
   }
 
@@ -585,10 +599,13 @@ static bool GenerateECCPublicKeyTestsForCurve(int nid, const char *curve_name,
     }
   } while (!EC_POINT_set_compressed_coordinates_GFp(group.get(), point.get(),
                                                     largest_x.get(), 0, ctx));
-  if (!GenerateECCPublicKeyTest(curve_name, group.get(), point.get(), "P",
+
+  static const char kLargestValidXCoordinateComment[] =
       "# The largest valid X coordinate, decompressed with y_bit == 0. This\n"
       "# helps ensure that the upper bound on coordinate values is not too\n"
-      "# low.")) {
+      "# low.";
+  if (!GenerateECCPublicKeyTest(curve_name, group.get(), point.get(), "P",
+                                kLargestValidXCoordinateComment)) {
     return false;
   }
 
@@ -762,16 +779,18 @@ static bool GenerateECCPointDoubleTest(const InterestingPoints &points,
 
 static bool GenerateECCPointDoubleTestsForCurve(InterestingPoints &points,
                                                 BN_CTX *ctx) {
-  if (!GenerateECCPointDoubleTest(points, 1, points.g(), ctx,
-      "# G doubled once.") ||
-      !GenerateECCPointDoubleTest(points, 1, points.inf.get(), ctx,
+  static const char kZeroComment[] =
       "# Point at infinity doubled. This uses the (0, 0, 0) representation of\n"
       "# the point at infinity instead of the classic (1, 1, 0)\n"
-      "# representation.") ||
-      !GenerateECCPointDoubleTest(points, 1, points.inf_n_g.get(), ctx,
+      "# representation.";
+  static const char kNGComment[] =
       "# Point at infinity doubled. This form is the result of multiplying\n"
       "# n * G (affine), which is more interesting than the above case\n"
-      "# because only the Z coordinate is zero.") ||
+      "# because only the Z coordinate is zero.";
+  if (!GenerateECCPointDoubleTest(points, 1, points.g(), ctx,
+      "# G doubled once.") ||
+      !GenerateECCPointDoubleTest(points, 1, points.inf.get(), ctx, kZeroComment) ||
+      !GenerateECCPointDoubleTest(points, 1, points.inf_n_g.get(), ctx, kNGComment) ||
       !GenerateECCPointDoubleTest(points, 1, points.nm1_g.get(), ctx,
       "# (n - 1) * G doubled.")) {
   }
