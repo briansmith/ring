@@ -26,17 +26,40 @@
 #include <openssl/nid.h>
 #include <openssl/sha.h>
 
-#include "../crypto/bn/internal.h"
-#include "../crypto/ec/internal.h"
-#include "ecp_nistz256_precomp.h"
+#include "../crypto/fipsmodule/bn/internal.h"
+#include "../crypto/fipsmodule/ec/internal.h"
 
 #include "internal.h"
 
 enum ECDSASigFormat { Fixed, ASN1 };
 enum Affinification { MakeAffineAllZero, MakeAffineToken, Unchanged };
 
-extern "C" int digest_to_bn(BIGNUM *out, const uint8_t *digest,
-                            size_t digest_len, const BIGNUM *order);
+
+static void digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
+                         const BIGNUM *order) {
+  size_t num_bits = BN_num_bits(order);
+  // Need to truncate digest if it is too long: first truncate whole bytes.
+  size_t num_bytes = (num_bits + 7) / 8;
+  if (digest_len > num_bytes) {
+    digest_len = num_bytes;
+  }
+
+  bn_big_endian_to_words(out->d, order->width, digest, digest_len);
+
+  // If it is still too long, truncate remaining bits with a shift.
+  if (8 * digest_len > num_bits) {
+    bn_rshift_words(out->d, out->d, 8 - (num_bits & 0x7), order->width);
+  }
+
+  // |out| now has the same bit width as |order|, but this only bounds by
+  // 2*|order|. Subtract the order if out of range.
+  //
+  // Montgomery multiplication accepts the looser bounds, so this isn't strictly
+  // necessary, but it is a cleaner abstraction and has no performance impact.
+  BN_ULONG tmp[EC_MAX_WORDS];
+  bn_reduce_once_in_place(out->d, 0 /* no carry */, order->d, tmp,
+                          order->width);
+}
 
 static bool format_ecdsa_sig(uint8_t *out_sig, unsigned int *out_sig_len,
                              const ECDSA_SIG *sig, const EC_GROUP *group,
@@ -78,28 +101,27 @@ static bool ecdsa_sign(uint8_t *sig, unsigned int *sig_len, EC_KEY *key,
                        const uint8_t *digest, size_t digest_len,
                        ECDSASigFormat fmt, int i) {
   if (fmt == ASN1) {
-    if (!ECDSA_sign_ex(0, digest, digest_len, sig, sig_len, NULL, NULL, key,
-                       i)) {
+    if (!ECDSA_sign(0, digest, digest_len, sig, sig_len, key)) {
       printf("failed\n");
       return false;
     }
   } else {
     assert(fmt == Fixed);
     bssl::UniquePtr<ECDSA_SIG> ecdsa_sig(
-        ECDSA_do_sign_ex(digest, digest_len, NULL, NULL, key, i));
+        ECDSA_do_sign(digest, digest_len, key));
     format_ecdsa_sig(sig, sig_len, ecdsa_sig.get(), EC_KEY_get0_group(key),
                      fmt);
   }
   return true;
 }
 
-void print_hex(FILE *f, const uint8_t *data, size_t len) {
+static void print_hex(FILE *f, const uint8_t *data, size_t len) {
   for (size_t i = 0; i < len; i++) {
     fprintf(f, "%02x", data[i]);
   }
 }
 
-void print_bn(const BIGNUM *b) {
+static void print_bn(const BIGNUM *b) {
   if (BN_is_zero(b)) {
     printf("00");
     return;
@@ -110,7 +132,7 @@ void print_bn(const BIGNUM *b) {
     abort();
   }
   printf("%s", hex);
-  free(hex);
+  OPENSSL_free(hex);
 }
 
 static bool print_ecdsa_sig(const ECDSA_SIG *sig, const EC_GROUP *group,
@@ -176,10 +198,11 @@ static bool GenerateTestsForRS(const EC_GROUP *group, const char *curve_name,
   }
 
   bssl::UniquePtr<BIGNUM> z_neg(BN_new());
-  if (!z_neg || !digest_to_bn(z_neg.get(), digest, digest_len,
-                              EC_GROUP_get0_order(group))) {
+  if (!z_neg) {
     return false;
   }
+  digest_to_bn(z_neg.get(), digest, digest_len, EC_GROUP_get0_order(group));
+
   BN_set_negative(z_neg.get(), true);
 
   bssl::UniquePtr<EC_POINT> intermediate(EC_POINT_new(group));
@@ -467,6 +490,18 @@ static void GenerateECCPublicKeyTestEncoded(const char *curve_name,
   printf("Result = %s\n", result);
 }
 
+static int EC_POINT_make_affine(const EC_GROUP *group, EC_POINT *point,
+                                BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  bssl::UniquePtr<BIGNUM> y(BN_new());
+
+  if (!EC_POINT_get_affine_coordinates(group, point, x.get(), y.get(), ctx)) {
+    return false;
+  }
+
+  return EC_POINT_set_affine_coordinates(group, point, x.get(), y.get(), ctx);
+}
+
 static bool GenerateECCPublicKeyTest(const char *curve_name,
                                      const EC_GROUP *group,
                                      const EC_POINT *point, const char *result,
@@ -686,9 +721,10 @@ static bool print_point(const EC_GROUP *group, const char *name,
                         const EC_POINT *p, Affinification aff, BN_CTX *ctx) {
   uint8_t buf[1024];
   uint8_t num_bytes = (EC_GROUP_get_degree(group) + 7) / 8;
-  assert(num_bytes <= sizeof(buf));
+  assert((unsigned long)num_bytes <= sizeof(buf));
 
   bssl::UniquePtr<EC_POINT> p_aff;
+  bssl::UniquePtr<BIGNUM> t(BN_new());
   bool is_infinity = EC_POINT_is_at_infinity(group, p);
   if (aff != Unchanged && !is_infinity) {
     p_aff.reset(EC_POINT_dup(p, group));
@@ -712,18 +748,23 @@ static bool print_point(const EC_GROUP *group, const char *name,
     printf(", ");
     print_hex(stdout, buf, num_bytes);
   } else {
-    if (!BN_bn2bin_padded(buf, num_bytes, &p->X)) {
+    if (!ec_felem_to_bignum(group, t.get(), &p->raw.X)) {
+      return false;
+    }
+    if (!BN_bn2bin_padded(buf, num_bytes, t.get())) {
       return false;
     }
     print_hex(stdout, buf, num_bytes);
     printf(", ");
-    if (!BN_bn2bin_padded(buf, num_bytes, &p->Y)) {
+    ec_felem_to_bignum(group, t.get(), &p->raw.Y);
+    if (!BN_bn2bin_padded(buf, num_bytes, t.get())) {
       return false;
     }
     print_hex(stdout, buf, num_bytes);
   }
   if (aff == Unchanged) {
-    if (!BN_bn2bin_padded(buf, num_bytes, &p->Z)) {
+    ec_felem_to_bignum(group, t.get(), &p->raw.Z);
+    if (!BN_bn2bin_padded(buf, num_bytes, t.get())) {
       return false;
     }
     printf(", ");
@@ -914,9 +955,9 @@ static bool GenerateECCPointAddTestsForCurve(InterestingPoints &points,
   return true;
 }
 
-bool GeneratePointMulTest(const InterestingPoints &points,
-                          const BIGNUM *g_scalar, const BIGNUM *p_scalar,
-                          const EC_POINT *p, BN_CTX *ctx) {
+static bool GeneratePointMulTest(const InterestingPoints &points,
+                                 const BIGNUM *g_scalar, const BIGNUM *p_scalar,
+                                 const EC_POINT *p, BN_CTX *ctx) {
   bssl::UniquePtr<EC_POINT> result(EC_POINT_new(points.group.get()));
   if (!result || !EC_POINT_mul(points.group.get(), result.get(), g_scalar, p,
                                p_scalar, ctx)) {
@@ -949,8 +990,8 @@ bool GeneratePointMulTest(const InterestingPoints &points,
 }
 
 
-bool GeneratePointMulTests(const InterestingPoints &points, bool generator,
-                           bool do_p, BN_CTX *ctx) {
+static bool GeneratePointMulTests(const InterestingPoints &points,
+                                  bool generator, bool do_p, BN_CTX *ctx) {
   const int SHIFT = 7;
   const BN_ULONG N = (1 << SHIFT);
   const size_t NUM_SCALARS = (N + 1) + (N - 1) + N;
@@ -1029,8 +1070,8 @@ bool GeneratePointMulTests(const InterestingPoints &points, bool generator,
   return true;
 }
 
-bool GeneratePointMulTwinTests(const InterestingPoints &points, bool generator,
-                               bool do_p, BN_CTX *ctx) {
+static bool GeneratePointMulTwinTests(const InterestingPoints &points,
+                                      bool generator, bool do_p, BN_CTX *ctx) {
   const int SHIFT = 5;
   const BN_ULONG N = (1 << SHIFT);
   const size_t NUM_SCALARS = (N + 1) + (N - 1) + N;
@@ -1463,8 +1504,8 @@ static bool GenerateScalarSquareTests(const InterestingPoints &points,
                                 sqrt);
 }
 
-bool GenerateDivBy2Test(const bssl::UniquePtr<BIGNUM> &a,
-                        const bssl::UniquePtr<BIGNUM> &p, BN_CTX *ctx) {
+static bool GenerateDivBy2Test(const bssl::UniquePtr<BIGNUM> &a,
+                               const bssl::UniquePtr<BIGNUM> &p, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> half(BN_new());
   bssl::UniquePtr<BIGNUM> r(BN_new());
   if (!half || !BN_set_word(half.get(), 2) ||
@@ -1533,8 +1574,8 @@ static bool GenerateDivBy2Tests(const InterestingPoints &points, BN_CTX *ctx) {
   return true;
 }
 
-bool GenerateNegTest(const bssl::UniquePtr<BIGNUM> &a,
-                     const bssl::UniquePtr<BIGNUM> &m, BN_CTX *ctx) {
+static bool GenerateNegTest(const bssl::UniquePtr<BIGNUM> &a,
+                            const bssl::UniquePtr<BIGNUM> &m, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> b(BN_dup(a.get()));
   if (!b) {
     return false;
