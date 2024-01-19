@@ -664,7 +664,7 @@ struct InterestingPoints {
 
     // XXX: How does BoringSSL deal with failure to allocate within
     // std::string?
-    this->curve_name = curve_name;
+    this->name = curve_name;
 
     *valid = true;
   }
@@ -672,7 +672,7 @@ struct InterestingPoints {
   const EC_POINT *g() const { return EC_GROUP_get0_generator(group.get()); }
 
   bssl::UniquePtr<EC_GROUP> group;
-  std::string curve_name;
+  std::string name;
   bssl::UniquePtr<EC_POINT> inf;
   bssl::UniquePtr<EC_POINT> g_inv;          // -G
   bssl::UniquePtr<EC_POINT> nm1_g;          // (n - 1) * G
