@@ -346,6 +346,7 @@ set(
   decrepit/blowfish/blowfish_test.cc
   decrepit/cast/cast_test.cc
   decrepit/cfb/cfb_test.cc
+  decrepit/des/des_test.cc
   decrepit/evp/evp_test.cc
   decrepit/ripemd/ripemd_test.cc
   decrepit/xts/xts_test.cc
