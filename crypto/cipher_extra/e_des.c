@@ -58,6 +58,7 @@
 #include <openssl/des.h>
 #include <openssl/nid.h>
 
+#include "../des/internal.h"
 #include "../fipsmodule/cipher/internal.h"
 #include "internal.h"
 
@@ -71,20 +72,15 @@ typedef struct {
 
 static int des_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                         const uint8_t *iv, int enc) {
-  DES_cblock *deskey = (DES_cblock *)key;
   EVP_DES_KEY *dat = (EVP_DES_KEY *)ctx->cipher_data;
-
-  DES_set_key(deskey, &dat->ks.ks);
+  DES_set_key_ex(key, &dat->ks.ks);
   return 1;
 }
 
 static int des_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                           size_t in_len) {
   EVP_DES_KEY *dat = (EVP_DES_KEY *)ctx->cipher_data;
-
-  DES_ncbc_encrypt(in, out, in_len, &dat->ks.ks, (DES_cblock *)ctx->iv,
-                   ctx->encrypt);
-
+  DES_ncbc_encrypt_ex(in, out, in_len, &dat->ks.ks, ctx->iv, ctx->encrypt);
   return 1;
 }
 
@@ -113,8 +109,7 @@ static int des_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 
   EVP_DES_KEY *dat = (EVP_DES_KEY *)ctx->cipher_data;
   for (size_t i = 0; i <= in_len; i += ctx->cipher->block_size) {
-    DES_ecb_encrypt((DES_cblock *)(in + i), (DES_cblock *)(out + i),
-                    &dat->ks.ks, ctx->encrypt);
+    DES_ecb_encrypt_ex(in + i, out + i, &dat->ks.ks, ctx->encrypt);
   }
   return 1;
 }
@@ -144,23 +139,18 @@ typedef struct {
 
 static int des_ede3_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                              const uint8_t *iv, int enc) {
-  DES_cblock *deskey = (DES_cblock *)key;
   DES_EDE_KEY *dat = (DES_EDE_KEY *)ctx->cipher_data;
-
-  DES_set_key(&deskey[0], &dat->ks.ks[0]);
-  DES_set_key(&deskey[1], &dat->ks.ks[1]);
-  DES_set_key(&deskey[2], &dat->ks.ks[2]);
-
+  DES_set_key_ex(key, &dat->ks.ks[0]);
+  DES_set_key_ex(key + 8, &dat->ks.ks[1]);
+  DES_set_key_ex(key + 16, &dat->ks.ks[2]);
   return 1;
 }
 
 static int des_ede3_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                const uint8_t *in, size_t in_len) {
   DES_EDE_KEY *dat = (DES_EDE_KEY *)ctx->cipher_data;
-
-  DES_ede3_cbc_encrypt(in, out, in_len, &dat->ks.ks[0], &dat->ks.ks[1],
-                       &dat->ks.ks[2], (DES_cblock *)ctx->iv, ctx->encrypt);
-
+  DES_ede3_cbc_encrypt_ex(in, out, in_len, &dat->ks.ks[0], &dat->ks.ks[1],
+                          &dat->ks.ks[2], ctx->iv, ctx->encrypt);
   return 1;
 }
 
@@ -182,13 +172,11 @@ const EVP_CIPHER *EVP_des_ede3_cbc(void) { return &evp_des_ede3_cbc; }
 
 static int des_ede_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
-  DES_cblock *deskey = (DES_cblock *)key;
   DES_EDE_KEY *dat = (DES_EDE_KEY *)ctx->cipher_data;
-
-  DES_set_key(&deskey[0], &dat->ks.ks[0]);
-  DES_set_key(&deskey[1], &dat->ks.ks[1]);
-  DES_set_key(&deskey[0], &dat->ks.ks[2]);
-
+  // 2-DES is 3-DES with the first key used twice.
+  DES_set_key_ex(key, &dat->ks.ks[0]);
+  DES_set_key_ex(key + 8, &dat->ks.ks[1]);
+  DES_set_key_ex(key, &dat->ks.ks[2]);
   return 1;
 }
 
@@ -217,9 +205,8 @@ static int des_ede_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 
   DES_EDE_KEY *dat = (DES_EDE_KEY *) ctx->cipher_data;
   for (size_t i = 0; i <= in_len; i += ctx->cipher->block_size) {
-    DES_ecb3_encrypt((DES_cblock *) (in + i), (DES_cblock *) (out + i),
-                     &dat->ks.ks[0], &dat->ks.ks[1], &dat->ks.ks[2],
-                     ctx->encrypt);
+    DES_ecb3_encrypt_ex(in + i, out + i, &dat->ks.ks[0], &dat->ks.ks[1],
+                        &dat->ks.ks[2], ctx->encrypt);
   }
   return 1;
 }

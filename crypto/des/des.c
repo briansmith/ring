@@ -379,13 +379,17 @@ static const uint32_t DES_SPtrans[8][64] = {
    (a) = (a) ^ (t) ^ ((t) >> (16 - (n))))
 
 void DES_set_key(const DES_cblock *key, DES_key_schedule *schedule) {
+  DES_set_key_ex(key->bytes, schedule);
+}
+
+void DES_set_key_ex(const uint8_t key[8], DES_key_schedule *schedule) {
   static const int shifts2[16] = {0, 0, 1, 1, 1, 1, 1, 1,
                                   0, 1, 1, 1, 1, 1, 1, 0};
   uint32_t c, d, t, s, t2;
   const uint8_t *in;
   int i;
 
-  in = key->bytes;
+  in = key;
 
   c2l(in, c);
   c2l(in, d);
@@ -626,32 +630,34 @@ void DES_decrypt3(uint32_t data[2], const DES_key_schedule *ks1,
 
 void DES_ecb_encrypt(const DES_cblock *in_block, DES_cblock *out_block,
                      const DES_key_schedule *schedule, int is_encrypt) {
-  uint32_t l;
-  uint32_t ll[2];
-  const uint8_t *in = in_block->bytes;
-  uint8_t *out = out_block->bytes;
+  DES_ecb_encrypt_ex(in_block->bytes, out_block->bytes, schedule, is_encrypt);
+}
 
-  c2l(in, l);
-  ll[0] = l;
-  c2l(in, l);
-  ll[1] = l;
+void DES_ecb_encrypt_ex(const uint8_t in[8], uint8_t out[8],
+                        const DES_key_schedule *schedule, int is_encrypt) {
+  uint32_t ll[2];
+  ll[0] = CRYPTO_load_u32_le(in);
+  ll[1] = CRYPTO_load_u32_le(in + 4);
   DES_encrypt1(ll, schedule, is_encrypt);
-  l = ll[0];
-  l2c(l, out);
-  l = ll[1];
-  l2c(l, out);
-  ll[0] = ll[1] = 0;
+  CRYPTO_store_u32_le(out, ll[0]);
+  CRYPTO_store_u32_le(out + 4, ll[1]);
 }
 
 void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                       const DES_key_schedule *schedule, DES_cblock *ivec,
                       int enc) {
+  DES_ncbc_encrypt_ex(in, out, len, schedule, ivec->bytes, enc);
+}
+
+void DES_ncbc_encrypt_ex(const uint8_t *in, uint8_t *out, size_t len,
+                         const DES_key_schedule *schedule, uint8_t ivec[8],
+                         int enc) {
   uint32_t tin0, tin1;
   uint32_t tout0, tout1, xor0, xor1;
   uint32_t tin[2];
   unsigned char *iv;
 
-  iv = ivec->bytes;
+  iv = ivec;
 
   if (enc) {
     c2l(iv, tout0);
@@ -681,7 +687,7 @@ void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       tout1 = tin[1];
       l2c(tout1, out);
     }
-    iv = ivec->bytes;
+    iv = ivec;
     l2c(tout0, iv);
     l2c(tout1, iv);
   } else {
@@ -712,7 +718,7 @@ void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       xor0 = tin0;
       xor1 = tin1;
     }
-    iv = ivec->bytes;
+    iv = ivec;
     l2c(xor0, iv);
     l2c(xor1, iv);
   }
@@ -722,24 +728,23 @@ void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 void DES_ecb3_encrypt(const DES_cblock *input, DES_cblock *output,
                       const DES_key_schedule *ks1, const DES_key_schedule *ks2,
                       const DES_key_schedule *ks3, int enc) {
-  uint32_t l0, l1;
-  uint32_t ll[2];
-  const uint8_t *in = input->bytes;
-  uint8_t *out = output->bytes;
+  DES_ecb3_encrypt_ex(input->bytes, output->bytes, ks1, ks2, ks3, enc);
+}
 
-  c2l(in, l0);
-  c2l(in, l1);
-  ll[0] = l0;
-  ll[1] = l1;
+void DES_ecb3_encrypt_ex(const uint8_t in[8], uint8_t out[8],
+                         const DES_key_schedule *ks1,
+                         const DES_key_schedule *ks2,
+                         const DES_key_schedule *ks3, int enc) {
+  uint32_t ll[2];
+  ll[0] = CRYPTO_load_u32_le(in);
+  ll[1] = CRYPTO_load_u32_le(in + 4);
   if (enc) {
     DES_encrypt3(ll, ks1, ks2, ks3);
   } else {
     DES_decrypt3(ll, ks1, ks2, ks3);
   }
-  l0 = ll[0];
-  l1 = ll[1];
-  l2c(l0, out);
-  l2c(l1, out);
+  CRYPTO_store_u32_le(out, ll[0]);
+  CRYPTO_store_u32_le(out + 4, ll[1]);
 }
 
 void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
@@ -747,12 +752,20 @@ void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                           const DES_key_schedule *ks2,
                           const DES_key_schedule *ks3, DES_cblock *ivec,
                           int enc) {
+  DES_ede3_cbc_encrypt_ex(in, out, len, ks1, ks2, ks3, ivec->bytes, enc);
+}
+
+void DES_ede3_cbc_encrypt_ex(const uint8_t *in, uint8_t *out, size_t len,
+                             const DES_key_schedule *ks1,
+                             const DES_key_schedule *ks2,
+                             const DES_key_schedule *ks3, uint8_t ivec[8],
+                             int enc) {
   uint32_t tin0, tin1;
   uint32_t tout0, tout1, xor0, xor1;
   uint32_t tin[2];
   uint8_t *iv;
 
-  iv = ivec->bytes;
+  iv = ivec;
 
   if (enc) {
     c2l(iv, tout0);
@@ -786,7 +799,7 @@ void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       l2c(tout0, out);
       l2c(tout1, out);
     }
-    iv = ivec->bytes;
+    iv = ivec;
     l2c(tout0, iv);
     l2c(tout1, iv);
   } else {
@@ -834,7 +847,7 @@ void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       xor1 = t1;
     }
 
-    iv = ivec->bytes;
+    iv = ivec;
     l2c(xor0, iv);
     l2c(xor1, iv);
   }

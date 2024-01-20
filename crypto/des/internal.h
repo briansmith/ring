@@ -67,6 +67,9 @@ extern "C" {
 #endif
 
 
+// TODO(davidben): Ideally these macros would be replaced with
+// |CRYPTO_load_u32_le| and |CRYPTO_store_u32_le|.
+
 #define c2l(c, l)                         \
   do {                                    \
     (l) = ((uint32_t)(*((c)++)));         \
@@ -145,6 +148,27 @@ extern "C" {
         *(--(c)) = (unsigned char)(((l1)) & 0xff);        \
     }                                                     \
   } while (0)
+
+
+// Correctly-typed versions of DES functions.
+//
+// See https://crbug.com/boringssl/683.
+
+void DES_set_key_ex(const uint8_t key[8], DES_key_schedule *schedule);
+void DES_ecb_encrypt_ex(const uint8_t in[8], uint8_t out[8],
+                        const DES_key_schedule *schedule, int is_encrypt);
+void DES_ncbc_encrypt_ex(const uint8_t *in, uint8_t *out, size_t len,
+                         const DES_key_schedule *schedule, uint8_t ivec[8],
+                         int enc);
+void DES_ecb3_encrypt_ex(const uint8_t input[8], uint8_t output[8],
+                         const DES_key_schedule *ks1,
+                         const DES_key_schedule *ks2,
+                         const DES_key_schedule *ks3, int enc);
+void DES_ede3_cbc_encrypt_ex(const uint8_t *in, uint8_t *out, size_t len,
+                             const DES_key_schedule *ks1,
+                             const DES_key_schedule *ks2,
+                             const DES_key_schedule *ks3, uint8_t ivec[8],
+                             int enc);
 
 
 // Private functions.
