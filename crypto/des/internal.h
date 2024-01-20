@@ -58,6 +58,7 @@
 #define OPENSSL_HEADER_DES_INTERNAL_H
 
 #include <openssl/base.h>
+#include <openssl/des.h>
 
 #include "../internal.h"
 
@@ -229,6 +230,19 @@ how to use xors :-) I got it to its final state.
 
 #define ITERATIONS 16
 #define HALF_ITERATIONS 8
+
+
+// Private functions.
+//
+// These functions are only exported for use in |decrepit|.
+
+OPENSSL_EXPORT void DES_decrypt3(uint32_t data[2], const DES_key_schedule *ks1,
+                                 const DES_key_schedule *ks2,
+                                 const DES_key_schedule *ks3);
+
+OPENSSL_EXPORT void DES_encrypt3(uint32_t data[2], const DES_key_schedule *ks1,
+                                 const DES_key_schedule *ks2,
+                                 const DES_key_schedule *ks3);
 
 
 #if defined(__cplusplus)
