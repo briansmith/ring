@@ -15,7 +15,8 @@
 //! X25519 Key agreement.
 
 use super::{ops, scalar::SCALAR_LEN};
-use crate::{agreement, c, constant_time, cpu, ec, error, rand};
+use crate::{agreement, constant_time, cpu, ec, error, rand};
+use core::ffi;
 
 static CURVE25519: ec::Curve = ec::Curve {
     public_key_len: PUBLIC_KEY_LEN,
@@ -79,7 +80,7 @@ fn x25519_public_from_private(
         fn x25519_public_from_private_generic_masked(
             public_key_out: &mut PublicKey,
             private_key: &PrivateKey,
-            use_adx: c::int,
+            use_adx: ffi::c_int,
         );
     }
     unsafe {

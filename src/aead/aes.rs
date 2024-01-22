@@ -24,7 +24,7 @@ use crate::{
     error,
     polyfill::{self, ArraySplitMap},
 };
-use core::ops::RangeFrom;
+use core::{ffi, ops::RangeFrom};
 
 #[derive(Clone)]
 pub(super) struct Key {
@@ -34,7 +34,7 @@ pub(super) struct Key {
 macro_rules! set_encrypt_key {
     ( $name:ident, $bytes:expr, $key_bits:expr, $key:expr ) => {{
         prefixed_extern! {
-            fn $name(user_key: *const u8, bits: c::uint, key: &mut AES_KEY) -> c::int;
+            fn $name(user_key: *const u8, bits: ffi::c_uint, key: &mut AES_KEY) -> ffi::c_int;
         }
         set_encrypt_key($name, $bytes, $key_bits, $key)
     }};
@@ -42,14 +42,14 @@ macro_rules! set_encrypt_key {
 
 #[inline]
 fn set_encrypt_key(
-    f: unsafe extern "C" fn(*const u8, c::uint, &mut AES_KEY) -> c::int,
+    f: unsafe extern "C" fn(*const u8, ffi::c_uint, &mut AES_KEY) -> ffi::c_int,
     bytes: &[u8],
     key_bits: BitLength,
     key: &mut AES_KEY,
 ) -> Result<(), error::Unspecified> {
     // Unusually, in this case zero means success and non-zero means failure.
     #[allow(clippy::cast_possible_truncation)]
-    if 0 == unsafe { f(bytes.as_ptr(), key_bits.as_usize_bits() as c::uint, key) } {
+    if 0 == unsafe { f(bytes.as_ptr(), key_bits.as_usize_bits() as ffi::c_uint, key) } {
         Ok(())
     } else {
         Err(error::Unspecified)
@@ -303,7 +303,7 @@ impl Key {
 #[derive(Clone)]
 pub(super) struct AES_KEY {
     pub rd_key: [u32; 4 * (MAX_ROUNDS + 1)],
-    pub rounds: c::uint,
+    pub rounds: ffi::c_uint,
 }
 
 // Keep this in sync with `AES_MAXNR` in aes.h.
