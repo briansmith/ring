@@ -23,9 +23,7 @@ std::string_view Input::AsStringView() const {
 bssl::Span<const uint8_t> Input::AsSpan() const { return data_; }
 
 bool operator==(const Input &lhs, const Input &rhs) {
-  return lhs.Length() == rhs.Length() &&
-         std::equal(lhs.UnsafeData(), lhs.UnsafeData() + lhs.Length(),
-                    rhs.UnsafeData());
+  return lhs.AsSpan() == rhs.AsSpan();
 }
 
 bool operator!=(const Input &lhs, const Input &rhs) { return !(lhs == rhs); }

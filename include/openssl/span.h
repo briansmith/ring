@@ -40,20 +40,7 @@ class SpanBase {
                 "Span<T> must be derived from SpanBase<const T>");
 
   friend bool operator==(Span<T> lhs, Span<T> rhs) {
-    // MSVC issues warning C4996 because std::equal is unsafe. The pragma to
-    // suppress the warning mysteriously has no effect, hence this
-    // implementation. See
-    // https://msdn.microsoft.com/en-us/library/aa985974.aspx.
-    if (lhs.size() != rhs.size()) {
-      return false;
-    }
-    for (T *l = lhs.begin(), *r = rhs.begin(); l != lhs.end() && r != rhs.end();
-         ++l, ++r) {
-      if (*l != *r) {
-        return false;
-      }
-    }
-    return true;
+    return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
   }
 
   friend bool operator!=(Span<T> lhs, Span<T> rhs) { return !(lhs == rhs); }
