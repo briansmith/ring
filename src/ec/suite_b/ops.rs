@@ -1154,9 +1154,10 @@ mod tests {
             let mut actual_s = alloc::string::String::new();
             let mut expected_s = alloc::string::String::new();
             for j in 0..ops.num_limbs {
-                let formatted = format!("{:016x}", actual[ops.num_limbs - j - 1]);
+                let width = LIMB_BITS / 4;
+                let formatted = format!("{:0width$x}", actual[ops.num_limbs - j - 1]);
                 actual_s.push_str(&formatted);
-                let formatted = format!("{:016x}", expected[ops.num_limbs - j - 1]);
+                let formatted = format!("{:0width$x}", expected[ops.num_limbs - j - 1]);
                 expected_s.push_str(&formatted);
             }
             panic!(
