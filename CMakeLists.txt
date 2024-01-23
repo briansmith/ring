@@ -43,15 +43,7 @@ function(install_if_enabled)
   endif()
 endfunction()
 
-if(ANDROID)
-  # Android-NDK CMake files reconfigure the path and so Perl won't be found.
-  # However, ninja will still find them in $PATH if we just name them.
-  if(NOT PERL_EXECUTABLE)
-    set(PERL_EXECUTABLE "perl")
-  endif()
-else()
-  find_package(Perl REQUIRED)
-endif()
+find_package(Perl REQUIRED)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
   find_package(PkgConfig QUIET)

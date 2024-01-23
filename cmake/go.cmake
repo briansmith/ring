@@ -1,13 +1,4 @@
-if(ANDROID)
-  # Android-NDK CMake files reconfigure the path and so Go won't be found.
-  # However, ninja will still find them in $PATH if we just name them.
-  if(NOT GO_EXECUTABLE)
-    set(GO_EXECUTABLE "go")
-  endif()
-else()
-  find_program(GO_EXECUTABLE go)
-endif()
-
+find_program(GO_EXECUTABLE go)
 if(NOT GO_EXECUTABLE)
   message(FATAL_ERROR "Could not find Go")
 endif()

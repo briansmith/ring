@@ -547,7 +547,7 @@ endif()
       self.PrintExe(cmake, 'bssl', files['tool'], ['ssl', 'crypto'])
 
       cmake.write(
-R'''if(NOT ANDROID)
+R'''if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
   find_package(Threads REQUIRED)
   target_link_libraries(crypto Threads::Threads)
 endif()
