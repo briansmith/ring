@@ -133,8 +133,8 @@ DEFINE_CERT_ERROR_ID(kSerialNumberNotValidInteger,
 [[nodiscard]] bool BitStringIsAllZeros(const der::BitString &bits) {
   // Note that it is OK to read from the unused bits, since BitString parsing
   // guarantees they are all zero.
-  for (size_t i = 0; i < bits.bytes().Length(); ++i) {
-    if (bits.bytes()[i] != 0) {
+  for (uint8_t b : bits.bytes()) {
+    if (b != 0) {
       return false;
     }
   }
@@ -271,7 +271,7 @@ bool VerifySerialNumber(const der::Input &value, bool warnings_only,
   if (negative) {
     errors->AddWarning(kSerialNumberIsNegative);
   }
-  if (value.Length() == 1 && value[0] == 0) {
+  if (value.size() == 1 && value[0] == 0) {
     errors->AddWarning(kSerialNumberIsZero);
   }
 
@@ -280,9 +280,9 @@ bool VerifySerialNumber(const der::Input &value, bool warnings_only,
   //    Certificate users MUST be able to handle serialNumber values up to 20
   //    octets. Conforming CAs MUST NOT use serialNumber values longer than 20
   //    octets.
-  if (value.Length() > 20) {
+  if (value.size() > 20) {
     errors->Add(error_severity, kSerialNumberLengthOver20,
-                CreateCertErrorParams1SizeT("length", value.Length()));
+                CreateCertErrorParams1SizeT("length", value.size()));
     return false;
   }
 

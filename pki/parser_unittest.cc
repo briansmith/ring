@@ -347,7 +347,7 @@ TEST(ParserTest, ReadBitString) {
   EXPECT_FALSE(parser.HasMore());
 
   EXPECT_EQ(1u, bit_string->unused_bits());
-  ASSERT_EQ(2u, bit_string->bytes().Length());
+  ASSERT_EQ(2u, bit_string->bytes().size());
   EXPECT_EQ(0xAA, bit_string->bytes()[0]);
   EXPECT_EQ(0xBE, bit_string->bytes()[1]);
 }

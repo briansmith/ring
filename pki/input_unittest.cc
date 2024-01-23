@@ -48,7 +48,7 @@ TEST(InputTest, AsString) {
 
 TEST(InputTest, StaticArray) {
   Input input(kInput);
-  EXPECT_EQ(std::size(kInput), input.Length());
+  EXPECT_EQ(std::size(kInput), input.size());
 
   Input input2(kInput);
   EXPECT_EQ(input, input2);
@@ -56,17 +56,17 @@ TEST(InputTest, StaticArray) {
 
 TEST(InputTest, ConstExpr) {
   constexpr Input default_input;
-  static_assert(default_input.Length() == 0);
-  static_assert(default_input.UnsafeData() == nullptr);
+  static_assert(default_input.size() == 0);
+  static_assert(default_input.data() == nullptr);
 
   constexpr Input const_array_input(kInput);
-  static_assert(const_array_input.Length() == 4);
-  static_assert(const_array_input.UnsafeData() == kInput);
+  static_assert(const_array_input.size() == 4);
+  static_assert(const_array_input.data() == kInput);
   static_assert(default_input < const_array_input);
 
   constexpr Input ptr_len_input(kInput, 2);
-  static_assert(ptr_len_input.Length() == 2);
-  static_assert(ptr_len_input.UnsafeData() == kInput);
+  static_assert(ptr_len_input.size() == 2);
+  static_assert(ptr_len_input.data() == kInput);
   static_assert(ptr_len_input < const_array_input);
 
   Input runtime_input(kInput2, 2);

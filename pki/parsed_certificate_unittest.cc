@@ -232,7 +232,7 @@ TEST(ParsedCertificateTest, ExtendedKeyUsage) {
   ASSERT_TRUE(cert->GetExtension(der::Input(kExtKeyUsageOid), &extension));
 
   EXPECT_FALSE(extension.critical);
-  EXPECT_EQ(45u, extension.value.Length());
+  EXPECT_EQ(45u, extension.value.size());
 
   EXPECT_TRUE(cert->has_extended_key_usage());
   EXPECT_EQ(4u, cert->extended_key_usage().size());
@@ -268,7 +268,7 @@ TEST(ParsedCertificateTest, Policies) {
       cert->GetExtension(der::Input(kCertificatePoliciesOid), &extension));
 
   EXPECT_FALSE(extension.critical);
-  EXPECT_EQ(95u, extension.value.Length());
+  EXPECT_EQ(95u, extension.value.size());
 
   EXPECT_TRUE(cert->has_policy_oids());
   EXPECT_EQ(2u, cert->policy_oids().size());
@@ -320,7 +320,7 @@ TEST(ParsedCertificateTest, ExtensionsReal) {
       cert->GetExtension(der::Input(kCertificatePoliciesOid), &extension));
 
   EXPECT_FALSE(extension.critical);
-  EXPECT_EQ(16u, extension.value.Length());
+  EXPECT_EQ(16u, extension.value.size());
 
   // TODO(eroman): Verify the other extensions' values.
 }

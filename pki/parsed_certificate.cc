@@ -183,7 +183,7 @@ std::shared_ptr<const ParsedCertificate> ParsedCertificate::Create(
       // extension (e.g., a key bound only to an email address or URI), then the
       // subject name MUST be an empty sequence and the subjectAltName extension
       // MUST be critical.
-      if (subject_value.Length() == 0 &&
+      if (subject_value.empty() &&
           !result->subject_alt_names_extension_.critical) {
         errors->AddError(kSubjectAltNameNotCritical);
         return nullptr;

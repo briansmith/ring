@@ -71,11 +71,11 @@ bool StartsWith(std::string_view str, std::string_view prefix) {
   return prefix.size() <= str.size() && prefix == str.substr(0, prefix.size());
 }
 
-std::string HexEncode(const uint8_t *data, size_t length) {
+std::string HexEncode(Span<const uint8_t> data) {
   std::ostringstream out;
-  for (size_t i = 0; i < length; i++) {
+  for (uint8_t b : data) {
     out << std::hex << std::setfill('0') << std::setw(2) << std::uppercase
-        << int{data[i]};
+        << int{b};
   }
   return out.str();
 }

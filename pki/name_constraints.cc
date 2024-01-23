@@ -381,7 +381,7 @@ void NameConstraints::IsPermittedCert(const der::Input &subject_rdn_sequence,
   } else {
     constraint_count += excluded_subtrees_.directory_names.size() +
                         permitted_subtrees_.directory_names.size();
-    name_count = subject_rdn_sequence.Length();
+    name_count = subject_rdn_sequence.size();
   }
   // Upper bound the number of possible checks, checking for overflow.
   size_t check_count = constraint_count * name_count;
@@ -502,7 +502,7 @@ void NameConstraints::IsPermittedCert(const der::Input &subject_rdn_sequence,
   // This code assumes that criticality condition is checked by the caller, and
   // therefore only needs to avoid the IsPermittedDirectoryName check against an
   // empty subject in such a case.
-  if (subject_alt_names && subject_rdn_sequence.Length() == 0) {
+  if (subject_alt_names && subject_rdn_sequence.empty()) {
     return;
   }
 

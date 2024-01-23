@@ -81,8 +81,6 @@ class SpanBase {
 template <typename T>
 class Span : private internal::SpanBase<const T> {
  private:
-  static const size_t npos = static_cast<size_t>(-1);
-
   // Heuristically test whether C is a container type that can be converted into
   // a Span by checking for data() and size() member functions.
   //
@@ -93,6 +91,19 @@ class Span : private internal::SpanBase<const T> {
       std::is_integral<decltype(std::declval<C>().size())>::value>;
 
  public:
+  static const size_t npos = static_cast<size_t>(-1);
+
+  using element_type = T;
+  using value_type = std::remove_cv_t<T>;
+  using size_type = size_t;
+  using difference_type = ptrdiff_t;
+  using pointer = T *;
+  using const_pointer = const T *;
+  using reference = T &;
+  using const_reference = const T &;
+  using iterator = T *;
+  using const_iterator = const T *;
+
   constexpr Span() : Span(nullptr, 0) {}
   constexpr Span(T *ptr, size_t len) : data_(ptr), size_(len) {}
 
@@ -113,10 +124,10 @@ class Span : private internal::SpanBase<const T> {
   constexpr size_t size() const { return size_; }
   constexpr bool empty() const { return size_ == 0; }
 
-  constexpr T *begin() const { return data_; }
-  constexpr const T *cbegin() const { return data_; }
-  constexpr T *end() const { return data_ + size_; }
-  constexpr const T *cend() const { return end(); }
+  constexpr iterator begin() const { return data_; }
+  constexpr const_iterator cbegin() const { return data_; }
+  constexpr iterator end() const { return data_ + size_; }
+  constexpr const_iterator cend() const { return end(); }
 
   constexpr T &front() const {
     if (size_ == 0) {

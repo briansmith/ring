@@ -99,10 +99,10 @@ TEST(StringUtilTest, StartsWithNoCase) {
 }
 
 TEST(StringUtilTest, HexEncode) {
-  std::string hex(bssl::string_util::HexEncode(nullptr, 0));
+  std::string hex(bssl::string_util::HexEncode({}));
   EXPECT_EQ(hex.length(), 0U);
   uint8_t bytes[] = {0x01, 0xff, 0x02, 0xfe, 0x03, 0x80, 0x81};
-  hex = bssl::string_util::HexEncode(bytes, sizeof(bytes));
+  hex = bssl::string_util::HexEncode(bytes);
   EXPECT_EQ(hex, "01FF02FE038081");
 }
 

@@ -1523,9 +1523,9 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateIntermediates) {
   // Create a separate copy of oldintermediate.
   std::shared_ptr<const ParsedCertificate> oldintermediate_dupe(
       ParsedCertificate::Create(
-          bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
-              oldintermediate_->der_cert().UnsafeData(),
-              oldintermediate_->der_cert().Length(), nullptr)),
+          bssl::UniquePtr<CRYPTO_BUFFER>(
+              CRYPTO_BUFFER_new(oldintermediate_->der_cert().data(),
+                                oldintermediate_->der_cert().size(), nullptr)),
           {}, nullptr));
 
   // Only newroot is a trusted root.
@@ -1590,8 +1590,8 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateIntermediateAndRoot) {
   std::shared_ptr<const ParsedCertificate> newroot_dupe(
       ParsedCertificate::Create(
           bssl::UniquePtr<CRYPTO_BUFFER>(
-              CRYPTO_BUFFER_new(newroot_->der_cert().UnsafeData(),
-                                newroot_->der_cert().Length(), nullptr)),
+              CRYPTO_BUFFER_new(newroot_->der_cert().data(),
+                                newroot_->der_cert().size(), nullptr)),
           {}, nullptr));
 
   // Only newroot is a trusted root.
@@ -1785,8 +1785,8 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateAsyncIntermediates) {
   std::shared_ptr<const ParsedCertificate> oldintermediate_dupe(
       ParsedCertificate::Create(
           bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
-              oldintermediate_->der_cert().UnsafeData(),
-              oldintermediate_->der_cert().Length(), nullptr)),
+              oldintermediate_->der_cert().data(),
+              oldintermediate_->der_cert().size(), nullptr)),
           {}, nullptr));
 
   EXPECT_CALL(*target_issuers_req, GetNext(_))

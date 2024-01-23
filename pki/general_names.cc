@@ -170,8 +170,8 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
       // version 4, as specified in [RFC791], the octet string MUST contain
       // exactly four octets.  For IP version 6, as specified in [RFC2460],
       // the octet string MUST contain exactly sixteen octets.
-      if ((value.Length() != kIPv4AddressSize &&
-           value.Length() != kIPv6AddressSize)) {
+      if ((value.size() != kIPv4AddressSize &&
+           value.size() != kIPv6AddressSize)) {
         errors->AddError(kFailedParsingIp);
         return false;
       }
@@ -188,14 +188,13 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
       // constraint for "class C" subnet 192.0.2.0 is represented as the
       // octets C0 00 02 00 FF FF FF 00, representing the CIDR notation
       // 192.0.2.0/24 (mask 255.255.255.0).
-      if (value.Length() != kIPv4AddressSize * 2 &&
-          value.Length() != kIPv6AddressSize * 2) {
+      if (value.size() != kIPv4AddressSize * 2 &&
+          value.size() != kIPv6AddressSize * 2) {
         errors->AddError(kFailedParsingIp);
         return false;
       }
-      der::Input addr(value.UnsafeData(), value.Length() / 2);
-      der::Input mask(value.UnsafeData() + value.Length() / 2,
-                      value.Length() / 2);
+      der::Input addr = value.first(value.size() / 2);
+      der::Input mask = value.subspan(value.size() / 2);
       if (!IsValidNetmask(mask)) {
         errors->AddError(kFailedParsingIp);
         return false;

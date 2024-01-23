@@ -164,7 +164,7 @@ bool AppendHashAsOctetString(const EVP_MD *hash_type, CBB *cbb,
   uint8_t hash_buffer[EVP_MAX_MD_SIZE];
 
   return CBB_add_asn1(cbb, &octet_string, CBS_ASN1_OCTETSTRING) &&
-         EVP_Digest(value.UnsafeData(), value.Length(), hash_buffer, &hash_len,
+         EVP_Digest(value.data(), value.size(), hash_buffer, &hash_len,
                     hash_type, nullptr) &&
          CBB_add_bytes(&octet_string, hash_buffer, hash_len) && CBB_flush(cbb);
 }
@@ -256,7 +256,7 @@ bool ParseResponderID(const der::Input &raw_tlv,
     if (key_parser.HasMore()) {
       return false;
     }
-    if (key_hash.Length() != SHA_DIGEST_LENGTH) {
+    if (key_hash.size() != SHA_DIGEST_LENGTH) {
       return false;
     }
 
@@ -498,8 +498,8 @@ bool VerifyHash(const EVP_MD *type, const der::Input &hash,
                 const der::Input &value) {
   unsigned value_hash_len;
   uint8_t value_hash[EVP_MAX_MD_SIZE];
-  if (!EVP_Digest(value.UnsafeData(), value.Length(), value_hash,
-                  &value_hash_len, type, nullptr)) {
+  if (!EVP_Digest(value.data(), value.size(), value_hash, &value_hash_len, type,
+                  nullptr)) {
     return false;
   }
 
@@ -524,7 +524,7 @@ bool VerifyHash(const EVP_MD *type, const der::Input &hash,
 bool GetSubjectPublicKeyBytes(const der::Input &spki_tlv, der::Input *spk_tlv) {
   CBS outer, inner, alg, spk;
   uint8_t unused_bit_count;
-  CBS_init(&outer, spki_tlv.UnsafeData(), spki_tlv.Length());
+  CBS_init(&outer, spki_tlv.data(), spki_tlv.size());
   //   The subjectPublicKey field includes the unused bit count. For this
   //   application, the unused bit count must be zero, and is not included in
   //   the result. We extract the subjectPubicKey bit string, verify the first
@@ -1060,8 +1060,8 @@ bool CreateOCSPRequest(const ParsedCertificate *cert,
   if (!CBB_add_asn1(&req_cert, &serial_number, CBS_ASN1_INTEGER)) {
     return false;
   }
-  if (!CBB_add_bytes(&serial_number, cert->tbs().serial_number.UnsafeData(),
-                     cert->tbs().serial_number.Length())) {
+  if (!CBB_add_bytes(&serial_number, cert->tbs().serial_number.data(),
+                     cert->tbs().serial_number.size())) {
     return false;
   }
 

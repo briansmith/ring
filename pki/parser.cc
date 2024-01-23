@@ -12,7 +12,7 @@ namespace bssl::der {
 Parser::Parser() { CBS_init(&cbs_, nullptr, 0); }
 
 Parser::Parser(const Input &input) {
-  CBS_init(&cbs_, input.UnsafeData(), input.Length());
+  CBS_init(&cbs_, input.data(), input.size());
 }
 
 bool Parser::PeekTagAndValue(Tag *tag, Input *out) {

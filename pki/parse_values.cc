@@ -20,7 +20,7 @@ bool ParseBoolInternal(const Input &in, bool *out, bool relaxed) {
   // According to ITU-T X.690 section 8.2, a bool is encoded as a single octet
   // where the octet of all zeroes is FALSE and a non-zero value for the octet
   // is TRUE.
-  if (in.Length() != 1) {
+  if (in.size() != 1) {
     return false;
   }
   ByteReader data(in);
@@ -128,7 +128,7 @@ bool ValidateGeneralizedTime(const GeneralizedTime &time) {
 // Returns the number of bytes of numeric precision in a DER encoded INTEGER
 // value. |in| must be a valid DER encoding of an INTEGER for this to work.
 //
-// Normally the precision of the number is exactly in.Length(). However when
+// Normally the precision of the number is exactly in.size(). However when
 // encoding positive numbers using DER it is possible to have a leading zero
 // (to prevent number from being interpreted as negative).
 //
@@ -141,10 +141,10 @@ size_t GetUnsignedIntegerLength(const Input &in) {
     return 0;  // Not valid DER  as |in| was empty.
   }
 
-  if (first_byte == 0 && in.Length() > 1) {
-    return in.Length() - 1;
+  if (first_byte == 0 && in.size() > 1) {
+    return in.size() - 1;
   }
-  return in.Length();
+  return in.size();
 }
 
 }  // namespace
@@ -167,7 +167,7 @@ bool ParseBoolRelaxed(const Input &in, bool *out) {
 // of the second octet must not be all zeroes or all ones.
 bool IsValidInteger(const Input &in, bool *negative) {
   CBS cbs;
-  CBS_init(&cbs, in.UnsafeData(), in.Length());
+  CBS_init(&cbs, in.data(), in.size());
   int negative_int;
   if (!CBS_is_valid_asn1_integer(&cbs, &negative_int)) {
     return false;
@@ -219,10 +219,9 @@ bool ParseUint8(const Input &in, uint8_t *out) {
 BitString::BitString(const Input &bytes, uint8_t unused_bits)
     : bytes_(bytes), unused_bits_(unused_bits) {
   BSSL_CHECK(unused_bits < 8);
-  BSSL_CHECK(unused_bits == 0 || bytes.Length() != 0);
+  BSSL_CHECK(unused_bits == 0 || !bytes.empty());
   // The unused bits must be zero.
-  BSSL_CHECK(bytes.Length() == 0 ||
-             (bytes[bytes.Length() - 1] & ((1u << unused_bits) - 1)) == 0);
+  BSSL_CHECK(bytes.empty() || (bytes.back() & ((1u << unused_bits) - 1)) == 0);
 }
 
 bool BitString::AssertsBit(size_t bit_index) const {
@@ -231,7 +230,7 @@ bool BitString::AssertsBit(size_t bit_index) const {
 
   // If the bit is outside of the bitstring, by definition it is not
   // asserted.
-  if (byte_index >= bytes_.Length()) {
+  if (byte_index >= bytes_.size()) {
     return false;
   }
 
@@ -274,10 +273,10 @@ std::optional<BitString> ParseBitString(const Input &in) {
     //
     // If the bitstring is empty, there shall be no subsequent octets,
     // and the initial octet shall be zero.
-    if (bytes.Length() == 0) {
+    if (bytes.empty()) {
       return std::nullopt;
     }
-    uint8_t last_byte = bytes[bytes.Length() - 1];
+    uint8_t last_byte = bytes.back();
 
     // From ITU-T X.690, section 11.2.1 (applies to CER and DER, but not BER):
     //
@@ -403,14 +402,14 @@ bool ParsePrintableString(Input in, std::string *out) {
 bool ParseTeletexStringAsLatin1(Input in, std::string *out) {
   out->clear();
   // Convert from Latin-1 to UTF-8.
-  size_t utf8_length = in.Length();
-  for (size_t i = 0; i < in.Length(); i++) {
+  size_t utf8_length = in.size();
+  for (size_t i = 0; i < in.size(); i++) {
     if (in[i] > 0x7f) {
       utf8_length++;
     }
   }
   out->reserve(utf8_length);
-  for (size_t i = 0; i < in.Length(); i++) {
+  for (size_t i = 0; i < in.size(); i++) {
     uint8_t u = in[i];
     if (u <= 0x7f) {
       out->push_back(u);
@@ -424,14 +423,14 @@ bool ParseTeletexStringAsLatin1(Input in, std::string *out) {
 }
 
 bool ParseUniversalString(Input in, std::string *out) {
-  if (in.Length() % 4 != 0) {
+  if (in.size() % 4 != 0) {
     return false;
   }
 
   CBS cbs;
-  CBS_init(&cbs, in.UnsafeData(), in.Length());
+  CBS_init(&cbs, in.data(), in.size());
   bssl::ScopedCBB cbb;
-  if (!CBB_init(cbb.get(), in.Length())) {
+  if (!CBB_init(cbb.get(), in.size())) {
     return false;
   }
 
@@ -448,14 +447,14 @@ bool ParseUniversalString(Input in, std::string *out) {
 }
 
 bool ParseBmpString(Input in, std::string *out) {
-  if (in.Length() % 2 != 0) {
+  if (in.size() % 2 != 0) {
     return false;
   }
 
   CBS cbs;
-  CBS_init(&cbs, in.UnsafeData(), in.Length());
+  CBS_init(&cbs, in.data(), in.size());
   bssl::ScopedCBB cbb;
-  if (!CBB_init(cbb.get(), in.Length())) {
+  if (!CBB_init(cbb.get(), in.size())) {
     return false;
   }
 

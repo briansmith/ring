@@ -47,11 +47,10 @@ bool GetValue(std::string_view prefix, std::string_view line,
 // hex-encoded string on error.
 std::string OidToString(der::Input oid) {
   CBS cbs;
-  CBS_init(&cbs, oid.UnsafeData(), oid.Length());
+  CBS_init(&cbs, oid.data(), oid.size());
   bssl::UniquePtr<char> text(CBS_asn1_oid_to_text(&cbs));
   if (!text) {
-    return "invalid:" +
-           bssl::string_util::HexEncode(oid.UnsafeData(), oid.Length());
+    return "invalid:" + bssl::string_util::HexEncode(oid);
   }
   return text.get();
 }
@@ -132,12 +131,12 @@ namespace der {
 
 void PrintTo(const Input &data, ::std::ostream *os) {
   size_t len;
-  if (!EVP_EncodedLength(&len, data.Length())) {
+  if (!EVP_EncodedLength(&len, data.size())) {
     *os << "[]";
     return;
   }
   std::vector<uint8_t> encoded(len);
-  len = EVP_EncodeBlock(encoded.data(), data.UnsafeData(), data.Length());
+  len = EVP_EncodeBlock(encoded.data(), data.data(), data.size());
   // Skip the trailing \0.
   std::string b64_encoded(encoded.begin(), encoded.begin() + len);
   *os << "[" << b64_encoded << "]";

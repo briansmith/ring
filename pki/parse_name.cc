@@ -19,7 +19,7 @@ namespace {
 // string on error.
 std::string OidToString(der::Input oid) {
   CBS cbs;
-  CBS_init(&cbs, oid.UnsafeData(), oid.Length());
+  CBS_init(&cbs, oid.data(), oid.size());
   bssl::UniquePtr<char> text(CBS_asn1_oid_to_text(&cbs));
   if (!text) {
     return std::string();
@@ -104,8 +104,7 @@ bool X509NameAttribute::AsRFC2253String(std::string *out) const {
     if (type_string.empty()) {
       return false;
     }
-    value_string =
-        "#" + bssl::string_util::HexEncode(value.UnsafeData(), value.Length());
+    value_string = "#" + bssl::string_util::HexEncode(value);
   }
 
   if (value_string.empty()) {
@@ -116,7 +115,7 @@ bool X509NameAttribute::AsRFC2253String(std::string *out) const {
 
     bool nonprintable = false;
     for (unsigned int i = 0; i < unescaped.length(); ++i) {
-      unsigned char c = static_cast<unsigned char>(unescaped[i]);
+      uint8_t c = static_cast<uint8_t>(unescaped[i]);
       if (i == 0 && c == '#') {
         value_string += "\\#";
       } else if (i == 0 && c == ' ') {
@@ -129,11 +128,8 @@ bool X509NameAttribute::AsRFC2253String(std::string *out) const {
         value_string += c;
       } else if (c < 32 || c > 126) {
         nonprintable = true;
-        std::string h;
-        h += c;
         value_string +=
-            "\\" + bssl::string_util::HexEncode(
-                       reinterpret_cast<const uint8_t *>(h.data()), h.length());
+            "\\" + bssl::string_util::HexEncode(MakeConstSpan(&c, 1));
       } else {
         value_string += c;
       }
@@ -142,8 +138,7 @@ bool X509NameAttribute::AsRFC2253String(std::string *out) const {
     // If we have non-printable characters in a TeletexString, we hex encode
     // since we don't handle Teletex control codes.
     if (nonprintable && value_tag == der::kTeletexString) {
-      value_string = "#" + bssl::string_util::HexEncode(value.UnsafeData(),
-                                                        value.Length());
+      value_string = "#" + bssl::string_util::HexEncode(value);
     }
   }
 

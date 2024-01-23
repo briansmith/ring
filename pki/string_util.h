@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <openssl/base.h>
+#include <openssl/span.h>
 
 namespace bssl::string_util {
 
@@ -44,8 +45,8 @@ OPENSSL_EXPORT bool StartsWith(std::string_view str, std::string_view prefix);
 // Compares |str1| and |suffix|. Returns true if |str1| ends with |suffix|.
 OPENSSL_EXPORT bool EndsWith(std::string_view str, std::string_view suffix);
 
-// Returns a hexadecimal string encoding |data| of length |length|.
-OPENSSL_EXPORT std::string HexEncode(const uint8_t *data, size_t length);
+// Returns a hexadecimal string encoding |data|.
+OPENSSL_EXPORT std::string HexEncode(Span<const uint8_t> data);
 
 // Returns a decimal string representation of |i|.
 OPENSSL_EXPORT std::string NumberToDecimalString(int i);

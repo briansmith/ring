@@ -50,11 +50,10 @@ std::string SignatureVerifyCacheKey(std::string_view algorithm_name,
           algorithm_name.length()) &&
       SHA256UpdateWithLengthPrefixedData(&s_ctx, CBB_data(public_key_cbb.get()),
                                          CBB_len(public_key_cbb.get())) &&
-      SHA256UpdateWithLengthPrefixedData(&s_ctx,
-                                         signature_value_bytes.UnsafeData(),
-                                         signature_value_bytes.Length()) &&
-      SHA256UpdateWithLengthPrefixedData(&s_ctx, signed_data.UnsafeData(),
-                                         signed_data.Length()) &&
+      SHA256UpdateWithLengthPrefixedData(&s_ctx, signature_value_bytes.data(),
+                                         signature_value_bytes.size()) &&
+      SHA256UpdateWithLengthPrefixedData(&s_ctx, signed_data.data(),
+                                         signed_data.size()) &&
       SHA256_Final(digest, &s_ctx)) {
     return std::string(reinterpret_cast<char *>(digest), sizeof(digest));
   }
@@ -143,7 +142,7 @@ bool ParsePublicKey(const der::Input &public_key_spki,
   OpenSSLErrStackTracer err_tracer;
 
   CBS cbs;
-  CBS_init(&cbs, public_key_spki.UnsafeData(), public_key_spki.Length());
+  CBS_init(&cbs, public_key_spki.data(), public_key_spki.size());
   public_key->reset(EVP_parse_public_key(&cbs));
   if (!*public_key || CBS_len(&cbs) != 0) {
     public_key->reset();
@@ -269,14 +268,9 @@ bool VerifySignedData(SignatureAlgorithm algorithm,
     }
   }
 
-  if (!EVP_DigestVerifyUpdate(ctx.get(), signed_data.UnsafeData(),
-                              signed_data.Length())) {
-    return false;
-  }
-
-  bool ret =
-      1 == EVP_DigestVerifyFinal(ctx.get(), signature_value_bytes.UnsafeData(),
-                                 signature_value_bytes.Length());
+  bool ret = 1 == EVP_DigestVerify(ctx.get(), signature_value_bytes.data(),
+                                   signature_value_bytes.size(),
+                                   signed_data.data(), signed_data.size());
   if (!cache_key.empty()) {
     cache->Store(cache_key, ret ? SignatureVerifyCache::Value::kValid
                                 : SignatureVerifyCache::Value::kInvalid);

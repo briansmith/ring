@@ -350,8 +350,8 @@ bool NormalizeName(const der::Input &name_rdn_sequence,
       // AttributeType ::= OBJECT IDENTIFIER
       if (!CBB_add_asn1(&attribute_type_and_value_cbb, &type_cbb,
                         CBS_ASN1_OBJECT) ||
-          !CBB_add_bytes(&type_cbb, type_and_value.type.UnsafeData(),
-                         type_and_value.type.Length())) {
+          !CBB_add_bytes(&type_cbb, type_and_value.type.data(),
+                         type_and_value.type.size())) {
         return false;
       }
 
@@ -372,8 +372,8 @@ bool NormalizeName(const der::Input &name_rdn_sequence,
       } else {
         if (!CBB_add_asn1(&attribute_type_and_value_cbb, &value_cbb,
                           type_and_value.value_tag) ||
-            !CBB_add_bytes(&value_cbb, type_and_value.value.UnsafeData(),
-                           type_and_value.value.Length())) {
+            !CBB_add_bytes(&value_cbb, type_and_value.value.data(),
+                           type_and_value.value.size())) {
           return false;
         }
       }
