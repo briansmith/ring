@@ -39,12 +39,11 @@ class OPENSSL_EXPORT CertErrorParams {
 // Creates a parameter object that holds a copy of |der|, and names it |name|
 // in debug string outputs.
 OPENSSL_EXPORT std::unique_ptr<CertErrorParams> CreateCertErrorParams1Der(
-    const char *name, const der::Input &der);
+    const char *name, der::Input der);
 
 // Same as CreateCertErrorParams1Der() but has a second DER blob.
 OPENSSL_EXPORT std::unique_ptr<CertErrorParams> CreateCertErrorParams2Der(
-    const char *name1, const der::Input &der1, const char *name2,
-    const der::Input &der2);
+    const char *name1, der::Input der1, const char *name2, der::Input der2);
 
 // Creates a parameter object that holds a single size_t value. |name| is used
 // when pretty-printing the parameters.

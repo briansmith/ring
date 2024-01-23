@@ -117,7 +117,7 @@ bool DNSNameMatches(std::string_view name, std::string_view dns_constraint,
 // NOTE: |subtrees| is not pre-initialized by the function(it is expected to be
 // a default initialized object), and it will be modified regardless of the
 // return value.
-[[nodiscard]] bool ParseGeneralSubtrees(const der::Input &value,
+[[nodiscard]] bool ParseGeneralSubtrees(der::Input value,
                                         GeneralNames *subtrees,
                                         CertErrors *errors) {
   BSSL_CHECK(errors);
@@ -278,7 +278,7 @@ NameConstraints::~NameConstraints() = default;
 
 // static
 std::unique_ptr<NameConstraints> NameConstraints::Create(
-    const der::Input &extension_value, bool is_critical, CertErrors *errors) {
+    der::Input extension_value, bool is_critical, CertErrors *errors) {
   BSSL_CHECK(errors);
 
   auto name_constraints = std::make_unique<NameConstraints>();
@@ -288,7 +288,7 @@ std::unique_ptr<NameConstraints> NameConstraints::Create(
   return name_constraints;
 }
 
-bool NameConstraints::Parse(const der::Input &extension_value, bool is_critical,
+bool NameConstraints::Parse(der::Input extension_value, bool is_critical,
                             CertErrors *errors) {
   BSSL_CHECK(errors);
 
@@ -348,7 +348,7 @@ bool NameConstraints::Parse(const der::Input &extension_value, bool is_critical,
   return true;
 }
 
-void NameConstraints::IsPermittedCert(const der::Input &subject_rdn_sequence,
+void NameConstraints::IsPermittedCert(der::Input subject_rdn_sequence,
                                       const GeneralNames *subject_alt_names,
                                       CertErrors *errors) const {
   // Checking NameConstraints is O(number_of_names * number_of_constraints).
@@ -647,7 +647,7 @@ bool NameConstraints::IsPermittedDNSName(std::string_view name) const {
 }
 
 bool NameConstraints::IsPermittedDirectoryName(
-    const der::Input &name_rdn_sequence) const {
+    der::Input name_rdn_sequence) const {
   for (const auto &excluded_name : excluded_subtrees_.directory_names) {
     if (VerifyNameInSubtree(name_rdn_sequence, excluded_name)) {
       return false;
@@ -669,7 +669,7 @@ bool NameConstraints::IsPermittedDirectoryName(
   return false;
 }
 
-bool NameConstraints::IsPermittedIP(const der::Input &ip) const {
+bool NameConstraints::IsPermittedIP(der::Input ip) const {
   for (const auto &excluded_ip : excluded_subtrees_.ip_address_ranges) {
     if (IPAddressMatchesWithNetmask(ip, excluded_ip.first,
                                     excluded_ip.second)) {

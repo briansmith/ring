@@ -58,8 +58,7 @@ namespace {
 }
 
 ::testing::AssertionResult IsPermittedCert(
-    const NameConstraints *name_constraints,
-    const der::Input &subject_rdn_sequence,
+    const NameConstraints *name_constraints, der::Input subject_rdn_sequence,
     const GeneralNames *subject_alt_names) {
   CertErrors errors;
   name_constraints->IsPermittedCert(subject_rdn_sequence, subject_alt_names,

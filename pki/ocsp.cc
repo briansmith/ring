@@ -37,7 +37,7 @@ OCSPResponse::~OCSPResponse() = default;
 //    issuerKeyHash           OCTET STRING, -- Hash of issuer's public key
 //    serialNumber            CertificateSerialNumber
 // }
-bool ParseOCSPCertID(const der::Input &raw_tlv, OCSPCertID *out) {
+bool ParseOCSPCertID(der::Input raw_tlv, OCSPCertID *out) {
   der::Parser outer_parser(raw_tlv);
   der::Parser parser;
   if (!outer_parser.ReadSequence(&parser)) {
@@ -82,7 +82,7 @@ namespace {
 //      revocationTime              GeneralizedTime,
 //      revocationReason    [0]     EXPLICIT CRLReason OPTIONAL
 // }
-bool ParseRevokedInfo(const der::Input &raw_tlv, OCSPCertStatus *out) {
+bool ParseRevokedInfo(der::Input raw_tlv, OCSPCertStatus *out) {
   der::Parser parser(raw_tlv);
   if (!parser.ReadGeneralizedTime(&(out->revocation_time))) {
     return false;
@@ -130,7 +130,7 @@ bool ParseRevokedInfo(const der::Input &raw_tlv, OCSPCertStatus *out) {
 // }
 //
 // UnknownInfo ::= NULL
-bool ParseCertStatus(const der::Input &raw_tlv, OCSPCertStatus *out) {
+bool ParseCertStatus(der::Input raw_tlv, OCSPCertStatus *out) {
   der::Parser parser(raw_tlv);
   der::Tag status_tag;
   der::Input status;
@@ -158,7 +158,7 @@ bool ParseCertStatus(const der::Input &raw_tlv, OCSPCertStatus *out) {
 // Writes the hash of |value| as an OCTET STRING to |cbb|, using |hash_type| as
 // the algorithm. Returns true on success.
 bool AppendHashAsOctetString(const EVP_MD *hash_type, CBB *cbb,
-                             const der::Input &value) {
+                             der::Input value) {
   CBB octet_string;
   unsigned hash_len;
   uint8_t hash_buffer[EVP_MAX_MD_SIZE];
@@ -178,8 +178,7 @@ bool AppendHashAsOctetString(const EVP_MD *hash_type, CBB *cbb,
 //      nextUpdate         [0]       EXPLICIT GeneralizedTime OPTIONAL,
 //      singleExtensions   [1]       EXPLICIT Extensions OPTIONAL
 // }
-bool ParseOCSPSingleResponse(const der::Input &raw_tlv,
-                             OCSPSingleResponse *out) {
+bool ParseOCSPSingleResponse(der::Input raw_tlv, OCSPSingleResponse *out) {
   der::Parser outer_parser(raw_tlv);
   der::Parser parser;
   if (!outer_parser.ReadSequence(&parser)) {
@@ -235,8 +234,7 @@ namespace {
 //      byName               [1] Name,
 //      byKey                [2] KeyHash
 // }
-bool ParseResponderID(const der::Input &raw_tlv,
-                      OCSPResponseData::ResponderID *out) {
+bool ParseResponderID(der::Input raw_tlv, OCSPResponseData::ResponderID *out) {
   der::Parser parser(raw_tlv);
   der::Tag id_tag;
   der::Input id_input;
@@ -277,7 +275,7 @@ bool ParseResponderID(const der::Input &raw_tlv,
 //      responses                SEQUENCE OF SingleResponse,
 //      responseExtensions   [1] EXPLICIT Extensions OPTIONAL
 // }
-bool ParseOCSPResponseData(const der::Input &raw_tlv, OCSPResponseData *out) {
+bool ParseOCSPResponseData(der::Input raw_tlv, OCSPResponseData *out) {
   der::Parser outer_parser(raw_tlv);
   der::Parser parser;
   if (!outer_parser.ReadSequence(&parser)) {
@@ -357,7 +355,7 @@ namespace {
 //      signature            BIT STRING,
 //      certs            [0] EXPLICIT SEQUENCE OF Certificate OPTIONAL
 // }
-bool ParseBasicOCSPResponse(const der::Input &raw_tlv, OCSPResponse *out) {
+bool ParseBasicOCSPResponse(der::Input raw_tlv, OCSPResponse *out) {
   der::Parser outer_parser(raw_tlv);
   der::Parser parser;
   if (!outer_parser.ReadSequence(&parser)) {
@@ -425,7 +423,7 @@ bool ParseBasicOCSPResponse(const der::Input &raw_tlv, OCSPResponse *out) {
 //      responseType   OBJECT IDENTIFIER,
 //      response       OCTET STRING
 // }
-bool ParseOCSPResponse(const der::Input &raw_tlv, OCSPResponse *out) {
+bool ParseOCSPResponse(der::Input raw_tlv, OCSPResponse *out) {
   der::Parser outer_parser(raw_tlv);
   der::Parser parser;
   if (!outer_parser.ReadSequence(&parser)) {
@@ -494,8 +492,7 @@ bool ParseOCSPResponse(const der::Input &raw_tlv, OCSPResponse *out) {
 namespace {
 
 // Checks that the |type| hash of |value| is equal to |hash|
-bool VerifyHash(const EVP_MD *type, const der::Input &hash,
-                const der::Input &value) {
+bool VerifyHash(const EVP_MD *type, der::Input hash, der::Input value) {
   unsigned value_hash_len;
   uint8_t value_hash[EVP_MAX_MD_SIZE];
   if (!EVP_Digest(value.data(), value.size(), value_hash, &value_hash_len, type,
@@ -521,7 +518,7 @@ bool VerifyHash(const EVP_MD *type, const der::Input &hash,
 //     algorithm               OBJECT IDENTIFIER,
 //     parameters              ANY DEFINED BY algorithm OPTIONAL  }
 //
-bool GetSubjectPublicKeyBytes(const der::Input &spki_tlv, der::Input *spk_tlv) {
+bool GetSubjectPublicKeyBytes(der::Input spki_tlv, der::Input *spk_tlv) {
   CBS outer, inner, alg, spk;
   uint8_t unused_bit_count;
   CBS_init(&outer, spki_tlv.data(), spki_tlv.size());
@@ -735,7 +732,7 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
 // Parse ResponseData and return false if any unhandled critical extensions are
 // found. No known critical ResponseData extensions exist.
 bool ParseOCSPResponseDataExtensions(
-    const der::Input &response_extensions,
+    der::Input response_extensions,
     OCSPVerifyResult::ResponseStatus *response_details) {
   std::map<der::Input, ParsedExtension> extensions;
   if (!ParseExtensions(response_extensions, &extensions)) {
@@ -760,7 +757,7 @@ bool ParseOCSPResponseDataExtensions(
 // to be marked critical, but since it is handled by Chrome, we will overlook
 // the flag setting.
 bool ParseOCSPSingleResponseExtensions(
-    const der::Input &single_extensions,
+    der::Input single_extensions,
     OCSPVerifyResult::ResponseStatus *response_details) {
   std::map<der::Input, ParsedExtension> extensions;
   if (!ParseExtensions(single_extensions, &extensions)) {

@@ -43,7 +43,7 @@ enum class CRLRevocationStatus {
 //         signatureAlgorithm   AlgorithmIdentifier,
 //         signatureValue       BIT STRING  }
 [[nodiscard]] OPENSSL_EXPORT bool ParseCrlCertificateList(
-    const der::Input &crl_tlv, der::Input *out_tbs_cert_list_tlv,
+    der::Input crl_tlv, der::Input *out_tbs_cert_list_tlv,
     der::Input *out_signature_algorithm_tlv,
     der::BitString *out_signature_value);
 
@@ -77,7 +77,7 @@ enum class CRLRevocationStatus {
 //                                       -- if present, version MUST be v2
 //                                   }
 [[nodiscard]] OPENSSL_EXPORT bool ParseCrlTbsCertList(
-    const der::Input &tbs_tlv, ParsedCrlTbsCertList *out);
+    der::Input tbs_tlv, ParsedCrlTbsCertList *out);
 
 // Represents a CRL "Version" from RFC 5280. TBSCertList reuses the same
 // Version definition from TBSCertificate, however only v1(not present) and
@@ -180,12 +180,12 @@ enum class ContainedCertsType {
 //     indirectCRL                [4] BOOLEAN DEFAULT FALSE,
 //     onlyContainsAttributeCerts [5] BOOLEAN DEFAULT FALSE }
 [[nodiscard]] OPENSSL_EXPORT bool ParseIssuingDistributionPoint(
-    const der::Input &extension_value,
+    der::Input extension_value,
     std::unique_ptr<GeneralNames> *out_distribution_point_names,
     ContainedCertsType *out_only_contains_cert_type);
 
 OPENSSL_EXPORT CRLRevocationStatus
-GetCRLStatusForCert(const der::Input &cert_serial, CrlVersion crl_version,
+GetCRLStatusForCert(der::Input cert_serial, CrlVersion crl_version,
                     const std::optional<der::Input> &revoked_certificates_tlv);
 
 // Checks the revocation status of the certificate |cert| by using the

@@ -179,7 +179,7 @@ bool ReadRdn(der::Parser *parser, RelativeDistinguishedName *out) {
   return out->size() != 0;
 }
 
-bool ParseName(const der::Input &name_tlv, RDNSequence *out) {
+bool ParseName(der::Input name_tlv, RDNSequence *out) {
   der::Parser name_parser(name_tlv);
   der::Input name_value;
   if (!name_parser.ReadTag(der::kSequence, &name_value)) {
@@ -188,7 +188,7 @@ bool ParseName(const der::Input &name_tlv, RDNSequence *out) {
   return ParseNameValue(name_value, out);
 }
 
-bool ParseNameValue(const der::Input &name_value, RDNSequence *out) {
+bool ParseNameValue(der::Input name_value, RDNSequence *out) {
   der::Parser rdn_sequence_parser(name_value);
   while (rdn_sequence_parser.HasMore()) {
     der::Parser rdn_parser;

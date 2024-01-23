@@ -24,7 +24,7 @@ namespace bssl {
 namespace der {
 
 // This function is used by GTest to support EXPECT_EQ() for der::Input.
-void PrintTo(const Input &data, ::std::ostream *os);
+void PrintTo(Input data, ::std::ostream *os);
 
 }  // namespace der
 

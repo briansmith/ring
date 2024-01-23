@@ -74,7 +74,7 @@ DEFINE_CERT_ERROR_ID(kSerialNumberNotValidInteger,
                      "Serial number is not a valid INTEGER");
 
 // Returns true if |input| is a SEQUENCE and nothing else.
-[[nodiscard]] bool IsSequenceTLV(const der::Input &input) {
+[[nodiscard]] bool IsSequenceTLV(der::Input input) {
   der::Parser parser(input);
   der::Parser unused_sequence_parser;
   if (!parser.ReadSequence(&unused_sequence_parser)) {
@@ -101,8 +101,7 @@ DEFINE_CERT_ERROR_ID(kSerialNumberNotValidInteger,
 //     Implementations SHOULD be prepared to accept any version certificate.
 //     At a minimum, conforming implementations MUST recognize version 3
 //     certificates.
-[[nodiscard]] bool ParseVersion(const der::Input &in,
-                                CertificateVersion *version) {
+[[nodiscard]] bool ParseVersion(der::Input in, CertificateVersion *version) {
   der::Parser parser(in);
   uint64_t version64;
   if (!parser.ReadUint64(&version64)) {
@@ -148,7 +147,7 @@ DEFINE_CERT_ERROR_ID(kSerialNumberNotValidInteger,
 //    DistributionPointName ::= CHOICE {
 //      fullName                [0]     GeneralNames,
 //      nameRelativeToCRLIssuer [1]     RelativeDistinguishedName }
-bool ParseDistributionPointName(const der::Input &dp_name,
+bool ParseDistributionPointName(der::Input dp_name,
                                 ParsedDistributionPoint *distribution_point) {
   der::Parser parser(dp_name);
   std::optional<der::Input> der_full_name;
@@ -250,7 +249,7 @@ ParsedTbsCertificate::ParsedTbsCertificate(ParsedTbsCertificate &&other) =
 
 ParsedTbsCertificate::~ParsedTbsCertificate() = default;
 
-bool VerifySerialNumber(const der::Input &value, bool warnings_only,
+bool VerifySerialNumber(der::Input value, bool warnings_only,
                         CertErrors *errors) {
   // If |warnings_only| was set to true, the exact same errors will be logged,
   // only they will be logged with a lower severity (warning rather than error).
@@ -309,8 +308,7 @@ bool ReadUTCOrGeneralizedTime(der::Parser *parser, der::GeneralizedTime *out) {
   return false;
 }
 
-bool ParseValidity(const der::Input &validity_tlv,
-                   der::GeneralizedTime *not_before,
+bool ParseValidity(der::Input validity_tlv, der::GeneralizedTime *not_before,
                    der::GeneralizedTime *not_after) {
   der::Parser parser(validity_tlv);
 
@@ -348,7 +346,7 @@ bool ParseValidity(const der::Input &validity_tlv,
   return true;
 }
 
-bool ParseCertificate(const der::Input &certificate_tlv,
+bool ParseCertificate(der::Input certificate_tlv,
                       der::Input *out_tbs_certificate_tlv,
                       der::Input *out_signature_algorithm_tlv,
                       der::BitString *out_signature_value,
@@ -423,7 +421,7 @@ bool ParseCertificate(const der::Input &certificate_tlv,
 //        extensions      [3]  EXPLICIT Extensions OPTIONAL
 //                             -- If present, version MUST be v3
 //        }
-bool ParseTbsCertificate(const der::Input &tbs_tlv,
+bool ParseTbsCertificate(der::Input tbs_tlv,
                          const ParseCertificateOptions &options,
                          ParsedTbsCertificate *out, CertErrors *errors) {
   // The rest of this function assumes that |errors| is non-null.
@@ -608,7 +606,7 @@ bool ParseTbsCertificate(const der::Input &tbs_tlv,
 //                        -- corresponding to the extension type identified
 //                        -- by extnID
 //            }
-bool ParseExtension(const der::Input &extension_tlv, ParsedExtension *out) {
+bool ParseExtension(der::Input extension_tlv, ParsedExtension *out) {
   der::Parser parser(extension_tlv);
 
   //    Extension  ::=  SEQUENCE  {
@@ -659,7 +657,7 @@ bool ParseExtension(const der::Input &extension_tlv, ParsedExtension *out) {
 }
 
 OPENSSL_EXPORT bool ParseExtensions(
-    const der::Input &extensions_tlv,
+    der::Input extensions_tlv,
     std::map<der::Input, ParsedExtension> *extensions) {
   der::Parser parser(extensions_tlv);
 
@@ -708,7 +706,7 @@ OPENSSL_EXPORT bool ParseExtensions(
 }
 
 OPENSSL_EXPORT bool ConsumeExtension(
-    const der::Input &oid,
+    der::Input oid,
     std::map<der::Input, ParsedExtension> *unconsumed_extensions,
     ParsedExtension *extension) {
   auto it = unconsumed_extensions->find(oid);
@@ -721,7 +719,7 @@ OPENSSL_EXPORT bool ConsumeExtension(
   return true;
 }
 
-bool ParseBasicConstraints(const der::Input &basic_constraints_tlv,
+bool ParseBasicConstraints(der::Input basic_constraints_tlv,
                            ParsedBasicConstraints *out) {
   der::Parser parser(basic_constraints_tlv);
 
@@ -780,7 +778,7 @@ bool ParseBasicConstraints(const der::Input &basic_constraints_tlv,
 
 // TODO(crbug.com/1314019): return std::optional<BitString> when converting
 // has_key_usage_ and key_usage_ into single std::optional field.
-bool ParseKeyUsage(const der::Input &key_usage_tlv, der::BitString *key_usage) {
+bool ParseKeyUsage(der::Input key_usage_tlv, der::BitString *key_usage) {
   der::Parser parser(key_usage_tlv);
   std::optional<der::BitString> key_usage_internal = parser.ReadBitString();
   if (!key_usage_internal) {
@@ -805,7 +803,7 @@ bool ParseKeyUsage(const der::Input &key_usage_tlv, der::BitString *key_usage) {
 }
 
 bool ParseAuthorityInfoAccess(
-    const der::Input &authority_info_access_tlv,
+    der::Input authority_info_access_tlv,
     std::vector<AuthorityInfoAccessDescription> *out_access_descriptions) {
   der::Parser parser(authority_info_access_tlv);
 
@@ -853,7 +851,7 @@ bool ParseAuthorityInfoAccess(
 }
 
 bool ParseAuthorityInfoAccessURIs(
-    const der::Input &authority_info_access_tlv,
+    der::Input authority_info_access_tlv,
     std::vector<std::string_view> *out_ca_issuers_uris,
     std::vector<std::string_view> *out_ocsp_uris) {
   std::vector<AuthorityInfoAccessDescription> access_descriptions;
@@ -896,7 +894,7 @@ ParsedDistributionPoint::ParsedDistributionPoint(
 ParsedDistributionPoint::~ParsedDistributionPoint() = default;
 
 bool ParseCrlDistributionPoints(
-    const der::Input &extension_value,
+    der::Input extension_value,
     std::vector<ParsedDistributionPoint> *distribution_points) {
   distribution_points->clear();
 
@@ -935,7 +933,7 @@ ParsedAuthorityKeyIdentifier &ParsedAuthorityKeyIdentifier::operator=(
     ParsedAuthorityKeyIdentifier &&other) = default;
 
 bool ParseAuthorityKeyIdentifier(
-    const der::Input &extension_value,
+    der::Input extension_value,
     ParsedAuthorityKeyIdentifier *authority_key_identifier) {
   // RFC 5280, section 4.2.1.1.
   //    AuthorityKeyIdentifier ::= SEQUENCE {
@@ -993,7 +991,7 @@ bool ParseAuthorityKeyIdentifier(
   return true;
 }
 
-bool ParseSubjectKeyIdentifier(const der::Input &extension_value,
+bool ParseSubjectKeyIdentifier(der::Input extension_value,
                                der::Input *subject_key_identifier) {
   //    SubjectKeyIdentifier ::= KeyIdentifier
   //

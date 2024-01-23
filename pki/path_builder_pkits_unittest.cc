@@ -238,8 +238,7 @@ class PathBuilderPkitsTestDelegate {
         const bssl::CertPathBuilderResultPath *result_path =
             result.paths[i].get();
         msg << "path " << i << " errors:\n"
-            << result_path->errors.ToDebugString(result_path->certs)
-            << "\n";
+            << result_path->errors.ToDebugString(result_path->certs) << "\n";
       }
       ASSERT_EQ(info.should_validate, result.HasValidPath()) << msg;
     }

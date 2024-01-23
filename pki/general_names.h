@@ -63,13 +63,13 @@ struct OPENSSL_EXPORT GeneralNames {
   // |general_names_tlv|, so is only valid as long as |general_names_tlv| is.
   // Returns nullptr on failure, and may fill |errors| with
   // additional information. |errors| must be non-null.
-  static std::unique_ptr<GeneralNames> Create(
-      const der::Input &general_names_tlv, CertErrors *errors);
+  static std::unique_ptr<GeneralNames> Create(der::Input general_names_tlv,
+                                              CertErrors *errors);
 
   // As above, but takes the GeneralNames sequence value, without the tag and
   // length.
   static std::unique_ptr<GeneralNames> CreateFromValue(
-      const der::Input &general_names_value, CertErrors *errors);
+      der::Input general_names_value, CertErrors *errors);
 
   // DER-encoded OtherName values.
   std::vector<der::Input> other_names;
@@ -122,7 +122,7 @@ struct OPENSSL_EXPORT GeneralNames {
 // |errors| must be non-null.
 // TODO(mattm): should this be a method on GeneralNames?
 [[nodiscard]] OPENSSL_EXPORT bool ParseGeneralName(
-    const der::Input &input,
+    der::Input input,
     GeneralNames::ParseGeneralNameIPAddressType ip_address_type,
     GeneralNames *subtrees, CertErrors *errors);
 

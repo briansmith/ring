@@ -33,8 +33,8 @@ bool SHA256UpdateWithLengthPrefixedData(SHA256_CTX *s_ctx, const uint8_t *data,
 constexpr uint32_t VerifyCacheKeyVersion = 1;
 
 std::string SignatureVerifyCacheKey(std::string_view algorithm_name,
-                                    const der::Input &signed_data,
-                                    const der::Input &signature_value_bytes,
+                                    der::Input signed_data,
+                                    der::Input signature_value_bytes,
                                     EVP_PKEY *public_key) {
   SHA256_CTX s_ctx;
   bssl::ScopedCBB public_key_cbb;
@@ -136,7 +136,7 @@ class OpenSSLErrStackTracer {
 //     { ID secp521r1 } | { ID sect571k1 } | { ID sect571r1 },
 //     ... -- Extensible
 //     }
-bool ParsePublicKey(const der::Input &public_key_spki,
+bool ParsePublicKey(der::Input public_key_spki,
                     bssl::UniquePtr<EVP_PKEY> *public_key) {
   // Parse the SPKI to an EVP_PKEY.
   OpenSSLErrStackTracer err_tracer;
@@ -151,8 +151,7 @@ bool ParsePublicKey(const der::Input &public_key_spki,
   return true;
 }
 
-bool VerifySignedData(SignatureAlgorithm algorithm,
-                      const der::Input &signed_data,
+bool VerifySignedData(SignatureAlgorithm algorithm, der::Input signed_data,
                       const der::BitString &signature_value,
                       EVP_PKEY *public_key, SignatureVerifyCache *cache) {
   int expected_pkey_id = 1;
@@ -231,7 +230,7 @@ bool VerifySignedData(SignatureAlgorithm algorithm,
   if (signature_value.unused_bits() != 0) {
     return false;
   }
-  const der::Input &signature_value_bytes = signature_value.bytes();
+  der::Input signature_value_bytes = signature_value.bytes();
 
   std::string cache_key;
   if (cache) {
@@ -279,11 +278,9 @@ bool VerifySignedData(SignatureAlgorithm algorithm,
   return ret;
 }
 
-bool VerifySignedData(SignatureAlgorithm algorithm,
-                      const der::Input &signed_data,
+bool VerifySignedData(SignatureAlgorithm algorithm, der::Input signed_data,
                       const der::BitString &signature_value,
-                      const der::Input &public_key_spki,
-                      SignatureVerifyCache *cache) {
+                      der::Input public_key_spki, SignatureVerifyCache *cache) {
   bssl::UniquePtr<EVP_PKEY> public_key;
   if (!ParsePublicKey(public_key_spki, &public_key)) {
     return false;

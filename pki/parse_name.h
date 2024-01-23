@@ -140,11 +140,11 @@ typedef std::vector<RelativeDistinguishedName> RDNSequence;
 
 // Parses a DER-encoded "Name" as specified by 5280. Returns true on success
 // and sets the results in |out|.
-[[nodiscard]] OPENSSL_EXPORT bool ParseName(const der::Input &name_tlv,
+[[nodiscard]] OPENSSL_EXPORT bool ParseName(der::Input name_tlv,
                                             RDNSequence *out);
 // Parses a DER-encoded "Name" value (without the sequence tag & length) as
 // specified by 5280. Returns true on success and sets the results in |out|.
-[[nodiscard]] OPENSSL_EXPORT bool ParseNameValue(const der::Input &name_value,
+[[nodiscard]] OPENSSL_EXPORT bool ParseNameValue(der::Input name_value,
                                                  RDNSequence *out);
 
 // Formats a RDNSequence |rdn_sequence| per RFC2253 as an ASCII string and

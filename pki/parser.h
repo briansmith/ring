@@ -72,7 +72,7 @@ struct GeneralizedTime;
 // following code shows an example of how to parse the quux field from the
 // encoded data.
 //
-//   bool ReadQuux(const Input& encoded_value, Input* quux_out) {
+//   bool ReadQuux(Input encoded_value, Input* quux_out) {
 //     Parser parser(encoded_value);
 //     Parser foo_parser;
 //     if (!parser.ReadSequence(&foo_parser))
@@ -93,7 +93,7 @@ class OPENSSL_EXPORT Parser {
   // Creates a parser to parse over the data represented by input. This class
   // assumes that the underlying data will not change over the lifetime of
   // the Parser object.
-  explicit Parser(const Input &input);
+  explicit Parser(Input input);
 
   Parser(const Parser &) = default;
   Parser &operator=(const Parser &) = default;

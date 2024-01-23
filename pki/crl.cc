@@ -26,7 +26,7 @@ namespace {
 // In dotted notation: 2.5.29.28
 inline constexpr uint8_t kIssuingDistributionPointOid[] = {0x55, 0x1d, 0x1c};
 
-[[nodiscard]] bool NormalizeNameTLV(const der::Input &name_tlv,
+[[nodiscard]] bool NormalizeNameTLV(der::Input name_tlv,
                                     std::string *out_normalized_name) {
   der::Parser parser(name_tlv);
   der::Input name_rdn;
@@ -48,7 +48,7 @@ bool ContainsExactMatchingName(std::vector<std::string_view> a,
 
 }  // namespace
 
-bool ParseCrlCertificateList(const der::Input &crl_tlv,
+bool ParseCrlCertificateList(der::Input crl_tlv,
                              der::Input *out_tbs_cert_list_tlv,
                              der::Input *out_signature_algorithm_tlv,
                              der::BitString *out_signature_value) {
@@ -92,7 +92,7 @@ bool ParseCrlCertificateList(const der::Input &crl_tlv,
   return true;
 }
 
-bool ParseCrlTbsCertList(const der::Input &tbs_tlv, ParsedCrlTbsCertList *out) {
+bool ParseCrlTbsCertList(der::Input tbs_tlv, ParsedCrlTbsCertList *out) {
   der::Parser parser(tbs_tlv);
 
   //   TBSCertList  ::=  SEQUENCE  {
@@ -196,7 +196,7 @@ bool ParseCrlTbsCertList(const der::Input &tbs_tlv, ParsedCrlTbsCertList *out) {
 }
 
 bool ParseIssuingDistributionPoint(
-    const der::Input &extension_value,
+    der::Input extension_value,
     std::unique_ptr<GeneralNames> *out_distribution_point_names,
     ContainedCertsType *out_only_contains_cert_type) {
   der::Parser idp_extension_value_parser(extension_value);
@@ -303,7 +303,7 @@ bool ParseIssuingDistributionPoint(
 }
 
 CRLRevocationStatus GetCRLStatusForCert(
-    const der::Input &cert_serial, CrlVersion crl_version,
+    der::Input cert_serial, CrlVersion crl_version,
     const std::optional<der::Input> &revoked_certificates_tlv) {
   if (!revoked_certificates_tlv.has_value()) {
     // RFC 5280 Section 5.1.2.6: "When there are no revoked certificates, the

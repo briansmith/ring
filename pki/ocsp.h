@@ -230,7 +230,7 @@ inline constexpr uint8_t kBasicOCSPResponseOid[] = {
 //
 // On failure |out| has an undefined state. Some of its fields may have been
 // updated during parsing, whereas others may not have been changed.
-OPENSSL_EXPORT bool ParseOCSPCertID(const der::Input &raw_tlv, OCSPCertID *out);
+OPENSSL_EXPORT bool ParseOCSPCertID(der::Input raw_tlv, OCSPCertID *out);
 
 // Parses a DER-encoded OCSP "SingleResponse" as specified by RFC 6960. Returns
 // true on success and sets the results in |out|. The resulting |out|
@@ -239,7 +239,7 @@ OPENSSL_EXPORT bool ParseOCSPCertID(const der::Input &raw_tlv, OCSPCertID *out);
 //
 // On failure |out| has an undefined state. Some of its fields may have been
 // updated during parsing, whereas others may not have been changed.
-OPENSSL_EXPORT bool ParseOCSPSingleResponse(const der::Input &raw_tlv,
+OPENSSL_EXPORT bool ParseOCSPSingleResponse(der::Input raw_tlv,
                                             OCSPSingleResponse *out);
 
 // Parses a DER-encoded OCSP "ResponseData" as specified by RFC 6960. Returns
@@ -249,7 +249,7 @@ OPENSSL_EXPORT bool ParseOCSPSingleResponse(const der::Input &raw_tlv,
 //
 // On failure |out| has an undefined state. Some of its fields may have been
 // updated during parsing, whereas others may not have been changed.
-OPENSSL_EXPORT bool ParseOCSPResponseData(const der::Input &raw_tlv,
+OPENSSL_EXPORT bool ParseOCSPResponseData(der::Input raw_tlv,
                                           OCSPResponseData *out);
 
 // Parses a DER-encoded "OCSPResponse" as specified by RFC 6960. Returns true
@@ -259,8 +259,7 @@ OPENSSL_EXPORT bool ParseOCSPResponseData(const der::Input &raw_tlv,
 //
 // On failure |out| has an undefined state. Some of its fields may have been
 // updated during parsing, whereas others may not have been changed.
-OPENSSL_EXPORT bool ParseOCSPResponse(const der::Input &raw_tlv,
-                                      OCSPResponse *out);
+OPENSSL_EXPORT bool ParseOCSPResponse(der::Input raw_tlv, OCSPResponse *out);
 
 // Checks the revocation status of the certificate |certificate_der| by using
 // the DER-encoded |raw_response|.

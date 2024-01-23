@@ -31,8 +31,9 @@ class OPENSSL_EXPORT NameConstraints {
   // marked critical. Returns nullptr if parsing the the extension failed.
   // The object may reference data from |extension_value|, so is only valid as
   // long as |extension_value| is.
-  static std::unique_ptr<NameConstraints> Create(
-      const der::Input &extension_value, bool is_critical, CertErrors *errors);
+  static std::unique_ptr<NameConstraints> Create(der::Input extension_value,
+                                                 bool is_critical,
+                                                 CertErrors *errors);
 
   // Tests if a certificate is allowed by the name constraints.
   // |subject_rdn_sequence| should be the DER-encoded value of the subject's
@@ -42,7 +43,7 @@ class OPENSSL_EXPORT NameConstraints {
   // If the certificate is not allowed, an error will be added to |errors|.
   // Note that this method does not check hostname or IP address in commonName,
   // which is deprecated (crbug.com/308330).
-  void IsPermittedCert(const der::Input &subject_rdn_sequence,
+  void IsPermittedCert(der::Input subject_rdn_sequence,
                        const GeneralNames *subject_alt_names,
                        CertErrors *errors) const;
 
@@ -62,10 +63,10 @@ class OPENSSL_EXPORT NameConstraints {
   // Returns true if the directoryName |name_rdn_sequence| is permitted.
   // |name_rdn_sequence| should be the DER-encoded RDNSequence value (not
   // including the Sequence tag.)
-  bool IsPermittedDirectoryName(const der::Input &name_rdn_sequence) const;
+  bool IsPermittedDirectoryName(der::Input name_rdn_sequence) const;
 
   // Returns true if the iPAddress |ip| is permitted.
-  bool IsPermittedIP(const der::Input &ip) const;
+  bool IsPermittedIP(der::Input ip) const;
 
   // Returns a bitfield of GeneralNameTypes of all the types constrained by this
   // NameConstraints. Name types that aren't supported will only be present if
@@ -87,7 +88,7 @@ class OPENSSL_EXPORT NameConstraints {
   const GeneralNames &excluded_subtrees() const { return excluded_subtrees_; }
 
  private:
-  [[nodiscard]] bool Parse(const der::Input &extension_value, bool is_critical,
+  [[nodiscard]] bool Parse(der::Input extension_value, bool is_critical,
                            CertErrors *errors);
 
   GeneralNames permitted_subtrees_;

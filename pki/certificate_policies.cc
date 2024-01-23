@@ -130,7 +130,7 @@ bool ParsePolicyQualifiers(bool restrict_to_known_qualifiers,
 //      bmpString        BMPString      (SIZE (1..200)),
 //      utf8String       UTF8String     (SIZE (1..200)) }
 bool ParseCertificatePoliciesExtensionImpl(
-    const der::Input &extension_value, bool fail_parsing_unknown_qualifier_oids,
+    der::Input extension_value, bool fail_parsing_unknown_qualifier_oids,
     std::vector<der::Input> *policy_oids,
     std::vector<PolicyInformation> *policy_informations, CertErrors *errors) {
   BSSL_CHECK(policy_oids);
@@ -227,7 +227,7 @@ PolicyInformation::~PolicyInformation() = default;
 PolicyInformation::PolicyInformation(const PolicyInformation &) = default;
 PolicyInformation::PolicyInformation(PolicyInformation &&) = default;
 
-bool ParseCertificatePoliciesExtension(const der::Input &extension_value,
+bool ParseCertificatePoliciesExtension(der::Input extension_value,
                                        std::vector<PolicyInformation> *policies,
                                        CertErrors *errors) {
   std::vector<der::Input> unused_policy_oids;
@@ -237,7 +237,7 @@ bool ParseCertificatePoliciesExtension(const der::Input &extension_value,
 }
 
 bool ParseCertificatePoliciesExtensionOids(
-    const der::Input &extension_value, bool fail_parsing_unknown_qualifier_oids,
+    der::Input extension_value, bool fail_parsing_unknown_qualifier_oids,
     std::vector<der::Input> *policy_oids, CertErrors *errors) {
   return ParseCertificatePoliciesExtensionImpl(
       extension_value, fail_parsing_unknown_qualifier_oids, policy_oids,
@@ -251,7 +251,7 @@ bool ParseCertificatePoliciesExtensionOids(
 //        inhibitPolicyMapping            [1] SkipCerts OPTIONAL }
 //
 //   SkipCerts ::= INTEGER (0..MAX)
-bool ParsePolicyConstraints(const der::Input &policy_constraints_tlv,
+bool ParsePolicyConstraints(der::Input policy_constraints_tlv,
                             ParsedPolicyConstraints *out) {
   der::Parser parser(policy_constraints_tlv);
 
@@ -318,7 +318,7 @@ bool ParsePolicyConstraints(const der::Input &policy_constraints_tlv,
 //
 //   SkipCerts ::= INTEGER (0..MAX)
 std::optional<uint8_t> ParseInhibitAnyPolicy(
-    const der::Input &inhibit_any_policy_tlv) {
+    der::Input inhibit_any_policy_tlv) {
   der::Parser parser(inhibit_any_policy_tlv);
   std::optional<uint8_t> num_certs = std::make_optional<uint8_t>();
 
@@ -340,7 +340,7 @@ std::optional<uint8_t> ParseInhibitAnyPolicy(
 //   PolicyMappings ::= SEQUENCE SIZE (1..MAX) OF SEQUENCE {
 //        issuerDomainPolicy      CertPolicyId,
 //        subjectDomainPolicy     CertPolicyId }
-bool ParsePolicyMappings(const der::Input &policy_mappings_tlv,
+bool ParsePolicyMappings(der::Input policy_mappings_tlv,
                          std::vector<ParsedPolicyMapping> *mappings) {
   mappings->clear();
 

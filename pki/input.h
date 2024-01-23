@@ -95,13 +95,13 @@ class OPENSSL_EXPORT Input {
 };
 
 // Return true if |lhs|'s data and |rhs|'s data are byte-wise equal.
-OPENSSL_EXPORT bool operator==(const Input &lhs, const Input &rhs);
+OPENSSL_EXPORT bool operator==(Input lhs, Input rhs);
 
 // Return true if |lhs|'s data and |rhs|'s data are not byte-wise equal.
-OPENSSL_EXPORT bool operator!=(const Input &lhs, const Input &rhs);
+OPENSSL_EXPORT bool operator!=(Input lhs, Input rhs);
 
 // Returns true if |lhs|'s data is lexicographically less than |rhs|'s data.
-OPENSSL_EXPORT constexpr bool operator<(const Input &lhs, const Input &rhs) {
+OPENSSL_EXPORT constexpr bool operator<(Input lhs, Input rhs) {
   // This is `std::lexicographical_compare`, but that's not `constexpr` until
   // C++-20.
   auto *it1 = lhs.data();

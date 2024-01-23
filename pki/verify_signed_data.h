@@ -28,19 +28,19 @@ class Input;
 //
 // Returns true if verification was successful.
 [[nodiscard]] OPENSSL_EXPORT bool VerifySignedData(
-    SignatureAlgorithm algorithm, const der::Input &signed_data,
+    SignatureAlgorithm algorithm, der::Input signed_data,
     const der::BitString &signature_value, EVP_PKEY *public_key,
     SignatureVerifyCache *cache);
 
 // Same as above overload, only the public key is inputted as an SPKI and will
 // be parsed internally.
 [[nodiscard]] OPENSSL_EXPORT bool VerifySignedData(
-    SignatureAlgorithm algorithm, const der::Input &signed_data,
-    const der::BitString &signature_value, const der::Input &public_key_spki,
+    SignatureAlgorithm algorithm, der::Input signed_data,
+    const der::BitString &signature_value, der::Input public_key_spki,
     SignatureVerifyCache *cache);
 
 [[nodiscard]] OPENSSL_EXPORT bool ParsePublicKey(
-    const der::Input &public_key_spki, bssl::UniquePtr<EVP_PKEY> *public_key);
+    der::Input public_key_spki, bssl::UniquePtr<EVP_PKEY> *public_key);
 
 }  // namespace bssl
 

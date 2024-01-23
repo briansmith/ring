@@ -150,8 +150,8 @@ void VerifyTimeValidity(const ParsedCertificate &cert,
 // compatibility sake.
 bool VerifySignatureAlgorithmsMatch(const ParsedCertificate &cert,
                                     CertErrors *errors) {
-  const der::Input &alg1_tlv = cert.signature_algorithm_tlv();
-  const der::Input &alg2_tlv = cert.tbs().signature_algorithm_tlv;
+  der::Input alg1_tlv = cert.signature_algorithm_tlv();
+  der::Input alg2_tlv = cert.tbs().signature_algorithm_tlv;
 
   // Ensure that the two DER-encoded signature algorithms are byte-for-byte
   // equal.
@@ -690,7 +690,7 @@ class PathVerifier {
   // Parses |spki| to an EVP_PKEY and checks whether the public key is accepted
   // by |delegate_|. On failure parsing returns nullptr. If either parsing the
   // key or key policy failed, adds a high-severity error to |errors|.
-  bssl::UniquePtr<EVP_PKEY> ParseAndCheckPublicKey(const der::Input &spki,
+  bssl::UniquePtr<EVP_PKEY> ParseAndCheckPublicKey(der::Input spki,
                                                    CertErrors *errors);
 
   ValidPolicyGraph valid_policy_graph_;
@@ -799,7 +799,7 @@ void PathVerifier::VerifyPolicies(const ParsedCertificate &cert,
     //          for policy P and P-Q denote the qualifier set for policy
     //          P.  Perform the following steps in order:
     bool cert_has_any_policy = false;
-    for (const der::Input &p_oid : cert.policy_oids()) {
+    for (der::Input p_oid : cert.policy_oids()) {
       if (p_oid == der::Input(kAnyPolicyOid)) {
         cert_has_any_policy = true;
         continue;
@@ -1431,7 +1431,7 @@ void PathVerifier::ProcessSingleCertChain(const ParsedCertificate &cert,
 }
 
 bssl::UniquePtr<EVP_PKEY> PathVerifier::ParseAndCheckPublicKey(
-    const der::Input &spki, CertErrors *errors) {
+    der::Input spki, CertErrors *errors) {
   // Parse the public key.
   bssl::UniquePtr<EVP_PKEY> pkey;
   if (!ParsePublicKey(spki, &pkey)) {

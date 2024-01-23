@@ -1362,9 +1362,7 @@ TEST_F(PathBuilderKeyRolloverTest, ExplorePathsWithPathLimit) {
       {0, 4},  // No path limit. Three valid, one partial path should be built
       {1, 1},  // One valid path
       {2, 3},  // Two valid, one partial
-      {3, 4},
-      {4, 4},
-      {5, 4},
+      {3, 4}, {4, 4}, {5, 4},
   };
 
   // Trust both old and new roots.
@@ -1784,9 +1782,9 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateAsyncIntermediates) {
 
   std::shared_ptr<const ParsedCertificate> oldintermediate_dupe(
       ParsedCertificate::Create(
-          bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
-              oldintermediate_->der_cert().data(),
-              oldintermediate_->der_cert().size(), nullptr)),
+          bssl::UniquePtr<CRYPTO_BUFFER>(
+              CRYPTO_BUFFER_new(oldintermediate_->der_cert().data(),
+                                oldintermediate_->der_cert().size(), nullptr)),
           {}, nullptr));
 
   EXPECT_CALL(*target_issuers_req, GetNext(_))

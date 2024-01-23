@@ -24,7 +24,7 @@ class Input;
 // outer Sequence tag). Returns false if there was an error parsing or
 // normalizing the input, and adds error information to |errors|. |errors| must
 // be non-null.
-OPENSSL_EXPORT bool NormalizeName(const der::Input &name_rdn_sequence,
+OPENSSL_EXPORT bool NormalizeName(der::Input name_rdn_sequence,
                                   std::string *normalized_rdn_sequence,
                                   CertErrors *errors);
 
@@ -32,16 +32,16 @@ OPENSSL_EXPORT bool NormalizeName(const der::Input &name_rdn_sequence,
 // |a_rdn_sequence| and |b_rdn_sequence| should be the DER-encoded RDNSequence
 // values (not including the Sequence tag).
 // Returns true if |a_rdn_sequence| and |b_rdn_sequence| match.
-OPENSSL_EXPORT bool VerifyNameMatch(const der::Input &a_rdn_sequence,
-                                    const der::Input &b_rdn_sequence);
+OPENSSL_EXPORT bool VerifyNameMatch(der::Input a_rdn_sequence,
+                                    der::Input b_rdn_sequence);
 
 // Compares |name_rdn_sequence| and |parent_rdn_sequence| and return true if
 // |name_rdn_sequence| is within the subtree defined by |parent_rdn_sequence| as
 // defined by RFC 5280 section 7.1. |name_rdn_sequence| and
 // |parent_rdn_sequence| should be the DER-encoded sequence values (not
 // including the Sequence tag).
-OPENSSL_EXPORT bool VerifyNameInSubtree(const der::Input &name_rdn_sequence,
-                                        const der::Input &parent_rdn_sequence);
+OPENSSL_EXPORT bool VerifyNameInSubtree(der::Input name_rdn_sequence,
+                                        der::Input parent_rdn_sequence);
 
 // Helper functions:
 
@@ -53,7 +53,7 @@ OPENSSL_EXPORT bool VerifyNameInSubtree(const der::Input &name_rdn_sequence,
 // tag, but otherwise have not been validated.
 // Returns false if there was a parsing error.
 [[nodiscard]] bool FindEmailAddressesInName(
-    const der::Input &name_rdn_sequence,
+    der::Input name_rdn_sequence,
     std::vector<std::string> *contained_email_addresses);
 
 }  // namespace bssl

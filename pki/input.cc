@@ -18,11 +18,11 @@ std::string_view Input::AsStringView() const {
                           data_.size());
 }
 
-bool operator==(const Input &lhs, const Input &rhs) {
+bool operator==(Input lhs, Input rhs) {
   return MakeConstSpan(lhs) == MakeConstSpan(rhs);
 }
 
-bool operator!=(const Input &lhs, const Input &rhs) { return !(lhs == rhs); }
+bool operator!=(Input lhs, Input rhs) { return !(lhs == rhs); }
 
 ByteReader::ByteReader(Input in) : data_(in) {}
 

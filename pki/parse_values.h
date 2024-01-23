@@ -18,11 +18,11 @@ namespace bssl::der {
 // Reads a DER-encoded ASN.1 BOOLEAN value from |in| and puts the resulting
 // value in |out|. Returns whether the encoded value could successfully be
 // read.
-[[nodiscard]] OPENSSL_EXPORT bool ParseBool(const Input &in, bool *out);
+[[nodiscard]] OPENSSL_EXPORT bool ParseBool(Input in, bool *out);
 
 // Like ParseBool, except it is more relaxed in what inputs it accepts: Any
 // value that is a valid BER encoding will be parsed successfully.
-[[nodiscard]] OPENSSL_EXPORT bool ParseBoolRelaxed(const Input &in, bool *out);
+[[nodiscard]] OPENSSL_EXPORT bool ParseBoolRelaxed(Input in, bool *out);
 
 // Checks the validity of a DER-encoded ASN.1 INTEGER value from |in|, and
 // determines the sign of the number. Returns true on success and
@@ -32,8 +32,7 @@ namespace bssl::der {
 //    in: The value portion of an INTEGER.
 //    negative: Out parameter that is set to true if the number is negative
 //        and false otherwise (zero is non-negative).
-[[nodiscard]] OPENSSL_EXPORT bool IsValidInteger(const Input &in,
-                                                 bool *negative);
+[[nodiscard]] OPENSSL_EXPORT bool IsValidInteger(Input in, bool *negative);
 
 // Reads a DER-encoded ASN.1 INTEGER value from |in| and puts the resulting
 // value in |out|. ASN.1 INTEGERs are arbitrary precision; this function is
@@ -41,10 +40,10 @@ namespace bssl::der {
 // and is between 0 and 2^64-1. This function returns false if the value is too
 // big to fit in a uint64_t, is negative, or if there is an error reading the
 // integer.
-[[nodiscard]] OPENSSL_EXPORT bool ParseUint64(const Input &in, uint64_t *out);
+[[nodiscard]] OPENSSL_EXPORT bool ParseUint64(Input in, uint64_t *out);
 
 // Same as ParseUint64() but for a uint8_t.
-[[nodiscard]] OPENSSL_EXPORT bool ParseUint8(const Input &in, uint8_t *out);
+[[nodiscard]] OPENSSL_EXPORT bool ParseUint8(Input in, uint8_t *out);
 
 // The BitString class is a helper for representing a valid parsed BIT STRING.
 //
@@ -59,9 +58,9 @@ class OPENSSL_EXPORT BitString {
   // |unused_bits| represents the number of bits in the last octet of |bytes|,
   // starting from the least significant bit, that are unused. It MUST be < 8.
   // And if bytes is empty, then it MUST be 0.
-  BitString(const Input &bytes, uint8_t unused_bits);
+  BitString(Input bytes, uint8_t unused_bits);
 
-  const Input &bytes() const { return bytes_; }
+  Input bytes() const { return bytes_; }
   uint8_t unused_bits() const { return unused_bits_; }
 
   // Returns true if the bit string contains 1 at the specified position.
@@ -83,8 +82,7 @@ class OPENSSL_EXPORT BitString {
 // resulting octet string and number of unused bits.
 //
 // On failure, returns std::nullopt.
-[[nodiscard]] OPENSSL_EXPORT std::optional<BitString> ParseBitString(
-    const Input &in);
+[[nodiscard]] OPENSSL_EXPORT std::optional<BitString> ParseBitString(Input in);
 
 struct OPENSSL_EXPORT GeneralizedTime {
   uint16_t year;
@@ -109,15 +107,14 @@ OPENSSL_EXPORT bool operator>=(const GeneralizedTime &lhs,
 
 // Reads a DER-encoded ASN.1 UTCTime value from |in| and puts the resulting
 // value in |out|, returning true if the UTCTime could be parsed successfully.
-[[nodiscard]] OPENSSL_EXPORT bool ParseUTCTime(const Input &in,
-                                               GeneralizedTime *out);
+[[nodiscard]] OPENSSL_EXPORT bool ParseUTCTime(Input in, GeneralizedTime *out);
 
 // Reads a DER-encoded ASN.1 GeneralizedTime value from |in| and puts the
 // resulting value in |out|, returning true if the GeneralizedTime could
 // be parsed successfully. This function is even more restrictive than the
 // DER rules - it follows the rules from RFC5280, which does not allow for
 // fractional seconds.
-[[nodiscard]] OPENSSL_EXPORT bool ParseGeneralizedTime(const Input &in,
+[[nodiscard]] OPENSSL_EXPORT bool ParseGeneralizedTime(Input in,
                                                        GeneralizedTime *out);
 
 // Reads a DER-encoded ASN.1 IA5String value from |in| and stores the result in

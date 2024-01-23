@@ -16,7 +16,7 @@ namespace bssl::der {
 
 namespace {
 
-bool ParseBoolInternal(const Input &in, bool *out, bool relaxed) {
+bool ParseBoolInternal(Input in, bool *out, bool relaxed) {
   // According to ITU-T X.690 section 8.2, a bool is encoded as a single octet
   // where the octet of all zeroes is FALSE and a non-zero value for the octet
   // is TRUE.
@@ -134,7 +134,7 @@ bool ValidateGeneralizedTime(const GeneralizedTime &time) {
 //
 // For instance a 160-bit positive number might take 21 bytes to encode. This
 // function will return 20 in such a case.
-size_t GetUnsignedIntegerLength(const Input &in) {
+size_t GetUnsignedIntegerLength(Input in) {
   der::ByteReader reader(in);
   uint8_t first_byte;
   if (!reader.ReadByte(&first_byte)) {
@@ -149,7 +149,7 @@ size_t GetUnsignedIntegerLength(const Input &in) {
 
 }  // namespace
 
-bool ParseBool(const Input &in, bool *out) {
+bool ParseBool(Input in, bool *out) {
   return ParseBoolInternal(in, out, false /* relaxed */);
 }
 
@@ -157,7 +157,7 @@ bool ParseBool(const Input &in, bool *out) {
 // have either all bits zero (false) or all bits one (true). To support
 // malformed certs, we recognized the BER encoding instead of failing to
 // parse.
-bool ParseBoolRelaxed(const Input &in, bool *out) {
+bool ParseBoolRelaxed(Input in, bool *out) {
   return ParseBoolInternal(in, out, true /* relaxed */);
 }
 
@@ -165,7 +165,7 @@ bool ParseBoolRelaxed(const Input &in, bool *out) {
 // in the smallest number of octets. If the encoding consists of more than
 // one octet, then the bits of the first octet and the most significant bit
 // of the second octet must not be all zeroes or all ones.
-bool IsValidInteger(const Input &in, bool *negative) {
+bool IsValidInteger(Input in, bool *negative) {
   CBS cbs;
   CBS_init(&cbs, in.data(), in.size());
   int negative_int;
@@ -177,7 +177,7 @@ bool IsValidInteger(const Input &in, bool *negative) {
   return true;
 }
 
-bool ParseUint64(const Input &in, uint64_t *out) {
+bool ParseUint64(Input in, uint64_t *out) {
   // Reject non-minimally encoded numbers and negative numbers.
   bool negative;
   if (!IsValidInteger(in, &negative) || negative) {
@@ -201,7 +201,7 @@ bool ParseUint64(const Input &in, uint64_t *out) {
   return true;
 }
 
-bool ParseUint8(const Input &in, uint8_t *out) {
+bool ParseUint8(Input in, uint8_t *out) {
   // TODO(eroman): Implement this more directly.
   uint64_t value;
   if (!ParseUint64(in, &value)) {
@@ -216,7 +216,7 @@ bool ParseUint8(const Input &in, uint8_t *out) {
   return true;
 }
 
-BitString::BitString(const Input &bytes, uint8_t unused_bits)
+BitString::BitString(Input bytes, uint8_t unused_bits)
     : bytes_(bytes), unused_bits_(unused_bits) {
   BSSL_CHECK(unused_bits < 8);
   BSSL_CHECK(unused_bits == 0 || !bytes.empty());
@@ -246,7 +246,7 @@ bool BitString::AssertsBit(size_t bit_index) const {
   return 0 != (byte & (1 << bit_index_in_byte));
 }
 
-std::optional<BitString> ParseBitString(const Input &in) {
+std::optional<BitString> ParseBitString(Input in) {
   ByteReader reader(in);
 
   // From ITU-T X.690, section 8.6.2.2 (applies to BER, CER, DER):
@@ -313,7 +313,7 @@ bool operator>=(const GeneralizedTime &lhs, const GeneralizedTime &rhs) {
   return !(lhs < rhs);
 }
 
-bool ParseUTCTime(const Input &in, GeneralizedTime *value) {
+bool ParseUTCTime(Input in, GeneralizedTime *value) {
   ByteReader reader(in);
   GeneralizedTime time;
   if (!DecimalStringToUint(reader, 2, &time.year) ||
@@ -340,7 +340,7 @@ bool ParseUTCTime(const Input &in, GeneralizedTime *value) {
   return true;
 }
 
-bool ParseGeneralizedTime(const Input &in, GeneralizedTime *value) {
+bool ParseGeneralizedTime(Input in, GeneralizedTime *value) {
   ByteReader reader(in);
   GeneralizedTime time;
   if (!DecimalStringToUint(reader, 4, &time.year) ||

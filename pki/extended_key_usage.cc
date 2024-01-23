@@ -10,7 +10,7 @@
 
 namespace bssl {
 
-bool ParseEKUExtension(const der::Input &extension_value,
+bool ParseEKUExtension(der::Input extension_value,
                        std::vector<der::Input> *eku_oids) {
   der::Parser extension_parser(extension_value);
   der::Parser sequence_parser;

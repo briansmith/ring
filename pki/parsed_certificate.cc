@@ -49,14 +49,14 @@ DEFINE_CERT_ERROR_ID(kFailedParsingAuthorityKeyIdentifier,
 DEFINE_CERT_ERROR_ID(kFailedParsingSubjectKeyIdentifier,
                      "Failed parsing subject key identifier");
 
-[[nodiscard]] bool GetSequenceValue(const der::Input &tlv, der::Input *value) {
+[[nodiscard]] bool GetSequenceValue(der::Input tlv, der::Input *value) {
   der::Parser parser(tlv);
   return parser.ReadTag(der::kSequence, value) && !parser.HasMore();
 }
 
 }  // namespace
 
-bool ParsedCertificate::GetExtension(const der::Input &extension_oid,
+bool ParsedCertificate::GetExtension(der::Input extension_oid,
                                      ParsedExtension *parsed_extension) const {
   if (!tbs_.extensions_tlv) {
     return false;
