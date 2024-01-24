@@ -748,25 +748,18 @@ static bool print_point(const EC_GROUP *group, const char *name,
     printf(", ");
     print_hex(stdout, buf, num_bytes);
   } else {
-    if (!ec_felem_to_bignum(group, t.get(), &p->raw.X)) {
-      return false;
-    }
-    if (!BN_bn2bin_padded(buf, num_bytes, t.get())) {
-      return false;
-    }
+    size_t bytes_out = 1024;
+    ec_GFp_simple_felem_to_bytes(group, buf, &bytes_out, &p->raw.X);
     print_hex(stdout, buf, num_bytes);
     printf(", ");
-    ec_felem_to_bignum(group, t.get(), &p->raw.Y);
-    if (!BN_bn2bin_padded(buf, num_bytes, t.get())) {
-      return false;
-    }
+
+    bytes_out = 1024;
+    ec_GFp_simple_felem_to_bytes(group, buf, &bytes_out, &p->raw.Y);
     print_hex(stdout, buf, num_bytes);
   }
   if (aff == Unchanged) {
-    ec_felem_to_bignum(group, t.get(), &p->raw.Z);
-    if (!BN_bn2bin_padded(buf, num_bytes, t.get())) {
-      return false;
-    }
+    size_t bytes_out = 1024;
+    ec_GFp_simple_felem_to_bytes(group, buf, &bytes_out, &p->raw.Z);
     printf(", ");
     print_hex(stdout, buf, num_bytes);
   }
