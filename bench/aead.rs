@@ -70,11 +70,14 @@ impl aead::NonceSequence for NonceSequence {
 }
 
 fn seal_in_place_separate_tag(c: &mut Criterion) {
+    let mut group = c.benchmark_group("aead");
+
     let rng = SystemRandom::new();
 
     for &(alg_name, algorithm) in ALGORITHMS {
         for record_len in RECORD_LENGTHS {
-            c.bench_with_input(
+            group.throughput(criterion::Throughput::BytesDecimal(*record_len as _));
+            group.bench_with_input(
                 bench_id("seal_in_place_separate_tag", alg_name, *record_len),
                 record_len,
                 |b, record_len| {
@@ -97,11 +100,14 @@ fn seal_in_place_separate_tag(c: &mut Criterion) {
 }
 
 fn open_in_place(c: &mut Criterion) {
+    let mut group = c.benchmark_group("aead");
+
     let rng = SystemRandom::new();
 
     for &(alg_name, algorithm) in ALGORITHMS {
         for record_len in RECORD_LENGTHS {
-            c.bench_with_input(
+            group.throughput(criterion::Throughput::BytesDecimal(*record_len as _));
+            group.bench_with_input(
                 bench_id("open_in_place", alg_name, *record_len),
                 record_len,
                 |b, _record_len| {
@@ -140,7 +146,7 @@ fn open_in_place(c: &mut Criterion) {
 }
 
 fn bench_id(func_name: &str, alg_name: &str, record_len: usize) -> BenchmarkId {
-    BenchmarkId::new(format!("aead::{}::{}", alg_name, func_name), record_len)
+    BenchmarkId::new(format!("{}::{}", alg_name, func_name), record_len)
 }
 
 criterion_group!(aead, seal_in_place_separate_tag, open_in_place);
