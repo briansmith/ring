@@ -1625,8 +1625,16 @@ bool GenerateTests(const std::vector<std::string> &args) {
   if (!valid_points) {
     return false;
   }
+
   valid_points = false;
   InterestingPoints p384_points(&valid_points, NID_secp384r1, "P-384",
+                                ctx.get());
+  if (!valid_points) {
+    return false;
+  }
+
+  valid_points = false;
+  InterestingPoints p521_points(&valid_points, NID_secp521r1, "P-521",
                                 ctx.get());
   if (!valid_points) {
     return false;
@@ -1702,6 +1710,44 @@ bool GenerateTests(const std::vector<std::string> &args) {
   }
 
   if (args[0] == "p384") {
+    return true;
+  }
+
+  GEN_CURVE_TESTS("p521", "point_double",
+                  GenerateECCPointDoubleTestsForCurve(p521_points, ctx.get()));
+
+  GEN_CURVE_TESTS(
+      "p521", "point_sum",
+      GenerateECCPointAddTestsForCurve(p521_points, Unchanged, ctx.get()));
+
+  GEN_CURVE_TESTS("p521", "point_sum_mixed",
+                  GenerateECCPointAddTestsForCurve(
+                      p521_points, MakeAffineAllZero, ctx.get()));
+
+  GEN_CURVE_TESTS("p521", "elem_sum",
+                  GenerateElemSumTests(p521_points, ctx.get()));
+
+  GEN_CURVE_TESTS("p521", "elem_mul",
+                  GenerateElemMulTests(p521_points, ctx.get()));
+
+  GEN_CURVE_TESTS("p521", "scalar_mul",
+                  GenerateScalarMulTests(p521_points, ctx.get()));
+
+  GEN_CURVE_TESTS(
+      "p521", "scalar_square",
+      GenerateScalarSquareTests(p521_points, ctx.get(),
+                                "ffffffff80000000600000002fffffff"));
+
+  GEN_CURVE_TESTS("p521", "elem_neg", GenerateNegTests(p521_points, ctx.get()));
+
+  GEN_CURVE_TESTS("p521", "elem_div_by_2",
+                  GenerateDivBy2Tests(p521_points, ctx.get()));
+
+  if (args[0] == "ecc-p521-point-mul-twin") {
+    return GeneratePointMulTwinTests(p521_points, true, true, ctx.get());
+  }
+
+  if (args[0] == "p521") {
     return true;
   }
 
