@@ -22,6 +22,7 @@
 
 #include <openssl/digest.h>
 #include <openssl/ecdsa.h>
+#include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/sha.h>
@@ -776,9 +777,15 @@ static bool GenerateECCPointDoubleTest(const InterestingPoints &points,
     return false;
   }
   for (size_t i = 0; i < n; ++i) {
-    if (!EC_POINT_dbl(group, r.get(), r.get(), ctx) ||
-        !EC_POINT_make_affine(group, r.get(), ctx)) {
+    if (!EC_POINT_dbl(group, r.get(), r.get(), ctx)) {
       return false;
+    }
+
+    if (!EC_POINT_make_affine(group, r.get(), ctx)) {
+      if (ERR_GET_REASON(ERR_peek_error()) != EC_R_POINT_AT_INFINITY) {
+        return false;
+      }
+      ERR_get_error();
     }
   }
   printf("\n");
