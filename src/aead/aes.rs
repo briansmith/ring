@@ -285,13 +285,13 @@ impl Key {
         out
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
     #[must_use]
     pub fn is_aes_hw(&self, cpu_features: cpu::Features) -> bool {
         matches!(detect_implementation(cpu_features), Implementation::HWAES)
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
     #[must_use]
     pub(super) fn inner_less_safe(&self) -> &AES_KEY {
         &self.inner

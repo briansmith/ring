@@ -94,6 +94,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/fipsmodule/bn/asm/armv8-mont.pl"),
     (&[AARCH64], "crypto/fipsmodule/ec/asm/p256-armv8-asm.pl"),
     (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
+    (&[AARCH64], "crypto/fipsmodule/modes/asm/aesv8-gcm-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
 ];
 
@@ -943,6 +944,8 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "gcm_init_avx",
         "gcm_init_clmul",
         "gcm_init_neon",
+        "aes_gcm_enc_kernel",
+        "aes_gcm_dec_kernel",
         "k25519Precomp",
         "limbs_mul_add_limb",
         "little_endian_bytes_from_scalar",
