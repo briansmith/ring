@@ -107,7 +107,7 @@ impl Context {
     }
 
     /// Access to `inner` for the integrated AES-GCM implementations only.
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
     #[inline]
     pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
         (&self.inner.Htable, &mut self.inner.Xi)
@@ -243,6 +243,14 @@ impl Context {
             Implementation::CLMUL => has_avx_movbe(self.cpu_features),
             _ => false,
         }
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    pub(super) fn is_clmul(&self) -> bool {
+        matches!(
+            detect_implementation(self.cpu_features),
+            Implementation::CLMUL
+        )
     }
 }
 

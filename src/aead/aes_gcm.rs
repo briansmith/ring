@@ -126,6 +126,45 @@ fn aes_gcm_seal(
         }
     };
 
+    #[cfg(target_arch = "aarch64")]
+    let in_out = {
+        if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
+            in_out
+        } else {
+            use crate::c;
+            let (htable, xi) = auth.inner();
+            prefixed_extern! {
+                fn aes_gcm_enc_kernel(
+                    input: *const u8,
+                    in_bits: c::size_t,
+                    output: *mut u8,
+                    Xi: &mut gcm::Xi,
+                    ivec: &mut Counter,
+                    key: &aes::AES_KEY,
+                    Htable: &gcm::HTable);
+            }
+
+            let len = in_out.len();
+            let len_blocks = len & (!(0b1111));
+
+            if len_blocks > 0 {
+                unsafe {
+                    aes_gcm_enc_kernel(
+                        in_out.as_ptr(),
+                        len_blocks * 8,
+                        in_out.as_mut_ptr(),
+                        xi,
+                        &mut ctr,
+                        aes_key.inner_less_safe(),
+                        htable,
+                    )
+                }
+            }
+
+            &mut in_out[len_blocks..]
+        }
+    };
+
     let (whole, remainder) = {
         let in_out_len = in_out.len();
         let whole_len = in_out_len - (in_out_len % BLOCK_LEN);
@@ -211,6 +250,45 @@ fn aes_gcm_open(
                 )
             };
             &mut in_out[processed..]
+        }
+    };
+
+    #[cfg(target_arch = "aarch64")]
+    let in_out = {
+        if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
+            in_out
+        } else {
+            use crate::c;
+            let (htable, xi) = auth.inner();
+            prefixed_extern! {
+                fn aes_gcm_dec_kernel(
+                    input: *const u8,
+                    in_bits: c::size_t,
+                    output: *mut u8,
+                    Xi: &mut gcm::Xi,
+                    ivec: &mut Counter,
+                    key: &aes::AES_KEY,
+                    Htable: &gcm::HTable);
+            }
+
+            let len = in_out.len() - src.start;
+            let len_blocks = len & (!(0b1111));
+
+            if len_blocks > 0 {
+                unsafe {
+                    aes_gcm_dec_kernel(
+                        in_out[src.clone()].as_ptr(),
+                        len_blocks * 8,
+                        in_out.as_mut_ptr(),
+                        xi,
+                        &mut ctr,
+                        aes_key.inner_less_safe(),
+                        htable,
+                    )
+                }
+            }
+
+            &mut in_out[len_blocks..]
         }
     };
 
