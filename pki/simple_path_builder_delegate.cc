@@ -55,6 +55,8 @@ bool SimplePathBuilderDelegate::IsDeadlineExpired() { return false; }
 
 bool SimplePathBuilderDelegate::IsDebugLogEnabled() { return false; }
 
+bool SimplePathBuilderDelegate::AcceptPreCertificates() { return false; }
+
 void SimplePathBuilderDelegate::DebugLog(std::string_view msg) {}
 
 SignatureVerifyCache *SimplePathBuilderDelegate::GetVerifyCache() {

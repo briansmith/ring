@@ -70,6 +70,9 @@ class OPENSSL_EXPORT SimplePathBuilderDelegate
   // No-op implementation.
   void DebugLog(std::string_view msg) override;
 
+  // No-op implementation.
+  bool AcceptPreCertificates() override;
+
  private:
   const size_t min_rsa_modulus_length_bits_;
   const DigestPolicy digest_policy_;

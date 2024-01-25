@@ -84,9 +84,13 @@ bool IsHandledCriticalExtension(const ParsedExtension &extension,
 // Adds errors to |errors| if the certificate contains unconsumed _critical_
 // extensions.
 void VerifyNoUnconsumedCriticalExtensions(const ParsedCertificate &cert,
-                                          CertErrors *errors) {
+                                          CertErrors *errors,
+                                          bool allow_precertificate) {
   for (const auto &it : cert.extensions()) {
     const ParsedExtension &extension = it.second;
+    if (allow_precertificate && extension.oid == der::Input(kCtPoisonOid)) {
+      continue;
+    }
     if (extension.critical && !IsHandledCriticalExtension(extension, cert)) {
       errors->AddError(cert_errors::kUnconsumedCriticalExtension,
                        CreateCertErrorParams2Der("oid", extension.oid, "value",
@@ -659,7 +663,7 @@ class PathVerifier {
   // Procedure". It does processing for the final certificate (the target cert).
   void WrapUp(const ParsedCertificate &cert, KeyPurpose required_key_purpose,
               const std::set<der::Input> &user_initial_policy_set,
-              CertErrors *errors);
+              bool allow_precertificate, CertErrors *errors);
 
   // Enforces trust anchor constraints compatibile with RFC 5937.
   //
@@ -1165,7 +1169,8 @@ void PathVerifier::PrepareForNextCertificate(const ParsedCertificate &cert,
   //    the certificate.  Process any other recognized non-critical
   //    extension present in the certificate that is relevant to path
   //    processing.
-  VerifyNoUnconsumedCriticalExtensions(cert, errors);
+  VerifyNoUnconsumedCriticalExtensions(cert, errors,
+                                       delegate_->AcceptPreCertificates());
 }
 
 // Checks if the target certificate has the CA bit set. If it does, add
@@ -1196,7 +1201,8 @@ void VerifyTargetCertIsNotCA(const ParsedCertificate &cert,
 void PathVerifier::WrapUp(const ParsedCertificate &cert,
                           KeyPurpose required_key_purpose,
                           const std::set<der::Input> &user_initial_policy_set,
-                          CertErrors *errors) {
+                          bool allow_precertificate,
+                          CertErrors * errors) {
   // From RFC 5280 section 6.1.5:
   //      (a)  If explicit_policy is not 0, decrement explicit_policy by 1.
   if (explicit_policy_ > 0) {
@@ -1224,7 +1230,7 @@ void PathVerifier::WrapUp(const ParsedCertificate &cert,
   //
   // Note that this is duplicated by PrepareForNextCertificate() so as to
   // directly match the procedures in RFC 5280's section 6.1.
-  VerifyNoUnconsumedCriticalExtensions(cert, errors);
+  VerifyNoUnconsumedCriticalExtensions(cert, errors, allow_precertificate);
 
   // This calculates the intersection from RFC 5280 section 6.1.5 step g, as
   // well as applying the deferred recursive node that were skipped earlier in
@@ -1325,7 +1331,8 @@ void PathVerifier::ApplyTrustAnchorConstraints(const ParsedCertificate &cert,
   //    Extensions may be marked critical or not critical.  When trust anchor
   //    constraints are enforced, clients MUST reject certification paths
   //    containing a trust anchor with unrecognized critical extensions.
-  VerifyNoUnconsumedCriticalExtensions(cert, errors);
+  VerifyNoUnconsumedCriticalExtensions(cert, errors,
+                                       /*allow_precertificate=*/false);
 }
 
 void PathVerifier::ProcessRootCertificate(const ParsedCertificate &cert,
@@ -1427,7 +1434,8 @@ void PathVerifier::ProcessSingleCertChain(const ParsedCertificate &cert,
 
   // Checking for unknown critical extensions matches Windows, but is stricter
   // than the Mac verifier.
-  VerifyNoUnconsumedCriticalExtensions(cert, errors);
+  VerifyNoUnconsumedCriticalExtensions(cert, errors,
+                                       /*allow_precertificate=*/false);
 }
 
 bssl::UniquePtr<EVP_PKEY> PathVerifier::ParseAndCheckPublicKey(
@@ -1572,7 +1580,8 @@ void PathVerifier::Run(
     if (!is_target_cert) {
       PrepareForNextCertificate(cert, cert_errors);
     } else {
-      WrapUp(cert, required_key_purpose, user_initial_policy_set, cert_errors);
+      WrapUp(cert, required_key_purpose, user_initial_policy_set,
+             delegate->AcceptPreCertificates(), cert_errors);
     }
   }
 

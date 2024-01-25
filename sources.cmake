@@ -1430,6 +1430,8 @@ set(
   pki/testdata/path_builder_unittest/multi-root-D-by-D.pem
   pki/testdata/path_builder_unittest/multi-root-E-by-E.pem
   pki/testdata/path_builder_unittest/multi-root-F-by-E.pem
+  pki/testdata/path_builder_unittest/precertificate/precertificate.pem
+  pki/testdata/path_builder_unittest/precertificate/root.pem
   pki/testdata/path_builder_unittest/self_issued_prioritization/generate-certs.py
   pki/testdata/path_builder_unittest/self_issued_prioritization/keys/Root1.key
   pki/testdata/path_builder_unittest/self_issued_prioritization/keys/Root2.key

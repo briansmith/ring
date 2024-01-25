@@ -54,9 +54,18 @@ class TestPathBuilderDelegate : public SimplePathBuilderDelegate {
 
   MockSignatureVerifyCache *GetMockVerifyCache() { return &cache_; }
 
- private:
+  void AllowPrecert() { allow_precertificate_ = true; }
+
+  void DisallowPrecert() { allow_precertificate_ = false; }
+
+  bool AcceptPreCertificates() override {
+    return allow_precertificate_;
+  }
+
+private:
   bool deadline_is_expired_ = false;
   bool use_signature_cache_ = false;
+  bool allow_precertificate_ = false;
   MockSignatureVerifyCache cache_;
 };
 
@@ -905,6 +914,46 @@ TEST_F(PathBuilderMultiRootTest, TestDepthLimitMultiplePaths) {
   EXPECT_EQ(a_by_b_, valid_path->certs[0]);
   EXPECT_EQ(b_by_c_, valid_path->certs[1]);
   EXPECT_EQ(c_by_d_, valid_path->certs[2]);
+}
+
+TEST_F(PathBuilderMultiRootTest, TestPreCertificate) {
+
+  std::string test_dir =
+      "testdata/path_builder_unittest/precertificate/";
+  std::shared_ptr<const ParsedCertificate> root1 =
+      ReadCertFromFile(test_dir + "root.pem");
+  ASSERT_TRUE(root1);
+  std::shared_ptr<const ParsedCertificate> target =
+      ReadCertFromFile(test_dir + "precertificate.pem");
+  ASSERT_TRUE(target);
+
+  der::GeneralizedTime precert_time = {2023, 10, 1, 0, 0, 0};
+
+  TrustStoreInMemory trust_store;
+  trust_store.AddTrustAnchor(root1);
+
+  // PreCertificate should be rejected by default.
+  EXPECT_FALSE(delegate_.AcceptPreCertificates());
+  CertPathBuilder path_builder(
+      target, &trust_store, &delegate_, precert_time, KeyPurpose::ANY_EKU,
+      initial_explicit_policy_, user_initial_policy_set_,
+      initial_policy_mapping_inhibit_, initial_any_policy_inhibit_);
+  auto result = path_builder.Run();
+  ASSERT_EQ(1U, result.paths.size());
+  ASSERT_FALSE(result.paths[0]->IsValid())
+      << result.paths[0]->errors.ToDebugString(result.paths[0]->certs);
+
+  // PreCertificate should be accepted if configured.
+  delegate_.AllowPrecert();
+  EXPECT_TRUE(delegate_.AcceptPreCertificates());
+  CertPathBuilder path_builder2(
+      target, &trust_store, &delegate_, precert_time, KeyPurpose::ANY_EKU,
+      initial_explicit_policy_, user_initial_policy_set_,
+      initial_policy_mapping_inhibit_, initial_any_policy_inhibit_);
+  auto result2 = path_builder2.Run();
+  ASSERT_EQ(1U, result2.paths.size());
+  ASSERT_TRUE(result2.paths[0]->IsValid())
+      << result2.paths[0]->errors.ToDebugString(result.paths[0]->certs);
 }
 
 class PathBuilderKeyRolloverTest : public ::testing::Test {

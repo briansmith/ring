@@ -415,6 +415,14 @@ inline constexpr uint8_t kAdOcspOid[] = {0x2B, 0x06, 0x01, 0x05,
 // In dotted notation: 2.5.29.31
 inline constexpr uint8_t kCrlDistributionPointsOid[] = {0x55, 0x1d, 0x1f};
 
+// From RFC 6962:
+//
+// critical poison extension.
+//
+// In dotted notation 1.3.6.1.4.1.11129.2.4.3
+inline constexpr uint8_t kCtPoisonOid[] = {0x2B, 0x06, 0x01, 0x04, 0x01,
+                                           0xD6, 0x79, 0x02, 0x04, 0x03};
+
 // From
 // https://learn.microsoft.com/en-us/windows/win32/seccertenroll/supported-extensions#msapplicationpolicies
 //

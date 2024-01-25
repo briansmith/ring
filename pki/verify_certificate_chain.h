@@ -74,6 +74,13 @@ class OPENSSL_EXPORT VerifyCertificateChainDelegate {
   // is no verification cache.
   virtual SignatureVerifyCache *GetVerifyCache() = 0;
 
+  // This is called to determine if PreCertificates should be accepted, for the
+  // purpose of validating issued PreCertificates in a path. Most callers should
+  // return false here. This should never return true for TLS certificate
+  // validation. If this function returns true the CT precertificate poison
+  // extension will not prevent the certificate from being validated.
+  virtual bool AcceptPreCertificates() = 0;
+
   virtual ~VerifyCertificateChainDelegate();
 };
 
