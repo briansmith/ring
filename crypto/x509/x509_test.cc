@@ -1382,6 +1382,11 @@ TEST(X509Test, StoreThreads) {
     threads.emplace_back([&] {
       ASSERT_TRUE(X509_STORE_add_cert(store.get(), other2.get()));
     });
+    threads.emplace_back([&] {
+      bssl::UniquePtr<STACK_OF(X509_OBJECT)> objs(
+          X509_STORE_get1_objects(store.get()));
+      ASSERT_TRUE(objs);
+    });
   }
   for (auto &thread : threads) {
     thread.join();

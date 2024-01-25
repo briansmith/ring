@@ -2215,6 +2215,9 @@ OPENSSL_EXPORT ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr,
 // functions which take a non-const pointer may not. Callers that wish to modify
 // verification parameters in a shared |X509_STORE| should instead modify
 // |X509_STORE_CTX|s individually.
+//
+// Objects in an |X509_STORE| are represented as an |X509_OBJECT|. Some
+// functions in this library return values with this type.
 
 // X509_STORE_new returns a newly-allocated |X509_STORE|, or NULL on error.
 OPENSSL_EXPORT X509_STORE *X509_STORE_new(void);
@@ -2302,6 +2305,41 @@ OPENSSL_EXPORT int X509_STORE_set_purpose(X509_STORE *store, int purpose);
 // X509_STORE_set_trust configures the trust check for |store|. See
 // |X509_VERIFY_PARAM_set_trust| for details.
 OPENSSL_EXPORT int X509_STORE_set_trust(X509_STORE *store, int trust);
+
+// The following constants indicate the type of an |X509_OBJECT|.
+#define X509_LU_NONE 0
+#define X509_LU_X509 1
+#define X509_LU_CRL 2
+#define X509_LU_PKEY 3
+
+DEFINE_STACK_OF(X509_OBJECT)
+
+// X509_OBJECT_new returns a newly-allocated, empty |X509_OBJECT| or NULL on
+// error.
+OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
+
+// X509_OBJECT_free releases memory associated with |obj|.
+OPENSSL_EXPORT void X509_OBJECT_free(X509_OBJECT *obj);
+
+// X509_OBJECT_get_type returns the type of |obj|, which will be one of the
+// |X509_LU_*| constants.
+OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *obj);
+
+// X509_OBJECT_get0_X509 returns |obj| as a certificate, or NULL if |obj| is not
+// a certificate.
+OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *obj);
+
+// X509_STORE_get1_objects returns a newly-allocated stack containing the
+// contents of |store|, or NULL on error. The caller must release the result
+// with |sk_X509_OBJECT_pop_free| and |X509_OBJECT_free| when done.
+//
+// The result will include all certificates and CRLs added via
+// |X509_STORE_add_cert| and |X509_STORE_add_crl|, as well as any cached objects
+// added by |X509_LOOKUP_hash_dir|. The last of these may change over time, as
+// different objects are loaded from the filesystem. Callers should not depend
+// on this caching behavior. The objects are returned in no particular order.
+OPENSSL_EXPORT STACK_OF(X509_OBJECT) *X509_STORE_get1_objects(
+    X509_STORE *store);
 
 
 // Certificate verification.
@@ -3787,6 +3825,43 @@ OPENSSL_EXPORT int X509_check_purpose(X509 *x509, int purpose, int ca);
 // |flags| should be zero and is ignored.
 OPENSSL_EXPORT int X509_check_trust(X509 *x509, int id, int flags);
 
+// X509_STORE_CTX_get1_certs returns a newly-allocated stack containing all
+// trusted certificates in |ctx|'s |X509_STORE| whose subject matches |name|, or
+// NULL on error. The caller must release the result with |sk_X509_pop_free| and
+// |X509_free| when done.
+//
+// TODO(crbug.com/boringssl/407): |name| should be const.
+OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get1_certs(X509_STORE_CTX *ctx,
+                                                         X509_NAME *name);
+
+// X509_STORE_CTX_get1_crls returns a newly-allocated stack containing all
+// CRLs in |ctx|'s |X509_STORE| whose subject matches |name|, or NULL on error.
+// The caller must release the result with |sk_X509_CRL_pop_free| and
+// |X509_CRL_free| when done.
+//
+// TODO(crbug.com/boringssl/407): |name| should be const.
+OPENSSL_EXPORT STACK_OF(X509_CRL) *X509_STORE_CTX_get1_crls(X509_STORE_CTX *ctx,
+                                                            X509_NAME *name);
+
+// X509_STORE_CTX_get_by_subject looks up an object of type |type| in |ctx|'s
+// |X509_STORE| that matches |name|. |type| should be one of the |X509_LU_*|
+// constants to indicate the type of object. If a match was found, it stores the
+// result in |ret| and returns one. Otherwise, it returns zero. If multiple
+// objects match, this function outputs an arbitray one.
+//
+// WARNING: |ret| must be in the empty state, as returned by |X509_OBJECT_new|.
+// Otherwise, the object currently in |ret| will be leaked when overwritten.
+// https://crbug.com/boringssl/685 tracks fixing this.
+//
+// WARNING: Multiple trusted certificates or CRLs may share a name. In this
+// case, this function returns an arbitrary match. Use
+// |X509_STORE_CTX_get1_certs| or |X509_STORE_CTX_get1_crls| instead.
+//
+// TODO(crbug.com/boringssl/407): |name| should be const.
+OPENSSL_EXPORT int X509_STORE_CTX_get_by_subject(X509_STORE_CTX *ctx, int type,
+                                                 X509_NAME *name,
+                                                 X509_OBJECT *ret);
+
 
 // X.509 information.
 //
@@ -4224,6 +4299,20 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx,
 // always enabled.
 #define X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS 0
 
+// X509_STORE_get0_objects returns a non-owning pointer of |store|'s internal
+// object list. Although this function is not const, callers must not modify
+// the result of this function.
+//
+// WARNING: This function is not thread-safe. If |store| is shared across
+// multiple threads, callers cannot safely inspect the result of this function,
+// because another thread may have concurrently added to it. In particular,
+// |X509_LOOKUP_hash_dir| treats this list as a cache and may add to it in the
+// course of certificate verification. This API additionally prevents fixing
+// some quadratic worst-case behavior in |X509_STORE| and may be removed in the
+// future. Use |X509_STORE_get1_objects| instead.
+OPENSSL_EXPORT STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(
+    X509_STORE *store);
+
 
 // Private structures.
 
@@ -4324,13 +4413,6 @@ The X509_STORE then calls a function to actually verify the
 certificate chain.
 */
 
-#define X509_LU_NONE 0
-#define X509_LU_X509 1
-#define X509_LU_CRL 2
-#define X509_LU_PKEY 3
-
-DEFINE_STACK_OF(X509_OBJECT)
-
 #define X509_STORE_CTX_set_app_data(ctx, data) \
   X509_STORE_CTX_set_ex_data(ctx, 0, data)
 #define X509_STORE_CTX_get_app_data(ctx) X509_STORE_CTX_get_ex_data(ctx, 0)
@@ -4407,36 +4489,11 @@ OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
 // verification.
 #define X509_V_FLAG_NO_CHECK_TIME 0x200000
 
-// X509_OBJECT_new returns a newly-allocated, empty |X509_OBJECT| or NULL on
-// error.
-OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
-
-// X509_OBJECT_free releases memory associated with |obj|.
-OPENSSL_EXPORT void X509_OBJECT_free(X509_OBJECT *obj);
-
-// X509_OBJECT_get_type returns the type of |obj|, which will be one of the
-// |X509_LU_*| constants.
-OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *obj);
-
-// X509_OBJECT_get0_X509 returns |obj| as a certificate, or NULL if |obj| is not
-// a certificate.
-OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *obj);
-
-OPENSSL_EXPORT STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(X509_STORE *st);
-OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get1_certs(X509_STORE_CTX *st,
-                                                         X509_NAME *nm);
-OPENSSL_EXPORT STACK_OF(X509_CRL) *X509_STORE_CTX_get1_crls(X509_STORE_CTX *st,
-                                                            X509_NAME *nm);
-
 OPENSSL_EXPORT X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v,
                                                   const X509_LOOKUP_METHOD *m);
 
 OPENSSL_EXPORT const X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void);
 OPENSSL_EXPORT const X509_LOOKUP_METHOD *X509_LOOKUP_file(void);
-
-OPENSSL_EXPORT int X509_STORE_CTX_get_by_subject(X509_STORE_CTX *vs, int type,
-                                                 X509_NAME *name,
-                                                 X509_OBJECT *ret);
 
 OPENSSL_EXPORT int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc,
                                     long argl, char **ret);
@@ -4885,6 +4942,7 @@ BORINGSSL_MAKE_DELETER(X509_INFO, X509_INFO_free)
 BORINGSSL_MAKE_DELETER(X509_LOOKUP, X509_LOOKUP_free)
 BORINGSSL_MAKE_DELETER(X509_NAME, X509_NAME_free)
 BORINGSSL_MAKE_DELETER(X509_NAME_ENTRY, X509_NAME_ENTRY_free)
+BORINGSSL_MAKE_DELETER(X509_OBJECT, X509_OBJECT_free)
 BORINGSSL_MAKE_DELETER(X509_PUBKEY, X509_PUBKEY_free)
 BORINGSSL_MAKE_DELETER(X509_REQ, X509_REQ_free)
 BORINGSSL_MAKE_DELETER(X509_REVOKED, X509_REVOKED_free)

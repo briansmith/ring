@@ -230,13 +230,11 @@ int X509_STORE_CTX_get_by_subject(X509_STORE_CTX *vs, int type, X509_NAME *name,
     }
   }
 
-  // if (ret->data.ptr != NULL) X509_OBJECT_free_contents(ret);
-
+  // TODO(crbug.com/boringssl/685): This should call
+  // |X509_OBJECT_free_contents|.
   ret->type = tmp->type;
-  ret->data.ptr = tmp->data.ptr;
-
+  ret->data = tmp->data;
   X509_OBJECT_up_ref_count(ret);
-
   return 1;
 }
 
@@ -391,8 +389,27 @@ static X509_OBJECT *X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h,
   return sk_X509_OBJECT_value(h, idx);
 }
 
-STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(X509_STORE *st) {
-  return st->objs;
+static X509_OBJECT *x509_object_dup(const X509_OBJECT *obj) {
+  X509_OBJECT *ret = X509_OBJECT_new();
+  if (ret == NULL) {
+    return NULL;
+  }
+  ret->type = obj->type;
+  ret->data = obj->data;
+  X509_OBJECT_up_ref_count(ret);
+  return ret;
+}
+
+STACK_OF(X509_OBJECT) *X509_STORE_get1_objects(X509_STORE *store) {
+  CRYPTO_MUTEX_lock_read(&store->objs_lock);
+  STACK_OF(X509_OBJECT) *ret =
+      sk_X509_OBJECT_deep_copy(store->objs, x509_object_dup, X509_OBJECT_free);
+  CRYPTO_MUTEX_unlock_read(&store->objs_lock);
+  return ret;
+}
+
+STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(X509_STORE *store) {
+  return store->objs;
 }
 
 STACK_OF(X509) *X509_STORE_CTX_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm) {
