@@ -146,6 +146,9 @@ set(
   crypto/hpke/hpke_test_vectors.txt
   crypto/keccak/keccak_tests.txt
   crypto/kyber/kyber_tests.txt
+  crypto/pkcs8/test/bad1.p12
+  crypto/pkcs8/test/bad2.p12
+  crypto/pkcs8/test/bad3.p12
   crypto/pkcs8/test/empty_password.p12
   crypto/pkcs8/test/empty_password_ber.p12
   crypto/pkcs8/test/empty_password_ber_nested.p12

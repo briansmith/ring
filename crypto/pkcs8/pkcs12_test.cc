@@ -656,3 +656,39 @@ TEST(PKCS12Test, CreateWithAlias) {
   ASSERT_EQ(alias, std::string(reinterpret_cast<const char *>(parsed_alias),
                                static_cast<size_t>(alias_len)));
 }
+
+// PKCS#12 is built on top of PKCS#7, a misdesigned, overgeneralized combinator
+// format. One of the features of PKCS#7 is that the content of every
+// ContentInfo may be omitted, to indicate that the value is "supplied by other
+// means". This is commonly used for "detached signatures", where the signature
+// is supplied separately.
+//
+// This does not make sense in the context of PKCS#12. But because PKCS#7
+// combined many unrelated use cases into the same format, so PKCS#12 (and any
+// other use of PKCS#7) must account for and reject inputs.
+TEST(PKCS12Test, MissingContent) {
+  {
+    std::string data = GetTestData("crypto/pkcs8/test/bad1.p12");
+    bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
+    ASSERT_TRUE(certs);
+    EVP_PKEY *key = nullptr;
+    CBS cbs = StringToBytes(data);
+    EXPECT_FALSE(PKCS12_get_key_and_certs(&key, certs.get(), &cbs, ""));
+  }
+  {
+    std::string data = GetTestData("crypto/pkcs8/test/bad2.p12");
+    bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
+    ASSERT_TRUE(certs);
+    EVP_PKEY *key = nullptr;
+    CBS cbs = StringToBytes(data);
+    EXPECT_FALSE(PKCS12_get_key_and_certs(&key, certs.get(), &cbs, ""));
+  }
+  {
+    std::string data = GetTestData("crypto/pkcs8/test/bad3.p12");
+    bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
+    ASSERT_TRUE(certs);
+    EVP_PKEY *key = nullptr;
+    CBS cbs = StringToBytes(data);
+    EXPECT_FALSE(PKCS12_get_key_and_certs(&key, certs.get(), &cbs, ""));
+  }
+}
