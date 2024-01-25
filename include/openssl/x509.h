@@ -102,10 +102,6 @@ extern "C" {
 //
 // In the future, a replacement library will be available. Meanwhile, minimize
 // dependencies on this header where possible.
-//
-// TODO(https://crbug.com/boringssl/426): Documentation for this library is
-// still in progress. Some functions have not yet been documented, and some
-// functions have not yet been grouped into sections.
 
 
 // Certificates.
@@ -4424,7 +4420,10 @@ struct X509_algor_st {
 } /* X509_ALGOR */;
 
 
-// Functions below this point have not yet been organized into sections.
+// Underdocumented functions.
+//
+// TODO(https://crbug.com/boringssl/426): Functions below this point have not
+// yet been documented or organized into sections.
 
 // This stuff is certificate "auxiliary info"
 // it contains details which are useful in certificate
@@ -4590,7 +4589,6 @@ struct v3_ext_method {
 
 DEFINE_STACK_OF(X509V3_EXT_METHOD)
 
-// ext_flags values
 #define X509V3_EXT_CTX_DEP 0x2
 #define X509V3_EXT_MULTILINE 0x4
 
@@ -4619,8 +4617,6 @@ typedef struct DIST_POINT_NAME_st {
   // If relativename then this contains the full distribution point name
   X509_NAME *dpname;
 } DIST_POINT_NAME;
-// All existing reasons
-#define CRLDP_ALL_REASONS 0x807f
 
 struct DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
@@ -4877,8 +4873,8 @@ OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
 // append if it is not present.
 #define X509V3_ADD_REPLACE 2L
 
-// X509V3_ADD_REPLACE causes the function to replace the existing extension and
-// fail if it is not present.
+// X509V3_ADD_REPLACE_EXISTING causes the function to replace the existing
+// extension and fail if it is not present.
 #define X509V3_ADD_REPLACE_EXISTING 3L
 
 // X509V3_ADD_KEEP_EXISTING causes the function to succeed without replacing the
