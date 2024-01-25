@@ -125,9 +125,16 @@ foo:
 	add w0, w1, b2, sxtw
 	add w0, w1, b2, sxtx
 
-        // Aarch64 SVE2 added these forms:
-        ld1d { z1.d }, p0/z, [x13, x11, lsl #3]
-        ld1b { z11.b }, p15/z, [x10, #1, mul vl]
+	// Aarch64 SVE2 added these forms:
+	ld1d { z1.d }, p91/z, [x13, x11, lsl #3]
+	ld1b { z11.b }, p15/z, [x10, #1, mul vl]
+	st2d { z6.d, z7.d }, p0, [x12]
+        // Check that "p22" here isn't parsed as the "p22" register.
+// WAS bl p224_point_add
+	bl	bcm_redirector_p224_point_add
+	ptrue p0.d, vl1
+        // The "#7" here isn't a comment, it's now valid Aarch64 assembly.
+	cnth x8, all, mul #7
 
 .Llocal_function_local_target:
 local_function:
@@ -143,6 +150,15 @@ bss_symbol:
 .text
 .loc 1 2 0
 BORINGSSL_bcm_text_end:
+.p2align 2
+.hidden bcm_redirector_p224_point_add
+.type bcm_redirector_p224_point_add, @function
+bcm_redirector_p224_point_add:
+.cfi_startproc
+	hint #34 // bti c
+	b p224_point_add
+.cfi_endproc
+.size bcm_redirector_p224_point_add, .-bcm_redirector_p224_point_add
 .p2align 2
 .hidden bcm_redirector_remote_function
 .type bcm_redirector_remote_function, @function

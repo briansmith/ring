@@ -83,13 +83,16 @@ RegisterOrConstant <- (('%'[[A-Z]][[A-Z0-9]]*) /
                        ARMRegister)
                       ![fb:(+\-]
 ARMConstantTweak <- ((([us] "xt" [xwhb]) / "lsl" / "lsr" / "ror" / "asr") (WS '#' Offset)?) /
-                    "mul vl"  # multiply offset by the hardware's vector length
+                    "mul vl"  / # multiply offset by the hardware's vector length
+                    "mul #" [0-9]
 ARMRegister <- "sp" /
                ([xwdqshb] [0-9] [0-9]?) /
-               "xzr" / "wzr" / "NZCV" / ARMVectorRegister / SVE2PredicateRegister /
+               "xzr" / "wzr" / "NZCV" / SVE2PredicateRegister / ARMVectorRegister / SVE2SpecialValue /
                ('{' WS? ARMVectorRegister (',' WS? ARMVectorRegister)* WS? '}' ('[' [0-9] [0-9]? ']')? )
-ARMVectorRegister <- [vz] [0-9] [0-9]? ('.' [0-9]* [bsdhq] ('[' [0-9] [0-9]? ']')? )?
-SVE2PredicateRegister <- "p" [0-9] [0-9]? "/" [mMzZ]
+ARMVectorRegister <- [pvz] [0-9] [0-9]? ![[0-9a-z_]] ('.' [0-9]* [bsdhq] ('[' [0-9] [0-9]? ']')? )?
+SVE2PredicateRegister <- "p" [0-9] [0-9]? "/" [[mz]]
+# https://developer.arm.com/documentation/ddi0596/2020-12/SVE-Instructions/INCD--INCH--INCW--vector---Increment-vector-by-multiple-of-predicate-constraint-element-count-
+SVE2SpecialValue <- ("pow2" / ("vl" [12345678] ![0-9] ) / "vl16" / "vl32" / "vl64" / "vl128" / "vl256" / "mul3" / "mul4" / "all") ![[0-9a-z_]]
 # Compilers only output a very limited number of expression forms. Rather than
 # implement a full expression parser, this enumerate those forms plus a few
 # that appear in our hand-written assembly.
