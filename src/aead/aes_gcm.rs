@@ -91,7 +91,7 @@ fn aes_gcm_seal(
     let aad_len = aad.0.len();
     let mut auth = gcm::Context::new(gcm_key, aad, cpu_features);
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(have_perlasm, target_arch = "x86_64"))]
     let in_out = {
         if !aes_key.is_aes_hw(cpu_features) || !auth.is_avx() {
             in_out
@@ -179,7 +179,7 @@ fn aes_gcm_open(
 
     let total_in_out_len = in_out.len() - in_prefix_len;
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(have_perlasm, target_arch = "x86_64"))]
     let in_out = {
         if !aes_key.is_aes_hw(cpu_features) || !auth.is_avx() {
             in_out

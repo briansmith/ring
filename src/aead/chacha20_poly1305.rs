@@ -57,7 +57,7 @@ fn chacha20_poly1305_seal(
         _ => unreachable!(),
     };
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(all(have_perlasm, any(target_arch = "aarch64", target_arch = "x86_64")))]
     if has_integrated(cpu_features) {
         // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
         // structure, but Rust can't do that yet; see
@@ -137,7 +137,7 @@ fn chacha20_poly1305_open(
         _ => unreachable!(),
     };
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(all(have_perlasm, any(target_arch = "aarch64", target_arch = "x86_64")))]
     if has_integrated(cpu_features) {
         // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
         // structure, but Rust can't do that yet; see
@@ -200,7 +200,7 @@ fn chacha20_poly1305_open(
     finish(auth, aad.as_ref().len(), in_out[src].len())
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[cfg(all(have_perlasm, any(target_arch = "aarch64", target_arch = "x86_64")))]
 #[allow(clippy::needless_return)]
 #[inline(always)]
 fn has_integrated(cpu_features: cpu::Features) -> bool {

@@ -41,11 +41,14 @@ macro_rules! prefixed_extern {
 }
 
 #[deprecated = "`#[export_name]` creates problems and we will stop doing it."]
-#[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86",
-    target_arch = "x86_64"
+#[cfg(not(all(
+    have_perlasm,
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    )
 )))]
 macro_rules! prefixed_export {
     // A function.

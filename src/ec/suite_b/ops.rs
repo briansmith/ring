@@ -625,7 +625,7 @@ mod tests {
     }
 
     // There is no `ecp_nistz256_neg` on other targets.
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(have_perlasm, target_arch = "x86_64"))]
     #[test]
     fn p256_elem_neg_test() {
         prefixed_extern! {

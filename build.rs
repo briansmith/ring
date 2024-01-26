@@ -269,6 +269,12 @@ const MACOS_ABI: &[&str] = &["ios", MACOS, "tvos"];
 const MACOS: &str = "macos";
 const WINDOWS: &str = "windows";
 
+fn find_asm_target(target: &Target) -> Option<&'static AsmTarget> {
+    ASM_TARGETS.iter().find(|asm_target| {
+        asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
+    })
+}
+
 /// Read an environment variable and tell Cargo that we depend on it.
 ///
 /// This needs to be used for any environment variable that isn't a standard
@@ -418,10 +424,6 @@ fn build_c_code(
 ) {
     println!("cargo:rustc-env=RING_CORE_PREFIX={}", ring_core_prefix);
 
-    let asm_target = ASM_TARGETS.iter().find(|asm_target| {
-        asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
-    });
-
     let asm_dir = if use_pregenerated {
         &pregenerated
     } else {
@@ -433,7 +435,9 @@ fn build_c_code(
 
     generate_prefix_symbols_asm_headers(out_dir, ring_core_prefix).unwrap();
 
-    let (asm_srcs, obj_srcs) = if let Some(asm_target) = asm_target {
+    let (asm_srcs, obj_srcs) = if let Some(asm_target) = find_asm_target(target) {
+        println!("cargo:rustc-cfg=have_perlasm");
+
         let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
 
         if !use_pregenerated {
@@ -616,6 +620,10 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
 
     if target.force_warnings_into_errors {
         c.warnings_into_errors(true);
+    }
+
+    if find_asm_target(target).is_some() {
+        let _ = c.define("RING_HAVE_PERLASM", "1");
     }
 }
 
