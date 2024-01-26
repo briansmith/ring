@@ -125,11 +125,14 @@ unsafe fn mul_mont(
     unsafe { bn_mul_mont(r, a, b, n, n0, num_limbs) }
 }
 
-#[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86",
-    target_arch = "x86_64"
+#[cfg(not(all(
+    perlasm,
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    )
 )))]
 // TODO: Stop calling this from C and un-export it.
 prefixed_export! {
@@ -164,11 +167,14 @@ prefixed_export! {
 // we are using the platforms for which we don't have `bn_mul_mont` in assembly.
 #[cfg(any(
     feature = "alloc",
-    not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86",
-        target_arch = "x86_64"
+    not(all(
+        perlasm,
+        any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86",
+            target_arch = "x86_64"
+        )
     ))
 ))]
 pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N0) {
@@ -197,11 +203,14 @@ pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Li
     .unwrap()
 }
 
-#[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86",
-    target_arch = "x86_64"
+#[cfg(not(all(
+    perlasm,
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    )
 )))]
 fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
     debug_assert_eq!(r.len(), 2 * a.len());
@@ -218,11 +227,14 @@ fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
 
 #[cfg(any(
     test,
-    not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86_64",
-        target_arch = "x86"
+    not(all(
+        perlasm,
+        any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86_64",
+            target_arch = "x86"
+        )
     ))
 ))]
 prefixed_extern! {
@@ -231,11 +243,14 @@ prefixed_extern! {
     fn limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
 }
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86_64",
-    target_arch = "x86"
+#[cfg(all(
+    perlasm,
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    )
 ))]
 prefixed_extern! {
     // `r` and/or 'a' and/or 'b' may alias.
@@ -273,7 +288,7 @@ pub(super) fn limbs_mont_mul(
 }
 
 /// r = a * b
-#[cfg(not(target_arch = "x86_64"))]
+#[cfg(not(all(perlasm, target_arch = "x86_64")))]
 pub(super) fn limbs_mont_product(
     r: &mut [Limb],
     a: &[Limb],

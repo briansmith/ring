@@ -32,7 +32,7 @@ pub(super) mod hw;
 pub(super) mod vp;
 
 cfg_if! {
-    if #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))] {
+    if #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "x86_64")))] {
         pub(super) use ffi::AES_KEY;
     } else {
         use ffi::AES_KEY;
@@ -41,14 +41,20 @@ cfg_if! {
 
 #[derive(Clone)]
 pub(super) enum Key {
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
+    #[cfg(all(
+        perlasm,
+        any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86")
+    ))]
     Hw(hw::Key),
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86",
-        target_arch = "x86_64"
+    #[cfg(all(
+        perlasm,
+        any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86",
+            target_arch = "x86_64"
+        )
     ))]
     Vp(vp::Key),
 
@@ -61,16 +67,22 @@ impl Key {
         bytes: KeyBytes<'_>,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
-        #[cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
+        #[cfg(all(
+            perlasm,
+            any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64")
+        ))]
         if let Some(hw_features) = cpu_features.get_feature() {
             return Ok(Self::Hw(hw::Key::new(bytes, hw_features)?));
         }
 
-        #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86_64",
-            target_arch = "x86"
+        #[cfg(all(
+            perlasm,
+            any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            )
         ))]
         if let Some(vp_features) = cpu_features.get_feature() {
             return Ok(Self::Vp(vp::Key::new(bytes, vp_features)?));
@@ -84,14 +96,20 @@ impl Key {
     #[inline]
     fn encrypt_block(&self, a: Block) -> Block {
         match self {
-            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
+            #[cfg(all(
+                perlasm,
+                any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86")
+            ))]
             Key::Hw(inner) => inner.encrypt_block(a),
 
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86",
-                target_arch = "x86_64"
+            #[cfg(all(
+                perlasm,
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "x86",
+                    target_arch = "x86_64"
+                )
             ))]
             Key::Vp(inner) => inner.encrypt_block(a),
 

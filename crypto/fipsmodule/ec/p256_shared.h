@@ -24,7 +24,6 @@
 #include "../bn/internal.h"
 
 #if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
     !defined(OPENSSL_SMALL)
 # define OPENSSL_USE_NISTZ256
 #endif

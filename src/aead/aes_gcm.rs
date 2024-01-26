@@ -25,11 +25,14 @@ use core::ops::RangeFrom;
 #[cfg(target_arch = "x86_64")]
 use aes::EncryptCtr32 as _;
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86",
-    target_arch = "x86_64"
+#[cfg(all(
+    perlasm,
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    )
 ))]
 use cpu::GetFeature as _;
 
@@ -47,16 +50,19 @@ impl Key {
 
 #[derive(Clone)]
 enum DynKey {
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(perlasm, target_arch = "x86_64"))]
     AesHwClMulAvxMovbe(Combo<aes::hw::Key, gcm::clmulavxmovbe::Key>),
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
+    #[cfg(all(
+        perlasm,
+        any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64")
+    ))]
     AesHwClMul(Combo<aes::hw::Key, gcm::clmul::Key>),
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+    #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "arm")))]
     Simd(Combo<aes::vp::Key, gcm::neon::Key>),
 
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    #[cfg(all(perlasm, any(target_arch = "x86", target_arch = "x86_64")))]
     Simd(Combo<aes::vp::Key, gcm::fallback::Key>),
 
     Fallback(Combo<aes::fallback::Key, gcm::fallback::Key>),
@@ -64,7 +70,7 @@ enum DynKey {
 
 impl DynKey {
     fn new(key: aes::KeyBytes, cpu_features: cpu::Features) -> Result<Self, error::Unspecified> {
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(perlasm, target_arch = "x86_64"))]
         if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
             let aes_key = aes::hw::Key::new(key, aes)?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
@@ -72,7 +78,10 @@ impl DynKey {
             return Ok(Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }));
         }
 
-        #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
+        #[cfg(all(
+            perlasm,
+            any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86")
+        ))]
         if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
             let aes_key = aes::hw::Key::new(key, aes)?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
@@ -80,7 +89,7 @@ impl DynKey {
             return Ok(Self::AesHwClMul(Combo { aes_key, gcm_key }));
         }
 
-        #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+        #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "arm")))]
         if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
             let aes_key = aes::vp::Key::new(key, aes)?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
@@ -88,7 +97,7 @@ impl DynKey {
             return Ok(Self::Simd(Combo { aes_key, gcm_key }));
         }
 
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        #[cfg(all(perlasm, any(target_arch = "x86", target_arch = "x86_64")))]
         if let Some(aes) = cpu_features.get_feature() {
             let aes_key = aes::vp::Key::new(key, aes)?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
@@ -122,7 +131,7 @@ pub(super) fn seal(
     let tag_iv = ctr.increment();
 
     match key {
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(perlasm, target_arch = "x86_64"))]
         DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
             use crate::c;
             let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
@@ -165,7 +174,7 @@ pub(super) fn seal(
             seal_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
 
-        #[cfg(target_arch = "aarch64")]
+        #[cfg(all(perlasm, target_arch = "aarch64"))]
         DynKey::AesHwClMul(Combo { aes_key, gcm_key }) => {
             use crate::bits::BitLength;
 
@@ -206,11 +215,14 @@ pub(super) fn seal(
         #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
         DynKey::AesHwClMul(c) => seal_strided(c, aad, in_out, ctr, tag_iv),
 
-        #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86_64",
-            target_arch = "x86"
+        #[cfg(all(
+            perlasm,
+            any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            )
         ))]
         DynKey::Simd(c) => seal_strided(c, aad, in_out, ctr, tag_iv),
 
@@ -275,14 +287,14 @@ pub(super) fn open(
     src: RangeFrom<usize>,
 ) -> Result<Tag, error::Unspecified> {
     // Check that `src` is in bounds.
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "x86_64")))]
     let input = in_out.get(src.clone()).ok_or(error::Unspecified)?;
 
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
 
     match key {
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(perlasm, target_arch = "x86_64"))]
         DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
             use crate::c;
 
@@ -344,7 +356,7 @@ pub(super) fn open(
             open_finish(aes_key, auth, in_out, src, ctr, tag_iv)
         }
 
-        #[cfg(target_arch = "aarch64")]
+        #[cfg(all(perlasm, target_arch = "aarch64"))]
         DynKey::AesHwClMul(Combo { aes_key, gcm_key }) => {
             use crate::bits::BitLength;
 
@@ -390,11 +402,14 @@ pub(super) fn open(
         #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
         DynKey::AesHwClMul(c) => open_strided(c, aad, in_out, src, ctr, tag_iv),
 
-        #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86_64",
-            target_arch = "x86"
+        #[cfg(all(
+            perlasm,
+            any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            )
         ))]
         DynKey::Simd(c) => open_strided(c, aad, in_out, src, ctr, tag_iv),
 

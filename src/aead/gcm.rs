@@ -24,7 +24,7 @@ use cfg_if::cfg_if;
 pub(super) use ffi::KeyValue;
 
 cfg_if! {
-    if #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))] {
+    if #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "x86_64")))] {
         pub(super) use self::ffi::{HTable, Xi};
     } else {
         use self::ffi::{HTable, Xi};
@@ -82,7 +82,7 @@ impl<'key, K: Gmult> Context<'key, K> {
     }
 }
 
-#[cfg(all(target_arch = "aarch64", target_pointer_width = "64"))]
+#[cfg(all(perlasm, target_arch = "aarch64", target_pointer_width = "64"))]
 impl<K> Context<'_, K> {
     pub(super) fn in_out_whole_block_bits(&self) -> BitLength<usize> {
         use crate::polyfill::usize_from_u64;
@@ -94,7 +94,7 @@ impl<K> Context<'_, K> {
     }
 }
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(perlasm, target_arch = "aarch64"))]
 /// Access to `inner` for the integrated AES-GCM implementations only.
 impl Context<'_, clmul::Key> {
     #[inline]
@@ -103,7 +103,7 @@ impl Context<'_, clmul::Key> {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(perlasm, target_arch = "x86_64"))]
 impl Context<'_, clmulavxmovbe::Key> {
     /// Access to `inner` for the integrated AES-GCM implementations only.
     #[inline]
