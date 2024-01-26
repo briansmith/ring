@@ -466,6 +466,22 @@ OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(const X509 *x509);
 // |OPENSSL_malloc|. If |sk| is NULL, no action is taken.
 OPENSSL_EXPORT void X509_email_free(STACK_OF(OPENSSL_STRING) *sk);
 
+// X509_cmp compares |a| and |b| and returns zero if they are equal, a negative
+// number if |b| sorts after |a| and a negative number if |a| sorts after |b|.
+// The sort order implemented by this function is arbitrary and does not
+// reflect properties of the certificate such as expiry. Applications should not
+// rely on the order itself.
+//
+// TODO(https://crbug.com/boringssl/355): This function works by comparing a
+// cached hash of the encoded certificate. If |a| or |b| could not be
+// serialized, the current behavior is to compare all unencodable certificates
+// as equal. This function should only be used with |X509| objects that were
+// parsed from bytes and never mutated.
+//
+// TODO(https://crbug.com/boringssl/407): This function is const, but it is not
+// always thread-safe, notably if |a| and |b| were mutated.
+OPENSSL_EXPORT int X509_cmp(const X509 *a, const X509 *b);
+
 
 // Issuing certificates.
 //
@@ -729,6 +745,18 @@ OPENSSL_EXPORT X509_CRL *d2i_X509_CRL(X509_CRL **out, const uint8_t **inp,
 // thread-safe but is currently neither in some cases, notably if |crl| was
 // mutated.
 OPENSSL_EXPORT int i2d_X509_CRL(X509_CRL *crl, uint8_t **outp);
+
+// X509_CRL_match compares |a| and |b| and returns zero if they are equal, a
+// negative number if |b| sorts after |a| and a negative number if |a| sorts
+// after |b|. The sort order implemented by this function is arbitrary and does
+// not reflect properties of the CRL such as expiry. Applications should not
+// rely on the order itself.
+//
+// TODO(https://crbug.com/boringssl/355): This function works by comparing a
+// cached hash of the encoded CRL. This cached hash is computed when the CRL is
+// parsed, but not when mutating or issuing CRLs. This function should only be
+// used with |X509_CRL| objects that were parsed from bytes and never mutated.
+OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
 
 #define X509_CRL_VERSION_1 0
 #define X509_CRL_VERSION_2 1
@@ -3680,6 +3708,10 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_ex_data(X509_STORE_CTX *ctx, int idx,
                                               void *data);
 OPENSSL_EXPORT void *X509_STORE_CTX_get_ex_data(X509_STORE_CTX *ctx, int idx);
 
+#define X509_STORE_CTX_set_app_data(ctx, data) \
+  X509_STORE_CTX_set_ex_data(ctx, 0, data)
+#define X509_STORE_CTX_get_app_data(ctx) X509_STORE_CTX_get_ex_data(ctx, 0)
+
 
 // Hashing and signing ASN.1 structures.
 
@@ -4439,9 +4471,6 @@ OPENSSL_EXPORT const char *X509_get_default_cert_dir_env(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_file_env(void);
 OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
 
-
-OPENSSL_EXPORT int X509_cmp(const X509 *a, const X509 *b);
-
 // X509_NAME_hash returns a hash of |name|, or zero on error. This is the new
 // hash used by |X509_LOOKUP_hash_dir|.
 //
@@ -4468,9 +4497,6 @@ OPENSSL_EXPORT uint32_t X509_NAME_hash(X509_NAME *name);
 // value.
 OPENSSL_EXPORT uint32_t X509_NAME_hash_old(X509_NAME *name);
 
-OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
-
-
 /*
 SSL_CTX -> X509_STORE
                 -> X509_LOOKUP
@@ -4487,10 +4513,6 @@ The X509_STORE has X509_LOOKUPs for looking up certs.
 The X509_STORE then calls a function to actually verify the
 certificate chain.
 */
-
-#define X509_STORE_CTX_set_app_data(ctx, data) \
-  X509_STORE_CTX_set_ex_data(ctx, 0, data)
-#define X509_STORE_CTX_get_app_data(ctx) X509_STORE_CTX_get_ex_data(ctx, 0)
 
 #define X509_L_FILE_LOAD 1
 #define X509_L_ADD_DIR 2
