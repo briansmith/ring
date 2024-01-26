@@ -6,7 +6,7 @@
 
 #include "parse_values.h"
 
-#include <openssl/time.h>
+#include <openssl/posix_time.h>
 
 namespace bssl::der {
 

@@ -29,8 +29,8 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/pem.h>
+#include <openssl/posix_time.h>
 #include <openssl/span.h>
-#include <openssl/time.h>
 #include <openssl/x509.h>
 
 #include "../test/test_util.h"

@@ -58,7 +58,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/time.h>
+#include <openssl/posix_time.h>
 
 #include <stdlib.h>
 #include <string.h>
