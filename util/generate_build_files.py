@@ -339,10 +339,15 @@ class GN(object):
       out.write('\n')
     self.firstSection = False
 
-    out.write('%s = [\n' % name)
-    for f in sorted(files):
-      out.write('  "%s",\n' % f)
-    out.write(']\n')
+    if len(files) == 0:
+      out.write('%s = []\n' % name)
+    elif len(files) == 1:
+      out.write('%s = [ "%s" ]\n' % (name, files[0]))
+    else:
+      out.write('%s = [\n' % name)
+      for f in sorted(files):
+        out.write('  "%s",\n' % f)
+      out.write(']\n')
 
   def WriteFiles(self, files):
     with open('BUILD.generated.gni', 'w+') as out:
