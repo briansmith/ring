@@ -29,7 +29,6 @@ import json
 # TODO(https://crbug.com/boringssl/542): This probably should be a map, but some
 # downstream scripts import this to find what folders to add/remove from git.
 OS_ARCH_COMBOS = [
-    ('apple', 'arm', 'ios32', [], 'S'),
     ('apple', 'aarch64', 'ios64', [], 'S'),
     ('apple', 'x86', 'macosx', ['-fPIC', '-DOPENSSL_IA32_SSE2'], 'S'),
     ('apple', 'x86_64', 'macosx', [], 'S'),
