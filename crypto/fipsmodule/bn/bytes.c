@@ -63,26 +63,31 @@
 
 void bn_big_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
                             size_t in_len) {
-  for (size_t i = 0; i < out_len; i++) {
-    if (in_len < sizeof(BN_ULONG)) {
-      // Load the last partial word.
-      BN_ULONG word = 0;
-      for (size_t j = 0; j < in_len; j++) {
-        word = (word << 8) | in[j];
-      }
-      in_len = 0;
-      out[i] = word;
-      // Fill the remainder with zeros.
-      OPENSSL_memset(out + i + 1, 0, (out_len - i - 1) * sizeof(BN_ULONG));
-      break;
-    }
+  // The caller should have sized |out| to fit |in| without truncating. This
+  // condition ensures we do not overflow |out|, so use a runtime check.
+  BSSL_CHECK(in_len <= out_len * sizeof(BN_ULONG));
 
+  // Load whole words.
+  while (in_len >= sizeof(BN_ULONG)) {
     in_len -= sizeof(BN_ULONG);
-    out[i] = CRYPTO_load_word_be(in + in_len);
+    out[0] = CRYPTO_load_word_be(in + in_len);
+    out++;
+    out_len--;
   }
 
-  // The caller should have sized the output to avoid truncation.
-  assert(in_len == 0);
+  // Load the last partial word.
+  if (in_len != 0) {
+    BN_ULONG word = 0;
+    for (size_t i = 0; i < in_len; i++) {
+      word = (word << 8) | in[i];
+    }
+    out[0] = word;
+    out++;
+    out_len--;
+  }
+
+  // Fill the remainder with zeros.
+  OPENSSL_memset(out, 0, out_len * sizeof(BN_ULONG));
 }
 
 BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
