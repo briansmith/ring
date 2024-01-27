@@ -115,7 +115,7 @@ uint8_t *SHA256(const uint8_t *data, size_t len,
 }
 
 #if !defined(SHA256_ASM)
-static void sha256_block_data_order(uint32_t *state, const uint8_t *in,
+static void sha256_block_data_order(uint32_t state[8], const uint8_t *in,
                                     size_t num);
 #endif
 
@@ -223,7 +223,7 @@ static const uint32_t K256[64] = {
     ROUND_00_15(i, a, b, c, d, e, f, g, h);            \
   } while (0)
 
-static void sha256_block_data_order_nohw(uint32_t *state, const uint8_t *data,
+static void sha256_block_data_order_nohw(uint32_t state[8], const uint8_t *data,
                                          size_t num) {
   uint32_t a, b, c, d, e, f, g, h, s0, s1, T1;
   uint32_t X[16];
@@ -312,7 +312,7 @@ static void sha256_block_data_order_nohw(uint32_t *state, const uint8_t *data,
 
 #endif  // !defined(SHA256_ASM_NOHW)
 
-static void sha256_block_data_order(uint32_t *state, const uint8_t *data,
+static void sha256_block_data_order(uint32_t state[8], const uint8_t *data,
                                     size_t num) {
 #if defined(SHA256_ASM_HW)
   if (sha256_hw_capable()) {

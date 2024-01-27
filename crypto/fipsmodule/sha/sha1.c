@@ -86,7 +86,7 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
 }
 
 #if !defined(SHA1_ASM)
-static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
+static void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
                                   size_t num);
 #endif
 
@@ -234,7 +234,7 @@ void CRYPTO_fips_186_2_prf(uint8_t *out, size_t out_len,
 #if !defined(SHA1_ASM)
 
 #if !defined(SHA1_ASM_NOHW)
-static void sha1_block_data_order_nohw(uint32_t *state, const uint8_t *data,
+static void sha1_block_data_order_nohw(uint32_t state[5], const uint8_t *data,
                                        size_t num) {
   register uint32_t A, B, C, D, E, T;
   uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10,
@@ -384,7 +384,7 @@ static void sha1_block_data_order_nohw(uint32_t *state, const uint8_t *data,
 }
 #endif  // !SHA1_ASM_NOHW
 
-static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
+static void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
                                   size_t num) {
 #if defined(SHA1_ASM_HW)
   if (sha1_hw_capable()) {
