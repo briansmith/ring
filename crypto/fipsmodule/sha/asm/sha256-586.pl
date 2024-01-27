@@ -76,10 +76,9 @@ require "x86asm.pl";
 $output=pop;
 open STDOUT,">$output";
 
-&asm_init($ARGV[0],$ARGV[$#ARGV] eq "386");
+&asm_init($ARGV[0]);
 
-$xmm=$avx=0;
-for (@ARGV) { $xmm=1 if (/-DOPENSSL_IA32_SSE2/); }
+$xmm = 1;
 
 # In upstream, this is controlled by shelling out to the compiler to check
 # versions, but BoringSSL is intended to be used with pre-generated perlasm

@@ -30,13 +30,13 @@ import json
 # downstream scripts import this to find what folders to add/remove from git.
 OS_ARCH_COMBOS = [
     ('apple', 'aarch64', 'ios64', [], 'S'),
-    ('apple', 'x86', 'macosx', ['-fPIC', '-DOPENSSL_IA32_SSE2'], 'S'),
+    ('apple', 'x86', 'macosx', ['-fPIC'], 'S'),
     ('apple', 'x86_64', 'macosx', [], 'S'),
     ('linux', 'arm', 'linux32', [], 'S'),
     ('linux', 'aarch64', 'linux64', [], 'S'),
-    ('linux', 'x86', 'elf', ['-fPIC', '-DOPENSSL_IA32_SSE2'], 'S'),
+    ('linux', 'x86', 'elf', ['-fPIC'], 'S'),
     ('linux', 'x86_64', 'elf', [], 'S'),
-    ('win', 'x86', 'win32n', ['-DOPENSSL_IA32_SSE2'], 'asm'),
+    ('win', 'x86', 'win32n', [], 'asm'),
     ('win', 'x86_64', 'nasm', [], 'asm'),
     ('win', 'aarch64', 'win64', [], 'S'),
 ]
