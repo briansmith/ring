@@ -2902,6 +2902,17 @@ TEST_F(BNTest, BNMulMontABI) {
       CHECK_ABI(bn_sqr8x_mont, r.data(), a.data(), bn_mulx_adx_capable(),
                 mont->N.d, mont->n0, words);
     }
+#elif defined(OPENSSL_ARM)
+    if (bn_mul8x_mont_neon_capable(words)) {
+      CHECK_ABI(bn_mul8x_mont_neon, r.data(), a.data(), b.data(), mont->N.d,
+                mont->n0, words);
+      CHECK_ABI(bn_mul8x_mont_neon, r.data(), a.data(), a.data(), mont->N.d,
+                mont->n0, words);
+    }
+    CHECK_ABI(bn_mul_mont_nohw, r.data(), a.data(), b.data(), mont->N.d,
+              mont->n0, words);
+    CHECK_ABI(bn_mul_mont_nohw, r.data(), a.data(), a.data(), mont->N.d,
+              mont->n0, words);
 #else
     CHECK_ABI(bn_mul_mont, r.data(), a.data(), b.data(), mont->N.d, mont->n0,
               words);

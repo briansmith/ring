@@ -507,8 +507,7 @@ void bn_mod_mul_montgomery_small(BN_ULONG *r, const BN_ULONG *a,
 
 #if defined(OPENSSL_BN_ASM_MONT) && defined(OPENSSL_X86_64)
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                const BN_ULONG *np, const BN_ULONG *n0, size_t num)
-{
+                const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
   if (ap == bp && bn_sqr8x_mont_capable(num)) {
     return bn_sqr8x_mont(rp, ap, bn_mulx_adx_capable(), np, n0, num);
   }
@@ -517,6 +516,16 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   }
   if (bn_mul4x_mont_capable(num)) {
     return bn_mul4x_mont(rp, ap, bp, np, n0, num);
+  }
+  return bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
+}
+#endif
+
+#if defined(OPENSSL_BN_ASM_MONT) && defined(OPENSSL_ARM)
+int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
+  if (bn_mul8x_mont_neon_capable(num)) {
+    return bn_mul8x_mont_neon(rp, ap, bp, np, n0, num);
   }
   return bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
 }
