@@ -26,20 +26,7 @@ extern "C" {
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
 // defined in assembly.
 
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86)
-
-#define SHA1_ASM
-#define SHA256_ASM
-#define SHA512_ASM
-
-void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
-                           size_t num_blocks);
-void sha256_block_data_order(uint32_t state[8], const uint8_t *data,
-                             size_t num_blocks);
-void sha512_block_data_order(uint64_t state[8], const uint8_t *data,
-                             size_t num_blocks);
-
-#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM)
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM)
 
 #define SHA1_ASM_NOHW
 #define SHA256_ASM_NOHW
@@ -88,6 +75,41 @@ OPENSSL_INLINE int sha256_hw_capable(void) {
 OPENSSL_INLINE int sha512_hw_capable(void) {
   return CRYPTO_is_ARMv8_SHA512_capable();
 }
+
+#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86)
+
+#define SHA1_ASM_NOHW
+
+#define SHA1_ASM_SSSE3
+OPENSSL_INLINE int sha1_ssse3_capable(void) {
+  // TODO(davidben): Do we need to check the FXSR bit? The Intel manual does not
+  // say to.
+  return CRYPTO_is_SSSE3_capable() && CRYPTO_is_FXSR_capable();
+}
+void sha1_block_data_order_ssse3(uint32_t state[5], const uint8_t *data,
+                                 size_t num);
+
+#define SHA1_ASM_AVX
+OPENSSL_INLINE int sha1_avx_capable(void) {
+  // Pre-Zen AMD CPUs had slow SHLD/SHRD; Zen added the SHA extension; see the
+  // discussion in sha1-586.pl.
+  //
+  // TODO(davidben): Should we enable SHAEXT on 32-bit x86?
+  // TODO(davidben): Do we need to check the FXSR bit? The Intel manual does not
+  // say to.
+  return CRYPTO_is_AVX_capable() && CRYPTO_is_intel_cpu() &&
+         CRYPTO_is_FXSR_capable();
+}
+void sha1_block_data_order_avx(uint32_t state[5], const uint8_t *data,
+                               size_t num);
+
+// TODO(crbug.com/boringssl/673): Move the remaining CPU dispatch to C.
+#define SHA256_ASM
+#define SHA512_ASM
+void sha256_block_data_order(uint32_t state[8], const uint8_t *data,
+                             size_t num_blocks);
+void sha512_block_data_order(uint64_t state[8], const uint8_t *data,
+                             size_t num_blocks);
 
 #elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
 
