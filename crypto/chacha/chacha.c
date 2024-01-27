@@ -93,7 +93,7 @@ static void ChaCha20_ctr32(uint8_t *out, const uint8_t *in, size_t in_len,
 }
 #endif
 
-#if defined(CHACHA20_ASM) || defined(CHACHA20_ASM_NOHW)
+#if defined(CHACHA20_ASM_NOHW)
 
 void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
                       const uint8_t key[32], const uint8_t nonce[12],

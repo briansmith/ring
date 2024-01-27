@@ -351,9 +351,6 @@ TEST(ChaChaTest, CounterOverflow) {
 
 static void check_abi(uint8_t *out, const uint8_t *in, size_t in_len,
                       const uint32_t key[8], const uint32_t counter[4]) {
-#if defined(CHACHA20_ASM)
-  CHECK_ABI(ChaCha20_ctr32, out, in, in_len, key, counter);
-#endif
 #if defined(CHACHA20_ASM_NEON)
   if (ChaCha20_ctr32_neon_capable(in_len)) {
     CHECK_ABI(ChaCha20_ctr32_neon, out, in, in_len, key, counter);
