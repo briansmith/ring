@@ -211,8 +211,6 @@ sub BODY_00_15() {
 	&picmeup("edx","OPENSSL_ia32cap_P",$K256,&label("K256"));
 	&mov	("ecx",&DWP(0,"edx"));
 	&mov	("ebx",&DWP(4,"edx"));
-	&test	("ecx",1<<20);		# check for P4
-	&jnz	(&label("loop"));
 	&mov	("edx",&DWP(8,"edx"))	if ($xmm);
 	&test	("ecx",1<<24);		# check for FXSR
 	&jz	($unroll_after?&label("no_xmm"):&label("loop"));
