@@ -235,12 +235,20 @@ typedef __uint128_t uint128_t;
 #define OPENSSL_FALLTHROUGH
 #endif
 
+// GCC-like compilers indicate SSE2 with |__SSE2__|. MSVC leaves the caller to
+// know that x86_64 has SSE2, and uses _M_IX86_FP to indicate SSE2 on x86.
+// https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=msvc-170
+#if defined(__SSE2__) || defined(_M_AMD64) || defined(_M_X64) || \
+    (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#define OPENSSL_SSE2
+#endif
+
 // For convenience in testing 64-bit generic code, we allow disabling SSE2
 // intrinsics via |OPENSSL_NO_SSE2_FOR_TESTING|. x86_64 always has SSE2
 // available, so we would otherwise need to test such code on a non-x86_64
 // platform.
-#if defined(__SSE2__) && !defined(OPENSSL_NO_SSE2_FOR_TESTING)
-#define OPENSSL_SSE2
+#if defined(OPENSSL_SSE2) && defined(OPENSSL_NO_SSE2_FOR_TESTING)
+#undef OPENSSL_SSE2
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
