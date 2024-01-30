@@ -22,7 +22,6 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use crate::{cpu, error, hkdf, polyfill};
-use core::ops::RangeFrom;
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -33,6 +32,8 @@ pub use self::{
     sealing_key::SealingKey,
     unbound_key::UnboundKey,
 };
+
+type InOut<'i, 'o> = crate::inout::InOut<'i, 'o, u8>;
 
 /// A sequences of unique nonces.
 ///
@@ -138,17 +139,16 @@ pub struct Algorithm {
         key: &KeyInner,
         nonce: Nonce,
         aad: Aad<&[u8]>,
-        in_out: &mut [u8],
+        in_out: InOut,
         cpu_features: cpu::Features,
-    ) -> Tag,
+    ) -> Result<Tag, error::Unspecified>,
     open: fn(
         key: &KeyInner,
         nonce: Nonce,
         aad: Aad<&[u8]>,
-        in_out: &mut [u8],
-        src: RangeFrom<usize>,
+        in_out: InOut,
         cpu_features: cpu::Features,
-    ) -> Tag,
+    ) -> Result<Tag, error::Unspecified>,
 
     key_len: usize,
     id: AlgorithmID,

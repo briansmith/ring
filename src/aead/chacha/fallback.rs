@@ -15,15 +15,23 @@
 // Adapted from the public domain, estream code by D. Bernstein.
 // Adapted from the BoringSSL crypto/chacha/chacha.c.
 
-use super::{Counter, Key, BLOCK_LEN};
-use core::ops::RangeFrom;
+use super::{super::InOut, Counter, Key, BLOCK_LEN};
+use crate::{error, polyfill};
+use core::cmp::min;
 
-pub(super) fn ChaCha20_ctr32(
+pub(super) fn ChaCha20_ctr32<'o>(
     key: &Key,
     counter: Counter,
-    in_out: &mut [u8],
-    src: RangeFrom<usize>,
-) {
+    in_out: InOut<'_, 'o>,
+) -> &'o mut [u8] {
+    ChaCha20_ctr32_(key, counter, in_out).unwrap()
+}
+
+fn ChaCha20_ctr32_<'o>(
+    key: &Key,
+    counter: Counter,
+    mut in_out: InOut<'_, 'o>,
+) -> Result<&'o mut [u8], error::Unspecified> {
     const SIGMA: [u32; 4] = [
         u32::from_le_bytes(*b"expa"),
         u32::from_le_bytes(*b"nd 3"),
@@ -39,26 +47,32 @@ pub(super) fn ChaCha20_ctr32(
         key[6], key[7], counter[0], counter[1], counter[2], counter[3],
     ];
 
-    let mut in_out_len = in_out.len().checked_sub(src.start).unwrap();
-    let mut input = in_out[src].as_ptr();
-    let mut output = in_out.as_mut_ptr();
-
     let mut buf = [0u8; BLOCK_LEN];
-    while in_out_len > 0 {
-        chacha_core(&mut buf, &state);
-        state[12] += 1;
+    let result_ptr = in_out.output_ptr_less_safe();
+    let result_len = in_out.len();
+    while in_out.len() > 0 {
+        let todo = min(buf.len(), in_out.len());
+        in_out.advance_after(todo, |chunk| {
+            chacha_core(&mut buf, &state);
+            state[12] += 1;
 
-        let todo = core::cmp::min(BLOCK_LEN, in_out_len);
-        for (i, &b) in buf[..todo].iter().enumerate() {
-            let input = unsafe { *input.add(i) };
-            let b = input ^ b;
-            unsafe { *output.add(i) = b };
-        }
-
-        in_out_len -= todo;
-        input = unsafe { input.add(todo) };
-        output = unsafe { output.add(todo) };
+            buf.iter_mut()
+                .zip(chunk.input().iter().copied())
+                .for_each(|(b, input)| {
+                    *b ^= input;
+                });
+            let output = chunk.into_output_ptr();
+            unsafe {
+                core::ptr::copy_nonoverlapping(buf.as_ptr(), output.cast(), todo);
+            }
+        })?;
     }
+    let output = unsafe {
+        polyfill::maybeuninit::slice_assume_init_mut(core::slice::from_raw_parts_mut(
+            result_ptr, result_len,
+        ))
+    };
+    Ok(output)
 }
 
 // Performs 20 rounds of ChaCha on `input`, storing the result in `output`.
