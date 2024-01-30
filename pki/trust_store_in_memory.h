@@ -89,7 +89,7 @@ class OPENSSL_EXPORT TrustStoreInMemory : public TrustStore {
   std::unordered_multimap<std::string_view, Entry> entries_;
 
   // Set of distrusted SPKIs.
-  std::set<std::string> distrusted_spkis_;
+  std::set<std::string, std::less<>> distrusted_spkis_;
 
   // Returns the `Entry` matching `cert`, or `nullptr` if not in the trust
   // store.

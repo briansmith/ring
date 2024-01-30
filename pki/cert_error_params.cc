@@ -22,9 +22,9 @@ class CertErrorParams2Der : public CertErrorParams {
   CertErrorParams2Der(const char *name1, der::Input der1, const char *name2,
                       der::Input der2)
       : name1_(name1),
-        der1_(der1.AsString()),
+        der1_(BytesAsStringView(der1)),
         name2_(name2),
-        der2_(der2.AsString()) {}
+        der2_(BytesAsStringView(der2)) {}
 
   CertErrorParams2Der(const CertErrorParams2Der &) = delete;
   CertErrorParams2Der &operator=(const CertErrorParams2Der &) = delete;

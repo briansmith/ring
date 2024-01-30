@@ -187,13 +187,13 @@ TEST(ParseNameTest, ValidName) {
   ASSERT_EQ(3u, atv.size());
   ASSERT_EQ(1u, atv[0].size());
   ASSERT_EQ(der::Input(kTypeCountryNameOid), atv[0][0].type);
-  ASSERT_EQ("US", atv[0][0].value.AsString());
+  ASSERT_EQ("US", BytesAsStringView(atv[0][0].value));
   ASSERT_EQ(1u, atv[1].size());
   ASSERT_EQ(der::Input(kTypeOrganizationNameOid), atv[1][0].type);
-  ASSERT_EQ("Google Inc.", atv[1][0].value.AsString());
+  ASSERT_EQ("Google Inc.", BytesAsStringView(atv[1][0].value));
   ASSERT_EQ(1u, atv[2].size());
   ASSERT_EQ(der::Input(kTypeCommonNameOid), atv[2][0].type);
-  ASSERT_EQ("Google Test CA", atv[2][0].value.AsString());
+  ASSERT_EQ("Google Test CA", BytesAsStringView(atv[2][0].value));
 }
 
 TEST(ParseNameTest, InvalidNameExtraData) {

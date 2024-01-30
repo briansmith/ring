@@ -363,12 +363,12 @@ bool ParseGeneralizedTime(Input in, GeneralizedTime *value) {
 }
 
 bool ParseIA5String(Input in, std::string *out) {
-  for (char c : in.AsStringView()) {
-    if (static_cast<uint8_t>(c) > 127) {
+  for (uint8_t c : in) {
+    if (c > 127) {
       return false;
     }
   }
-  *out = in.AsString();
+  *out = BytesAsStringView(in);
   return true;
 }
 
@@ -379,23 +379,23 @@ bool ParseVisibleString(Input in, std::string *out) {
   // Also ITU-T X.691 says it much more clearly:
   // "for VisibleString [the range] is 32 to 126 ... For VisibleString .. all
   // the values in the range are present."
-  for (char c : in.AsStringView()) {
-    if (static_cast<uint8_t>(c) < 32 || static_cast<uint8_t>(c) > 126) {
+  for (uint8_t c : in) {
+    if (c < 32 || c > 126) {
       return false;
     }
   }
-  *out = in.AsString();
+  *out = BytesAsStringView(in);
   return true;
 }
 
 bool ParsePrintableString(Input in, std::string *out) {
-  for (char c : in.AsStringView()) {
+  for (uint8_t c : in) {
     if (!(OPENSSL_isalpha(c) || c == ' ' || (c >= '\'' && c <= ':') ||
           c == '=' || c == '?')) {
       return false;
     }
   }
-  *out = in.AsString();
+  *out = BytesAsStringView(in);
   return true;
 }
 

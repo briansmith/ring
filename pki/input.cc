@@ -8,15 +8,7 @@
 
 namespace bssl::der {
 
-std::string Input::AsString() const {
-  return std::string(reinterpret_cast<const char *>(data_.data()),
-                     data_.size());
-}
-
-std::string_view Input::AsStringView() const {
-  return std::string_view(reinterpret_cast<const char *>(data_.data()),
-                          data_.size());
-}
+std::string Input::AsString() const { return std::string(AsStringView()); }
 
 bool operator==(Input lhs, Input rhs) {
   return MakeConstSpan(lhs) == MakeConstSpan(rhs);

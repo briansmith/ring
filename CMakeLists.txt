@@ -203,7 +203,11 @@ elseif(MSVC)
   string(REPLACE "C" " -wd" MSVC_DISABLED_WARNINGS_STR
                             ${MSVC_DISABLED_WARNINGS_LIST})
   set(CMAKE_C_FLAGS   "-utf-8 -W4 -WX ${MSVC_DISABLED_WARNINGS_STR}")
-  set(CMAKE_CXX_FLAGS "-utf-8 -W4 -WX ${MSVC_DISABLED_WARNINGS_STR}")
+  # Without /Zc:__cplusplus, MSVC does not define the right value for
+  # __cplusplus. See https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
+  # If this becomes too problematic for downstream code, we can look at
+  # _MSVC_LANG.
+  set(CMAKE_CXX_FLAGS "-utf-8 -W4 -WX ${MSVC_DISABLED_WARNINGS_STR} -Zc:__cplusplus")
 endif()
 
 if(WIN32)

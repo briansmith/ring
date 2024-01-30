@@ -47,7 +47,8 @@ void TrustStoreInMemory::AddCertificateWithUnspecifiedTrust(
 
 void TrustStoreInMemory::SyncGetIssuersOf(const ParsedCertificate *cert,
                                           ParsedCertificateList *issuers) {
-  auto range = entries_.equal_range(cert->normalized_issuer().AsStringView());
+  auto range =
+      entries_.equal_range(BytesAsStringView(cert->normalized_issuer()));
   for (auto it = range.first; it != range.second; ++it) {
     issuers->push_back(it->second.cert);
   }
@@ -55,7 +56,7 @@ void TrustStoreInMemory::SyncGetIssuersOf(const ParsedCertificate *cert,
 
 CertificateTrust TrustStoreInMemory::GetTrust(const ParsedCertificate *cert) {
   // Check SPKI distrust first.
-  if (distrusted_spkis_.find(cert->tbs().spki_tlv.AsString()) !=
+  if (distrusted_spkis_.find(BytesAsStringView(cert->tbs().spki_tlv)) !=
       distrusted_spkis_.end()) {
     return CertificateTrust::ForDistrusted();
   }
@@ -80,13 +81,13 @@ void TrustStoreInMemory::AddCertificate(
   entry.trust = trust;
 
   // TODO(mattm): should this check for duplicate certificates?
-  entries_.insert(
-      std::make_pair(entry.cert->normalized_subject().AsStringView(), entry));
+  entries_.emplace(BytesAsStringView(entry.cert->normalized_subject()), entry);
 }
 
 const TrustStoreInMemory::Entry *TrustStoreInMemory::GetEntry(
     const ParsedCertificate *cert) const {
-  auto range = entries_.equal_range(cert->normalized_subject().AsStringView());
+  auto range =
+      entries_.equal_range(BytesAsStringView(cert->normalized_subject()));
   for (auto it = range.first; it != range.second; ++it) {
     if (cert == it->second.cert.get() ||
         cert->der_cert() == it->second.cert->der_cert()) {

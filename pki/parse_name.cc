@@ -38,7 +38,7 @@ bool X509NameAttribute::ValueAsString(std::string *out) const {
     case der::kPrintableString:
       return der::ParsePrintableString(value, out);
     case der::kUtf8String:
-      *out = value.AsString();
+      *out = BytesAsStringView(value);
       return true;
     case der::kUniversalString:
       return der::ParseUniversalString(value, out);
@@ -53,7 +53,7 @@ bool X509NameAttribute::ValueAsStringWithUnsafeOptions(
     PrintableStringHandling printable_string_handling, std::string *out) const {
   if (printable_string_handling == PrintableStringHandling::kAsUTF8Hack &&
       value_tag == der::kPrintableString) {
-    *out = value.AsString();
+    *out = BytesAsStringView(value);
     return true;
   }
   return ValueAsString(out);
@@ -65,7 +65,7 @@ bool X509NameAttribute::ValueAsStringUnsafe(std::string *out) const {
     case der::kPrintableString:
     case der::kTeletexString:
     case der::kUtf8String:
-      *out = value.AsString();
+      *out = BytesAsStringView(value);
       return true;
     case der::kUniversalString:
       return der::ParseUniversalString(value, out);

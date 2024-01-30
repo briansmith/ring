@@ -872,7 +872,7 @@ bool ParseAuthorityInfoAccessURIs(
     // GeneralName ::= CHOICE {
     if (access_location_tag == der::ContextSpecificPrimitive(6)) {
       // uniformResourceIdentifier       [6]     IA5String,
-      std::string_view uri = access_location_value.AsStringView();
+      std::string_view uri = BytesAsStringView(access_location_value);
       if (!bssl::string_util::IsAscii(uri)) {
         return false;
       }

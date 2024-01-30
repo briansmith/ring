@@ -44,6 +44,8 @@ class OPENSSL_EXPORT Input {
   constexpr explicit Input(const uint8_t *data, size_t len)
       : data_(MakeConstSpan(data, len)) {}
 
+  // Deprecated: Use StringAsBytes.
+  //
   // Creates an Input from a std::string_view. The constructed Input is only
   // valid as long as |data| points to live memory. If constructed from, say, a
   // |std::string|, mutating the vector will invalidate the Input.
@@ -69,13 +71,17 @@ class OPENSSL_EXPORT Input {
   constexpr Input first(size_t len) const { return Input(data_.first(len)); }
   constexpr Input last(size_t len) const { return Input(data_.last(len)); }
 
+  // Deprecated: use BytesAsStringView and convert to std::string.
+  //
   // Returns a copy of the data represented by this object as a std::string.
   std::string AsString() const;
 
+  // Deprecated: Use ByteAsString. 
+  //
   // Returns a std::string_view pointing to the same data as the Input. The
   // resulting string_view must not outlive the data that was used to construct
   // this Input.
-  std::string_view AsStringView() const;
+  std::string_view AsStringView() const { return BytesAsStringView(data_); }
 
   // Deprecated: This class implicitly converts to bssl::Span<const uint8_t>.
   //

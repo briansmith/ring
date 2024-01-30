@@ -12,7 +12,7 @@ CertIssuerSourceStatic::~CertIssuerSourceStatic() = default;
 void CertIssuerSourceStatic::AddCert(
     std::shared_ptr<const ParsedCertificate> cert) {
   intermediates_.insert(std::make_pair(
-      cert->normalized_subject().AsStringView(), std::move(cert)));
+      BytesAsStringView(cert->normalized_subject()), std::move(cert)));
 }
 
 void CertIssuerSourceStatic::Clear() { intermediates_.clear(); }
@@ -20,7 +20,7 @@ void CertIssuerSourceStatic::Clear() { intermediates_.clear(); }
 void CertIssuerSourceStatic::SyncGetIssuersOf(const ParsedCertificate *cert,
                                               ParsedCertificateList *issuers) {
   auto range =
-      intermediates_.equal_range(cert->normalized_issuer().AsStringView());
+      intermediates_.equal_range(BytesAsStringView(cert->normalized_issuer()));
   for (auto it = range.first; it != range.second; ++it) {
     issuers->push_back(it->second);
   }

@@ -77,7 +77,8 @@ TEST_F(TrustStoreInMemoryTest, OneRootTrusted) {
 
 TEST_F(TrustStoreInMemoryTest, DistrustBySPKI) {
   TrustStoreInMemory in_memory;
-  in_memory.AddDistrustedCertificateBySPKI(newroot_->tbs().spki_tlv.AsString());
+  in_memory.AddDistrustedCertificateBySPKI(
+      std::string(BytesAsStringView(newroot_->tbs().spki_tlv)));
 
   // newroot_ is distrusted.
   CertificateTrust trust = in_memory.GetTrust(newroot_.get());
@@ -98,7 +99,8 @@ TEST_F(TrustStoreInMemoryTest, DistrustBySPKI) {
 TEST_F(TrustStoreInMemoryTest, DistrustBySPKIOverridesTrust) {
   TrustStoreInMemory in_memory;
   in_memory.AddTrustAnchor(newroot_);
-  in_memory.AddDistrustedCertificateBySPKI(newroot_->tbs().spki_tlv.AsString());
+  in_memory.AddDistrustedCertificateBySPKI(
+      std::string(BytesAsStringView(newroot_->tbs().spki_tlv)));
 
   // newroot_ is distrusted.
   CertificateTrust trust = in_memory.GetTrust(newroot_.get());

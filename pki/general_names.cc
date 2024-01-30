@@ -114,7 +114,7 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
   } else if (tag == der::ContextSpecificPrimitive(1)) {
     // rfc822Name                      [1]     IA5String,
     name_type = GENERAL_NAME_RFC822_NAME;
-    const std::string_view s = value.AsStringView();
+    const std::string_view s = BytesAsStringView(value);
     if (!bssl::string_util::IsAscii(s)) {
       errors->AddError(kRFC822NameNotAscii);
       return false;
@@ -123,7 +123,7 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
   } else if (tag == der::ContextSpecificPrimitive(2)) {
     // dNSName                         [2]     IA5String,
     name_type = GENERAL_NAME_DNS_NAME;
-    const std::string_view s = value.AsStringView();
+    const std::string_view s = BytesAsStringView(value);
     if (!bssl::string_util::IsAscii(s)) {
       errors->AddError(kDnsNameNotAscii);
       return false;
@@ -152,7 +152,7 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
   } else if (tag == der::ContextSpecificPrimitive(6)) {
     // uniformResourceIdentifier       [6]     IA5String,
     name_type = GENERAL_NAME_UNIFORM_RESOURCE_IDENTIFIER;
-    const std::string_view s = value.AsStringView();
+    const std::string_view s = BytesAsStringView(value);
     if (!bssl::string_util::IsAscii(s)) {
       errors->AddError(kURINotAscii);
       return false;

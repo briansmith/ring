@@ -696,7 +696,7 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
   //  (3) Has signed the OCSP response using its public key.
   for (const auto &responder_cert_tlv : response.certs) {
     std::shared_ptr<const ParsedCertificate> cur_responder_certificate =
-        OCSPParseCertificate(responder_cert_tlv.AsStringView());
+        OCSPParseCertificate(BytesAsStringView(responder_cert_tlv));
 
     // If failed parsing the certificate, keep looking.
     if (!cur_responder_certificate) {

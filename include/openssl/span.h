@@ -26,6 +26,10 @@ extern "C++" {
 #include <algorithm>
 #include <type_traits>
 
+#if __cplusplus >= 201703L
+#include <string_view>
+#endif
+
 BSSL_NAMESPACE_BEGIN
 
 template <typename T>
@@ -209,6 +213,16 @@ template <typename T, size_t size>
 constexpr Span<const T> MakeConstSpan(T (&array)[size]) {
   return array;
 }
+
+#if __cplusplus >= 201703L
+inline Span<const uint8_t> StringAsBytes(std::string_view s) {
+  return MakeConstSpan(reinterpret_cast<const uint8_t *>(s.data()), s.size());
+}
+
+inline std::string_view BytesAsStringView(bssl::Span<const uint8_t> b) {
+  return std::string_view(reinterpret_cast<const char *>(b.data()), b.size());
+}
+#endif
 
 BSSL_NAMESPACE_END
 
