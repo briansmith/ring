@@ -173,22 +173,10 @@ jobs:
 
         include:
           - target: aarch64-apple-darwin
-            mode: --release
-            rust_channel: stable
-            host_os: macos-13-xlarge # This always costs $$$ but can actually run the tests.
-
-          - target: aarch64-apple-darwin
-            rust_channel: 1.61.0
-            host_os: macos-13 # This can use free credits...
-            cargo_options: --no-run # ... but can't run the tests.
-
-          - target: aarch64-apple-darwin
-            mode: # debug
-            host_os: macos-13 # This can use free credits...
-            cargo_options: --no-run # ... but can't run the tests.
+            host_os: macos-14
 
           - target: aarch64-apple-ios
-            host_os: macos-13
+            host_os: macos-14
             # TODO: Run in the emulator.
             cargo_options: --no-run
 
