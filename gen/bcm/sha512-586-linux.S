@@ -5,12 +5,12 @@
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86) && defined(__ELF__)
 .text
-.globl	sha512_block_data_order
-.hidden	sha512_block_data_order
-.type	sha512_block_data_order,@function
+.globl	sha512_block_data_order_nohw
+.hidden	sha512_block_data_order_nohw
+.type	sha512_block_data_order_nohw,@function
 .align	16
-sha512_block_data_order:
-.L_sha512_block_data_order_begin:
+sha512_block_data_order_nohw:
+.L_sha512_block_data_order_nohw_begin:
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -22,7 +22,7 @@ sha512_block_data_order:
 	call	.L000pic_point
 .L000pic_point:
 	popl	%ebp
-	leal	.L001K512-.L000pic_point(%ebp),%ebp
+	leal	.LK512-.L000pic_point(%ebp),%ebp
 	subl	$16,%esp
 	andl	$-64,%esp
 	shll	$7,%eax
@@ -31,26 +31,18 @@ sha512_block_data_order:
 	movl	%edi,4(%esp)
 	movl	%eax,8(%esp)
 	movl	%ebx,12(%esp)
-	leal	OPENSSL_ia32cap_P-.L001K512(%ebp),%edx
-	movl	(%edx),%ecx
-	movl	4(%edx),%edx
 	movq	(%esi),%mm0
-	andl	$16777216,%ecx
 	movq	8(%esi),%mm1
-	andl	$512,%edx
 	movq	16(%esi),%mm2
-	orl	%edx,%ecx
 	movq	24(%esi),%mm3
 	movq	32(%esi),%mm4
 	movq	40(%esi),%mm5
 	movq	48(%esi),%mm6
 	movq	56(%esi),%mm7
-	cmpl	$16777728,%ecx
-	je	.L002SSSE3
 	subl	$80,%esp
-	jmp	.L003loop_sse2
+	jmp	.L001loop_sse2
 .align	16
-.L003loop_sse2:
+.L001loop_sse2:
 	movq	%mm1,8(%esp)
 	movq	%mm2,16(%esp)
 	movq	%mm3,24(%esp)
@@ -65,9 +57,9 @@ sha512_block_data_order:
 	movl	$15,%edx
 	bswap	%eax
 	bswap	%ebx
-	jmp	.L00400_14_sse2
+	jmp	.L00200_14_sse2
 .align	16
-.L00400_14_sse2:
+.L00200_14_sse2:
 	movd	%eax,%mm1
 	movl	(%edi),%eax
 	movd	%ebx,%mm7
@@ -128,7 +120,7 @@ sha512_block_data_order:
 	paddq	%mm6,%mm3
 	movq	48(%esp),%mm6
 	decl	%edx
-	jnz	.L00400_14_sse2
+	jnz	.L00200_14_sse2
 	movd	%eax,%mm1
 	movd	%ebx,%mm7
 	punpckldq	%mm1,%mm7
@@ -184,9 +176,9 @@ sha512_block_data_order:
 	paddq	%mm6,%mm3
 	pxor	%mm0,%mm0
 	movl	$32,%edx
-	jmp	.L00516_79_sse2
+	jmp	.L00316_79_sse2
 .align	16
-.L00516_79_sse2:
+.L00316_79_sse2:
 	movq	88(%esp),%mm5
 	movq	%mm7,%mm1
 	psrlq	$1,%mm7
@@ -340,7 +332,7 @@ sha512_block_data_order:
 	paddq	%mm6,%mm0
 	addl	$8,%ebp
 	decl	%edx
-	jnz	.L00516_79_sse2
+	jnz	.L00316_79_sse2
 	paddq	%mm3,%mm0
 	movq	8(%esp),%mm1
 	movq	24(%esp),%mm3
@@ -368,7 +360,7 @@ sha512_block_data_order:
 	leal	(%esp,%eax,1),%esp
 	subl	%eax,%ebp
 	cmpl	88(%esp),%edi
-	jb	.L003loop_sse2
+	jb	.L001loop_sse2
 	movl	92(%esp),%esp
 	emms
 	popl	%edi
@@ -376,8 +368,41 @@ sha512_block_data_order:
 	popl	%ebx
 	popl	%ebp
 	ret
-.align	32
-.L002SSSE3:
+.size	sha512_block_data_order_nohw,.-.L_sha512_block_data_order_nohw_begin
+.globl	sha512_block_data_order_ssse3
+.hidden	sha512_block_data_order_ssse3
+.type	sha512_block_data_order_ssse3,@function
+.align	16
+sha512_block_data_order_ssse3:
+.L_sha512_block_data_order_ssse3_begin:
+	pushl	%ebp
+	pushl	%ebx
+	pushl	%esi
+	pushl	%edi
+	movl	20(%esp),%esi
+	movl	24(%esp),%edi
+	movl	28(%esp),%eax
+	movl	%esp,%ebx
+	call	.L004pic_point
+.L004pic_point:
+	popl	%ebp
+	leal	.LK512-.L004pic_point(%ebp),%ebp
+	subl	$16,%esp
+	andl	$-64,%esp
+	shll	$7,%eax
+	addl	%edi,%eax
+	movl	%esi,(%esp)
+	movl	%edi,4(%esp)
+	movl	%eax,8(%esp)
+	movl	%ebx,12(%esp)
+	movq	(%esi),%mm0
+	movq	8(%esi),%mm1
+	movq	16(%esi),%mm2
+	movq	24(%esi),%mm3
+	movq	32(%esi),%mm4
+	movq	40(%esi),%mm5
+	movq	48(%esi),%mm6
+	movq	56(%esi),%mm7
 	leal	-64(%esp),%edx
 	subl	$256,%esp
 	movdqa	640(%ebp),%xmm1
@@ -434,7 +459,7 @@ sha512_block_data_order:
 	movdqa	%xmm2,-16(%edx)
 	nop
 .align	32
-.L006loop_ssse3:
+.L005loop_ssse3:
 	movdqa	16(%edx),%xmm2
 	movdqa	%xmm3,48(%edx)
 	leal	128(%ebp),%ebp
@@ -451,9 +476,9 @@ sha512_block_data_order:
 	pxor	%mm1,%mm2
 	movq	%mm7,56(%esp)
 	pxor	%mm3,%mm3
-	jmp	.L00700_47_ssse3
+	jmp	.L00600_47_ssse3
 .align	32
-.L00700_47_ssse3:
+.L00600_47_ssse3:
 	movdqa	%xmm5,%xmm3
 	movdqa	%xmm2,%xmm1
 .byte	102,15,58,15,208,8
@@ -1472,7 +1497,7 @@ sha512_block_data_order:
 	movdqa	%xmm1,-16(%edx)
 	leal	128(%ebp),%ebp
 	decl	%ecx
-	jnz	.L00700_47_ssse3
+	jnz	.L00600_47_ssse3
 	movdqa	(%ebp),%xmm1
 	leal	-640(%ebp),%ebp
 	movdqu	(%ebx),%xmm0
@@ -2284,7 +2309,7 @@ sha512_block_data_order:
 	movq	%mm6,48(%esi)
 	movq	%mm7,56(%esi)
 	cmpl	%eax,%edi
-	jb	.L006loop_ssse3
+	jb	.L005loop_ssse3
 	movl	76(%edx),%esp
 	emms
 	popl	%edi
@@ -2292,8 +2317,9 @@ sha512_block_data_order:
 	popl	%ebx
 	popl	%ebp
 	ret
+.size	sha512_block_data_order_ssse3,.-.L_sha512_block_data_order_ssse3_begin
 .align	64
-.L001K512:
+.LK512:
 .long	3609767458,1116352408
 .long	602891725,1899447441
 .long	3964484399,3049323471
@@ -2376,7 +2402,6 @@ sha512_block_data_order:
 .long	1246189591,1816402316
 .long	67438087,66051
 .long	202182159,134810123
-.size	sha512_block_data_order,.-.L_sha512_block_data_order_begin
 .byte	83,72,65,53,49,50,32,98,108,111,99,107,32,116,114,97
 .byte	110,115,102,111,114,109,32,102,111,114,32,120,56,54,44,32
 .byte	67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97

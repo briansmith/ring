@@ -66,8 +66,6 @@ open STDOUT,">$output";
 
 $sse2=1;
 
-&external_label("OPENSSL_ia32cap_P") if ($sse2);
-
 $Tlo=&DWP(0,"esp");	$Thi=&DWP(4,"esp");
 $Alo=&DWP(8,"esp");	$Ahi=&DWP(8+4,"esp");
 $Blo=&DWP(16,"esp");	$Bhi=&DWP(16+4,"esp");
@@ -290,8 +288,9 @@ sub BODY_00_15_x86 {
 	&lea	($K512,&DWP(8,$K512));		# K++
 }
 
+&static_label("K512");
 
-&function_begin("sha512_block_data_order");
+&function_begin("sha512_block_data_order_nohw");
 	&mov	("esi",wparam(0));	# ctx
 	&mov	("edi",wparam(1));	# inp
 	&mov	("eax",wparam(2));	# num
@@ -313,26 +312,23 @@ sub BODY_00_15_x86 {
 	&mov	(&DWP(12,"esp"),"ebx");	# saved sp
 
 if ($sse2) {
-	&picmeup("edx","OPENSSL_ia32cap_P",$K512,&label("K512"));
-	&mov	("ecx",&DWP(0,"edx"));
-	&mov	("edx",&DWP(4,"edx"));
-
 	# load ctx->h[0-7]
 	&movq	($A,&QWP(0,"esi"));
-	 &and	("ecx",1<<24);		# XMM registers availability
 	&movq	("mm1",&QWP(8,"esi"));
-	 &and	("edx",1<<9);		# SSSE3 bit
 	&movq	($BxC,&QWP(16,"esi"));
-	 &or	("ecx","edx");
 	&movq	("mm3",&QWP(24,"esi"));
 	&movq	($E,&QWP(32,"esi"));
 	&movq	("mm5",&QWP(40,"esi"));
 	&movq	("mm6",&QWP(48,"esi"));
 	&movq	("mm7",&QWP(56,"esi"));
-	&cmp	("ecx",1<<24|1<<9);
-	&je	(&label("SSSE3"));
 	&sub	("esp",8*10);
 	&jmp	(&label("loop_sse2"));
+
+	# TODO(davidben): The preamble above this point comes from the original
+	# merged sha512_block_data_order function, which performed some common
+	# setup and then jumped to the particular SHA-512 implementation. The
+	# parts of the preamble that do not apply to this function can be
+	# removed.
 
 &set_label("loop_sse2",16);
 	#&movq	($Asse2,$A);
@@ -458,13 +454,49 @@ if ($sse2) {
 
 	&mov	("esp",&DWP(8*10+12,"esp"));	# restore sp
 	&emms	();
-&function_end_A();
+&function_end("sha512_block_data_order_nohw");
 
-&set_label("SSSE3",32);
 { my ($cnt,$frame)=("ecx","edx");
   my @X=map("xmm$_",(0..7));
   my $j;
   my $i=0;
+
+&function_begin("sha512_block_data_order_ssse3");
+	&mov	("esi",wparam(0));	# ctx
+	&mov	("edi",wparam(1));	# inp
+	&mov	("eax",wparam(2));	# num
+	&mov	("ebx","esp");		# saved sp
+
+	&call	(&label("pic_point"));	# make it PIC!
+&set_label("pic_point");
+	&blindpop($K512);
+	&lea	($K512,&DWP(&label("K512")."-".&label("pic_point"),$K512));
+
+	&sub	("esp",16);
+	&and	("esp",-64);
+
+	&shl	("eax",7);
+	&add	("eax","edi");
+	&mov	(&DWP(0,"esp"),"esi");	# ctx
+	&mov	(&DWP(4,"esp"),"edi");	# inp
+	&mov	(&DWP(8,"esp"),"eax");	# inp+num*128
+	&mov	(&DWP(12,"esp"),"ebx");	# saved sp
+
+	# load ctx->h[0-7]
+	&movq	($A,&QWP(0,"esi"));
+	&movq	("mm1",&QWP(8,"esi"));
+	&movq	($BxC,&QWP(16,"esi"));
+	&movq	("mm3",&QWP(24,"esi"));
+	&movq	($E,&QWP(32,"esi"));
+	&movq	("mm5",&QWP(40,"esi"));
+	&movq	("mm6",&QWP(48,"esi"));
+	&movq	("mm7",&QWP(56,"esi"));
+
+	# TODO(davidben): The preamble above this point comes from the original
+	# merged sha512_block_data_order function, which performed some common
+	# setup and then jumped to the particular SHA-512 implementation. The
+	# parts of the preamble that do not apply to this function can be
+	# removed.
 
 	&lea	($frame,&DWP(-64,"esp"));
 	&sub	("esp",256);
@@ -683,7 +715,7 @@ sub BODY_00_15_ssse3 {		# "phase-less" copy of BODY_00_15_sse2
 	&mov	("esp",&DWP(64+12,$frame));	# restore sp
 	&emms	();
 }
-&function_end_A();
+&function_end("sha512_block_data_order_ssse3");
 }
 
 &set_label("K512",64);	# Yes! I keep it in the code segment!
@@ -770,7 +802,6 @@ sub BODY_00_15_ssse3 {		# "phase-less" copy of BODY_00_15_sse2
 
 	&data_word(0x04050607,0x00010203);	# byte swap
 	&data_word(0x0c0d0e0f,0x08090a0b);	# mask
-&function_end_B("sha512_block_data_order");
 &asciz("SHA512 block transform for x86, CRYPTOGAMS by <appro\@openssl.org>");
 
 &asm_finish();

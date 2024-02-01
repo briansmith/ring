@@ -13,11 +13,10 @@ section	.text	code align=64
 %else
 section	.text	code
 %endif
-;extern	_OPENSSL_ia32cap_P
-global	_sha512_block_data_order
+global	_sha512_block_data_order_nohw
 align	16
-_sha512_block_data_order:
-L$_sha512_block_data_order_begin:
+_sha512_block_data_order_nohw:
+L$_sha512_block_data_order_nohw_begin:
 	push	ebp
 	push	ebx
 	push	esi
@@ -29,7 +28,7 @@ L$_sha512_block_data_order_begin:
 	call	L$000pic_point
 L$000pic_point:
 	pop	ebp
-	lea	ebp,[(L$001K512-L$000pic_point)+ebp]
+	lea	ebp,[(L$K512-L$000pic_point)+ebp]
 	sub	esp,16
 	and	esp,-64
 	shl	eax,7
@@ -38,26 +37,18 @@ L$000pic_point:
 	mov	DWORD [4+esp],edi
 	mov	DWORD [8+esp],eax
 	mov	DWORD [12+esp],ebx
-	lea	edx,[_OPENSSL_ia32cap_P]
-	mov	ecx,DWORD [edx]
-	mov	edx,DWORD [4+edx]
 	movq	mm0,[esi]
-	and	ecx,16777216
 	movq	mm1,[8+esi]
-	and	edx,512
 	movq	mm2,[16+esi]
-	or	ecx,edx
 	movq	mm3,[24+esi]
 	movq	mm4,[32+esi]
 	movq	mm5,[40+esi]
 	movq	mm6,[48+esi]
 	movq	mm7,[56+esi]
-	cmp	ecx,16777728
-	je	NEAR L$002SSSE3
 	sub	esp,80
-	jmp	NEAR L$003loop_sse2
+	jmp	NEAR L$001loop_sse2
 align	16
-L$003loop_sse2:
+L$001loop_sse2:
 	movq	[8+esp],mm1
 	movq	[16+esp],mm2
 	movq	[24+esp],mm3
@@ -72,9 +63,9 @@ L$003loop_sse2:
 	mov	edx,15
 	bswap	eax
 	bswap	ebx
-	jmp	NEAR L$00400_14_sse2
+	jmp	NEAR L$00200_14_sse2
 align	16
-L$00400_14_sse2:
+L$00200_14_sse2:
 	movd	mm1,eax
 	mov	eax,DWORD [edi]
 	movd	mm7,ebx
@@ -135,7 +126,7 @@ L$00400_14_sse2:
 	paddq	mm3,mm6
 	movq	mm6,[48+esp]
 	dec	edx
-	jnz	NEAR L$00400_14_sse2
+	jnz	NEAR L$00200_14_sse2
 	movd	mm1,eax
 	movd	mm7,ebx
 	punpckldq	mm7,mm1
@@ -191,9 +182,9 @@ L$00400_14_sse2:
 	paddq	mm3,mm6
 	pxor	mm0,mm0
 	mov	edx,32
-	jmp	NEAR L$00516_79_sse2
+	jmp	NEAR L$00316_79_sse2
 align	16
-L$00516_79_sse2:
+L$00316_79_sse2:
 	movq	mm5,[88+esp]
 	movq	mm1,mm7
 	psrlq	mm7,1
@@ -347,7 +338,7 @@ L$00516_79_sse2:
 	paddq	mm0,mm6
 	add	ebp,8
 	dec	edx
-	jnz	NEAR L$00516_79_sse2
+	jnz	NEAR L$00316_79_sse2
 	paddq	mm0,mm3
 	movq	mm1,[8+esp]
 	movq	mm3,[24+esp]
@@ -375,7 +366,7 @@ L$00516_79_sse2:
 	lea	esp,[eax*1+esp]
 	sub	ebp,eax
 	cmp	edi,DWORD [88+esp]
-	jb	NEAR L$003loop_sse2
+	jb	NEAR L$001loop_sse2
 	mov	esp,DWORD [92+esp]
 	emms
 	pop	edi
@@ -383,8 +374,38 @@ L$00516_79_sse2:
 	pop	ebx
 	pop	ebp
 	ret
-align	32
-L$002SSSE3:
+global	_sha512_block_data_order_ssse3
+align	16
+_sha512_block_data_order_ssse3:
+L$_sha512_block_data_order_ssse3_begin:
+	push	ebp
+	push	ebx
+	push	esi
+	push	edi
+	mov	esi,DWORD [20+esp]
+	mov	edi,DWORD [24+esp]
+	mov	eax,DWORD [28+esp]
+	mov	ebx,esp
+	call	L$004pic_point
+L$004pic_point:
+	pop	ebp
+	lea	ebp,[(L$K512-L$004pic_point)+ebp]
+	sub	esp,16
+	and	esp,-64
+	shl	eax,7
+	add	eax,edi
+	mov	DWORD [esp],esi
+	mov	DWORD [4+esp],edi
+	mov	DWORD [8+esp],eax
+	mov	DWORD [12+esp],ebx
+	movq	mm0,[esi]
+	movq	mm1,[8+esi]
+	movq	mm2,[16+esi]
+	movq	mm3,[24+esi]
+	movq	mm4,[32+esi]
+	movq	mm5,[40+esi]
+	movq	mm6,[48+esi]
+	movq	mm7,[56+esi]
 	lea	edx,[esp-64]
 	sub	esp,256
 	movdqa	xmm1,[640+ebp]
@@ -441,7 +462,7 @@ db	102,15,56,0,248
 	movdqa	[edx-16],xmm2
 	nop
 align	32
-L$006loop_ssse3:
+L$005loop_ssse3:
 	movdqa	xmm2,[16+edx]
 	movdqa	[48+edx],xmm3
 	lea	ebp,[128+ebp]
@@ -458,9 +479,9 @@ L$006loop_ssse3:
 	pxor	mm2,mm1
 	movq	[56+esp],mm7
 	pxor	mm3,mm3
-	jmp	NEAR L$00700_47_ssse3
+	jmp	NEAR L$00600_47_ssse3
 align	32
-L$00700_47_ssse3:
+L$00600_47_ssse3:
 	movdqa	xmm3,xmm5
 	movdqa	xmm1,xmm2
 db	102,15,58,15,208,8
@@ -1479,7 +1500,7 @@ db	102,15,58,15,211,8
 	movdqa	[edx-16],xmm1
 	lea	ebp,[128+ebp]
 	dec	ecx
-	jnz	NEAR L$00700_47_ssse3
+	jnz	NEAR L$00600_47_ssse3
 	movdqa	xmm1,[ebp]
 	lea	ebp,[ebp-640]
 	movdqu	xmm0,[ebx]
@@ -2291,7 +2312,7 @@ db	102,15,56,0,248
 	movq	[48+esi],mm6
 	movq	[56+esi],mm7
 	cmp	edi,eax
-	jb	NEAR L$006loop_ssse3
+	jb	NEAR L$005loop_ssse3
 	mov	esp,DWORD [76+edx]
 	emms
 	pop	edi
@@ -2300,7 +2321,7 @@ db	102,15,56,0,248
 	pop	ebp
 	ret
 align	64
-L$001K512:
+L$K512:
 dd	3609767458,1116352408
 dd	602891725,1899447441
 dd	3964484399,3049323471
@@ -2388,8 +2409,6 @@ db	110,115,102,111,114,109,32,102,111,114,32,120,56,54,44,32
 db	67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97
 db	112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103
 db	62,0
-segment	.bss
-common	_OPENSSL_ia32cap_P 16
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret
