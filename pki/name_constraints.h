@@ -35,6 +35,11 @@ class OPENSSL_EXPORT NameConstraints {
                                                  bool is_critical,
                                                  CertErrors *errors);
 
+  // Create a NameConstraints object with only permitted names from the passed
+  // in |permitted_subtrees|. Should never return nullptr.
+  static std::unique_ptr<NameConstraints> CreateFromPermittedSubtrees(
+      GeneralNames permitted_subtrees);
+
   // Tests if a certificate is allowed by the name constraints.
   // |subject_rdn_sequence| should be the DER-encoded value of the subject's
   // RDNSequence (not including Sequence tag), and may be an empty ASN.1
