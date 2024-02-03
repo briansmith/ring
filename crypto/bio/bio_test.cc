@@ -24,6 +24,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
+#include "../test/file_util.h"
 #include "../test/test_util.h"
 
 #if !defined(OPENSSL_WINDOWS)
@@ -37,6 +38,7 @@
 #include <unistd.h>
 #else
 #include <io.h>
+#include <fcntl.h>
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -633,50 +635,59 @@ TEST(BIOTest, Gets) {
       check_bio_gets(bio.get());
     }
 
-    struct FileCloser {
-      void operator()(FILE *f) const { fclose(f); }
-    };
-    using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
-    ScopedFILE file(tmpfile());
-#if defined(OPENSSL_ANDROID)
-    // On Android, when running from an APK, |tmpfile| does not work. See
-    // b/36991167#comment8.
-    if (!file) {
-      fprintf(stderr, "tmpfile failed: %s (%d). Skipping file-based tests.\n",
-              strerror(errno), errno);
-      continue;
-    }
-#else
-    ASSERT_TRUE(file);
-#endif
+    if (!SkipTempFileTests()) {
+      TemporaryFile file;
+      ASSERT_TRUE(file.Init(t.bio));
 
-    if (!t.bio.empty()) {
-      ASSERT_EQ(1u,
-                fwrite(t.bio.data(), t.bio.size(), /*nitems=*/1, file.get()));
-      ASSERT_EQ(0, fseek(file.get(), 0, SEEK_SET));
-    }
+      // TODO(crbug.com/boringssl/585): If the line has an embedded NUL, file
+      // BIOs do not currently report the answer correctly.
+      if (t.bio.find('\0') == std::string::npos) {
+        SCOPED_TRACE("file");
 
-    // TODO(crbug.com/boringssl/585): If the line has an embedded NUL, file
-    // BIOs do not currently report the answer correctly.
-    if (t.bio.find('\0') == std::string::npos) {
-      SCOPED_TRACE("file");
-      bssl::UniquePtr<BIO> bio(BIO_new_fp(file.get(), BIO_NOCLOSE));
-      ASSERT_TRUE(bio);
-      check_bio_gets(bio.get());
-    }
+        // Test |BIO_new_file|.
+        bssl::UniquePtr<BIO> bio(BIO_new_file(file.path().c_str(), "r"));
+        ASSERT_TRUE(bio);
+        check_bio_gets(bio.get());
 
-    ASSERT_EQ(0, fseek(file.get(), 0, SEEK_SET));
+        // Test |BIO_NOCLOSE|.
+        ScopedFILE file_obj = file.Open("r");
+        ASSERT_TRUE(file_obj);
+        bio.reset(BIO_new_fp(file_obj.get(), BIO_NOCLOSE));
+        ASSERT_TRUE(bio);
+        check_bio_gets(bio.get());
 
-    {
-      SCOPED_TRACE("fd");
+        // Test |BIO_CLOSE|.
+        file_obj = file.Open("r");
+        ASSERT_TRUE(file_obj);
+        bio.reset(BIO_new_fp(file_obj.get(), BIO_CLOSE));
+        ASSERT_TRUE(bio);
+        file_obj.release();  // |BIO_new_fp| took ownership on success.
+        check_bio_gets(bio.get());
+      }
+
+      {
+        SCOPED_TRACE("fd");
 #if defined(OPENSSL_WINDOWS)
-      int fd = _fileno(file.get());
+        int open_flags = _O_RDONLY | _O_BINARY;
 #else
-      int fd = fileno(file.get());
+        int open_flags = O_RDONLY;
 #endif
-      bssl::UniquePtr<BIO> bio(BIO_new_fd(fd, BIO_NOCLOSE));
-      ASSERT_TRUE(bio);
-      check_bio_gets(bio.get());
+
+        // Test |BIO_NOCLOSE|.
+        ScopedFD fd = file.OpenFD(open_flags);
+        ASSERT_TRUE(fd.is_valid());
+        bssl::UniquePtr<BIO> bio(BIO_new_fd(fd.get(), BIO_NOCLOSE));
+        ASSERT_TRUE(bio);
+        check_bio_gets(bio.get());
+
+        // Test |BIO_CLOSE|.
+        fd = file.OpenFD(open_flags);
+        ASSERT_TRUE(fd.is_valid());
+        bio.reset(BIO_new_fd(fd.get(), BIO_CLOSE));
+        ASSERT_TRUE(bio);
+        fd.release();  // |BIO_new_fd| took ownership on success.
+        check_bio_gets(bio.get());
+      }
     }
   }
 

@@ -433,6 +433,7 @@ set(
 
   crypto/test/abi_test.cc
   crypto/test/file_test.cc
+  crypto/test/file_util.cc
   crypto/test/test_util.cc
   crypto/test/wycheproof_util.cc
 )
