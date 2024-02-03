@@ -143,6 +143,11 @@ static int utc_from_posix_time(int64_t time, int *out_year, int *out_month,
 }
 
 int OPENSSL_tm_to_posix(const struct tm *tm, int64_t *out) {
+  // Ensure the additions below do not overflow.
+  if (tm->tm_year > 9999 || tm->tm_mon > 12) {
+    return 0;
+  }
+
   return posix_time_from_utc(tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
                              tm->tm_hour, tm->tm_min, tm->tm_sec, out);
 }
