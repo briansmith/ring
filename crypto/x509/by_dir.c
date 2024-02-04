@@ -172,6 +172,12 @@ static void free_dir(X509_LOOKUP *lu) {
   }
 }
 
+#if defined(OPENSSL_WINDOWS)
+#define DIR_HASH_SEPARATOR ';'
+#else
+#define DIR_HASH_SEPARATOR ':'
+#endif
+
 static int add_cert_dir(BY_DIR *ctx, const char *dir, int type) {
   size_t j, len;
   const char *s, *ss, *p;
@@ -184,7 +190,7 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type) {
   s = dir;
   p = s;
   do {
-    if ((*p == ':') || (*p == '\0')) {
+    if (*p == DIR_HASH_SEPARATOR || *p == '\0') {
       BY_DIR_ENTRY *ent;
       ss = s;
       s = p + 1;

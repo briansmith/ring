@@ -18,6 +18,7 @@
 #include <stdio.h>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -108,6 +109,54 @@ class TemporaryFile {
 
  private:
   std::string path_;
+};
+
+// TemporaryDirectory manages a temporary directory for testing.
+class TemporaryDirectory {
+ public:
+  TemporaryDirectory() = default;
+  ~TemporaryDirectory();
+
+  TemporaryDirectory(TemporaryDirectory &other) { *this = std::move(other); }
+  TemporaryDirectory& operator=(TemporaryDirectory&&other) {
+    // Ensure |other_| is empty so it doesn't try to delete the directory.
+    path_ = std::exchange(other.path_, {});
+    files_ = std::exchange(other.files_, {});
+    return *this;
+  }
+
+  // Init initializes the temporary directory. It returns true on success and
+  // false on error. On error, callers should call |IgnoreTempFileErrors| to
+  // determine whether to ignore the error.
+  bool Init();
+
+  // path returns the path to the temporary directory.
+  const std::string &path() const { return path_; }
+
+  // AddFile adds a file to the temporary directory with the specified content.
+  // It returns true on success and false on error. Subdirectories in the
+  // temporary directory are not currently supported.
+  bool AddFile(const std::string &filename, bssl::Span<const uint8_t> content);
+  bool AddFile(const std::string &filename, const std::string &content) {
+    return AddFile(
+        filename,
+        bssl::MakeConstSpan(reinterpret_cast<const uint8_t *>(content.data()),
+                            content.size()));
+  }
+
+  // GetFilePath returns the path to the speciifed file within the temporary
+  // directory.
+  std::string GetFilePath(const std::string &filename) {
+#if defined(OPENSSL_WINDOWS)
+    return path_ + '\\' + filename;
+#else
+    return path_ + '/' + filename;
+#endif
+  }
+
+ private:
+  std::string path_;
+  std::set<std::string> files_;
 };
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_FILE_UTIL_H

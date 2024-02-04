@@ -4536,6 +4536,13 @@ OPENSSL_EXPORT int X509_LOOKUP_load_file(X509_LOOKUP *lookup, const char *path,
 // should be one of the |X509_FILETYPE_*| constants to determine if the contents
 // are PEM or DER. If |type| is |X509_FILETYPE_DEFAULT|, |path| is ignored and
 // instead some default system path is used.
+//
+// WARNING: |path| is interpreted as a colon-separated (semicolon-separated on
+// Windows) list of paths. It is not possible to configure a path containing the
+// separator character.
+//
+// TODO(crbug.com/boringssl/691): The colon handling is surprising. Consider
+// removing it.
 OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
                                        int type);
 
