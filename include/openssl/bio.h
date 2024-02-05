@@ -492,22 +492,26 @@ OPENSSL_EXPORT int BIO_set_fp(BIO *bio, FILE *file, int close_flag);
 
 // BIO_read_filename opens |filename| for reading and sets the result as the
 // |FILE| for |bio|. It returns one on success and zero otherwise. The |FILE|
-// will be closed when |bio| is freed.
+// will be closed when |bio| is freed. On Windows, the file is opened in binary
+// mode.
 OPENSSL_EXPORT int BIO_read_filename(BIO *bio, const char *filename);
 
 // BIO_write_filename opens |filename| for writing and sets the result as the
 // |FILE| for |bio|. It returns one on success and zero otherwise. The |FILE|
-// will be closed when |bio| is freed.
+// will be closed when |bio| is freed. On Windows, the file is opened in binary
+// mode.
 OPENSSL_EXPORT int BIO_write_filename(BIO *bio, const char *filename);
 
 // BIO_append_filename opens |filename| for appending and sets the result as
 // the |FILE| for |bio|. It returns one on success and zero otherwise. The
-// |FILE| will be closed when |bio| is freed.
+// |FILE| will be closed when |bio| is freed. On Windows, the file is opened in
+// binary mode.
 OPENSSL_EXPORT int BIO_append_filename(BIO *bio, const char *filename);
 
 // BIO_rw_filename opens |filename| for reading and writing and sets the result
 // as the |FILE| for |bio|. It returns one on success and zero otherwise. The
-// |FILE| will be closed when |bio| is freed.
+// |FILE| will be closed when |bio| is freed. On Windows, the file is opened in
+// binary mode.
 OPENSSL_EXPORT int BIO_rw_filename(BIO *bio, const char *filename);
 
 // BIO_tell returns the file offset of |bio|, or a negative number on error or

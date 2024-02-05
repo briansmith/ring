@@ -645,19 +645,25 @@ TEST(BIOTest, Gets) {
         SCOPED_TRACE("file");
 
         // Test |BIO_new_file|.
-        bssl::UniquePtr<BIO> bio(BIO_new_file(file.path().c_str(), "r"));
+        bssl::UniquePtr<BIO> bio(BIO_new_file(file.path().c_str(), "rb"));
         ASSERT_TRUE(bio);
         check_bio_gets(bio.get());
 
+        // Test |BIO_read_filename|.
+        bio.reset(BIO_new(BIO_s_file()));
+        ASSERT_TRUE(bio);
+        ASSERT_TRUE(BIO_read_filename(bio.get(), file.path().c_str()));
+        check_bio_gets(bio.get());
+
         // Test |BIO_NOCLOSE|.
-        ScopedFILE file_obj = file.Open("r");
+        ScopedFILE file_obj = file.Open("rb");
         ASSERT_TRUE(file_obj);
         bio.reset(BIO_new_fp(file_obj.get(), BIO_NOCLOSE));
         ASSERT_TRUE(bio);
         check_bio_gets(bio.get());
 
         // Test |BIO_CLOSE|.
-        file_obj = file.Open("r");
+        file_obj = file.Open("rb");
         ASSERT_TRUE(file_obj);
         bio.reset(BIO_new_fp(file_obj.get(), BIO_CLOSE));
         ASSERT_TRUE(bio);
@@ -698,6 +704,24 @@ TEST(BIOTest, Gets) {
   EXPECT_EQ(0, BIO_gets(bio.get(), &c, -1));
   EXPECT_EQ(0, BIO_gets(bio.get(), &c, 0));
   EXPECT_EQ(c, 'a');
+}
+
+// Test that, on Windows, |BIO_read_filename| opens files in binary mode.
+TEST(BIOTest, BinaryMode) {
+  if (SkipTempFileTests()) {
+    GTEST_SKIP();
+  }
+
+  TemporaryFile file;
+  ASSERT_TRUE(file.Init("\r\n"));
+
+  // Reading from the file should give back the exact bytes we put in.
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_file()));
+  ASSERT_TRUE(bio);
+  ASSERT_TRUE(BIO_read_filename(bio.get(), file.path().c_str()));
+  char buf[2];
+  ASSERT_EQ(2, BIO_read(bio.get(), buf, 2));
+  EXPECT_EQ(Bytes(buf, 2), Bytes("\r\n"));
 }
 
 // Run through the tests twice, swapping |bio1| and |bio2|, for symmetry.

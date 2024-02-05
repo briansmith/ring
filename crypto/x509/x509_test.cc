@@ -7977,14 +7977,6 @@ TEST(X509Test, DirHash) {
   for (int type : {X509_FILETYPE_PEM, X509_FILETYPE_ASN1}) {
     SCOPED_TRACE(type);
 
-#if defined(OPENSSL_WINDOWS)
-    // TODO(davidben): X509_FILETYPE_ASN1 is currently broken on Windows due to
-    // some text vs binary mixup.
-    if (type == X509_FILETYPE_ASN1) {
-      continue;
-    }
-#endif
-
     // Generate some roots and fill a directory with OpenSSL's directory hash
     // format. The hash depends only on the name, so we do not need to
     // pre-generate the certificates. Test both DER and PEM.

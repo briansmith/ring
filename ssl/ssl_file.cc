@@ -204,7 +204,7 @@ int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio) {
 }
 
 STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
-  bssl::UniquePtr<BIO> in(BIO_new_file(file, "r"));
+  bssl::UniquePtr<BIO> in(BIO_new_file(file, "rb"));
   if (in == nullptr) {
     return nullptr;
   }
@@ -219,7 +219,7 @@ STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
 
 int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                         const char *file) {
-  bssl::UniquePtr<BIO> in(BIO_new_file(file, "r"));
+  bssl::UniquePtr<BIO> in(BIO_new_file(file, "rb"));
   if (in == nullptr) {
     return 0;
   }

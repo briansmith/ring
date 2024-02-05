@@ -206,16 +206,16 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
       const char *mode;
       if (num & BIO_FP_APPEND) {
         if (num & BIO_FP_READ) {
-          mode = "a+";
+          mode = "ab+";
         } else {
-          mode = "a";
+          mode = "ab";
         }
       } else if ((num & BIO_FP_READ) && (num & BIO_FP_WRITE)) {
-        mode = "r+";
+        mode = "rb+";
       } else if (num & BIO_FP_WRITE) {
-        mode = "w";
+        mode = "wb";
       } else if (num & BIO_FP_READ) {
-        mode = "r";
+        mode = "rb";
       } else {
         OPENSSL_PUT_ERROR(BIO, BIO_R_BAD_FOPEN_MODE);
         ret = 0;

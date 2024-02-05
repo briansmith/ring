@@ -228,7 +228,7 @@ int X509_load_cert_crl_file(X509_LOOKUP *ctx, const char *file, int type) {
   if (type != X509_FILETYPE_PEM) {
     return X509_load_cert_file(ctx, file, type);
   }
-  in = BIO_new_file(file, "r");
+  in = BIO_new_file(file, "rb");
   if (!in) {
     OPENSSL_PUT_ERROR(X509, ERR_R_SYS_LIB);
     return 0;
