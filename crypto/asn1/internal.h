@@ -87,7 +87,7 @@ OPENSSL_EXPORT int OPENSSL_timegm(const struct tm *tm, time_t *out);
 // must be in the range of year 0000 to 9999 both before and after the update or
 // a failure will be returned.
 OPENSSL_EXPORT int OPENSSL_gmtime_adj(struct tm *tm, int offset_day,
-                                      long offset_sec);
+                                      int64_t offset_sec);
 
 // OPENSSL_gmtime_diff calculates the difference between |from| and |to|. It
 // returns one, and outputs the difference as a number of days and seconds in

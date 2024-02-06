@@ -1162,8 +1162,8 @@ TEST(ASN1Test, AdjTime) {
   struct tm tm1, tm2;
   int days, secs;
 
-  OPENSSL_posix_to_tm(0, &tm1);
-  OPENSSL_posix_to_tm(0, &tm2);
+  EXPECT_TRUE(OPENSSL_posix_to_tm(0, &tm1));
+  EXPECT_TRUE(OPENSSL_posix_to_tm(0, &tm2));
   // Test values that are too large and should be rejected.
   EXPECT_FALSE(OPENSSL_gmtime_adj(&tm1, INT_MIN, INT_MIN));
   EXPECT_FALSE(OPENSSL_gmtime_adj(&tm1, INT_MAX, INT_MAX));
@@ -2473,6 +2473,87 @@ TEST(ASN1Test, LargeString) {
   // overflow.
   EXPECT_FALSE(ASN1_STRING_set(str.get(), &b, 1 + (ossl_ssize_t{1} << 48)));
 #endif
+}
+
+static auto TimeToTuple(const tm &t) {
+  return std::make_tuple(t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min,
+                         t.tm_sec);
+}
+
+TEST(ASN1Test, TimeOverflow) {
+  // Input time is out of range and may overflow internal calculations to shift
+  // |tm_year| and |tm_mon| to a more normal value.
+  tm overflow_year = {};
+  overflow_year.tm_year = INT_MAX - 1899;
+  overflow_year.tm_mday = 1;
+  tm overflow_month = {};
+  overflow_month.tm_mon = INT_MAX;
+  overflow_month.tm_mday = 1;
+  int64_t posix_u64;
+  EXPECT_FALSE(OPENSSL_tm_to_posix(&overflow_year, &posix_u64));
+  EXPECT_FALSE(OPENSSL_tm_to_posix(&overflow_month, &posix_u64));
+  time_t posix;
+  EXPECT_FALSE(OPENSSL_timegm(&overflow_year, &posix));
+  EXPECT_FALSE(OPENSSL_timegm(&overflow_month, &posix));
+  EXPECT_FALSE(
+      OPENSSL_gmtime_adj(&overflow_year, /*offset_day=*/0, /*offset_sec=*/0));
+  EXPECT_FALSE(
+      OPENSSL_gmtime_adj(&overflow_month, /*offset_day=*/0, /*offset_sec=*/0));
+  int days, secs;
+  EXPECT_FALSE(
+      OPENSSL_gmtime_diff(&days, &secs, &overflow_year, &overflow_year));
+  EXPECT_FALSE(
+      OPENSSL_gmtime_diff(&days, &secs, &overflow_month, &overflow_month));
+
+  // Input time is in range, but even adding one second puts it out of range.
+  tm max_time = {};
+  max_time.tm_year = 9999 - 1900;
+  max_time.tm_mon = 12 - 1;
+  max_time.tm_mday = 31;
+  max_time.tm_hour = 23;
+  max_time.tm_min = 59;
+  max_time.tm_sec = 59;
+  tm copy = max_time;
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, /*offset_sec=*/0));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(max_time));
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, /*offset_sec=*/1));
+
+  // Likewise for the earliest representable time.
+  tm min_time = {};
+  min_time.tm_year = 0 - 1900;
+  min_time.tm_mon = 1 - 1;
+  min_time.tm_mday = 1;
+  min_time.tm_hour = 0;
+  min_time.tm_min = 0;
+  min_time.tm_sec = 0;
+  copy = min_time;
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, /*offset_sec=*/0));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(min_time));
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, /*offset_sec=*/-1));
+
+  // Test we can offset between the minimum and maximum times.
+  const int64_t kValidTimeRange = 315569519999;
+  copy = min_time;
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, kValidTimeRange));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(max_time));
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, -kValidTimeRange));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(min_time));
+
+  // The second offset may even exceed kValidTimeRange if it is canceled out by
+  // offset_day.
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/-1,
+                                 kValidTimeRange + 24 * 3600));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(max_time));
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/1,
+                                 -kValidTimeRange - 24 * 3600));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(min_time));
+
+  // Make sure the internal calculations for |OPENSSL_gmtime_adj| stay in
+  // bounds.
+  copy = max_time;
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, INT_MAX, LONG_MAX));
+  copy = min_time;
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, INT_MIN, LONG_MIN));
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
