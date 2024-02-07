@@ -47,6 +47,7 @@ pub mod ecdsa;
 pub mod ed25519;
 pub mod hkdf;
 pub mod hmac;
+pub mod hpke;
 pub mod rsa;
 pub mod x25519;
 
