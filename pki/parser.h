@@ -13,7 +13,6 @@
 #include <openssl/bytestring.h>
 
 #include "input.h"
-#include "tag.h"
 
 namespace bssl::der {
 
@@ -106,7 +105,7 @@ class OPENSSL_EXPORT Parser {
   // encoding for the current value is invalid, this method returns false and
   // does not advance the input. Otherwise, it returns true, putting the
   // read tag in |tag| and the value in |out|.
-  [[nodiscard]] bool ReadTagAndValue(Tag *tag, Input *out);
+  [[nodiscard]] bool ReadTagAndValue(CBS_ASN1_TAG *tag, Input *out);
 
   // Reads the current TLV from the input and advances. Unlike ReadTagAndValue
   // where only the value is put in |out|, this puts the raw bytes from the
@@ -123,7 +122,7 @@ class OPENSSL_EXPORT Parser {
   // something else, then |out| is set to nullopt and the input is not
   // advanced. Like ReadTagAndValue, it returns false if the encoding is
   // invalid and does not advance the input.
-  [[nodiscard]] bool ReadOptionalTag(Tag tag, std::optional<Input> *out);
+  [[nodiscard]] bool ReadOptionalTag(CBS_ASN1_TAG tag, std::optional<Input> *out);
 
   // If the current tag in the input is |tag|, it puts the corresponding value
   // in |out|, sets |was_present| to true, and advances the input to the next
@@ -132,25 +131,25 @@ class OPENSSL_EXPORT Parser {
   // false if the encoding is invalid and does not advance the input.
   // DEPRECATED: use the std::optional version above in new code.
   // TODO(mattm): convert the existing callers and remove this override.
-  [[nodiscard]] bool ReadOptionalTag(Tag tag, Input *out, bool *was_present);
+  [[nodiscard]] bool ReadOptionalTag(CBS_ASN1_TAG tag, Input *out, bool *was_present);
 
   // Like ReadOptionalTag, but the value is discarded.
-  [[nodiscard]] bool SkipOptionalTag(Tag tag, bool *was_present);
+  [[nodiscard]] bool SkipOptionalTag(CBS_ASN1_TAG tag, bool *was_present);
 
   // If the current tag matches |tag|, it puts the current value in |out|,
   // advances the input, and returns true. Otherwise, it returns false.
-  [[nodiscard]] bool ReadTag(Tag tag, Input *out);
+  [[nodiscard]] bool ReadTag(CBS_ASN1_TAG tag, Input *out);
 
   // Advances the input and returns true if the current tag matches |tag|;
   // otherwise it returns false.
-  [[nodiscard]] bool SkipTag(Tag tag);
+  [[nodiscard]] bool SkipTag(CBS_ASN1_TAG tag);
 
   // Convenience methods to combine parsing the TLV with parsing the DER
   // encoding for a specific type.
 
   // Reads the current TLV from the input, checks that the tag matches |tag|
   // and is a constructed tag, and creates a new Parser from the value.
-  [[nodiscard]] bool ReadConstructed(Tag tag, Parser *out);
+  [[nodiscard]] bool ReadConstructed(CBS_ASN1_TAG tag, Parser *out);
 
   // A more specific form of ReadConstructed that expects the current tag
   // to be 0x30 (SEQUENCE).
@@ -196,7 +195,7 @@ class OPENSSL_EXPORT Parser {
   // Reads the current TLV from the input, putting the tag in |tag| and the raw
   // value in |out|, but does not advance the input. Returns true if the tag
   // and length are successfully read and the output exists.
-  [[nodiscard]] bool PeekTagAndValue(Tag *tag, Input *out);
+  [[nodiscard]] bool PeekTagAndValue(CBS_ASN1_TAG *tag, Input *out);
 
   // Advances the input to the next TLV. This method only needs to be called
   // after PeekTagAndValue; all other methods will advance the input if they

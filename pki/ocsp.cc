@@ -51,16 +51,16 @@ bool ParseOCSPCertID(der::Input raw_tlv, OCSPCertID *out) {
   if (!parser.ReadRawTLV(&sigalg_tlv)) {
     return false;
   }
-  if (!ParseHashAlgorithm(sigalg_tlv, &(out->hash_algorithm))) {
+  if (!ParseHashAlgorithm(sigalg_tlv, &out->hash_algorithm)) {
     return false;
   }
-  if (!parser.ReadTag(der::kOctetString, &(out->issuer_name_hash))) {
+  if (!parser.ReadTag(CBS_ASN1_OCTETSTRING, &out->issuer_name_hash)) {
     return false;
   }
-  if (!parser.ReadTag(der::kOctetString, &(out->issuer_key_hash))) {
+  if (!parser.ReadTag(CBS_ASN1_OCTETSTRING, &out->issuer_key_hash)) {
     return false;
   }
-  if (!parser.ReadTag(der::kInteger, &(out->serial_number))) {
+  if (!parser.ReadTag(CBS_ASN1_INTEGER, &out->serial_number)) {
     return false;
   }
   CertErrors errors;
@@ -89,15 +89,16 @@ bool ParseRevokedInfo(der::Input raw_tlv, OCSPCertStatus *out) {
   }
 
   der::Input reason_input;
-  if (!parser.ReadOptionalTag(der::ContextSpecificConstructed(0), &reason_input,
-                              &(out->has_reason))) {
+  if (!parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0, &reason_input,
+          &(out->has_reason))) {
     return false;
   }
   if (out->has_reason) {
     der::Parser reason_parser(reason_input);
     der::Input reason_value_input;
     uint8_t reason_value;
-    if (!reason_parser.ReadTag(der::kEnumerated, &reason_value_input)) {
+    if (!reason_parser.ReadTag(CBS_ASN1_ENUMERATED, &reason_value_input)) {
       return false;
     }
     if (!der::ParseUint8(reason_value_input, &reason_value)) {
@@ -132,21 +133,22 @@ bool ParseRevokedInfo(der::Input raw_tlv, OCSPCertStatus *out) {
 // UnknownInfo ::= NULL
 bool ParseCertStatus(der::Input raw_tlv, OCSPCertStatus *out) {
   der::Parser parser(raw_tlv);
-  der::Tag status_tag;
+  CBS_ASN1_TAG status_tag;
   der::Input status;
   if (!parser.ReadTagAndValue(&status_tag, &status)) {
     return false;
   }
 
   out->has_reason = false;
-  if (status_tag == der::ContextSpecificPrimitive(0)) {
+  if (status_tag == (CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
     out->status = OCSPRevocationStatus::GOOD;
-  } else if (status_tag == der::ContextSpecificConstructed(1)) {
+  } else if (status_tag ==
+             (CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1)) {
     out->status = OCSPRevocationStatus::REVOKED;
     if (!ParseRevokedInfo(status, out)) {
       return false;
     }
-  } else if (status_tag == der::ContextSpecificPrimitive(2)) {
+  } else if (status_tag == (CBS_ASN1_CONTEXT_SPECIFIC | 2)) {
     out->status = OCSPRevocationStatus::UNKNOWN;
   } else {
     return false;
@@ -203,8 +205,9 @@ bool ParseOCSPSingleResponse(der::Input raw_tlv, OCSPSingleResponse *out) {
   }
 
   der::Input next_update_input;
-  if (!parser.ReadOptionalTag(der::ContextSpecificConstructed(0),
-                              &next_update_input, &(out->has_next_update))) {
+  if (!parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0,
+          &next_update_input, &(out->has_next_update))) {
     return false;
   }
   if (out->has_next_update) {
@@ -217,8 +220,9 @@ bool ParseOCSPSingleResponse(der::Input raw_tlv, OCSPSingleResponse *out) {
     }
   }
 
-  if (!parser.ReadOptionalTag(der::ContextSpecificConstructed(1),
-                              &(out->extensions), &(out->has_extensions))) {
+  if (!parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1,
+          &(out->extensions), &(out->has_extensions))) {
     return false;
   }
 
@@ -236,19 +240,19 @@ namespace {
 // }
 bool ParseResponderID(der::Input raw_tlv, OCSPResponseData::ResponderID *out) {
   der::Parser parser(raw_tlv);
-  der::Tag id_tag;
+  CBS_ASN1_TAG id_tag;
   der::Input id_input;
   if (!parser.ReadTagAndValue(&id_tag, &id_input)) {
     return false;
   }
 
-  if (id_tag == der::ContextSpecificConstructed(1)) {
+  if (id_tag == (CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1)) {
     out->type = OCSPResponseData::ResponderType::NAME;
     out->name = id_input;
-  } else if (id_tag == der::ContextSpecificConstructed(2)) {
+  } else if (id_tag == (CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 2)) {
     der::Parser key_parser(id_input);
     der::Input key_hash;
-    if (!key_parser.ReadTag(der::kOctetString, &key_hash)) {
+    if (!key_parser.ReadTag(CBS_ASN1_OCTETSTRING, &key_hash)) {
       return false;
     }
     if (key_parser.HasMore()) {
@@ -287,8 +291,9 @@ bool ParseOCSPResponseData(der::Input raw_tlv, OCSPResponseData *out) {
 
   der::Input version_input;
   bool version_present;
-  if (!parser.ReadOptionalTag(der::ContextSpecificConstructed(0),
-                              &version_input, &version_present)) {
+  if (!parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0, &version_input,
+          &version_present)) {
     return false;
   }
 
@@ -335,8 +340,9 @@ bool ParseOCSPResponseData(der::Input raw_tlv, OCSPResponseData *out) {
     out->responses.push_back(single_response);
   }
 
-  if (!parser.ReadOptionalTag(der::ContextSpecificConstructed(1),
-                              &(out->extensions), &(out->has_extensions))) {
+  if (!parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1,
+          &(out->extensions), &(out->has_extensions))) {
     return false;
   }
 
@@ -385,8 +391,9 @@ bool ParseBasicOCSPResponse(der::Input raw_tlv, OCSPResponse *out) {
   }
   out->signature = signature.value();
   der::Input certs_input;
-  if (!parser.ReadOptionalTag(der::ContextSpecificConstructed(0), &certs_input,
-                              &(out->has_certs))) {
+  if (!parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0, &certs_input,
+          &(out->has_certs))) {
     return false;
   }
 
@@ -435,7 +442,7 @@ bool ParseOCSPResponse(der::Input raw_tlv, OCSPResponse *out) {
 
   der::Input response_status_input;
   uint8_t response_status;
-  if (!parser.ReadTag(der::kEnumerated, &response_status_input)) {
+  if (!parser.ReadTag(CBS_ASN1_ENUMERATED, &response_status_input)) {
     return false;
   }
   if (!der::ParseUint8(response_status_input, &response_status)) {
@@ -453,8 +460,9 @@ bool ParseOCSPResponse(der::Input raw_tlv, OCSPResponse *out) {
   if (out->status == OCSPResponse::ResponseStatus::SUCCESSFUL) {
     der::Parser outer_bytes_parser;
     der::Parser bytes_parser;
-    if (!parser.ReadConstructed(der::ContextSpecificConstructed(0),
-                                &outer_bytes_parser)) {
+    if (!parser.ReadConstructed(
+            CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0,
+            &outer_bytes_parser)) {
       return false;
     }
     if (!outer_bytes_parser.ReadSequence(&bytes_parser)) {
@@ -465,7 +473,7 @@ bool ParseOCSPResponse(der::Input raw_tlv, OCSPResponse *out) {
     }
 
     der::Input type_oid;
-    if (!bytes_parser.ReadTag(der::kOid, &type_oid)) {
+    if (!bytes_parser.ReadTag(CBS_ASN1_OBJECT, &type_oid)) {
       return false;
     }
     if (type_oid != der::Input(kBasicOCSPResponseOid)) {
@@ -475,7 +483,7 @@ bool ParseOCSPResponse(der::Input raw_tlv, OCSPResponse *out) {
     // As per RFC 6960 Section 4.2.1, the value of |response| SHALL be the DER
     // encoding of BasicOCSPResponse.
     der::Input response;
-    if (!bytes_parser.ReadTag(der::kOctetString, &response)) {
+    if (!bytes_parser.ReadTag(CBS_ASN1_OCTETSTRING, &response)) {
       return false;
     }
     if (!ParseBasicOCSPResponse(response, out)) {
@@ -607,9 +615,9 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
     case OCSPResponseData::ResponderType::NAME: {
       der::Input name_rdn;
       der::Input cert_rdn;
-      if (!der::Parser(id.name).ReadTag(der::kSequence, &name_rdn) ||
+      if (!der::Parser(id.name).ReadTag(CBS_ASN1_SEQUENCE, &name_rdn) ||
           !der::Parser(cert->tbs().subject_tlv)
-               .ReadTag(der::kSequence, &cert_rdn)) {
+               .ReadTag(CBS_ASN1_SEQUENCE, &cert_rdn)) {
         return false;
       }
       return VerifyNameMatch(name_rdn, cert_rdn);

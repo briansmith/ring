@@ -12,7 +12,6 @@
 #include "input.h"
 #include "parse_values.h"
 #include "parser.h"
-#include "tag.h"
 
 namespace bssl {
 
@@ -64,7 +63,7 @@ bool ParsePolicyQualifiers(bool restrict_to_known_qualifiers,
     }
     //      policyQualifierId  PolicyQualifierId,
     der::Input qualifier_oid;
-    if (!policy_information_parser.ReadTag(der::kOid, &qualifier_oid)) {
+    if (!policy_information_parser.ReadTag(CBS_ASN1_OBJECT, &qualifier_oid)) {
       return false;
     }
     if (restrict_to_known_qualifiers &&
@@ -164,7 +163,7 @@ bool ParseCertificatePoliciesExtensionImpl(
     }
     //      policyIdentifier   CertPolicyId,
     der::Input policy_oid;
-    if (!policy_information_parser.ReadTag(der::kOid, &policy_oid)) {
+    if (!policy_information_parser.ReadTag(CBS_ASN1_OBJECT, &policy_oid)) {
       return false;
     }
 
@@ -273,7 +272,7 @@ bool ParsePolicyConstraints(der::Input policy_constraints_tlv,
   }
 
   std::optional<der::Input> require_value;
-  if (!sequence_parser.ReadOptionalTag(der::ContextSpecificPrimitive(0),
+  if (!sequence_parser.ReadOptionalTag(CBS_ASN1_CONTEXT_SPECIFIC | 0,
                                        &require_value)) {
     return false;
   }
@@ -289,7 +288,7 @@ bool ParsePolicyConstraints(der::Input policy_constraints_tlv,
   }
 
   std::optional<der::Input> inhibit_value;
-  if (!sequence_parser.ReadOptionalTag(der::ContextSpecificPrimitive(1),
+  if (!sequence_parser.ReadOptionalTag(CBS_ASN1_CONTEXT_SPECIFIC | 1,
                                        &inhibit_value)) {
     return false;
   }
@@ -364,10 +363,12 @@ bool ParsePolicyMappings(der::Input policy_mappings_tlv,
     }
 
     ParsedPolicyMapping mapping;
-    if (!mapping_parser.ReadTag(der::kOid, &mapping.issuer_domain_policy)) {
+    if (!mapping_parser.ReadTag(CBS_ASN1_OBJECT,
+                                &mapping.issuer_domain_policy)) {
       return false;
     }
-    if (!mapping_parser.ReadTag(der::kOid, &mapping.subject_domain_policy)) {
+    if (!mapping_parser.ReadTag(CBS_ASN1_OBJECT,
+                                &mapping.subject_domain_policy)) {
       return false;
     }
 

@@ -6,6 +6,7 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
+
 #include "input.h"
 #include "parse_values.h"
 #include "parser.h"
@@ -126,7 +127,7 @@ const uint8_t kOidMgf1[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
 [[nodiscard]] bool IsNull(der::Input input) {
   der::Parser parser(input);
   der::Input null_value;
-  if (!parser.ReadTag(der::kNull, &null_value)) {
+  if (!parser.ReadTag(CBS_ASN1_NULL, &null_value)) {
     return false;
   }
 
@@ -237,12 +238,15 @@ std::optional<SignatureAlgorithm> ParseRsaPss(der::Input params) {
   DigestAlgorithm hash, mgf1_hash;
   der::Parser salt_length_parser;
   uint64_t salt_length;
-  if (!params_parser.ReadTag(der::ContextSpecificConstructed(0), &field) ||
+  if (!params_parser.ReadTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0, &field) ||
       !ParseHashAlgorithm(field, &hash) ||
-      !params_parser.ReadTag(der::ContextSpecificConstructed(1), &field) ||
+      !params_parser.ReadTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1, &field) ||
       !ParseMaskGenAlgorithm(field, &mgf1_hash) ||
-      !params_parser.ReadConstructed(der::ContextSpecificConstructed(2),
-                                     &salt_length_parser) ||
+      !params_parser.ReadConstructed(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 2,
+          &salt_length_parser) ||
       !salt_length_parser.ReadUint64(&salt_length) ||
       salt_length_parser.HasMore() || params_parser.HasMore()) {
     return std::nullopt;
@@ -285,7 +289,7 @@ std::optional<SignatureAlgorithm> ParseRsaPss(der::Input params) {
     return false;
   }
 
-  if (!algorithm_identifier_parser.ReadTag(der::kOid, algorithm)) {
+  if (!algorithm_identifier_parser.ReadTag(CBS_ASN1_OBJECT, algorithm)) {
     return false;
   }
 

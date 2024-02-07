@@ -6,6 +6,7 @@
 #include <iterator>
 
 #include <openssl/base.h>
+#include <openssl/bytestring.h>
 
 #include "cert_errors.h"
 #include "crl.h"
@@ -14,7 +15,6 @@
 #include "parser.h"
 #include "revocation_util.h"
 #include "signature_algorithm.h"
-#include "tag.h"
 #include "verify_name_match.h"
 #include "verify_signed_data.h"
 
@@ -31,7 +31,7 @@ inline constexpr uint8_t kIssuingDistributionPointOid[] = {0x55, 0x1d, 0x1c};
   der::Parser parser(name_tlv);
   der::Input name_rdn;
   bssl::CertErrors unused_errors;
-  return parser.ReadTag(der::kSequence, &name_rdn) &&
+  return parser.ReadTag(CBS_ASN1_SEQUENCE, &name_rdn) &&
          NormalizeName(name_rdn, out_normalized_name, &unused_errors) &&
          !parser.HasMore();
 }
@@ -104,7 +104,7 @@ bool ParseCrlTbsCertList(der::Input tbs_tlv, ParsedCrlTbsCertList *out) {
   //         version                 Version OPTIONAL,
   //                                      -- if present, MUST be v2
   std::optional<der::Input> version_der;
-  if (!tbs_parser.ReadOptionalTag(der::kInteger, &version_der)) {
+  if (!tbs_parser.ReadOptionalTag(CBS_ASN1_INTEGER, &version_der)) {
     return false;
   }
   if (version_der.has_value()) {
@@ -139,12 +139,12 @@ bool ParseCrlTbsCertList(der::Input tbs_tlv, ParsedCrlTbsCertList *out) {
   }
 
   //         nextUpdate              Time OPTIONAL,
-  der::Tag maybe_next_update_tag;
+  CBS_ASN1_TAG maybe_next_update_tag;
   der::Input unused_next_update_input;
   if (tbs_parser.PeekTagAndValue(&maybe_next_update_tag,
                                  &unused_next_update_input) &&
-      (maybe_next_update_tag == der::kUtcTime ||
-       maybe_next_update_tag == der::kGeneralizedTime)) {
+      (maybe_next_update_tag == CBS_ASN1_UTCTIME ||
+       maybe_next_update_tag == CBS_ASN1_GENERALIZEDTIME)) {
     der::GeneralizedTime next_update_time;
     if (!ReadUTCOrGeneralizedTime(&tbs_parser, &next_update_time)) {
       return false;
@@ -156,10 +156,10 @@ bool ParseCrlTbsCertList(der::Input tbs_tlv, ParsedCrlTbsCertList *out) {
 
   //         revokedCertificates     SEQUENCE OF SEQUENCE  { ... } OPTIONAL,
   der::Input unused_revoked_certificates;
-  der::Tag maybe_revoked_certifigates_tag;
+  CBS_ASN1_TAG maybe_revoked_certifigates_tag;
   if (tbs_parser.PeekTagAndValue(&maybe_revoked_certifigates_tag,
                                  &unused_revoked_certificates) &&
-      maybe_revoked_certifigates_tag == der::kSequence) {
+      maybe_revoked_certifigates_tag == CBS_ASN1_SEQUENCE) {
     der::Input revoked_certificates_tlv;
     if (!tbs_parser.ReadRawTLV(&revoked_certificates_tlv)) {
       return false;
@@ -171,8 +171,9 @@ bool ParseCrlTbsCertList(der::Input tbs_tlv, ParsedCrlTbsCertList *out) {
 
   //         crlExtensions           [0]  EXPLICIT Extensions OPTIONAL
   //                                       -- if present, version MUST be v2
-  if (!tbs_parser.ReadOptionalTag(der::ContextSpecificConstructed(0),
-                                  &out->crl_extensions_tlv)) {
+  if (!tbs_parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0,
+          &out->crl_extensions_tlv)) {
     return false;
   }
   if (out->crl_extensions_tlv.has_value()) {
@@ -216,7 +217,7 @@ bool ParseIssuingDistributionPoint(
   //  distributionPoint          [0] DistributionPointName OPTIONAL,
   std::optional<der::Input> distribution_point;
   if (!idp_parser.ReadOptionalTag(
-          der::kTagContextSpecific | der::kTagConstructed | 0,
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0,
           &distribution_point)) {
     return false;
   }
@@ -228,7 +229,7 @@ bool ParseIssuingDistributionPoint(
     //        nameRelativeToCRLIssuer [1]     RelativeDistinguishedName }
     std::optional<der::Input> der_full_name;
     if (!dp_name_parser.ReadOptionalTag(
-            der::kTagContextSpecific | der::kTagConstructed | 0,
+            CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0,
             &der_full_name)) {
       return false;
     }
@@ -253,7 +254,7 @@ bool ParseIssuingDistributionPoint(
 
   //  onlyContainsUserCerts      [1] BOOLEAN DEFAULT FALSE,
   std::optional<der::Input> only_contains_user_certs;
-  if (!idp_parser.ReadOptionalTag(der::kTagContextSpecific | 1,
+  if (!idp_parser.ReadOptionalTag(CBS_ASN1_CONTEXT_SPECIFIC | 1,
                                   &only_contains_user_certs)) {
     return false;
   }
@@ -270,7 +271,7 @@ bool ParseIssuingDistributionPoint(
 
   //  onlyContainsCACerts        [2] BOOLEAN DEFAULT FALSE,
   std::optional<der::Input> only_contains_ca_certs;
-  if (!idp_parser.ReadOptionalTag(der::kTagContextSpecific | 2,
+  if (!idp_parser.ReadOptionalTag(CBS_ASN1_CONTEXT_SPECIFIC | 2,
                                   &only_contains_ca_certs)) {
     return false;
   }
@@ -343,7 +344,8 @@ CRLRevocationStatus GetCRLStatusForCert(
 
     der::Input revoked_cert_serial_number;
     //              userCertificate         CertificateSerialNumber,
-    if (!crl_entry_parser.ReadTag(der::kInteger, &revoked_cert_serial_number)) {
+    if (!crl_entry_parser.ReadTag(CBS_ASN1_INTEGER,
+                                  &revoked_cert_serial_number)) {
       return CRLRevocationStatus::UNKNOWN;
     }
 

@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <openssl/base.h>
+#include <openssl/bytestring.h>
 
 #include "cert_error_params.h"
 #include "cert_errors.h"
@@ -152,7 +153,7 @@ bool ParseDistributionPointName(der::Input dp_name,
   der::Parser parser(dp_name);
   std::optional<der::Input> der_full_name;
   if (!parser.ReadOptionalTag(
-          der::kTagContextSpecific | der::kTagConstructed | 0,
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0,
           &der_full_name)) {
     return false;
   }
@@ -168,7 +169,7 @@ bool ParseDistributionPointName(der::Input dp_name,
   }
 
   if (!parser.ReadOptionalTag(
-          der::kTagContextSpecific | der::kTagConstructed | 1,
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1,
           &distribution_point
                ->distribution_point_name_relative_to_crl_issuer)) {
     return false;
@@ -201,7 +202,7 @@ bool ParseAndAddDistributionPoint(
   //  distributionPoint       [0]     DistributionPointName OPTIONAL,
   std::optional<der::Input> distribution_point_name;
   if (!distrib_point_parser.ReadOptionalTag(
-          der::kTagContextSpecific | der::kTagConstructed | 0,
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0,
           &distribution_point_name)) {
     return false;
   }
@@ -213,14 +214,14 @@ bool ParseAndAddDistributionPoint(
   }
 
   //  reasons                 [1]     ReasonFlags OPTIONAL,
-  if (!distrib_point_parser.ReadOptionalTag(der::kTagContextSpecific | 1,
+  if (!distrib_point_parser.ReadOptionalTag(CBS_ASN1_CONTEXT_SPECIFIC | 1,
                                             &distribution_point.reasons)) {
     return false;
   }
 
   //  cRLIssuer               [2]     GeneralNames OPTIONAL }
   if (!distrib_point_parser.ReadOptionalTag(
-          der::kTagContextSpecific | der::kTagConstructed | 2,
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 2,
           &distribution_point.crl_issuer)) {
     return false;
   }
@@ -290,17 +291,17 @@ bool VerifySerialNumber(der::Input value, bool warnings_only,
 
 bool ReadUTCOrGeneralizedTime(der::Parser *parser, der::GeneralizedTime *out) {
   der::Input value;
-  der::Tag tag;
+  CBS_ASN1_TAG tag;
 
   if (!parser->ReadTagAndValue(&tag, &value)) {
     return false;
   }
 
-  if (tag == der::kUtcTime) {
+  if (tag == CBS_ASN1_UTCTIME) {
     return der::ParseUTCTime(value, out);
   }
 
-  if (tag == der::kGeneralizedTime) {
+  if (tag == CBS_ASN1_GENERALIZEDTIME) {
     return der::ParseGeneralizedTime(value, out);
   }
 
@@ -443,8 +444,8 @@ bool ParseTbsCertificate(der::Input tbs_tlv,
 
   //        version         [0]  EXPLICIT Version DEFAULT v1,
   std::optional<der::Input> version;
-  if (!tbs_parser.ReadOptionalTag(der::ContextSpecificConstructed(0),
-                                  &version)) {
+  if (!tbs_parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0, &version)) {
     errors->AddError(kFailedReadingVersion);
     return false;
   }
@@ -464,7 +465,7 @@ bool ParseTbsCertificate(der::Input tbs_tlv,
   }
 
   //        serialNumber         CertificateSerialNumber,
-  if (!tbs_parser.ReadTag(der::kInteger, &out->serial_number)) {
+  if (!tbs_parser.ReadTag(CBS_ASN1_INTEGER, &out->serial_number)) {
     errors->AddError(kFailedReadingSerialNumber);
     return false;
   }
@@ -516,7 +517,7 @@ bool ParseTbsCertificate(der::Input tbs_tlv,
   //        issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL,
   //                             -- If present, version MUST be v2 or v3
   std::optional<der::Input> issuer_unique_id;
-  if (!tbs_parser.ReadOptionalTag(der::ContextSpecificPrimitive(1),
+  if (!tbs_parser.ReadOptionalTag(CBS_ASN1_CONTEXT_SPECIFIC | 1,
                                   &issuer_unique_id)) {
     errors->AddError(kFailedReadingIssuerUniqueId);
     return false;
@@ -537,7 +538,7 @@ bool ParseTbsCertificate(der::Input tbs_tlv,
   //        subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL,
   //                             -- If present, version MUST be v2 or v3
   std::optional<der::Input> subject_unique_id;
-  if (!tbs_parser.ReadOptionalTag(der::ContextSpecificPrimitive(2),
+  if (!tbs_parser.ReadOptionalTag(CBS_ASN1_CONTEXT_SPECIFIC | 2,
                                   &subject_unique_id)) {
     errors->AddError(kFailedReadingSubjectUniqueId);
     return false;
@@ -557,8 +558,9 @@ bool ParseTbsCertificate(der::Input tbs_tlv,
 
   //        extensions      [3]  EXPLICIT Extensions OPTIONAL
   //                             -- If present, version MUST be v3
-  if (!tbs_parser.ReadOptionalTag(der::ContextSpecificConstructed(3),
-                                  &out->extensions_tlv)) {
+  if (!tbs_parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 3,
+          &out->extensions_tlv)) {
     errors->AddError(kFailedReadingExtensions);
     return false;
   }
@@ -616,7 +618,7 @@ bool ParseExtension(der::Input extension_tlv, ParsedExtension *out) {
   }
 
   //            extnID      OBJECT IDENTIFIER,
-  if (!extension_parser.ReadTag(der::kOid, &out->oid)) {
+  if (!extension_parser.ReadTag(CBS_ASN1_OBJECT, &out->oid)) {
     return false;
   }
 
@@ -624,7 +626,8 @@ bool ParseExtension(der::Input extension_tlv, ParsedExtension *out) {
   out->critical = false;
   bool has_critical;
   der::Input critical;
-  if (!extension_parser.ReadOptionalTag(der::kBool, &critical, &has_critical)) {
+  if (!extension_parser.ReadOptionalTag(CBS_ASN1_BOOLEAN, &critical,
+                                        &has_critical)) {
     return false;
   }
   if (has_critical) {
@@ -637,7 +640,7 @@ bool ParseExtension(der::Input extension_tlv, ParsedExtension *out) {
   }
 
   //            extnValue   OCTET STRING
-  if (!extension_parser.ReadTag(der::kOctetString, &out->value)) {
+  if (!extension_parser.ReadTag(CBS_ASN1_OCTETSTRING, &out->value)) {
     return false;
   }
 
@@ -733,7 +736,7 @@ bool ParseBasicConstraints(der::Input basic_constraints_tlv,
   out->is_ca = false;
   bool has_ca;
   der::Input ca;
-  if (!sequence_parser.ReadOptionalTag(der::kBool, &ca, &has_ca)) {
+  if (!sequence_parser.ReadOptionalTag(CBS_ASN1_BOOLEAN, &ca, &has_ca)) {
     return false;
   }
   if (has_ca) {
@@ -748,7 +751,7 @@ bool ParseBasicConstraints(der::Input basic_constraints_tlv,
 
   //         pathLenConstraint       INTEGER (0..MAX) OPTIONAL }
   der::Input encoded_path_len;
-  if (!sequence_parser.ReadOptionalTag(der::kInteger, &encoded_path_len,
+  if (!sequence_parser.ReadOptionalTag(CBS_ASN1_INTEGER, &encoded_path_len,
                                        &out->has_path_len)) {
     return false;
   }
@@ -830,7 +833,7 @@ bool ParseAuthorityInfoAccess(
 
     //            accessMethod          OBJECT IDENTIFIER,
     if (!access_description_sequence_parser.ReadTag(
-            der::kOid, &access_description.access_method_oid)) {
+            CBS_ASN1_OBJECT, &access_description.access_method_oid)) {
       return false;
     }
 
@@ -862,7 +865,7 @@ bool ParseAuthorityInfoAccessURIs(
 
   for (const auto &access_description : access_descriptions) {
     der::Parser access_location_parser(access_description.access_location);
-    der::Tag access_location_tag;
+    CBS_ASN1_TAG access_location_tag;
     der::Input access_location_value;
     if (!access_location_parser.ReadTagAndValue(&access_location_tag,
                                                 &access_location_value)) {
@@ -870,7 +873,7 @@ bool ParseAuthorityInfoAccessURIs(
     }
 
     // GeneralName ::= CHOICE {
-    if (access_location_tag == der::ContextSpecificPrimitive(6)) {
+    if (access_location_tag == (CBS_ASN1_CONTEXT_SPECIFIC | 6)) {
       // uniformResourceIdentifier       [6]     IA5String,
       std::string_view uri = BytesAsStringView(access_location_value);
       if (!bssl::string_util::IsAscii(uri)) {
@@ -956,21 +959,21 @@ bool ParseAuthorityKeyIdentifier(
   // error? RFC 5280 doesn't explicitly say it.
 
   //       keyIdentifier             [0] KeyIdentifier           OPTIONAL,
-  if (!aki_parser.ReadOptionalTag(der::ContextSpecificPrimitive(0),
+  if (!aki_parser.ReadOptionalTag(CBS_ASN1_CONTEXT_SPECIFIC | 0,
                                   &authority_key_identifier->key_identifier)) {
     return false;
   }
 
   //       authorityCertIssuer       [1] GeneralNames            OPTIONAL,
   if (!aki_parser.ReadOptionalTag(
-          der::ContextSpecificConstructed(1),
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1,
           &authority_key_identifier->authority_cert_issuer)) {
     return false;
   }
 
   //       authorityCertSerialNumber [2] CertificateSerialNumber OPTIONAL  }
   if (!aki_parser.ReadOptionalTag(
-          der::ContextSpecificPrimitive(2),
+          CBS_ASN1_CONTEXT_SPECIFIC | 2,
           &authority_key_identifier->authority_cert_serial_number)) {
     return false;
   }
@@ -997,7 +1000,7 @@ bool ParseSubjectKeyIdentifier(der::Input extension_value,
   //
   //    KeyIdentifier ::= OCTET STRING
   der::Parser extension_value_parser(extension_value);
-  if (!extension_value_parser.ReadTag(der::kOctetString,
+  if (!extension_value_parser.ReadTag(CBS_ASN1_OCTETSTRING,
                                       subject_key_identifier)) {
     return false;
   }

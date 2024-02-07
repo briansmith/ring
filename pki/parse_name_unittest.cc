@@ -36,7 +36,7 @@ TEST(ParseNameTest, IA5SafeStringValue) {
   const uint8_t der[] = {
       0x46, 0x6f, 0x6f, 0x20, 0x62, 0x61, 0x72,
   };
-  X509NameAttribute value(der::Input(), der::kIA5String, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_IA5STRING, der::Input(der));
   std::string result_unsafe;
   ASSERT_TRUE(value.ValueAsStringUnsafe(&result_unsafe));
   ASSERT_EQ("Foo bar", result_unsafe);
@@ -49,7 +49,7 @@ TEST(ParseNameTest, IA5UnsafeStringValue) {
   const uint8_t der[] = {
       0x46, 0x6f, 0xFF, 0x20, 0x62, 0x61, 0x72,
   };
-  X509NameAttribute value(der::Input(), der::kIA5String, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_IA5STRING, der::Input(der));
   std::string result_unsafe;
   ASSERT_TRUE(value.ValueAsStringUnsafe(&result_unsafe));
   ASSERT_EQ("Fo\377 bar", result_unsafe);
@@ -61,7 +61,8 @@ TEST(ParseNameTest, PrintableSafeStringValue) {
   const uint8_t der[] = {
       0x46, 0x6f, 0x6f, 0x20, 0x62, 0x61, 0x72,
   };
-  X509NameAttribute value(der::Input(), der::kPrintableString, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_PRINTABLESTRING,
+                          der::Input(der));
   std::string result_unsafe;
   ASSERT_TRUE(value.ValueAsStringUnsafe(&result_unsafe));
   ASSERT_EQ("Foo bar", result_unsafe);
@@ -74,7 +75,8 @@ TEST(ParseNameTest, PrintableUnsafeStringValue) {
   const uint8_t der[] = {
       0x46, 0x6f, 0x5f, 0x20, 0x62, 0x61, 0x72,
   };
-  X509NameAttribute value(der::Input(), der::kPrintableString, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_PRINTABLESTRING,
+                          der::Input(der));
   std::string result_unsafe;
   ASSERT_TRUE(value.ValueAsStringUnsafe(&result_unsafe));
   ASSERT_EQ("Fo_ bar", result_unsafe);
@@ -86,7 +88,8 @@ TEST(ParseNameTest, PrintableStringUnsafeOptions) {
   const uint8_t der[] = {
       0x46, 0x6f, 0x5f, 0x20, 0x62, 0x61, 0x72,
   };
-  X509NameAttribute value(der::Input(), der::kPrintableString, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_PRINTABLESTRING,
+                          der::Input(der));
   std::string result;
   ASSERT_FALSE(value.ValueAsStringWithUnsafeOptions(
       X509NameAttribute::PrintableStringHandling::kDefault, &result));
@@ -99,7 +102,7 @@ TEST(ParseNameTest, TeletexSafeStringValue) {
   const uint8_t der[] = {
       0x46, 0x6f, 0x6f, 0x20, 0x62, 0x61, 0x72,
   };
-  X509NameAttribute value(der::Input(), der::kTeletexString, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_T61STRING, der::Input(der));
   std::string result_unsafe;
   ASSERT_TRUE(value.ValueAsStringUnsafe(&result_unsafe));
   ASSERT_EQ("Foo bar", result_unsafe);
@@ -112,7 +115,7 @@ TEST(ParseNameTest, TeletexLatin1StringValue) {
   const uint8_t der[] = {
       0x46, 0x6f, 0xd6, 0x20, 0x62, 0x61, 0x72,
   };
-  X509NameAttribute value(der::Input(), der::kTeletexString, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_T61STRING, der::Input(der));
   std::string result_unsafe;
   ASSERT_TRUE(value.ValueAsStringUnsafe(&result_unsafe));
   ASSERT_EQ("Fo\xd6 bar", result_unsafe);
@@ -125,7 +128,7 @@ TEST(ParseNameTest, ConvertBmpString) {
   const uint8_t der[] = {
       0x00, 0x66, 0x00, 0x6f, 0x00, 0x6f, 0x00, 0x62, 0x00, 0x61, 0x00, 0x72,
   };
-  X509NameAttribute value(der::Input(), der::kBmpString, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_BMPSTRING, der::Input(der));
   std::string result_unsafe;
   ASSERT_TRUE(value.ValueAsStringUnsafe(&result_unsafe));
   ASSERT_EQ("foobar", result_unsafe);
@@ -137,7 +140,7 @@ TEST(ParseNameTest, ConvertBmpString) {
 // BmpString must encode characters in pairs of 2 bytes.
 TEST(ParseNameTest, ConvertInvalidBmpString) {
   const uint8_t der[] = {0x66, 0x6f, 0x6f, 0x62, 0x61, 0x72, 0x72};
-  X509NameAttribute value(der::Input(), der::kBmpString, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_BMPSTRING, der::Input(der));
   std::string result;
   ASSERT_FALSE(value.ValueAsStringUnsafe(&result));
   ASSERT_FALSE(value.ValueAsString(&result));
@@ -147,7 +150,8 @@ TEST(ParseNameTest, ConvertUniversalString) {
   const uint8_t der[] = {0x00, 0x00, 0x00, 0x66, 0x00, 0x00, 0x00, 0x6f,
                          0x00, 0x00, 0x00, 0x6f, 0x00, 0x00, 0x00, 0x62,
                          0x00, 0x00, 0x00, 0x61, 0x00, 0x00, 0x00, 0x72};
-  X509NameAttribute value(der::Input(), der::kUniversalString, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_UNIVERSALSTRING,
+                          der::Input(der));
   std::string result_unsafe;
   ASSERT_TRUE(value.ValueAsStringUnsafe(&result_unsafe));
   ASSERT_EQ("foobar", result_unsafe);
@@ -159,7 +163,8 @@ TEST(ParseNameTest, ConvertUniversalString) {
 // UniversalString must encode characters in pairs of 4 bytes.
 TEST(ParseNameTest, ConvertInvalidUniversalString) {
   const uint8_t der[] = {0x66, 0x6f, 0x6f, 0x62, 0x61, 0x72};
-  X509NameAttribute value(der::Input(), der::kUniversalString, der::Input(der));
+  X509NameAttribute value(der::Input(), CBS_ASN1_UNIVERSALSTRING,
+                          der::Input(der));
   std::string result;
   ASSERT_FALSE(value.ValueAsStringUnsafe(&result));
   ASSERT_FALSE(value.ValueAsString(&result));

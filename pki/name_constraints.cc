@@ -7,9 +7,11 @@
 #include <limits.h>
 
 #include <memory>
+#include <optional>
 
 #include <openssl/base.h>
-#include <optional>
+#include <openssl/bytestring.h>
+
 #include "cert_errors.h"
 #include "common_cert_errors.h"
 #include "general_names.h"
@@ -17,7 +19,6 @@
 #include "ip_util.h"
 #include "parser.h"
 #include "string_util.h"
-#include "tag.h"
 #include "verify_name_match.h"
 
 namespace bssl {
@@ -317,8 +318,9 @@ bool NameConstraints::Parse(der::Input extension_value, bool is_critical,
   }
 
   std::optional<der::Input> permitted_subtrees_value;
-  if (!sequence_parser.ReadOptionalTag(der::ContextSpecificConstructed(0),
-                                       &permitted_subtrees_value)) {
+  if (!sequence_parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0,
+          &permitted_subtrees_value)) {
     return false;
   }
   if (permitted_subtrees_value &&
@@ -331,8 +333,9 @@ bool NameConstraints::Parse(der::Input extension_value, bool is_critical,
       (is_critical ? GENERAL_NAME_ALL_TYPES : kSupportedNameTypes);
 
   std::optional<der::Input> excluded_subtrees_value;
-  if (!sequence_parser.ReadOptionalTag(der::ContextSpecificConstructed(1),
-                                       &excluded_subtrees_value)) {
+  if (!sequence_parser.ReadOptionalTag(
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1,
+          &excluded_subtrees_value)) {
     return false;
   }
   if (excluded_subtrees_value &&

@@ -5,6 +5,7 @@
 #include "general_names.h"
 
 #include <openssl/base.h>
+#include <openssl/bytestring.h>
 
 #include <climits>
 #include <cstring>
@@ -15,7 +16,6 @@
 #include "ip_util.h"
 #include "parser.h"
 #include "string_util.h"
-#include "tag.h"
 
 namespace bssl {
 
@@ -52,7 +52,7 @@ std::unique_ptr<GeneralNames> GeneralNames::Create(der::Input general_names_tlv,
   // GeneralNames ::= SEQUENCE SIZE (1..MAX) OF GeneralName
   der::Parser parser(general_names_tlv);
   der::Input sequence_value;
-  if (!parser.ReadTag(der::kSequence, &sequence_value)) {
+  if (!parser.ReadTag(CBS_ASN1_SEQUENCE, &sequence_value)) {
     errors->AddError(kFailedReadingGeneralNames);
     return nullptr;
   }
@@ -101,17 +101,17 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
     GeneralNames *subtrees, CertErrors *errors) {
   BSSL_CHECK(errors);
   der::Parser parser(input);
-  der::Tag tag;
+  CBS_ASN1_TAG tag;
   der::Input value;
   if (!parser.ReadTagAndValue(&tag, &value)) {
     return false;
   }
   GeneralNameTypes name_type = GENERAL_NAME_NONE;
-  if (tag == der::ContextSpecificConstructed(0)) {
+  if (tag == (CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
     // otherName                       [0]     OtherName,
     name_type = GENERAL_NAME_OTHER_NAME;
     subtrees->other_names.push_back(value);
-  } else if (tag == der::ContextSpecificPrimitive(1)) {
+  } else if (tag == (CBS_ASN1_CONTEXT_SPECIFIC | 1)) {
     // rfc822Name                      [1]     IA5String,
     name_type = GENERAL_NAME_RFC822_NAME;
     const std::string_view s = BytesAsStringView(value);
@@ -120,7 +120,7 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
       return false;
     }
     subtrees->rfc822_names.push_back(s);
-  } else if (tag == der::ContextSpecificPrimitive(2)) {
+  } else if (tag == (CBS_ASN1_CONTEXT_SPECIFIC | 2)) {
     // dNSName                         [2]     IA5String,
     name_type = GENERAL_NAME_DNS_NAME;
     const std::string_view s = BytesAsStringView(value);
@@ -129,11 +129,11 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
       return false;
     }
     subtrees->dns_names.push_back(s);
-  } else if (tag == der::ContextSpecificConstructed(3)) {
+  } else if (tag == (CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 3)) {
     // x400Address                     [3]     ORAddress,
     name_type = GENERAL_NAME_X400_ADDRESS;
     subtrees->x400_addresses.push_back(value);
-  } else if (tag == der::ContextSpecificConstructed(4)) {
+  } else if (tag == (CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 4)) {
     // directoryName                   [4]     Name,
     name_type = GENERAL_NAME_DIRECTORY_NAME;
     // Name is a CHOICE { rdnSequence  RDNSequence }, therefore the SEQUENCE
@@ -141,15 +141,16 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
     // only the value portion.
     der::Parser name_parser(value);
     der::Input name_value;
-    if (!name_parser.ReadTag(der::kSequence, &name_value) || parser.HasMore()) {
+    if (!name_parser.ReadTag(CBS_ASN1_SEQUENCE, &name_value) ||
+        parser.HasMore()) {
       return false;
     }
     subtrees->directory_names.push_back(name_value);
-  } else if (tag == der::ContextSpecificConstructed(5)) {
+  } else if (tag == (CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 5)) {
     // ediPartyName                    [5]     EDIPartyName,
     name_type = GENERAL_NAME_EDI_PARTY_NAME;
     subtrees->edi_party_names.push_back(value);
-  } else if (tag == der::ContextSpecificPrimitive(6)) {
+  } else if (tag == (CBS_ASN1_CONTEXT_SPECIFIC | 6)) {
     // uniformResourceIdentifier       [6]     IA5String,
     name_type = GENERAL_NAME_UNIFORM_RESOURCE_IDENTIFIER;
     const std::string_view s = BytesAsStringView(value);
@@ -158,7 +159,7 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
       return false;
     }
     subtrees->uniform_resource_identifiers.push_back(s);
-  } else if (tag == der::ContextSpecificPrimitive(7)) {
+  } else if (tag == (CBS_ASN1_CONTEXT_SPECIFIC | 7)) {
     // iPAddress                       [7]     OCTET STRING,
     name_type = GENERAL_NAME_IP_ADDRESS;
     if (ip_address_type == GeneralNames::IP_ADDRESS_ONLY) {
@@ -201,7 +202,7 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
       }
       subtrees->ip_address_ranges.emplace_back(addr, mask);
     }
-  } else if (tag == der::ContextSpecificPrimitive(8)) {
+  } else if (tag == (CBS_ASN1_CONTEXT_SPECIFIC | 8)) {
     // registeredID                    [8]     OBJECT IDENTIFIER }
     name_type = GENERAL_NAME_REGISTERED_ID;
     subtrees->registered_ids.push_back(value);

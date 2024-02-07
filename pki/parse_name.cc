@@ -8,6 +8,7 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/mem.h>
+
 #include "parse_values.h"
 #include "string_util.h"
 
@@ -31,18 +32,18 @@ std::string OidToString(der::Input oid) {
 
 bool X509NameAttribute::ValueAsString(std::string *out) const {
   switch (value_tag) {
-    case der::kTeletexString:
+    case CBS_ASN1_T61STRING:
       return der::ParseTeletexStringAsLatin1(value, out);
-    case der::kIA5String:
+    case CBS_ASN1_IA5STRING:
       return der::ParseIA5String(value, out);
-    case der::kPrintableString:
+    case CBS_ASN1_PRINTABLESTRING:
       return der::ParsePrintableString(value, out);
-    case der::kUtf8String:
+    case CBS_ASN1_UTF8STRING:
       *out = BytesAsStringView(value);
       return true;
-    case der::kUniversalString:
+    case CBS_ASN1_UNIVERSALSTRING:
       return der::ParseUniversalString(value, out);
-    case der::kBmpString:
+    case CBS_ASN1_BMPSTRING:
       return der::ParseBmpString(value, out);
     default:
       return false;
@@ -52,7 +53,7 @@ bool X509NameAttribute::ValueAsString(std::string *out) const {
 bool X509NameAttribute::ValueAsStringWithUnsafeOptions(
     PrintableStringHandling printable_string_handling, std::string *out) const {
   if (printable_string_handling == PrintableStringHandling::kAsUTF8Hack &&
-      value_tag == der::kPrintableString) {
+      value_tag == CBS_ASN1_PRINTABLESTRING) {
     *out = BytesAsStringView(value);
     return true;
   }
@@ -61,15 +62,15 @@ bool X509NameAttribute::ValueAsStringWithUnsafeOptions(
 
 bool X509NameAttribute::ValueAsStringUnsafe(std::string *out) const {
   switch (value_tag) {
-    case der::kIA5String:
-    case der::kPrintableString:
-    case der::kTeletexString:
-    case der::kUtf8String:
+    case CBS_ASN1_IA5STRING:
+    case CBS_ASN1_PRINTABLESTRING:
+    case CBS_ASN1_T61STRING:
+    case CBS_ASN1_UTF8STRING:
       *out = BytesAsStringView(value);
       return true;
-    case der::kUniversalString:
+    case CBS_ASN1_UNIVERSALSTRING:
       return der::ParseUniversalString(value, out);
-    case der::kBmpString:
+    case CBS_ASN1_BMPSTRING:
       return der::ParseBmpString(value, out);
     default:
       assert(0);  // NOTREACHED
@@ -137,7 +138,7 @@ bool X509NameAttribute::AsRFC2253String(std::string *out) const {
 
     // If we have non-printable characters in a TeletexString, we hex encode
     // since we don't handle Teletex control codes.
-    if (nonprintable && value_tag == der::kTeletexString) {
+    if (nonprintable && value_tag == CBS_ASN1_T61STRING) {
       value_string = "#" + bssl::string_util::HexEncode(value);
     }
   }
@@ -154,12 +155,12 @@ bool ReadRdn(der::Parser *parser, RelativeDistinguishedName *out) {
     }
     // Read the attribute type, which must be an OBJECT IDENTIFIER.
     der::Input type;
-    if (!attr_type_and_value.ReadTag(der::kOid, &type)) {
+    if (!attr_type_and_value.ReadTag(CBS_ASN1_OBJECT, &type)) {
       return false;
     }
 
     // Read the attribute value.
-    der::Tag tag;
+    CBS_ASN1_TAG tag;
     der::Input value;
     if (!attr_type_and_value.ReadTagAndValue(&tag, &value)) {
       return false;
@@ -182,7 +183,7 @@ bool ReadRdn(der::Parser *parser, RelativeDistinguishedName *out) {
 bool ParseName(der::Input name_tlv, RDNSequence *out) {
   der::Parser name_parser(name_tlv);
   der::Input name_value;
-  if (!name_parser.ReadTag(der::kSequence, &name_value)) {
+  if (!name_parser.ReadTag(CBS_ASN1_SEQUENCE, &name_value)) {
     return false;
   }
   return ParseNameValue(name_value, out);
@@ -192,7 +193,7 @@ bool ParseNameValue(der::Input name_value, RDNSequence *out) {
   der::Parser rdn_sequence_parser(name_value);
   while (rdn_sequence_parser.HasMore()) {
     der::Parser rdn_parser;
-    if (!rdn_sequence_parser.ReadConstructed(der::kSet, &rdn_parser)) {
+    if (!rdn_sequence_parser.ReadConstructed(CBS_ASN1_SET, &rdn_parser)) {
       return false;
     }
     RelativeDistinguishedName type_and_values;

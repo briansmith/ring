@@ -4,7 +4,9 @@
 
 #include "parsed_certificate.h"
 
+#include <openssl/bytestring.h>
 #include <openssl/pool.h>
+
 #include "cert_errors.h"
 #include "certificate_policies.h"
 #include "extended_key_usage.h"
@@ -51,7 +53,7 @@ DEFINE_CERT_ERROR_ID(kFailedParsingSubjectKeyIdentifier,
 
 [[nodiscard]] bool GetSequenceValue(der::Input tlv, der::Input *value) {
   der::Parser parser(tlv);
-  return parser.ReadTag(der::kSequence, value) && !parser.HasMore();
+  return parser.ReadTag(CBS_ASN1_SEQUENCE, value) && !parser.HasMore();
 }
 
 }  // namespace

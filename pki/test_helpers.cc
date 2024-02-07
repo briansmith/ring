@@ -147,7 +147,7 @@ void PrintTo(Input data, ::std::ostream *os) {
 der::Input SequenceValueFromString(std::string_view s) {
   der::Parser parser((der::Input(s)));
   der::Input data;
-  if (!parser.ReadTag(der::kSequence, &data)) {
+  if (!parser.ReadTag(CBS_ASN1_SEQUENCE, &data)) {
     ADD_FAILURE();
     return der::Input();
   }

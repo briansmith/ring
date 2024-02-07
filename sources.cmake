@@ -382,7 +382,6 @@ set(
   pki/signature_algorithm.cc
   pki/simple_path_builder_delegate.cc
   pki/string_util.cc
-  pki/tag.cc
   pki/trust_store_collection.cc
   pki/trust_store_in_memory.cc
   pki/trust_store.cc

@@ -6,12 +6,12 @@
 
 #include <openssl/base.h>
 #include <openssl/bytestring.h>
+
 #include "cert_error_params.h"
 #include "cert_errors.h"
 #include "input.h"
 #include "parse_name.h"
 #include "parser.h"
-#include "tag.h"
 
 namespace bssl {
 
@@ -127,15 +127,15 @@ enum CharsetEnforcement {
 
   bool success = false;
   switch (attribute.value_tag) {
-    case der::kPrintableString:
+    case CBS_ASN1_PRINTABLESTRING:
       success = NormalizeDirectoryString(ENFORCE_PRINTABLE_STRING, output);
       break;
-    case der::kBmpString:
-    case der::kUniversalString:
-    case der::kUtf8String:
+    case CBS_ASN1_BMPSTRING:
+    case CBS_ASN1_UNIVERSALSTRING:
+    case CBS_ASN1_UTF8STRING:
       success = NormalizeDirectoryString(NO_ENFORCEMENT, output);
       break;
-    case der::kIA5String:
+    case CBS_ASN1_IA5STRING:
       success = NormalizeDirectoryString(ENFORCE_ASCII, output);
       break;
     default:
@@ -153,15 +153,15 @@ enum CharsetEnforcement {
 }
 
 // Returns true if |tag| is a string type that NormalizeValue can handle.
-bool IsNormalizableDirectoryString(der::Tag tag) {
+bool IsNormalizableDirectoryString(CBS_ASN1_TAG tag) {
   switch (tag) {
-    case der::kPrintableString:
-    case der::kUtf8String:
+    case CBS_ASN1_PRINTABLESTRING:
+    case CBS_ASN1_UTF8STRING:
     // RFC 5280 only requires handling IA5String for comparing domainComponent
     // values, but handling it here avoids the need to special case anything.
-    case der::kIA5String:
-    case der::kUniversalString:
-    case der::kBmpString:
+    case CBS_ASN1_IA5STRING:
+    case CBS_ASN1_UNIVERSALSTRING:
+    case CBS_ASN1_BMPSTRING:
       return true;
     // TeletexString isn't normalized. Section 8 of RFC 5280 briefly
     // describes the historical confusion between treating TeletexString
@@ -274,8 +274,8 @@ bool VerifyNameMatchInternal(der::Input a, der::Input b,
   der::Parser a_rdn_sequence_counter(a);
   der::Parser b_rdn_sequence_counter(b);
   while (a_rdn_sequence_counter.HasMore() && b_rdn_sequence_counter.HasMore()) {
-    if (!a_rdn_sequence_counter.SkipTag(der::kSet) ||
-        !b_rdn_sequence_counter.SkipTag(der::kSet)) {
+    if (!a_rdn_sequence_counter.SkipTag(CBS_ASN1_SET) ||
+        !b_rdn_sequence_counter.SkipTag(CBS_ASN1_SET)) {
       return false;
     }
   }
@@ -294,8 +294,8 @@ bool VerifyNameMatchInternal(der::Input a, der::Input b,
   der::Parser b_rdn_sequence(b);
   while (a_rdn_sequence.HasMore() && b_rdn_sequence.HasMore()) {
     der::Parser a_rdn, b_rdn;
-    if (!a_rdn_sequence.ReadConstructed(der::kSet, &a_rdn) ||
-        !b_rdn_sequence.ReadConstructed(der::kSet, &b_rdn)) {
+    if (!a_rdn_sequence.ReadConstructed(CBS_ASN1_SET, &a_rdn) ||
+        !b_rdn_sequence.ReadConstructed(CBS_ASN1_SET, &b_rdn)) {
       return false;
     }
     if (!VerifyRdnMatch(&a_rdn, &b_rdn)) {
@@ -324,7 +324,7 @@ bool NormalizeName(der::Input name_rdn_sequence,
   while (rdn_sequence_parser.HasMore()) {
     // RelativeDistinguishedName ::= SET SIZE (1..MAX) OF AttributeTypeAndValue
     der::Parser rdn_parser;
-    if (!rdn_sequence_parser.ReadConstructed(der::kSet, &rdn_parser)) {
+    if (!rdn_sequence_parser.ReadConstructed(CBS_ASN1_SET, &rdn_parser)) {
       return false;
     }
     RelativeDistinguishedName type_and_values;
@@ -412,7 +412,7 @@ bool FindEmailAddressesInName(
   der::Parser rdn_sequence_parser(name_rdn_sequence);
   while (rdn_sequence_parser.HasMore()) {
     der::Parser rdn_parser;
-    if (!rdn_sequence_parser.ReadConstructed(der::kSet, &rdn_parser)) {
+    if (!rdn_sequence_parser.ReadConstructed(CBS_ASN1_SET, &rdn_parser)) {
       return false;
     }
 

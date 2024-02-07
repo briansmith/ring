@@ -13,11 +13,11 @@ Parser::Parser() { CBS_init(&cbs_, nullptr, 0); }
 
 Parser::Parser(Input input) { CBS_init(&cbs_, input.data(), input.size()); }
 
-bool Parser::PeekTagAndValue(Tag *tag, Input *out) {
+bool Parser::PeekTagAndValue(CBS_ASN1_TAG *tag, Input *out) {
   CBS peeker = cbs_;
   CBS tmp_out;
   size_t header_len;
-  unsigned tag_value;
+  CBS_ASN1_TAG tag_value;
   if (!CBS_get_any_asn1_element(&peeker, &tmp_out, &tag_value, &header_len) ||
       !CBS_skip(&tmp_out, header_len)) {
     return false;
@@ -48,7 +48,7 @@ bool Parser::ReadRawTLV(Input *out) {
   return true;
 }
 
-bool Parser::ReadTagAndValue(Tag *tag, Input *out) {
+bool Parser::ReadTagAndValue(CBS_ASN1_TAG *tag, Input *out) {
   if (!PeekTagAndValue(tag, out)) {
     return false;
   }
@@ -56,12 +56,12 @@ bool Parser::ReadTagAndValue(Tag *tag, Input *out) {
   return true;
 }
 
-bool Parser::ReadOptionalTag(Tag tag, std::optional<Input> *out) {
+bool Parser::ReadOptionalTag(CBS_ASN1_TAG tag, std::optional<Input> *out) {
   if (!HasMore()) {
     *out = std::nullopt;
     return true;
   }
-  Tag actual_tag;
+  CBS_ASN1_TAG actual_tag;
   Input value;
   if (!PeekTagAndValue(&actual_tag, &value)) {
     return false;
@@ -76,7 +76,7 @@ bool Parser::ReadOptionalTag(Tag tag, std::optional<Input> *out) {
   return true;
 }
 
-bool Parser::ReadOptionalTag(Tag tag, Input *out, bool *present) {
+bool Parser::ReadOptionalTag(CBS_ASN1_TAG tag, Input *out, bool *present) {
   std::optional<Input> tmp_out;
   if (!ReadOptionalTag(tag, &tmp_out)) {
     return false;
@@ -86,13 +86,13 @@ bool Parser::ReadOptionalTag(Tag tag, Input *out, bool *present) {
   return true;
 }
 
-bool Parser::SkipOptionalTag(Tag tag, bool *present) {
+bool Parser::SkipOptionalTag(CBS_ASN1_TAG tag, bool *present) {
   Input out;
   return ReadOptionalTag(tag, &out, present);
 }
 
-bool Parser::ReadTag(Tag tag, Input *out) {
-  Tag actual_tag;
+bool Parser::ReadTag(CBS_ASN1_TAG tag, Input *out) {
+  CBS_ASN1_TAG actual_tag;
   Input value;
   if (!PeekTagAndValue(&actual_tag, &value) || actual_tag != tag) {
     return false;
@@ -102,15 +102,15 @@ bool Parser::ReadTag(Tag tag, Input *out) {
   return true;
 }
 
-bool Parser::SkipTag(Tag tag) {
+bool Parser::SkipTag(CBS_ASN1_TAG tag) {
   Input out;
   return ReadTag(tag, &out);
 }
 
 // Type-specific variants of ReadTag
 
-bool Parser::ReadConstructed(Tag tag, Parser *out) {
-  if (!IsConstructed(tag)) {
+bool Parser::ReadConstructed(CBS_ASN1_TAG tag, Parser *out) {
+  if (!(tag & CBS_ASN1_CONSTRUCTED)) {
     return false;
   }
   Input data;
@@ -122,12 +122,12 @@ bool Parser::ReadConstructed(Tag tag, Parser *out) {
 }
 
 bool Parser::ReadSequence(Parser *out) {
-  return ReadConstructed(kSequence, out);
+  return ReadConstructed(CBS_ASN1_SEQUENCE, out);
 }
 
 bool Parser::ReadUint8(uint8_t *out) {
   Input encoded_int;
-  if (!ReadTag(kInteger, &encoded_int)) {
+  if (!ReadTag(CBS_ASN1_INTEGER, &encoded_int)) {
     return false;
   }
   return ParseUint8(encoded_int, out);
@@ -135,7 +135,7 @@ bool Parser::ReadUint8(uint8_t *out) {
 
 bool Parser::ReadUint64(uint64_t *out) {
   Input encoded_int;
-  if (!ReadTag(kInteger, &encoded_int)) {
+  if (!ReadTag(CBS_ASN1_INTEGER, &encoded_int)) {
     return false;
   }
   return ParseUint64(encoded_int, out);
@@ -143,7 +143,7 @@ bool Parser::ReadUint64(uint64_t *out) {
 
 std::optional<BitString> Parser::ReadBitString() {
   Input value;
-  if (!ReadTag(kBitString, &value)) {
+  if (!ReadTag(CBS_ASN1_BITSTRING, &value)) {
     return std::nullopt;
   }
   return ParseBitString(value);
@@ -151,7 +151,7 @@ std::optional<BitString> Parser::ReadBitString() {
 
 bool Parser::ReadGeneralizedTime(GeneralizedTime *out) {
   Input value;
-  if (!ReadTag(kGeneralizedTime, &value)) {
+  if (!ReadTag(CBS_ASN1_GENERALIZEDTIME, &value)) {
     return false;
   }
   return ParseGeneralizedTime(value, out);
