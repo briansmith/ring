@@ -17,11 +17,14 @@ use super::{quic::Sample, Nonce};
 
 #[cfg(any(
     test,
-    not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86",
-        target_arch = "x86_64"
+    not(all(
+        have_perlasm,
+        any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86",
+            target_arch = "x86_64"
+        )
     ))
 ))]
 mod fallback;
@@ -88,11 +91,14 @@ impl Key {
     /// Only call this with `src` equal to `0..` or from `encrypt_within`.
     #[inline]
     fn encrypt_less_safe(&self, counter: Counter, in_out: &mut [u8], src: RangeFrom<usize>) {
-        #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86",
-            target_arch = "x86_64"
+        #[cfg(all(
+            have_perlasm,
+            any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86",
+                target_arch = "x86_64"
+            )
         ))]
         #[inline(always)]
         pub(super) fn ChaCha20_ctr32(
@@ -125,11 +131,14 @@ impl Key {
             }
         }
 
-        #[cfg(not(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86",
-            target_arch = "x86_64"
+        #[cfg(not(all(
+            have_perlasm,
+            any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86",
+                target_arch = "x86_64"
+            )
         )))]
         use fallback::ChaCha20_ctr32;
 
@@ -166,11 +175,14 @@ impl Counter {
     /// the caller.
     #[cfg(any(
         test,
-        not(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86",
-            target_arch = "x86_64"
+        not(all(
+            have_perlasm,
+            any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86",
+                target_arch = "x86_64"
+            )
         ))
     ))]
     fn into_words_less_safe(self) -> [u32; 4] {

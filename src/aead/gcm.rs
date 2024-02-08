@@ -38,7 +38,7 @@ impl Key {
         let h_table = &mut key.h_table;
 
         match detect_implementation(cpu_features) {
-            #[cfg(target_arch = "x86_64")]
+            #[cfg(all(have_perlasm, target_arch = "x86_64"))]
             Implementation::CLMUL if has_avx_movbe(cpu_features) => {
                 prefixed_extern! {
                     fn gcm_init_avx(HTable: &mut HTable, h: &[u64; 2]);
@@ -48,11 +48,14 @@ impl Key {
                 }
             }
 
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86_64",
-                target_arch = "x86"
+            #[cfg(all(
+                have_perlasm,
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "x86_64",
+                    target_arch = "x86"
+                )
             ))]
             Implementation::CLMUL => {
                 prefixed_extern! {
@@ -63,7 +66,7 @@ impl Key {
                 }
             }
 
-            #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+            #[cfg(all(have_perlasm, any(target_arch = "aarch64", target_arch = "arm")))]
             Implementation::NEON => {
                 prefixed_extern! {
                     fn gcm_init_neon(Htable: &mut HTable, h: &[u64; 2]);
@@ -133,7 +136,7 @@ impl Context {
         let h_table = &self.inner.Htable;
 
         match detect_implementation(self.cpu_features) {
-            #[cfg(target_arch = "x86_64")]
+            #[cfg(all(have_perlasm, target_arch = "x86_64"))]
             Implementation::CLMUL if has_avx_movbe(self.cpu_features) => {
                 prefixed_extern! {
                     fn gcm_ghash_avx(
@@ -148,11 +151,14 @@ impl Context {
                 }
             }
 
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86_64",
-                target_arch = "x86"
+            #[cfg(all(
+                have_perlasm,
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "x86_64",
+                    target_arch = "x86"
+                )
             ))]
             Implementation::CLMUL => {
                 prefixed_extern! {
@@ -168,7 +174,7 @@ impl Context {
                 }
             }
 
-            #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+            #[cfg(all(have_perlasm, any(target_arch = "aarch64", target_arch = "arm")))]
             Implementation::NEON => {
                 prefixed_extern! {
                     fn gcm_ghash_neon(
@@ -199,11 +205,14 @@ impl Context {
         let h_table = &self.inner.Htable;
 
         match detect_implementation(self.cpu_features) {
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86_64",
-                target_arch = "x86"
+            #[cfg(all(
+                have_perlasm,
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "x86_64",
+                    target_arch = "x86"
+                )
             ))]
             Implementation::CLMUL => {
                 prefixed_extern! {
@@ -214,7 +223,7 @@ impl Context {
                 }
             }
 
-            #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+            #[cfg(all(have_perlasm, any(target_arch = "aarch64", target_arch = "arm")))]
             Implementation::NEON => {
                 prefixed_extern! {
                     fn gcm_gmult_neon(xi: &mut Xi, Htable: &HTable);
@@ -237,7 +246,7 @@ impl Context {
         f(self.inner.Xi.0)
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(have_perlasm, target_arch = "x86_64"))]
     pub(super) fn is_avx(&self) -> bool {
         match detect_implementation(self.cpu_features) {
             Implementation::CLMUL => has_avx_movbe(self.cpu_features),
@@ -290,15 +299,18 @@ struct ContextInner {
 
 #[allow(clippy::upper_case_acronyms)]
 enum Implementation {
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86_64",
-        target_arch = "x86"
+    #[cfg(all(
+        have_perlasm,
+        any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86_64",
+            target_arch = "x86"
+        )
     ))]
     CLMUL,
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+    #[cfg(all(have_perlasm, any(target_arch = "aarch64", target_arch = "arm")))]
     NEON,
 
     Fallback,
@@ -307,22 +319,25 @@ enum Implementation {
 #[inline]
 fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     // `cpu_features` is only used for specific platforms.
-    #[cfg(not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86_64",
-        target_arch = "x86"
+    #[cfg(not(all(
+        have_perlasm,
+        any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86_64",
+            target_arch = "x86"
+        )
     )))]
     let _cpu_features = cpu_features;
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+    #[cfg(all(have_perlasm, any(target_arch = "aarch64", target_arch = "arm")))]
     {
         if cpu::arm::PMULL.available(cpu_features) {
             return Implementation::CLMUL;
         }
     }
 
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[cfg(all(have_perlasm, any(target_arch = "x86_64", target_arch = "x86")))]
     {
         if cpu::intel::FXSR.available(cpu_features) && cpu::intel::PCLMULQDQ.available(cpu_features)
         {
@@ -330,7 +345,7 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
         }
     }
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+    #[cfg(all(have_perlasm, any(target_arch = "aarch64", target_arch = "arm")))]
     {
         if cpu::arm::NEON.available(cpu_features) {
             return Implementation::NEON;
