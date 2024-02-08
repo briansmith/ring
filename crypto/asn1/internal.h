@@ -76,12 +76,6 @@ extern "C" {
 // returned. On failure NULL is returned.
 OPENSSL_EXPORT struct tm *OPENSSL_gmtime(const time_t *time, struct tm *result);
 
-// OPENSSL_timegm converts a time value between the years 0 and 9999 in |tm| to
-// a time_t value in |out|. One is returned on success, zero is returned on
-// failure. It is a failure if the converted time can not be represented in a
-// time_t, or if the tm contains out of range values.
-OPENSSL_EXPORT int OPENSSL_timegm(const struct tm *tm, time_t *out);
-
 // OPENSSL_gmtime_adj returns one on success, and updates |tm| by adding
 // |offset_day| days and |offset_sec| seconds. It returns zero on failure. |tm|
 // must be in the range of year 0000 to 9999 both before and after the update or

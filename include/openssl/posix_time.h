@@ -37,6 +37,12 @@ OPENSSL_EXPORT int OPENSSL_posix_to_tm(int64_t time, struct tm *out_tm);
 // returned on failure. It is a failure if |tm| contains out of range values.
 OPENSSL_EXPORT int OPENSSL_tm_to_posix(const struct tm *tm, int64_t *out);
 
+// OPENSSL_timegm converts a time value between the years 0 and 9999 in |tm| to
+// a time_t value in |out|. One is returned on success, zero is returned on
+// failure. It is a failure if the converted time can not be represented in a
+// time_t, or if the tm contains out of range values.
+OPENSSL_EXPORT int OPENSSL_timegm(const struct tm *tm, time_t *out);
+
 
 #if defined(__cplusplus)
 }  // extern C
