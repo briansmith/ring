@@ -891,6 +891,13 @@ const STACK_OF(CRYPTO_BUFFER)* SSL_CTX_get0_chain(const SSL_CTX *ctx) {
   return ctx->cert->chain.get();
 }
 
+const STACK_OF(CRYPTO_BUFFER) * SSL_get0_chain(const SSL *ssl) {
+  if (!ssl->config) {
+    return nullptr;
+  }
+  return ssl->config->cert->chain.get();
+}
+
 int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
                                  const uint8_t *der) {
   UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new(der, der_len, NULL));

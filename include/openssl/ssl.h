@@ -1154,11 +1154,23 @@ OPENSSL_EXPORT int SSL_set_chain_and_key(
 // the return value is undefined and, even if not NULL, the stack itself may
 // contain nullptrs. Thus you shouldn't mix this function with
 // non-|CRYPTO_BUFFER| functions for manipulating the chain.)
-//
-// There is no |SSL*| version of this function because connections discard
-// configuration after handshaking, thus making it of questionable utility.
 OPENSSL_EXPORT const STACK_OF(CRYPTO_BUFFER)*
     SSL_CTX_get0_chain(const SSL_CTX *ctx);
+
+// SSL_get0_chain returns the list of |CRYPTO_BUFFER|s that were set by
+// |SSL_set_chain_and_key|, unless they have been discarded. Reference counts
+// are not incremented by this call. The return value may be |NULL| if no chain
+// has been set.
+//
+// (Note: if a chain was configured by non-|CRYPTO_BUFFER|-based functions then
+// the return value is undefined and, even if not NULL, the stack itself may
+// contain nullptrs. Thus you shouldn't mix this function with
+// non-|CRYPTO_BUFFER| functions for manipulating the chain.)
+//
+// This function may return nullptr if a handshake has completed even if
+// |SSL_set_chain_and_key| was previously called, since the configuration
+// containing the certificates is typically cleared after handshake completion.
+OPENSSL_EXPORT const STACK_OF(CRYPTO_BUFFER) *SSL_get0_chain(const SSL *ssl);
 
 // SSL_CTX_use_RSAPrivateKey sets |ctx|'s private key to |rsa|. It returns one
 // on success and zero on failure.

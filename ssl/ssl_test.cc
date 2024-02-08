@@ -4550,12 +4550,12 @@ TEST(SSLTest, SetChainAndKeyMismatch) {
   };
 
   // Should fail because |GetTestKey| doesn't match the chain-test certificate.
-  ASSERT_FALSE(SSL_CTX_set_chain_and_key(ctx.get(), &chain[0], chain.size(),
+  ASSERT_FALSE(SSL_CTX_set_chain_and_key(ctx.get(), chain.data(), chain.size(),
                                          key.get(), nullptr));
   ERR_clear_error();
 }
 
-TEST(SSLTest, SetChainAndKey) {
+TEST(SSLTest, SetChainAndKeyCtx) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_with_buffers_method()));
   ASSERT_TRUE(client_ctx);
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_with_buffers_method()));
@@ -4573,7 +4573,7 @@ TEST(SSLTest, SetChainAndKey) {
   std::vector<CRYPTO_BUFFER*> chain = {
       leaf.get(), intermediate.get(),
   };
-  ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
+  ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), chain.data(),
                                         chain.size(), key.get(), nullptr));
 
   ASSERT_EQ(chain.size(),
@@ -4590,6 +4590,49 @@ TEST(SSLTest, SetChainAndKey) {
                                      server_ctx.get()));
 }
 
+TEST(SSLTest, SetChainAndKeySSL) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  ASSERT_TRUE(client_ctx);
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
+  SSL_set_shed_handshake_config(client.get(), true);
+  SSL_set_shed_handshake_config(server.get(), true);
+
+  ASSERT_EQ(nullptr, SSL_get0_chain(server.get()));
+
+  bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<CRYPTO_BUFFER> intermediate =
+      GetChainTestIntermediateBuffer();
+  ASSERT_TRUE(intermediate);
+  std::vector<CRYPTO_BUFFER*> chain = {
+      leaf.get(), intermediate.get(),
+  };
+  ASSERT_TRUE(SSL_set_chain_and_key(server.get(), chain.data(),
+                                    chain.size(), key.get(), nullptr));
+
+  ASSERT_EQ(chain.size(),
+            sk_CRYPTO_BUFFER_num(SSL_get0_chain(server.get())));
+
+  SSL_set_custom_verify(
+      client.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // The server is configured to shed handshake config, so the certificate is no
+  // longer available after the handshake.
+  ASSERT_EQ(nullptr, SSL_get0_chain(server.get()));
+}
+
 TEST(SSLTest, BuffersFailWithoutCustomVerify) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_with_buffers_method()));
   ASSERT_TRUE(client_ctx);
@@ -4601,7 +4644,7 @@ TEST(SSLTest, BuffersFailWithoutCustomVerify) {
   bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
   ASSERT_TRUE(leaf);
   std::vector<CRYPTO_BUFFER*> chain = { leaf.get() };
-  ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
+  ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), chain.data(),
                                         chain.size(), key.get(), nullptr));
 
   // Without SSL_CTX_set_custom_verify(), i.e. with everything in the default
@@ -4631,7 +4674,7 @@ TEST(SSLTest, CustomVerify) {
   bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
   ASSERT_TRUE(leaf);
   std::vector<CRYPTO_BUFFER*> chain = { leaf.get() };
-  ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
+  ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), chain.data(),
                                         chain.size(), key.get(), nullptr));
 
   SSL_CTX_set_custom_verify(
@@ -4684,7 +4727,7 @@ TEST(SSLTest, ClientCABuffers) {
       leaf.get(),
       intermediate.get(),
   };
-  ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
+  ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), chain.data(),
                                         chain.size(), key.get(), nullptr));
 
   bssl::UniquePtr<CRYPTO_BUFFER> ca_name(
