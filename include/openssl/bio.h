@@ -269,11 +269,11 @@ OPENSSL_EXPORT int BIO_set_close(BIO *bio, int close_flag);
 
 // BIO_number_read returns the number of bytes that have been read from
 // |bio|.
-OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio);
+OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio);
 
 // BIO_number_written returns the number of bytes that have been written to
 // |bio|.
-OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio);
+OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio);
 
 
 // Managing chains of BIOs.
@@ -894,7 +894,7 @@ struct bio_st {
   // next_bio points to the next |BIO| in a chain. This |BIO| owns a reference
   // to |next_bio|.
   BIO *next_bio;  // used by filter BIOs
-  size_t num_read, num_write;
+  uint64_t num_read, num_write;
 };
 
 #define BIO_C_SET_CONNECT 100

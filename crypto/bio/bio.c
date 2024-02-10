@@ -345,11 +345,11 @@ int BIO_set_close(BIO *bio, int close_flag) {
   return (int)BIO_ctrl(bio, BIO_CTRL_SET_CLOSE, close_flag, NULL);
 }
 
-OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio) {
+OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio) {
   return bio->num_read;
 }
 
-OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio) {
+OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio) {
   return bio->num_write;
 }
 
