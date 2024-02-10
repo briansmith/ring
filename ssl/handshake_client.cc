@@ -153,6 +153,7 @@
 #include <limits.h>
 #include <string.h>
 
+#include <algorithm>
 #include <utility>
 
 #include <openssl/aead.h>
@@ -1331,6 +1332,42 @@ static enum ssl_hs_wait_t do_read_server_hello_done(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
+static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred) {
+  if (cred->type != SSLCredentialType::kX509) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return false;
+  }
+
+  if (hs->config->check_client_certificate_type) {
+    // Check the certificate types advertised by the peer.
+    uint8_t cert_type;
+    switch (EVP_PKEY_id(cred->pubkey.get())) {
+      case EVP_PKEY_RSA:
+        cert_type = SSL3_CT_RSA_SIGN;
+        break;
+      case EVP_PKEY_EC:
+      case EVP_PKEY_ED25519:
+        cert_type = TLS_CT_ECDSA_SIGN;
+        break;
+      default:
+        OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+        return false;
+    }
+    if (std::find(hs->certificate_types.begin(), hs->certificate_types.end(),
+                  cert_type) == hs->certificate_types.end()) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+      return false;
+    }
+  }
+
+  // Check that we will be able to generate a signature. Note this does not
+  // check the ECDSA curve. Prior to TLS 1.3, there is no way to determine which
+  // ECDSA curves are supported by the peer, so we must assume all curves are
+  // supported.
+  uint16_t unused;
+  return tls1_choose_signature_algorithm(hs, cred, &unused);
+}
+
 static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
@@ -1358,41 +1395,37 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_on_certificate_selected(hs)) {
+  Array<SSL_CREDENTIAL *> creds;
+  if (!ssl_get_credential_list(hs, &creds)) {
     return ssl_hs_error;
   }
 
-  if (ssl_has_certificate(hs)) {
-    if (hs->config->check_client_certificate_type) {
-      // Check the certificate types advertised by the peer.
-      uint8_t cert_type;
-      switch (EVP_PKEY_id(hs->local_pubkey.get())) {
-        case EVP_PKEY_RSA:
-          cert_type = SSL3_CT_RSA_SIGN;
-          break;
-        case EVP_PKEY_EC:
-        case EVP_PKEY_ED25519:
-          cert_type = TLS_CT_ECDSA_SIGN;
-          break;
-        default:
-          OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-          return ssl_hs_error;
-      }
-      if (std::find(hs->certificate_types.begin(), hs->certificate_types.end(),
-                    cert_type) == hs->certificate_types.end()) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-        return ssl_hs_error;
+  if (creds.empty()) {
+    // If there were no credentials, proceed without a client certificate. In
+    // this case, the handshake buffer may be released early.
+    hs->transcript.FreeBuffer();
+  } else {
+    // Select the credential to use.
+    //
+    // TODO(davidben): In doing so, we pick the signature algorithm. Save that
+    // decision to avoid redoing it later.
+    for (SSL_CREDENTIAL *cred : creds) {
+      ERR_clear_error();
+      if (check_credential(hs, cred)) {
+        hs->credential = UpRef(cred);
+        break;
       }
     }
-  } else {
-    // Without a client certificate, the handshake buffer may be released.
-    hs->transcript.FreeBuffer();
+    if (hs->credential == nullptr) {
+      // The error from the last attempt is in the error queue.
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      return ssl_hs_error;
+    }
   }
 
   if (!ssl_send_tls12_certificate(hs)) {
     return ssl_hs_error;
   }
-
 
   hs->state = state_send_client_key_exchange;
   return ssl_hs_ok;
@@ -1570,12 +1603,11 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  if (!hs->cert_request || !ssl_has_certificate(hs)) {
+  if (!hs->cert_request || hs->credential == nullptr) {
     hs->state = state_send_client_finished;
     return ssl_hs_ok;
   }
 
-  assert(ssl_has_private_key(hs));
   ScopedCBB cbb;
   CBB body, child;
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
@@ -1584,7 +1616,8 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   }
 
   uint16_t signature_algorithm;
-  if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
+  if (!tls1_choose_signature_algorithm(hs, hs->credential.get(),
+                                       &signature_algorithm)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
   }
@@ -1597,7 +1630,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   }
 
   // Set aside space for the signature.
-  const size_t max_sig_len = EVP_PKEY_size(hs->local_pubkey.get());
+  const size_t max_sig_len = EVP_PKEY_size(hs->credential->pubkey.get());
   uint8_t *ptr;
   if (!CBB_add_u16_length_prefixed(&body, &child) ||
       !CBB_reserve(&child, &ptr, max_sig_len)) {

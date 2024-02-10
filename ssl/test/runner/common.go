@@ -268,6 +268,7 @@ type ConnectionState struct {
 	NegotiatedProtocolFromALPN bool                  // protocol negotiated with ALPN
 	ServerName                 string                // server name requested by client, if any (server side only)
 	PeerCertificates           []*x509.Certificate   // certificate chain presented by remote peer
+	PeerDelegatedCredential    []byte                // delegated credential presented by remote peer
 	VerifiedChains             [][]*x509.Certificate // verified chains built from PeerCertificates
 	OCSPResponse               []byte                // stapled OCSP response from the peer, if any
 	ChannelID                  *ecdsa.PublicKey      // the channel ID for this connection
@@ -308,7 +309,8 @@ type ClientSessionState struct {
 	secret                      []byte              // Secret associated with the session
 	handshakeHash               []byte              // Handshake hash for Channel ID purposes.
 	serverCertificates          []*x509.Certificate // Certificate chain presented by the server
-	extendedMasterSecret        bool                // Whether an extended master secret was used to generate the session
+	serverDelegatedCredential   []byte
+	extendedMasterSecret        bool // Whether an extended master secret was used to generate the session
 	sctList                     []byte
 	ocspResponse                []byte
 	earlyALPN                   string
@@ -1945,14 +1947,6 @@ type ProtocolBugs struct {
 	// should have key shares for.
 	ExpectedKeyShares []CurveID
 
-	// ExpectDelegatedCredentials, if true, requires that the handshake present
-	// delegated credentials.
-	ExpectDelegatedCredentials bool
-
-	// FailIfDelegatedCredentials, if true, causes a handshake failure if the
-	// server returns delegated credentials.
-	FailIfDelegatedCredentials bool
-
 	// CompatModeWithQUIC, if true, enables TLS 1.3 compatibility mode
 	// when running over QUIC.
 	CompatModeWithQUIC bool
@@ -2128,9 +2122,17 @@ func (c *Config) verifySignatureAlgorithms() []signatureAlgorithm {
 	return supportedSignatureAlgorithms
 }
 
+type CredentialType int
+
+const (
+	CredentialTypeX509 CredentialType = iota
+	CredentialTypeDelegated
+)
+
 // A Credential is a certificate chain and private key that a TLS endpoint may
 // use to authenticate.
 type Credential struct {
+	Type CredentialType
 	// Certificate is a chain of one or more certificates, leaf first.
 	Certificate [][]byte
 	PrivateKey  crypto.PrivateKey // supported types: *rsa.PrivateKey, *ecdsa.PrivateKey
@@ -2149,6 +2151,9 @@ type Credential struct {
 	// processing for TLS clients doing client authentication. If nil, the
 	// leaf certificate will be parsed as needed.
 	Leaf *x509.Certificate
+	// DelegatedCredential is the delegated credential to use
+	// with the certificate.
+	DelegatedCredential []byte
 	// ChainPath is the path to the temporary on disk copy of the certificate
 	// chain.
 	ChainPath string
@@ -2158,6 +2163,9 @@ type Credential struct {
 	// certificate chain. If the chain only contains one certificate ChainPath
 	// and RootPath will be the same.
 	RootPath string
+	// SignSignatureAlgorithms, if not nil, overrides the default set of
+	// supported signature algorithms to sign with.
+	SignSignatureAlgorithms []signatureAlgorithm
 }
 
 func (c *Credential) WithSignatureAlgorithms(sigAlgs ...signatureAlgorithm) *Credential {

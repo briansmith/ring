@@ -315,21 +315,20 @@ func loadPEMKey(pemBytes []byte) (crypto.PrivateKey, error) {
 	return k, nil
 }
 
-func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byte, parentPriv crypto.PrivateKey) (dc, privPKCS8 []uint8, err error) {
+func createDelegatedCredential(parent *Credential, config delegatedCredentialConfig) *Credential {
+	if parent.Type != CredentialTypeX509 {
+		panic("delegated credentials must be issued by X.509 credentials")
+	}
+
 	dcAlgo := config.dcAlgo
-	if dcAlgo == signatureAlgorithm(0) {
+	if dcAlgo == 0 {
 		dcAlgo = signatureECDSAWithP256AndSHA256
 	}
 
-	var pub crypto.PublicKey
-
+	var dcPriv crypto.Signer
 	switch dcAlgo {
 	case signatureRSAPKCS1WithMD5, signatureRSAPKCS1WithSHA1, signatureRSAPKCS1WithSHA256, signatureRSAPKCS1WithSHA384, signatureRSAPKCS1WithSHA512, signatureRSAPSSWithSHA256, signatureRSAPSSWithSHA384, signatureRSAPSSWithSHA512:
-		pub = &rsa2048Key.PublicKey
-		privPKCS8, err = x509.MarshalPKCS8PrivateKey(&rsa2048Key)
-		if err != nil {
-			return nil, nil, err
-		}
+		dcPriv = &rsa2048Key
 
 	case signatureECDSAWithSHA1, signatureECDSAWithP256AndSHA256, signatureECDSAWithP384AndSHA384, signatureECDSAWithP521AndSHA512:
 		var curve elliptic.Curve
@@ -346,17 +345,12 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 
 		priv, err := ecdsa.GenerateKey(curve, rand.Reader)
 		if err != nil {
-			return nil, nil, err
+			panic(err)
 		}
-
-		if privPKCS8, err = x509.MarshalPKCS8PrivateKey(priv); err != nil {
-			return nil, nil, err
-		}
-
-		pub = &priv.PublicKey
+		dcPriv = priv
 
 	default:
-		return nil, nil, fmt.Errorf("unsupported DC signature algorithm: %x", dcAlgo)
+		panic(fmt.Errorf("unsupported DC signature algorithm: %x", dcAlgo))
 	}
 
 	lifetime := config.lifetime
@@ -364,33 +358,36 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 		lifetime = 24 * time.Hour
 	}
 	lifetimeSecs := int64(lifetime.Seconds())
-	if lifetimeSecs > 1<<32 {
-		return nil, nil, fmt.Errorf("lifetime %s is too long to be expressed", lifetime)
+	if lifetimeSecs < 0 || lifetimeSecs > 1<<32 {
+		panic(fmt.Errorf("lifetime %s is too long to be expressed", lifetime))
 	}
 
 	// https://www.rfc-editor.org/rfc/rfc9345.html#section-4
-	dc = append(dc, byte(lifetimeSecs>>24), byte(lifetimeSecs>>16), byte(lifetimeSecs>>8), byte(lifetimeSecs))
-	dc = append(dc, byte(dcAlgo>>8), byte(dcAlgo))
+	dc := cryptobyte.NewBuilder(nil)
+	dc.AddUint32(uint32(lifetimeSecs))
+	dc.AddUint16(uint16(dcAlgo))
 
-	pubBytes, err := x509.MarshalPKIXPublicKey(pub)
+	pubBytes, err := x509.MarshalPKIXPublicKey(dcPriv.Public())
 	if err != nil {
-		return nil, nil, err
+		panic(err)
 	}
-
-	dc = append(dc, byte(len(pubBytes)>>16), byte(len(pubBytes)>>8), byte(len(pubBytes)))
-	dc = append(dc, pubBytes...)
+	addUint24LengthPrefixedBytes(dc, pubBytes)
 
 	var dummyConfig Config
-	parentSignature, err := signMessage(VersionTLS13, parentPriv, &dummyConfig, config.algo, delegatedCredentialSignedMessage(dc, config.algo, parentDER))
+	parentSignature, err := signMessage(VersionTLS13, parent.PrivateKey, &dummyConfig, config.algo, delegatedCredentialSignedMessage(dc.BytesOrPanic(), config.algo, parent.Leaf.Raw))
 	if err != nil {
-		return nil, nil, err
+		panic(err)
 	}
 
-	dc = append(dc, byte(config.algo>>8), byte(config.algo))
-	dc = append(dc, byte(len(parentSignature)>>8), byte(len(parentSignature)))
-	dc = append(dc, parentSignature...)
+	dc.AddUint16(uint16(config.algo))
+	addUint16LengthPrefixedBytes(dc, parentSignature)
 
-	return dc, privPKCS8, nil
+	dcCred := *parent
+	dcCred.Type = CredentialTypeDelegated
+	dcCred.DelegatedCredential = dc.BytesOrPanic()
+	dcCred.PrivateKey = dcPriv
+	dcCred.KeyPath = writeTempKeyFile(dcPriv)
+	return &dcCred
 }
 
 // recordVersionToWire maps a record-layer protocol version to its wire
@@ -487,17 +484,13 @@ type connectionExpectations struct {
 	// srtpProtectionProfile is the DTLS-SRTP profile that should be negotiated.
 	// If zero, none should be negotiated.
 	srtpProtectionProfile uint16
-	// ocspResponse, if not nil, is the OCSP response to be received.
-	ocspResponse []uint8
-	// sctList, if not nil, is the SCT list to be received.
-	sctList []uint8
 	// peerSignatureAlgorithm, if not zero, is the signature algorithm that the
 	// peer should have used in the handshake.
 	peerSignatureAlgorithm signatureAlgorithm
 	// curveID, if not zero, is the curve that the handshake should have used.
 	curveID CurveID
-	// peerCertificate, if not nil, is the certificate chain the peer is
-	// expected to send.
+	// peerCertificate, if not nil, is the credential the peer is expected to
+	// send.
 	peerCertificate *Credential
 	// quicTransportParams contains the QUIC transport parameters that are to be
 	// sent by the peer using codepoint 57.
@@ -655,15 +648,22 @@ type testCase struct {
 	// skipSplitHandshake, if true, will skip the generation of a split
 	// handshake copy of the test.
 	skipSplitHandshake bool
+	// skipHints, if true, will skip the generation of a handshake hints copy of
+	// the test.
+	skipHints bool
 	// skipVersionNameCheck, if true, will skip the consistency check between
 	// test name and the versions.
 	skipVersionNameCheck bool
-	// shimCertificate, if populated, is the credential which should be send by
-	// the shim.
+	// shimCertificate, if not nil, is the default credential which should be
+	// configured at the shim. If set, it must be an X.509 credential.
 	shimCertificate *Credential
-	// handshakerCertificate, if populated, overrides the credential that is
-	// configured on the handshaker.
+	// handshakerCertificate, if not nil, overrides the default credential which
+	// on the handshaker.
 	handshakerCertificate *Credential
+	// shimCredentials is a list of credentials which should be configured at
+	// the shim. It differs from shimCertificate only in whether the old or
+	// new APIs are used.
+	shimCredentials []*Credential
 }
 
 var testCases []testCase
@@ -910,14 +910,6 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 		return fmt.Errorf("SRTP profile mismatch: got %d, wanted %d", p, expectations.srtpProtectionProfile)
 	}
 
-	if expectations.ocspResponse != nil && !bytes.Equal(expectations.ocspResponse, connState.OCSPResponse) {
-		return fmt.Errorf("OCSP Response mismatch: got %x, wanted %x", connState.OCSPResponse, expectations.ocspResponse)
-	}
-
-	if expectations.sctList != nil && !bytes.Equal(expectations.sctList, connState.SCTList) {
-		return fmt.Errorf("SCT list mismatch")
-	}
-
 	if expected := expectations.peerSignatureAlgorithm; expected != 0 && expected != connState.PeerSignatureAlgorithm {
 		return fmt.Errorf("expected peer to use signature algorithm %04x, but got %04x", expected, connState.PeerSignatureAlgorithm)
 	}
@@ -926,14 +918,33 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 		return fmt.Errorf("expected peer to use curve %04x, but got %04x", expected, connState.CurveID)
 	}
 
-	if expectations.peerCertificate != nil {
-		if len(connState.PeerCertificates) != len(expectations.peerCertificate.Certificate) {
-			return fmt.Errorf("expected peer to send %d certificates, but got %d", len(connState.PeerCertificates), len(expectations.peerCertificate.Certificate))
+	if expected := expectations.peerCertificate; expected != nil {
+		if len(connState.PeerCertificates) != len(expected.Certificate) {
+			return fmt.Errorf("expected peer to send %d certificates, but got %d", len(connState.PeerCertificates), len(expected.Certificate))
 		}
 		for i, cert := range connState.PeerCertificates {
-			if !bytes.Equal(cert.Raw, expectations.peerCertificate.Certificate[i]) {
+			if !bytes.Equal(cert.Raw, expected.Certificate[i]) {
 				return fmt.Errorf("peer certificate %d did not match", i+1)
 			}
+		}
+
+		if !bytes.Equal(connState.OCSPResponse, expected.OCSPStaple) {
+			return fmt.Errorf("peer OCSP response did not match")
+		}
+
+		if !bytes.Equal(connState.SCTList, expected.SignedCertificateTimestampList) {
+			return fmt.Errorf("peer SCT list did not match")
+		}
+
+		if expected.Type == CredentialTypeDelegated {
+			if connState.PeerDelegatedCredential == nil {
+				return fmt.Errorf("peer unexpectedly did not use delegated credentials")
+			}
+			if !bytes.Equal(expected.DelegatedCredential, connState.PeerDelegatedCredential) {
+				return fmt.Errorf("peer delegated credential did not match")
+			}
+		} else if connState.PeerDelegatedCredential != nil {
+			return fmt.Errorf("peer unexpectedly used delegated credentials")
 		}
 	}
 
@@ -1388,7 +1399,20 @@ func translateExpectedError(errorStr string) string {
 // -shim-writes-first flag is used.
 const shimInitialWrite = "hello"
 
-func appendCredentialFlags(flags []string, cred *Credential, prefix string) []string {
+func appendCredentialFlags(flags []string, cred *Credential, prefix string, newCredential bool) []string {
+	if newCredential {
+		switch cred.Type {
+		case CredentialTypeX509:
+			flags = append(flags, prefix+"-new-x509-credential")
+		case CredentialTypeDelegated:
+			flags = append(flags, prefix+"-new-delegated-credential")
+		default:
+			panic(fmt.Errorf("unknown credential type %d", cred.Type))
+		}
+	} else if cred.Type != CredentialTypeX509 {
+		panic("default credential must be X.509")
+	}
+
 	if len(cred.ChainPath) != 0 {
 		flags = append(flags, prefix+"-cert-file", cred.ChainPath)
 	}
@@ -1403,6 +1427,9 @@ func appendCredentialFlags(flags []string, cred *Credential, prefix string) []st
 	}
 	for _, sigAlg := range cred.SignatureAlgorithms {
 		flags = append(flags, prefix+"-signing-prefs", strconv.Itoa(int(sigAlg)))
+	}
+	if len(cred.DelegatedCredential) != 0 {
+		flags = append(flags, prefix+"-delegated-credential", base64FlagValue(cred.DelegatedCredential))
 	}
 	return flags
 }
@@ -1424,8 +1451,9 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 		flags = append(flags, "-server")
 	}
 
+	// Configure the default credential.
 	shimCertificate := test.shimCertificate
-	if shimCertificate == nil && test.testType == serverTest {
+	if shimCertificate == nil && len(test.shimCredentials) == 0 && test.testType == serverTest {
 		shimCertificate = &rsaCertificate
 	}
 	if shimCertificate != nil {
@@ -1433,11 +1461,15 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 		if test.handshakerCertificate != nil {
 			shimPrefix = "-on-shim"
 		}
-		flags = appendCredentialFlags(flags, shimCertificate, shimPrefix)
+		flags = appendCredentialFlags(flags, shimCertificate, shimPrefix, false)
+	}
+	if test.handshakerCertificate != nil {
+		flags = appendCredentialFlags(flags, test.handshakerCertificate, "-on-handshaker", false)
 	}
 
-	if test.handshakerCertificate != nil {
-		flags = appendCredentialFlags(flags, test.handshakerCertificate, "-on-handshaker")
+	// Configure any additional credentials.
+	for _, cred := range test.shimCredentials {
+		flags = appendCredentialFlags(flags, cred, "", true)
 	}
 
 	if test.protocol == dtls {
@@ -1745,6 +1777,10 @@ type tlsVersion struct {
 	versionWire uint16
 }
 
+func (vers tlsVersion) String() string {
+	return vers.name
+}
+
 func (vers tlsVersion) shimFlag(protocol protocol) string {
 	// The shim uses the protocol version in its public API, but uses the
 	// DTLS-specific version if it exists.
@@ -1903,7 +1939,7 @@ NextTest:
 	for _, test := range tests {
 		if test.protocol != tls ||
 			test.testType != serverTest ||
-			strings.Contains(test.name, "DelegatedCredentials") ||
+			len(test.shimCredentials) != 0 ||
 			strings.Contains(test.name, "ECH-Server") ||
 			test.skipSplitHandshake {
 			continue
@@ -1926,7 +1962,8 @@ NextTest:
 
 	for _, test := range tests {
 		if test.protocol == dtls ||
-			test.testType != serverTest {
+			test.testType != serverTest ||
+			test.skipHints {
 			continue
 		}
 
@@ -5238,7 +5275,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				MaxVersion: vers.version,
 			},
 			expectations: connectionExpectations{
-				ocspResponse: testOCSPResponse,
+				peerCertificate: rsaCertificate.WithOCSP(testOCSPResponse),
 			},
 			shimCertificate: rsaCertificate.WithOCSP(testOCSPResponse),
 			resumeSession:   true,
@@ -5309,7 +5346,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			},
 			shimCertificate: rsaCertificate.WithOCSP(testOCSPResponse),
 			expectations: connectionExpectations{
-				ocspResponse: testOCSPResponse,
+				peerCertificate: rsaCertificate.WithOCSP(testOCSPResponse),
 			},
 			flags: []string{
 				"-use-ocsp-callback",
@@ -5329,7 +5366,8 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			},
 			shimCertificate: rsaCertificate.WithOCSP(testOCSPResponse),
 			expectations: connectionExpectations{
-				ocspResponse: []byte{},
+				// There should be no OCSP response from the peer.
+				peerCertificate: &rsaCertificate,
 			},
 			flags: []string{
 				"-use-ocsp-callback",
@@ -8419,7 +8457,7 @@ func addExtensionTests() {
 				},
 				shimCertificate: rsaCertificate.WithSCTList(testSCTList),
 				expectations: connectionExpectations{
-					sctList: testSCTList,
+					peerCertificate: rsaCertificate.WithSCTList(testSCTList),
 				},
 				resumeSession: true,
 			})
@@ -16491,13 +16529,10 @@ func addJDK11WorkaroundTests() {
 }
 
 func addDelegatedCredentialTests() {
-	ecdsaDC, ecdsaPKCS8, err := createDelegatedCredential(delegatedCredentialConfig{
-		algo: signatureRSAPSSWithSHA256,
-	}, rsaCertificate.Leaf.Raw, rsaCertificate.PrivateKey)
-	if err != nil {
-		panic(err)
-	}
-	ecdsaFlagValue := fmt.Sprintf("%x,%x", ecdsaDC, ecdsaPKCS8)
+	p256DC := createDelegatedCredential(&rsaCertificate, delegatedCredentialConfig{
+		dcAlgo: signatureECDSAWithP256AndSHA256,
+		algo:   signatureRSAPSSWithSHA256,
+	})
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -16506,8 +16541,10 @@ func addDelegatedCredentialTests() {
 			MinVersion: VersionTLS13,
 			MaxVersion: VersionTLS13,
 		},
-		flags: []string{
-			"-delegated-credential", ecdsaFlagValue,
+		shimCredentials: []*Credential{p256DC, &rsaCertificate},
+		flags:           []string{"-expect-selected-credential", "1"},
+		expectations: connectionExpectations{
+			peerCertificate: &rsaCertificate,
 		},
 	})
 
@@ -16518,13 +16555,11 @@ func addDelegatedCredentialTests() {
 			MinVersion:                    VersionTLS13,
 			MaxVersion:                    VersionTLS13,
 			DelegatedCredentialAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
-			Bugs: ProtocolBugs{
-				ExpectDelegatedCredentials: true,
-			},
 		},
-		flags: []string{
-			"-delegated-credential", ecdsaFlagValue,
-			"-expect-delegated-credential-used",
+		shimCredentials: []*Credential{p256DC, &rsaCertificate},
+		flags:           []string{"-expect-selected-credential", "0"},
+		expectations: connectionExpectations{
+			peerCertificate: p256DC,
 		},
 	})
 
@@ -16541,13 +16576,11 @@ func addDelegatedCredentialTests() {
 			// against the signature made by the delegated credential.
 			VerifySignatureAlgorithms:     []signatureAlgorithm{signatureRSAPSSWithSHA256},
 			DelegatedCredentialAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
-			Bugs: ProtocolBugs{
-				ExpectDelegatedCredentials: true,
-			},
 		},
-		flags: []string{
-			"-delegated-credential", ecdsaFlagValue,
-			"-expect-delegated-credential-used",
+		shimCredentials: []*Credential{p256DC, &rsaCertificate},
+		flags:           []string{"-expect-selected-credential", "0"},
+		expectations: connectionExpectations{
+			peerCertificate: p256DC,
 		},
 	})
 
@@ -16561,12 +16594,11 @@ func addDelegatedCredentialTests() {
 			// the server should not use delegated credentials.
 			VerifySignatureAlgorithms:     []signatureAlgorithm{signatureRSAPSSWithSHA384},
 			DelegatedCredentialAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
-			Bugs: ProtocolBugs{
-				FailIfDelegatedCredentials: true,
-			},
 		},
-		flags: []string{
-			"-delegated-credential", ecdsaFlagValue,
+		shimCredentials: []*Credential{p256DC, &rsaCertificate},
+		flags:           []string{"-expect-selected-credential", "1"},
+		expectations: connectionExpectations{
+			peerCertificate: &rsaCertificate,
 		},
 	})
 
@@ -16581,50 +16613,78 @@ func addDelegatedCredentialTests() {
 			// credentials.
 			VerifySignatureAlgorithms:     []signatureAlgorithm{signatureRSAPSSWithSHA256},
 			DelegatedCredentialAlgorithms: []signatureAlgorithm{signatureECDSAWithP384AndSHA384},
-			Bugs: ProtocolBugs{
-				FailIfDelegatedCredentials: true,
-			},
 		},
-		flags: []string{
-			"-delegated-credential", ecdsaFlagValue,
+		shimCredentials: []*Credential{p256DC, &rsaCertificate},
+		flags:           []string{"-expect-selected-credential", "1"},
+		expectations: connectionExpectations{
+			peerCertificate: &rsaCertificate,
+		},
+	})
+
+	// Delegated credentials are not supported at TLS 1.2, even if the client
+	// sends the extension.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "DelegatedCredentials-TLS12-Forbidden",
+		config: Config{
+			MinVersion:                    VersionTLS12,
+			MaxVersion:                    VersionTLS12,
+			DelegatedCredentialAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
+		},
+		shimCredentials: []*Credential{p256DC, &rsaCertificate},
+		flags:           []string{"-expect-selected-credential", "1"},
+		expectations: connectionExpectations{
+			peerCertificate: &rsaCertificate,
 		},
 	})
 
 	// Generate another delegated credential, so we can get the keys out of sync.
-	_, ecdsaPKCS8Wrong, err := createDelegatedCredential(delegatedCredentialConfig{
+	dcWrongKey := createDelegatedCredential(&rsaCertificate, delegatedCredentialConfig{
 		algo: signatureRSAPSSWithSHA256,
-	}, rsaCertificate.Leaf.Raw, rsaCertificate.PrivateKey)
-	if err != nil {
-		panic(err)
-	}
-	mismatchFlagValue := fmt.Sprintf("%x,%x", ecdsaDC, ecdsaPKCS8Wrong)
+	})
+	dcWrongKey.DelegatedCredential = p256DC.DelegatedCredential
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "DelegatedCredentials-KeyMismatch",
-		flags: []string{
-			"-delegated-credential", mismatchFlagValue,
-		},
-		shouldFail:    true,
-		expectedError: ":KEY_VALUES_MISMATCH:",
+		// The handshake hints version of the test will, as a side effect, use a
+		// custom private key. Custom private keys can't be checked for key
+		// mismatches.
+		skipHints:       true,
+		shimCredentials: []*Credential{dcWrongKey},
+		shouldFail:      true,
+		expectedError:   ":KEY_VALUES_MISMATCH:",
 	})
 
 	// RSA delegated credentials should be rejected at configuration time.
-	rsaDC, rsaPKCS8, err := createDelegatedCredential(delegatedCredentialConfig{
+	rsaDC := createDelegatedCredential(&rsaCertificate, delegatedCredentialConfig{
 		algo:   signatureRSAPSSWithSHA256,
 		dcAlgo: signatureRSAPSSWithSHA256,
-	}, rsaCertificate.Leaf.Raw, rsaCertificate.PrivateKey)
-	if err != nil {
-		panic(err)
-	}
-	rsaFlagValue := fmt.Sprintf("%x,%x", rsaDC, rsaPKCS8)
+	})
+	testCases = append(testCases, testCase{
+		testType:        serverTest,
+		name:            "DelegatedCredentials-NoRSA",
+		shimCredentials: []*Credential{rsaDC},
+		shouldFail:      true,
+		expectedError:   ":INVALID_SIGNATURE_ALGORITHM:",
+	})
+
+	// If configured with multiple delegated credentials, the server can cleanly
+	// select the first one that works.
+	p384DC := createDelegatedCredential(&rsaCertificate, delegatedCredentialConfig{
+		dcAlgo: signatureECDSAWithP384AndSHA384,
+		algo:   signatureRSAPSSWithSHA256,
+	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "DelegatedCredentials-NoRSA",
-		flags: []string{
-			"-delegated-credential", rsaFlagValue,
+		name:     "DelegatedCredentials-Multiple",
+		config: Config{
+			DelegatedCredentialAlgorithms: []signatureAlgorithm{signatureECDSAWithP384AndSHA384},
 		},
-		shouldFail:    true,
-		expectedError: ":INVALID_SIGNATURE_ALGORITHM:",
+		shimCredentials: []*Credential{p256DC, p384DC},
+		flags:           []string{"-expect-selected-credential", "1"},
+		expectations: connectionExpectations{
+			peerCertificate: p384DC,
+		},
 	})
 }
 
@@ -19296,7 +19356,7 @@ func addHintMismatchTests() {
 			},
 			expectations: connectionExpectations{
 				// The shim's configuration should take precendence.
-				ocspResponse: testOCSPResponse,
+				peerCertificate: rsaCertificate.WithOCSP(testOCSPResponse),
 			},
 		})
 
@@ -19590,6 +19650,571 @@ func addCompliancePolicyTests() {
 	}
 }
 
+func addCertificateSelectionTests() {
+	// Combinatorially test each selection criteria at different versions,
+	// protocols, and with the matching certificate before and after the
+	// mismatching one.
+	type certSelectTest struct {
+		name          string
+		testType      testType
+		minVersion    uint16
+		maxVersion    uint16
+		config        Config
+		match         *Credential
+		mismatch      *Credential
+		flags         []string
+		expectedError string
+	}
+	certSelectTests := []certSelectTest{
+		// TLS 1.0 through TLS 1.2 servers should incorporate TLS cipher suites
+		// into certificate selection.
+		{
+			name:       "Server-CipherSuite-ECDHE_ECDSA",
+			testType:   serverTest,
+			maxVersion: VersionTLS12,
+			config: Config{
+				CipherSuites: []uint16{
+					TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+				},
+			},
+			match:         &ecdsaP256Certificate,
+			mismatch:      &rsaCertificate,
+			expectedError: ":NO_SHARED_CIPHER:",
+		},
+		{
+			name:       "Server-CipherSuite-ECDHE_RSA",
+			testType:   serverTest,
+			maxVersion: VersionTLS12,
+			config: Config{
+				CipherSuites: []uint16{
+					TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				},
+			},
+			match:         &rsaCertificate,
+			mismatch:      &ecdsaP256Certificate,
+			expectedError: ":NO_SHARED_CIPHER:",
+		},
+		{
+			name:       "Server-CipherSuite-RSA",
+			testType:   serverTest,
+			maxVersion: VersionTLS12,
+			config: Config{
+				CipherSuites: []uint16{
+					TLS_RSA_WITH_AES_128_CBC_SHA,
+				},
+			},
+			match:         &rsaCertificate,
+			mismatch:      &ecdsaP256Certificate,
+			expectedError: ":NO_SHARED_CIPHER:",
+		},
+
+		// Ed25519 counts as ECDSA for purposes of cipher suite matching.
+		{
+			name:       "Server-CipherSuite-ECDHE_ECDSA-Ed25519",
+			testType:   serverTest,
+			minVersion: VersionTLS12,
+			maxVersion: VersionTLS12,
+			config: Config{
+				CipherSuites: []uint16{
+					TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+				},
+			},
+			match:         &ed25519Certificate,
+			mismatch:      &rsaCertificate,
+			expectedError: ":NO_SHARED_CIPHER:",
+		},
+		{
+			name:       "Server-CipherSuite-ECDHE_RSA-Ed25519",
+			testType:   serverTest,
+			minVersion: VersionTLS12,
+			maxVersion: VersionTLS12,
+			config: Config{
+				CipherSuites: []uint16{
+					TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				},
+			},
+			match:         &rsaCertificate,
+			mismatch:      &ed25519Certificate,
+			expectedError: ":NO_SHARED_CIPHER:",
+		},
+
+		// If there is no ECDHE curve match, ECDHE cipher suites are
+		// disqualified in TLS 1.2 and below. This, in turn, impacts the
+		// available cipher suites for each credential.
+		{
+			name:       "Server-CipherSuite-NoECDHE",
+			testType:   serverTest,
+			maxVersion: VersionTLS12,
+			config: Config{
+				CurvePreferences: []CurveID{CurveP256},
+			},
+			flags:         []string{"-curves", strconv.Itoa(int(CurveX25519))},
+			match:         &rsaCertificate,
+			mismatch:      &ecdsaP256Certificate,
+			expectedError: ":NO_SHARED_CIPHER:",
+		},
+
+		// If the client offered a cipher that would allow a certificate, but it
+		// wasn't one of the ones we configured, the certificate should be
+		// skipped in favor of another one.
+		{
+			name:       "Server-CipherSuite-Prefs",
+			testType:   serverTest,
+			maxVersion: VersionTLS12,
+			config: Config{
+				CipherSuites: []uint16{
+					TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+					TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				},
+			},
+			flags:         []string{"-cipher", "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"},
+			match:         &rsaCertificate,
+			mismatch:      &ecdsaP256Certificate,
+			expectedError: ":NO_SHARED_CIPHER:",
+		},
+
+		// TLS 1.0 through 1.2 servers should incorporate the curve list into
+		// ECDSA certificate selection.
+		{
+			name:       "Server-Curve",
+			testType:   serverTest,
+			maxVersion: VersionTLS12,
+			config: Config{
+				CurvePreferences: []CurveID{CurveP256},
+			},
+			match:         &ecdsaP256Certificate,
+			mismatch:      &ecdsaP384Certificate,
+			expectedError: ":WRONG_CURVE:",
+		},
+
+		// TLS 1.3 servers ignore the curve list. ECDSA certificate selection is
+		// solely determined by the signature algorithm list.
+		{
+			name:       "Server-IgnoreCurve",
+			testType:   serverTest,
+			minVersion: VersionTLS13,
+			config: Config{
+				CurvePreferences: []CurveID{CurveP256},
+			},
+			match: &ecdsaP384Certificate,
+		},
+
+		// TLS 1.2 servers also ignore the curve list for Ed25519. The signature
+		// algorithm list is sufficient for Ed25519.
+		{
+			name:       "Server-IgnoreCurveEd25519",
+			testType:   serverTest,
+			minVersion: VersionTLS12,
+			config: Config{
+				CurvePreferences: []CurveID{CurveP256},
+			},
+			match: &ed25519Certificate,
+		},
+
+		// Without signature algorithm negotiation, Ed25519 is not usable in TLS
+		// 1.1 and below.
+		{
+			name:       "Server-NoEd25519",
+			testType:   serverTest,
+			maxVersion: VersionTLS11,
+			match:      &rsaCertificate,
+			mismatch:   &ed25519Certificate,
+		},
+
+		// TLS 1.2 and up should incorporate the signature algorithm list into
+		// certificate selection.
+		{
+			name:       "Server-SignatureAlgorithm",
+			testType:   serverTest,
+			minVersion: VersionTLS12,
+			maxVersion: VersionTLS12,
+			config: Config{
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
+				CipherSuites: []uint16{
+					TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+					TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				},
+			},
+			match:         &ecdsaP256Certificate,
+			mismatch:      &rsaCertificate,
+			expectedError: ":NO_SHARED_CIPHER:",
+		},
+		{
+			name:       "Server-SignatureAlgorithm",
+			testType:   serverTest,
+			minVersion: VersionTLS13,
+			config: Config{
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
+			},
+			match:         &ecdsaP256Certificate,
+			mismatch:      &rsaCertificate,
+			expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+		},
+
+		// TLS 1.2's use of the signature algorithm list only disables the
+		// signing-based algorithms. If an RSA key exchange cipher suite is
+		// eligible, that is fine. (This is not a realistic configuration,
+		// however. No one would configure RSA before ECDSA.)
+		{
+			name:       "Server-SignatureAlgorithmImpactsECDHEOnly",
+			testType:   serverTest,
+			minVersion: VersionTLS12,
+			maxVersion: VersionTLS12,
+			config: Config{
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
+				CipherSuites: []uint16{
+					TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+					TLS_RSA_WITH_AES_128_CBC_SHA,
+				},
+			},
+			match: &rsaCertificate,
+		},
+
+		// TLS 1.3's use of the signature algorithm looks at the ECDSA curve
+		// embedded in the signature algorithm.
+		{
+			name:       "Server-SignatureAlgorithmECDSACurve",
+			testType:   serverTest,
+			minVersion: VersionTLS13,
+			config: Config{
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
+			},
+			match:         &ecdsaP256Certificate,
+			mismatch:      &ecdsaP384Certificate,
+			expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+		},
+
+		// TLS 1.2's use does not.
+		{
+			name:       "Server-SignatureAlgorithmECDSACurve",
+			testType:   serverTest,
+			minVersion: VersionTLS12,
+			maxVersion: VersionTLS12,
+			config: Config{
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
+			},
+			match: &ecdsaP384Certificate,
+		},
+
+		// TLS 1.0 and 1.1 do not look at the signature algorithm.
+		{
+			name:       "Server-IgnoreSignatureAlgorithm",
+			testType:   serverTest,
+			maxVersion: VersionTLS11,
+			config: Config{
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
+			},
+			match: &rsaCertificate,
+		},
+
+		// Signature algorithm matches take preferences on the keys into
+		// consideration.
+		{
+			name:       "Server-SignatureAlgorithmKeyPrefs",
+			testType:   serverTest,
+			minVersion: VersionTLS12,
+			maxVersion: VersionTLS12,
+			config: Config{
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureRSAPSSWithSHA256},
+				CipherSuites:              []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			},
+			match:         rsaChainCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA256),
+			mismatch:      rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA384),
+			expectedError: ":NO_SHARED_CIPHER:",
+		},
+		{
+			name:       "Server-SignatureAlgorithmKeyPrefs",
+			testType:   serverTest,
+			minVersion: VersionTLS13,
+			config: Config{
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureRSAPSSWithSHA256},
+			},
+			match:         rsaChainCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA256),
+			mismatch:      rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA384),
+			expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+		},
+
+		// TLS 1.2 clients and below check the certificate against the old
+		// client certificate types field.
+		{
+			name:       "Client-ClientCertificateTypes-RSA",
+			testType:   clientTest,
+			maxVersion: VersionTLS12,
+			config: Config{
+				ClientAuth:             RequestClientCert,
+				ClientCertificateTypes: []uint8{CertTypeRSASign},
+			},
+			match:         &rsaCertificate,
+			mismatch:      &ecdsaP256Certificate,
+			expectedError: ":UNKNOWN_CERTIFICATE_TYPE:",
+		},
+		{
+			name:       "Client-ClientCertificateTypes-ECDSA",
+			testType:   clientTest,
+			maxVersion: VersionTLS12,
+			config: Config{
+				ClientAuth:             RequestClientCert,
+				ClientCertificateTypes: []uint8{CertTypeECDSASign},
+			},
+			match:         &ecdsaP256Certificate,
+			mismatch:      &rsaCertificate,
+			expectedError: ":UNKNOWN_CERTIFICATE_TYPE:",
+		},
+
+		// Ed25519 is considered ECDSA for purposes of client certificate types.
+		{
+			name:       "Client-ClientCertificateTypes-RSA-Ed25519",
+			testType:   clientTest,
+			minVersion: VersionTLS12,
+			maxVersion: VersionTLS12,
+			config: Config{
+				ClientAuth:             RequestClientCert,
+				ClientCertificateTypes: []uint8{CertTypeRSASign},
+			},
+			match:         &rsaCertificate,
+			mismatch:      &ed25519Certificate,
+			expectedError: ":UNKNOWN_CERTIFICATE_TYPE:",
+		},
+		{
+			name:       "Client-ClientCertificateTypes-ECDSA-Ed25519",
+			testType:   clientTest,
+			minVersion: VersionTLS12,
+			maxVersion: VersionTLS12,
+			config: Config{
+				ClientAuth:             RequestClientCert,
+				ClientCertificateTypes: []uint8{CertTypeECDSASign},
+			},
+			match:         &ed25519Certificate,
+			mismatch:      &rsaCertificate,
+			expectedError: ":UNKNOWN_CERTIFICATE_TYPE:",
+		},
+
+		// TLS 1.2 and up should incorporate the signature algorithm list into
+		// certificate selection. (There is no signature algorithm list to look
+		// at in TLS 1.0 and 1.1.)
+		{
+			name:       "Client-SignatureAlgorithm",
+			testType:   clientTest,
+			minVersion: VersionTLS12,
+			config: Config{
+				ClientAuth:                RequestClientCert,
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
+			},
+			match:         &ecdsaP256Certificate,
+			mismatch:      &rsaCertificate,
+			expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+		},
+
+		// TLS 1.3's use of the signature algorithm looks at the ECDSA curve
+		// embedded in the signature algorithm.
+		{
+			name:       "Client-SignatureAlgorithmECDSACurve",
+			testType:   clientTest,
+			minVersion: VersionTLS13,
+			config: Config{
+				ClientAuth:                RequestClientCert,
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
+			},
+			match:         &ecdsaP256Certificate,
+			mismatch:      &ecdsaP384Certificate,
+			expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+		},
+
+		// TLS 1.2's use does not. It is not possible to determine what ECDSA
+		// curves are allowed by the server.
+		{
+			name:       "Client-SignatureAlgorithmECDSACurve",
+			testType:   clientTest,
+			minVersion: VersionTLS12,
+			maxVersion: VersionTLS12,
+			config: Config{
+				ClientAuth:                RequestClientCert,
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureECDSAWithP256AndSHA256},
+			},
+			match: &ecdsaP384Certificate,
+		},
+
+		// Signature algorithm matches take preferences on the keys into
+		// consideration.
+		{
+			name:       "Client-SignatureAlgorithmKeyPrefs",
+			testType:   clientTest,
+			minVersion: VersionTLS12,
+			config: Config{
+				ClientAuth:                RequestClientCert,
+				VerifySignatureAlgorithms: []signatureAlgorithm{signatureRSAPSSWithSHA256},
+			},
+			match:         rsaChainCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA256),
+			mismatch:      rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA384),
+			expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+		},
+	}
+
+	for _, protocol := range []protocol{tls, dtls} {
+		for _, vers := range allVersions(protocol) {
+			suffix := fmt.Sprintf("%s-%s", protocol, vers)
+
+			// Test that the credential list is interpreted in preference order,
+			// with the default credential, if any, at the end.
+			testCases = append(testCases, testCase{
+				name:     fmt.Sprintf("CertificateSelection-Client-PreferenceOrder-%s", suffix),
+				testType: clientTest,
+				protocol: protocol,
+				config: Config{
+					MinVersion: vers.version,
+					MaxVersion: vers.version,
+					ClientAuth: RequestClientCert,
+				},
+				shimCredentials: []*Credential{&ecdsaP256Certificate, &ecdsaP384Certificate},
+				shimCertificate: &rsaCertificate,
+				flags:           []string{"-expect-selected-credential", "0"},
+				expectations:    connectionExpectations{peerCertificate: &ecdsaP256Certificate},
+			})
+			testCases = append(testCases, testCase{
+				name:     fmt.Sprintf("CertificateSelection-Server-PreferenceOrder-%s", suffix),
+				testType: serverTest,
+				protocol: protocol,
+				config: Config{
+					MinVersion: vers.version,
+					MaxVersion: vers.version,
+				},
+				shimCredentials: []*Credential{&ecdsaP256Certificate, &ecdsaP384Certificate},
+				shimCertificate: &rsaCertificate,
+				flags:           []string{"-expect-selected-credential", "0"},
+				expectations:    connectionExpectations{peerCertificate: &ecdsaP256Certificate},
+			})
+
+			// Test that the selected credential contributes the certificate chain, OCSP response,
+			// and SCT list.
+			testCases = append(testCases, testCase{
+				name:     fmt.Sprintf("CertificateSelection-Server-OCSP-SCT-%s", suffix),
+				testType: serverTest,
+				protocol: protocol,
+				config: Config{
+					MinVersion: vers.version,
+					MaxVersion: vers.version,
+					// Configure enough options so that, at all TLS versions, only an RSA
+					// certificate will be accepted.
+					CipherSuites: []uint16{
+						TLS_AES_128_GCM_SHA256,
+						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+						TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+					},
+					VerifySignatureAlgorithms: []signatureAlgorithm{signatureRSAPSSWithSHA256},
+				},
+				shimCredentials: []*Credential{
+					ecdsaP256Certificate.WithOCSP(testOCSPResponse2).WithSCTList(testSCTList2),
+					rsaChainCertificate.WithOCSP(testOCSPResponse).WithSCTList(testSCTList),
+				},
+				shimCertificate: ecdsaP384Certificate.WithOCSP(testOCSPResponse2).WithSCTList(testSCTList2),
+				flags:           []string{"-expect-selected-credential", "1"},
+				expectations: connectionExpectations{
+					peerCertificate: rsaChainCertificate.WithOCSP(testOCSPResponse).WithSCTList(testSCTList),
+				},
+			})
+
+			// Test that the credentials API works asynchronously. This tests both deferring the
+			// configuration to the certificate callback, and using a custom, async private key.
+			testCases = append(testCases, testCase{
+				name:     fmt.Sprintf("CertificateSelection-Client-Async-%s", suffix),
+				testType: clientTest,
+				protocol: protocol,
+				config: Config{
+					MinVersion: vers.version,
+					MaxVersion: vers.version,
+					ClientAuth: RequestClientCert,
+				},
+				shimCredentials: []*Credential{&ecdsaP256Certificate},
+				shimCertificate: &rsaCertificate,
+				flags:           []string{"-async", "-expect-selected-credential", "0"},
+				expectations:    connectionExpectations{peerCertificate: &ecdsaP256Certificate},
+			})
+			testCases = append(testCases, testCase{
+				name:     fmt.Sprintf("CertificateSelection-Server-Async-%s", suffix),
+				testType: serverTest,
+				protocol: protocol,
+				config: Config{
+					MinVersion: vers.version,
+					MaxVersion: vers.version,
+				},
+				shimCredentials: []*Credential{&ecdsaP256Certificate},
+				shimCertificate: &rsaCertificate,
+				flags:           []string{"-async", "-expect-selected-credential", "0"},
+				expectations:    connectionExpectations{peerCertificate: &ecdsaP256Certificate},
+			})
+
+			for _, test := range certSelectTests {
+				if test.minVersion != 0 && vers.version < test.minVersion {
+					continue
+				}
+				if test.maxVersion != 0 && vers.version > test.maxVersion {
+					continue
+				}
+
+				config := test.config
+				config.MinVersion = vers.version
+				config.MaxVersion = vers.version
+
+				// If the mismatch field is omitted, this is a positive test,
+				// just to confirm that the selection logic does not block a
+				// particular certificate.
+				if test.mismatch == nil {
+					testCases = append(testCases, testCase{
+						name:            fmt.Sprintf("CertificateSelection-%s-%s", test.name, suffix),
+						protocol:        protocol,
+						testType:        test.testType,
+						config:          config,
+						shimCredentials: []*Credential{test.match},
+						flags:           append([]string{"-expect-selected-credential", "0"}, test.flags...),
+						expectations:    connectionExpectations{peerCertificate: test.match},
+					})
+					continue
+				}
+
+				testCases = append(testCases, testCase{
+					name:            fmt.Sprintf("CertificateSelection-%s-MatchFirst-%s", test.name, suffix),
+					protocol:        protocol,
+					testType:        test.testType,
+					config:          config,
+					shimCredentials: []*Credential{test.match, test.mismatch},
+					flags:           append([]string{"-expect-selected-credential", "0"}, test.flags...),
+					expectations:    connectionExpectations{peerCertificate: test.match},
+				})
+				testCases = append(testCases, testCase{
+					name:            fmt.Sprintf("CertificateSelection-%s-MatchSecond-%s", test.name, suffix),
+					protocol:        protocol,
+					testType:        test.testType,
+					config:          config,
+					shimCredentials: []*Credential{test.mismatch, test.match},
+					flags:           append([]string{"-expect-selected-credential", "1"}, test.flags...),
+					expectations:    connectionExpectations{peerCertificate: test.match},
+				})
+				testCases = append(testCases, testCase{
+					name:            fmt.Sprintf("CertificateSelection-%s-MatchDefault-%s", test.name, suffix),
+					protocol:        protocol,
+					testType:        test.testType,
+					config:          config,
+					shimCredentials: []*Credential{test.mismatch},
+					shimCertificate: test.match,
+					flags:           append([]string{"-expect-selected-credential", "-1"}, test.flags...),
+					expectations:    connectionExpectations{peerCertificate: test.match},
+				})
+				testCases = append(testCases, testCase{
+					name:               fmt.Sprintf("CertificateSelection-%s-MatchNone-%s", test.name, suffix),
+					protocol:           protocol,
+					testType:           test.testType,
+					config:             config,
+					shimCredentials:    []*Credential{test.mismatch, test.mismatch, test.mismatch},
+					flags:              test.flags,
+					shouldFail:         true,
+					expectedLocalError: "remote error: handshake failure",
+					expectedError:      test.expectedError,
+				})
+			}
+		}
+	}
+}
+
 func worker(dispatcher *shimDispatcher, statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -19839,6 +20464,7 @@ func main() {
 	addEncryptedClientHelloTests()
 	addHintMismatchTests()
 	addCompliancePolicyTests()
+	addCertificateSelectionTests()
 
 	toAppend, err := convertToSplitHandshakeTests(testCases)
 	if err != nil {

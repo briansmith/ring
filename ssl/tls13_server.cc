@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <algorithm>
 #include <tuple>
 
 #include <openssl/aead.h>
@@ -206,6 +207,28 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
   return true;
 }
 
+static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred) {
+  switch (cred->type) {
+    case SSLCredentialType::kX509:
+      break;
+    case SSLCredentialType::kDelegated:
+      // Check that the peer supports the signature over the delegated
+      // credential.
+      if (std::find(hs->peer_sigalgs.begin(), hs->peer_sigalgs.end(),
+                    cred->dc_algorithm) == hs->peer_sigalgs.end()) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
+        return false;
+      }
+      break;
+  }
+
+  // Check that we will be able to generate a signature. If |cred| is a
+  // delegated credential, this also checks that the peer supports delegated
+  // credentials and matched |dc_cert_verify_algorithm|.
+  uint16_t unused;
+  return tls1_choose_signature_algorithm(hs, cred, &unused);
+}
+
 static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   // At this point, most ClientHello extensions have already been processed by
   // the common handshake logic. Resolve the remaining non-PSK parameters.
@@ -224,6 +247,33 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   OPENSSL_memcpy(hs->session_id, client_hello.session_id,
                  client_hello.session_id_len);
   hs->session_id_len = client_hello.session_id_len;
+
+  Array<SSL_CREDENTIAL *> creds;
+  if (!ssl_get_credential_list(hs, &creds)) {
+    return ssl_hs_error;
+  }
+  if (creds.empty()) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    return ssl_hs_error;
+  }
+
+  // Select the credential to use.
+  //
+  // TODO(davidben): In doing so, we pick the signature algorithm. Save that
+  // decision to avoid redoing it later.
+  for (SSL_CREDENTIAL *cred : creds) {
+    ERR_clear_error();
+    if (check_credential(hs, cred)) {
+      hs->credential = UpRef(cred);
+      break;
+    }
+  }
+  if (hs->credential == nullptr) {
+    // The error from the last attempt is in the error queue.
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    return ssl_hs_error;
+  }
 
   // Negotiate the cipher suite.
   hs->new_cipher = choose_tls13_cipher(ssl, &client_hello);
@@ -851,11 +901,6 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
 
   // Send the server Certificate message, if necessary.
   if (!ssl->s3->session_reused) {
-    if (!ssl_has_certificate(hs)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
-      return ssl_hs_error;
-    }
-
     if (!tls13_add_certificate(hs)) {
       return ssl_hs_error;
     }

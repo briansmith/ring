@@ -39,7 +39,6 @@ type clientHandshakeState struct {
 	session        *ClientSessionState
 	finishedBytes  []byte
 	peerPublicKey  crypto.PublicKey
-	peerIsDC       bool
 }
 
 func mapClientHelloVersion(vers uint16, isDTLS bool) uint16 {
@@ -1300,7 +1299,7 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 
 		c.peerSignatureAlgorithm = certVerifyMsg.signatureAlgorithm
 		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
-		if hs.peerIsDC {
+		if c.peerDelegatedCredential != nil {
 			err = verifyMessageDC(c.vers, hs.peerPublicKey, c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
 		} else {
 			err = verifyMessage(c.vers, hs.peerPublicKey, c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
@@ -1831,10 +1830,6 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 		certs[i] = cert
 
 		if certEntry.delegatedCredential != nil {
-			if c.config.Bugs.FailIfDelegatedCredentials {
-				c.sendAlert(alertIllegalParameter)
-				return errors.New("tls: unexpected delegated credential")
-			}
 			if i != 0 {
 				c.sendAlert(alertIllegalParameter)
 				return errors.New("tls: non-leaf certificate has a delegated credential")
@@ -1894,12 +1889,8 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 			c.sendAlert(alertBadCertificate)
 			return errors.New("tls: failed to verify delegated credential: " + err.Error())
 		}
-		hs.peerIsDC = true
+		c.peerDelegatedCredential = dc.raw
 	} else {
-		if c.config.Bugs.ExpectDelegatedCredentials {
-			c.sendAlert(alertInternalError)
-			return errors.New("tls: delegated credentials missing")
-		}
 		hs.peerPublicKey = leafPublicKey
 	}
 
@@ -2168,6 +2159,7 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 		// Restore masterSecret and peerCerts from previous state
 		hs.masterSecret = hs.session.secret
 		c.peerCertificates = hs.session.serverCertificates
+		c.peerDelegatedCredential = hs.session.serverDelegatedCredential
 		c.extendedMasterSecret = hs.session.extendedMasterSecret
 		c.sctList = hs.session.sctList
 		c.ocspResponse = hs.session.ocspResponse
@@ -2220,15 +2212,16 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 	// Create a session with no server identifier. Either a
 	// session ID or session ticket will be attached.
 	session := &ClientSessionState{
-		vers:               c.vers,
-		wireVersion:        c.wireVersion,
-		cipherSuite:        hs.suite,
-		secret:             hs.masterSecret,
-		handshakeHash:      hs.finishedHash.Sum(),
-		serverCertificates: c.peerCertificates,
-		sctList:            c.sctList,
-		ocspResponse:       c.ocspResponse,
-		ticketExpiration:   c.config.time().Add(time.Duration(7 * 24 * time.Hour)),
+		vers:                      c.vers,
+		wireVersion:               c.wireVersion,
+		cipherSuite:               hs.suite,
+		secret:                    hs.masterSecret,
+		handshakeHash:             hs.finishedHash.Sum(),
+		serverCertificates:        c.peerCertificates,
+		serverDelegatedCredential: c.peerDelegatedCredential,
+		sctList:                   c.sctList,
+		ocspResponse:              c.ocspResponse,
+		ticketExpiration:          c.config.time().Add(time.Duration(7 * 24 * time.Hour)),
 	}
 
 	if !hs.serverHello.extensions.ticketSupported {

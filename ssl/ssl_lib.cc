@@ -570,9 +570,10 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   ret->cert = MakeUnique<CERT>(method->x509_method);
   ret->sessions = lh_SSL_SESSION_new(ssl_session_hash, ssl_session_cmp);
   ret->client_CA.reset(sk_CRYPTO_BUFFER_new_null());
-  if (ret->cert == nullptr ||
-      ret->sessions == nullptr ||
-      ret->client_CA == nullptr ||
+  if (ret->cert == nullptr ||       //
+      !ret->cert->is_valid() ||     //
+      ret->sessions == nullptr ||   //
+      ret->client_CA == nullptr ||  //
       !ret->x509_method->ssl_ctx_new(ret.get())) {
     return nullptr;
   }
@@ -1726,15 +1727,15 @@ int SSL_has_pending(const SSL *ssl) {
   return SSL_pending(ssl) != 0 || !ssl->s3->read_buffer.empty();
 }
 
-static bool has_cert_and_key(const CERT *cert) {
-  // TODO(davidben): If |cert->key_method| is set, that should be fine too.
-  if (cert->privatekey == nullptr) {
+static bool has_cert_and_key(const SSL_CREDENTIAL *cred) {
+  // TODO(davidben): If |cred->key_method| is set, that should be fine too.
+  if (cred->privkey == nullptr) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_PRIVATE_KEY_ASSIGNED);
     return false;
   }
 
-  if (cert->chain == nullptr ||
-      sk_CRYPTO_BUFFER_value(cert->chain.get(), 0) == nullptr) {
+  if (cred->chain == nullptr ||
+      sk_CRYPTO_BUFFER_value(cred->chain.get(), 0) == nullptr) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_ASSIGNED);
     return false;
   }
@@ -1745,7 +1746,7 @@ static bool has_cert_and_key(const CERT *cert) {
 int SSL_CTX_check_private_key(const SSL_CTX *ctx) {
   // There is no need to actually check consistency because inconsistent values
   // can never be configured.
-  return has_cert_and_key(ctx->cert.get());
+  return has_cert_and_key(ctx->cert->default_credential.get());
 }
 
 int SSL_check_private_key(const SSL *ssl) {
@@ -1755,7 +1756,7 @@ int SSL_check_private_key(const SSL *ssl) {
 
   // There is no need to actually check consistency because inconsistent values
   // can never be configured.
-  return has_cert_and_key(ssl->config->cert.get());
+  return has_cert_and_key(ssl->config->cert->default_credential.get());
 }
 
 long SSL_get_default_timeout(const SSL *ssl) {
@@ -2532,11 +2533,11 @@ EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {
     assert(ssl->config);
     return nullptr;
   }
-  return ssl->config->cert->privatekey.get();
+  return ssl->config->cert->default_credential->privkey.get();
 }
 
 EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
-  return ctx->cert->privatekey.get();
+  return ctx->cert->default_credential->privkey.get();
 }
 
 const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {

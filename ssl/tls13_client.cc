@@ -832,6 +832,17 @@ static enum ssl_hs_wait_t do_send_client_encrypted_extensions(
   return ssl_hs_ok;
 }
 
+static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred) {
+  if (cred->type != SSLCredentialType::kX509) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return false;
+  }
+
+  // Check that we will be able to generate a signature.
+  uint16_t unused;
+  return tls1_choose_signature_algorithm(hs, cred, &unused);
+}
+
 static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
@@ -859,8 +870,31 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_on_certificate_selected(hs) ||
-      !tls13_add_certificate(hs)) {
+  Array<SSL_CREDENTIAL *> creds;
+  if (!ssl_get_credential_list(hs, &creds)) {
+    return ssl_hs_error;
+  }
+
+  if (!creds.empty()) {
+    // Select the credential to use.
+    //
+    // TODO(davidben): In doing so, we pick the signature algorithm. Save that
+    // decision to avoid redoing it later.
+    for (SSL_CREDENTIAL *cred : creds) {
+      ERR_clear_error();
+      if (check_credential(hs, cred)) {
+        hs->credential = UpRef(cred);
+        break;
+      }
+    }
+    if (hs->credential == nullptr) {
+      // The error from the last attempt is in the error queue.
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      return ssl_hs_error;
+    }
+  }
+
+  if (!tls13_add_certificate(hs)) {
     return ssl_hs_error;
   }
 
@@ -870,7 +904,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   // Don't send CertificateVerify if there is no certificate.
-  if (!ssl_has_certificate(hs)) {
+  if (hs->credential == nullptr) {
     hs->tls13_state = state_complete_second_flight;
     return ssl_hs_ok;
   }

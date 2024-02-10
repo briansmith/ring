@@ -448,6 +448,7 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
 // consistent with the test configuration and invariants.
 static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
                                      const TestConfig *config) {
+  TestState *state = GetTestState(ssl);
   if (!CheckAuthProperties(ssl, is_resume, config)) {
     return false;
   }
@@ -474,9 +475,9 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
 
   bool expect_handshake_done =
       (is_resume || !config->false_start) && !SSL_in_early_data(ssl);
-  if (expect_handshake_done != GetTestState(ssl)->handshake_done) {
+  if (expect_handshake_done != state->handshake_done) {
     fprintf(stderr, "handshake was%s completed\n",
-            GetTestState(ssl)->handshake_done ? "" : " not");
+            state->handshake_done ? "" : " not");
     return false;
   }
 
@@ -486,20 +487,20 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
         (!SSL_session_reused(ssl) || config->expect_ticket_renewal) &&
         // Session tickets are sent post-handshake in TLS 1.3.
         GetProtocolVersion(ssl) < TLS1_3_VERSION;
-    if (expect_new_session != GetTestState(ssl)->got_new_session) {
+    if (expect_new_session != state->got_new_session) {
       fprintf(stderr,
               "new session was%s cached, but we expected the opposite\n",
-              GetTestState(ssl)->got_new_session ? "" : " not");
+              state->got_new_session ? "" : " not");
       return false;
     }
   }
 
   if (!is_resume) {
-    if (config->expect_session_id && !GetTestState(ssl)->got_new_session) {
+    if (config->expect_session_id && !state->got_new_session) {
       fprintf(stderr, "session was not cached on the server.\n");
       return false;
     }
-    if (config->expect_no_session_id && GetTestState(ssl)->got_new_session) {
+    if (config->expect_no_session_id && state->got_new_session) {
       fprintf(stderr, "session was unexpectedly cached on the server.\n");
       return false;
     }
@@ -507,8 +508,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
 
   // early_callback_called is updated in the handshaker, so we don't see it
   // here.
-  if (!config->handoff && config->is_server &&
-      !GetTestState(ssl)->early_callback_called) {
+  if (!config->handoff && config->is_server && !state->early_callback_called) {
     fprintf(stderr, "early callback not called\n");
     return false;
   }
@@ -694,11 +694,9 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
-  if (config->expect_delegated_credential_used !=
-      !!SSL_delegated_credential_used(ssl)) {
-    fprintf(stderr,
-            "Got %s delegated credential usage, but wanted opposite. \n",
-            SSL_delegated_credential_used(ssl) ? "" : "no");
+  if (config->expect_selected_credential != state->selected_credential) {
+    fprintf(stderr, "Credential %d was used, wanted %d\n",
+            state->selected_credential, config->expect_selected_credential);
     return false;
   }
 
@@ -747,7 +745,6 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
 
   // Test that handshake hints correctly skipped the expected operations.
   if (config->handshake_hints && !config->allow_hint_mismatch) {
-    const TestState *state = GetTestState(ssl);
     // If the private key operation is performed in the first roundtrip, a hint
     // match should have skipped it. This is ECDHE-based cipher suites in TLS
     // 1.2 and non-HRR handshakes in TLS 1.3.

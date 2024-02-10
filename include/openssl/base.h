@@ -109,7 +109,7 @@ extern "C" {
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
-#define BORINGSSL_API_VERSION 31
+#define BORINGSSL_API_VERSION 32
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -358,6 +358,7 @@ typedef struct sha_state_st SHA_CTX;
 typedef struct spake2_ctx_st SPAKE2_CTX;
 typedef struct srtp_protection_profile_st SRTP_PROTECTION_PROFILE;
 typedef struct ssl_cipher_st SSL_CIPHER;
+typedef struct ssl_credential_st SSL_CREDENTIAL;
 typedef struct ssl_ctx_st SSL_CTX;
 typedef struct ssl_early_callback_ctx SSL_CLIENT_HELLO;
 typedef struct ssl_ech_keys_st SSL_ECH_KEYS;

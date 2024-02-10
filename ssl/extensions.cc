@@ -1128,7 +1128,8 @@ static bool ext_ocsp_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 static bool ext_ocsp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
-      !hs->ocsp_stapling_requested || hs->config->cert->ocsp_response == NULL ||
+      !hs->ocsp_stapling_requested ||
+      hs->credential->ocsp_response == nullptr ||  //
       ssl->s3->session_reused ||
       !ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
     return true;
@@ -1347,19 +1348,18 @@ static bool ext_sct_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   // The extension shouldn't be sent when resuming sessions.
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION || ssl->s3->session_reused ||
-      hs->config->cert->signed_cert_timestamp_list == NULL) {
+      hs->credential->signed_cert_timestamp_list == nullptr) {
     return true;
   }
 
   CBB contents;
   return CBB_add_u16(out, TLSEXT_TYPE_certificate_timestamp) &&
          CBB_add_u16_length_prefixed(out, &contents) &&
-         CBB_add_bytes(
-             &contents,
-             CRYPTO_BUFFER_data(
-                 hs->config->cert->signed_cert_timestamp_list.get()),
-             CRYPTO_BUFFER_len(
-                 hs->config->cert->signed_cert_timestamp_list.get())) &&
+         CBB_add_bytes(&contents,
+                       CRYPTO_BUFFER_data(
+                           hs->credential->signed_cert_timestamp_list.get()),
+                       CRYPTO_BUFFER_len(
+                           hs->credential->signed_cert_timestamp_list.get())) &&
          CBB_flush(out);
 }
 
@@ -4104,59 +4104,58 @@ bool tls1_get_legacy_signature_algorithm(uint16_t *out, const EVP_PKEY *pkey) {
   }
 }
 
-bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
+bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs,
+                                     const SSL_CREDENTIAL *cred,
+                                     uint16_t *out) {
   SSL *const ssl = hs->ssl;
-  CERT *cert = hs->config->cert.get();
-  DC *dc = cert->dc.get();
+  if (!cred->UsesPrivateKey()) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return false;
+  }
 
   // Before TLS 1.2, the signature algorithm isn't negotiated as part of the
   // handshake.
-  if (ssl_protocol_version(ssl) < TLS1_2_VERSION) {
-    if (!tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get())) {
+  uint16_t version = ssl_protocol_version(ssl);
+  if (version < TLS1_2_VERSION) {
+    if (!tls1_get_legacy_signature_algorithm(out, cred->pubkey.get())) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
       return false;
     }
     return true;
   }
 
-  Span<const uint16_t> sigalgs, peer_sigalgs;
-  if (ssl_signing_with_dc(hs)) {
-    sigalgs = MakeConstSpan(&dc->dc_cert_verify_algorithm, 1);
+  Span<const uint16_t> peer_sigalgs;
+  if (cred->type == SSLCredentialType::kDelegated) {
     peer_sigalgs = hs->peer_delegated_credential_sigalgs;
   } else {
-    sigalgs = cert->sigalgs.empty() ? MakeConstSpan(kSignSignatureAlgorithms)
-                                    : cert->sigalgs;
-    peer_sigalgs = tls1_get_peer_verify_algorithms(hs);
+    peer_sigalgs = hs->peer_sigalgs;
+    if (peer_sigalgs.empty() && version == TLS1_2_VERSION) {
+      // If the client didn't specify any signature_algorithms extension, it is
+      // interpreted as SHA-1. See
+      // http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
+      static const uint16_t kTLS12Default[] = {SSL_SIGN_RSA_PKCS1_SHA1,
+                                               SSL_SIGN_ECDSA_SHA1};
+      peer_sigalgs = kTLS12Default;
+    }
   }
 
+  Span<const uint16_t> sigalgs = cred->sigalgs.empty()
+                                     ? MakeConstSpan(kSignSignatureAlgorithms)
+                                     : cred->sigalgs;
   for (uint16_t sigalg : sigalgs) {
-    if (!ssl_private_key_supports_signature_algorithm(hs, sigalg)) {
+    if (!ssl_pkey_supports_algorithm(ssl, cred->pubkey.get(), sigalg)) {
       continue;
     }
 
-    for (uint16_t peer_sigalg : peer_sigalgs) {
-      if (sigalg == peer_sigalg) {
-        *out = sigalg;
-        return true;
-      }
+    if (std::find(peer_sigalgs.begin(), peer_sigalgs.end(), sigalg) !=
+        peer_sigalgs.end()) {
+      *out = sigalg;
+      return true;
     }
   }
 
   OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
   return false;
-}
-
-Span<const uint16_t> tls1_get_peer_verify_algorithms(const SSL_HANDSHAKE *hs) {
-  Span<const uint16_t> peer_sigalgs = hs->peer_sigalgs;
-  if (peer_sigalgs.empty() && ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {
-    // If the client didn't specify any signature_algorithms extension then
-    // we can assume that it supports SHA1. See
-    // http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
-    static const uint16_t kDefaultPeerAlgorithms[] = {SSL_SIGN_RSA_PKCS1_SHA1,
-                                                      SSL_SIGN_ECDSA_SHA1};
-    peer_sigalgs = kDefaultPeerAlgorithms;
-  }
-  return peer_sigalgs;
 }
 
 bool tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {

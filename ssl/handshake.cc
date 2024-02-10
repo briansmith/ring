@@ -572,8 +572,9 @@ bool ssl_send_tls12_certificate(SSL_HANDSHAKE *hs) {
     return false;
   }
 
-  if (ssl_has_certificate(hs)) {
-    STACK_OF(CRYPTO_BUFFER) *chain = hs->config->cert->chain.get();
+  if (hs->credential != nullptr) {
+    assert(hs->credential->type == SSLCredentialType::kX509);
+    STACK_OF(CRYPTO_BUFFER) *chain = hs->credential->chain.get();
     for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(chain); i++) {
       CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(chain, i);
       if (!CBB_add_u24_length_prefixed(&certs, &cert) ||

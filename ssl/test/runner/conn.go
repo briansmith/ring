@@ -30,20 +30,21 @@ type Conn struct {
 	isClient bool
 
 	// constant after handshake; protected by handshakeMutex
-	handshakeMutex       sync.Mutex // handshakeMutex < in.Mutex, out.Mutex, errMutex
-	handshakeErr         error      // error resulting from handshake
-	wireVersion          uint16     // TLS wire version
-	vers                 uint16     // TLS version
-	haveVers             bool       // version has been negotiated
-	config               *Config    // configuration passed to constructor
-	handshakeComplete    bool
-	skipEarlyData        bool // On a server, indicates that the client is sending early data that must be skipped over.
-	didResume            bool // whether this connection was a session resumption
-	extendedMasterSecret bool // whether this session used an extended master secret
-	cipherSuite          *cipherSuite
-	ocspResponse         []byte // stapled OCSP response
-	sctList              []byte // signed certificate timestamp list
-	peerCertificates     []*x509.Certificate
+	handshakeMutex          sync.Mutex // handshakeMutex < in.Mutex, out.Mutex, errMutex
+	handshakeErr            error      // error resulting from handshake
+	wireVersion             uint16     // TLS wire version
+	vers                    uint16     // TLS version
+	haveVers                bool       // version has been negotiated
+	config                  *Config    // configuration passed to constructor
+	handshakeComplete       bool
+	skipEarlyData           bool // On a server, indicates that the client is sending early data that must be skipped over.
+	didResume               bool // whether this connection was a session resumption
+	extendedMasterSecret    bool // whether this session used an extended master secret
+	cipherSuite             *cipherSuite
+	ocspResponse            []byte // stapled OCSP response
+	sctList                 []byte // signed certificate timestamp list
+	peerCertificates        []*x509.Certificate
+	peerDelegatedCredential []byte
 	// verifiedChains contains the certificate chains that we built, as
 	// opposed to the ones presented by the server.
 	verifiedChains [][]*x509.Certificate
@@ -1850,6 +1851,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.NegotiatedProtocolFromALPN = c.usedALPN
 		state.CipherSuite = c.cipherSuite.id
 		state.PeerCertificates = c.peerCertificates
+		state.PeerDelegatedCredential = c.peerDelegatedCredential
 		state.VerifiedChains = c.verifiedChains
 		state.OCSPResponse = c.ocspResponse
 		state.ServerName = c.serverName

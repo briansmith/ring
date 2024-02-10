@@ -24,6 +24,18 @@
 
 #include "test_state.h"
 
+enum class CredentialConfigType { kX509, kDelegated };
+
+struct CredentialConfig {
+  CredentialConfigType type;
+  std::string cert_file;
+  std::string key_file;
+  std::vector<uint16_t> signing_prefs;
+  std::string delegated_credential;
+  std::string ocsp_response;
+  std::string signed_cert_timestamps;
+};
+
 struct TestConfig {
   int port = 0;
   bool ipv6 = false;
@@ -190,8 +202,6 @@ struct TestConfig {
   bool server_preference = false;
   bool export_traffic_secrets = false;
   bool key_update = false;
-  bool expect_delegated_credential_used = false;
-  std::string delegated_credential;
   std::string expect_early_data_reason;
   bool expect_hrr = false;
   bool expect_no_hrr = false;
@@ -202,6 +212,8 @@ struct TestConfig {
   bool wpa_202304 = false;
   bool no_check_client_certificate_type = false;
   bool no_check_ecdsa_curve = false;
+  int expect_selected_credential = -1;
+  std::vector<CredentialConfig> credentials;
 
   std::vector<const char*> handshaker_args;
 

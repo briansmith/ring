@@ -22,6 +22,7 @@ add_library(
   ssl_buffer.cc
   ssl_cert.cc
   ssl_cipher.cc
+  ssl_credential.cc
   ssl_file.cc
   ssl_key_share.cc
   ssl_lib.cc

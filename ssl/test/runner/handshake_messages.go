@@ -1923,6 +1923,7 @@ type certificateEntry struct {
 
 type delegatedCredential struct {
 	// https://www.rfc-editor.org/rfc/rfc9345.html#section-4
+	raw              []byte
 	signedBytes      []byte
 	lifetimeSecs     uint32
 	dcCertVerifyAlgo signatureAlgorithm
@@ -2049,6 +2050,7 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 
 					dc.dcCertVerifyAlgo = signatureAlgorithm(dcCertVerifyAlgo)
 					dc.algorithm = signatureAlgorithm(algorithm)
+					dc.raw = origBody
 					dc.signedBytes = []byte(origBody)[:4+2+3+len(dc.pkixPublicKey)]
 					cert.delegatedCredential = dc
 				default:

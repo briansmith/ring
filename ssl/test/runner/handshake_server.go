@@ -1969,10 +1969,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			certificateTypes: config.ClientCertificateTypes,
 		}
 		if certReq.certificateTypes == nil {
-			certReq.certificateTypes = []byte{
-				byte(CertTypeRSASign),
-				byte(CertTypeECDSASign),
-			}
+			certReq.certificateTypes = []byte{CertTypeRSASign, CertTypeECDSASign}
 		}
 		if c.vers >= VersionTLS12 {
 			certReq.hasSignatureAlgorithm = true
