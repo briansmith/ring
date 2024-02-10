@@ -1,6 +1,7 @@
 use crate::{
     arithmetic::{bigint, montgomery::RR},
-    bits, cpu, error,
+    bits::{self, FromUsizeBytes as _},
+    cpu, error,
     rsa::N,
 };
 use core::ops::RangeInclusive;

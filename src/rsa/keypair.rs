@@ -429,7 +429,7 @@ impl<M> PrivatePrime<M> {
             return Err(KeyRejected::inconsistent_components());
         }
 
-        if p.len_bits().as_usize_bits() % 512 != 0 {
+        if p.len_bits().as_bits() % 512 != 0 {
             return Err(error::KeyRejected::private_modulus_len_not_multiple_of_512_bits());
         }
 

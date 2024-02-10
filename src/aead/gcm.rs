@@ -13,10 +13,15 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
+    aes_gcm,
     block::{Block, BLOCK_LEN},
     Aad,
 };
-use crate::{cpu, polyfill::ArraySplitMap};
+use crate::{
+    bits::{BitLength, FromUsizeBytes},
+    cpu, error,
+    polyfill::ArraySplitMap,
+};
 use core::ops::BitXorAssign;
 
 mod gcm_nohw;
@@ -84,16 +89,29 @@ impl Key {
 
 pub struct Context {
     inner: ContextInner,
+    aad_len: BitLength<u64>,
+    in_out_len: BitLength<u64>,
     cpu_features: cpu::Features,
 }
 
 impl Context {
-    pub(crate) fn new(key: &Key, aad: Aad<&[u8]>, cpu_features: cpu::Features) -> Self {
+    pub(crate) fn new(
+        key: &Key,
+        aad: Aad<&[u8]>,
+        in_out_len: usize,
+        cpu_features: cpu::Features,
+    ) -> Result<Self, error::Unspecified> {
+        if in_out_len > aes_gcm::MAX_IN_OUT_LEN {
+            return Err(error::Unspecified);
+        }
+
         let mut ctx = Self {
             inner: ContextInner {
                 Xi: Xi(Block::zero()),
                 Htable: key.h_table.clone(),
             },
+            aad_len: BitLength::from_usize_bytes(aad.as_ref().len())?,
+            in_out_len: BitLength::from_usize_bytes(in_out_len)?,
             cpu_features,
         };
 
@@ -103,7 +121,7 @@ impl Context {
             ctx.update_block(block);
         }
 
-        ctx
+        Ok(ctx)
     }
 
     /// Access to `inner` for the integrated AES-GCM implementations only.
@@ -230,10 +248,14 @@ impl Context {
         }
     }
 
-    pub(super) fn pre_finish<F>(self, f: F) -> super::Tag
+    pub(super) fn pre_finish<F>(mut self, f: F) -> super::Tag
     where
         F: FnOnce(Block, cpu::Features) -> super::Tag,
     {
+        self.update_block(Block::from(
+            [self.aad_len.as_bits(), self.in_out_len.as_bits()].map(u64::to_be_bytes),
+        ));
+
         f(self.inner.Xi.0, self.cpu_features)
     }
 
