@@ -143,7 +143,7 @@ pub struct Algorithm {
         aad: Aad<&[u8]>,
         in_out: &mut [u8],
         cpu_features: cpu::Features,
-    ) -> Tag,
+    ) -> Result<Tag, error::Unspecified>,
     open: fn(
         key: &KeyInner,
         nonce: Nonce,
@@ -151,12 +151,10 @@ pub struct Algorithm {
         in_out: &mut [u8],
         src: RangeFrom<usize>,
         cpu_features: cpu::Features,
-    ) -> Tag,
+    ) -> Result<Tag, error::Unspecified>,
 
     key_len: usize,
     id: AlgorithmID,
-
-    max_input_len: usize,
 }
 
 const fn max_input_len(block_len: usize, overhead_blocks_per_nonce: usize) -> usize {

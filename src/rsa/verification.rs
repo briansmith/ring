@@ -17,7 +17,10 @@
 use super::{
     parse_public_key, public_key, PublicExponent, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
 };
-use crate::{bits, cpu, digest, error, sealed, signature};
+use crate::{
+    bits::{self, FromUsizeBytes as _},
+    cpu, digest, error, sealed, signature,
+};
 
 impl signature::VerificationAlgorithm for RsaParameters {
     fn verify(

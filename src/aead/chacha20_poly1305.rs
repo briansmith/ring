@@ -18,7 +18,7 @@ use super::{
 };
 use crate::{
     aead, cpu, error,
-    polyfill::{self, ArrayFlatten},
+    polyfill::{u64_from_usize, usize_from_u64_saturated, ArrayFlatten},
 };
 use core::ops::RangeFrom;
 
@@ -33,8 +33,12 @@ pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     seal: chacha20_poly1305_seal,
     open: chacha20_poly1305_open,
     id: aead::AlgorithmID::CHACHA20_POLY1305,
-    max_input_len: super::max_input_len(64, 1),
 };
+
+const MAX_IN_OUT_LEN: usize = super::max_input_len(64, 1);
+// https://tools.ietf.org/html/rfc8439#section-2.8
+const _MAX_IN_OUT_LEN_BOUNDED_BY_RFC: () =
+    assert!(MAX_IN_OUT_LEN == usize_from_u64_saturated(274_877_906_880u64));
 
 /// Copies |key| into |ctx_buf|.
 fn chacha20_poly1305_init(
@@ -51,11 +55,15 @@ fn chacha20_poly1305_seal(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     cpu_features: cpu::Features,
-) -> Tag {
+) -> Result<Tag, error::Unspecified> {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
+
+    if in_out.len() > MAX_IN_OUT_LEN {
+        return Err(error::Unspecified);
+    }
 
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     if has_integrated(cpu_features) {
@@ -109,7 +117,7 @@ fn chacha20_poly1305_seal(
             &data.out
         };
 
-        return Tag(out.tag);
+        return Ok(Tag(out.tag));
     }
 
     let mut counter = Counter::zero(nonce);
@@ -121,7 +129,7 @@ fn chacha20_poly1305_seal(
     poly1305_update_padded_16(&mut auth, aad.as_ref());
     chacha20_key.encrypt_in_place(counter, in_out);
     poly1305_update_padded_16(&mut auth, in_out);
-    finish(auth, aad.as_ref().len(), in_out.len())
+    Ok(finish(auth, aad.as_ref().len(), in_out.len()))
 }
 
 fn chacha20_poly1305_open(
@@ -131,11 +139,19 @@ fn chacha20_poly1305_open(
     in_out: &mut [u8],
     src: RangeFrom<usize>,
     cpu_features: cpu::Features,
-) -> Tag {
+) -> Result<Tag, error::Unspecified> {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
+
+    let unprefixed_len = in_out
+        .len()
+        .checked_sub(src.start)
+        .ok_or(error::Unspecified)?;
+    if unprefixed_len > MAX_IN_OUT_LEN {
+        return Err(error::Unspecified);
+    }
 
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     if has_integrated(cpu_features) {
@@ -177,7 +193,7 @@ fn chacha20_poly1305_open(
             chacha20_poly1305_open(
                 in_out.as_mut_ptr(),
                 in_out.as_ptr().add(src.start),
-                in_out.len() - src.start,
+                unprefixed_len,
                 aad.as_ref().as_ptr(),
                 aad.as_ref().len(),
                 &mut data,
@@ -185,7 +201,7 @@ fn chacha20_poly1305_open(
             &data.out
         };
 
-        return Tag(out.tag);
+        return Ok(Tag(out.tag));
     }
 
     let mut counter = Counter::zero(nonce);
@@ -197,7 +213,7 @@ fn chacha20_poly1305_open(
     poly1305_update_padded_16(&mut auth, aad.as_ref());
     poly1305_update_padded_16(&mut auth, &in_out[src.clone()]);
     chacha20_key.encrypt_within(counter, in_out, src.clone());
-    finish(auth, aad.as_ref().len(), in_out[src].len())
+    Ok(finish(auth, aad.as_ref().len(), unprefixed_len))
 }
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
@@ -217,7 +233,7 @@ fn has_integrated(cpu_features: cpu::Features) -> bool {
 
 fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
     let block: [[u8; 8]; 2] = [aad_len, in_out_len]
-        .map(polyfill::u64_from_usize)
+        .map(u64_from_usize)
         .map(u64::to_le_bytes);
     auth.update(&block.array_flatten());
     auth.finish()
@@ -265,19 +281,4 @@ pub(super) fn derive_poly1305_key(chacha_key: &chacha::Key, iv: Iv) -> poly1305:
     let mut key_bytes = [0u8; poly1305::KEY_LEN];
     chacha_key.encrypt_iv_xor_in_place(iv, &mut key_bytes);
     poly1305::Key::new(key_bytes)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::polyfill::usize_from_u64_saturated;
-
-    #[test]
-    fn max_input_len_test() {
-        // https://tools.ietf.org/html/rfc8439#section-2.8
-        assert_eq!(
-            CHACHA20_POLY1305.max_input_len,
-            usize_from_u64_saturated(274_877_906_880u64)
-        );
-    }
 }

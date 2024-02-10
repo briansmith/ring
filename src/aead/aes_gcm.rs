@@ -17,10 +17,7 @@ use super::{
     block::{Block, BLOCK_LEN},
     gcm, shift, Aad, Nonce, Tag,
 };
-use crate::{
-    aead, cpu, error,
-    polyfill::{self},
-};
+use crate::{aead, cpu, error, polyfill::usize_from_u64_saturated};
 use core::ops::RangeFrom;
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
@@ -30,7 +27,6 @@ pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
     seal: aes_gcm_seal,
     open: aes_gcm_open,
     id: aead::AlgorithmID::AES_128_GCM,
-    max_input_len: AES_GCM_MAX_INPUT_LEN,
 };
 
 /// AES-256 in GCM mode with 128-bit tags and 96 bit nonces.
@@ -40,7 +36,6 @@ pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     seal: aes_gcm_seal,
     open: aes_gcm_open,
     id: aead::AlgorithmID::AES_256_GCM,
-    max_input_len: AES_GCM_MAX_INPUT_LEN,
 };
 
 #[derive(Clone)]
@@ -78,18 +73,16 @@ fn aes_gcm_seal(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     cpu_features: cpu::Features,
-) -> Tag {
+) -> Result<Tag, error::Unspecified> {
     let Key { gcm_key, aes_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
     };
 
+    let mut auth = gcm::Context::new(gcm_key, aad, in_out.len(), cpu_features)?;
+
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
-
-    let total_in_out_len = in_out.len();
-    let aad_len = aad.0.len();
-    let mut auth = gcm::Context::new(gcm_key, aad, cpu_features);
 
     #[cfg(target_arch = "x86_64")]
     let in_out = {
@@ -185,7 +178,7 @@ fn aes_gcm_seal(
         remainder.copy_from_slice(&output.as_ref()[..remainder.len()]);
     }
 
-    finish(aes_key, auth, tag_iv, aad_len, total_in_out_len)
+    Ok(finish(aes_key, auth, tag_iv))
 }
 
 fn aes_gcm_open(
@@ -195,21 +188,24 @@ fn aes_gcm_open(
     in_out: &mut [u8],
     src: RangeFrom<usize>,
     cpu_features: cpu::Features,
-) -> Tag {
+) -> Result<Tag, error::Unspecified> {
     let Key { gcm_key, aes_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
     };
 
+    let mut auth = {
+        let unprefixed_len = in_out
+            .len()
+            .checked_sub(src.start)
+            .ok_or(error::Unspecified)?;
+        gcm::Context::new(gcm_key, aad, unprefixed_len, cpu_features)
+    }?;
+
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
 
-    let aad_len = aad.0.len();
-    let mut auth = gcm::Context::new(gcm_key, aad, cpu_features);
-
     let in_prefix_len = src.start;
-
-    let total_in_out_len = in_out.len() - in_prefix_len;
 
     #[cfg(target_arch = "x86_64")]
     let in_out = {
@@ -321,23 +317,10 @@ fn aes_gcm_open(
         aes_key.encrypt_iv_xor_block(ctr.into(), input, cpu_features)
     });
 
-    finish(aes_key, auth, tag_iv, aad_len, total_in_out_len)
+    Ok(finish(aes_key, auth, tag_iv))
 }
 
-fn finish(
-    aes_key: &aes::Key,
-    mut gcm_ctx: gcm::Context,
-    tag_iv: aes::Iv,
-    aad_len: usize,
-    in_out_len: usize,
-) -> Tag {
-    // Authenticate the final block containing the input lengths.
-    let aad_bits = polyfill::u64_from_usize(aad_len) << 3;
-    let ciphertext_bits = polyfill::u64_from_usize(in_out_len) << 3;
-    gcm_ctx.update_block(Block::from(
-        [aad_bits, ciphertext_bits].map(u64::to_be_bytes),
-    ));
-
+fn finish(aes_key: &aes::Key, gcm_ctx: gcm::Context, tag_iv: aes::Iv) -> Tag {
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag, cpu_features| {
         let encrypted_iv = aes_key.encrypt_block(tag_iv.into_block_less_safe(), cpu_features);
@@ -346,31 +329,14 @@ fn finish(
     })
 }
 
-const AES_GCM_MAX_INPUT_LEN: usize = super::max_input_len(BLOCK_LEN, 2);
+pub(super) const MAX_IN_OUT_LEN: usize = super::max_input_len(BLOCK_LEN, 2);
 
-#[cfg(test)]
-mod tests {
-    use crate::polyfill::usize_from_u64_saturated;
-
-    #[test]
-    fn max_input_len_test() {
-        // [NIST SP800-38D] Section 5.2.1.1. Note that [RFC 5116 Section 5.1] and
-        // [RFC 5116 Section 5.2] have an off-by-one error in `P_MAX`.
-        //
-        // [NIST SP800-38D]:
-        //    http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
-        // [RFC 5116 Section 5.1]: https://tools.ietf.org/html/rfc5116#section-5.1
-        // [RFC 5116 Section 5.2]: https://tools.ietf.org/html/rfc5116#section-5.2
-        const NIST_SP800_38D_MAX_BITS: u64 = (1u64 << 39) - 256;
-        assert_eq!(NIST_SP800_38D_MAX_BITS, 549_755_813_632u64);
-        const NIST_SP800_38D_MAX_BYTES: u64 = NIST_SP800_38D_MAX_BITS / 8;
-        assert_eq!(
-            super::AES_128_GCM.max_input_len,
-            usize_from_u64_saturated(NIST_SP800_38D_MAX_BYTES)
-        );
-        assert_eq!(
-            super::AES_256_GCM.max_input_len,
-            usize_from_u64_saturated(NIST_SP800_38D_MAX_BYTES)
-        );
-    }
-}
+// [NIST SP800-38D] Section 5.2.1.1. Note that [RFC 5116 Section 5.1] and
+// [RFC 5116 Section 5.2] have an off-by-one error in `P_MAX`.
+//
+// [NIST SP800-38D]:
+//    http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
+// [RFC 5116 Section 5.1]: https://tools.ietf.org/html/rfc5116#section-5.1
+// [RFC 5116 Section 5.2]: https://tools.ietf.org/html/rfc5116#section-5.2
+const _MAX_INPUT_LEN_BOUNDED_BY_NIST: () =
+    assert!(MAX_IN_OUT_LEN == usize_from_u64_saturated(((1u64 << 39) - 256) / 8));

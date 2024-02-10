@@ -207,7 +207,7 @@ impl PSSMetrics {
     ) -> Result<Self, error::Unspecified> {
         let em_bits = mod_bits.try_sub_1()?;
         let em_len = em_bits.as_usize_bytes_rounded_up();
-        let leading_zero_bits = (8 * em_len) - em_bits.as_usize_bits();
+        let leading_zero_bits = (8 * em_len) - em_bits.as_bits();
         debug_assert!(leading_zero_bits < 8);
         let top_byte_mask = 0xffu8 >> leading_zero_bits;
 
@@ -226,7 +226,7 @@ impl PSSMetrics {
         let db_len = em_len.checked_sub(1 + s_len).ok_or(error::Unspecified)?;
         let ps_len = db_len.checked_sub(h_len + 1).ok_or(error::Unspecified)?;
 
-        debug_assert!(em_bits.as_usize_bits() >= (8 * h_len) + (8 * s_len) + 9);
+        debug_assert!(em_bits.as_bits() >= (8 * h_len) + (8 * s_len) + 9);
 
         Ok(Self {
             em_len,

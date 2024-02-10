@@ -18,7 +18,7 @@ use super::{
     quic::Sample,
 };
 use crate::{
-    bits::BitLength,
+    bits::{BitLength, FromUsizeBytes},
     c, cpu,
     endian::BigEndian,
     error,
@@ -49,7 +49,7 @@ fn set_encrypt_key(
 ) -> Result<(), error::Unspecified> {
     // Unusually, in this case zero means success and non-zero means failure.
     #[allow(clippy::cast_possible_truncation)]
-    if 0 == unsafe { f(bytes.as_ptr(), key_bits.as_usize_bits() as c::uint, key) } {
+    if 0 == unsafe { f(bytes.as_ptr(), key_bits.as_bits() as c::uint, key) } {
         Ok(())
     } else {
         Err(error::Unspecified)
