@@ -185,14 +185,7 @@ fn aes_gcm_seal(
         remainder.copy_from_slice(&output.as_ref()[..remainder.len()]);
     }
 
-    finish(
-        aes_key,
-        auth,
-        tag_iv,
-        aad_len,
-        total_in_out_len,
-        cpu_features,
-    )
+    finish(aes_key, auth, tag_iv, aad_len, total_in_out_len)
 }
 
 fn aes_gcm_open(
@@ -328,14 +321,7 @@ fn aes_gcm_open(
         aes_key.encrypt_iv_xor_block(ctr.into(), input, cpu_features)
     });
 
-    finish(
-        aes_key,
-        auth,
-        tag_iv,
-        aad_len,
-        total_in_out_len,
-        cpu_features,
-    )
+    finish(aes_key, auth, tag_iv, aad_len, total_in_out_len)
 }
 
 fn finish(
@@ -344,7 +330,6 @@ fn finish(
     tag_iv: aes::Iv,
     aad_len: usize,
     in_out_len: usize,
-    cpu_features: cpu::Features,
 ) -> Tag {
     // Authenticate the final block containing the input lengths.
     let aad_bits = polyfill::u64_from_usize(aad_len) << 3;
@@ -354,7 +339,7 @@ fn finish(
     ));
 
     // Finalize the tag and return it.
-    gcm_ctx.pre_finish(|pre_tag| {
+    gcm_ctx.pre_finish(|pre_tag, cpu_features| {
         let encrypted_iv = aes_key.encrypt_block(tag_iv.into_block_less_safe(), cpu_features);
         let tag = pre_tag ^ encrypted_iv;
         Tag(*tag.as_ref())
