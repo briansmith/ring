@@ -232,9 +232,9 @@ impl Context {
 
     pub(super) fn pre_finish<F>(self, f: F) -> super::Tag
     where
-        F: FnOnce(Block) -> super::Tag,
+        F: FnOnce(Block, cpu::Features) -> super::Tag,
     {
-        f(self.inner.Xi.0)
+        f(self.inner.Xi.0, self.cpu_features)
     }
 
     #[cfg(target_arch = "x86_64")]
