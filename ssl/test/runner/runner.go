@@ -282,9 +282,9 @@ type delegatedCredentialConfig struct {
 	// certificate, that the delegated credential is valid for. If zero, then 24
 	// hours is assumed.
 	lifetime time.Duration
-	// expectedAlgo is the signature scheme that should be used with this
-	// delegated credential. If zero, ECDSA with P-256 is assumed.
-	expectedAlgo signatureAlgorithm
+	// dcAlgo is the signature scheme that should be used with this delegated
+	// credential. If zero, ECDSA with P-256 is assumed.
+	dcAlgo signatureAlgorithm
 	// tlsVersion is the version of TLS that should be used with this delegated
 	// credential. If zero, TLS 1.3 is assumed.
 	tlsVersion uint16
@@ -320,14 +320,14 @@ func loadRSAPrivateKey(filename string) (priv *rsa.PrivateKey, privPKCS8 []byte,
 }
 
 func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byte, parentPriv crypto.PrivateKey) (dc, privPKCS8 []uint8, err error) {
-	expectedAlgo := config.expectedAlgo
-	if expectedAlgo == signatureAlgorithm(0) {
-		expectedAlgo = signatureECDSAWithP256AndSHA256
+	dcAlgo := config.dcAlgo
+	if dcAlgo == signatureAlgorithm(0) {
+		dcAlgo = signatureECDSAWithP256AndSHA256
 	}
 
 	var pub crypto.PublicKey
 
-	switch expectedAlgo {
+	switch dcAlgo {
 	case signatureRSAPKCS1WithMD5, signatureRSAPKCS1WithSHA1, signatureRSAPKCS1WithSHA256, signatureRSAPKCS1WithSHA384, signatureRSAPKCS1WithSHA512, signatureRSAPSSWithSHA256, signatureRSAPSSWithSHA384, signatureRSAPSSWithSHA512:
 		// RSA keys are expensive to generate so load from disk instead.
 		var priv *rsa.PrivateKey
@@ -339,7 +339,7 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 
 	case signatureECDSAWithSHA1, signatureECDSAWithP256AndSHA256, signatureECDSAWithP384AndSHA384, signatureECDSAWithP521AndSHA512:
 		var curve elliptic.Curve
-		switch expectedAlgo {
+		switch dcAlgo {
 		case signatureECDSAWithSHA1, signatureECDSAWithP256AndSHA256:
 			curve = elliptic.P256()
 		case signatureECDSAWithP384AndSHA384:
@@ -362,7 +362,7 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 		pub = &priv.PublicKey
 
 	default:
-		return nil, nil, fmt.Errorf("unsupported expected signature algorithm: %x", expectedAlgo)
+		return nil, nil, fmt.Errorf("unsupported DC signature algorithm: %x", dcAlgo)
 	}
 
 	lifetime := config.lifetime
@@ -382,9 +382,9 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 		return nil, nil, fmt.Errorf("delegated credentials require TLS 1.3")
 	}
 
-	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-03#section-3
+	// https://www.rfc-editor.org/rfc/rfc9345.html#section-4
 	dc = append(dc, byte(lifetimeSecs>>24), byte(lifetimeSecs>>16), byte(lifetimeSecs>>8), byte(lifetimeSecs))
-	dc = append(dc, byte(expectedAlgo>>8), byte(expectedAlgo))
+	dc = append(dc, byte(dcAlgo>>8), byte(dcAlgo))
 
 	pubBytes, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
@@ -7490,7 +7490,7 @@ func addExtensionTests() {
 							ApplicationSettings: map[string][]byte{"proto": []byte("runner2")},
 							ALPSUseNewCodepoint: clientSends,
 						},
-						resumeSession:      true,
+						resumeSession: true,
 						flags: append([]string{
 							"-select-alpn", "proto",
 							"-on-initial-application-settings", "proto,shim1",

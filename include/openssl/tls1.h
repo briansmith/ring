@@ -239,8 +239,8 @@ extern "C" {
 // ExtensionType value from RFC 5746
 #define TLSEXT_TYPE_renegotiate 0xff01
 
-// ExtensionType value from draft-ietf-tls-subcerts.
-#define TLSEXT_TYPE_delegated_credential 0x22
+// ExtensionType value from RFC 9345
+#define TLSEXT_TYPE_delegated_credential 34
 
 // ExtensionType value from draft-vvv-tls-alps. This is not an IANA defined
 // extension number.

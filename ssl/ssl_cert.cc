@@ -755,7 +755,7 @@ UniquePtr<DC> DC::Dup() {
   }
 
   ret->raw = UpRef(raw);
-  ret->expected_cert_verify_algorithm = expected_cert_verify_algorithm;
+  ret->dc_cert_verify_algorithm = dc_cert_verify_algorithm;
   ret->pkey = UpRef(pkey);
   return ret;
 }
@@ -775,7 +775,7 @@ UniquePtr<DC> DC::Parse(CRYPTO_BUFFER *in, uint8_t *out_alert) {
   uint16_t algorithm;
   CRYPTO_BUFFER_init_CBS(dc->raw.get(), &deleg);
   if (!CBS_get_u32(&deleg, &valid_time) ||
-      !CBS_get_u16(&deleg, &dc->expected_cert_verify_algorithm) ||
+      !CBS_get_u16(&deleg, &dc->dc_cert_verify_algorithm) ||
       !CBS_get_u24_length_prefixed(&deleg, &pubkey) ||
       !CBS_get_u16(&deleg, &algorithm) ||
       !CBS_get_u16_length_prefixed(&deleg, &sig) ||
@@ -817,7 +817,7 @@ static bool ssl_can_serve_dc(const SSL_HANDSHAKE *hs) {
   // Check that the DC signature algorithm is supported by the peer.
   Span<const uint16_t> peer_sigalgs = hs->peer_delegated_credential_sigalgs;
   for (uint16_t peer_sigalg : peer_sigalgs) {
-    if (dc->expected_cert_verify_algorithm == peer_sigalg) {
+    if (dc->dc_cert_verify_algorithm == peer_sigalg) {
       return true;
     }
   }
@@ -825,8 +825,7 @@ static bool ssl_can_serve_dc(const SSL_HANDSHAKE *hs) {
 }
 
 bool ssl_signing_with_dc(const SSL_HANDSHAKE *hs) {
-  // As of draft-ietf-tls-subcert-03, only the server may use delegated
-  // credentials to authenticate itself.
+  // We only support delegated credentials as a server.
   return hs->ssl->server &&
          hs->delegated_credential_requested &&
          ssl_can_serve_dc(hs);

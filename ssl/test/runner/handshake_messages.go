@@ -1923,13 +1923,13 @@ type certificateEntry struct {
 }
 
 type delegatedCredential struct {
-	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-03#section-3
-	signedBytes            []byte
-	lifetimeSecs           uint32
-	expectedCertVerifyAlgo signatureAlgorithm
-	pkixPublicKey          []byte
-	algorithm              signatureAlgorithm
-	signature              []byte
+	// https://www.rfc-editor.org/rfc/rfc9345.html#section-4
+	signedBytes      []byte
+	lifetimeSecs     uint32
+	dcCertVerifyAlgo signatureAlgorithm
+	pkixPublicKey    []byte
+	algorithm        signatureAlgorithm
+	signature        []byte
 }
 
 type certificateMsg struct {
@@ -2030,17 +2030,17 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 				case extensionSignedCertificateTimestamp:
 					cert.sctList = []byte(body)
 				case extensionDelegatedCredentials:
-					// https://tools.ietf.org/html/draft-ietf-tls-subcerts-03#section-3
+					// https://www.rfc-editor.org/rfc/rfc9345.html#section-4
 					if cert.delegatedCredential != nil {
 						return false
 					}
 
 					dc := new(delegatedCredential)
 					origBody := body
-					var expectedCertVerifyAlgo, algorithm uint16
+					var dcCertVerifyAlgo, algorithm uint16
 
 					if !body.ReadUint32(&dc.lifetimeSecs) ||
-						!body.ReadUint16(&expectedCertVerifyAlgo) ||
+						!body.ReadUint16(&dcCertVerifyAlgo) ||
 						!readUint24LengthPrefixedBytes(&body, &dc.pkixPublicKey) ||
 						!body.ReadUint16(&algorithm) ||
 						!readUint16LengthPrefixedBytes(&body, &dc.signature) ||
@@ -2048,7 +2048,7 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 						return false
 					}
 
-					dc.expectedCertVerifyAlgo = signatureAlgorithm(expectedCertVerifyAlgo)
+					dc.dcCertVerifyAlgo = signatureAlgorithm(dcCertVerifyAlgo)
 					dc.algorithm = signatureAlgorithm(algorithm)
 					dc.signedBytes = []byte(origBody)[:4+2+3+len(dc.pkixPublicKey)]
 					cert.delegatedCredential = dc

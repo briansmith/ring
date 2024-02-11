@@ -1574,8 +1574,7 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc);
 
 // Delegated credentials.
 
-// This structure stores a delegated credential (DC) as defined by
-// draft-ietf-tls-subcerts-03.
+// This structure stores a delegated credential (DC) as defined by RFC 9345.
 struct DC {
   static constexpr bool kAllowUniquePtr = true;
   ~DC();
@@ -1588,13 +1587,11 @@ struct DC {
   // |*out_alert|.
   static UniquePtr<DC> Parse(CRYPTO_BUFFER *in, uint8_t *out_alert);
 
-  // raw is the delegated credential encoded as specified in draft-ietf-tls-
-  // subcerts-03.
+  // raw is the delegated credential encoded as specified in RFC 9345.
   UniquePtr<CRYPTO_BUFFER> raw;
 
-  // expected_cert_verify_algorithm is the signature scheme of the DC public
-  // key.
-  uint16_t expected_cert_verify_algorithm = 0;
+  // dc_cert_verify_algorithm is the signature scheme of the DC public key.
+  uint16_t dc_cert_verify_algorithm = 0;
 
   // pkey is the public key parsed from |public_key|.
   UniquePtr<EVP_PKEY> pkey;
