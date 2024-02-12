@@ -523,7 +523,8 @@ static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b) {
 }
 
 ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
-    : method(ssl_method->method),
+    : RefCounted(CheckSubClass()),
+      method(ssl_method->method),
       x509_method(ssl_method->x509_method),
       retain_only_sha256_of_client_certs(false),
       quiet_shutdown(false),
@@ -589,18 +590,14 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
 }
 
 int SSL_CTX_up_ref(SSL_CTX *ctx) {
-  CRYPTO_refcount_inc(&ctx->references);
+  ctx->UpRefInternal();
   return 1;
 }
 
 void SSL_CTX_free(SSL_CTX *ctx) {
-  if (ctx == NULL ||
-      !CRYPTO_refcount_dec_and_test_zero(&ctx->references)) {
-    return;
+  if (ctx != nullptr) {
+    ctx->DecRefInternal();
   }
-
-  ctx->~ssl_ctx_st();
-  OPENSSL_free(ctx);
 }
 
 ssl_st::ssl_st(SSL_CTX *ctx_arg)
