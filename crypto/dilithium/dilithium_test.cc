@@ -256,8 +256,92 @@ static void DilithiumFileTest(FileTest *t) {
             Bytes(encoded_private_key.get(), DILITHIUM_PRIVATE_KEY_BYTES));
 }
 
+static void DilithiumSignFileTest(FileTest *t) {
+  std::string description, valid;
+  std::vector<uint8_t> message, private_key, signed_message_expected;
+  ASSERT_TRUE(t->GetAttribute(&description, "description"));
+  t->IgnoreAttribute("mlen");
+  ASSERT_TRUE(t->GetBytes(&message, "msg"));
+  ASSERT_TRUE(t->GetBytes(&private_key, "sk"));
+  ASSERT_TRUE(t->GetAttribute(&valid, "valid"));
+  t->IgnoreAttribute("smlen");
+  ASSERT_TRUE(t->GetBytes(&signed_message_expected, "sm"));
+
+  bool is_valid = valid == "true";
+
+  // Parse private key.
+  DILITHIUM_private_key priv;
+
+  CBS cbs;
+  CBS_init(&cbs, private_key.data(), private_key.size());
+  if (!DILITHIUM_parse_private_key(&priv, &cbs)) {
+    EXPECT_FALSE(is_valid) << "Unexpected signing result for edge case: "
+                           << description;
+    return;
+  }
+
+  // Reproduce signature.
+  uint8_t encoded_signature[DILITHIUM_SIGNATURE_BYTES];
+  DILITHIUM_sign_deterministic(encoded_signature, &priv, message.data(),
+                               message.size());
+
+  ASSERT_GE(signed_message_expected.size(), (size_t)DILITHIUM_SIGNATURE_BYTES);
+  EXPECT_EQ(Bytes(encoded_signature),
+            Bytes(signed_message_expected.data(), DILITHIUM_SIGNATURE_BYTES))
+      << "Unexpected signing result for edge case: " << description;
+  EXPECT_EQ(Bytes(message),
+            Bytes(&signed_message_expected[DILITHIUM_SIGNATURE_BYTES],
+                  signed_message_expected.size() - DILITHIUM_SIGNATURE_BYTES))
+      << "Unexpected signing result for edge case: " << description;
+  EXPECT_TRUE(is_valid) << "Unexpected signing result for edge case: "
+                        << description;
+}
+
+static void DilithiumVerifyFileTest(FileTest *t) {
+  std::string description, valid;
+  std::vector<uint8_t> message, public_key, signed_message;
+  ASSERT_TRUE(t->GetAttribute(&description, "description"));
+  t->IgnoreAttribute("mlen");
+  ASSERT_TRUE(t->GetBytes(&message, "msg"));
+  ASSERT_TRUE(t->GetBytes(&public_key, "pk"));
+  ASSERT_TRUE(t->GetAttribute(&valid, "valid"));
+  t->IgnoreAttribute("smlen");
+  ASSERT_TRUE(t->GetBytes(&signed_message, "sm"));
+
+  bool is_valid = valid == "true";
+
+  // Parse public key.
+  DILITHIUM_public_key pub;
+
+  CBS cbs;
+  CBS_init(&cbs, public_key.data(), public_key.size());
+  if (!DILITHIUM_parse_public_key(&pub, &cbs)) {
+    EXPECT_FALSE(is_valid) << "Unexpected verification result for edge case: "
+                           << description;
+    return;
+  }
+
+  // Verify signature.
+  ASSERT_GE(signed_message.size(), (size_t)DILITHIUM_SIGNATURE_BYTES);
+  EXPECT_EQ(DILITHIUM_verify(&pub, signed_message.data(),
+                             &signed_message[DILITHIUM_SIGNATURE_BYTES],
+                             signed_message.size() - DILITHIUM_SIGNATURE_BYTES),
+            is_valid)
+      << "Unexpected verification result for edge case: " << description;
+}
+
 TEST(DilithiumTest, TestVectors) {
   FileTestGTest("crypto/dilithium/dilithium_tests.txt", DilithiumFileTest);
+}
+
+TEST(DilithiumTest, EdgeCaseSigningTests) {
+  FileTestGTest("crypto/dilithium/edge_cases_draft_dilithium3_sign.txt",
+                DilithiumSignFileTest);
+}
+
+TEST(DilithiumTest, EdgeCaseVerifyTests) {
+  FileTestGTest("crypto/dilithium/edge_cases_draft_dilithium3_verify.txt",
+                DilithiumVerifyFileTest);
 }
 
 TEST(DilithiumTest, KeyGenerationHardCodedNIST) {

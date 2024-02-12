@@ -765,6 +765,8 @@
       "crypto/cipher_extra/test/xchacha20_poly1305_tests.txt",
       "crypto/curve25519/ed25519_tests.txt",
       "crypto/dilithium/dilithium_tests.txt",
+      "crypto/dilithium/edge_cases_draft_dilithium3_sign.txt",
+      "crypto/dilithium/edge_cases_draft_dilithium3_verify.txt",
       "crypto/ecdh_extra/ecdh_tests.txt",
       "crypto/evp/evp_tests.txt",
       "crypto/evp/scrypt_tests.txt",

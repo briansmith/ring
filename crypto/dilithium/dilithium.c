@@ -721,8 +721,8 @@ static void scalar_from_keccak_vartime(
 }
 
 // FIPS 204, Algorithm 25 (`RejBoundedPoly`).
-static void scalar_uniform_eta_4(
-    scalar *out, const uint8_t derived_seed[SIGMA_BYTES + 2]) {
+static void scalar_uniform_eta_4(scalar *out,
+                                 const uint8_t derived_seed[SIGMA_BYTES + 2]) {
   static_assert(ETA == 4, "This implementation is specialized for ETA == 4");
 
   struct BORINGSSL_keccak_st keccak_ctx;
@@ -827,7 +827,7 @@ static void matrix_expand(matrix *out, const uint8_t rho[RHO_BYTES]) {
 
 // FIPS 204, Algorithm 27 (`ExpandS`).
 static void vector_expand_short(vectorl *s1, vectork *s2,
-                                        const uint8_t sigma[SIGMA_BYTES]) {
+                                const uint8_t sigma[SIGMA_BYTES]) {
   static_assert(K <= 0x100, "K must fit in 8 bits");
   static_assert(L <= 0x100, "L must fit in 8 bits");
   static_assert(K + L <= 0x100, "K+L must fit in 8 bits");
@@ -1273,15 +1273,15 @@ static int dilithium_sign_with_randomizer(
   matrix_expand(&values->a_ntt, priv->rho);
 
   for (size_t kappa = 0;; kappa += L) {
-    //TODO(bbe): y only lives long enough to compute y_ntt.
-    //consider using another vectorl to save memory.
+    // TODO(bbe): y only lives long enough to compute y_ntt.
+    // consider using another vectorl to save memory.
     vectorl_expand_mask(&values->y, rho_prime, kappa);
 
     OPENSSL_memcpy(&values->y_ntt, &values->y, sizeof(values->y_ntt));
     vectorl_ntt(&values->y_ntt);
 
-    //TODO(bbe): w only lives long enough to compute y_ntt.
-    //consider using another vectork to save memory.
+    // TODO(bbe): w only lives long enough to compute y_ntt.
+    // consider using another vectork to save memory.
     matrix_mult(&values->w, &values->a_ntt, &values->y_ntt);
     vectork_inverse_ntt(&values->w);
 
@@ -1334,7 +1334,7 @@ static int dilithium_sign_with_randomizer(
     uint32_t ct0_max = vectork_max(&values->ct0);
     size_t h_ones = vectork_count_ones(&values->sign.h);
     if (constant_time_declassify_w(constant_time_ge_w(ct0_max, kGamma2) |
-                                   constant_time_ge_w(h_ones, OMEGA))) {
+                                   constant_time_lt_w(OMEGA, h_ones))) {
       continue;
     }
 
