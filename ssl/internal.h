@@ -3197,7 +3197,6 @@ struct SSL_CONFIG {
 static const size_t kMaxEarlyDataAccepted = 14336;
 
 UniquePtr<CERT> ssl_cert_dup(CERT *cert);
-void ssl_cert_clear_certs(CERT *cert);
 bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer);
 bool ssl_is_key_type_supported(int key_type);
 // ssl_compare_public_and_private_key returns true if |pubkey| is the public

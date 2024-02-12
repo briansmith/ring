@@ -1566,13 +1566,6 @@ const uint8_t *SSL_get0_session_id_context(const SSL *ssl, size_t *out_len) {
   return ssl->config->cert->sid_ctx;
 }
 
-void SSL_certs_clear(SSL *ssl) {
-  if (!ssl->config) {
-    return;
-  }
-  ssl_cert_clear_certs(ssl->config->cert.get());
-}
-
 int SSL_get_fd(const SSL *ssl) { return SSL_get_rfd(ssl); }
 
 int SSL_get_rfd(const SSL *ssl) {
