@@ -542,13 +542,14 @@ BSSL_NAMESPACE_BEGIN
 #define SSL_kGENERIC 0x00000008u
 
 // Bits for |algorithm_auth| (server authentication).
-#define SSL_aRSA 0x00000001u
-#define SSL_aECDSA 0x00000002u
+#define SSL_aRSA_SIGN 0x00000001u
+#define SSL_aRSA_DECRYPT 0x00000002u
+#define SSL_aECDSA 0x00000004u
 // SSL_aPSK is set for both PSK and ECDHE_PSK.
-#define SSL_aPSK 0x00000004u
-#define SSL_aGENERIC 0x00000008u
+#define SSL_aPSK 0x00000008u
+#define SSL_aGENERIC 0x00000010u
 
-#define SSL_aCERT (SSL_aRSA | SSL_aECDSA)
+#define SSL_aCERT (SSL_aRSA_SIGN | SSL_aRSA_DECRYPT | SSL_aECDSA)
 
 // Bits for |algorithm_enc| (symmetric encryption).
 #define SSL_3DES 0x00000001u
@@ -649,8 +650,9 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             bool strict);
 
 // ssl_cipher_auth_mask_for_key returns the mask of cipher |algorithm_auth|
-// values suitable for use with |key| in TLS 1.2 and below.
-uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key);
+// values suitable for use with |key| in TLS 1.2 and below. |sign_ok| indicates
+// whether |key| may be used for signing.
+uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key, bool sign_ok);
 
 // ssl_cipher_uses_certificate_auth returns whether |cipher| authenticates the
 // server and, optionally, the client with a certificate.

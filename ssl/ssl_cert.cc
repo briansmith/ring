@@ -697,8 +697,12 @@ bool ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
                                 const CRYPTO_BUFFER *leaf) {
   assert(ssl_protocol_version(hs->ssl) < TLS1_3_VERSION);
 
-  // Check the certificate's type matches the cipher.
-  if (!(hs->new_cipher->algorithm_auth & ssl_cipher_auth_mask_for_key(pkey))) {
+  // Check the certificate's type matches the cipher. This does not check key
+  // usage restrictions, which are handled separately.
+  //
+  // TODO(davidben): Put the key type and key usage checks in one place.
+  if (!(hs->new_cipher->algorithm_auth &
+        ssl_cipher_auth_mask_for_key(pkey, /*sign_ok=*/true))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CERTIFICATE_TYPE);
     return false;
   }

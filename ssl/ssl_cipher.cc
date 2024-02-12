@@ -164,7 +164,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
      SSL3_CK_RSA_DES_192_CBC3_SHA,
      SSL_kRSA,
-     SSL_aRSA,
+     SSL_aRSA_DECRYPT,
      SSL_3DES,
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
@@ -179,7 +179,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_RSA_WITH_AES_128_CBC_SHA",
      TLS1_CK_RSA_WITH_AES_128_SHA,
      SSL_kRSA,
-     SSL_aRSA,
+     SSL_aRSA_DECRYPT,
      SSL_AES128,
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
@@ -191,7 +191,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_RSA_WITH_AES_256_CBC_SHA",
      TLS1_CK_RSA_WITH_AES_256_SHA,
      SSL_kRSA,
-     SSL_aRSA,
+     SSL_aRSA_DECRYPT,
      SSL_AES256,
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
@@ -231,7 +231,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_RSA_WITH_AES_128_GCM_SHA256",
      TLS1_CK_RSA_WITH_AES_128_GCM_SHA256,
      SSL_kRSA,
-     SSL_aRSA,
+     SSL_aRSA_DECRYPT,
      SSL_AES128GCM,
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA256,
@@ -243,7 +243,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_RSA_WITH_AES_256_GCM_SHA384",
      TLS1_CK_RSA_WITH_AES_256_GCM_SHA384,
      SSL_kRSA,
-     SSL_aRSA,
+     SSL_aRSA_DECRYPT,
      SSL_AES256GCM,
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA384,
@@ -317,7 +317,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
      TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA,
      SSL_kECDHE,
-     SSL_aRSA,
+     SSL_aRSA_SIGN,
      SSL_AES128,
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
@@ -329,7 +329,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
      TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA,
      SSL_kECDHE,
-     SSL_aRSA,
+     SSL_aRSA_SIGN,
      SSL_AES256,
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
@@ -341,7 +341,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
      TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
      SSL_kECDHE,
-     SSL_aRSA,
+     SSL_aRSA_SIGN,
      SSL_AES128,
      SSL_SHA256,
      SSL_HANDSHAKE_MAC_SHA256,
@@ -379,7 +379,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
      TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
      SSL_kECDHE,
-     SSL_aRSA,
+     SSL_aRSA_SIGN,
      SSL_AES128GCM,
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA256,
@@ -391,7 +391,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
      TLS1_CK_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
      SSL_kECDHE,
-     SSL_aRSA,
+     SSL_aRSA_SIGN,
      SSL_AES256GCM,
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA384,
@@ -431,7 +431,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
      TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
      SSL_kECDHE,
-     SSL_aRSA,
+     SSL_aRSA_SIGN,
      SSL_CHACHA20POLY1305,
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA256,
@@ -528,7 +528,7 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"kPSK", SSL_kPSK, ~0u, ~0u, ~0u, 0},
 
     // server authentication aliases
-    {"aRSA", ~0u, SSL_aRSA, ~0u, ~0u, 0},
+    {"aRSA", ~0u, SSL_aRSA_SIGN | SSL_aRSA_DECRYPT, ~0u, ~0u, 0},
     {"aECDSA", ~0u, SSL_aECDSA, ~0u, ~0u, 0},
     {"ECDSA", ~0u, SSL_aECDSA, ~0u, ~0u, 0},
     {"aPSK", ~0u, SSL_aPSK, ~0u, ~0u, 0},
@@ -536,7 +536,7 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     // aliases combining key exchange and server authentication
     {"ECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
     {"EECDH", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
-    {"RSA", SSL_kRSA, SSL_aRSA, ~0u, ~0u, 0},
+    {"RSA", SSL_kRSA, SSL_aRSA_SIGN | SSL_aRSA_DECRYPT, ~0u, ~0u, 0},
     {"PSK", SSL_kPSK, SSL_aPSK, ~0u, ~0u, 0},
 
     // symmetric encryption aliases
@@ -1275,14 +1275,14 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   return true;
 }
 
-uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key) {
+uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key, bool sign_ok) {
   switch (EVP_PKEY_id(key)) {
     case EVP_PKEY_RSA:
-      return SSL_aRSA;
+      return sign_ok ? (SSL_aRSA_SIGN | SSL_aRSA_DECRYPT) : SSL_aRSA_DECRYPT;
     case EVP_PKEY_EC:
     case EVP_PKEY_ED25519:
       // Ed25519 keys in TLS 1.2 repurpose the ECDSA ciphers.
-      return SSL_aECDSA;
+      return sign_ok ? SSL_aECDSA : 0;
     default:
       return 0;
   }
@@ -1423,7 +1423,8 @@ int SSL_CIPHER_get_kx_nid(const SSL_CIPHER *cipher) {
 
 int SSL_CIPHER_get_auth_nid(const SSL_CIPHER *cipher) {
   switch (cipher->algorithm_auth) {
-    case SSL_aRSA:
+    case SSL_aRSA_DECRYPT:
+    case SSL_aRSA_SIGN:
       return NID_auth_rsa;
     case SSL_aECDSA:
       return NID_auth_ecdsa;
@@ -1511,7 +1512,7 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
       switch (cipher->algorithm_auth) {
         case SSL_aECDSA:
           return "ECDHE_ECDSA";
-        case SSL_aRSA:
+        case SSL_aRSA_SIGN:
           return "ECDHE_RSA";
         case SSL_aPSK:
           return "ECDHE_PSK";
@@ -1603,7 +1604,8 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
   }
 
   switch (alg_auth) {
-    case SSL_aRSA:
+    case SSL_aRSA_DECRYPT:
+    case SSL_aRSA_SIGN:
       au = "RSA";
       break;
 

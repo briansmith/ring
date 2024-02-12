@@ -303,7 +303,11 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
   uint32_t mask_a = 0;
 
   if (ssl_has_certificate(hs)) {
-    mask_a |= ssl_cipher_auth_mask_for_key(hs->local_pubkey.get());
+    uint16_t unused;
+    bool sign_ok = tls1_choose_signature_algorithm(hs, &unused);
+    ERR_clear_error();
+
+    mask_a |= ssl_cipher_auth_mask_for_key(hs->local_pubkey.get(), sign_ok);
     if (EVP_PKEY_id(hs->local_pubkey.get()) == EVP_PKEY_RSA) {
       mask_k |= SSL_kRSA;
     }

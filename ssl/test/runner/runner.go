@@ -10877,7 +10877,7 @@ func addSignatureAlgorithmTests() {
 			"-key-file", path.Join(*resourceDir, ed25519KeyFile),
 		},
 		shouldFail:    true,
-		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+		expectedError: ":NO_SHARED_CIPHER:",
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -11015,8 +11015,14 @@ func addSignatureAlgorithmTests() {
 			}
 
 			prefix := "Client-" + ver.name + "-"
+			noCommonAlgorithmsError := ":NO_COMMON_SIGNATURE_ALGORITHMS:"
 			if testType == serverTest {
 				prefix = "Server-" + ver.name + "-"
+				// In TLS 1.2 servers, cipher selection and algorithm
+				// selection are linked.
+				if ver.version <= VersionTLS12 {
+					noCommonAlgorithmsError = ":NO_SHARED_CIPHER:"
+				}
 			}
 
 			// Test that the shim will not sign MD5/SHA1 with RSA at TLS 1.2,
@@ -11039,7 +11045,7 @@ func addSignatureAlgorithmTests() {
 					"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
 				},
 				shouldFail:    true,
-				expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+				expectedError: noCommonAlgorithmsError,
 			})
 
 			// Test that the shim will not accept MD5/SHA1 with RSA at TLS 1.2,
@@ -11070,6 +11076,26 @@ func addSignatureAlgorithmTests() {
 			})
 		}
 	}
+
+	// Test that, when there are no signature algorithms in common in TLS
+	// 1.2, the server will still consider the legacy RSA key exchange.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "NoCommonSignatureAlgorithms-TLS12-Fallback",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			CipherSuites: []uint16{
+				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				TLS_RSA_WITH_AES_128_GCM_SHA256,
+			},
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureECDSAWithP256AndSHA256,
+			},
+		},
+		expectations: connectionExpectations{
+			cipher: TLS_RSA_WITH_AES_128_GCM_SHA256,
+		},
+	})
 }
 
 // timeouts is the retransmit schedule for BoringSSL. It doubles and
