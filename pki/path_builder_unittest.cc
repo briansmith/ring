@@ -2059,7 +2059,8 @@ TEST_F(PathBuilderCheckPathAfterVerificationTest, AddsWarningToValidPath) {
   const CertErrors *cert1_errors =
       result.GetBestValidPath()->errors.GetErrorsForCert(1);
   ASSERT_TRUE(cert1_errors);
-  EXPECT_TRUE(cert1_errors->ContainsError(kWarningFromDelegate));
+  EXPECT_TRUE(cert1_errors->ContainsErrorWithSeverity(
+      kWarningFromDelegate, CertError::SEVERITY_WARNING));
 }
 
 DEFINE_CERT_ERROR_ID(kErrorFromDelegate, "Error from delegate");

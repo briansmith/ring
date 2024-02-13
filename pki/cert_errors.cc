@@ -92,13 +92,18 @@ std::string CertErrors::ToDebugString() const {
   return result;
 }
 
-bool CertErrors::ContainsError(CertErrorId id) const {
+bool CertErrors::ContainsErrorWithSeverity(CertErrorId id,
+                                           CertError::Severity severity) const {
   for (const CertError &node : nodes_) {
-    if (node.id == id) {
+    if (node.id == id && node.severity == severity) {
       return true;
     }
   }
   return false;
+}
+
+bool CertErrors::ContainsError(CertErrorId id) const {
+  return ContainsErrorWithSeverity(id, CertError::SEVERITY_HIGH);
 }
 
 bool CertErrors::ContainsAnyErrorWithSeverity(

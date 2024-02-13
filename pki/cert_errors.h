@@ -104,8 +104,13 @@ class OPENSSL_EXPORT CertErrors {
   // Dumps a textual representation of the errors for debugging purposes.
   std::string ToDebugString() const;
 
-  // Returns true if the error |id| was added to this CertErrors (of any
-  // severity).
+  // Returns true if the error |id| was added to this CertErrors at
+  // severity |severity|
+  bool ContainsErrorWithSeverity(CertErrorId id,
+                                 CertError::Severity severity) const;
+
+  // Returns true if the error |id| was added to this CertErrors at
+  // high serverity.
   bool ContainsError(CertErrorId id) const;
 
   // Returns true if this contains any errors of the given severity level.
