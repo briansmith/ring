@@ -32,7 +32,7 @@ void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && \
-    defined(__GNUC__) && defined(__x86_64__)
+    defined(__GNUC__) && defined(__x86_64__) && !defined(OPENSSL_WINDOWS)
 #define BORINGSSL_FE25519_ADX
 
 // fiat_curve25519_adx_mul is defined in
