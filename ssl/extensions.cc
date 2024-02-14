@@ -2779,7 +2779,6 @@ static bool ext_delegated_credential_parse_clienthello(SSL_HANDSHAKE *hs,
     return false;
   }
 
-  hs->delegated_credential_requested = true;
   return true;
 }
 

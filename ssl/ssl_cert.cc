@@ -810,9 +810,7 @@ static bool ssl_can_serve_dc(const SSL_HANDSHAKE *hs) {
 
 bool ssl_signing_with_dc(const SSL_HANDSHAKE *hs) {
   // We only support delegated credentials as a server.
-  return hs->ssl->server &&
-         hs->delegated_credential_requested &&
-         ssl_can_serve_dc(hs);
+  return hs->ssl->server && ssl_can_serve_dc(hs);
 }
 
 static int cert_set_dc(CERT *cert, CRYPTO_BUFFER *const raw, EVP_PKEY *privkey,
