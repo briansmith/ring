@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_
+#if !defined(BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_) && defined(__cplusplus)
 #define BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_
 
 #include <openssl/base.h>
@@ -38,4 +38,4 @@ class OPENSSL_EXPORT SignatureVerifyCache {
 
 }  // namespace bssl
 
-#endif  // BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_
+#endif  // BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_ && __cplusplus
