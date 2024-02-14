@@ -23,8 +23,10 @@ extern "C" {
 
 
 // The following functions are wrappers over inline functions and macros in
-// BoringSSL, which bindgen cannot currently correctly bind. These wrappers
-// ensure changes to the functions remain in lockstep with the Rust versions.
+// BoringSSL. These are not necessary, as bindgen has long supported
+// --wrap-static-fns, however Android is still missing support for this. (See
+// b/290347127.) These manual wrappers are, temporarily, retained for Android,
+// but this codepath is no longer tested or supported by BoringSSL.
 int ERR_GET_LIB_RUST(uint32_t packed_error);
 int ERR_GET_REASON_RUST(uint32_t packed_error);
 int ERR_GET_FUNC_RUST(uint32_t packed_error);
