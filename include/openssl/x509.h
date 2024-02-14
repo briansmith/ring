@@ -3187,42 +3187,42 @@ OPENSSL_EXPORT int X509_REQ_print_fp(FILE *fp, X509_REQ *req);
 
 // XN_FLAG_COMPAT prints with |X509_NAME_print|'s format and return value
 // convention.
-#define XN_FLAG_COMPAT 0
+#define XN_FLAG_COMPAT 0ul
 
 // XN_FLAG_SEP_MASK determines the separators to use between attributes.
-#define XN_FLAG_SEP_MASK (0xf << 16)
+#define XN_FLAG_SEP_MASK (0xful << 16)
 
 // XN_FLAG_SEP_COMMA_PLUS separates RDNs with "," and attributes within an RDN
 // with "+", as in RFC 2253.
-#define XN_FLAG_SEP_COMMA_PLUS (1 << 16)
+#define XN_FLAG_SEP_COMMA_PLUS (1ul << 16)
 
 // XN_FLAG_SEP_CPLUS_SPC behaves like |XN_FLAG_SEP_COMMA_PLUS| but adds spaces
 // between the separators.
-#define XN_FLAG_SEP_CPLUS_SPC (2 << 16)
+#define XN_FLAG_SEP_CPLUS_SPC (2ul << 16)
 
 // XN_FLAG_SEP_SPLUS_SPC separates RDNs with "; " and attributes within an RDN
 // with " + ".
-#define XN_FLAG_SEP_SPLUS_SPC (3 << 16)
+#define XN_FLAG_SEP_SPLUS_SPC (3ul << 16)
 
 // XN_FLAG_SEP_MULTILINE prints each attribute on one line.
-#define XN_FLAG_SEP_MULTILINE (4 << 16)
+#define XN_FLAG_SEP_MULTILINE (4ul << 16)
 
 // XN_FLAG_DN_REV prints RDNs in reverse, from least significant to most
 // significant, as RFC 2253.
-#define XN_FLAG_DN_REV (1 << 20)
+#define XN_FLAG_DN_REV (1ul << 20)
 
 // XN_FLAG_FN_MASK determines how attribute types are displayed.
-#define XN_FLAG_FN_MASK (0x3 << 21)
+#define XN_FLAG_FN_MASK (0x3ul << 21)
 
 // XN_FLAG_FN_SN uses the attribute type's short name, when available.
-#define XN_FLAG_FN_SN 0
+#define XN_FLAG_FN_SN 0ul
 
 // XN_FLAG_SPC_EQ wraps the "=" operator with spaces when printing attributes.
-#define XN_FLAG_SPC_EQ (1 << 23)
+#define XN_FLAG_SPC_EQ (1ul << 23)
 
 // XN_FLAG_DUMP_UNKNOWN_FIELDS causes unknown attribute types to be printed in
 // hex, as in RFC 2253.
-#define XN_FLAG_DUMP_UNKNOWN_FIELDS (1 << 24)
+#define XN_FLAG_DUMP_UNKNOWN_FIELDS (1ul << 24)
 
 // XN_FLAG_RFC2253 prints like RFC 2253.
 #define XN_FLAG_RFC2253                                             \
