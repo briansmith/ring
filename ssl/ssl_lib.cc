@@ -2509,21 +2509,13 @@ size_t SSL_get0_peer_delegation_algorithms(const SSL *ssl,
 EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {
   if (!ssl->config) {
     assert(ssl->config);
-    return NULL;
+    return nullptr;
   }
-  if (ssl->config->cert != NULL) {
-    return ssl->config->cert->privatekey.get();
-  }
-
-  return NULL;
+  return ssl->config->cert->privatekey.get();
 }
 
 EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
-  if (ctx->cert != NULL) {
-    return ctx->cert->privatekey.get();
-  }
-
-  return NULL;
+  return ctx->cert->privatekey.get();
 }
 
 const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
