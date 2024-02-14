@@ -2276,4 +2276,6 @@ set(
   pki/testdata/verify_signed_data_unittest/rsa-pss-sha256.pem
   pki/testdata/verify_signed_data_unittest/rsa-using-ec-key.pem
   pki/testdata/verify_signed_data_unittest/rsa2048-pkcs1-sha512.pem
+  pki/testdata/verify_unittest/google-leaf.der
+  pki/testdata/verify_unittest/self-issued.pem
 )
