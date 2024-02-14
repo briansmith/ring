@@ -18,7 +18,6 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <openssl/base.h>
 #include <openssl/span.h>
