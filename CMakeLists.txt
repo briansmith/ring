@@ -59,14 +59,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
   endif()
 endif()
 
-if(USE_CUSTOM_LIBCXX)
-  set(BORINGSSL_ALLOW_CXX_RUNTIME 1)
-endif()
-
-if(BORINGSSL_ALLOW_CXX_RUNTIME)
-  add_definitions(-DBORINGSSL_ALLOW_CXX_RUNTIME)
-endif()
-
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
 if(NOT FIPS)
   if(CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithassert" OR
@@ -176,10 +168,6 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_CXX_FLAGS} -Wmissing-prototypes -Wold-style-definition -Wstrict-prototypes")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_CXX_FLAGS} -Wmissing-declarations")
-
-  if(NOT MSVC AND NOT BORINGSSL_ALLOW_CXX_RUNTIME)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
-  endif()
 
   # In GCC, -Wmissing-declarations is the C++ spelling of -Wmissing-prototypes
   # and using the wrong one is an error. In Clang, -Wmissing-prototypes is the

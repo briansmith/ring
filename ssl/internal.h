@@ -227,22 +227,10 @@ UniquePtr<T> MakeUnique(Args &&... args) {
   return UniquePtr<T>(New<T>(std::forward<Args>(args)...));
 }
 
-#if defined(BORINGSSL_ALLOW_CXX_RUNTIME)
+// TODO(davidben): Remove these macros after April 2024, once the C++ runtime
+// dependency has stuck.
 #define HAS_VIRTUAL_DESTRUCTOR
 #define PURE_VIRTUAL = 0
-#else
-// HAS_VIRTUAL_DESTRUCTOR should be declared in any base class which defines a
-// virtual destructor. This avoids a dependency on |_ZdlPv| and prevents the
-// class from being used with |delete|.
-#define HAS_VIRTUAL_DESTRUCTOR \
-  void operator delete(void *) { abort(); }
-
-// PURE_VIRTUAL should be used instead of = 0 when defining pure-virtual
-// functions. This avoids a dependency on |__cxa_pure_virtual| but loses
-// compile-time checking.
-#define PURE_VIRTUAL \
-  { abort(); }
-#endif
 
 // Array<T> is an owning array of elements of |T|.
 template <typename T>
