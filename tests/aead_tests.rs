@@ -459,9 +459,10 @@ fn aead_chacha20_poly1305_openssh() {
                 as_array
             };
 
-            let sequence_number = test_case.consume_usize("SEQUENCE_NUMBER");
-            assert_eq!(sequence_number as u32 as usize, sequence_number);
-            let sequence_num = sequence_number as u32;
+            let sequence_num: u32 = test_case
+                .consume_usize("SEQUENCE_NUMBER")
+                .try_into()
+                .unwrap();
             let plaintext = test_case.consume_bytes("IN");
             let ct = test_case.consume_bytes("CT");
             let expected_tag = test_case.consume_bytes("TAG");
