@@ -43,20 +43,24 @@ pub const XN_FLAG_ONELINE: c_ulong = bindgen::XN_FLAG_ONELINE as c_ulong;
 // TODO(crbug.com/boringssl/596): Remove these wrappers.
 #[cfg(unsupported_inline_wrappers)]
 pub fn ERR_GET_LIB(packed_error: u32) -> i32 {
+    // Safety: This is safe for all inputs. bindgen conservatively marks everything unsafe.
     unsafe { ERR_GET_LIB_RUST(packed_error) }
 }
 
 #[cfg(unsupported_inline_wrappers)]
 pub fn ERR_GET_REASON(packed_error: u32) -> i32 {
+    // Safety: This is safe for all inputs. bindgen conservatively marks everything unsafe.
     unsafe { ERR_GET_REASON_RUST(packed_error) }
 }
 
 #[cfg(unsupported_inline_wrappers)]
 pub fn ERR_GET_FUNC(packed_error: u32) -> i32 {
+    // Safety: This is safe for all inputs. bindgen conservatively marks everything unsafe.
     unsafe { ERR_GET_FUNC_RUST(packed_error) }
 }
 
 pub fn init() {
+    // Safety: `CRYPTO_library_init` may be called multiple times and concurrently.
     unsafe {
         CRYPTO_library_init();
     }
