@@ -20,6 +20,7 @@ use crate::{error, polyfill};
 ///
 /// This can represent a bit length that isn't a whole number of bytes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct BitLength<T = usize>(T);
 
 pub(crate) trait FromUsizeBytes: Sized {
@@ -71,7 +72,7 @@ impl BitLength<usize> {
     }
 
     /// The bit length, rounded up to a whole number of bytes.
-    #[cfg(feature = "alloc")]
+    #[cfg(any(target_arch = "aarch64", feature = "alloc"))]
     #[inline]
     pub fn as_usize_bytes_rounded_up(&self) -> usize {
         // Equivalent to (self.0 + 7) / 8, except with no potential for
