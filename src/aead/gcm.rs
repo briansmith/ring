@@ -105,6 +105,10 @@ impl Context {
             return Err(error::Unspecified);
         }
 
+        // NIST SP800-38D Section 5.2.1.1 says that the maximum AAD length is
+        // 2**64 - 1 bits, i.e. BitLength<u64>::MAX, so we don't need to do an
+        // explicit check here.
+
         let mut ctx = Self {
             inner: ContextInner {
                 Xi: Xi(Block::zero()),

@@ -64,6 +64,10 @@ fn chacha20_poly1305_seal(
     if in_out.len() > MAX_IN_OUT_LEN {
         return Err(error::Unspecified);
     }
+    /// RFC 8439 Section 2.8 says the maximum AAD length is 2**64 - 1, which is
+    /// never larger than usize::MAX, so we don't need an explicit length
+    /// check.
+    const _USIZE_BOUNDED_BY_U64: u64 = u64_from_usize(usize::MAX);
 
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     if has_integrated(cpu_features) {
@@ -152,6 +156,10 @@ fn chacha20_poly1305_open(
     if unprefixed_len > MAX_IN_OUT_LEN {
         return Err(error::Unspecified);
     }
+    // RFC 8439 Section 2.8 says the maximum AAD length is 2**64 - 1, which is
+    // never larger than usize::MAX, so we don't need an explicit length
+    // check.
+    const _USIZE_BOUNDED_BY_U64: u64 = u64_from_usize(usize::MAX);
 
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     if has_integrated(cpu_features) {
