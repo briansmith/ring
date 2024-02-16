@@ -451,6 +451,7 @@ set(
   pki/trust_store_in_memory.cc
   pki/trust_store.cc
   pki/verify_certificate_chain.cc
+  pki/verify_error.cc
   pki/verify_name_match.cc
   pki/verify_signed_data.cc
 )

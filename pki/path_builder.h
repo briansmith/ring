@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <openssl/base.h>
+#include <openssl/pki/verify_error.h>
 
 #include "cert_errors.h"
 #include "input.h"
@@ -48,6 +49,9 @@ struct OPENSSL_EXPORT CertPathBuilderResultPath {
   // chains to a trusted root, and did not have any high severity errors added
   // to it during certificate verification.
   bool IsValid() const;
+
+  // Public verify error result for this candidate path.
+  VerifyError GetVerifyError() const;
 
   // Returns the chain's root certificate or nullptr if the chain doesn't
   // chain to a trust anchor.
@@ -138,6 +142,9 @@ class OPENSSL_EXPORT CertPathBuilder {
 
     // Returns true if any of the attempted paths contain |error_id|.
     bool AnyPathContainsError(CertErrorId error_id) const;
+
+    // Returns the best single error from result, using the best path found.
+    const VerifyError GetBestPathVerifyError() const;
 
     // Returns the CertPathBuilderResultPath for the best valid path, or nullptr
     // if there was none.

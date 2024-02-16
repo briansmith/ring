@@ -139,6 +139,10 @@ const CertErrors *CertPathErrors::GetErrorsForCert(size_t cert_index) const {
 
 CertErrors *CertPathErrors::GetOtherErrors() { return &other_errors_; }
 
+const CertErrors *CertPathErrors::GetOtherErrors() const {
+  return &other_errors_;
+}
+
 bool CertPathErrors::ContainsError(CertErrorId id) const {
   for (const CertErrors &errors : cert_errors_) {
     if (errors.ContainsError(id)) {
@@ -166,6 +170,28 @@ bool CertPathErrors::ContainsAnyErrorWithSeverity(
   }
 
   return false;
+}
+
+std::optional<CertErrorId> CertPathErrors::FindSingleHighSeverityError(
+    ptrdiff_t &out_depth) const {
+  std::optional<CertErrorId> id_seen;
+  for (ptrdiff_t i = -1; i < (ptrdiff_t)cert_errors_.size(); ++i) {
+    const CertErrors *errors =
+        (i < 0) ? GetOtherErrors() : GetErrorsForCert(i);
+    for (const CertError &node : errors->nodes_) {
+      if (node.severity == CertError::SEVERITY_HIGH) {
+        if (!id_seen.has_value()) {
+          id_seen = node.id;
+          out_depth = i;
+        } else {
+          if (id_seen.value() != node.id) {
+            return {};
+          }
+        }
+      }
+    }
+  }
+  return id_seen;
 }
 
 std::string CertPathErrors::ToDebugString(

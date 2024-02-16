@@ -10,6 +10,7 @@
 #include <unordered_set>
 
 #include <openssl/base.h>
+#include <openssl/pki/verify_error.h>
 #include <openssl/sha.h>
 
 #include "cert_issuer_source.h"
@@ -710,6 +711,121 @@ bool CertPathBuilderResultPath::IsValid() const {
   return GetTrustedCert() && !errors.ContainsHighSeverityErrors();
 }
 
+VerifyError CertPathBuilderResultPath::GetVerifyError() const {
+  // Diagnostic string is always "everything" about the path.
+  std::string diagnostic = errors.ToDebugString(certs);
+  if (!errors.ContainsHighSeverityErrors()) {
+    // TODO(bbe3): Having to check this after seems awkward: crbug.com/boringssl/713
+    if (GetTrustedCert()) {
+      return VerifyError(VerifyError::StatusCode::PATH_VERIFIED, 0,
+                         std::move(diagnostic));
+    } else {
+      return VerifyError(VerifyError::StatusCode::VERIFICATION_FAILURE, -1,
+                         std::move(diagnostic));
+    }
+  }
+
+  // Check for the presence of things that amount to Internal errors in the
+  // verification code. We deliberately prioritize this to not hide it in
+  // multiple error cases.
+  if (errors.ContainsError(cert_errors::kInternalError) ||
+      errors.ContainsError(cert_errors::kChainIsEmpty)) {
+    return VerifyError(VerifyError::StatusCode::VERIFICATION_FAILURE, -1,
+                       std::move(diagnostic));
+  }
+
+  // Similarly, for the deadline and limit cases, there will often be other
+  // errors that we probably do not care about, since path building was
+  // aborted. Surface these errors instead of having them hidden in the multiple
+  // error case.
+  //
+  // Normally callers should check for these in the path builder result before
+  // calling this on a single path, but this is here in case they do not and
+  // these errors are actually present on this path.
+  if (errors.ContainsError(cert_errors::kDeadlineExceeded)) {
+    return VerifyError(VerifyError::StatusCode::PATH_DEADLINE_EXCEEDED, -1,
+                       std::move(diagnostic));
+  }
+  if (errors.ContainsError(cert_errors::kIterationLimitExceeded)) {
+    return VerifyError(VerifyError::StatusCode::PATH_ITERATION_COUNT_EXCEEDED,
+                       -1, std::move(diagnostic));
+  }
+  if (errors.ContainsError(cert_errors::kDepthLimitExceeded)) {
+    return VerifyError(VerifyError::StatusCode::PATH_DEPTH_LIMIT_REACHED, -1,
+                       std::move(diagnostic));
+  }
+
+  // If the chain has multiple high severity errors, indicate that.
+  ptrdiff_t depth = -1;
+  std::optional<CertErrorId> single_error =
+      errors.FindSingleHighSeverityError(depth);
+  if (!single_error.has_value()) {
+    return VerifyError(VerifyError::StatusCode::PATH_MULTIPLE_ERRORS, -1,
+                       std::move(diagnostic));
+  }
+
+  // Otherwise it has a single error, map it appropriately at the
+  // depth it first occurs.
+  if (single_error.value() == cert_errors::kValidityFailedNotAfter) {
+    return VerifyError(VerifyError::StatusCode::CERTIFICATE_EXPIRED, depth,
+                       std::move(diagnostic));
+  }
+  if (single_error.value() == cert_errors::kValidityFailedNotBefore) {
+    return VerifyError(VerifyError::StatusCode::CERTIFICATE_NOT_YET_VALID,
+                       depth, std::move(diagnostic));
+  }
+  if (single_error.value() == cert_errors::kDistrustedByTrustStore ||
+      single_error.value() == cert_errors::kCertIsNotTrustAnchor ||
+      single_error.value() == cert_errors::kMaxPathLengthViolated ||
+      single_error.value() == cert_errors::kSubjectDoesNotMatchIssuer ||
+      single_error.value() == cert_errors::kNoIssuersFound) {
+    return VerifyError(VerifyError::StatusCode::PATH_NOT_FOUND, depth,
+                       std::move(diagnostic));
+  }
+  if (single_error.value() == cert_errors::kVerifySignedDataFailed) {
+    return VerifyError(VerifyError::StatusCode::CERTIFICATE_INVALID_SIGNATURE,
+                       depth, std::move(diagnostic));
+  }
+  if (single_error.value() == cert_errors::kUnacceptableSignatureAlgorithm) {
+    return VerifyError(
+        VerifyError::StatusCode::CERTIFICATE_UNSUPPORTED_SIGNATURE_ALGORITHM,
+        depth, std::move(diagnostic));
+  }
+  if (single_error.value() == cert_errors::kUnacceptablePublicKey) {
+    return VerifyError(VerifyError::StatusCode::CERTIFICATE_UNSUPPORTED_KEY,
+                       depth, std::move(diagnostic));
+  }
+  if (single_error.value() == cert_errors::kEkuLacksServerAuth ||
+      single_error.value() == cert_errors::kEkuLacksServerAuthButHasAnyEKU ||
+      single_error.value() == cert_errors::kEkuLacksClientAuth ||
+      single_error.value() == cert_errors::kEkuLacksClientAuthButHasAnyEKU ||
+      single_error.value() == cert_errors::kEkuLacksClientAuthOrServerAuth) {
+    return VerifyError(VerifyError::StatusCode::CERTIFICATE_NO_MATCHING_EKU,
+                       depth, std::move(diagnostic));
+  }
+  if (single_error.value() == cert_errors::kCertificateRevoked) {
+    return VerifyError(VerifyError::StatusCode::CERTIFICATE_REVOKED, depth,
+                       std::move(diagnostic));
+  }
+  if (single_error.value() == cert_errors::kNoRevocationMechanism) {
+    return VerifyError(
+        VerifyError::StatusCode::CERTIFICATE_NO_REVOCATION_MECHANISM, depth,
+        std::move(diagnostic));
+  }
+  if (single_error.value() == cert_errors::kUnableToCheckRevocation) {
+    return VerifyError(
+        VerifyError::StatusCode::CERTIFICATE_UNABLE_TO_CHECK_REVOCATION, depth,
+        std::move(diagnostic));
+  }
+  // All other High severity errors map to CERTIFICATE_INVALID if associated
+  // to a certificate, or VERIFICATION_FAILURE if not associated to a
+  // certificate.
+  return VerifyError((depth < 0) ? VerifyError::StatusCode::VERIFICATION_FAILURE
+                                 : VerifyError::StatusCode::CERTIFICATE_INVALID,
+                     depth, std::move(diagnostic));
+}
+
+
 CertPathBuilder::Result::Result() = default;
 CertPathBuilder::Result::Result(Result &&) = default;
 CertPathBuilder::Result::~Result() = default;
@@ -728,6 +844,39 @@ bool CertPathBuilder::Result::AnyPathContainsError(CertErrorId error_id) const {
   }
 
   return false;
+}
+
+const VerifyError CertPathBuilder::Result::GetBestPathVerifyError() const {
+  if (HasValidPath()) {
+    return GetBestValidPath()->GetVerifyError();
+  }
+  // We can only return one error. Returning the errors corresponding to the
+  // limits if they they appear on any path will make this error prominent even
+  // if there are other paths with different or multiple errors.
+  if (exceeded_iteration_limit) {
+    return VerifyError(
+        VerifyError::StatusCode::PATH_ITERATION_COUNT_EXCEEDED, -1,
+        "Iteration count exceeded, could not find a trusted path.");
+  }
+  if (exceeded_deadline) {
+    return VerifyError(VerifyError::StatusCode::PATH_DEADLINE_EXCEEDED, -1,
+                       "Deadline exceeded. Could not find a trusted path.");
+  }
+  if (AnyPathContainsError(cert_errors::kDepthLimitExceeded)) {
+    return VerifyError(VerifyError::StatusCode::PATH_DEPTH_LIMIT_REACHED, -1,
+                       "Depth limit reached. Could not find a trusted path.");
+  }
+
+  // If there are no paths to report an error on, this probably indicates
+  // something is wrong with this path builder result.
+  if (paths.empty()) {
+    return VerifyError(VerifyError::StatusCode::VERIFICATION_FAILURE, -1,
+                       "No paths in path builder result.");
+  }
+
+  // If there are paths, report the VerifyError from the best path.
+  CertPathBuilderResultPath *path = paths[best_result_index].get();
+  return path->GetVerifyError();
 }
 
 const CertPathBuilderResultPath *CertPathBuilder::Result::GetBestValidPath()
