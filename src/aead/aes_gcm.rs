@@ -124,23 +124,22 @@ fn aes_gcm_seal(
         if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
             in_out
         } else {
-            use crate::c;
-            let (htable, xi) = auth.inner();
-            prefixed_extern! {
-                fn aes_gcm_enc_kernel(
-                    input: *const u8,
-                    in_bits: c::size_t,
-                    output: *mut u8,
-                    Xi: &mut gcm::Xi,
-                    ivec: &mut Counter,
-                    key: &aes::AES_KEY,
-                    Htable: &gcm::HTable);
-            }
-
             let len = in_out.len();
             let len_blocks = len & (!(0b1111));
 
             if len_blocks > 0 {
+                use crate::c;
+                let (htable, xi) = auth.inner();
+                prefixed_extern! {
+                    fn aes_gcm_enc_kernel(
+                        input: *const u8,
+                        in_bits: c::size_t,
+                        output: *mut u8,
+                        Xi: &mut gcm::Xi,
+                        ivec: &mut Counter,
+                        key: &aes::AES_KEY,
+                        Htable: &gcm::HTable);
+                }
                 unsafe {
                     aes_gcm_enc_kernel(
                         in_out.as_ptr(),
@@ -247,23 +246,22 @@ fn aes_gcm_open(
         if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
             in_out
         } else {
-            use crate::c;
-            let (htable, xi) = auth.inner();
-            prefixed_extern! {
-                fn aes_gcm_dec_kernel(
-                    input: *const u8,
-                    in_bits: c::size_t,
-                    output: *mut u8,
-                    Xi: &mut gcm::Xi,
-                    ivec: &mut Counter,
-                    key: &aes::AES_KEY,
-                    Htable: &gcm::HTable);
-            }
-
             let len = in_out.len() - src.start;
             let len_blocks = len & (!(0b1111));
 
             if len_blocks > 0 {
+                use crate::c;
+                let (htable, xi) = auth.inner();
+                prefixed_extern! {
+                    fn aes_gcm_dec_kernel(
+                        input: *const u8,
+                        in_bits: c::size_t,
+                        output: *mut u8,
+                        Xi: &mut gcm::Xi,
+                        ivec: &mut Counter,
+                        key: &aes::AES_KEY,
+                        Htable: &gcm::HTable);
+                }
                 unsafe {
                     aes_gcm_dec_kernel(
                         in_out[src.clone()].as_ptr(),
