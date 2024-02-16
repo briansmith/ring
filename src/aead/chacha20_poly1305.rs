@@ -269,9 +269,15 @@ pub(super) fn derive_poly1305_key(chacha_key: &chacha::Key, iv: Iv) -> poly1305:
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::polyfill::usize_from_u64_saturated;
+
     #[test]
     fn max_input_len_test() {
         // https://tools.ietf.org/html/rfc8439#section-2.8
-        assert_eq!(super::CHACHA20_POLY1305.max_input_len, 274_877_906_880u64);
+        assert_eq!(
+            CHACHA20_POLY1305.max_input_len,
+            usize_from_u64_saturated(274_877_906_880u64)
+        );
     }
 }

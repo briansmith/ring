@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Aad, Algorithm, KeyInner, Nonce, Tag, UnboundKey, TAG_LEN};
-use crate::{constant_time, cpu, error, polyfill};
+use crate::{constant_time, cpu, error};
 use core::ops::RangeFrom;
 
 /// Immutable keys for use in situations where `OpeningKey`/`SealingKey` and
@@ -209,7 +209,7 @@ pub(super) fn seal_in_place_separate_tag_(
 }
 
 fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize) -> Result<(), error::Unspecified> {
-    if polyfill::u64_from_usize(in_out_len) > alg.max_input_len {
+    if in_out_len > alg.max_input_len {
         return Err(error::Unspecified);
     }
     Ok(())

@@ -346,10 +346,12 @@ fn finish(
     })
 }
 
-const AES_GCM_MAX_INPUT_LEN: u64 = super::max_input_len(BLOCK_LEN, 2);
+const AES_GCM_MAX_INPUT_LEN: usize = super::max_input_len(BLOCK_LEN, 2);
 
 #[cfg(test)]
 mod tests {
+    use crate::polyfill::usize_from_u64_saturated;
+
     #[test]
     fn max_input_len_test() {
         // [NIST SP800-38D] Section 5.2.1.1. Note that [RFC 5116 Section 5.1] and
@@ -361,13 +363,14 @@ mod tests {
         // [RFC 5116 Section 5.2]: https://tools.ietf.org/html/rfc5116#section-5.2
         const NIST_SP800_38D_MAX_BITS: u64 = (1u64 << 39) - 256;
         assert_eq!(NIST_SP800_38D_MAX_BITS, 549_755_813_632u64);
+        const NIST_SP800_38D_MAX_BYTES: u64 = NIST_SP800_38D_MAX_BITS / 8;
         assert_eq!(
-            super::AES_128_GCM.max_input_len * 8,
-            NIST_SP800_38D_MAX_BITS
+            super::AES_128_GCM.max_input_len,
+            usize_from_u64_saturated(NIST_SP800_38D_MAX_BYTES)
         );
         assert_eq!(
-            super::AES_256_GCM.max_input_len * 8,
-            NIST_SP800_38D_MAX_BITS
+            super::AES_256_GCM.max_input_len,
+            usize_from_u64_saturated(NIST_SP800_38D_MAX_BYTES)
         );
     }
 }
