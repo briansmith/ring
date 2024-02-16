@@ -530,8 +530,10 @@ jobs:
           - # debug
 
         # Coverage collection is Nightly-only
+        # XXX: Starting with nightly-2024-02-14 there is a segfault when
+        # running the tests.
         rust_channel:
-          - nightly
+          - nightly-2024-02-13
 
         # TODO: targets
         include:
