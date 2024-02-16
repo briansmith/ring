@@ -128,6 +128,17 @@ impl Context {
         Ok(ctx)
     }
 
+    #[cfg(all(target_arch = "aarch64", target_pointer_width = "64"))]
+    pub(super) fn in_out_whole_block_bits(&self) -> BitLength<usize> {
+        use crate::polyfill::usize_from_u64;
+        const WHOLE_BLOCK_BITS_MASK: usize = !0b111_1111;
+        const _WHOLE_BLOCK_BITS_MASK_CORRECT: () =
+            assert!(WHOLE_BLOCK_BITS_MASK == !((BLOCK_LEN * 8) - 1));
+        BitLength::from_usize_bits(
+            usize_from_u64(self.in_out_len.as_bits()) & WHOLE_BLOCK_BITS_MASK,
+        )
+    }
+
     /// Access to `inner` for the integrated AES-GCM implementations only.
     #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
     #[inline]

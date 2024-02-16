@@ -124,16 +124,14 @@ fn aes_gcm_seal(
         if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
             in_out
         } else {
-            let len = in_out.len();
-            let len_blocks = len & (!(0b1111));
-
-            if len_blocks > 0 {
-                use crate::c;
+            let whole_block_bits = auth.in_out_whole_block_bits();
+            if whole_block_bits.as_bits() > 0 {
+                use crate::{bits::BitLength, c};
                 let (htable, xi) = auth.inner();
                 prefixed_extern! {
                     fn aes_gcm_enc_kernel(
                         input: *const u8,
-                        in_bits: c::size_t,
+                        in_bits: BitLength<c::size_t>,
                         output: *mut u8,
                         Xi: &mut gcm::Xi,
                         ivec: &mut Counter,
@@ -143,7 +141,7 @@ fn aes_gcm_seal(
                 unsafe {
                     aes_gcm_enc_kernel(
                         in_out.as_ptr(),
-                        len_blocks * 8,
+                        whole_block_bits,
                         in_out.as_mut_ptr(),
                         xi,
                         &mut ctr,
@@ -153,7 +151,7 @@ fn aes_gcm_seal(
                 }
             }
 
-            &mut in_out[len_blocks..]
+            &mut in_out[whole_block_bits.as_usize_bytes_rounded_up()..]
         }
     };
 
@@ -246,26 +244,25 @@ fn aes_gcm_open(
         if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
             in_out
         } else {
-            let len = in_out.len() - src.start;
-            let len_blocks = len & (!(0b1111));
-
-            if len_blocks > 0 {
-                use crate::c;
+            let whole_block_bits = auth.in_out_whole_block_bits();
+            if whole_block_bits.as_bits() > 0 {
+                use crate::{bits::BitLength, c};
                 let (htable, xi) = auth.inner();
                 prefixed_extern! {
                     fn aes_gcm_dec_kernel(
                         input: *const u8,
-                        in_bits: c::size_t,
+                        in_bits: BitLength<c::size_t>,
                         output: *mut u8,
                         Xi: &mut gcm::Xi,
                         ivec: &mut Counter,
                         key: &aes::AES_KEY,
                         Htable: &gcm::HTable);
                 }
+
                 unsafe {
                     aes_gcm_dec_kernel(
                         in_out[src.clone()].as_ptr(),
-                        len_blocks * 8,
+                        whole_block_bits,
                         in_out.as_mut_ptr(),
                         xi,
                         &mut ctr,
@@ -275,7 +272,7 @@ fn aes_gcm_open(
                 }
             }
 
-            &mut in_out[len_blocks..]
+            &mut in_out[whole_block_bits.as_usize_bytes_rounded_up()..]
         }
     };
 
