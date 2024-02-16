@@ -101,9 +101,6 @@ impl<const N: usize> FfiSlice for [u8; N] {
 /// See the comment [`FfiSlice`].
 trait FfiMutSlice {
     fn as_mut_ffi_ptr(&mut self) -> *mut u8;
-    fn as_ffi_void_ptr(&mut self) -> *mut c_void {
-        self.as_mut_ffi_ptr() as *mut c_void
-    }
 }
 
 impl FfiMutSlice for [u8] {
@@ -203,45 +200,11 @@ unsafe trait ForeignTypeRef: Sized {
         unsafe { &*(ptr as *mut _) }
     }
 
-    /// Constructs a mutable reference of this type from its raw type.
-    ///
-    /// # Safety
-    ///
-    /// `ptr` must be a valid, unique, instance of the type for the `'a` lifetime.
-    #[inline]
-    unsafe fn from_ptr_mut<'a>(ptr: *mut Self::CType) -> &'a mut Self {
-        debug_assert!(!ptr.is_null());
-        unsafe { &mut *(ptr as *mut _) }
-    }
-
     /// Returns a raw pointer to the wrapped value.
     #[inline]
     fn as_ptr(&self) -> *mut Self::CType {
         self as *const _ as *mut _
     }
-}
-
-/// A helper trait implemented by types which has an owned reference to foreign types.
-///
-/// # Safety
-///
-/// Implementations of `ForeignType` must guarantee the following:
-///
-/// - `Self::from_ptr(x).as_ptr() == x`
-unsafe trait ForeignType {
-    /// The raw C type.
-    type CType;
-
-    /// Constructs an instance of this type from its raw type.
-    ///
-    /// # Safety
-    ///
-    /// - `ptr` must be a valid, immutable, instance of `CType`.
-    /// - Ownership of `ptr` is passed to the implementation, and will free `ptr` when dropped.
-    unsafe fn from_ptr(ptr: *mut Self::CType) -> Self;
-
-    /// Returns a raw pointer to the wrapped value.
-    fn as_ptr(&self) -> *mut Self::CType;
 }
 
 /// Returns a BoringSSL structure that is initialized by some function.
