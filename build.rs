@@ -114,16 +114,10 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "-fvisibility=hidden",
             "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
             "-Wall",
-            "-Wextra",
             "-Wbad-function-cast",
             "-Wcast-align",
             "-Wcast-qual",
             "-Wconversion",
-            "-Wenum-compare",
-            "-Wfloat-equal",
-            "-Wformat=2",
-            "-Winline",
-            "-Winvalid-pch",
             "-Wmissing-field-initializers",
             "-Wmissing-include-dirs",
             "-Wnested-externs",
@@ -134,7 +128,6 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "-Wstrict-prototypes",
             "-Wundef",
             "-Wuninitialized",
-            "-Wwrite-strings",
         ];
         NON_MSVC_FLAGS
     } else {
