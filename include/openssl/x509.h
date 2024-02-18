@@ -5058,37 +5058,83 @@ DECLARE_ASN1_FUNCTIONS(AUTHORITY_KEYID)
 DECLARE_ASN1_FUNCTIONS_const(EXTENDED_KEY_USAGE)
 
 DECLARE_ASN1_FUNCTIONS_const(CERTIFICATEPOLICIES)
-DECLARE_ASN1_FUNCTIONS_const(POLICYINFO)
-DECLARE_ASN1_FUNCTIONS_const(POLICYQUALINFO)
-DECLARE_ASN1_FUNCTIONS_const(USERNOTICE)
-DECLARE_ASN1_FUNCTIONS_const(NOTICEREF)
+
+// POLICYINFO_new returns a newly-allocated, empty |POLICYINFO| object, or NULL
+// on error.
+OPENSSL_EXPORT POLICYINFO *POLICYINFO_new(void);
+
+// POLICYINFO_free releases memory associated with |info|.
+OPENSSL_EXPORT void POLICYINFO_free(POLICYINFO *info);
+
+// POLICYQUALINFO_new returns a newly-allocated, empty |POLICYQUALINFO| object,
+// or NULL on error.
+OPENSSL_EXPORT POLICYQUALINFO *POLICYQUALINFO_new(void);
+
+// POLICYQUALINFO_free releases memory associated with |info|.
+OPENSSL_EXPORT void POLICYQUALINFO_free(POLICYQUALINFO *info);
+
+// USERNOTICE_new returns a newly-allocated, empty |USERNOTICE| object, or NULL
+// on error.
+OPENSSL_EXPORT USERNOTICE *USERNOTICE_new(void);
+
+// USERNOTICE_free releases memory associated with |notice|.
+OPENSSL_EXPORT void USERNOTICE_free(USERNOTICE *notice);
+
+// NOTICEREF_new returns a newly-allocated, empty |NOTICEREF| object, or NULL
+// on error.
+OPENSSL_EXPORT NOTICEREF *NOTICEREF_new(void);
+
+// NOTICEREF_free releases memory associated with |ref|.
+OPENSSL_EXPORT void NOTICEREF_free(NOTICEREF *ref);
 
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(CRL_DIST_POINTS)
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(DIST_POINT)
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(DIST_POINT_NAME)
+
+// DIST_POINT_new returns a newly-allocated, empty |DIST_POINT| object, or NULL
+// on error.
+OPENSSL_EXPORT DIST_POINT *DIST_POINT_new(void);
+
+// DIST_POINT_free releases memory associated with |dp|.
+OPENSSL_EXPORT void DIST_POINT_free(DIST_POINT *dp);
+
+// DIST_POINT_NAME_new returns a newly-allocated, empty |DIST_POINT_NAME|
+// object, or NULL on error.
+OPENSSL_EXPORT DIST_POINT_NAME *DIST_POINT_NAME_new(void);
+
+// DIST_POINT_NAME_free releases memory associated with |name|.
+OPENSSL_EXPORT void DIST_POINT_NAME_free(DIST_POINT_NAME *name);
+
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(ISSUING_DIST_POINT)
 
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(ACCESS_DESCRIPTION)
+// ACCESS_DESCRIPTION_new returns a newly-allocated, empty |ACCESS_DESCRIPTION|
+// object, or NULL on error.
+OPENSSL_EXPORT ACCESS_DESCRIPTION *ACCESS_DESCRIPTION_new(void);
+
+// ACCESS_DESCRIPTION_free releases memory associated with |desc|.
+OPENSSL_EXPORT void ACCESS_DESCRIPTION_free(ACCESS_DESCRIPTION *desc);
+
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(AUTHORITY_INFO_ACCESS)
 
-DECLARE_ASN1_ITEM(POLICY_MAPPING)
-DECLARE_ASN1_ALLOC_FUNCTIONS(POLICY_MAPPING)
+// POLICY_MAPPING_new returns a newly-allocated, empty |POLICY_MAPPING| object,
+// or NULL on error.
+OPENSSL_EXPORT POLICY_MAPPING *POLICY_MAPPING_new(void);
+
+// POLICY_MAPPING_free releases memory associated with |mapping|.
+OPENSSL_EXPORT void POLICY_MAPPING_free(POLICY_MAPPING *mapping);
+
 DECLARE_ASN1_ITEM(POLICY_MAPPINGS)
 
-DECLARE_ASN1_ITEM(GENERAL_SUBTREE)
-DECLARE_ASN1_ALLOC_FUNCTIONS(GENERAL_SUBTREE)
+// GENERAL_SUBTREE_new returns a newly-allocated, empty |GENERAL_SUBTREE|
+// object, or NULL on error.
+OPENSSL_EXPORT GENERAL_SUBTREE *GENERAL_SUBTREE_new(void);
+
+// GENERAL_SUBTREE_free releases memory associated with |subtree|.
+OPENSSL_EXPORT void GENERAL_SUBTREE_free(GENERAL_SUBTREE *subtree);
 
 DECLARE_ASN1_ITEM(NAME_CONSTRAINTS)
 DECLARE_ASN1_ALLOC_FUNCTIONS(NAME_CONSTRAINTS)
