@@ -44,14 +44,21 @@ pub enum Tag {
 
 impl From<Tag> for usize {
     fn from(tag: Tag) -> Self {
-        tag as Self
+        Self::from(Tag::into(tag))
     }
 }
 
 impl From<Tag> for u8 {
     fn from(tag: Tag) -> Self {
-        tag as Self
-    } // XXX: narrowing conversion.
+        Tag::into(tag)
+    }
+}
+
+// `impl From<Tag> for u8` but as a `const fn`.
+impl Tag {
+    pub const fn into(self) -> u8 {
+        self as u8
+    }
 }
 
 pub fn expect_tag_and_get_value<'a>(
