@@ -13,40 +13,52 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{der::*, writer::*, *};
+use crate::error;
 use alloc::boxed::Box;
 
-pub(crate) fn write_positive_integer(output: &mut dyn Accumulator, value: &Positive) {
+pub(crate) fn write_positive_integer(
+    output: &mut dyn Accumulator,
+    value: &Positive,
+) -> Result<(), error::Unspecified> {
     let first_byte = value.first_byte();
     let value = value.big_endian_without_leading_zero_as_input();
     write_tlv(output, Tag::Integer, |output| {
         if (first_byte & 0x80) != 0 {
             output.write_byte(0); // Disambiguate negative number.
         }
-        write_copy(output, value)
+        write_copy(output, value);
+        Ok(())
     })
 }
 
-pub(crate) fn write_all(tag: Tag, write_value: &dyn Fn(&mut dyn Accumulator)) -> Box<[u8]> {
+pub(crate) fn write_all(
+    tag: Tag,
+    write_value: &dyn Fn(&mut dyn Accumulator) -> Result<(), error::Unspecified>,
+) -> Result<Box<[u8]>, error::Unspecified> {
     let length = {
         let mut length = LengthMeasurement::zero();
-        write_tlv(&mut length, tag, write_value);
+        write_tlv(&mut length, tag, write_value)?;
         length
     };
 
     let mut output = Writer::with_capacity(length);
-    write_tlv(&mut output, tag, write_value);
+    write_tlv(&mut output, tag, write_value)?;
 
-    output.into()
+    Ok(output.into())
 }
 
 #[allow(clippy::cast_possible_truncation)]
-fn write_tlv<F>(output: &mut dyn Accumulator, tag: Tag, write_value: F)
+fn write_tlv<F>(
+    output: &mut dyn Accumulator,
+    tag: Tag,
+    write_value: F,
+) -> Result<(), error::Unspecified>
 where
-    F: Fn(&mut dyn Accumulator),
+    F: Fn(&mut dyn Accumulator) -> Result<(), error::Unspecified>,
 {
     let length: usize = {
         let mut length = LengthMeasurement::zero();
-        write_value(&mut length);
+        write_value(&mut length)?;
         length.into()
     };
 
@@ -61,8 +73,8 @@ where
         output.write_byte((length / 0x1_00) as u8);
         output.write_byte(length as u8);
     } else {
-        unreachable!();
+        return Err(error::Unspecified);
     };
 
-    write_value(output);
+    write_value(output)
 }
