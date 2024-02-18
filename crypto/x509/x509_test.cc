@@ -1780,6 +1780,30 @@ static bool AddKeyUsage(X509 *x509, const std::vector<KeyUsage> usages) {
                            /*flags=*/0);
 }
 
+static bool AddSubjectKeyIdentifier(X509 *x509,
+                                    bssl::Span<const uint8_t> key_id) {
+  bssl::UniquePtr<ASN1_OCTET_STRING> oct(ASN1_OCTET_STRING_new());
+  return oct != nullptr &&
+         ASN1_STRING_set(oct.get(), key_id.data(), key_id.size()) &&
+         X509_add1_ext_i2d(x509, NID_subject_key_identifier, oct.get(),
+                           /*crit=*/0, /*flags=*/0);
+}
+
+static bool AddAuthorityKeyIdentifer(X509 *x509, bssl::Span<const uint8_t> key_id) {
+  bssl::UniquePtr<AUTHORITY_KEYID> akid(AUTHORITY_KEYID_new());
+  if (akid == nullptr) {
+    return false;
+  }
+  akid->keyid = ASN1_OCTET_STRING_new();
+  if (akid->keyid == nullptr ||
+      !ASN1_STRING_set(akid->keyid, key_id.data(), key_id.size()) ||
+      !X509_add1_ext_i2d(x509, NID_authority_key_identifier, akid.get(),
+                         /*crit=*/0, /*flags=*/0)) {
+    return false;
+  }
+  return true;
+}
+
 static bssl::UniquePtr<X509_CRL> MakeTestCRL(const char *issuer,
                                              int this_update_offset_day,
                                              int next_update_offset_day) {
@@ -1816,6 +1840,22 @@ static bool AddRevokedSerialU64(X509_CRL *crl, uint64_t serial,
     return false;
   }
   rev.release();  // X509_CRL_add0_revoked takes ownership on success.
+  return true;
+}
+
+static bool AddAuthorityKeyIdentifer(X509_CRL *crl,
+                                     bssl::Span<const uint8_t> key_id) {
+  bssl::UniquePtr<AUTHORITY_KEYID> akid(AUTHORITY_KEYID_new());
+  if (akid == nullptr) {
+    return false;
+  }
+  akid->keyid = ASN1_OCTET_STRING_new();
+  if (akid->keyid == nullptr ||
+      !ASN1_STRING_set(akid->keyid, key_id.data(), key_id.size()) ||
+      !X509_CRL_add1_ext_i2d(crl, NID_authority_key_identifier, akid.get(),
+                             /*crit=*/0, /*flags=*/0)) {
+    return false;
+  }
   return true;
 }
 
@@ -8372,3 +8412,110 @@ TEST(X509Test, DirHashThreads) {
   }
 }
 #endif  // OPENSSL_THREADS
+
+// Test that, when there are two CAs with the same name, but different key
+// identifiers, certificate and CRL lookup can disambiguate correctly.
+TEST(X509Test, DuplicateName) {
+  // Make two certificate chains and empty CRLs, with the same names but
+  // different keys.
+  bssl::UniquePtr<EVP_PKEY> key1 = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key1);
+  uint8_t key_id1[] = {'K', 'e', 'y', '1'};
+  bssl::UniquePtr<X509> ca1 =
+      MakeTestCert("CA", "CA", key1.get(), /*is_ca=*/true);
+  ASSERT_TRUE(ca1);
+  ASSERT_TRUE(AddSubjectKeyIdentifier(ca1.get(), key_id1));
+  ASSERT_TRUE(X509_sign(ca1.get(), key1.get(), EVP_sha256()));
+  bssl::UniquePtr<X509> leaf1 =
+      MakeTestCert("CA", "Leaf", key1.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf1);
+  ASSERT_TRUE(AddAuthorityKeyIdentifer(leaf1.get(), key_id1));
+  ASSERT_TRUE(X509_sign(leaf1.get(), key1.get(), EVP_sha256()));
+  bssl::UniquePtr<X509_CRL> crl1 = MakeTestCRL("CA", -1, 1);
+  ASSERT_TRUE(crl1);
+  ASSERT_TRUE(AddAuthorityKeyIdentifer(crl1.get(), key_id1));
+  ASSERT_TRUE(X509_CRL_sign(crl1.get(), key1.get(), EVP_sha256()));
+  // TODO(davidben): Some state in CRLs does not get correctly set up unless it
+  // is parsed from data. |X509_CRL_sign| should reset it internally.
+  crl1 = ReencodeCRL(crl1.get());
+  ASSERT_TRUE(crl1);
+
+  bssl::UniquePtr<EVP_PKEY> key2 = PrivateKeyFromPEM(kRSAKey);
+  ASSERT_TRUE(key2);
+  uint8_t key_id2[] = {'K', 'e', 'y', '2'};
+  bssl::UniquePtr<X509> ca2 =
+      MakeTestCert("CA", "CA", key2.get(), /*is_ca=*/true);
+  ASSERT_TRUE(ca2);
+  ASSERT_TRUE(AddSubjectKeyIdentifier(ca2.get(), key_id2));
+  ASSERT_TRUE(X509_sign(ca2.get(), key2.get(), EVP_sha256()));
+  bssl::UniquePtr<X509> leaf2 =
+      MakeTestCert("CA", "Leaf", key2.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf2);
+  ASSERT_TRUE(AddAuthorityKeyIdentifer(leaf2.get(), key_id2));
+  ASSERT_TRUE(X509_sign(leaf2.get(), key2.get(), EVP_sha256()));
+  bssl::UniquePtr<X509_CRL> crl2 = MakeTestCRL("CA", -2, 2);
+  ASSERT_TRUE(crl2);
+  ASSERT_TRUE(AddAuthorityKeyIdentifer(crl2.get(), key_id2));
+  ASSERT_TRUE(X509_CRL_sign(crl2.get(), key2.get(), EVP_sha256()));
+  // TODO(davidben): Some state in CRLs does not get correctly set up unless it
+  // is parsed from data. |X509_CRL_sign| should reset it internally.
+  crl2 = ReencodeCRL(crl2.get());
+  ASSERT_TRUE(crl2);
+
+  for (bool key1_first : {false, true}) {
+    SCOPED_TRACE(key1_first);
+    X509 *first_leaf = leaf1.get();
+    X509 *second_leaf = leaf2.get();
+    if (!key1_first) {
+      std::swap(first_leaf, second_leaf);
+    }
+
+    for (bool use_dir : {false, true}) {
+      SCOPED_TRACE(use_dir);
+      bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+      ASSERT_TRUE(store);
+      TemporaryHashDir dir(X509_FILETYPE_PEM);
+      if (use_dir) {
+        ASSERT_TRUE(dir.Init());
+        ASSERT_TRUE(dir.AddCert(ca1.get(), kNewHash));
+        ASSERT_TRUE(dir.AddCert(ca2.get(), kNewHash));
+        ASSERT_TRUE(dir.AddCRL(crl1.get(), kNewHash));
+        ASSERT_TRUE(dir.AddCRL(crl2.get(), kNewHash));
+        ASSERT_EQ(dir.num_cert_hashes(), 1u);
+        ASSERT_EQ(dir.num_crl_hashes(), 1u);
+        ASSERT_TRUE(X509_STORE_load_locations(store.get(), /*file=*/nullptr,
+                                              dir.path().c_str()));
+      } else {
+        ASSERT_TRUE(X509_STORE_add_cert(store.get(), ca1.get()));
+        ASSERT_TRUE(X509_STORE_add_cert(store.get(), ca2.get()));
+        ASSERT_TRUE(X509_STORE_add_crl(store.get(), crl1.get()));
+        ASSERT_TRUE(X509_STORE_add_crl(store.get(), crl2.get()));
+      }
+
+      // Verify the two certificates. Whichever comes first, we should
+      // successfully find their CA and CRL.
+      {
+        bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+        ASSERT_TRUE(ctx);
+        ASSERT_TRUE(
+            X509_STORE_CTX_init(ctx.get(), store.get(), first_leaf, nullptr));
+        X509_STORE_CTX_set_flags(ctx.get(), X509_V_FLAG_CRL_CHECK);
+        X509_STORE_CTX_set_time_posix(ctx.get(), /*flags=*/0, kReferenceTime);
+        EXPECT_TRUE(X509_verify_cert(ctx.get()))
+            << X509_verify_cert_error_string(
+                   X509_STORE_CTX_get_error(ctx.get()));
+      }
+      {
+        bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+        ASSERT_TRUE(ctx);
+        ASSERT_TRUE(
+            X509_STORE_CTX_init(ctx.get(), store.get(), second_leaf, nullptr));
+        X509_STORE_CTX_set_flags(ctx.get(), X509_V_FLAG_CRL_CHECK);
+        X509_STORE_CTX_set_time_posix(ctx.get(), /*flags=*/0, kReferenceTime);
+        EXPECT_TRUE(X509_verify_cert(ctx.get()))
+            << X509_verify_cert_error_string(
+                   X509_STORE_CTX_get_error(ctx.get()));
+      }
+    }
+  }
+}
