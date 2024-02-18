@@ -4932,11 +4932,14 @@ struct X509_algor_st {
 
 DECLARE_STACK_OF(DIST_POINT)
 
+// A BASIC_CONSTRAINTS_st, aka |BASIC_CONSTRAINTS| represents an
+// BasicConstraints structure (RFC 5280).
 struct BASIC_CONSTRAINTS_st {
   ASN1_BOOLEAN ca;
   ASN1_INTEGER *pathlen;
-};
+} /* BASIC_CONSTRAINTS */;
 
+// An ACCESS_DESCRIPTION represents an AccessDescription structure (RFC 5280).
 typedef struct ACCESS_DESCRIPTION_st {
   ASN1_OBJECT *method;
   GENERAL_NAME *location;
@@ -4948,6 +4951,13 @@ typedef STACK_OF(ACCESS_DESCRIPTION) AUTHORITY_INFO_ACCESS;
 
 typedef STACK_OF(ASN1_OBJECT) EXTENDED_KEY_USAGE;
 
+// A DIST_POINT_NAME represents a DistributionPointName structure (RFC 5280).
+// The |name| field contains the CHOICE value and is determined by |type|. If
+// |type| is zero, |name| must be a |fullname|. If |type| is one, |name| must be
+// a |relativename|.
+//
+// |type| and |name| must be kept consistent. An inconsistency will result in a
+// potentially exploitable memory error.
 typedef struct DIST_POINT_NAME_st {
   int type;
   union {
@@ -4958,32 +4968,46 @@ typedef struct DIST_POINT_NAME_st {
   X509_NAME *dpname;
 } DIST_POINT_NAME;
 
+// A DIST_POINT_st, aka |DIST_POINT|, represents a DistributionPoint structure
+// (RFC 5280).
 struct DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
   ASN1_BIT_STRING *reasons;
   GENERAL_NAMES *CRLissuer;
-};
+} /* DIST_POINT */;
 
 typedef STACK_OF(DIST_POINT) CRL_DIST_POINTS;
 
 DEFINE_STACK_OF(DIST_POINT)
 
+// A AUTHORITY_KEYID_st, aka |AUTHORITY_KEYID|, represents an
+// AuthorityKeyIdentifier structure (RFC 5280).
 struct AUTHORITY_KEYID_st {
   ASN1_OCTET_STRING *keyid;
   GENERAL_NAMES *issuer;
   ASN1_INTEGER *serial;
-};
+} /* AUTHORITY_KEYID */;
 
+// A NOTICEREF represents a NoticeReference structure (RFC 5280).
 typedef struct NOTICEREF_st {
   ASN1_STRING *organization;
   STACK_OF(ASN1_INTEGER) *noticenos;
 } NOTICEREF;
 
+// A USERNOTICE represents a UserNotice structure (RFC 5280).
 typedef struct USERNOTICE_st {
   NOTICEREF *noticeref;
   ASN1_STRING *exptext;
 } USERNOTICE;
 
+// A POLICYQUALINFO represents a PolicyQualifierInfo structure (RFC 5280). |d|
+// contains the qualifier field of the PolicyQualifierInfo. Its type is
+// determined by |pqualid|. If |pqualid| is |NID_id_qt_cps|, |d| must be
+// |cpsuri|. If |pqualid| is |NID_id_qt_unotice|, |d| must be |usernotice|.
+// Otherwise, |d| must be |other|.
+//
+// |pqualid| and |d| must be kept consistent. An inconsistency will result in a
+// potentially exploitable memory error.
 typedef struct POLICYQUALINFO_st {
   ASN1_OBJECT *pqualid;
   union {
@@ -4995,6 +5019,7 @@ typedef struct POLICYQUALINFO_st {
 
 DEFINE_STACK_OF(POLICYQUALINFO)
 
+// A POLICYINFO represents a PolicyInformation structure (RFC 5280).
 typedef struct POLICYINFO_st {
   ASN1_OBJECT *policyid;
   STACK_OF(POLICYQUALINFO) *qualifiers;
@@ -5004,6 +5029,8 @@ typedef STACK_OF(POLICYINFO) CERTIFICATEPOLICIES;
 
 DEFINE_STACK_OF(POLICYINFO)
 
+// A POLICY_MAPPING represents an individual element of a PolicyMappings
+// structure (RFC 5280).
 typedef struct POLICY_MAPPING_st {
   ASN1_OBJECT *issuerDomainPolicy;
   ASN1_OBJECT *subjectDomainPolicy;
@@ -5013,6 +5040,7 @@ DEFINE_STACK_OF(POLICY_MAPPING)
 
 typedef STACK_OF(POLICY_MAPPING) POLICY_MAPPINGS;
 
+// A GENERAL_SUBTREE represents a GeneralSubtree structure (RFC 5280).
 typedef struct GENERAL_SUBTREE_st {
   GENERAL_NAME *base;
   ASN1_INTEGER *minimum;
@@ -5021,16 +5049,21 @@ typedef struct GENERAL_SUBTREE_st {
 
 DEFINE_STACK_OF(GENERAL_SUBTREE)
 
+// A NAME_CONSTRAINTS_st, aka |NAME_CONSTRAINTS|, represents a NameConstraints
+// structure (RFC 5280).
 struct NAME_CONSTRAINTS_st {
   STACK_OF(GENERAL_SUBTREE) *permittedSubtrees;
   STACK_OF(GENERAL_SUBTREE) *excludedSubtrees;
-};
+} /* NAME_CONSTRAINTS */;
 
+// A POLICY_CONSTRAINTS represents a PolicyConstraints structure (RFC 5280).
 typedef struct POLICY_CONSTRAINTS_st {
   ASN1_INTEGER *requireExplicitPolicy;
   ASN1_INTEGER *inhibitPolicyMapping;
 } POLICY_CONSTRAINTS;
 
+// A ISSUING_DIST_POINT_st, aka |ISSUING_DIST_POINT|, represents a
+// IssuingDistributionPoint structure (RFC 5280).
 struct ISSUING_DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
   ASN1_BOOLEAN onlyuser;
@@ -5038,7 +5071,7 @@ struct ISSUING_DIST_POINT_st {
   ASN1_BIT_STRING *onlysomereasons;
   ASN1_BOOLEAN indirectCRL;
   ASN1_BOOLEAN onlyattr;
-};
+} /* ISSUING_DIST_POINT */;
 
 #define NS_SSL_CLIENT 0x80
 #define NS_SSL_SERVER 0x40
