@@ -61,9 +61,10 @@ impl PublicKey {
         let e_bytes = io::Positive::from_be_bytes(e_bytes)
             .map_err(|_: error::Unspecified| error::KeyRejected::unexpected_error())?;
         let serialized = der_writer::write_all(der::Tag::Sequence, &|output| {
-            der_writer::write_positive_integer(output, &n_bytes);
-            der_writer::write_positive_integer(output, &e_bytes);
-        });
+            der_writer::write_positive_integer(output, &n_bytes)?;
+            der_writer::write_positive_integer(output, &e_bytes)
+        })
+        .map_err(|_: io::TooLongError| error::KeyRejected::unexpected_error())?;
 
         Ok(Self { inner, serialized })
     }

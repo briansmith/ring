@@ -15,8 +15,8 @@
 use alloc::{boxed::Box, vec::Vec};
 
 pub trait Accumulator {
-    fn write_byte(&mut self, value: u8);
-    fn write_bytes(&mut self, value: &[u8]);
+    fn write_byte(&mut self, value: u8) -> Result<(), TooLongError>;
+    fn write_bytes(&mut self, value: &[u8]) -> Result<(), TooLongError>;
 }
 
 pub(super) struct LengthMeasurement {
@@ -36,11 +36,16 @@ impl LengthMeasurement {
 }
 
 impl Accumulator for LengthMeasurement {
-    fn write_byte(&mut self, _value: u8) {
-        self.len += 1;
+    fn write_byte(&mut self, _value: u8) -> Result<(), TooLongError> {
+        self.len = self.len.checked_add(1).ok_or_else(TooLongError::new)?;
+        Ok(())
     }
-    fn write_bytes(&mut self, value: &[u8]) {
-        self.len += value.len();
+    fn write_bytes(&mut self, value: &[u8]) -> Result<(), TooLongError> {
+        self.len = self
+            .len
+            .checked_add(value.len())
+            .ok_or_else(TooLongError::new)?;
+        Ok(())
     }
 }
 
@@ -66,14 +71,27 @@ impl From<Writer> for Box<[u8]> {
 }
 
 impl Accumulator for Writer {
-    fn write_byte(&mut self, value: u8) {
+    fn write_byte(&mut self, value: u8) -> Result<(), TooLongError> {
         self.bytes.push(value);
+        Ok(())
     }
-    fn write_bytes(&mut self, value: &[u8]) {
+    fn write_bytes(&mut self, value: &[u8]) -> Result<(), TooLongError> {
         self.bytes.extend(value);
+        Ok(())
     }
 }
 
-pub fn write_copy(accumulator: &mut dyn Accumulator, to_copy: untrusted::Input) {
+pub fn write_copy(
+    accumulator: &mut dyn Accumulator,
+    to_copy: untrusted::Input,
+) -> Result<(), TooLongError> {
     accumulator.write_bytes(to_copy.as_slice_less_safe())
+}
+
+pub struct TooLongError(());
+
+impl TooLongError {
+    pub fn new() -> Self {
+        Self(())
+    }
 }
