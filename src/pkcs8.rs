@@ -142,7 +142,7 @@ fn unwrap_key__<'a>(
         .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
 
     // Ignore any attributes that are present.
-    if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
+    if input.peek(der::Tag::ContextSpecificConstructed0.into()) {
         let _ = der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)
             .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
     }
@@ -153,17 +153,18 @@ fn unwrap_key__<'a>(
         }
 
         const INCORRECT_LEGACY: der::Tag = der::Tag::ContextSpecificConstructed1;
-        let result =
-            if options.accept_legacy_ed25519_public_key_tag && input.peek(INCORRECT_LEGACY as u8) {
-                der::nested(
-                    input,
-                    INCORRECT_LEGACY,
-                    error::Unspecified,
-                    der::bit_string_with_no_unused_bits,
-                )
-            } else {
-                der::bit_string_tagged_with_no_unused_bits(der::Tag::ContextSpecific1, input)
-            };
+        let result = if options.accept_legacy_ed25519_public_key_tag
+            && input.peek(INCORRECT_LEGACY.into())
+        {
+            der::nested(
+                input,
+                INCORRECT_LEGACY,
+                error::Unspecified,
+                der::bit_string_with_no_unused_bits,
+            )
+        } else {
+            der::bit_string_tagged_with_no_unused_bits(der::Tag::ContextSpecific1, input)
+        };
         let public_key =
             result.map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
         Some(public_key)
