@@ -414,7 +414,7 @@ fn format_rs_asn1(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8
         };
         let value = &fixed[first_index..];
 
-        out[0] = der::Tag::Integer as u8;
+        out[0] = der::Tag::Integer.into();
 
         // Lengths less than 128 are encoded in one byte.
         assert!(value.len() < 128);
@@ -425,7 +425,7 @@ fn format_rs_asn1(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8
         2 + value.len()
     }
 
-    out[0] = der::Tag::Sequence as u8;
+    out[0] = der::Tag::Sequence.into();
     let r_tlv_len = format_integer_tlv(ops, r, &mut out[2..]);
     let s_tlv_len = format_integer_tlv(ops, s, &mut out[2..][r_tlv_len..]);
 
