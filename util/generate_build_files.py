@@ -263,6 +263,7 @@ class Bazel(object):
       self.PrintVariableSection(out, 'crypto_sources', files['crypto'])
       self.PrintVariableSection(out, 'crypto_sources_asm', files['crypto_asm'])
       self.PrintVariableSection(out, 'crypto_sources_nasm', files['crypto_nasm'])
+      self.PrintVariableSection(out, 'pki_headers', files['pki_headers'])
       self.PrintVariableSection(
           out, 'pki_internal_headers', files['pki_internal_headers'])
       self.PrintVariableSection(out, 'pki_sources', files['pki'])
@@ -359,18 +360,17 @@ class GN(object):
       self.PrintVariableSection(out, 'crypto_sources_asm', files['crypto_asm'])
       self.PrintVariableSection(out, 'crypto_sources_nasm',
                                 files['crypto_nasm'])
-      self.PrintVariableSection(out, 'crypto_headers',
-                                files['crypto_headers'])
+      self.PrintVariableSection(out, 'crypto_headers', files['crypto_headers'])
       self.PrintVariableSection(out, 'rust_bssl_sys', files['rust_bssl_sys'])
       self.PrintVariableSection(out, 'rust_bssl_crypto',
                                 files['rust_bssl_crypto'])
       self.PrintVariableSection(out, 'ssl_sources',
                                 files['ssl'] + files['ssl_internal_headers'])
       self.PrintVariableSection(out, 'ssl_headers', files['ssl_headers'])
-      self.PrintVariableSection(out, 'pki_sources',
-                                files['pki'])
+      self.PrintVariableSection(out, 'pki_sources', files['pki'])
       self.PrintVariableSection(out, 'pki_internal_headers',
                                 files['pki_internal_headers'])
+      self.PrintVariableSection(out, 'pki_headers', files['pki_headers'])
       self.PrintVariableSection(out, 'tool_sources',
                                 files['tool'] + files['tool_headers'])
 
@@ -614,6 +614,14 @@ def SSLHeaderFiles(path, dent, is_dir):
   return dent in ['ssl.h', 'tls1.h', 'ssl23.h', 'ssl3.h', 'dtls1.h', 'srtp.h']
 
 
+def CryptoHeaderFiles(path, dent, is_dir):
+  if SSLHeaderFiles(path, dent, is_dir):
+    return False
+  if is_dir and dent == 'pki':
+    return False
+  return True
+
+
 def FindCFiles(directory, filter_func):
   """Recurses through directory and returns a list of paths to all the C source
   files that pass filter_func."""
@@ -827,12 +835,12 @@ def main(platforms):
   ssl_h_files = FindHeaderFiles(os.path.join('src', 'include', 'openssl'),
                                 SSLHeaderFiles)
 
-  pki_internal_h_files = FindHeaderFiles(os.path.join('src', 'pki'), AllFiles);
+  pki_internal_h_files = FindHeaderFiles(os.path.join('src', 'pki'), AllFiles)
 
-  def NotSSLHeaderFiles(path, filename, is_dir):
-    return not SSLHeaderFiles(path, filename, is_dir)
   crypto_h_files = FindHeaderFiles(os.path.join('src', 'include', 'openssl'),
-                                   NotSSLHeaderFiles)
+                                   CryptoHeaderFiles)
+  pki_h_files = FindHeaderFiles(
+      os.path.join('src', 'include', 'openssl', 'pki'), AllFiles)
 
   ssl_internal_h_files = FindHeaderFiles(os.path.join('src', 'ssl'), NoTests)
   crypto_internal_h_files = (
@@ -868,6 +876,7 @@ def main(platforms):
       'fips_fragments': fips_fragments,
       'fuzz': fuzz_c_files,
       'pki': PrefixWithSrc(cmake['PKI_SOURCES']),
+      'pki_headers': pki_h_files,
       'pki_internal_headers': sorted(list(pki_internal_h_files)),
       'pki_test': PrefixWithSrc(cmake['PKI_TEST_SOURCES']),
       'pki_test_data': PrefixWithSrc(cmake['PKI_TEST_DATA']),
