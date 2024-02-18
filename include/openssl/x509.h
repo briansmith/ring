@@ -1996,6 +1996,72 @@ OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
                                    void *value, int crit, unsigned long flags);
 
 
+// Basic constraints.
+//
+// The basic constraints extension (RFC 5280, section 4.2.1.9) determines
+// whether a certificate is a CA certificate and, if so, optionally constrains
+// the maximum depth of the certificate chain.
+
+// A BASIC_CONSTRAINTS_st, aka |BASIC_CONSTRAINTS| represents an
+// BasicConstraints structure (RFC 5280).
+struct BASIC_CONSTRAINTS_st {
+  ASN1_BOOLEAN ca;
+  ASN1_INTEGER *pathlen;
+} /* BASIC_CONSTRAINTS */;
+
+// BASIC_CONSTRAINTS is an |ASN1_ITEM| whose ASN.1 type is BasicConstraints (RFC
+// 5280) and C type is |BASIC_CONSTRAINTS*|.
+DECLARE_ASN1_ITEM(BASIC_CONSTRAINTS)
+
+// BASIC_CONSTRAINTS_new returns a newly-allocated, empty |BASIC_CONSTRAINTS|
+// object, or NULL on error.
+OPENSSL_EXPORT BASIC_CONSTRAINTS *BASIC_CONSTRAINTS_new(void);
+
+// BASIC_CONSTRAINTS_free releases memory associated with |bcons|.
+OPENSSL_EXPORT void BASIC_CONSTRAINTS_free(BASIC_CONSTRAINTS *bcons);
+
+// d2i_BASIC_CONSTRAINTS parses up to |len| bytes from |*inp| as a DER-encoded
+// BasicConstraints (RFC 5280), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT BASIC_CONSTRAINTS *d2i_BASIC_CONSTRAINTS(BASIC_CONSTRAINTS **out,
+                                                        const uint8_t **inp,
+                                                        long len);
+
+// i2d_BASIC_CONSTRAINTS marshals |bcons| as a DER-encoded BasicConstraints (RFC
+// 5280), as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_BASIC_CONSTRAINTS(const BASIC_CONSTRAINTS *bcons,
+                                         uint8_t **outp);
+
+
+// Extended key usage.
+//
+// The extended key usage extension (RFC 5280, section 4.2.1.12) indicates the
+// purposes of the certificate's public key. Such constraints are important to
+// avoid cross-protocol attacks.
+
+typedef STACK_OF(ASN1_OBJECT) EXTENDED_KEY_USAGE;
+
+// EXTENDED_KEY_USAGE is an |ASN1_ITEM| whose ASN.1 type is ExtKeyUsageSyntax
+// (RFC 5280) and C type is |STACK_OF(ASN1_OBJECT)*|, or |EXTENDED_KEY_USAGE*|.
+DECLARE_ASN1_ITEM(EXTENDED_KEY_USAGE)
+
+// EXTENDED_KEY_USAGE_new returns a newly-allocated, empty |EXTENDED_KEY_USAGE|
+// object, or NULL on error.
+OPENSSL_EXPORT EXTENDED_KEY_USAGE *EXTENDED_KEY_USAGE_new(void);
+
+// EXTENDED_KEY_USAGE_free releases memory associated with |eku|.
+OPENSSL_EXPORT void EXTENDED_KEY_USAGE_free(EXTENDED_KEY_USAGE *eku);
+
+// d2i_EXTENDED_KEY_USAGE parses up to |len| bytes from |*inp| as a DER-encoded
+// ExtKeyUsageSyntax (RFC 5280), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT EXTENDED_KEY_USAGE *d2i_EXTENDED_KEY_USAGE(
+    EXTENDED_KEY_USAGE **out, const uint8_t **inp, long len);
+
+// i2d_EXTENDED_KEY_USAGE marshals |eku| as a DER-encoded ExtKeyUsageSyntax (RFC
+// 5280), as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_EXTENDED_KEY_USAGE(const EXTENDED_KEY_USAGE *eku,
+                                          uint8_t **outp);
+
+
 // General names.
 //
 // A |GENERAL_NAME| represents an X.509 GeneralName structure, defined in RFC
@@ -2034,6 +2100,9 @@ typedef struct EDIPartyName_st {
 // also be empty, in which case |type| is -1 and |d| is NULL. Empty
 // |GENERAL_NAME|s are invalid and will never be returned from the parser, but
 // may be created temporarily, e.g. by |GENERAL_NAME_new|.
+//
+// WARNING: |type| and |d| must be kept consistent. An inconsistency will result
+// in a potentially exploitable memory error.
 struct GENERAL_NAME_st {
   int type;
   union {
@@ -2169,6 +2238,389 @@ OPENSSL_EXPORT int GENERAL_NAME_set0_othername(GENERAL_NAME *gen,
 OPENSSL_EXPORT int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen,
                                                ASN1_OBJECT **out_oid,
                                                ASN1_TYPE **out_value);
+
+
+// Authority key identifier.
+//
+// The authority key identifier extension (RFC 5280, section 4.2.1.1) allows a
+// certificate to more precisely identify its issuer. This is helpful when
+// multiple certificates share a name. Only the keyIdentifier (|keyid| in
+// |AUTHORITY_KEYID|) field is used in practice.
+
+// A AUTHORITY_KEYID_st, aka |AUTHORITY_KEYID|, represents an
+// AuthorityKeyIdentifier structure (RFC 5280).
+struct AUTHORITY_KEYID_st {
+  ASN1_OCTET_STRING *keyid;
+  GENERAL_NAMES *issuer;
+  ASN1_INTEGER *serial;
+} /* AUTHORITY_KEYID */;
+
+// AUTHORITY_KEYID is an |ASN1_ITEM| whose ASN.1 type is AuthorityKeyIdentifier
+// (RFC 5280) and C type is |AUTHORITY_KEYID*|.
+DECLARE_ASN1_ITEM(AUTHORITY_KEYID)
+
+// AUTHORITY_KEYID_new returns a newly-allocated, empty |AUTHORITY_KEYID|
+// object, or NULL on error.
+OPENSSL_EXPORT AUTHORITY_KEYID *AUTHORITY_KEYID_new(void);
+
+// AUTHORITY_KEYID_free releases memory associated with |akid|.
+OPENSSL_EXPORT void AUTHORITY_KEYID_free(AUTHORITY_KEYID *akid);
+
+// d2i_AUTHORITY_KEYID parses up to |len| bytes from |*inp| as a DER-encoded
+// AuthorityKeyIdentifier (RFC 5280), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT AUTHORITY_KEYID *d2i_AUTHORITY_KEYID(AUTHORITY_KEYID **out,
+                                                    const uint8_t **inp,
+                                                    long len);
+
+// i2d_AUTHORITY_KEYID marshals |akid| as a DER-encoded AuthorityKeyIdentifier
+// (RFC 5280), as described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): |akid| is not const because it
+// contains an |X509_NAME|.
+OPENSSL_EXPORT int i2d_AUTHORITY_KEYID(AUTHORITY_KEYID *akid, uint8_t **outp);
+
+
+// Name constraints.
+//
+// The name constraints extension (RFC 5280, section 4.2.1.10) constrains which
+// names may be asserted by certificates issued by some CA. For example, a
+// general CA may issue an intermediate certificate to the owner of example.com,
+// but constrained to ".example.com".
+
+// A GENERAL_SUBTREE represents a GeneralSubtree structure (RFC 5280).
+typedef struct GENERAL_SUBTREE_st {
+  GENERAL_NAME *base;
+  ASN1_INTEGER *minimum;
+  ASN1_INTEGER *maximum;
+} GENERAL_SUBTREE;
+
+DEFINE_STACK_OF(GENERAL_SUBTREE)
+
+// GENERAL_SUBTREE_new returns a newly-allocated, empty |GENERAL_SUBTREE|
+// object, or NULL on error.
+OPENSSL_EXPORT GENERAL_SUBTREE *GENERAL_SUBTREE_new(void);
+
+// GENERAL_SUBTREE_free releases memory associated with |subtree|.
+OPENSSL_EXPORT void GENERAL_SUBTREE_free(GENERAL_SUBTREE *subtree);
+
+// A NAME_CONSTRAINTS_st, aka |NAME_CONSTRAINTS|, represents a NameConstraints
+// structure (RFC 5280).
+struct NAME_CONSTRAINTS_st {
+  STACK_OF(GENERAL_SUBTREE) *permittedSubtrees;
+  STACK_OF(GENERAL_SUBTREE) *excludedSubtrees;
+} /* NAME_CONSTRAINTS */;
+
+// NAME_CONSTRAINTS is an |ASN1_ITEM| whose ASN.1 type is NameConstraints (RFC
+// 5280) and C type is |NAME_CONSTRAINTS*|.
+DECLARE_ASN1_ITEM(NAME_CONSTRAINTS)
+
+// NAME_CONSTRAINTS_new returns a newly-allocated, empty |NAME_CONSTRAINTS|
+// object, or NULL on error.
+OPENSSL_EXPORT NAME_CONSTRAINTS *NAME_CONSTRAINTS_new(void);
+
+// NAME_CONSTRAINTS_free releases memory associated with |ncons|.
+OPENSSL_EXPORT void NAME_CONSTRAINTS_free(NAME_CONSTRAINTS *ncons);
+
+
+// Authority information access.
+//
+// The authority information access extension (RFC 5280, 4.2.2.1) describes
+// where to obtain information about the issuer of a certificate. It is most
+// commonly used with accessMethod values of id-ad-caIssuers and id-ad-ocsp, to
+// indicate where to fetch the issuer certificate (if not provided in-band) and
+// the issuer's OCSP responder, respectively.
+
+// An ACCESS_DESCRIPTION represents an AccessDescription structure (RFC 5280).
+typedef struct ACCESS_DESCRIPTION_st {
+  ASN1_OBJECT *method;
+  GENERAL_NAME *location;
+} ACCESS_DESCRIPTION;
+
+DEFINE_STACK_OF(ACCESS_DESCRIPTION)
+
+// ACCESS_DESCRIPTION_new returns a newly-allocated, empty |ACCESS_DESCRIPTION|
+// object, or NULL on error.
+OPENSSL_EXPORT ACCESS_DESCRIPTION *ACCESS_DESCRIPTION_new(void);
+
+// ACCESS_DESCRIPTION_free releases memory associated with |desc|.
+OPENSSL_EXPORT void ACCESS_DESCRIPTION_free(ACCESS_DESCRIPTION *desc);
+
+typedef STACK_OF(ACCESS_DESCRIPTION) AUTHORITY_INFO_ACCESS;
+
+// AUTHORITY_INFO_ACCESS is an |ASN1_ITEM| whose ASN.1 type is
+// AuthorityInfoAccessSyntax (RFC 5280) and C type is
+// |STACK_OF(ACCESS_DESCRIPTION)*|, or |AUTHORITY_INFO_ACCESS*|.
+DECLARE_ASN1_ITEM(AUTHORITY_INFO_ACCESS)
+
+// AUTHORITY_INFO_ACCESS_new returns a newly-allocated, empty
+// |AUTHORITY_INFO_ACCESS| object, or NULL on error.
+OPENSSL_EXPORT AUTHORITY_INFO_ACCESS *AUTHORITY_INFO_ACCESS_new(void);
+
+// AUTHORITY_INFO_ACCESS_free releases memory associated with |aia|.
+OPENSSL_EXPORT void AUTHORITY_INFO_ACCESS_free(AUTHORITY_INFO_ACCESS *aia);
+
+// d2i_AUTHORITY_INFO_ACCESS parses up to |len| bytes from |*inp| as a
+// DER-encoded AuthorityInfoAccessSyntax (RFC 5280), as described in
+// |d2i_SAMPLE|.
+OPENSSL_EXPORT AUTHORITY_INFO_ACCESS *d2i_AUTHORITY_INFO_ACCESS(
+    AUTHORITY_INFO_ACCESS **out, const uint8_t **inp, long len);
+
+// i2d_AUTHORITY_INFO_ACCESS marshals |aia| as a DER-encoded
+// AuthorityInfoAccessSyntax (RFC 5280), as described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): |aia| is not const because it
+// contains an |X509_NAME|.
+OPENSSL_EXPORT int i2d_AUTHORITY_INFO_ACCESS(AUTHORITY_INFO_ACCESS *aia,
+                                             uint8_t **outp);
+
+
+// CRL distribution points.
+//
+// The CRL distribution points extension (RFC 5280, 4.2.1.13) indicates where to
+// fetch a certificate issuer's CRL. The corresponding issuing distribution
+// point CRL extension (RFC 5280, section 5.2.5) matches against this extension.
+
+// A DIST_POINT_NAME represents a DistributionPointName structure (RFC 5280).
+// The |name| field contains the CHOICE value and is determined by |type|. If
+// |type| is zero, |name| must be a |fullname|. If |type| is one, |name| must be
+// a |relativename|.
+//
+// WARNING: |type| and |name| must be kept consistent. An inconsistency will
+// result in a potentially exploitable memory error.
+typedef struct DIST_POINT_NAME_st {
+  int type;
+  union {
+    GENERAL_NAMES *fullname;
+    STACK_OF(X509_NAME_ENTRY) *relativename;
+  } name;
+  // If relativename then this contains the full distribution point name
+  X509_NAME *dpname;
+} DIST_POINT_NAME;
+
+// DIST_POINT_NAME_new returns a newly-allocated, empty |DIST_POINT_NAME|
+// object, or NULL on error.
+OPENSSL_EXPORT DIST_POINT_NAME *DIST_POINT_NAME_new(void);
+
+// DIST_POINT_NAME_free releases memory associated with |name|.
+OPENSSL_EXPORT void DIST_POINT_NAME_free(DIST_POINT_NAME *name);
+
+// A DIST_POINT_st, aka |DIST_POINT|, represents a DistributionPoint structure
+// (RFC 5280).
+struct DIST_POINT_st {
+  DIST_POINT_NAME *distpoint;
+  ASN1_BIT_STRING *reasons;
+  GENERAL_NAMES *CRLissuer;
+} /* DIST_POINT */;
+
+DEFINE_STACK_OF(DIST_POINT)
+
+// DIST_POINT_new returns a newly-allocated, empty |DIST_POINT| object, or NULL
+// on error.
+OPENSSL_EXPORT DIST_POINT *DIST_POINT_new(void);
+
+// DIST_POINT_free releases memory associated with |dp|.
+OPENSSL_EXPORT void DIST_POINT_free(DIST_POINT *dp);
+
+typedef STACK_OF(DIST_POINT) CRL_DIST_POINTS;
+
+// CRL_DIST_POINTS is an |ASN1_ITEM| whose ASN.1 type is CRLDistributionPoints
+// (RFC 5280) and C type is |CRL_DIST_POINTS*|.
+DECLARE_ASN1_ITEM(CRL_DIST_POINTS)
+
+// CRL_DIST_POINTS_new returns a newly-allocated, empty |CRL_DIST_POINTS|
+// object, or NULL on error.
+OPENSSL_EXPORT CRL_DIST_POINTS *CRL_DIST_POINTS_new(void);
+
+// CRL_DIST_POINTS_free releases memory associated with |crldp|.
+OPENSSL_EXPORT void CRL_DIST_POINTS_free(CRL_DIST_POINTS *crldp);
+
+// d2i_CRL_DIST_POINTS parses up to |len| bytes from |*inp| as a DER-encoded
+// CRLDistributionPoints (RFC 5280), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT CRL_DIST_POINTS *d2i_CRL_DIST_POINTS(CRL_DIST_POINTS **out,
+                                                    const uint8_t **inp,
+                                                    long len);
+
+// i2d_CRL_DIST_POINTS marshals |crldp| as a DER-encoded CRLDistributionPoints
+// (RFC 5280), as described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): |crldp| is not const because it
+// contains an |X509_NAME|.
+OPENSSL_EXPORT int i2d_CRL_DIST_POINTS(CRL_DIST_POINTS *crldp, uint8_t **outp);
+
+// A ISSUING_DIST_POINT_st, aka |ISSUING_DIST_POINT|, represents a
+// IssuingDistributionPoint structure (RFC 5280).
+struct ISSUING_DIST_POINT_st {
+  DIST_POINT_NAME *distpoint;
+  ASN1_BOOLEAN onlyuser;
+  ASN1_BOOLEAN onlyCA;
+  ASN1_BIT_STRING *onlysomereasons;
+  ASN1_BOOLEAN indirectCRL;
+  ASN1_BOOLEAN onlyattr;
+} /* ISSUING_DIST_POINT */;
+
+// ISSUING_DIST_POINT is an |ASN1_ITEM| whose ASN.1 type is
+// IssuingDistributionPoint (RFC 5280) and C type is |ISSUING_DIST_POINT*|.
+DECLARE_ASN1_ITEM(ISSUING_DIST_POINT)
+
+// ISSUING_DIST_POINT_new returns a newly-allocated, empty |ISSUING_DIST_POINT|
+// object, or NULL on error.
+OPENSSL_EXPORT ISSUING_DIST_POINT *ISSUING_DIST_POINT_new(void);
+
+// ISSUING_DIST_POINT_free releases memory associated with |idp|.
+OPENSSL_EXPORT void ISSUING_DIST_POINT_free(ISSUING_DIST_POINT *idp);
+
+// d2i_ISSUING_DIST_POINT parses up to |len| bytes from |*inp| as a DER-encoded
+// IssuingDistributionPoint (RFC 5280), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT ISSUING_DIST_POINT *d2i_ISSUING_DIST_POINT(
+    ISSUING_DIST_POINT **out, const uint8_t **inp, long len);
+
+// i2d_ISSUING_DIST_POINT marshals |idp| as a DER-encoded
+// IssuingDistributionPoint (RFC 5280), as described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): |idp| is not const because it
+// contains an |X509_NAME|.
+OPENSSL_EXPORT int i2d_ISSUING_DIST_POINT(ISSUING_DIST_POINT *idp,
+                                          uint8_t **outp);
+
+
+// Certificate policies.
+//
+// The certificate policies extension (RFC 5280, section 4.2.1.4), along with a
+// suite of related extensions determines the "policies" that apply to a
+// certificate path. Evaluating these policies is extremely complex and has led
+// to denial-of-service vulnerabilities in several X.509 implementations. See
+// draft-ietf-lamps-x509-policy-graph.
+//
+// Do not use this mechanism.
+
+// A NOTICEREF represents a NoticeReference structure (RFC 5280).
+typedef struct NOTICEREF_st {
+  ASN1_STRING *organization;
+  STACK_OF(ASN1_INTEGER) *noticenos;
+} NOTICEREF;
+
+// NOTICEREF_new returns a newly-allocated, empty |NOTICEREF| object, or NULL
+// on error.
+OPENSSL_EXPORT NOTICEREF *NOTICEREF_new(void);
+
+// NOTICEREF_free releases memory associated with |ref|.
+OPENSSL_EXPORT void NOTICEREF_free(NOTICEREF *ref);
+
+// A USERNOTICE represents a UserNotice structure (RFC 5280).
+typedef struct USERNOTICE_st {
+  NOTICEREF *noticeref;
+  ASN1_STRING *exptext;
+} USERNOTICE;
+
+// USERNOTICE_new returns a newly-allocated, empty |USERNOTICE| object, or NULL
+// on error.
+OPENSSL_EXPORT USERNOTICE *USERNOTICE_new(void);
+
+// USERNOTICE_free releases memory associated with |notice|.
+OPENSSL_EXPORT void USERNOTICE_free(USERNOTICE *notice);
+
+// A POLICYQUALINFO represents a PolicyQualifierInfo structure (RFC 5280). |d|
+// contains the qualifier field of the PolicyQualifierInfo. Its type is
+// determined by |pqualid|. If |pqualid| is |NID_id_qt_cps|, |d| must be
+// |cpsuri|. If |pqualid| is |NID_id_qt_unotice|, |d| must be |usernotice|.
+// Otherwise, |d| must be |other|.
+//
+// WARNING: |pqualid| and |d| must be kept consistent. An inconsistency will
+// result in a potentially exploitable memory error.
+typedef struct POLICYQUALINFO_st {
+  ASN1_OBJECT *pqualid;
+  union {
+    ASN1_IA5STRING *cpsuri;
+    USERNOTICE *usernotice;
+    ASN1_TYPE *other;
+  } d;
+} POLICYQUALINFO;
+
+DEFINE_STACK_OF(POLICYQUALINFO)
+
+// POLICYQUALINFO_new returns a newly-allocated, empty |POLICYQUALINFO| object,
+// or NULL on error.
+OPENSSL_EXPORT POLICYQUALINFO *POLICYQUALINFO_new(void);
+
+// POLICYQUALINFO_free releases memory associated with |info|.
+OPENSSL_EXPORT void POLICYQUALINFO_free(POLICYQUALINFO *info);
+
+// A POLICYINFO represents a PolicyInformation structure (RFC 5280).
+typedef struct POLICYINFO_st {
+  ASN1_OBJECT *policyid;
+  STACK_OF(POLICYQUALINFO) *qualifiers;
+} POLICYINFO;
+
+DEFINE_STACK_OF(POLICYINFO)
+
+// POLICYINFO_new returns a newly-allocated, empty |POLICYINFO| object, or NULL
+// on error.
+OPENSSL_EXPORT POLICYINFO *POLICYINFO_new(void);
+
+// POLICYINFO_free releases memory associated with |info|.
+OPENSSL_EXPORT void POLICYINFO_free(POLICYINFO *info);
+
+typedef STACK_OF(POLICYINFO) CERTIFICATEPOLICIES;
+
+// CERTIFICATEPOLICIES is an |ASN1_ITEM| whose ASN.1 type is CertificatePolicies
+// (RFC 5280) and C type is |STACK_OF(POLICYINFO)*|, or |CERTIFICATEPOLICIES*|.
+DECLARE_ASN1_ITEM(CERTIFICATEPOLICIES)
+
+// CERTIFICATEPOLICIES_new returns a newly-allocated, empty
+// |CERTIFICATEPOLICIES| object, or NULL on error.
+OPENSSL_EXPORT CERTIFICATEPOLICIES *CERTIFICATEPOLICIES_new(void);
+
+// CERTIFICATEPOLICIES_free releases memory associated with |policies|.
+OPENSSL_EXPORT void CERTIFICATEPOLICIES_free(CERTIFICATEPOLICIES *policies);
+
+// d2i_CERTIFICATEPOLICIES parses up to |len| bytes from |*inp| as a DER-encoded
+// CertificatePolicies (RFC 5280), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT CERTIFICATEPOLICIES *d2i_CERTIFICATEPOLICIES(
+    CERTIFICATEPOLICIES **out, const uint8_t **inp, long len);
+
+// i2d_CERTIFICATEPOLICIES marshals |policies| as a DER-encoded
+// CertificatePolicies (RFC 5280), as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_CERTIFICATEPOLICIES(const CERTIFICATEPOLICIES *policies,
+                                           uint8_t **outp);
+
+// A POLICY_MAPPING represents an individual element of a PolicyMappings
+// structure (RFC 5280).
+typedef struct POLICY_MAPPING_st {
+  ASN1_OBJECT *issuerDomainPolicy;
+  ASN1_OBJECT *subjectDomainPolicy;
+} POLICY_MAPPING;
+
+DEFINE_STACK_OF(POLICY_MAPPING)
+
+// POLICY_MAPPING_new returns a newly-allocated, empty |POLICY_MAPPING| object,
+// or NULL on error.
+OPENSSL_EXPORT POLICY_MAPPING *POLICY_MAPPING_new(void);
+
+// POLICY_MAPPING_free releases memory associated with |mapping|.
+OPENSSL_EXPORT void POLICY_MAPPING_free(POLICY_MAPPING *mapping);
+
+typedef STACK_OF(POLICY_MAPPING) POLICY_MAPPINGS;
+
+// POLICY_MAPPINGS is an |ASN1_ITEM| whose ASN.1 type is PolicyMappings (RFC
+// 5280) and C type is |STACK_OF(POLICY_MAPPING)*|, or |POLICY_MAPPINGS*|.
+DECLARE_ASN1_ITEM(POLICY_MAPPINGS)
+
+// A POLICY_CONSTRAINTS represents a PolicyConstraints structure (RFC 5280).
+typedef struct POLICY_CONSTRAINTS_st {
+  ASN1_INTEGER *requireExplicitPolicy;
+  ASN1_INTEGER *inhibitPolicyMapping;
+} POLICY_CONSTRAINTS;
+
+// POLICY_CONSTRAINTS is an |ASN1_ITEM| whose ASN.1 type is PolicyConstraints
+// (RFC 5280) and C type is |POLICY_CONSTRAINTS*|.
+DECLARE_ASN1_ITEM(POLICY_CONSTRAINTS)
+
+// POLICY_CONSTRAINTS_new returns a newly-allocated, empty |POLICY_CONSTRAINTS|
+// object, or NULL on error.
+OPENSSL_EXPORT POLICY_CONSTRAINTS *POLICY_CONSTRAINTS_new(void);
+
+// POLICY_CONSTRAINTS_free releases memory associated with |pcons|.
+OPENSSL_EXPORT void POLICY_CONSTRAINTS_free(POLICY_CONSTRAINTS *pcons);
 
 
 // Algorithm identifiers.
@@ -4916,163 +5368,14 @@ OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int id);
 // |X509_PURPOSE_*| constants.
 OPENSSL_EXPORT int X509_PURPOSE_get_id(const X509_PURPOSE *purpose);
 
-
-// Private structures.
-
-struct X509_algor_st {
-  ASN1_OBJECT *algorithm;
-  ASN1_TYPE *parameter;
-} /* X509_ALGOR */;
-
-
-// Underdocumented functions.
+// The following constants are values for the legacy Netscape certificate type
+// X.509 extension, a precursor to extended key usage. These values correspond
+// to the DER encoding of the first byte of the BIT STRING. That is, 0x80 is
+// bit zero and 0x01 is bit seven.
 //
-// TODO(https://crbug.com/boringssl/426): Functions below this point have not
-// yet been documented or organized into sections.
-
-DECLARE_STACK_OF(DIST_POINT)
-
-// A BASIC_CONSTRAINTS_st, aka |BASIC_CONSTRAINTS| represents an
-// BasicConstraints structure (RFC 5280).
-struct BASIC_CONSTRAINTS_st {
-  ASN1_BOOLEAN ca;
-  ASN1_INTEGER *pathlen;
-} /* BASIC_CONSTRAINTS */;
-
-// An ACCESS_DESCRIPTION represents an AccessDescription structure (RFC 5280).
-typedef struct ACCESS_DESCRIPTION_st {
-  ASN1_OBJECT *method;
-  GENERAL_NAME *location;
-} ACCESS_DESCRIPTION;
-
-DEFINE_STACK_OF(ACCESS_DESCRIPTION)
-
-typedef STACK_OF(ACCESS_DESCRIPTION) AUTHORITY_INFO_ACCESS;
-
-typedef STACK_OF(ASN1_OBJECT) EXTENDED_KEY_USAGE;
-
-// A DIST_POINT_NAME represents a DistributionPointName structure (RFC 5280).
-// The |name| field contains the CHOICE value and is determined by |type|. If
-// |type| is zero, |name| must be a |fullname|. If |type| is one, |name| must be
-// a |relativename|.
-//
-// |type| and |name| must be kept consistent. An inconsistency will result in a
-// potentially exploitable memory error.
-typedef struct DIST_POINT_NAME_st {
-  int type;
-  union {
-    GENERAL_NAMES *fullname;
-    STACK_OF(X509_NAME_ENTRY) *relativename;
-  } name;
-  // If relativename then this contains the full distribution point name
-  X509_NAME *dpname;
-} DIST_POINT_NAME;
-
-// A DIST_POINT_st, aka |DIST_POINT|, represents a DistributionPoint structure
-// (RFC 5280).
-struct DIST_POINT_st {
-  DIST_POINT_NAME *distpoint;
-  ASN1_BIT_STRING *reasons;
-  GENERAL_NAMES *CRLissuer;
-} /* DIST_POINT */;
-
-typedef STACK_OF(DIST_POINT) CRL_DIST_POINTS;
-
-DEFINE_STACK_OF(DIST_POINT)
-
-// A AUTHORITY_KEYID_st, aka |AUTHORITY_KEYID|, represents an
-// AuthorityKeyIdentifier structure (RFC 5280).
-struct AUTHORITY_KEYID_st {
-  ASN1_OCTET_STRING *keyid;
-  GENERAL_NAMES *issuer;
-  ASN1_INTEGER *serial;
-} /* AUTHORITY_KEYID */;
-
-// A NOTICEREF represents a NoticeReference structure (RFC 5280).
-typedef struct NOTICEREF_st {
-  ASN1_STRING *organization;
-  STACK_OF(ASN1_INTEGER) *noticenos;
-} NOTICEREF;
-
-// A USERNOTICE represents a UserNotice structure (RFC 5280).
-typedef struct USERNOTICE_st {
-  NOTICEREF *noticeref;
-  ASN1_STRING *exptext;
-} USERNOTICE;
-
-// A POLICYQUALINFO represents a PolicyQualifierInfo structure (RFC 5280). |d|
-// contains the qualifier field of the PolicyQualifierInfo. Its type is
-// determined by |pqualid|. If |pqualid| is |NID_id_qt_cps|, |d| must be
-// |cpsuri|. If |pqualid| is |NID_id_qt_unotice|, |d| must be |usernotice|.
-// Otherwise, |d| must be |other|.
-//
-// |pqualid| and |d| must be kept consistent. An inconsistency will result in a
-// potentially exploitable memory error.
-typedef struct POLICYQUALINFO_st {
-  ASN1_OBJECT *pqualid;
-  union {
-    ASN1_IA5STRING *cpsuri;
-    USERNOTICE *usernotice;
-    ASN1_TYPE *other;
-  } d;
-} POLICYQUALINFO;
-
-DEFINE_STACK_OF(POLICYQUALINFO)
-
-// A POLICYINFO represents a PolicyInformation structure (RFC 5280).
-typedef struct POLICYINFO_st {
-  ASN1_OBJECT *policyid;
-  STACK_OF(POLICYQUALINFO) *qualifiers;
-} POLICYINFO;
-
-typedef STACK_OF(POLICYINFO) CERTIFICATEPOLICIES;
-
-DEFINE_STACK_OF(POLICYINFO)
-
-// A POLICY_MAPPING represents an individual element of a PolicyMappings
-// structure (RFC 5280).
-typedef struct POLICY_MAPPING_st {
-  ASN1_OBJECT *issuerDomainPolicy;
-  ASN1_OBJECT *subjectDomainPolicy;
-} POLICY_MAPPING;
-
-DEFINE_STACK_OF(POLICY_MAPPING)
-
-typedef STACK_OF(POLICY_MAPPING) POLICY_MAPPINGS;
-
-// A GENERAL_SUBTREE represents a GeneralSubtree structure (RFC 5280).
-typedef struct GENERAL_SUBTREE_st {
-  GENERAL_NAME *base;
-  ASN1_INTEGER *minimum;
-  ASN1_INTEGER *maximum;
-} GENERAL_SUBTREE;
-
-DEFINE_STACK_OF(GENERAL_SUBTREE)
-
-// A NAME_CONSTRAINTS_st, aka |NAME_CONSTRAINTS|, represents a NameConstraints
-// structure (RFC 5280).
-struct NAME_CONSTRAINTS_st {
-  STACK_OF(GENERAL_SUBTREE) *permittedSubtrees;
-  STACK_OF(GENERAL_SUBTREE) *excludedSubtrees;
-} /* NAME_CONSTRAINTS */;
-
-// A POLICY_CONSTRAINTS represents a PolicyConstraints structure (RFC 5280).
-typedef struct POLICY_CONSTRAINTS_st {
-  ASN1_INTEGER *requireExplicitPolicy;
-  ASN1_INTEGER *inhibitPolicyMapping;
-} POLICY_CONSTRAINTS;
-
-// A ISSUING_DIST_POINT_st, aka |ISSUING_DIST_POINT|, represents a
-// IssuingDistributionPoint structure (RFC 5280).
-struct ISSUING_DIST_POINT_st {
-  DIST_POINT_NAME *distpoint;
-  ASN1_BOOLEAN onlyuser;
-  ASN1_BOOLEAN onlyCA;
-  ASN1_BIT_STRING *onlysomereasons;
-  ASN1_BOOLEAN indirectCRL;
-  ASN1_BOOLEAN onlyattr;
-} /* ISSUING_DIST_POINT */;
-
+// TODO(davidben): These constants are only used by OpenVPN, which deprecated
+// the feature in 2017. The documentation says it was removed, but they did not
+// actually remove it. See if OpenVPN will accept a patch to finish this.
 #define NS_SSL_CLIENT 0x80
 #define NS_SSL_SERVER 0x40
 #define NS_SMIME 0x20
@@ -5082,256 +5385,13 @@ struct ISSUING_DIST_POINT_st {
 #define NS_OBJSIGN_CA 0x01
 #define NS_ANY_CA (NS_SSL_CA | NS_SMIME_CA | NS_OBJSIGN_CA)
 
-// BASIC_CONSTRAINTS is an |ASN1_ITEM| whose ASN.1 type is BasicConstraints (RFC
-// 5280) and C type is |BASIC_CONSTRAINTS*|.
-DECLARE_ASN1_ITEM(BASIC_CONSTRAINTS)
 
-// BASIC_CONSTRAINTS_new returns a newly-allocated, empty |BASIC_CONSTRAINTS|
-// object, or NULL on error.
-OPENSSL_EXPORT BASIC_CONSTRAINTS *BASIC_CONSTRAINTS_new(void);
+// Private structures.
 
-// BASIC_CONSTRAINTS_free releases memory associated with |bcons|.
-OPENSSL_EXPORT void BASIC_CONSTRAINTS_free(BASIC_CONSTRAINTS *bcons);
-
-// d2i_BASIC_CONSTRAINTS parses up to |len| bytes from |*inp| as a DER-encoded
-// BasicConstraints (RFC 5280), as described in |d2i_SAMPLE|.
-OPENSSL_EXPORT BASIC_CONSTRAINTS *d2i_BASIC_CONSTRAINTS(BASIC_CONSTRAINTS **out,
-                                                        const uint8_t **inp,
-                                                        long len);
-
-// i2d_BASIC_CONSTRAINTS marshals |bcons| as a DER-encoded BasicConstraints (RFC
-// 5280), as described in |i2d_SAMPLE|.
-OPENSSL_EXPORT int i2d_BASIC_CONSTRAINTS(const BASIC_CONSTRAINTS *bcons,
-                                         uint8_t **outp);
-
-// AUTHORITY_KEYID is an |ASN1_ITEM| whose ASN.1 type is AuthorityKeyIdentifier
-// (RFC 5280) and C type is |AUTHORITY_KEYID*|.
-DECLARE_ASN1_ITEM(AUTHORITY_KEYID)
-
-// AUTHORITY_KEYID_new returns a newly-allocated, empty |AUTHORITY_KEYID|
-// object, or NULL on error.
-OPENSSL_EXPORT AUTHORITY_KEYID *AUTHORITY_KEYID_new(void);
-
-// AUTHORITY_KEYID_free releases memory associated with |akid|.
-OPENSSL_EXPORT void AUTHORITY_KEYID_free(AUTHORITY_KEYID *akid);
-
-// d2i_AUTHORITY_KEYID parses up to |len| bytes from |*inp| as a DER-encoded
-// AuthorityKeyIdentifier (RFC 5280), as described in |d2i_SAMPLE|.
-OPENSSL_EXPORT AUTHORITY_KEYID *d2i_AUTHORITY_KEYID(AUTHORITY_KEYID **out,
-                                                    const uint8_t **inp,
-                                                    long len);
-
-// i2d_AUTHORITY_KEYID marshals |akid| as a DER-encoded AuthorityKeyIdentifier
-// (RFC 5280), as described in |i2d_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/407): |akid| is not const because it
-// contains an |X509_NAME|.
-OPENSSL_EXPORT int i2d_AUTHORITY_KEYID(AUTHORITY_KEYID *akid, uint8_t **outp);
-
-// EXTENDED_KEY_USAGE is an |ASN1_ITEM| whose ASN.1 type is ExtKeyUsageSyntax
-// (RFC 5280) and C type is |STACK_OF(ASN1_OBJECT)*|, or |EXTENDED_KEY_USAGE*|.
-DECLARE_ASN1_ITEM(EXTENDED_KEY_USAGE)
-
-// EXTENDED_KEY_USAGE_new returns a newly-allocated, empty |EXTENDED_KEY_USAGE|
-// object, or NULL on error.
-OPENSSL_EXPORT EXTENDED_KEY_USAGE *EXTENDED_KEY_USAGE_new(void);
-
-// EXTENDED_KEY_USAGE_free releases memory associated with |eku|.
-OPENSSL_EXPORT void EXTENDED_KEY_USAGE_free(EXTENDED_KEY_USAGE *eku);
-
-// d2i_EXTENDED_KEY_USAGE parses up to |len| bytes from |*inp| as a DER-encoded
-// ExtKeyUsageSyntax (RFC 5280), as described in |d2i_SAMPLE|.
-OPENSSL_EXPORT EXTENDED_KEY_USAGE *d2i_EXTENDED_KEY_USAGE(
-    EXTENDED_KEY_USAGE **out, const uint8_t **inp, long len);
-
-// i2d_EXTENDED_KEY_USAGE marshals |eku| as a DER-encoded ExtKeyUsageSyntax (RFC
-// 5280), as described in |i2d_SAMPLE|.
-OPENSSL_EXPORT int i2d_EXTENDED_KEY_USAGE(const EXTENDED_KEY_USAGE *eku,
-                                          uint8_t **outp);
-
-// CERTIFICATEPOLICIES is an |ASN1_ITEM| whose ASN.1 type is CertificatePolicies
-// (RFC 5280) and C type is |STACK_OF(POLICYINFO)*|, or |CERTIFICATEPOLICIES*|.
-DECLARE_ASN1_ITEM(CERTIFICATEPOLICIES)
-
-// CERTIFICATEPOLICIES_new returns a newly-allocated, empty
-// |CERTIFICATEPOLICIES| object, or NULL on error.
-OPENSSL_EXPORT CERTIFICATEPOLICIES *CERTIFICATEPOLICIES_new(void);
-
-// CERTIFICATEPOLICIES_free releases memory associated with |policies|.
-OPENSSL_EXPORT void CERTIFICATEPOLICIES_free(CERTIFICATEPOLICIES *policies);
-
-// d2i_CERTIFICATEPOLICIES parses up to |len| bytes from |*inp| as a DER-encoded
-// CertificatePolicies (RFC 5280), as described in |d2i_SAMPLE|.
-OPENSSL_EXPORT CERTIFICATEPOLICIES *d2i_CERTIFICATEPOLICIES(
-    CERTIFICATEPOLICIES **out, const uint8_t **inp, long len);
-
-// i2d_CERTIFICATEPOLICIES marshals |policies| as a DER-encoded
-// CertificatePolicies (RFC 5280), as described in |i2d_SAMPLE|.
-OPENSSL_EXPORT int i2d_CERTIFICATEPOLICIES(const CERTIFICATEPOLICIES *policies,
-                                           uint8_t **outp);
-
-// POLICYINFO_new returns a newly-allocated, empty |POLICYINFO| object, or NULL
-// on error.
-OPENSSL_EXPORT POLICYINFO *POLICYINFO_new(void);
-
-// POLICYINFO_free releases memory associated with |info|.
-OPENSSL_EXPORT void POLICYINFO_free(POLICYINFO *info);
-
-// POLICYQUALINFO_new returns a newly-allocated, empty |POLICYQUALINFO| object,
-// or NULL on error.
-OPENSSL_EXPORT POLICYQUALINFO *POLICYQUALINFO_new(void);
-
-// POLICYQUALINFO_free releases memory associated with |info|.
-OPENSSL_EXPORT void POLICYQUALINFO_free(POLICYQUALINFO *info);
-
-// USERNOTICE_new returns a newly-allocated, empty |USERNOTICE| object, or NULL
-// on error.
-OPENSSL_EXPORT USERNOTICE *USERNOTICE_new(void);
-
-// USERNOTICE_free releases memory associated with |notice|.
-OPENSSL_EXPORT void USERNOTICE_free(USERNOTICE *notice);
-
-// NOTICEREF_new returns a newly-allocated, empty |NOTICEREF| object, or NULL
-// on error.
-OPENSSL_EXPORT NOTICEREF *NOTICEREF_new(void);
-
-// NOTICEREF_free releases memory associated with |ref|.
-OPENSSL_EXPORT void NOTICEREF_free(NOTICEREF *ref);
-
-// CRL_DIST_POINTS is an |ASN1_ITEM| whose ASN.1 type is CRLDistributionPoints
-// (RFC 5280) and C type is |CRL_DIST_POINTS*|.
-DECLARE_ASN1_ITEM(CRL_DIST_POINTS)
-
-// CRL_DIST_POINTS_new returns a newly-allocated, empty |CRL_DIST_POINTS|
-// object, or NULL on error.
-OPENSSL_EXPORT CRL_DIST_POINTS *CRL_DIST_POINTS_new(void);
-
-// CRL_DIST_POINTS_free releases memory associated with |crldp|.
-OPENSSL_EXPORT void CRL_DIST_POINTS_free(CRL_DIST_POINTS *crldp);
-
-// d2i_CRL_DIST_POINTS parses up to |len| bytes from |*inp| as a DER-encoded
-// CRLDistributionPoints (RFC 5280), as described in |d2i_SAMPLE|.
-OPENSSL_EXPORT CRL_DIST_POINTS *d2i_CRL_DIST_POINTS(CRL_DIST_POINTS **out,
-                                                    const uint8_t **inp,
-                                                    long len);
-
-// i2d_CRL_DIST_POINTS marshals |crldp| as a DER-encoded CRLDistributionPoints
-// (RFC 5280), as described in |i2d_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/407): |crldp| is not const because it
-// contains an |X509_NAME|.
-OPENSSL_EXPORT int i2d_CRL_DIST_POINTS(CRL_DIST_POINTS *crldp, uint8_t **outp);
-
-// DIST_POINT_new returns a newly-allocated, empty |DIST_POINT| object, or NULL
-// on error.
-OPENSSL_EXPORT DIST_POINT *DIST_POINT_new(void);
-
-// DIST_POINT_free releases memory associated with |dp|.
-OPENSSL_EXPORT void DIST_POINT_free(DIST_POINT *dp);
-
-// DIST_POINT_NAME_new returns a newly-allocated, empty |DIST_POINT_NAME|
-// object, or NULL on error.
-OPENSSL_EXPORT DIST_POINT_NAME *DIST_POINT_NAME_new(void);
-
-// DIST_POINT_NAME_free releases memory associated with |name|.
-OPENSSL_EXPORT void DIST_POINT_NAME_free(DIST_POINT_NAME *name);
-
-// ISSUING_DIST_POINT is an |ASN1_ITEM| whose ASN.1 type is
-// IssuingDistributionPoint (RFC 5280) and C type is |ISSUING_DIST_POINT*|.
-DECLARE_ASN1_ITEM(ISSUING_DIST_POINT)
-
-// ISSUING_DIST_POINT_new returns a newly-allocated, empty |ISSUING_DIST_POINT|
-// object, or NULL on error.
-OPENSSL_EXPORT ISSUING_DIST_POINT *ISSUING_DIST_POINT_new(void);
-
-// ISSUING_DIST_POINT_free releases memory associated with |idp|.
-OPENSSL_EXPORT void ISSUING_DIST_POINT_free(ISSUING_DIST_POINT *idp);
-
-// d2i_ISSUING_DIST_POINT parses up to |len| bytes from |*inp| as a DER-encoded
-// IssuingDistributionPoint (RFC 5280), as described in |d2i_SAMPLE|.
-OPENSSL_EXPORT ISSUING_DIST_POINT *d2i_ISSUING_DIST_POINT(
-    ISSUING_DIST_POINT **out, const uint8_t **inp, long len);
-
-// i2d_ISSUING_DIST_POINT marshals |idp| as a DER-encoded
-// IssuingDistributionPoint (RFC 5280), as described in |i2d_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/407): |idp| is not const because it
-// contains an |X509_NAME|.
-OPENSSL_EXPORT int i2d_ISSUING_DIST_POINT(ISSUING_DIST_POINT *idp,
-                                          uint8_t **outp);
-
-// ACCESS_DESCRIPTION_new returns a newly-allocated, empty |ACCESS_DESCRIPTION|
-// object, or NULL on error.
-OPENSSL_EXPORT ACCESS_DESCRIPTION *ACCESS_DESCRIPTION_new(void);
-
-// ACCESS_DESCRIPTION_free releases memory associated with |desc|.
-OPENSSL_EXPORT void ACCESS_DESCRIPTION_free(ACCESS_DESCRIPTION *desc);
-
-// AUTHORITY_INFO_ACCESS is an |ASN1_ITEM| whose ASN.1 type is
-// AuthorityInfoAccessSyntax (RFC 5280) and C type is
-// |STACK_OF(ACCESS_DESCRIPTION)*|, or |AUTHORITY_INFO_ACCESS*|.
-DECLARE_ASN1_ITEM(AUTHORITY_INFO_ACCESS)
-
-// AUTHORITY_INFO_ACCESS_new returns a newly-allocated, empty
-// |AUTHORITY_INFO_ACCESS| object, or NULL on error.
-OPENSSL_EXPORT AUTHORITY_INFO_ACCESS *AUTHORITY_INFO_ACCESS_new(void);
-
-// AUTHORITY_INFO_ACCESS_free releases memory associated with |aia|.
-OPENSSL_EXPORT void AUTHORITY_INFO_ACCESS_free(AUTHORITY_INFO_ACCESS *aia);
-
-// d2i_AUTHORITY_INFO_ACCESS parses up to |len| bytes from |*inp| as a
-// DER-encoded AuthorityInfoAccessSyntax (RFC 5280), as described in
-// |d2i_SAMPLE|.
-OPENSSL_EXPORT AUTHORITY_INFO_ACCESS *d2i_AUTHORITY_INFO_ACCESS(
-    AUTHORITY_INFO_ACCESS **out, const uint8_t **inp, long len);
-
-// i2d_AUTHORITY_INFO_ACCESS marshals |aia| as a DER-encoded
-// AuthorityInfoAccessSyntax (RFC 5280), as described in |i2d_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/407): |aia| is not const because it
-// contains an |X509_NAME|.
-OPENSSL_EXPORT int i2d_AUTHORITY_INFO_ACCESS(AUTHORITY_INFO_ACCESS *aia,
-                                             uint8_t **outp);
-
-// POLICY_MAPPING_new returns a newly-allocated, empty |POLICY_MAPPING| object,
-// or NULL on error.
-OPENSSL_EXPORT POLICY_MAPPING *POLICY_MAPPING_new(void);
-
-// POLICY_MAPPING_free releases memory associated with |mapping|.
-OPENSSL_EXPORT void POLICY_MAPPING_free(POLICY_MAPPING *mapping);
-
-// POLICY_MAPPINGS is an |ASN1_ITEM| whose ASN.1 type is PolicyMappings (RFC
-// 5280) and C type is |STACK_OF(POLICY_MAPPING)*|, or |POLICY_MAPPINGS*|.
-DECLARE_ASN1_ITEM(POLICY_MAPPINGS)
-
-// GENERAL_SUBTREE_new returns a newly-allocated, empty |GENERAL_SUBTREE|
-// object, or NULL on error.
-OPENSSL_EXPORT GENERAL_SUBTREE *GENERAL_SUBTREE_new(void);
-
-// GENERAL_SUBTREE_free releases memory associated with |subtree|.
-OPENSSL_EXPORT void GENERAL_SUBTREE_free(GENERAL_SUBTREE *subtree);
-
-// NAME_CONSTRAINTS is an |ASN1_ITEM| whose ASN.1 type is NameConstraints (RFC
-// 5280) and C type is |NAME_CONSTRAINTS*|.
-DECLARE_ASN1_ITEM(NAME_CONSTRAINTS)
-
-// NAME_CONSTRAINTS_new returns a newly-allocated, empty |NAME_CONSTRAINTS|
-// object, or NULL on error.
-OPENSSL_EXPORT NAME_CONSTRAINTS *NAME_CONSTRAINTS_new(void);
-
-// NAME_CONSTRAINTS_free releases memory associated with |ncons|.
-OPENSSL_EXPORT void NAME_CONSTRAINTS_free(NAME_CONSTRAINTS *ncons);
-
-// POLICY_CONSTRAINTS_new returns a newly-allocated, empty |POLICY_CONSTRAINTS|
-// object, or NULL on error.
-OPENSSL_EXPORT POLICY_CONSTRAINTS *POLICY_CONSTRAINTS_new(void);
-
-// POLICY_CONSTRAINTS_free releases memory associated with |pcons|.
-OPENSSL_EXPORT void POLICY_CONSTRAINTS_free(POLICY_CONSTRAINTS *pcons);
-
-// POLICY_CONSTRAINTS is an |ASN1_ITEM| whose ASN.1 type is PolicyConstraints
-// (RFC 5280) and C type is |POLICY_CONSTRAINTS*|.
-DECLARE_ASN1_ITEM(POLICY_CONSTRAINTS)
+struct X509_algor_st {
+  ASN1_OBJECT *algorithm;
+  ASN1_TYPE *parameter;
+} /* X509_ALGOR */;
 
 
 #if defined(__cplusplus)
