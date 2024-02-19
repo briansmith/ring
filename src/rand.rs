@@ -122,10 +122,8 @@ impl crate::sealed::Sealed for SystemRandom {}
 // system's) CSPRNG. Avoid using it on targets where it uses the `rdrand`
 // implementation.
 #[cfg(any(
-    all(
-        feature = "less-safe-getrandom-custom-or-rdrand",
-        any(target_os = "none", target_os = "espidf")
-    ),
+    all(feature = "less-safe-getrandom-custom-or-rdrand", target_os = "none"),
+    all(feature = "less-safe-getrandom-espidf", target_os = "espidf"),
     target_os = "aix",
     target_os = "android",
     target_os = "dragonfly",
