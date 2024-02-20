@@ -146,6 +146,7 @@
 
 #include <stdlib.h>
 
+#include <algorithm>
 #include <initializer_list>
 #include <limits>
 #include <new>
@@ -317,7 +318,7 @@ class Array {
     if (!Init(in.size())) {
       return false;
     }
-    OPENSSL_memcpy(data_, in.data(), sizeof(T) * in.size());
+    std::copy(in.begin(), in.end(), data_);
     return true;
   }
 
