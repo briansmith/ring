@@ -276,19 +276,25 @@ fn read_env_var(name: &'static str) -> Option<OsString> {
 }
 
 fn main() {
+    // Avoid assuming the working directory is the same is the $CARGO_MANIFEST_DIR so that toolchains
+    // which may assume other working directories can still build this code.
+    let c_root_dir = PathBuf::from(
+        std::env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should always be set"),
+    );
+
     const RING_PREGENERATE_ASM: &str = "RING_PREGENERATE_ASM";
     match read_env_var(RING_PREGENERATE_ASM).as_deref() {
         Some(s) if s == "1" => {
-            pregenerate_asm_main();
+            pregenerate_asm_main(&c_root_dir);
         }
-        None => ring_build_rs_main(),
+        None => ring_build_rs_main(&c_root_dir),
         _ => {
             panic!("${} has an invalid value", RING_PREGENERATE_ASM);
         }
     }
 }
 
-fn ring_build_rs_main() {
+fn ring_build_rs_main(c_root_dir: &Path) {
     use std::env;
 
     let out_dir = env::var_os("OUT_DIR").unwrap();
@@ -298,7 +304,7 @@ fn ring_build_rs_main() {
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
 
-    let is_git = std::fs::metadata(".git").is_ok();
+    let is_git = std::fs::metadata(c_root_dir.join(".git")).is_ok();
 
     // Published builds are always built in release mode.
     let is_debug = is_git && env::var("DEBUG").unwrap() != "false";
@@ -332,7 +338,7 @@ fn ring_build_rs_main() {
     let generated_dir = if !is_git {
         PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED)
     } else {
-        generate_sources_and_preassemble(&out_dir, asm_target.into_iter());
+        generate_sources_and_preassemble(&out_dir, asm_target.into_iter(), c_root_dir);
         out_dir.clone()
     };
 
@@ -340,22 +346,25 @@ fn ring_build_rs_main() {
         asm_target,
         &target,
         &generated_dir,
+        c_root_dir,
         &out_dir,
         &ring_core_prefix(),
     );
     emit_rerun_if_changed()
 }
 
-fn pregenerate_asm_main() {
+fn pregenerate_asm_main(c_root_dir: &Path) {
     println!("cargo:rustc-cfg=pregenerate_asm_only");
-    let pregenerated = PathBuf::from(PREGENERATED);
+
+    let pregenerated = c_root_dir.join(PREGENERATED);
     std::fs::create_dir(&pregenerated).unwrap();
-    generate_sources_and_preassemble(&pregenerated, ASM_TARGETS.iter());
+    generate_sources_and_preassemble(&pregenerated, ASM_TARGETS.iter(), c_root_dir);
 }
 
 fn generate_sources_and_preassemble<'a>(
     out_dir: &Path,
     asm_targets: impl Iterator<Item = &'a AsmTarget>,
+    c_root_dir: &Path,
 ) {
     generate_prefix_symbols_headers(out_dir, &ring_core_prefix()).unwrap();
 
@@ -367,13 +376,13 @@ fn generate_sources_and_preassemble<'a>(
         // doesn't need to install the assembler.
 
         let perlasm_src_dsts = perlasm_src_dsts(out_dir, asm_target);
-        perlasm(&perl_exe, &perlasm_src_dsts, asm_target);
+        perlasm(&perl_exe, &perlasm_src_dsts, asm_target, c_root_dir);
 
         if asm_target.preassemble {
             let srcs = asm_srcs(perlasm_src_dsts);
 
             for src in srcs {
-                nasm(&src, asm_target.arch, out_dir, out_dir);
+                nasm(&src, asm_target.arch, out_dir, out_dir, c_root_dir);
             }
         }
     }
@@ -397,6 +406,7 @@ fn build_c_code(
     asm_target: Option<&AsmTarget>,
     target: &Target,
     generated_dir: &Path,
+    c_root_dir: &Path,
     out_dir: &Path,
     ring_core_prefix: &str,
 ) {
@@ -453,7 +463,15 @@ fn build_c_code(
         .for_each(|&(lib_name_suffix, srcs, asm_srcs, obj_srcs)| {
             let lib_name = String::from(ring_core_prefix) + lib_name_suffix;
             let srcs = srcs.iter().chain(asm_srcs);
-            build_library(target, out_dir, &lib_name, srcs, generated_dir, obj_srcs)
+            build_library(
+                target,
+                c_root_dir,
+                out_dir,
+                &lib_name,
+                srcs,
+                generated_dir,
+                obj_srcs,
+            )
         });
 
     println!(
@@ -462,25 +480,26 @@ fn build_c_code(
     );
 }
 
-fn new_build(target: &Target, include_dir: &Path) -> cc::Build {
+fn new_build(target: &Target, c_root_dir: &Path, include_dir: &Path) -> cc::Build {
     let mut b = cc::Build::new();
-    configure_cc(&mut b, target, include_dir);
+    configure_cc(&mut b, target, c_root_dir, include_dir);
     b
 }
 
 fn build_library<'a>(
     target: &Target,
+    c_root_dir: &Path,
     out_dir: &Path,
     lib_name: &str,
     srcs: impl Iterator<Item = &'a PathBuf>,
     include_dir: &Path,
     preassembled_objs: &[PathBuf],
 ) {
-    let mut c = new_build(target, include_dir);
+    let mut c = new_build(target, c_root_dir, include_dir);
 
     // Compile all the (dirty) source files into object files.
     srcs.for_each(|src| {
-        c.file(src);
+        c.file(c_root_dir.join(src));
     });
 
     preassembled_objs.iter().for_each(|obj| {
@@ -514,7 +533,7 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
     out_path
 }
 
-fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
+fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_dir: &Path) {
     // FIXME: On Windows AArch64 we currently must use Clang to compile C code
     if target.os == WINDOWS && target.arch == AARCH64 && !c.get_compiler().is_like_clang() {
         let _ = c.compiler("clang");
@@ -522,7 +541,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
 
     let compiler = c.get_compiler();
 
-    let _ = c.include("include");
+    let _ = c.include(c_root_dir.join("include"));
     let _ = c.include(include_dir);
     for f in cpp_flags(&compiler) {
         let _ = c.flag(f);
@@ -559,7 +578,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
     }
 }
 
-fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path) {
+fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir: &Path) {
     let out_file = obj_path(out_dir, file);
     let oformat = match arch {
         x if x == X86_64 => "win64",
@@ -585,7 +604,7 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path) {
         .arg(include_dir)
         .arg("-Xgnu")
         .arg("-gcv8")
-        .arg(file);
+        .arg(c_root_dir.join(file));
     run_command(c);
 }
 
@@ -664,10 +683,15 @@ fn asm_path(out_dir: &Path, src: &Path, asm_target: &AsmTarget) -> PathBuf {
     out_dir.join(dst_filename)
 }
 
-fn perlasm(perl_exe: &Path, src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
+fn perlasm(
+    perl_exe: &Path,
+    src_dst: &[(PathBuf, PathBuf)],
+    asm_target: &AsmTarget,
+    c_root_dir: &Path,
+) {
     for (src, dst) in src_dst {
         let mut args = vec![
-            src.to_string_lossy().into_owned(),
+            c_root_dir.join(src).to_string_lossy().into_owned(),
             asm_target.perlasm_format.to_owned(),
         ];
         if asm_target.arch == X86 {
