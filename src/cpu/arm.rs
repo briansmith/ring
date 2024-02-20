@@ -52,7 +52,7 @@ mod abi_assumptions {
 fn detect_features() -> u32 {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "aarch64")] {
-            use libc::{getauxval,AT_HWCAP, HWCAP_AES, HWCAP_PMULL, HWCAP_SHA2};
+            use libc::{getauxval,AT_HWCAP, HWCAP_AES, HWCAP_PMULL, HWCAP_SHA2, HWCAP_SHA512};
         } else if #[cfg(target_arch = "arm")] {
             // The `libc` crate doesn't provide this functionality on all
             // 32-bit Linux targets, like Android or -musl. Use this polyfill
@@ -101,6 +101,11 @@ fn detect_features() -> u32 {
     }
     if caps & HWCAP_SHA2 == HWCAP_SHA2 {
         features |= SHA256.mask;
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    if caps & HWCAP_SHA512 == HWCAP_SHA512 {
+        features |= SHA512.mask;
     }
 
     features
@@ -168,13 +173,46 @@ fn detect_features() -> u32 {
     features
 }
 
+#[cfg(all(target_os = "ios", target_arch = "aarch64"))]
+fn detect_features() -> u32 {
+    let mut features = ARMCAP_STATIC;
+
+    extern "C" {
+        fn sysctlbyname(
+            name: *const u8,
+            oldp: *mut core::ffi::c_void,
+            oldlenp: *mut crate::c::size_t,
+            newp: *mut core::ffi::c_void,
+            newlen: crate::c::size_t,
+        ) -> core::ffi::c_int;
+    }
+
+    let mut value: core::ffi::c_int = 0;
+    let mut len = core::mem::size_of_val(&value);
+    let rc = unsafe {
+        sysctlbyname(
+            "hw.optional.armv8_2_sha512\0".as_ptr(),
+            &mut value as *mut _ as _,
+            &mut len,
+            core::ptr::null_mut(),
+            0,
+        )
+    };
+    if rc == 0 && len == core::mem::size_of_val(&value) && value != 0 {
+        features |= SHA512.mask;
+    }
+
+    features
+}
+
 #[cfg(all(
     any(target_arch = "aarch64", target_arch = "arm"),
     not(any(
         target_os = "android",
         target_os = "fuchsia",
         all(target_os = "linux", not(target_env = "uclibc")),
-        target_os = "windows"
+        target_os = "windows",
+        target_os = "ios"
     ))
 ))]
 fn detect_features() -> u32 {
@@ -210,7 +248,7 @@ macro_rules! features {
             )+;
 
         #[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
-        const ALL_FEATURES: [Feature; 4] = [
+        const ALL_FEATURES: [Feature; 5] = [
             $(
                 $name
             ),+
@@ -276,6 +314,12 @@ features! {
     // that is supported.
     "aes" => PMULL {
         mask: 1 << 5,
+    },
+
+    // Keep in sync with `ARMV8_SHA512`.
+    // "sha3" is overloaded for both SHA-3 and SHA512.
+    "sha3" => SHA512 {
+        mask: 1 << 6,
     },
 }
 
@@ -348,6 +392,11 @@ const _AARCH64_APPLE_FEATURES: u32 = NEON.mask | AES.mask | SHA256.mask | PMULL.
 const _AARCH64_APPLE_TARGETS_EXPECTED_FEATURES: () = assert!(
     ((ARMCAP_STATIC & _AARCH64_APPLE_FEATURES) == _AARCH64_APPLE_FEATURES)
         || !cfg!(all(target_arch = "aarch64", target_vendor = "apple"))
+);
+#[allow(clippy::assertions_on_constants)]
+const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () = assert!(
+    ((ARMCAP_STATIC & SHA512.mask) == SHA512.mask)
+        || !cfg!(all(target_arch = "aarch64", target_os = "macos"))
 );
 
 #[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
