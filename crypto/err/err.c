@@ -428,50 +428,52 @@ static const char *err_string_lookup(uint32_t lib, uint32_t key,
   return &string_data[(*result) & 0x7fff];
 }
 
-static const char *const kLibraryNames[ERR_NUM_LIBS] = {
-    "invalid library (0)",
-    "unknown library",              // ERR_LIB_NONE
-    "system library",               // ERR_LIB_SYS
-    "bignum routines",              // ERR_LIB_BN
-    "RSA routines",                 // ERR_LIB_RSA
-    "Diffie-Hellman routines",      // ERR_LIB_DH
-    "public key routines",          // ERR_LIB_EVP
-    "memory buffer routines",       // ERR_LIB_BUF
-    "object identifier routines",   // ERR_LIB_OBJ
-    "PEM routines",                 // ERR_LIB_PEM
-    "DSA routines",                 // ERR_LIB_DSA
-    "X.509 certificate routines",   // ERR_LIB_X509
-    "ASN.1 encoding routines",      // ERR_LIB_ASN1
-    "configuration file routines",  // ERR_LIB_CONF
-    "common libcrypto routines",    // ERR_LIB_CRYPTO
-    "elliptic curve routines",      // ERR_LIB_EC
-    "SSL routines",                 // ERR_LIB_SSL
-    "BIO routines",                 // ERR_LIB_BIO
-    "PKCS7 routines",               // ERR_LIB_PKCS7
-    "PKCS8 routines",               // ERR_LIB_PKCS8
-    "X509 V3 routines",             // ERR_LIB_X509V3
-    "random number generator",      // ERR_LIB_RAND
-    "ENGINE routines",              // ERR_LIB_ENGINE
-    "OCSP routines",                // ERR_LIB_OCSP
-    "UI routines",                  // ERR_LIB_UI
-    "COMP routines",                // ERR_LIB_COMP
-    "ECDSA routines",               // ERR_LIB_ECDSA
-    "ECDH routines",                // ERR_LIB_ECDH
-    "HMAC routines",                // ERR_LIB_HMAC
-    "Digest functions",             // ERR_LIB_DIGEST
-    "Cipher functions",             // ERR_LIB_CIPHER
-    "HKDF functions",               // ERR_LIB_HKDF
-    "Trust Token functions",        // ERR_LIB_TRUST_TOKEN
-    "User defined functions",       // ERR_LIB_USER
+typedef struct library_name_st {
+  const char *str;
+  const char *symbol;
+  const char *reason_symbol;
+} LIBRARY_NAME;
+
+static const LIBRARY_NAME kLibraryNames[ERR_NUM_LIBS] = {
+    {"invalid library (0)", NULL, NULL},
+    {"unknown library", "NONE", "NONE_LIB"},
+    {"system library", "SYS", "SYS_LIB"},
+    {"bignum routines", "BN", "BN_LIB"},
+    {"RSA routines", "RSA", "RSA_LIB"},
+    {"Diffie-Hellman routines", "DH", "DH_LIB"},
+    {"public key routines", "EVP", "EVP_LIB"},
+    {"memory buffer routines", "BUF", "BUF_LIB"},
+    {"object identifier routines", "OBJ", "OBJ_LIB"},
+    {"PEM routines", "PEM", "PEM_LIB"},
+    {"DSA routines", "DSA", "DSA_LIB"},
+    {"X.509 certificate routines", "X509", "X509_LIB"},
+    {"ASN.1 encoding routines", "ASN1", "ASN1_LIB"},
+    {"configuration file routines", "CONF", "CONF_LIB"},
+    {"common libcrypto routines", "CRYPTO", "CRYPTO_LIB"},
+    {"elliptic curve routines", "EC", "EC_LIB"},
+    {"SSL routines", "SSL", "SSL_LIB"},
+    {"BIO routines", "BIO", "BIO_LIB"},
+    {"PKCS7 routines", "PKCS7", "PKCS7_LIB"},
+    {"PKCS8 routines", "PKCS8", "PKCS8_LIB"},
+    {"X509 V3 routines", "X509V3", "X509V3_LIB"},
+    {"random number generator", "RAND", "RAND_LIB"},
+    {"ENGINE routines", "ENGINE", "ENGINE_LIB"},
+    {"OCSP routines", "OCSP", "OCSP_LIB"},
+    {"UI routines", "UI", "UI_LIB"},
+    {"COMP routines", "COMP", "COMP_LIB"},
+    {"ECDSA routines", "ECDSA", "ECDSA_LIB"},
+    {"ECDH routines", "ECDH", "ECDH_LIB"},
+    {"HMAC routines", "HMAC", "HMAC_LIB"},
+    {"Digest functions", "DIGEST", "DIGEST_LIB"},
+    {"Cipher functions", "CIPHER", "CIPHER_LIB"},
+    {"HKDF functions", "HKDF", "HKDF_LIB"},
+    {"Trust Token functions", "TRUST_TOKEN", "TRUST_TOKEN_LIB"},
+    {"User defined functions", "USER", "USER_LIB"},
 };
 
 static const char *err_lib_error_string(uint32_t packed_error) {
   const uint32_t lib = ERR_GET_LIB(packed_error);
-
-  if (lib >= ERR_NUM_LIBS) {
-    return NULL;
-  }
-  return kLibraryNames[lib];
+  return lib >= ERR_NUM_LIBS ? NULL : kLibraryNames[lib].str;
 }
 
 const char *ERR_lib_error_string(uint32_t packed_error) {
@@ -479,49 +481,65 @@ const char *ERR_lib_error_string(uint32_t packed_error) {
   return ret == NULL ? "unknown library" : ret;
 }
 
+const char *ERR_lib_symbol_name(uint32_t packed_error) {
+  const uint32_t lib = ERR_GET_LIB(packed_error);
+  return lib >= ERR_NUM_LIBS ? NULL : kLibraryNames[lib].symbol;
+}
+
 const char *ERR_func_error_string(uint32_t packed_error) {
   return "OPENSSL_internal";
 }
 
-static const char *err_reason_error_string(uint32_t packed_error) {
+static const char *err_reason_error_string(uint32_t packed_error, int symbol) {
   const uint32_t lib = ERR_GET_LIB(packed_error);
   const uint32_t reason = ERR_GET_REASON(packed_error);
 
   if (lib == ERR_LIB_SYS) {
-    if (reason < 127) {
+    if (!symbol && reason < 127) {
       return strerror(reason);
     }
     return NULL;
   }
 
   if (reason < ERR_NUM_LIBS) {
-    return kLibraryNames[reason];
+    return symbol ? kLibraryNames[reason].reason_symbol
+                  : kLibraryNames[reason].str;
   }
 
   if (reason < 100) {
+    // TODO(davidben): All our other reason strings match the symbol name. Only
+    // the common ones differ. Should we just consistently return the symbol
+    // name?
     switch (reason) {
       case ERR_R_MALLOC_FAILURE:
-        return "malloc failure";
+        return symbol ? "MALLOC_FAILURE" : "malloc failure";
       case ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED:
-        return "function should not have been called";
+        return symbol ? "SHOULD_NOT_HAVE_BEEN_CALLED"
+                      : "function should not have been called";
       case ERR_R_PASSED_NULL_PARAMETER:
-        return "passed a null parameter";
+        return symbol ? "PASSED_NULL_PARAMETER" : "passed a null parameter";
       case ERR_R_INTERNAL_ERROR:
-        return "internal error";
+        return symbol ? "INTERNAL_ERROR" : "internal error";
       case ERR_R_OVERFLOW:
-        return "overflow";
+        return symbol ? "OVERFLOW" : "overflow";
       default:
         return NULL;
     }
   }
 
+  // Unlike OpenSSL, BoringSSL's reason strings already match symbol name, so we
+  // do not need to check |symbol|.
   return err_string_lookup(lib, reason, kOpenSSLReasonValues,
                            kOpenSSLReasonValuesLen, kOpenSSLReasonStringData);
 }
 
 const char *ERR_reason_error_string(uint32_t packed_error) {
-  const char *ret = err_reason_error_string(packed_error);
+  const char *ret = err_reason_error_string(packed_error, /*symbol=*/0);
   return ret == NULL ? "unknown error" : ret;
+}
+
+const char *ERR_reason_symbol_name(uint32_t packed_error) {
+  return err_reason_error_string(packed_error, /*symbol=*/1);
 }
 
 char *ERR_error_string(uint32_t packed_error, char *ret) {
@@ -550,7 +568,7 @@ char *ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
   unsigned reason = ERR_GET_REASON(packed_error);
 
   const char *lib_str = err_lib_error_string(packed_error);
-  const char *reason_str = err_reason_error_string(packed_error);
+  const char *reason_str = err_reason_error_string(packed_error, /*symbol=*/0);
 
   char lib_buf[32], reason_buf[32];
   if (lib_str == NULL) {
