@@ -83,11 +83,21 @@ static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
     return false;
   }
 
-  if (cert->chain != nullptr &&
-      sk_CRYPTO_BUFFER_value(cert->chain.get(), 0) != nullptr &&
-      // Sanity-check that the private key and the certificate match.
-      !ssl_cert_check_private_key(cert, pkey)) {
-    return false;
+  // If the leaf certificate has been configured, check it matches.
+  const CRYPTO_BUFFER *leaf = cert->chain != nullptr
+                                  ? sk_CRYPTO_BUFFER_value(cert->chain.get(), 0)
+                                  : nullptr;
+  if (leaf != nullptr) {
+    CBS cert_cbs;
+    CRYPTO_BUFFER_init_CBS(leaf, &cert_cbs);
+    UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
+    if (!pubkey) {
+      OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
+      return false;
+    }
+    if (!ssl_compare_public_and_private_key(pubkey.get(), pkey)) {
+      return false;
+    }
   }
 
   cert->privatekey = UpRef(pkey);

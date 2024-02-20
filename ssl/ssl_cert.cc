@@ -493,30 +493,6 @@ bool ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
   return false;
 }
 
-bool ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey) {
-  if (privkey == nullptr) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_PRIVATE_KEY_ASSIGNED);
-    return false;
-  }
-
-  if (cert->chain == nullptr ||
-      sk_CRYPTO_BUFFER_value(cert->chain.get(), 0) == nullptr) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_ASSIGNED);
-    return false;
-  }
-
-  CBS cert_cbs;
-  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(cert->chain.get(), 0),
-                         &cert_cbs);
-  UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
-  if (!pubkey) {
-    OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
-    return false;
-  }
-
-  return ssl_compare_public_and_private_key(pubkey.get(), privkey);
-}
-
 bool ssl_cert_check_key_usage(const CBS *in, enum ssl_key_usage_t bit) {
   CBS buf = *in;
 

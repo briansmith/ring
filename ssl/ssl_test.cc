@@ -4556,6 +4556,82 @@ TEST(SSLTest, SetChainAndKeyMismatch) {
   ERR_clear_error();
 }
 
+TEST(SSLTest, CertThenKeyMismatch) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> leaf = GetChainTestCertificate();
+  ASSERT_TRUE(leaf);
+
+  // There is no key or certificate, so |SSL_CTX_check_private_key| fails.
+  EXPECT_FALSE(SSL_CTX_check_private_key(ctx.get()));
+
+  // With only a certificate, |SSL_CTX_check_private_key| still fails.
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), leaf.get()));
+  EXPECT_FALSE(SSL_CTX_check_private_key(ctx.get()));
+
+  // The private key does not match the certificate, so it should fail.
+  EXPECT_FALSE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+
+  // Checking the private key fails, but this is really because there is still
+  // no private key.
+  EXPECT_FALSE(SSL_CTX_check_private_key(ctx.get()));
+  EXPECT_EQ(nullptr, SSL_CTX_get0_privatekey(ctx.get()));
+}
+
+TEST(SSLTest, KeyThenCertMismatch) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> leaf = GetChainTestCertificate();
+  ASSERT_TRUE(leaf);
+
+  // There is no key or certificate, so |SSL_CTX_check_private_key| fails.
+  EXPECT_FALSE(SSL_CTX_check_private_key(ctx.get()));
+
+  // With only a key, |SSL_CTX_check_private_key| still fails.
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+  EXPECT_FALSE(SSL_CTX_check_private_key(ctx.get()));
+
+  // If configuring a certificate that doesn't match the key, configuration
+  // actually succeeds. We just silently drop the private key.
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), leaf.get()));
+  EXPECT_EQ(nullptr, SSL_CTX_get0_privatekey(ctx.get()));
+
+  // Some callers configure the private key, then the certificate, and then
+  // expect |SSL_CTX_check_private_key| to check consistency. It does, but only
+  // by way of noticing there is no private key. The actual consistency check
+  // happened in |SSL_CTX_use_certificate|.
+  EXPECT_FALSE(SSL_CTX_check_private_key(ctx.get()));
+}
+
+TEST(SSLTest, OverrideCertAndKey) {
+  // It is possible to override an existing certificate by configuring
+  // certificate, then key, due to |SSL_CTX_use_certificate|'s above silent
+  // dropping behavior.
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> leaf = GetTestCertificate();
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<EVP_PKEY> key2 = GetChainTestKey();
+  ASSERT_TRUE(key2);
+  bssl::UniquePtr<X509> leaf2 = GetChainTestCertificate();
+  ASSERT_TRUE(leaf2);
+
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), leaf.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), leaf2.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key2.get()));
+}
+
 TEST(SSLTest, SetChainAndKeyCtx) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_with_buffers_method()));
   ASSERT_TRUE(client_ctx);

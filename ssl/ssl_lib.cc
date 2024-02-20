@@ -1724,17 +1724,36 @@ int SSL_has_pending(const SSL *ssl) {
   return SSL_pending(ssl) != 0 || !ssl->s3->read_buffer.empty();
 }
 
+static bool has_cert_and_key(const CERT *cert) {
+  // TODO(davidben): If |cert->key_method| is set, that should be fine too.
+  if (cert->privatekey == nullptr) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_PRIVATE_KEY_ASSIGNED);
+    return false;
+  }
+
+  if (cert->chain == nullptr ||
+      sk_CRYPTO_BUFFER_value(cert->chain.get(), 0) == nullptr) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_ASSIGNED);
+    return false;
+  }
+
+  return true;
+}
+
 int SSL_CTX_check_private_key(const SSL_CTX *ctx) {
-  return ssl_cert_check_private_key(ctx->cert.get(),
-                                    ctx->cert->privatekey.get());
+  // There is no need to actually check consistency because inconsistent values
+  // can never be configured.
+  return has_cert_and_key(ctx->cert.get());
 }
 
 int SSL_check_private_key(const SSL *ssl) {
   if (!ssl->config) {
     return 0;
   }
-  return ssl_cert_check_private_key(ssl->config->cert.get(),
-                                    ssl->config->cert->privatekey.get());
+
+  // There is no need to actually check consistency because inconsistent values
+  // can never be configured.
+  return has_cert_and_key(ssl->config->cert.get());
 }
 
 long SSL_get_default_timeout(const SSL *ssl) {

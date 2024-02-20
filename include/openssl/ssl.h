@@ -848,15 +848,22 @@ OPENSSL_EXPORT void SSL_CTX_set0_buffer_pool(SSL_CTX *ctx,
 // the wire) but does not include the leaf. Both client and server certificates
 // use these functions.
 //
+// Prefer to configure the certificate before the private key. If configured in
+// the other order, inconsistent private keys will be silently dropped, rather
+// than return an error. Additionally, overwriting a previously-configured
+// certificate and key pair only works if the certificate is configured first.
+//
 // Certificates and keys may be configured before the handshake or dynamically
 // in the early callback and certificate callback.
 
 // SSL_CTX_use_certificate sets |ctx|'s leaf certificate to |x509|. It returns
-// one on success and zero on failure.
+// one on success and zero on failure. If |ctx| has a private key which is
+// inconsistent with |x509|, the private key is silently dropped.
 OPENSSL_EXPORT int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x509);
 
 // SSL_use_certificate sets |ssl|'s leaf certificate to |x509|. It returns one
-// on success and zero on failure.
+// on success and zero on failure. If |ssl| has a private key which is
+// inconsistent with |x509|, the private key is silently dropped.
 OPENSSL_EXPORT int SSL_use_certificate(SSL *ssl, X509 *x509);
 
 // SSL_CTX_use_PrivateKey sets |ctx|'s private key to |pkey|. It returns one on
@@ -989,14 +996,6 @@ SSL_get0_peer_delegation_algorithms(const SSL *ssl,
 // SSL_certs_clear resets the private key, leaf certificate, and certificate
 // chain of |ssl|.
 OPENSSL_EXPORT void SSL_certs_clear(SSL *ssl);
-
-// SSL_CTX_check_private_key returns one if the certificate and private key
-// configured in |ctx| are consistent and zero otherwise.
-OPENSSL_EXPORT int SSL_CTX_check_private_key(const SSL_CTX *ctx);
-
-// SSL_check_private_key returns one if the certificate and private key
-// configured in |ssl| are consistent and zero otherwise.
-OPENSSL_EXPORT int SSL_check_private_key(const SSL *ssl);
 
 // SSL_CTX_get0_certificate returns |ctx|'s leaf certificate.
 OPENSSL_EXPORT X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx);
@@ -5316,6 +5315,25 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // |SSL_get_negotiated_group| to return an unrecognized group. BoringSSL never
 // returns this value, but we define this constant for compatibility.
 #define TLSEXT_nid_unknown 0x1000000
+
+// SSL_CTX_check_private_key returns one if |ctx| has both a certificate and
+// private key, and zero otherwise.
+//
+// This function does not check consistency because the library checks when the
+// certificate and key are individually configured. However, if the private key
+// is configured before the certificate, inconsistent private keys are silently
+// dropped. Some callers are inadvertently relying on this function to detect
+// when this happens.
+//
+// Instead, callers should configure the certificate first, then the private
+// key, checking for errors in each. This function is then unnecessary.
+OPENSSL_EXPORT int SSL_CTX_check_private_key(const SSL_CTX *ctx);
+
+// SSL_check_private_key returns one if |ssl| has both a certificate and private
+// key, and zero otherwise.
+//
+// See discussion in |SSL_CTX_check_private_key|.
+OPENSSL_EXPORT int SSL_check_private_key(const SSL *ssl);
 
 
 // Compliance policy configurations
