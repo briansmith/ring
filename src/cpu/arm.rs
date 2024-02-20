@@ -172,13 +172,19 @@ fn detect_features() -> u32 {
     features
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn detect_features() -> u32 {
+    1 << 6 // sha512
+}
+
 #[cfg(all(
     any(target_arch = "aarch64", target_arch = "arm"),
     not(any(
         target_os = "android",
         target_os = "fuchsia",
         all(target_os = "linux", not(target_env = "uclibc")),
-        target_os = "windows"
+        target_os = "windows",
+        target_os = "macos"
     ))
 ))]
 fn detect_features() -> u32 {
