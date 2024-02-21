@@ -20,7 +20,7 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/ctrdrbg.h>
-#include <openssl/kyber.h>
+#include <openssl/experimental/kyber.h>
 
 #include "../test/file_test.h"
 #include "../test/test_util.h"

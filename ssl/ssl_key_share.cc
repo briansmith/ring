@@ -24,7 +24,7 @@
 #include <openssl/curve25519.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
-#include <openssl/kyber.h>
+#include <openssl/experimental/kyber.h>
 #include <openssl/hrss.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>

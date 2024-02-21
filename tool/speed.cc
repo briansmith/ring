@@ -38,8 +38,8 @@
 #include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/experimental/kyber.h>
 #include <openssl/hrss.h>
-#include <openssl/kyber.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>

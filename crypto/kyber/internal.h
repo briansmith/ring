@@ -16,7 +16,7 @@
 #define OPENSSL_HEADER_CRYPTO_KYBER_INTERNAL_H
 
 #include <openssl/base.h>
-#include <openssl/kyber.h>
+#include <openssl/experimental/kyber.h>
 
 #if defined(__cplusplus)
 extern "C" {

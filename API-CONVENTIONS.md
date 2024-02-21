@@ -16,6 +16,9 @@ OpenSSL's legacy ASN.1, X.509, and PEM implementation. If possible, avoid using
 them. These are left largely unmodified from upstream and are retained only for
 compatibility with existing OpenSSL consumers.
 
+Experimental public APIs are found in `include/openssl/experimental`. Use of
+these will likely be incompatible with changes in the near future as they are
+finalized.
 
 ## Forward declarations
 
