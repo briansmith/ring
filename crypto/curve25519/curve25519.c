@@ -395,7 +395,7 @@ static void fe_invert(fe *out, const fe *z) {
 
 // return 0 if f == 0
 // return 1 if f != 0
-static int fe_isnonzero(const fe_loose *f) {
+static int fe_isnonzero_vartime(const fe_loose *f) {
   fe tight;
   fe_carry(&tight, f);
   uint8_t s[32];
@@ -510,9 +510,9 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]) {
   fe_sq_tt(&vxx, &h->X);
   fe_mul_ttl(&vxx, &vxx, &v);
   fe_sub(&check, &vxx, &u);
-  if (fe_isnonzero(&check)) {
+  if (fe_isnonzero_vartime(&check)) {
     fe_add(&check, &vxx, &u);
-    if (fe_isnonzero(&check)) {
+    if (fe_isnonzero_vartime(&check)) {
       return 0;
     }
     fe_mul_ttt(&h->X, &h->X, &sqrtm1);
