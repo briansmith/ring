@@ -39,6 +39,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/experimental/kyber.h>
+#include <openssl/experimental/spx.h>
 #include <openssl/hrss.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
@@ -67,7 +68,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "../crypto/fipsmodule/ec/internal.h"
 #include "../crypto/internal.h"
 #include "../crypto/trust_token/internal.h"
-#include "../crypto/spx/internal.h"
 #include "internal.h"
 
 // g_print_json is true if printed output is JSON formatted.

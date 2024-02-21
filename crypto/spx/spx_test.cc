@@ -21,8 +21,8 @@
 
 #include <gtest/gtest.h>
 #include <openssl/bytestring.h>
+#include <openssl/experimental/spx.h>
 
-#include "./internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 

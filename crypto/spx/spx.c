@@ -16,11 +16,11 @@
 
 #include <string.h>
 
+#include <openssl/experimental/spx.h>
 #include <openssl/rand.h>
 
 #include "./address.h"
 #include "./fors.h"
-#include "./internal.h"
 #include "./merkle.h"
 #include "./params.h"
 #include "./spx_util.h"
