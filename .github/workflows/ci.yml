@@ -151,7 +151,6 @@ jobs:
           - i686-pc-windows-msvc
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
-          - powerpc-unknown-linux-gnu
           - riscv64gc-unknown-linux-gnu
           - wasm32-wasi
           - x86_64-pc-windows-gnu
@@ -174,10 +173,10 @@ jobs:
 
         include:
           - target: aarch64-apple-darwin
-            host_os: macos-13-xlarge
+            host_os: macos-14
 
           - target: aarch64-apple-ios
-            host_os: macos-13
+            host_os: macos-14
             # TODO: Run in the emulator.
             cargo_options: --no-run
 
@@ -217,10 +216,42 @@ jobs:
           - target: i686-unknown-linux-musl
             host_os: ubuntu-22.04
 
+          - target: mips-unknown-linux-gnu
+            mode: --release
+            rust_channel: 1.71.0 # No prebuilt toolchain for later versions.
+            host_os: ubuntu-22.04
+
+          - target: mips64el-unknown-linux-gnuabi64
+            mode: --release
+            rust_channel: 1.71.0 # No prebuilt toolchain for later versions.
+            host_os: ubuntu-22.04
+
+          - target: mipsel-unknown-linux-gnu
+            mode: --release
+            rust_channel: 1.71.0 # No prebuilt toolchain for later versions.
+            host_os: ubuntu-22.04
+
           - target: powerpc-unknown-linux-gnu
+            mode: --release
+            rust_channel: stable
+            host_os: ubuntu-22.04
+
+          - target: powerpc64-unknown-linux-gnu
+            mode: --release
+            rust_channel: stable
+            host_os: ubuntu-22.04
+
+          - target: powerpc64le-unknown-linux-gnu
+            mode: --release
+            rust_channel: stable
             host_os: ubuntu-22.04
 
           - target: riscv64gc-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
+          - target: s390x-unknown-linux-gnu
+            mode: --release
+            rust_channel: stable
             host_os: ubuntu-22.04
 
           - target: wasm32-wasi
@@ -273,15 +304,14 @@ jobs:
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
-      # TODO: Check iOS too.
-      # TODO: Do this on Apple-hosted release builds too; currently these fail with:
-      #       Unknown attribute kind (528)
-      #       (Producer: 'LLVM12.0.0-rust-1.54.0-nightly'
-      #       Reader: 'LLVM APPLE_1_1200.0.32.29_0')
-      - if: ${{ matrix.target != 'aarch64-apple-ios' &&
-                !contains(matrix.host_os, 'windows') &&
-                (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
-        run: mk/check-symbol-prefixes.sh --target=${{ matrix.target }}
+
+      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.61.0') &&
+                !contains(matrix.host_os, 'windows') }}
+        run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
+
+      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.61.0') &&
+                !contains(matrix.host_os, 'windows') }}
+        run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   test-bench:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
@@ -402,16 +432,14 @@ jobs:
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
-      # TODO: Check iOS too.
-      # TODO: Do this on Apple-hosted release builds too; currently these fail with:
-      #       Unknown attribute kind (528)
-      #       (Producer: 'LLVM12.0.0-rust-1.54.0-nightly'
-      #       Reader: 'LLVM APPLE_1_1200.0.32.29_0')
-      - if: ${{ matrix.target != 'aarch64-apple-ios' &&
-          !contains(matrix.host_os, 'windows') &&
-          (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
-        run: mk/check-symbol-prefixes.sh --target=${{ matrix.target }}
 
+      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.61.0') &&
+          !contains(matrix.host_os, 'windows') }}
+        run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
+
+      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.61.0') &&
+          !contains(matrix.host_os, 'windows') }}
+        run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   # The wasm32-unknown-unknown targets have a different set of feature sets and
   # an additional `webdriver` dimension.
@@ -465,7 +493,8 @@ jobs:
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
-      - run: mk/check-symbol-prefixes.sh --target=${{ matrix.target }}
+      - run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
+      - run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   coverage:
     # Don't run duplicate `push` jobs for the repo owner's PRs.

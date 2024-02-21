@@ -43,7 +43,7 @@ need to be installed.
 Benchmarks
 ----------
 
-*ring*'s benchmarks are located in the `benches` folder of this repository. Because
+*ring*'s benchmarks are located in the `bench` folder of this repository. Because
 there is lots of platform-specific code in *ring*, and because *ring* chooses
 dynamically at runtime which optimized implementation of each crypto primitive
 to use, it is very difficult to publish a useful single set of benchmarks;

@@ -139,11 +139,11 @@ macro_rules! pkcs1_digestinfo_prefix {
     ( $name:ident, $digest_len:expr, $digest_oid_len:expr,
       [ $( $digest_oid:expr ),* ] ) => {
         static $name: [u8; 2 + 8 + $digest_oid_len] = [
-            der::Tag::Sequence as u8, 8 + $digest_oid_len + $digest_len,
-                der::Tag::Sequence as u8, 2 + $digest_oid_len + 2,
-                    der::Tag::OID as u8, $digest_oid_len, $( $digest_oid ),*,
-                    der::Tag::Null as u8, 0,
-                der::Tag::OctetString as u8, $digest_len,
+            der::Tag::Sequence.into(), 8 + $digest_oid_len + $digest_len,
+                der::Tag::Sequence.into(), 2 + $digest_oid_len + 2,
+                    der::Tag::OID.into(), $digest_oid_len, $( $digest_oid ),*,
+                    der::Tag::Null.into(), 0,
+                der::Tag::OctetString.into(), $digest_len,
         ];
     }
 }

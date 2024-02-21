@@ -14,7 +14,7 @@ repository = "https://github.com/briansmith/ring"
 rust-version = "1.61.0"
 
 # Keep in sync with `links` below.
-version = "0.17.7"
+version = "0.17.8"
 
 # Keep in sync with `version` above.
 #
@@ -23,7 +23,7 @@ version = "0.17.7"
 # build.rs uses this to derive the prefix for FFI symbols and the file names
 # of the FFI libraries, so it must be a valid identifier prefix and a valid
 # filename prefix.
-links = "ring_core_0_17_7"
+links = "ring_core_0_17_8"
 
 include = [
     "LICENSE",
@@ -86,6 +86,7 @@ include = [
     "crypto/fipsmodule/modes/asm/ghash-x86.pl",
     "crypto/fipsmodule/modes/asm/ghash-x86_64.pl",
     "crypto/fipsmodule/modes/asm/ghashv8-armx.pl",
+    "crypto/fipsmodule/modes/asm/aesv8-gcm-armv8.pl",
     "crypto/fipsmodule/sha/asm/sha256-armv4.pl",
     "crypto/fipsmodule/sha/asm/sha512-armv4.pl",
     "crypto/fipsmodule/sha/asm/sha512-armv8.pl",
@@ -181,7 +182,7 @@ spin = { version = "0.9.8", default-features = false, features = ["once"] }
 libc = { version = "0.2.148", default-features = false }
 
 [target.'cfg(all(target_arch = "aarch64", target_os = "windows"))'.dependencies]
-windows-sys = { version = "0.48", features = ["Win32_Foundation", "Win32_System_Threading"] }
+windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen-test = { version = "0.3.37", default-features = false }

@@ -14,30 +14,54 @@
 
 //! Bit lengths.
 
-use crate::error;
+use crate::{error, polyfill};
 
 /// The length of something, in bits.
 ///
 /// This can represent a bit length that isn't a whole number of bytes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
-pub struct BitLength(usize);
+#[repr(transparent)]
+pub struct BitLength<T = usize>(T);
+
+pub(crate) trait FromUsizeBytes: Sized {
+    /// Constructs a `BitLength` from the given length in bytes.
+    ///
+    /// Fails if `bytes * 8` is too large for a `T`.
+    fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified>;
+}
+
+impl FromUsizeBytes for BitLength<usize> {
+    #[inline]
+    fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified> {
+        let bits = bytes.checked_shl(3).ok_or(error::Unspecified)?;
+        Ok(Self(bits))
+    }
+}
+
+impl FromUsizeBytes for BitLength<u64> {
+    #[inline]
+    fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified> {
+        let bytes = polyfill::u64_from_usize(bytes);
+        let bits = bytes.checked_shl(3).ok_or(error::Unspecified)?;
+        Ok(Self(bits))
+    }
+}
+
+impl<T: Copy> BitLength<T> {
+    /// The number of bits this bit length represents, as a `usize`.
+    #[inline]
+    pub fn as_bits(self) -> T {
+        self.0
+    }
+}
 
 // Lengths measured in bits, where all arithmetic is guaranteed not to
 // overflow.
-impl BitLength {
+impl BitLength<usize> {
     /// Constructs a `BitLength` from the given length in bits.
     #[inline]
     pub const fn from_usize_bits(bits: usize) -> Self {
         Self(bits)
-    }
-
-    /// Constructs a `BitLength` from the given length in bytes.
-    ///
-    /// Fails if `bytes * 8` is too large for a `usize`.
-    #[inline]
-    pub fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified> {
-        let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
-        Ok(Self::from_usize_bits(bits))
     }
 
     #[cfg(feature = "alloc")]
@@ -47,14 +71,8 @@ impl BitLength {
         Self((self.0 / 2) + round_up)
     }
 
-    /// The number of bits this bit length represents, as a `usize`.
-    #[inline]
-    pub fn as_usize_bits(&self) -> usize {
-        self.0
-    }
-
     /// The bit length, rounded up to a whole number of bytes.
-    #[cfg(feature = "alloc")]
+    #[cfg(any(target_arch = "aarch64", feature = "alloc"))]
     #[inline]
     pub fn as_usize_bytes_rounded_up(&self) -> usize {
         // Equivalent to (self.0 + 7) / 8, except with no potential for

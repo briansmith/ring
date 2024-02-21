@@ -13,13 +13,17 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
+    aes_gcm,
     block::{Block, BLOCK_LEN},
     Aad,
 };
-use crate::{cpu, polyfill::ArraySplitMap};
+use crate::{
+    bits::{BitLength, FromUsizeBytes},
+    cpu, error,
+    polyfill::ArraySplitMap,
+};
 use core::ops::BitXorAssign;
 
-#[cfg(not(target_arch = "aarch64"))]
 mod gcm_nohw;
 
 #[derive(Clone)]
@@ -74,7 +78,6 @@ impl Key {
                 }
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 h_table.Htable[0] = gcm_nohw::init(h);
             }
@@ -86,16 +89,33 @@ impl Key {
 
 pub struct Context {
     inner: ContextInner,
+    aad_len: BitLength<u64>,
+    in_out_len: BitLength<u64>,
     cpu_features: cpu::Features,
 }
 
 impl Context {
-    pub(crate) fn new(key: &Key, aad: Aad<&[u8]>, cpu_features: cpu::Features) -> Self {
+    pub(crate) fn new(
+        key: &Key,
+        aad: Aad<&[u8]>,
+        in_out_len: usize,
+        cpu_features: cpu::Features,
+    ) -> Result<Self, error::Unspecified> {
+        if in_out_len > aes_gcm::MAX_IN_OUT_LEN {
+            return Err(error::Unspecified);
+        }
+
+        // NIST SP800-38D Section 5.2.1.1 says that the maximum AAD length is
+        // 2**64 - 1 bits, i.e. BitLength<u64>::MAX, so we don't need to do an
+        // explicit check here.
+
         let mut ctx = Self {
             inner: ContextInner {
                 Xi: Xi(Block::zero()),
                 Htable: key.h_table.clone(),
             },
+            aad_len: BitLength::from_usize_bytes(aad.as_ref().len())?,
+            in_out_len: BitLength::from_usize_bytes(in_out_len)?,
             cpu_features,
         };
 
@@ -105,11 +125,22 @@ impl Context {
             ctx.update_block(block);
         }
 
-        ctx
+        Ok(ctx)
+    }
+
+    #[cfg(all(target_arch = "aarch64", target_pointer_width = "64"))]
+    pub(super) fn in_out_whole_block_bits(&self) -> BitLength<usize> {
+        use crate::polyfill::usize_from_u64;
+        const WHOLE_BLOCK_BITS_MASK: usize = !0b111_1111;
+        const _WHOLE_BLOCK_BITS_MASK_CORRECT: () =
+            assert!(WHOLE_BLOCK_BITS_MASK == !((BLOCK_LEN * 8) - 1));
+        BitLength::from_usize_bits(
+            usize_from_u64(self.in_out_len.as_bits()) & WHOLE_BLOCK_BITS_MASK,
+        )
     }
 
     /// Access to `inner` for the integrated AES-GCM implementations only.
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
     #[inline]
     pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
         (&self.inner.Htable, &mut self.inner.Xi)
@@ -185,7 +216,6 @@ impl Context {
                 }
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 gcm_nohw::ghash(xi, h_table.Htable[0], input);
             }
@@ -227,18 +257,21 @@ impl Context {
                 }
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 gcm_nohw::gmult(xi, h_table.Htable[0]);
             }
         }
     }
 
-    pub(super) fn pre_finish<F>(self, f: F) -> super::Tag
+    pub(super) fn pre_finish<F>(mut self, f: F) -> super::Tag
     where
-        F: FnOnce(Block) -> super::Tag,
+        F: FnOnce(Block, cpu::Features) -> super::Tag,
     {
-        f(self.inner.Xi.0)
+        self.update_block(Block::from(
+            [self.aad_len.as_bits(), self.in_out_len.as_bits()].map(u64::to_be_bytes),
+        ));
+
+        f(self.inner.Xi.0, self.cpu_features)
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -247,6 +280,14 @@ impl Context {
             Implementation::CLMUL => has_avx_movbe(self.cpu_features),
             _ => false,
         }
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    pub(super) fn is_clmul(&self) -> bool {
+        matches!(
+            detect_implementation(self.cpu_features),
+            Implementation::CLMUL
+        )
     }
 }
 
@@ -305,7 +346,6 @@ enum Implementation {
     #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
     NEON,
 
-    #[cfg(not(target_arch = "aarch64"))]
     Fallback,
 }
 
@@ -335,19 +375,13 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
         }
     }
 
-    #[cfg(target_arch = "arm")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
     {
         if cpu::arm::NEON.available(cpu_features) {
             return Implementation::NEON;
         }
     }
 
-    #[cfg(target_arch = "aarch64")]
-    {
-        return Implementation::NEON;
-    }
-
-    #[cfg(not(target_arch = "aarch64"))]
     Implementation::Fallback
 }
 

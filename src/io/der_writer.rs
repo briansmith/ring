@@ -39,7 +39,6 @@ pub(crate) fn write_all(tag: Tag, write_value: &dyn Fn(&mut dyn Accumulator)) ->
     output.into()
 }
 
-#[allow(clippy::cast_possible_truncation)]
 fn write_tlv<F>(output: &mut dyn Accumulator, tag: Tag, write_value: F)
 where
     F: Fn(&mut dyn Accumulator),
@@ -49,20 +48,18 @@ where
         write_value(&mut length);
         length.into()
     };
+    let length: u16 = length.try_into().unwrap();
 
-    output.write_byte(tag as u8);
-    if length < 0x80 {
-        output.write_byte(length as u8);
-    } else if length < 0x1_00 {
-        output.write_byte(0x81);
-        output.write_byte(length as u8);
-    } else if length < 0x1_00_00 {
+    output.write_byte(tag.into());
+
+    let [lo, hi] = length.to_le_bytes();
+    if length >= 0x1_00 {
         output.write_byte(0x82);
-        output.write_byte((length / 0x1_00) as u8);
-        output.write_byte(length as u8);
-    } else {
-        unreachable!();
-    };
+        output.write_byte(hi);
+    } else if length >= 0x80 {
+        output.write_byte(0x81);
+    }
+    output.write_byte(lo);
 
     write_value(output);
 }

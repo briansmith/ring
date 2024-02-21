@@ -21,6 +21,9 @@ rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
 qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 qemu_arm_gnueabi="qemu-arm -L /usr/arm-linux-gnueabi"
 qemu_arm_gnueabihf="qemu-arm -L /usr/arm-linux-gnueabihf"
+qemu_mips="qemu-mips -L /usr/mips-linux-gnu"
+qemu_mips64="qemu-mips64 -L /usr/mips64-linux-gnuabi64"
+qemu_mips64el="qemu-mips64el -L /usr/mips64el-linux-gnuabi64"
 qemu_mipsel="qemu-mipsel -L /usr/mipsel-linux-gnu"
 qemu_powerpc="qemu-ppc -L /usr/powerpc-linux-gnu"
 qemu_powerpc64="qemu-ppc64 -L /usr/powerpc64-linux-gnu"
@@ -51,7 +54,7 @@ for arg in $*; do
 done
 
 # See comments in install-build-tools.sh.
-llvm_version=16
+llvm_version=18
 
 case $target in
    aarch64-linux-android)
@@ -111,6 +114,24 @@ case $target in
     export CC_i686_unknown_linux_musl=clang-$llvm_version
     export AR_i686_unknown_linux_musl=llvm-ar-$llvm_version
     export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
+    ;;
+  mips-unknown-linux-gnu)
+    export CC_mips_unknown_linux_gnu=mips-linux-gnu-gcc
+    export AR_mips_unknown_linux_gnu=mips-linux-gnu-gcc-ar
+    export CARGO_TARGET_MIPS_UNKNOWN_LINUX_GNU_LINKER=mips-linux-gnu-gcc
+    export CARGO_TARGET_MIPS_UNKNOWN_LINUX_GNU_RUNNER="$qemu_mips"
+    ;;
+  mips64-unknown-linux-gnuabi64)
+    export CC_mips64_unknown_linux_gnuabi64=mips64-linux-gnuabi64-gcc
+    export AR_mips64_unknown_linux_gnuabi64=mips64-linux-gnuabi64-gcc-ar
+    export CARGO_TARGET_MIPS64_UNKNOWN_LINUX_GNUABI64_LINKER=mips64-linux-gnuabi64-gcc
+    export CARGO_TARGET_MIPS64_UNKNOWN_LINUX_GNUABI64_RUNNER="$qemu_mips64"
+    ;;
+  mips64el-unknown-linux-gnuabi64)
+    export CC_mips64el_unknown_linux_gnuabi64=mips64el-linux-gnuabi64-gcc
+    export AR_mips64el_unknown_linux_gnuabi64=mips64el-linux-gnuabi64-gcc-ar
+    export CARGO_TARGET_MIPS64EL_UNKNOWN_LINUX_GNUABI64_LINKER=mips64el-linux-gnuabi64-gcc
+    export CARGO_TARGET_MIPS64EL_UNKNOWN_LINUX_GNUABI64_RUNNER="$qemu_mips64el"
     ;;
   mipsel-unknown-linux-gnu)
     export CC_mipsel_unknown_linux_gnu=mipsel-linux-gnu-gcc

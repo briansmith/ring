@@ -18,7 +18,7 @@ use super::{
     quic::Sample,
 };
 use crate::{
-    bits::BitLength,
+    bits::{BitLength, FromUsizeBytes},
     c, cpu,
     endian::BigEndian,
     error,
@@ -49,7 +49,7 @@ fn set_encrypt_key(
 ) -> Result<(), error::Unspecified> {
     // Unusually, in this case zero means success and non-zero means failure.
     #[allow(clippy::cast_possible_truncation)]
-    if 0 == unsafe { f(bytes.as_ptr(), key_bits.as_usize_bits() as c::uint, key) } {
+    if 0 == unsafe { f(bytes.as_ptr(), key_bits.as_bits() as c::uint, key) } {
         Ok(())
     } else {
         Err(error::Unspecified)
@@ -165,7 +165,6 @@ impl Key {
                 set_encrypt_key!(vpaes_set_encrypt_key, bytes, key_bits, &mut key)?
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
             Implementation::NOHW => {
                 set_encrypt_key!(aes_nohw_set_encrypt_key, bytes, key_bits, &mut key)?
             }
@@ -193,7 +192,6 @@ impl Key {
             ))]
             Implementation::VPAES_BSAES => encrypt_block!(vpaes_encrypt, a, self),
 
-            #[cfg(not(target_arch = "aarch64"))]
             Implementation::NOHW => encrypt_block!(aes_nohw_encrypt, a, self),
         }
     }
@@ -272,7 +270,6 @@ impl Key {
                 });
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
             Implementation::NOHW => {
                 ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
             }
@@ -288,13 +285,13 @@ impl Key {
         out
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
     #[must_use]
     pub fn is_aes_hw(&self, cpu_features: cpu::Features) -> bool {
         matches!(detect_implementation(cpu_features), Implementation::HWAES)
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
     #[must_use]
     pub(super) fn inner_less_safe(&self) -> &AES_KEY {
         &self.inner
@@ -381,7 +378,6 @@ pub enum Implementation {
     ))]
     VPAES_BSAES = 2,
 
-    #[cfg(not(target_arch = "aarch64"))]
     NOHW = 3,
 }
 
@@ -416,19 +412,13 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
         }
     }
 
-    #[cfg(target_arch = "arm")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
     {
         if cpu::arm::NEON.available(cpu_features) {
             return Implementation::VPAES_BSAES;
         }
     }
 
-    #[cfg(target_arch = "aarch64")]
-    {
-        Implementation::VPAES_BSAES
-    }
-
-    #[cfg(not(target_arch = "aarch64"))]
     {
         Implementation::NOHW
     }

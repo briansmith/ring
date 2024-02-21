@@ -17,15 +17,21 @@
 set -eux -o pipefail
 IFS=$'\n\t'
 
-case "$OSTYPE" in
-darwin*)
-  nm_exe=nm
-  ;;
-*)
-  llvm_version=16
-  nm_exe=llvm-nm-$llvm_version
-  ;;
-esac
+for arg in $*; do
+  case $arg in
+    --target=*)
+      target=${arg#*=}
+      ;;
+    +*)
+      toolchain=${arg#*+}
+      ;;
+    *)
+      ;;
+  esac
+done
+
+# Use the host target-libdir, not the target target-libdir.
+nm_exe=$(rustc +${toolchain} --print target-libdir)/../bin/llvm-nm
 
 # TODO: This should only look in one target directory.
 # TODO: This isn't as strict as it should be.
@@ -35,7 +41,7 @@ esac
 #
 # This is very liberal in filtering out symbols that "look like"
 # Rust-compiler-generated symbols.
-find target -type f -name libring-*.rlib | while read -r infile; do
+find target/$target -type f -name libring-*.rlib | while read -r infile; do
   bad=$($nm_exe --defined-only --extern-only --print-file-name "$infile" \
     | ( grep -v -E " . _?(__imp__ZN4ring|ring_core_|__rustc|_ZN|DW.ref.rust_eh_personality)" || [[ $? == 1 ]] ))
   if [ ! -z "${bad-}" ]; then

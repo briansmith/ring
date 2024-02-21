@@ -622,7 +622,7 @@ mod tests {
             (&[ALL_ONES, ALL_ONES >> 1], LIMB_BITS + (LIMB_BITS) - 1),
         ];
         for (limbs, bits) in CASES {
-            assert_eq!(limbs_minimal_bits(limbs).as_usize_bits(), *bits);
+            assert_eq!(limbs_minimal_bits(limbs).as_bits(), *bits);
         }
     }
 }

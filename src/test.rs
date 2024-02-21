@@ -420,7 +420,7 @@ fn parse_test_case(
             }
 
             // A blank line ends a test case if the test case isn't empty.
-            Some(line) if line.is_empty() => {
+            Some("") => {
                 if !is_first_line {
                     return Some(TestCase { attributes });
                 }

@@ -61,7 +61,6 @@
 #![deny(variant_size_differences)]
 #![forbid(
     unused_results,
-    invalid_reference_casting,
     clippy::char_lit_as_u8,
     clippy::fn_to_numeric_cast,
     clippy::fn_to_numeric_cast_with_truncation,

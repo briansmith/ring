@@ -14,8 +14,6 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-#![allow(clippy::cast_possible_truncation)] // XXX
-
 use super::digest_scalar::digest_scalar;
 use crate::{
     arithmetic::montgomery::*,
@@ -414,25 +412,31 @@ fn format_rs_asn1(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8
         };
         let value = &fixed[first_index..];
 
-        out[0] = der::Tag::Integer as u8;
+        out[0] = der::Tag::Integer.into();
 
         // Lengths less than 128 are encoded in one byte.
         assert!(value.len() < 128);
-        out[1] = value.len() as u8;
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            out[1] = value.len() as u8;
+        }
 
         out[2..][..value.len()].copy_from_slice(value);
 
         2 + value.len()
     }
 
-    out[0] = der::Tag::Sequence as u8;
+    out[0] = der::Tag::Sequence.into();
     let r_tlv_len = format_integer_tlv(ops, r, &mut out[2..]);
     let s_tlv_len = format_integer_tlv(ops, s, &mut out[2..][r_tlv_len..]);
 
     // Lengths less than 128 are encoded in one byte.
     let value_len = r_tlv_len + s_tlv_len;
     assert!(value_len < 128);
-    out[1] = value_len as u8;
+    #[allow(clippy::cast_possible_truncation)]
+    {
+        out[1] = value_len as u8;
+    }
 
     2 + value_len
 }
