@@ -352,23 +352,17 @@ fn pregenerate_asm_main() {
 
     let pregenerated = PathBuf::from(PREGENERATED);
     std::fs::create_dir(&pregenerated).unwrap();
-    let pregenerated_tmp = pregenerated.join("tmp");
-    std::fs::create_dir(&pregenerated_tmp).unwrap();
 
-    generate_prefix_symbols_asm_headers(&pregenerated_tmp, &ring_core_prefix()).unwrap();
+    generate_prefix_symbols_asm_headers(&pregenerated, &ring_core_prefix()).unwrap();
 
     let perl_exe = get_perl_exe();
 
     for asm_target in ASM_TARGETS {
-        // For Windows, package pregenerated object files instead of
+        // For Windows, package pregenerated object files in addition to
         // pregenerated assembly language source files, so that the user
         // doesn't need to install the assembler.
-        let asm_dir = if asm_target.preassemble {
-            &pregenerated_tmp
-        } else {
-            &pregenerated
-        };
-        let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
+
+        let perlasm_src_dsts = perlasm_src_dsts(&pregenerated, asm_target);
         perlasm(&perl_exe, &perlasm_src_dsts, asm_target);
 
         if asm_target.preassemble {
@@ -386,9 +380,9 @@ fn pregenerate_asm_main() {
                 force_warnings_into_errors: true,
             };
 
-            let b = new_build(&target, &pregenerated_tmp);
+            let b = new_build(&target, &pregenerated);
             for src in srcs {
-                win_asm(&b, &src, &target, &pregenerated_tmp, &pregenerated);
+                win_asm(&b, &src, &target, &pregenerated, &pregenerated);
             }
         }
     }
