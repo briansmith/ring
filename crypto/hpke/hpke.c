@@ -355,6 +355,8 @@ int EVP_HPKE_KEY_copy(EVP_HPKE_KEY *dst, const EVP_HPKE_KEY *src) {
 void EVP_HPKE_KEY_move(EVP_HPKE_KEY *out, EVP_HPKE_KEY *in) {
   EVP_HPKE_KEY_cleanup(out);
   // For now, |EVP_HPKE_KEY| is trivially movable.
+  // Note that Rust may move this structure. See
+  // bssl-crypto/src/scoped.rs:EvpHpkeKey.
   OPENSSL_memcpy(out, in, sizeof(EVP_HPKE_KEY));
   EVP_HPKE_KEY_zero(in);
 }
