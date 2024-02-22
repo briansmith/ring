@@ -381,7 +381,7 @@ TEST_P(PerAEADTest, TestVectorScatterGather) {
 
     // Skip decryption for AEADs that don't implement open_gather().
     if (!ret) {
-      int err = ERR_peek_error();
+      uint32_t err = ERR_peek_error();
       if (ERR_GET_LIB(err) == ERR_LIB_CIPHER &&
           ERR_GET_REASON(err) == CIPHER_R_CTRL_NOT_IMPLEMENTED) {
           t->SkipCurrent();
@@ -709,10 +709,10 @@ TEST_P(PerAEADTest, InvalidNonceLength) {
                                    nonce.data(), nonce.size(), nullptr /* in */,
                                    0, kZeros /* ad */, ad_len));
     uint32_t err = ERR_get_error();
-    EXPECT_EQ(ERR_LIB_CIPHER, ERR_GET_LIB(err));
     // TODO(davidben): Merge these errors. https://crbug.com/boringssl/129.
-    if (ERR_GET_REASON(err) != CIPHER_R_UNSUPPORTED_NONCE_SIZE) {
-      EXPECT_EQ(CIPHER_R_INVALID_NONCE_SIZE, ERR_GET_REASON(err));
+    if (!ErrorEquals(err, ERR_LIB_CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE)) {
+      EXPECT_TRUE(
+          ErrorEquals(err, ERR_LIB_CIPHER, CIPHER_R_INVALID_NONCE_SIZE));
     }
 
     ctx.Reset();
@@ -723,9 +723,9 @@ TEST_P(PerAEADTest, InvalidNonceLength) {
                                    nonce.data(), nonce.size(), kZeros /* in */,
                                    sizeof(kZeros), kZeros /* ad */, ad_len));
     err = ERR_get_error();
-    EXPECT_EQ(ERR_LIB_CIPHER, ERR_GET_LIB(err));
-    if (ERR_GET_REASON(err) != CIPHER_R_UNSUPPORTED_NONCE_SIZE) {
-      EXPECT_EQ(CIPHER_R_INVALID_NONCE_SIZE, ERR_GET_REASON(err));
+    if (!ErrorEquals(err, ERR_LIB_CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE)) {
+      EXPECT_TRUE(
+          ErrorEquals(err, ERR_LIB_CIPHER, CIPHER_R_INVALID_NONCE_SIZE));
     }
   }
 }

@@ -657,7 +657,8 @@ TEST_P(AEADServiceIndicatorTest, EVP_AEAD) {
                           encrypt_output.size(), nonce.data(), nonce.size(),
                           kPlaintext, sizeof(kPlaintext), nullptr, 0)));
     EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-    EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_INVALID_NONCE);
+    EXPECT_TRUE(
+        ErrorEquals(ERR_get_error(), ERR_LIB_CIPHER, CIPHER_R_INVALID_NONCE));
   }
 }
 

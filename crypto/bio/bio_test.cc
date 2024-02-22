@@ -813,10 +813,7 @@ TEST_P(BIOPairTest, TestPair) {
   // A closed write end may not be written to.
   EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1));
   EXPECT_EQ(-1, BIO_write(bio1, "_____", 5));
-
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(err));
-  EXPECT_EQ(BIO_R_BROKEN_PIPE, ERR_GET_REASON(err));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_BIO, BIO_R_BROKEN_PIPE));
 
   // The other end is still functional.
   EXPECT_EQ(5, BIO_write(bio2, "12345", 5));

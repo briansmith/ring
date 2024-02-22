@@ -267,9 +267,8 @@ TEST(DSATest, InvalidGroup) {
   static const uint8_t kDigest[32] = {0};
   EXPECT_FALSE(
       DSA_sign(0, kDigest, sizeof(kDigest), sig.data(), &sig_len, dsa.get()));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_DSA, ERR_GET_LIB(err));
-  EXPECT_EQ(DSA_R_INVALID_PARAMETERS, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_DSA, DSA_R_INVALID_PARAMETERS));
 }
 
 // Signing and verifying should cleanly fail when the DSA object is empty.

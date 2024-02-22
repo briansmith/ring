@@ -812,7 +812,8 @@ TEST(EVPExtraTest, MarshalEmptyPublicKey) {
   bssl::ScopedCBB cbb;
   EXPECT_FALSE(EVP_marshal_public_key(cbb.get(), empty.get()))
       << "Marshalled empty public key.";
-  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(ERR_peek_last_error()));
+  EXPECT_TRUE(ErrorEquals(ERR_peek_last_error(), ERR_LIB_EVP,
+                          EVP_R_UNSUPPORTED_ALGORITHM));
 }
 
 TEST(EVPExtraTest, d2i_PrivateKey) {
@@ -890,16 +891,14 @@ TEST(EVPExtraTest, Ed25519) {
   // Passing too small of a buffer is noticed.
   len = 31;
   EXPECT_FALSE(EVP_PKEY_get_raw_public_key(pubkey.get(), buf, &len));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_BUFFER_TOO_SMALL));
   ERR_clear_error();
 
   // There is no private key.
   EXPECT_FALSE(EVP_PKEY_get_raw_private_key(pubkey.get(), nullptr, &len));
-  err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_NOT_A_PRIVATE_KEY, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_NOT_A_PRIVATE_KEY));
   ERR_clear_error();
 
   // The public key must encode properly.
@@ -915,9 +914,8 @@ TEST(EVPExtraTest, Ed25519) {
   // The public key must gracefully fail to encode as a private key.
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
   EXPECT_FALSE(EVP_marshal_private_key(cbb.get(), pubkey.get()));
-  err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_NOT_A_PRIVATE_KEY, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_NOT_A_PRIVATE_KEY));
   ERR_clear_error();
   cbb.Reset();
 
@@ -940,9 +938,8 @@ TEST(EVPExtraTest, Ed25519) {
   // Passing too small of a buffer is noticed.
   len = 31;
   EXPECT_FALSE(EVP_PKEY_get_raw_private_key(privkey.get(), buf, &len));
-  err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_BUFFER_TOO_SMALL));
   ERR_clear_error();
   // The public key must be extractable.
   len = 32;
@@ -995,9 +992,8 @@ TEST(EVPExtraTest, Ed25519) {
       EVP_DigestSignInit(ctx.get(), nullptr, nullptr, nullptr, privkey.get()));
   len = 31;
   EXPECT_FALSE(EVP_DigestSign(ctx.get(), buf, &len, nullptr /* msg */, 0));
-  err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_EVP, EVP_R_BUFFER_TOO_SMALL));
   ERR_clear_error();
 }
 

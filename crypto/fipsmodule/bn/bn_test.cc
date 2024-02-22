@@ -884,9 +884,7 @@ static void TestNotModSquare(BIGNUMFileTest *t, BN_CTX *ctx) {
   EXPECT_FALSE(BN_mod_sqrt(ret.get(), not_mod_square.get(), p.get(), ctx))
       << "BN_mod_sqrt unexpectedly succeeded.";
 
-  uint32_t err = ERR_peek_error();
-  EXPECT_EQ(ERR_LIB_BN, ERR_GET_LIB(err));
-  EXPECT_EQ(BN_R_NOT_A_SQUARE, ERR_GET_REASON(err));
+  EXPECT_TRUE(ErrorEquals(ERR_peek_error(), ERR_LIB_BN, BN_R_NOT_A_SQUARE));
   ERR_clear_error();
 }
 

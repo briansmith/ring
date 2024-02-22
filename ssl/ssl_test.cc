@@ -3021,9 +3021,8 @@ TEST(SSLTest, WriteAfterWrongVersionOnEarlyData) {
   // The client processes the ServerHello and fails.
   EXPECT_EQ(-1, SSL_do_handshake(client.get()));
   EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(client.get(), -1));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_WRONG_VERSION_ON_EARLY_DATA, ERR_GET_REASON(err));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_SSL,
+                          SSL_R_WRONG_VERSION_ON_EARLY_DATA));
 
   // The client should have written an alert to the transport.
   const uint8_t *unused;
@@ -3035,9 +3034,8 @@ TEST(SSLTest, WriteAfterWrongVersionOnEarlyData) {
   // Writing should fail, with the same error as the handshake.
   EXPECT_EQ(-1, SSL_write(client.get(), "a", 1));
   EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(client.get(), -1));
-  err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_WRONG_VERSION_ON_EARLY_DATA, ERR_GET_REASON(err));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_SSL,
+                          SSL_R_WRONG_VERSION_ON_EARLY_DATA));
 
   // Nothing should be written to the transport.
   ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
@@ -5190,9 +5188,8 @@ TEST(SSLTest, NoCiphersAvailable) {
   int ret = SSL_do_handshake(ssl.get());
   EXPECT_EQ(-1, ret);
   EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(ssl.get(), ret));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_NO_CIPHERS_AVAILABLE, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_NO_CIPHERS_AVAILABLE));
 }
 
 TEST_P(SSLVersionTest, SessionVersion) {
@@ -7177,9 +7174,8 @@ TEST_F(QUICMethodTest, ExcessProvidedData) {
   // EncryptedExtensions on key change.
   ASSERT_EQ(SSL_do_handshake(client_.get()), -1);
   ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_SSL);
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_SSL);
-  EXPECT_EQ(ERR_GET_REASON(err), SSL_R_EXCESS_HANDSHAKE_DATA);
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_EXCESS_HANDSHAKE_DATA));
 
   // The client sends an alert in response to this. The alert is sent at
   // handshake level because we install write secrets before read secrets and
@@ -7628,9 +7624,8 @@ TEST_P(SSLVersionTest, DoubleSSLError) {
       // The client handshake should terminate on a certificate verification
       // error.
       EXPECT_EQ(SSL_ERROR_SSL, client_err);
-      uint32_t err = ERR_peek_error();
-      EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-      EXPECT_EQ(SSL_R_CERTIFICATE_VERIFY_FAILED, ERR_GET_REASON(err));
+      EXPECT_TRUE(ErrorEquals(ERR_peek_error(), ERR_LIB_SSL,
+                              SSL_R_CERTIFICATE_VERIFY_FAILED));
       break;
     }
 
@@ -7906,9 +7901,8 @@ TEST(SSLTest, WriteWhileExplicitRenegotiate) {
   // We never renegotiate as a server.
   ASSERT_EQ(-1, SSL_read(server.get(), buf, sizeof(buf)));
   ASSERT_EQ(SSL_ERROR_SSL, SSL_get_error(server.get(), -1));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_NO_RENEGOTIATION, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_NO_RENEGOTIATION));
 }
 
 TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
