@@ -32,7 +32,6 @@
 
 use crate::{sealed, FfiSlice, ForeignTypeRef};
 use alloc::vec::Vec;
-use bssl_sys;
 
 #[non_exhaustive]
 #[doc(hidden)]
