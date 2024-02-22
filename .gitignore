@@ -1,7 +1,5 @@
 # pregenerated/ cannot be here because we need `cargo package` to package stuff
-# in it. However, we don't need/want `cargo package` to package pregenerated/tmp,
-# so that can be here.
-pregenerated/tmp
+# in it.
 
 build/
 ssl/test/runner/runner
