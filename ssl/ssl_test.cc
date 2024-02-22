@@ -9097,5 +9097,90 @@ TEST(SSLTest, MixContextAndConnection) {
   EXPECT_FALSE(SSL_get_privatekey(ssl2.get()));
 }
 
+// Test that the server handshake cleanly fails if it had no certificate
+// configured, at all versions.
+TEST_P(SSLVersionTest, NoCertOrKey) {
+  bssl::UniquePtr<X509> cert = GetChainTestCertificate();
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> intermediate = GetChainTestIntermediate();
+  ASSERT_TRUE(intermediate);
+  bssl::UniquePtr<STACK_OF(X509)> chain(sk_X509_new_null());
+  ASSERT_TRUE(chain);
+  ASSERT_TRUE(bssl::PushToStack(chain.get(), std::move(intermediate)));
+
+  const struct {
+    bool has_cert;
+    bool has_key;
+    bool has_chain;
+  } kTests[] = {
+    // If nothing is configured, there is unambiguously no certificate.
+    {/*has_cert=*/false, /*has_key=*/false, /*has_chain=*/false},
+
+    // If only one of the key and certificate is configured, it is still treated
+    // as if there is no certificate.
+    {/*has_cert=*/true, /*has_key=*/false, /*has_chain=*/false},
+    {/*has_cert=*/false, /*has_key=*/true, /*has_chain=*/false},
+
+    // The key and intermediates may be configured, but without a leaf there is
+    // no certificate. This case is interesting because we internally store the
+    // chain with a somewhat fragile null fist entry.
+    {/*has_cert=*/false, /*has_key=*/true, /*has_chain=*/true},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(testing::Message() << "has_cert = " << t.has_cert);
+    SCOPED_TRACE(testing::Message() << "has_key = " << t.has_key);
+    SCOPED_TRACE(testing::Message() << "has_chain = " << t.has_chain);
+    for (bool client : {false, true}) {
+      SCOPED_TRACE(testing::Message() << "client = " << client);
+
+      EXPECT_NO_FATAL_FAILURE(ResetContexts());
+      if (client) {
+        // Request client certificates from the server.
+        SSL_CTX_set_verify(server_ctx_.get(), SSL_VERIFY_PEER, nullptr);
+        SSL_CTX_set_cert_verify_callback(client_ctx_.get(), VerifySucceed,
+                                         nullptr);
+      } else {
+        // Recreate the server context. ResetContexts automatically adds server
+        // certificates.
+        server_ctx_ = CreateContext();
+        ASSERT_TRUE(server_ctx_);
+      }
+
+      SSL_CTX *ctx = client ? client_ctx_.get() : server_ctx_.get();
+      if (t.has_cert) {
+        ASSERT_TRUE(SSL_CTX_use_certificate(ctx, cert.get()));
+      }
+      if (t.has_key) {
+        ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx, key.get()));
+      }
+      if (t.has_chain) {
+        ASSERT_TRUE(SSL_CTX_set1_chain(ctx, chain.get()));
+      }
+
+      // In each of these cases, |SSL_CTX_check_private_key| should report the
+      // certificate was not configured.
+      EXPECT_FALSE(SSL_CTX_check_private_key(ctx));
+      ERR_clear_error();
+
+      if (client) {
+        // The client should cleanly handshake without asserting a certificate.
+        EXPECT_TRUE(Connect());
+        EXPECT_FALSE(SSL_get0_peer_certificates(server_.get()));
+      } else {
+        // Servers cannot be anonymous. The connection should fail.
+        EXPECT_FALSE(Connect());
+        // Depending on the TLS version, this should either appear as
+        // NO_SHARED_CIPHER (TLS 1.2) or NO_CERTIFICATE_SET (TLS 1.3).
+        uint32_t err = ERR_get_error();
+        if (!ErrorEquals(err, ERR_LIB_SSL, SSL_R_NO_SHARED_CIPHER)) {
+          EXPECT_TRUE(ErrorEquals(err, ERR_LIB_SSL, SSL_R_NO_CERTIFICATE_SET));
+        }
+      }
+    }
+  }
+}
+
 }  // namespace
 BSSL_NAMESPACE_END
