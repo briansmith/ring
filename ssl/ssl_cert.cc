@@ -726,6 +726,16 @@ UniquePtr<DC> DC::Parse(CRYPTO_BUFFER *in, uint8_t *out_alert) {
     return nullptr;
   }
 
+  // RFC 9345 forbids algorithms that use the rsaEncryption OID. As the
+  // RSASSA-PSS OID is unusably complicated, this effectively means we will not
+  // support RSA delegated credentials.
+  if (SSL_get_signature_algorithm_key_type(dc->dc_cert_verify_algorithm) ==
+      EVP_PKEY_RSA) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SIGNATURE_ALGORITHM);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return nullptr;
+  }
+
   return dc;
 }
 

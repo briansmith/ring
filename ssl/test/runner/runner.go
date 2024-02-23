@@ -328,7 +328,7 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 	switch dcAlgo {
 	case signatureRSAPKCS1WithMD5, signatureRSAPKCS1WithSHA1, signatureRSAPKCS1WithSHA256, signatureRSAPKCS1WithSHA384, signatureRSAPKCS1WithSHA512, signatureRSAPSSWithSHA256, signatureRSAPSSWithSHA384, signatureRSAPSSWithSHA512:
 		pub = &rsa2048Key.PublicKey
-		privPKCS8, err = x509.MarshalPKCS8PrivateKey(rsa2048Key)
+		privPKCS8, err = x509.MarshalPKCS8PrivateKey(&rsa2048Key)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -16560,6 +16560,25 @@ func addDelegatedCredentialTests() {
 		},
 		shouldFail:    true,
 		expectedError: ":KEY_VALUES_MISMATCH:",
+	})
+
+	// RSA delegated credentials should be rejected at configuration time.
+	rsaDC, rsaPKCS8, err := createDelegatedCredential(delegatedCredentialConfig{
+		algo:   signatureRSAPSSWithSHA256,
+		dcAlgo: signatureRSAPSSWithSHA256,
+	}, rsaCertificate.Leaf.Raw, rsaCertificate.PrivateKey)
+	if err != nil {
+		panic(err)
+	}
+	rsaFlagValue := fmt.Sprintf("%x,%x", rsaDC, rsaPKCS8)
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "DelegatedCredentials-NoRSA",
+		flags: []string{
+			"-delegated-credential", rsaFlagValue,
+		},
+		shouldFail:    true,
+		expectedError: ":INVALID_SIGNATURE_ALGORITHM:",
 	})
 }
 
