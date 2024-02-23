@@ -353,7 +353,7 @@ fn pregenerate_asm_main() {
     let pregenerated = PathBuf::from(PREGENERATED);
     std::fs::create_dir(&pregenerated).unwrap();
 
-    generate_prefix_symbols_asm_headers(&pregenerated, &ring_core_prefix()).unwrap();
+    generate_prefix_symbols_headers(&pregenerated, &ring_core_prefix()).unwrap();
 
     let perl_exe = get_perl_exe();
 
@@ -416,18 +416,16 @@ fn build_c_code(
         asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
     });
 
-    let asm_dir = match &generated_sources {
+    let generated_dir = match &generated_sources {
         GeneratedSources::UsePregenerated { pregenerated_root } => pregenerated_root,
-        GeneratedSources::GenerateOnDemand { .. } => out_dir,
+        GeneratedSources::GenerateOnDemand { .. } => {
+            generate_prefix_symbols_headers(out_dir, ring_core_prefix).unwrap();
+            out_dir
+        }
     };
 
-    generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, ring_core_prefix)
-        .unwrap();
-
-    generate_prefix_symbols_asm_headers(out_dir, ring_core_prefix).unwrap();
-
     let (asm_srcs, obj_srcs) = if let Some(asm_target) = asm_target {
-        let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
+        let perlasm_src_dsts = perlasm_src_dsts(generated_dir, asm_target);
 
         match &generated_sources {
             GeneratedSources::UsePregenerated { .. } => {} // Do nothing
@@ -487,7 +485,7 @@ fn build_c_code(
         .for_each(|&(lib_name_suffix, srcs, asm_srcs, obj_srcs)| {
             let lib_name = String::from(ring_core_prefix) + lib_name_suffix;
             let srcs = srcs.iter().chain(asm_srcs);
-            build_library(target, out_dir, &lib_name, srcs, obj_srcs)
+            build_library(target, out_dir, &lib_name, srcs, generated_dir, obj_srcs)
         });
 
     println!(
@@ -507,9 +505,10 @@ fn build_library<'a>(
     out_dir: &Path,
     lib_name: &str,
     srcs: impl Iterator<Item = &'a PathBuf>,
+    include_dir: &Path,
     preassembled_objs: &[PathBuf],
 ) {
-    let mut c = new_build(target, out_dir);
+    let mut c = new_build(target, include_dir);
 
     // Compile all the (dirty) source files into object files.
     srcs.for_each(|src| {
@@ -810,12 +809,13 @@ fn ring_core_prefix() -> String {
     links + "_"
 }
 
-/// Creates the necessary header files for symbol renaming that are included by
-/// assembly code.
+/// Creates the necessary header files for symbol renaming.
 ///
 /// For simplicity, both non-Nasm- and Nasm- style headers are always
 /// generated, even though local non-packaged builds need only one of them.
-fn generate_prefix_symbols_asm_headers(out_dir: &Path, prefix: &str) -> Result<(), std::io::Error> {
+fn generate_prefix_symbols_headers(out_dir: &Path, prefix: &str) -> Result<(), std::io::Error> {
+    generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, prefix)?;
+
     generate_prefix_symbols_header(
         out_dir,
         "prefix_symbols_asm.h",
