@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 )
 
 type signer interface {
@@ -35,7 +36,7 @@ func selectSignatureAlgorithm(version uint16, key crypto.PrivateKey, config *Con
 	}
 
 	for _, sigAlg := range config.signSignatureAlgorithms() {
-		if !isSupportedSignatureAlgorithm(sigAlg, peerSigAlgs) {
+		if !slices.Contains(peerSigAlgs, sigAlg) {
 			continue
 		}
 
@@ -68,7 +69,7 @@ func signMessage(version uint16, key crypto.PrivateKey, config *Config, sigAlg s
 }
 
 func verifyMessage(version uint16, key crypto.PublicKey, config *Config, sigAlg signatureAlgorithm, msg, sig []byte) error {
-	if version >= VersionTLS12 && !isSupportedSignatureAlgorithm(sigAlg, config.verifySignatureAlgorithms()) {
+	if version >= VersionTLS12 && !slices.Contains(config.verifySignatureAlgorithms(), sigAlg) {
 		return errors.New("tls: unsupported signature algorithm")
 	}
 

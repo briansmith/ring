@@ -2339,15 +2339,6 @@ func unexpectedMessageError(wanted, got any) error {
 	return fmt.Errorf("tls: received unexpected handshake message of type %T when waiting for %T", got, wanted)
 }
 
-func isSupportedSignatureAlgorithm(sigAlg signatureAlgorithm, sigAlgs []signatureAlgorithm) bool {
-	for _, s := range sigAlgs {
-		if s == sigAlg {
-			return true
-		}
-	}
-	return false
-}
-
 var (
 	// See RFC 8446, section 4.1.3.
 	downgradeTLS13 = []byte{0x44, 0x4f, 0x57, 0x4e, 0x47, 0x52, 0x44, 0x01}
