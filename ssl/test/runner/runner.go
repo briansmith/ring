@@ -294,9 +294,6 @@ type delegatedCredentialConfig struct {
 	// dcAlgo is the signature scheme that should be used with this delegated
 	// credential. If zero, ECDSA with P-256 is assumed.
 	dcAlgo signatureAlgorithm
-	// tlsVersion is the version of TLS that should be used with this delegated
-	// credential. If zero, TLS 1.3 is assumed.
-	tlsVersion uint16
 	// algo is the signature algorithm that the delegated credential itself is
 	// signed with. Cannot be zero.
 	algo signatureAlgorithm
@@ -372,14 +369,6 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 	if lifetimeSecs > 1<<32 {
 		return nil, nil, fmt.Errorf("lifetime %s is too long to be expressed", lifetime)
 	}
-	tlsVersion := config.tlsVersion
-	if tlsVersion == 0 {
-		tlsVersion = VersionTLS13
-	}
-
-	if tlsVersion < VersionTLS13 {
-		return nil, nil, fmt.Errorf("delegated credentials require TLS 1.3")
-	}
 
 	// https://www.rfc-editor.org/rfc/rfc9345.html#section-4
 	dc = append(dc, byte(lifetimeSecs>>24), byte(lifetimeSecs>>16), byte(lifetimeSecs>>8), byte(lifetimeSecs))
@@ -394,12 +383,7 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 	dc = append(dc, pubBytes...)
 
 	var dummyConfig Config
-	parentSigner, err := getSigner(tlsVersion, parentPriv, &dummyConfig, config.algo, false /* not for verification */)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	parentSignature, err := parentSigner.signMessage(parentPriv, &dummyConfig, delegatedCredentialSignedMessage(dc, config.algo, parentDER))
+	parentSignature, err := signMessage(VersionTLS13, parentPriv, &dummyConfig, config.algo, delegatedCredentialSignedMessage(dc, config.algo, parentDER))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -16520,26 +16504,17 @@ func addDelegatedCredentialTests() {
 		},
 	})
 
-	// This flag value has mismatched public and private keys which should cause a
-	// configuration error in the shim.
-	_, badTLSVersionPKCS8, err := createDelegatedCredential(delegatedCredentialConfig{
-		algo:       signatureRSAPSSWithSHA256,
-		tlsVersion: 0x1234,
+	// Generate another delegated credential, so we can get the keys out of sync.
+	_, ecdsaPKCS8Wrong, err := createDelegatedCredential(delegatedCredentialConfig{
+		algo: signatureRSAPSSWithSHA256,
 	}, rsaCertificate.Leaf.Raw, rsaCertificate.PrivateKey)
 	if err != nil {
 		panic(err)
 	}
-	mismatchFlagValue := fmt.Sprintf("%x,%x", ecdsaDC, badTLSVersionPKCS8)
+	mismatchFlagValue := fmt.Sprintf("%x,%x", ecdsaDC, ecdsaPKCS8Wrong)
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "DelegatedCredentials-KeyMismatch",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				FailIfDelegatedCredentials: true,
-			},
-		},
 		flags: []string{
 			"-delegated-credential", mismatchFlagValue,
 		},
