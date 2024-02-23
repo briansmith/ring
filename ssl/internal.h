@@ -1361,11 +1361,6 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
                           uint8_t *out_leaf_sha256, CBS *cbs,
                           CRYPTO_BUFFER_POOL *pool);
 
-// ssl_add_cert_chain adds |hs->ssl|'s certificate chain to |cbb| in the format
-// used by a TLS Certificate message. If there is no certificate chain, it emits
-// an empty certificate list. It returns true on success and false on error.
-bool ssl_add_cert_chain(SSL_HANDSHAKE *hs, CBB *cbb);
-
 enum ssl_key_usage_t {
   key_usage_digital_signature = 0,
   key_usage_encipherment = 2,
@@ -2314,8 +2309,14 @@ enum ssl_verify_result_t ssl_reverify_peer_cert(SSL_HANDSHAKE *hs,
                                                 bool send_alert);
 
 enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs);
+
+// ssl_send_finished adds a Finished message to the current flight of messages.
+// It returns true on success and false on error.
 bool ssl_send_finished(SSL_HANDSHAKE *hs);
-bool ssl_output_cert_chain(SSL_HANDSHAKE *hs);
+
+// ssl_send_tls12_certificate adds a TLS 1.2 Certificate message to the current
+// flight of messages. It returns true on success and false on error.
+bool ssl_send_tls12_certificate(SSL_HANDSHAKE *hs);
 
 // ssl_handshake_session returns the |SSL_SESSION| corresponding to the current
 // handshake. Note, in TLS 1.2 resumptions, this session is immutable.

@@ -385,33 +385,6 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
   return true;
 }
 
-bool ssl_add_cert_chain(SSL_HANDSHAKE *hs, CBB *cbb) {
-  if (!ssl_has_certificate(hs)) {
-    return CBB_add_u24(cbb, 0);
-  }
-
-  CBB certs;
-  if (!CBB_add_u24_length_prefixed(cbb, &certs)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
-  }
-
-  STACK_OF(CRYPTO_BUFFER) *chain = hs->config->cert->chain.get();
-  for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(chain); i++) {
-    CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(chain, i);
-    CBB child;
-    if (!CBB_add_u24_length_prefixed(&certs, &child) ||
-        !CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
-                       CRYPTO_BUFFER_len(buffer)) ||
-        !CBB_flush(&certs)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return false;
-    }
-  }
-
-  return CBB_flush(cbb);
-}
-
 // ssl_cert_skip_to_spki parses a DER-encoded, X.509 certificate from |in| and
 // positions |*out_tbs_cert| to cover the TBSCertificate, starting at the
 // subjectPublicKeyInfo.

@@ -1364,7 +1364,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl_on_certificate_selected(hs) ||
-      !ssl_output_cert_chain(hs)) {
+      !ssl_send_tls12_certificate(hs)) {
     return ssl_hs_error;
   }
 
