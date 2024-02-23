@@ -81,6 +81,19 @@ func verifyMessage(version uint16, key crypto.PublicKey, config *Config, sigAlg 
 	return signer.verifyMessage(key, msg, sig)
 }
 
+func verifyMessageDC(version uint16, key crypto.PublicKey, config *Config, sigAlg signatureAlgorithm, msg, sig []byte) error {
+	if version >= VersionTLS12 && !slices.Contains(config.DelegatedCredentialAlgorithms, sigAlg) {
+		return errors.New("tls: unsupported signature algorithm")
+	}
+
+	signer, err := getSigner(version, key, config, sigAlg, true)
+	if err != nil {
+		return err
+	}
+
+	return signer.verifyMessage(key, msg, sig)
+}
+
 type rsaPKCS1Signer struct {
 	hash crypto.Hash
 }

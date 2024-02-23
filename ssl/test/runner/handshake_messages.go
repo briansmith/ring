@@ -194,7 +194,7 @@ type clientHelloMsg struct {
 	emptyExtensions                          bool
 	pad                                      int
 	compressedCertAlgs                       []uint16
-	delegatedCredentials                     bool
+	delegatedCredential                      []signatureAlgorithm
 	alpsProtocols                            []string
 	alpsProtocolsOld                         []string
 	outerExtensions                          []uint16
@@ -501,15 +501,15 @@ func (m *clientHelloMsg) marshalBody(hello *cryptobyte.Builder, typ clientHelloT
 			body: body.BytesOrPanic(),
 		})
 	}
-	if m.delegatedCredentials {
+	if len(m.delegatedCredential) > 0 {
 		body := cryptobyte.NewBuilder(nil)
 		body.AddUint16LengthPrefixed(func(signatureSchemeList *cryptobyte.Builder) {
-			for _, sigAlg := range m.signatureAlgorithms {
+			for _, sigAlg := range m.delegatedCredential {
 				signatureSchemeList.AddUint16(uint16(sigAlg))
 			}
 		})
 		extensions = append(extensions, extension{
-			id:   extensionDelegatedCredentials,
+			id:   extensionDelegatedCredential,
 			body: body.BytesOrPanic(),
 		})
 	}
@@ -756,7 +756,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.alpnProtocols = nil
 	m.extendedMasterSecret = false
 	m.customExtension = ""
-	m.delegatedCredentials = false
+	m.delegatedCredential = nil
 	m.alpsProtocols = nil
 	m.alpsProtocolsOld = nil
 
@@ -1029,11 +1029,10 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 					return false
 				}
 			}
-		case extensionDelegatedCredentials:
-			if len(body) != 0 {
+		case extensionDelegatedCredential:
+			if !parseSignatureAlgorithms(&body, &m.delegatedCredential, false) || len(body) != 0 {
 				return false
 			}
-			m.delegatedCredentials = true
 		case extensionApplicationSettings:
 			var protocols cryptobyte.String
 			if !body.ReadUint16LengthPrefixed(&protocols) || len(body) != 0 {
@@ -2029,7 +2028,7 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 					}
 				case extensionSignedCertificateTimestamp:
 					cert.sctList = []byte(body)
-				case extensionDelegatedCredentials:
+				case extensionDelegatedCredential:
 					// https://www.rfc-editor.org/rfc/rfc9345.html#section-4
 					if cert.delegatedCredential != nil {
 						return false

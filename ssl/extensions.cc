@@ -4119,14 +4119,15 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
     return true;
   }
 
-  Span<const uint16_t> sigalgs = kSignSignatureAlgorithms;
+  Span<const uint16_t> sigalgs, peer_sigalgs;
   if (ssl_signing_with_dc(hs)) {
     sigalgs = MakeConstSpan(&dc->dc_cert_verify_algorithm, 1);
-  } else if (!cert->sigalgs.empty()) {
-    sigalgs = cert->sigalgs;
+    peer_sigalgs = hs->peer_delegated_credential_sigalgs;
+  } else {
+    sigalgs = cert->sigalgs.empty() ? MakeConstSpan(kSignSignatureAlgorithms)
+                                    : cert->sigalgs;
+    peer_sigalgs = tls1_get_peer_verify_algorithms(hs);
   }
-
-  Span<const uint16_t> peer_sigalgs = tls1_get_peer_verify_algorithms(hs);
 
   for (uint16_t sigalg : sigalgs) {
     if (!ssl_private_key_supports_signature_algorithm(hs, sigalg)) {

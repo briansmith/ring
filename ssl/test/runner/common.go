@@ -112,7 +112,7 @@ const (
 	extensionPadding                    uint16 = 21
 	extensionExtendedMasterSecret       uint16 = 23
 	extensionCompressedCertAlgs         uint16 = 27
-	extensionDelegatedCredentials       uint16 = 34
+	extensionDelegatedCredential        uint16 = 34
 	extensionSessionTicket              uint16 = 35
 	extensionPreSharedKey               uint16 = 41
 	extensionEarlyData                  uint16 = 42
@@ -590,6 +590,11 @@ type Config struct {
 	// VerifySignatureAlgorithms, if not nil, overrides the default set of
 	// supported signature algorithms that are accepted.
 	VerifySignatureAlgorithms []signatureAlgorithm
+
+	// DelegatedCredentialAlgorithms, if not empty, is the set of signature
+	// algorithms allowed for the delegated credential key. If empty, delegated
+	// credentials are disabled.
+	DelegatedCredentialAlgorithms []signatureAlgorithm
 
 	// QUICTransportParams, if not empty, will be sent in the QUIC
 	// transport parameters extension.
@@ -1951,10 +1956,6 @@ type ProtocolBugs struct {
 	// FailIfDelegatedCredentials, if true, causes a handshake failure if the
 	// server returns delegated credentials.
 	FailIfDelegatedCredentials bool
-
-	// DisableDelegatedCredentials, if true, disables client support for delegated
-	// credentials.
-	DisableDelegatedCredentials bool
 
 	// CompatModeWithQUIC, if true, enables TLS 1.3 compatibility mode
 	// when running over QUIC.

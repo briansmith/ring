@@ -1630,8 +1630,13 @@ struct DC {
   // raw is the delegated credential encoded as specified in RFC 9345.
   UniquePtr<CRYPTO_BUFFER> raw;
 
-  // dc_cert_verify_algorithm is the signature scheme of the DC public key.
+  // dc_cert_verify_algorithm is the signature scheme of the DC public key. This
+  // is used for the CertificateVerify message.
   uint16_t dc_cert_verify_algorithm = 0;
+
+  // algorithm is the signature scheme of the signature over the delegated
+  // credential itself, made by the end-entity certificate's public key.
+  uint16_t algorithm = 0;
 
   // pkey is the public key parsed from |public_key|.
   UniquePtr<EVP_PKEY> pkey;
