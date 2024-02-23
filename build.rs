@@ -20,7 +20,7 @@
 // to log everything to stderr.
 
 use std::{
-    ffi::{OsStr, OsString},
+    ffi::OsString,
     fs::{self, DirEntry},
     io::Write,
     path::{Path, PathBuf},
@@ -288,6 +288,11 @@ fn main() {
     }
 }
 
+enum GeneratedSources {
+    UsePregenerated { pregenerated_root: PathBuf },
+    GenerateOnDemand { perl_exe: PathBuf },
+}
+
 fn ring_build_rs_main() {
     use std::env;
 
@@ -314,7 +319,15 @@ fn ring_build_rs_main() {
     // If `.git` doesn't exist then assume that this is a packaged build where
     // we want to optimize for minimizing the build tools required: No Perl,
     // no nasm, etc.
-    let use_pregenerated = !is_git;
+    let generated_sources = if !is_git {
+        let pregenerated_root =
+            PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
+        GeneratedSources::UsePregenerated { pregenerated_root }
+    } else {
+        GeneratedSources::GenerateOnDemand {
+            perl_exe: get_perl_exe(),
+        }
+    };
 
     // During local development, force warnings in non-Rust code to be treated
     // as errors. Since warnings are highly compiler-dependent and compilers
@@ -329,15 +342,8 @@ fn ring_build_rs_main() {
         is_debug,
         force_warnings_into_errors,
     };
-    let pregenerated = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
 
-    build_c_code(
-        &target,
-        pregenerated,
-        &out_dir,
-        &ring_core_prefix(),
-        use_pregenerated,
-    );
+    build_c_code(&target, generated_sources, &out_dir, &ring_core_prefix());
     emit_rerun_if_changed()
 }
 
@@ -351,6 +357,8 @@ fn pregenerate_asm_main() {
 
     generate_prefix_symbols_asm_headers(&pregenerated_tmp, &ring_core_prefix()).unwrap();
 
+    let perl_exe = get_perl_exe();
+
     for asm_target in ASM_TARGETS {
         // For Windows, package pregenerated object files instead of
         // pregenerated assembly language source files, so that the user
@@ -360,9 +368,8 @@ fn pregenerate_asm_main() {
         } else {
             &pregenerated
         };
-
         let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
-        perlasm(&perlasm_src_dsts, asm_target);
+        perlasm(&perl_exe, &perlasm_src_dsts, asm_target);
 
         if asm_target.preassemble {
             // Preassembly is currently only done for Windows targets.
@@ -405,10 +412,9 @@ struct Target {
 
 fn build_c_code(
     target: &Target,
-    pregenerated: PathBuf,
+    generated_sources: GeneratedSources,
     out_dir: &Path,
     ring_core_prefix: &str,
-    use_pregenerated: bool,
 ) {
     println!("cargo:rustc-env=RING_CORE_PREFIX={}", ring_core_prefix);
 
@@ -416,10 +422,9 @@ fn build_c_code(
         asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
     });
 
-    let asm_dir = if use_pregenerated {
-        &pregenerated
-    } else {
-        out_dir
+    let asm_dir = match &generated_sources {
+        GeneratedSources::UsePregenerated { pregenerated_root } => pregenerated_root,
+        GeneratedSources::GenerateOnDemand { .. } => out_dir,
     };
 
     generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, ring_core_prefix)
@@ -430,22 +435,28 @@ fn build_c_code(
     let (asm_srcs, obj_srcs) = if let Some(asm_target) = asm_target {
         let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
 
-        if !use_pregenerated {
-            perlasm(&perlasm_src_dsts[..], asm_target);
+        match &generated_sources {
+            GeneratedSources::UsePregenerated { .. } => {} // Do nothing
+            GeneratedSources::GenerateOnDemand { perl_exe } => {
+                perlasm(perl_exe, &perlasm_src_dsts[..], asm_target);
+            }
         }
 
         let asm_srcs = asm_srcs(perlasm_src_dsts);
 
         // For Windows we also pregenerate the object files for non-Git builds so
         // the user doesn't need to install the assembler.
-        if use_pregenerated && target.os == WINDOWS && asm_target.preassemble {
-            let obj_srcs = asm_srcs
-                .iter()
-                .map(|src| obj_path(&pregenerated, src.as_path()))
-                .collect::<Vec<_>>();
-            (vec![], obj_srcs)
-        } else {
-            (asm_srcs, vec![])
+        match &generated_sources {
+            GeneratedSources::UsePregenerated { pregenerated_root }
+                if target.os == WINDOWS && asm_target.preassemble =>
+            {
+                let obj_srcs = asm_srcs
+                    .iter()
+                    .map(|src| obj_path(pregenerated_root, src.as_path()))
+                    .collect::<Vec<_>>();
+                (vec![], obj_srcs)
+            }
+            _ => (asm_srcs, vec![]),
         }
     } else {
         (vec![], vec![])
@@ -655,7 +666,7 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_file: &Path) -> Command
     c
 }
 
-fn run_command_with_args(command_name: &OsStr, args: &[String]) {
+fn run_command_with_args(command_name: &Path, args: &[String]) {
     let mut cmd = Command::new(command_name);
     let _ = cmd.args(args);
     run_command(cmd)
@@ -730,7 +741,7 @@ fn asm_path(out_dir: &Path, src: &Path, asm_target: &AsmTarget) -> PathBuf {
     out_dir.join(dst_filename)
 }
 
-fn perlasm(src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
+fn perlasm(perl_exe: &Path, src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
     for (src, dst) in src_dst {
         let mut args = vec![
             src.to_string_lossy().into_owned(),
@@ -747,12 +758,16 @@ fn perlasm(src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
             .expect("Could not convert path")
             .replace('\\', "/");
         args.push(dst);
-        run_command_with_args(&get_command("PERL_EXECUTABLE", "perl"), &args);
+        run_command_with_args(perl_exe, &args);
     }
 }
 
-fn get_command(var: &'static str, default: &str) -> OsString {
-    read_env_var(var).unwrap_or_else(|| default.into())
+fn get_perl_exe() -> PathBuf {
+    get_command("PERL_EXECUTABLE", "perl")
+}
+
+fn get_command(var: &'static str, default: &str) -> PathBuf {
+    PathBuf::from(read_env_var(var).unwrap_or_else(|| default.into()))
 }
 
 // TODO: We should emit `cargo:rerun-if-changed-env` for the various
