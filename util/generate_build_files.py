@@ -127,6 +127,7 @@ class Android(object):
       self.PrintDefaults(blueprint, 'boringssl_test_support_sources', files['test_support'])
       self.PrintDefaults(blueprint, 'boringssl_crypto_test_sources', files['crypto_test'])
       self.PrintDefaults(blueprint, 'boringssl_ssl_test_sources', files['ssl_test'])
+      self.PrintDefaults(blueprint, 'libpki_sources', files['pki'])
 
     # Legacy Android.mk format, only used by Trusty in new branches
     with open('sources.mk', 'w+') as makefile:
