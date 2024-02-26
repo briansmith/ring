@@ -512,13 +512,10 @@ fn build_library<'a>(
 
     // Compile all the (dirty) source files into object files.
     srcs.for_each(|src| {
-        // XXX: `b.file(p)` isn't enough to assemble an '.S' with clang on aarch64-pc-windows-msvc
-        // presumably due to a bug in cc-rs; it doesn't pass clang `-c` like it does for other
-        // targets.
-        if target.os != WINDOWS || !matches!(src.extension(), Some(e) if e == "S" || e == "asm") {
+        if target.os != WINDOWS || !matches!(src.extension(), Some(e) if e == "asm") {
             c.file(src);
         } else {
-            let obj = win_asm(&c, src, target, out_dir, out_dir);
+            let obj = win_asm(src, target, out_dir, out_dir);
             c.object(obj);
         }
     });
@@ -546,20 +543,13 @@ fn build_library<'a>(
 }
 
 fn win_asm(
-    b: &cc::Build,
     p: &Path,
     target: &Target,
     include_dir: &Path,
     out_dir: &Path,
 ) -> PathBuf {
-    let ext = p.extension().unwrap().to_str().unwrap();
     let out_file = obj_path(out_dir, p);
-    let cmd = if target.os != WINDOWS || ext != "asm" {
-        cc_asm(b, p, &out_file)
-    } else {
-        nasm(p, &target.arch, include_dir, &out_file)
-    };
-
+    nasm(p, &target.arch, include_dir, &out_file)
     run_command(cmd);
     out_file
 }
@@ -615,19 +605,6 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
     if target.force_warnings_into_errors {
         c.warnings_into_errors(true);
     }
-}
-
-/// Assembles the assemply language source `file` into the object file
-/// `out_file`.
-fn cc_asm(b: &cc::Build, file: &Path, out_file: &Path) -> Command {
-    let cc = b.get_compiler();
-    let obj_opt = if cc.is_like_msvc() { "/Fo" } else { "-o" };
-    let mut arg = OsString::from(obj_opt);
-    arg.push(out_file);
-
-    let mut c = cc.to_command();
-    let _ = c.arg("-c").arg(arg).arg(file);
-    c
 }
 
 fn nasm(file: &Path, arch: &str, include_dir: &Path, out_file: &Path) -> Command {
