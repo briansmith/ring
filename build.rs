@@ -368,21 +368,11 @@ fn pregenerate_asm_main() {
         if asm_target.preassemble {
             // Preassembly is currently only done for Windows targets.
             assert_eq!(&asm_target.oss, &[WINDOWS]);
-            let os = WINDOWS;
 
             let srcs = asm_srcs(perlasm_src_dsts);
 
-            let target = Target {
-                arch: asm_target.arch.to_owned(),
-                os: os.to_owned(),
-                is_musl: false,
-                is_debug: false,
-                force_warnings_into_errors: true,
-            };
-
-            let b = new_build(&target, &pregenerated);
             for src in srcs {
-                win_asm(&b, &src, &target, &pregenerated, &pregenerated);
+                win_asm(&src, asm_target.arch, &pregenerated, &pregenerated);
             }
         }
     }
@@ -515,7 +505,7 @@ fn build_library<'a>(
         if target.os != WINDOWS || !matches!(src.extension(), Some(e) if e == "asm") {
             c.file(src);
         } else {
-            let obj = win_asm(src, target, out_dir, out_dir);
+            let obj = win_asm(src, &target.arch, out_dir, out_dir);
             c.object(obj);
         }
     });
@@ -542,14 +532,9 @@ fn build_library<'a>(
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn win_asm(
-    p: &Path,
-    target: &Target,
-    include_dir: &Path,
-    out_dir: &Path,
-) -> PathBuf {
+fn win_asm(p: &Path, target_arch: &str, include_dir: &Path, out_dir: &Path) -> PathBuf {
     let out_file = obj_path(out_dir, p);
-    nasm(p, &target.arch, include_dir, &out_file)
+    let cmd = nasm(p, target_arch, include_dir, &out_file);
     run_command(cmd);
     out_file
 }
