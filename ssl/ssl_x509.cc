@@ -194,11 +194,21 @@ static UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_leafless_chain(void) {
   return chain;
 }
 
-// ssl_cert_set_chain sets elements 1.. of |cert->chain| to the serialised
+static void ssl_crypto_x509_cert_flush_cached_leaf(CERT *cert) {
+  X509_free(cert->x509_leaf);
+  cert->x509_leaf = nullptr;
+}
+
+static void ssl_crypto_x509_cert_flush_cached_chain(CERT *cert) {
+  sk_X509_pop_free(cert->x509_chain, X509_free);
+  cert->x509_chain = nullptr;
+}
+
+// ssl_cert_set1_chain sets elements 1.. of |cert->chain| to the serialised
 // forms of elements of |chain|. It returns one on success or zero on error, in
 // which case no change to |cert->chain| is made. It preverses the existing
 // leaf from |cert->chain|, if any.
-static bool ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
+static bool ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_chain;
 
   if (cert->chain != nullptr) {
@@ -230,17 +240,8 @@ static bool ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
   }
 
   cert->chain = std::move(new_chain);
+  ssl_crypto_x509_cert_flush_cached_chain(cert);
   return true;
-}
-
-static void ssl_crypto_x509_cert_flush_cached_leaf(CERT *cert) {
-  X509_free(cert->x509_leaf);
-  cert->x509_leaf = nullptr;
-}
-
-static void ssl_crypto_x509_cert_flush_cached_chain(CERT *cert) {
-  sk_X509_pop_free(cert->x509_chain, X509_free);
-  cert->x509_chain = nullptr;
 }
 
 static bool ssl_crypto_x509_check_client_CA_list(
@@ -446,8 +447,9 @@ static void ssl_crypto_x509_ssl_config_free(SSL_CONFIG *cfg) {
 static bool ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
   // Only build a chain if there are no intermediates configured and the feature
   // isn't disabled.
-  if ((hs->ssl->mode & SSL_MODE_NO_AUTO_CHAIN) ||
-      !ssl_has_certificate(hs) || hs->config->cert->chain == NULL ||
+  SSL *const ssl = hs->ssl;
+  if ((ssl->mode & SSL_MODE_NO_AUTO_CHAIN) || !ssl_has_certificate(hs) ||
+      hs->config->cert->chain == NULL ||
       sk_CRYPTO_BUFFER_num(hs->config->cert->chain.get()) > 1) {
     return true;
   }
@@ -460,8 +462,8 @@ static bool ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
   }
 
   UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
-  if (!ctx || !X509_STORE_CTX_init(ctx.get(), hs->ssl->ctx->cert_store,
-                                   leaf.get(), nullptr)) {
+  if (!ctx || !X509_STORE_CTX_init(ctx.get(), ssl->ctx->cert_store, leaf.get(),
+                                   nullptr)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return false;
   }
@@ -477,13 +479,7 @@ static bool ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
   }
   X509_free(sk_X509_shift(chain.get()));
 
-  if (!ssl_cert_set_chain(hs->config->cert.get(), chain.get())) {
-    return false;
-  }
-
-  ssl_crypto_x509_cert_flush_cached_chain(hs->config->cert.get());
-
-  return true;
+  return SSL_set1_chain(ssl, chain.get());
 }
 
 static void ssl_crypto_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {
@@ -795,26 +791,7 @@ X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx) {
   return ssl_cert_get0_leaf(ctx->cert.get());
 }
 
-static int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain) {
-  if (!ssl_cert_set_chain(cert, chain)) {
-    return 0;
-  }
-
-  sk_X509_pop_free(chain, X509_free);
-  ssl_crypto_x509_cert_flush_cached_chain(cert);
-  return 1;
-}
-
-static int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
-  if (!ssl_cert_set_chain(cert, chain)) {
-    return 0;
-  }
-
-  ssl_crypto_x509_cert_flush_cached_chain(cert);
-  return 1;
-}
-
-static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
+static int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509) {
   assert(cert->x509_method);
 
   UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
@@ -822,43 +799,38 @@ static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
     return 0;
   }
 
-  if (cert->chain != NULL) {
-    return PushToStack(cert->chain.get(), std::move(buffer));
+  if (cert->chain == nullptr) {
+    cert->chain = new_leafless_chain();
+    if (cert->chain == nullptr) {
+      return 0;
+    }
   }
 
-  cert->chain = new_leafless_chain();
-  if (!cert->chain ||
-      !PushToStack(cert->chain.get(), std::move(buffer))) {
-    cert->chain.reset();
+  if (!PushToStack(cert->chain.get(), std::move(buffer))) {
     return 0;
   }
 
+  ssl_crypto_x509_cert_flush_cached_chain(cert);
   return 1;
 }
 
 static int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509) {
-  if (!ssl_cert_append_cert(cert, x509)) {
+  if (!ssl_cert_add1_chain_cert(cert, x509)) {
     return 0;
   }
 
   X509_free(cert->x509_stash);
   cert->x509_stash = x509;
-  ssl_crypto_x509_cert_flush_cached_chain(cert);
-  return 1;
-}
-
-static int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509) {
-  if (!ssl_cert_append_cert(cert, x509)) {
-    return 0;
-  }
-
-  ssl_crypto_x509_cert_flush_cached_chain(cert);
   return 1;
 }
 
 int SSL_CTX_set0_chain(SSL_CTX *ctx, STACK_OF(X509) *chain) {
   check_ssl_ctx_x509_method(ctx);
-  return ssl_cert_set0_chain(ctx->cert.get(), chain);
+  if (!ssl_cert_set1_chain(ctx->cert.get(), chain)) {
+    return 0;
+  }
+  sk_X509_pop_free(chain, X509_free);
+  return 1;
 }
 
 int SSL_CTX_set1_chain(SSL_CTX *ctx, STACK_OF(X509) *chain) {
@@ -871,7 +843,11 @@ int SSL_set0_chain(SSL *ssl, STACK_OF(X509) *chain) {
   if (!ssl->config) {
     return 0;
   }
-  return ssl_cert_set0_chain(ssl->config->cert.get(), chain);
+  if (!ssl_cert_set1_chain(ssl->config->cert.get(), chain)) {
+    return 0;
+  }
+  sk_X509_pop_free(chain, X509_free);
+  return 1;
 }
 
 int SSL_set1_chain(SSL *ssl, STACK_OF(X509) *chain) {
