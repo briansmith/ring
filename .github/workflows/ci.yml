@@ -132,6 +132,9 @@ jobs:
 
     runs-on: ${{ matrix.host_os }}
 
+    env:
+      CC_ENABLE_DEBUG_OUTPUT: 1
+
     strategy:
       matrix:
         # XXX: See `test-features` below.
@@ -364,6 +367,10 @@ jobs:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
     runs-on: ${{ matrix.host_os }}
+
+    env:
+      CC_ENABLE_DEBUG_OUTPUT: 1
+
     strategy:
       matrix:
         features:
@@ -449,6 +456,9 @@ jobs:
 
     runs-on: ${{ matrix.host_os }}
 
+    env:
+      CC_ENABLE_DEBUG_OUTPUT: 1
+
     strategy:
       matrix:
         features:
@@ -501,6 +511,9 @@ jobs:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
     runs-on: ${{ matrix.host_os }}
+
+    env:
+      CC_ENABLE_DEBUG_OUTPUT: 1
 
     strategy:
       fail-fast: false
