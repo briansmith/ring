@@ -159,64 +159,46 @@ const ASM_TARGETS: &[AsmTarget] = &[
         oss: LINUX_ABI,
         arch: AARCH64,
         perlasm_format: "linux64",
-        asm_extension: "S",
-        preassemble: false,
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: ARM,
         perlasm_format: "linux32",
-        asm_extension: "S",
-        preassemble: false,
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: X86,
         perlasm_format: "elf",
-        asm_extension: "S",
-        preassemble: false,
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: X86_64,
         perlasm_format: "elf",
-        asm_extension: "S",
-        preassemble: false,
     },
     AsmTarget {
         oss: MACOS_ABI,
         arch: AARCH64,
         perlasm_format: "ios64",
-        asm_extension: "S",
-        preassemble: false,
     },
     AsmTarget {
         oss: MACOS_ABI,
         arch: X86_64,
         perlasm_format: "macosx",
-        asm_extension: "S",
-        preassemble: false,
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: X86,
-        perlasm_format: "win32n",
-        asm_extension: "asm",
-        preassemble: true,
+        perlasm_format: WIN32N,
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: X86_64,
-        perlasm_format: "nasm",
-        asm_extension: "asm",
-        preassemble: true,
+        perlasm_format: NASM,
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: AARCH64,
         perlasm_format: "win64",
-        asm_extension: "S",
-        preassemble: false,
     },
 ];
 
@@ -229,16 +211,12 @@ struct AsmTarget {
 
     /// The PerlAsm format name.
     perlasm_format: &'static str,
+}
 
-    /// The filename extension for assembly files.
-    asm_extension: &'static str,
-
-    /// Whether pre-assembled object files should be included in the Cargo
-    /// package instead of the asm sources. This way, the user doesn't need
-    /// to install an assembler for the target. This is particularly important
-    /// for x86/x86_64 Windows since an assembler doesn't come with the C
-    /// compiler.
-    preassemble: bool,
+impl AsmTarget {
+    fn use_nasm(&self) -> bool {
+        [WIN32N, NASM].contains(&self.perlasm_format)
+    }
 }
 
 /// Operating systems that have the same ABI as Linux on every architecture
@@ -256,6 +234,9 @@ const LINUX_ABI: &[&str] = &[
     "redox",
     "solaris",
 ];
+
+const WIN32N: &str = "win32n";
+const NASM: &str = "nasm";
 
 /// Operating systems that have the same ABI as macOS on every architecture
 /// mentioned in `ASM_TARGETS`.
@@ -372,16 +353,14 @@ fn generate_sources_and_preassemble<'a>(
     let perl_exe = get_perl_exe();
 
     for asm_target in asm_targets {
-        // For Windows, package pregenerated object files in addition to
-        // pregenerated assembly language source files, so that the user
-        // doesn't need to install the assembler.
-
         let perlasm_src_dsts = perlasm_src_dsts(out_dir, asm_target);
         perlasm(&perl_exe, &perlasm_src_dsts, asm_target, c_root_dir);
 
-        if asm_target.preassemble {
+        if asm_target.use_nasm() {
+            // Package pregenerated object files in addition to pregenerated
+            // assembly language source files, so that the user doesn't need
+            // to install the assembler.
             let srcs = asm_srcs(perlasm_src_dsts);
-
             for src in srcs {
                 nasm(&src, asm_target.arch, out_dir, out_dir, c_root_dir);
             }
@@ -418,9 +397,9 @@ fn build_c_code(
 
         let asm_srcs = asm_srcs(perlasm_src_dsts);
 
-        // For Windows we also pregenerate the object files for non-Git builds so
-        // the user doesn't need to install the assembler.
-        if asm_target.preassemble {
+        if asm_target.use_nasm() {
+            // Nasm was already used to generate the object files, so use them instead of
+            // assembling.
             let obj_srcs = asm_srcs
                 .iter()
                 .map(|src| obj_path(generated_dir, src.as_path()))
@@ -678,11 +657,9 @@ fn asm_path(out_dir: &Path, src: &Path, asm_target: &AsmTarget) -> PathBuf {
     let src_stem = src.file_stem().expect("source file without basename");
 
     let dst_stem = src_stem.to_str().unwrap();
-    let dst_filename = format!(
-        "{}-{}.{}",
-        dst_stem, asm_target.perlasm_format, asm_target.asm_extension
-    );
-    out_dir.join(dst_filename)
+    let dst_filename = format!("{}-{}", dst_stem, asm_target.perlasm_format);
+    let extension = if asm_target.use_nasm() { "asm" } else { "S" };
+    out_dir.join(dst_filename).with_extension(extension)
 }
 
 fn perlasm(
