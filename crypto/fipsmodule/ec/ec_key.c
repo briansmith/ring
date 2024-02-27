@@ -534,12 +534,8 @@ int EC_KEY_generate_key_fips(EC_KEY *eckey) {
 int EC_KEY_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                             CRYPTO_EX_dup *dup_unused,
                             CRYPTO_EX_free *free_func) {
-  int index;
-  if (!CRYPTO_get_ex_new_index(g_ec_ex_data_class_bss_get(), &index, argl, argp,
-                               free_func)) {
-    return -1;
-  }
-  return index;
+  return CRYPTO_get_ex_new_index(g_ec_ex_data_class_bss_get(), argl, argp,
+                                 free_func);
 }
 
 int EC_KEY_set_ex_data(EC_KEY *d, int idx, void *arg) {

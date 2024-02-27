@@ -132,11 +132,11 @@ struct crypto_ex_data_func_st {
   CRYPTO_EX_DATA_FUNCS *next;
 };
 
-int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class, int *out_index,
-                            long argl, void *argp, CRYPTO_EX_free *free_func) {
+int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class, long argl,
+                            void *argp, CRYPTO_EX_free *free_func) {
   CRYPTO_EX_DATA_FUNCS *funcs = OPENSSL_malloc(sizeof(CRYPTO_EX_DATA_FUNCS));
   if (funcs == NULL) {
-    return 0;
+    return -1;
   }
 
   funcs->argl = argl;
@@ -151,7 +151,7 @@ int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class, int *out_index,
   if (num_funcs > (size_t)(INT_MAX - ex_data_class->num_reserved)) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
     CRYPTO_MUTEX_unlock_write(&ex_data_class->lock);
-    return 0;
+    return -1;
   }
 
   // Append |funcs| to the linked list.
@@ -166,8 +166,7 @@ int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class, int *out_index,
 
   CRYPTO_atomic_store_u32(&ex_data_class->num_funcs, num_funcs + 1);
   CRYPTO_MUTEX_unlock_write(&ex_data_class->lock);
-  *out_index = (int)num_funcs + ex_data_class->num_reserved;
-  return 1;
+  return (int)num_funcs + ex_data_class->num_reserved;
 }
 
 int CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int index, void *val) {

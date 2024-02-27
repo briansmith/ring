@@ -905,13 +905,11 @@ typedef struct {
 #define CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA \
     {CRYPTO_MUTEX_INIT, NULL, NULL, 0, 1}
 
-// CRYPTO_get_ex_new_index allocates a new index for |ex_data_class| and writes
-// it to |*out_index|. Each class of object should provide a wrapper function
-// that uses the correct |CRYPTO_EX_DATA_CLASS|. It returns one on success and
-// zero otherwise.
+// CRYPTO_get_ex_new_index allocates a new index for |ex_data_class|. Each class
+// of object should provide a wrapper function that uses the correct
+// |CRYPTO_EX_DATA_CLASS|. It returns the new index on success and -1 on error.
 OPENSSL_EXPORT int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class,
-                                           int *out_index, long argl,
-                                           void *argp,
+                                           long argl, void *argp,
                                            CRYPTO_EX_free *free_func);
 
 // CRYPTO_set_ex_data sets an extra data pointer on a given object. Each class

@@ -1203,12 +1203,7 @@ int SSL_SESSION_get_ex_new_index(long argl, void *argp,
                                  CRYPTO_EX_unused *unused,
                                  CRYPTO_EX_dup *dup_unused,
                                  CRYPTO_EX_free *free_func) {
-  int index;
-  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp,
-                               free_func)) {
-    return -1;
-  }
-  return index;
+  return CRYPTO_get_ex_new_index(&g_ex_data_class, argl, argp, free_func);
 }
 
 int SSL_SESSION_set_ex_data(SSL_SESSION *session, int idx, void *arg) {
