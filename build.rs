@@ -370,9 +370,6 @@ fn generate_sources_and_preassemble<'a>(
         perlasm(&perl_exe, &perlasm_src_dsts, asm_target);
 
         if asm_target.preassemble {
-            // Preassembly is currently only done for Windows targets.
-            assert_eq!(&asm_target.oss, &[WINDOWS]);
-
             let srcs = asm_srcs(perlasm_src_dsts);
 
             for src in srcs {
