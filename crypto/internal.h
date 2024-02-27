@@ -271,8 +271,20 @@ typedef __uint128_t uint128_t;
 // should be called in between independent tests, at a point where failure from
 // a previous test will not impact subsequent ones.
 OPENSSL_EXPORT void OPENSSL_reset_malloc_counter_for_testing(void);
+
+// OPENSSL_disable_malloc_failures_for_testing, when malloc testing is enabled,
+// disables simulated malloc failures. Calls to |OPENSSL_malloc| will not
+// increment the malloc counter or synthesize failures. This may be used to skip
+// simulating malloc failures in some region of code.
+OPENSSL_EXPORT void OPENSSL_disable_malloc_failures_for_testing(void);
+
+// OPENSSL_enable_malloc_failures_for_testing, when malloc testing is enabled,
+// re-enables simulated malloc failures.
+OPENSSL_EXPORT void OPENSSL_enable_malloc_failures_for_testing(void);
 #else
 OPENSSL_INLINE void OPENSSL_reset_malloc_counter_for_testing(void) {}
+OPENSSL_INLINE void OPENSSL_disable_malloc_failures_for_testing(void) {}
+OPENSSL_INLINE void OPENSSL_enable_malloc_failures_for_testing(void) {}
 #endif
 
 #if defined(__has_builtin)

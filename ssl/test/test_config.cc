@@ -531,30 +531,35 @@ bool ParseConfig(int argc, char **argv, bool is_shim,
   return true;
 }
 
-static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
-static int g_config_index = 0;
-static CRYPTO_BUFFER_POOL *g_pool = nullptr;
+static CRYPTO_BUFFER_POOL *BufferPool() {
+  static CRYPTO_BUFFER_POOL *pool = [&] {
+    OPENSSL_disable_malloc_failures_for_testing();
+    CRYPTO_BUFFER_POOL *ret = CRYPTO_BUFFER_POOL_new();
+    BSSL_CHECK(ret != nullptr);
+    OPENSSL_enable_malloc_failures_for_testing();
+    return ret;
+  }();
+  return pool;
+}
 
-static bool InitGlobals() {
-  CRYPTO_once(&once, [] {
-    g_config_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
-    g_pool = CRYPTO_BUFFER_POOL_new();
-  });
-  return g_config_index >= 0 && g_pool != nullptr;
+static int TestConfigExDataIndex() {
+  static int index = [&] {
+    OPENSSL_disable_malloc_failures_for_testing();
+    int ret = SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+    BSSL_CHECK(ret >= 0);
+    OPENSSL_enable_malloc_failures_for_testing();
+    return ret;
+  }();
+  return index;
 }
 
 bool SetTestConfig(SSL *ssl, const TestConfig *config) {
-  if (!InitGlobals()) {
-    return false;
-  }
-  return SSL_set_ex_data(ssl, g_config_index, (void *)config) == 1;
+  return SSL_set_ex_data(ssl, TestConfigExDataIndex(), (void *)config) == 1;
 }
 
 const TestConfig *GetTestConfig(const SSL *ssl) {
-  if (!InitGlobals()) {
-    return nullptr;
-  }
-  return static_cast<const TestConfig *>(SSL_get_ex_data(ssl, g_config_index));
+  return static_cast<const TestConfig *>(
+      SSL_get_ex_data(ssl, TestConfigExDataIndex()));
 }
 
 static int LegacyOCSPCallback(SSL *ssl, void *arg) {
@@ -1416,17 +1421,13 @@ static bool MaybeInstallCertCompressionAlg(
 }
 
 bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
-  if (!InitGlobals()) {
-    return nullptr;
-  }
-
   bssl::UniquePtr<SSL_CTX> ssl_ctx(
       SSL_CTX_new(is_dtls ? DTLS_method() : TLS_method()));
   if (!ssl_ctx) {
     return nullptr;
   }
 
-  SSL_CTX_set0_buffer_pool(ssl_ctx.get(), g_pool);
+  SSL_CTX_set0_buffer_pool(ssl_ctx.get(), BufferPool());
 
   std::string cipher_list = "ALL:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256";
   if (!cipher.empty()) {

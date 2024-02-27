@@ -138,7 +138,7 @@ static CRYPTO_MUTEX malloc_failure_lock = CRYPTO_MUTEX_INIT;
 static uint64_t current_malloc_count = 0;
 static uint64_t malloc_number_to_fail = 0;
 static int malloc_failure_enabled = 0, break_on_malloc_fail = 0,
-           any_malloc_failed = 0;
+           any_malloc_failed = 0, disable_malloc_failures = 0;
 
 static void malloc_exit_handler(void) {
   CRYPTO_MUTEX_lock_read(&malloc_failure_lock);
@@ -168,7 +168,7 @@ static void init_malloc_failure(void) {
 static int should_fail_allocation() {
   static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
   CRYPTO_once(&once, init_malloc_failure);
-  if (!malloc_failure_enabled) {
+  if (!malloc_failure_enabled || disable_malloc_failures) {
     return 0;
   }
 
@@ -192,6 +192,20 @@ static int should_fail_allocation() {
 void OPENSSL_reset_malloc_counter_for_testing(void) {
   CRYPTO_MUTEX_lock_write(&malloc_failure_lock);
   current_malloc_count = 0;
+  CRYPTO_MUTEX_unlock_write(&malloc_failure_lock);
+}
+
+void OPENSSL_disable_malloc_failures_for_testing(void) {
+  CRYPTO_MUTEX_lock_write(&malloc_failure_lock);
+  BSSL_CHECK(!disable_malloc_failures);
+  disable_malloc_failures = 1;
+  CRYPTO_MUTEX_unlock_write(&malloc_failure_lock);
+}
+
+void OPENSSL_enable_malloc_failures_for_testing(void) {
+  CRYPTO_MUTEX_lock_write(&malloc_failure_lock);
+  BSSL_CHECK(disable_malloc_failures);
+  disable_malloc_failures = 0;
   CRYPTO_MUTEX_unlock_write(&malloc_failure_lock);
 }
 
