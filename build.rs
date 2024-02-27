@@ -296,10 +296,7 @@ fn ring_build_rs_main() {
 
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let is_musl = {
-        let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-        env.starts_with("musl")
-    };
+    let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
 
     let is_git = std::fs::metadata(".git").is_ok();
 
@@ -315,7 +312,7 @@ fn ring_build_rs_main() {
     let target = Target {
         arch,
         os,
-        is_musl,
+        env,
         is_debug,
         force_warnings_into_errors,
     };
@@ -388,9 +385,7 @@ fn generate_sources_and_preassemble<'a>(
 struct Target {
     arch: String,
     os: String,
-
-    /// Is the target one that uses the musl C standard library instead of the default?
-    is_musl: bool,
+    env: String,
 
     /// Is this a debug build? This affects whether assertions might be enabled
     /// in the C code. For packaged builds, this should always be `false`.
@@ -550,7 +545,8 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
     // Allow cross-compiling without a target sysroot for these targets.
     //
     // poly1305_vec.c requires <emmintrin.h> which requires <stdlib.h>.
-    if (target.arch == WASM32) || (target.os == "linux" && target.is_musl && target.arch != X86_64)
+    if (target.arch == WASM32)
+        || (target.os == "linux" && target.env == "musl" && target.arch != X86_64)
     {
         if let Ok(compiler) = c.try_get_compiler() {
             // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
