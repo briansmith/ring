@@ -16,7 +16,6 @@ import (
 	"io"
 	"math/big"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -442,18 +441,9 @@ type Config struct {
 	// If Time is nil, TLS uses time.Now.
 	Time func() time.Time
 
-	// Chains contains one or more certificate chains
-	// to present to the other side of the connection.
-	// Server configurations must include at least one certificate.
-	Chains []CertificateChain
-
-	// NameToChain maps from a certificate name to an element of
-	// Chains. Note that a certificate name can be of the form
-	// '*.example.com' and so doesn't have to be a domain name as such.
-	// See Config.BuildNameToCertificate
-	// The nil value causes the first element of Chains to be used
-	// for all connections.
-	NameToChain map[string]*CertificateChain
+	// Chain contains the certificate chain to present to the other side of
+	// the connection. Server configurations must include this field.
+	Chain *CertificateChain
 
 	// RootCAs defines the set of root certificate authorities
 	// that clients use when verifying server certificates.
@@ -2134,39 +2124,6 @@ func (c *Config) supportedVersions(isDTLS, requireTLS13 bool) []uint16 {
 	return ret
 }
 
-// getCertificateForName returns the best certificate for the given name,
-// defaulting to the first element of c.Chains if there are no good
-// options.
-func (c *Config) getCertificateForName(name string) *CertificateChain {
-	if len(c.Chains) == 1 || c.NameToChain == nil {
-		// There's only one choice, so no point doing any work.
-		return &c.Chains[0]
-	}
-
-	name = strings.ToLower(name)
-	for len(name) > 0 && name[len(name)-1] == '.' {
-		name = name[:len(name)-1]
-	}
-
-	if cert, ok := c.NameToChain[name]; ok {
-		return cert
-	}
-
-	// try replacing labels in the name with wildcards until we get a
-	// match.
-	labels := strings.Split(name, ".")
-	for i := range labels {
-		labels[i] = "*"
-		candidate := strings.Join(labels, ".")
-		if cert, ok := c.NameToChain[candidate]; ok {
-			return cert
-		}
-	}
-
-	// If nothing matches, return the first certificate.
-	return &c.Chains[0]
-}
-
 func (c *Config) signSignatureAlgorithms() []signatureAlgorithm {
 	if c != nil && c.SignSignatureAlgorithms != nil {
 		return c.SignSignatureAlgorithms
@@ -2179,26 +2136,6 @@ func (c *Config) verifySignatureAlgorithms() []signatureAlgorithm {
 		return c.VerifySignatureAlgorithms
 	}
 	return supportedSignatureAlgorithms
-}
-
-// BuildNameToCertificate parses c.Chains and builds c.NameToCertificate
-// from the CommonName and SubjectAlternateName fields of each of the leaf
-// certificates.
-func (c *Config) BuildNameToCertificate() {
-	c.NameToChain = make(map[string]*CertificateChain)
-	for i := range c.Chains {
-		cert := &c.Chains[i]
-		x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
-		if err != nil {
-			continue
-		}
-		if len(x509Cert.Subject.CommonName) > 0 {
-			c.NameToChain[x509Cert.Subject.CommonName] = cert
-		}
-		for _, san := range x509Cert.DNSNames {
-			c.NameToChain[san] = cert
-		}
-	}
 }
 
 // A CertificateChain is a chain of one or more certificates, leaf first.

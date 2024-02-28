@@ -1213,11 +1213,7 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 
 			hs.writeServerHash(certReq.marshal())
 
-			chainToSend, err = selectClientCertificate(c, certReq)
-			if err != nil {
-				return err
-			}
-
+			chainToSend = c.config.Chain
 			msg, err = c.readHandshake()
 			if err != nil {
 				return err
@@ -1702,11 +1698,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 
 		hs.writeServerHash(certReq.marshal())
 
-		chainToSend, err = selectClientCertificate(c, certReq)
-		if err != nil {
-			return err
-		}
-
+		chainToSend = c.config.Chain
 		msg, err = c.readHandshake()
 		if err != nil {
 			return err
@@ -1769,7 +1761,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 
 		// Determine the hash to sign.
-		privKey := c.config.Chains[0].PrivateKey
+		privKey := c.config.Chain.PrivateKey
 
 		if certVerify.hasSignatureAlgorithm {
 			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
@@ -2398,23 +2390,6 @@ func (hs *clientHandshakeState) writeClientHash(msg []byte) {
 func (hs *clientHandshakeState) writeServerHash(msg []byte) {
 	// writeServerHash is called after readHandshake.
 	hs.finishedHash.WriteHandshake(msg, hs.c.recvHandshakeSeq-1)
-}
-
-// selectClientCertificate selects a certificate for use with the given
-// certificate, or none if none match. It may return a particular certificate or
-// nil on success, or an error on internal error.
-func selectClientCertificate(c *Conn, certReq *certificateRequestMsg) (*CertificateChain, error) {
-	if len(c.config.Chains) == 0 {
-		return nil, nil
-	}
-
-	// The test is assumed to have configured the certificate it meant to
-	// send.
-	if len(c.config.Chains) > 1 {
-		return nil, errors.New("tls: multiple certificates configured")
-	}
-
-	return &c.config.Chains[0], nil
 }
 
 // clientSessionCacheKey returns a key used to cache sessionTickets that could
