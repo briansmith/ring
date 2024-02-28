@@ -19,6 +19,7 @@
 // another for the concrete logging implementation). Instead we use `eprintln!`
 // to log everything to stderr.
 
+use std::process::Stdio;
 use std::{
     ffi::OsString,
     fs::{self, DirEntry},
@@ -616,6 +617,7 @@ fn run_command_with_args(command_name: &Path, args: &[String]) {
 
 fn run_command(mut cmd: Command) {
     eprintln!("running {:?}", cmd);
+    cmd.stderr(Stdio::inherit());
     let status = cmd.status().unwrap_or_else(|e| {
         panic!("failed to execute [{:?}]: {}", cmd, e);
     });
