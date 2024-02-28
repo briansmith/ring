@@ -1184,7 +1184,7 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		return err
 	}
 
-	var chainToSend *CertificateChain
+	var credential *Credential
 	var certReq *certificateRequestMsg
 	if c.didResume {
 		// Copy over authentication from the session.
@@ -1214,7 +1214,7 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 
 			hs.writeServerHash(certReq.marshal())
 
-			chainToSend = c.config.Chain
+			credential = c.config.Credential
 			msg, err = c.readHandshake()
 			if err != nil {
 				return err
@@ -1435,8 +1435,8 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 			hasRequestContext: true,
 			requestContext:    certReq.requestContext,
 		}
-		if chainToSend != nil {
-			for _, certData := range chainToSend.Certificate {
+		if credential != nil {
+			for _, certData := range credential.Certificate {
 				certMsg.certificates = append(certMsg.certificates, certificateEntry{
 					data:           certData,
 					extraExtension: c.config.Bugs.SendExtensionOnCertificate,
@@ -1446,13 +1446,13 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		hs.writeClientHash(certMsg.marshal())
 		c.writeRecord(recordTypeHandshake, certMsg.marshal())
 
-		if chainToSend != nil {
+		if credential != nil {
 			certVerify := &certificateVerifyMsg{
 				hasSignatureAlgorithm: true,
 			}
 
 			// Determine the hash to sign.
-			privKey := chainToSend.PrivateKey
+			privKey := credential.PrivateKey
 
 			var err error
 			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
@@ -1692,7 +1692,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 	}
 
-	var chainToSend *CertificateChain
+	var credential *Credential
 	var certRequested bool
 	certReq, ok := msg.(*certificateRequestMsg)
 	if ok {
@@ -1703,7 +1703,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 
 		hs.writeServerHash(certReq.marshal())
 
-		chainToSend = c.config.Chain
+		credential = c.config.Credential
 		msg, err = c.readHandshake()
 		if err != nil {
 			return err
@@ -1722,8 +1722,8 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	// a certificate to send.
 	if certRequested && !c.config.Bugs.SkipClientCertificate {
 		certMsg := new(certificateMsg)
-		if chainToSend != nil {
-			for _, certData := range chainToSend.Certificate {
+		if credential != nil {
+			for _, certData := range credential.Certificate {
 				certMsg.certificates = append(certMsg.certificates, certificateEntry{
 					data: certData,
 				})
@@ -1760,13 +1760,13 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.hello.random, hs.serverHello.random)
 	}
 
-	if chainToSend != nil {
+	if credential != nil {
 		certVerify := &certificateVerifyMsg{
 			hasSignatureAlgorithm: c.vers >= VersionTLS12,
 		}
 
 		// Determine the hash to sign.
-		privKey := c.config.Chain.PrivateKey
+		privKey := c.config.Credential.PrivateKey
 
 		if certVerify.hasSignatureAlgorithm {
 			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)

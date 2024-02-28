@@ -441,9 +441,9 @@ type Config struct {
 	// If Time is nil, TLS uses time.Now.
 	Time func() time.Time
 
-	// Chain contains the certificate chain to present to the other side of
+	// Credential contains the credential to present to the other side of
 	// the connection. Server configurations must include this field.
-	Chain *CertificateChain
+	Credential *Credential
 
 	// RootCAs defines the set of root certificate authorities
 	// that clients use when verifying server certificates.
@@ -1842,7 +1842,7 @@ type ProtocolBugs struct {
 
 	// RenegotiationCertificate, if not nil, is the certificate to use on
 	// renegotiation handshakes.
-	RenegotiationCertificate *CertificateChain
+	RenegotiationCertificate *Credential
 
 	// ExpectNoCertificateAuthoritiesExtension, if true, causes the client to
 	// reject CertificateRequest with the CertificateAuthorities extension.
@@ -2139,8 +2139,10 @@ func (c *Config) verifySignatureAlgorithms() []signatureAlgorithm {
 	return supportedSignatureAlgorithms
 }
 
-// A CertificateChain is a chain of one or more certificates, leaf first.
-type CertificateChain struct {
+// A Credential is a certificate chain and private key that a TLS endpoint may
+// use to authenticate.
+type Credential struct {
+	// Certificate is a chain of one or more certificates, leaf first.
 	Certificate [][]byte
 	PrivateKey  crypto.PrivateKey // supported types: *rsa.PrivateKey, *ecdsa.PrivateKey
 	// OCSPStaple contains an optional OCSP response which will be served
@@ -2384,10 +2386,10 @@ var baseCertTemplate = &x509.Certificate{
 
 var tmpDir string
 
-func generateSingleCertChain(template *x509.Certificate, key crypto.Signer, ocspStaple, sctList []byte) CertificateChain {
+func generateSingleCertChain(template *x509.Certificate, key crypto.Signer, ocspStaple, sctList []byte) Credential {
 	cert := generateTestCert(template, nil, key, ocspStaple, sctList)
 	tmpCertPath, tmpKeyPath := writeTempCertFile([]*x509.Certificate{cert}), writeTempKeyFile(key)
-	return CertificateChain{
+	return Credential{
 		Certificate:                    [][]byte{cert.Raw},
 		PrivateKey:                     key,
 		OCSPStaple:                     ocspStaple,

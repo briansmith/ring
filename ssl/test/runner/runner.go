@@ -208,21 +208,21 @@ var testOCSPExtension = append([]byte{byte(extensionStatusRequest) >> 8, byte(ex
 var testSCTExtension = append([]byte{byte(extensionSignedCertificateTimestamp) >> 8, byte(extensionSignedCertificateTimestamp), 0, byte(len(testSCTList))}, testSCTList...)
 
 var (
-	rsaCertificate       CertificateChain
-	rsaChainCertificate  CertificateChain
-	rsa1024Certificate   CertificateChain
-	ecdsaP224Certificate CertificateChain
-	ecdsaP256Certificate CertificateChain
-	ecdsaP384Certificate CertificateChain
-	ecdsaP521Certificate CertificateChain
-	ed25519Certificate   CertificateChain
-	garbageCertificate   CertificateChain
+	rsaCertificate       Credential
+	rsaChainCertificate  Credential
+	rsa1024Certificate   Credential
+	ecdsaP224Certificate Credential
+	ecdsaP256Certificate Credential
+	ecdsaP384Certificate Credential
+	ecdsaP521Certificate Credential
+	ed25519Certificate   Credential
+	garbageCertificate   Credential
 )
 
 func initCertificates() {
 	for _, def := range []struct {
 		key crypto.Signer
-		out *CertificateChain
+		out *Credential
 	}{
 		{&rsa1024Key, &rsa1024Certificate},
 		{&rsa2048Key, &rsaCertificate},
@@ -256,7 +256,7 @@ func initCertificates() {
 	keyPath := writeTempKeyFile(&rsa2048Key)
 	rootCertPath, chainPath := writeTempCertFile([]*x509.Certificate{rootCert}), writeTempCertFile([]*x509.Certificate{leafCert, intermediateCert})
 
-	rsaChainCertificate = CertificateChain{
+	rsaChainCertificate = Credential{
 		Certificate:                    [][]byte{leafCert.Raw, intermediateCert.Raw},
 		PrivateKey:                     &rsa2048Key,
 		OCSPStaple:                     testOCSPResponse,
@@ -500,7 +500,7 @@ type connectionExpectations struct {
 	curveID CurveID
 	// peerCertificate, if not nil, is the certificate chain the peer is
 	// expected to send.
-	peerCertificate *CertificateChain
+	peerCertificate *Credential
 	// quicTransportParams contains the QUIC transport parameters that are to be
 	// sent by the peer using codepoint 57.
 	quicTransportParams []byte
@@ -662,7 +662,7 @@ type testCase struct {
 	skipVersionNameCheck bool
 	// shimCertificate, if populated, is the certificate/chain which should be sent
 	// by the server/client (this populates the -cert-file and -key-file flags).
-	shimCertificate *CertificateChain
+	shimCertificate *Credential
 }
 
 var testCases []testCase
@@ -1330,8 +1330,8 @@ func doExchanges(test *testCase, shim *shimProcess, resumeCount int, transcripts
 		if test.resumeConfig != nil {
 			resumeConfig = *test.resumeConfig
 			resumeConfig.Rand = config.Rand
-			if resumeConfig.Chain == nil {
-				resumeConfig.Chain = config.Chain
+			if resumeConfig.Credential == nil {
+				resumeConfig.Credential = config.Credential
 			}
 		} else {
 			resumeConfig = config
@@ -1580,11 +1580,11 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 		flags = append(flags, "-write-settings", transcriptPrefix)
 	}
 
-	if test.testType == clientTest && test.config.Chain == nil {
-		test.config.Chain = &rsaCertificate
+	if test.testType == clientTest && test.config.Credential == nil {
+		test.config.Credential = &rsaCertificate
 	}
-	if test.config.Chain != nil {
-		flags = append(flags, "-trust-cert", test.config.Chain.RootPath)
+	if test.config.Credential != nil {
+		flags = append(flags, "-trust-cert", test.config.Credential.RootPath)
 	}
 
 	flags = append(flags, test.flags...)
@@ -2056,7 +2056,7 @@ read alert 1 0
 			name:     "ServerSkipCertificateVerify",
 			config: Config{
 				MaxVersion: VersionTLS12,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 				Bugs: ProtocolBugs{
 					SkipCertificateVerify: true,
 				},
@@ -3554,14 +3554,14 @@ read alert 1 0
 	testCases = append(testCases, testCase{
 		name: "LargeMessage",
 		config: Config{
-			Chain: &cert,
+			Credential: &cert,
 		},
 	})
 	testCases = append(testCases, testCase{
 		protocol: dtls,
 		name:     "LargeMessage-DTLS",
 		config: Config{
-			Chain: &cert,
+			Credential: &cert,
 		},
 	})
 
@@ -3569,7 +3569,7 @@ read alert 1 0
 	testCases = append(testCases, testCase{
 		name: "LargeMessage-Reject",
 		config: Config{
-			Chain: &cert,
+			Credential: &cert,
 		},
 		flags:         []string{"-max-cert-list", "16384"},
 		shouldFail:    true,
@@ -3579,7 +3579,7 @@ read alert 1 0
 		protocol: dtls,
 		name:     "LargeMessage-Reject-DTLS",
 		config: Config{
-			Chain: &cert,
+			Credential: &cert,
 		},
 		flags:         []string{"-max-cert-list", "16384"},
 		shouldFail:    true,
@@ -3627,7 +3627,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 	}
 	prefix := protocol.String() + "-"
 
-	var cert CertificateChain
+	var cert Credential
 	if hasComponent(suite.name, "ECDSA") {
 		cert = ecdsaP256Certificate
 	} else {
@@ -3680,7 +3680,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 			MinVersion:           ver.version,
 			MaxVersion:           ver.version,
 			CipherSuites:         []uint16{suite.id},
-			Chain:                &cert,
+			Credential:           &cert,
 			PreSharedKey:         []byte(psk),
 			PreSharedKeyIdentity: pskIdentity,
 			Bugs: ProtocolBugs{
@@ -3703,7 +3703,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 			MinVersion:           ver.version,
 			MaxVersion:           ver.version,
 			CipherSuites:         serverCipherSuites,
-			Chain:                &cert,
+			Credential:           &cert,
 			PreSharedKey:         []byte(psk),
 			PreSharedKeyIdentity: pskIdentity,
 			Bugs: ProtocolBugs{
@@ -3730,7 +3730,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 			MinVersion:           ver.version,
 			MaxVersion:           ver.version,
 			CipherSuites:         []uint16{suite.id},
-			Chain:                &cert,
+			Credential:           &cert,
 			PreSharedKey:         []byte(psk),
 			PreSharedKeyIdentity: pskIdentity,
 		},
@@ -3757,7 +3757,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 				MinVersion:           ver.version,
 				MaxVersion:           ver.version,
 				CipherSuites:         []uint16{suite.id},
-				Chain:                &cert,
+				Credential:           &cert,
 				PreSharedKey:         []byte(psk),
 				PreSharedKeyIdentity: pskIdentity,
 			},
@@ -3897,7 +3897,7 @@ func addCipherSuiteTests() {
 		config: Config{
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			Chain:        &rsaCertificate,
+			Credential:   &rsaCertificate,
 			Bugs: ProtocolBugs{
 				SendCipherSuite: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 			},
@@ -3910,7 +3910,7 @@ func addCipherSuiteTests() {
 		config: Config{
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-			Chain:        &ecdsaP256Certificate,
+			Credential:   &ecdsaP256Certificate,
 			Bugs: ProtocolBugs{
 				SendCipherSuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
@@ -3923,7 +3923,7 @@ func addCipherSuiteTests() {
 		config: Config{
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-			Chain:        &ed25519Certificate,
+			Credential:   &ed25519Certificate,
 			Bugs: ProtocolBugs{
 				SendCipherSuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
@@ -4089,7 +4089,7 @@ func addBadECDSASignatureTests() {
 				config: Config{
 					MaxVersion:   VersionTLS12,
 					CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-					Chain:        &ecdsaP256Certificate,
+					Credential:   &ecdsaP256Certificate,
 					Bugs: ProtocolBugs{
 						BadECDSAR: badR,
 						BadECDSAS: badS,
@@ -4102,7 +4102,7 @@ func addBadECDSASignatureTests() {
 				name: fmt.Sprintf("BadECDSA-%d-%d-TLS13", badR, badS),
 				config: Config{
 					MaxVersion: VersionTLS13,
-					Chain:      &ecdsaP256Certificate,
+					Credential: &ecdsaP256Certificate,
 					Bugs: ProtocolBugs{
 						BadECDSAR: badR,
 						BadECDSAS: badS,
@@ -4213,7 +4213,7 @@ func addCBCSplittingTests() {
 func addClientAuthTests() {
 	// Add a dummy cert pool to stress certificate authority parsing.
 	certPool := x509.NewCertPool()
-	for _, cert := range []CertificateChain{rsaCertificate, rsa1024Certificate} {
+	for _, cert := range []Credential{rsaCertificate, rsa1024Certificate} {
 		cert, err := x509.ParseCertificate(cert.Certificate[0])
 		if err != nil {
 			panic(err)
@@ -4240,7 +4240,7 @@ func addClientAuthTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 			},
 			flags: []string{"-require-any-client-certificate"},
 		})
@@ -4250,7 +4250,7 @@ func addClientAuthTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &ecdsaP256Certificate,
+				Credential: &ecdsaP256Certificate,
 			},
 			flags: []string{"-require-any-client-certificate"},
 		})
@@ -4382,7 +4382,7 @@ func addClientAuthTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 				Bugs: ProtocolBugs{
 					ExpectCertificateReqNames: caNames,
 				},
@@ -4399,7 +4399,7 @@ func addClientAuthTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 				ClientAuth: RequireAnyClientCert,
 				ClientCAs:  certPool,
 			},
@@ -4451,7 +4451,7 @@ func addClientAuthTests() {
 		name:     "Null-Client-CA-List",
 		config: Config{
 			MaxVersion: VersionTLS12,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 			Bugs: ProtocolBugs{
 				ExpectCertificateReqNames: [][]byte{},
 			},
@@ -4468,7 +4468,7 @@ func addClientAuthTests() {
 		name:     "TLS13-Empty-Client-CA-List",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 			Bugs: ProtocolBugs{
 				ExpectNoCertificateAuthoritiesExtension: true,
 			},
@@ -5066,7 +5066,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			name:     "ClientAuth-Server",
 			config: Config{
 				MaxVersion: VersionTLS12,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 			},
 			flags: []string{"-require-any-client-certificate"},
 		})
@@ -5076,7 +5076,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		name:     "ClientAuth-Server-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 		},
 		flags: []string{"-require-any-client-certificate"},
 	})
@@ -5202,7 +5202,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			name:     "ClientOCSPCallback-Pass-" + vers.name,
 			config: Config{
 				MaxVersion: vers.version,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 			},
 			flags: []string{
 				"-enable-ocsp-stapling",
@@ -5220,7 +5220,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			name:     "ClientOCSPCallback-Fail-" + vers.name,
 			config: Config{
 				MaxVersion: vers.version,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 			},
 			flags: []string{
 				"-enable-ocsp-stapling",
@@ -5240,7 +5240,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			name:     "ClientOCSPCallback-FailNoStaple-" + vers.name,
 			config: Config{
 				MaxVersion: vers.version,
-				Chain:      &certNoStaple,
+				Credential: &certNoStaple,
 			},
 			flags: []string{
 				"-enable-ocsp-stapling",
@@ -5350,7 +5350,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					name:     "CertificateVerificationSucceed" + suffix,
 					config: Config{
 						MaxVersion: vers.version,
-						Chain:      &rsaCertificate,
+						Credential: &rsaCertificate,
 					},
 					flags:         append([]string{"-expect-verify-result"}, flags...),
 					resumeSession: true,
@@ -5360,7 +5360,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					name:     "CertificateVerificationFail" + suffix,
 					config: Config{
 						MaxVersion: vers.version,
-						Chain:      &rsaCertificate,
+						Credential: &rsaCertificate,
 					},
 					flags:              append([]string{"-verify-fail"}, flags...),
 					shouldFail:         true,
@@ -5373,7 +5373,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					name:     "CertificateVerificationDoesNotFailOnResume" + suffix,
 					config: Config{
 						MaxVersion: vers.version,
-						Chain:      &rsaCertificate,
+						Credential: &rsaCertificate,
 					},
 					flags:         append([]string{"-on-resume-verify-fail"}, flags...),
 					resumeSession: true,
@@ -5384,7 +5384,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 						name:     "CertificateVerificationFailsOnResume" + suffix,
 						config: Config{
 							MaxVersion: vers.version,
-							Chain:      &rsaCertificate,
+							Credential: &rsaCertificate,
 						},
 						flags: append([]string{
 							"-on-resume-verify-fail",
@@ -5400,7 +5400,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 						name:     "CertificateVerificationPassesOnResume" + suffix,
 						config: Config{
 							MaxVersion: vers.version,
-							Chain:      &rsaCertificate,
+							Credential: &rsaCertificate,
 						},
 						flags: append([]string{
 							"-reverify-on-resume",
@@ -5531,7 +5531,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			name:     "CertificateVerificationSoftFail-" + vers.name,
 			config: Config{
 				MaxVersion: vers.version,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 			},
 			flags: []string{
 				"-verify-fail",
@@ -8391,7 +8391,7 @@ func addExtensionTests() {
 				testType: clientTest,
 				config: Config{
 					MaxVersion: ver.version,
-					Chain:      &emptySCTListCert,
+					Credential: &emptySCTListCert,
 				},
 				flags: []string{
 					"-enable-signed-cert-timestamps",
@@ -8410,7 +8410,7 @@ func addExtensionTests() {
 				testType: clientTest,
 				config: Config{
 					MaxVersion: ver.version,
-					Chain:      &emptySCTCert,
+					Credential: &emptySCTCert,
 				},
 				flags: []string{
 					"-enable-signed-cert-timestamps",
@@ -8643,7 +8643,7 @@ func addExtensionTests() {
 		testType: serverTest,
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 			Bugs: ProtocolBugs{
 				SendExtensionOnCertificate: testOCSPExtension,
 			},
@@ -8673,7 +8673,7 @@ func addExtensionTests() {
 		name: "IgnoreExtensionsOnIntermediates-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Chain:      &rsaChainCertificate,
+			Credential: &rsaChainCertificate,
 			Bugs: ProtocolBugs{
 				// Send different values on the intermediate. This tests
 				// the intermediate's extensions do not override the
@@ -9735,7 +9735,7 @@ func addRenegotiationTests() {
 		name: "Renegotiation-CertificateChange",
 		config: Config{
 			MaxVersion: VersionTLS12,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 			Bugs: ProtocolBugs{
 				RenegotiationCertificate: &rsaChainCertificate,
 			},
@@ -9749,7 +9749,7 @@ func addRenegotiationTests() {
 		name: "Renegotiation-CertificateChange-2",
 		config: Config{
 			MaxVersion: VersionTLS12,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 			Bugs: ProtocolBugs{
 				RenegotiationCertificate: &rsa1024Certificate,
 			},
@@ -9858,7 +9858,7 @@ func addDTLSReplayTests() {
 var testSignatureAlgorithms = []struct {
 	name string
 	id   signatureAlgorithm
-	cert *CertificateChain
+	cert *Credential
 	// If non-zero, the curve that must be supported in TLS 1.2 for cert to be
 	// accepted.
 	curve CurveID
@@ -10023,7 +10023,7 @@ func addSignatureAlgorithmTests() {
 					name:     prefix + "Verify" + suffix,
 					config: Config{
 						MaxVersion: ver.version,
-						Chain:      alg.cert,
+						Credential: alg.cert,
 						SignSignatureAlgorithms: []signatureAlgorithm{
 							alg.id,
 						},
@@ -10054,7 +10054,7 @@ func addSignatureAlgorithmTests() {
 					name:     prefix + "VerifyDefault" + suffix,
 					config: Config{
 						MaxVersion: ver.version,
-						Chain:      alg.cert,
+						Credential: alg.cert,
 						SignSignatureAlgorithms: []signatureAlgorithm{
 							alg.id,
 						},
@@ -10083,7 +10083,7 @@ func addSignatureAlgorithmTests() {
 					name:     prefix + "InvalidSignature" + suffix,
 					config: Config{
 						MaxVersion: ver.version,
-						Chain:      alg.cert,
+						Credential: alg.cert,
 						SignSignatureAlgorithms: []signatureAlgorithm{
 							alg.id,
 						},
@@ -10240,7 +10240,7 @@ func addSignatureAlgorithmTests() {
 		name:     "Verify-ClientAuth-SignatureType",
 		config: Config{
 			MaxVersion: VersionTLS12,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 			SignSignatureAlgorithms: []signatureAlgorithm{
 				signatureRSAPKCS1WithSHA256,
 			},
@@ -10260,7 +10260,7 @@ func addSignatureAlgorithmTests() {
 		name:     "Verify-ClientAuth-SignatureType-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 			SignSignatureAlgorithms: []signatureAlgorithm{
 				signatureRSAPSSWithSHA256,
 			},
@@ -10417,7 +10417,7 @@ func addSignatureAlgorithmTests() {
 		name:     "ClientAuth-Enforced",
 		config: Config{
 			MaxVersion: VersionTLS12,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 			SignSignatureAlgorithms: []signatureAlgorithm{
 				signatureRSAPKCS1WithMD5,
 			},
@@ -10450,7 +10450,7 @@ func addSignatureAlgorithmTests() {
 		name:     "ClientAuth-Enforced-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 			SignSignatureAlgorithms: []signatureAlgorithm{
 				signatureRSAPKCS1WithMD5,
 			},
@@ -10600,7 +10600,7 @@ func addSignatureAlgorithmTests() {
 		config: Config{
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-			Chain:        &ecdsaP256Certificate,
+			Credential:   &ecdsaP256Certificate,
 		},
 		flags:         []string{"-curves", strconv.Itoa(int(CurveP384))},
 		shouldFail:    true,
@@ -10612,7 +10612,7 @@ func addSignatureAlgorithmTests() {
 		name: "CheckLeafCurve-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Chain:      &ecdsaP256Certificate,
+			Credential: &ecdsaP256Certificate,
 		},
 		flags: []string{"-curves", strconv.Itoa(int(CurveP384))},
 	})
@@ -10623,7 +10623,7 @@ func addSignatureAlgorithmTests() {
 		config: Config{
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-			Chain:        &ecdsaP256Certificate,
+			Credential:   &ecdsaP256Certificate,
 			SignSignatureAlgorithms: []signatureAlgorithm{
 				signatureECDSAWithP384AndSHA384,
 			},
@@ -10635,7 +10635,7 @@ func addSignatureAlgorithmTests() {
 		name: "ECDSACurveMismatch-Verify-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Chain:      &ecdsaP256Certificate,
+			Credential: &ecdsaP256Certificate,
 			SignSignatureAlgorithms: []signatureAlgorithm{
 				signatureECDSAWithP384AndSHA384,
 			},
@@ -10713,7 +10713,7 @@ func addSignatureAlgorithmTests() {
 		name:     "NoEd25519-TLS11-ServerAuth-Verify",
 		config: Config{
 			MaxVersion: VersionTLS11,
-			Chain:      &ed25519Certificate,
+			Credential: &ed25519Certificate,
 			Bugs: ProtocolBugs{
 				// Sign with Ed25519 even though it is TLS 1.1.
 				SigningAlgorithmForLegacyVersions: signatureEd25519,
@@ -10738,7 +10738,7 @@ func addSignatureAlgorithmTests() {
 		name:     "NoEd25519-TLS11-ClientAuth-Verify",
 		config: Config{
 			MaxVersion: VersionTLS11,
-			Chain:      &ed25519Certificate,
+			Credential: &ed25519Certificate,
 			Bugs: ProtocolBugs{
 				// Sign with Ed25519 even though it is TLS 1.1.
 				SigningAlgorithmForLegacyVersions: signatureEd25519,
@@ -10768,7 +10768,7 @@ func addSignatureAlgorithmTests() {
 		testType: clientTest,
 		name:     "Ed25519DefaultDisable-NoAdvertise",
 		config: Config{
-			Chain: &ed25519Certificate,
+			Credential: &ed25519Certificate,
 		},
 		shouldFail:         true,
 		expectedLocalError: "tls: no common signature algorithms",
@@ -10780,7 +10780,7 @@ func addSignatureAlgorithmTests() {
 		testType: clientTest,
 		name:     "Ed25519DefaultDisable-NoAccept",
 		config: Config{
-			Chain: &ed25519Certificate,
+			Credential: &ed25519Certificate,
 			Bugs: ProtocolBugs{
 				IgnorePeerSignatureAlgorithmPreferences: true,
 			},
@@ -10795,7 +10795,7 @@ func addSignatureAlgorithmTests() {
 	testCases = append(testCases, testCase{
 		name: "VerifyPreferences-Advertised",
 		config: Config{
-			Chain: &rsaCertificate,
+			Credential: &rsaCertificate,
 			SignSignatureAlgorithms: []signatureAlgorithm{
 				signatureRSAPSSWithSHA256,
 				signatureRSAPSSWithSHA384,
@@ -10813,7 +10813,7 @@ func addSignatureAlgorithmTests() {
 	testCases = append(testCases, testCase{
 		name: "VerifyPreferences-NoCommonAlgorithms",
 		config: Config{
-			Chain: &rsaCertificate,
+			Credential: &rsaCertificate,
 			SignSignatureAlgorithms: []signatureAlgorithm{
 				signatureRSAPSSWithSHA256,
 				signatureRSAPSSWithSHA512,
@@ -10830,7 +10830,7 @@ func addSignatureAlgorithmTests() {
 	testCases = append(testCases, testCase{
 		name: "VerifyPreferences-Enforced",
 		config: Config{
-			Chain: &rsaCertificate,
+			Credential: &rsaCertificate,
 			SignSignatureAlgorithms: []signatureAlgorithm{
 				signatureRSAPSSWithSHA256,
 				signatureRSAPSSWithSHA512,
@@ -10852,7 +10852,7 @@ func addSignatureAlgorithmTests() {
 	testCases = append(testCases, testCase{
 		name: "VerifyPreferences-Ed25519",
 		config: Config{
-			Chain: &ed25519Certificate,
+			Credential: &ed25519Certificate,
 		},
 		flags: []string{
 			"-verify-prefs", strconv.Itoa(int(signatureEd25519)),
@@ -10905,7 +10905,7 @@ func addSignatureAlgorithmTests() {
 				name:     prefix + "NoVerify-RSA_PKCS1_MD5_SHA1",
 				config: Config{
 					MaxVersion: ver.version,
-					Chain:      &rsaCertificate,
+					Credential: &rsaCertificate,
 					Bugs: ProtocolBugs{
 						IgnorePeerSignatureAlgorithmPreferences: true,
 						AlwaysSignAsLegacyVersion:               true,
@@ -13082,7 +13082,7 @@ func makePerMessageTests() []perMessageTest {
 				protocol: protocol,
 				name:     "ClientCertificate" + suffix,
 				config: Config{
-					Chain:      &rsaCertificate,
+					Credential: &rsaCertificate,
 					MaxVersion: VersionTLS12,
 				},
 				flags: []string{"-require-any-client-certificate"},
@@ -13096,7 +13096,7 @@ func makePerMessageTests() []perMessageTest {
 				protocol: protocol,
 				name:     "CertificateVerify" + suffix,
 				config: Config{
-					Chain:      &rsaCertificate,
+					Credential: &rsaCertificate,
 					MaxVersion: VersionTLS12,
 				},
 				flags: []string{"-require-any-client-certificate"},
@@ -13272,7 +13272,7 @@ func makePerMessageTests() []perMessageTest {
 				protocol: protocol,
 				name:     "TLS13-ClientCertificate" + suffix,
 				config: Config{
-					Chain:      &rsaCertificate,
+					Credential: &rsaCertificate,
 					MaxVersion: VersionTLS13,
 				},
 				flags: []string{"-require-any-client-certificate"},
@@ -13286,7 +13286,7 @@ func makePerMessageTests() []perMessageTest {
 				protocol: protocol,
 				name:     "TLS13-ClientCertificateVerify" + suffix,
 				config: Config{
-					Chain:      &rsaCertificate,
+					Credential: &rsaCertificate,
 					MaxVersion: VersionTLS13,
 				},
 				flags: []string{"-require-any-client-certificate"},
@@ -14284,11 +14284,11 @@ func addTLS13HandshakeTests() {
 		name:     "EarlyData-RejectTicket-Client-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 		},
 		resumeConfig: &Config{
 			MaxVersion:             VersionTLS13,
-			Chain:                  &ecdsaP256Certificate,
+			Credential:             &ecdsaP256Certificate,
 			SessionTicketsDisabled: true,
 		},
 		resumeSession:           true,
@@ -14379,11 +14379,11 @@ func addTLS13HandshakeTests() {
 		name:     "EarlyData-HRR-RejectTicket-Client-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Chain:      &rsaCertificate,
+			Credential: &rsaCertificate,
 		},
 		resumeConfig: &Config{
 			MaxVersion:             VersionTLS13,
-			Chain:                  &ecdsaP256Certificate,
+			Credential:             &ecdsaP256Certificate,
 			SessionTicketsDisabled: true,
 			Bugs: ProtocolBugs{
 				SendHelloRetryRequestCookie: []byte{1, 2, 3, 4},
@@ -15035,7 +15035,7 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MinVersion: VersionTLS13,
 			MaxVersion: VersionTLS13,
-			Chain:      &rsaChainCertificate,
+			Credential: &rsaChainCertificate,
 			Bugs: ProtocolBugs{
 				SkipCertificateVerify: true,
 			},
@@ -15057,7 +15057,7 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MinVersion: VersionTLS13,
 			MaxVersion: VersionTLS13,
-			Chain:      &rsaChainCertificate,
+			Credential: &rsaChainCertificate,
 			Bugs: ProtocolBugs{
 				SkipCertificateVerify: true,
 			},
@@ -15423,7 +15423,7 @@ func addCertificateTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &rsaChainCertificate,
+				Credential: &rsaChainCertificate,
 				ClientAuth: RequireAnyClientCert,
 			},
 			expectations: connectionExpectations{
@@ -15441,7 +15441,7 @@ func addCertificateTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &rsaChainCertificate,
+				Credential: &rsaChainCertificate,
 			},
 			expectations: connectionExpectations{
 				peerCertificate: &rsaChainCertificate,
@@ -15460,7 +15460,7 @@ func addCertificateTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &garbageCertificate,
+				Credential: &garbageCertificate,
 			},
 			shouldFail:         true,
 			expectedError:      ":CANNOT_PARSE_LEAF_CERT:",
@@ -15473,7 +15473,7 @@ func addCertificateTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &garbageCertificate,
+				Credential: &garbageCertificate,
 			},
 			flags:              []string{"-require-any-client-certificate"},
 			shouldFail:         true,
@@ -15510,7 +15510,7 @@ func addRetainOnlySHA256ClientCertTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 			},
 			flags: []string{
 				"-verify-peer",
@@ -15531,7 +15531,7 @@ func addRetainOnlySHA256ClientCertTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 			},
 			flags: []string{
 				"-verify-peer",
@@ -15551,7 +15551,7 @@ func addRetainOnlySHA256ClientCertTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 			},
 			flags: []string{
 				"-verify-peer",
@@ -15599,7 +15599,7 @@ func addECDSAKeyUsageTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &cert,
+				Credential: &cert,
 			},
 			shouldFail:    true,
 			expectedError: ":KEY_USAGE_BIT_INCORRECT:",
@@ -15611,7 +15611,7 @@ func addECDSAKeyUsageTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &cert,
+				Credential: &cert,
 			},
 			flags:         []string{"-require-any-client-certificate"},
 			shouldFail:    true,
@@ -15674,7 +15674,7 @@ func addRSAKeyUsageTests() {
 			config: Config{
 				MinVersion:   ver.version,
 				MaxVersion:   ver.version,
-				Chain:        &encCert,
+				Credential:   &encCert,
 				CipherSuites: dsSuites,
 			},
 			shouldFail:    true,
@@ -15687,7 +15687,7 @@ func addRSAKeyUsageTests() {
 			config: Config{
 				MinVersion:   ver.version,
 				MaxVersion:   ver.version,
-				Chain:        &dsCert,
+				Credential:   &dsCert,
 				CipherSuites: dsSuites,
 			},
 		})
@@ -15700,7 +15700,7 @@ func addRSAKeyUsageTests() {
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
-					Chain:        &encCert,
+					Credential:   &encCert,
 					CipherSuites: encSuites,
 				},
 			})
@@ -15711,7 +15711,7 @@ func addRSAKeyUsageTests() {
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
-					Chain:        &dsCert,
+					Credential:   &dsCert,
 					CipherSuites: encSuites,
 				},
 				shouldFail:    true,
@@ -15725,7 +15725,7 @@ func addRSAKeyUsageTests() {
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
-					Chain:        &dsCert,
+					Credential:   &dsCert,
 					CipherSuites: encSuites,
 				},
 				flags: []string{"-expect-key-usage-invalid", "-ignore-rsa-key-usage"},
@@ -15737,7 +15737,7 @@ func addRSAKeyUsageTests() {
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
-					Chain:        &encCert,
+					Credential:   &encCert,
 					CipherSuites: dsSuites,
 				},
 				flags: []string{"-expect-key-usage-invalid", "-ignore-rsa-key-usage"},
@@ -15752,7 +15752,7 @@ func addRSAKeyUsageTests() {
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
-					Chain:        &encCert,
+					Credential:   &encCert,
 					CipherSuites: dsSuites,
 				},
 				flags:         []string{"-ignore-rsa-key-usage"},
@@ -15768,7 +15768,7 @@ func addRSAKeyUsageTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &encCert,
+				Credential: &encCert,
 			},
 			shouldFail:    true,
 			expectedError: ":KEY_USAGE_BIT_INCORRECT:",
@@ -15781,7 +15781,7 @@ func addRSAKeyUsageTests() {
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
-				Chain:      &dsCert,
+				Credential: &dsCert,
 			},
 			flags: []string{"-require-any-client-certificate"},
 		})
@@ -17367,7 +17367,7 @@ write hs 4
 			protocol: protocol,
 			name:     prefix + "ECH-Server-ClientAuth",
 			config: Config{
-				Chain:           &rsaCertificate,
+				Credential:      &rsaCertificate,
 				ClientECHConfig: echConfig.ECHConfig,
 			},
 			flags: []string{
@@ -17386,7 +17386,7 @@ write hs 4
 			protocol: protocol,
 			name:     prefix + "ECH-Server-Decline-ClientAuth",
 			config: Config{
-				Chain:           &rsaCertificate,
+				Credential:      &rsaCertificate,
 				ClientECHConfig: echConfig.ECHConfig,
 				Bugs: ProtocolBugs{
 					ExpectECHRetryConfigs: CreateECHConfigList(echConfig1.ECHConfig.Raw),
@@ -19078,7 +19078,7 @@ func addHintMismatchTests() {
 			config: Config{
 				MinVersion: VersionTLS13,
 				MaxVersion: VersionTLS13,
-				Chain:      &rsaCertificate,
+				Credential: &rsaCertificate,
 			},
 			flags: []string{
 				"-allow-hint-mismatch",
@@ -19290,7 +19290,7 @@ func addCompliancePolicyTests() {
 				isWPACipherSuite = true
 			}
 
-			var cert CertificateChain
+			var cert Credential
 			if hasComponent(suite.name, "ECDSA") {
 				cert = ecdsaP384Certificate
 			} else {
@@ -19338,7 +19338,7 @@ func addCompliancePolicyTests() {
 						MinVersion:   VersionTLS12,
 						MaxVersion:   maxVersion,
 						CipherSuites: []uint16{suite.id},
-						Chain:        &cert,
+						Credential:   &cert,
 					},
 					flags: []string{
 						policy.flag,
@@ -19491,7 +19491,7 @@ func addCompliancePolicyTests() {
 						MinVersion:              VersionTLS12,
 						MaxVersion:              maxVersion,
 						SignSignatureAlgorithms: []signatureAlgorithm{sigalg.id},
-						Chain:                   sigalg.cert,
+						Credential:              sigalg.cert,
 					},
 					flags: []string{
 						policy.flag,
