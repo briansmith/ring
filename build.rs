@@ -21,7 +21,7 @@
 
 use std::process::Stdio;
 use std::{
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     fs::{self, DirEntry},
     io::Write,
     path::{Path, PathBuf},
@@ -609,7 +609,7 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir:
     run_command(c);
 }
 
-fn run_command_with_args(command_name: &Path, args: &[String]) {
+fn run_command_with_args(command_name: &Path, args: &[OsString]) {
     let mut cmd = Command::new(command_name);
     let _ = cmd.args(args);
     run_command(cmd)
@@ -693,8 +693,8 @@ fn perlasm(
 ) {
     for (src, dst) in src_dst {
         let mut args = vec![
-            c_root_dir.join(src).to_string_lossy().into_owned(),
-            asm_target.perlasm_format.to_owned(),
+            join_components_with_forward_slashes(&c_root_dir.join(src)),
+            asm_target.perlasm_format.into(),
         ];
         if asm_target.arch == X86 {
             args.push("-fPIC".into());
@@ -702,13 +702,14 @@ fn perlasm(
         }
         // Work around PerlAsm issue for ARM and AAarch64 targets by replacing
         // back slashes with forward slashes.
-        let dst = dst
-            .to_str()
-            .expect("Could not convert path")
-            .replace('\\', "/");
-        args.push(dst);
+        args.push(join_components_with_forward_slashes(dst));
         run_command_with_args(perl_exe, &args);
     }
+}
+
+fn join_components_with_forward_slashes(path: &Path) -> OsString {
+    let parts = path.components().map(|c| c.as_os_str()).collect::<Vec<_>>();
+    parts.as_slice().join(OsStr::new("/"))
 }
 
 fn get_perl_exe() -> PathBuf {
