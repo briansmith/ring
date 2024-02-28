@@ -232,7 +232,7 @@ func initCertificates() {
 		{&ecdsaP521Key, &ecdsaP521Certificate},
 		{ed25519Key, &ed25519Certificate},
 	} {
-		*def.out = generateSingleCertChain(nil, def.key, testOCSPResponse, testSCTList)
+		*def.out = generateSingleCertChain(nil, def.key)
 	}
 
 	channelIDBytes = make([]byte, 64)
@@ -245,26 +245,24 @@ func initCertificates() {
 	// Build a basic three cert chain for testing chain specific things.
 	rootTmpl := *baseCertTemplate
 	rootTmpl.Subject.CommonName = "test root"
-	rootCert := generateTestCert(&rootTmpl, nil, &rsa2048Key, testOCSPResponse, testSCTList)
+	rootCert := generateTestCert(&rootTmpl, nil, &rsa2048Key)
 	intermediateTmpl := *baseCertTemplate
 	intermediateTmpl.Subject.CommonName = "test inter"
-	intermediateCert := generateTestCert(&intermediateTmpl, rootCert, &rsa2048Key, testOCSPResponse, testSCTList)
+	intermediateCert := generateTestCert(&intermediateTmpl, rootCert, &rsa2048Key)
 	leafTmpl := *baseCertTemplate
 	leafTmpl.IsCA, leafTmpl.BasicConstraintsValid = false, false
-	leafCert := generateTestCert(nil, intermediateCert, &rsa2048Key, testOCSPResponse, testSCTList)
+	leafCert := generateTestCert(nil, intermediateCert, &rsa2048Key)
 
 	keyPath := writeTempKeyFile(&rsa2048Key)
 	rootCertPath, chainPath := writeTempCertFile([]*x509.Certificate{rootCert}), writeTempCertFile([]*x509.Certificate{leafCert, intermediateCert})
 
 	rsaChainCertificate = Credential{
-		Certificate:                    [][]byte{leafCert.Raw, intermediateCert.Raw},
-		PrivateKey:                     &rsa2048Key,
-		OCSPStaple:                     testOCSPResponse,
-		SignedCertificateTimestampList: testSCTList,
-		Leaf:                           leafCert,
-		ChainPath:                      chainPath,
-		KeyPath:                        keyPath,
-		RootPath:                       rootCertPath,
+		Certificate: [][]byte{leafCert.Raw, intermediateCert.Raw},
+		PrivateKey:  &rsa2048Key,
+		Leaf:        leafCert,
+		ChainPath:   chainPath,
+		KeyPath:     keyPath,
+		RootPath:    rootCertPath,
 	}
 }
 
@@ -660,9 +658,12 @@ type testCase struct {
 	// skipVersionNameCheck, if true, will skip the consistency check between
 	// test name and the versions.
 	skipVersionNameCheck bool
-	// shimCertificate, if populated, is the certificate/chain which should be sent
-	// by the server/client (this populates the -cert-file and -key-file flags).
+	// shimCertificate, if populated, is the credential which should be send by
+	// the shim.
 	shimCertificate *Credential
+	// handshakerCertificate, if populated, overrides the credential that is
+	// configured on the handshaker.
+	handshakerCertificate *Credential
 }
 
 var testCases []testCase
@@ -1387,6 +1388,25 @@ func translateExpectedError(errorStr string) string {
 // -shim-writes-first flag is used.
 const shimInitialWrite = "hello"
 
+func appendCredentialFlags(flags []string, cred *Credential, prefix string) []string {
+	if len(cred.ChainPath) != 0 {
+		flags = append(flags, prefix+"-cert-file", cred.ChainPath)
+	}
+	if len(cred.KeyPath) != 0 {
+		flags = append(flags, prefix+"-key-file", cred.KeyPath)
+	}
+	if len(cred.OCSPStaple) != 0 {
+		flags = append(flags, prefix+"-ocsp-response", base64FlagValue(cred.OCSPStaple))
+	}
+	if len(cred.SignedCertificateTimestampList) != 0 {
+		flags = append(flags, prefix+"-signed-cert-timestamps", base64FlagValue(cred.SignedCertificateTimestampList))
+	}
+	for _, sigAlg := range cred.SignatureAlgorithms {
+		flags = append(flags, prefix+"-signing-prefs", strconv.Itoa(int(sigAlg)))
+	}
+	return flags
+}
+
 func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCase, shimPath string, mallocNumToFail int64) error {
 	// Help debugging panics on the Go side.
 	defer func() {
@@ -1404,12 +1424,20 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 		flags = append(flags, "-server")
 	}
 
-	if test.shimCertificate != nil {
-		flags = append(flags, "-key-file", test.shimCertificate.KeyPath)
-		flags = append(flags, "-cert-file", test.shimCertificate.ChainPath)
-	} else if test.testType == serverTest {
-		flags = append(flags, "-key-file", rsaCertificate.KeyPath)
-		flags = append(flags, "-cert-file", rsaCertificate.ChainPath)
+	shimCertificate := test.shimCertificate
+	if shimCertificate == nil && test.testType == serverTest {
+		shimCertificate = &rsaCertificate
+	}
+	if shimCertificate != nil {
+		var shimPrefix string
+		if test.handshakerCertificate != nil {
+			shimPrefix = "-on-shim"
+		}
+		flags = appendCredentialFlags(flags, shimCertificate, shimPrefix)
+	}
+
+	if test.handshakerCertificate != nil {
+		flags = appendCredentialFlags(flags, test.handshakerCertificate, "-on-handshaker")
 	}
 
 	if test.protocol == dtls {
@@ -1982,6 +2010,7 @@ func addBasicTests() {
 			name: "SkipCertificateStatus",
 			config: Config{
 				MaxVersion:   VersionTLS12,
+				Credential:   rsaCertificate.WithOCSP(testOCSPResponse),
 				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				Bugs: ProtocolBugs{
 					SkipCertificateStatus: true,
@@ -2012,6 +2041,7 @@ read alert 1 0
 			name:     "SkipCertificateStatus-DTLS",
 			config: Config{
 				MaxVersion:   VersionTLS12,
+				Credential:   rsaCertificate.WithOCSP(testOCSPResponse),
 				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				Bugs: ProtocolBugs{
 					SkipCertificateStatus: true,
@@ -5170,6 +5200,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			name:     "OCSPStapling-Client-" + vers.name,
 			config: Config{
 				MaxVersion: vers.version,
+				Credential: rsaCertificate.WithOCSP(testOCSPResponse),
 			},
 			flags: []string{
 				"-enable-ocsp-stapling",
@@ -5188,11 +5219,8 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			expectations: connectionExpectations{
 				ocspResponse: testOCSPResponse,
 			},
-			flags: []string{
-				"-ocsp-response",
-				base64FlagValue(testOCSPResponse),
-			},
-			resumeSession: true,
+			shimCertificate: rsaCertificate.WithOCSP(testOCSPResponse),
+			resumeSession:   true,
 		})
 
 		// The client OCSP callback is an alternate certificate
@@ -5202,7 +5230,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			name:     "ClientOCSPCallback-Pass-" + vers.name,
 			config: Config{
 				MaxVersion: vers.version,
-				Credential: &rsaCertificate,
+				Credential: rsaCertificate.WithOCSP(testOCSPResponse),
 			},
 			flags: []string{
 				"-enable-ocsp-stapling",
@@ -5220,7 +5248,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			name:     "ClientOCSPCallback-Fail-" + vers.name,
 			config: Config{
 				MaxVersion: vers.version,
-				Credential: &rsaCertificate,
+				Credential: rsaCertificate.WithOCSP(testOCSPResponse),
 			},
 			flags: []string{
 				"-enable-ocsp-stapling",
@@ -5233,14 +5261,12 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		})
 		// The callback still runs if the server does not send an OCSP
 		// response.
-		certNoStaple := rsaCertificate
-		certNoStaple.OCSPStaple = nil
 		tests = append(tests, testCase{
 			testType: clientTest,
 			name:     "ClientOCSPCallback-FailNoStaple-" + vers.name,
 			config: Config{
 				MaxVersion: vers.version,
-				Credential: &certNoStaple,
+				Credential: &rsaCertificate,
 			},
 			flags: []string{
 				"-enable-ocsp-stapling",
@@ -5260,14 +5286,13 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			config: Config{
 				MaxVersion: vers.version,
 			},
+			shimCertificate: rsaCertificate.WithOCSP(testOCSPResponse),
 			expectations: connectionExpectations{
 				ocspResponse: testOCSPResponse,
 			},
 			flags: []string{
 				"-use-ocsp-callback",
 				"-set-ocsp-in-callback",
-				"-ocsp-response",
-				base64FlagValue(testOCSPResponse),
 			},
 			resumeSession: true,
 		})
@@ -5281,14 +5306,13 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			config: Config{
 				MaxVersion: vers.version,
 			},
+			shimCertificate: rsaCertificate.WithOCSP(testOCSPResponse),
 			expectations: connectionExpectations{
 				ocspResponse: []byte{},
 			},
 			flags: []string{
 				"-use-ocsp-callback",
 				"-decline-ocsp-callback",
-				"-ocsp-response",
-				base64FlagValue(testOCSPResponse),
 			},
 			resumeSession: true,
 		})
@@ -5300,11 +5324,10 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			config: Config{
 				MaxVersion: vers.version,
 			},
+			shimCertificate: rsaCertificate.WithOCSP(testOCSPResponse),
 			flags: []string{
 				"-use-ocsp-callback",
 				"-fail-ocsp-callback",
-				"-ocsp-response",
-				base64FlagValue(testOCSPResponse),
 			},
 			shouldFail:    true,
 			expectedError: ":OCSP_CB_ERROR:",
@@ -8332,6 +8355,7 @@ func addExtensionTests() {
 				testType: clientTest,
 				config: Config{
 					MaxVersion: ver.version,
+					Credential: rsaCertificate.WithSCTList(testSCTList),
 				},
 				flags: []string{
 					"-enable-signed-cert-timestamps",
@@ -8352,6 +8376,7 @@ func addExtensionTests() {
 				name:     "SendSCTListOnResume-" + suffix,
 				config: Config{
 					MaxVersion: ver.version,
+					Credential: rsaCertificate.WithSCTList(testSCTList),
 					Bugs: ProtocolBugs{
 						SendSCTListOnResume: differentSCTList,
 					},
@@ -8371,18 +8396,12 @@ func addExtensionTests() {
 				config: Config{
 					MaxVersion: ver.version,
 				},
-				flags: []string{
-					"-signed-cert-timestamps",
-					base64FlagValue(testSCTList),
-				},
+				shimCertificate: rsaCertificate.WithSCTList(testSCTList),
 				expectations: connectionExpectations{
 					sctList: testSCTList,
 				},
 				resumeSession: true,
 			})
-
-			emptySCTListCert := rsaCertificate
-			emptySCTListCert.SignedCertificateTimestampList = []byte{0, 0}
 
 			// Test empty SCT list.
 			testCases = append(testCases, testCase{
@@ -8391,7 +8410,7 @@ func addExtensionTests() {
 				testType: clientTest,
 				config: Config{
 					MaxVersion: ver.version,
-					Credential: &emptySCTListCert,
+					Credential: rsaCertificate.WithSCTList([]byte{0, 0}),
 				},
 				flags: []string{
 					"-enable-signed-cert-timestamps",
@@ -8400,9 +8419,6 @@ func addExtensionTests() {
 				expectedError: ":ERROR_PARSING_EXTENSION:",
 			})
 
-			emptySCTCert := rsaCertificate
-			emptySCTCert.SignedCertificateTimestampList = []byte{0, 6, 0, 2, 1, 2, 0, 0}
-
 			// Test empty SCT in non-empty list.
 			testCases = append(testCases, testCase{
 				protocol: protocol,
@@ -8410,7 +8426,7 @@ func addExtensionTests() {
 				testType: clientTest,
 				config: Config{
 					MaxVersion: ver.version,
-					Credential: &emptySCTCert,
+					Credential: rsaCertificate.WithSCTList([]byte{0, 6, 0, 2, 1, 2, 0, 0}),
 				},
 				flags: []string{
 					"-enable-signed-cert-timestamps",
@@ -8431,12 +8447,7 @@ func addExtensionTests() {
 						NoSignedCertificateTimestamps: true,
 					},
 				},
-				flags: []string{
-					"-ocsp-response",
-					base64FlagValue(testOCSPResponse),
-					"-signed-cert-timestamps",
-					base64FlagValue(testSCTList),
-				},
+				shimCertificate: rsaCertificate.WithOCSP(testOCSPResponse).WithSCTList(testSCTList),
 			})
 
 			// Extension permutation should interact correctly with other extensions,
@@ -8457,6 +8468,7 @@ func addExtensionTests() {
 					config: Config{
 						MinVersion:          ver.version,
 						MaxVersion:          ver.version,
+						Credential:          rsaCertificate.WithOCSP(testOCSPResponse).WithSCTList(testSCTList),
 						NextProtos:          []string{"proto"},
 						ApplicationSettings: map[string][]byte{"proto": []byte("runner1")},
 						Bugs: ProtocolBugs{
@@ -8601,6 +8613,7 @@ func addExtensionTests() {
 		name: "SendOCSPResponseOnResume-TLS12",
 		config: Config{
 			MaxVersion: VersionTLS12,
+			Credential: rsaCertificate.WithOCSP(testOCSPResponse),
 			Bugs: ProtocolBugs{
 				SendOCSPResponseOnResume: []byte("bogus"),
 			},
@@ -8673,7 +8686,7 @@ func addExtensionTests() {
 		name: "IgnoreExtensionsOnIntermediates-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Credential: &rsaChainCertificate,
+			Credential: rsaChainCertificate.WithOCSP(testOCSPResponse).WithSCTList(testSCTList),
 			Bugs: ProtocolBugs{
 				// Send different values on the intermediate. This tests
 				// the intermediate's extensions do not override the
@@ -8704,13 +8717,7 @@ func addExtensionTests() {
 				ExpectNoExtensionsOnIntermediate: true,
 			},
 		},
-		shimCertificate: &rsaChainCertificate,
-		flags: []string{
-			"-ocsp-response",
-			base64FlagValue(testOCSPResponse),
-			"-signed-cert-timestamps",
-			base64FlagValue(testSCTList),
-		},
+		shimCertificate: rsaChainCertificate.WithOCSP(testOCSPResponse).WithSCTList(testSCTList),
 	})
 
 	// Test that extensions are not sent on client certificates.
@@ -8720,19 +8727,14 @@ func addExtensionTests() {
 			MaxVersion: VersionTLS13,
 			ClientAuth: RequireAnyClientCert,
 		},
-		shimCertificate: &rsaCertificate,
-		flags: []string{
-			"-ocsp-response",
-			base64FlagValue(testOCSPResponse),
-			"-signed-cert-timestamps",
-			base64FlagValue(testSCTList),
-		},
+		shimCertificate: rsaChainCertificate.WithOCSP(testOCSPResponse).WithSCTList(testSCTList),
 	})
 
 	testCases = append(testCases, testCase{
 		name: "SendDuplicateExtensionsOnCerts-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
+			Credential: rsaCertificate.WithOCSP(testOCSPResponse).WithSCTList(testSCTList),
 			Bugs: ProtocolBugs{
 				SendDuplicateCertExtensions: true,
 			},
@@ -8747,14 +8749,11 @@ func addExtensionTests() {
 	})
 
 	testCases = append(testCases, testCase{
-		name:     "SignedCertificateTimestampListInvalid-Server",
-		testType: serverTest,
-		flags: []string{
-			"-signed-cert-timestamps",
-			base64FlagValue([]byte{0, 0}),
-		},
-		shouldFail:    true,
-		expectedError: ":INVALID_SCT_LIST:",
+		name:            "SignedCertificateTimestampListInvalid-Server",
+		testType:        serverTest,
+		shimCertificate: rsaCertificate.WithSCTList([]byte{0, 0}),
+		shouldFail:      true,
+		expectedError:   ":INVALID_SCT_LIST:",
 	})
 }
 
@@ -9793,6 +9792,7 @@ func addRenegotiationTests() {
 		name:     "Renegotiation-ChangeAuthProperties",
 		config: Config{
 			MaxVersion: VersionTLS12,
+			Credential: rsaCertificate.WithOCSP(testOCSPResponse).WithSCTList(testSCTList),
 			Bugs: ProtocolBugs{
 				SendOCSPResponseOnRenegotiation: testOCSPResponse2,
 				SendSCTListOnRenegotiation:      testSCTList2,
@@ -9856,9 +9856,9 @@ func addDTLSReplayTests() {
 }
 
 var testSignatureAlgorithms = []struct {
-	name string
-	id   signatureAlgorithm
-	cert *Credential
+	name     string
+	id       signatureAlgorithm
+	baseCert *Credential
 	// If non-zero, the curve that must be supported in TLS 1.2 for cert to be
 	// accepted.
 	curve CurveID
@@ -9908,6 +9908,12 @@ func addSignatureAlgorithmTests() {
 	// Make sure each signature algorithm works. Include some fake values in
 	// the list and ensure they're ignored.
 	for _, alg := range testSignatureAlgorithms {
+		// Make a version of the certificate that will not sign any other algorithm.
+		cert := alg.baseCert
+		if alg.id != 0 {
+			cert = cert.WithSignatureAlgorithms(alg.id)
+		}
+
 		for _, ver := range tlsVersions {
 			if (ver.version < VersionTLS12) != (alg.id == 0) {
 				continue
@@ -9974,7 +9980,7 @@ func addSignatureAlgorithmTests() {
 							fakeSigAlg2,
 						},
 					},
-					shimCertificate:    alg.cert,
+					shimCertificate:    cert,
 					flags:              curveFlags,
 					shouldFail:         shouldFail,
 					expectedError:      signError,
@@ -9993,14 +9999,11 @@ func addSignatureAlgorithmTests() {
 						MaxVersion:                ver.version,
 						VerifySignatureAlgorithms: allAlgorithms,
 					},
-					shimCertificate: alg.cert,
+					shimCertificate: cert,
 					flags:           curveFlags,
 					expectations: connectionExpectations{
 						peerSignatureAlgorithm: alg.id,
 					},
-				}
-				if alg.id != 0 {
-					negotiateTest.flags = append(negotiateTest.flags, "-signing-prefs", strconv.Itoa(int(alg.id)))
 				}
 
 				if testType == serverTest {
@@ -10023,10 +10026,7 @@ func addSignatureAlgorithmTests() {
 					name:     prefix + "Verify" + suffix,
 					config: Config{
 						MaxVersion: ver.version,
-						Credential: alg.cert,
-						SignSignatureAlgorithms: []signatureAlgorithm{
-							alg.id,
-						},
+						Credential: cert,
 						Bugs: ProtocolBugs{
 							SkipECDSACurveCheck:          shouldFail,
 							IgnoreSignatureVersionChecks: shouldFail,
@@ -10054,10 +10054,7 @@ func addSignatureAlgorithmTests() {
 					name:     prefix + "VerifyDefault" + suffix,
 					config: Config{
 						MaxVersion: ver.version,
-						Credential: alg.cert,
-						SignSignatureAlgorithms: []signatureAlgorithm{
-							alg.id,
-						},
+						Credential: cert,
 						Bugs: ProtocolBugs{
 							SkipECDSACurveCheck:          rejectByDefault,
 							IgnoreSignatureVersionChecks: rejectByDefault,
@@ -10083,10 +10080,7 @@ func addSignatureAlgorithmTests() {
 					name:     prefix + "InvalidSignature" + suffix,
 					config: Config{
 						MaxVersion: ver.version,
-						Credential: alg.cert,
-						SignSignatureAlgorithms: []signatureAlgorithm{
-							alg.id,
-						},
+						Credential: cert,
 						Bugs: ProtocolBugs{
 							InvalidSignature: true,
 						},
@@ -10240,10 +10234,7 @@ func addSignatureAlgorithmTests() {
 		name:     "Verify-ClientAuth-SignatureType",
 		config: Config{
 			MaxVersion: VersionTLS12,
-			Credential: &rsaCertificate,
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPKCS1WithSHA256,
-			},
+			Credential: rsaCertificate.WithSignatureAlgorithms(signatureRSAPKCS1WithSHA256),
 			Bugs: ProtocolBugs{
 				SendSignatureAlgorithm: signatureECDSAWithP256AndSHA256,
 			},
@@ -10260,10 +10251,7 @@ func addSignatureAlgorithmTests() {
 		name:     "Verify-ClientAuth-SignatureType-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Credential: &rsaCertificate,
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPSSWithSHA256,
-			},
+			Credential: rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA256),
 			Bugs: ProtocolBugs{
 				SendSignatureAlgorithm: signatureECDSAWithP256AndSHA256,
 			},
@@ -10280,9 +10268,7 @@ func addSignatureAlgorithmTests() {
 		config: Config{
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPKCS1WithSHA256,
-			},
+			Credential:   rsaCertificate.WithSignatureAlgorithms(signatureRSAPKCS1WithSHA256),
 			Bugs: ProtocolBugs{
 				SendSignatureAlgorithm: signatureECDSAWithP256AndSHA256,
 			},
@@ -10295,9 +10281,7 @@ func addSignatureAlgorithmTests() {
 		name: "Verify-ServerAuth-SignatureType-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPSSWithSHA256,
-			},
+			Credential: rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA256),
 			Bugs: ProtocolBugs{
 				SendSignatureAlgorithm: signatureECDSAWithP256AndSHA256,
 			},
@@ -10417,10 +10401,7 @@ func addSignatureAlgorithmTests() {
 		name:     "ClientAuth-Enforced",
 		config: Config{
 			MaxVersion: VersionTLS12,
-			Credential: &rsaCertificate,
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPKCS1WithMD5,
-			},
+			Credential: rsaCertificate.WithSignatureAlgorithms(signatureRSAPKCS1WithMD5),
 			Bugs: ProtocolBugs{
 				IgnorePeerSignatureAlgorithmPreferences: true,
 			},
@@ -10435,9 +10416,7 @@ func addSignatureAlgorithmTests() {
 		config: Config{
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPKCS1WithMD5,
-			},
+			Credential:   rsaCertificate.WithSignatureAlgorithms(signatureRSAPKCS1WithMD5),
 			Bugs: ProtocolBugs{
 				IgnorePeerSignatureAlgorithmPreferences: true,
 			},
@@ -10450,10 +10429,7 @@ func addSignatureAlgorithmTests() {
 		name:     "ClientAuth-Enforced-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Credential: &rsaCertificate,
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPKCS1WithMD5,
-			},
+			Credential: rsaCertificate.WithSignatureAlgorithms(signatureRSAPKCS1WithMD5),
 			Bugs: ProtocolBugs{
 				IgnorePeerSignatureAlgorithmPreferences: true,
 				IgnoreSignatureVersionChecks:            true,
@@ -10468,9 +10444,7 @@ func addSignatureAlgorithmTests() {
 		name: "ServerAuth-Enforced-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPKCS1WithMD5,
-			},
+			Credential: rsaCertificate.WithSignatureAlgorithms(signatureRSAPKCS1WithMD5),
 			Bugs: ProtocolBugs{
 				IgnorePeerSignatureAlgorithmPreferences: true,
 				IgnoreSignatureVersionChecks:            true,
@@ -10492,12 +10466,9 @@ func addSignatureAlgorithmTests() {
 				signatureRSAPKCS1WithSHA1,
 			},
 		},
-		shimCertificate: &rsaCertificate,
-		flags: []string{
-			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
-		},
-		shouldFail:    true,
-		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+		shimCertificate: rsaCertificate.WithSignatureAlgorithms(signatureRSAPKCS1WithSHA256),
+		shouldFail:      true,
+		expectedError:   ":NO_COMMON_SIGNATURE_ALGORITHMS:",
 	})
 	testCases = append(testCases, testCase{
 		name: "NoCommonAlgorithms-TLS13",
@@ -10509,12 +10480,9 @@ func addSignatureAlgorithmTests() {
 				signatureRSAPSSWithSHA384,
 			},
 		},
-		shimCertificate: &rsaCertificate,
-		flags: []string{
-			"-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA256)),
-		},
-		shouldFail:    true,
-		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+		shimCertificate: rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA256),
+		shouldFail:      true,
+		expectedError:   ":NO_COMMON_SIGNATURE_ALGORITHMS:",
 	})
 	testCases = append(testCases, testCase{
 		name: "Agree-Digest-SHA256",
@@ -10526,11 +10494,10 @@ func addSignatureAlgorithmTests() {
 				signatureRSAPKCS1WithSHA256,
 			},
 		},
-		shimCertificate: &rsaCertificate,
-		flags: []string{
-			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
-			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA1)),
-		},
+		shimCertificate: rsaCertificate.WithSignatureAlgorithms(
+			signatureRSAPKCS1WithSHA256,
+			signatureRSAPKCS1WithSHA1,
+		),
 		expectations: connectionExpectations{
 			peerSignatureAlgorithm: signatureRSAPKCS1WithSHA256,
 		},
@@ -10544,12 +10511,11 @@ func addSignatureAlgorithmTests() {
 				signatureRSAPKCS1WithSHA1,
 			},
 		},
-		shimCertificate: &rsaCertificate,
-		flags: []string{
-			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA512)),
-			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
-			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA1)),
-		},
+		shimCertificate: rsaCertificate.WithSignatureAlgorithms(
+			signatureRSAPKCS1WithSHA512,
+			signatureRSAPKCS1WithSHA256,
+			signatureRSAPKCS1WithSHA1,
+		),
 		expectations: connectionExpectations{
 			peerSignatureAlgorithm: signatureRSAPKCS1WithSHA1,
 		},
@@ -10583,11 +10549,10 @@ func addSignatureAlgorithmTests() {
 				signatureRSAPKCS1WithSHA256,
 			},
 		},
-		shimCertificate: &rsaCertificate,
-		flags: []string{
-			"-signing-prefs", strconv.Itoa(int(signatureECDSAWithP256AndSHA256)),
-			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
-		},
+		shimCertificate: rsaCertificate.WithSignatureAlgorithms(
+			signatureECDSAWithP256AndSHA256,
+			signatureRSAPKCS1WithSHA256,
+		),
 		expectations: connectionExpectations{
 			peerSignatureAlgorithm: signatureRSAPKCS1WithSHA256,
 		},
@@ -10617,28 +10582,24 @@ func addSignatureAlgorithmTests() {
 		flags: []string{"-curves", strconv.Itoa(int(CurveP384))},
 	})
 
-	// In TLS 1.2, the ECDSA curve is not in the signature algorithm.
+	// In TLS 1.2, the ECDSA curve is not in the signature algorithm, so the
+	// shim should accept P-256 with SHA-384.
 	testCases = append(testCases, testCase{
 		name: "ECDSACurveMismatch-Verify-TLS12",
 		config: Config{
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-			Credential:   &ecdsaP256Certificate,
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureECDSAWithP384AndSHA384,
-			},
+			Credential:   ecdsaP256Certificate.WithSignatureAlgorithms(signatureECDSAWithP384AndSHA384),
 		},
 	})
 
-	// In TLS 1.3, the ECDSA curve comes from the signature algorithm.
+	// In TLS 1.3, the ECDSA curve comes from the signature algorithm, so the
+	// shim should reject P-256 with SHA-384.
 	testCases = append(testCases, testCase{
 		name: "ECDSACurveMismatch-Verify-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
-			Credential: &ecdsaP256Certificate,
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureECDSAWithP384AndSHA384,
-			},
+			Credential: ecdsaP256Certificate.WithSignatureAlgorithms(signatureECDSAWithP384AndSHA384),
 			Bugs: ProtocolBugs{
 				SkipECDSACurveCheck: true,
 			},
@@ -10687,9 +10648,7 @@ func addSignatureAlgorithmTests() {
 		name:     "RSA-PSS-Default-Verify",
 		config: Config{
 			MaxVersion: VersionTLS12,
-			SignSignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPSSWithSHA256,
-			},
+			Credential: rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA256),
 		},
 		flags: []string{"-max-version", strconv.Itoa(VersionTLS12)},
 	})
@@ -10795,12 +10754,11 @@ func addSignatureAlgorithmTests() {
 	testCases = append(testCases, testCase{
 		name: "VerifyPreferences-Advertised",
 		config: Config{
-			Credential: &rsaCertificate,
-			SignSignatureAlgorithms: []signatureAlgorithm{
+			Credential: rsaCertificate.WithSignatureAlgorithms(
 				signatureRSAPSSWithSHA256,
 				signatureRSAPSSWithSHA384,
 				signatureRSAPSSWithSHA512,
-			},
+			),
 		},
 		flags: []string{
 			"-verify-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA384)),
@@ -10813,11 +10771,10 @@ func addSignatureAlgorithmTests() {
 	testCases = append(testCases, testCase{
 		name: "VerifyPreferences-NoCommonAlgorithms",
 		config: Config{
-			Credential: &rsaCertificate,
-			SignSignatureAlgorithms: []signatureAlgorithm{
+			Credential: rsaCertificate.WithSignatureAlgorithms(
 				signatureRSAPSSWithSHA256,
 				signatureRSAPSSWithSHA512,
-			},
+			),
 		},
 		flags: []string{
 			"-verify-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA384)),
@@ -10830,11 +10787,10 @@ func addSignatureAlgorithmTests() {
 	testCases = append(testCases, testCase{
 		name: "VerifyPreferences-Enforced",
 		config: Config{
-			Credential: &rsaCertificate,
-			SignSignatureAlgorithms: []signatureAlgorithm{
+			Credential: rsaCertificate.WithSignatureAlgorithms(
 				signatureRSAPSSWithSHA256,
 				signatureRSAPSSWithSHA512,
-			},
+			),
 			Bugs: ProtocolBugs{
 				IgnorePeerSignatureAlgorithmPreferences: true,
 			},
@@ -10887,13 +10843,12 @@ func addSignatureAlgorithmTests() {
 					ClientAuth:                RequireAnyClientCert,
 					VerifySignatureAlgorithms: []signatureAlgorithm{signatureRSAPKCS1WithMD5AndSHA1},
 				},
-				shimCertificate: &rsaCertificate,
-				flags: []string{
-					"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithMD5AndSHA1)),
+				shimCertificate: rsaCertificate.WithSignatureAlgorithms(
+					signatureRSAPKCS1WithMD5AndSHA1,
 					// Include a valid algorithm as well, to avoid an empty list
 					// if filtered out.
-					"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
-				},
+					signatureRSAPKCS1WithSHA256,
+				),
 				shouldFail:    true,
 				expectedError: noCommonAlgorithmsError,
 			})
@@ -13035,6 +12990,7 @@ func makePerMessageTests() []perMessageTest {
 				name:     "CertificateStatus" + suffix,
 				config: Config{
 					MaxVersion: VersionTLS12,
+					Credential: rsaCertificate.WithOCSP(testOCSPResponse),
 				},
 				flags: []string{"-enable-ocsp-stapling"},
 			},
@@ -15586,7 +15542,7 @@ func addECDSAKeyUsageTests() {
 		BasicConstraintsValid: true,
 	}
 
-	cert := generateSingleCertChain(template, &ecdsaP256Key, nil, nil)
+	cert := generateSingleCertChain(template, &ecdsaP256Key)
 
 	for _, ver := range tlsVersions {
 		if ver.version < VersionTLS12 {
@@ -15653,9 +15609,9 @@ func addRSAKeyUsageTests() {
 		BasicConstraintsValid: true,
 	}
 
-	dsCert := generateSingleCertChain(&dsTemplate, priv, nil, nil)
+	dsCert := generateSingleCertChain(&dsTemplate, priv)
 
-	encCert := generateSingleCertChain(&encTemplate, priv, nil, nil)
+	encCert := generateSingleCertChain(&encTemplate, priv)
 
 	dsSuites := []uint16{
 		TLS_AES_128_GCM_SHA256,
@@ -18964,12 +18920,9 @@ func addHintMismatchTests() {
 					signatureRSAPSSWithSHA384,
 				},
 			},
-			shimCertificate: &rsaCertificate,
-			flags: []string{
-				"-allow-hint-mismatch",
-				"-on-shim-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA256)),
-				"-on-handshaker-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA384)),
-			},
+			shimCertificate:       rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA256),
+			handshakerCertificate: rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA384),
+			flags:                 []string{"-allow-hint-mismatch"},
 			expectations: connectionExpectations{
 				peerSignatureAlgorithm: signatureRSAPSSWithSHA256,
 			},
@@ -18988,12 +18941,9 @@ func addHintMismatchTests() {
 						signatureRSAPSSWithSHA384,
 					},
 				},
-				shimCertificate: &rsaCertificate,
-				flags: []string{
-					"-allow-hint-mismatch",
-					"-on-shim-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA256)),
-					"-on-handshaker-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA384)),
-				},
+				shimCertificate:       rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA256),
+				handshakerCertificate: rsaCertificate.WithSignatureAlgorithms(signatureRSAPSSWithSHA384),
+				flags:                 []string{"-allow-hint-mismatch"},
 				expectations: connectionExpectations{
 					peerSignatureAlgorithm: signatureRSAPSSWithSHA256,
 				},
@@ -19207,13 +19157,13 @@ func addHintMismatchTests() {
 					ExpectedCompressedCert: shrinkingCompressionAlgID,
 				},
 			},
+			// Configure the shim and handshaker with different OCSP responses,
+			// so the compression inputs do not match.
+			shimCertificate:       rsaCertificate.WithOCSP(testOCSPResponse),
+			handshakerCertificate: rsaCertificate.WithOCSP(testOCSPResponse2),
 			flags: []string{
 				"-allow-hint-mismatch",
 				"-install-cert-compression-algs",
-				// Configure the shim and handshaker with different OCSP
-				// responses, so the compression inputs do not match.
-				"-on-shim-ocsp-response", base64FlagValue(testOCSPResponse),
-				"-on-handshaker-ocsp-response", base64FlagValue(testOCSPResponse2),
 			},
 			expectations: connectionExpectations{
 				// The shim's configuration should take precendence.
@@ -19423,6 +19373,12 @@ func addCompliancePolicyTests() {
 		}
 
 		for _, sigalg := range testSignatureAlgorithms {
+			// The TLS 1.0 and TLS 1.1 default signature algorithm does not
+			// apply to these tests.
+			if sigalg.id == 0 {
+				continue
+			}
+
 			var isFIPSSigAlg bool
 			switch sigalg.id {
 			case signatureRSAPKCS1WithSHA256,
@@ -19468,6 +19424,7 @@ func addCompliancePolicyTests() {
 				{"-wpa-202304", isWPASigAlg},
 			}
 
+			cert := sigalg.baseCert.WithSignatureAlgorithms(sigalg.id)
 			for _, policy := range policies {
 				testCases = append(testCases, testCase{
 					testType: serverTest,
@@ -19478,7 +19435,9 @@ func addCompliancePolicyTests() {
 						MaxVersion:                maxVersion,
 						VerifySignatureAlgorithms: []signatureAlgorithm{sigalg.id},
 					},
-					shimCertificate: sigalg.cert,
+					// Use the base certificate. We wish to pick up the signature algorithm
+					// preferences from the FIPS policy.
+					shimCertificate: sigalg.baseCert,
 					flags:           []string{policy.flag},
 					shouldFail:      !policy.sigAlgOk,
 				})
@@ -19488,10 +19447,9 @@ func addCompliancePolicyTests() {
 					protocol: protocol,
 					name:     "Compliance" + policy.flag + "-" + protocol.String() + "-Client-" + sigalg.name,
 					config: Config{
-						MinVersion:              VersionTLS12,
-						MaxVersion:              maxVersion,
-						SignSignatureAlgorithms: []signatureAlgorithm{sigalg.id},
-						Credential:              sigalg.cert,
+						MinVersion: VersionTLS12,
+						MaxVersion: maxVersion,
+						Credential: cert,
 					},
 					flags: []string{
 						policy.flag,

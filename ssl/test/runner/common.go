@@ -583,10 +583,6 @@ type Config struct {
 	// protection profiles to offer in DTLS-SRTP.
 	SRTPProtectionProfiles []uint16
 
-	// SignSignatureAlgorithms, if not nil, overrides the default set of
-	// supported signature algorithms to sign with.
-	SignSignatureAlgorithms []signatureAlgorithm
-
 	// VerifySignatureAlgorithms, if not nil, overrides the default set of
 	// supported signature algorithms that are accepted.
 	VerifySignatureAlgorithms []signatureAlgorithm
@@ -2125,13 +2121,6 @@ func (c *Config) supportedVersions(isDTLS, requireTLS13 bool) []uint16 {
 	return ret
 }
 
-func (c *Config) signSignatureAlgorithms() []signatureAlgorithm {
-	if c != nil && c.SignSignatureAlgorithms != nil {
-		return c.SignSignatureAlgorithms
-	}
-	return supportedSignatureAlgorithms
-}
-
 func (c *Config) verifySignatureAlgorithms() []signatureAlgorithm {
 	if c != nil && c.VerifySignatureAlgorithms != nil {
 		return c.VerifySignatureAlgorithms
@@ -2152,6 +2141,9 @@ type Credential struct {
 	// SignedCertificateTimestampList structure which will be
 	// served to clients that request it.
 	SignedCertificateTimestampList []byte
+	// SignatureAlgorithms, if not nil, overrides the default set of
+	// supported signature algorithms to sign with.
+	SignatureAlgorithms []signatureAlgorithm
 	// Leaf is the parsed form of the leaf certificate, which may be
 	// initialized using x509.ParseCertificate to reduce per-handshake
 	// processing for TLS clients doing client authentication. If nil, the
@@ -2166,6 +2158,31 @@ type Credential struct {
 	// certificate chain. If the chain only contains one certificate ChainPath
 	// and RootPath will be the same.
 	RootPath string
+}
+
+func (c *Credential) WithSignatureAlgorithms(sigAlgs ...signatureAlgorithm) *Credential {
+	ret := *c
+	ret.SignatureAlgorithms = sigAlgs
+	return &ret
+}
+
+func (c *Credential) WithOCSP(ocsp []byte) *Credential {
+	ret := *c
+	ret.OCSPStaple = ocsp
+	return &ret
+}
+
+func (c *Credential) WithSCTList(sctList []byte) *Credential {
+	ret := *c
+	ret.SignedCertificateTimestampList = sctList
+	return &ret
+}
+
+func (c *Credential) signatureAlgorithms() []signatureAlgorithm {
+	if c != nil && c.SignatureAlgorithms != nil {
+		return c.SignatureAlgorithms
+	}
+	return supportedSignatureAlgorithms
 }
 
 // A TLS record.
@@ -2386,18 +2403,16 @@ var baseCertTemplate = &x509.Certificate{
 
 var tmpDir string
 
-func generateSingleCertChain(template *x509.Certificate, key crypto.Signer, ocspStaple, sctList []byte) Credential {
-	cert := generateTestCert(template, nil, key, ocspStaple, sctList)
+func generateSingleCertChain(template *x509.Certificate, key crypto.Signer) Credential {
+	cert := generateTestCert(template, nil, key)
 	tmpCertPath, tmpKeyPath := writeTempCertFile([]*x509.Certificate{cert}), writeTempKeyFile(key)
 	return Credential{
-		Certificate:                    [][]byte{cert.Raw},
-		PrivateKey:                     key,
-		OCSPStaple:                     ocspStaple,
-		SignedCertificateTimestampList: sctList,
-		Leaf:                           cert,
-		ChainPath:                      tmpCertPath,
-		KeyPath:                        tmpKeyPath,
-		RootPath:                       tmpCertPath,
+		Certificate: [][]byte{cert.Raw},
+		PrivateKey:  key,
+		Leaf:        cert,
+		ChainPath:   tmpCertPath,
+		KeyPath:     tmpKeyPath,
+		RootPath:    tmpCertPath,
 	}
 }
 
@@ -2437,7 +2452,7 @@ func writeTempKeyFile(privKey crypto.Signer) string {
 	return tmpKeyPath
 }
 
-func generateTestCert(template, issuer *x509.Certificate, key crypto.Signer, ocspStaple, sctList []byte) *x509.Certificate {
+func generateTestCert(template, issuer *x509.Certificate, key crypto.Signer) *x509.Certificate {
 	if template == nil {
 		template = baseCertTemplate
 	}

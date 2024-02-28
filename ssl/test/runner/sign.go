@@ -27,7 +27,7 @@ type signer interface {
 	verifyMessage(key crypto.PublicKey, msg, sig []byte) error
 }
 
-func selectSignatureAlgorithm(version uint16, key crypto.PrivateKey, config *Config, peerSigAlgs []signatureAlgorithm) (signatureAlgorithm, error) {
+func selectSignatureAlgorithm(version uint16, cred *Credential, config *Config, peerSigAlgs []signatureAlgorithm) (signatureAlgorithm, error) {
 	// If the client didn't specify any signature_algorithms extension then
 	// we can assume that it supports SHA1. See
 	// http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
@@ -35,17 +35,17 @@ func selectSignatureAlgorithm(version uint16, key crypto.PrivateKey, config *Con
 		peerSigAlgs = []signatureAlgorithm{signatureRSAPKCS1WithSHA1, signatureECDSAWithSHA1}
 	}
 
-	for _, sigAlg := range config.signSignatureAlgorithms() {
+	for _, sigAlg := range cred.signatureAlgorithms() {
 		if !slices.Contains(peerSigAlgs, sigAlg) {
 			continue
 		}
 
-		signer, err := getSigner(version, key, config, sigAlg, false)
+		signer, err := getSigner(version, cred.PrivateKey, config, sigAlg, false)
 		if err != nil {
 			continue
 		}
 
-		if signer.supportsKey(key) {
+		if signer.supportsKey(cred.PrivateKey) {
 			return sigAlg, nil
 		}
 	}

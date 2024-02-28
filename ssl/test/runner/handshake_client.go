@@ -1208,13 +1208,13 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 				return errors.New("tls: expected no certificate_authorities extension")
 			}
 
-			if c.config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
-				certReq.signatureAlgorithms = c.config.signSignatureAlgorithms()
-			}
-
 			hs.writeServerHash(certReq.marshal())
 
 			credential = c.config.Credential
+			if credential != nil && c.config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
+				certReq.signatureAlgorithms = credential.signatureAlgorithms()
+			}
+
 			msg, err = c.readHandshake()
 			if err != nil {
 				return err
@@ -1452,15 +1452,14 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 			}
 
 			// Determine the hash to sign.
-			privKey := credential.PrivateKey
-
 			var err error
-			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
+			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, credential, c.config, certReq.signatureAlgorithms)
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
 			}
 
+			privKey := credential.PrivateKey
 			input := hs.finishedHash.certificateVerifyInput(clientCertificateVerifyContextTLS13)
 			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
 			if err != nil {
@@ -1697,13 +1696,13 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	certReq, ok := msg.(*certificateRequestMsg)
 	if ok {
 		certRequested = true
-		if c.config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
-			certReq.signatureAlgorithms = c.config.signSignatureAlgorithms()
-		}
-
 		hs.writeServerHash(certReq.marshal())
 
 		credential = c.config.Credential
+		if credential != nil && c.config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
+			certReq.signatureAlgorithms = credential.signatureAlgorithms()
+		}
+
 		msg, err = c.readHandshake()
 		if err != nil {
 			return err
@@ -1766,16 +1765,15 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 
 		// Determine the hash to sign.
-		privKey := c.config.Credential.PrivateKey
-
 		if certVerify.hasSignatureAlgorithm {
-			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
+			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, credential, c.config, certReq.signatureAlgorithms)
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
 			}
 		}
 
+		privKey := c.config.Credential.PrivateKey
 		certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, hs.finishedHash.buffer)
 		if err == nil && c.config.Bugs.SendSignatureAlgorithm != 0 {
 			certVerify.signatureAlgorithm = c.config.Bugs.SendSignatureAlgorithm
