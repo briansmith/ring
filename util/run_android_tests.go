@@ -352,19 +352,6 @@ func main() {
 
 	if enableSSLTests() {
 		binaries = append(binaries, "ssl/test/bssl_shim")
-		files = append(files,
-			"BUILDING.md",
-			"ssl/test/runner/channel_id_key.pem",
-			"ssl/test/runner/ecdsa_p224_key.pem",
-			"ssl/test/runner/ecdsa_p256_key.pem",
-			"ssl/test/runner/ecdsa_p384_key.pem",
-			"ssl/test/runner/ecdsa_p521_key.pem",
-			"ssl/test/runner/ed25519_key.pem",
-			"ssl/test/runner/rsa_2048_key.pem",
-			"ssl/test/runner/rsa_1024_key.pem",
-			"util/all_tests.json",
-		)
-
 		fmt.Printf("Building runner...\n")
 		if err := goTool("test", "-c", "-o", filepath.Join(tmpDir, "ssl/test/runner/runner"), "./ssl/test/runner/"); err != nil {
 			fmt.Printf("Error building runner: %s\n", err)

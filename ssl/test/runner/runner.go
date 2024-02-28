@@ -24,6 +24,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	_ "embed"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -37,7 +38,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -69,7 +69,6 @@ var (
 	shimPath           = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
 	shimExtraFlags     = flag.String("shim-extra-flags", "", "Semicolon-separated extra flags to pass to the shim binary on each invocation.")
 	handshakerPath     = flag.String("handshaker-path", "../../../build/ssl/test/handshaker", "The location of the handshaker binary.")
-	resourceDir        = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
 	fuzzer             = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
 	transcriptDir      = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
 	idleTimeout        = flag.Duration("idle-timeout", 15*time.Second, "The number of seconds to wait for a read or write to bssl_shim.")
@@ -111,19 +110,29 @@ var shimConfig ShimConfiguration = ShimConfiguration{
 	HalfRTTTickets: 2,
 }
 
-const (
-	rsa2048KeyFile = "rsa_2048_key.pem"
-	rsa1024KeyFile = "rsa_1024_key.pem"
+//go:embed rsa_2048_key.pem
+var rsa2048KeyPEM []byte
 
-	ecdsaP224KeyFile = "ecdsa_p224_key.pem"
-	ecdsaP256KeyFile = "ecdsa_p256_key.pem"
-	ecdsaP384KeyFile = "ecdsa_p384_key.pem"
-	ecdsaP521KeyFile = "ecdsa_p521_key.pem"
+//go:embed rsa_1024_key.pem
+var rsa1024KeyPEM []byte
 
-	ed25519KeyFile = "ed25519_key.pem"
+//go:embed ecdsa_p224_key.pem
+var ecdsaP224KeyPEM []byte
 
-	channelIDKeyFile = "channel_id_key.pem"
-)
+//go:embed ecdsa_p256_key.pem
+var ecdsaP256KeyPEM []byte
+
+//go:embed ecdsa_p384_key.pem
+var ecdsaP384KeyPEM []byte
+
+//go:embed ecdsa_p521_key.pem
+var ecdsaP521KeyPEM []byte
+
+//go:embed ed25519_key.pem
+var ed25519KeyPEM []byte
+
+//go:embed channel_id_key.pem
+var channelIDKeyPEM []byte
 
 var (
 	rsa1024Key rsa.PrivateKey
@@ -139,21 +148,23 @@ var (
 	channelIDKey ecdsa.PrivateKey
 )
 
+var channelIDKeyPath string
+
 func initKeys() {
 	// Since key generation is not particularly cheap (especially RSA), and the
-	// runner is intended to run on systems which may be resource constrained,
+	// runner is intended to run on systems which may be resouece constrained,
 	// we load keys from disk instead of dynamically generating them. We treat
 	// key files the same as dynamically generated certificates, writing them
 	// out to temporary files before passing them to the shim.
 
 	for _, k := range []struct {
-		path string
-		key  *rsa.PrivateKey
+		pemBytes []byte
+		key      *rsa.PrivateKey
 	}{
-		{rsa1024KeyFile, &rsa1024Key},
-		{rsa2048KeyFile, &rsa2048Key},
+		{rsa1024KeyPEM, &rsa1024Key},
+		{rsa2048KeyPEM, &rsa2048Key},
 	} {
-		key, err := loadPEMKey(k.path)
+		key, err := loadPEMKey(k.pemBytes)
 		if err != nil {
 			panic(fmt.Sprintf("failed to load RSA test key: %s", err))
 		}
@@ -161,27 +172,29 @@ func initKeys() {
 	}
 
 	for _, k := range []struct {
-		path string
-		key  *ecdsa.PrivateKey
+		pemBytes []byte
+		key      *ecdsa.PrivateKey
 	}{
-		{ecdsaP224KeyFile, &ecdsaP224Key},
-		{ecdsaP256KeyFile, &ecdsaP256Key},
-		{ecdsaP384KeyFile, &ecdsaP384Key},
-		{ecdsaP521KeyFile, &ecdsaP521Key},
-		{channelIDKeyFile, &channelIDKey},
+		{ecdsaP224KeyPEM, &ecdsaP224Key},
+		{ecdsaP256KeyPEM, &ecdsaP256Key},
+		{ecdsaP384KeyPEM, &ecdsaP384Key},
+		{ecdsaP521KeyPEM, &ecdsaP521Key},
+		{channelIDKeyPEM, &channelIDKey},
 	} {
-		key, err := loadPEMKey(k.path)
+		key, err := loadPEMKey(k.pemBytes)
 		if err != nil {
 			panic(fmt.Sprintf("failed to load ECDSA test key: %s", err))
 		}
 		*k.key = *(key.(*ecdsa.PrivateKey))
 	}
 
-	k, err := loadPEMKey(ed25519KeyFile)
+	k, err := loadPEMKey(ed25519KeyPEM)
 	if err != nil {
 		panic(fmt.Sprintf("failed to load Ed25519 test key: %s", err))
 	}
 	ed25519Key = k.(ed25519.PrivateKey)
+
+	channelIDKeyPath = writeTempKeyFile(&channelIDKey)
 }
 
 var channelIDBytes []byte
@@ -206,8 +219,6 @@ var (
 	garbageCertificate   CertificateChain
 )
 
-var testCerts []*CertificateChain
-
 func initCertificates() {
 	for _, def := range []struct {
 		key crypto.Signer
@@ -222,7 +233,6 @@ func initCertificates() {
 		{ed25519Key, &ed25519Certificate},
 	} {
 		*def.out = generateSingleCertChain(nil, def.key, testOCSPResponse, testSCTList)
-		testCerts = append(testCerts, def.out)
 	}
 
 	channelIDBytes = make([]byte, 64)
@@ -292,25 +302,19 @@ type delegatedCredentialConfig struct {
 	algo signatureAlgorithm
 }
 
-func loadPEMKey(filename string) (crypto.PrivateKey, error) {
-	pemPath := path.Join(*resourceDir, filename)
-	pemBytes, err := os.ReadFile(pemPath)
-	if err != nil {
-		return nil, err
-	}
-
+func loadPEMKey(pemBytes []byte) (crypto.PrivateKey, error) {
 	block, _ := pem.Decode(pemBytes)
 	if block == nil {
-		return nil, fmt.Errorf("no PEM block found in %q", pemPath)
+		return nil, fmt.Errorf("no PEM block found")
 	}
 
 	if block.Type != "PRIVATE KEY" {
-		return nil, fmt.Errorf("unexpected PEM type in %q (expected \"PRIVATE KEY\"): %s", pemPath, block.Type)
+		return nil, fmt.Errorf("unexpected PEM type (expected \"PRIVATE KEY\"): %s", block.Type)
 	}
 
 	k, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse PKCS#8 key from %q: %s", pemPath, err)
+		return nil, fmt.Errorf("failed to parse PKCS#8 key: %s", err)
 	}
 
 	return k, nil
@@ -5746,7 +5750,7 @@ read alert 1 0
 				NextProtos:       []string{"foo"},
 			},
 			flags: []string{
-				"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+				"-send-channel-id", channelIDKeyPath,
 				"-select-next-proto", "foo",
 			},
 			resumeSession: true,
@@ -5802,7 +5806,7 @@ read alert 1 0
 					MaxVersion:       ver.version,
 					RequestChannelID: true,
 				},
-				flags:         []string{"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile)},
+				flags:         []string{"-send-channel-id", channelIDKeyPath},
 				resumeSession: true,
 				expectations: connectionExpectations{
 					channelID: true,
@@ -14852,7 +14856,7 @@ func addTLS13HandshakeTests() {
 		expectedError:      ":UNEXPECTED_EXTENSION_ON_EARLY_DATA:",
 		expectedLocalError: "remote error: illegal parameter",
 		flags: []string{
-			"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+			"-send-channel-id", channelIDKeyPath,
 		},
 	})
 
@@ -14875,7 +14879,7 @@ func addTLS13HandshakeTests() {
 			channelID: true,
 		},
 		flags: []string{
-			"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+			"-send-channel-id", channelIDKeyPath,
 			// The client never learns the reason was Channel ID.
 			"-on-retry-expect-early-data-reason", "peer_declined",
 		},
@@ -14892,7 +14896,7 @@ func addTLS13HandshakeTests() {
 		resumeSession: true,
 		earlyData:     true,
 		flags: []string{
-			"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+			"-send-channel-id", channelIDKeyPath,
 		},
 	})
 
@@ -18532,7 +18536,7 @@ write hs 4
 				RequestChannelID: true,
 			},
 			flags: []string{
-				"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+				"-send-channel-id", channelIDKeyPath,
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-expect-ech-accept",
 			},
@@ -18556,7 +18560,7 @@ write hs 4
 				},
 			},
 			flags: []string{
-				"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+				"-send-channel-id", channelIDKeyPath,
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 			},
 			shouldFail:         true,
@@ -18576,7 +18580,7 @@ write hs 4
 					},
 				},
 				flags: []string{
-					"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+					"-send-channel-id", channelIDKeyPath,
 					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				},
 				shouldFail:         true,
@@ -19647,7 +19651,6 @@ func checkTests() {
 
 func main() {
 	flag.Parse()
-	*resourceDir = path.Clean(*resourceDir)
 	var err error
 	if tmpDir, err = os.MkdirTemp("", "testing-certs"); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to make temporary directory: %s", err)
