@@ -321,7 +321,7 @@ fn ring_build_rs_main(c_root_dir: &Path) {
     // we want to optimize for minimizing the build tools required: No Perl,
     // no nasm, etc.
     let generated_dir = if !is_git {
-        PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED)
+        c_root_dir.join(PREGENERATED)
     } else {
         generate_sources_and_preassemble(&out_dir, asm_target.into_iter(), c_root_dir);
         out_dir.clone()
