@@ -252,7 +252,7 @@ const WINDOWS: &str = "windows";
 ///
 /// The name is static since we intend to only read a static set of environment
 /// variables.
-fn read_env_var(name: &'static str) -> Option<OsString> {
+fn env_var_os(name: &'static str) -> Option<OsString> {
     println!("cargo:rerun-if-env-changed={}", name);
     std::env::var_os(name)
 }
@@ -265,7 +265,7 @@ fn main() {
     );
 
     const RING_PREGENERATE_ASM: &str = "RING_PREGENERATE_ASM";
-    match read_env_var(RING_PREGENERATE_ASM).as_deref() {
+    match env_var_os(RING_PREGENERATE_ASM).as_deref() {
         Some(s) if s == "1" => {
             pregenerate_asm_main(&c_root_dir);
         }
@@ -702,7 +702,7 @@ fn get_perl_exe() -> PathBuf {
 }
 
 fn get_command(var: &'static str, default: &str) -> PathBuf {
-    PathBuf::from(read_env_var(var).unwrap_or_else(|| default.into()))
+    PathBuf::from(env_var_os(var).unwrap_or_else(|| default.into()))
 }
 
 // TODO: We should emit `cargo:rerun-if-changed-env` for the various
