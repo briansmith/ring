@@ -1,3 +1,27 @@
+// Keep in sync with `core_name_and_version` in build.rs.
+macro_rules! core_name_and_version {
+    () => {
+        concat!(
+            env!("CARGO_PKG_NAME"),
+            "_core_",
+            env!("CARGO_PKG_VERSION_MAJOR"),
+            "_",
+            env!("CARGO_PKG_VERSION_MINOR"),
+            "_",
+            env!("CARGO_PKG_VERSION_PATCH"),
+            "_",
+            env!("CARGO_PKG_VERSION_PRE"), // Often empty
+        )
+    };
+}
+
+// Keep in sync with `prefix` in build.rs.
+macro_rules! prefix {
+    ( ) => {
+        concat!(core_name_and_version!(), "_")
+    };
+}
+
 macro_rules! prefixed_extern {
     // Functions.
     {
@@ -70,7 +94,7 @@ macro_rules! prefixed_item {
         $name:ident
         { $item:item }
     } => {
-        #[$attr = concat!(env!("RING_CORE_PREFIX"), stringify!($name))]
+        #[$attr = concat!(prefix!(), stringify!($name))]
         $item
     };
 }

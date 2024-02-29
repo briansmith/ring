@@ -269,19 +269,35 @@ fn main() {
         env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should always be set"),
     );
 
+    // Keep in sync with `core_name_and_version!` in prefixed.rs.
+    let core_name_and_version = [
+        &env::var("CARGO_PKG_NAME").unwrap(),
+        "core",
+        &env::var("CARGO_PKG_VERSION_MAJOR").unwrap(),
+        &env::var("CARGO_PKG_VERSION_MINOR").unwrap(),
+        &env::var("CARGO_PKG_VERSION_PATCH").unwrap(),
+        &env::var("CARGO_PKG_VERSION_PRE").unwrap(), // Often empty
+    ]
+    .join("_");
+    // Ensure `links` in Cargo.toml is consistent with the version.
+    assert_eq!(
+        &env::var("CARGO_MANIFEST_LINKS").unwrap(),
+        &core_name_and_version
+    );
+
     const RING_PREGENERATE_ASM: &str = "RING_PREGENERATE_ASM";
     match env::var_os(RING_PREGENERATE_ASM).as_deref() {
         Some(s) if s == "1" => {
-            pregenerate_asm_main(&c_root_dir);
+            pregenerate_asm_main(&c_root_dir, &core_name_and_version);
         }
-        None => ring_build_rs_main(&c_root_dir),
+        None => ring_build_rs_main(&c_root_dir, &core_name_and_version),
         _ => {
             panic!("${} has an invalid value", RING_PREGENERATE_ASM);
         }
     }
 }
 
-fn ring_build_rs_main(c_root_dir: &Path) {
+fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let out_dir = PathBuf::from(out_dir);
 
@@ -323,7 +339,12 @@ fn ring_build_rs_main(c_root_dir: &Path) {
     let generated_dir = if !is_git {
         c_root_dir.join(PREGENERATED)
     } else {
-        generate_sources_and_preassemble(&out_dir, asm_target.into_iter(), c_root_dir);
+        generate_sources_and_preassemble(
+            &out_dir,
+            asm_target.into_iter(),
+            c_root_dir,
+            core_name_and_version,
+        );
         out_dir.clone()
     };
 
@@ -333,25 +354,31 @@ fn ring_build_rs_main(c_root_dir: &Path) {
         &generated_dir,
         c_root_dir,
         &out_dir,
-        &ring_core_prefix(),
+        core_name_and_version,
     );
     emit_rerun_if_changed()
 }
 
-fn pregenerate_asm_main(c_root_dir: &Path) {
+fn pregenerate_asm_main(c_root_dir: &Path, core_name_and_version: &str) {
     println!("cargo:rustc-cfg=pregenerate_asm_only");
 
     let pregenerated = c_root_dir.join(PREGENERATED);
     std::fs::create_dir(&pregenerated).unwrap();
-    generate_sources_and_preassemble(&pregenerated, ASM_TARGETS.iter(), c_root_dir);
+    generate_sources_and_preassemble(
+        &pregenerated,
+        ASM_TARGETS.iter(),
+        c_root_dir,
+        core_name_and_version,
+    );
 }
 
 fn generate_sources_and_preassemble<'a>(
     out_dir: &Path,
     asm_targets: impl Iterator<Item = &'a AsmTarget>,
     c_root_dir: &Path,
+    core_name_and_version: &str,
 ) {
-    generate_prefix_symbols_headers(out_dir, &ring_core_prefix()).unwrap();
+    generate_prefix_symbols_headers(out_dir, core_name_and_version).unwrap();
 
     let perl_exe = get_perl_exe();
 
@@ -391,10 +418,8 @@ fn build_c_code(
     generated_dir: &Path,
     c_root_dir: &Path,
     out_dir: &Path,
-    ring_core_prefix: &str,
+    core_name_and_version: &str,
 ) {
-    println!("cargo:rustc-env=RING_CORE_PREFIX={}", ring_core_prefix);
-
     let (asm_srcs, obj_srcs) = if let Some(asm_target) = asm_target {
         let perlasm_src_dsts = perlasm_src_dsts(generated_dir, asm_target);
 
@@ -436,21 +461,30 @@ fn build_c_code(
     let test_srcs = RING_TEST_SRCS.iter().map(PathBuf::from).collect::<Vec<_>>();
 
     let libs = [
-        ("", &core_srcs[..], &asm_srcs[..], &obj_srcs[..]),
-        ("test", &test_srcs[..], &[], &[]),
+        (
+            core_name_and_version,
+            &core_srcs[..],
+            &asm_srcs[..],
+            &obj_srcs[..],
+        ),
+        (
+            &(String::from(core_name_and_version) + "_test"),
+            &test_srcs[..],
+            &[],
+            &[],
+        ),
     ];
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
     libs.iter()
-        .for_each(|&(lib_name_suffix, srcs, asm_srcs, obj_srcs)| {
-            let lib_name = String::from(ring_core_prefix) + lib_name_suffix;
+        .for_each(|&(lib_name, srcs, asm_srcs, obj_srcs)| {
             let srcs = srcs.iter().chain(asm_srcs);
             build_library(
                 target,
                 c_root_dir,
                 out_dir,
-                &lib_name,
+                lib_name,
                 srcs,
                 generated_dir,
                 obj_srcs,
@@ -740,25 +774,16 @@ fn walk_dir(dir: &Path, cb: &impl Fn(&DirEntry)) {
     }
 }
 
-fn ring_core_prefix() -> String {
-    let links = env::var("CARGO_MANIFEST_LINKS").unwrap();
-
-    let computed = {
-        let name = env::var("CARGO_PKG_NAME").unwrap();
-        let version = env::var("CARGO_PKG_VERSION").unwrap();
-        name + "_core_" + &version.replace(&['-', '.'][..], "_")
-    };
-
-    assert_eq!(links, computed);
-
-    links + "_"
-}
-
 /// Creates the necessary header files for symbol renaming.
 ///
 /// For simplicity, both non-Nasm- and Nasm- style headers are always
 /// generated, even though local non-packaged builds need only one of them.
-fn generate_prefix_symbols_headers(out_dir: &Path, prefix: &str) -> Result<(), std::io::Error> {
+fn generate_prefix_symbols_headers(
+    out_dir: &Path,
+    core_name_and_version: &str,
+) -> Result<(), std::io::Error> {
+    let prefix = &(String::from(core_name_and_version) + "_");
+
     generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, prefix)?;
 
     generate_prefix_symbols_header(
