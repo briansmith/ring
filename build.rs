@@ -28,6 +28,23 @@ use std::{
     process::Command,
 };
 
+mod env {
+    use std::ffi::OsString;
+
+    /// Read an environment variable and tell Cargo that we depend on it.
+    ///
+    /// The name is static since we intend to only read a static set of environment
+    /// variables.
+    pub fn var_os(name: &'static str) -> Option<OsString> {
+        println!("cargo:rerun-if-env-changed={}", name);
+        std::env::var_os(name)
+    }
+
+    pub fn var(name: &'static str) -> Option<String> {
+        var_os(name).and_then(|value| value.into_string().ok())
+    }
+}
+
 const X86: &str = "x86";
 const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
@@ -245,27 +262,15 @@ const MACOS_ABI: &[&str] = &["ios", MACOS, "tvos"];
 const MACOS: &str = "macos";
 const WINDOWS: &str = "windows";
 
-/// Read an environment variable and tell Cargo that we depend on it.
-///
-/// This needs to be used for any environment variable that isn't a standard
-/// Cargo-supplied variable.
-///
-/// The name is static since we intend to only read a static set of environment
-/// variables.
-fn env_var_os(name: &'static str) -> Option<OsString> {
-    println!("cargo:rerun-if-env-changed={}", name);
-    std::env::var_os(name)
-}
-
 fn main() {
     // Avoid assuming the working directory is the same is the $CARGO_MANIFEST_DIR so that toolchains
     // which may assume other working directories can still build this code.
     let c_root_dir = PathBuf::from(
-        std::env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should always be set"),
+        env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should always be set"),
     );
 
     const RING_PREGENERATE_ASM: &str = "RING_PREGENERATE_ASM";
-    match env_var_os(RING_PREGENERATE_ASM).as_deref() {
+    match env::var_os(RING_PREGENERATE_ASM).as_deref() {
         Some(s) if s == "1" => {
             pregenerate_asm_main(&c_root_dir);
         }
@@ -277,8 +282,6 @@ fn main() {
 }
 
 fn ring_build_rs_main(c_root_dir: &Path) {
-    use std::env;
-
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let out_dir = PathBuf::from(out_dir);
 
@@ -702,7 +705,7 @@ fn get_perl_exe() -> PathBuf {
 }
 
 fn get_command(var: &'static str, default: &str) -> PathBuf {
-    PathBuf::from(env_var_os(var).unwrap_or_else(|| default.into()))
+    PathBuf::from(env::var_os(var).unwrap_or_else(|| default.into()))
 }
 
 // TODO: We should emit `cargo:rerun-if-changed-env` for the various
@@ -738,11 +741,11 @@ fn walk_dir(dir: &Path, cb: &impl Fn(&DirEntry)) {
 }
 
 fn ring_core_prefix() -> String {
-    let links = std::env::var("CARGO_MANIFEST_LINKS").unwrap();
+    let links = env::var("CARGO_MANIFEST_LINKS").unwrap();
 
     let computed = {
-        let name = std::env::var("CARGO_PKG_NAME").unwrap();
-        let version = std::env::var("CARGO_PKG_VERSION").unwrap();
+        let name = env::var("CARGO_PKG_NAME").unwrap();
+        let version = env::var("CARGO_PKG_VERSION").unwrap();
         name + "_core_" + &version.replace(&['-', '.'][..], "_")
     };
 
