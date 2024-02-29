@@ -18,12 +18,10 @@ version = "0.17.8"
 
 # Keep in sync with `version` above.
 #
-# "ring_core_" + version, replacing punctuation with underscores.
-#
-# build.rs uses this to derive the prefix for FFI symbols and the file names
-# of the FFI libraries, so it must be a valid identifier prefix and a valid
-# filename prefix.
-links = "ring_core_0_17_8"
+# build.rs verifies that this equals "ring_core_{major}_{minor}_{patch}_{pre}"
+# as keeping this in sync with the symbol prefixing is crucial for ensuring
+# the safety of multiple versions of *ring* being used in a program.
+links = "ring_core_0_17_8_"
 
 include = [
     "LICENSE",
