@@ -1,0 +1,11 @@
+[package]
+edition = "2021"
+name = "ring-cavp"
+publish = false
+version = "0.1.0"
+
+[dev-dependencies]
+ring = { path = ".." }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = { version = "0.3.37", default-features = false }
