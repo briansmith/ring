@@ -148,21 +148,6 @@ include = [
     "third_party/fiat/p256_64.h",
     "third_party/fiat/p256_64_msvc.h",
     "third_party/fiat/LICENSE",
-    "third_party/NIST/SHAVS/SHA1LongMsg.rsp",
-    "third_party/NIST/SHAVS/SHA1Monte.rsp",
-    "third_party/NIST/SHAVS/SHA1ShortMsg.rsp",
-    "third_party/NIST/SHAVS/SHA224LongMsg.rsp",
-    "third_party/NIST/SHAVS/SHA224Monte.rsp",
-    "third_party/NIST/SHAVS/SHA224ShortMsg.rsp",
-    "third_party/NIST/SHAVS/SHA256LongMsg.rsp",
-    "third_party/NIST/SHAVS/SHA256Monte.rsp",
-    "third_party/NIST/SHAVS/SHA256ShortMsg.rsp",
-    "third_party/NIST/SHAVS/SHA384LongMsg.rsp",
-    "third_party/NIST/SHAVS/SHA384Monte.rsp",
-    "third_party/NIST/SHAVS/SHA384ShortMsg.rsp",
-    "third_party/NIST/SHAVS/SHA512LongMsg.rsp",
-    "third_party/NIST/SHAVS/SHA512Monte.rsp",
-    "third_party/NIST/SHAVS/SHA512ShortMsg.rsp",
 ]
 
 [package.metadata.docs.rs]
@@ -230,4 +215,10 @@ members = [
     # intentionally not a default member so that `cargo test` doesn't cause criterion.rs and all its
     # dependencies to get built.
     "bench",
+
+    "cavp",
+]
+default-members = [
+    ".",
+    "cavp"
 ]
