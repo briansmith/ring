@@ -50,7 +50,7 @@ mod abi_assumptions {
     not(target_env = "uclibc")
 ))]
 fn detect_features() -> u32 {
-    use libc::c_ulong;
+    use core::ffi::c_ulong;
 
     // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
     // across all Android/Linux targets, e.g. musl.
