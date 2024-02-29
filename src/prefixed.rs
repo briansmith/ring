@@ -71,12 +71,12 @@ macro_rules! prefixed_item {
     {
         $attr:ident
         $name:ident
-        { $( $item:tt )+ }
+        { $item:item }
     } => {
         prefixed_item! {
             $attr
             { concat!(env!("RING_CORE_PREFIX"), stringify!($name)) }
-            { $( $item )+ }
+            { $item }
         }
     };
 
@@ -84,9 +84,9 @@ macro_rules! prefixed_item {
     {
         $attr:ident
         { $prefixed_name:expr }
-        { $( $item:tt )+ }
+        { $item:item }
     } => {
         #[$attr = $prefixed_name]
-        $( $item )+
+        $item
     };
 }
