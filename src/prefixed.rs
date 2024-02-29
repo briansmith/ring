@@ -65,28 +65,12 @@ macro_rules! prefixed_export {
 }
 
 macro_rules! prefixed_item {
-    // Calculate the prefixed name in a separate layer of macro expansion
-    // because rustc won't currently accept a non-literal expression as
-    // the value for `#[link_name = value]`.
     {
         $attr:ident
         $name:ident
         { $item:item }
     } => {
-        prefixed_item! {
-            $attr
-            { concat!(env!("RING_CORE_PREFIX"), stringify!($name)) }
-            { $item }
-        }
-    };
-
-    // Output the item.
-    {
-        $attr:ident
-        { $prefixed_name:expr }
-        { $item:item }
-    } => {
-        #[$attr = $prefixed_name]
+        #[$attr = concat!(env!("RING_CORE_PREFIX"), stringify!($name))]
         $item
     };
 }
