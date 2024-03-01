@@ -51,6 +51,8 @@ mod array_split_map;
 #[cfg(feature = "alloc")]
 mod leading_zeros_skipped;
 
+pub mod ptr;
+
 #[cfg(test)]
 mod test;
 
