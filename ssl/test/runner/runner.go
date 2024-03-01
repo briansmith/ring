@@ -18950,6 +18950,45 @@ func addHintMismatchTests() {
 			})
 		}
 
+		// The shim and handshaker may use different certificates. In TLS 1.3,
+		// the signature input includes the certificate, so we do not need to
+		// explicitly check for a public key match. In TLS 1.2, it does not.
+		ecdsaP256Certificate2 := generateSingleCertChain(nil, &channelIDKey)
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-Certificate-TLS13",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+			},
+			shimCertificate:       &ecdsaP256Certificate,
+			handshakerCertificate: &ecdsaP256Certificate2,
+			flags:                 []string{"-allow-hint-mismatch"},
+			expectations: connectionExpectations{
+				peerCertificate: &ecdsaP256Certificate,
+			},
+		})
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-Certificate-TLS12",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+				},
+				shimCertificate:       &ecdsaP256Certificate,
+				handshakerCertificate: &ecdsaP256Certificate2,
+				flags:                 []string{"-allow-hint-mismatch"},
+				expectations: connectionExpectations{
+					peerCertificate: &ecdsaP256Certificate,
+				},
+			})
+		}
+
 		// The shim and handshaker may disagree on whether resumption is allowed.
 		// We run the first connection with tickets enabled, so the client is
 		// issued a ticket, then disable tickets on the second connection.
