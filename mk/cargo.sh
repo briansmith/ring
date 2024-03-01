@@ -238,7 +238,7 @@ cargo "$@"
 if [ -n "${RING_COVERAGE-}" ]; then
   while read executable; do
     basename=$(basename "$executable")
-    llvm-profdata-$llvm_version merge -sparse ""$coverage_dir"/$basename.profraw" -o "$coverage_dir"/$basename.profdata
+    llvm-profdata-$llvm_version merge -sparse "$coverage_dir/$basename.profraw" -o "$coverage_dir/$basename.profdata"
     mkdir -p "$coverage_dir"/reports
     llvm-cov-$llvm_version export \
       --instr-profile "$coverage_dir"/$basename.profdata \
