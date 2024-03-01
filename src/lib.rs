@@ -44,7 +44,6 @@
 //! </table>
 
 // When running mk/package.sh, don't actually build any code.
-#![cfg(not(pregenerate_asm_only))]
 #![allow(
     clippy::collapsible_if,
     clippy::identity_op,

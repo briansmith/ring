@@ -360,8 +360,6 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
 }
 
 fn pregenerate_asm_main(c_root_dir: &Path, core_name_and_version: &str) {
-    println!("cargo:rustc-cfg=pregenerate_asm_only");
-
     let pregenerated = c_root_dir.join(PREGENERATED);
     std::fs::create_dir(&pregenerated).unwrap();
     generate_sources_and_preassemble(
