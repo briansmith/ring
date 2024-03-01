@@ -409,6 +409,7 @@ mod tests {
         assert_eq!(AES.mask, 4);
         assert_eq!(SHA256.mask, 16);
         assert_eq!(PMULL.mask, 32);
+        assert_eq!(SHA512.mask, 64);
     }
 
     #[test]
