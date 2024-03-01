@@ -18,3 +18,10 @@
 pub fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
     r
 }
+
+// TODO(MSRV 1.76): Replace with `core::ptr::from_ref`.
+#[allow(dead_code)]
+#[inline(always)]
+pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
+    r
+}
