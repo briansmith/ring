@@ -173,7 +173,10 @@ fn detect_features() -> u32 {
     features
 }
 
-#[cfg(all(target_os = "ios", target_arch = "aarch64"))]
+#[cfg(all(
+    target_arch = "aarch64",
+    any(target_os = "ios", target_os = "macos", target_os = "tvos")
+))]
 fn detect_features() -> u32 {
     let mut features = ARMCAP_STATIC;
 
@@ -212,7 +215,7 @@ fn detect_features() -> u32 {
         target_os = "fuchsia",
         all(target_os = "linux", not(target_env = "uclibc")),
         target_os = "windows",
-        target_os = "ios"
+        any(target_os = "ios", target_os = "macos", target_os = "tvos"),
     ))
 ))]
 fn detect_features() -> u32 {
@@ -235,7 +238,9 @@ macro_rules! features {
             };
         )+
 
-        const ARMCAP_STATIC: u32 = 0
+        // See const assertions below.
+        const ARMCAP_STATIC: u32 = ARMCAP_STATIC_DETECTED & ARMCAP_STATIC_FILTER;
+        const ARMCAP_STATIC_DETECTED: u32 = 0
             $(
                 | (
                     if cfg!(all(any(target_arch = "aarch64", target_arch = "arm"),
@@ -246,6 +251,11 @@ macro_rules! features {
                     }
                 )
             )+;
+        const ARMCAP_STATIC_FILTER: u32 = if cfg!(all(target_arch = "aarch64", target_os = "macos")) {
+            _AARCH64_APPLE_FEATURES
+        } else {
+            !0
+        };
 
         #[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
         const ALL_FEATURES: [Feature; 5] = [
@@ -382,11 +392,16 @@ prefixed_extern! {
 // target_feature="neon"
 // target_feature="sha2"
 // target_feature="sha3"
+//
+// XXX/TODO(coverage)/TODO(size): aarch64-apple-darwin is statically guaranteed to have "sha3" but
+// other aarch64-apple-* targets require dynamic detection. Since we don't have test coverage for
+// the other targets yet, we wouldn't have a way of testing the dynamic detection if we statically
+// enabled `SHA512` for -darwin. So instead, temporarily, we statically ignore the static
+// availability of the feature on -darwin so that it runs the dynamic detection.
 // ```
 #[allow(clippy::assertions_on_constants)]
 const _AARCH64_HAS_NEON: () =
     assert!(((ARMCAP_STATIC & NEON.mask) == NEON.mask) || !cfg!(target_arch = "aarch64"));
-#[allow(clippy::assertions_on_constants)]
 const _AARCH64_APPLE_FEATURES: u32 = NEON.mask | AES.mask | SHA256.mask | PMULL.mask;
 #[allow(clippy::assertions_on_constants)]
 const _AARCH64_APPLE_TARGETS_EXPECTED_FEATURES: () = assert!(
@@ -395,7 +410,7 @@ const _AARCH64_APPLE_TARGETS_EXPECTED_FEATURES: () = assert!(
 );
 #[allow(clippy::assertions_on_constants)]
 const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () = assert!(
-    ((ARMCAP_STATIC & SHA512.mask) == SHA512.mask)
+    (ARMCAP_STATIC == _AARCH64_APPLE_FEATURES)
         || !cfg!(all(target_arch = "aarch64", target_os = "macos"))
 );
 
