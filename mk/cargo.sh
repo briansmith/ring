@@ -208,18 +208,28 @@ if [ -n "${RING_COVERAGE-}" ]; then
   rm -f "$coverage_dir/*.profraw"
 
   export RING_BUILD_EXECUTABLE_LIST="$coverage_dir/executables"
-  truncate --size=0 "$RING_BUILD_EXECUTABLE_LIST"
+  # Create/truncate the file.
+  : > "$RING_BUILD_EXECUTABLE_LIST"
 
   # This doesn't work when profiling under QEMU. Instead mk/runner does
   # something similar but different.
   # export LLVM_PROFILE_FILE="$coverage_dir/%m.profraw"
 
-  target_upper=${target_lower^^}
+  target_upper=$(echo ${target_lower} | tr '[:lower:]' '[:upper:]')
 
-  use_clang=1
-
-  cflags_var=CFLAGS_${target_lower}
-  declare -x "${cflags_var}=-fprofile-instr-generate -fcoverage-mapping ${!cflags_var-}"
+  case "$OSTYPE" in
+    linux*)
+      use_clang=1
+      cflags_var=CFLAGS_${target_lower}
+      declare -x "${cflags_var}=-fprofile-instr-generate -fcoverage-mapping ${!cflags_var-}"
+      ;;
+    darwin*)
+      # XXX: Don't collect code coverage for C because the installed version of Apple Clang
+      # doesn't necessarily have the same code coverage format as the Rust toolchain.
+      # TODO: Support "use_clang=1" for Apple targets and enable C code coverage.
+      # We don't have any Apple-specific C code, so this shouldn't matter much.
+      ;;
+  esac
 
   runner_var=CARGO_TARGET_${target_upper}_RUNNER
   declare -x "${runner_var}=mk/runner ${!runner_var-}"
