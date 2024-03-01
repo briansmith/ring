@@ -421,6 +421,7 @@ std::vector<Flag> SortedFlags() {
       BoolFlag("-wpa-202304", &TestConfig::wpa_202304),
       BoolFlag("-no-check-client-certificate-type",
                &TestConfig::no_check_client_certificate_type),
+      BoolFlag("-no-check-ecdsa-curve", &TestConfig::no_check_ecdsa_curve),
   };
   std::sort(flags.begin(), flags.end(), [](const Flag &a, const Flag &b) {
     return strcmp(a.name, b.name) < 0;
@@ -1786,6 +1787,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (no_check_client_certificate_type) {
     SSL_set_check_client_certificate_type(ssl.get(), 0);
+  }
+  if (no_check_ecdsa_curve) {
+    SSL_set_check_ecdsa_curve(ssl.get(), 0);
   }
   if (no_tls13) {
     SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1_3);

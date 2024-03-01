@@ -3195,6 +3195,10 @@ struct SSL_CONFIG {
   // below, will check its certificate against the server's requested
   // certificate types.
   bool check_client_certificate_type : 1;
+
+  // check_ecdsa_curve indicates whether the server, in TLS 1.2 and below, will
+  // check its certificate against the client's supported ECDSA curves.
+  bool check_ecdsa_curve : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.

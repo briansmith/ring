@@ -9961,11 +9961,13 @@ func addSignatureAlgorithmTests() {
 			}
 
 			var curveFlags []string
+			var runnerCurves []CurveID
 			if alg.curve != 0 && ver.version <= VersionTLS12 {
 				// In TLS 1.2, the ECDH curve list also constrains ECDSA keys. Ensure the
-				// corresponding curve is enabled on the shim. Also include X25519 to
-				// ensure the shim and runner have something in common for ECDH.
+				// corresponding curve is enabled. Also include X25519 to ensure the shim
+				// and runner have something in common for ECDH.
 				curveFlags = flagInts("-curves", []int{int(CurveX25519), int(alg.curve)})
+				runnerCurves = []CurveID{CurveX25519, alg.curve}
 			}
 
 			var signError, signLocalError, verifyError, verifyLocalError, defaultError, defaultLocalError string
@@ -9994,7 +9996,8 @@ func addSignatureAlgorithmTests() {
 					testType: testType,
 					name:     prefix + "Sign" + suffix,
 					config: Config{
-						MaxVersion: ver.version,
+						MaxVersion:       ver.version,
+						CurvePreferences: runnerCurves,
 						VerifySignatureAlgorithms: []signatureAlgorithm{
 							fakeSigAlg1,
 							alg.id,
@@ -10018,6 +10021,7 @@ func addSignatureAlgorithmTests() {
 					name:     prefix + "Sign-Negotiate" + suffix,
 					config: Config{
 						MaxVersion:                ver.version,
+						CurvePreferences:          runnerCurves,
 						VerifySignatureAlgorithms: allAlgorithms,
 					},
 					shimCertificate: cert,
@@ -12061,6 +12065,71 @@ func addCurveTests() {
 			"-server-preference",
 			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
 		},
+	})
+
+	// In TLS 1.2, the curve list is also used to signal ECDSA curves.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "CheckECDSACurve-TLS12",
+		config: Config{
+			MinVersion:       VersionTLS12,
+			MaxVersion:       VersionTLS12,
+			CurvePreferences: []CurveID{CurveP384},
+		},
+		shimCertificate: &ecdsaP256Certificate,
+		shouldFail:      true,
+		expectedError:   ":WRONG_CURVE:",
+	})
+
+	// This behavior may, temporarily, be disabled with a flag.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "NoCheckECDSACurve-TLS12",
+		config: Config{
+			MinVersion:       VersionTLS12,
+			MaxVersion:       VersionTLS12,
+			CurvePreferences: []CurveID{CurveP384},
+		},
+		shimCertificate: &ecdsaP256Certificate,
+		flags:           []string{"-no-check-ecdsa-curve"},
+	})
+
+	// If the ECDSA certificate is ineligible due to a curve mismatch, the
+	// server may still consider a PSK cipher suite.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "CheckECDSACurve-PSK-TLS12",
+		config: Config{
+			MinVersion: VersionTLS12,
+			MaxVersion: VersionTLS12,
+			CipherSuites: []uint16{
+				TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+				TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA,
+			},
+			CurvePreferences:     []CurveID{CurveP384},
+			PreSharedKey:         []byte("12345"),
+			PreSharedKeyIdentity: "luggage combo",
+		},
+		shimCertificate: &ecdsaP256Certificate,
+		expectations: connectionExpectations{
+			cipher: TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA,
+		},
+		flags: []string{
+			"-psk", "12345",
+			"-psk-identity", "luggage combo",
+		},
+	})
+
+	// In TLS 1.3, the curve list only controls ECDH.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "CheckECDSACurve-NotApplicable-TLS13",
+		config: Config{
+			MinVersion:       VersionTLS13,
+			MaxVersion:       VersionTLS13,
+			CurvePreferences: []CurveID{CurveP384},
+		},
+		shimCertificate: &ecdsaP256Certificate,
 	})
 }
 

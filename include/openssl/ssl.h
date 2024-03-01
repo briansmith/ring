@@ -4634,6 +4634,15 @@ OPENSSL_EXPORT void SSL_set_jdk11_workaround(SSL *ssl, int enable);
 // case of compatibility issues. It will be removed sometime after June 2024.
 OPENSSL_EXPORT void SSL_set_check_client_certificate_type(SSL *ssl, int enable);
 
+// SSL_set_check_ecdsa_curve configures whether the server, in TLS 1.2 and
+// below, will check its certificate against the client's supported ECDSA
+// curves.
+//
+// By default, this option is enabled. If disabled, certificate selection within
+// the library may not function correctly. This flag is provided temporarily in
+// case of compatibility issues. It will be removed sometime after June 2024.
+OPENSSL_EXPORT void SSL_set_check_ecdsa_curve(SSL *ssl, int enable);
+
 
 // Deprecated functions.
 

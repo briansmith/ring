@@ -295,23 +295,13 @@ static UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
 // ssl_get_compatible_server_ciphers determines the key exchange and
 // authentication cipher suite masks compatible with the server configuration
 // and current ClientHello parameters of |hs|. It sets |*out_mask_k| to the key
-// exchange mask and |*out_mask_a| to the authentication mask.
-static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
+// exchange mask and |*out_mask_a| to the authentication mask. It returns true
+// on success and false on error.
+static bool ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
                                               uint32_t *out_mask_k,
                                               uint32_t *out_mask_a) {
   uint32_t mask_k = 0;
   uint32_t mask_a = 0;
-
-  if (ssl_has_certificate(hs)) {
-    uint16_t unused;
-    bool sign_ok = tls1_choose_signature_algorithm(hs, &unused);
-    ERR_clear_error();
-
-    mask_a |= ssl_cipher_auth_mask_for_key(hs->local_pubkey.get(), sign_ok);
-    if (EVP_PKEY_id(hs->local_pubkey.get()) == EVP_PKEY_RSA) {
-      mask_k |= SSL_kRSA;
-    }
-  }
 
   // Check for a shared group to consider ECDHE ciphers.
   uint16_t unused;
@@ -320,13 +310,47 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
   }
 
   // PSK requires a server callback.
-  if (hs->config->psk_server_callback != NULL) {
+  if (hs->config->psk_server_callback != nullptr) {
     mask_k |= SSL_kPSK;
     mask_a |= SSL_aPSK;
   }
 
+  if (ssl_has_certificate(hs)) {
+    bool sign_ok = tls1_choose_signature_algorithm(hs, &unused);
+    ERR_clear_error();
+
+    // ECDSA keys must additionally be checked against the peer's supported
+    // curve list.
+    int key_type = EVP_PKEY_id(hs->local_pubkey.get());
+    if (hs->config->check_ecdsa_curve && key_type == EVP_PKEY_EC) {
+      EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(hs->local_pubkey.get());
+      uint16_t group_id;
+      if (!ssl_nid_to_group_id(
+              &group_id, EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key))) ||
+          std::find(hs->peer_supported_group_list.begin(),
+                    hs->peer_supported_group_list.end(),
+                    group_id) == hs->peer_supported_group_list.end()) {
+        sign_ok = false;
+
+        // If this would make us unable to pick any cipher, return an error.
+        // This is not strictly necessary, but it gives us a more specific
+        // error to help the caller diagnose issues.
+        if (mask_a == 0) {
+          OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
+          return false;
+        }
+      }
+    }
+
+    mask_a |= ssl_cipher_auth_mask_for_key(hs->local_pubkey.get(), sign_ok);
+    if (key_type == EVP_PKEY_RSA) {
+      mask_k |= SSL_kRSA;
+    }
+  }
+
   *out_mask_k = mask_k;
   *out_mask_a = mask_a;
+  return true;
 }
 
 static const SSL_CIPHER *choose_cipher(
@@ -360,7 +384,9 @@ static const SSL_CIPHER *choose_cipher(
   }
 
   uint32_t mask_k, mask_a;
-  ssl_get_compatible_server_ciphers(hs, &mask_k, &mask_a);
+  if (!ssl_get_compatible_server_ciphers(hs, &mask_k, &mask_a)) {
+    return nullptr;
+  }
 
   for (size_t i = 0; i < sk_SSL_CIPHER_num(prio); i++) {
     const SSL_CIPHER *c = sk_SSL_CIPHER_value(prio, i);
@@ -395,6 +421,7 @@ static const SSL_CIPHER *choose_cipher(
     }
   }
 
+  OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
   return nullptr;
 }
 
@@ -818,7 +845,6 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
                                        : ssl->ctx->cipher_list.get();
   hs->new_cipher = choose_cipher(hs, &client_hello, prefs);
   if (hs->new_cipher == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
   }
