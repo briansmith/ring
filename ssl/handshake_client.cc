@@ -1358,13 +1358,38 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_has_certificate(hs)) {
+  if (!ssl_on_certificate_selected(hs)) {
+    return ssl_hs_error;
+  }
+
+  if (ssl_has_certificate(hs)) {
+    if (hs->config->check_client_certificate_type) {
+      // Check the certificate types advertised by the peer.
+      uint8_t cert_type;
+      switch (EVP_PKEY_id(hs->local_pubkey.get())) {
+        case EVP_PKEY_RSA:
+          cert_type = SSL3_CT_RSA_SIGN;
+          break;
+        case EVP_PKEY_EC:
+        case EVP_PKEY_ED25519:
+          cert_type = TLS_CT_ECDSA_SIGN;
+          break;
+        default:
+          OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+          return ssl_hs_error;
+      }
+      if (std::find(hs->certificate_types.begin(), hs->certificate_types.end(),
+                    cert_type) == hs->certificate_types.end()) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+        return ssl_hs_error;
+      }
+    }
+  } else {
     // Without a client certificate, the handshake buffer may be released.
     hs->transcript.FreeBuffer();
   }
 
-  if (!ssl_on_certificate_selected(hs) ||
-      !ssl_send_tls12_certificate(hs)) {
+  if (!ssl_send_tls12_certificate(hs)) {
     return ssl_hs_error;
   }
 

@@ -271,8 +271,7 @@ std::vector<Flag> SortedFlags() {
                            &TestConfig::application_settings),
       OptionalStringFlag("-expect-peer-application-settings",
                          &TestConfig::expect_peer_application_settings),
-      BoolFlag("-alps-use-new-codepoint",
-               &TestConfig::alps_use_new_codepoint),
+      BoolFlag("-alps-use-new-codepoint", &TestConfig::alps_use_new_codepoint),
       Base64Flag("-quic-transport-params", &TestConfig::quic_transport_params),
       Base64Flag("-expect-quic-transport-params",
                  &TestConfig::expect_quic_transport_params),
@@ -420,6 +419,8 @@ std::vector<Flag> SortedFlags() {
               &TestConfig::early_write_after_message),
       BoolFlag("-fips-202205", &TestConfig::fips_202205),
       BoolFlag("-wpa-202304", &TestConfig::wpa_202304),
+      BoolFlag("-no-check-client-certificate-type",
+               &TestConfig::no_check_client_certificate_type),
   };
   std::sort(flags.begin(), flags.end(), [](const Flag &a, const Flag &b) {
     return strcmp(a.name, b.name) < 0;
@@ -1782,6 +1783,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (ignore_rsa_key_usage) {
     SSL_set_enforce_rsa_key_usage(ssl.get(), 0);
+  }
+  if (no_check_client_certificate_type) {
+    SSL_set_check_client_certificate_type(ssl.get(), 0);
   }
   if (no_tls13) {
     SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1_3);

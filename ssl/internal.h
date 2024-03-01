@@ -3190,6 +3190,11 @@ struct SSL_CONFIG {
   // alps_use_new_codepoint if set indicates we use new ALPS extension codepoint
   // to negotiate and convey application settings.
   bool alps_use_new_codepoint : 1;
+
+  // check_client_certificate_type indicates whether the client, in TLS 1.2 and
+  // below, will check its certificate against the server's requested
+  // certificate types.
+  bool check_client_certificate_type : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.

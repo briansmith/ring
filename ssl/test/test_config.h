@@ -200,6 +200,7 @@ struct TestConfig {
   int early_write_after_message = 0;
   bool fips_202205 = false;
   bool wpa_202304 = false;
+  bool no_check_client_certificate_type = false;
 
   std::vector<const char*> handshaker_args;
 

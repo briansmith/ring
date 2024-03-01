@@ -1995,6 +1995,27 @@ func addBasicTests() {
 			},
 		},
 		{
+			name: "CheckClientCertificateTypes",
+			config: Config{
+				MaxVersion:             VersionTLS12,
+				ClientAuth:             RequestClientCert,
+				ClientCertificateTypes: []byte{CertTypeECDSASign},
+			},
+			shimCertificate: &rsaCertificate,
+			shouldFail:      true,
+			expectedError:   ":UNKNOWN_CERTIFICATE_TYPE:",
+		},
+		{
+			name: "NoCheckClientCertificateTypes",
+			config: Config{
+				MaxVersion:             VersionTLS12,
+				ClientAuth:             RequestClientCert,
+				ClientCertificateTypes: []byte{CertTypeECDSASign},
+			},
+			shimCertificate: &rsaCertificate,
+			flags:           []string{"-no-check-client-certificate-type"},
+		},
+		{
 			name: "UnauthenticatedECDH",
 			config: Config{
 				MaxVersion:   VersionTLS12,

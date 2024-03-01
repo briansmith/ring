@@ -4625,6 +4625,15 @@ OPENSSL_EXPORT int SSL_used_hello_retry_request(const SSL *ssl);
 // https://bugs.openjdk.java.net/browse/JDK-8213202
 OPENSSL_EXPORT void SSL_set_jdk11_workaround(SSL *ssl, int enable);
 
+// SSL_set_check_client_certificate_type configures whether the client, in
+// TLS 1.2 and below, will check its certificate against the server's requested
+// certificate types.
+//
+// By default, this option is enabled. If disabled, certificate selection within
+// the library may not function correctly. This flag is provided temporarily in
+// case of compatibility issues. It will be removed sometime after June 2024.
+OPENSSL_EXPORT void SSL_set_check_client_certificate_type(SSL *ssl, int enable);
+
 
 // Deprecated functions.
 
