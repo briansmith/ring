@@ -528,6 +528,7 @@ jobs:
 
         # TODO: targets
         target:
+          - aarch64-apple-darwin           # Has assembly
           - aarch64-unknown-linux-gnu      # Has assembly
           - i686-unknown-linux-gnu         # Has assembly
           # TODO: arm-unknown-linux-gnueabi # Has assembly but doesn't build w/ clang
@@ -537,6 +538,7 @@ jobs:
           - powerpc64le-unknown-linux-gnu  # No assembly 64-bit little-endian with flags
           - riscv64gc-unknown-linux-gnu    # No assembly 64-bit little-endian without flags
           - s390x-unknown-linux-gnu        # No assembly 64-bit big-endian
+          - x86_64-apple-darwin            # Has assembly
           - x86_64-unknown-linux-musl      # Has assembly
 
         mode:
@@ -548,6 +550,9 @@ jobs:
 
         # TODO: targets
         include:
+          - target: aarch64-apple-darwin
+            host_os: macos-14
+
           # TODO: Use the -musl target after
           # https://github.com/rust-lang/rust/issues/79556 and
           # https://github.com/rust-lang/rust/issues/79555 are fixed.
@@ -571,6 +576,9 @@ jobs:
 
           - target: s390x-unknown-linux-gnu
             host_os: ubuntu-22.04
+
+          - target: x86_64-apple-darwin
+            host_os: macos-13
 
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-22.04
