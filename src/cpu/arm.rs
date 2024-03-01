@@ -178,30 +178,38 @@ fn detect_features() -> u32 {
     any(target_os = "ios", target_os = "macos", target_os = "tvos")
 ))]
 fn detect_features() -> u32 {
-    let mut features = ARMCAP_STATIC;
+    use core::ffi::CStr;
 
-    extern "C" {
-        fn sysctlbyname(
-            name: *const u8,
-            oldp: *mut core::ffi::c_void,
-            oldlenp: *mut crate::c::size_t,
-            newp: *mut core::ffi::c_void,
-            newlen: crate::c::size_t,
-        ) -> core::ffi::c_int;
+    fn detect_feature(name: &CStr) -> bool {
+        use crate::polyfill;
+        use core::mem;
+        use libc::{c_int, c_void};
+
+        let mut value: c_int = 0;
+        let mut len = mem::size_of_val(&value);
+        let value_ptr = polyfill::ptr::from_mut(&mut value).cast::<c_void>();
+        let rc = unsafe {
+            libc::sysctlbyname(name.as_ptr(), value_ptr, &mut len, core::ptr::null_mut(), 0)
+        };
+        // All the conditions are separated so we can observe them in code coverage.
+        if rc != 0 {
+            return false;
+        }
+        debug_assert_eq!(len, mem::size_of_val(&value));
+        if len != mem::size_of_val(&value) {
+            return false;
+        }
+        value != 0
     }
 
-    let mut value: core::ffi::c_int = 0;
-    let mut len = core::mem::size_of_val(&value);
-    let rc = unsafe {
-        sysctlbyname(
-            "hw.optional.armv8_2_sha512\0".as_ptr(),
-            &mut value as *mut _ as _,
-            &mut len,
-            core::ptr::null_mut(),
-            0,
-        )
-    };
-    if rc == 0 && len == core::mem::size_of_val(&value) && value != 0 {
+    let mut features = ARMCAP_STATIC;
+
+    // TODO(MSRV 1.69): Use compile_time::unwrap_result(CStr::from_bytes_until_nul)
+    // TODO(MSRV 1.77): Use c"..." literal.
+    // SAFETY: The literal is nul-terminated and it doesn't contain interior nul bytes.
+    const SHA512_NAME: &CStr =
+        unsafe { CStr::from_bytes_with_nul_unchecked(b"hw.optional.armv8_2_sha512\0") };
+    if detect_feature(SHA512_NAME) {
         features |= SHA512.mask;
     }
 
