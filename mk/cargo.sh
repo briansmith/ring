@@ -56,6 +56,7 @@ done
 # See comments in install-build-tools.sh.
 llvm_version=18
 
+use_clang=
 case $target in
    aarch64-linux-android)
     export CC_aarch64_linux_android=$android_tools/aarch64-linux-android21-clang
@@ -63,15 +64,13 @@ case $target in
     export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$android_tools/aarch64-linux-android21-clang
     ;;
   aarch64-unknown-linux-gnu)
-    export CC_aarch64_unknown_linux_gnu=clang-$llvm_version
-    export AR_aarch64_unknown_linux_gnu=llvm-ar-$llvm_version
+    use_clang=1
     export CFLAGS_aarch64_unknown_linux_gnu="--sysroot=/usr/aarch64-linux-gnu"
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_aarch64"
     ;;
   aarch64-unknown-linux-musl)
-    export CC_aarch64_unknown_linux_musl=clang-$llvm_version
-    export AR_aarch64_unknown_linux_musl=llvm-ar-$llvm_version
+    use_clang=1
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUNNER="$qemu_aarch64"
     ;;
@@ -100,19 +99,16 @@ case $target in
     export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER="$qemu_arm_gnueabihf"
     ;;
   armv7-unknown-linux-musleabihf)
-    export CC_armv7_unknown_linux_musleabihf=clang-$llvm_version
-    export AR_armv7_unknown_linux_musleabihf=llvm-ar-$llvm_version
+    use_clang=1
     export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_RUSTFLAGS="$rustflags_self_contained"
     export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_RUNNER="$qemu_arm_gnueabihf"
     ;;
   i686-unknown-linux-gnu)
-    export CC_i686_unknown_linux_gnu=clang-$llvm_version
-    export AR_i686_unknown_linux_gnu=llvm-ar-$llvm_version
+    use_clang=1
     export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang-$llvm_version
     ;;
   i686-unknown-linux-musl)
-    export CC_i686_unknown_linux_musl=clang-$llvm_version
-    export AR_i686_unknown_linux_musl=llvm-ar-$llvm_version
+    use_clang=1
     export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
     ;;
   mips-unknown-linux-gnu)
@@ -140,35 +136,30 @@ case $target in
     export CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_GNU_RUNNER="$qemu_mipsel"
     ;;
   powerpc-unknown-linux-gnu)
-    export CC_powerpc_unknown_linux_gnu=clang-$llvm_version
-    export AR_powerpc_unknown_linux_gnu=llvm-ar-$llvm_version
+    use_clang=1
     export CFLAGS_powerpc_unknown_linux_gnu="--sysroot=/usr/powerpc-linux-gnu"
     export CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_LINKER=powerpc-linux-gnu-gcc
     export CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_RUNNER="$qemu_powerpc"
     ;;
   powerpc64-unknown-linux-gnu)
-    export CC_powerpc64_unknown_linux_gnu=clang-$llvm_version
-    export AR_powerpc64_unknown_linux_gnu=llvm-ar-$llvm_version
+    use_clang=1
     export CFLAGS_powerpc64_unknown_linux_gnu="--sysroot=/usr/powerpc64-linux-gnu"
     export CARGO_TARGET_POWERPC64_UNKNOWN_LINUX_GNU_LINKER=powerpc64-linux-gnu-gcc
     export CARGO_TARGET_POWERPC64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_powerpc64"
     ;;
   powerpc64le-unknown-linux-gnu)
-    export CC_powerpc64le_unknown_linux_gnu=clang-$llvm_version
-    export AR_powerpc64le_unknown_linux_gnu=llvm-ar-$llvm_version
+    use_clang=1
     export CFLAGS_powerpc64le_unknown_linux_gnu="--sysroot=/usr/powerpc64le-linux-gnu"
     export CARGO_TARGET_POWERPC64LE_UNKNOWN_LINUX_GNU_LINKER=powerpc64le-linux-gnu-gcc
     export CARGO_TARGET_POWERPC64LE_UNKNOWN_LINUX_GNU_RUNNER="$qemu_powerpc64le"
     ;;
   riscv64gc-unknown-linux-gnu)
-    export CC_riscv64gc_unknown_linux_gnu=clang-$llvm_version
-    export AR_riscv64gc_unknown_linux_gnu=llvm-ar-$llvm_version
+    use_clang=1
     export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc
     export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER="$qemu_riscv64"
     ;;
   s390x-unknown-linux-gnu)
-    export CC_s390x_unknown_linux_gnu=clang-$llvm_version
-    export AR_s390x_unknown_linux_gnu=llvm-ar-$llvm_version
+    use_clang=1
     # XXX: Using -march=zEC12 to work around a z13 instruction bug in
     # QEMU 8.0.2 and earlier that causes `test_constant_time` to fail
     # (https://lists.gnu.org/archive/html/qemu-devel/2023-05/msg06965.html).
@@ -177,8 +168,7 @@ case $target in
     export CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_RUNNER="$qemu_s390x"
     ;;
   x86_64-unknown-linux-musl)
-    export CC_x86_64_unknown_linux_musl=clang-$llvm_version
-    export AR_x86_64_unknown_linux_musl=llvm-ar-$llvm_version
+    use_clang=1
     # XXX: Work around https://github.com/rust-lang/rust/issues/79555.
     if [ -n "${RING_COVERAGE-}" ]; then
       export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang-$llvm_version
@@ -187,26 +177,26 @@ case $target in
     fi
     ;;
   loongarch64-unknown-linux-gnu)
-    export CC_loongarch64_unknown_linux_gnu=clang-$llvm_version
-    export AR_loongarch64_unknown_linux_gnu=llvm-ar-$llvm_version
+    use_clang=1
     export CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNU_LINKER=clang-$llvm_version
     ;;
   wasm32-unknown-unknown)
     # The first two are only needed for when the "wasm_c" feature is enabled.
-    export CC_wasm32_unknown_unknown=clang-$llvm_version
-    export AR_wasm32_unknown_unknown=llvm-ar-$llvm_version
+    use_clang=1
     export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner
     export WASM_BINDGEN_TEST_TIMEOUT=60
     ;;
   wasm32-wasi)
     # The first two are only needed for when the "wasm_c" feature is enabled.
-    export CC_wasm32_wasi=clang-$llvm_version
-    export AR_wasm32_wasi=llvm-ar-$llvm_version
+    use_clang=1
     export CARGO_TARGET_WASM32_WASI_RUNNER=target/tools/linux-x86_64/wasmtime/wasmtime
     ;;
   *)
     ;;
 esac
+
+# ${target} with hyphens replaced by underscores.
+target_lower=${target//-/_}
 
 if [ -n "${RING_COVERAGE-}" ]; then
   # XXX: Collides between release and debug.
@@ -221,9 +211,9 @@ if [ -n "${RING_COVERAGE-}" ]; then
   # something similar but different.
   # export LLVM_PROFILE_FILE="$coverage_dir/%m.profraw"
 
-  # ${target} with hyphens replaced by underscores, lowercase and uppercase.
-  target_lower=${target//-/_}
   target_upper=${target_lower^^}
+
+  use_clang=1
 
   cflags_var=CFLAGS_${target_lower}
   declare -x "${cflags_var}=-fprofile-instr-generate -fcoverage-mapping ${!cflags_var-}"
@@ -233,6 +223,14 @@ if [ -n "${RING_COVERAGE-}" ]; then
 
   rustflags_var=CARGO_TARGET_${target_upper}_RUSTFLAGS
   declare -x "${rustflags_var}=-Cinstrument-coverage ${!rustflags_var-}"
+fi
+
+if [ -n "${use_clang}" ]; then
+  cc_var=CC_${target_lower}
+  declare -x "${cc_var}=clang-${llvm_version}"
+
+  ar_var=AR_${target_lower}
+  declare -x "${ar_var}=llvm-ar-${llvm_version}"
 fi
 
 cargo "$@"
