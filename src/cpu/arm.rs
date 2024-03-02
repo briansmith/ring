@@ -44,199 +44,191 @@ mod abi_assumptions {
 // what target features are supported, so rely only on static feature
 // detection.
 
-#[cfg(all(
-    any(target_os = "android", target_os = "linux"),
-    any(target_arch = "aarch64", target_arch = "arm"),
-    not(target_env = "uclibc")
-))]
-fn detect_features() -> u32 {
-    use libc::c_ulong;
+cfg_if::cfg_if! {
+    if #[cfg(all(
+             any(target_os = "android", target_os = "linux"),
+             any(target_arch = "aarch64", target_arch = "arm"),
+             not(target_env = "uclibc")))] {
+        fn detect_features() -> u32 {
+            use libc::c_ulong;
 
-    // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
-    // across all Android/Linux targets, e.g. musl.
-    extern "C" {
-        fn getauxval(type_: c_ulong) -> c_ulong;
+            // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
+            // across all Android/Linux targets, e.g. musl.
+            extern "C" {
+                fn getauxval(type_: c_ulong) -> c_ulong;
+            }
+
+            const AT_HWCAP: c_ulong = 16;
+
+            #[cfg(target_arch = "aarch64")]
+            const HWCAP_NEON: c_ulong = 1 << 1;
+
+            #[cfg(target_arch = "arm")]
+            const HWCAP_NEON: c_ulong = 1 << 12;
+
+            let caps = unsafe { getauxval(AT_HWCAP) };
+
+            // We assume NEON is available on AARCH64 because it is a required
+            // feature.
+            #[cfg(target_arch = "aarch64")]
+            debug_assert!(caps & HWCAP_NEON == HWCAP_NEON);
+
+            let mut features = 0;
+
+            // OpenSSL and BoringSSL don't enable any other features if NEON isn't
+            // available.
+            if caps & HWCAP_NEON == HWCAP_NEON {
+                features = NEON.mask;
+
+                #[cfg(target_arch = "aarch64")]
+                const OFFSET: c_ulong = 3;
+
+                #[cfg(target_arch = "arm")]
+                const OFFSET: c_ulong = 0;
+
+                #[cfg(target_arch = "arm")]
+                let caps = {
+                    const AT_HWCAP2: c_ulong = 26;
+                    unsafe { getauxval(AT_HWCAP2) }
+                };
+
+                const HWCAP_AES: c_ulong = 1 << 0 + OFFSET;
+                const HWCAP_PMULL: c_ulong = 1 << 1 + OFFSET;
+                const HWCAP_SHA2: c_ulong = 1 << 3 + OFFSET;
+
+                #[cfg(target_arch = "aarch64")]
+                const HWCAP_SHA512: c_ulong = 1 << 21;
+
+                if caps & HWCAP_AES == HWCAP_AES {
+                    features |= AES.mask;
+                }
+                if caps & HWCAP_PMULL == HWCAP_PMULL {
+                    features |= PMULL.mask;
+                }
+                if caps & HWCAP_SHA2 == HWCAP_SHA2 {
+                    features |= SHA256.mask;
+                }
+
+                #[cfg(target_arch = "aarch64")]
+                if caps & HWCAP_SHA512 == HWCAP_SHA512 {
+                    features |= SHA512.mask;
+                }
+            }
+
+            features
+        }
+
+    } else if #[cfg(all(target_os = "fuchsia", target_arch = "aarch64"))] {
+        fn detect_features() -> u32 {
+            type zx_status_t = i32;
+
+            #[link(name = "zircon")]
+            extern "C" {
+                fn zx_system_get_features(kind: u32, features: *mut u32) -> zx_status_t;
+            }
+
+            const ZX_OK: i32 = 0;
+            const ZX_FEATURE_KIND_CPU: u32 = 0;
+            const ZX_ARM64_FEATURE_ISA_ASIMD: u32 = 1 << 2;
+            const ZX_ARM64_FEATURE_ISA_AES: u32 = 1 << 3;
+            const ZX_ARM64_FEATURE_ISA_PMULL: u32 = 1 << 4;
+            const ZX_ARM64_FEATURE_ISA_SHA2: u32 = 1 << 6;
+
+            let mut caps = 0;
+            let rc = unsafe { zx_system_get_features(ZX_FEATURE_KIND_CPU, &mut caps) };
+
+            let mut features = 0;
+
+            // OpenSSL and BoringSSL don't enable any other features if NEON isn't
+            // available.
+            if rc == ZX_OK && (caps & ZX_ARM64_FEATURE_ISA_ASIMD == ZX_ARM64_FEATURE_ISA_ASIMD) {
+                features = NEON.mask;
+
+                if caps & ZX_ARM64_FEATURE_ISA_AES == ZX_ARM64_FEATURE_ISA_AES {
+                    features |= AES.mask;
+                }
+                if caps & ZX_ARM64_FEATURE_ISA_PMULL == ZX_ARM64_FEATURE_ISA_PMULL {
+                    features |= PMULL.mask;
+                }
+                if caps & ZX_ARM64_FEATURE_ISA_SHA2 == ZX_ARM64_FEATURE_ISA_SHA2 {
+                    features |= 1 << 4;
+                }
+            }
+
+            features
+        }
+
+    } else if #[cfg(all(target_os = "windows", target_arch = "aarch64"))] {
+        fn detect_features() -> u32 {
+            // We do not need to check for the presence of NEON, as Armv8-A always has it
+            const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
+            let mut features = ARMCAP_STATIC;
+
+            let result = unsafe {
+                windows_sys::Win32::System::Threading::IsProcessorFeaturePresent(
+                    windows_sys::Win32::System::Threading::PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE,
+                )
+            };
+
+            if result != 0 {
+                // These are all covered by one call in Windows
+                features |= AES.mask;
+                features |= PMULL.mask;
+                features |= SHA256.mask;
+            }
+
+            features
+        }
+    } else if #[cfg(all(target_arch = "aarch64",
+                        any(target_os = "ios",
+                            target_os = "macos",
+                            target_os = "tvos",
+                        )))] {
+        fn detect_features() -> u32 {
+            use crate::polyfill;
+            use libc::c_char;
+
+            // TODO(MSRV 1.64): Use `name: &core::ffi::CStr` and remove `unsafe` here.
+            unsafe fn detect_feature(name: *const libc::c_char) -> bool {
+                use crate::polyfill;
+                use core::mem;
+                use libc::{c_int, c_void};
+
+                let mut value: c_int = 0;
+                let mut len = mem::size_of_val(&value);
+                let value_ptr = polyfill::ptr::from_mut(&mut value).cast::<c_void>();
+                let rc = unsafe { libc::sysctlbyname(name, value_ptr, &mut len, core::ptr::null_mut(), 0) };
+                // All the conditions are separated so we can observe them in code coverage.
+                if rc != 0 {
+                    return false;
+                }
+                debug_assert_eq!(len, mem::size_of_val(&value));
+                if len != mem::size_of_val(&value) {
+                    return false;
+                }
+                value != 0
+            }
+
+            let mut features = ARMCAP_STATIC;
+
+            // TODO(MSRV 1.64): Use `CStr::from_bytes_with_nul_unchecked` and remove all the
+            // `unsafe` here.
+            // TODO(MSRV 1.69): Use compile_time::unwrap_result(CStr::from_bytes_until_nul)
+            // TODO(MSRV 1.77): Use c"..." literal.
+            // SAFETY: The literal is nul-terminated and it doesn't contain interior nul bytes.
+            const SHA512_NAME: *const c_char =
+                polyfill::ptr::from_ref(b"hw.optional.armv8_2_sha512\0").cast::<c_char>();
+            if unsafe { detect_feature(SHA512_NAME) } {
+                features |= SHA512.mask;
+            }
+
+            features
+        }
+    } else {
+        fn detect_features() -> u32 {
+            0
+        }
     }
-
-    const AT_HWCAP: c_ulong = 16;
-
-    #[cfg(target_arch = "aarch64")]
-    const HWCAP_NEON: c_ulong = 1 << 1;
-
-    #[cfg(target_arch = "arm")]
-    const HWCAP_NEON: c_ulong = 1 << 12;
-
-    let caps = unsafe { getauxval(AT_HWCAP) };
-
-    // We assume NEON is available on AARCH64 because it is a required
-    // feature.
-    #[cfg(target_arch = "aarch64")]
-    debug_assert!(caps & HWCAP_NEON == HWCAP_NEON);
-
-    let mut features = 0;
-
-    // OpenSSL and BoringSSL don't enable any other features if NEON isn't
-    // available.
-    if caps & HWCAP_NEON == HWCAP_NEON {
-        features = NEON.mask;
-
-        #[cfg(target_arch = "aarch64")]
-        const OFFSET: c_ulong = 3;
-
-        #[cfg(target_arch = "arm")]
-        const OFFSET: c_ulong = 0;
-
-        #[cfg(target_arch = "arm")]
-        let caps = {
-            const AT_HWCAP2: c_ulong = 26;
-            unsafe { getauxval(AT_HWCAP2) }
-        };
-
-        const HWCAP_AES: c_ulong = 1 << 0 + OFFSET;
-        const HWCAP_PMULL: c_ulong = 1 << 1 + OFFSET;
-        const HWCAP_SHA2: c_ulong = 1 << 3 + OFFSET;
-
-        #[cfg(target_arch = "aarch64")]
-        const HWCAP_SHA512: c_ulong = 1 << 21;
-
-        if caps & HWCAP_AES == HWCAP_AES {
-            features |= AES.mask;
-        }
-        if caps & HWCAP_PMULL == HWCAP_PMULL {
-            features |= PMULL.mask;
-        }
-        if caps & HWCAP_SHA2 == HWCAP_SHA2 {
-            features |= SHA256.mask;
-        }
-
-        #[cfg(target_arch = "aarch64")]
-        if caps & HWCAP_SHA512 == HWCAP_SHA512 {
-            features |= SHA512.mask;
-        }
-    }
-
-    features
-}
-
-#[cfg(all(target_os = "fuchsia", target_arch = "aarch64"))]
-fn detect_features() -> u32 {
-    type zx_status_t = i32;
-
-    #[link(name = "zircon")]
-    extern "C" {
-        fn zx_system_get_features(kind: u32, features: *mut u32) -> zx_status_t;
-    }
-
-    const ZX_OK: i32 = 0;
-    const ZX_FEATURE_KIND_CPU: u32 = 0;
-    const ZX_ARM64_FEATURE_ISA_ASIMD: u32 = 1 << 2;
-    const ZX_ARM64_FEATURE_ISA_AES: u32 = 1 << 3;
-    const ZX_ARM64_FEATURE_ISA_PMULL: u32 = 1 << 4;
-    const ZX_ARM64_FEATURE_ISA_SHA2: u32 = 1 << 6;
-
-    let mut caps = 0;
-    let rc = unsafe { zx_system_get_features(ZX_FEATURE_KIND_CPU, &mut caps) };
-
-    let mut features = 0;
-
-    // OpenSSL and BoringSSL don't enable any other features if NEON isn't
-    // available.
-    if rc == ZX_OK && (caps & ZX_ARM64_FEATURE_ISA_ASIMD == ZX_ARM64_FEATURE_ISA_ASIMD) {
-        features = NEON.mask;
-
-        if caps & ZX_ARM64_FEATURE_ISA_AES == ZX_ARM64_FEATURE_ISA_AES {
-            features |= AES.mask;
-        }
-        if caps & ZX_ARM64_FEATURE_ISA_PMULL == ZX_ARM64_FEATURE_ISA_PMULL {
-            features |= PMULL.mask;
-        }
-        if caps & ZX_ARM64_FEATURE_ISA_SHA2 == ZX_ARM64_FEATURE_ISA_SHA2 {
-            features |= 1 << 4;
-        }
-    }
-
-    features
-}
-
-#[cfg(all(target_os = "windows", target_arch = "aarch64"))]
-fn detect_features() -> u32 {
-    // We do not need to check for the presence of NEON, as Armv8-A always has it
-    const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
-    let mut features = ARMCAP_STATIC;
-
-    let result = unsafe {
-        windows_sys::Win32::System::Threading::IsProcessorFeaturePresent(
-            windows_sys::Win32::System::Threading::PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE,
-        )
-    };
-
-    if result != 0 {
-        // These are all covered by one call in Windows
-        features |= AES.mask;
-        features |= PMULL.mask;
-        features |= SHA256.mask;
-    }
-
-    features
-}
-
-#[cfg(all(
-    target_arch = "aarch64",
-    any(target_os = "ios", target_os = "macos", target_os = "tvos")
-))]
-fn detect_features() -> u32 {
-    use crate::polyfill;
-    use libc::c_char;
-
-    // TODO(MSRV 1.64): Use `name: &core::ffi::CStr` and remove `unsafe` here.
-    unsafe fn detect_feature(name: *const libc::c_char) -> bool {
-        use crate::polyfill;
-        use core::mem;
-        use libc::{c_int, c_void};
-
-        let mut value: c_int = 0;
-        let mut len = mem::size_of_val(&value);
-        let value_ptr = polyfill::ptr::from_mut(&mut value).cast::<c_void>();
-        let rc = unsafe { libc::sysctlbyname(name, value_ptr, &mut len, core::ptr::null_mut(), 0) };
-        // All the conditions are separated so we can observe them in code coverage.
-        if rc != 0 {
-            return false;
-        }
-        debug_assert_eq!(len, mem::size_of_val(&value));
-        if len != mem::size_of_val(&value) {
-            return false;
-        }
-        value != 0
-    }
-
-    let mut features = ARMCAP_STATIC;
-
-    // TODO(MSRV 1.64): Use `CStr::from_bytes_with_nul_unchecked` and remove all the
-    // `unsafe` here.
-    // TODO(MSRV 1.69): Use compile_time::unwrap_result(CStr::from_bytes_until_nul)
-    // TODO(MSRV 1.77): Use c"..." literal.
-    // SAFETY: The literal is nul-terminated and it doesn't contain interior nul bytes.
-    const SHA512_NAME: *const c_char =
-        polyfill::ptr::from_ref(b"hw.optional.armv8_2_sha512\0").cast::<c_char>();
-    if unsafe { detect_feature(SHA512_NAME) } {
-        features |= SHA512.mask;
-    }
-
-    features
-}
-
-#[cfg(all(
-    any(target_arch = "aarch64", target_arch = "arm"),
-    not(any(
-        target_os = "android",
-        target_os = "fuchsia",
-        all(target_os = "linux", not(target_env = "uclibc")),
-        target_os = "windows",
-        any(target_os = "ios", target_os = "macos", target_os = "tvos"),
-    ))
-))]
-fn detect_features() -> u32 {
-    0
 }
 
 macro_rules! features {
