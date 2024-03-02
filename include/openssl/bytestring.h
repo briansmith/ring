@@ -58,17 +58,20 @@ struct cbs_st {
 
 // CBS_init sets |cbs| to point to |data|. It does not take ownership of
 // |data|.
-OPENSSL_EXPORT void CBS_init(CBS *cbs, const uint8_t *data, size_t len);
+OPENSSL_INLINE void CBS_init(CBS *cbs, const uint8_t *data, size_t len) {
+  cbs->data = data;
+  cbs->len = len;
+}
 
 // CBS_skip advances |cbs| by |len| bytes. It returns one on success and zero
 // otherwise.
 OPENSSL_EXPORT int CBS_skip(CBS *cbs, size_t len);
 
 // CBS_data returns a pointer to the contents of |cbs|.
-OPENSSL_EXPORT const uint8_t *CBS_data(const CBS *cbs);
+OPENSSL_INLINE const uint8_t *CBS_data(const CBS *cbs) { return cbs->data; }
 
 // CBS_len returns the number of bytes remaining in |cbs|.
-OPENSSL_EXPORT size_t CBS_len(const CBS *cbs);
+OPENSSL_INLINE size_t CBS_len(const CBS *cbs) { return cbs->len; }
 
 // CBS_stow copies the current contents of |cbs| into |*out_ptr| and
 // |*out_len|. If |*out_ptr| is not NULL, the contents are freed with
