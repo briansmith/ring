@@ -50,61 +50,57 @@ mod abi_assumptions {
     not(target_env = "uclibc")
 ))]
 fn detect_features() -> u32 {
-    use libc::c_ulong;
-
-    // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
-    // across all Android/Linux targets, e.g. musl.
-    extern "C" {
-        fn getauxval(type_: c_ulong) -> c_ulong;
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "aarch64")] {
+            use libc::{getauxval,AT_HWCAP, HWCAP_AES, HWCAP_PMULL, HWCAP_SHA2};
+        } else if #[cfg(target_arch = "arm")] {
+            // The `libc` crate doesn't provide this functionality on all
+            // 32-bit Linux targets, like Android or -musl. Use this polyfill
+            // for all 32-bit ARM targets so that testing on one of them will
+            // be more meaningful to the others.
+            use libc::c_ulong;
+            extern "C" {
+                pub fn getauxval(type_: c_ulong) -> c_ulong;
+            }
+            const AT_HWCAP: c_ulong = 16;
+            const AT_HWCAP2: c_ulong = 26;
+            const HWCAP_NEON: c_ulong = 1 << 12;
+            const HWCAP2_AES: c_ulong = 1 << 0;
+            const HWCAP2_PMULL: c_ulong = 1 << 1;
+            const HWCAP2_SHA2: c_ulong = 1 << 3;
+        }
     }
-
-    const AT_HWCAP: c_ulong = 16;
-
-    #[cfg(target_arch = "aarch64")]
-    const HWCAP_NEON: c_ulong = 1 << 1;
-
-    #[cfg(target_arch = "arm")]
-    const HWCAP_NEON: c_ulong = 1 << 12;
 
     let caps = unsafe { getauxval(AT_HWCAP) };
 
     // We assume NEON is available on AARCH64 because it is a required
     // feature.
     #[cfg(target_arch = "aarch64")]
-    debug_assert!(caps & HWCAP_NEON == HWCAP_NEON);
-
-    let mut features = 0;
+    const _AARCH64_HAS_NEON: () = assert!(cfg!(target_feature = "neon"));
 
     // OpenSSL and BoringSSL don't enable any other features if NEON isn't
     // available.
-    if caps & HWCAP_NEON == HWCAP_NEON {
-        features = NEON.mask;
+    #[cfg(target_arch = "arm")]
+    if caps & HWCAP_NEON != HWCAP_NEON {
+        return 0;
+    }
 
-        #[cfg(target_arch = "aarch64")]
-        const OFFSET: c_ulong = 3;
+    let mut features = NEON.mask;
 
-        #[cfg(target_arch = "arm")]
-        const OFFSET: c_ulong = 0;
+    #[cfg(target_arch = "arm")]
+    let caps = unsafe { getauxval(AT_HWCAP2) };
 
-        #[cfg(target_arch = "arm")]
-        let caps = {
-            const AT_HWCAP2: c_ulong = 26;
-            unsafe { getauxval(AT_HWCAP2) }
-        };
+    #[cfg(target_arch = "arm")]
+    use {HWCAP2_AES as HWCAP_AES, HWCAP2_PMULL as HWCAP_PMULL, HWCAP2_SHA2 as HWCAP_SHA2};
 
-        const HWCAP_AES: c_ulong = 1 << 0 + OFFSET;
-        const HWCAP_PMULL: c_ulong = 1 << 1 + OFFSET;
-        const HWCAP_SHA2: c_ulong = 1 << 3 + OFFSET;
-
-        if caps & HWCAP_AES == HWCAP_AES {
-            features |= AES.mask;
-        }
-        if caps & HWCAP_PMULL == HWCAP_PMULL {
-            features |= PMULL.mask;
-        }
-        if caps & HWCAP_SHA2 == HWCAP_SHA2 {
-            features |= SHA256.mask;
-        }
+    if caps & HWCAP_AES == HWCAP_AES {
+        features |= AES.mask;
+    }
+    if caps & HWCAP_PMULL == HWCAP_PMULL {
+        features |= PMULL.mask;
+    }
+    if caps & HWCAP_SHA2 == HWCAP_SHA2 {
+        features |= SHA256.mask;
     }
 
     features
