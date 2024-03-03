@@ -17,10 +17,14 @@
 set -eux -o pipefail
 IFS=$'\n\t'
 
+toolchain=stable
 for arg in $*; do
   case $arg in
     --target=*)
       target=${arg#*=}
+      ;;
+    +*)
+      toolchain=${arg#*+}
       ;;
     *)
       ;;
@@ -32,7 +36,7 @@ function install_packages {
 }
 
 use_clang=
-case $target in
+case ${target-} in
 *android*)
   # https://blog.rust-lang.org/2023/01/09/android-ndk-update-r25.html says
   # "Going forward the Android platform will target the most recent LTS NDK,
@@ -63,7 +67,7 @@ case $target in
   ;;
 esac
 
-case $target in
+case ${target-} in
 aarch64-unknown-linux-gnu)
   # Clang is needed for code coverage.
   use_clang=1
@@ -177,7 +181,11 @@ wasm32-wasi)
   ;;
 esac
 
-case "$OSTYPE" in
+if [ -n "${RING_COVERAGE-}" ]; then
+  use_clang=1
+fi
+
+case "${OSTYPE-}" in
 linux*)
   if [ -n "$use_clang" ]; then
     ubuntu_codename=$(lsb_release --codename --short)
@@ -189,3 +197,11 @@ linux*)
   fi
   ;;
 esac
+
+rustup toolchain install --profile=minimal ${toolchain}
+if [ -n "${target-}" ]; then
+  rustup target add --toolchain=${toolchain} ${target}
+fi
+if [ -n "${RING_COVERAGE-}" ]; then
+  rustup toolchain install --profile=minimal ${toolchain} --component llvm-tools-preview
+fi

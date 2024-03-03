@@ -283,11 +283,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }}
-      - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
-
-      - if: ${{ !contains(matrix.host_os, 'windows') }}
-        run: mk/install-build-tools.sh --target=${{ matrix.target }}
+      - run: mk/install-build-tools.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
+        shell: sh
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: ./mk/install-build-tools.ps1
@@ -329,7 +326,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: mk/install-build-tools.sh --target=x86_64-unknown-linux-gnu
+      - run: mk/install-build-tools.sh +stable --target=x86_64-unknown-linux-gnu
+        shell: sh
 
       - run: rustup --version
 
@@ -409,11 +407,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }}
-      - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
-
-      - if: ${{ !contains(matrix.host_os, 'windows') }}
-        run: mk/install-build-tools.sh --target=${{ matrix.target }}
+      - run: mk/install-build-tools.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
+        shell: sh
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: ./mk/install-build-tools.ps1
@@ -491,12 +486,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }}
-      - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
+      - run: mk/install-build-tools.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
+        shell: sh
+
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: ./mk/install-build-tools.ps1
 
       - run: cargo +${{ matrix.rust_channel }} generate-lockfile
-
-      - run: mk/install-build-tools.sh --target=${{ matrix.target }}
 
       - run: |
           ${{ matrix.webdriver }} mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
@@ -596,11 +592,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }} --component llvm-tools-preview
-      - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
+      - run: RING_COVERAGE=1 mk/install-build-tools.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
+        shell: sh
 
-      - if: ${{ !contains(matrix.host_os, 'windows') }}
-        run: RING_COVERAGE=1 mk/install-build-tools.sh --target=${{ matrix.target }}
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: ./mk/install-build-tools.ps1
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
