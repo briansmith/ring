@@ -12,12 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg_attr(
-    not(any(target_arch = "x86", target_arch = "x86_64")),
-    allow(dead_code)
-)]
+#![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 mod abi_assumptions {
     // TOOD: Support targets that do not have SSE and SSE2 enabled, such as
     // x86_64-unknown-linux-none. See
@@ -43,7 +39,6 @@ pub(crate) struct Feature {
     mask: u32,
 }
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub(super) unsafe fn init_global_shared_with_assembly() {
     prefixed_extern! {
         fn OPENSSL_cpuid_setup();
@@ -57,18 +52,10 @@ impl Feature {
     #[allow(clippy::needless_return)]
     #[inline(always)]
     pub fn available(&self, _: super::Features) -> bool {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            prefixed_extern! {
-                static mut OPENSSL_ia32cap_P: [u32; 4];
-            }
-            return self.mask == self.mask & unsafe { OPENSSL_ia32cap_P[self.word] };
+        prefixed_extern! {
+            static mut OPENSSL_ia32cap_P: [u32; 4];
         }
-
-        #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-        {
-            return false;
-        }
+        self.mask == self.mask & unsafe { OPENSSL_ia32cap_P[self.word] }
     }
 }
 
