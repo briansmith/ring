@@ -18,7 +18,6 @@ set -eux -o pipefail
 IFS=$'\n\t'
 
 target=$1
-features=${2-}
 
 function install_packages {
   sudo apt-get -yq --no-install-suggests --no-install-recommends install "$@"
