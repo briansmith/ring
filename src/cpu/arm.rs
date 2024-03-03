@@ -12,12 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg_attr(
-    not(any(target_arch = "aarch64", target_arch = "arm")),
-    allow(dead_code)
-)]
+#![cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 mod abi_assumptions {
     // TODO: Support ARM64_32; see
     // https://github.com/briansmith/ring/issues/1832#issuecomment-1892928147. This also requires
@@ -46,7 +42,6 @@ mod abi_assumptions {
 
 #[cfg(all(
     any(target_os = "android", target_os = "linux"),
-    any(target_arch = "aarch64", target_arch = "arm"),
     not(target_env = "uclibc")
 ))]
 fn detect_features() -> u32 {
@@ -267,7 +262,7 @@ macro_rules! features {
             !0
         };
 
-        #[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
+        #[cfg(test)]
         const ALL_FEATURES: [Feature; 5] = [
             $(
                 $name
@@ -286,24 +281,8 @@ impl Feature {
         if self.mask == self.mask & ARMCAP_STATIC {
             return true;
         }
-
-        #[cfg(all(
-            any(
-                target_os = "android",
-                target_os = "fuchsia",
-                all(target_os = "linux", not(target_env = "uclibc")),
-                target_os = "windows"
-            ),
-            any(target_arch = "arm", target_arch = "aarch64")
-        ))]
-        {
-            // SAFETY: See `OPENSSL_armcap_P`'s safety documentation.
-            if self.mask == self.mask & unsafe { OPENSSL_armcap_P } {
-                return true;
-            }
-        }
-
-        false
+        // SAFETY: See `OPENSSL_armcap_P`'s safety documentation.
+        self.mask == self.mask & unsafe { OPENSSL_armcap_P }
     }
 }
 
@@ -347,7 +326,6 @@ features! {
 // - This may only be called from within `cpu::features()` and only while it is initializing its
 //   `INIT`.
 // - See the safety invariants of `OPENSSL_armcap_P` below.
-#[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
 pub unsafe fn init_global_shared_with_assembly() {
     let detected = detect_features();
     let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
@@ -383,7 +361,6 @@ pub unsafe fn init_global_shared_with_assembly() {
 // - `OPENSSL_armcap_P` must always be a superset of `ARMCAP_STATIC`.
 // TODO: Remove all the direct accesses of this from assembly language code, and then replace this
 // with a `OnceCell<u32>` that will provide all the necessary safety guarantees.
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 prefixed_extern! {
     static mut OPENSSL_armcap_P: u32;
 }
@@ -424,7 +401,7 @@ const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () = assert!(
         || !cfg!(all(target_arch = "aarch64", target_os = "macos"))
 );
 
-#[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
