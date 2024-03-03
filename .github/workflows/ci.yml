@@ -287,7 +287,7 @@ jobs:
       - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
-        run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+        run: mk/install-build-tools.sh --target=${{ matrix.target }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: ./mk/install-build-tools.ps1
@@ -413,7 +413,7 @@ jobs:
       - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
-        run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+        run: mk/install-build-tools.sh --target=${{ matrix.target }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: ./mk/install-build-tools.ps1
@@ -496,7 +496,7 @@ jobs:
 
       - run: cargo +${{ matrix.rust_channel }} generate-lockfile
 
-      - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+      - run: mk/install-build-tools.sh --target=${{ matrix.target }}
 
       - run: |
           ${{ matrix.webdriver }} mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
@@ -600,7 +600,7 @@ jobs:
       - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
-        run: RING_COVERAGE=1 mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+        run: RING_COVERAGE=1 mk/install-build-tools.sh --target=${{ matrix.target }}
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
