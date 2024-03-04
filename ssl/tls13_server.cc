@@ -207,7 +207,8 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
   return true;
 }
 
-static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred) {
+static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred,
+                             uint16_t *out_sigalg) {
   switch (cred->type) {
     case SSLCredentialType::kX509:
       break;
@@ -222,11 +223,10 @@ static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred) {
       break;
   }
 
-  // Check that we will be able to generate a signature. If |cred| is a
+  // All currently supported credentials require a signature. If |cred| is a
   // delegated credential, this also checks that the peer supports delegated
   // credentials and matched |dc_cert_verify_algorithm|.
-  uint16_t unused;
-  return tls1_choose_signature_algorithm(hs, cred, &unused);
+  return tls1_choose_signature_algorithm(hs, cred, out_sigalg);
 }
 
 static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
@@ -259,13 +259,12 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   }
 
   // Select the credential to use.
-  //
-  // TODO(davidben): In doing so, we pick the signature algorithm. Save that
-  // decision to avoid redoing it later.
   for (SSL_CREDENTIAL *cred : creds) {
     ERR_clear_error();
-    if (check_credential(hs, cred)) {
+    uint16_t sigalg;
+    if (check_credential(hs, cred, &sigalg)) {
       hs->credential = UpRef(cred);
+      hs->signature_algorithm = sigalg;
       break;
     }
   }

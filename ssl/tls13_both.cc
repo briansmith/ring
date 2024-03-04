@@ -553,18 +553,12 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
 
 enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  uint16_t signature_algorithm;
-  if (!tls1_choose_signature_algorithm(hs, hs->credential.get(),
-                                       &signature_algorithm)) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-    return ssl_private_key_failure;
-  }
-
+  assert(hs->signature_algorithm != 0);
   ScopedCBB cbb;
   CBB body;
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_CERTIFICATE_VERIFY) ||
-      !CBB_add_u16(&body, signature_algorithm)) {
+      !CBB_add_u16(&body, hs->signature_algorithm)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return ssl_private_key_failure;
   }
@@ -588,7 +582,7 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
   }
 
   enum ssl_private_key_result_t sign_result = ssl_private_key_sign(
-      hs, sig, &sig_len, max_sig_len, signature_algorithm, msg);
+      hs, sig, &sig_len, max_sig_len, hs->signature_algorithm, msg);
   if (sign_result != ssl_private_key_success) {
     return sign_result;
   }

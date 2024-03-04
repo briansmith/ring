@@ -2167,6 +2167,10 @@ struct SSL_HANDSHAKE {
   // record layer.
   uint16_t early_data_written = 0;
 
+  // signature_algorithm is the signature algorithm to be used in signing with
+  // the selected credential, or zero if not applicable or not yet selected.
+  uint16_t signature_algorithm = 0;
+
   // ech_config_id is the ECH config sent by the client.
   uint8_t ech_config_id = 0;
 

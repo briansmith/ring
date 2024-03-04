@@ -832,15 +832,15 @@ static enum ssl_hs_wait_t do_send_client_encrypted_extensions(
   return ssl_hs_ok;
 }
 
-static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred) {
+static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred,
+                             uint16_t *out_sigalg) {
   if (cred->type != SSLCredentialType::kX509) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return false;
   }
 
-  // Check that we will be able to generate a signature.
-  uint16_t unused;
-  return tls1_choose_signature_algorithm(hs, cred, &unused);
+  // All currently supported credentials require a signature.
+  return tls1_choose_signature_algorithm(hs, cred, out_sigalg);
 }
 
 static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
@@ -877,13 +877,12 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
 
   if (!creds.empty()) {
     // Select the credential to use.
-    //
-    // TODO(davidben): In doing so, we pick the signature algorithm. Save that
-    // decision to avoid redoing it later.
     for (SSL_CREDENTIAL *cred : creds) {
       ERR_clear_error();
-      if (check_credential(hs, cred)) {
+      uint16_t sigalg;
+      if (check_credential(hs, cred, &sigalg)) {
         hs->credential = UpRef(cred);
+        hs->signature_algorithm = sigalg;
         break;
       }
     }

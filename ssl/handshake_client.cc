@@ -1332,7 +1332,8 @@ static enum ssl_hs_wait_t do_read_server_hello_done(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
-static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred) {
+static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred,
+                             uint16_t *out_sigalg) {
   if (cred->type != SSLCredentialType::kX509) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return false;
@@ -1360,12 +1361,11 @@ static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred) {
     }
   }
 
-  // Check that we will be able to generate a signature. Note this does not
+  // All currently supported credentials require a signature. Note this does not
   // check the ECDSA curve. Prior to TLS 1.3, there is no way to determine which
   // ECDSA curves are supported by the peer, so we must assume all curves are
   // supported.
-  uint16_t unused;
-  return tls1_choose_signature_algorithm(hs, cred, &unused);
+  return tls1_choose_signature_algorithm(hs, cred, out_sigalg);
 }
 
 static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
@@ -1406,13 +1406,12 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     hs->transcript.FreeBuffer();
   } else {
     // Select the credential to use.
-    //
-    // TODO(davidben): In doing so, we pick the signature algorithm. Save that
-    // decision to avoid redoing it later.
     for (SSL_CREDENTIAL *cred : creds) {
       ERR_clear_error();
-      if (check_credential(hs, cred)) {
+      uint16_t sigalg;
+      if (check_credential(hs, cred, &sigalg)) {
         hs->credential = UpRef(cred);
+        hs->signature_algorithm = sigalg;
         break;
       }
     }
@@ -1615,15 +1614,10 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  uint16_t signature_algorithm;
-  if (!tls1_choose_signature_algorithm(hs, hs->credential.get(),
-                                       &signature_algorithm)) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-    return ssl_hs_error;
-  }
+  assert(hs->signature_algorithm != 0);
   if (ssl_protocol_version(ssl) >= TLS1_2_VERSION) {
     // Write out the digest type in TLS 1.2.
-    if (!CBB_add_u16(&body, signature_algorithm)) {
+    if (!CBB_add_u16(&body, hs->signature_algorithm)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return ssl_hs_error;
     }
@@ -1639,7 +1633,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
 
   size_t sig_len = max_sig_len;
   switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
-                               signature_algorithm,
+                               hs->signature_algorithm,
                                hs->transcript.buffer())) {
     case ssl_private_key_success:
       break;
