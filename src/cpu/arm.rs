@@ -178,18 +178,27 @@ fn detect_features() -> u32 {
     any(target_os = "ios", target_os = "macos", target_os = "tvos")
 ))]
 fn detect_features() -> u32 {
-    use crate::polyfill;
-    use libc::c_char;
-
-    // TODO(MSRV 1.64): Use `name: &core::ffi::CStr` and remove `unsafe` here.
-    unsafe fn detect_feature(name: *const libc::c_char) -> bool {
+    // TODO(MSRV 1.64): Use `name: &core::ffi::CStr`.
+    fn detect_feature(name: &[u8]) -> bool {
         use crate::polyfill;
         use core::mem;
-        use libc::{c_int, c_void};
+        use libc::{c_char, c_int, c_void};
+
+        let nul_terminated = name
+            .iter()
+            .position(|&b| b == 0)
+            .map(|index| (index + 1) == name.len())
+            .unwrap_or(false);
+        if !nul_terminated {
+            return false;
+        }
+        let name = polyfill::ptr::from_ref(name).cast::<c_char>();
 
         let mut value: c_int = 0;
         let mut len = mem::size_of_val(&value);
         let value_ptr = polyfill::ptr::from_mut(&mut value).cast::<c_void>();
+        // SAFETY: `name` is nul-terminated and it doesn't contain interior nul bytes. `value_ptr`
+        // is a valid pointer to `value` and `len` is the size of `value`.
         let rc = unsafe { libc::sysctlbyname(name, value_ptr, &mut len, core::ptr::null_mut(), 0) };
         // All the conditions are separated so we can observe them in code coverage.
         if rc != 0 {
@@ -204,14 +213,10 @@ fn detect_features() -> u32 {
 
     let mut features = ARMCAP_STATIC;
 
-    // TODO(MSRV 1.64): Use `CStr::from_bytes_with_nul_unchecked` and remove all the
-    // `unsafe` here.
-    // TODO(MSRV 1.69): Use compile_time::unwrap_result(CStr::from_bytes_until_nul)
+    // TODO(MSRV 1.64): Use `: &CStr = CStr::from_bytes_with_nul_unchecked`.
     // TODO(MSRV 1.77): Use c"..." literal.
-    // SAFETY: The literal is nul-terminated and it doesn't contain interior nul bytes.
-    const SHA512_NAME: *const c_char =
-        polyfill::ptr::from_ref(b"hw.optional.armv8_2_sha512\0").cast::<c_char>();
-    if unsafe { detect_feature(SHA512_NAME) } {
+    const SHA512_NAME: &[u8] = b"hw.optional.armv8_2_sha512\0";
+    if detect_feature(SHA512_NAME) {
         features |= SHA512.mask;
     }
 
