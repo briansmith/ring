@@ -1,0 +1,12 @@
+[package]
+name = "getrandom"
+version = "0.2.10"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sgx_trts = { git = "https://github.com/apache/teaclave-sgx-sdk.git", version = "1.1.6" }
+
+[features]
+js = []

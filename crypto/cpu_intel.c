@@ -67,7 +67,7 @@
 #endif
 
 #include "internal.h"
-
+int sgx_cpuid(uint32_t cpuinfo[4], uint32_t leaf);
 
 // OPENSSL_cpuid runs the cpuid instruction. |leaf| is passed in as EAX and ECX
 // is set to zero. It writes EAX, EBX, ECX, and EDX to |*out_eax| through
@@ -93,12 +93,18 @@ static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
     : "a"(leaf)
   );
 #else
-  __asm__ volatile (
-    "xor %%ecx, %%ecx\n"
-    "cpuid\n"
-    : "=a"(*out_eax), "=b"(*out_ebx), "=c"(*out_ecx), "=d"(*out_edx)
-    : "a"(leaf)
-  );
+//  __asm__ volatile (
+//    "xor %%ecx, %%ecx\n"
+//    "cpuid\n"
+//    : "=a"(*out_eax), "=b"(*out_ebx), "=c"(*out_ecx), "=d"(*out_edx)
+//    : "a"(leaf)
+//  );
+  uint32_t cpuinfo[4] = {0};
+  sgx_cpuid(cpuinfo, leaf);
+  *out_eax = cpuinfo[0];
+  *out_ebx = cpuinfo[1];
+  *out_ecx = cpuinfo[2];
+  *out_edx = cpuinfo[3];
 #endif
 }
 
