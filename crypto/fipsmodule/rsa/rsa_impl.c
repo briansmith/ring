@@ -1250,6 +1250,11 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
                                           int check_fips) {
   boringssl_ensure_rsa_self_test();
 
+  if (rsa == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   RSA *tmp = NULL;
   uint32_t err;
   int ret = 0;

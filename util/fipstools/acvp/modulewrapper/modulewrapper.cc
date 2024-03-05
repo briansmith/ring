@@ -550,7 +550,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "P-521"
           ],
           "hashAlg": [
-            "SHA-1",
             "SHA2-224",
             "SHA2-256",
             "SHA2-384",
@@ -562,7 +561,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
       {
         "algorithm": "RSA",
         "mode": "keyGen",
-        "revision": "FIPS186-4",
+        "revision": "FIPS186-5",
         "infoGeneratedByServer": true,
         "pubExpMode": "fixed",
         "fixedPubExp": "010001",
@@ -590,7 +589,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
       {
         "algorithm": "RSA",
         "mode": "sigGen",
-        "revision": "FIPS186-4",
+        "revision": "FIPS186-5",
         "capabilities": [{
           "sigType": "pkcs1v1.5",
           "properties": [{
@@ -701,28 +700,12 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
       {
         "algorithm": "RSA",
         "mode": "sigVer",
-        "revision": "FIPS186-4",
+        "revision": "FIPS186-5",
         "pubExpMode": "fixed",
         "fixedPubExp": "010001",
         "capabilities": [{
           "sigType": "pkcs1v1.5",
           "properties": [{
-            "modulo": 1024,
-            "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA-1"
-            }]
-          }]
-        },{
-          "sigType": "pkcs1v1.5",
-          "properties": [{
             "modulo": 2048,
             "hashPair": [{
               "hashAlg": "SHA2-224"
@@ -732,8 +715,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA-1"
             }]
           }]
         },{
@@ -748,8 +729,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA-1"
             }]
           }]
         },{
@@ -764,29 +743,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA-1"
-            }]
-          }]
-        },{
-          "sigType": "pss",
-          "properties": [{
-            "modulo": 1024,
-            "hashPair": [{
-              "hashAlg": "SHA2-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA2-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA2-512/256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
             }]
           }]
         },{
@@ -808,9 +764,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
-            }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
             }]
           }]
         },{
@@ -832,9 +785,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
-            }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
             }]
           }]
         },{
@@ -856,9 +806,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
-            }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
             }]
           }]
         }]

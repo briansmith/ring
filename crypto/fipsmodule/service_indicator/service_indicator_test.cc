@@ -1127,43 +1127,43 @@ static const struct RSATestVector kRSATestVectors[] = {
      FIPSStatus::NOT_APPROVED},
     {4096, &EVP_md5, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
 
-    // RSA test cases that are approved.
-    {1024, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
-    {1024, &EVP_sha256, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
-    {1024, &EVP_sha512, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
-    {1024, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
-    {1024, &EVP_sha256, true, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
+    // RSA 1024 is not approved under FIPS 186-5.
+    {1024, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
+    {1024, &EVP_sha256, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
+    {1024, &EVP_sha512, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
+    {1024, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
+    {1024, &EVP_sha256, true, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
     // PSS with hashLen == saltLen is not possible for 1024-bit modulus and
     // SHA-512.
 
-    {2048, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
+    {2048, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
     {2048, &EVP_sha224, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {2048, &EVP_sha256, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {2048, &EVP_sha384, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {2048, &EVP_sha512, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
-    {2048, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
+    {2048, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
     {2048, &EVP_sha224, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {2048, &EVP_sha256, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {2048, &EVP_sha384, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {2048, &EVP_sha512, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
 
-    {3072, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
+    {3072, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
     {3072, &EVP_sha224, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {3072, &EVP_sha256, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {3072, &EVP_sha384, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {3072, &EVP_sha512, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
-    {3072, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
+    {3072, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
     {3072, &EVP_sha224, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {3072, &EVP_sha256, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {3072, &EVP_sha384, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {3072, &EVP_sha512, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
 
-    {4096, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
+    {4096, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
     {4096, &EVP_sha224, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {4096, &EVP_sha256, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {4096, &EVP_sha384, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {4096, &EVP_sha512, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
-    {4096, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
+    {4096, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
     {4096, &EVP_sha224, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {4096, &EVP_sha256, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {4096, &EVP_sha384, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED},
@@ -1359,7 +1359,7 @@ struct ECDSATestVector {
   int nid;
   // md_func is the digest to test.
   const EVP_MD *(*func)();
-  // expected to be approved or not for signature generation.
+  // expected to be approved or not for key generation.
   FIPSStatus key_check_expect_approved;
   // expected to be approved or not for signature generation.
   FIPSStatus sig_gen_expect_approved;
@@ -1372,7 +1372,7 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
     // |EC_GROUP_new_by_curve_name|, and |NID_secp256k1| will only work if
     // |kCurveSecp256k1Supported| is true.
     {NID_secp224r1, &EVP_sha1, FIPSStatus::APPROVED, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::APPROVED},
+     FIPSStatus::NOT_APPROVED},
     {NID_secp224r1, &EVP_sha224, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
      FIPSStatus::APPROVED},
     {NID_secp224r1, &EVP_sha256, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
@@ -1383,7 +1383,7 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      FIPSStatus::APPROVED},
 
     {NID_X9_62_prime256v1, &EVP_sha1, FIPSStatus::APPROVED,
-     FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
+     FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
     {NID_X9_62_prime256v1, &EVP_sha224, FIPSStatus::APPROVED,
      FIPSStatus::APPROVED, FIPSStatus::APPROVED},
     {NID_X9_62_prime256v1, &EVP_sha256, FIPSStatus::APPROVED,
@@ -1394,7 +1394,7 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      FIPSStatus::APPROVED, FIPSStatus::APPROVED},
 
     {NID_secp384r1, &EVP_sha1, FIPSStatus::APPROVED, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::APPROVED},
+     FIPSStatus::NOT_APPROVED},
     {NID_secp384r1, &EVP_sha224, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
      FIPSStatus::APPROVED},
     {NID_secp384r1, &EVP_sha256, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
@@ -1405,7 +1405,7 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      FIPSStatus::APPROVED},
 
     {NID_secp521r1, &EVP_sha1, FIPSStatus::APPROVED, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::APPROVED},
+     FIPSStatus::NOT_APPROVED},
     {NID_secp521r1, &EVP_sha224, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
      FIPSStatus::APPROVED},
     {NID_secp521r1, &EVP_sha256, FIPSStatus::APPROVED, FIPSStatus::APPROVED,

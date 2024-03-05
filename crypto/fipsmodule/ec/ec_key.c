@@ -521,6 +521,11 @@ int EC_KEY_generate_key(EC_KEY *key) {
 }
 
 int EC_KEY_generate_key_fips(EC_KEY *eckey) {
+  if (eckey == NULL || eckey->group == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   boringssl_ensure_ecc_self_test();
 
   if (EC_KEY_generate_key(eckey) && EC_KEY_check_fips(eckey)) {
