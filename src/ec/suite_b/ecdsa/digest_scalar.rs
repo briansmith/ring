@@ -53,7 +53,7 @@ pub(crate) fn digest_bytes_scalar(ops: &ScalarOps, digest: &[u8]) -> Scalar {
 
 // This is a separate function solely so that we can test specific digest
 // values like all-zero values and values larger than `n`.
-fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
+pub fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
     let len = ops.scalar_bytes_len();
     let digest = if digest.len() > len {
         &digest[..len]
