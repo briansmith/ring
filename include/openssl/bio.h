@@ -473,22 +473,59 @@ OPENSSL_EXPORT int BIO_get_fd(BIO *bio, int *out_fd);
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_file(void);
 
 // BIO_new_file creates a file BIO by opening |filename| with the given mode.
-// See the |fopen| manual page for details of the mode argument.
+// See the |fopen| manual page for details of the mode argument. On Windows,
+// files may be opened in either binary or text mode so, as in |fopen|, callers
+// must specify the desired option in |mode|.
 OPENSSL_EXPORT BIO *BIO_new_file(const char *filename, const char *mode);
 
-// BIO_new_fp creates a new file BIO that wraps the given |FILE|. If
-// |close_flag| is |BIO_CLOSE|, then |fclose| will be called on |stream| when
-// the BIO is closed.
-OPENSSL_EXPORT BIO *BIO_new_fp(FILE *stream, int close_flag);
+// BIO_FP_TEXT indicates the |FILE| should be switched to text mode on Windows.
+// It has no effect on non-Windows platforms.
+#define BIO_FP_TEXT 0x10
+
+// BIO_new_fp creates a new file BIO that wraps |file|. If |flags| contains
+// |BIO_CLOSE|, then |fclose| will be called on |file| when the BIO is closed.
+//
+// On Windows, if |flags| contains |BIO_FP_TEXT|, this function will
+// additionally switch |file| to text mode. This is not recommended, but may be
+// required for OpenSSL compatibility. If |file| was not already in text mode,
+// mode changes can cause unflushed data in |file| to be written in unexpected
+// ways. See |_setmode| in Windows documentation for details.
+//
+// Unlike OpenSSL, if |flags| does not contain |BIO_FP_TEXT|, the translation
+// mode of |file| is left as-is. In OpenSSL, |file| will be set to binary, with
+// the same pitfalls as above. BoringSSL does not do this so that wrapping a
+// |FILE| in a |BIO| will not inadvertently change its state.
+//
+// To avoid these pitfalls, callers should set the desired translation mode when
+// opening the file. If targeting just BoringSSL, this is sufficient. If
+// targeting both OpenSSL and BoringSSL, callers should set |BIO_FP_TEXT| to
+// match the desired state of the file.
+OPENSSL_EXPORT BIO *BIO_new_fp(FILE *file, int flags);
 
 // BIO_get_fp sets |*out_file| to the current |FILE| for |bio|. It returns one
 // on success and zero otherwise.
 OPENSSL_EXPORT int BIO_get_fp(BIO *bio, FILE **out_file);
 
-// BIO_set_fp sets the |FILE| for |bio|. If |close_flag| is |BIO_CLOSE| then
+// BIO_set_fp sets the |FILE| for |bio|. If |flags| contains |BIO_CLOSE| then
 // |fclose| will be called on |file| when |bio| is closed. It returns one on
 // success and zero otherwise.
-OPENSSL_EXPORT int BIO_set_fp(BIO *bio, FILE *file, int close_flag);
+//
+// On Windows, if |flags| contains |BIO_FP_TEXT|, this function will
+// additionally switch |file| to text mode. This is not recommended, but may be
+// required for OpenSSL compatibility. If |file| was not already in text mode,
+// mode changes can cause unflushed data in |file| to be written in unexpected
+// ways. See |_setmode| in Windows documentation for details.
+//
+// Unlike OpenSSL, if |flags| does not contain |BIO_FP_TEXT|, the translation
+// mode of |file| is left as-is. In OpenSSL, |file| will be set to binary, with
+// the same pitfalls as above. BoringSSL does not do this so that wrapping a
+// |FILE| in a |BIO| will not inadvertently change its state.
+//
+// To avoid these pitfalls, callers should set the desired translation mode when
+// opening the file. If targeting just BoringSSL, this is sufficient. If
+// targeting both OpenSSL and BoringSSL, callers should set |BIO_FP_TEXT| to
+// match the desired state of the file.
+OPENSSL_EXPORT int BIO_set_fp(BIO *bio, FILE *file, int flags);
 
 // BIO_read_filename opens |filename| for reading and sets the result as the
 // |FILE| for |bio|. It returns one on success and zero otherwise. The |FILE|

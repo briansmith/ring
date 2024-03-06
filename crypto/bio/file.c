@@ -73,6 +73,7 @@
 
 #include <openssl/bio.h>
 
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -82,6 +83,10 @@
 
 #include "../internal.h"
 
+#if defined(OPENSSL_WINDOWS)
+#include <fcntl.h>
+#include <io.h>
+#endif
 
 #define BIO_FP_READ 0x02
 #define BIO_FP_WRITE 0x04
@@ -122,14 +127,13 @@ BIO *BIO_new_file(const char *filename, const char *mode) {
   return ret;
 }
 
-BIO *BIO_new_fp(FILE *stream, int close_flag) {
+BIO *BIO_new_fp(FILE *stream, int flags) {
   BIO *ret = BIO_new(BIO_s_file());
-
   if (ret == NULL) {
     return NULL;
   }
 
-  BIO_set_fp(ret, stream, close_flag);
+  BIO_set_fp(ret, stream, flags);
   return ret;
 }
 
@@ -196,6 +200,17 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
       break;
     case BIO_C_SET_FILE_PTR:
       file_free(b);
+      static_assert((BIO_CLOSE & BIO_FP_TEXT) == 0,
+                    "BIO_CLOSE and BIO_FP_TEXT must not collide");
+#if defined(OPENSSL_WINDOWS)
+      // If |BIO_FP_TEXT| is not set, OpenSSL will switch the file to binary
+      // mode. BoringSSL intentionally diverges here because it means code
+      // tested under POSIX will inadvertently change the state of |FILE|
+      // objects when wrapping them in a |BIO|.
+      if (num & BIO_FP_TEXT) {
+        _setmode(_fileno(ptr), _O_TEXT);
+      }
+#endif
       b->shutdown = (int)num & BIO_CLOSE;
       b->ptr = ptr;
       b->init = 1;
@@ -287,8 +302,8 @@ int BIO_get_fp(BIO *bio, FILE **out_file) {
   return (int)BIO_ctrl(bio, BIO_C_GET_FILE_PTR, 0, (char *)out_file);
 }
 
-int BIO_set_fp(BIO *bio, FILE *file, int close_flag) {
-  return (int)BIO_ctrl(bio, BIO_C_SET_FILE_PTR, close_flag, (char *)file);
+int BIO_set_fp(BIO *bio, FILE *file, int flags) {
+  return (int)BIO_ctrl(bio, BIO_C_SET_FILE_PTR, flags, (char *)file);
 }
 
 int BIO_read_filename(BIO *bio, const char *filename) {
