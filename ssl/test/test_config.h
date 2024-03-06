@@ -86,7 +86,6 @@ struct TestConfig {
   std::string host_name;
   std::string advertise_alpn;
   std::string expect_alpn;
-  std::string expect_late_alpn;
   std::string expect_advertised_alpn;
   std::string select_alpn;
   bool decline_alpn = false;
