@@ -714,7 +714,7 @@ int BIO_get_ex_new_index(long argl, void *argp,
                                     CRYPTO_EX_unused *unused,
                                     CRYPTO_EX_dup *dup_unused,
                                     CRYPTO_EX_free *free_func) {
-  return CRYPTO_get_ex_new_index(&g_ex_data_class, argl, argp, free_func);
+  return CRYPTO_get_ex_new_index_ex(&g_ex_data_class, argl, argp, free_func);
 }
 
 int BIO_set_ex_data(BIO *bio, int idx, void *data) {

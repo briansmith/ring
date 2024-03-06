@@ -179,7 +179,7 @@ OPENSSL_EXPORT void *TYPE_get_app_data(const TYPE *t);
 // |parent|. As |parent| will shortly be destroyed, callers must not perform
 // operations that would increment its reference count, pass ownership, or
 // assume the object outlives the function call. The arguments |argl| and |argp|
-// contain opaque values that were given to |CRYPTO_get_ex_new_index|.
+// contain opaque values that were given to |CRYPTO_get_ex_new_index_ex|.
 //
 // This callback may be called with a NULL value for |ptr| if |parent| has no
 // value set for this index. However, the callbacks may also be skipped entirely

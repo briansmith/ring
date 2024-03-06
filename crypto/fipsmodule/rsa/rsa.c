@@ -439,7 +439,7 @@ int RSA_is_opaque(const RSA *rsa) {
 
 int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                          CRYPTO_EX_dup *dup_unused, CRYPTO_EX_free *free_func) {
-  return CRYPTO_get_ex_new_index(g_rsa_ex_data_class_bss_get(), argl, argp,
+  return CRYPTO_get_ex_new_index_ex(g_rsa_ex_data_class_bss_get(), argl, argp,
                                  free_func);
 }
 
