@@ -25,8 +25,11 @@
 // as possible.
 
 use self::sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN};
-use crate::{c, cpu, debug, polyfill};
-use core::num::Wrapping;
+use crate::{
+    c, cpu, debug,
+    polyfill::{self, unwrap_const},
+};
+use core::num::{NonZeroUsize, Wrapping};
 
 mod sha1;
 mod sha2;
@@ -58,13 +61,13 @@ impl BlockContext {
         let num_blocks = input.len() / self.algorithm.block_len;
         assert_eq!(num_blocks * self.algorithm.block_len, input.len());
 
-        if num_blocks > 0 {
+        if let Some(num_blocks) = NonZeroUsize::new(num_blocks) {
             unsafe {
                 self.block_data_order(input.as_ptr(), num_blocks, cpu_features);
             }
             self.completed_data_blocks = self
                 .completed_data_blocks
-                .checked_add(polyfill::u64_from_usize(num_blocks))
+                .checked_add(polyfill::u64_from_usize(num_blocks.get()))
                 .unwrap();
         }
     }
@@ -75,6 +78,8 @@ impl BlockContext {
         num_pending: usize,
         cpu_features: cpu::Features,
     ) -> Digest {
+        const _1: NonZeroUsize = unwrap_const(NonZeroUsize::new(1));
+
         let block_len = self.algorithm.block_len;
         assert_eq!(pending.len(), block_len);
         assert!(num_pending < pending.len());
@@ -86,7 +91,7 @@ impl BlockContext {
 
         if padding_pos > pending.len() - self.algorithm.len_len {
             pending[padding_pos..].fill(0);
-            unsafe { self.block_data_order(pending.as_ptr(), 1, cpu_features) };
+            unsafe { self.block_data_order(pending.as_ptr(), _1, cpu_features) };
             // We don't increase |self.completed_data_blocks| because the
             // padding isn't data, and so it isn't included in the data length.
             padding_pos = 0;
@@ -105,7 +110,7 @@ impl BlockContext {
             .unwrap();
         pending[(block_len - 8)..].copy_from_slice(&u64::to_be_bytes(completed_data_bits));
 
-        unsafe { self.block_data_order(pending.as_ptr(), 1, cpu_features) };
+        unsafe { self.block_data_order(pending.as_ptr(), _1, cpu_features) };
 
         Digest {
             algorithm: self.algorithm,
@@ -116,7 +121,7 @@ impl BlockContext {
     unsafe fn block_data_order(
         &mut self,
         pending: *const u8,
-        num_blocks: usize,
+        num_blocks: NonZeroUsize,
         _cpu_features: cpu::Features,
     ) {
         // CPU features are inspected by assembly implementations.
@@ -283,7 +288,8 @@ pub struct Algorithm {
     /// The length of the length in the padding.
     len_len: usize,
 
-    block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::size_t),
+    block_data_order:
+        unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::NonZero_size_t),
     format_output: fn(input: State) -> Output,
 
     initial_state: State,

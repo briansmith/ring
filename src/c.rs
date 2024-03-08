@@ -25,9 +25,12 @@
 
 // Keep in sync with the checks in base.h that verify these assumptions.
 
+use core::num::NonZeroUsize;
+
 pub(crate) type int = i32;
 pub(crate) type uint = u32;
 pub(crate) type size_t = usize;
+pub(crate) type NonZero_size_t = NonZeroUsize;
 
 #[cfg(all(test, any(unix, windows)))]
 mod tests {
