@@ -394,7 +394,7 @@ static void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
 #endif
 #if defined(SHA1_ASM_AVX2)
   if (sha1_avx2_capable()) {
-    sha1_block_data_order_avx(state, data, num);
+    sha1_block_data_order_avx2(state, data, num);
     return;
   }
 #endif

@@ -1446,7 +1446,7 @@ OPENSSL_INLINE int CRYPTO_is_RDRAND_capable(void) {
 // See Intel manual, volume 2A, table 3-8.
 
 OPENSSL_INLINE int CRYPTO_is_BMI1_capable(void) {
-#if defined(__BMI1__)
+#if defined(__BMI__)
   return 1;
 #else
   return (OPENSSL_get_ia32cap(2) & (1u << 3)) != 0;
