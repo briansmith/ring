@@ -14,8 +14,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::sha2::{ch, maj, Word};
-use crate::{c, polyfill::slice};
-use core::num::Wrapping;
+use crate::polyfill::slice;
+use core::num::{NonZeroUsize, Wrapping};
 
 pub const BLOCK_LEN: usize = 512 / 8;
 pub const CHAINING_LEN: usize = 160 / 8;
@@ -36,7 +36,7 @@ const ROUNDS: usize = 80;
 pub(super) extern "C" fn sha1_block_data_order(
     state: &mut super::State,
     data: *const u8,
-    num: c::size_t,
+    num: NonZeroUsize,
 ) {
     let state = unsafe { &mut state.as32 };
     // The unwrap won't fail because `CHAINING_WORDS` is smaller than the
@@ -45,7 +45,7 @@ pub(super) extern "C" fn sha1_block_data_order(
     // SAFETY: The caller guarantees that this is called with data pointing to `num`
     // `BLOCK_LEN`-long blocks.
     let data = data.cast::<[u8; BLOCK_LEN]>();
-    let data = unsafe { core::slice::from_raw_parts(data, num) };
+    let data = unsafe { core::slice::from_raw_parts(data, num.get()) };
     *state = block_data_order(*state, data)
 }
 

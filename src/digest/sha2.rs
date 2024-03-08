@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{c, polyfill::slice};
+use crate::polyfill::slice;
 use core::{
     num::Wrapping,
     ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Not, Shr},
@@ -22,14 +22,14 @@ use core::{
 pub(super) extern "C" fn sha256_block_data_order(
     state: &mut super::State,
     data: *const u8,
-    num: c::size_t,
+    num: core::num::NonZeroUsize,
 ) {
     let state = unsafe { &mut state.as32 };
 
     // SAFETY: The caller guarantees that this is called with data pointing to `num`
     // `SHA256_BLOCK_LEN`-long blocks.
     let data = data.cast::<[u8; SHA256_BLOCK_LEN]>();
-    let data = unsafe { core::slice::from_raw_parts(data, num) };
+    let data = unsafe { core::slice::from_raw_parts(data, num.get()) };
     *state = block_data_order(*state, data)
 }
 
@@ -37,14 +37,14 @@ pub(super) extern "C" fn sha256_block_data_order(
 pub(super) extern "C" fn sha512_block_data_order(
     state: &mut super::State,
     data: *const u8,
-    num: c::size_t,
+    num: core::num::NonZeroUsize,
 ) {
     let state = unsafe { &mut state.as64 };
 
     // SAFETY: The caller guarantees that this is called with data pointing to `num`
     // `SHA512_BLOCK_LEN`-long blocks.
     let data = data.cast::<[u8; SHA512_BLOCK_LEN]>();
-    let data = unsafe { core::slice::from_raw_parts(data, num) };
+    let data = unsafe { core::slice::from_raw_parts(data, num.get()) };
     *state = block_data_order(*state, data)
 }
 
@@ -390,11 +390,11 @@ prefixed_extern! {
     pub(super) fn sha256_block_data_order(
         state: &mut super::State,
         data: *const u8,
-        num: c::size_t,
+        num: crate::c::NonZero_size_t,
     );
     pub(super) fn sha512_block_data_order(
         state: &mut super::State,
         data: *const u8,
-        num: c::size_t,
+        num: crate::c::NonZero_size_t,
     );
 }
