@@ -57,16 +57,15 @@ impl BlockContext {
         }
     }
 
-    #[inline]
-    pub(crate) fn update(&mut self, input: &[u8], cpu_features: cpu::Features) {
-        let num_blocks = input.len() / self.algorithm.block_len;
-        assert_eq!(num_blocks * self.algorithm.block_len, input.len());
-
-        let completed_blocks = self.block_data_order(input, cpu_features);
+    /// Processes all the full blocks in `input`, returning the partial block
+    /// at the end, which may be empty.
+    pub(crate) fn update<'i>(&mut self, input: &'i [u8], cpu_features: cpu::Features) -> &'i [u8] {
+        let (completed_blocks, leftover) = self.block_data_order(input, cpu_features);
         self.completed_data_blocks = self
             .completed_data_blocks
             .checked_add(polyfill::u64_from_usize(completed_blocks))
             .unwrap();
+        leftover
     }
 
     pub(crate) fn finish(
@@ -86,8 +85,8 @@ impl BlockContext {
 
         if padding_pos > pending.len() - self.algorithm.len_len {
             pending[padding_pos..].fill(0);
-            let completed_blocks = self.block_data_order(pending, cpu_features);
-            debug_assert_eq!(completed_blocks, 1);
+            let (completed_blocks, leftover) = self.block_data_order(pending, cpu_features);
+            debug_assert_eq!((completed_blocks, leftover.len()), (1, 0));
             // We don't increase |self.completed_data_blocks| because the
             // padding isn't data, and so it isn't included in the data length.
             padding_pos = 0;
@@ -106,8 +105,8 @@ impl BlockContext {
             .unwrap();
         pending[(block_len - 8)..].copy_from_slice(&u64::to_be_bytes(completed_data_bits));
 
-        let completed_blocks = self.block_data_order(pending, cpu_features);
-        debug_assert_eq!(completed_blocks, 1);
+        let (completed_blocks, leftover) = self.block_data_order(pending, cpu_features);
+        debug_assert_eq!((completed_blocks, leftover.len()), (1, 0));
 
         Digest {
             algorithm: self.algorithm,
@@ -116,12 +115,12 @@ impl BlockContext {
     }
 
     #[must_use]
-    fn block_data_order(&mut self, full_data_blocks: &[u8], cpu_features: cpu::Features) -> usize {
-        // CPU features are inspected by assembly implementations.
-        let (completed_blocks, leftover) =
-            (self.algorithm.block_data_order)(&mut self.state, full_data_blocks, cpu_features);
-        debug_assert_eq!(leftover.len(), 0);
-        completed_blocks
+    fn block_data_order<'d>(
+        &mut self,
+        data: &'d [u8],
+        cpu_features: cpu::Features,
+    ) -> (usize, &'d [u8]) {
+        (self.algorithm.block_data_order)(&mut self.state, data, cpu_features)
     }
 }
 
@@ -183,19 +182,16 @@ impl Context {
         if self.num_pending > 0 {
             let to_copy = block_len - self.num_pending;
             self.pending[self.num_pending..block_len].copy_from_slice(&data[..to_copy]);
-            self.block.update(&self.pending[..block_len], cpu_features);
+            let leftover = self.block.update(&self.pending[..block_len], cpu_features);
+            debug_assert_eq!(leftover.len(), 0);
             remaining = &remaining[to_copy..];
             self.num_pending = 0;
         }
 
-        let num_blocks = remaining.len() / block_len;
-        let num_to_save_for_later = remaining.len() % block_len;
-        self.block
-            .update(&remaining[..(num_blocks * block_len)], cpu_features);
-        if num_to_save_for_later > 0 {
-            self.pending[..num_to_save_for_later]
-                .copy_from_slice(&remaining[(remaining.len() - num_to_save_for_later)..]);
-            self.num_pending = num_to_save_for_later;
+        let leftover = self.block.update(remaining, cpu_features);
+        if !leftover.is_empty() {
+            self.pending[..leftover.len()].copy_from_slice(leftover);
+            self.num_pending = leftover.len();
         }
     }
 
