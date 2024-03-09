@@ -77,13 +77,14 @@ impl BlockContext {
         let block_len = self.algorithm.block_len;
         assert_eq!(pending.len(), block_len);
         assert!(num_pending < pending.len());
+        let pending = &mut pending[..block_len];
 
         let mut padding_pos = num_pending;
         pending[padding_pos] = 0x80;
         padding_pos += 1;
 
-        if padding_pos > block_len - self.algorithm.len_len {
-            pending[padding_pos..block_len].fill(0);
+        if padding_pos > pending.len() - self.algorithm.len_len {
+            pending[padding_pos..].fill(0);
             unsafe { self.block_data_order(pending.as_ptr(), 1, cpu_features) };
             // We don't increase |self.completed_data_blocks| because the
             // padding isn't data, and so it isn't included in the data length.
@@ -101,7 +102,7 @@ impl BlockContext {
             .unwrap()
             .checked_mul(8)
             .unwrap();
-        pending[(block_len - 8)..block_len].copy_from_slice(&u64::to_be_bytes(completed_data_bits));
+        pending[(block_len - 8)..].copy_from_slice(&u64::to_be_bytes(completed_data_bits));
 
         unsafe { self.block_data_order(pending.as_ptr(), 1, cpu_features) };
 
