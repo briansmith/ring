@@ -16,6 +16,7 @@
 
 #include <string.h>
 
+#define OPENSSL_UNSTABLE_EXPERIMENTAL_SPX
 #include <openssl/experimental/spx.h>
 #include <openssl/rand.h>
 
@@ -26,14 +27,14 @@
 #include "./spx_util.h"
 #include "./thash.h"
 
-void spx_generate_key(uint8_t out_public_key[SPX_PUBLIC_KEY_BYTES],
+void SPX_generate_key(uint8_t out_public_key[SPX_PUBLIC_KEY_BYTES],
                       uint8_t out_secret_key[SPX_SECRET_KEY_BYTES]) {
   uint8_t seed[3 * SPX_N];
   RAND_bytes(seed, 3 * SPX_N);
-  spx_generate_key_from_seed(out_public_key, out_secret_key, seed);
+  SPX_generate_key_from_seed(out_public_key, out_secret_key, seed);
 }
 
-void spx_generate_key_from_seed(uint8_t out_public_key[SPX_PUBLIC_KEY_BYTES],
+void SPX_generate_key_from_seed(uint8_t out_public_key[SPX_PUBLIC_KEY_BYTES],
                                 uint8_t out_secret_key[SPX_SECRET_KEY_BYTES],
                                 const uint8_t seed[3 * SPX_N]) {
   // Initialize SK.seed || SK.prf || PK.seed from seed.
@@ -51,7 +52,7 @@ void spx_generate_key_from_seed(uint8_t out_public_key[SPX_PUBLIC_KEY_BYTES],
   memcpy(out_secret_key + 3 * SPX_N, out_public_key + SPX_N, SPX_N);
 }
 
-void spx_sign(uint8_t out_signature[SPX_SIGNATURE_BYTES],
+void SPX_sign(uint8_t out_signature[SPX_SIGNATURE_BYTES],
               const uint8_t secret_key[SPX_SECRET_KEY_BYTES],
               const uint8_t *msg, size_t msg_len, int randomized) {
   uint8_t addr[32] = {0};
@@ -102,7 +103,7 @@ void spx_sign(uint8_t out_signature[SPX_SIGNATURE_BYTES],
               idx_leaf, sk_seed, pk_seed);
 }
 
-int spx_verify(const uint8_t signature[SPX_SIGNATURE_BYTES],
+int SPX_verify(const uint8_t signature[SPX_SIGNATURE_BYTES],
                const uint8_t public_key[SPX_SECRET_KEY_BYTES],
                const uint8_t *msg, size_t msg_len) {
   uint8_t addr[32] = {0};

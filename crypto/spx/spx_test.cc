@@ -21,12 +21,13 @@
 
 #include <gtest/gtest.h>
 #include <openssl/bytestring.h>
+#define OPENSSL_UNSTABLE_EXPERIMENTAL_SPX
 #include <openssl/experimental/spx.h>
 
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 
-
+// suppress warnings for experimental spx api
 namespace {
 
 TEST(SpxTest, KeyGeneration) {
@@ -47,7 +48,7 @@ TEST(SpxTest, KeyGeneration) {
 
   uint8_t pk[2 * SPX_N];
   uint8_t sk[4 * SPX_N];
-  spx_generate_key_from_seed(pk, sk, seed);
+  SPX_generate_key_from_seed(pk, sk, seed);
   EXPECT_EQ(Bytes(pk), Bytes(expected_pk));
   EXPECT_EQ(Bytes(sk), Bytes(expected_sk));
 }
@@ -75,7 +76,7 @@ TEST(SpxTest, KeyGeneration2) {
 
   uint8_t pk[2 * SPX_N];
   uint8_t sk[4 * SPX_N];
-  spx_generate_key_from_seed(pk, sk, seed);
+  SPX_generate_key_from_seed(pk, sk, seed);
   EXPECT_EQ(Bytes(pk), Bytes(expected_pk));
   EXPECT_EQ(Bytes(sk), Bytes(expected_sk));
 }
@@ -83,12 +84,12 @@ TEST(SpxTest, KeyGeneration2) {
 TEST(SpxTest, BasicSignVerify) {
   uint8_t pk[2 * SPX_N];
   uint8_t sk[4 * SPX_N];
-  spx_generate_key(pk, sk);
+  SPX_generate_key(pk, sk);
 
   uint8_t message[] = {0x42};
   uint8_t signature[SPX_SIGNATURE_BYTES];
-  spx_sign(signature, sk, message, sizeof(message), true);
-  EXPECT_EQ(spx_verify(signature, pk, message, sizeof(message)), 1);
+  SPX_sign(signature, sk, message, sizeof(message), true);
+  EXPECT_EQ(SPX_verify(signature, pk, message, sizeof(message)), 1);
 }
 
 static void SpxFileTest(FileTest *t) {
@@ -102,13 +103,13 @@ static void SpxFileTest(FileTest *t) {
   t->IgnoreAttribute("smlen");
   ASSERT_TRUE(t->GetBytes(&signature, "sm"));
 
-  EXPECT_EQ(spx_verify(signature.data(), public_key.data(), message.data(),
+  EXPECT_EQ(SPX_verify(signature.data(), public_key.data(), message.data(),
                        message.size()),
             1);
 
   message[0] ^= 1;
 
-  EXPECT_EQ(spx_verify(signature.data(), public_key.data(), message.data(),
+  EXPECT_EQ(SPX_verify(signature.data(), public_key.data(), message.data(),
                        message.size()),
             0);
 }
@@ -126,7 +127,7 @@ static void SpxFileDeterministicTest(FileTest *t) {
   expected_signature.resize(SPX_SIGNATURE_BYTES);
 
   uint8_t signature[SPX_SIGNATURE_BYTES];
-  spx_sign(signature, sk.data(), message.data(), message.size(), false);
+  SPX_sign(signature, sk.data(), message.data(), message.size(), false);
 
   EXPECT_EQ(Bytes(signature), Bytes(expected_signature));
 }

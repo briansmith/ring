@@ -22,6 +22,14 @@ extern "C" {
 #endif
 
 
+#if defined(OPENSSL_UNSTABLE_EXPERIMENTAL_SPX)
+// This header implements experimental, draft versions of not-yet-standardized
+// primitives. When the standard is complete, these functions will be removed
+// and replaced with the final, incompatible standard version. They are
+// available now for short-lived experiments, but must not be deployed anywhere
+// durable, such as a long-lived key store. To use these functions define
+// OPENSSL_UNSTABLE_EXPERIMENTAL_SPX
+
 // SPX_N is the number of bytes in the hash output
 #define SPX_N 16
 
@@ -37,39 +45,42 @@ extern "C" {
 // SPHINCS+-SHA2-128s
 #define SPX_SIGNATURE_BYTES 7856
 
-// spx_generate_key generates a SPHINCS+-SHA2-128s key pair and writes the
+// SPX_generate_key generates a SPHINCS+-SHA2-128s key pair and writes the
 // result to |out_public_key| and |out_secret_key|.
 // Private key: SK.seed || SK.prf || PK.seed || PK.root
 // Public key: PK.seed || PK.root
-OPENSSL_EXPORT void spx_generate_key(
+OPENSSL_EXPORT void SPX_generate_key(
     uint8_t out_public_key[SPX_PUBLIC_KEY_BYTES],
     uint8_t out_secret_key[SPX_SECRET_KEY_BYTES]);
 
-// spx_generate_key_from_seed generates a SPHINCS+-SHA2-128s key pair from a
+// SPX_generate_key_from_seed generates a SPHINCS+-SHA2-128s key pair from a
 // 48-byte seed and writes the result to |out_public_key| and |out_secret_key|.
 // Secret key: SK.seed || SK.prf || PK.seed || PK.root
 // Public key: PK.seed || PK.root
-OPENSSL_EXPORT void spx_generate_key_from_seed(
+OPENSSL_EXPORT void SPX_generate_key_from_seed(
     uint8_t out_public_key[SPX_PUBLIC_KEY_BYTES],
     uint8_t out_secret_key[SPX_SECRET_KEY_BYTES],
     const uint8_t seed[3 * SPX_N]);
 
-// spx_sign generates a SPHINCS+-SHA2-128s signature over |msg| or length
+// SPX_sign generates a SPHINCS+-SHA2-128s signature over |msg| or length
 // |msg_len| using |secret_key| and writes the output to |out_signature|.
 //
 // if |randomized| is 0, deterministic signing is performed, otherwise,
 // non-deterministic signing is performed.
-OPENSSL_EXPORT void spx_sign(uint8_t out_snignature[SPX_SIGNATURE_BYTES],
-                             const uint8_t secret_key[SPX_SECRET_KEY_BYTES],
-                             const uint8_t *msg, size_t msg_len,
-                             int randomized);
+OPENSSL_EXPORT void SPX_sign(
+    uint8_t out_snignature[SPX_SIGNATURE_BYTES],
+    const uint8_t secret_key[SPX_SECRET_KEY_BYTES], const uint8_t *msg,
+    size_t msg_len, int randomized);
 
-// spx_verify verifies a SPHINCS+-SHA2-128s signature in |signature| over |msg|
+// SPX_verify verifies a SPHINCS+-SHA2-128s signature in |signature| over |msg|
 // or length |msg_len| using |public_key|. 1 is returned if the signature
 // matches, 0 otherwise.
-OPENSSL_EXPORT int spx_verify(const uint8_t signature[SPX_SIGNATURE_BYTES],
-                              const uint8_t public_key[SPX_SECRET_KEY_BYTES],
-                              const uint8_t *msg, size_t msg_len);
+OPENSSL_EXPORT int SPX_verify(
+    const uint8_t signature[SPX_SIGNATURE_BYTES],
+    const uint8_t public_key[SPX_SECRET_KEY_BYTES], const uint8_t *msg,
+    size_t msg_len);
+
+#endif //OPENSSL_UNSTABLE_EXPERIMENTAL_SPX
 
 
 #if defined(__cplusplus)
