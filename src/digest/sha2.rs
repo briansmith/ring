@@ -12,6 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use super::BlockLen;
 use crate::{cpu, polyfill::slice};
 use cfg_if::cfg_if;
 use core::{
@@ -24,7 +25,7 @@ pub(super) type State64 = [Wrapping<u64>; CHAINING_WORDS];
 
 pub(super) fn block_data_order_32(
     state: &mut State32,
-    data: &[[u8; SHA256_BLOCK_LEN]],
+    data: &[[u8; SHA256_BLOCK_LEN.into()]],
     cpu_features: cpu::Features,
 ) {
     cfg_if! {
@@ -46,7 +47,7 @@ pub(super) fn block_data_order_32(
 
 pub(super) fn block_data_order_64(
     state: &mut State64,
-    data: &[[u8; SHA512_BLOCK_LEN]],
+    data: &[[u8; SHA512_BLOCK_LEN.into()]],
     cpu_features: cpu::Features,
 ) {
     cfg_if! {
@@ -200,8 +201,8 @@ trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> {
 
 const MAX_ROUNDS: usize = 80;
 pub(super) const CHAINING_WORDS: usize = 8;
-pub(super) const SHA256_BLOCK_LEN: usize = 512 / 8;
-pub(super) const SHA512_BLOCK_LEN: usize = 1024 / 8;
+pub(super) const SHA256_BLOCK_LEN: BlockLen = BlockLen::_512;
+pub(super) const SHA512_BLOCK_LEN: BlockLen = BlockLen::_1024;
 
 impl Word for Wrapping<u32> {
     const ZERO: Self = Self(0);
@@ -407,12 +408,12 @@ impl Sha2 for Wrapping<u64> {
 prefixed_extern! {
     fn sha256_block_data_order(
         state: &mut [Wrapping<u32>; CHAINING_WORDS],
-        data: *const [u8; SHA256_BLOCK_LEN],
+        data: *const [u8; SHA256_BLOCK_LEN.into()],
         num: crate::c::NonZero_size_t,
     );
     fn sha512_block_data_order(
         state: &mut [Wrapping<u64>; CHAINING_WORDS],
-        data: *const [u8; SHA512_BLOCK_LEN],
+        data: *const [u8; SHA512_BLOCK_LEN.into()],
         num: crate::c::NonZero_size_t,
     );
 }
