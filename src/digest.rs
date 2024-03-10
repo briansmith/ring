@@ -74,7 +74,7 @@ impl BlockContext {
         num_pending: usize,
         cpu_features: cpu::Features,
     ) -> Digest {
-        let block_len = self.algorithm.block_len;
+        let block_len = self.algorithm.block_len();
         assert_eq!(pending.len(), block_len);
         assert!(num_pending < pending.len());
         let pending = &mut pending[..block_len];
@@ -171,7 +171,7 @@ impl Context {
     pub fn update(&mut self, data: &[u8]) {
         let cpu_features = cpu::features();
 
-        let block_len = self.block.algorithm.block_len;
+        let block_len = self.block.algorithm.block_len();
         if data.len() < block_len - self.num_pending {
             self.pending[self.num_pending..(self.num_pending + data.len())].copy_from_slice(data);
             self.num_pending += data.len();
@@ -202,7 +202,7 @@ impl Context {
     pub fn finish(mut self) -> Digest {
         let cpu_features = cpu::features();
 
-        let block_len = self.block.algorithm.block_len;
+        let block_len = self.block.algorithm.block_len();
         self.block.finish(
             &mut self.pending[..block_len],
             self.num_pending,
@@ -273,7 +273,7 @@ impl core::fmt::Debug for Digest {
 pub struct Algorithm {
     output_len: OutputLen,
     chaining_len: usize,
-    block_len: usize,
+    block_len: BlockLen,
 
     /// The length of the length in the padding.
     len_len: usize,
@@ -316,7 +316,7 @@ derive_debug_via_id!(Algorithm);
 impl Algorithm {
     /// The internal block length.
     pub fn block_len(&self) -> usize {
-        self.block_len
+        self.block_len.into()
     }
 
     /// The size of the chaining value of the digest function, in bytes.
@@ -460,7 +460,7 @@ struct Output([u8; MAX_OUTPUT_LEN]);
 
 /// The maximum block length ([`Algorithm::block_len()`]) of all the algorithms
 /// in this module.
-pub const MAX_BLOCK_LEN: usize = 1024 / 8;
+pub const MAX_BLOCK_LEN: usize = BlockLen::MAX.into();
 
 /// The maximum output length ([`Algorithm::output_len()`]) of all the
 /// algorithms in this module.
@@ -504,6 +504,20 @@ pub const SHA512_256_OUTPUT_LEN: usize = OutputLen::_256.into();
 
 /// The length of the length field for SHA-512-based algorithms, in bytes.
 const SHA512_LEN_LEN: usize = 128 / 8;
+
+#[derive(Clone, Copy)]
+enum BlockLen {
+    _512 = 512 / 8,
+    _1024 = 1024 / 8, // MAX
+}
+
+impl BlockLen {
+    const MAX: Self = Self::_1024;
+    #[inline(always)]
+    const fn into(self) -> usize {
+        self as usize
+    }
+}
 
 #[derive(Clone, Copy)]
 enum OutputLen {
@@ -557,21 +571,21 @@ mod tests {
 
         fn max_input_test(alg: &'static digest::Algorithm) {
             let mut context = nearly_full_context(alg);
-            let next_input = vec![0u8; alg.block_len - 1];
+            let next_input = vec![0u8; alg.block_len() - 1];
             context.update(&next_input);
             let _ = context.finish(); // no panic
         }
 
         fn too_long_input_test_block(alg: &'static digest::Algorithm) {
             let mut context = nearly_full_context(alg);
-            let next_input = vec![0u8; alg.block_len];
+            let next_input = vec![0u8; alg.block_len()];
             context.update(&next_input);
             let _ = context.finish(); // should panic
         }
 
         fn too_long_input_test_byte(alg: &'static digest::Algorithm) {
             let mut context = nearly_full_context(alg);
-            let next_input = vec![0u8; alg.block_len - 1];
+            let next_input = vec![0u8; alg.block_len() - 1];
             context.update(&next_input); // no panic
             context.update(&[0]);
             let _ = context.finish(); // should panic
@@ -582,7 +596,7 @@ mod tests {
             // of input; according to the spec, SHA-384 and SHA-512
             // support up to 2^128-1, but that's not implemented yet.
             let max_bytes = 1u64 << (64 - 3);
-            let max_blocks = max_bytes / polyfill::u64_from_usize(alg.block_len);
+            let max_blocks = max_bytes / polyfill::u64_from_usize(alg.block_len());
             digest::Context {
                 block: digest::BlockContext {
                     state: alg.initial_state.clone(),

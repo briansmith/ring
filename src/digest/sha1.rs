@@ -15,12 +15,12 @@
 
 use super::{
     sha2::{ch, maj, State32, Word},
-    OutputLen,
+    BlockLen, OutputLen,
 };
 use crate::polyfill::slice;
 use core::num::Wrapping;
 
-pub const BLOCK_LEN: usize = 512 / 8;
+pub(super) const BLOCK_LEN: BlockLen = BlockLen::_512;
 pub const CHAINING_LEN: usize = 160 / 8;
 pub(super) const OUTPUT_LEN: OutputLen = OutputLen::_160;
 const CHAINING_WORDS: usize = CHAINING_LEN / 4;
@@ -36,7 +36,7 @@ fn parity(x: W32, y: W32, z: W32) -> W32 {
 type State = [W32; CHAINING_WORDS];
 const ROUNDS: usize = 80;
 
-pub(super) fn sha1_block_data_order(state: &mut State32, data: &[[u8; BLOCK_LEN]]) {
+pub fn sha1_block_data_order(state: &mut State32, data: &[[u8; BLOCK_LEN.into()]]) {
     // The unwrap won't fail because `CHAINING_WORDS` is smaller than the
     // length.
     let state: &mut State = (&mut state[..CHAINING_WORDS]).try_into().unwrap();
@@ -49,7 +49,7 @@ pub(super) fn sha1_block_data_order(state: &mut State32, data: &[[u8; BLOCK_LEN]
 #[rustfmt::skip]
 fn block_data_order(
     mut H: [W32; CHAINING_WORDS],
-    M: &[[u8; BLOCK_LEN]],
+    M: &[[u8; BLOCK_LEN.into()]],
 ) -> [W32; CHAINING_WORDS]
 {
     for M in M {
