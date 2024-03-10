@@ -258,7 +258,7 @@ impl Digest {
 impl AsRef<[u8]> for Digest {
     #[inline(always)]
     fn as_ref(&self) -> &[u8] {
-        &self.value.0[..self.algorithm.output_len]
+        &self.value.0[..self.algorithm.output_len()]
     }
 }
 
@@ -271,7 +271,7 @@ impl core::fmt::Debug for Digest {
 
 /// A digest algorithm.
 pub struct Algorithm {
-    output_len: usize,
+    output_len: OutputLen,
     chaining_len: usize,
     block_len: usize,
 
@@ -332,7 +332,7 @@ impl Algorithm {
 
     /// The length of a finalized digest.
     pub fn output_len(&self) -> usize {
-        self.output_len
+        self.output_len.into()
     }
 }
 
@@ -363,7 +363,7 @@ pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 pub static SHA256: Algorithm = Algorithm {
-    output_len: SHA256_OUTPUT_LEN,
+    output_len: OutputLen::_256,
     chaining_len: SHA256_OUTPUT_LEN,
     block_len: SHA256_BLOCK_LEN,
     len_len: 64 / 8,
@@ -386,7 +386,7 @@ pub static SHA256: Algorithm = Algorithm {
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 pub static SHA384: Algorithm = Algorithm {
-    output_len: SHA384_OUTPUT_LEN,
+    output_len: OutputLen::_384,
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
@@ -409,7 +409,7 @@ pub static SHA384: Algorithm = Algorithm {
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 pub static SHA512: Algorithm = Algorithm {
-    output_len: SHA512_OUTPUT_LEN,
+    output_len: OutputLen::_512,
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
@@ -436,7 +436,7 @@ pub static SHA512: Algorithm = Algorithm {
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 pub static SHA512_256: Algorithm = Algorithm {
-    output_len: SHA512_256_OUTPUT_LEN,
+    output_len: OutputLen::_256,
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
@@ -464,7 +464,7 @@ pub const MAX_BLOCK_LEN: usize = 1024 / 8;
 
 /// The maximum output length ([`Algorithm::output_len()`]) of all the
 /// algorithms in this module.
-pub const MAX_OUTPUT_LEN: usize = 512 / 8;
+pub const MAX_OUTPUT_LEN: usize = OutputLen::MAX.into();
 
 /// The maximum chaining length ([`Algorithm::chaining_len()`]) of all the
 /// algorithms in this module.
@@ -488,22 +488,39 @@ where
 }
 
 /// The length of the output of SHA-1, in bytes.
-pub const SHA1_OUTPUT_LEN: usize = sha1::OUTPUT_LEN;
+pub const SHA1_OUTPUT_LEN: usize = sha1::OUTPUT_LEN.into();
 
 /// The length of the output of SHA-256, in bytes.
-pub const SHA256_OUTPUT_LEN: usize = 256 / 8;
+pub const SHA256_OUTPUT_LEN: usize = OutputLen::_256.into();
 
 /// The length of the output of SHA-384, in bytes.
-pub const SHA384_OUTPUT_LEN: usize = 384 / 8;
+pub const SHA384_OUTPUT_LEN: usize = OutputLen::_384.into();
 
 /// The length of the output of SHA-512, in bytes.
-pub const SHA512_OUTPUT_LEN: usize = 512 / 8;
+pub const SHA512_OUTPUT_LEN: usize = OutputLen::_512.into();
 
 /// The length of the output of SHA-512/256, in bytes.
-pub const SHA512_256_OUTPUT_LEN: usize = 256 / 8;
+pub const SHA512_256_OUTPUT_LEN: usize = OutputLen::_256.into();
 
 /// The length of the length field for SHA-512-based algorithms, in bytes.
 const SHA512_LEN_LEN: usize = 128 / 8;
+
+#[derive(Clone, Copy)]
+enum OutputLen {
+    _160 = 160 / 8,
+    _256 = 256 / 8,
+    _384 = 384 / 8,
+    _512 = 512 / 8, // MAX
+}
+
+impl OutputLen {
+    const MAX: Self = Self::_512;
+
+    #[inline(always)]
+    const fn into(self) -> usize {
+        self as usize
+    }
+}
 
 #[cfg(test)]
 mod tests {

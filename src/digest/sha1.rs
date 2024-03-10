@@ -13,13 +13,16 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::sha2::{ch, maj, State32, Word};
+use super::{
+    sha2::{ch, maj, State32, Word},
+    OutputLen,
+};
 use crate::polyfill::slice;
 use core::num::Wrapping;
 
 pub const BLOCK_LEN: usize = 512 / 8;
 pub const CHAINING_LEN: usize = 160 / 8;
-pub const OUTPUT_LEN: usize = 160 / 8;
+pub(super) const OUTPUT_LEN: OutputLen = OutputLen::_160;
 const CHAINING_WORDS: usize = CHAINING_LEN / 4;
 
 type W32 = Wrapping<u32>;
