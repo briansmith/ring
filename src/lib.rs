@@ -33,7 +33,7 @@
 //!             RDRAND on x86
 //!         </a> for additional details.
 //! <tr><td><code>less-safe-getrandom-espidf</code>
-//!     <td>Treat getrandom as a secure random number generator (see 
+//!     <td>Treat getrandom as a secure random number generator (see
 //!         <code>SecureRandom</code>) on the esp-idf target. While the esp-idf
 //!         target does have hardware RNG, it is beyond the scope of ring to
 //!         ensure its configuration. This feature allows ring to build
