@@ -24,19 +24,23 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use self::sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN};
+use self::{
+    dynstate::DynState,
+    sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
+};
 use crate::{
     c, cpu, debug,
     polyfill::{self, unwrap_const},
 };
 use core::num::{NonZeroUsize, Wrapping};
 
+mod dynstate;
 mod sha1;
 mod sha2;
 
 #[derive(Clone)]
 pub(crate) struct BlockContext {
-    state: State,
+    state: DynState,
 
     // Note that SHA-512 has a 128-bit input bit counter, but this
     // implementation only supports up to 2^64-1 input bits for all algorithms,
@@ -289,10 +293,10 @@ pub struct Algorithm {
     len_len: usize,
 
     block_data_order:
-        unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::NonZero_size_t),
-    format_output: unsafe fn(input: State) -> Output,
+        unsafe extern "C" fn(state: &mut DynState, data: *const u8, num: c::NonZero_size_t),
+    format_output: unsafe fn(input: DynState) -> Output,
 
-    initial_state: State,
+    initial_state: DynState,
 
     id: AlgorithmID,
 }
@@ -348,19 +352,17 @@ pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
     block_len: sha1::BLOCK_LEN,
     len_len: 64 / 8,
     block_data_order: sha1::sha1_block_data_order,
-    format_output: sha256_format_output,
-    initial_state: State {
-        as32: [
-            Wrapping(0x67452301u32),
-            Wrapping(0xefcdab89u32),
-            Wrapping(0x98badcfeu32),
-            Wrapping(0x10325476u32),
-            Wrapping(0xc3d2e1f0u32),
-            Wrapping(0),
-            Wrapping(0),
-            Wrapping(0),
-        ],
-    },
+    format_output: dynstate::sha256_format_output,
+    initial_state: DynState::new32([
+        Wrapping(0x67452301u32),
+        Wrapping(0xefcdab89u32),
+        Wrapping(0x98badcfeu32),
+        Wrapping(0x10325476u32),
+        Wrapping(0xc3d2e1f0u32),
+        Wrapping(0),
+        Wrapping(0),
+        Wrapping(0),
+    ]),
     id: AlgorithmID::SHA1,
 };
 
@@ -373,19 +375,17 @@ pub static SHA256: Algorithm = Algorithm {
     block_len: SHA256_BLOCK_LEN,
     len_len: 64 / 8,
     block_data_order: sha2::sha256_block_data_order,
-    format_output: sha256_format_output,
-    initial_state: State {
-        as32: [
-            Wrapping(0x6a09e667u32),
-            Wrapping(0xbb67ae85u32),
-            Wrapping(0x3c6ef372u32),
-            Wrapping(0xa54ff53au32),
-            Wrapping(0x510e527fu32),
-            Wrapping(0x9b05688cu32),
-            Wrapping(0x1f83d9abu32),
-            Wrapping(0x5be0cd19u32),
-        ],
-    },
+    format_output: dynstate::sha256_format_output,
+    initial_state: DynState::new32([
+        Wrapping(0x6a09e667u32),
+        Wrapping(0xbb67ae85u32),
+        Wrapping(0x3c6ef372u32),
+        Wrapping(0xa54ff53au32),
+        Wrapping(0x510e527fu32),
+        Wrapping(0x9b05688cu32),
+        Wrapping(0x1f83d9abu32),
+        Wrapping(0x5be0cd19u32),
+    ]),
     id: AlgorithmID::SHA256,
 };
 
@@ -398,19 +398,17 @@ pub static SHA384: Algorithm = Algorithm {
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
     block_data_order: sha2::sha512_block_data_order,
-    format_output: sha512_format_output,
-    initial_state: State {
-        as64: [
-            Wrapping(0xcbbb9d5dc1059ed8),
-            Wrapping(0x629a292a367cd507),
-            Wrapping(0x9159015a3070dd17),
-            Wrapping(0x152fecd8f70e5939),
-            Wrapping(0x67332667ffc00b31),
-            Wrapping(0x8eb44a8768581511),
-            Wrapping(0xdb0c2e0d64f98fa7),
-            Wrapping(0x47b5481dbefa4fa4),
-        ],
-    },
+    format_output: dynstate::sha512_format_output,
+    initial_state: DynState::new64([
+        Wrapping(0xcbbb9d5dc1059ed8),
+        Wrapping(0x629a292a367cd507),
+        Wrapping(0x9159015a3070dd17),
+        Wrapping(0x152fecd8f70e5939),
+        Wrapping(0x67332667ffc00b31),
+        Wrapping(0x8eb44a8768581511),
+        Wrapping(0xdb0c2e0d64f98fa7),
+        Wrapping(0x47b5481dbefa4fa4),
+    ]),
     id: AlgorithmID::SHA384,
 };
 
@@ -423,19 +421,17 @@ pub static SHA512: Algorithm = Algorithm {
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
     block_data_order: sha2::sha512_block_data_order,
-    format_output: sha512_format_output,
-    initial_state: State {
-        as64: [
-            Wrapping(0x6a09e667f3bcc908),
-            Wrapping(0xbb67ae8584caa73b),
-            Wrapping(0x3c6ef372fe94f82b),
-            Wrapping(0xa54ff53a5f1d36f1),
-            Wrapping(0x510e527fade682d1),
-            Wrapping(0x9b05688c2b3e6c1f),
-            Wrapping(0x1f83d9abfb41bd6b),
-            Wrapping(0x5be0cd19137e2179),
-        ],
-    },
+    format_output: dynstate::sha512_format_output,
+    initial_state: DynState::new64([
+        Wrapping(0x6a09e667f3bcc908),
+        Wrapping(0xbb67ae8584caa73b),
+        Wrapping(0x3c6ef372fe94f82b),
+        Wrapping(0xa54ff53a5f1d36f1),
+        Wrapping(0x510e527fade682d1),
+        Wrapping(0x9b05688c2b3e6c1f),
+        Wrapping(0x1f83d9abfb41bd6b),
+        Wrapping(0x5be0cd19137e2179),
+    ]),
     id: AlgorithmID::SHA512,
 };
 
@@ -452,28 +448,19 @@ pub static SHA512_256: Algorithm = Algorithm {
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
     block_data_order: sha2::sha512_block_data_order,
-    format_output: sha512_format_output,
-    initial_state: State {
-        as64: [
-            Wrapping(0x22312194fc2bf72c),
-            Wrapping(0x9f555fa3c84c64c2),
-            Wrapping(0x2393b86b6f53b151),
-            Wrapping(0x963877195940eabd),
-            Wrapping(0x96283ee2a88effe3),
-            Wrapping(0xbe5e1e2553863992),
-            Wrapping(0x2b0199fc2c85b8aa),
-            Wrapping(0x0eb72ddc81c52ca2),
-        ],
-    },
+    format_output: dynstate::sha512_format_output,
+    initial_state: DynState::new64([
+        Wrapping(0x22312194fc2bf72c),
+        Wrapping(0x9f555fa3c84c64c2),
+        Wrapping(0x2393b86b6f53b151),
+        Wrapping(0x963877195940eabd),
+        Wrapping(0x96283ee2a88effe3),
+        Wrapping(0xbe5e1e2553863992),
+        Wrapping(0x2b0199fc2c85b8aa),
+        Wrapping(0x0eb72ddc81c52ca2),
+    ]),
     id: AlgorithmID::SHA512_256,
 };
-
-#[derive(Clone, Copy)] // XXX: Why do we need to be `Copy`?
-#[repr(C)]
-union State {
-    as64: [Wrapping<u64>; sha2::CHAINING_WORDS],
-    as32: [Wrapping<u32>; sha2::CHAINING_WORDS],
-}
 
 #[derive(Clone, Copy)]
 struct Output([u8; MAX_OUTPUT_LEN]);
@@ -489,16 +476,6 @@ pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 /// The maximum chaining length ([`Algorithm::chaining_len()`]) of all the
 /// algorithms in this module.
 pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
-
-unsafe fn sha256_format_output(input: State) -> Output {
-    let input = unsafe { input.as32 };
-    format_output::<_, _, { core::mem::size_of::<u32>() }>(input, u32::to_be_bytes)
-}
-
-unsafe fn sha512_format_output(input: State) -> Output {
-    let input = unsafe { input.as64 };
-    format_output::<_, _, { core::mem::size_of::<u64>() }>(input, u64::to_be_bytes)
-}
 
 #[inline]
 fn format_output<T, F, const N: usize>(input: [Wrapping<T>; sha2::CHAINING_WORDS], f: F) -> Output

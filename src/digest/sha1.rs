@@ -34,11 +34,11 @@ type State = [W32; CHAINING_WORDS];
 const ROUNDS: usize = 80;
 
 pub(super) extern "C" fn sha1_block_data_order(
-    state: &mut super::State,
+    state: &mut super::DynState,
     data: *const u8,
     num: NonZeroUsize,
 ) {
-    let state = unsafe { &mut state.as32 };
+    let state = unsafe { state.as32() };
     // The unwrap won't fail because `CHAINING_WORDS` is smaller than the
     // length.
     let state: &mut State = (&mut state[..CHAINING_WORDS]).try_into().unwrap();
