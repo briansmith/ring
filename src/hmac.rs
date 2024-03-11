@@ -109,7 +109,7 @@
 //! [code for `ring::hkdf`]:
 //!     https://github.com/briansmith/ring/blob/main/src/hkdf.rs
 
-use crate::{constant_time, digest, error, hkdf, rand};
+use crate::{constant_time, cpu, digest, error, hkdf, rand};
 
 /// An HMAC algorithm.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -208,6 +208,8 @@ impl Key {
     /// `digest_alg.output_len * 8` bits. Support for such keys is likely to be
     /// removed in a future version of *ring*.
     pub fn new(algorithm: Algorithm, key_value: &[u8]) -> Self {
+        let cpu_features = cpu::features();
+
         let digest_alg = algorithm.0;
         let mut key = Self {
             inner: digest::BlockContext::new(digest_alg),
@@ -235,7 +237,7 @@ impl Key {
         for (padded_key, key_value) in padded_key.iter_mut().zip(key_value.iter()) {
             *padded_key ^= *key_value;
         }
-        key.inner.update(padded_key);
+        key.inner.update(padded_key, cpu_features);
 
         const OPAD: u8 = 0x5C;
 
@@ -244,7 +246,7 @@ impl Key {
         for b in padded_key.iter_mut() {
             *b ^= IPAD ^ OPAD;
         }
-        key.outer.update(padded_key);
+        key.outer.update(padded_key, cpu_features);
 
         key
     }
@@ -309,12 +311,14 @@ impl Context {
     /// the return value of `sign` to a tag. Use `verify` for verification
     /// instead.
     pub fn sign(self) -> Tag {
+        let cpu_features = cpu::features();
+
         let algorithm = self.inner.algorithm();
         let mut pending = [0u8; digest::MAX_BLOCK_LEN];
         let pending = &mut pending[..algorithm.block_len()];
         let num_pending = algorithm.output_len();
         pending[..num_pending].copy_from_slice(self.inner.finish().as_ref());
-        Tag(self.outer.finish(pending, num_pending))
+        Tag(self.outer.finish(pending, num_pending, cpu_features))
     }
 }
 
