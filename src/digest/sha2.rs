@@ -22,13 +22,11 @@ pub(super) type State32 = [Wrapping<u32>; CHAINING_WORDS];
 pub(super) type State64 = [Wrapping<u64>; CHAINING_WORDS];
 
 #[cfg(not(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))]
-pub(super) extern "C" fn sha256_block_data_order(
-    state: &mut super::DynState,
+pub(super) unsafe fn sha256_block_data_order(
+    state: &mut State32,
     data: *const u8,
     num: core::num::NonZeroUsize,
 ) {
-    let state = unsafe { state.as32() };
-
     // SAFETY: The caller guarantees that this is called with data pointing to `num`
     // `SHA256_BLOCK_LEN`-long blocks.
     let data = data.cast::<[u8; SHA256_BLOCK_LEN]>();
@@ -37,13 +35,11 @@ pub(super) extern "C" fn sha256_block_data_order(
 }
 
 #[cfg(not(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))]
-pub(super) extern "C" fn sha512_block_data_order(
-    state: &mut super::DynState,
+pub(super) unsafe fn sha512_block_data_order(
+    state: &mut State64,
     data: *const u8,
     num: core::num::NonZeroUsize,
 ) {
-    let state = unsafe { state.as64() };
-
     // SAFETY: The caller guarantees that this is called with data pointing to `num`
     // `SHA512_BLOCK_LEN`-long blocks.
     let data = data.cast::<[u8; SHA512_BLOCK_LEN]>();
@@ -391,12 +387,12 @@ impl Sha2 for Wrapping<u64> {
 #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
 prefixed_extern! {
     pub(super) fn sha256_block_data_order(
-        state: &mut super::DynState,
+        state: &mut [Wrapping<u32>; CHAINING_WORDS],
         data: *const u8,
         num: crate::c::NonZero_size_t,
     );
     pub(super) fn sha512_block_data_order(
-        state: &mut super::DynState,
+        state: &mut [Wrapping<u64>; CHAINING_WORDS],
         data: *const u8,
         num: crate::c::NonZero_size_t,
     );
