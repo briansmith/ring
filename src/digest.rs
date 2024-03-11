@@ -71,7 +71,7 @@ impl BlockContext {
     pub(crate) fn finish(mut self, pending: &mut [u8], num_pending: usize) -> Digest {
         let block_len = self.algorithm.block_len;
         assert_eq!(pending.len(), block_len);
-        assert!(num_pending <= pending.len());
+        assert!(num_pending < pending.len());
 
         let mut padding_pos = num_pending;
         pending[padding_pos] = 0x80;
