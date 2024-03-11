@@ -919,8 +919,9 @@ OPENSSL_EXPORT int SSL_CREDENTIAL_set1_private_key(SSL_CREDENTIAL *cred,
 OPENSSL_EXPORT int SSL_CREDENTIAL_set1_signing_algorithm_prefs(
     SSL_CREDENTIAL *cred, const uint16_t *prefs, size_t num_prefs);
 
-// SSL_CREDENTIAL_set1_cert_chain sets |cred|'s certificate chain to |num_cert|s
-// certificates from |certs|. It returns one on success and zero on error.
+// SSL_CREDENTIAL_set1_cert_chain sets |cred|'s certificate chain, starting from
+// the leaf, to |num_cert|s certificates from |certs|. It returns one on success
+// and zero on error.
 OPENSSL_EXPORT int SSL_CREDENTIAL_set1_cert_chain(SSL_CREDENTIAL *cred,
                                                   CRYPTO_BUFFER *const *certs,
                                                   size_t num_certs);
@@ -1002,11 +1003,13 @@ OPENSSL_EXPORT int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x509);
 OPENSSL_EXPORT int SSL_use_certificate(SSL *ssl, X509 *x509);
 
 // SSL_CTX_use_PrivateKey sets |ctx|'s private key to |pkey|. It returns one on
-// success and zero on failure.
+// success and zero on failure. If |ctx| had a private key or
+// |SSL_PRIVATE_KEY_METHOD| previously configured, it is replaced.
 OPENSSL_EXPORT int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
 
 // SSL_use_PrivateKey sets |ssl|'s private key to |pkey|. It returns one on
-// success and zero on failure.
+// success and zero on failure. If |ssl| had a private key or
+// |SSL_PRIVATE_KEY_METHOD| previously configured, it is replaced.
 OPENSSL_EXPORT int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey);
 
 // SSL_CTX_set0_chain sets |ctx|'s certificate chain, excluding the leaf, to

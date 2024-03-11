@@ -191,6 +191,7 @@ static int cert_set_chain_and_key(
     return 0;
   }
 
+  cert->default_credential->ClearCertAndKey();
   if (!SSL_CREDENTIAL_set1_cert_chain(cert->default_credential.get(), certs,
                                       num_certs)) {
     return 0;

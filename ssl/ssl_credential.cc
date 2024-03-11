@@ -203,6 +203,16 @@ bool ssl_credential_st::SetLeafCert(UniquePtr<CRYPTO_BUFFER> leaf,
   return true;
 }
 
+void ssl_credential_st::ClearIntermediateCerts() {
+  if (chain == nullptr) {
+    return;
+  }
+
+  while (sk_CRYPTO_BUFFER_num(chain.get()) > 1) {
+    CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_pop(chain.get()));
+  }
+}
+
 bool ssl_credential_st::AppendIntermediateCert(UniquePtr<CRYPTO_BUFFER> cert) {
   if (!UsesX509()) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
@@ -249,6 +259,7 @@ int SSL_CREDENTIAL_set1_private_key(SSL_CREDENTIAL *cred, EVP_PKEY *key) {
   }
 
   cred->privkey = UpRef(key);
+  cred->key_method = nullptr;
   return 1;
 }
 
@@ -259,6 +270,7 @@ int SSL_CREDENTIAL_set_private_key_method(
     return 0;
   }
 
+  cred->privkey = nullptr;
   cred->key_method = key_method;
   return 1;
 }
@@ -275,6 +287,7 @@ int SSL_CREDENTIAL_set1_cert_chain(SSL_CREDENTIAL *cred,
     return 0;
   }
 
+  cred->ClearIntermediateCerts();
   for (size_t i = 1; i < num_certs; i++) {
     if (!cred->AppendIntermediateCert(UpRef(certs[i]))) {
       return 0;

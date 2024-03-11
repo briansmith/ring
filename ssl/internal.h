@@ -1640,6 +1640,10 @@ struct ssl_credential_st : public bssl::RefCounted<ssl_credential_st> {
   bool SetLeafCert(bssl::UniquePtr<CRYPTO_BUFFER> leaf,
                    bool discard_key_on_mismatch);
 
+  // ClearIntermediateCerts clears intermediate certificates in the certificate
+  // chain, while preserving the leaf.
+  void ClearIntermediateCerts();
+
   // AppendIntermediateCert appends |cert| to the certificate chain. If there is
   // no leaf certificate configured, it leaves a placeholder null in |chain|. It
   // returns one on success and zero on error.

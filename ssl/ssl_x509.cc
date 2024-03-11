@@ -198,6 +198,7 @@ static void ssl_crypto_x509_cert_flush_cached_chain(CERT *cert) {
 // which case no change to |cert->chain| is made. It preverses the existing
 // leaf from |cert->chain|, if any.
 static bool ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
+  cert->default_credential->ClearIntermediateCerts();
   for (X509 *x509 : chain) {
     UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
     if (!buffer ||
