@@ -114,7 +114,7 @@ impl BlockContext {
 
         Digest {
             algorithm: self.algorithm,
-            value: (self.algorithm.format_output)(self.state),
+            value: unsafe { (self.algorithm.format_output)(self.state) },
         }
     }
 
@@ -290,7 +290,7 @@ pub struct Algorithm {
 
     block_data_order:
         unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::NonZero_size_t),
-    format_output: fn(input: State) -> Output,
+    format_output: unsafe fn(input: State) -> Output,
 
     initial_state: State,
 
@@ -490,12 +490,12 @@ pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 /// algorithms in this module.
 pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
-fn sha256_format_output(input: State) -> Output {
+unsafe fn sha256_format_output(input: State) -> Output {
     let input = unsafe { input.as32 };
     format_output::<_, _, { core::mem::size_of::<u32>() }>(input, u32::to_be_bytes)
 }
 
-fn sha512_format_output(input: State) -> Output {
+unsafe fn sha512_format_output(input: State) -> Output {
     let input = unsafe { input.as64 };
     format_output::<_, _, { core::mem::size_of::<u64>() }>(input, u64::to_be_bytes)
 }
