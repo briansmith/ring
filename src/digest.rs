@@ -53,13 +53,13 @@ impl BlockContext {
     }
 
     #[inline]
-    pub(crate) fn update(&mut self, input: &[u8]) {
+    pub(crate) fn update(&mut self, input: &[u8], cpu_features: cpu::Features) {
         let num_blocks = input.len() / self.algorithm.block_len;
         assert_eq!(num_blocks * self.algorithm.block_len, input.len());
 
         if num_blocks > 0 {
             unsafe {
-                self.block_data_order(input.as_ptr(), num_blocks, cpu::features());
+                self.block_data_order(input.as_ptr(), num_blocks, cpu_features);
             }
             self.completed_data_blocks = self
                 .completed_data_blocks
@@ -68,7 +68,12 @@ impl BlockContext {
         }
     }
 
-    pub(crate) fn finish(mut self, pending: &mut [u8], num_pending: usize) -> Digest {
+    pub(crate) fn finish(
+        mut self,
+        pending: &mut [u8],
+        num_pending: usize,
+        cpu_features: cpu::Features,
+    ) -> Digest {
         let block_len = self.algorithm.block_len;
         assert_eq!(pending.len(), block_len);
         assert!(num_pending < pending.len());
@@ -79,7 +84,7 @@ impl BlockContext {
 
         if padding_pos > block_len - self.algorithm.len_len {
             pending[padding_pos..block_len].fill(0);
-            unsafe { self.block_data_order(pending.as_ptr(), 1, cpu::features()) };
+            unsafe { self.block_data_order(pending.as_ptr(), 1, cpu_features) };
             // We don't increase |self.completed_data_blocks| because the
             // padding isn't data, and so it isn't included in the data length.
             padding_pos = 0;
@@ -98,7 +103,7 @@ impl BlockContext {
             .unwrap();
         pending[(block_len - 8)..block_len].copy_from_slice(&u64::to_be_bytes(completed_data_bits));
 
-        unsafe { self.block_data_order(pending.as_ptr(), 1, cpu::features()) };
+        unsafe { self.block_data_order(pending.as_ptr(), 1, cpu_features) };
 
         Digest {
             algorithm: self.algorithm,
@@ -164,6 +169,8 @@ impl Context {
 
     /// Updates the digest with all the data in `data`.
     pub fn update(&mut self, data: &[u8]) {
+        let cpu_features = cpu::features();
+
         let block_len = self.block.algorithm.block_len;
         if data.len() < block_len - self.num_pending {
             self.pending[self.num_pending..(self.num_pending + data.len())].copy_from_slice(data);
@@ -175,14 +182,15 @@ impl Context {
         if self.num_pending > 0 {
             let to_copy = block_len - self.num_pending;
             self.pending[self.num_pending..block_len].copy_from_slice(&data[..to_copy]);
-            self.block.update(&self.pending[..block_len]);
+            self.block.update(&self.pending[..block_len], cpu_features);
             remaining = &remaining[to_copy..];
             self.num_pending = 0;
         }
 
         let num_blocks = remaining.len() / block_len;
         let num_to_save_for_later = remaining.len() % block_len;
-        self.block.update(&remaining[..(num_blocks * block_len)]);
+        self.block
+            .update(&remaining[..(num_blocks * block_len)], cpu_features);
         if num_to_save_for_later > 0 {
             self.pending[..num_to_save_for_later]
                 .copy_from_slice(&remaining[(remaining.len() - num_to_save_for_later)..]);
@@ -195,9 +203,14 @@ impl Context {
     /// `finish` consumes the context so it cannot be (mis-)used after `finish`
     /// has been called.
     pub fn finish(mut self) -> Digest {
+        let cpu_features = cpu::features();
+
         let block_len = self.block.algorithm.block_len;
-        self.block
-            .finish(&mut self.pending[..block_len], self.num_pending)
+        self.block.finish(
+            &mut self.pending[..block_len],
+            self.num_pending,
+            cpu_features,
+        )
     }
 
     /// The algorithm that this context is using.
