@@ -25,6 +25,8 @@
 
 // Keep in sync with the checks in base.h that verify these assumptions.
 
+#![allow(dead_code)]
+
 use core::num::NonZeroUsize;
 
 pub(crate) type int = i32;

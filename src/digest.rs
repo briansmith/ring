@@ -28,11 +28,8 @@ use self::{
     dynstate::DynState,
     sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
 };
-use crate::{
-    c, cpu, debug,
-    polyfill::{self, unwrap_const},
-};
-use core::num::{NonZeroUsize, Wrapping};
+use crate::{cpu, debug, polyfill};
+use core::num::Wrapping;
 
 mod dynstate;
 mod sha1;
@@ -65,15 +62,11 @@ impl BlockContext {
         let num_blocks = input.len() / self.algorithm.block_len;
         assert_eq!(num_blocks * self.algorithm.block_len, input.len());
 
-        if let Some(num_blocks) = NonZeroUsize::new(num_blocks) {
-            unsafe {
-                self.block_data_order(input.as_ptr(), num_blocks, cpu_features);
-            }
-            self.completed_data_blocks = self
-                .completed_data_blocks
-                .checked_add(polyfill::u64_from_usize(num_blocks.get()))
-                .unwrap();
-        }
+        let completed_blocks = self.block_data_order(input, cpu_features);
+        self.completed_data_blocks = self
+            .completed_data_blocks
+            .checked_add(polyfill::u64_from_usize(completed_blocks))
+            .unwrap();
     }
 
     pub(crate) fn finish(
@@ -82,8 +75,6 @@ impl BlockContext {
         num_pending: usize,
         cpu_features: cpu::Features,
     ) -> Digest {
-        const _1: NonZeroUsize = unwrap_const(NonZeroUsize::new(1));
-
         let block_len = self.algorithm.block_len;
         assert_eq!(pending.len(), block_len);
         assert!(num_pending < pending.len());
@@ -95,7 +86,8 @@ impl BlockContext {
 
         if padding_pos > pending.len() - self.algorithm.len_len {
             pending[padding_pos..].fill(0);
-            unsafe { self.block_data_order(pending.as_ptr(), _1, cpu_features) };
+            let completed_blocks = self.block_data_order(pending, cpu_features);
+            debug_assert_eq!(completed_blocks, 1);
             // We don't increase |self.completed_data_blocks| because the
             // padding isn't data, and so it isn't included in the data length.
             padding_pos = 0;
@@ -114,7 +106,8 @@ impl BlockContext {
             .unwrap();
         pending[(block_len - 8)..].copy_from_slice(&u64::to_be_bytes(completed_data_bits));
 
-        unsafe { self.block_data_order(pending.as_ptr(), _1, cpu_features) };
+        let completed_blocks = self.block_data_order(pending, cpu_features);
+        debug_assert_eq!(completed_blocks, 1);
 
         Digest {
             algorithm: self.algorithm,
@@ -122,16 +115,13 @@ impl BlockContext {
         }
     }
 
-    unsafe fn block_data_order(
-        &mut self,
-        pending: *const u8,
-        num_blocks: NonZeroUsize,
-        _cpu_features: cpu::Features,
-    ) {
+    #[must_use]
+    fn block_data_order(&mut self, full_data_blocks: &[u8], cpu_features: cpu::Features) -> usize {
         // CPU features are inspected by assembly implementations.
-        unsafe {
-            (self.algorithm.block_data_order)(&mut self.state, pending, num_blocks);
-        }
+        let (completed_blocks, leftover) =
+            (self.algorithm.block_data_order)(&mut self.state, full_data_blocks, cpu_features);
+        debug_assert_eq!(leftover.len(), 0);
+        completed_blocks
     }
 }
 
@@ -292,7 +282,15 @@ pub struct Algorithm {
     /// The length of the length in the padding.
     len_len: usize,
 
-    block_data_order: unsafe fn(state: &mut DynState, data: *const u8, num: c::NonZero_size_t),
+    /// `block_data_order` processes all the full blocks of data in `data`. It
+    /// returns the number of blocks processed and the unprocessed data, which
+    /// is guaranteed to be less than `block_len` bytes long.
+    block_data_order: for<'d> fn(
+        state: &mut DynState,
+        data: &'d [u8],
+        cpu_features: cpu::Features,
+    ) -> (usize, &'d [u8]),
+
     format_output: fn(input: DynState) -> Output,
 
     initial_state: DynState,

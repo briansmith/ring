@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::polyfill::slice;
+use crate::{cpu, polyfill::slice};
+use cfg_if::cfg_if;
 use core::{
     num::Wrapping,
     ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Not, Shr},
@@ -21,30 +22,48 @@ use core::{
 pub(super) type State32 = [Wrapping<u32>; CHAINING_WORDS];
 pub(super) type State64 = [Wrapping<u64>; CHAINING_WORDS];
 
-#[cfg(not(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))]
-pub(super) unsafe fn sha256_block_data_order(
+pub(super) fn block_data_order_32(
     state: &mut State32,
-    data: *const u8,
-    num: core::num::NonZeroUsize,
+    data: &[[u8; SHA256_BLOCK_LEN]],
+    cpu_features: cpu::Features,
 ) {
-    // SAFETY: The caller guarantees that this is called with data pointing to `num`
-    // `SHA256_BLOCK_LEN`-long blocks.
-    let data = data.cast::<[u8; SHA256_BLOCK_LEN]>();
-    let data = unsafe { core::slice::from_raw_parts(data, num.get()) };
-    *state = block_data_order(*state, data)
+    cfg_if! {
+        if #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))] {
+            if let Some(num) = core::num::NonZeroUsize::new(data.len()) {
+                // Assembly require CPU feature detection tohave been done.
+                let _cpu_features = cpu_features;
+                // SAFETY: `data` is a valid non-empty array of `num` blocks.
+                unsafe {
+                    sha256_block_data_order(state, data.as_ptr(), num)
+                }
+            }
+        } else {
+            let _cpu_features = cpu_features; // Unneeded.
+            *state = block_data_order(*state, data)
+        }
+    }
 }
 
-#[cfg(not(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))]
-pub(super) unsafe fn sha512_block_data_order(
+pub(super) fn block_data_order_64(
     state: &mut State64,
-    data: *const u8,
-    num: core::num::NonZeroUsize,
+    data: &[[u8; SHA512_BLOCK_LEN]],
+    cpu_features: cpu::Features,
 ) {
-    // SAFETY: The caller guarantees that this is called with data pointing to `num`
-    // `SHA512_BLOCK_LEN`-long blocks.
-    let data = data.cast::<[u8; SHA512_BLOCK_LEN]>();
-    let data = unsafe { core::slice::from_raw_parts(data, num.get()) };
-    *state = block_data_order(*state, data)
+    cfg_if! {
+        if #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))] {
+            if let Some(num) = core::num::NonZeroUsize::new(data.len()) {
+                // Assembly require CPU feature detection tohave been done.
+                let _cpu_features = cpu_features;
+                // SAFETY: `data` is a valid non-empty array of `num` blocks.
+                unsafe {
+                    sha512_block_data_order(state, data.as_ptr(), num)
+                }
+            }
+        } else {
+            let _cpu_features = cpu_features; // Unneeded.
+            *state = block_data_order(*state, data)
+        }
+    }
 }
 
 #[cfg_attr(
@@ -386,14 +405,14 @@ impl Sha2 for Wrapping<u64> {
 
 #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
 prefixed_extern! {
-    pub(super) fn sha256_block_data_order(
+    fn sha256_block_data_order(
         state: &mut [Wrapping<u32>; CHAINING_WORDS],
-        data: *const u8,
+        data: *const [u8; SHA256_BLOCK_LEN],
         num: crate::c::NonZero_size_t,
     );
-    pub(super) fn sha512_block_data_order(
+    fn sha512_block_data_order(
         state: &mut [Wrapping<u64>; CHAINING_WORDS],
-        data: *const u8,
+        data: *const [u8; SHA512_BLOCK_LEN],
         num: crate::c::NonZero_size_t,
     );
 }
