@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::c;
+use crate::{c, polyfill::slice};
 use core::{
     num::Wrapping,
     ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Not, Shr},
@@ -25,7 +25,12 @@ pub(super) extern "C" fn sha256_block_data_order(
     num: c::size_t,
 ) {
     let state = unsafe { &mut state.as32 };
-    *state = block_data_order(*state, data, num)
+
+    // SAFETY: The caller guarantees that this is called with data pointing to `num`
+    // `SHA256_BLOCK_LEN`-long blocks.
+    let data = data.cast::<[u8; SHA256_BLOCK_LEN]>();
+    let data = unsafe { core::slice::from_raw_parts(data, num) };
+    *state = block_data_order(*state, data)
 }
 
 #[cfg(not(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))]
@@ -35,7 +40,12 @@ pub(super) extern "C" fn sha512_block_data_order(
     num: c::size_t,
 ) {
     let state = unsafe { &mut state.as64 };
-    *state = block_data_order(*state, data, num)
+
+    // SAFETY: The caller guarantees that this is called with data pointing to `num`
+    // `SHA512_BLOCK_LEN`-long blocks.
+    let data = data.cast::<[u8; SHA512_BLOCK_LEN]>();
+    let data = unsafe { core::slice::from_raw_parts(data, num) };
+    *state = block_data_order(*state, data)
 }
 
 #[cfg_attr(
@@ -43,15 +53,17 @@ pub(super) extern "C" fn sha512_block_data_order(
     allow(dead_code)
 )]
 #[inline]
-fn block_data_order<S: Sha2>(
+fn block_data_order<S: Sha2, const BLOCK_LEN: usize, const BYTES_LEN: usize>(
     mut H: [S; CHAINING_WORDS],
-    M: *const u8,
-    num: c::size_t,
-) -> [S; CHAINING_WORDS] {
-    let M = M.cast::<[S::InputBytes; 16]>();
-    let M: &[[S::InputBytes; 16]] = unsafe { core::slice::from_raw_parts(M, num) };
-
+    M: &[[u8; BLOCK_LEN]],
+) -> [S; CHAINING_WORDS]
+where
+    for<'a> &'a S::InputBytes: From<&'a [u8; BYTES_LEN]>,
+{
     for M in M {
+        let (M, remainder): (&[[u8; BYTES_LEN]], &[u8]) = slice::as_chunks(M);
+        debug_assert!(remainder.is_empty());
+
         // FIPS 180-4 {6.2.2, 6.4.2} Step 1
         //
         // TODO: Use `let W: [S::ZERO; S::ROUNDS]` instead of allocating
@@ -61,7 +73,8 @@ fn block_data_order<S: Sha2>(
         let W: &[S] = {
             let W = &mut W[..S::K.len()];
             for (W, M) in W.iter_mut().zip(M) {
-                *W = S::from_be_bytes(*M);
+                let bytes: &S::InputBytes = M.into();
+                *W = S::from_be_bytes(*bytes);
             }
             for t in M.len()..S::K.len() {
                 W[t] = sigma_1(W[t - 2]) + W[t - 7] + sigma_0(W[t - 15]) + W[t - 16]
@@ -169,6 +182,8 @@ trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> {
 
 const MAX_ROUNDS: usize = 80;
 pub(super) const CHAINING_WORDS: usize = 8;
+pub(super) const SHA256_BLOCK_LEN: usize = 512 / 8;
+pub(super) const SHA512_BLOCK_LEN: usize = 1024 / 8;
 
 impl Word for Wrapping<u32> {
     const ZERO: Self = Self(0);
