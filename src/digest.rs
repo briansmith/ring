@@ -24,6 +24,7 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
+use self::sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN};
 use crate::{c, cpu, debug, polyfill};
 use core::num::Wrapping;
 
@@ -340,7 +341,7 @@ pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
     chaining_len: sha1::CHAINING_LEN,
     block_len: sha1::BLOCK_LEN,
     len_len: 64 / 8,
-    block_data_order: sha1::block_data_order,
+    block_data_order: sha1::sha1_block_data_order,
     format_output: sha256_format_output,
     initial_state: State {
         as32: [
@@ -363,7 +364,7 @@ pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
 pub static SHA256: Algorithm = Algorithm {
     output_len: SHA256_OUTPUT_LEN,
     chaining_len: SHA256_OUTPUT_LEN,
-    block_len: 512 / 8,
+    block_len: SHA256_BLOCK_LEN,
     len_len: 64 / 8,
     block_data_order: sha2::sha256_block_data_order,
     format_output: sha256_format_output,
@@ -524,9 +525,6 @@ pub const SHA512_OUTPUT_LEN: usize = 512 / 8;
 
 /// The length of the output of SHA-512/256, in bytes.
 pub const SHA512_256_OUTPUT_LEN: usize = 256 / 8;
-
-/// The length of a block for SHA-512-based algorithms, in bytes.
-const SHA512_BLOCK_LEN: usize = 1024 / 8;
 
 /// The length of the length field for SHA-512-based algorithms, in bytes.
 const SHA512_LEN_LEN: usize = 128 / 8;

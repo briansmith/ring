@@ -14,7 +14,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::sha2::{ch, maj, Word};
-use crate::c;
+use crate::{c, polyfill::slice};
 use core::num::Wrapping;
 
 pub const BLOCK_LEN: usize = 512 / 8;
@@ -33,22 +33,33 @@ fn parity(x: W32, y: W32, z: W32) -> W32 {
 type State = [W32; CHAINING_WORDS];
 const ROUNDS: usize = 80;
 
-pub(super) extern "C" fn block_data_order(
+pub(super) extern "C" fn sha1_block_data_order(
     state: &mut super::State,
     data: *const u8,
     num: c::size_t,
 ) {
     let state = unsafe { &mut state.as32 };
+    // The unwrap won't fail because `CHAINING_WORDS` is smaller than the
+    // length.
     let state: &mut State = (&mut state[..CHAINING_WORDS]).try_into().unwrap();
-    let data = data.cast::<[<W32 as Word>::InputBytes; 16]>();
-    let blocks = unsafe { core::slice::from_raw_parts(data, num) };
-    *state = block_data_order_(*state, blocks)
+    // SAFETY: The caller guarantees that this is called with data pointing to `num`
+    // `BLOCK_LEN`-long blocks.
+    let data = data.cast::<[u8; BLOCK_LEN]>();
+    let data = unsafe { core::slice::from_raw_parts(data, num) };
+    *state = block_data_order(*state, data)
 }
 
 #[inline]
 #[rustfmt::skip]
-fn block_data_order_(mut H: State, M: &[[<W32 as Word>::InputBytes; 16]]) -> State {
+fn block_data_order(
+    mut H: [W32; CHAINING_WORDS],
+    M: &[[u8; BLOCK_LEN]],
+) -> [W32; CHAINING_WORDS]
+{
     for M in M {
+        let (M, remainder): (&[<W32 as Word>::InputBytes], &[u8]) = slice::as_chunks(M);
+        debug_assert!(remainder.is_empty());
+
         // FIPS 180-4 6.1.2 Step 1
         let mut W: [W32; ROUNDS] = [W32::ZERO; ROUNDS];
         for t in 0..16 {

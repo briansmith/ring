@@ -53,6 +53,8 @@ mod leading_zeros_skipped;
 
 pub mod ptr;
 
+pub mod slice;
+
 #[cfg(test)]
 mod test;
 
