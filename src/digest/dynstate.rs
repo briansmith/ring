@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{format_output, sha1, sha2, Output};
-use core::num::NonZeroUsize;
+use crate::{cpu, polyfill::slice};
 
 // Invariant: When constructed with `new32` (resp. `new64`), `As32` (resp.
 // `As64`) is the active variant.
@@ -34,11 +34,11 @@ impl DynState {
     }
 }
 
-pub(super) unsafe fn sha1_block_data_order(
+pub(super) fn sha1_block_data_order<'d>(
     state: &mut DynState,
-    data: *const u8,
-    num: NonZeroUsize,
-) {
+    data: &'d [u8],
+    _cpu_features: cpu::Features,
+) -> (usize, &'d [u8]) {
     let state = match state {
         DynState::As32(state) => state,
         _ => {
@@ -46,16 +46,16 @@ pub(super) unsafe fn sha1_block_data_order(
         }
     };
 
-    // SAFETY: The caller guarantees that this is called with data pointing to `num`
-    // `sha1::BLOCK_LEN`-long blocks.
-    sha1::sha1_block_data_order(state, data, num);
+    let (full_blocks, leftover) = slice::as_chunks(data);
+    sha1::sha1_block_data_order(state, full_blocks);
+    (full_blocks.len(), leftover)
 }
 
-pub(super) unsafe fn sha256_block_data_order(
+pub(super) fn sha256_block_data_order<'d>(
     state: &mut DynState,
-    data: *const u8,
-    num: NonZeroUsize,
-) {
+    data: &'d [u8],
+    cpu_features: cpu::Features,
+) -> (usize, &'d [u8]) {
     let state = match state {
         DynState::As32(state) => state,
         _ => {
@@ -63,16 +63,16 @@ pub(super) unsafe fn sha256_block_data_order(
         }
     };
 
-    // SAFETY: The caller guarantees that this is called with data pointing to `num`
-    // `SHA256_BLOCK_LEN`-long blocks.
-    sha2::sha256_block_data_order(state, data, num);
+    let (full_blocks, leftover) = slice::as_chunks(data);
+    sha2::block_data_order_32(state, full_blocks, cpu_features);
+    (full_blocks.len(), leftover)
 }
 
-pub(super) unsafe fn sha512_block_data_order(
+pub(super) fn sha512_block_data_order<'d>(
     state: &mut DynState,
-    data: *const u8,
-    num: NonZeroUsize,
-) {
+    data: &'d [u8],
+    cpu_features: cpu::Features,
+) -> (usize, &'d [u8]) {
     let state = match state {
         DynState::As64(state) => state,
         _ => {
@@ -80,9 +80,9 @@ pub(super) unsafe fn sha512_block_data_order(
         }
     };
 
-    // SAFETY: The caller guarantees that this is called with data pointing to `num`
-    // `SHA512_BLOCK_LEN`-long blocks.
-    sha2::sha512_block_data_order(state, data, num);
+    let (full_blocks, leftover) = slice::as_chunks(data);
+    sha2::block_data_order_64(state, full_blocks, cpu_features);
+    (full_blocks.len(), leftover)
 }
 
 pub(super) fn sha256_format_output(state: DynState) -> Output {
