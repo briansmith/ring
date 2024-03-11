@@ -54,7 +54,7 @@ pub(crate) struct BlockContext {
 impl BlockContext {
     pub(crate) fn new(algorithm: &'static Algorithm) -> Self {
         Self {
-            state: algorithm.initial_state,
+            state: algorithm.initial_state.clone(),
             completed_data_blocks: 0,
             algorithm,
         }
@@ -118,7 +118,7 @@ impl BlockContext {
 
         Digest {
             algorithm: self.algorithm,
-            value: unsafe { (self.algorithm.format_output)(self.state) },
+            value: (self.algorithm.format_output)(self.state),
         }
     }
 
@@ -292,9 +292,8 @@ pub struct Algorithm {
     /// The length of the length in the padding.
     len_len: usize,
 
-    block_data_order:
-        unsafe extern "C" fn(state: &mut DynState, data: *const u8, num: c::NonZero_size_t),
-    format_output: unsafe fn(input: DynState) -> Output,
+    block_data_order: unsafe fn(state: &mut DynState, data: *const u8, num: c::NonZero_size_t),
+    format_output: fn(input: DynState) -> Output,
 
     initial_state: DynState,
 
@@ -351,7 +350,7 @@ pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
     chaining_len: sha1::CHAINING_LEN,
     block_len: sha1::BLOCK_LEN,
     len_len: 64 / 8,
-    block_data_order: sha1::sha1_block_data_order,
+    block_data_order: dynstate::sha1_block_data_order,
     format_output: dynstate::sha256_format_output,
     initial_state: DynState::new32([
         Wrapping(0x67452301u32),
@@ -374,7 +373,7 @@ pub static SHA256: Algorithm = Algorithm {
     chaining_len: SHA256_OUTPUT_LEN,
     block_len: SHA256_BLOCK_LEN,
     len_len: 64 / 8,
-    block_data_order: sha2::sha256_block_data_order,
+    block_data_order: dynstate::sha256_block_data_order,
     format_output: dynstate::sha256_format_output,
     initial_state: DynState::new32([
         Wrapping(0x6a09e667u32),
@@ -397,7 +396,7 @@ pub static SHA384: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
-    block_data_order: sha2::sha512_block_data_order,
+    block_data_order: dynstate::sha512_block_data_order,
     format_output: dynstate::sha512_format_output,
     initial_state: DynState::new64([
         Wrapping(0xcbbb9d5dc1059ed8),
@@ -420,7 +419,7 @@ pub static SHA512: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
-    block_data_order: sha2::sha512_block_data_order,
+    block_data_order: dynstate::sha512_block_data_order,
     format_output: dynstate::sha512_format_output,
     initial_state: DynState::new64([
         Wrapping(0x6a09e667f3bcc908),
@@ -447,7 +446,7 @@ pub static SHA512_256: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
-    block_data_order: sha2::sha512_block_data_order,
+    block_data_order: dynstate::sha512_block_data_order,
     format_output: dynstate::sha512_format_output,
     initial_state: DynState::new64([
         Wrapping(0x22312194fc2bf72c),
@@ -575,7 +574,7 @@ mod tests {
             let max_blocks = max_bytes / polyfill::u64_from_usize(alg.block_len);
             digest::Context {
                 block: digest::BlockContext {
-                    state: alg.initial_state,
+                    state: alg.initial_state.clone(),
                     completed_data_blocks: max_blocks - 1,
                     algorithm: alg,
                 },

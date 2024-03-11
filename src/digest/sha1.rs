@@ -13,7 +13,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::sha2::{ch, maj, Word};
+use super::sha2::{ch, maj, State32, Word};
 use crate::polyfill::slice;
 use core::num::{NonZeroUsize, Wrapping};
 
@@ -33,12 +33,11 @@ fn parity(x: W32, y: W32, z: W32) -> W32 {
 type State = [W32; CHAINING_WORDS];
 const ROUNDS: usize = 80;
 
-pub(super) extern "C" fn sha1_block_data_order(
-    state: &mut super::DynState,
+pub(super) unsafe fn sha1_block_data_order(
+    state: &mut State32,
     data: *const u8,
     num: NonZeroUsize,
 ) {
-    let state = unsafe { state.as32() };
     // The unwrap won't fail because `CHAINING_WORDS` is smaller than the
     // length.
     let state: &mut State = (&mut state[..CHAINING_WORDS]).try_into().unwrap();
