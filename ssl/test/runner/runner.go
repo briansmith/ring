@@ -1453,7 +1453,7 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 
 	// Configure the default credential.
 	shimCertificate := test.shimCertificate
-	if shimCertificate == nil && len(test.shimCredentials) == 0 && test.testType == serverTest {
+	if shimCertificate == nil && len(test.shimCredentials) == 0 && test.testType == serverTest && len(test.config.PreSharedKey) == 0 {
 		shimCertificate = &rsaCertificate
 	}
 	if shimCertificate != nil {
@@ -3715,11 +3715,13 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 	}
 	prefix := protocol.String() + "-"
 
-	var cert Credential
-	if hasComponent(suite.name, "ECDSA") {
-		cert = ecdsaP256Certificate
-	} else {
-		cert = rsaCertificate
+	var cert *Credential
+	if isTLS13Suite(suite.name) {
+		cert = &rsaCertificate
+	} else if hasComponent(suite.name, "ECDSA") {
+		cert = &ecdsaP256Certificate
+	} else if hasComponent(suite.name, "RSA") {
+		cert = &rsaCertificate
 	}
 
 	var flags []string
@@ -3750,6 +3752,11 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 	serverCipherSuites := []uint16{suite.id}
 	if shouldFail {
 		expectedServerError = ":NO_SHARED_CIPHER:"
+		if ver.version >= VersionTLS13 && cert == nil {
+			// TLS 1.2 PSK ciphers won't configure a server certificate, but we
+			// require one in TLS 1.3.
+			expectedServerError = ":NO_CERTIFICATE_SET:"
+		}
 		expectedClientError = ":WRONG_CIPHER_RETURNED:"
 		// Configure the server to select ciphers as normal but
 		// select an incompatible cipher in ServerHello.
@@ -3768,14 +3775,14 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 			MinVersion:           ver.version,
 			MaxVersion:           ver.version,
 			CipherSuites:         []uint16{suite.id},
-			Credential:           &cert,
+			Credential:           cert,
 			PreSharedKey:         []byte(psk),
 			PreSharedKeyIdentity: pskIdentity,
 			Bugs: ProtocolBugs{
 				AdvertiseAllConfiguredCiphers: true,
 			},
 		},
-		shimCertificate:      &cert,
+		shimCertificate:      cert,
 		flags:                flags,
 		resumeSession:        true,
 		shouldFail:           shouldFail,
@@ -3791,7 +3798,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 			MinVersion:           ver.version,
 			MaxVersion:           ver.version,
 			CipherSuites:         serverCipherSuites,
-			Credential:           &cert,
+			Credential:           cert,
 			PreSharedKey:         []byte(psk),
 			PreSharedKeyIdentity: pskIdentity,
 			Bugs: ProtocolBugs{
@@ -3818,7 +3825,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 			MinVersion:           ver.version,
 			MaxVersion:           ver.version,
 			CipherSuites:         []uint16{suite.id},
-			Credential:           &cert,
+			Credential:           cert,
 			PreSharedKey:         []byte(psk),
 			PreSharedKeyIdentity: pskIdentity,
 		},
@@ -3845,7 +3852,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 				MinVersion:           ver.version,
 				MaxVersion:           ver.version,
 				CipherSuites:         []uint16{suite.id},
-				Credential:           &cert,
+				Credential:           cert,
 				PreSharedKey:         []byte(psk),
 				PreSharedKeyIdentity: pskIdentity,
 			},

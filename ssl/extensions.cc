@@ -1128,10 +1128,9 @@ static bool ext_ocsp_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 static bool ext_ocsp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
-      !hs->ocsp_stapling_requested ||
-      hs->credential->ocsp_response == nullptr ||  //
-      ssl->s3->session_reused ||
-      !ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
+      !hs->ocsp_stapling_requested || ssl->s3->session_reused ||
+      !ssl_cipher_uses_certificate_auth(hs->new_cipher) ||
+      hs->credential->ocsp_response == nullptr) {
     return true;
   }
 
@@ -1346,8 +1345,10 @@ static bool ext_sct_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 static bool ext_sct_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
+  assert(hs->scts_requested);
   // The extension shouldn't be sent when resuming sessions.
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION || ssl->s3->session_reused ||
+      !ssl_cipher_uses_certificate_auth(hs->new_cipher) ||
       hs->credential->signed_cert_timestamp_list == nullptr) {
     return true;
   }
