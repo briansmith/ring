@@ -3022,6 +3022,9 @@ OPENSSL_EXPORT int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
 // |X509_STORE_CTX_get1_chain| may be used to return the verified certificate
 // chain. On error, |X509_STORE_CTX_get_error| may be used to return additional
 // error information.
+//
+// WARNING: Most failure conditions from this function do not use the error
+// queue. Use |X509_STORE_CTX_get_error| to determine the cause of the error.
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_get0_chain, after a successful |X509_verify_cert| call,

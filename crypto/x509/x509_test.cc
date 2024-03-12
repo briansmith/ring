@@ -8150,8 +8150,15 @@ TEST(X509Test, DirHash) {
     EXPECT_EQ(X509_V_OK, test_issuer(old_collide_name2));
 
     // Test a certificate not in the store.
+    ERR_clear_error();
     EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
               test_issuer("Not In Store"));
+
+    // Although, internally, this hits the filesystem and finds that a file does
+    // not exist, there should not be anything on the error queue about a
+    // missing file. |X509_verify_cert| generally does not use the error queue,
+    // so it will be empty. See https://crbug.com/boringssl/708.
+    EXPECT_EQ(ERR_get_error(), 0u);
 
     // Test CRL handling. First, if we cannot find a CRL, verification will
     // fail.
