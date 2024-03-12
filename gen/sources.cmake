@@ -344,6 +344,7 @@ set(
   crypto/dh_extra/dh_asn1.c
   crypto/dh_extra/params.c
   crypto/digest_extra/digest_extra.c
+  crypto/dilithium/dilithium.c
   crypto/dsa/dsa.c
   crypto/dsa/dsa_asn1.c
   crypto/ec_extra/ec_asn1.c
@@ -543,6 +544,7 @@ set(
   include/openssl/evp.h
   include/openssl/evp_errors.h
   include/openssl/ex_data.h
+  include/openssl/experimental/dilithium.h
   include/openssl/experimental/kyber.h
   include/openssl/experimental/spx.h
   include/openssl/hkdf.h
@@ -604,6 +606,7 @@ set(
   crypto/curve25519/curve25519_tables.h
   crypto/curve25519/internal.h
   crypto/des/internal.h
+  crypto/dilithium/internal.h
   crypto/dsa/internal.h
   crypto/ec_extra/internal.h
   crypto/err/internal.h
@@ -720,6 +723,7 @@ set(
   crypto/curve25519/x25519_test.cc
   crypto/dh_extra/dh_test.cc
   crypto/digest_extra/digest_test.cc
+  crypto/dilithium/dilithium_test.cc
   crypto/dsa/dsa_test.cc
   crypto/ecdh_extra/ecdh_test.cc
   crypto/err/err_test.cc
@@ -807,6 +811,7 @@ set(
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
   crypto/cipher_extra/test/xchacha20_poly1305_tests.txt
   crypto/curve25519/ed25519_tests.txt
+  crypto/dilithium/dilithium_tests.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp/evp_tests.txt
   crypto/evp/scrypt_tests.txt
