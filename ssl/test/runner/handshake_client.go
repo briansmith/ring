@@ -521,7 +521,7 @@ func (hs *clientHandshakeState) createClientHello(innerHello *clientHelloMsg, ec
 		channelIDSupported:        c.config.ChannelID != nil,
 		extendedMasterSecret:      maxVersion >= VersionTLS10,
 		srtpProtectionProfiles:    c.config.SRTPProtectionProfiles,
-		srtpMasterKeyIdentifier:   c.config.Bugs.SRTPMasterKeyIdentifer,
+		srtpMasterKeyIdentifier:   c.config.Bugs.SRTPMasterKeyIdentifier,
 		customExtension:           c.config.Bugs.CustomExtension,
 		omitExtensions:            c.config.Bugs.OmitExtensions,
 		emptyExtensions:           c.config.Bugs.EmptyExtensions,

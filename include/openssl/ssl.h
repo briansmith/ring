@@ -3987,7 +3987,7 @@ OPENSSL_EXPORT void SSL_get0_ech_retry_configs(
 // to the size of the buffer. The caller must call |OPENSSL_free| on |*out| to
 // release the memory. On failure, it returns zero.
 //
-// The |config_id| field is a single byte identifer for the ECHConfig. Reusing
+// The |config_id| field is a single byte identifier for the ECHConfig. Reusing
 // config IDs is allowed, but if multiple ECHConfigs with the same config ID are
 // active at a time, server load may increase. See
 // |SSL_ECH_KEYS_has_duplicate_config_id|.

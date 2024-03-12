@@ -1789,7 +1789,8 @@ static bool AddSubjectKeyIdentifier(X509 *x509,
                            /*crit=*/0, /*flags=*/0);
 }
 
-static bool AddAuthorityKeyIdentifer(X509 *x509, bssl::Span<const uint8_t> key_id) {
+static bool AddAuthorityKeyIdentifier(X509 *x509,
+                                      bssl::Span<const uint8_t> key_id) {
   bssl::UniquePtr<AUTHORITY_KEYID> akid(AUTHORITY_KEYID_new());
   if (akid == nullptr) {
     return false;
@@ -1843,7 +1844,7 @@ static bool AddRevokedSerialU64(X509_CRL *crl, uint64_t serial,
   return true;
 }
 
-static bool AddAuthorityKeyIdentifer(X509_CRL *crl,
+static bool AddAuthorityKeyIdentifier(X509_CRL *crl,
                                      bssl::Span<const uint8_t> key_id) {
   bssl::UniquePtr<AUTHORITY_KEYID> akid(AUTHORITY_KEYID_new());
   if (akid == nullptr) {
@@ -8429,11 +8430,11 @@ TEST(X509Test, DuplicateName) {
   bssl::UniquePtr<X509> leaf1 =
       MakeTestCert("CA", "Leaf", key1.get(), /*is_ca=*/false);
   ASSERT_TRUE(leaf1);
-  ASSERT_TRUE(AddAuthorityKeyIdentifer(leaf1.get(), key_id1));
+  ASSERT_TRUE(AddAuthorityKeyIdentifier(leaf1.get(), key_id1));
   ASSERT_TRUE(X509_sign(leaf1.get(), key1.get(), EVP_sha256()));
   bssl::UniquePtr<X509_CRL> crl1 = MakeTestCRL("CA", -1, 1);
   ASSERT_TRUE(crl1);
-  ASSERT_TRUE(AddAuthorityKeyIdentifer(crl1.get(), key_id1));
+  ASSERT_TRUE(AddAuthorityKeyIdentifier(crl1.get(), key_id1));
   ASSERT_TRUE(X509_CRL_sign(crl1.get(), key1.get(), EVP_sha256()));
   // TODO(davidben): Some state in CRLs does not get correctly set up unless it
   // is parsed from data. |X509_CRL_sign| should reset it internally.
@@ -8451,11 +8452,11 @@ TEST(X509Test, DuplicateName) {
   bssl::UniquePtr<X509> leaf2 =
       MakeTestCert("CA", "Leaf", key2.get(), /*is_ca=*/false);
   ASSERT_TRUE(leaf2);
-  ASSERT_TRUE(AddAuthorityKeyIdentifer(leaf2.get(), key_id2));
+  ASSERT_TRUE(AddAuthorityKeyIdentifier(leaf2.get(), key_id2));
   ASSERT_TRUE(X509_sign(leaf2.get(), key2.get(), EVP_sha256()));
   bssl::UniquePtr<X509_CRL> crl2 = MakeTestCRL("CA", -2, 2);
   ASSERT_TRUE(crl2);
-  ASSERT_TRUE(AddAuthorityKeyIdentifer(crl2.get(), key_id2));
+  ASSERT_TRUE(AddAuthorityKeyIdentifier(crl2.get(), key_id2));
   ASSERT_TRUE(X509_CRL_sign(crl2.get(), key2.get(), EVP_sha256()));
   // TODO(davidben): Some state in CRLs does not get correctly set up unless it
   // is parsed from data. |X509_CRL_sign| should reset it internally.

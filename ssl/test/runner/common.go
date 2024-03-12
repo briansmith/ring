@@ -1180,10 +1180,10 @@ type ProtocolBugs struct {
 	// RSA_EXPORT) in the plain RSA key exchange.
 	RSAEphemeralKey bool
 
-	// SRTPMasterKeyIdentifer, if not empty, is the SRTP MKI value that the
+	// SRTPMasterKeyIdentifier, if not empty, is the SRTP MKI value that the
 	// client offers when negotiating SRTP. MKI support is still missing so
 	// the peer must still send none.
-	SRTPMasterKeyIdentifer string
+	SRTPMasterKeyIdentifier string
 
 	// SendSRTPProtectionProfile, if non-zero, is the SRTP profile that the
 	// server sends in the ServerHello instead of the negotiated one.

@@ -422,7 +422,7 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
 // Signature algorithm functions.
 
 // x509_digest_sign_algorithm encodes the signing parameters of |ctx| as an
-// AlgorithmIdentifer and saves the result in |algor|. It returns one on
+// AlgorithmIdentifier and saves the result in |algor|. It returns one on
 // success, or zero on error.
 int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor);
 

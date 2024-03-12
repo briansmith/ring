@@ -35,7 +35,7 @@ import (
 // inputFile represents a textual assembly file.
 type inputFile struct {
 	path string
-	// index is a unique identifer given to this file. It's used for
+	// index is a unique identifier given to this file. It's used for
 	// mapping local symbols.
 	index int
 	// isArchive indicates that the input should be processed as an ar

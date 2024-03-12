@@ -71,7 +71,7 @@ enum class SignatureAlgorithm {
 [[nodiscard]] bool ParseHashAlgorithm(der::Input input, DigestAlgorithm *out);
 
 // Parses an AlgorithmIdentifier into a signature algorithm and returns it, or
-// returns `std::nullopt` if `algorithm_identifer` either cannot be parsed or
+// returns `std::nullopt` if `algorithm_identifier` either cannot be parsed or
 // is not a recognized signature algorithm.
 OPENSSL_EXPORT std::optional<SignatureAlgorithm> ParseSignatureAlgorithm(
     der::Input algorithm_identifier);
