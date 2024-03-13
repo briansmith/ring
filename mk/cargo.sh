@@ -253,7 +253,7 @@ if [ -n "${RING_COVERAGE-}" ]; then
   # Use the host target-libdir, not the target target-libdir.
   llvm_root="$(rustc +"${toolchain}" --print target-libdir)/../bin"
 
-  while read executable; do
+  while read -r executable; do
     basename=$(basename "$executable")
     "${llvm_root}"/llvm-profdata merge -sparse "$coverage_dir/$basename.profraw" -o "$coverage_dir/$basename.profdata"
     mkdir -p "$coverage_dir"/reports
