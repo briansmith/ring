@@ -198,7 +198,7 @@ linux*)
   ;;
 esac
 
-rustup toolchain install --profile=minimal ${toolchain}
+rustup toolchain install --no-self-update --profile=minimal ${toolchain}
 if [ -n "${target-}" ]; then
   rustup target add --toolchain=${toolchain} ${target}
 fi
