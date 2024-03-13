@@ -43,7 +43,7 @@ if [ -n "${ANDROID_NDK_ROOT-}" ]; then
   android_tools=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin
 fi
 
-for arg in $*; do
+for arg in "$@"; do
   case $arg in
     --target=*)
       target=${arg#*=}

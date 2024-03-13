@@ -18,7 +18,7 @@ set -eux -o pipefail
 IFS=$'\n\t'
 
 toolchain=stable
-for arg in $*; do
+for arg in "$@"; do
   case $arg in
     --target=*)
       target=${arg#*=}
