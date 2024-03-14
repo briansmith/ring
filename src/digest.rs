@@ -64,10 +64,13 @@ impl BlockContext {
     /// at the end, which may be empty.
     pub(crate) fn update<'i>(&mut self, input: &'i [u8], cpu_features: cpu::Features) -> &'i [u8] {
         let (completed_bytes, leftover) = self.block_data_order(input, cpu_features);
+        // Using saturated addition here allows `update` to be infallible and
+        // panic-free. If we were to reach the maximum value here then `finish`
+        // will detect that we processed too much data when it converts this to
+        // a bit length.
         self.completed_bytes = self
             .completed_bytes
-            .checked_add(polyfill::u64_from_usize(completed_bytes))
-            .unwrap();
+            .saturating_add(polyfill::u64_from_usize(completed_bytes));
         leftover
     }
 
@@ -586,7 +589,7 @@ mod tests {
         fn too_long_input_test_byte(alg: &'static digest::Algorithm) {
             let mut context = nearly_full_context(alg);
             let next_input = vec![0u8; alg.block_len() - 1];
-            context.update(&next_input); // no panic
+            context.update(&next_input);
             context.update(&[0]);
             let _ = context.finish(); // should panic
         }
