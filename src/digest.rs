@@ -42,7 +42,7 @@ pub(crate) struct BlockContext {
     // Note that SHA-512 has a 128-bit input bit counter, but this
     // implementation only supports up to 2^64-1 input bits for all algorithms,
     // so a 64-bit counter is more than sufficient.
-    completed_data_blocks: u64,
+    completed_bytes: u64,
 
     /// The context's algorithm.
     pub algorithm: &'static Algorithm,
@@ -52,7 +52,7 @@ impl BlockContext {
     pub(crate) fn new(algorithm: &'static Algorithm) -> Self {
         Self {
             state: algorithm.initial_state.clone(),
-            completed_data_blocks: 0,
+            completed_bytes: 0,
             algorithm,
         }
     }
@@ -60,10 +60,10 @@ impl BlockContext {
     /// Processes all the full blocks in `input`, returning the partial block
     /// at the end, which may be empty.
     pub(crate) fn update<'i>(&mut self, input: &'i [u8], cpu_features: cpu::Features) -> &'i [u8] {
-        let (completed_blocks, leftover) = self.block_data_order(input, cpu_features);
-        self.completed_data_blocks = self
-            .completed_data_blocks
-            .checked_add(polyfill::u64_from_usize(completed_blocks))
+        let (completed_bytes, leftover) = self.block_data_order(input, cpu_features);
+        self.completed_bytes = self
+            .completed_bytes
+            .checked_add(polyfill::u64_from_usize(completed_bytes))
             .unwrap();
         leftover
     }
@@ -85,10 +85,10 @@ impl BlockContext {
 
         if padding_pos > pending.len() - self.algorithm.len_len {
             pending[padding_pos..].fill(0);
-            let (completed_blocks, leftover) = self.block_data_order(pending, cpu_features);
-            debug_assert_eq!((completed_blocks, leftover.len()), (1, 0));
-            // We don't increase |self.completed_data_blocks| because the
-            // padding isn't data, and so it isn't included in the data length.
+            let (completed_bytes, leftover) = self.block_data_order(pending, cpu_features);
+            debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
+            // We don't increase |self.completed_bytes| because the padding
+            // isn't data, and so it isn't included in the data length.
             padding_pos = 0;
         }
 
@@ -96,17 +96,15 @@ impl BlockContext {
 
         // Output the length, in bits, in big endian order.
         let completed_data_bits = self
-            .completed_data_blocks
-            .checked_mul(polyfill::u64_from_usize(block_len))
-            .unwrap()
+            .completed_bytes
             .checked_add(polyfill::u64_from_usize(num_pending))
             .unwrap()
             .checked_mul(8)
             .unwrap();
         pending[(block_len - 8)..].copy_from_slice(&u64::to_be_bytes(completed_data_bits));
 
-        let (completed_blocks, leftover) = self.block_data_order(pending, cpu_features);
-        debug_assert_eq!((completed_blocks, leftover.len()), (1, 0));
+        let (completed_bytes, leftover) = self.block_data_order(pending, cpu_features);
+        debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
 
         Digest {
             algorithm: self.algorithm,
@@ -279,7 +277,7 @@ pub struct Algorithm {
     len_len: usize,
 
     /// `block_data_order` processes all the full blocks of data in `data`. It
-    /// returns the number of blocks processed and the unprocessed data, which
+    /// returns the number of bytes processed and the unprocessed data, which
     /// is guaranteed to be less than `block_len` bytes long.
     block_data_order: for<'d> fn(
         state: &mut DynState,
@@ -541,7 +539,7 @@ mod tests {
     mod max_input {
         extern crate alloc;
         use super::super::super::digest;
-        use crate::polyfill;
+        use crate::polyfill::u64_from_usize;
         use alloc::vec;
 
         macro_rules! max_input_tests {
@@ -596,11 +594,12 @@ mod tests {
             // of input; according to the spec, SHA-384 and SHA-512
             // support up to 2^128-1, but that's not implemented yet.
             let max_bytes = 1u64 << (64 - 3);
-            let max_blocks = max_bytes / polyfill::u64_from_usize(alg.block_len());
+            let max_blocks = max_bytes / u64_from_usize(alg.block_len());
+            let completed_bytes = (max_blocks - 1) * u64_from_usize(alg.block_len());
             digest::Context {
                 block: digest::BlockContext {
                     state: alg.initial_state.clone(),
-                    completed_data_blocks: max_blocks - 1,
+                    completed_bytes,
                     algorithm: alg,
                 },
                 pending: [0u8; digest::MAX_BLOCK_LEN],
