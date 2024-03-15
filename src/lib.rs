@@ -124,6 +124,9 @@ pub mod rsa;
 
 pub mod signature;
 
+#[cfg(test)]
+mod tests;
+
 mod sealed {
     /// Traits that are designed to only be implemented internally in *ring*.
     //
