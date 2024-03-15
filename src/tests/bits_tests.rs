@@ -31,7 +31,7 @@ fn test_from_byte_len_overflow() {
         assert_eq!(bits.as_bits(), usize::MAX & !0b111);
     }
 
-    // Minimum invalid input for BitLength<usize>.
+    // Minimum invalid usize input for BitLength<usize>.
     assert_eq!(
         BitLength::<usize>::from_byte_len(USIZE_MAX_VALID_BYTES + 1),
         Err(error::Unspecified)
@@ -49,5 +49,19 @@ fn test_from_byte_len_overflow() {
                 (u64_from_usize(USIZE_MAX_VALID_BYTES) + 1) * 8
             );
         }
+    }
+
+    const U64_MAX_VALID_BYTES: u64 = u64::MAX / 8;
+
+    // Maximum valid u64 input for BitLength<u64>.
+    {
+        let bits = BitLength::<u64>::from_byte_len(U64_MAX_VALID_BYTES).unwrap();
+        assert_eq!(bits.as_bits(), u64::MAX & !0b111);
+    }
+
+    // Minimum invalid usize input for BitLength<u64> on 64-bit targets.
+    {
+        let bits = BitLength::<u64>::from_byte_len(U64_MAX_VALID_BYTES + 1);
+        assert_eq!(bits, Err(error::Unspecified));
     }
 }

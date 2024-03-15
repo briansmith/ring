@@ -38,6 +38,14 @@ impl FromByteLen<usize> for BitLength<usize> {
     }
 }
 
+impl FromByteLen<u64> for BitLength<u64> {
+    #[inline]
+    fn from_byte_len(bytes: u64) -> Result<Self, error::Unspecified> {
+        let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
+        Ok(Self(bits))
+    }
+}
+
 impl FromByteLen<usize> for BitLength<u64> {
     #[inline]
     fn from_byte_len(bytes: usize) -> Result<Self, error::Unspecified> {
