@@ -1,6 +1,6 @@
 use crate::{
     arithmetic::{bigint, montgomery::RR},
-    bits::{self, FromUsizeBytes as _},
+    bits::{self, FromByteLen as _},
     cpu, error,
     rsa::N,
 };
@@ -46,7 +46,7 @@ impl PublicModulus {
         // flexible to be compatible with other commonly-used crypto libraries.
         assert!(min_bits >= MIN_BITS);
         let bits_rounded_up =
-            bits::BitLength::from_usize_bytes(bits.as_usize_bytes_rounded_up()).unwrap(); // TODO: safe?
+            bits::BitLength::from_byte_len(bits.as_usize_bytes_rounded_up()).unwrap(); // TODO: safe?
         if bits_rounded_up < min_bits {
             return Err(error::KeyRejected::too_small());
         }

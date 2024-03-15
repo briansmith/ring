@@ -18,7 +18,7 @@ use super::{
     quic::Sample,
 };
 use crate::{
-    bits::{BitLength, FromUsizeBytes},
+    bits::{BitLength, FromByteLen as _},
     c, cpu,
     endian::BigEndian,
     error,
@@ -135,7 +135,7 @@ impl Key {
             Variant::AES_128 => BitLength::from_usize_bits(128),
             Variant::AES_256 => BitLength::from_usize_bits(256),
         };
-        if BitLength::from_usize_bytes(bytes.len())? != key_bits {
+        if BitLength::from_byte_len(bytes.len())? != key_bits {
             return Err(error::Unspecified);
         }
 

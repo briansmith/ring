@@ -23,24 +23,24 @@ use crate::{error, polyfill};
 #[repr(transparent)]
 pub struct BitLength<T = usize>(T);
 
-pub(crate) trait FromUsizeBytes: Sized {
+pub(crate) trait FromByteLen<T>: Sized {
     /// Constructs a `BitLength` from the given length in bytes.
     ///
     /// Fails if `bytes * 8` is too large for a `T`.
-    fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified>;
+    fn from_byte_len(bytes: T) -> Result<Self, error::Unspecified>;
 }
 
-impl FromUsizeBytes for BitLength<usize> {
+impl FromByteLen<usize> for BitLength<usize> {
     #[inline]
-    fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified> {
+    fn from_byte_len(bytes: usize) -> Result<Self, error::Unspecified> {
         let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
         Ok(Self(bits))
     }
 }
 
-impl FromUsizeBytes for BitLength<u64> {
+impl FromByteLen<usize> for BitLength<u64> {
     #[inline]
-    fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified> {
+    fn from_byte_len(bytes: usize) -> Result<Self, error::Unspecified> {
         let bytes = polyfill::u64_from_usize(bytes);
         let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
         Ok(Self(bits))
