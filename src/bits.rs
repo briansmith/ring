@@ -91,3 +91,9 @@ impl BitLength<usize> {
         Ok(Self(sum))
     }
 }
+
+impl BitLength<u64> {
+    pub fn to_be_bytes(self) -> [u8; 8] {
+        self.0.to_be_bytes()
+    }
+}
