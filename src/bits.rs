@@ -48,7 +48,7 @@ impl FromUsizeBytes for BitLength<u64> {
 }
 
 impl<T: Copy> BitLength<T> {
-    /// The number of bits this bit length represents, as a `usize`.
+    /// The number of bits this bit length represents, as the underlying type.
     #[inline]
     pub fn as_bits(self) -> T {
         self.0
