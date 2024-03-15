@@ -33,7 +33,7 @@ pub(crate) trait FromUsizeBytes: Sized {
 impl FromUsizeBytes for BitLength<usize> {
     #[inline]
     fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified> {
-        let bits = bytes.checked_shl(3).ok_or(error::Unspecified)?;
+        let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
         Ok(Self(bits))
     }
 }
@@ -42,7 +42,7 @@ impl FromUsizeBytes for BitLength<u64> {
     #[inline]
     fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified> {
         let bytes = polyfill::u64_from_usize(bytes);
-        let bits = bytes.checked_shl(3).ok_or(error::Unspecified)?;
+        let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
         Ok(Self(bits))
     }
 }
