@@ -268,7 +268,7 @@ impl Context {
         F: FnOnce(Block, cpu::Features) -> super::Tag,
     {
         self.update_block(Block::from(
-            [self.aad_len.as_bits(), self.in_out_len.as_bits()].map(u64::to_be_bytes),
+            [self.aad_len, self.in_out_len].map(BitLength::to_be_bytes),
         ));
 
         f(self.inner.Xi.0, self.cpu_features)
