@@ -28,7 +28,10 @@ use self::{
     dynstate::DynState,
     sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
 };
-use crate::{cpu, debug, polyfill};
+use crate::{
+    bits::{BitLength, FromByteLen as _},
+    cpu, debug, polyfill,
+};
 use core::num::Wrapping;
 
 mod dynstate;
@@ -95,13 +98,12 @@ impl BlockContext {
         pending[padding_pos..(block_len - 8)].fill(0);
 
         // Output the length, in bits, in big endian order.
-        let completed_data_bits = self
+        let completed_bytes = self
             .completed_bytes
             .checked_add(polyfill::u64_from_usize(num_pending))
-            .unwrap()
-            .checked_mul(8)
             .unwrap();
-        pending[(block_len - 8)..].copy_from_slice(&u64::to_be_bytes(completed_data_bits));
+        let copmleted_bits = BitLength::from_byte_len(completed_bytes).unwrap();
+        pending[(block_len - 8)..].copy_from_slice(&copmleted_bits.to_be_bytes());
 
         let (completed_bytes, leftover) = self.block_data_order(pending, cpu_features);
         debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
