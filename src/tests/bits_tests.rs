@@ -15,31 +15,31 @@
 use crate::{
     polyfill::u64_from_usize,
     {
-        bits::{BitLength, FromUsizeBytes as _},
+        bits::{BitLength, FromByteLen as _},
         error,
     },
 };
 
 #[test]
-fn test_from_usize_bytes_overflow() {
+fn test_from_byte_len_overflow() {
     const USIZE_MAX_VALID_BYTES: usize = usize::MAX / 8;
 
     // Maximum valid input for BitLength<usize>.
     {
-        let bits = BitLength::<usize>::from_usize_bytes(USIZE_MAX_VALID_BYTES).unwrap();
+        let bits = BitLength::<usize>::from_byte_len(USIZE_MAX_VALID_BYTES).unwrap();
         assert_eq!(bits.as_usize_bytes_rounded_up(), USIZE_MAX_VALID_BYTES);
         assert_eq!(bits.as_bits(), usize::MAX & !0b111);
     }
 
     // Minimum invalid input for BitLength<usize>.
     assert_eq!(
-        BitLength::<usize>::from_usize_bytes(USIZE_MAX_VALID_BYTES + 1),
+        BitLength::<usize>::from_byte_len(USIZE_MAX_VALID_BYTES + 1),
         Err(error::Unspecified)
     );
 
     // Minimum invalid usize input for BitLength<u64> on 64-bit targets.
     {
-        let bits = BitLength::<u64>::from_usize_bytes(USIZE_MAX_VALID_BYTES + 1);
+        let bits = BitLength::<u64>::from_byte_len(USIZE_MAX_VALID_BYTES + 1);
         if cfg!(target_pointer_width = "64") {
             assert_eq!(bits, Err(error::Unspecified));
         } else {

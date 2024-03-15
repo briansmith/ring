@@ -18,7 +18,7 @@ use super::{
     parse_public_key, public_key, PublicExponent, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
 };
 use crate::{
-    bits::{self, FromUsizeBytes as _},
+    bits::{self, FromByteLen as _},
     cpu, digest, error, sealed, signature,
 };
 
@@ -201,7 +201,7 @@ pub(crate) fn verify_rsa_(
     cpu_features: cpu::Features,
 ) -> Result<(), error::Unspecified> {
     let max_bits: bits::BitLength =
-        bits::BitLength::from_usize_bytes(PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;
+        bits::BitLength::from_byte_len(PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;
 
     // XXX: FIPS 186-4 seems to indicate that the minimum
     // exponent value is 2**16 + 1, but it isn't clear if this is just for

@@ -18,7 +18,7 @@ use super::{
     Aad,
 };
 use crate::{
-    bits::{BitLength, FromUsizeBytes},
+    bits::{BitLength, FromByteLen as _},
     cpu, error,
     polyfill::ArraySplitMap,
 };
@@ -114,8 +114,8 @@ impl Context {
                 Xi: Xi(Block::zero()),
                 Htable: key.h_table.clone(),
             },
-            aad_len: BitLength::from_usize_bytes(aad.as_ref().len())?,
-            in_out_len: BitLength::from_usize_bytes(in_out_len)?,
+            aad_len: BitLength::from_byte_len(aad.as_ref().len())?,
+            in_out_len: BitLength::from_byte_len(in_out_len)?,
             cpu_features,
         };
 
