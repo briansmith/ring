@@ -229,11 +229,16 @@ static int aes_xts_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
 }
 
 static const EVP_CIPHER aes_256_xts = {
-    NID_aes_256_xts,     1 /* block_size */,  64 /* key_size (2 AES keys) */,
-    16 /* iv_len */,     sizeof(EVP_AES_XTS_CTX),
+    NID_aes_256_xts,
+    1 /* block_size */,
+    64 /* key_size (2 AES keys) */,
+    16 /* iv_len */,
+    sizeof(EVP_AES_XTS_CTX),
     EVP_CIPH_XTS_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_ALWAYS_CALL_INIT |
         EVP_CIPH_CTRL_INIT | EVP_CIPH_CUSTOM_COPY,
-    NULL /* app_data */, aes_xts_init_key,    aes_xts_cipher,
-    NULL /* cleanup */,  aes_xts_ctrl};
+    aes_xts_init_key,
+    aes_xts_cipher,
+    NULL /* cleanup */,
+    aes_xts_ctrl};
 
 const EVP_CIPHER *EVP_aes_256_xts(void) { return &aes_256_xts; }
