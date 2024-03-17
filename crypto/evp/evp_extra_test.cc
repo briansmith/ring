@@ -1216,3 +1216,11 @@ TEST(EVPExtraTest, Parameters) {
   EXPECT_FALSE(EVP_PKEY_copy_parameters(rsa.get(), p256.get()));
   EXPECT_EQ(EVP_PKEY_RSA, EVP_PKEY_id(rsa.get()));
 }
+
+TEST(EVPExtraTest, RawKeyUnsupported) {
+  static const uint8_t kKey[] = {1, 2, 3, 4};
+  EXPECT_FALSE(
+      EVP_PKEY_new_raw_public_key(EVP_PKEY_RSA, nullptr, kKey, sizeof(kKey)));
+  EXPECT_FALSE(
+      EVP_PKEY_new_raw_private_key(EVP_PKEY_RSA, nullptr, kKey, sizeof(kKey)));
+}

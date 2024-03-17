@@ -372,16 +372,26 @@ int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
 
 EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
                                        const uint8_t *in, size_t len) {
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL ||
-      !EVP_PKEY_set_type(ret, type)) {
-    goto err;
+  // To avoid pulling in all key types, look for specifically the key types that
+  // support |set_priv_raw|.
+  const EVP_PKEY_ASN1_METHOD *method;
+  switch (type) {
+    case EVP_PKEY_X25519:
+      method = &x25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519:
+      method = &ed25519_asn1_meth;
+      break;
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+      return 0;
   }
 
-  if (ret->ameth->set_priv_raw == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL) {
     goto err;
   }
+  evp_pkey_set_method(ret, method);
 
   if (!ret->ameth->set_priv_raw(ret, in, len)) {
     goto err;
@@ -396,16 +406,26 @@ err:
 
 EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
                                       const uint8_t *in, size_t len) {
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL ||
-      !EVP_PKEY_set_type(ret, type)) {
-    goto err;
+  // To avoid pulling in all key types, look for specifically the key types that
+  // support |set_pub_raw|.
+  const EVP_PKEY_ASN1_METHOD *method;
+  switch (type) {
+    case EVP_PKEY_X25519:
+      method = &x25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519:
+      method = &ed25519_asn1_meth;
+      break;
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+      return 0;
   }
 
-  if (ret->ameth->set_pub_raw == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL) {
     goto err;
   }
+  evp_pkey_set_method(ret, method);
 
   if (!ret->ameth->set_pub_raw(ret, in, len)) {
     goto err;
