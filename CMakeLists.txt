@@ -627,9 +627,14 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
 
 add_custom_target(
     run_tests
+    COMMAND ${CMAKE_COMMAND} -E echo "Running Go tests"
     COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
+    COMMAND ${CMAKE_COMMAND} -E echo
+    COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
     COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
             ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E echo
+    COMMAND ${CMAKE_COMMAND} -E echo "Running SSL tests"
     COMMAND cd ssl/test/runner &&
             ${GO_EXECUTABLE} test -shim-path $<TARGET_FILE:bssl_shim>
               ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
