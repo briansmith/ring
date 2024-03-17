@@ -295,6 +295,10 @@ extern const EVP_PKEY_METHOD ed25519_pkey_meth;
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
 extern const EVP_PKEY_METHOD hkdf_pkey_meth;
 
+// evp_pkey_set_method behaves like |EVP_PKEY_set_type|, but takes a pointer to
+// a method table. This avoids depending on every |EVP_PKEY_ASN1_METHOD|.
+void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method);
+
 
 #if defined(__cplusplus)
 }  // extern C

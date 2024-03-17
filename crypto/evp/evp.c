@@ -149,9 +149,7 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
   if (to->type == EVP_PKEY_NONE) {
-    if (!EVP_PKEY_set_type(to, from->type)) {
-      return 0;
-    }
+    evp_pkey_set_method(to, from->ameth);
   } else if (to->type != from->type) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
     return 0;
@@ -225,8 +223,7 @@ static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
   }
 }
 
-static void evp_pkey_set_method(EVP_PKEY *pkey,
-                                const EVP_PKEY_ASN1_METHOD *method) {
+void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method) {
   free_it(pkey);
   pkey->ameth = method;
   pkey->type = pkey->ameth->pkey_id;
