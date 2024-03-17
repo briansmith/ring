@@ -69,6 +69,7 @@
 #include "../internal.h"
 
 
+// We intentionally omit |dh_asn1_meth| from this list. It is not serializable.
 static const EVP_PKEY_ASN1_METHOD *const kASN1Methods[] = {
     &rsa_asn1_meth,
     &ec_asn1_meth,

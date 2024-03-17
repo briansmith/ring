@@ -158,6 +158,8 @@ add_library(
   evp/evp.c
   evp/evp_asn1.c
   evp/evp_ctx.c
+  evp/p_dh.c
+  evp/p_dh_asn1.c
   evp/p_dsa_asn1.c
   evp/p_ec.c
   evp/p_ec_asn1.c
