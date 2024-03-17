@@ -516,11 +516,20 @@ add_custom_command(
 add_library(crypto_test_data OBJECT crypto_test_data.cc)
 
 add_subdirectory(crypto)
-add_subdirectory(ssl)
 add_subdirectory(ssl/test)
 add_subdirectory(util/fipstools)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
-add_subdirectory(decrepit)
+
+add_library(ssl ${SSL_SOURCES})
+# Although libssl also provides headers that require an include directory, the
+# flag is already specified by libcrypto, so we omit target_include_directories
+# here.
+install_if_enabled(TARGETS ssl EXPORT OpenSSLTargets ${INSTALL_DESTINATION_DEFAULT})
+set_property(TARGET ssl PROPERTY EXPORT_NAME SSL)
+target_link_libraries(ssl crypto)
+
+add_library(decrepit ${DECREPIT_SOURCES})
+target_link_libraries(decrepit crypto ssl)
 
 add_library(test_support_lib STATIC ${TEST_SUPPORT_SOURCES})
 if (LIBUNWIND_FOUND)
@@ -547,7 +556,6 @@ add_dependencies(all_tests crypto_test)
 add_executable(ssl_test ${SSL_TEST_SOURCES})
 target_link_libraries(ssl_test test_support_lib boringssl_gtest ssl crypto)
 add_dependencies(all_tests ssl_test)
-
 add_executable(decrepit_test ${DECREPIT_TEST_SOURCES})
 target_link_libraries(decrepit_test test_support_lib boringssl_gtest
                       decrepit crypto)
@@ -580,8 +588,8 @@ target_link_libraries(bssl ssl crypto)
 # existing tools, we, for now, copy the targets into the subdirectories. This
 # will be removed sometime in 2024.
 copy_post_build(crypto crypto_test urandom_test)
-copy_post_build(ssl ssl_test)
-copy_post_build(decrepit decrepit_test)
+copy_post_build(ssl ssl ssl_test)
+copy_post_build(decrepit decrepit decrepit_test)
 copy_post_build(tool bssl)
 
 if(FUZZ)

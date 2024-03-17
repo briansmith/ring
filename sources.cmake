@@ -331,12 +331,77 @@ set(
 )
 
 set(
+  SSL_SOURCES
+
+  ssl/bio_ssl.cc
+  ssl/d1_both.cc
+  ssl/d1_lib.cc
+  ssl/d1_pkt.cc
+  ssl/d1_srtp.cc
+  ssl/dtls_method.cc
+  ssl/dtls_record.cc
+  ssl/encrypted_client_hello.cc
+  ssl/extensions.cc
+  ssl/handoff.cc
+  ssl/handshake.cc
+  ssl/handshake_client.cc
+  ssl/handshake_server.cc
+  ssl/s3_both.cc
+  ssl/s3_lib.cc
+  ssl/s3_pkt.cc
+  ssl/ssl_aead_ctx.cc
+  ssl/ssl_asn1.cc
+  ssl/ssl_buffer.cc
+  ssl/ssl_cert.cc
+  ssl/ssl_cipher.cc
+  ssl/ssl_credential.cc
+  ssl/ssl_file.cc
+  ssl/ssl_key_share.cc
+  ssl/ssl_lib.cc
+  ssl/ssl_privkey.cc
+  ssl/ssl_session.cc
+  ssl/ssl_stat.cc
+  ssl/ssl_transcript.cc
+  ssl/ssl_versions.cc
+  ssl/ssl_x509.cc
+  ssl/t1_enc.cc
+  ssl/tls_method.cc
+  ssl/tls_record.cc
+  ssl/tls13_both.cc
+  ssl/tls13_client.cc
+  ssl/tls13_enc.cc
+  ssl/tls13_server.cc
+)
+
+set(
   SSL_TEST_SOURCES
 
   crypto/test/gtest_main.cc
   ssl/span_test.cc
   ssl/ssl_c_test.c
   ssl/ssl_test.cc
+)
+
+set(
+  DECREPIT_SOURCES
+
+  decrepit/bio/base64_bio.c
+  decrepit/blowfish/blowfish.c
+  decrepit/cast/cast.c
+  decrepit/cast/cast_tables.c
+  decrepit/cfb/cfb.c
+  decrepit/des/cfb64ede.c
+  decrepit/dh/dh_decrepit.c
+  decrepit/dsa/dsa_decrepit.c
+  decrepit/evp/dss1.c
+  decrepit/evp/evp_do_all.c
+  decrepit/obj/obj_decrepit.c
+  decrepit/rc4/rc4_decrepit.c
+  decrepit/ripemd/ripemd.c
+  decrepit/rsa/rsa_decrepit.c
+  decrepit/ssl/ssl_decrepit.c
+  decrepit/x509/x509_decrepit.c
+  decrepit/xts/xts.c
 )
 
 set(

@@ -365,8 +365,8 @@ func main() {
 			"libboringssl_gtest.so",
 			"libpki.so",
 			"crypto/libcrypto.so",
-			"decrepit/libdecrepit.so",
-			"ssl/libssl.so",
+			"libdecrepit.so",
+			"libssl.so",
 		}
 	} else if !os.IsNotExist(err) {
 		fmt.Printf("Failed to stat crypto/libcrypto.so: %s\n", err)

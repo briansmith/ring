@@ -796,7 +796,6 @@ def main(platforms):
   crypto_c_files = (FindCFiles(os.path.join('src', 'crypto'), NoTestsNorFIPSFragments) +
                     FindCFiles(os.path.join('src', 'third_party', 'fiat'), NoTestsNorFIPSFragments))
   fips_fragments = FindCFiles(os.path.join('src', 'crypto', 'fipsmodule'), OnlyFIPSFragments)
-  ssl_source_files = FindCFiles(os.path.join('src', 'ssl'), NoTests)
   tool_h_files = FindHeaderFiles(os.path.join('src', 'tool'), AllFiles)
   bssl_sys_files = FindRustFiles(os.path.join('src', 'rust', 'bssl-sys', 'src'))
   bssl_crypto_files = FindRustFiles(os.path.join('src', 'rust', 'bssl-crypto', 'src'))
@@ -883,7 +882,7 @@ def main(platforms):
       'pki_test_data': PrefixWithSrc(cmake['PKI_TEST_DATA']),
       'rust_bssl_crypto': bssl_crypto_files,
       'rust_bssl_sys': bssl_sys_files,
-      'ssl': ssl_source_files,
+      'ssl': PrefixWithSrc(cmake['SSL_SOURCES']),
       'ssl_headers': ssl_h_files,
       'ssl_internal_headers': ssl_internal_h_files,
       'ssl_test': PrefixWithSrc(cmake['SSL_TEST_SOURCES']),
