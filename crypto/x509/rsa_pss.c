@@ -125,7 +125,11 @@ static int rsa_md_to_algor(X509_ALGOR **palg, const EVP_MD *md) {
   if (*palg == NULL) {
     return 0;
   }
-  X509_ALGOR_set_md(*palg, md);
+  if (!X509_ALGOR_set_md(*palg, md)) {
+    X509_ALGOR_free(*palg);
+    *palg = NULL;
+    return 0;
+  }
   return 1;
 }
 

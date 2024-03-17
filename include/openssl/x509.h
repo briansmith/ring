@@ -2696,7 +2696,7 @@ OPENSSL_EXPORT void X509_ALGOR_get0(const ASN1_OBJECT **out_obj,
 
 // X509_ALGOR_set_md sets |alg| to the hash function |md|. Note this
 // AlgorithmIdentifier represents the hash function itself, not a signature
-// algorithm that uses |md|.
+// algorithm that uses |md|. It returns one on success and zero on error.
 //
 // Due to historical specification mistakes (see Section 2.1 of RFC 4055), the
 // parameters field is sometimes omitted and sometimes a NULL value. When used
@@ -2707,7 +2707,7 @@ OPENSSL_EXPORT void X509_ALGOR_get0(const ASN1_OBJECT **out_obj,
 //
 // TODO(davidben): Rename this function, or perhaps just add a bespoke API for
 // constructing PSS and move on.
-OPENSSL_EXPORT void X509_ALGOR_set_md(X509_ALGOR *alg, const EVP_MD *md);
+OPENSSL_EXPORT int X509_ALGOR_set_md(X509_ALGOR *alg, const EVP_MD *md);
 
 // X509_ALGOR_cmp returns zero if |a| and |b| are equal, and some non-zero value
 // otherwise. Note this function can only be used for equality checks, not an
