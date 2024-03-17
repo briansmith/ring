@@ -2697,6 +2697,16 @@ OPENSSL_EXPORT void X509_ALGOR_get0(const ASN1_OBJECT **out_obj,
 // X509_ALGOR_set_md sets |alg| to the hash function |md|. Note this
 // AlgorithmIdentifier represents the hash function itself, not a signature
 // algorithm that uses |md|.
+//
+// Due to historical specification mistakes (see Section 2.1 of RFC 4055), the
+// parameters field is sometimes omitted and sometimes a NULL value. When used
+// in RSASSA-PSS and RSAES-OAEP, it should be a NULL value. In other contexts,
+// the parameters should be omitted. This function assumes the caller is
+// constructing a RSASSA-PSS or RSAES-OAEP AlgorithmIdentifier and includes a
+// NULL parameter. This differs from OpenSSL's behavior.
+//
+// TODO(davidben): Rename this function, or perhaps just add a bespoke API for
+// constructing PSS and move on.
 OPENSSL_EXPORT void X509_ALGOR_set_md(X509_ALGOR *alg, const EVP_MD *md);
 
 // X509_ALGOR_cmp returns zero if |a| and |b| are equal, and some non-zero value
