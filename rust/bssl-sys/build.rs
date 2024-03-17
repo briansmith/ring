@@ -78,6 +78,23 @@ fn get_bssl_build_dir() -> PathBuf {
     return Path::new(&crate_dir).join("../../build");
 }
 
+fn get_cpp_runtime_lib() -> Option<String> {
+    println!("cargo:rerun-if-env-changed=BORINGSSL_RUST_CPPLIB");
+
+    if let Ok(cpp_lib) = env::var("BORINGSSL_RUST_CPPLIB") {
+        return Some(cpp_lib);
+    }
+
+    if env::var_os("CARGO_CFG_UNIX").is_some() {
+        match env::var("CARGO_CFG_TARGET_OS").unwrap().as_ref() {
+            "macos" => Some("c++".into()),
+            _ => Some("stdc++".into()),
+        }
+    } else {
+        None
+    }
+}
+
 fn main() {
     let bssl_build_dir = get_bssl_build_dir();
     let bssl_sys_build_dir = bssl_build_dir.join("rust/bssl-sys");
@@ -105,6 +122,10 @@ fn main() {
         bssl_sys_build_dir.display()
     );
     println!("cargo:rustc-link-lib=static=rust_wrapper");
+
+    if let Some(cpp_lib) = get_cpp_runtime_lib() {
+        println!("cargo:rustc-link-lib={}", cpp_lib);
+    }
 
     println!("cargo:conf={}", OSSL_CONF_DEFINES.join(","));
 }
