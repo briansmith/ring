@@ -59,12 +59,9 @@
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/dsa.h>
-#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
-#include <openssl/rsa.h>
 #include <openssl/thread.h>
 
 #include "internal.h"
@@ -235,96 +232,6 @@ int EVP_PKEY_type(int nid) {
     return NID_undef;
   }
   return meth->pkey_id;
-}
-
-int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
-  if (EVP_PKEY_assign_RSA(pkey, key)) {
-    RSA_up_ref(key);
-    return 1;
-  }
-  return 0;
-}
-
-int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
-  evp_pkey_set_method(pkey, &rsa_asn1_meth);
-  pkey->pkey = key;
-  return key != NULL;
-}
-
-RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
-  if (pkey->type != EVP_PKEY_RSA) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_RSA_KEY);
-    return NULL;
-  }
-  return pkey->pkey;
-}
-
-RSA *EVP_PKEY_get1_RSA(const EVP_PKEY *pkey) {
-  RSA *rsa = EVP_PKEY_get0_RSA(pkey);
-  if (rsa != NULL) {
-    RSA_up_ref(rsa);
-  }
-  return rsa;
-}
-
-int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
-  if (EVP_PKEY_assign_DSA(pkey, key)) {
-    DSA_up_ref(key);
-    return 1;
-  }
-  return 0;
-}
-
-int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
-  evp_pkey_set_method(pkey, &dsa_asn1_meth);
-  pkey->pkey = key;
-  return key != NULL;
-}
-
-DSA *EVP_PKEY_get0_DSA(const EVP_PKEY *pkey) {
-  if (pkey->type != EVP_PKEY_DSA) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_DSA_KEY);
-    return NULL;
-  }
-  return pkey->pkey;
-}
-
-DSA *EVP_PKEY_get1_DSA(const EVP_PKEY *pkey) {
-  DSA *dsa = EVP_PKEY_get0_DSA(pkey);
-  if (dsa != NULL) {
-    DSA_up_ref(dsa);
-  }
-  return dsa;
-}
-
-int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
-  if (EVP_PKEY_assign_EC_KEY(pkey, key)) {
-    EC_KEY_up_ref(key);
-    return 1;
-  }
-  return 0;
-}
-
-int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
-  evp_pkey_set_method(pkey, &ec_asn1_meth);
-  pkey->pkey = key;
-  return key != NULL;
-}
-
-EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
-  if (pkey->type != EVP_PKEY_EC) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_EC_KEY_KEY);
-    return NULL;
-  }
-  return pkey->pkey;
-}
-
-EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey) {
-  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
-  if (ec_key != NULL) {
-    EC_KEY_up_ref(ec_key);
-  }
-  return ec_key;
 }
 
 DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey) { return NULL; }
