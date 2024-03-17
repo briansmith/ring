@@ -1018,40 +1018,60 @@ static void ExpectECGroupAndKey(const EVP_PKEY *pkey, int nid) {
 }
 
 TEST(EVPExtraTest, ECKeygen) {
-  // |EVP_PKEY_paramgen| may be used as an extremely roundabout way to get an
-  // |EC_GROUP|.
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
-  ASSERT_TRUE(
-      EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), NID_X9_62_prime256v1));
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw));
-  bssl::UniquePtr<EVP_PKEY> pkey(raw);
-  raw = nullptr;
-  ExpectECGroupOnly(pkey.get(), NID_X9_62_prime256v1);
+  for (bool copy : {false, true}) {
+    SCOPED_TRACE(copy);
 
-  // That resulting |EVP_PKEY| may be used as a template for key generation.
-  ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  pkey.reset(raw);
-  raw = nullptr;
-  ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
+    auto maybe_copy = [&](bssl::UniquePtr<EVP_PKEY_CTX> *ctx) -> bool {
+      if (copy) {
+        ctx->reset(EVP_PKEY_CTX_dup(ctx->get()));
+      }
+      return *ctx != nullptr;
+    };
 
-  // |EVP_PKEY_paramgen| may also be skipped.
-  ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  ASSERT_TRUE(
-      EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), NID_X9_62_prime256v1));
-  raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  pkey.reset(raw);
-  raw = nullptr;
-  ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
+    // |EVP_PKEY_paramgen| may be used as an extremely roundabout way to get an
+    // |EC_GROUP|.
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(maybe_copy(&ctx));
+    ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+    ASSERT_TRUE(maybe_copy(&ctx));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(),
+                                                       NID_X9_62_prime256v1));
+    ASSERT_TRUE(maybe_copy(&ctx));
+    EVP_PKEY *raw = nullptr;
+    ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw);
+    raw = nullptr;
+    ExpectECGroupOnly(pkey.get(), NID_X9_62_prime256v1);
+
+    // That resulting |EVP_PKEY| may be used as a template for key generation.
+    ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(maybe_copy(&ctx));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    ASSERT_TRUE(maybe_copy(&ctx));
+    raw = nullptr;
+    ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+    pkey.reset(raw);
+    raw = nullptr;
+    ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
+
+    // |EVP_PKEY_paramgen| may also be skipped.
+    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(maybe_copy(&ctx));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    ASSERT_TRUE(maybe_copy(&ctx));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(),
+                                                       NID_X9_62_prime256v1));
+    ASSERT_TRUE(maybe_copy(&ctx));
+    raw = nullptr;
+    ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+    pkey.reset(raw);
+    raw = nullptr;
+    ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
+  }
 }
 
 // Test that |EVP_PKEY_keygen| works for Ed25519.

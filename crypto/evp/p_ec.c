@@ -90,15 +90,14 @@ static int pkey_ec_init(EVP_PKEY_CTX *ctx) {
 }
 
 static int pkey_ec_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
-  EC_PKEY_CTX *dctx, *sctx;
   if (!pkey_ec_init(dst)) {
     return 0;
   }
-  sctx = src->data;
-  dctx = dst->data;
 
+  const EC_PKEY_CTX *sctx = src->data;
+  EC_PKEY_CTX *dctx = dst->data;
   dctx->md = sctx->md;
-
+  dctx->gen_group = sctx->gen_group;
   return 1;
 }
 
