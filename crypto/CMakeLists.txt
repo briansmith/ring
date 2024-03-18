@@ -3,12 +3,9 @@ add_subdirectory(fipsmodule)
 if(FIPS_DELOCATE OR FIPS_SHARED)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
-
-  set(
-    CRYPTO_FIPS_OBJECTS
-
-    fipsmodule/bcm.o
-  )
+  set(CRYPTO_FIPS_OBJECTS fipsmodule/bcm.o)
+else()
+  set(CRYPTO_FIPS_OBJECTS $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
 set(
@@ -175,6 +172,7 @@ add_library(
   evp/scrypt.c
   evp/sign.c
   ex_data.c
+  fipsmodule/fips_shared_support.c
   hpke/hpke.c
   hrss/hrss.c
   keccak/keccak.c
@@ -300,7 +298,6 @@ add_library(
   x509/x509rset.c
   x509/x509spki.c
 
-  $<TARGET_OBJECTS:fipsmodule>
   ${CRYPTO_FIPS_OBJECTS}
 )
 if(OPENSSL_ASM)

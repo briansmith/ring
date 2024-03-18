@@ -58,13 +58,7 @@ if(FIPS_DELOCATE)
     message(FATAL_ERROR "Can't set both delocate and shared mode for FIPS build")
   endif()
 
-  add_library(
-    bcm_c_generated_asm
-
-    STATIC
-
-    bcm.c
-  )
+  add_library(bcm_c_generated_asm STATIC bcm.c)
   add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
   target_include_directories(bcm_c_generated_asm PRIVATE ../../include)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
@@ -98,13 +92,7 @@ if(FIPS_DELOCATE)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
-  add_library(
-    bcm_hashunset
-
-    STATIC
-
-    bcm-delocated.S
-  )
+  add_library(bcm_hashunset STATIC bcm-delocated.S)
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
@@ -121,40 +109,12 @@ if(FIPS_DELOCATE)
   # CMakeLists.txt that defines it. Thus we have to wrap bcm.o in a custom target
   # so that crypto can depend on it.
   add_custom_target(bcm_o_target DEPENDS bcm.o)
-
-  add_library(
-    fipsmodule
-
-    OBJECT
-
-    fips_shared_support.c
-  )
-  add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule PRIVATE ../../include)
-  set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 elseif(FIPS_SHARED)
   if(NOT BUILD_SHARED_LIBS)
     message(FATAL_ERROR "FIPS_SHARED set but not BUILD_SHARED_LIBS")
   endif()
 
-  add_library(
-    fipsmodule
-
-    OBJECT
-
-    fips_shared_support.c
-  )
-  add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule PRIVATE ../../include)
-
-  add_library(
-    bcm_library
-
-    STATIC
-
-    bcm.c
-    ${BCM_SOURCES_ASM_USED}
-  )
+  add_library(bcm_library STATIC bcm.c ${BCM_SOURCES_ASM_USED})
   add_dependencies(bcm_library boringssl_prefix_symbols)
   target_include_directories(bcm_library PRIVATE ../../include)
 
@@ -167,15 +127,7 @@ elseif(FIPS_SHARED)
 
   add_custom_target(bcm_o_target DEPENDS bcm.o)
 else()
-  add_library(
-    fipsmodule
-
-    OBJECT
-
-    bcm.c
-    fips_shared_support.c
-    ${BCM_SOURCES_ASM_USED}
-  )
+  add_library(fipsmodule OBJECT bcm.c ${BCM_SOURCES_ASM_USED})
   add_dependencies(fipsmodule boringssl_prefix_symbols)
   target_include_directories(fipsmodule PRIVATE ../../include)
 endif()
