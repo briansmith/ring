@@ -25,8 +25,8 @@
 
 #include <openssl/err.h>
 
+#include "test_data.h"
 
-std::string GetTestData(const char *path);
 
 class StringLineReader : public FileTest::LineReader {
  public:

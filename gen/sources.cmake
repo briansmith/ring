@@ -277,7 +277,6 @@ set(
   crypto/siphash/siphash_test.cc
   crypto/spx/spx_test.cc
   crypto/stack/stack_test.cc
-  crypto/test/file_test_gtest.cc
   crypto/test/gtest_main.cc
   crypto/thread_test.cc
   crypto/trust_token/trust_token_test.cc
@@ -2100,7 +2099,9 @@ set(
 
   crypto/test/abi_test.cc
   crypto/test/file_test.cc
+  crypto/test/file_test_gtest.cc
   crypto/test/file_util.cc
+  crypto/test/test_data.cc
   crypto/test/test_util.cc
   crypto/test/wycheproof_util.cc
 )

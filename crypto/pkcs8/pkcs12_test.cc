@@ -25,10 +25,9 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
+#include "../test/test_data.h"
 #include "../test/test_util.h"
 
-
-std::string GetTestData(const char *path);
 
 // kPassword is the password shared by most of the sample PKCS#12 files.
 static const char kPassword[] = "foo";

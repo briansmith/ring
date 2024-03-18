@@ -37,14 +37,13 @@
 #include "internal.h"
 #include "../internal.h"
 #include "../test/file_util.h"
+#include "../test/test_data.h"
 #include "../test/test_util.h"
 
 #if defined(OPENSSL_THREADS)
 #include <thread>
 #endif
 
-
-std::string GetTestData(const char *path);
 
 static const char kCrossSigningRootPEM[] = R"(
 -----BEGIN CERTIFICATE-----
