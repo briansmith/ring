@@ -27,6 +27,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"boringssl.googlesource.com/boringssl/util/build"
 )
 
 var (
@@ -112,7 +114,7 @@ func run() error {
 	}
 
 	var tasks []Task
-	targetsOut := make(map[string]OutputTarget)
+	targetsOut := make(map[string]build.Target)
 	for name, targetIn := range targetsIn {
 		targetOut, targetTasks, err := targetIn.Pregenerate(name)
 		if err != nil {

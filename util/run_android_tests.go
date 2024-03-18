@@ -19,6 +19,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -30,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 
+	"boringssl.googlesource.com/boringssl/util/build"
 	"boringssl.googlesource.com/boringssl/util/testconfig"
 )
 
@@ -288,6 +290,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	targetsJSON, err := os.ReadFile("gen/sources.json")
+	if err != nil {
+		fmt.Printf("Error reading sources.json: %s.\n", err)
+		os.Exit(1)
+	}
+	var targets map[string]build.Target
+	if err := json.Unmarshal(targetsJSON, &targets); err != nil {
+		fmt.Printf("Error reading sources.json: %s.\n", err)
+		os.Exit(1)
+	}
+
 	// Clear the target directory.
 	if err := adb("shell", "rm -Rf /data/local/tmp/boringssl-tmp"); err != nil {
 		fmt.Printf("Failed to clear target directory: %s\n", err)
@@ -309,19 +322,8 @@ func main() {
 			"util/all_tests.json",
 			"BUILDING.md",
 		)
-
-		err := filepath.Walk("pki/testdata/", func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if info.Mode().IsRegular() {
-				files = append(files, path)
-			}
-			return nil
-		})
-		if err != nil {
-			fmt.Printf("Can't walk pki/testdata: %s\n", err)
-			os.Exit(1)
+		for _, target := range targets {
+			files = append(files, target.Data...)
 		}
 
 		tests, err := testconfig.ParseTestConfig("util/all_tests.json")
