@@ -110,5 +110,61 @@
         "perlasm_x86_64": [
             {"src": "crypto/test/asm/trampoline-x86_64.pl"}
         ]
+    },
+    "crypto_test": {
+        "data": [
+            "crypto/blake2/blake2b256_tests.txt",
+            "crypto/cipher_extra/test/*.txt",
+            "crypto/cipher_extra/test/nist_cavp/*.txt",
+            "crypto/curve25519/ed25519_tests.txt",
+            "crypto/ecdh_extra/ecdh_tests.txt",
+            "crypto/evp/evp_tests.txt",
+            "crypto/evp/scrypt_tests.txt",
+            "crypto/fipsmodule/aes/aes_tests.txt",
+            "crypto/fipsmodule/bn/test/*.txt",
+            "crypto/fipsmodule/cmac/cavp_3des_cmac_tests.txt",
+            "crypto/fipsmodule/cmac/cavp_aes128_cmac_tests.txt",
+            "crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt",
+            "crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt",
+            "crypto/fipsmodule/ec/ec_scalar_base_mult_tests.txt",
+            "crypto/fipsmodule/ec/p256-nistz_tests.txt",
+            "crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt",
+            "crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt",
+            "crypto/fipsmodule/modes/gcm_tests.txt",
+            "crypto/fipsmodule/rand/ctrdrbg_vectors.txt",
+            "crypto/hmac_extra/hmac_tests.txt",
+            "crypto/hpke/hpke_test_vectors.txt",
+            "crypto/keccak/keccak_tests.txt",
+            "crypto/kyber/kyber_tests.txt",
+            "crypto/pkcs8/test/*.p12",
+            "crypto/poly1305/poly1305_tests.txt",
+            "crypto/siphash/siphash_tests.txt",
+            "crypto/spx/spx_tests.txt",
+            "crypto/spx/spx_tests_deterministic.txt",
+            "crypto/x509/test/*.pem",
+            "third_party/wycheproof_testvectors/*.txt"
+        ]
+    },
+    "pki_test": {
+        "data": [
+            "pki/testdata/cert_issuer_source_static_unittest/*.pem",
+            "pki/testdata/certificate_policies_unittest/*.pem",
+            "pki/testdata/crl_unittest/*.pem",
+            "pki/testdata/name_constraints_unittest/*.pem",
+            "pki/testdata/nist-pkits/certs/*.crt",
+            "pki/testdata/nist-pkits/crls/*.crl",
+            "pki/testdata/ocsp_unittest/*.pem",
+            "pki/testdata/parse_certificate_unittest/*.pem",
+            "pki/testdata/parse_certificate_unittest/*/*.pem",
+            "pki/testdata/path_builder_unittest/*.pem",
+            "pki/testdata/path_builder_unittest/*/*.pem",
+            "pki/testdata/verify_certificate_chain_unittest/*/*.pem",
+            "pki/testdata/verify_certificate_chain_unittest/*/*.test",
+            "pki/testdata/verify_certificate_chain_unittest/pkits_errors/*.txt",
+            "pki/testdata/verify_name_match_unittest/names/*.pem",
+            "pki/testdata/verify_signed_data_unittest/*.pem",
+            "pki/testdata/verify_unittest/google-leaf.der",
+            "pki/testdata/verify_unittest/self-issued.pem"
+        ]
     }
 }

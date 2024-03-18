@@ -692,7 +692,7 @@ def main(platforms):
     # Generate crypto_test_data.cc
     with open('crypto_test_data.cc', 'w+') as out:
       subprocess.check_call(
-          ['go', 'run', 'util/embed_test_data.go'] + cmake['CRYPTO_TEST_DATA'],
+          ['go', 'run', 'util/embed_test_data.go'] + sources['crypto_test']['data'],
           cwd='src',
           stdout=out)
     crypto_test_files.append('crypto_test_data.cc')
@@ -733,14 +733,14 @@ def main(platforms):
       'crypto_headers': crypto_h_files,
       'crypto_internal_headers': crypto_internal_h_files,
       'crypto_test': crypto_test_files,
-      'crypto_test_data': sorted(PrefixWithSrc(cmake['CRYPTO_TEST_DATA'])),
+      'crypto_test_data': PrefixWithSrc(sources['crypto_test']['data']),
       'fips_fragments': fips_fragments,
       'fuzz': fuzz_c_files,
       'pki': PrefixWithSrc(cmake['PKI_SOURCES']),
       'pki_headers': pki_h_files,
       'pki_internal_headers': sorted(list(pki_internal_h_files)),
       'pki_test': PrefixWithSrc(cmake['PKI_TEST_SOURCES']),
-      'pki_test_data': PrefixWithSrc(cmake['PKI_TEST_DATA']),
+      'pki_test_data': PrefixWithSrc(sources['pki_test']['data']),
       'rust_bssl_crypto': bssl_crypto_files,
       'rust_bssl_sys': bssl_sys_files,
       'ssl': PrefixWithSrc(cmake['SSL_SOURCES']),
