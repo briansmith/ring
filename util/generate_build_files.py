@@ -628,43 +628,11 @@ def FindHeaderFiles(directory, filter_func):
   return hfiles
 
 
-def ExtractVariablesFromCMakeFile(cmakefile):
-  """Parses the contents of the CMakeLists.txt file passed as an argument and
-  returns a dictionary of exported source lists."""
-  variables = {}
-  in_set_command = False
-  set_command = []
-  with open(cmakefile) as f:
-    for line in f:
-      if '#' in line:
-        line = line[:line.index('#')]
-      line = line.strip()
-
-      if not in_set_command:
-        if line.startswith('set('):
-          in_set_command = True
-          set_command = []
-      elif line == ')':
-        in_set_command = False
-        if not set_command:
-          raise ValueError('Empty set command')
-        variables[set_command[0]] = set_command[1:]
-      else:
-        set_command.extend([c for c in line.split(' ') if c])
-
-  if in_set_command:
-    raise ValueError('Unfinished set command')
-  return variables
-
-
 def PrefixWithSrc(files):
   return ['src/' + x for x in files]
 
 
 def main(platforms):
-  # TODO(crbug.com/boringssl/542): Move everything to util/pregenerate and the
-  # new JSON file.
-  cmake = ExtractVariablesFromCMakeFile(os.path.join('src', 'sources.cmake'))
   with open(os.path.join('src', 'gen', 'sources.json')) as f:
     sources = json.load(f)
 
@@ -697,7 +665,7 @@ def main(platforms):
           stdout=out)
     crypto_test_files.append('crypto_test_data.cc')
 
-  crypto_test_files += PrefixWithSrc(cmake['CRYPTO_TEST_SOURCES'])
+  crypto_test_files += PrefixWithSrc(sources['crypto_test']['srcs'])
   crypto_test_files.sort()
 
   fuzz_c_files = FindCFiles(os.path.join('src', 'fuzz'), NoTests)
@@ -736,22 +704,22 @@ def main(platforms):
       'crypto_test_data': PrefixWithSrc(sources['crypto_test']['data']),
       'fips_fragments': fips_fragments,
       'fuzz': fuzz_c_files,
-      'pki': PrefixWithSrc(cmake['PKI_SOURCES']),
+      'pki': PrefixWithSrc(sources['pki']['srcs']),
       'pki_headers': pki_h_files,
       'pki_internal_headers': sorted(list(pki_internal_h_files)),
-      'pki_test': PrefixWithSrc(cmake['PKI_TEST_SOURCES']),
+      'pki_test': PrefixWithSrc(sources['pki_test']['srcs']),
       'pki_test_data': PrefixWithSrc(sources['pki_test']['data']),
       'rust_bssl_crypto': bssl_crypto_files,
       'rust_bssl_sys': bssl_sys_files,
-      'ssl': PrefixWithSrc(cmake['SSL_SOURCES']),
+      'ssl': PrefixWithSrc(sources['ssl']['srcs']),
       'ssl_headers': ssl_h_files,
       'ssl_internal_headers': ssl_internal_h_files,
-      'ssl_test': PrefixWithSrc(cmake['SSL_TEST_SOURCES']),
-      'tool': PrefixWithSrc(cmake['BSSL_SOURCES']),
+      'ssl_test': PrefixWithSrc(sources['ssl_test']['srcs']),
+      'tool': PrefixWithSrc(sources['bssl']['srcs']),
       'tool_headers': tool_h_files,
-      'test_support': PrefixWithSrc(cmake['TEST_SUPPORT_SOURCES']),
+      'test_support': PrefixWithSrc(sources['test_support']['srcs']),
       'test_support_headers': test_support_h_files,
-      'urandom_test': PrefixWithSrc(cmake['URANDOM_TEST_SOURCES']),
+      'urandom_test': PrefixWithSrc(sources['urandom_test']['srcs']),
   }
 
   for platform in platforms:

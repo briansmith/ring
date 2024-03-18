@@ -15,7 +15,6 @@ if(WIN32)
   set(CMAKE_GENERATOR_CC cl)
 endif()
 
-include(sources.cmake)
 include(cmake/go.cmake)
 include(cmake/paths.cmake)
 include(gen/sources.cmake)
