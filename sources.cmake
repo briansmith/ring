@@ -533,27 +533,14 @@ set(
   pki/testdata/cert_issuer_source_static_unittest/d.pem
   pki/testdata/cert_issuer_source_static_unittest/e1.pem
   pki/testdata/cert_issuer_source_static_unittest/e2.pem
-  pki/testdata/cert_issuer_source_static_unittest/generate-certs.py
   pki/testdata/cert_issuer_source_static_unittest/i1_1.pem
   pki/testdata/cert_issuer_source_static_unittest/i1_2.pem
   pki/testdata/cert_issuer_source_static_unittest/i2.pem
   pki/testdata/cert_issuer_source_static_unittest/i3_1.pem
   pki/testdata/cert_issuer_source_static_unittest/i3_2.pem
-  pki/testdata/cert_issuer_source_static_unittest/keys/C1.key
-  pki/testdata/cert_issuer_source_static_unittest/keys/C2.key
-  pki/testdata/cert_issuer_source_static_unittest/keys/D.key
-  pki/testdata/cert_issuer_source_static_unittest/keys/E1.key
-  pki/testdata/cert_issuer_source_static_unittest/keys/E2.key
-  pki/testdata/cert_issuer_source_static_unittest/keys/I1.key
-  pki/testdata/cert_issuer_source_static_unittest/keys/I2.key
-  pki/testdata/cert_issuer_source_static_unittest/keys/I3.key
-  pki/testdata/cert_issuer_source_static_unittest/keys/I3_1.key
-  pki/testdata/cert_issuer_source_static_unittest/keys/Root.key
-  pki/testdata/cert_issuer_source_static_unittest/keys/i1_1.key
   pki/testdata/cert_issuer_source_static_unittest/root.pem
   pki/testdata/certificate_policies_unittest/anypolicy.pem
   pki/testdata/certificate_policies_unittest/anypolicy_with_qualifier.pem
-  pki/testdata/certificate_policies_unittest/generate_policies.py
   pki/testdata/certificate_policies_unittest/invalid-anypolicy_with_custom_qualifier.pem
   pki/testdata/certificate_policies_unittest/invalid-empty.pem
   pki/testdata/certificate_policies_unittest/invalid-policy_1_2_3_dupe.pem
@@ -582,7 +569,6 @@ set(
   pki/testdata/crl_unittest/bad_thisupdate_in_future.pem
   pki/testdata/crl_unittest/bad_thisupdate_too_old.pem
   pki/testdata/crl_unittest/bad_wrong_issuer.pem
-  pki/testdata/crl_unittest/generate_crl_test_data.py
   pki/testdata/crl_unittest/good.pem
   pki/testdata/crl_unittest/good_fake_extension.pem
   pki/testdata/crl_unittest/good_fake_extension_no_nextupdate.pem
@@ -653,7 +639,6 @@ set(
   pki/testdata/name_constraints_unittest/dnsname2.pem
   pki/testdata/name_constraints_unittest/edipartyname-excluded.pem
   pki/testdata/name_constraints_unittest/edipartyname-permitted.pem
-  pki/testdata/name_constraints_unittest/generate_name_constraints.py
   pki/testdata/name_constraints_unittest/invalid-empty_excluded_subtree.pem
   pki/testdata/name_constraints_unittest/invalid-empty_permitted_subtree.pem
   pki/testdata/name_constraints_unittest/invalid-no_subtrees.pem
@@ -741,8 +726,6 @@ set(
   pki/testdata/name_constraints_unittest/uri-permitted.pem
   pki/testdata/name_constraints_unittest/x400address-excluded.pem
   pki/testdata/name_constraints_unittest/x400address-permitted.pem
-  pki/testdata/nist-pkits/BUILD.gn
-  pki/testdata/nist-pkits/README.chromium
   pki/testdata/nist-pkits/certs/AllCertificatesNoPoliciesTest2EE.crt
   pki/testdata/nist-pkits/certs/AllCertificatesSamePoliciesTest10EE.crt
   pki/testdata/nist-pkits/certs/AllCertificatesSamePoliciesTest13EE.crt
@@ -1321,11 +1304,6 @@ set(
   pki/testdata/nist-pkits/crls/requireExplicitPolicy7subCARE2CRL.crl
   pki/testdata/nist-pkits/crls/requireExplicitPolicy7subsubCARE2RE4CRL.crl
   pki/testdata/nist-pkits/crls/requireExplicitPolicy7subsubsubCARE2RE4CRL.crl
-  pki/testdata/nist-pkits/generate_tests.py
-  pki/testdata/nist-pkits/pkits_testcases-inl.h
-  pki/testdata/nist-pkits/test_bundle_data.filelist
-  pki/testdata/nist-pkits/test_bundle_data.globlist
-  pki/testdata/ocsp_unittest/annotate_test_data.py
   pki/testdata/ocsp_unittest/bad_ocsp_type.pem
   pki/testdata/ocsp_unittest/bad_signature.pem
   pki/testdata/ocsp_unittest/bad_status.pem
@@ -1338,7 +1316,6 @@ set(
   pki/testdata/ocsp_unittest/has_extension.pem
   pki/testdata/ocsp_unittest/has_single_extension.pem
   pki/testdata/ocsp_unittest/has_version.pem
-  pki/testdata/ocsp_unittest/make_ocsp.py
   pki/testdata/ocsp_unittest/malformed_request.pem
   pki/testdata/ocsp_unittest/missing_response.pem
   pki/testdata/ocsp_unittest/multiple_response.pem
@@ -1357,7 +1334,6 @@ set(
   pki/testdata/parse_certificate_unittest/authority_key_identifier/empty_sequence.pem
   pki/testdata/parse_certificate_unittest/authority_key_identifier/extra_contents_after_extension_sequence.pem
   pki/testdata/parse_certificate_unittest/authority_key_identifier/extra_contents_after_issuer_and_serial.pem
-  pki/testdata/parse_certificate_unittest/authority_key_identifier/generate.py
   pki/testdata/parse_certificate_unittest/authority_key_identifier/invalid_contents.pem
   pki/testdata/parse_certificate_unittest/authority_key_identifier/invalid_issuer.pem
   pki/testdata/parse_certificate_unittest/authority_key_identifier/invalid_key_identifier.pem
@@ -1416,8 +1392,6 @@ set(
   pki/testdata/parse_certificate_unittest/policy_constraints_inhibit_require.pem
   pki/testdata/parse_certificate_unittest/policy_constraints_require.pem
   pki/testdata/parse_certificate_unittest/policy_qualifiers_empty_sequence.pem
-  pki/testdata/parse_certificate_unittest/rebase-errors.py
-  pki/testdata/parse_certificate_unittest/regenerate_pem_from_ascii.py
   pki/testdata/parse_certificate_unittest/serial_37_bytes.pem
   pki/testdata/parse_certificate_unittest/serial_negative.pem
   pki/testdata/parse_certificate_unittest/serial_not_minimal.pem
@@ -1462,18 +1436,12 @@ set(
   pki/testdata/parse_certificate_unittest/v1_explicit_version.pem
   pki/testdata/parse_certificate_unittest/v3_certificate_template.pk8
   pki/testdata/parse_certificate_unittest/v3_certificate_template.txt
-  pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/generate-certs.py
   pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/int_match_name_only.pem
   pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/int_matching.pem
   pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/int_mismatch.pem
-  pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/keys/Intermediate.key
-  pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/keys/Root.key
-  pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/keys/Root2.key
-  pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/keys/Target.key
   pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/root.pem
   pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/root2.pem
   pki/testdata/path_builder_unittest/key_id_name_and_serial_prioritization/target.pem
-  pki/testdata/path_builder_unittest/key_id_prioritization/generate-certs.py
   pki/testdata/path_builder_unittest/key_id_prioritization/int_different_ski_a.pem
   pki/testdata/path_builder_unittest/key_id_prioritization/int_different_ski_b.pem
   pki/testdata/path_builder_unittest/key_id_prioritization/int_different_ski_c.pem
@@ -1483,10 +1451,6 @@ set(
   pki/testdata/path_builder_unittest/key_id_prioritization/int_no_ski_a.pem
   pki/testdata/path_builder_unittest/key_id_prioritization/int_no_ski_b.pem
   pki/testdata/path_builder_unittest/key_id_prioritization/int_no_ski_c.pem
-  pki/testdata/path_builder_unittest/key_id_prioritization/keys/Intermediate.key
-  pki/testdata/path_builder_unittest/key_id_prioritization/keys/Intermediate_1.key
-  pki/testdata/path_builder_unittest/key_id_prioritization/keys/Root.key
-  pki/testdata/path_builder_unittest/key_id_prioritization/keys/Target.key
   pki/testdata/path_builder_unittest/key_id_prioritization/root.pem
   pki/testdata/path_builder_unittest/key_id_prioritization/target.pem
   pki/testdata/path_builder_unittest/multi-root-A-by-B.pem
@@ -1499,46 +1463,22 @@ set(
   pki/testdata/path_builder_unittest/multi-root-F-by-E.pem
   pki/testdata/path_builder_unittest/precertificate/precertificate.pem
   pki/testdata/path_builder_unittest/precertificate/root.pem
-  pki/testdata/path_builder_unittest/self_issued_prioritization/generate-certs.py
-  pki/testdata/path_builder_unittest/self_issued_prioritization/keys/Root1.key
-  pki/testdata/path_builder_unittest/self_issued_prioritization/keys/Root2.key
-  pki/testdata/path_builder_unittest/self_issued_prioritization/keys/Target.key
   pki/testdata/path_builder_unittest/self_issued_prioritization/root1.pem
   pki/testdata/path_builder_unittest/self_issued_prioritization/root1_cross.pem
   pki/testdata/path_builder_unittest/self_issued_prioritization/root2.pem
   pki/testdata/path_builder_unittest/self_issued_prioritization/target.pem
-  pki/testdata/path_builder_unittest/validity_date_prioritization/generate-certs.py
   pki/testdata/path_builder_unittest/validity_date_prioritization/int_ac.pem
   pki/testdata/path_builder_unittest/validity_date_prioritization/int_ad.pem
   pki/testdata/path_builder_unittest/validity_date_prioritization/int_bc.pem
   pki/testdata/path_builder_unittest/validity_date_prioritization/int_bd.pem
-  pki/testdata/path_builder_unittest/validity_date_prioritization/keys/Intermediate.key
-  pki/testdata/path_builder_unittest/validity_date_prioritization/keys/Root.key
-  pki/testdata/path_builder_unittest/validity_date_prioritization/keys/Target.key
   pki/testdata/path_builder_unittest/validity_date_prioritization/root.pem
   pki/testdata/path_builder_unittest/validity_date_prioritization/target.pem
-  pki/testdata/verify_certificate_chain_unittest/README
   pki/testdata/verify_certificate_chain_unittest/basic-constraints-pathlen-0-self-issued/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/basic-constraints-pathlen-0-self-issued/generate-chains.py
-  pki/testdata/verify_certificate_chain_unittest/basic-constraints-pathlen-0-self-issued/keys/Intermediate.key
-  pki/testdata/verify_certificate_chain_unittest/basic-constraints-pathlen-0-self-issued/keys/Intermediate_1.key
-  pki/testdata/verify_certificate_chain_unittest/basic-constraints-pathlen-0-self-issued/keys/Root.key
-  pki/testdata/verify_certificate_chain_unittest/basic-constraints-pathlen-0-self-issued/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/basic-constraints-pathlen-0-self-issued/main.test
   pki/testdata/verify_certificate_chain_unittest/expired-intermediate/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/expired-intermediate/generate-chains.py
-  pki/testdata/verify_certificate_chain_unittest/expired-intermediate/keys/Intermediate.key
-  pki/testdata/verify_certificate_chain_unittest/expired-intermediate/keys/Root.key
-  pki/testdata/verify_certificate_chain_unittest/expired-intermediate/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/expired-intermediate/not-after.test
   pki/testdata/verify_certificate_chain_unittest/expired-intermediate/not-before.test
   pki/testdata/verify_certificate_chain_unittest/expired-root/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/expired-root/generate-chains.py
-  pki/testdata/verify_certificate_chain_unittest/expired-root/keys/Intermediate.key
-  pki/testdata/verify_certificate_chain_unittest/expired-root/keys/Root.key
-  pki/testdata/verify_certificate_chain_unittest/expired-root/keys/Target.key
-  pki/testdata/verify_certificate_chain_unittest/expired-root/keys/expired-unconstrained-root_Root.key
-  pki/testdata/verify_certificate_chain_unittest/expired-root/keys/expired-unconstrained-root_Target.key
   pki/testdata/verify_certificate_chain_unittest/expired-root/not-after-ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/expired-root/not-after-ta-with-expiration-and-constraints.test
   pki/testdata/verify_certificate_chain_unittest/expired-root/not-after-ta-with-expiration.test
@@ -1546,22 +1486,14 @@ set(
   pki/testdata/verify_certificate_chain_unittest/expired-root/not-before-ta-with-expiration.test
   pki/testdata/verify_certificate_chain_unittest/expired-root/not-before.test
   pki/testdata/verify_certificate_chain_unittest/expired-target/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/expired-target/generate-chains.py
-  pki/testdata/verify_certificate_chain_unittest/expired-target/keys/Intermediate.key
-  pki/testdata/verify_certificate_chain_unittest/expired-target/keys/Root.key
-  pki/testdata/verify_certificate_chain_unittest/expired-target/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/expired-target/not-after.test
   pki/testdata/verify_certificate_chain_unittest/expired-target/not-before.test
-  pki/testdata/verify_certificate_chain_unittest/generate-all.sh
   pki/testdata/verify_certificate_chain_unittest/incorrect-trust-anchor/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/incorrect-trust-anchor/generate-chains.py
-  pki/testdata/verify_certificate_chain_unittest/incorrect-trust-anchor/keys/BogusRoot.key
   pki/testdata/verify_certificate_chain_unittest/incorrect-trust-anchor/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/incorrect-trust-anchor/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/incorrect-trust-anchor/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/incorrect-trust-anchor/main.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-and-target-wrong-signature/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/intermediate-and-target-wrong-signature/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-and-target-wrong-signature/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-and-target-wrong-signature/keys/Intermediate_1.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-and-target-wrong-signature/keys/Root.key
@@ -1569,13 +1501,11 @@ set(
   pki/testdata/verify_certificate_chain_unittest/intermediate-and-target-wrong-signature/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-and-target-wrong-signature/main.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-ca-false/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-ca-false/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-ca-false/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-ca-false/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-ca-false/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-ca-false/main.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-not-critical/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-not-critical/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-not-critical/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-not-critical/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-not-critical/keys/Target.key
@@ -1584,7 +1514,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/chain.pem
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/clientauth.test
-  pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/keys/Target.key
@@ -1594,13 +1523,11 @@ set(
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/chain.pem
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/clientauth.test
-  pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/serverauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/serverauth.test
-  pki/testdata/verify_certificate_chain_unittest/intermediate-eku-server-gated-crypto/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-server-gated-crypto/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-server-gated-crypto/keys/Intermediate_1.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-server-gated-crypto/keys/Root.key
@@ -1620,37 +1547,31 @@ set(
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-server-gated-crypto/sha256-eku-serverAuth-strict.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-server-gated-crypto/sha256-eku-serverAuth.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-basic-constraints/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-basic-constraints/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-basic-constraints/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-basic-constraints/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-basic-constraints/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-basic-constraints/main.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-signing-key-usage/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-signing-key-usage/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-signing-key-usage/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-signing-key-usage/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-signing-key-usage/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-signing-key-usage/main.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-signed-with-sha1/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/intermediate-signed-with-sha1/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-signed-with-sha1/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-signed-with-sha1/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-signed-with-sha1/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-signed-with-sha1/main.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-critical-extension/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-critical-extension/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-critical-extension/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-critical-extension/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-critical-extension/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-critical-extension/main.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-non-critical-extension/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-non-critical-extension/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-non-critical-extension/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-non-critical-extension/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-non-critical-extension/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-unknown-non-critical-extension/main.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-wrong-signature-no-authority-key-identifier/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/intermediate-wrong-signature-no-authority-key-identifier/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/intermediate-wrong-signature-no-authority-key-identifier/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-wrong-signature-no-authority-key-identifier/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/intermediate-wrong-signature-no-authority-key-identifier/keys/Root_1.key
@@ -1660,7 +1581,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/issuer-and-subject-not-byte-for-byte-equal/anchor.test
   pki/testdata/verify_certificate_chain_unittest/issuer-and-subject-not-byte-for-byte-equal/target.pem
   pki/testdata/verify_certificate_chain_unittest/issuer-and-subject-not-byte-for-byte-equal/target.test
-  pki/testdata/verify_certificate_chain_unittest/key-rollover/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/key-rollover/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/key-rollover/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/key-rollover/keys/Root_1.key
@@ -1673,7 +1593,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/key-rollover/oldchain.test
   pki/testdata/verify_certificate_chain_unittest/key-rollover/rolloverchain.pem
   pki/testdata/verify_certificate_chain_unittest/key-rollover/rolloverchain.test
-  pki/testdata/verify_certificate_chain_unittest/many-names/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/many-names/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/many-names/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/many-names/keys/t0.key
@@ -1776,7 +1695,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/many-names/toomany-ips-permitted.pem
   pki/testdata/verify_certificate_chain_unittest/many-names/toomany-ips-permitted.test
   pki/testdata/verify_certificate_chain_unittest/non-self-signed-root/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/non-self-signed-root/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/non-self-signed-root/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/non-self-signed-root/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/non-self-signed-root/keys/ShadowRoot.key
@@ -1878,92 +1796,78 @@ set(
   pki/testdata/verify_certificate_chain_unittest/pkits_errors/4.9.7.txt
   pki/testdata/verify_certificate_chain_unittest/pkits_errors/4.9.8.txt
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-fail/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-fail/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-fail/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-fail/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-fail/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-fail/main.test
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-fail/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-ok/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-ok/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-ok/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-ok/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-ok/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-ok/main.test
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-anypolicy-by-root-ok/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-fail/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-fail/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-fail/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-fail/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-fail/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-fail/main.test
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-fail/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-ok/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-ok/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-ok/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-ok/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-ok/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-ok/main.test
   pki/testdata/verify_certificate_chain_unittest/policies-inhibit-mapping-by-root-ok/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/policies-ok/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policies-ok/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policies-ok/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policies-ok/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policies-ok/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policies-ok/main.test
   pki/testdata/verify_certificate_chain_unittest/policies-ok/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-ok/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policies-on-root-ok/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-ok/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-ok/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-ok/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-ok/main.test
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-ok/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-wrong/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policies-on-root-wrong/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-wrong/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-wrong/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-wrong/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-wrong/main.test
   pki/testdata/verify_certificate_chain_unittest/policies-on-root-wrong/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-fail/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-fail/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-fail/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-fail/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-fail/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-fail/main.test
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-fail/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-ok/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-ok/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-ok/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-ok/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-ok/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-ok/main.test
   pki/testdata/verify_certificate_chain_unittest/policies-required-by-root-ok/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-fail/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-fail/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-fail/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-fail/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-fail/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-fail/main.test
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-fail/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-ok/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-ok/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-ok/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-ok/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-ok/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-ok/main.test
   pki/testdata/verify_certificate_chain_unittest/policy-mappings-on-root-ok/ta-with-constraints.test
-  pki/testdata/verify_certificate_chain_unittest/rebase-errors.py
   pki/testdata/verify_certificate_chain_unittest/root-basic-constraints-ca-false/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/root-basic-constraints-ca-false/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/root-basic-constraints-ca-false/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/root-basic-constraints-ca-false/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/root-basic-constraints-ca-false/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/root-basic-constraints-ca-false/main.test
   pki/testdata/verify_certificate_chain_unittest/root-basic-constraints-ca-false/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/root-eku-clientauth/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/root-eku-clientauth/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/root-eku-clientauth/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/root-eku-clientauth/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/root-eku-clientauth/keys/Target.key
@@ -1974,7 +1878,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/root-eku-clientauth/serverauth-ta-with-expiration.test
   pki/testdata/verify_certificate_chain_unittest/root-eku-clientauth/serverauth.test
   pki/testdata/verify_certificate_chain_unittest/root-lacks-basic-constraints/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/root-lacks-basic-constraints/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/root-lacks-basic-constraints/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/root-lacks-basic-constraints/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/root-lacks-basic-constraints/keys/Target.key
@@ -1983,7 +1886,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/root-lacks-basic-constraints/ta-with-constraints.test
   pki/testdata/verify_certificate_chain_unittest/root-lacks-basic-constraints/ta-with-require-basic-constraints.test
   pki/testdata/verify_certificate_chain_unittest/root-lacks-keycertsign-key-usage/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/root-lacks-keycertsign-key-usage/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/root-lacks-keycertsign-key-usage/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/root-lacks-keycertsign-key-usage/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/root-lacks-keycertsign-key-usage/keys/Target.key
@@ -1992,7 +1894,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-and-intermediate/chain.pem
   pki/testdata/verify_certificate_chain_unittest/target-and-intermediate/distrusted-root-expired.test
   pki/testdata/verify_certificate_chain_unittest/target-and-intermediate/distrusted-root.test
-  pki/testdata/verify_certificate_chain_unittest/target-and-intermediate/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-and-intermediate/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-and-intermediate/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-and-intermediate/keys/Target.key
@@ -2006,7 +1907,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/chain.pem
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/clientauth.test
-  pki/testdata/verify_certificate_chain_unittest/target-eku-any/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/keys/Target.key
@@ -2016,7 +1916,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-eku-clientauth/chain.pem
   pki/testdata/verify_certificate_chain_unittest/target-eku-clientauth/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-clientauth/clientauth.test
-  pki/testdata/verify_certificate_chain_unittest/target-eku-clientauth/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-eku-clientauth/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-eku-clientauth/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-eku-clientauth/keys/Target.key
@@ -2026,7 +1925,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/chain.pem
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/clientauth.test
-  pki/testdata/verify_certificate_chain_unittest/target-eku-many/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/keys/Target.key
@@ -2063,20 +1961,17 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/chain.pem
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/clientauth.test
-  pki/testdata/verify_certificate_chain_unittest/target-eku-none/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/serverauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/serverauth.test
   pki/testdata/verify_certificate_chain_unittest/target-has-512bit-rsa-key/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-has-512bit-rsa-key/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-has-512bit-rsa-key/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-has-512bit-rsa-key/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-has-512bit-rsa-key/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-has-512bit-rsa-key/main.test
   pki/testdata/verify_certificate_chain_unittest/target-has-ca-basic-constraints/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-has-ca-basic-constraints/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-has-ca-basic-constraints/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-has-ca-basic-constraints/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-has-ca-basic-constraints/keys/Target.key
@@ -2086,38 +1981,32 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-has-ca-basic-constraints/target_only-trusted_leaf.test
   pki/testdata/verify_certificate_chain_unittest/target-has-ca-basic-constraints/target_only.pem
   pki/testdata/verify_certificate_chain_unittest/target-has-keycertsign-but-not-ca/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-has-keycertsign-but-not-ca/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-has-keycertsign-but-not-ca/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-has-keycertsign-but-not-ca/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-has-keycertsign-but-not-ca/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-has-keycertsign-but-not-ca/main.test
   pki/testdata/verify_certificate_chain_unittest/target-has-pathlen-but-not-ca/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-has-pathlen-but-not-ca/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-has-pathlen-but-not-ca/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-has-pathlen-but-not-ca/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-has-pathlen-but-not-ca/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-has-pathlen-but-not-ca/main.test
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-and-eku/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-and-eku/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-and-eku/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-and-eku/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-and-eku/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-and-eku/main.test
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-no-eku/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-no-eku/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-no-eku/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-no-eku/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-no-eku/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-no-eku/main.test
   pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/main.test
   pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/strict.test
   pki/testdata/verify_certificate_chain_unittest/target-only/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-only/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-only/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-only/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-only/trusted_anchor.test
@@ -2127,7 +2016,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-only/trusted_leaf.test
   pki/testdata/verify_certificate_chain_unittest/target-only/trusted_leaf_require_self_signed.test
   pki/testdata/verify_certificate_chain_unittest/target-selfissued/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-selfissued/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-selfissued/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-selfissued/keys/Target_1.key
   pki/testdata/verify_certificate_chain_unittest/target-selfissued/trusted_anchor.test
@@ -2135,7 +2023,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-selfissued/trusted_leaf.test
   pki/testdata/verify_certificate_chain_unittest/target-selfissued/trusted_leaf_require_self_signed.test
   pki/testdata/verify_certificate_chain_unittest/target-selfsigned/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-selfsigned/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-selfsigned/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-selfsigned/trusted_leaf-and-trust_anchor.test
   pki/testdata/verify_certificate_chain_unittest/target-selfsigned/trusted_leaf-not_after.test
@@ -2150,7 +2037,6 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-serverauth-various-keyusages/ec-keyAgreement.test
   pki/testdata/verify_certificate_chain_unittest/target-serverauth-various-keyusages/ec-keyEncipherment.pem
   pki/testdata/verify_certificate_chain_unittest/target-serverauth-various-keyusages/ec-keyEncipherment.test
-  pki/testdata/verify_certificate_chain_unittest/target-serverauth-various-keyusages/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-serverauth-various-keyusages/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-serverauth-various-keyusages/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-serverauth-various-keyusages/keys/Target-ec.key
@@ -2164,25 +2050,21 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-serverauth-various-keyusages/rsa-keyEncipherment.pem
   pki/testdata/verify_certificate_chain_unittest/target-serverauth-various-keyusages/rsa-keyEncipherment.test
   pki/testdata/verify_certificate_chain_unittest/target-signed-by-512bit-rsa/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-signed-by-512bit-rsa/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-signed-by-512bit-rsa/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-signed-by-512bit-rsa/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-signed-by-512bit-rsa/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-signed-by-512bit-rsa/main.test
   pki/testdata/verify_certificate_chain_unittest/target-signed-using-ecdsa/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-signed-using-ecdsa/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-signed-using-ecdsa/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-signed-using-ecdsa/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-signed-using-ecdsa/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-signed-using-ecdsa/main.test
   pki/testdata/verify_certificate_chain_unittest/target-signed-with-sha1/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-signed-with-sha1/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-signed-with-sha1/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-signed-with-sha1/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-signed-with-sha1/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-signed-with-sha1/main.test
   pki/testdata/verify_certificate_chain_unittest/target-unknown-critical-extension/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-unknown-critical-extension/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-unknown-critical-extension/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-unknown-critical-extension/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-unknown-critical-extension/keys/Target.key
@@ -2190,40 +2072,34 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-unknown-critical-extension/target_only-trusted_leaf.test
   pki/testdata/verify_certificate_chain_unittest/target-unknown-critical-extension/target_only.pem
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature-no-authority-key-identifier/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-wrong-signature-no-authority-key-identifier/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature-no-authority-key-identifier/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature-no-authority-key-identifier/keys/Intermediate_1.key
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature-no-authority-key-identifier/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature-no-authority-key-identifier/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature-no-authority-key-identifier/main.test
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/target-wrong-signature/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature/keys/Intermediate_1.key
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/target-wrong-signature/main.test
   pki/testdata/verify_certificate_chain_unittest/unknown-critical-policy-qualifier/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/unknown-critical-policy-qualifier/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/unknown-critical-policy-qualifier/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/unknown-critical-policy-qualifier/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/unknown-critical-policy-qualifier/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/unknown-critical-policy-qualifier/main.test
   pki/testdata/verify_certificate_chain_unittest/unknown-non-critical-policy-qualifier/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/unknown-non-critical-policy-qualifier/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/unknown-non-critical-policy-qualifier/keys/Intermediate.key
   pki/testdata/verify_certificate_chain_unittest/unknown-non-critical-policy-qualifier/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/unknown-non-critical-policy-qualifier/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/unknown-non-critical-policy-qualifier/main.test
   pki/testdata/verify_certificate_chain_unittest/violates-basic-constraints-pathlen-0/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/violates-basic-constraints-pathlen-0/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/violates-basic-constraints-pathlen-0/keys/Intermediate1.key
   pki/testdata/verify_certificate_chain_unittest/violates-basic-constraints-pathlen-0/keys/Intermediate2.key
   pki/testdata/verify_certificate_chain_unittest/violates-basic-constraints-pathlen-0/keys/Root.key
   pki/testdata/verify_certificate_chain_unittest/violates-basic-constraints-pathlen-0/keys/Target.key
   pki/testdata/verify_certificate_chain_unittest/violates-basic-constraints-pathlen-0/main.test
   pki/testdata/verify_certificate_chain_unittest/violates-pathlen-1-from-root/chain.pem
-  pki/testdata/verify_certificate_chain_unittest/violates-pathlen-1-from-root/generate-chains.py
   pki/testdata/verify_certificate_chain_unittest/violates-pathlen-1-from-root/keys/Intermediate1.key
   pki/testdata/verify_certificate_chain_unittest/violates-pathlen-1-from-root/keys/Intermediate2.key
   pki/testdata/verify_certificate_chain_unittest/violates-pathlen-1-from-root/keys/Root.key
@@ -2312,9 +2188,6 @@ set(
   pki/testdata/verify_name_match_unittest/names/unicode_supplementary-UTF8-unmangled.pem
   pki/testdata/verify_name_match_unittest/names/valid-Name-empty.pem
   pki/testdata/verify_name_match_unittest/names/valid-minimal.pem
-  pki/testdata/verify_name_match_unittest/scripts/generate_names.py
-  pki/testdata/verify_signed_data_unittest/README
-  pki/testdata/verify_signed_data_unittest/annotate_test_data.py
   pki/testdata/verify_signed_data_unittest/ecdsa-prime256v1-sha512-spki-params-null.pem
   pki/testdata/verify_signed_data_unittest/ecdsa-prime256v1-sha512-unused-bits-signature.pem
   pki/testdata/verify_signed_data_unittest/ecdsa-prime256v1-sha512-using-ecdh-key.pem
