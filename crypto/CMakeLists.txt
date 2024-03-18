@@ -336,8 +336,6 @@ if(FIPS_DELOCATE OR FIPS_SHARED)
   add_dependencies(crypto bcm_o_target)
 endif()
 
-set_target_properties(crypto PROPERTIES LINKER_LANGUAGE C)
-
 if(WIN32)
   target_link_libraries(crypto ws2_32)
 endif()
