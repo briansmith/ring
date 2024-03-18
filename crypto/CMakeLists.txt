@@ -1,13 +1,3 @@
-add_subdirectory(fipsmodule)
-
-if(FIPS_DELOCATE OR FIPS_SHARED)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
-  set(CRYPTO_FIPS_OBJECTS fipsmodule/bcm.o)
-else()
-  set(CRYPTO_FIPS_OBJECTS $<TARGET_OBJECTS:fipsmodule>)
-endif()
-
 set(
   CRYPTO_SOURCES_ASM
   curve25519/asm/x25519-asm-arm.S
@@ -29,6 +19,63 @@ perlasm(CRYPTO_SOURCES x86_64 chacha/chacha-x86_64 chacha/asm/chacha-x86_64.pl)
 perlasm(CRYPTO_SOURCES x86_64 cipher_extra/aes128gcmsiv-x86_64 cipher_extra/asm/aes128gcmsiv-x86_64.pl)
 perlasm(CRYPTO_SOURCES x86_64 cipher_extra/chacha20_poly1305_x86_64 cipher_extra/asm/chacha20_poly1305_x86_64.pl)
 perlasm(CRYPTO_SOURCES x86_64 test/trampoline-x86_64 test/asm/trampoline-x86_64.pl)
+
+perlasm(BCM_SOURCES aarch64 fipsmodule/aesv8-armv8 fipsmodule/aes/asm/aesv8-armx.pl)
+perlasm(BCM_SOURCES aarch64 fipsmodule/aesv8-gcm-armv8 fipsmodule/modes/asm/aesv8-gcm-armv8.pl)
+perlasm(BCM_SOURCES aarch64 fipsmodule/armv8-mont fipsmodule/bn/asm/armv8-mont.pl)
+perlasm(BCM_SOURCES aarch64 fipsmodule/bn-armv8 fipsmodule/bn/asm/bn-armv8.pl)
+perlasm(BCM_SOURCES aarch64 fipsmodule/ghash-neon-armv8 fipsmodule/modes/asm/ghash-neon-armv8.pl)
+perlasm(BCM_SOURCES aarch64 fipsmodule/ghashv8-armv8 fipsmodule/modes/asm/ghashv8-armx.pl)
+perlasm(BCM_SOURCES aarch64 fipsmodule/p256_beeu-armv8-asm fipsmodule/ec/asm/p256_beeu-armv8-asm.pl)
+perlasm(BCM_SOURCES aarch64 fipsmodule/p256-armv8-asm fipsmodule/ec/asm/p256-armv8-asm.pl)
+perlasm(BCM_SOURCES aarch64 fipsmodule/sha1-armv8 fipsmodule/sha/asm/sha1-armv8.pl)
+perlasm(BCM_SOURCES aarch64 fipsmodule/sha256-armv8 fipsmodule/sha/asm/sha512-armv8.pl sha256)
+perlasm(BCM_SOURCES aarch64 fipsmodule/sha512-armv8 fipsmodule/sha/asm/sha512-armv8.pl sha512)
+perlasm(BCM_SOURCES aarch64 fipsmodule/vpaes-armv8 fipsmodule/aes/asm/vpaes-armv8.pl)
+perlasm(BCM_SOURCES arm fipsmodule/aesv8-armv7 fipsmodule/aes/asm/aesv8-armx.pl)
+perlasm(BCM_SOURCES arm fipsmodule/armv4-mont fipsmodule/bn/asm/armv4-mont.pl)
+perlasm(BCM_SOURCES arm fipsmodule/bsaes-armv7 fipsmodule/aes/asm/bsaes-armv7.pl)
+perlasm(BCM_SOURCES arm fipsmodule/ghash-armv4 fipsmodule/modes/asm/ghash-armv4.pl)
+perlasm(BCM_SOURCES arm fipsmodule/ghashv8-armv7 fipsmodule/modes/asm/ghashv8-armx.pl)
+perlasm(BCM_SOURCES arm fipsmodule/sha1-armv4-large fipsmodule/sha/asm/sha1-armv4-large.pl)
+perlasm(BCM_SOURCES arm fipsmodule/sha256-armv4 fipsmodule/sha/asm/sha256-armv4.pl)
+perlasm(BCM_SOURCES arm fipsmodule/sha512-armv4 fipsmodule/sha/asm/sha512-armv4.pl)
+perlasm(BCM_SOURCES arm fipsmodule/vpaes-armv7 fipsmodule/aes/asm/vpaes-armv7.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/aesni-x86 fipsmodule/aes/asm/aesni-x86.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/bn-586 fipsmodule/bn/asm/bn-586.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/co-586 fipsmodule/bn/asm/co-586.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/ghash-ssse3-x86 fipsmodule/modes/asm/ghash-ssse3-x86.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/ghash-x86 fipsmodule/modes/asm/ghash-x86.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/md5-586 fipsmodule/md5/asm/md5-586.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/sha1-586 fipsmodule/sha/asm/sha1-586.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/sha256-586 fipsmodule/sha/asm/sha256-586.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/sha512-586 fipsmodule/sha/asm/sha512-586.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/vpaes-x86 fipsmodule/aes/asm/vpaes-x86.pl)
+perlasm(BCM_SOURCES x86 fipsmodule/x86-mont fipsmodule/bn/asm/x86-mont.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/aesni-gcm-x86_64 fipsmodule/modes/asm/aesni-gcm-x86_64.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/aesni-x86_64 fipsmodule/aes/asm/aesni-x86_64.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/ghash-ssse3-x86_64 fipsmodule/modes/asm/ghash-ssse3-x86_64.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/ghash-x86_64 fipsmodule/modes/asm/ghash-x86_64.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/md5-x86_64 fipsmodule/md5/asm/md5-x86_64.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/p256_beeu-x86_64-asm fipsmodule/ec/asm/p256_beeu-x86_64-asm.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/p256-x86_64-asm fipsmodule/ec/asm/p256-x86_64-asm.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/rdrand-x86_64 fipsmodule/rand/asm/rdrand-x86_64.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/rsaz-avx2 fipsmodule/bn/asm/rsaz-avx2.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/sha1-x86_64 fipsmodule/sha/asm/sha1-x86_64.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/sha256-x86_64 fipsmodule/sha/asm/sha512-x86_64.pl sha256)
+perlasm(BCM_SOURCES x86_64 fipsmodule/sha512-x86_64 fipsmodule/sha/asm/sha512-x86_64.pl sha512)
+perlasm(BCM_SOURCES x86_64 fipsmodule/vpaes-x86_64 fipsmodule/aes/asm/vpaes-x86_64.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/x86_64-mont fipsmodule/bn/asm/x86_64-mont.pl)
+perlasm(BCM_SOURCES x86_64 fipsmodule/x86_64-mont5 fipsmodule/bn/asm/x86_64-mont5.pl)
+
+if(OPENSSL_ASM)
+  list(APPEND CRYPTO_SOURCES_ASM_USED ${CRYPTO_SOURCES_ASM})
+  list(APPEND BCM_SOURCES_ASM_USED ${BCM_SOURCES_ASM})
+endif()
+if(OPENSSL_NASM)
+  list(APPEND CRYPTO_SOURCES_ASM_USED ${CRYPTO_SOURCES_NASM})
+  list(APPEND BCM_SOURCES_ASM_USED ${BCM_SOURCES_NASM})
+endif()
 
 add_custom_command(
   OUTPUT err_data.c
@@ -60,6 +107,81 @@ add_custom_command(
   err/x509v3.errordata
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
 )
+
+if(FIPS_DELOCATE AND FIPS_SHARED)
+  message(FATAL_ERROR "Can't set both delocate and shared mode for FIPS build")
+endif()
+
+if(FIPS_DELOCATE)
+  add_library(bcm_c_generated_asm STATIC fipsmodule/bcm.c)
+  add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
+  target_include_directories(bcm_c_generated_asm PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
+  set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  set(TARGET_FLAG "")
+  if(CMAKE_ASM_COMPILER_TARGET)
+    set(TARGET_FLAG "--target=${CMAKE_ASM_COMPILER_TARGET}")
+  endif()
+
+  go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
+  add_custom_command(
+    OUTPUT bcm-delocated.S
+    COMMAND
+    ./delocate
+    -a $<TARGET_FILE:bcm_c_generated_asm>
+    -o bcm-delocated.S
+    -cc ${CMAKE_ASM_COMPILER}
+    -cc-flags "${TARGET_FLAG} ${CMAKE_ASM_FLAGS}"
+    ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
+    ${BCM_SOURCES_ASM_USED}
+    DEPENDS
+    bcm_c_generated_asm
+    delocate
+    ${BCM_SOURCES_ASM_USED}
+    ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
+
+  add_library(bcm_hashunset STATIC bcm-delocated.S)
+  set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
+
+  go_executable(inject_hash
+                boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
+  add_custom_command(
+    OUTPUT bcm.o
+    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
+    DEPENDS bcm_hashunset inject_hash
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  set(CRYPTO_FIPS_OBJECTS bcm.o)
+elseif(FIPS_SHARED)
+  if(NOT BUILD_SHARED_LIBS)
+    message(FATAL_ERROR "FIPS_SHARED set but not BUILD_SHARED_LIBS")
+  endif()
+
+  add_library(bcm_library STATIC fipsmodule/bcm.c ${BCM_SOURCES_ASM_USED})
+  add_dependencies(bcm_library boringssl_prefix_symbols)
+  target_include_directories(bcm_library PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
+  add_custom_command(
+    OUTPUT bcm.o
+    COMMAND ${CMAKE_LINKER} -r -T ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/fips_shared.lds -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
+    DEPENDS bcm_library fipsmodule/fips_shared.lds
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  set(CRYPTO_FIPS_OBJECTS bcm.o)
+else()
+  add_library(fipsmodule OBJECT fipsmodule/bcm.c ${BCM_SOURCES_ASM_USED})
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  set(CRYPTO_FIPS_OBJECTS $<TARGET_OBJECTS:fipsmodule>)
+endif()
 
 add_library(
   crypto
@@ -299,13 +421,8 @@ add_library(
   x509/x509spki.c
 
   ${CRYPTO_FIPS_OBJECTS}
+  ${CRYPTO_SOURCES_ASM_USED}
 )
-if(OPENSSL_ASM)
-  target_sources(crypto PRIVATE ${CRYPTO_SOURCES_ASM})
-endif()
-if(OPENSSL_NASM)
-  target_sources(crypto PRIVATE ${CRYPTO_SOURCES_NASM})
-endif()
 target_include_directories(crypto PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
@@ -330,11 +447,6 @@ if(FIPS_SHARED)
 endif()
 
 add_dependencies(crypto boringssl_prefix_symbols)
-
-if(FIPS_DELOCATE OR FIPS_SHARED)
-  add_dependencies(crypto bcm_o_target)
-endif()
-
 if(WIN32)
   target_link_libraries(crypto ws2_32)
 endif()
