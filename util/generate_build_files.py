@@ -628,20 +628,10 @@ def main(platforms):
   with open(os.path.join('src', 'gen', 'sources.json')) as f:
     sources = json.load(f)
 
-  crypto_c_files = (FindCFiles(os.path.join('src', 'crypto'), NoTestsNorFIPSFragments) +
-                    FindCFiles(os.path.join('src', 'third_party', 'fiat'), NoTestsNorFIPSFragments))
   fips_fragments = FindCFiles(os.path.join('src', 'crypto', 'fipsmodule'), OnlyFIPSFragments)
   tool_h_files = FindHeaderFiles(os.path.join('src', 'tool'), AllFiles)
   bssl_sys_files = FindRustFiles(os.path.join('src', 'rust', 'bssl-sys', 'src'))
   bssl_crypto_files = FindRustFiles(os.path.join('src', 'rust', 'bssl-crypto', 'src'))
-
-  # BCM shared library C files
-  bcm_crypto_c_files = [
-      os.path.join('src', 'crypto', 'fipsmodule', 'bcm.c')
-  ]
-
-  crypto_c_files += PrefixWithSrc(sources['crypto']['srcs'])
-  crypto_c_files.sort()
 
   test_support_h_files = (
       FindHeaderFiles(os.path.join('src', 'crypto', 'test'), AllFiles) +
@@ -658,14 +648,15 @@ def main(platforms):
   # TODO(crbug.com/boringssl/542): generate_build_files.py historically reported
   # all the assembly files as part of libcrypto. Merge them for now, but we
   # should split them out later.
+  crypto = sorted(sources['bcm']['srcs'] + sources['crypto']['srcs'])
   crypto_asm = sorted(sources['bcm']['asm'] + sources['crypto']['asm'] +
                       sources['test_support']['asm'])
   crypto_nasm = sorted(sources['bcm']['nasm'] + sources['crypto']['nasm'] +
                        sources['test_support']['nasm'])
 
   files = {
-      'bcm_crypto': bcm_crypto_c_files,
-      'crypto': crypto_c_files,
+      'bcm_crypto': PrefixWithSrc(sources['bcm']['srcs']),
+      'crypto': PrefixWithSrc(crypto),
       'crypto_asm': PrefixWithSrc(crypto_asm),
       'crypto_nasm': PrefixWithSrc(crypto_nasm),
       'crypto_headers': PrefixWithSrc(sources['crypto']['hdrs']),
