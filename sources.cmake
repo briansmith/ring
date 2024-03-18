@@ -1,7 +1,7 @@
 # This file contains source lists that are also consumed by
 # generate_build_files.py.
 #
-# TODO(davidben): Move the other source lists into this file.
+# TODO(crbug.com/boringssl/542): Move everything here into util/pregenerate.
 
 set(
   CRYPTO_TEST_SOURCES

@@ -1,0 +1,136 @@
+// This file defines BoringSSL's build, expressed in terms of the input source
+// files that BoringSSL developers edit. It is a JSON file with line comments,
+// with line comments removed before parsing. It drives ./util/pregenerate which
+// converts some of those inputs (e.g. perlasm files) into pre-generated
+// outputs. This produces a more simplified build, which is then converted into
+// build files of various syntaxes.
+//
+// When modifying this file, run `go run ./util/pregenerate`. See gen/README.md
+// for more details, and util/pregenerate/build.go for the schema.
+//
+// TODO(crbug.com/boringssl/542): Moving build inputs to this file is still work
+// in progress, so this file is currently incomplete.
+{
+    "bcm": {
+        "perlasm_aarch64": [
+            {"src": "crypto/fipsmodule/aes/asm/aesv8-armx.pl", "dst": "aesv8-armv8"},
+            {"src": "crypto/fipsmodule/modes/asm/aesv8-gcm-armv8.pl"},
+            {"src": "crypto/fipsmodule/bn/asm/armv8-mont.pl"},
+            {"src": "crypto/fipsmodule/bn/asm/bn-armv8.pl"},
+            {"src": "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"},
+            {"src": "crypto/fipsmodule/modes/asm/ghashv8-armx.pl", "dst": "ghashv8-armv8"},
+            {"src": "crypto/fipsmodule/ec/asm/p256_beeu-armv8-asm.pl"},
+            {"src": "crypto/fipsmodule/ec/asm/p256-armv8-asm.pl"},
+            {"src": "crypto/fipsmodule/sha/asm/sha1-armv8.pl"},
+            {"src": "crypto/fipsmodule/sha/asm/sha512-armv8.pl", "args": ["sha256"], "dst": "sha256-armv8"},
+            {"src": "crypto/fipsmodule/sha/asm/sha512-armv8.pl", "args": ["sha512"]},
+            {"src": "crypto/fipsmodule/aes/asm/vpaes-armv8.pl"}
+        ],
+        "perlasm_arm": [
+            {"src": "crypto/fipsmodule/aes/asm/aesv8-armx.pl", "dst": "aesv8-armv7"},
+            {"src": "crypto/fipsmodule/bn/asm/armv4-mont.pl"},
+            {"src": "crypto/fipsmodule/aes/asm/bsaes-armv7.pl"},
+            {"src": "crypto/fipsmodule/modes/asm/ghash-armv4.pl"},
+            {"src": "crypto/fipsmodule/modes/asm/ghashv8-armx.pl", "dst": "ghashv8-armv7"},
+            {"src": "crypto/fipsmodule/sha/asm/sha1-armv4-large.pl"},
+            {"src": "crypto/fipsmodule/sha/asm/sha256-armv4.pl"},
+            {"src": "crypto/fipsmodule/sha/asm/sha512-armv4.pl"},
+            {"src": "crypto/fipsmodule/aes/asm/vpaes-armv7.pl"}
+        ],
+        "perlasm_x86": [
+            {"src": "crypto/fipsmodule/aes/asm/aesni-x86.pl"},
+            {"src": "crypto/fipsmodule/bn/asm/bn-586.pl"},
+            {"src": "crypto/fipsmodule/bn/asm/co-586.pl"},
+            {"src": "crypto/fipsmodule/modes/asm/ghash-ssse3-x86.pl"},
+            {"src": "crypto/fipsmodule/modes/asm/ghash-x86.pl"},
+            {"src": "crypto/fipsmodule/md5/asm/md5-586.pl"},
+            {"src": "crypto/fipsmodule/sha/asm/sha1-586.pl"},
+            {"src": "crypto/fipsmodule/sha/asm/sha256-586.pl"},
+            {"src": "crypto/fipsmodule/sha/asm/sha512-586.pl"},
+            {"src": "crypto/fipsmodule/aes/asm/vpaes-x86.pl"},
+            {"src": "crypto/fipsmodule/bn/asm/x86-mont.pl"}
+        ],
+        "perlasm_x86_64": [
+            {"src": "crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl"},
+            {"src": "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"},
+            {"src": "crypto/fipsmodule/modes/asm/ghash-ssse3-x86_64.pl"},
+            {"src": "crypto/fipsmodule/modes/asm/ghash-x86_64.pl"},
+            {"src": "crypto/fipsmodule/md5/asm/md5-x86_64.pl"},
+            {"src": "crypto/fipsmodule/ec/asm/p256_beeu-x86_64-asm.pl"},
+            {"src": "crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl"},
+            {"src": "crypto/fipsmodule/rand/asm/rdrand-x86_64.pl"},
+            {"src": "crypto/fipsmodule/bn/asm/rsaz-avx2.pl"},
+            {"src": "crypto/fipsmodule/sha/asm/sha1-x86_64.pl"},
+            {"src": "crypto/fipsmodule/sha/asm/sha512-x86_64.pl", "args": ["sha256"], "dst": "sha256-x86_64"},
+            {"src": "crypto/fipsmodule/sha/asm/sha512-x86_64.pl", "args": ["sha512"]},
+            {"src": "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl"},
+            {"src": "crypto/fipsmodule/bn/asm/x86_64-mont.pl"},
+            {"src": "crypto/fipsmodule/bn/asm/x86_64-mont5.pl"}
+        ]
+    },
+    "crypto": {
+        "err_data": [
+            "crypto/err/asn1.errordata",
+            "crypto/err/bio.errordata",
+            "crypto/err/bn.errordata",
+            "crypto/err/cipher.errordata",
+            "crypto/err/conf.errordata",
+            "crypto/err/dh.errordata",
+            "crypto/err/digest.errordata",
+            "crypto/err/dsa.errordata",
+            "crypto/err/ecdh.errordata",
+            "crypto/err/ecdsa.errordata",
+            "crypto/err/ec.errordata",
+            "crypto/err/engine.errordata",
+            "crypto/err/evp.errordata",
+            "crypto/err/hkdf.errordata",
+            "crypto/err/obj.errordata",
+            "crypto/err/pem.errordata",
+            "crypto/err/pkcs7.errordata",
+            "crypto/err/pkcs8.errordata",
+            "crypto/err/rsa.errordata",
+            "crypto/err/ssl.errordata",
+            "crypto/err/trust_token.errordata",
+            "crypto/err/x509.errordata",
+            "crypto/err/x509v3.errordata"
+        ],
+        "asm": [
+            "crypto/curve25519/asm/x25519-asm-arm.S",
+            "crypto/hrss/asm/poly_rq_mul.S",
+            "crypto/poly1305/poly1305_arm_asm.S",
+            "third_party/fiat/asm/fiat_curve25519_adx_mul.S",
+            "third_party/fiat/asm/fiat_curve25519_adx_square.S",
+            "third_party/fiat/asm/fiat_p256_adx_mul.S",
+            "third_party/fiat/asm/fiat_p256_adx_sqr.S"
+        ],
+        "perlasm_aarch64": [
+            {"src": "crypto/chacha/asm/chacha-armv8.pl"},
+            {"src": "crypto/cipher_extra/asm/chacha20_poly1305_armv8.pl"}
+        ],
+        "perlasm_arm": [
+            {"src": "crypto/chacha/asm/chacha-armv4.pl"}
+        ],
+        "perlasm_x86": [
+            {"src": "crypto/chacha/asm/chacha-x86.pl"}
+        ],
+        "perlasm_x86_64": [
+            {"src": "crypto/chacha/asm/chacha-x86_64.pl"},
+            {"src": "crypto/cipher_extra/asm/aes128gcmsiv-x86_64.pl"},
+            {"src": "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl"}
+        ]
+    },
+    "test_support": {
+        "perlasm_aarch64": [
+            {"src": "crypto/test/asm/trampoline-armv8.pl"}
+        ],
+        "perlasm_arm": [
+            {"src": "crypto/test/asm/trampoline-armv4.pl"}
+        ],
+        "perlasm_x86": [
+            {"src": "crypto/test/asm/trampoline-x86.pl"}
+        ],
+        "perlasm_x86_64": [
+            {"src": "crypto/test/asm/trampoline-x86_64.pl"}
+        ]
+    }
+}

@@ -1,72 +1,9 @@
-set(
-  CRYPTO_SOURCES_ASM
-  curve25519/asm/x25519-asm-arm.S
-  hrss/asm/poly_rq_mul.S
-  poly1305/poly1305_arm_asm.S
-  ../third_party/fiat/asm/fiat_curve25519_adx_mul.S
-  ../third_party/fiat/asm/fiat_curve25519_adx_square.S
-  ../third_party/fiat/asm/fiat_p256_adx_mul.S
-  ../third_party/fiat/asm/fiat_p256_adx_sqr.S
-)
-perlasm(CRYPTO_SOURCES aarch64 chacha/chacha-armv8 chacha/asm/chacha-armv8.pl)
-perlasm(CRYPTO_SOURCES aarch64 cipher_extra/chacha20_poly1305_armv8 cipher_extra/asm/chacha20_poly1305_armv8.pl)
-perlasm(CRYPTO_SOURCES aarch64 test/trampoline-armv8 test/asm/trampoline-armv8.pl)
-perlasm(CRYPTO_SOURCES arm chacha/chacha-armv4 chacha/asm/chacha-armv4.pl)
-perlasm(CRYPTO_SOURCES arm test/trampoline-armv4 test/asm/trampoline-armv4.pl)
-perlasm(CRYPTO_SOURCES x86 chacha/chacha-x86 chacha/asm/chacha-x86.pl)
-perlasm(CRYPTO_SOURCES x86 test/trampoline-x86 test/asm/trampoline-x86.pl)
-perlasm(CRYPTO_SOURCES x86_64 chacha/chacha-x86_64 chacha/asm/chacha-x86_64.pl)
-perlasm(CRYPTO_SOURCES x86_64 cipher_extra/aes128gcmsiv-x86_64 cipher_extra/asm/aes128gcmsiv-x86_64.pl)
-perlasm(CRYPTO_SOURCES x86_64 cipher_extra/chacha20_poly1305_x86_64 cipher_extra/asm/chacha20_poly1305_x86_64.pl)
-perlasm(CRYPTO_SOURCES x86_64 test/trampoline-x86_64 test/asm/trampoline-x86_64.pl)
-
-perlasm(BCM_SOURCES aarch64 fipsmodule/aesv8-armv8 fipsmodule/aes/asm/aesv8-armx.pl)
-perlasm(BCM_SOURCES aarch64 fipsmodule/aesv8-gcm-armv8 fipsmodule/modes/asm/aesv8-gcm-armv8.pl)
-perlasm(BCM_SOURCES aarch64 fipsmodule/armv8-mont fipsmodule/bn/asm/armv8-mont.pl)
-perlasm(BCM_SOURCES aarch64 fipsmodule/bn-armv8 fipsmodule/bn/asm/bn-armv8.pl)
-perlasm(BCM_SOURCES aarch64 fipsmodule/ghash-neon-armv8 fipsmodule/modes/asm/ghash-neon-armv8.pl)
-perlasm(BCM_SOURCES aarch64 fipsmodule/ghashv8-armv8 fipsmodule/modes/asm/ghashv8-armx.pl)
-perlasm(BCM_SOURCES aarch64 fipsmodule/p256_beeu-armv8-asm fipsmodule/ec/asm/p256_beeu-armv8-asm.pl)
-perlasm(BCM_SOURCES aarch64 fipsmodule/p256-armv8-asm fipsmodule/ec/asm/p256-armv8-asm.pl)
-perlasm(BCM_SOURCES aarch64 fipsmodule/sha1-armv8 fipsmodule/sha/asm/sha1-armv8.pl)
-perlasm(BCM_SOURCES aarch64 fipsmodule/sha256-armv8 fipsmodule/sha/asm/sha512-armv8.pl sha256)
-perlasm(BCM_SOURCES aarch64 fipsmodule/sha512-armv8 fipsmodule/sha/asm/sha512-armv8.pl sha512)
-perlasm(BCM_SOURCES aarch64 fipsmodule/vpaes-armv8 fipsmodule/aes/asm/vpaes-armv8.pl)
-perlasm(BCM_SOURCES arm fipsmodule/aesv8-armv7 fipsmodule/aes/asm/aesv8-armx.pl)
-perlasm(BCM_SOURCES arm fipsmodule/armv4-mont fipsmodule/bn/asm/armv4-mont.pl)
-perlasm(BCM_SOURCES arm fipsmodule/bsaes-armv7 fipsmodule/aes/asm/bsaes-armv7.pl)
-perlasm(BCM_SOURCES arm fipsmodule/ghash-armv4 fipsmodule/modes/asm/ghash-armv4.pl)
-perlasm(BCM_SOURCES arm fipsmodule/ghashv8-armv7 fipsmodule/modes/asm/ghashv8-armx.pl)
-perlasm(BCM_SOURCES arm fipsmodule/sha1-armv4-large fipsmodule/sha/asm/sha1-armv4-large.pl)
-perlasm(BCM_SOURCES arm fipsmodule/sha256-armv4 fipsmodule/sha/asm/sha256-armv4.pl)
-perlasm(BCM_SOURCES arm fipsmodule/sha512-armv4 fipsmodule/sha/asm/sha512-armv4.pl)
-perlasm(BCM_SOURCES arm fipsmodule/vpaes-armv7 fipsmodule/aes/asm/vpaes-armv7.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/aesni-x86 fipsmodule/aes/asm/aesni-x86.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/bn-586 fipsmodule/bn/asm/bn-586.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/co-586 fipsmodule/bn/asm/co-586.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/ghash-ssse3-x86 fipsmodule/modes/asm/ghash-ssse3-x86.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/ghash-x86 fipsmodule/modes/asm/ghash-x86.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/md5-586 fipsmodule/md5/asm/md5-586.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/sha1-586 fipsmodule/sha/asm/sha1-586.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/sha256-586 fipsmodule/sha/asm/sha256-586.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/sha512-586 fipsmodule/sha/asm/sha512-586.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/vpaes-x86 fipsmodule/aes/asm/vpaes-x86.pl)
-perlasm(BCM_SOURCES x86 fipsmodule/x86-mont fipsmodule/bn/asm/x86-mont.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/aesni-gcm-x86_64 fipsmodule/modes/asm/aesni-gcm-x86_64.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/aesni-x86_64 fipsmodule/aes/asm/aesni-x86_64.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/ghash-ssse3-x86_64 fipsmodule/modes/asm/ghash-ssse3-x86_64.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/ghash-x86_64 fipsmodule/modes/asm/ghash-x86_64.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/md5-x86_64 fipsmodule/md5/asm/md5-x86_64.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/p256_beeu-x86_64-asm fipsmodule/ec/asm/p256_beeu-x86_64-asm.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/p256-x86_64-asm fipsmodule/ec/asm/p256-x86_64-asm.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/rdrand-x86_64 fipsmodule/rand/asm/rdrand-x86_64.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/rsaz-avx2 fipsmodule/bn/asm/rsaz-avx2.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/sha1-x86_64 fipsmodule/sha/asm/sha1-x86_64.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/sha256-x86_64 fipsmodule/sha/asm/sha512-x86_64.pl sha256)
-perlasm(BCM_SOURCES x86_64 fipsmodule/sha512-x86_64 fipsmodule/sha/asm/sha512-x86_64.pl sha512)
-perlasm(BCM_SOURCES x86_64 fipsmodule/vpaes-x86_64 fipsmodule/aes/asm/vpaes-x86_64.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/x86_64-mont fipsmodule/bn/asm/x86_64-mont.pl)
-perlasm(BCM_SOURCES x86_64 fipsmodule/x86_64-mont5 fipsmodule/bn/asm/x86_64-mont5.pl)
+# TODO(crbug.com/boringssl/524): Avoid needing this transform by instead moving
+# this up a directory.
+list(TRANSFORM BCM_SOURCES_ASM PREPEND "../")
+list(TRANSFORM BCM_SOURCES_NASM PREPEND "../")
+list(TRANSFORM CRYPTO_SOURCES_ASM PREPEND "../")
+list(TRANSFORM CRYPTO_SOURCES_NASM PREPEND "../")
 
 if(OPENSSL_ASM)
   list(APPEND CRYPTO_SOURCES_ASM_USED ${CRYPTO_SOURCES_ASM})
@@ -76,37 +13,6 @@ if(OPENSSL_NASM)
   list(APPEND CRYPTO_SOURCES_ASM_USED ${CRYPTO_SOURCES_NASM})
   list(APPEND BCM_SOURCES_ASM_USED ${BCM_SOURCES_NASM})
 endif()
-
-add_custom_command(
-  OUTPUT err_data.c
-  COMMAND ${GO_EXECUTABLE} run err_data_generate.go > ${CMAKE_CURRENT_BINARY_DIR}/err_data.c
-  DEPENDS
-  err/err_data_generate.go
-  err/asn1.errordata
-  err/bio.errordata
-  err/bn.errordata
-  err/cipher.errordata
-  err/conf.errordata
-  err/dh.errordata
-  err/digest.errordata
-  err/dsa.errordata
-  err/ecdh.errordata
-  err/ecdsa.errordata
-  err/ec.errordata
-  err/engine.errordata
-  err/evp.errordata
-  err/hkdf.errordata
-  err/obj.errordata
-  err/pem.errordata
-  err/pkcs7.errordata
-  err/pkcs8.errordata
-  err/rsa.errordata
-  err/ssl.errordata
-  err/trust_token.errordata
-  err/x509.errordata
-  err/x509v3.errordata
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
-)
 
 if(FIPS_DELOCATE AND FIPS_SHARED)
   message(FATAL_ERROR "Can't set both delocate and shared mode for FIPS build")
@@ -128,9 +34,9 @@ if(FIPS_DELOCATE)
   add_custom_command(
     OUTPUT bcm-delocated.S
     COMMAND
-    ./delocate
+    ${CMAKE_CURRENT_BINARY_DIR}/delocate
     -a $<TARGET_FILE:bcm_c_generated_asm>
-    -o bcm-delocated.S
+    -o ${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S
     -cc ${CMAKE_ASM_COMPILER}
     -cc-flags "${TARGET_FLAG} ${CMAKE_ASM_FLAGS}"
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
@@ -144,7 +50,7 @@ if(FIPS_DELOCATE)
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
     ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
     ${PROJECT_SOURCE_DIR}/include/openssl/target.h
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
 
   add_library(bcm_hashunset STATIC bcm-delocated.S)
@@ -272,7 +178,6 @@ add_library(
   ec_extra/ec_derive.c
   ec_extra/hash_to_curve.c
   err/err.c
-  err_data.c
   engine/engine.c
   evp/evp.c
   evp/evp_asn1.c
@@ -419,6 +324,9 @@ add_library(
   x509/x509name.c
   x509/x509rset.c
   x509/x509spki.c
+  # TOOD(crbug.com/boringssl/542): Pick up this and the rest of the source list
+  # from util/pregenerate.
+  ../gen/crypto/err_data.c
 
   ${CRYPTO_FIPS_OBJECTS}
   ${CRYPTO_SOURCES_ASM_USED}
