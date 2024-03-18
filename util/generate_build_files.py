@@ -564,18 +564,6 @@ def NoTestRunnerFiles(path, dent, is_dir):
   return not is_dir or dent != 'runner'
 
 
-def SSLHeaderFiles(path, dent, is_dir):
-  return dent in ['ssl.h', 'tls1.h', 'ssl23.h', 'ssl3.h', 'dtls1.h', 'srtp.h']
-
-
-def CryptoHeaderFiles(path, dent, is_dir):
-  if SSLHeaderFiles(path, dent, is_dir):
-    return False
-  if is_dir and dent == 'pki':
-    return False
-  return True
-
-
 def FindCFiles(directory, filter_func):
   """Recurses through directory and returns a list of paths to all the C source
   files that pass filter_func."""
@@ -661,16 +649,7 @@ def main(platforms):
 
   fuzz_c_files = FindCFiles(os.path.join('src', 'fuzz'), NoTests)
 
-  ssl_h_files = FindHeaderFiles(os.path.join('src', 'include', 'openssl'),
-                                SSLHeaderFiles)
-
   pki_internal_h_files = FindHeaderFiles(os.path.join('src', 'pki'), AllFiles)
-
-  crypto_h_files = FindHeaderFiles(os.path.join('src', 'include', 'openssl'),
-                                   CryptoHeaderFiles)
-  pki_h_files = FindHeaderFiles(
-      os.path.join('src', 'include', 'openssl', 'pki'), AllFiles)
-
   ssl_internal_h_files = FindHeaderFiles(os.path.join('src', 'ssl'), NoTests)
   crypto_internal_h_files = (
       FindHeaderFiles(os.path.join('src', 'crypto'), NoTests) +
@@ -689,21 +668,21 @@ def main(platforms):
       'crypto': crypto_c_files,
       'crypto_asm': PrefixWithSrc(crypto_asm),
       'crypto_nasm': PrefixWithSrc(crypto_nasm),
-      'crypto_headers': crypto_h_files,
+      'crypto_headers': PrefixWithSrc(sources['crypto']['hdrs']),
       'crypto_internal_headers': crypto_internal_h_files,
       'crypto_test': PrefixWithSrc(sources['crypto_test']['srcs']),
       'crypto_test_data': PrefixWithSrc(sources['crypto_test']['data']),
       'fips_fragments': fips_fragments,
       'fuzz': fuzz_c_files,
       'pki': PrefixWithSrc(sources['pki']['srcs']),
-      'pki_headers': pki_h_files,
+      'pki_headers': PrefixWithSrc(sources['pki']['hdrs']),
       'pki_internal_headers': sorted(list(pki_internal_h_files)),
       'pki_test': PrefixWithSrc(sources['pki_test']['srcs']),
       'pki_test_data': PrefixWithSrc(sources['pki_test']['data']),
       'rust_bssl_crypto': bssl_crypto_files,
       'rust_bssl_sys': bssl_sys_files,
       'ssl': PrefixWithSrc(sources['ssl']['srcs']),
-      'ssl_headers': ssl_h_files,
+      'ssl_headers': PrefixWithSrc(sources['ssl']['hdrs']),
       'ssl_internal_headers': ssl_internal_h_files,
       'ssl_test': PrefixWithSrc(sources['ssl_test']['srcs']),
       'tool': PrefixWithSrc(sources['bssl']['srcs']),
