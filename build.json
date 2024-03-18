@@ -70,29 +70,7 @@
     },
     "crypto": {
         "err_data": [
-            "crypto/err/asn1.errordata",
-            "crypto/err/bio.errordata",
-            "crypto/err/bn.errordata",
-            "crypto/err/cipher.errordata",
-            "crypto/err/conf.errordata",
-            "crypto/err/dh.errordata",
-            "crypto/err/digest.errordata",
-            "crypto/err/dsa.errordata",
-            "crypto/err/ec.errordata",
-            "crypto/err/ecdh.errordata",
-            "crypto/err/ecdsa.errordata",
-            "crypto/err/engine.errordata",
-            "crypto/err/evp.errordata",
-            "crypto/err/hkdf.errordata",
-            "crypto/err/obj.errordata",
-            "crypto/err/pem.errordata",
-            "crypto/err/pkcs7.errordata",
-            "crypto/err/pkcs8.errordata",
-            "crypto/err/rsa.errordata",
-            "crypto/err/ssl.errordata",
-            "crypto/err/trust_token.errordata",
-            "crypto/err/x509.errordata",
-            "crypto/err/x509v3.errordata"
+            "crypto/err/*.errordata"
         ],
         "asm": [
             "crypto/curve25519/asm/x25519-asm-arm.S",

@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 )
@@ -48,7 +49,8 @@ type OutputTarget struct {
 }
 
 // An InputTarget is a build target with build inputs that still need to be
-// pregenerated.
+// pregenerated. All file lists in InputTarget are interpreted with glob
+// patterns as in filepath.Glob.
 type InputTarget struct {
 	OutputTarget
 	// ErrData contains a list of errordata files to combine into err_data.c.
@@ -76,13 +78,32 @@ type PerlasmSource struct {
 // Pregenerate converts an input target to an output target. It returns the
 // result alongside a list of tasks that must be run to build the referenced
 // files.
-func (in *InputTarget) Pregenerate(name string) (out OutputTarget, tasks []Task) {
-	out = in.OutputTarget
-
-	// Make copies of any fields we will write to.
-	out.Srcs = slices.Clone(out.Srcs)
-	out.Asm = slices.Clone(out.Asm)
-	out.Nasm = slices.Clone(out.Nasm)
+func (in *InputTarget) Pregenerate(name string) (out OutputTarget, tasks []Task, err error) {
+	// Expand wildcards.
+	out.Srcs, err = glob(in.Srcs)
+	if err != nil {
+		return
+	}
+	out.Hdrs, err = glob(in.Hdrs)
+	if err != nil {
+		return
+	}
+	out.InternalHdrs, err = glob(in.InternalHdrs)
+	if err != nil {
+		return
+	}
+	out.Asm, err = glob(in.Asm)
+	if err != nil {
+		return
+	}
+	out.Nasm, err = glob(in.Nasm)
+	if err != nil {
+		return
+	}
+	out.Data, err = glob(in.Data)
+	if err != nil {
+		return
+	}
 
 	addTask := func(list *[]string, t Task) {
 		tasks = append(tasks, t)
@@ -90,7 +111,12 @@ func (in *InputTarget) Pregenerate(name string) (out OutputTarget, tasks []Task)
 	}
 
 	if len(in.ErrData) != 0 {
-		addTask(&out.Srcs, &ErrDataTask{TargetName: name, Inputs: in.ErrData})
+		var inputs []string
+		inputs, err = glob(in.ErrData)
+		if err != nil {
+			return
+		}
+		addTask(&out.Srcs, &ErrDataTask{TargetName: name, Inputs: inputs})
 	}
 
 	addPerlasmTask := func(list *[]string, p *PerlasmSource, fileSuffix string, args []string) {
@@ -128,6 +154,29 @@ func (in *InputTarget) Pregenerate(name string) (out OutputTarget, tasks []Task)
 	slices.Sort(out.Nasm)
 
 	return
+}
+
+func glob(paths []string) ([]string, error) {
+	var ret []string
+	for _, path := range paths {
+		if !strings.ContainsRune(path, '*') {
+			ret = append(ret, path)
+			continue
+		}
+		matches, err := filepath.Glob(path)
+		if err != nil {
+			return nil, err
+		}
+		if len(matches) == 0 {
+			return nil, fmt.Errorf("glob matched no files: %q", path)
+		}
+		// Switch from Windows to POSIX paths.
+		for _, match := range matches {
+			ret = append(ret, strings.ReplaceAll(match, "\\", "/"))
+		}
+	}
+	slices.Sort(ret)
+	return ret, nil
 }
 
 func sortedKeys[K cmp.Ordered, V any](m map[K]V) []K {

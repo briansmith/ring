@@ -114,7 +114,10 @@ func run() error {
 	var tasks []Task
 	targetsOut := make(map[string]OutputTarget)
 	for name, targetIn := range targetsIn {
-		targetOut, targetTasks := targetIn.Pregenerate(name)
+		targetOut, targetTasks, err := targetIn.Pregenerate(name)
+		if err != nil {
+			return err
+		}
 		targetsOut[name] = targetOut
 		tasks = append(tasks, targetTasks...)
 	}
