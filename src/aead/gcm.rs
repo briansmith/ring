@@ -132,6 +132,7 @@ impl Context {
     pub(super) fn in_out_whole_block_bits(&self) -> BitLength<usize> {
         use crate::polyfill::usize_from_u64;
         const WHOLE_BLOCK_BITS_MASK: usize = !0b111_1111;
+        #[allow(clippy::assertions_on_constants)]
         const _WHOLE_BLOCK_BITS_MASK_CORRECT: () =
             assert!(WHOLE_BLOCK_BITS_MASK == !((BLOCK_LEN * 8) - 1));
         BitLength::from_usize_bits(
