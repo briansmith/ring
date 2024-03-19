@@ -533,11 +533,6 @@ class JSON(object):
     with open('sources.json', 'w+') as f:
       json.dump(files, f, sort_keys=True, indent=2)
 
-def OnlyFIPSFragments(path, dent, is_dir):
-  return is_dir or (path.startswith(
-      os.path.join('src', 'crypto', 'fipsmodule', '')) and
-      NoTests(path, dent, is_dir))
-
 def NoTestsNorFIPSFragments(path, dent, is_dir):
   return (NoTests(path, dent, is_dir) and
       (is_dir or not OnlyFIPSFragments(path, dent, is_dir)))
@@ -628,7 +623,6 @@ def main(platforms):
   with open(os.path.join('src', 'gen', 'sources.json')) as f:
     sources = json.load(f)
 
-  fips_fragments = FindCFiles(os.path.join('src', 'crypto', 'fipsmodule'), OnlyFIPSFragments)
   bssl_sys_files = FindRustFiles(os.path.join('src', 'rust', 'bssl-sys', 'src'))
   bssl_crypto_files = FindRustFiles(os.path.join('src', 'rust', 'bssl-crypto', 'src'))
 
@@ -653,7 +647,7 @@ def main(platforms):
           PrefixWithSrc(sources['crypto']['internal_hdrs']),
       'crypto_test': PrefixWithSrc(sources['crypto_test']['srcs']),
       'crypto_test_data': PrefixWithSrc(sources['crypto_test']['data']),
-      'fips_fragments': fips_fragments,
+      'fips_fragments': PrefixWithSrc(sources['bcm']['internal_hdrs']),
       'fuzz': fuzz_c_files,
       'pki': PrefixWithSrc(sources['pki']['srcs']),
       'pki_headers': PrefixWithSrc(sources['pki']['hdrs']),
