@@ -26,6 +26,9 @@
 // Callers with more complex needs can build with
 // BORINGSSL_CUSTOM_GET_TEST_DATA and then link in an alternate implementation
 // of this function.
+//
+// Callers running from Bazel can define BORINGSSL_USE_BAZEL_RUNFILES to use
+// the Bazel runfiles library.
 std::string GetTestData(const char *path);
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_TEST_DATA_H

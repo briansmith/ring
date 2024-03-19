@@ -306,6 +306,7 @@ func MakeBuildFiles(targets map[string]build.Target) []Task {
 	// TODO(crbug.com/boringssl/542): Generate the build files for the other
 	// types as well.
 	return []Task{
+		buildVariablesTask(targets, "gen/sources.bzl", "#", writeBazelVariable),
 		buildVariablesTask(targets, "gen/sources.cmake", "#", writeCMakeVariable),
 		jsonTask(targets, "gen/sources.json"),
 	}

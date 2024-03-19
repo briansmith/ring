@@ -1037,6 +1037,13 @@ set(
 )
 
 set(
+  DECREPIT_INTERNAL_HEADERS
+
+  decrepit/cast/internal.h
+  decrepit/macros.h
+)
+
+set(
   DECREPIT_TEST_SOURCES
 
   crypto/test/gtest_main.cc

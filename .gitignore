@@ -1,3 +1,4 @@
+/bazel-*
 /build
 /build32
 /build64
@@ -10,6 +11,10 @@
 /rust/Cargo.lock
 /rust/bssl-crypto/Cargo.lock
 /rust/target
+/user.bazelrc
+
+/util/bazel-example/bazel-*
+/util/bazel-example/MODULE.bazel.lock
 
 /util/bot/android_ndk
 /util/bot/android_sdk/public

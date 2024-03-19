@@ -726,6 +726,10 @@
             "decrepit/ssl/ssl_decrepit.c",
             "decrepit/x509/x509_decrepit.c",
             "decrepit/xts/xts.c"
+        ],
+        "internal_hdrs": [
+            "decrepit/cast/internal.h",
+            "decrepit/macros.h"
         ]
     },
     "test_support": {

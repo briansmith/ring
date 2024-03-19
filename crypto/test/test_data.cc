@@ -19,14 +19,35 @@
 
 #include "file_util.h"
 
+#if defined(BORINGSSL_USE_BAZEL_RUNFILES)
+#include "tools/cpp/runfiles/runfiles.h"
+
+using bazel::tools::cpp::runfiles::Runfiles;
+#endif
+
 #if !defined(BORINGSSL_CUSTOM_GET_TEST_DATA)
 std::string GetTestData(const char *path) {
+#if defined(BORINGSSL_USE_BAZEL_RUNFILES)
+  std::string error;
+  std::unique_ptr<Runfiles> runfiles(Runfiles::CreateForTest(&error));
+  if (runfiles == nullptr) {
+    fprintf(stderr, "Could not initialize runfiles: %s\n", error.c_str());
+    abort();
+  }
+
+  std::string full_path = runfiles->Rlocation(std::string("boringssl/") + path);
+  if (full_path.empty()) {
+    fprintf(stderr, "Could not find runfile '%s'.\n", path);
+    abort();
+  }
+#else
   const char *root = getenv("BORINGSSL_TEST_DATA_ROOT");
   root = root != nullptr ? root : ".";
 
   std::string full_path = root;
   full_path.push_back('/');
   full_path.append(path);
+#endif
 
   ScopedFILE file(fopen(full_path.c_str(), "rb"));
   if (file == nullptr) {
