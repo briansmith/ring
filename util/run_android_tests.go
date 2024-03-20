@@ -362,16 +362,16 @@ func main() {
 	}
 
 	var libraries []string
-	if _, err := os.Stat(filepath.Join(*buildDir, "crypto/libcrypto.so")); err == nil {
+	if _, err := os.Stat(filepath.Join(*buildDir, "libcrypto.so")); err == nil {
 		libraries = []string{
 			"libboringssl_gtest.so",
-			"libpki.so",
-			"crypto/libcrypto.so",
+			"libcrypto.so",
 			"libdecrepit.so",
+			"libpki.so",
 			"libssl.so",
 		}
 	} else if !os.IsNotExist(err) {
-		fmt.Printf("Failed to stat crypto/libcrypto.so: %s\n", err)
+		fmt.Printf("Failed to stat libcrypto.so: %s\n", err)
 		os.Exit(1)
 	}
 

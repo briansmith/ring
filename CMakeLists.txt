@@ -24,23 +24,7 @@ enable_language(CXX)
 
 include(GNUInstallDirs)
 
-# CMake versions before 3.14 do not have default destination values. Executable
-# and library targets that use a default destination should include this
-# variable.
-if(CMAKE_VERSION VERSION_LESS "3.14")
-  set(INSTALL_DESTINATION_DEFAULT
-      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-endif()
-
-# Wrap the CMake install function so we can disable it.
 set(INSTALL_ENABLED 1)
-function(install_if_enabled)
-  if(INSTALL_ENABLED)
-    install(${ARGV})
-  endif()
-endfunction()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
   find_package(PkgConfig QUIET)
@@ -490,29 +474,146 @@ target_include_directories(
 # themselves as dependencies next to the target definition.
 add_custom_target(all_tests)
 
-add_subdirectory(crypto)
 add_subdirectory(ssl/test)
 add_subdirectory(util/fipstools)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
+
+if(OPENSSL_ASM)
+  set(CRYPTO_SOURCES_ASM_USED ${CRYPTO_SOURCES_ASM})
+  set(BCM_SOURCES_ASM_USED ${BCM_SOURCES_ASM})
+  set(TEST_SUPPORT_SOURCES_ASM_USED ${TEST_SUPPORT_SOURCES_ASM})
+elseif(OPENSSL_NASM)
+  set(CRYPTO_SOURCES_ASM_USED ${CRYPTO_SOURCES_NASM})
+  set(BCM_SOURCES_ASM_USED ${BCM_SOURCES_NASM})
+  set(TEST_SUPPORT_SOURCES_ASM_USED ${TEST_SUPPORT_SOURCES_NASM})
+endif()
+
+if(FIPS_DELOCATE AND FIPS_SHARED)
+  message(FATAL_ERROR "Can't set both delocate and shared mode for FIPS build")
+endif()
+
+if(FIPS_DELOCATE)
+  add_library(bcm_c_generated_asm STATIC ${BCM_SOURCES})
+  add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
+  target_include_directories(bcm_c_generated_asm PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
+  set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  set(TARGET_FLAG "")
+  if(CMAKE_ASM_COMPILER_TARGET)
+    set(TARGET_FLAG "--target=${CMAKE_ASM_COMPILER_TARGET}")
+  endif()
+
+  go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
+  add_custom_command(
+    OUTPUT bcm-delocated.S
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/delocate
+            -a $<TARGET_FILE:bcm_c_generated_asm>
+            -o ${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S
+            -cc ${CMAKE_ASM_COMPILER}
+            -cc-flags "${TARGET_FLAG} ${CMAKE_ASM_FLAGS}"
+            ${BCM_SOURCES_ASM_USED}
+            ${CRYPTO_HEADERS}
+    DEPENDS bcm_c_generated_asm
+            delocate
+            ${BCM_SOURCES_ASM_USED}
+            ${CRYPTO_HEADERS}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+
+  add_library(bcm_hashunset STATIC bcm-delocated.S)
+  set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
+
+  go_executable(inject_hash
+                boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
+  add_custom_command(
+    OUTPUT bcm.o
+    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
+    DEPENDS bcm_hashunset inject_hash
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  set(CRYPTO_FIPS_OBJECTS bcm.o)
+elseif(FIPS_SHARED)
+  if(NOT BUILD_SHARED_LIBS)
+    message(FATAL_ERROR "FIPS_SHARED set but not BUILD_SHARED_LIBS")
+  endif()
+
+  add_library(bcm_library STATIC ${BCM_SOURCES} ${BCM_SOURCES_ASM_USED})
+  add_dependencies(bcm_library boringssl_prefix_symbols)
+  target_include_directories(bcm_library PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
+  add_custom_command(
+    OUTPUT bcm.o
+    COMMAND ${CMAKE_LINKER} -r -T ${CMAKE_CURRENT_SOURCE_DIR}/crypto/fipsmodule/fips_shared.lds -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
+    DEPENDS bcm_library crypto/fipsmodule/fips_shared.lds
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
+  set(CRYPTO_FIPS_OBJECTS bcm.o)
+else()
+  add_library(fipsmodule OBJECT ${BCM_SOURCES} ${BCM_SOURCES_ASM_USED})
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  set(CRYPTO_FIPS_OBJECTS $<TARGET_OBJECTS:fipsmodule>)
+endif()
+
+add_library(crypto ${CRYPTO_SOURCES} ${CRYPTO_FIPS_OBJECTS} ${CRYPTO_SOURCES_ASM_USED})
+target_include_directories(crypto PUBLIC
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+set_property(TARGET crypto PROPERTY EXPORT_NAME Crypto)
+
+if(FIPS_SHARED)
+  # Rewrite libcrypto.so to inject the correct module hash value. This assumes
+  # UNIX-style library naming, but we only support FIPS mode on Linux anyway.
+  add_custom_command(
+    TARGET crypto POST_BUILD
+    COMMAND ${GO_EXECUTABLE} run
+    ${CMAKE_CURRENT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+    -o libcrypto.so -in-object libcrypto.so
+    # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
+    # go_executable isn't used (as it doesn't get built), but we list this
+    # dependency anyway in case it starts working in some CMake version.
+    DEPENDS util/fipstools/inject_hash/inject_hash.go
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
+endif()
+
+add_dependencies(crypto boringssl_prefix_symbols)
+if(WIN32)
+  target_link_libraries(crypto ws2_32)
+endif()
+
+# CMAKE_SYSTEM_NAME is "Generic" for embedded OSes:
+# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html#toolchain-files
+#
+# For now we assume embedded OSes do not have threads. Additionally, the Threads
+# package does not work with Android, but Android does not require any extra
+# parameters to link pthreads.
+if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android)$")
+  find_package(Threads REQUIRED)
+  target_link_libraries(crypto Threads::Threads)
+endif()
+
+# Every target depends on crypto, so we add libcxx as a dependency here to
+# simplify injecting it everywhere.
+if(USE_CUSTOM_LIBCXX)
+  target_link_libraries(crypto libcxx)
+endif()
 
 add_library(ssl ${SSL_SOURCES})
 # Although libssl also provides headers that require an include directory, the
 # flag is already specified by libcrypto, so we omit target_include_directories
 # here.
-install_if_enabled(TARGETS ssl EXPORT OpenSSLTargets ${INSTALL_DESTINATION_DEFAULT})
 set_property(TARGET ssl PROPERTY EXPORT_NAME SSL)
 target_link_libraries(ssl crypto)
 
 add_library(decrepit ${DECREPIT_SOURCES})
 target_link_libraries(decrepit crypto ssl)
 
-add_library(test_support_lib STATIC ${TEST_SUPPORT_SOURCES})
-if(OPENSSL_ASM)
-  target_sources(test_support_lib PRIVATE ${TEST_SUPPORT_SOURCES_ASM})
-endif()
-if(OPENSSL_NASM)
-  target_sources(test_support_lib PRIVATE ${TEST_SUPPORT_SOURCES_NASM})
-endif()
+add_library(test_support_lib STATIC
+            ${TEST_SUPPORT_SOURCES} ${TEST_SUPPORT_SOURCES_ASM_USED})
 if(LIBUNWIND_FOUND)
   target_compile_options(test_support_lib PRIVATE ${LIBUNWIND_CFLAGS_OTHER})
   target_include_directories(test_support_lib PRIVATE ${LIBUNWIND_INCLUDE_DIRS})
@@ -562,13 +663,12 @@ set_target_properties(
   COMPILE_FLAGS "${PKI_CXX_FLAGS}")
 
 add_executable(bssl ${BSSL_SOURCES})
-install_if_enabled(TARGETS bssl DESTINATION ${INSTALL_DESTINATION_DEFAULT})
 target_link_libraries(bssl ssl crypto)
 
 # Historically, targets were built in subdirectories. For compatibility with
 # existing tools, we, for now, copy the targets into the subdirectories. This
 # will be removed sometime in 2024.
-copy_post_build(crypto crypto_test urandom_test)
+copy_post_build(crypto crypto crypto_test urandom_test)
 copy_post_build(ssl ssl ssl_test)
 copy_post_build(decrepit decrepit decrepit_test)
 copy_post_build(tool bssl)
@@ -643,11 +743,24 @@ add_custom_target(
     DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
     USES_TERMINAL)
 
-install_if_enabled(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+if(INSTALL_ENABLED)
+  # CMake versions before 3.14 do not have default destination values. Executable
+  # and library targets that use a default destination should include this
+  # variable.
+  if(CMAKE_VERSION VERSION_LESS "3.14")
+    set(INSTALL_DESTINATION_DEFAULT
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  endif()
 
-install_if_enabled(EXPORT OpenSSLTargets
-  FILE OpenSSLTargets.cmake
-  NAMESPACE OpenSSL::
-  DESTINATION lib/cmake/OpenSSL
-)
-install_if_enabled(FILES cmake/OpenSSLConfig.cmake DESTINATION lib/cmake/OpenSSL)
+  install(TARGETS crypto ssl
+          EXPORT OpenSSLTargets ${INSTALL_DESTINATION_DEFAULT})
+  install(TARGETS bssl DESTINATION ${INSTALL_DESTINATION_DEFAULT})
+  install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  install(EXPORT OpenSSLTargets
+          FILE OpenSSLTargets.cmake
+          NAMESPACE OpenSSL::
+          DESTINATION lib/cmake/OpenSSL)
+  install(FILES cmake/OpenSSLConfig.cmake DESTINATION lib/cmake/OpenSSL)
+endif()
