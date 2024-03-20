@@ -82,6 +82,7 @@ test_aead! {
     { AES_128_GCM, "aead_aes_128_gcm_tests.txt" },
     { AES_256_GCM, "aead_aes_256_gcm_tests.txt" },
     { CHACHA20_POLY1305, "aead_chacha20_poly1305_tests.txt" },
+    { AES_128_CCM, "aead_aes_128_ccm_tests.txt" },
 }
 
 struct KnownAnswerTestCase<'a> {
