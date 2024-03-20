@@ -91,6 +91,31 @@ fn test_signature_rsa_pkcs1_sign() {
     );
 }
 
+#[test]
+fn signature_rsa_pss_sign_nondeterministic() {
+    let rng = rand::SystemRandom::new();
+    const PRIVATE_KEY: &[u8] = include_bytes!("rsa_test_private_key_2048.p8");
+
+    let key_pair = signature::RsaKeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
+
+    static ALG: &'static dyn signature::RsaEncoding = &signature::RSA_PSS_SHA256;
+    const MSG: &[u8] = &[];
+
+    let sig1 = {
+        let mut sig = vec![0u8; key_pair.public_modulus_len()];
+        key_pair.sign(ALG, &rng, MSG, &mut sig).unwrap();
+        sig
+    };
+
+    let sig2 = {
+        let mut sig = vec![0u8; key_pair.public_modulus_len()];
+        key_pair.sign(ALG, &rng, MSG, &mut sig).unwrap();
+        sig
+    };
+
+    assert_ne!(sig1, sig2);
+}
+
 #[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_pss_sign() {

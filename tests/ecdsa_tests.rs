@@ -263,6 +263,24 @@ fn signature_ecdsa_sign_fixed_sign_and_verify_test() {
     );
 }
 
+#[test]
+fn signature_ecdsa_sign_nondeterministic() {
+    let rng = rand::SystemRandom::new();
+    const PRIVATE_KEY: &[u8] = include_bytes!("ecdsa_test_private_key_p256.p8");
+
+    let key_pair = signature::EcdsaKeyPair::from_pkcs8(
+        &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+        PRIVATE_KEY,
+    )
+    .unwrap();
+
+    const MSG: &[u8] = &[];
+
+    let sig1 = key_pair.sign(&rng, MSG).unwrap();
+    let sig2 = key_pair.sign(&rng, MSG).unwrap();
+    assert_ne!(sig1.as_ref(), sig2.as_ref());
+}
+
 // This test is not a known-answer test, though it re-uses the known-answer
 // test vectors. Because the nonce is randomized, the signature will be
 // different each time. Because of that, here we simply verify that the
