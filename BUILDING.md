@@ -31,14 +31,6 @@ most recent stable version of each tool.
     GCC (6.1+) and Clang should work on non-Windows platforms, and maybe on
     Windows too.
 
-  * The most recent stable version of [Go](https://golang.org/dl/) is required.
-    Note Go is exempt from the five year support window. If not found by CMake,
-    the go executable may be configured explicitly by setting `GO_EXECUTABLE`.
-
-  * On x86_64 Linux, the tests have an optional
-    [libunwind](https://www.nongnu.org/libunwind/) dependency to test the
-    assembly more thoroughly.
-
 ## Building
 
 Using Ninja (note the 'N' is capitalized in the cmake invocation):
@@ -127,7 +119,8 @@ supported.
 
 BoringSSL's build system has experimental support for adding a custom prefix to
 all symbols. This can be useful when linking multiple versions of BoringSSL in
-the same project to avoid symbol conflicts.
+the same project to avoid symbol conflicts. Symbol prefixing requires the most
+recent stable version of [Go](https://go.dev/).
 
 In order to build with prefixed symbols, the `BORINGSSL_PREFIX` CMake variable
 should specify the prefix to add to all symbols, and the
@@ -194,6 +187,16 @@ and performance. For instance, BoringSSL's fastest P-256 implementation uses a
 `-DOPENSSL_SMALL=1` to CMake or define the `OPENSSL_SMALL` preprocessor symbol.
 
 # Running Tests
+
+There are two additional dependencies for running tests:
+
+  * The most recent stable version of [Go](https://go.dev/) is required.
+    Note Go is exempt from the five year support window. If not found by CMake,
+    the go executable may be configured explicitly by setting `GO_EXECUTABLE`.
+
+  * On x86_64 Linux, the tests have an optional
+    [libunwind](https://www.nongnu.org/libunwind/) dependency to test the
+    assembly more thoroughly.
 
 There are two sets of tests: the C/C++ tests and the blackbox tests. For former
 are built by Ninja and can be run from the top-level directory with `go run

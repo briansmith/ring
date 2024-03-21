@@ -1,9 +1,15 @@
+# Go is an optional dependency. It's a necessary dependency if running tests or
+# the FIPS build, which will check these.
 find_program(GO_EXECUTABLE go)
-if(NOT GO_EXECUTABLE)
-  message(FATAL_ERROR "Could not find Go")
-endif()
+
+function(require_go)
+  if(NOT GO_EXECUTABLE)
+    message(FATAL_ERROR "Could not find Go")
+  endif()
+endfunction()
 
 function(go_executable dest package)
+  require_go()
   set(godeps "${PROJECT_SOURCE_DIR}/util/godeps.go")
   if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
     # The DEPFILE parameter to add_custom_command only works with Ninja. Query

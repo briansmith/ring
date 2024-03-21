@@ -59,6 +59,7 @@ foreach(VAR CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_ASM_FLAGS)
 endforeach()
 
 if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS)
+  require_go()
   add_definitions(-DBORINGSSL_PREFIX=${BORINGSSL_PREFIX})
   # CMake automatically connects include_directories to the NASM command-line,
   # but not add_definitions.
@@ -309,6 +310,7 @@ if(GCOV)
 endif()
 
 if(FIPS)
+  require_go()
   add_definitions(-DBORINGSSL_FIPS)
   if(FIPS_BREAK_TEST)
     add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
@@ -726,22 +728,29 @@ file(STRINGS util/go_tests.txt GO_TESTS)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
              util/go_tests.txt)
 
-add_custom_target(
-    run_tests
-    COMMAND ${CMAKE_COMMAND} -E echo "Running Go tests"
-    COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
-    COMMAND ${CMAKE_COMMAND} -E echo
-    COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
-    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-            ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E echo
-    COMMAND ${CMAKE_COMMAND} -E echo "Running SSL tests"
-    COMMAND cd ssl/test/runner &&
-            ${GO_EXECUTABLE} test -shim-path $<TARGET_FILE:bssl_shim>
-              ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
-    USES_TERMINAL)
+if(GO_EXECUTABLE)
+  add_custom_target(
+      run_tests
+      COMMAND ${CMAKE_COMMAND} -E echo "Running Go tests"
+      COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
+      COMMAND ${CMAKE_COMMAND} -E echo
+      COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
+      COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+              ${CMAKE_CURRENT_BINARY_DIR}
+      COMMAND ${CMAKE_COMMAND} -E echo
+      COMMAND ${CMAKE_COMMAND} -E echo "Running SSL tests"
+      COMMAND cd ssl/test/runner &&
+              ${GO_EXECUTABLE} test -shim-path $<TARGET_FILE:bssl_shim>
+                ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
+      USES_TERMINAL)
+else()
+  add_custom_target(
+      run_tests
+      COMMAND ${CMAKE_COMMAND} -E echo "Running tests requires Go"
+      COMMAND ${CMAKE_COMMAND} -E false)
+endif()
 
 if(INSTALL_ENABLED)
   # CMake versions before 3.14 do not have default destination values. Executable
