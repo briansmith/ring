@@ -17,7 +17,10 @@ use super::{
     block::{Block, BLOCK_LEN},
     gcm, shift, Aad, Nonce, Tag,
 };
-use crate::{aead, cpu, error, polyfill::usize_from_u64_saturated};
+use crate::{
+    aead, cpu, error,
+    polyfill::{sliceutil::overwrite_at_start, usize_from_u64_saturated},
+};
 use core::ops::RangeFrom;
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
@@ -172,7 +175,7 @@ fn aes_gcm_seal(
         let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input, cpu_features);
         output.zero_from(remainder.len());
         auth.update_block(output);
-        remainder.copy_from_slice(&output.as_ref()[..remainder.len()]);
+        overwrite_at_start(remainder, output.as_ref());
     }
 
     Ok(finish(aes_key, auth, tag_iv))
