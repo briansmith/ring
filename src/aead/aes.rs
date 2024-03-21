@@ -12,17 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    block::{Block, BLOCK_LEN},
-    nonce::Nonce,
-    quic::Sample,
-};
+use super::{nonce::Nonce, quic::Sample};
 use crate::{
     bits::{BitLength, FromByteLen as _},
-    c, cpu,
+    c, constant_time, cpu,
     endian::BigEndian,
     error,
-    polyfill::{self, ArraySplitMap},
+    polyfill::{self, ArrayFlatten as _, ArraySplitMap as _},
 };
 use core::ops::RangeFrom;
 
@@ -199,7 +195,7 @@ impl Key {
     #[inline]
     pub fn encrypt_iv_xor_block(&self, iv: Iv, input: Block, cpu_features: cpu::Features) -> Block {
         let encrypted_iv = self.encrypt_block(iv.into_block_less_safe(), cpu_features);
-        encrypted_iv ^ input
+        constant_time::xor(encrypted_iv, input)
     }
 
     #[inline]
@@ -266,7 +262,7 @@ impl Key {
             #[cfg(target_arch = "x86")]
             Implementation::VPAES_BSAES => {
                 super::shift::shift_full_blocks(in_out, src, |input| {
-                    self.encrypt_iv_xor_block(ctr.increment(), Block::from(input), cpu_features)
+                    self.encrypt_iv_xor_block(ctr.increment(), *input, cpu_features)
                 });
             }
 
@@ -277,9 +273,7 @@ impl Key {
     }
 
     pub fn new_mask(&self, sample: Sample) -> [u8; 5] {
-        let &[b0, b1, b2, b3, b4, ..] = self
-            .encrypt_block(Block::from(&sample), cpu::features())
-            .as_ref();
+        let [b0, b1, b2, b3, b4, ..] = self.encrypt_block(sample, cpu::features());
         [b0, b1, b2, b3, b4]
     }
 
@@ -324,7 +318,7 @@ impl Counter {
 
     pub fn increment(&mut self) -> Iv {
         let iv: [[u8; 4]; 4] = self.0.map(Into::into);
-        let iv = Iv(Block::from(iv));
+        let iv = Iv(iv.array_flatten());
         self.increment_by_less_safe(1);
         iv
     }
@@ -343,7 +337,7 @@ pub struct Iv(Block);
 impl From<Counter> for Iv {
     fn from(counter: Counter) -> Self {
         let iv: [[u8; 4]; 4] = counter.0.map(Into::into);
-        Self(Block::from(iv))
+        Self(iv.array_flatten())
     }
 }
 
@@ -354,6 +348,10 @@ impl Iv {
         self.0
     }
 }
+
+pub(super) type Block = [u8; BLOCK_LEN];
+pub(super) const BLOCK_LEN: usize = 16;
+pub(super) const ZERO_BLOCK: Block = [0u8; BLOCK_LEN];
 
 #[repr(C)] // Only so `Key` can be `#[repr(C)]`
 #[derive(Clone, Copy)]
@@ -434,10 +432,9 @@ mod tests {
             assert_eq!(section, "");
             let key = consume_key(test_case, "Key");
             let input = test_case.consume_bytes("Input");
-            let input: &[u8; BLOCK_LEN] = input.as_slice().try_into()?;
+            let block: Block = input.as_slice().try_into()?;
             let expected_output = test_case.consume_bytes("Output");
 
-            let block = Block::from(input);
             let output = key.encrypt_block(block, cpu_features);
             assert_eq!(output.as_ref(), &expected_output[..]);
 

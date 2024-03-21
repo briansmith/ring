@@ -13,12 +13,11 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    aes::{self, Counter},
-    block::{Block, BLOCK_LEN},
+    aes::{self, Counter, BLOCK_LEN, ZERO_BLOCK},
     gcm, shift, Aad, Nonce, Tag,
 };
 use crate::{
-    aead, cpu, error,
+    aead, constant_time, cpu, error,
     polyfill::{sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
 use core::ops::RangeFrom;
@@ -62,7 +61,7 @@ fn init(
 ) -> Result<aead::KeyInner, error::Unspecified> {
     let aes_key = aes::Key::new(key, variant, cpu_features)?;
     let gcm_key = gcm::Key::new(
-        aes_key.encrypt_block(Block::zero(), cpu_features),
+        aes_key.encrypt_block(ZERO_BLOCK, cpu_features),
         cpu_features,
     );
     Ok(aead::KeyInner::AesGcm(Key { gcm_key, aes_key }))
@@ -170,12 +169,12 @@ fn aes_gcm_seal(
     }
 
     if !remainder.is_empty() {
-        let mut input = Block::zero();
-        input.overwrite_part_at(0, remainder);
+        let mut input = ZERO_BLOCK;
+        overwrite_at_start(&mut input, remainder);
         let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input, cpu_features);
-        output.zero_from(remainder.len());
+        output[remainder.len()..].fill(0);
         auth.update_block(output);
-        overwrite_at_start(remainder, output.as_ref());
+        overwrite_at_start(remainder, &output);
     }
 
     Ok(finish(aes_key, auth, tag_iv))
@@ -309,8 +308,8 @@ fn aes_gcm_open(
 
     let remainder = &mut in_out[whole_len..];
     shift::shift_partial((in_prefix_len, remainder), |remainder| {
-        let mut input = Block::zero();
-        input.overwrite_part_at(0, remainder);
+        let mut input = ZERO_BLOCK;
+        overwrite_at_start(&mut input, remainder);
         auth.update_block(input);
         aes_key.encrypt_iv_xor_block(ctr.into(), input, cpu_features)
     });
@@ -322,8 +321,7 @@ fn finish(aes_key: &aes::Key, gcm_ctx: gcm::Context, tag_iv: aes::Iv) -> Tag {
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag, cpu_features| {
         let encrypted_iv = aes_key.encrypt_block(tag_iv.into_block_less_safe(), cpu_features);
-        let tag = pre_tag ^ encrypted_iv;
-        Tag(*tag.as_ref())
+        Tag(constant_time::xor(pre_tag, encrypted_iv))
     })
 }
 
