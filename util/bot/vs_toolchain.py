@@ -12,6 +12,7 @@ import sys
 
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
+toolchain_dir = os.path.join(script_dir, 'win_toolchain')
 json_data_file = os.path.join(script_dir, 'win_toolchain.json')
 
 
@@ -91,6 +92,7 @@ def Update(version):
                   'win_toolchain',
                   'get_toolchain_if_necessary.py'),
       '--output-json', json_data_file,
+      '--toolchain-dir', toolchain_dir,
     ] + _GetDesiredVsToolchainHashes(version)
   subprocess.check_call(get_toolchain_args)
   return 0
