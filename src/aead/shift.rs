@@ -15,10 +15,11 @@
 use super::block::{Block, BLOCK_LEN};
 
 #[cfg(target_arch = "x86")]
-pub fn shift_full_blocks<F>(in_out: &mut [u8], src: core::ops::RangeFrom<usize>, mut transform: F)
-where
-    F: FnMut(&[u8; BLOCK_LEN]) -> Block,
-{
+pub fn shift_full_blocks(
+    in_out: &mut [u8],
+    src: core::ops::RangeFrom<usize>,
+    mut transform: impl FnMut(&[u8; BLOCK_LEN]) -> Block,
+) {
     let in_out_len = in_out[src.clone()].len();
 
     for i in (0..in_out_len).step_by(BLOCK_LEN) {
@@ -32,10 +33,10 @@ where
     }
 }
 
-pub fn shift_partial<F>((in_prefix_len, in_out): (usize, &mut [u8]), transform: F)
-where
-    F: FnOnce(&[u8]) -> Block,
-{
+pub fn shift_partial(
+    (in_prefix_len, in_out): (usize, &mut [u8]),
+    transform: impl FnOnce(&[u8]) -> Block,
+) {
     let (block, in_out_len) = {
         let input = &in_out[in_prefix_len..];
         let in_out_len = input.len();
