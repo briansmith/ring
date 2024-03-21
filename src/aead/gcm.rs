@@ -12,17 +12,17 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    aes_gcm,
-    block::{Block, BLOCK_LEN},
-    Aad,
-};
+use super::{aes_gcm, Aad};
+
 use crate::{
     bits::{BitLength, FromByteLen as _},
-    cpu, error,
-    polyfill::ArraySplitMap,
+    constant_time, cpu, error,
+    polyfill::{sliceutil::overwrite_at_start, ArrayFlatten as _, ArraySplitMap as _},
 };
 use core::ops::BitXorAssign;
+
+// GCM uses the same block type as AES.
+use super::aes::{Block, BLOCK_LEN, ZERO_BLOCK};
 
 mod gcm_nohw;
 
@@ -33,7 +33,7 @@ pub struct Key {
 
 impl Key {
     pub(super) fn new(h_be: Block, cpu_features: cpu::Features) -> Self {
-        let h: [u64; 2] = h_be.as_ref().array_split_map(u64::from_be_bytes);
+        let h: [u64; 2] = h_be.array_split_map(u64::from_be_bytes);
 
         let mut key = Self {
             h_table: HTable {
@@ -111,7 +111,7 @@ impl Context {
 
         let mut ctx = Self {
             inner: ContextInner {
-                Xi: Xi(Block::zero()),
+                Xi: Xi(ZERO_BLOCK),
                 Htable: key.h_table.clone(),
             },
             aad_len: BitLength::from_byte_len(aad.as_ref().len())?,
@@ -120,8 +120,8 @@ impl Context {
         };
 
         for ad in aad.0.chunks(BLOCK_LEN) {
-            let mut block = Block::zero();
-            block.overwrite_part_at(0, ad);
+            let mut block = ZERO_BLOCK;
+            overwrite_at_start(&mut block, ad);
             ctx.update_block(block);
         }
 
@@ -268,9 +268,11 @@ impl Context {
     where
         F: FnOnce(Block, cpu::Features) -> super::Tag,
     {
-        self.update_block(Block::from(
-            [self.aad_len, self.in_out_len].map(BitLength::to_be_bytes),
-        ));
+        self.update_block(
+            [self.aad_len, self.in_out_len]
+                .map(BitLength::to_be_bytes)
+                .array_flatten(),
+        );
 
         f(self.inner.Xi.0, self.cpu_features)
     }
@@ -314,14 +316,7 @@ pub struct Xi(Block);
 impl BitXorAssign<Block> for Xi {
     #[inline]
     fn bitxor_assign(&mut self, a: Block) {
-        self.0 ^= a;
-    }
-}
-
-impl From<Xi> for Block {
-    #[inline]
-    fn from(Xi(block): Xi) -> Self {
-        block
+        self.0 = constant_time::xor(self.0, a)
     }
 }
 

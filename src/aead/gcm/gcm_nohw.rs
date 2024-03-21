@@ -22,8 +22,8 @@
 //
 // Unlike the BearSSL notes, we use u128 in the 64-bit implementation.
 
-use super::{Block, Xi, BLOCK_LEN};
-use crate::polyfill::ArraySplitMap;
+use super::{Xi, BLOCK_LEN};
+use crate::polyfill::{ArrayFlatten as _, ArraySplitMap as _};
 
 #[cfg(target_pointer_width = "64")]
 fn gcm_mul64_nohw(a: u64, b: u64) -> (u64, u64) {
@@ -236,9 +236,9 @@ pub(super) fn ghash(xi: &mut Xi, h: super::u128, input: &[[u8; BLOCK_LEN]]) {
 
 #[inline]
 fn with_swapped_xi(Xi(xi): &mut Xi, f: impl FnOnce(&mut [u64; 2])) {
-    let unswapped: [u64; 2] = xi.as_ref().array_split_map(u64::from_be_bytes);
+    let unswapped: [u64; 2] = xi.array_split_map(u64::from_be_bytes);
     let mut swapped: [u64; 2] = [unswapped[1], unswapped[0]];
     f(&mut swapped);
     let reswapped = [swapped[1], swapped[0]];
-    *xi = Block::from(reswapped.map(u64::to_be_bytes))
+    *xi = reswapped.map(u64::to_be_bytes).array_flatten()
 }

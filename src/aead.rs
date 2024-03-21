@@ -242,7 +242,6 @@ pub const MAX_TAG_LEN: usize = TAG_LEN;
 
 mod aes;
 mod aes_gcm;
-mod block;
 mod chacha;
 mod chacha20_poly1305;
 pub mod chacha20_poly1305_openssh;
