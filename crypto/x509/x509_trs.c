@@ -67,14 +67,14 @@ typedef struct x509_trust_st X509_TRUST;
 
 struct x509_trust_st {
   int trust;
-  int (*check_trust)(const X509_TRUST *, X509 *, int);
+  int (*check_trust)(const X509_TRUST *, X509 *);
   int nid;
 } /* X509_TRUST */;
 
-static int trust_1oidany(const X509_TRUST *trust, X509 *x, int flags);
-static int trust_compat(const X509_TRUST *trust, X509 *x, int flags);
+static int trust_1oidany(const X509_TRUST *trust, X509 *x);
+static int trust_compat(const X509_TRUST *trust, X509 *x);
 
-static int obj_trust(int id, X509 *x, int flags);
+static int obj_trust(int id, X509 *x);
 
 static const X509_TRUST trstandard[] = {
     {X509_TRUST_COMPAT, trust_compat, 0},
@@ -99,36 +99,36 @@ int X509_check_trust(X509 *x, int id, int flags) {
   }
   // We get this as a default value
   if (id == 0) {
-    int rv = obj_trust(NID_anyExtendedKeyUsage, x, 0);
+    int rv = obj_trust(NID_anyExtendedKeyUsage, x);
     if (rv != X509_TRUST_UNTRUSTED) {
       return rv;
     }
-    return trust_compat(NULL, x, 0);
+    return trust_compat(NULL, x);
   }
   const X509_TRUST *pt = X509_TRUST_get0(id);
   if (pt == NULL) {
     // Unknown trust IDs are silently reintrepreted as NIDs. This is unreachable
     // from the certificate verifier itself, but wpa_supplicant relies on it.
     // Note this relies on commonly-used NIDs and trust IDs not colliding.
-    return obj_trust(id, x, flags);
+    return obj_trust(id, x);
   }
-  return pt->check_trust(pt, x, flags);
+  return pt->check_trust(pt, x);
 }
 
 int X509_is_valid_trust_id(int trust) {
   return X509_TRUST_get0(trust) != NULL;
 }
 
-static int trust_1oidany(const X509_TRUST *trust, X509 *x, int flags) {
+static int trust_1oidany(const X509_TRUST *trust, X509 *x) {
   if (x->aux && (x->aux->trust || x->aux->reject)) {
-    return obj_trust(trust->nid, x, flags);
+    return obj_trust(trust->nid, x);
   }
   // we don't have any trust settings: for compatibility we return trusted
   // if it is self signed
-  return trust_compat(trust, x, flags);
+  return trust_compat(trust, x);
 }
 
-static int trust_compat(const X509_TRUST *trust, X509 *x, int flags) {
+static int trust_compat(const X509_TRUST *trust, X509 *x) {
   if (!x509v3_cache_extensions(x)) {
     return X509_TRUST_UNTRUSTED;
   }
@@ -139,7 +139,7 @@ static int trust_compat(const X509_TRUST *trust, X509 *x, int flags) {
   }
 }
 
-static int obj_trust(int id, X509 *x, int flags) {
+static int obj_trust(int id, X509 *x) {
   X509_CERT_AUX *ax = x->aux;
   if (!ax) {
     return X509_TRUST_UNTRUSTED;
