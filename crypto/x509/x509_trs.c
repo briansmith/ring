@@ -144,20 +144,16 @@ static int obj_trust(int id, X509 *x) {
   if (!ax) {
     return X509_TRUST_UNTRUSTED;
   }
-  if (ax->reject) {
-    for (size_t i = 0; i < sk_ASN1_OBJECT_num(ax->reject); i++) {
-      const ASN1_OBJECT *obj = sk_ASN1_OBJECT_value(ax->reject, i);
-      if (OBJ_obj2nid(obj) == id) {
-        return X509_TRUST_REJECTED;
-      }
+  for (size_t i = 0; i < sk_ASN1_OBJECT_num(ax->reject); i++) {
+    const ASN1_OBJECT *obj = sk_ASN1_OBJECT_value(ax->reject, i);
+    if (OBJ_obj2nid(obj) == id) {
+      return X509_TRUST_REJECTED;
     }
   }
-  if (ax->trust) {
-    for (size_t i = 0; i < sk_ASN1_OBJECT_num(ax->trust); i++) {
-      const ASN1_OBJECT *obj = sk_ASN1_OBJECT_value(ax->trust, i);
-      if (OBJ_obj2nid(obj) == id) {
-        return X509_TRUST_TRUSTED;
-      }
+  for (size_t i = 0; i < sk_ASN1_OBJECT_num(ax->trust); i++) {
+    const ASN1_OBJECT *obj = sk_ASN1_OBJECT_value(ax->trust, i);
+    if (OBJ_obj2nid(obj) == id) {
+      return X509_TRUST_TRUSTED;
     }
   }
   return X509_TRUST_UNTRUSTED;
