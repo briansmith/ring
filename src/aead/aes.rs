@@ -277,12 +277,10 @@ impl Key {
     }
 
     pub fn new_mask(&self, sample: Sample) -> [u8; 5] {
-        let block = self.encrypt_block(Block::from(&sample), cpu::features());
-
-        let mut out: [u8; 5] = [0; 5];
-        out.copy_from_slice(&block.as_ref()[..5]);
-
-        out
+        let &[b0, b1, b2, b3, b4, ..] = self
+            .encrypt_block(Block::from(&sample), cpu::features())
+            .as_ref();
+        [b0, b1, b2, b3, b4]
     }
 
     #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]

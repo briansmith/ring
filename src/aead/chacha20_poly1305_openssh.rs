@@ -79,7 +79,7 @@ impl SealingKey {
         }
 
         let Tag(tag) = poly1305::sign(poly_key, plaintext_in_ciphertext_out, cpu_features);
-        tag_out.copy_from_slice(tag.as_ref());
+        *tag_out = tag;
     }
 }
 
