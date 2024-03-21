@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::polyfill::ArrayFlatten;
+use crate::{constant_time, polyfill::ArrayFlatten};
 use core::ops::{BitXor, BitXorAssign};
 
 #[repr(transparent)]
@@ -45,11 +45,7 @@ impl Block {
 impl BitXorAssign for Block {
     #[inline]
     fn bitxor_assign(&mut self, a: Self) {
-        // Relies heavily on optimizer to optimize this into word- or vector-
-        // level XOR.
-        for (r, a) in self.0.iter_mut().zip(a.0.iter()) {
-            *r ^= *a;
-        }
+        self.0 = constant_time::xor(self.0, a.0)
     }
 }
 

@@ -234,9 +234,8 @@ impl Key {
         // If the key is shorter than one block then we're supposed to act like
         // it is padded with zero bytes up to the block length. `x ^ 0 == x` so
         // we can just leave the trailing bytes of `padded_key` untouched.
-        for (padded_key, key_value) in padded_key.iter_mut().zip(key_value.iter()) {
-            *padded_key ^= *key_value;
-        }
+        constant_time::xor_assign_at_start(&mut padded_key[..], key_value);
+
         let leftover = key.inner.update(padded_key, cpu_features);
         debug_assert_eq!(leftover.len(), 0);
 

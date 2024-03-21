@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{bits, digest, error, rand};
+use crate::{bits, constant_time, digest, error, rand};
 
 mod pkcs1;
 mod pss;
@@ -71,11 +71,10 @@ fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], out: &mut [u8]) {
         // long inputs very early.
         ctx.update(&u32::to_be_bytes(i.try_into().unwrap()));
         let digest = ctx.finish();
-        // `zip` does the right thing as the the last chunk may legitimately be
-        // shorter than `digest`, and `digest` will never be shorter than `out`.
-        for (m, &d) in out.iter_mut().zip(digest.as_ref().iter()) {
-            *m ^= d;
-        }
+
+        // The last chunk may legitimately be shorter than `digest`, but
+        // `digest` will never be shorter than `out`.
+        constant_time::xor_assign_at_start(out, digest.as_ref());
     }
 }
 
