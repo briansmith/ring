@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::block::{Block, BLOCK_LEN};
+use crate::polyfill::sliceutil::overwrite_at_start;
 
 #[cfg(target_arch = "x86")]
 pub fn shift_full_blocks(
@@ -46,5 +47,5 @@ pub fn shift_partial(
         debug_assert!(in_out_len < BLOCK_LEN);
         (transform(input), in_out_len)
     };
-    in_out[..in_out_len].copy_from_slice(&block.as_ref()[..in_out_len]);
+    overwrite_at_start(&mut in_out[..in_out_len], block.as_ref());
 }
