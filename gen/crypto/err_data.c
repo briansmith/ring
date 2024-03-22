@@ -80,7 +80,7 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x10331660,
     0x10339679,
     0x1034168c,
-    0x10348d4e,
+    0x10348f93,
     0x10350cdf,
     0x1035969f,
     0x103616c9,
@@ -121,7 +121,7 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x1047998d,
     0x104819a2,
     0x104899b0,
-    0x10490f57,
+    0x10490edf,
     0x104997ea,
     0x104a16b4,
     0x14320c73,
@@ -347,39 +347,39 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x34350c41,
     0x34358c20,
     0x3c320090,
-    0x3c328da0,
-    0x3c330db9,
-    0x3c338dd4,
-    0x3c340df1,
-    0x3c348e1b,
-    0x3c350e36,
-    0x3c358e5c,
-    0x3c360e75,
-    0x3c368e8d,
-    0x3c370e9e,
-    0x3c378eac,
-    0x3c380eb9,
-    0x3c388ecd,
+    0x3c328d28,
+    0x3c330d41,
+    0x3c338d5c,
+    0x3c340d79,
+    0x3c348da3,
+    0x3c350dbe,
+    0x3c358de4,
+    0x3c360dfd,
+    0x3c368e15,
+    0x3c370e26,
+    0x3c378e34,
+    0x3c380e41,
+    0x3c388e55,
     0x3c390ceb,
-    0x3c398ef0,
-    0x3c3a0f04,
+    0x3c398e78,
+    0x3c3a0e8c,
     0x3c3a895a,
-    0x3c3b0f14,
-    0x3c3b8f2f,
-    0x3c3c0f41,
-    0x3c3c8f74,
-    0x3c3d0f7e,
-    0x3c3d8f92,
-    0x3c3e0fa0,
-    0x3c3e8fc5,
-    0x3c3f0d8c,
-    0x3c3f8fae,
+    0x3c3b0e9c,
+    0x3c3b8eb7,
+    0x3c3c0ec9,
+    0x3c3c8efc,
+    0x3c3d0f06,
+    0x3c3d8f1a,
+    0x3c3e0f28,
+    0x3c3e8f4d,
+    0x3c3f0d14,
+    0x3c3f8f36,
     0x3c4000b9,
     0x3c4080f7,
-    0x3c410e0c,
-    0x3c418e4b,
-    0x3c420f57,
-    0x3c428ee1,
+    0x3c410d94,
+    0x3c418dd3,
+    0x3c420edf,
+    0x3c428e69,
     0x40321a42,
     0x40329a58,
     0x40331a86,
@@ -394,7 +394,7 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x40379b27,
     0x40381b32,
     0x40389b44,
-    0x40390d4e,
+    0x40390f93,
     0x40399b54,
     0x403a1b67,
     0x403a9b88,
@@ -756,17 +756,17 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x5051b89d,
     0x50523a45,
     0x58320fd1,
-    0x68320d4e,
+    0x68320f93,
     0x68328ceb,
     0x68330cfe,
-    0x68338d5c,
-    0x68340d6c,
+    0x68338fa1,
+    0x68340fb1,
     0x683480f7,
     0x6835099a,
-    0x6c320d14,
+    0x6c320f59,
     0x6c328cb5,
-    0x6c330d1f,
-    0x6c338d38,
+    0x6c330f64,
+    0x6c338f7d,
     0x74320a66,
     0x743280b9,
     0x74330cc6,
@@ -993,12 +993,6 @@ const char kOpenSSLReasonStringData[] =
     "BAD_VERSION\0"
     "MISSING_PARAMETERS\0"
     "NEED_NEW_SETUP_VALUES\0"
-    "KDF_FAILED\0"
-    "POINT_ARITHMETIC_FAILURE\0"
-    "UNKNOWN_DIGEST_LENGTH\0"
-    "BAD_SIGNATURE\0"
-    "NOT_IMPLEMENTED\0"
-    "RANDOM_NUMBER_GENERATION_FAILED\0"
     "BIGNUM_OUT_OF_RANGE\0"
     "COORDINATES_OUT_OF_RANGE\0"
     "D2I_ECPKPARAMETERS_FAILURE\0"
@@ -1028,6 +1022,12 @@ const char kOpenSSLReasonStringData[] =
     "UNKNOWN_ORDER\0"
     "WRONG_CURVE_PARAMETERS\0"
     "WRONG_ORDER\0"
+    "KDF_FAILED\0"
+    "POINT_ARITHMETIC_FAILURE\0"
+    "UNKNOWN_DIGEST_LENGTH\0"
+    "BAD_SIGNATURE\0"
+    "NOT_IMPLEMENTED\0"
+    "RANDOM_NUMBER_GENERATION_FAILED\0"
     "OPERATION_NOT_SUPPORTED\0"
     "COMMAND_NOT_SUPPORTED\0"
     "DIFFERENT_KEY_TYPES\0"
