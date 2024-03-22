@@ -45,7 +45,7 @@ impl Key {
 impl Key {
     #[inline]
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
-        self.encrypt_less_safe(counter, in_out, 0..);
+        self.encrypt_within(counter, in_out, 0..);
     }
 
     #[inline]
@@ -53,7 +53,7 @@ impl Key {
         // It is safe to use `into_counter_for_single_block_less_safe()`
         // because `in_out` is exactly one block long.
         debug_assert!(in_out.len() <= BLOCK_LEN);
-        self.encrypt_less_safe(iv.into_counter_for_single_block_less_safe(), in_out, 0..);
+        self.encrypt_in_place(iv.into_counter_for_single_block_less_safe(), in_out);
     }
 
     #[inline]
@@ -62,32 +62,14 @@ impl Key {
         let iv = Iv::assume_unique_for_key(sample);
 
         debug_assert!(out.len() <= BLOCK_LEN);
-        self.encrypt_less_safe(iv.into_counter_for_single_block_less_safe(), &mut out, 0..);
+        self.encrypt_in_place(iv.into_counter_for_single_block_less_safe(), &mut out);
 
         out
     }
 
     /// Analogous to `slice::copy_within()`.
+    #[inline(always)]
     pub fn encrypt_within(&self, counter: Counter, in_out: &mut [u8], src: RangeFrom<usize>) {
-        // XXX: The x86 and at least one branch of the ARM assembly language
-        // code doesn't allow overlapping input and output unless they are
-        // exactly overlapping. TODO: Figure out which branch of the ARM code
-        // has this limitation and come up with a better solution.
-        //
-        // https://rt.openssl.org/Ticket/Display.html?id=4362
-        if cfg!(any(target_arch = "arm", target_arch = "x86")) && src.start != 0 {
-            let len = in_out.len() - src.start;
-            in_out.copy_within(src, 0);
-            self.encrypt_in_place(counter, &mut in_out[..len]);
-        } else {
-            self.encrypt_less_safe(counter, in_out, src);
-        }
-    }
-
-    /// This is "less safe" because it skips the important check that `encrypt_within` does.
-    /// Only call this with `src` equal to `0..` or from `encrypt_within`.
-    #[inline]
-    fn encrypt_less_safe(&self, counter: Counter, in_out: &mut [u8], src: RangeFrom<usize>) {
         #[cfg(any(
             target_arch = "aarch64",
             target_arch = "arm",
@@ -103,6 +85,20 @@ impl Key {
         ) {
             let in_out_len = in_out.len().checked_sub(src.start).unwrap();
 
+            // XXX: The x86 and at least one branch of the ARM assembly language
+            // code doesn't allow overlapping input and output unless they are
+            // exactly overlapping. TODO: Figure out which branch of the ARM code
+            // has this limitation and come up with a better solution.
+            //
+            // https://rt.openssl.org/Ticket/Display.html?id=4362
+            let (output, input) =
+                if cfg!(any(target_arch = "aarch64", target_arch = "x86_64")) || src.start == 0 {
+                    (in_out.as_mut_ptr(), in_out[src].as_ptr())
+                } else {
+                    in_out.copy_within(src, 0);
+                    (in_out.as_mut_ptr(), in_out.as_ptr())
+                };
+
             // There's no need to worry if `counter` is incremented because it is
             // owned here and we drop immediately after the call.
             prefixed_extern! {
@@ -114,15 +110,7 @@ impl Key {
                     counter: &Counter,
                 );
             }
-            unsafe {
-                ChaCha20_ctr32(
-                    in_out.as_mut_ptr(),
-                    in_out[src].as_ptr(),
-                    in_out_len,
-                    key.words_less_safe(),
-                    &counter,
-                )
-            }
+            unsafe { ChaCha20_ctr32(output, input, in_out_len, key.words_less_safe(), &counter) }
         }
 
         #[cfg(not(any(
