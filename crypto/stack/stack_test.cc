@@ -517,3 +517,15 @@ TEST(StackTest, Sort) {
     }
   }
 }
+
+TEST(StackTest, NullIsEmpty) {
+  EXPECT_EQ(0u, sk_TEST_INT_num(nullptr));
+
+  EXPECT_EQ(nullptr, sk_TEST_INT_value(nullptr, 0));
+  EXPECT_EQ(nullptr, sk_TEST_INT_value(nullptr, 1));
+
+  bssl::UniquePtr<TEST_INT> value = TEST_INT_new(6);
+  ASSERT_TRUE(value);
+  size_t index;
+  EXPECT_FALSE(sk_TEST_INT_find(nullptr, &index, value.get()));
+}
