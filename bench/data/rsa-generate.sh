@@ -34,20 +34,20 @@ rm rsa-2048-65537.p8
 m=(2048 3072 4096 8192)
 for i in "${m[@]}"
 do
-    echo $i
+    echo "$i"
     openssl genpkey -algorithm RSA \
         -pkeyopt rsa_keygen_bits:2048 \
         -pkeyopt rsa_keygen_pubexp:3 | \
-      openssl pkcs8 -topk8 -nocrypt -outform der > rsa-$i-3.p8
+      openssl pkcs8 -topk8 -nocrypt -outform der > "rsa-$i-3.p8"
 
     openssl pkey -pubout -inform der -outform der \
-        -in rsa-$i-3.p8 | \
+        -in "rsa-$i-3.p8" | \
       openssl rsa -pubin -RSAPublicKey_out -inform DER -outform DER \
-        -out rsa-$i-3-public-key.der
+        -out "rsa-$i-3-public-key.der"
 
-    openssl dgst -sha256 -sign rsa-$i-3.p8 -out rsa-$i-3-signature.bin empty_message
+    openssl dgst -sha256 -sign "rsa-$i-3.p8" -out "rsa-$i-3-signature.bin" empty_message
 
-    rm rsa-$i-3.p8
+    rm "rsa-$i-3.p8"
 done
 
 rm empty_message

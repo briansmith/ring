@@ -24,4 +24,4 @@ cargo clippy \
   --deny missing_docs \
   --deny unused_qualifications \
   --deny warnings \
-  $NULL
+  "$NULL"

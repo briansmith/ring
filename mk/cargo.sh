@@ -43,7 +43,7 @@ if [ -n "${ANDROID_NDK_ROOT-}" ]; then
   android_tools=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin
 fi
 
-for arg in $*; do
+for arg in "$@"; do
   case $arg in
     --target=*)
       target=${arg#*=}
@@ -215,7 +215,7 @@ if [ -n "${RING_COVERAGE-}" ]; then
   # something similar but different.
   # export LLVM_PROFILE_FILE="$coverage_dir/%m.profraw"
 
-  target_upper=$(echo ${target_lower} | tr '[:lower:]' '[:upper:]')
+  target_upper=$(echo "${target_lower}" | tr '[:lower:]' '[:upper:]')
 
   case "$OSTYPE" in
     linux*)
@@ -251,16 +251,16 @@ cargo "$@"
 if [ -n "${RING_COVERAGE-}" ]; then
   # Keep in sync with check-symbol-prefixes.sh.
   # Use the host target-libdir, not the target target-libdir.
-  llvm_root="$(rustc +${toolchain} --print target-libdir)/../bin"
+  llvm_root="$(rustc +"${toolchain}" --print target-libdir)/../bin"
 
-  while read executable; do
+  while read -r executable; do
     basename=$(basename "$executable")
-    ${llvm_root}/llvm-profdata merge -sparse "$coverage_dir/$basename.profraw" -o "$coverage_dir/$basename.profdata"
+    "${llvm_root}"/llvm-profdata merge -sparse "$coverage_dir/$basename.profraw" -o "$coverage_dir/$basename.profdata"
     mkdir -p "$coverage_dir"/reports
-    ${llvm_root}/llvm-cov export \
-      --instr-profile "$coverage_dir"/$basename.profdata \
+    "${llvm_root}"/llvm-cov export \
+      --instr-profile "$coverage_dir/$basename.profdata" \
       --format lcov \
       "$executable" \
-    > "$coverage_dir"/reports/coverage-$basename.txt
+    > "$coverage_dir/reports/coverage-$basename.txt"
   done < "$RING_BUILD_EXECUTABLE_LIST"
 fi
