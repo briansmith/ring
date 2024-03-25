@@ -151,7 +151,7 @@ func goTool(args ...string) error {
 		targetPrefix = fmt.Sprintf("aarch64-linux-android%d-", *apiLevel)
 		cmd.Env = append(cmd.Env, "GOARCH=arm64")
 	default:
-		fmt.Errorf("unknown Android ABI: %q", *abi)
+		return fmt.Errorf("unknown Android ABI: %q", *abi)
 	}
 
 	// Go's Android support requires cgo and compilers from the NDK. See
