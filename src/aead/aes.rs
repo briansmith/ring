@@ -18,7 +18,7 @@ use crate::{
     c, constant_time, cpu,
     endian::BigEndian,
     error,
-    polyfill::{self, ArrayFlatten as _, ArraySplitMap as _},
+    polyfill::{self, slice, ArrayFlatten as _, ArraySplitMap as _},
 };
 use core::ops::RangeFrom;
 
@@ -89,8 +89,13 @@ fn encrypt_block_(
     }
 }
 
+/// SAFETY:
+///   * The caller must ensure that `$key` was initialized with the
+///     `set_encrypt_key!` invocation that `$name` requires.
+///   * The caller must ensure that fhe function `$name` satisfies the conditions
+///     for the `f` parameter to `ctr32_encrypt_blocks`.
 macro_rules! ctr32_encrypt_blocks {
-    ($name:ident, $in_out:expr, $src:expr, $key:expr, $ivec:expr ) => {{
+    ($name:ident, $in_out:expr, $src:expr, $key:expr, $ctr:expr, $cpu_features:expr ) => {{
         prefixed_extern! {
             fn $name(
                 input: *const [u8; BLOCK_LEN],
@@ -100,7 +105,7 @@ macro_rules! ctr32_encrypt_blocks {
                 ivec: &Counter,
             );
         }
-        ctr32_encrypt_blocks($name, $in_out, $src, $key, $ivec)
+        ctr32_encrypt_blocks($name, $in_out, $src, $key, $ctr, $cpu_features)
     }};
 }
 
@@ -114,6 +119,7 @@ macro_rules! ctr32_encrypt_blocks {
 ///     `f` does NOT need to support the cases where input < output.
 ///   * `key` must have been initialized with the `set_encrypt_key!` invocation
 ///      that corresponds to `f`.
+///   * `f` may inspect CPU features.
 #[inline]
 unsafe fn ctr32_encrypt_blocks(
     f: unsafe extern "C" fn(
@@ -127,17 +133,20 @@ unsafe fn ctr32_encrypt_blocks(
     src: RangeFrom<usize>,
     key: &AES_KEY,
     ctr: &mut Counter,
+    cpu_features: cpu::Features,
 ) {
-    let in_out_len = in_out[src.clone()].len();
-    assert_eq!(in_out_len % BLOCK_LEN, 0);
+    let (input, leftover) = slice::as_chunks(&in_out[src]);
+    debug_assert_eq!(leftover.len(), 0);
 
-    let blocks = in_out_len / BLOCK_LEN;
+    let blocks = input.len();
     #[allow(clippy::cast_possible_truncation)]
     let blocks_u32 = blocks as u32;
     assert_eq!(blocks, polyfill::usize_from_u32(blocks_u32));
 
-    let input = in_out[src].as_ptr().cast::<[u8; BLOCK_LEN]>();
-    let output = in_out.as_mut_ptr().cast::<[u8; BLOCK_LEN]>();
+    let input = input.as_ptr();
+    let output: *mut [u8; BLOCK_LEN] = in_out.as_mut_ptr().cast();
+
+    let _: cpu::Features = cpu_features;
 
     // SAFETY:
     //  * `input` points to `blocks` blocks.
@@ -148,6 +157,8 @@ unsafe fn ctr32_encrypt_blocks(
     //    `blocks` including zero.
     //  * The caller is responsible for ensuring `key` was initialized by the
     //    `set_encrypt_key!` invocation required by `f`.
+    //  * CPU feature detection has been done so `f` can inspect
+    //    CPU features.
     unsafe {
         f(input, output, blocks, key, ctr);
     }
@@ -245,8 +256,20 @@ impl Key {
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
+            // SAFETY:
+            //  * self.inner was initialized with `aes_hw_set_encrypt_key` above,
+            //    as required by `aes_hw_ctr32_encrypt_blocks`.
+            //  * `aes_hw_ctr32_encrypt_blocks` satisfies the contract for
+            //    `ctr32_encrypt_blocks`.
             Implementation::HWAES => unsafe {
-                ctr32_encrypt_blocks!(aes_hw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+                ctr32_encrypt_blocks!(
+                    aes_hw_ctr32_encrypt_blocks,
+                    in_out,
+                    src,
+                    &self.inner,
+                    ctr,
+                    cpu_features
+                )
             },
 
             #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
@@ -269,6 +292,12 @@ impl Key {
                         0
                     };
                     let bsaes_in_out_len = bsaes_blocks * BLOCK_LEN;
+
+                    // SAFETY:
+                    //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
+                    //    as required by `bsaes_ctr32_encrypt_blocks_with_vpaes_key`.
+                    //  * `bsaes_ctr32_encrypt_blocks_with_vpaes_key` satisfies the
+                    //     contract for `ctr32_encrypt_blocks`.
                     unsafe {
                         ctr32_encrypt_blocks(
                             bsaes_ctr32_encrypt_blocks_with_vpaes_key,
@@ -276,13 +305,27 @@ impl Key {
                             src.clone(),
                             &self.inner,
                             ctr,
+                            cpu_features,
                         );
                     }
+
                     &mut in_out[bsaes_in_out_len..]
                 };
 
+                // SAFETY:
+                //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
+                //    as required by `vpaes_ctr32_encrypt_blocks`.
+                //  * `vpaes_ctr32_encrypt_blocks` satisfies the contract for
+                //    `ctr32_encrypt_blocks`.
                 unsafe {
-                    ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+                    ctr32_encrypt_blocks!(
+                        vpaes_ctr32_encrypt_blocks,
+                        in_out,
+                        src,
+                        &self.inner,
+                        ctr,
+                        cpu_features
+                    )
                 }
             }
 
@@ -293,8 +336,20 @@ impl Key {
                 });
             }
 
+            // SAFETY:
+            //  * self.inner was initialized with `aes_nohw_set_encrypt_key`
+            //    above, as required by `aes_nohw_ctr32_encrypt_blocks`.
+            //  * `aes_nohw_ctr32_encrypt_blocks` satisfies the contract for
+            //    `ctr32_encrypt_blocks`.
             Implementation::NOHW => unsafe {
-                ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+                ctr32_encrypt_blocks!(
+                    aes_nohw_ctr32_encrypt_blocks,
+                    in_out,
+                    src,
+                    &self.inner,
+                    ctr,
+                    cpu_features
+                )
             },
         }
     }
