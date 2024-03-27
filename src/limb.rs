@@ -117,7 +117,7 @@ pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
         for high_limb_num_bits in (1..=LIMB_BITS).rev() {
             let shifted = unsafe { LIMB_shr(high_limb, high_limb_num_bits - 1) };
             if shifted != 0 {
-                return bits::BitLength::from_usize_bits(
+                return bits::BitLength::from_bits(
                     ((num_limbs - 1) * LIMB_BITS) + high_limb_num_bits,
                 );
             }
@@ -125,7 +125,7 @@ pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
     }
 
     // No bits were set.
-    bits::BitLength::from_usize_bits(0)
+    bits::BitLength::from_bits(0)
 }
 
 /// Equivalent to `if (r >= m) { r -= m; }`

@@ -128,8 +128,8 @@ impl Key {
         cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
         let key_bits = match variant {
-            Variant::AES_128 => BitLength::from_usize_bits(128),
-            Variant::AES_256 => BitLength::from_usize_bits(256),
+            Variant::AES_128 => BitLength::from_bits(128),
+            Variant::AES_256 => BitLength::from_bits(256),
         };
         if BitLength::from_byte_len(bytes.len())? != key_bits {
             return Err(error::Unspecified);

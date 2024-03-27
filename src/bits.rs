@@ -55,6 +55,14 @@ impl FromByteLen<usize> for BitLength<u64> {
     }
 }
 
+impl<T> BitLength<T> {
+    /// Constructs a `BitLength` from the given length in bits.
+    #[inline]
+    pub const fn from_bits(bits: T) -> Self {
+        Self(bits)
+    }
+}
+
 impl<T: Copy> BitLength<T> {
     /// The number of bits this bit length represents, as the underlying type.
     #[inline]
@@ -66,12 +74,6 @@ impl<T: Copy> BitLength<T> {
 // Lengths measured in bits, where all arithmetic is guaranteed not to
 // overflow.
 impl BitLength<usize> {
-    /// Constructs a `BitLength` from the given length in bits.
-    #[inline]
-    pub const fn from_usize_bits(bits: usize) -> Self {
-        Self(bits)
-    }
-
     #[cfg(feature = "alloc")]
     #[inline]
     pub(crate) fn half_rounded_up(&self) -> Self {
