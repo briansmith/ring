@@ -14,7 +14,7 @@
 
 use super::{nonce::Nonce, quic::Sample};
 use crate::{
-    bits::{BitLength, FromByteLen as _},
+    bits::BitLength,
     c, constant_time, cpu,
     endian::BigEndian,
     error,
@@ -27,25 +27,38 @@ pub(super) struct Key {
     inner: AES_KEY,
 }
 
+// SAFETY:
+//  * The function `$name` must read `bits` bits from `user_key`; `bits` will
+//    always be a valid AES key length, i.e. a whole number of bytes.
+//  * `$name` must set all the fields of `key` to valid values and return 0,
+//     or otherwise must return non-zero to indicate failure.
+//  * `$name` may inspect CPU features.
+//
+// In BoringSSL, the C prototypes for these are in
+// crypto/fipsmodule/aes/internal.h.
 macro_rules! set_encrypt_key {
-    ( $name:ident, $bytes:expr, $key_bits:expr, $key:expr ) => {{
+    ( $name:ident, $key_bytes:expr, $key:expr, $cpu_features:expr ) => {{
         prefixed_extern! {
-            fn $name(user_key: *const u8, bits: c::uint, key: &mut AES_KEY) -> c::int;
+            fn $name(user_key: *const u8, bits: BitLength<c::int>, key: *mut AES_KEY) -> c::int;
         }
-        set_encrypt_key($name, $bytes, $key_bits, $key)
+        set_encrypt_key($name, $key_bytes, $key, $cpu_features)
     }};
 }
 
 #[inline]
-fn set_encrypt_key(
-    f: unsafe extern "C" fn(*const u8, c::uint, &mut AES_KEY) -> c::int,
-    bytes: &[u8],
-    key_bits: BitLength,
+unsafe fn set_encrypt_key(
+    f: unsafe extern "C" fn(*const u8, BitLength<c::int>, *mut AES_KEY) -> c::int,
+    bytes: KeyBytes<'_>,
     key: &mut AES_KEY,
+    _cpu_features: cpu::Features,
 ) -> Result<(), error::Unspecified> {
+    let (bytes, key_bits) = match bytes {
+        KeyBytes::AES_128(bytes) => (&bytes[..], BitLength::from_bits(128)),
+        KeyBytes::AES_256(bytes) => (&bytes[..], BitLength::from_bits(256)),
+    };
+
     // Unusually, in this case zero means success and non-zero means failure.
-    #[allow(clippy::cast_possible_truncation)]
-    if 0 == unsafe { f(bytes.as_ptr(), key_bits.as_bits() as c::uint, key) } {
+    if 0 == unsafe { f(bytes.as_ptr(), key_bits, key) } {
         Ok(())
     } else {
         Err(error::Unspecified)
@@ -123,18 +136,9 @@ fn ctr32_encrypt_blocks_(
 impl Key {
     #[inline]
     pub fn new(
-        bytes: &[u8],
-        variant: Variant,
+        bytes: KeyBytes<'_>,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
-        let key_bits = match variant {
-            Variant::AES_128 => BitLength::from_bits(128),
-            Variant::AES_256 => BitLength::from_bits(256),
-        };
-        if BitLength::from_byte_len(bytes.len())? != key_bits {
-            return Err(error::Unspecified);
-        }
-
         let mut key = AES_KEY {
             rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
             rounds: 0,
@@ -147,9 +151,11 @@ impl Key {
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
-            Implementation::HWAES => {
-                set_encrypt_key!(aes_hw_set_encrypt_key, bytes, key_bits, &mut key)?
-            }
+            // SAFETY: `aes_hw_set_encrypt_key` satisfies the `set_encrypt_key!`
+            // contract for these target architectures.
+            Implementation::HWAES => unsafe {
+                set_encrypt_key!(aes_hw_set_encrypt_key, bytes, &mut key, cpu_features)?;
+            },
 
             #[cfg(any(
                 target_arch = "aarch64",
@@ -157,13 +163,17 @@ impl Key {
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
-            Implementation::VPAES_BSAES => {
-                set_encrypt_key!(vpaes_set_encrypt_key, bytes, key_bits, &mut key)?
-            }
+            // SAFETY: `vpaes_set_encrypt_key` satisfies the `set_encrypt_key!`
+            // contract for these target architectures.
+            Implementation::VPAES_BSAES => unsafe {
+                set_encrypt_key!(vpaes_set_encrypt_key, bytes, &mut key, cpu_features)?;
+            },
 
-            Implementation::NOHW => {
-                set_encrypt_key!(aes_nohw_set_encrypt_key, bytes, key_bits, &mut key)?
-            }
+            // SAFETY: `aes_nohw_set_encrypt_key` satisfies the `set_encrypt_key!`
+            // contract.
+            Implementation::NOHW => unsafe {
+                set_encrypt_key!(aes_nohw_set_encrypt_key, bytes, &mut key, cpu_features)?;
+            },
         };
 
         Ok(Self { inner: key })
@@ -301,9 +311,9 @@ pub(super) struct AES_KEY {
 // Keep this in sync with `AES_MAXNR` in aes.h.
 const MAX_ROUNDS: usize = 14;
 
-pub enum Variant {
-    AES_128,
-    AES_256,
+pub enum KeyBytes<'a> {
+    AES_128(&'a [u8; 128 / 8]),
+    AES_256(&'a [u8; 256 / 8]),
 }
 
 /// Nonce || Counter, all big-endian.
@@ -444,11 +454,12 @@ mod tests {
 
     fn consume_key(test_case: &mut test::TestCase, name: &str) -> Key {
         let key = test_case.consume_bytes(name);
-        let variant = match key.len() {
-            16 => Variant::AES_128,
-            32 => Variant::AES_256,
+        let key = &key[..];
+        let key = match key.len() {
+            16 => KeyBytes::AES_128(key.try_into().unwrap()),
+            32 => KeyBytes::AES_256(key.try_into().unwrap()),
             _ => unreachable!(),
         };
-        Key::new(&key[..], variant, cpu::features()).unwrap()
+        Key::new(key, cpu::features()).unwrap()
     }
 }
