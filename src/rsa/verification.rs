@@ -53,7 +53,7 @@ macro_rules! rsa_params {
         /// Only available in `alloc` mode.
         pub static $VERIFY_ALGORITHM: RsaParameters = RsaParameters {
             padding_alg: $PADDING_ALGORITHM,
-            min_bits: bits::BitLength::from_usize_bits($min_bits),
+            min_bits: bits::BitLength::from_bits($min_bits),
         };
     };
 }

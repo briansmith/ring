@@ -135,9 +135,7 @@ impl Context {
         #[allow(clippy::assertions_on_constants)]
         const _WHOLE_BLOCK_BITS_MASK_CORRECT: () =
             assert!(WHOLE_BLOCK_BITS_MASK == !((BLOCK_LEN * 8) - 1));
-        BitLength::from_usize_bits(
-            usize_from_u64(self.in_out_len.as_bits()) & WHOLE_BLOCK_BITS_MASK,
-        )
+        BitLength::from_bits(usize_from_u64(self.in_out_len.as_bits()) & WHOLE_BLOCK_BITS_MASK)
     }
 
     /// Access to `inner` for the integrated AES-GCM implementations only.

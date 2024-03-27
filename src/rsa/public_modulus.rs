@@ -35,7 +35,7 @@ impl PublicModulus {
         // `pkcs1_encode` depends on this not being small. Otherwise,
         // `pkcs1_encode` would generate padding that is invalid (too few 0xFF
         // bytes) for very small keys.
-        const MIN_BITS: bits::BitLength = bits::BitLength::from_usize_bits(1024);
+        const MIN_BITS: bits::BitLength = bits::BitLength::from_bits(1024);
 
         // Step 3 / Step c for `n` (out of order).
         let value = bigint::OwnedModulus::from_be_bytes(n)?;

@@ -266,7 +266,7 @@ impl TestCase {
     pub fn consume_usize_bits(&mut self, key: &str) -> bits::BitLength {
         let s = self.consume_string(key);
         let bits = s.parse::<usize>().unwrap();
-        bits::BitLength::from_usize_bits(bits)
+        bits::BitLength::from_bits(bits)
     }
 
     /// Returns the raw value of an attribute, without any unquoting or

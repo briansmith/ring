@@ -278,7 +278,7 @@ impl KeyPair {
         let public_key = PublicKey::from_modulus_and_exponent(
             n,
             e,
-            BitLength::from_usize_bits(2048),
+            BitLength::from_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
             PublicExponent::_65537,
             cpu_features,
