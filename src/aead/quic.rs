@@ -144,12 +144,14 @@ pub static AES_256: Algorithm = Algorithm {
 };
 
 fn aes_init_128(key: &[u8], cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified> {
-    let aes_key = aes::Key::new(key, aes::Variant::AES_128, cpu_features)?;
+    let key = key.try_into().map_err(|_| error::Unspecified)?;
+    let aes_key = aes::Key::new(aes::KeyBytes::AES_128(key), cpu_features)?;
     Ok(KeyInner::Aes(aes_key))
 }
 
 fn aes_init_256(key: &[u8], cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified> {
-    let aes_key = aes::Key::new(key, aes::Variant::AES_256, cpu_features)?;
+    let key = key.try_into().map_err(|_| error::Unspecified)?;
+    let aes_key = aes::Key::new(aes::KeyBytes::AES_256(key), cpu_features)?;
     Ok(KeyInner::Aes(aes_key))
 }
 

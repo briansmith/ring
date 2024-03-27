@@ -47,19 +47,20 @@ pub struct Key {
 }
 
 fn init_128(key: &[u8], cpu_features: cpu::Features) -> Result<aead::KeyInner, error::Unspecified> {
-    init(key, aes::Variant::AES_128, cpu_features)
+    let key = key.try_into().map_err(|_| error::Unspecified)?;
+    init(aes::KeyBytes::AES_128(key), cpu_features)
 }
 
 fn init_256(key: &[u8], cpu_features: cpu::Features) -> Result<aead::KeyInner, error::Unspecified> {
-    init(key, aes::Variant::AES_256, cpu_features)
+    let key = key.try_into().map_err(|_| error::Unspecified)?;
+    init(aes::KeyBytes::AES_256(key), cpu_features)
 }
 
 fn init(
-    key: &[u8],
-    variant: aes::Variant,
+    key: aes::KeyBytes,
     cpu_features: cpu::Features,
 ) -> Result<aead::KeyInner, error::Unspecified> {
-    let aes_key = aes::Key::new(key, variant, cpu_features)?;
+    let aes_key = aes::Key::new(key, cpu_features)?;
     let gcm_key = gcm::Key::new(
         aes_key.encrypt_block(ZERO_BLOCK, cpu_features),
         cpu_features,
