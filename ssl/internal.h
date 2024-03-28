@@ -147,6 +147,7 @@
 #include <stdlib.h>
 
 #include <algorithm>
+#include <bitset>
 #include <initializer_list>
 #include <limits>
 #include <new>
@@ -961,9 +962,9 @@ class SSLAEADContext {
 // DTLS1_BITMAP maintains a sliding window of 64 sequence numbers to detect
 // replayed packets. It should be initialized by zeroing every field.
 struct DTLS1_BITMAP {
-  // map is a bit mask of the last 64 sequence numbers. Bit
-  // |1<<i| corresponds to |max_seq_num - i|.
-  uint64_t map = 0;
+  // map is a bitset of sequence numbers that have been seen. Bit i corresponds
+  // to |max_seq_num - i|.
+  std::bitset<256> map;
   // max_seq_num is the largest sequence number seen so far as a 64-bit
   // integer.
   uint64_t max_seq_num = 0;
