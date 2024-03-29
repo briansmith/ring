@@ -1800,6 +1800,21 @@ TEST_P(KDF_ServiceIndicatorTest, TLSKDF) {
   EXPECT_EQ(approved, test.expect_approved);
 }
 
+TEST_P(KDF_ServiceIndicatorTest, TLS13KDF) {
+  const KDFTestVector &test = GetParam();
+
+  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+
+  uint8_t output[32];
+  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, CRYPTO_tls13_hkdf_expand_label(
+                    output, sizeof(output), test.func(), kTLSSecret,
+                    sizeof(kTLSSecret), /*label=*/kTLSSeed1, sizeof(kTLSSeed1),
+                    /*hash=*/kTLSSeed2, sizeof(kTLSSeed2))));
+
+  EXPECT_EQ(approved, test.expect_approved);
+}
+
 TEST(ServiceIndicatorTest, CMAC) {
   FIPSStatus approved = FIPSStatus::NOT_APPROVED;
 
