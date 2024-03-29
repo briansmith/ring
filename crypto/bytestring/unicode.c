@@ -18,11 +18,12 @@
 
 
 static int is_valid_code_point(uint32_t v) {
-  // References in the following are to Unicode 9.0.0.
+  // References in the following are to Unicode 15.0.0.
   if (// The Unicode space runs from zero to 0x10ffff (3.4 D9).
       v > 0x10ffff ||
       // Values 0x...fffe, 0x...ffff, and 0xfdd0-0xfdef are permanently reserved
-      // (3.4 D14)
+      // as noncharacters (3.4 D14). See also 23.7. As our APIs are intended for
+      // "open interchange", such as ASN.1, we reject them.
       (v & 0xfffe) == 0xfffe ||
       (v >= 0xfdd0 && v <= 0xfdef) ||
       // Surrogate code points are invalid (3.2 C1).

@@ -639,6 +639,9 @@ OPENSSL_EXPORT int CBB_flush_asn1_set_of(CBB *cbb);
 
 
 // Unicode utilities.
+//
+// These functions consider noncharacters (see section 23.7 from Unicode 15.0.0)
+// to be invalid code points and will treat them as an error condition.
 
 // The following functions read one Unicode code point from |cbs| with the
 // corresponding encoding and store it in |*out|. They return one on success and
@@ -653,7 +656,9 @@ OPENSSL_EXPORT int CBS_get_utf32_be(CBS *cbs, uint32_t *out);
 OPENSSL_EXPORT size_t CBB_get_utf8_len(uint32_t u);
 
 // The following functions encode |u| to |cbb| with the corresponding
-// encoding. They return one on success and zero on error.
+// encoding. They return one on success and zero on error. Error conditions
+// include |u| being an invalid code point, or |u| being unencodable in the
+// specified encoding.
 OPENSSL_EXPORT int CBB_add_utf8(CBB *cbb, uint32_t u);
 OPENSSL_EXPORT int CBB_add_latin1(CBB *cbb, uint32_t u);
 OPENSSL_EXPORT int CBB_add_ucs2_be(CBB *cbb, uint32_t u);
