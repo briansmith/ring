@@ -1093,6 +1093,7 @@ set(
 
   include/openssl/pki/certificate.h
   include/openssl/pki/signature_verify_cache.h
+  include/openssl/pki/verify_error.h
 )
 
 set(
