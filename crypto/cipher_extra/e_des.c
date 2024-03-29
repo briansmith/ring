@@ -85,16 +85,14 @@ static int des_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 }
 
 static const EVP_CIPHER evp_des_cbc = {
-    /* nid = */ NID_des_cbc,
-    /* block_size = */ 8,
-    /* key_len = */ 8,
-    /* iv_len = */ 8,
-    /* ctx_size = */ sizeof(EVP_DES_KEY),
-    /* flags = */ EVP_CIPH_CBC_MODE,
-    /* init = */ des_init_key,
-    /* cipher = */ des_cbc_cipher,
-    /* cleanup = */ NULL,
-    /* ctrl = */ NULL,
+    .nid = NID_des_cbc,
+    .block_size = 8,
+    .key_len = 8,
+    .iv_len = 8,
+    .ctx_size = sizeof(EVP_DES_KEY),
+    .flags = EVP_CIPH_CBC_MODE,
+    .init = des_init_key,
+    .cipher = des_cbc_cipher,
 };
 
 const EVP_CIPHER *EVP_des_cbc(void) { return &evp_des_cbc; }
@@ -114,16 +112,14 @@ static int des_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 }
 
 static const EVP_CIPHER evp_des_ecb = {
-    /* nid = */ NID_des_ecb,
-    /* block_size = */ 8,
-    /* key_len = */ 8,
-    /* iv_len = */ 0,
-    /* ctx_size = */ sizeof(EVP_DES_KEY),
-    /* flags = */ EVP_CIPH_ECB_MODE,
-    /* init = */ des_init_key,
-    /* cipher = */ des_ecb_cipher,
-    /* cleanup = */ NULL,
-    /* ctrl = */ NULL,
+    .nid = NID_des_ecb,
+    .block_size = 8,
+    .key_len = 8,
+    .iv_len = 0,
+    .ctx_size = sizeof(EVP_DES_KEY),
+    .flags = EVP_CIPH_ECB_MODE,
+    .init = des_init_key,
+    .cipher = des_ecb_cipher,
 };
 
 const EVP_CIPHER *EVP_des_ecb(void) { return &evp_des_ecb; }
@@ -153,16 +149,14 @@ static int des_ede3_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 }
 
 static const EVP_CIPHER evp_des_ede3_cbc = {
-    /* nid = */ NID_des_ede3_cbc,
-    /* block_size = */ 8,
-    /* key_len = */ 24,
-    /* iv_len = */ 8,
-    /* ctx_size = */ sizeof(DES_EDE_KEY),
-    /* flags = */ EVP_CIPH_CBC_MODE,
-    /* init = */ des_ede3_init_key,
-    /* cipher = */ des_ede3_cbc_cipher,
-    /* cleanup = */ NULL,
-    /* ctrl = */ NULL,
+    .nid = NID_des_ede3_cbc,
+    .block_size = 8,
+    .key_len = 24,
+    .iv_len = 8,
+    .ctx_size = sizeof(DES_EDE_KEY),
+    .flags = EVP_CIPH_CBC_MODE,
+    .init = des_ede3_init_key,
+    .cipher = des_ede3_cbc_cipher,
 };
 
 const EVP_CIPHER *EVP_des_ede3_cbc(void) { return &evp_des_ede3_cbc; }
@@ -178,16 +172,14 @@ static int des_ede_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 }
 
 static const EVP_CIPHER evp_des_ede_cbc = {
-    /* nid = */ NID_des_ede_cbc,
-    /* block_size = */ 8,
-    /* key_len = */ 16,
-    /* iv_len = */ 8,
-    /* ctx_size = */ sizeof(DES_EDE_KEY),
-    /* flags = */ EVP_CIPH_CBC_MODE,
-    /* init = */ des_ede_init_key,
-    /* cipher = */ des_ede3_cbc_cipher,
-    /* cleanup = */ NULL,
-    /* ctrl = */ NULL,
+    .nid = NID_des_ede_cbc,
+    .block_size = 8,
+    .key_len = 16,
+    .iv_len = 8,
+    .ctx_size = sizeof(DES_EDE_KEY),
+    .flags = EVP_CIPH_CBC_MODE,
+    .init = des_ede_init_key,
+    .cipher = des_ede3_cbc_cipher,
 };
 
 const EVP_CIPHER *EVP_des_ede_cbc(void) { return &evp_des_ede_cbc; }
@@ -208,31 +200,27 @@ static int des_ede_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 }
 
 static const EVP_CIPHER evp_des_ede = {
-    /* nid = */ NID_des_ede_ecb,
-    /* block_size = */ 8,
-    /* key_len = */ 16,
-    /* iv_len = */ 0,
-    /* ctx_size = */ sizeof(DES_EDE_KEY),
-    /* flags = */ EVP_CIPH_ECB_MODE,
-    /* init = */ des_ede_init_key,
-    /* cipher = */ des_ede_ecb_cipher,
-    /* cleanup = */ NULL,
-    /* ctrl = */ NULL,
+    .nid = NID_des_ede_ecb,
+    .block_size = 8,
+    .key_len = 16,
+    .iv_len = 0,
+    .ctx_size = sizeof(DES_EDE_KEY),
+    .flags = EVP_CIPH_ECB_MODE,
+    .init = des_ede_init_key,
+    .cipher = des_ede_ecb_cipher,
 };
 
 const EVP_CIPHER *EVP_des_ede(void) { return &evp_des_ede; }
 
 static const EVP_CIPHER evp_des_ede3 = {
-    /* nid = */ NID_des_ede3_ecb,
-    /* block_size = */ 8,
-    /* key_len = */ 24,
-    /* iv_len = */ 0,
-    /* ctx_size = */ sizeof(DES_EDE_KEY),
-    /* flags = */ EVP_CIPH_ECB_MODE,
-    /* init = */ des_ede3_init_key,
-    /* cipher = */ des_ede_ecb_cipher,
-    /* cleanup = */ NULL,
-    /* ctrl = */ NULL,
+    .nid = NID_des_ede3_ecb,
+    .block_size = 8,
+    .key_len = 24,
+    .iv_len = 0,
+    .ctx_size = sizeof(DES_EDE_KEY),
+    .flags = EVP_CIPH_ECB_MODE,
+    .init = des_ede3_init_key,
+    .cipher = des_ede_ecb_cipher,
 };
 
 const EVP_CIPHER *EVP_des_ede3(void) { return &evp_des_ede3; }
