@@ -552,6 +552,37 @@ impl KeyPair {
         Ok(())
     }
 
+    pub fn sign_pre_digest(
+        &self,
+        padding_alg: &'static dyn RsaEncoding,
+        rng: &dyn rand::SecureRandom,
+        msg: &[u8],
+        signature: &mut [u8],
+    ) -> Result<(), error::Unspecified> {
+        let cpu_features = cpu::features();
+
+        if signature.len() != self.public().modulus_len() {
+            return Err(error::Unspecified);
+        }
+
+        let m_hash = digest::Digest::pre_digested(msg, padding_alg.digest_alg());
+
+        // Use the output buffer as the scratch space for the signature to
+        // reduce the required stack space.
+        padding_alg.encode(m_hash, signature, self.public().inner().n().len_bits(), rng)?;
+
+        // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
+        // with Garner's algorithm.
+
+        // Steps 1 and 2.
+        let m = self.private_exponentiate(signature, cpu_features)?;
+
+        // Step 3.
+        m.fill_be_bytes(signature);
+
+        Ok(())
+    }
+
     /// Returns base**d (mod n).
     ///
     /// This does not return or write any intermediate results into any buffers
