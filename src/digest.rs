@@ -247,9 +247,11 @@ impl Digest {
     }
 
     pub fn pre_digested(digest: &[u8], algorithm: &'static Algorithm) -> Digest{
-        let array_digest = digest.try_into().expect("Cannot convert pre-digest into an array of 64 bytes!");
-        let output: Output = Output(array_digest);
+        let mut array_digest = [0u8; MAX_OUTPUT_LEN];
+        let len = digest.len().min(MAX_OUTPUT_LEN);
+        array_digest[..len].copy_from_slice(digest);
 
+        let output: Output = Output(array_digest);
 
         Digest{
             value: output,
