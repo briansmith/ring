@@ -60,7 +60,7 @@
 // aes_key_st should be an opaque type, but EVP requires that the size be
 // known.
 struct aes_key_st {
-  uint32_t rd_key[4 * (AES_MAXNR + 1)];
+  uint32_t rd_key[240];
   unsigned rounds;
 };
 typedef struct aes_key_st AES_KEY;

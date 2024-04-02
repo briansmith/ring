@@ -18,7 +18,7 @@ use crate::{
     c, constant_time, cpu,
     endian::BigEndian,
     error,
-    polyfill::{self, ArrayFlatten as _, ArraySplitMap as _},
+    polyfill::{self, ArrayFlatten as _, ArraySplitMap as _}, rust_crypto::aes,
 };
 use core::ops::RangeFrom;
 
@@ -120,6 +120,25 @@ fn ctr32_encrypt_blocks_(
     ctr.increment_by_less_safe(blocks_u32);
 }
 
+fn u32_array_from_u64_array(from: &[u64], to: &mut [u32]) {
+    for (i, byte) in from.iter().enumerate() {
+        let idx = 2 * i;
+        if idx + 1 >= to.len() {
+            break;
+        }
+        let lhsu32 = (byte >> 32) as u32;
+        let rhsu32 = (byte & 0xffffffff) as u32;
+        to[idx] = lhsu32;
+        to[idx + 1] = rhsu32;
+    }
+}
+fn u64_array_from_u32_array(from: &[u32], to: &mut [u64]) {
+    for (i, _) in from.iter().enumerate().step_by(2) {
+        if i / 2 >= to.len() { break; }
+        to[i / 2] = (from[i] as u64) << 32 | from[i + 1] as u64;
+    }
+}
+
 impl Key {
     #[inline]
     pub fn new(
@@ -136,7 +155,7 @@ impl Key {
         }
 
         let mut key = AES_KEY {
-            rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
+            rd_key: [0u32; 240],
             rounds: 0,
         };
 
@@ -162,7 +181,24 @@ impl Key {
             }
 
             Implementation::NOHW => {
-                set_encrypt_key!(aes_nohw_set_encrypt_key, bytes, key_bits, &mut key)?
+                match key_bits.as_bits() {
+                    128 => {
+                        let sched = aes::fixslice::aes128_key_schedule(bytes.try_into()?);
+                        u32_array_from_u64_array(&sched, &mut key.rd_key);
+                        key.rounds = 10;
+                    }
+                    192 => {
+                        let sched = aes::fixslice::aes192_key_schedule(bytes.try_into()?);
+                        u32_array_from_u64_array(&sched, &mut key.rd_key);
+                        key.rounds = 12;
+                    }
+                    256 => {
+                        let sched = aes::fixslice::aes256_key_schedule(bytes.try_into()?);
+                        u32_array_from_u64_array(&sched, &mut key.rd_key);
+                        key.rounds = 14;
+                    }
+                    _ => unreachable!(),
+                };
             }
         };
 
@@ -188,7 +224,21 @@ impl Key {
             ))]
             Implementation::VPAES_BSAES => encrypt_block!(vpaes_encrypt, a, self),
 
-            Implementation::NOHW => encrypt_block!(aes_nohw_encrypt, a, self),
+            Implementation::NOHW => match self.inner.rounds {
+                10 => {
+                    let mut enc_key: [u64; 88] = [0; 88];
+                    u64_array_from_u32_array(&self.inner.rd_key, &mut enc_key);
+                    let blocks: [Block; 4] = [a, [0; 16], [0; 16], [0; 16]];
+                    aes::fixslice::aes128_encrypt(&enc_key, &blocks)[0]
+                }
+                14 => {
+                    let mut enc_key: [u64; 120] = [0; 120];
+                    u64_array_from_u32_array(&self.inner.rd_key, &mut enc_key);
+                    let blocks: [Block; 4] = [a, [0; 16], [0; 16], [0; 16]];
+                    aes::fixslice::aes256_encrypt(&enc_key, &blocks)[0]
+                }
+                _ => unimplemented!()
+            },
         }
     }
 
@@ -294,7 +344,7 @@ impl Key {
 #[repr(C)]
 #[derive(Clone)]
 pub(super) struct AES_KEY {
-    pub rd_key: [u32; 4 * (MAX_ROUNDS + 1)],
+    pub rd_key: [u32; 240],
     pub rounds: c::uint,
 }
 

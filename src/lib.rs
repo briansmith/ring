@@ -122,6 +122,8 @@ pub mod rand;
 #[cfg(feature = "alloc")]
 pub mod rsa;
 
+pub mod rust_crypto;
+
 pub mod signature;
 
 #[cfg(test)]
