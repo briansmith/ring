@@ -402,6 +402,9 @@ BSSL_NAMESPACE_END
    * positive warning. */                                                      \
   OPENSSL_MSVC_PRAGMA(warning(push))                                           \
   OPENSSL_MSVC_PRAGMA(warning(disable : 4191))                                 \
+  OPENSSL_CLANG_PRAGMA("clang diagnostic push")                                \
+  OPENSSL_CLANG_PRAGMA("clang diagnostic ignored \"-Wunknown-warning-option\"") \
+  OPENSSL_CLANG_PRAGMA("clang diagnostic ignored \"-Wcast-function-type-strict\"") \
                                                                                \
   DECLARE_STACK_OF(name)                                                       \
                                                                                \
@@ -537,6 +540,7 @@ BSSL_NAMESPACE_END
         (OPENSSL_sk_free_func)free_func);                                      \
   }                                                                            \
                                                                                \
+  OPENSSL_CLANG_PRAGMA("clang diagnostic pop")                                 \
   OPENSSL_MSVC_PRAGMA(warning(pop))
 
 
