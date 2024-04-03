@@ -37,7 +37,7 @@ impl Key {
 
         let mut key = Self {
             h_table: HTable {
-                Htable: [u128 { hi: 0, lo: 0 }; HTABLE_LEN],
+                Htable: [U128 { hi: 0, lo: 0 }; HTABLE_LEN],
             },
         };
         let h_table = &mut key.h_table;
@@ -323,12 +323,12 @@ impl Context {
 #[derive(Clone)]
 #[repr(C, align(16))]
 pub(super) struct HTable {
-    Htable: [u128; HTABLE_LEN],
+    Htable: [U128; HTABLE_LEN],
 }
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-struct u128 {
+struct U128 {
     hi: u64,
     lo: u64,
 }
