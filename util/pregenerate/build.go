@@ -117,9 +117,9 @@ func (in *InputTarget) Pregenerate(name string) (out build.Target, tasks []Task,
 		addPerlasmTask(&out.Asm, &p, "-linux.S", []string{"linux32"})
 	}
 	for _, p := range in.PerlasmX86 {
-		addPerlasmTask(&out.Asm, &p, "-apple.S", []string{"macosx", "-fPIC", "-DOPENSSL_IA32_SSE2"})
-		addPerlasmTask(&out.Asm, &p, "-linux.S", []string{"elf", "-fPIC", "-DOPENSSL_IA32_SSE2"})
-		addPerlasmTask(&out.Nasm, &p, "-win.asm", []string{"win32n", "-fPIC", "-DOPENSSL_IA32_SSE2"})
+		addPerlasmTask(&out.Asm, &p, "-apple.S", []string{"macosx", "-fPIC"})
+		addPerlasmTask(&out.Asm, &p, "-linux.S", []string{"elf", "-fPIC"})
+		addPerlasmTask(&out.Nasm, &p, "-win.asm", []string{"win32n", "-fPIC"})
 	}
 	for _, p := range in.PerlasmX86_64 {
 		addPerlasmTask(&out.Asm, &p, "-apple.S", []string{"macosx"})
