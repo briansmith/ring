@@ -87,6 +87,73 @@ impl Key {
     }
 }
 
+/// SAFETY:
+///  * The function `$name` must meet the contract of the `f` paramweter of
+///    `ghash()`.
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+macro_rules! ghash {
+    ( $name:ident, $xi:expr, $h_table:expr, $input:expr, $cpu_features:expr ) => {{
+        prefixed_extern! {
+            fn $name(
+                xi: &mut Xi,
+                Htable: &HTable,
+                inp: *const u8,
+                len: crate::c::NonZero_size_t,
+            );
+        }
+        ghash($name, $xi, $h_table, $input, $cpu_features);
+    }};
+}
+
+/// SAFETY:
+///   * `f` must read `len` bytes from `inp`; it may assume
+///     that `len` is a (non-zero) multiple of `BLOCK_LEN`.
+///   * `f` may inspect CPU features.
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+unsafe fn ghash(
+    f: unsafe extern "C" fn(
+        xi: &mut Xi,
+        Htable: &HTable,
+        inp: *const u8,
+        len: crate::c::NonZero_size_t,
+    ),
+    xi: &mut Xi,
+    h_table: &HTable,
+    input: &[[u8; BLOCK_LEN]],
+    cpu_features: cpu::Features,
+) {
+    use crate::polyfill::slice;
+    use core::num::NonZeroUsize;
+
+    let input = slice::flatten(input);
+
+    let input_len = match NonZeroUsize::new(input.len()) {
+        Some(len) => len,
+        None => {
+            return;
+        }
+    };
+
+    let _: cpu::Features = cpu_features;
+    // SAFETY:
+    //  * There are `input_len: NonZeroUsize` bytes available at `input` for
+    //    `f` to read.
+    //  * CPU feature detection has been done.
+    unsafe {
+        f(xi, h_table, input.as_ptr(), input_len);
+    }
+}
+
 pub struct Context {
     inner: ContextInner,
     aad_len: BitLength<u64>,
@@ -145,40 +212,16 @@ impl Context {
         (&self.inner.Htable, &mut self.inner.Xi)
     }
 
-    pub fn update_blocks(&mut self, input: &[u8]) {
-        // Th assembly functions take the input length in bytes, not blocks.
-        let input_bytes = input.len();
-
-        debug_assert_eq!(input_bytes % BLOCK_LEN, 0);
-        debug_assert!(input_bytes > 0);
-
-        let input = input.as_ptr().cast::<[u8; BLOCK_LEN]>();
-        // SAFETY:
-        // - `[[u8; BLOCK_LEN]]` has the same bit validity as `[u8]`.
-        // - `[[u8; BLOCK_LEN]]` has the same alignment requirement as `[u8]`.
-        // - `input_bytes / BLOCK_LEN` ensures that the total length in bytes of
-        //   the new `[[u8; BLOCK_LEN]]` will not be longer than the original
-        //   `[u8]`.
-        let input = unsafe { core::slice::from_raw_parts(input, input_bytes / BLOCK_LEN) };
-
+    pub fn update_blocks(&mut self, input: &[[u8; BLOCK_LEN]]) {
         let xi = &mut self.inner.Xi;
         let h_table = &self.inner.Htable;
 
         match detect_implementation(self.cpu_features) {
             #[cfg(target_arch = "x86_64")]
-            Implementation::CLMUL if has_avx_movbe(self.cpu_features) => {
-                prefixed_extern! {
-                    fn gcm_ghash_avx(
-                        xi: &mut Xi,
-                        Htable: &HTable,
-                        inp: *const [u8; BLOCK_LEN],
-                        len: crate::c::size_t,
-                    );
-                }
-                unsafe {
-                    gcm_ghash_avx(xi, h_table, input.as_ptr(), input_bytes);
-                }
-            }
+            // SAFETY: gcm_ghash_avx satisfies the ghash! contract.
+            Implementation::CLMUL if has_avx_movbe(self.cpu_features) => unsafe {
+                ghash!(gcm_ghash_avx, xi, h_table, input, self.cpu_features);
+            },
 
             #[cfg(any(
                 target_arch = "aarch64",
@@ -186,34 +229,18 @@ impl Context {
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
-            Implementation::CLMUL => {
-                prefixed_extern! {
-                    fn gcm_ghash_clmul(
-                        xi: &mut Xi,
-                        Htable: &HTable,
-                        inp: *const [u8; BLOCK_LEN],
-                        len: crate::c::size_t,
-                    );
-                }
-                unsafe {
-                    gcm_ghash_clmul(xi, h_table, input.as_ptr(), input_bytes);
-                }
-            }
+            // SAFETY: gcm_ghash_clmul satisfies the ghash! contract on these
+            // targets.
+            Implementation::CLMUL => unsafe {
+                ghash!(gcm_ghash_clmul, xi, h_table, input, self.cpu_features);
+            },
 
             #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
-            Implementation::NEON => {
-                prefixed_extern! {
-                    fn gcm_ghash_neon(
-                        xi: &mut Xi,
-                        Htable: &HTable,
-                        inp: *const [u8; BLOCK_LEN],
-                        len: crate::c::size_t,
-                    );
-                }
-                unsafe {
-                    gcm_ghash_neon(xi, h_table, input.as_ptr(), input_bytes);
-                }
-            }
+            // SAFETY: gcm_ghash_neon satisfies the ghash! contract on these
+            // targets.
+            Implementation::NEON => unsafe {
+                ghash!(gcm_ghash_neon, xi, h_table, input, self.cpu_features);
+            },
 
             Implementation::Fallback => {
                 gcm_nohw::ghash(xi, h_table.Htable[0], input);
