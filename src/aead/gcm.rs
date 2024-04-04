@@ -154,16 +154,17 @@ unsafe fn ghash(
     }
 }
 
-pub struct Context {
-    inner: ContextInner,
+pub struct Context<'key> {
+    Xi: Xi,
+    h_table: &'key HTable,
     aad_len: BitLength<u64>,
     in_out_len: BitLength<u64>,
     cpu_features: cpu::Features,
 }
 
-impl Context {
+impl<'key> Context<'key> {
     pub(crate) fn new(
-        key: &Key,
+        key: &'key Key,
         aad: Aad<&[u8]>,
         in_out_len: usize,
         cpu_features: cpu::Features,
@@ -177,10 +178,8 @@ impl Context {
         // explicit check here.
 
         let mut ctx = Self {
-            inner: ContextInner {
-                Xi: Xi(ZERO_BLOCK),
-                Htable: key.h_table.clone(),
-            },
+            Xi: Xi(ZERO_BLOCK),
+            h_table: &key.h_table,
             aad_len: BitLength::from_byte_len(aad.as_ref().len())?,
             in_out_len: BitLength::from_byte_len(in_out_len)?,
             cpu_features,
@@ -209,12 +208,12 @@ impl Context {
     #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
     #[inline]
     pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
-        (&self.inner.Htable, &mut self.inner.Xi)
+        (self.h_table, &mut self.Xi)
     }
 
     pub fn update_blocks(&mut self, input: &[[u8; BLOCK_LEN]]) {
-        let xi = &mut self.inner.Xi;
-        let h_table = &self.inner.Htable;
+        let xi = &mut self.Xi;
+        let h_table = &self.h_table;
 
         match detect_implementation(self.cpu_features) {
             #[cfg(target_arch = "x86_64")]
@@ -249,13 +248,10 @@ impl Context {
     }
 
     pub fn update_block(&mut self, a: Block) {
-        self.inner.Xi.bitxor_assign(a);
+        self.Xi.bitxor_assign(a);
 
-        // Although these functions take `Xi` and `h_table` as separate
-        // parameters, one or more of them might assume that they are part of
-        // the same `ContextInner` structure.
-        let xi = &mut self.inner.Xi;
-        let h_table = &self.inner.Htable;
+        let xi = &mut self.Xi;
+        let h_table = &self.h_table;
 
         match detect_implementation(self.cpu_features) {
             #[cfg(any(
@@ -299,7 +295,7 @@ impl Context {
                 .array_flatten(),
         );
 
-        f(self.inner.Xi.0, self.cpu_features)
+        f(self.Xi.0, self.cpu_features)
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -319,7 +315,7 @@ impl Context {
     }
 }
 
-// The alignment is required by non-Rust code that uses `GCM128_CONTEXT`.
+// The alignment is required by some assembly code.
 #[derive(Clone)]
 #[repr(C, align(16))]
 pub(super) struct HTable {
@@ -343,15 +339,6 @@ impl BitXorAssign<Block> for Xi {
     fn bitxor_assign(&mut self, a: Block) {
         self.0 = constant_time::xor(self.0, a)
     }
-}
-
-// This corresponds roughly to the `GCM128_CONTEXT` structure in BoringSSL.
-// Some assembly language code, in particular the MOVEBE+AVX2 X86-64
-// implementation, requires this exact layout.
-#[repr(C, align(16))]
-struct ContextInner {
-    Xi: Xi,
-    Htable: HTable,
 }
 
 #[allow(clippy::upper_case_acronyms)]
