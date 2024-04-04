@@ -8,7 +8,6 @@ allow = [
     "ISC",
     "LicenseRef-ring",
     "MIT",
-    "Unicode-DFS-2016",
 ]
 confidence-threshold = 1.0
 
