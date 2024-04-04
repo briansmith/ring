@@ -138,7 +138,7 @@ impl HTable {
     }
 }
 
-// The alignment is required by some assembly code.
+// The alignment is required by some assembly code, such as `ghash-ssse3-*`.
 #[derive(Clone)]
 #[repr(C, align(16))]
 pub(in super::super) struct HTable {
