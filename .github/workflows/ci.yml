@@ -77,9 +77,9 @@ jobs:
             ~/.cargo/bin/cargo-deny
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-v2-cargo-deny-locked-0.14.3
+          key: ${{ runner.os }}-v2-cargo-deny-locked-0.14.20
 
-      - run: cargo install cargo-deny --locked --vers "0.14.3"
+      - run: cargo install cargo-deny --locked --vers "0.14.20"
 
       - uses: briansmith/actions-checkout@v4
         with:
