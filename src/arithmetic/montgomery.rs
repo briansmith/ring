@@ -122,7 +122,7 @@ unsafe fn mul_mont(
     num_limbs: c::size_t,
     _: cpu::Features,
 ) {
-    bn_mul_mont(r, a, b, n, n0, num_limbs)
+    unsafe { bn_mul_mont(r, a, b, n, n0, num_limbs) }
 }
 
 #[cfg(not(any(
