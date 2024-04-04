@@ -127,14 +127,18 @@ fn aes_gcm_seal(
         if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
             in_out
         } else {
+            use crate::bits::BitLength;
+
             let whole_block_bits = auth.in_out_whole_block_bits();
-            if whole_block_bits.as_bits() > 0 {
-                use crate::{bits::BitLength, c};
+            let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
+            if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
+                use core::num::NonZeroU64;
+
                 let (htable, xi) = auth.inner();
                 prefixed_extern! {
                     fn aes_gcm_enc_kernel(
                         input: *const u8,
-                        in_bits: BitLength<c::size_t>,
+                        in_bits: BitLength<NonZeroU64>,
                         output: *mut u8,
                         Xi: &mut gcm::Xi,
                         ivec: &mut Counter,
@@ -243,14 +247,18 @@ fn aes_gcm_open(
         if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
             in_out
         } else {
+            use crate::bits::BitLength;
+
             let whole_block_bits = auth.in_out_whole_block_bits();
-            if whole_block_bits.as_bits() > 0 {
-                use crate::{bits::BitLength, c};
+            let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
+            if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
+                use core::num::NonZeroU64;
+
                 let (htable, xi) = auth.inner();
                 prefixed_extern! {
                     fn aes_gcm_dec_kernel(
                         input: *const u8,
-                        in_bits: BitLength<c::size_t>,
+                        in_bits: BitLength<NonZeroU64>,
                         output: *mut u8,
                         Xi: &mut gcm::Xi,
                         ivec: &mut Counter,
