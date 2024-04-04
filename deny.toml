@@ -1,11 +1,8 @@
 [advisories]
-# cargo-audit handles these. In the case where we have to temporarily allow
-# some unmaintained/yanked crates, we'll do that in .cargo/audit.toml.
-unmaintained = "allow"
-yanked = "allow"
-notice = "deny"
+version = 2
 
 [licenses]
+version = 2
 allow = [
     "Apache-2.0",
     "ISC",
