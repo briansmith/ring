@@ -107,3 +107,18 @@ impl BitLength<u64> {
         self.0.to_be_bytes()
     }
 }
+
+#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
+impl From<BitLength<usize>> for BitLength<u64> {
+    fn from(BitLength(value): BitLength<usize>) -> Self {
+        BitLength(polyfill::u64_from_usize(value))
+    }
+}
+
+impl TryFrom<BitLength<u64>> for BitLength<core::num::NonZeroU64> {
+    type Error = <core::num::NonZeroU64 as TryFrom<u64>>::Error;
+
+    fn try_from(BitLength(value): BitLength<u64>) -> Result<Self, Self::Error> {
+        value.try_into().map(BitLength)
+    }
+}
