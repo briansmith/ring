@@ -18,7 +18,7 @@ use super::{
 };
 use crate::{
     aead, constant_time, cpu, error,
-    polyfill::{sliceutil::overwrite_at_start, usize_from_u64_saturated},
+    polyfill::{slice, sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
 use core::ops::RangeFrom;
 
@@ -157,14 +157,10 @@ fn aes_gcm_seal(
         }
     };
 
-    let (whole, remainder) = {
-        let in_out_len = in_out.len();
-        let whole_len = in_out_len - (in_out_len % BLOCK_LEN);
-        in_out.split_at_mut(whole_len)
-    };
+    let (whole, remainder) = slice::as_chunks_mut(in_out);
 
-    for chunk in whole.chunks_mut(CHUNK_BLOCKS * BLOCK_LEN) {
-        aes_key.ctr32_encrypt_within(chunk, 0.., &mut ctr, cpu_features);
+    for chunk in whole.chunks_mut(CHUNK_BLOCKS) {
+        aes_key.ctr32_encrypt_within(slice::flatten_mut(chunk), 0.., &mut ctr, cpu_features);
         auth.update_blocks(chunk);
     }
 
@@ -290,11 +286,15 @@ fn aes_gcm_open(
             if whole_len - output < chunk_len {
                 chunk_len = whole_len - output;
             }
-            if chunk_len == 0 {
+
+            let ciphertext = &in_out[input..][..chunk_len];
+            let (ciphertext, leftover) = slice::as_chunks(ciphertext);
+            debug_assert_eq!(leftover.len(), 0);
+            if ciphertext.is_empty() {
                 break;
             }
+            auth.update_blocks(ciphertext);
 
-            auth.update_blocks(&in_out[input..][..chunk_len]);
             aes_key.ctr32_encrypt_within(
                 &mut in_out[output..][..(chunk_len + in_prefix_len)],
                 in_prefix_len..,

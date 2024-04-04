@@ -145,21 +145,13 @@ impl Context {
         (&self.inner.Htable, &mut self.inner.Xi)
     }
 
-    pub fn update_blocks(&mut self, input: &[u8]) {
-        // Th assembly functions take the input length in bytes, not blocks.
-        let input_bytes = input.len();
+    pub fn update_blocks(&mut self, input: &[[u8; BLOCK_LEN]]) {
+        // The assembly functions take the input length in bytes, not blocks.
+        // This multiplication cannot overflow because the byte length of an
+        // object must fit within a `usize`.
+        let input_bytes = input.len() * BLOCK_LEN;
 
-        debug_assert_eq!(input_bytes % BLOCK_LEN, 0);
         debug_assert!(input_bytes > 0);
-
-        let input = input.as_ptr().cast::<[u8; BLOCK_LEN]>();
-        // SAFETY:
-        // - `[[u8; BLOCK_LEN]]` has the same bit validity as `[u8]`.
-        // - `[[u8; BLOCK_LEN]]` has the same alignment requirement as `[u8]`.
-        // - `input_bytes / BLOCK_LEN` ensures that the total length in bytes of
-        //   the new `[[u8; BLOCK_LEN]]` will not be longer than the original
-        //   `[u8]`.
-        let input = unsafe { core::slice::from_raw_parts(input, input_bytes / BLOCK_LEN) };
 
         let xi = &mut self.inner.Xi;
         let h_table = &self.inner.Htable;
