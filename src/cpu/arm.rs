@@ -343,7 +343,9 @@ pub unsafe fn init_global_shared_with_assembly() {
         0
     });
     let detected = detected & !filtered;
-    OPENSSL_armcap_P = ARMCAP_STATIC | detected;
+    unsafe {
+        OPENSSL_armcap_P = ARMCAP_STATIC | detected;
+    }
 }
 
 // Some non-Rust code still checks this even when it is statically known

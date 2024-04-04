@@ -269,7 +269,9 @@ unsafe extern "C" fn p384_elem_sqr_mont(
     a: *const Limb, // [COMMON_OPS.num_limbs]
 ) {
     // XXX: Inefficient. TODO: Make a dedicated squaring routine.
-    p384_elem_mul_mont(r, a, a);
+    unsafe {
+        p384_elem_mul_mont(r, a, a);
+    }
 }
 
 prefixed_extern! {
