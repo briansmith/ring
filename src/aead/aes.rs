@@ -15,10 +15,8 @@
 use super::{nonce::Nonce, quic::Sample};
 use crate::{
     bits::BitLength,
-    c, constant_time, cpu,
-    endian::BigEndian,
-    error,
-    polyfill::{self, slice, ArrayFlatten as _, ArraySplitMap as _},
+    c, constant_time, cpu, error,
+    polyfill::{self, slice},
 };
 use core::ops::RangeFrom;
 
@@ -388,26 +386,27 @@ pub enum KeyBytes<'a> {
     AES_256(&'a [u8; 256 / 8]),
 }
 
-/// Nonce || Counter, all big-endian.
+/// nonce || big-endian counter.
 #[repr(transparent)]
-pub(super) struct Counter([BigEndian<u32>; 4]);
+pub(super) struct Counter([u8; BLOCK_LEN]);
 
 impl Counter {
     pub fn one(nonce: Nonce) -> Self {
-        let [n0, n1, n2] = nonce.as_ref().array_split_map(BigEndian::<u32>::from);
-        Self([n0, n1, n2, 1.into()])
+        let [n0, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11] = *nonce.as_ref();
+        Self([n0, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, 0, 0, 0, 1])
     }
 
     pub fn increment(&mut self) -> Iv {
-        let iv: [[u8; 4]; 4] = self.0.map(Into::into);
-        let iv = Iv(iv.array_flatten());
+        let iv = Iv(self.0);
         self.increment_by_less_safe(1);
         iv
     }
 
     fn increment_by_less_safe(&mut self, increment_by: u32) {
-        let old_value: u32 = self.0[3].into();
-        self.0[3] = (old_value + increment_by).into();
+        let [.., c0, c1, c2, c3] = &mut self.0;
+        let old_value: u32 = u32::from_be_bytes([*c0, *c1, *c2, *c3]);
+        let new_value = old_value + increment_by;
+        [*c0, *c1, *c2, *c3] = u32::to_be_bytes(new_value);
     }
 }
 
@@ -418,8 +417,7 @@ pub struct Iv(Block);
 
 impl From<Counter> for Iv {
     fn from(counter: Counter) -> Self {
-        let iv: [[u8; 4]; 4] = counter.0.map(Into::into);
-        Self(iv.array_flatten())
+        Self(counter.0)
     }
 }
 
