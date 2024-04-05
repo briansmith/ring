@@ -100,12 +100,22 @@ macro_rules! ctr32_encrypt_blocks {
                 ivec: &Counter,
             );
         }
-        ctr32_encrypt_blocks_($name, $in_out, $src, $key, $ivec)
+        ctr32_encrypt_blocks($name, $in_out, $src, $key, $ivec)
     }};
 }
 
+/// SAFETY:
+///   * `f` must not read more than `blocks` blocks from `input`.
+///   * `f` must write exactly `block` blocks to `output`.
+///   * In particular, `f` must handle blocks == 0 without reading from `input`
+///     or writing to `output`.
+///   * `f` must support the input overlapping with the output exactly or
+///     with any nonnegative offset `n` (i.e. `input == output.add(n)`);
+///     `f` does NOT need to support the cases where input < output.
+///   * `key` must have been initialized with the `set_encrypt_key!` invocation
+///      that corresponds to `f`.
 #[inline]
-fn ctr32_encrypt_blocks_(
+unsafe fn ctr32_encrypt_blocks(
     f: unsafe extern "C" fn(
         input: *const [u8; BLOCK_LEN],
         output: *mut [u8; BLOCK_LEN],
@@ -129,9 +139,19 @@ fn ctr32_encrypt_blocks_(
     let input = in_out[src].as_ptr().cast::<[u8; BLOCK_LEN]>();
     let output = in_out.as_mut_ptr().cast::<[u8; BLOCK_LEN]>();
 
+    // SAFETY:
+    //  * `input` points to `blocks` blocks.
+    //  * `output` points to space for `blocks` blocks to be written.
+    //  * input == output.add(n), where n == src.start, and the caller is
+    //    responsible for ensuing this sufficient for `f` to work correctly.
+    //  * The caller is responsible for ensuring `f` can handle any value of
+    //    `blocks` including zero.
+    //  * The caller is responsible for ensuring `key` was initialized by the
+    //    `set_encrypt_key!` invocation required by `f`.
     unsafe {
         f(input, output, blocks, key, ctr);
     }
+
     ctr.increment_by_less_safe(blocks_u32);
 }
 
@@ -218,10 +238,6 @@ impl Key {
         ctr: &mut Counter,
         cpu_features: cpu::Features,
     ) {
-        let in_out_len = in_out[src.clone()].len();
-
-        assert_eq!(in_out_len % BLOCK_LEN, 0);
-
         match detect_implementation(cpu_features) {
             #[cfg(any(
                 target_arch = "aarch64",
@@ -229,46 +245,45 @@ impl Key {
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
-            Implementation::HWAES => {
+            Implementation::HWAES => unsafe {
                 ctr32_encrypt_blocks!(aes_hw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
-            }
+            },
 
             #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
             Implementation::VPAES_BSAES => {
-                // 8 blocks is the cut-off point where it's faster to use BSAES.
                 #[cfg(target_arch = "arm")]
-                let in_out = if in_out_len >= 8 * BLOCK_LEN {
-                    let remainder = in_out_len % (8 * BLOCK_LEN);
-                    let bsaes_in_out_len = if remainder < (4 * BLOCK_LEN) {
-                        in_out_len - remainder
+                let in_out = {
+                    let blocks = in_out[src.clone()].len() / BLOCK_LEN;
+
+                    // bsaes operates in batches of 8 blocks.
+                    let bsaes_blocks = if blocks >= 8 && (blocks % 8) < 4 {
+                        // It's faster to use bsaes for all the full batches and then
+                        // switch to vpaes for the last partial batch (if any).
+                        blocks - (blocks % 8)
+                    } else if blocks >= 8 {
+                        // It's faster to let bsaes handle everything including
+                        // the last partial batch.
+                        blocks
                     } else {
-                        in_out_len
+                        // It's faster to let vpaes handle everything.
+                        0
                     };
-
-                    let mut bsaes_key = AES_KEY {
-                        rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
-                        rounds: 0,
-                    };
-                    prefixed_extern! {
-                        fn vpaes_encrypt_key_to_bsaes(bsaes_key: &mut AES_KEY, vpaes_key: &AES_KEY);
-                    }
+                    let bsaes_in_out_len = bsaes_blocks * BLOCK_LEN;
                     unsafe {
-                        vpaes_encrypt_key_to_bsaes(&mut bsaes_key, &self.inner);
+                        ctr32_encrypt_blocks(
+                            bsaes_ctr32_encrypt_blocks_with_vpaes_key,
+                            &mut in_out[..(src.start + bsaes_in_out_len)],
+                            src.clone(),
+                            &self.inner,
+                            ctr,
+                        );
                     }
-                    ctr32_encrypt_blocks!(
-                        bsaes_ctr32_encrypt_blocks,
-                        &mut in_out[..(src.start + bsaes_in_out_len)],
-                        src.clone(),
-                        &bsaes_key,
-                        ctr
-                    );
-
                     &mut in_out[bsaes_in_out_len..]
-                } else {
-                    in_out
                 };
 
-                ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+                unsafe {
+                    ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+                }
             }
 
             #[cfg(target_arch = "x86")]
@@ -278,9 +293,9 @@ impl Key {
                 });
             }
 
-            Implementation::NOHW => {
+            Implementation::NOHW => unsafe {
                 ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
-            }
+            },
         }
     }
 
@@ -430,6 +445,75 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     {
         Implementation::NOHW
     }
+}
+
+/// SAFETY:
+///   * The caller must ensure that if blocks > 0 then either `input` and
+///     `output` do not overlap at all, or input == output.add(n) for some
+///     (nonnegative) n.
+///   * if blocks > 0, The caller must ensure `input` points to `blocks` blocks
+///     and that `output` points to writable space for `blocks` blocks.
+///   * The caller must ensure that `vpaes_key` was initialized with
+///     `vpaes_set_encrypt_key`.
+///   * Upon returning, `blocks` blocks will have been read from `input` and
+///     written to `output`.
+#[cfg(target_arch = "arm")]
+unsafe extern "C" fn bsaes_ctr32_encrypt_blocks_with_vpaes_key(
+    input: *const [u8; BLOCK_LEN],
+    output: *mut [u8; BLOCK_LEN],
+    blocks: c::size_t,
+    vpaes_key: &AES_KEY,
+    ivec: &Counter,
+) {
+    use core::num::NonZeroUsize;
+
+    prefixed_extern! {
+        // bsaes_ctr32_encrypt_blocks requires transformation of an existing
+        // VPAES key; there is no `bsaes_set_encrypt_key`.
+        fn vpaes_encrypt_key_to_bsaes(bsaes_key: *mut AES_KEY, vpaes_key: &AES_KEY);
+
+        // Unlike other implementations, bsaes_ctr32_encrypt_blocks requires blocks > 0.
+        fn bsaes_ctr32_encrypt_blocks(
+            input: *const [u8; BLOCK_LEN],
+            output: *mut [u8; BLOCK_LEN],
+            blocks: c::NonZero_size_t,
+            key: &AES_KEY,
+            ivec: &Counter,
+        );
+    }
+
+    let blocks = match NonZeroUsize::new(blocks) {
+        Some(blocks) => blocks,
+        None => {
+            return;
+        }
+    };
+
+    let mut bsaes_key = AES_KEY {
+        rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
+        rounds: 0,
+    };
+    // SAFETY:
+    //   * The caller ensures `vpaes_key` was initialized by
+    //     `vpaes_set_encrypt_key`.
+    //   * `bsaes_key was zeroed above, and `vpaes_encrypt_key_to_bsaes`
+    //     is assumed to initialize `bsaes_key`.
+    unsafe {
+        vpaes_encrypt_key_to_bsaes(&mut bsaes_key, vpaes_key);
+    }
+    // The code for `vpaes_encrypt_key_to_bsaes` notes "vpaes stores one
+    // fewer round count than bsaes, but the number of keys is the same,"
+    // so use this as a sanity check.
+    debug_assert_eq!(bsaes_key.rounds, vpaes_key.rounds + 1);
+
+    // SAFETY:
+    //   * `blocks` is non-zero, as it is a `NonZeroUsize`.
+    //   * Our preconditions on `input` and `output` are the same as those of
+    //     `bsaes_ctr32_encrypt_blocks`.
+    //   * `bsaes_key` was initialized by `vpaes_encrypt_key_to_bsaes` as
+    //     required by `bsaes_ctr32_encrypt_blocks`.
+    //   * `bsaes_ctr32_encrypt_blocks` will write `blocks` blocks to `output`.
+    unsafe { bsaes_ctr32_encrypt_blocks(input, output, blocks, &bsaes_key, ivec) }
 }
 
 #[cfg(test)]
