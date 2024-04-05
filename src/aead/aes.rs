@@ -279,7 +279,7 @@ impl Key {
                     let blocks = in_out[src.clone()].len() / BLOCK_LEN;
 
                     // bsaes operates in batches of 8 blocks.
-                    let bsaes_blocks = if blocks >= 8 && (blocks % 8) < 4 {
+                    let bsaes_blocks = if blocks >= 8 && (blocks % 8) < 6 {
                         // It's faster to use bsaes for all the full batches and then
                         // switch to vpaes for the last partial batch (if any).
                         blocks - (blocks % 8)
