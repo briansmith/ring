@@ -170,6 +170,7 @@ TEST(ParsedCertificateTest, FailedSignatureAlgorithm) {
   ASSERT_FALSE(cert->signature_algorithm());
 }
 
+// '&' is not acceptable in a printable string.
 TEST(ParsedCertificateTest, IssuerBadPrintableString) {
   ASSERT_FALSE(ParseCertificateFromFile("issuer_bad_printable_string.pem", {}));
 }
@@ -188,10 +189,12 @@ TEST(ParsedCertificateTest, SubjectBlankSubjectAltNameNotCritical) {
       "subject_blank_subjectaltname_not_critical.pem", {}));
 }
 
+// Non-ASCII character in locality name in subject.
 TEST(ParsedCertificateTest, SubjectNotAscii) {
   ASSERT_FALSE(ParseCertificateFromFile("subject_not_ascii.pem", {}));
 }
 
+// '&' is not acceptable in a printable string.
 TEST(ParsedCertificateTest, SubjectNotPrintableString) {
   ASSERT_FALSE(
       ParseCertificateFromFile("subject_not_printable_string.pem", {}));
