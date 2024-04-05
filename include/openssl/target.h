@@ -84,18 +84,18 @@
 
 // Trusty and Android baremetal aren't Linux but currently define __linux__.
 // As a workaround, we exclude them here.
-// We also exclude nanolibc/CrOS EC/Zephyr. nanolibc/CrOS EC/Zephyr
-// sometimes build for a non-Linux target (which should not define __linux__),
-// but also sometimes build for Linux. Although technically running in Linux
-// userspace, this lacks all the libc APIs we'd normally expect on Linux, so we
-// treat it as a non-Linux target.
+// We also exclude nanolibc/CrOS EC. nanolibc/CrOS EC sometimes build for a
+// non-Linux target (which should not define __linux__), but also sometimes
+// build for Linux. Although technically running in Linux userspace, this lacks
+// all the libc APIs we'd normally expect on Linux, so we treat it as a
+// non-Linux target.
 //
 // TODO(b/169780122): Remove this workaround once Trusty no longer defines it.
 // TODO(b/291101350): Remove this workaround once Android baremetal no longer
 // defines it.
 #if defined(__linux__) && !defined(__TRUSTY__) && \
     !defined(ANDROID_BAREMETAL) && !defined(OPENSSL_NANOLIBC) && \
-    !defined(CROS_EC) && !defined(CROS_ZEPHYR)
+    !defined(CROS_EC)
 #define OPENSSL_LINUX
 #endif
 
@@ -148,12 +148,12 @@
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
-// CROS_ZEPHYR is an embedded target for ChromeOS Zephyr Embedded Controller.
+// Zephyr is an open source RTOS, optimized for embedded devices.
 // Defining this on any other platform is not supported. Other embedded
 // platforms must introduce their own defines.
 //
 // https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/zephyr/README.md
-#if defined(CROS_ZEPHYR)
+#if defined(__ZEPHYR__)
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
