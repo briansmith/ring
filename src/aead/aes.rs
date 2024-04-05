@@ -30,8 +30,9 @@ pub(super) struct Key {
 // SAFETY:
 //  * The function `$name` must read `bits` bits from `user_key`; `bits` will
 //    always be a valid AES key length, i.e. a whole number of bytes.
-//  * `$name` must set all the fields of `key` to valid values and return 0,
-//     or otherwise must return non-zero to indicate failure.
+//  * `$name` must set `key.rounds` to the value expected by the corresponding
+//    encryption/decryption functions and return 0, or otherwise must return
+//    non-zero to indicate failure.
 //  * `$name` may inspect CPU features.
 //
 // In BoringSSL, the C prototypes for these are in
@@ -59,6 +60,7 @@ unsafe fn set_encrypt_key(
 
     // Unusually, in this case zero means success and non-zero means failure.
     if 0 == unsafe { f(bytes.as_ptr(), key_bits, key) } {
+        debug_assert_ne!(key.rounds, 0); // Sanity check initialization.
         Ok(())
     } else {
         Err(error::Unspecified)
