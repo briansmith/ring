@@ -152,12 +152,15 @@
 // Defining this on any other platform is not supported. Other embedded
 // platforms must introduce their own defines.
 //
-// https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/zephyr/README.md
+// Zephyr supports multithreading with cooperative and preemptive scheduling.
+// It also implements POSIX Threads (pthread) API, so it's not necessary to
+// implement BoringSSL internal threading API using some custom API.
+//
+// https://www.zephyrproject.org/
 #if defined(__ZEPHYR__)
 #define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
-#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
 #if defined(__ANDROID_API__)
