@@ -433,7 +433,6 @@ pub(super) type Block = [u8; BLOCK_LEN];
 pub(super) const BLOCK_LEN: usize = 16;
 pub(super) const ZERO_BLOCK: Block = [0u8; BLOCK_LEN];
 
-#[repr(C)] // Only so `Key` can be `#[repr(C)]`
 #[derive(Clone, Copy)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Implementation {
@@ -443,7 +442,7 @@ pub enum Implementation {
         target_arch = "x86_64",
         target_arch = "x86"
     ))]
-    HWAES = 1,
+    HWAES,
 
     // On "arm" only, this indicates that the bsaes implementation may be used.
     #[cfg(any(
@@ -452,9 +451,9 @@ pub enum Implementation {
         target_arch = "x86_64",
         target_arch = "x86"
     ))]
-    VPAES_BSAES = 2,
+    VPAES_BSAES,
 
-    NOHW = 3,
+    NOHW,
 }
 
 fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
