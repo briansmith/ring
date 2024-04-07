@@ -18,9 +18,10 @@ use crate::{
     c, constant_time, cpu,
     endian::BigEndian,
     error,
-    polyfill::{self, ArrayFlatten as _, ArraySplitMap as _}, rust_crypto::aes,
+    polyfill::{self, u64_from_usize, ArrayFlatten as _, ArraySplitMap as _},
+    rust_crypto::aes,
 };
-use core::ops::RangeFrom;
+use core::ops::{Range, RangeFrom};
 
 #[derive(Clone)]
 pub(super) struct Key {
@@ -187,11 +188,6 @@ impl Key {
                         u32_array_from_u64_array(&sched, &mut key.rd_key);
                         key.rounds = 10;
                     }
-                    192 => {
-                        let sched = aes::fixslice::aes192_key_schedule(bytes.try_into()?);
-                        u32_array_from_u64_array(&sched, &mut key.rd_key);
-                        key.rounds = 12;
-                    }
                     256 => {
                         let sched = aes::fixslice::aes256_key_schedule(bytes.try_into()?);
                         u32_array_from_u64_array(&sched, &mut key.rd_key);
@@ -317,7 +313,76 @@ impl Key {
             }
 
             Implementation::NOHW => {
-                ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+                let in_out_len = in_out[src.clone()].len();
+                assert_eq!(in_out_len % BLOCK_LEN, 0);
+
+                let blocks = in_out_len / BLOCK_LEN;
+                #[allow(clippy::cast_possible_truncation)]
+                let blocks_u32 = blocks as u32;
+                assert_eq!(blocks, polyfill::usize_from_u32(blocks_u32));
+                const MAX_BATCH_SIZE: usize = 4;
+                fn encrypt<const N: usize, F>(
+                    encryptor_fn: F,
+                    mut blocks: usize,
+                    key: &Key,
+                    ctr: &mut Counter,
+                    in_out: &mut [u8],
+                    src: RangeFrom<usize>,
+                ) where
+                    F: Fn(&[u64; N], &[Block; MAX_BATCH_SIZE]) -> [[u8; BLOCK_LEN]; MAX_BATCH_SIZE],
+                {
+                    let mut offset = src.clone();
+                    let mut out_range = RangeFrom { start: 0 };
+                    loop {
+                        let todo = if blocks > MAX_BATCH_SIZE {
+                            MAX_BATCH_SIZE
+                        } else {
+                            blocks
+                        };
+                        let mut enc_key: [u64; N] = [0; N];
+                        u64_array_from_u32_array(&key.inner.rd_key, &mut enc_key);
+                        let mut b: [Block; MAX_BATCH_SIZE] = [[0; BLOCK_LEN]; MAX_BATCH_SIZE];
+                        for i in 0..todo {
+                            b[i] = ctr.increment().into_block_less_safe()
+                        }
+                        let enc_ivs = encryptor_fn(&enc_key, &b);
+                        for i in 0..todo {
+                            for j in 0..BLOCK_LEN {
+                                in_out[out_range.clone()][j] =
+                                    in_out[offset.clone()][j] ^ enc_ivs[i][j];
+                            }
+                            offset.start = offset.start.checked_add(BLOCK_LEN).unwrap();
+                            out_range.start = out_range.start.checked_add(BLOCK_LEN).unwrap();
+                        }
+                        blocks -= todo;
+                        if blocks <= 0 {
+                            break;
+                        }
+                    }
+                }
+                match self.inner.rounds {
+                    10 => {
+                        encrypt(
+                            aes::fixslice::aes128_encrypt,
+                            blocks,
+                            self,
+                            ctr,
+                            in_out,
+                            src,
+                        );
+                    }
+                    14 => {
+                        encrypt(
+                            aes::fixslice::aes256_encrypt,
+                            blocks,
+                            self,
+                            ctr,
+                            in_out,
+                            src,
+                        );
+                    }
+                    _ => unreachable!(),
+                };
             }
         }
     }
