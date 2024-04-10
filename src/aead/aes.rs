@@ -18,10 +18,10 @@ use crate::{
     c, constant_time, cpu,
     endian::BigEndian,
     error,
-    polyfill::{self, u64_from_usize, ArrayFlatten as _, ArraySplitMap as _},
+    polyfill::{self, ArrayFlatten as _, ArraySplitMap as _},
     rust_crypto::aes,
 };
-use core::ops::{Range, RangeFrom};
+use core::ops::RangeFrom;
 
 #[derive(Clone)]
 pub(super) struct Key {

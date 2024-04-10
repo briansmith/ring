@@ -84,6 +84,7 @@ pub(crate) fn aes128_key_schedule(key: &[u8; 16]) -> FixsliceKeys128 {
 }
 
 /// Fully bitsliced AES-192 key schedule to match the fully-fixsliced representation.
+#[allow(dead_code)]
 pub(crate) fn aes192_key_schedule(key: &[u8; 24]) -> FixsliceKeys192 {
     let mut rkeys = [0u64; 104];
     let mut tmp = [0u64; 8];
@@ -262,6 +263,7 @@ pub(crate) fn aes256_key_schedule(key: &[u8; 32]) -> FixsliceKeys256 {
 /// Fully-fixsliced AES-128 decryption (the InvShiftRows is completely omitted).
 ///
 /// Decrypts four blocks in-place and in parallel.
+#[allow(dead_code)]
 pub(crate) fn aes128_decrypt(rkeys: &FixsliceKeys128, blocks: &BatchBlocks) -> BatchBlocks {
     let mut state = State::default();
 
@@ -374,6 +376,7 @@ pub(crate) fn aes128_encrypt(rkeys: &FixsliceKeys128, blocks: &BatchBlocks) -> B
 /// Fully-fixsliced AES-192 decryption (the InvShiftRows is completely omitted).
 ///
 /// Decrypts four blocks in-place and in parallel.
+#[allow(dead_code)]
 pub(crate) fn aes192_decrypt(rkeys: &FixsliceKeys192, blocks: &BatchBlocks) -> BatchBlocks {
     let mut state = State::default();
 
@@ -424,6 +427,7 @@ pub(crate) fn aes192_decrypt(rkeys: &FixsliceKeys192, blocks: &BatchBlocks) -> B
 /// Fully-fixsliced AES-192 encryption (the ShiftRows is completely omitted).
 ///
 /// Encrypts four blocks in-place and in parallel.
+#[allow(dead_code)]
 pub(crate) fn aes192_encrypt(rkeys: &FixsliceKeys192, blocks: &BatchBlocks) -> BatchBlocks {
     let mut state = State::default();
 
@@ -474,6 +478,7 @@ pub(crate) fn aes192_encrypt(rkeys: &FixsliceKeys192, blocks: &BatchBlocks) -> B
 /// Fully-fixsliced AES-256 decryption (the InvShiftRows is completely omitted).
 ///
 /// Decrypts four blocks in-place and in parallel.
+#[allow(dead_code)]
 pub(crate) fn aes256_decrypt(rkeys: &FixsliceKeys256, blocks: &BatchBlocks) -> BatchBlocks {
     let mut state = State::default();
 
