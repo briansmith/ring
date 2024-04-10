@@ -138,7 +138,7 @@ static const uint32_t kNTTRootsMontgomery[256] = {
 
 // Reduces x mod kPrime in constant time, where 0 <= x < 2*kPrime.
 static uint32_t reduce_once(uint32_t x) {
-  assert(x < 2 * kPrime);
+  declassify_assert(x < 2 * kPrime);
   // return x < kPrime ? x : x - kPrime;
   return constant_time_select_int(constant_time_lt_w(x, kPrime), x, x - kPrime);
 }
@@ -154,7 +154,7 @@ static uint32_t abs_signed(uint32_t x) {
 
 // Returns the absolute value modulo kPrime.
 static uint32_t abs_mod_prime(uint32_t x) {
-  assert(x < kPrime);
+  declassify_assert(x < kPrime);
   // return x > kHalfPrime ? kPrime - x : x;
   return constant_time_select_int(constant_time_lt_w(kHalfPrime, x), kPrime - x,
                                   x);
@@ -181,7 +181,7 @@ static void scalar_sub(scalar *out, const scalar *lhs, const scalar *rhs) {
 static uint32_t reduce_montgomery(uint64_t x) {
   uint64_t a = (uint32_t)x * kPrimeNegInverse;
   uint64_t b = x + a * kPrime;
-  assert((b & 0xffffffff) == 0);
+  declassify_assert((b & 0xffffffff) == 0);
   uint32_t c = b >> 32;
   return reduce_once(c);
 }
@@ -584,7 +584,7 @@ static void scalar_encode_signed(uint8_t *out, const scalar *s, int bits,
 
   for (int i = 0; i < DEGREE; i++) {
     uint32_t element = reduce_once(kPrime + max - s->c[i]);
-    assert(element <= 2 * max);
+    declassify_assert(element <= 2 * max);
     int element_bits_done = 0;
 
     while (element_bits_done < bits) {
@@ -677,7 +677,11 @@ static int scalar_decode_signed(scalar *out, const uint8_t *in, int bits,
       element_bits_done += chunk_bits;
     }
 
-    if (element > 2 * max) {
+    // This may be only out of range in cases of invalid input, in which case it
+    // is okay to leak the value. This function is also called with secret
+    // input during signing, in |scalar_sample_mask|. However, in that case
+    // (and in any case when |max| is a power of two), this case is impossible.
+    if (constant_time_declassify_int(element > 2 * max)) {
       return 0;
     }
     out->c[i] = reduce_once(kPrime + max - element);
@@ -717,7 +721,7 @@ static void scalar_from_keccak_vartime(
 }
 
 // FIPS 204, Algorithm 25 (`RejBoundedPoly`).
-static void scalar_uniform_eta_4_vartime(
+static void scalar_uniform_eta_4(
     scalar *out, const uint8_t derived_seed[SIGMA_BYTES + 2]) {
   static_assert(ETA == 4, "This implementation is specialized for ETA == 4");
 
@@ -734,11 +738,15 @@ static void scalar_uniform_eta_4_vartime(
     for (size_t i = 0; i < sizeof(block) && done < DEGREE; ++i) {
       uint32_t t0 = block[i] & 0x0F;
       uint32_t t1 = block[i] >> 4;
-      // FIPS 204, Algorithm 9 (`CoefFromHalfByte`).
-      if (t0 < 9) {
+      // FIPS 204, Algorithm 9 (`CoefFromHalfByte`). Although both the input and
+      // output here are secret, it is OK to leak when we rejected a byte.
+      // Individual bytes of the SHAKE-256 stream are (indistiguishable from)
+      // independent of each other and the original seed, so leaking information
+      // about the rejected bytes does not reveal the input or output.
+      if (constant_time_declassify_int(t0 < 9)) {
         out->c[done++] = reduce_once(kPrime + ETA - t0);
       }
-      if (done < DEGREE && t1 < 9) {
+      if (done < DEGREE && constant_time_declassify_int(t1 < 9)) {
         out->c[done++] = reduce_once(kPrime + ETA - t1);
       }
     }
@@ -772,6 +780,11 @@ static void scalar_sample_in_ball_vartime(scalar *out, const uint8_t *seed,
 
   uint64_t signs = CRYPTO_load_u64_le(block);
   int offset = 8;
+  // SampleInBall implements a Fisher–Yates shuffle, which unavoidably leaks
+  // where the zeros are by memory access pattern. Although this leak happens
+  // before bad signatures are rejected, this is safe. See
+  // https://boringssl-review.googlesource.com/c/boringssl/+/67747/comment/8d8f01ac_70af3f21/
+  CONSTTIME_DECLASSIFY(block + offset, sizeof(block) - offset);
 
   OPENSSL_memset(out, 0, sizeof(*out));
   for (size_t i = DEGREE - TAU; i < DEGREE; i++) {
@@ -779,6 +792,8 @@ static void scalar_sample_in_ball_vartime(scalar *out, const uint8_t *seed,
     for (;;) {
       if (offset == 136) {
         BORINGSSL_keccak_squeeze(&keccak_ctx, block, sizeof(block));
+        // See above.
+        CONSTTIME_DECLASSIFY(block, sizeof(block));
         offset = 0;
       }
 
@@ -811,7 +826,7 @@ static void matrix_expand(matrix *out, const uint8_t rho[RHO_BYTES]) {
 }
 
 // FIPS 204, Algorithm 27 (`ExpandS`).
-static void vector_expand_short_vartime(vectorl *s1, vectork *s2,
+static void vector_expand_short(vectorl *s1, vectork *s2,
                                         const uint8_t sigma[SIGMA_BYTES]) {
   static_assert(K <= 0x100, "K must fit in 8 bits");
   static_assert(L <= 0x100, "L must fit in 8 bits");
@@ -822,11 +837,11 @@ static void vector_expand_short_vartime(vectorl *s1, vectork *s2,
   derived_seed[SIGMA_BYTES] = 0;
   derived_seed[SIGMA_BYTES + 1] = 0;
   for (int i = 0; i < L; i++) {
-    scalar_uniform_eta_4_vartime(&s1->v[i], derived_seed);
+    scalar_uniform_eta_4(&s1->v[i], derived_seed);
     ++derived_seed[SIGMA_BYTES];
   }
   for (int i = 0; i < K; i++) {
-    scalar_uniform_eta_4_vartime(&s2->v[i], derived_seed);
+    scalar_uniform_eta_4(&s2->v[i], derived_seed);
     ++derived_seed[SIGMA_BYTES];
   }
 }
@@ -1163,12 +1178,14 @@ int DILITHIUM_generate_key_external_entropy(
   const uint8_t *const rho = expanded_seed;
   const uint8_t *const sigma = expanded_seed + RHO_BYTES;
   const uint8_t *const k = expanded_seed + RHO_BYTES + SIGMA_BYTES;
+  // rho is public.
+  CONSTTIME_DECLASSIFY(rho, RHO_BYTES);
   OPENSSL_memcpy(values->pub.rho, rho, sizeof(values->pub.rho));
   OPENSSL_memcpy(priv->rho, rho, sizeof(priv->rho));
   OPENSSL_memcpy(priv->k, k, sizeof(priv->k));
 
   matrix_expand(&values->a_ntt, rho);
-  vector_expand_short_vartime(&priv->s1, &priv->s2, sigma);
+  vector_expand_short(&priv->s1, &priv->s2, sigma);
 
   OPENSSL_memcpy(&values->s1_ntt, &priv->s1, sizeof(values->s1_ntt));
   vectorl_ntt(&values->s1_ntt);
@@ -1178,6 +1195,8 @@ int DILITHIUM_generate_key_external_entropy(
   vectork_add(&values->t, &values->t, &priv->s2);
 
   vectork_power2_round(&values->pub.t1, &priv->t0, &values->t);
+  // t1 is public.
+  CONSTTIME_DECLASSIFY(&pub.t1, sizeof(pub.t1));
 
   CBB cbb;
   CBB_init_fixed(&cbb, out_encoded_public_key, DILITHIUM_PUBLIC_KEY_BYTES);
@@ -1290,9 +1309,20 @@ static int dilithium_sign_with_randomizer(
     vectork_sub(&values->r0, &values->w, &values->cs2);
     vectork_low_bits(&values->r0, &values->r0);
 
+    // Leaking the fact that a signature was rejected is fine as the next
+    // attempt at a signature will be (indistinguishable from) independent of
+    // this one. Note, however, that we additionally leak which of the two
+    // branches rejected the signature. Section 5.5 of
+    // https://pq-crystals.org/dilithium/data/dilithium-specification-round3.pdf
+    // describes this leak as OK. Note we leak less than what is described by
+    // the paper; we do not reveal which coefficient violated the bound, and we
+    // hide which of the |z_max| or |r0_max| bound failed. See also
+    // https://boringssl-review.googlesource.com/c/boringssl/+/67747/comment/2bbab0fa_d241d35a/
     uint32_t z_max = vectorl_max(&values->sign.z);
     uint32_t r0_max = vectork_max_signed(&values->r0);
-    if (z_max >= kGamma1 - BETA || r0_max >= kGamma2 - BETA) {
+    if (constant_time_declassify_w(
+            constant_time_ge_w(z_max, kGamma1 - BETA) |
+            constant_time_ge_w(r0_max, kGamma2 - BETA))) {
       continue;
     }
 
@@ -1300,11 +1330,18 @@ static int dilithium_sign_with_randomizer(
     vectork_inverse_ntt(&values->ct0);
     vectork_make_hint(&values->sign.h, &values->ct0, &values->cs2, &values->w);
 
+    // See above.
     uint32_t ct0_max = vectork_max(&values->ct0);
     size_t h_ones = vectork_count_ones(&values->sign.h);
-    if (ct0_max >= kGamma2 || h_ones > OMEGA) {
+    if (constant_time_declassify_w(constant_time_ge_w(ct0_max, kGamma2) |
+                                   constant_time_ge_w(h_ones, OMEGA))) {
       continue;
     }
+
+    // Although computed with the private key, the signature is public.
+    CONSTTIME_DECLASSIFY(values->sign.c_tilde, sizeof(values->sign.c_tilde));
+    CONSTTIME_DECLASSIFY(&values->sign.z, sizeof(values->sign.z));
+    CONSTTIME_DECLASSIFY(&values->sign.h, sizeof(values->sign.h));
 
     CBB cbb;
     CBB_init_fixed(&cbb, out_encoded_signature, DILITHIUM_SIGNATURE_BYTES);
@@ -1312,6 +1349,7 @@ static int dilithium_sign_with_randomizer(
       goto err;
     }
 
+    BSSL_CHECK(CBB_len(&cbb) == DILITHIUM_SIGNATURE_BYTES);
     ret = 1;
     break;
   }

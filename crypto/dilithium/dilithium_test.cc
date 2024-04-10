@@ -22,6 +22,7 @@
 #include <openssl/experimental/dilithium.h>
 #include <cstddef>
 
+#include "../internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "./internal.h"
@@ -178,6 +179,7 @@ static void DilithiumFileTest(FileTest *t) {
     ASSERT_TRUE(state);
     ASSERT_TRUE(CTR_DRBG_generate(state.get(), gen_key_entropy,
                                   DILITHIUM_GENERATE_KEY_ENTROPY, nullptr, 0));
+    CONSTTIME_SECRET(gen_key_entropy, sizeof(gen_key_entropy));
   }
 
   // Reproduce key generation.
@@ -194,6 +196,7 @@ static void DilithiumFileTest(FileTest *t) {
   CBB cbb;
   CBB_init_fixed(&cbb, encoded_private_key.get(), DILITHIUM_PRIVATE_KEY_BYTES);
   ASSERT_TRUE(DILITHIUM_marshal_private_key(&cbb, priv.get()));
+  CONSTTIME_DECLASSIFY(encoded_private_key.get(), DILITHIUM_PRIVATE_KEY_BYTES);
 
   EXPECT_EQ(Bytes(encoded_public_key.get(), DILITHIUM_PUBLIC_KEY_BYTES),
             Bytes(public_key_expected));
