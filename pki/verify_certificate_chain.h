@@ -30,8 +30,10 @@ enum class KeyPurpose {
   CLIENT_AUTH,
   SERVER_AUTH_STRICT,  // Skip ANY_EKU when checking, require EKU present in
                        // certificate.
+  SERVER_AUTH_STRICT_LEAF, // Same as above, but only for leaf cert.
   CLIENT_AUTH_STRICT,  // Skip ANY_EKU when checking, require EKU present in
                        // certificate.
+  CLIENT_AUTH_STRICT_LEAF, // Same as above, but only for leaf ce
 };
 
 enum class InitialExplicitPolicy {

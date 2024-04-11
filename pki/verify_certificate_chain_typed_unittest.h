@@ -140,6 +140,7 @@ TYPED_TEST_P(VerifyCertificateChainSingleRootTest, Expired) {
 TYPED_TEST_P(VerifyCertificateChainSingleRootTest, TargetNotEndEntity) {
   this->RunTest("target-not-end-entity/main.test");
   this->RunTest("target-not-end-entity/strict.test");
+  this->RunTest("target-not-end-entity/strict-leaf.test");
 }
 
 TYPED_TEST_P(VerifyCertificateChainSingleRootTest, KeyUsage) {
@@ -166,12 +167,16 @@ TYPED_TEST_P(VerifyCertificateChainSingleRootTest, ExtendedKeyUsage) {
   this->RunTest("intermediate-eku-clientauth/serverauth.test");
   this->RunTest("intermediate-eku-clientauth/clientauth.test");
   this->RunTest("intermediate-eku-clientauth/serverauth-strict.test");
+  this->RunTest("intermediate-eku-clientauth/serverauth-strict-leaf.test");
   this->RunTest("intermediate-eku-clientauth/clientauth-strict.test");
+  this->RunTest("intermediate-eku-clientauth/clientauth-strict-leaf.test");
   this->RunTest("intermediate-eku-any-and-clientauth/any.test");
   this->RunTest("intermediate-eku-any-and-clientauth/serverauth.test");
   this->RunTest("intermediate-eku-any-and-clientauth/serverauth-strict.test");
+  this->RunTest("intermediate-eku-any-and-clientauth/serverauth-strict-leaf.test");
   this->RunTest("intermediate-eku-any-and-clientauth/clientauth.test");
   this->RunTest("intermediate-eku-any-and-clientauth/clientauth-strict.test");
+  this->RunTest("intermediate-eku-any-and-clientauth/clientauth-strict-leaf.test");
   this->RunTest("target-eku-clientauth/any.test");
   this->RunTest("target-eku-clientauth/serverauth.test");
   this->RunTest("target-eku-clientauth/clientauth.test");
@@ -179,19 +184,24 @@ TYPED_TEST_P(VerifyCertificateChainSingleRootTest, ExtendedKeyUsage) {
   this->RunTest("target-eku-clientauth/clientauth-strict.test");
   this->RunTest("target-eku-any/any.test");
   this->RunTest("target-eku-any/serverauth.test");
+  this->RunTest("target-eku-any/serverauth-strict-leaf.test");
   this->RunTest("target-eku-any/clientauth.test");
   this->RunTest("target-eku-any/serverauth-strict.test");
   this->RunTest("target-eku-any/clientauth-strict.test");
+  this->RunTest("target-eku-any/clientauth-strict-leaf.test");
   this->RunTest("target-eku-many/any.test");
   this->RunTest("target-eku-many/serverauth.test");
   this->RunTest("target-eku-many/clientauth.test");
   this->RunTest("target-eku-many/serverauth-strict.test");
+  this->RunTest("target-eku-many/serverauth-strict-leaf.test");
   this->RunTest("target-eku-many/clientauth-strict.test");
+  this->RunTest("target-eku-many/clientauth-strict-leaf.test");
   this->RunTest("target-eku-none/any.test");
   this->RunTest("target-eku-none/serverauth.test");
   this->RunTest("target-eku-none/clientauth.test");
   this->RunTest("target-eku-none/serverauth-strict.test");
   this->RunTest("target-eku-none/clientauth-strict.test");
+  this->RunTest("target-eku-none/clientauth-strict-leaf.test");
   this->RunTest("root-eku-clientauth/serverauth.test");
   this->RunTest("root-eku-clientauth/serverauth-strict.test");
   this->RunTest("root-eku-clientauth/serverauth-ta-with-constraints.test");

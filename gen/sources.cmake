@@ -2150,14 +2150,18 @@ set(
   pki/testdata/verify_certificate_chain_unittest/intermediate-basic-constraints-not-critical/main.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/any.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/chain.pem
+  pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/clientauth-strict-leaf.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/clientauth.test
+  pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/serverauth-strict-leaf.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/serverauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-any-and-clientauth/serverauth.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/any.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/chain.pem
+  pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/clientauth-strict-leaf.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/clientauth.test
+  pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/serverauth-strict-leaf.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/serverauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-clientauth/serverauth.test
   pki/testdata/verify_certificate_chain_unittest/intermediate-eku-server-gated-crypto/sha1-chain.pem
@@ -2371,8 +2375,10 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-and-intermediate/unspecified-trust-root.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/any.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/chain.pem
+  pki/testdata/verify_certificate_chain_unittest/target-eku-any/clientauth-strict-leaf.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/clientauth.test
+  pki/testdata/verify_certificate_chain_unittest/target-eku-any/serverauth-strict-leaf.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/serverauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-any/serverauth.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-clientauth/any.test
@@ -2383,12 +2389,15 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-eku-clientauth/serverauth.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/any.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/chain.pem
+  pki/testdata/verify_certificate_chain_unittest/target-eku-many/clientauth-strict-leaf.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/clientauth.test
+  pki/testdata/verify_certificate_chain_unittest/target-eku-many/serverauth-strict-leaf.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/serverauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-many/serverauth.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/any.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/chain.pem
+  pki/testdata/verify_certificate_chain_unittest/target-eku-none/clientauth-strict-leaf.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/clientauth-strict.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/clientauth.test
   pki/testdata/verify_certificate_chain_unittest/target-eku-none/serverauth-strict.test
@@ -2411,6 +2420,7 @@ set(
   pki/testdata/verify_certificate_chain_unittest/target-msapplicationpolicies-no-eku/main.test
   pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/chain.pem
   pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/main.test
+  pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/strict-leaf.test
   pki/testdata/verify_certificate_chain_unittest/target-not-end-entity/strict.test
   pki/testdata/verify_certificate_chain_unittest/target-only/chain.pem
   pki/testdata/verify_certificate_chain_unittest/target-only/trusted_anchor.test
