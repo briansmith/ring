@@ -555,6 +555,18 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-22.04
 
+          - features: --features=unstable-testing-arm-no-hw,std
+            target: aarch64-unknown-linux-gnu
+            mode: # debug
+            rust_channel: nightly
+            host_os: ubuntu-22.04
+
+          - features: --features=unstable-testing-arm-no-neon,std
+            target: aarch64-unknown-linux-gnu
+            mode: # debug
+            rust_channel: nightly
+            host_os: ubuntu-22.04
+
           # TODO: Use the -musl target after
           # https://github.com/rust-lang/rust/issues/79556 and
           # https://github.com/rust-lang/rust/issues/79555 are fixed.
