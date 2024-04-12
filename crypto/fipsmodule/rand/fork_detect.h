@@ -29,7 +29,8 @@
 // iOS doesn't normally allow fork in apps, but it's there.
 #define OPENSSL_FORK_DETECTION
 #define OPENSSL_FORK_DETECTION_PTHREAD_ATFORK
-#elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY)
+#elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY) || \
+    defined(__ZEPHYR__) || defined(CROS_EC)
 // These platforms do not fork.
 #define OPENSSL_DOES_NOT_FORK
 #endif
