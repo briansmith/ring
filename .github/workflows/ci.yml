@@ -602,8 +602,9 @@ jobs:
         run: |
           RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
-      - uses: briansmith/codecov-codecov-action@v3
+      - uses: briansmith/codecov-codecov-action@v4
         with:
           directory: ./target/${{ matrix.target }}/debug/coverage/reports
           fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
           verbose: true
