@@ -122,10 +122,12 @@ fn aes_gcm_seal(
         }
     };
 
+    let (whole, remainder) = slice::as_chunks_mut(in_out);
+
     #[cfg(target_arch = "aarch64")]
-    let in_out = {
+    let whole = {
         if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
-            in_out
+            whole
         } else {
             use crate::bits::BitLength;
 
@@ -137,9 +139,9 @@ fn aes_gcm_seal(
                 let (htable, xi) = auth.inner();
                 prefixed_extern! {
                     fn aes_gcm_enc_kernel(
-                        input: *const u8,
+                        input: *const [u8; BLOCK_LEN],
                         in_bits: BitLength<NonZeroU64>,
-                        output: *mut u8,
+                        output: *mut [u8; BLOCK_LEN],
                         Xi: &mut gcm::Xi,
                         ivec: &mut Counter,
                         key: &aes::AES_KEY,
@@ -147,9 +149,9 @@ fn aes_gcm_seal(
                 }
                 unsafe {
                     aes_gcm_enc_kernel(
-                        in_out.as_ptr(),
+                        whole.as_ptr(),
                         whole_block_bits,
-                        in_out.as_mut_ptr(),
+                        whole.as_mut_ptr(),
                         xi,
                         &mut ctr,
                         aes_key.inner_less_safe(),
@@ -158,11 +160,9 @@ fn aes_gcm_seal(
                 }
             }
 
-            &mut in_out[whole_block_bits.as_usize_bytes_rounded_up()..]
+            &mut []
         }
     };
-
-    let (whole, remainder) = slice::as_chunks_mut(in_out);
 
     for chunk in whole.chunks_mut(CHUNK_BLOCKS) {
         aes_key.ctr32_encrypt_within(slice::flatten_mut(chunk), 0.., &mut ctr, cpu_features);
