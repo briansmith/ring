@@ -228,8 +228,7 @@ static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       } else if (client_hello->version <= DTLS1_VERSION) {
         versions_len = 2;
       }
-      CBS_init(&versions, kDTLSVersions + sizeof(kDTLSVersions) - versions_len,
-               versions_len);
+      versions = MakeConstSpan(kDTLSVersions).last(versions_len);
     } else {
       if (client_hello->version >= TLS1_2_VERSION) {
         versions_len = 6;
@@ -238,8 +237,7 @@ static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       } else if (client_hello->version >= TLS1_VERSION) {
         versions_len = 2;
       }
-      CBS_init(&versions, kTLSVersions + sizeof(kTLSVersions) - versions_len,
-               versions_len);
+      versions = MakeConstSpan(kTLSVersions).last(versions_len);
     }
   }
 
