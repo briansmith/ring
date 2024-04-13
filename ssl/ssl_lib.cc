@@ -279,17 +279,21 @@ ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
   return ret;
 }
 
-static bool cbb_add_hex(CBB *cbb, Span<const uint8_t> in) {
-  static const char hextable[] = "0123456789abcdef";
-  uint8_t *out;
+static uint8_t hex_char_consttime(uint8_t b) {
+  declassify_assert(b < 16);
+  return constant_time_select_8(constant_time_lt_8(b, 10), b + '0',
+                                b - 10 + 'a');
+}
 
-  if (!CBB_add_space(cbb, &out, in.size() * 2)) {
+static bool cbb_add_hex_consttime(CBB *cbb, Span<const uint8_t> in) {
+  uint8_t *out;
+if (!CBB_add_space(cbb, &out, in.size() * 2)) {
     return false;
   }
 
   for (uint8_t b : in) {
-    *(out++) = (uint8_t)hextable[b >> 4];
-    *(out++) = (uint8_t)hextable[b & 0xf];
+    *(out++) = hex_char_consttime(b >> 4);
+    *(out++) = hex_char_consttime(b & 0xf);
   }
 
   return true;
@@ -308,9 +312,11 @@ bool ssl_log_secret(const SSL *ssl, const char *label,
       !CBB_add_bytes(cbb.get(), reinterpret_cast<const uint8_t *>(label),
                      strlen(label)) ||
       !CBB_add_u8(cbb.get(), ' ') ||
-      !cbb_add_hex(cbb.get(), ssl->s3->client_random) ||
+      !cbb_add_hex_consttime(cbb.get(), ssl->s3->client_random) ||
       !CBB_add_u8(cbb.get(), ' ') ||
-      !cbb_add_hex(cbb.get(), secret) ||
+      // Convert to hex in constant time to avoid leaking |secret|. If the
+      // callback discards the data, we should not introduce side channels.
+      !cbb_add_hex_consttime(cbb.get(), secret) ||
       !CBB_add_u8(cbb.get(), 0 /* NUL */) ||
       !CBBFinishArray(cbb.get(), &line)) {
     return false;
