@@ -10105,12 +10105,12 @@ func addSignatureAlgorithmTests() {
 				signError = ":NO_COMMON_SIGNATURE_ALGORITHMS:"
 				signLocalError = "remote error: handshake failure"
 				verifyError = ":WRONG_SIGNATURE_TYPE:"
-				verifyLocalError = "remote error"
+				verifyLocalError = "remote error: illegal parameter"
 				rejectByDefault = true
 			}
 			if rejectByDefault {
 				defaultError = ":WRONG_SIGNATURE_TYPE:"
-				defaultLocalError = "remote error"
+				defaultLocalError = "remote error: illegal parameter"
 			}
 
 			suffix := "-" + alg.name + "-" + ver.name

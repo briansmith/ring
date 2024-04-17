@@ -441,16 +441,18 @@ bool tls12_add_verify_sigalgs(const SSL_HANDSHAKE *hs, CBB *out) {
 }
 
 bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                             uint16_t sigalg) {
-  for (uint16_t verify_sigalg : tls12_get_verify_sigalgs(hs)) {
-    if (verify_sigalg == sigalg) {
-      return true;
-    }
+                             uint16_t sigalg, EVP_PKEY *pkey) {
+  // The peer must have selected an algorithm that is consistent with its public
+  // key, the TLS version, and what we advertised.
+  Span<const uint16_t> sigalgs = tls12_get_verify_sigalgs(hs);
+  if (std::find(sigalgs.begin(), sigalgs.end(), sigalg) == sigalgs.end() ||
+      !ssl_pkey_supports_algorithm(hs->ssl, pkey, sigalg)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return false;
   }
 
-  OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
-  *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-  return false;
+  return true;
 }
 
 // tls_extension represents a TLS extension that is handled internally.
