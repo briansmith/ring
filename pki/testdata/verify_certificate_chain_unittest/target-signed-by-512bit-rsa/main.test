@@ -4,7 +4,7 @@ utc_time: DEFAULT
 key_purpose: SERVER_AUTH
 expected_errors:
 ----- Certificate i=1 (CN=Intermediate) -----
-ERROR: RSA modulus too small
+WARNING: RSA modulus too small
   actual: 512
   minimum: 1024
 ERROR: Unacceptable public key

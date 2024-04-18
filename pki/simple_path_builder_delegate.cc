@@ -97,7 +97,7 @@ bool SimplePathBuilderDelegate::IsPublicKeyAcceptable(EVP_PKEY *public_key,
     unsigned int modulus_length_bits = RSA_bits(rsa);
 
     if (modulus_length_bits < min_rsa_modulus_length_bits_) {
-      errors->AddError(
+      errors->AddWarning(
           kRsaModulusTooSmall,
           CreateCertErrorParams2SizeT("actual", modulus_length_bits, "minimum",
                                       min_rsa_modulus_length_bits_));
@@ -116,7 +116,7 @@ bool SimplePathBuilderDelegate::IsPublicKeyAcceptable(EVP_PKEY *public_key,
     int curve_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
 
     if (!IsAcceptableCurveForEcdsa(curve_nid)) {
-      errors->AddError(kUnacceptableCurveForEcdsa);
+      errors->AddWarning(kUnacceptableCurveForEcdsa);
       return false;
     }
 

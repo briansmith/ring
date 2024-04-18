@@ -56,18 +56,22 @@ enum class InitialAnyPolicyInhibit {
 class OPENSSL_EXPORT VerifyCertificateChainDelegate {
  public:
   // Implementations should return true if |signature_algorithm| is allowed for
-  // certificate signing, false otherwise. When returning false implementations
-  // can optionally add high-severity errors to |errors| with details on why it
-  // was rejected.
+  // certificate signing, false otherwise. When false is returned, the caller
+  // will add a high severity error of kUnacceptableSignatureAlgorithm to
+  // |errors|. When returning false, implementations can optionally add warnings
+  // to errors to |errors| with details on why it was rejected.  Implementations
+  // may add any further details on why the signature algorithm was deemed
+  // unacceptable by adding warnings to |errors|.
   virtual bool IsSignatureAlgorithmAcceptable(
       SignatureAlgorithm signature_algorithm, CertErrors *errors) = 0;
 
-  // Implementations should return true if |public_key| is acceptable. This is
-  // called for each certificate in the chain, including the target certificate.
-  // When returning false implementations can optionally add high-severity
-  // errors to |errors| with details on why it was rejected.
-  //
-  // |public_key| can be assumed to be non-null.
+  // Implementations should return true if |public_key| is acceptable, false
+  // otherwise. This is called for each certificate in the chain, including the
+  // target certificate.  When false is returned, the caller will add a high
+  // severity error of kUnacceptablePublicKey to |errors|. When returning false,
+  // implementations may add any further details on why the public key was
+  // deemed unacceptable by adding warnings to |errors|.  |public_key| can be
+  // assumed to be non-null.
   virtual bool IsPublicKeyAcceptable(EVP_PKEY *public_key,
                                      CertErrors *errors) = 0;
 
