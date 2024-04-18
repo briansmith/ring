@@ -2117,6 +2117,8 @@
       "pki/testdata/verify_certificate_chain_unittest/intermediate-eku-server-gated-crypto/sha256-eku-clientAuth.test",
       "pki/testdata/verify_certificate_chain_unittest/intermediate-eku-server-gated-crypto/sha256-eku-serverAuth-strict.test",
       "pki/testdata/verify_certificate_chain_unittest/intermediate-eku-server-gated-crypto/sha256-eku-serverAuth.test",
+      "pki/testdata/verify_certificate_chain_unittest/intermediate-invalid-spki/chain.pem",
+      "pki/testdata/verify_certificate_chain_unittest/intermediate-invalid-spki/main.test",
       "pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-basic-constraints/chain.pem",
       "pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-basic-constraints/main.test",
       "pki/testdata/verify_certificate_chain_unittest/intermediate-lacks-signing-key-usage/chain.pem",

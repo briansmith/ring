@@ -1042,6 +1042,15 @@ void PathVerifier::BasicCertificateProcessing(
       *shortcircuit_chain_validation = true;
       errors->AddError(cert_errors::kVerifySignedDataFailed);
     }
+  } else {
+    // If `working_public_key_` is null, that indicates the SPKI of the issuer
+    // could not be parsed. Handle this the same way as an invalid signature by
+    // shortcircuiting the rest of verification.
+    // An error should already have been added by ParseAndCheckPublicKey, but
+    // it's added on the CertErrors for the issuer, so we can't BSSL_CHECK
+    // errors->ContainsAnyErrorWithSeverity here. (It will be BSSL_CHECKed when
+    // the shortcircuit_chain_validation is acted on in PathVerifier::Run.)
+    *shortcircuit_chain_validation = true;
   }
   if (*shortcircuit_chain_validation) {
     return;
@@ -1591,11 +1600,11 @@ void PathVerifier::Run(
                                time, required_key_purpose, cert_errors,
                                &shortcircuit_chain_validation);
     if (shortcircuit_chain_validation) {
-      // Signature errors should short-circuit the rest of the verification, as
-      // accumulating more errors from untrusted certificates would not be
-      // meaningful.
+      // Signature errors or unparsable SPKIs should short-circuit the rest of
+      // the verification, as accumulating more errors from untrusted
+      // certificates would not be meaningful.
       BSSL_CHECK(
-          cert_errors->ContainsAnyErrorWithSeverity(CertError::SEVERITY_HIGH));
+          errors->ContainsAnyErrorWithSeverity(CertError::SEVERITY_HIGH));
       return;
     }
     if (!is_target_cert) {
