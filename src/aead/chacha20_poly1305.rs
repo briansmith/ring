@@ -17,49 +17,35 @@ use super::{
     poly1305, Aad, Nonce, Tag,
 };
 use crate::{
-    aead, cpu, error,
+    cpu, error,
     polyfill::{u64_from_usize, usize_from_u64_saturated, ArrayFlatten},
 };
 use core::ops::RangeFrom;
 
-/// ChaCha20-Poly1305 as described in [RFC 8439].
-///
-/// The keys are 256 bits long and the nonces are 96 bits long.
-///
-/// [RFC 8439]: https://tools.ietf.org/html/rfc8439
-pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
-    key_len: chacha::KEY_LEN,
-    init: chacha20_poly1305_init,
-    seal: chacha20_poly1305_seal,
-    open: chacha20_poly1305_open,
-    id: aead::AlgorithmID::CHACHA20_POLY1305,
-};
+pub(super) const KEY_LEN: usize = chacha::KEY_LEN;
 
 const MAX_IN_OUT_LEN: usize = super::max_input_len(64, 1);
 // https://tools.ietf.org/html/rfc8439#section-2.8
 const _MAX_IN_OUT_LEN_BOUNDED_BY_RFC: () =
     assert!(MAX_IN_OUT_LEN == usize_from_u64_saturated(274_877_906_880u64));
 
-/// Copies |key| into |ctx_buf|.
-fn chacha20_poly1305_init(
-    key: &[u8],
-    _cpu_features: cpu::Features,
-) -> Result<aead::KeyInner, error::Unspecified> {
-    let key: [u8; chacha::KEY_LEN] = key.try_into()?;
-    Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::new(key)))
+#[derive(Clone)]
+pub(super) struct Key(chacha::Key);
+
+impl Key {
+    pub(super) fn new(value: [u8; KEY_LEN]) -> Self {
+        Self(chacha::Key::new(value))
+    }
 }
 
-fn chacha20_poly1305_seal(
-    key: &aead::KeyInner,
+pub(super) fn seal(
+    key: &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Result<Tag, error::Unspecified> {
-    let chacha20_key = match key {
-        aead::KeyInner::ChaCha20Poly1305(key) => key,
-        _ => unreachable!(),
-    };
+    let Key(chacha20_key) = key;
 
     if in_out.len() > MAX_IN_OUT_LEN {
         return Err(error::Unspecified);
@@ -80,7 +66,7 @@ fn chacha20_poly1305_seal(
         #[repr(align(16), C)]
         #[derive(Clone, Copy)]
         struct seal_data_in {
-            key: [u32; chacha::KEY_LEN / 4],
+            key: [u32; KEY_LEN / 4],
             counter: u32,
             nonce: [u8; super::NONCE_LEN],
             extra_ciphertext: *const u8,
@@ -136,18 +122,15 @@ fn chacha20_poly1305_seal(
     Ok(finish(auth, aad.as_ref().len(), in_out.len()))
 }
 
-fn chacha20_poly1305_open(
-    key: &aead::KeyInner,
+pub(super) fn open(
+    key: &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     src: RangeFrom<usize>,
     cpu_features: cpu::Features,
 ) -> Result<Tag, error::Unspecified> {
-    let chacha20_key = match key {
-        aead::KeyInner::ChaCha20Poly1305(key) => key,
-        _ => unreachable!(),
-    };
+    let Key(chacha20_key) = key;
 
     let unprefixed_len = in_out
         .len()
@@ -172,7 +155,7 @@ fn chacha20_poly1305_open(
         #[derive(Copy, Clone)]
         #[repr(align(16), C)]
         struct open_data_in {
-            key: [u32; chacha::KEY_LEN / 4],
+            key: [u32; KEY_LEN / 4],
             counter: u32,
             nonce: [u8; super::NONCE_LEN],
         }
@@ -246,8 +229,6 @@ fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag
     auth.update(&block.array_flatten());
     auth.finish()
 }
-
-pub type Key = chacha::Key;
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 mod integrated {

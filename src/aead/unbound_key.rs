@@ -22,7 +22,7 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use super::{Algorithm, LessSafeKey, MAX_KEY_LEN};
-use crate::{error, hkdf};
+use crate::{cpu, error, hkdf};
 
 /// An AEAD key without a designated role or nonce sequence.
 pub struct UnboundKey {
@@ -39,7 +39,7 @@ impl UnboundKey {
         key_bytes: &[u8],
     ) -> Result<Self, error::Unspecified> {
         Ok(Self {
-            inner: LessSafeKey::new_(algorithm, key_bytes)?,
+            inner: LessSafeKey::new_(algorithm, key_bytes, cpu::features())?,
         })
     }
 
@@ -64,11 +64,11 @@ impl core::fmt::Debug for UnboundKey {
 impl From<hkdf::Okm<'_, &'static Algorithm>> for UnboundKey {
     fn from(okm: hkdf::Okm<&'static Algorithm>) -> Self {
         let mut key_bytes = [0; MAX_KEY_LEN];
-        let key_bytes = &mut key_bytes[..okm.len().key_len];
+        let key_bytes = &mut key_bytes[..okm.len().key_len()];
         let algorithm = *okm.len();
         okm.fill(key_bytes).unwrap();
         Self {
-            inner: LessSafeKey::new_(algorithm, key_bytes).unwrap(),
+            inner: LessSafeKey::new_(algorithm, key_bytes, cpu::features()).unwrap(),
         }
     }
 }
