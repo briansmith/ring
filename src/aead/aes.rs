@@ -381,9 +381,12 @@ pub(super) struct AES_KEY {
 // Keep this in sync with `AES_MAXNR` in aes.h.
 const MAX_ROUNDS: usize = 14;
 
+pub const AES_128_KEY_LEN: usize = 128 / 8;
+pub const AES_256_KEY_LEN: usize = 256 / 8;
+
 pub enum KeyBytes<'a> {
-    AES_128(&'a [u8; 128 / 8]),
-    AES_256(&'a [u8; 256 / 8]),
+    AES_128(&'a [u8; AES_128_KEY_LEN]),
+    AES_256(&'a [u8; AES_256_KEY_LEN]),
 }
 
 /// nonce || big-endian counter.

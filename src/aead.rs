@@ -22,14 +22,12 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use crate::{
-    cpu, error, hkdf,
+    cpu, error,
     polyfill::{u64_from_usize, usize_from_u64_saturated},
 };
-use core::ops::RangeFrom;
 
 pub use self::{
-    aes_gcm::{AES_128_GCM, AES_256_GCM},
-    chacha20_poly1305::CHACHA20_POLY1305,
+    algorithm::{Algorithm, AES_128_GCM, AES_256_GCM, CHACHA20_POLY1305},
     less_safe_key::LessSafeKey,
     nonce::{Nonce, NONCE_LEN},
     opening_key::OpeningKey,
@@ -126,37 +124,6 @@ enum KeyInner {
     ChaCha20Poly1305(chacha20_poly1305::Key),
 }
 
-impl hkdf::KeyType for &'static Algorithm {
-    #[inline]
-    fn len(&self) -> usize {
-        self.key_len()
-    }
-}
-
-/// An AEAD Algorithm.
-pub struct Algorithm {
-    init: fn(key: &[u8], cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified>,
-
-    seal: fn(
-        key: &KeyInner,
-        nonce: Nonce,
-        aad: Aad<&[u8]>,
-        in_out: &mut [u8],
-        cpu_features: cpu::Features,
-    ) -> Result<Tag, error::Unspecified>,
-    open: fn(
-        key: &KeyInner,
-        nonce: Nonce,
-        aad: Aad<&[u8]>,
-        in_out: &mut [u8],
-        src: RangeFrom<usize>,
-        cpu_features: cpu::Features,
-    ) -> Result<Tag, error::Unspecified>,
-
-    key_len: usize,
-    id: AlgorithmID,
-}
-
 const fn max_input_len(block_len: usize, overhead_blocks_per_nonce: usize) -> usize {
     // Each of our AEADs use a 32-bit block counter so the maximum is the
     // largest input that will not overflow the counter.
@@ -164,45 +131,6 @@ const fn max_input_len(block_len: usize, overhead_blocks_per_nonce: usize) -> us
         ((1u64 << 32) - u64_from_usize(overhead_blocks_per_nonce)) * u64_from_usize(block_len),
     )
 }
-
-impl Algorithm {
-    /// The length of the key.
-    #[inline(always)]
-    pub fn key_len(&self) -> usize {
-        self.key_len
-    }
-
-    /// The length of a tag.
-    ///
-    /// See also `MAX_TAG_LEN`.
-    #[inline(always)]
-    pub fn tag_len(&self) -> usize {
-        TAG_LEN
-    }
-
-    /// The length of the nonces.
-    #[inline(always)]
-    pub fn nonce_len(&self) -> usize {
-        NONCE_LEN
-    }
-}
-
-derive_debug_via_id!(Algorithm);
-
-#[derive(Debug, Eq, PartialEq)]
-enum AlgorithmID {
-    AES_128_GCM,
-    AES_256_GCM,
-    CHACHA20_POLY1305,
-}
-
-impl PartialEq for Algorithm {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
-impl Eq for Algorithm {}
 
 /// A possibly valid authentication tag.
 #[must_use]
@@ -242,6 +170,7 @@ pub const MAX_TAG_LEN: usize = TAG_LEN;
 
 mod aes;
 mod aes_gcm;
+mod algorithm;
 mod chacha;
 mod chacha20_poly1305;
 pub mod chacha20_poly1305_openssh;

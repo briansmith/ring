@@ -17,28 +17,10 @@ use super::{
     gcm, shift, Aad, Nonce, Tag,
 };
 use crate::{
-    aead, constant_time, cpu, error,
+    constant_time, cpu, error,
     polyfill::{slice, sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
 use core::ops::RangeFrom;
-
-/// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
-pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
-    key_len: 16,
-    init: init_128,
-    seal: aes_gcm_seal,
-    open: aes_gcm_open,
-    id: aead::AlgorithmID::AES_128_GCM,
-};
-
-/// AES-256 in GCM mode with 128-bit tags and 96 bit nonces.
-pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
-    key_len: 32,
-    init: init_256,
-    seal: aes_gcm_seal,
-    open: aes_gcm_open,
-    id: aead::AlgorithmID::AES_256_GCM,
-};
 
 #[derive(Clone)]
 pub struct Key {
@@ -46,41 +28,30 @@ pub struct Key {
     aes_key: aes::Key,
 }
 
-fn init_128(key: &[u8], cpu_features: cpu::Features) -> Result<aead::KeyInner, error::Unspecified> {
-    let key = key.try_into().map_err(|_| error::Unspecified)?;
-    init(aes::KeyBytes::AES_128(key), cpu_features)
-}
-
-fn init_256(key: &[u8], cpu_features: cpu::Features) -> Result<aead::KeyInner, error::Unspecified> {
-    let key = key.try_into().map_err(|_| error::Unspecified)?;
-    init(aes::KeyBytes::AES_256(key), cpu_features)
-}
-
-fn init(
-    key: aes::KeyBytes,
-    cpu_features: cpu::Features,
-) -> Result<aead::KeyInner, error::Unspecified> {
-    let aes_key = aes::Key::new(key, cpu_features)?;
-    let gcm_key = gcm::Key::new(
-        aes_key.encrypt_block(ZERO_BLOCK, cpu_features),
-        cpu_features,
-    );
-    Ok(aead::KeyInner::AesGcm(Key { gcm_key, aes_key }))
+impl Key {
+    pub(super) fn new(
+        key: aes::KeyBytes,
+        cpu_features: cpu::Features,
+    ) -> Result<Self, error::Unspecified> {
+        let aes_key = aes::Key::new(key, cpu_features)?;
+        let gcm_key = gcm::Key::new(
+            aes_key.encrypt_block(ZERO_BLOCK, cpu_features),
+            cpu_features,
+        );
+        Ok(Self { gcm_key, aes_key })
+    }
 }
 
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
-fn aes_gcm_seal(
-    key: &aead::KeyInner,
+pub(super) fn seal(
+    key: &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Result<Tag, error::Unspecified> {
-    let Key { gcm_key, aes_key } = match key {
-        aead::KeyInner::AesGcm(key) => key,
-        _ => unreachable!(),
-    };
+    let Key { gcm_key, aes_key } = key;
 
     let mut auth = gcm::Context::new(gcm_key, aad, in_out.len(), cpu_features)?;
 
@@ -181,18 +152,15 @@ fn aes_gcm_seal(
     Ok(finish(aes_key, auth, tag_iv))
 }
 
-fn aes_gcm_open(
-    key: &aead::KeyInner,
+pub(super) fn open(
+    key: &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     src: RangeFrom<usize>,
     cpu_features: cpu::Features,
 ) -> Result<Tag, error::Unspecified> {
-    let Key { gcm_key, aes_key } = match key {
-        aead::KeyInner::AesGcm(key) => key,
-        _ => unreachable!(),
-    };
+    let Key { gcm_key, aes_key } = key;
 
     let mut auth = {
         let unprefixed_len = in_out

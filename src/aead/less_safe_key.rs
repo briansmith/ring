@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Aad, Algorithm, KeyInner, Nonce, Tag, UnboundKey, TAG_LEN};
-use crate::{constant_time, cpu, error};
+use crate::{cpu, error};
 use core::ops::RangeFrom;
 
 /// Immutable keys for use in situations where `OpeningKey`/`SealingKey` and
@@ -36,10 +36,10 @@ impl LessSafeKey {
     pub(super) fn new_(
         algorithm: &'static Algorithm,
         key_bytes: &[u8],
+        cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
-        let cpu_features = cpu::features();
         Ok(Self {
-            inner: (algorithm.init)(key_bytes, cpu_features)?,
+            inner: algorithm.new_key(key_bytes, cpu_features)?,
             algorithm,
         })
     }
@@ -59,7 +59,15 @@ impl LessSafeKey {
         A: AsRef<[u8]>,
     {
         let aad = Aad::from(aad.as_ref());
-        open_within_(self, nonce, aad, tag, in_out, ciphertext)
+        self.algorithm.open_within(
+            &self.inner,
+            nonce,
+            aad,
+            tag,
+            in_out,
+            ciphertext,
+            cpu::features(),
+        )
     }
 
     /// Like [`super::OpeningKey::open_in_place()`], except it accepts an
@@ -140,7 +148,13 @@ impl LessSafeKey {
     where
         A: AsRef<[u8]>,
     {
-        seal_in_place_separate_tag_(self, nonce, Aad::from(aad.as_ref()), in_out)
+        self.algorithm.seal(
+            &self.inner,
+            nonce,
+            Aad::from(aad.as_ref()),
+            in_out,
+            cpu::features(),
+        )
     }
 
     /// The key's AEAD algorithm.
@@ -158,46 +172,6 @@ impl LessSafeKey {
             .field("algorithm", &self.algorithm())
             .finish()
     }
-}
-
-fn open_within_<'in_out>(
-    key: &LessSafeKey,
-    nonce: Nonce,
-    aad: Aad<&[u8]>,
-    received_tag: Tag,
-    in_out: &'in_out mut [u8],
-    src: RangeFrom<usize>,
-) -> Result<&'in_out mut [u8], error::Unspecified> {
-    let ciphertext_len = in_out.get(src.clone()).ok_or(error::Unspecified)?.len();
-
-    let Tag(calculated_tag) =
-        (key.algorithm.open)(&key.inner, nonce, aad, in_out, src, cpu::features())?;
-
-    if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag.as_ref())
-        .is_err()
-    {
-        // Zero out the plaintext so that it isn't accidentally leaked or used
-        // after verification fails. It would be safest if we could check the
-        // tag before decrypting, but some `open` implementations interleave
-        // authentication with decryption for performance.
-        for b in &mut in_out[..ciphertext_len] {
-            *b = 0;
-        }
-        return Err(error::Unspecified);
-    }
-
-    // `ciphertext_len` is also the plaintext length.
-    Ok(&mut in_out[..ciphertext_len])
-}
-
-#[inline]
-pub(super) fn seal_in_place_separate_tag_(
-    key: &LessSafeKey,
-    nonce: Nonce,
-    aad: Aad<&[u8]>,
-    in_out: &mut [u8],
-) -> Result<Tag, error::Unspecified> {
-    (key.algorithm.seal)(&key.inner, nonce, aad, in_out, cpu::features())
 }
 
 impl core::fmt::Debug for LessSafeKey {
