@@ -18002,10 +18002,9 @@ write hs 4
 
 		// Test that the client iterates over configurations in the
 		// ECHConfigList and selects the first with supported parameters.
-		p256Key := ecdsaP256Certificate.PrivateKey.(*ecdsa.PrivateKey)
 		unsupportedKEM := generateServerECHConfig(&ECHConfig{
-			KEM:       hpke.P256WithHKDFSHA256,
-			PublicKey: elliptic.Marshal(elliptic.P256(), p256Key.X, p256Key.Y),
+			KEM:       0x6666,
+			PublicKey: []byte{1, 2, 3, 4},
 		}).ECHConfig
 		unsupportedCipherSuites := generateServerECHConfig(&ECHConfig{
 			CipherSuites: []HPKECipherSuite{{0x1111, 0x2222}},
