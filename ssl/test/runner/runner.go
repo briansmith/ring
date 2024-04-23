@@ -6732,6 +6732,18 @@ func addMinimumVersionTests() {
 }
 
 func addExtensionTests() {
+	exampleCertificate := generateSingleCertChain(&x509.Certificate{
+		SerialNumber: big.NewInt(57005),
+		Subject: pkix.Name{
+			CommonName: "test cert",
+		},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		DNSNames:              []string{"example.com"},
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}, &ecdsaP256Key)
+
 	// Repeat extensions tests at all versions.
 	for _, protocol := range []protocol{tls, dtls, quic} {
 		for _, ver := range allVersions(protocol) {
@@ -6775,6 +6787,7 @@ func addExtensionTests() {
 					Bugs: ProtocolBugs{
 						ExpectServerName: "example.com",
 					},
+					Credential: &exampleCertificate,
 				},
 				flags: []string{"-host-name", "example.com"},
 			})
@@ -6814,6 +6827,7 @@ func addExtensionTests() {
 					Bugs: ProtocolBugs{
 						SendServerNameAck: true,
 					},
+					Credential: &exampleCertificate,
 				},
 				flags:         []string{"-host-name", "example.com"},
 				resumeSession: true,
@@ -16756,6 +16770,40 @@ func addEncryptedClientHelloTests() {
 	echConfig3 := generateServerECHConfig(&ECHConfig{ConfigID: 45})
 	echConfigRepeatID := generateServerECHConfig(&ECHConfig{ConfigID: 42})
 
+	echSecretCertificate := generateSingleCertChain(&x509.Certificate{
+		SerialNumber: big.NewInt(57005),
+		Subject: pkix.Name{
+			CommonName: "test cert",
+		},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		DNSNames:              []string{"secret.example"},
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}, &ecdsaP256Key)
+	echPublicCertificate := generateSingleCertChain(&x509.Certificate{
+		SerialNumber: big.NewInt(57005),
+		Subject: pkix.Name{
+			CommonName: "test cert",
+		},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		DNSNames:              []string{"public.example"},
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}, &ecdsaP256Key)
+	echLongNameCertificate := generateSingleCertChain(&x509.Certificate{
+		SerialNumber: big.NewInt(57005),
+		Subject: pkix.Name{
+			CommonName: "test cert",
+		},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		DNSNames:              []string{"test0123456789.example"},
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}, &ecdsaP256Key)
+
 	for _, protocol := range []protocol{tls, quic} {
 		prefix := protocol.String() + "-"
 
@@ -17260,6 +17308,7 @@ write hs 4
 				name:     prefix + "ECH-Client-Cipher-" + cipher.name,
 				config: Config{
 					ServerECHConfigs: []ServerECHConfig{cipherConfig},
+					Credential:       &echSecretCertificate,
 				},
 				flags: []string{
 					"-ech-config-list", base64FlagValue(CreateECHConfigList(cipherConfig.ECHConfig.Raw)),
@@ -17853,6 +17902,7 @@ write hs 4
 					ExpectServerName:      "secret.example",
 					ExpectOuterServerName: "public.example",
 				},
+				Credential: &echSecretCertificate,
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
@@ -17876,6 +17926,7 @@ write hs 4
 					ExpectOuterServerName: "public.example",
 					ExpectMissingKeyShare: true, // Check we triggered HRR.
 				},
+				Credential: &echSecretCertificate,
 			},
 			resumeSession: true,
 			flags: []string{
@@ -17899,6 +17950,7 @@ write hs 4
 				Bugs: ProtocolBugs{
 					ExpectServerName: "secret.example",
 				},
+				Credential: &echSecretCertificate,
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
@@ -18223,6 +18275,7 @@ write hs 4
 					ExpectServerName:                "public.example",
 					ExpectOuterServerName:           "public.example",
 				},
+				Credential: &echPublicCertificate,
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
@@ -18267,6 +18320,7 @@ write hs 4
 				Bugs: ProtocolBugs{
 					ExpectServerName: "test0123456789.example",
 				},
+				Credential: &echLongNameCertificate,
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(maxNameLen10.ECHConfig.Raw)),
@@ -18579,6 +18633,7 @@ write hs 4
 					ExpectNoClientECH: true,
 					ExpectServerName:  "secret.example",
 				},
+				Credential: &echSecretCertificate,
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(invalidPublicName.ECHConfig.Raw)),
@@ -18596,6 +18651,7 @@ write hs 4
 					ExpectOuterServerName: "public.example",
 					ExpectServerName:      "secret.example",
 				},
+				Credential: &echSecretCertificate,
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(invalidPublicName.ECHConfig.Raw, echConfig.ECHConfig.Raw)),
