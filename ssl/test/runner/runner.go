@@ -16780,7 +16780,7 @@ func addEncryptedClientHelloTests() {
 		DNSNames:              []string{"secret.example"},
 		IsCA:                  true,
 		BasicConstraintsValid: true,
-	}, &ecdsaP256Key)
+	}, &rsa2048Key)
 	echPublicCertificate := generateSingleCertChain(&x509.Certificate{
 		SerialNumber: big.NewInt(57005),
 		Subject: pkix.Name{
@@ -16791,7 +16791,7 @@ func addEncryptedClientHelloTests() {
 		DNSNames:              []string{"public.example"},
 		IsCA:                  true,
 		BasicConstraintsValid: true,
-	}, &ecdsaP256Key)
+	}, &rsa2048Key)
 	echLongNameCertificate := generateSingleCertChain(&x509.Certificate{
 		SerialNumber: big.NewInt(57005),
 		Subject: pkix.Name{
@@ -17973,6 +17973,7 @@ write hs 4
 					ExpectServerName:      "secret.example",
 					AlwaysRejectEarlyData: true,
 				},
+				Credential: &echSecretCertificate,
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
@@ -18246,6 +18247,7 @@ write hs 4
 						extensionSupportedCurves,
 					},
 				},
+				Credential: &echSecretCertificate,
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
@@ -18298,6 +18300,7 @@ write hs 4
 						extensionSupportedVersions,
 					},
 				},
+				Credential: &echSecretCertificate,
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
@@ -18479,6 +18482,7 @@ write hs 4
 				Bugs: ProtocolBugs{
 					ExpectServerName: "secret.example",
 				},
+				Credential: &echSecretCertificate,
 			},
 			resumeConfig: &Config{
 				MaxVersion:       VersionTLS13,
@@ -18487,6 +18491,7 @@ write hs 4
 					ExpectServerName:                    "public.example",
 					UseInnerSessionWithClientHelloOuter: true,
 				},
+				Credential: &echPublicCertificate,
 			},
 			resumeSession: true,
 			flags: []string{
@@ -18509,6 +18514,7 @@ write hs 4
 					Bugs: ProtocolBugs{
 						ExpectServerName: "secret.example",
 					},
+					Credential: &echSecretCertificate,
 				},
 				resumeConfig: &Config{
 					MinVersion:       VersionTLS12,
@@ -18522,6 +18528,7 @@ write hs 4
 						// resumed at TLS 1.2.
 						AcceptAnySession: true,
 					},
+					Credential: &echPublicCertificate,
 				},
 				resumeSession: true,
 				flags: []string{
@@ -18550,12 +18557,14 @@ write hs 4
 				Bugs: ProtocolBugs{
 					ExpectServerName: "secret.example",
 				},
+				Credential: &echSecretCertificate,
 			},
 			resumeConfig: &Config{
 				ServerECHConfigs: []ServerECHConfig{echConfig2},
 				Bugs: ProtocolBugs{
 					ExpectServerName: "public.example",
 				},
+				Credential: &echPublicCertificate,
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
@@ -18588,12 +18597,14 @@ write hs 4
 					Bugs: ProtocolBugs{
 						ExpectServerName: "secret.example",
 					},
+					Credential: &echSecretCertificate,
 				},
 				resumeConfig: &Config{
 					MaxVersion: VersionTLS12,
 					Bugs: ProtocolBugs{
 						ExpectServerName: "public.example",
 					},
+					Credential: &echPublicCertificate,
 				},
 				flags: []string{
 					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
