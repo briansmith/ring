@@ -63,6 +63,20 @@
 //!
 //! assert_eq!(out, HkdfSha256::derive(b"secret", hkdf::Salt::None, b"info"));
 //! ```
+//!
+//! To expand output from the explicit bytes of a PRK, use `Prk::new`:
+//!
+//! ```
+//! use bssl_crypto::{digest::Sha256, digest::Algorithm, hkdf};
+//!
+//! let prk: [u8; Sha256::OUTPUT_LEN] = bssl_crypto::rand_array();
+//! // unwrap: only fails if the input is not equal to the digest length, which
+//! // cannot happen here.
+//! let prk = hkdf::Prk::new::<Sha256>(&prk).unwrap();
+//! let mut out = vec![0u8; 42];
+//! prk.expand_into(b"info", &mut out)?;
+//! # Ok::<(), hkdf::TooLong>(())
+//! ```
 
 use crate::{digest, sealed, with_output_array, FfiMutSlice, FfiSlice, ForeignTypeRef};
 use core::marker::PhantomData;
@@ -173,6 +187,33 @@ pub struct Prk {
 
 #[allow(clippy::let_unit_value)]
 impl Prk {
+    /// Creates a Prk from bytes.
+    pub fn new<MD: digest::Algorithm>(prk_bytes: &[u8]) -> Option<Self> {
+        if prk_bytes.len() != MD::OUTPUT_LEN {
+            return None;
+        }
+
+        let mut prk = [0u8; bssl_sys::EVP_MAX_MD_SIZE as usize];
+        prk.get_mut(..MD::OUTPUT_LEN)
+            // unwrap: `EVP_MAX_MD_SIZE` must be greater than the length of any
+            // digest function thus this is always successful.
+            .unwrap()
+            .copy_from_slice(prk_bytes);
+
+        Some(Prk {
+            prk,
+            len: MD::OUTPUT_LEN,
+            evp_md: MD::get_md(sealed::Sealed).as_ptr(),
+        })
+    }
+
+    /// Returns the bytes of the pseudorandom key.
+    pub fn as_bytes(&self) -> &[u8] {
+        // `self.len` must be less than the length of `self.prk` thus
+        // this is always in bounds.
+        &self.prk[..self.len]
+    }
+
     /// Derive key material for the given info parameter. Attempting
     /// to derive more than 255 bytes is a compile-time error, see `expand_into`
     /// for longer outputs.
@@ -243,7 +284,8 @@ impl Prk {
 )]
 mod tests {
     use crate::{
-        hkdf::{HkdfSha256, HkdfSha512, Salt},
+        digest::Sha256,
+        hkdf::{HkdfSha256, HkdfSha512, Prk, Salt},
         test_helpers::{decode_hex, decode_hex_into_vec},
     };
 
@@ -280,6 +322,7 @@ mod tests {
             ikm: Vec<u8>,
             salt: Vec<u8>,
             info: Vec<u8>,
+            prk: Vec<u8>,
             okm: Vec<u8>,
         }
         let tests = [
@@ -288,6 +331,10 @@ mod tests {
                 ikm: decode_hex_into_vec("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"),
                 salt: decode_hex_into_vec("000102030405060708090a0b0c"),
                 info: decode_hex_into_vec("f0f1f2f3f4f5f6f7f8f9"),
+                prk: decode_hex_into_vec(
+                    "077709362c2e32df0ddc3f0dc47bba63\
+                    90b6c73bb50f9c3122ec844ad7c2b3e5",
+                ),
                 okm: decode_hex_into_vec("3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865")
             },
             Test {
@@ -313,6 +360,10 @@ mod tests {
                     e0e1e2e3e4e5e6e7e8e9eaebecedeeef\
                     f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
                 ),
+                prk: decode_hex_into_vec(
+                    "06a6b88c5853361a06104c9ceb35b45c\
+                    ef760014904671014a193f40c15fc244",
+                ),
                 okm: decode_hex_into_vec(
                     "b11e398dc80327a1c8e7f78c596a4934\
                     4f012eda2d4efad8a050cc4c19afa97c\
@@ -327,6 +378,10 @@ mod tests {
                 ikm: decode_hex_into_vec("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"),
                 salt: Vec::new(),
                 info: Vec::new(),
+                prk: decode_hex_into_vec(
+                    "19ef24a32c717b167f33a91d6f648bdf\
+                    96596776afdb6377ac434c1c293ccb04",
+                ),
                 okm: decode_hex_into_vec(
                     "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8"),
             },
@@ -336,6 +391,7 @@ mod tests {
             ikm,
             salt,
             info,
+            prk,
             okm,
         } in tests.iter()
         {
@@ -349,6 +405,12 @@ mod tests {
                 HkdfSha256::derive_into(ikm.as_slice(), salt, info.as_slice(), &mut okm2).is_ok()
             );
             assert_eq!(okm2.as_slice(), okm.as_slice());
+
+            let prk2 = Prk::new::<Sha256>(prk.as_slice()).unwrap();
+            assert_eq!(prk2.as_bytes(), prk.as_slice());
+            let mut okm3 = vec![0u8; okm.len()];
+            let _ = prk2.expand_into(info.as_slice(), &mut okm3);
+            assert_eq!(okm3.as_slice(), okm.as_slice());
         }
     }
 
@@ -360,5 +422,17 @@ mod tests {
 
         let mut too_long = vec![0u8; HkdfSha256::MAX_OUTPUT_LEN + 1];
         assert!(hkdf.expand_into(b"", &mut too_long).is_err());
+    }
+
+    #[test]
+    fn wrong_prk_len() {
+        assert!(Prk::new::<Sha256>(
+            decode_hex_into_vec("077709362c2e32df0ddc3f0dc47bba63").as_slice()
+        )
+        .is_none());
+        assert!(Prk::new::<Sha256>(
+            decode_hex_into_vec("077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e590b6c73bb50f9c3122ec844ad7c2b3e5").as_slice())
+            .is_none()
+        );
     }
 }
