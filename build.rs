@@ -21,7 +21,7 @@
 
 use std::process::Stdio;
 use std::{
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     fs::{self, DirEntry},
     io::Write,
     path::{Path, PathBuf},
@@ -721,15 +721,7 @@ fn perlasm(
 
 fn join_components_with_forward_slashes(path: &Path) -> OsString {
     let parts = path.components().map(|c| c.as_os_str()).collect::<Vec<_>>();
-    // Manually implement join here because [OsStr]::join only stabilised in 1.63.0 and ring uses 1.61.0 as MSRV.
-    let mut out = OsString::new();
-    for (i, part) in parts.iter().enumerate() {
-        if i != 0 {
-            out.push("/");
-        }
-        out.push(part)
-    }
-    out
+    parts.join(OsStr::new("/"))
 }
 
 fn get_perl_exe() -> PathBuf {

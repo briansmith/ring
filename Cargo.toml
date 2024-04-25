@@ -11,7 +11,7 @@ repository = "https://github.com/briansmith/ring"
 
 # Keep in sync with .github/workflows/ci.yml ("MSRV") and see the MSRV note
 # in cpu/arm.rs
-rust-version = "1.61.0"
+rust-version = "1.63.0"
 
 # Keep in sync with `links` below.
 version = "0.17.8"
