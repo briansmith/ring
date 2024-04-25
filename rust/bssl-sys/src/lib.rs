@@ -7,7 +7,13 @@ use core::ffi::c_ulong;
 // Wrap the bindgen output in a module and re-export it, so we can override it
 // as needed.
 mod bindgen {
+    #[cfg(not(soong))]
     include!(env!("BINDGEN_RS_FILE"));
+    // Soong, Android's build tool, does not support configuring environment
+    // variables like other Rust build systems too. However, it does support
+    // some hardcoded behavior with the OUT_DIR variable.
+    #[cfg(soong)]
+    include!(concat!(env!("OUT_DIR"), "/bssl_sys_bindings.rs"));
 }
 pub use bindgen::*;
 
