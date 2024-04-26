@@ -229,11 +229,6 @@ UniquePtr<T> MakeUnique(Args &&... args) {
   return UniquePtr<T>(New<T>(std::forward<Args>(args)...));
 }
 
-// TODO(davidben): Remove these macros after April 2024, once the C++ runtime
-// dependency has stuck.
-#define HAS_VIRTUAL_DESTRUCTOR
-#define PURE_VIRTUAL = 0
-
 // Array<T> is an owning array of elements of |T|.
 template <typename T>
 class Array {
@@ -1123,18 +1118,17 @@ class SSLKeyShare {
  public:
   virtual ~SSLKeyShare() {}
   static constexpr bool kAllowUniquePtr = true;
-  HAS_VIRTUAL_DESTRUCTOR
 
   // Create returns a SSLKeyShare instance for use with group |group_id| or
   // nullptr on error.
   static UniquePtr<SSLKeyShare> Create(uint16_t group_id);
 
   // GroupID returns the group ID.
-  virtual uint16_t GroupID() const PURE_VIRTUAL;
+  virtual uint16_t GroupID() const = 0;
 
   // Generate generates a keypair and writes the public key to |out_public_key|.
   // It returns true on success and false on error.
-  virtual bool Generate(CBB *out_public_key) PURE_VIRTUAL;
+  virtual bool Generate(CBB *out_public_key) = 0;
 
   // Encap generates an ephemeral, symmetric secret and encapsulates it with
   // |peer_key|. On success, it returns true, writes the encapsulated secret to
@@ -1142,13 +1136,13 @@ class SSLKeyShare {
   // it returns false and sets |*out_alert| to an alert to send to the peer.
   virtual bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
                      uint8_t *out_alert,
-                     Span<const uint8_t> peer_key) PURE_VIRTUAL;
+                     Span<const uint8_t> peer_key) = 0;
 
   // Decap decapsulates the symmetric secret in |ciphertext|. On success, it
   // returns true and sets |*out_secret| to the shared secret. On failure, it
   // returns false and sets |*out_alert| to an alert to send to the peer.
   virtual bool Decap(Array<uint8_t> *out_secret, uint8_t *out_alert,
-                     Span<const uint8_t> ciphertext) PURE_VIRTUAL;
+                     Span<const uint8_t> ciphertext) = 0;
 
   // SerializePrivateKey writes the private key to |out|, returning true if
   // successful and false otherwise. It should be called after |Generate|.
