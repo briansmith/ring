@@ -714,33 +714,35 @@ OPENSSL_EXPORT void BIO_meth_free(BIO_METHOD *method);
 // and returns one. The function should return one on success and zero on
 // error.
 OPENSSL_EXPORT int BIO_meth_set_create(BIO_METHOD *method,
-                                       int (*create)(BIO *));
+                                       int (*create_func)(BIO *));
 
 // BIO_meth_set_destroy sets a function to release data associated with a |BIO|
 // and returns one. The function's return value is ignored.
 OPENSSL_EXPORT int BIO_meth_set_destroy(BIO_METHOD *method,
-                                        int (*destroy)(BIO *));
+                                        int (*destroy_func)(BIO *));
 
 // BIO_meth_set_write sets the implementation of |BIO_write| for |method| and
 // returns one. |BIO_METHOD|s which implement |BIO_write| should also implement
 // |BIO_CTRL_FLUSH|. (See |BIO_meth_set_ctrl|.)
 OPENSSL_EXPORT int BIO_meth_set_write(BIO_METHOD *method,
-                                      int (*write)(BIO *, const char *, int));
+                                      int (*write_func)(BIO *, const char *,
+                                                        int));
 
 // BIO_meth_set_read sets the implementation of |BIO_read| for |method| and
 // returns one.
 OPENSSL_EXPORT int BIO_meth_set_read(BIO_METHOD *method,
-                                     int (*read)(BIO *, char *, int));
+                                     int (*read_func)(BIO *, char *, int));
 
 // BIO_meth_set_gets sets the implementation of |BIO_gets| for |method| and
 // returns one.
 OPENSSL_EXPORT int BIO_meth_set_gets(BIO_METHOD *method,
-                                     int (*gets)(BIO *, char *, int));
+                                     int (*gets_func)(BIO *, char *, int));
 
 // BIO_meth_set_ctrl sets the implementation of |BIO_ctrl| for |method| and
 // returns one.
 OPENSSL_EXPORT int BIO_meth_set_ctrl(BIO_METHOD *method,
-                                     long (*ctrl)(BIO *, int, long, void *));
+                                     long (*ctrl_func)(BIO *, int, long,
+                                                       void *));
 
 // BIO_set_data sets custom data on |bio|. It may be retried with
 // |BIO_get_data|.

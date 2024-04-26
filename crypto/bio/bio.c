@@ -658,38 +658,38 @@ void BIO_meth_free(BIO_METHOD *method) {
 }
 
 int BIO_meth_set_create(BIO_METHOD *method,
-                        int (*create)(BIO *)) {
-  method->create = create;
+                        int (*create_func)(BIO *)) {
+  method->create = create_func;
   return 1;
 }
 
 int BIO_meth_set_destroy(BIO_METHOD *method,
-                         int (*destroy)(BIO *)) {
-  method->destroy = destroy;
+                         int (*destroy_func)(BIO *)) {
+  method->destroy = destroy_func;
   return 1;
 }
 
 int BIO_meth_set_write(BIO_METHOD *method,
-                       int (*write)(BIO *, const char *, int)) {
-  method->bwrite = write;
+                       int (*write_func)(BIO *, const char *, int)) {
+  method->bwrite = write_func;
   return 1;
 }
 
 int BIO_meth_set_read(BIO_METHOD *method,
-                      int (*read)(BIO *, char *, int)) {
-  method->bread = read;
+                      int (*read_func)(BIO *, char *, int)) {
+  method->bread = read_func;
   return 1;
 }
 
 int BIO_meth_set_gets(BIO_METHOD *method,
-                      int (*gets)(BIO *, char *, int)) {
-  method->bgets = gets;
+                      int (*gets_func)(BIO *, char *, int)) {
+  method->bgets = gets_func;
   return 1;
 }
 
 int BIO_meth_set_ctrl(BIO_METHOD *method,
-                      long (*ctrl)(BIO *, int, long, void *)) {
-  method->ctrl = ctrl;
+                      long (*ctrl_func)(BIO *, int, long, void *)) {
+  method->ctrl = ctrl_func;
   return 1;
 }
 
