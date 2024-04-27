@@ -139,7 +139,7 @@ fn detect_features() -> u32 {
             features |= PMULL.mask;
         }
         if caps & ZX_ARM64_FEATURE_ISA_SHA2 == ZX_ARM64_FEATURE_ISA_SHA2 {
-            features |= 1 << 4;
+            features |= SHA256.mask;
         }
     }
 
