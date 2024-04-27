@@ -68,19 +68,20 @@ fn detect_features() -> u32 {
 
     let caps = unsafe { getauxval(AT_HWCAP) };
 
-    // We assume NEON is available on AARCH64 because it is a required
-    // feature.
+    let mut features = 0;
+
+    // We do not need to check for the presence of NEON, as Armv8-A always has it
     #[cfg(target_arch = "aarch64")]
-    const _AARCH64_HAS_NEON: () = assert!(cfg!(target_feature = "neon"));
+    const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
 
     // OpenSSL and BoringSSL don't enable any other features if NEON isn't
     // available.
     #[cfg(target_arch = "arm")]
-    if caps & HWCAP_NEON != HWCAP_NEON {
+    if caps & HWCAP_NEON == HWCAP_NEON {
+        features |= NEON.mask;
+    } else {
         return 0;
     }
-
-    let mut features = NEON.mask;
 
     #[cfg(target_arch = "arm")]
     let caps = unsafe { getauxval(AT_HWCAP2) };
@@ -127,11 +128,10 @@ fn detect_features() -> u32 {
 
     let mut features = 0;
 
-    // OpenSSL and BoringSSL don't enable any other features if NEON isn't
-    // available.
-    if rc == ZX_OK && (caps & ZX_ARM64_FEATURE_ISA_ASIMD == ZX_ARM64_FEATURE_ISA_ASIMD) {
-        features = NEON.mask;
+    // We do not need to check for the presence of NEON, as Armv8-A always has it
+    const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
 
+    if rc == ZX_OK {
         if caps & ZX_ARM64_FEATURE_ISA_AES == ZX_ARM64_FEATURE_ISA_AES {
             features |= AES.mask;
         }
@@ -150,7 +150,7 @@ fn detect_features() -> u32 {
 fn detect_features() -> u32 {
     // We do not need to check for the presence of NEON, as Armv8-A always has it
     const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
-    let mut features = ARMCAP_STATIC;
+    let mut features = 0;
 
     let result = unsafe {
         windows_sys::Win32::System::Threading::IsProcessorFeaturePresent(
@@ -206,7 +206,10 @@ fn detect_features() -> u32 {
         value != 0
     }
 
-    let mut features = ARMCAP_STATIC;
+    // We do not need to check for the presence of NEON, as Armv8-A always has it
+    const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
+
+    let mut features = 0;
 
     // TODO(MSRV 1.64): Use `: &CStr = CStr::from_bytes_with_nul_unchecked`.
     // TODO(MSRV 1.77): Use c"..." literal.
