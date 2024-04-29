@@ -30,12 +30,13 @@
 #include <openssl/hmac.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
-#include <openssl/rand.h>
+#include <openssl/rand.h> // TODO(bbe): only for RAND_bytes call below, replace with BCM call
 #include <openssl/rsa.h>
 #include <openssl/service_indicator.h>
 
 #include "../../test/abi_test.h"
 #include "../../test/test_util.h"
+#include "../bcm_interface.h"
 #include "../bn/internal.h"
 #include "../rand/internal.h"
 #include "../tls/internal.h"

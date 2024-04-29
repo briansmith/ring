@@ -63,11 +63,11 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/rand.h>
 #include <openssl/sha.h>
 
 #include "internal.h"
 #include "../service_indicator/internal.h"
+#include "../bcm_interface.h"
 #include "../../internal.h"
 
 
@@ -369,9 +369,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
     if (!salt) {
       goto err;
     }
-    if (!RAND_bytes(salt, sLen)) {
-      goto err;
-    }
+    BCM_rand_bytes(salt, sLen);
   }
   maskedDBLen = emLen - hLen - 1;
   H = EM + maskedDBLen;
@@ -394,7 +392,6 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
   }
 
   p = EM;
-
   // Initial PS XORs with all zeroes which is a NOP so just update
   // pointer. Note from a test above this value is guaranteed to
   // be non-negative.

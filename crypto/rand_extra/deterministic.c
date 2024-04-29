@@ -14,7 +14,8 @@
 
 #include <openssl/rand.h>
 
-#include "../fipsmodule/rand/internal.h"
+#include "../bcm_support.h"
+#include "sysrand_internal.h"
 
 #if defined(OPENSSL_RAND_DETERMINISTIC)
 
@@ -35,6 +36,8 @@ static CRYPTO_MUTEX g_num_calls_lock = CRYPTO_MUTEX_INIT;
 
 void RAND_reset_for_fuzzing(void) { g_num_calls = 0; }
 
+void CRYPTO_init_sysrand(void) {}
+
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   static const uint8_t kZeroKey[32];
 
@@ -48,6 +51,11 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
 
   OPENSSL_memset(out, 0, requested);
   CRYPTO_chacha_20(out, out, requested, kZeroKey, nonce, 0);
+}
+
+int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
+  CRYPTO_sysrand(buf, len);
+  return 1;
 }
 
 void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {

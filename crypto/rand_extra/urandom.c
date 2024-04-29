@@ -18,7 +18,8 @@
 
 #include <openssl/rand.h>
 
-#include "internal.h"
+#include "../bcm_support.h"
+#include "sysrand_internal.h"
 
 #if defined(OPENSSL_RAND_URANDOM)
 
@@ -62,8 +63,7 @@
 #include <openssl/mem.h>
 
 #include "getrandom_fillin.h"
-#include "../delocate.h"
-#include "../../internal.h"
+#include "../internal.h"
 
 
 #if defined(USE_NR_getrandom)
@@ -96,17 +96,17 @@ static ssize_t boringssl_getrandom(void *buf, size_t buf_len, unsigned flags) {
 static const int kHaveGetrandom = -3;
 
 // urandom_fd is a file descriptor to /dev/urandom. It's protected by |once|.
-DEFINE_BSS_GET(int, urandom_fd)
+static int urandom_fd;
 
 #if defined(USE_NR_getrandom)
 
 // getrandom_ready is one if |getrandom| had been initialized by the time
 // |init_once| was called and zero otherwise.
-DEFINE_BSS_GET(int, getrandom_ready)
+static int getrandom_ready;
 
 // extra_getrandom_flags_for_seed contains a value that is ORed into the flags
 // for getrandom() when reading entropy for a seed.
-DEFINE_BSS_GET(int, extra_getrandom_flags_for_seed)
+static int extra_getrandom_flags_for_seed;
 
 // On Android, check a system property to decide whether to set
 // |extra_getrandom_flags_for_seed| otherwise they will default to zero.  If
@@ -123,14 +123,14 @@ static void maybe_set_extra_getrandom_flags(void) {
 
   value[length] = 0;
   if (OPENSSL_strcasecmp(value, "true") == 0) {
-    *extra_getrandom_flags_for_seed_bss_get() = GRND_RANDOM;
+    extra_getrandom_flags_for_seed = GRND_RANDOM;
   }
 #endif
 }
 
 #endif  // USE_NR_getrandom
 
-DEFINE_STATIC_ONCE(rand_once)
+static CRYPTO_once_t rand_once = CRYPTO_ONCE_INIT;
 
 // init_once initializes the state of this module to values previously
 // requested. This is the only function that modifies |urandom_fd|, which may be
@@ -142,7 +142,7 @@ static void init_once(void) {
   ssize_t getrandom_ret =
       boringssl_getrandom(&dummy, sizeof(dummy), GRND_NONBLOCK);
   if (getrandom_ret == 1) {
-    *getrandom_ready_bss_get() = 1;
+    getrandom_ready = 1;
     have_getrandom = 1;
   } else if (getrandom_ret == -1 && errno == EAGAIN) {
     // We have getrandom, but the entropy pool has not been initialized yet.
@@ -157,7 +157,7 @@ static void init_once(void) {
   }
 
   if (have_getrandom) {
-    *urandom_fd_bss_get() = kHaveGetrandom;
+    urandom_fd = kHaveGetrandom;
     maybe_set_extra_getrandom_flags();
     return;
   }
@@ -185,19 +185,19 @@ static void init_once(void) {
     abort();
   }
 
-  *urandom_fd_bss_get() = fd;
+  urandom_fd = fd;
 }
 
-DEFINE_STATIC_ONCE(wait_for_entropy_once)
+static CRYPTO_once_t wait_for_entropy_once = CRYPTO_ONCE_INIT;
 
 static void wait_for_entropy(void) {
-  int fd = *urandom_fd_bss_get();
+  int fd = urandom_fd;
   if (fd == kHaveGetrandom) {
     // |getrandom| and |getentropy| support blocking in |fill_with_entropy|
     // directly. For |getrandom|, we first probe with a non-blocking call to aid
     // debugging.
 #if defined(USE_NR_getrandom)
-    if (*getrandom_ready_bss_get()) {
+    if (getrandom_ready) {
       // The entropy pool was already initialized in |init_once|.
       return;
     }
@@ -256,13 +256,13 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
 
 #if defined (USE_NR_getrandom)
   if (seed) {
-    getrandom_flags |= *extra_getrandom_flags_for_seed_bss_get();
+    getrandom_flags |= extra_getrandom_flags_for_seed;
   }
 #endif
 
   CRYPTO_init_sysrand();
   if (block) {
-    CRYPTO_once(wait_for_entropy_once_bss_get(), wait_for_entropy);
+    CRYPTO_once(&wait_for_entropy_once, wait_for_entropy);
   }
 
   // Clear |errno| so it has defined value if |read| or |getrandom|
@@ -271,7 +271,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   while (len > 0) {
     ssize_t r;
 
-    if (*urandom_fd_bss_get() == kHaveGetrandom) {
+    if (urandom_fd == kHaveGetrandom) {
 #if defined(USE_NR_getrandom)
       r = boringssl_getrandom(out, len, getrandom_flags);
 #else  // USE_NR_getrandom
@@ -280,7 +280,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
 #endif
     } else {
       do {
-        r = read(*urandom_fd_bss_get(), out, len);
+        r = read(urandom_fd, out, len);
       } while (r == -1 && errno == EINTR);
     }
 
@@ -295,7 +295,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
 }
 
 void CRYPTO_init_sysrand(void) {
-  CRYPTO_once(rand_once_bss_get(), init_once);
+  CRYPTO_once(&rand_once, init_once);
 }
 
 // CRYPTO_sysrand puts |requested| random bytes into |out|.

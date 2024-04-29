@@ -14,7 +14,8 @@
 
 #include <openssl/rand.h>
 
-#include "../fipsmodule/rand/internal.h"
+#include "../bcm_support.h"
+#include "sysrand_internal.h"
 
 #if defined(OPENSSL_RAND_TRUSTY)
 #include <stdint.h>
@@ -25,10 +26,17 @@
 
 #include <lib/rng/trusty_rng.h>
 
+void CRYPTO_init_sysrand(void) {}
+
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   if (trusty_rng_hw_rand(out, requested) != NO_ERROR) {
     abort();
   }
+}
+
+int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
+  CRYPTO_sysrand(buf, len);
+  return 1;
 }
 
 void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {

@@ -113,10 +113,9 @@
 #include <string.h>
 
 #include <openssl/err.h>
-#include <openssl/rand.h>
 
+#include "../../bcm_support.h"
 #include "../../internal.h"
-#include "../rand/internal.h"
 #include "../service_indicator/internal.h"
 #include "internal.h"
 
@@ -157,7 +156,7 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   }
 
   FIPS_service_indicator_lock_state();
-  RAND_bytes((uint8_t *)rnd->d, words * sizeof(BN_ULONG));
+  BCM_rand_bytes((uint8_t *)rnd->d, words * sizeof(BN_ULONG));
   FIPS_service_indicator_unlock_state();
 
   rnd->d[words - 1] &= mask;
@@ -225,8 +224,7 @@ static int bn_range_to_mask(size_t *out_words, BN_ULONG *out_mask,
   while (words > 0 && max_exclusive[words - 1] == 0) {
     words--;
   }
-  if (words == 0 ||
-      (words == 1 && max_exclusive[0] <= min_inclusive)) {
+  if (words == 0 || (words == 1 && max_exclusive[0] <= min_inclusive)) {
     OPENSSL_PUT_ERROR(BN, BN_R_INVALID_RANGE);
     return 0;
   }
@@ -275,8 +273,8 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
     // Steps 4 and 5. Use |words| and |mask| together to obtain a string of N
     // bits, where N is the bit length of |max_exclusive|.
     FIPS_service_indicator_lock_state();
-    RAND_bytes_with_additional_data((uint8_t *)out, words * sizeof(BN_ULONG),
-                                    additional_data);
+    BCM_rand_bytes_with_additional_data(
+        (uint8_t *)out, words * sizeof(BN_ULONG), additional_data);
     FIPS_service_indicator_unlock_state();
     out[words - 1] &= mask;
 
@@ -326,7 +324,7 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
 
   // Select a uniform random number with num_bits(max_exclusive) bits.
   FIPS_service_indicator_lock_state();
-  RAND_bytes((uint8_t *)r->d, words * sizeof(BN_ULONG));
+  BCM_rand_bytes((uint8_t *)r->d, words * sizeof(BN_ULONG));
   FIPS_service_indicator_unlock_state();
   r->d[words - 1] &= mask;
 

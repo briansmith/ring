@@ -12,8 +12,6 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/rand.h>
-
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
@@ -26,10 +24,10 @@
 #include <openssl/ctrdrbg.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
-#include "fork_detect.h"
-#include "../../internal.h"
+#include "../../bcm_support.h"
+#include "../bcm_interface.h"
 #include "../delocate.h"
+#include "internal.h"
 
 
 // It's assumed that the operating system always has an unfailing source of
@@ -99,7 +97,7 @@ static void rand_thread_state_clear_all(void) {
     CTR_DRBG_clear(&cur->drbg);
   }
   // The locks are deliberately left locked so that any threads that are still
-  // running will hang if they try to call |RAND_bytes|. It also ensures
+  // running will hang if they try to call |BCM_rand_bytes|. It also ensures
   // |rand_thread_state_free| cannot free any thread state while we've taken the
   // lock.
 }
@@ -164,26 +162,24 @@ static int rdrand(uint8_t *buf, const size_t len) {
 
 #else
 
-static int rdrand(uint8_t *buf, size_t len) {
-  return 0;
-}
+static int rdrand(uint8_t *buf, size_t len) { return 0; }
 
 #endif
 
-#if defined(BORINGSSL_FIPS)
-
-void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
-                             int *out_want_additional_input) {
-  *out_want_additional_input = 0;
-  if (have_rdrand() && rdrand(out_entropy, out_entropy_len)) {
-    *out_want_additional_input = 1;
-  } else {
-    CRYPTO_sysrand_for_seed(out_entropy, out_entropy_len);
+bcm_status BCM_rand_bytes_hwrng(uint8_t *buf, const size_t len) {
+  if (!have_rdrand()) {
+    return bcm_status_failure;
   }
+  if (rdrand(buf, len)) {
+    return bcm_status_not_approved;
+  }
+  return bcm_status_failure;
 }
 
+#if defined(BORINGSSL_FIPS)
+
 // In passive entropy mode, entropy is supplied from outside of the module via
-// |RAND_load_entropy| and is stored in global instance of the following
+// |BCM_rand_load_entropy| and is stored in global instance of the following
 // structure.
 
 struct entropy_buffer {
@@ -202,8 +198,8 @@ struct entropy_buffer {
 DEFINE_BSS_GET(struct entropy_buffer, entropy_buffer);
 DEFINE_STATIC_MUTEX(entropy_buffer_lock);
 
-void RAND_load_entropy(const uint8_t *entropy, size_t entropy_len,
-                       int want_additional_input) {
+bcm_infallible BCM_rand_load_entropy(const uint8_t *entropy, size_t entropy_len,
+                                     int want_additional_input) {
   struct entropy_buffer *const buffer = entropy_buffer_bss_get();
 
   CRYPTO_MUTEX_lock_write(entropy_buffer_lock_bss_get());
@@ -214,9 +210,9 @@ void RAND_load_entropy(const uint8_t *entropy, size_t entropy_len,
 
   OPENSSL_memcpy(&buffer->bytes[buffer->bytes_valid], entropy, entropy_len);
   buffer->bytes_valid += entropy_len;
-  buffer->want_additional_input |=
-      want_additional_input && (entropy_len != 0);
+  buffer->want_additional_input |= want_additional_input && (entropy_len != 0);
   CRYPTO_MUTEX_unlock_write(entropy_buffer_lock_bss_get());
+  return bcm_infallible_not_approved;
 }
 
 // get_seed_entropy fills |out_entropy_len| bytes of |out_entropy| from the
@@ -330,10 +326,10 @@ static void rand_get_seed(struct rand_thread_state *state,
 
 #endif
 
-void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
-                                     const uint8_t user_additional_data[32]) {
+bcm_infallible BCM_rand_bytes_with_additional_data(
+    uint8_t *out, size_t out_len, const uint8_t user_additional_data[32]) {
   if (out_len == 0) {
-    return;
+    return bcm_infallible_approved;
   }
 
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
@@ -473,21 +469,11 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 #if defined(BORINGSSL_FIPS)
   CRYPTO_MUTEX_unlock_read(&state->clear_drbg_lock);
 #endif
+  return bcm_infallible_approved;
 }
 
-int RAND_bytes(uint8_t *out, size_t out_len) {
+bcm_infallible BCM_rand_bytes(uint8_t *out, size_t out_len) {
   static const uint8_t kZeroAdditionalData[32] = {0};
-  RAND_bytes_with_additional_data(out, out_len, kZeroAdditionalData);
-  return 1;
-}
-
-int RAND_pseudo_bytes(uint8_t *buf, size_t len) {
-  return RAND_bytes(buf, len);
-}
-
-void RAND_get_system_entropy_for_custom_prng(uint8_t *buf, size_t len) {
-  if (len > 256) {
-    abort();
-  }
-  CRYPTO_sysrand_for_seed(buf, len);
+  BCM_rand_bytes_with_additional_data(out, out_len, kZeroAdditionalData);
+  return bcm_infallible_approved;
 }

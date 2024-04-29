@@ -20,7 +20,8 @@
 #include <openssl/rand.h>
 
 #include "getrandom_fillin.h"
-#include "internal.h"
+#include "../internal.h"
+
 
 #if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&               \
     !defined(BORINGSSL_SHARED_LIBRARY) && defined(OPENSSL_RAND_URANDOM) && \
@@ -34,9 +35,6 @@
 #include <sys/uio.h>
 #include <sys/un.h>
 #include <sys/user.h>
-
-#include "fork_detect.h"
-#include "getrandom_fillin.h"
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)

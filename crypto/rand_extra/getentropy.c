@@ -18,7 +18,8 @@
 
 #include <openssl/rand.h>
 
-#include "../fipsmodule/rand/internal.h"
+#include "../bcm_support.h"
+#include "sysrand_internal.h"
 
 #if defined(OPENSSL_RAND_GETENTROPY)
 
@@ -29,6 +30,8 @@
 #if defined(OPENSSL_MACOS) || defined(OPENSSL_FUCHSIA)
 #include <sys/random.h>
 #endif
+
+void CRYPTO_init_sysrand(void) {}
 
 // CRYPTO_sysrand puts |requested| random bytes into |out|.
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
@@ -43,6 +46,11 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
     out += todo;
     requested -= todo;
   }
+}
+
+int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
+  CRYPTO_sysrand(buf, len);
+  return 1;
 }
 
 void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {

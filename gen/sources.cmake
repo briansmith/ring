@@ -87,7 +87,6 @@ set(
   crypto/fipsmodule/rand/ctrdrbg.c
   crypto/fipsmodule/rand/fork_detect.c
   crypto/fipsmodule/rand/rand.c
-  crypto/fipsmodule/rand/urandom.c
   crypto/fipsmodule/rsa/blinding.c
   crypto/fipsmodule/rsa/padding.c
   crypto/fipsmodule/rsa/rsa.c
@@ -411,6 +410,7 @@ set(
   crypto/rand_extra/passive.c
   crypto/rand_extra/rand_extra.c
   crypto/rand_extra/trusty.c
+  crypto/rand_extra/urandom.c
   crypto/rand_extra/windows.c
   crypto/rc4/rc4.c
   crypto/refcount.c
@@ -602,6 +602,7 @@ set(
   CRYPTO_INTERNAL_HEADERS
 
   crypto/asn1/internal.h
+  crypto/bcm_support.h
   crypto/bio/internal.h
   crypto/bytestring/internal.h
   crypto/chacha/internal.h
@@ -616,7 +617,7 @@ set(
   crypto/ec_extra/internal.h
   crypto/err/internal.h
   crypto/evp/internal.h
-  crypto/fipsmodule/aes/internal.h
+  crypto/fipsmodule/bcm_interface.h
   crypto/fipsmodule/bn/internal.h
   crypto/fipsmodule/bn/rsaz_exp.h
   crypto/fipsmodule/cipher/internal.h
@@ -633,7 +634,6 @@ set(
   crypto/fipsmodule/md5/internal.h
   crypto/fipsmodule/modes/internal.h
   crypto/fipsmodule/rand/fork_detect.h
-  crypto/fipsmodule/rand/getrandom_fillin.h
   crypto/fipsmodule/rand/internal.h
   crypto/fipsmodule/rsa/internal.h
   crypto/fipsmodule/service_indicator/internal.h
@@ -651,6 +651,8 @@ set(
   crypto/pkcs8/internal.h
   crypto/poly1305/internal.h
   crypto/pool/internal.h
+  crypto/rand_extra/getrandom_fillin.h
+  crypto/rand_extra/sysrand_internal.h
   crypto/rsa_extra/internal.h
   crypto/spx/address.h
   crypto/spx/fors.h
@@ -2832,5 +2834,5 @@ set(
 set(
   URANDOM_TEST_SOURCES
 
-  crypto/fipsmodule/rand/urandom_test.cc
+  crypto/rand_extra/urandom_test.cc
 )

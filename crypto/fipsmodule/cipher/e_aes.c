@@ -56,11 +56,11 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
-#include <openssl/rand.h>
 
 #include "internal.h"
 #include "../../internal.h"
 #include "../aes/internal.h"
+#include "../bcm_interface.h"
 #include "../modes/internal.h"
 #include "../service_indicator/internal.h"
 #include "../delocate.h"
@@ -471,11 +471,11 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       }
       OPENSSL_memcpy(gctx->iv, ptr, arg);
       if (c->encrypt) {
-        // |RAND_bytes| calls within the fipsmodule should be wrapped with state
-        // lock functions to avoid updating the service indicator with the DRBG
-        // functions.
+        // |BCM_rand_bytes| calls within the fipsmodule should be wrapped with
+        // state lock functions to avoid updating the service indicator with the
+        // DRBG functions.
         FIPS_service_indicator_lock_state();
-        RAND_bytes(gctx->iv + arg, gctx->ivlen - arg);
+        BCM_rand_bytes(gctx->iv + arg, gctx->ivlen - arg);
         FIPS_service_indicator_unlock_state();
       }
       gctx->iv_gen = 1;
@@ -1167,10 +1167,11 @@ static int aead_aes_gcm_seal_scatter_randnonce(
     return 0;
   }
 
-  // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
-  // functions to avoid updating the service indicator with the DRBG functions.
+  // |BCM_rand_bytes| calls within the fipsmodule should be wrapped with state
+  // lock functions to avoid updating the service indicator with the DRBG
+  // functions.
   FIPS_service_indicator_lock_state();
-  RAND_bytes(nonce, sizeof(nonce));
+  BCM_rand_bytes(nonce, sizeof(nonce));
   FIPS_service_indicator_unlock_state();
 
   const struct aead_aes_gcm_ctx *gcm_ctx =

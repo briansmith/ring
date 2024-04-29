@@ -14,17 +14,25 @@
 
 #include <openssl/rand.h>
 
-#include "../fipsmodule/rand/internal.h"
+#include "../bcm_support.h"
+#include "sysrand_internal.h"
 
 #if defined(OPENSSL_RAND_IOS)
 #include <stdlib.h>
 
 #include <CommonCrypto/CommonRandom.h>
 
+void CRYPTO_init_sysrand(void) {}
+
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   if (CCRandomGenerateBytes(out, requested) != kCCSuccess) {
     abort();
   }
+}
+
+int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
+  CRYPTO_sysrand(buf, len);
+  return 1;
 }
 
 void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
