@@ -176,12 +176,7 @@ impl Key {
         };
 
         match detect_implementation(cpu_features) {
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86_64",
-                target_arch = "x86"
-            ))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
             // SAFETY: `aes_hw_set_encrypt_key` satisfies the `set_encrypt_key!`
             // contract for these target architectures.
             Implementation::HWAES => unsafe {
@@ -213,12 +208,7 @@ impl Key {
     #[inline]
     pub fn encrypt_block(&self, a: Block, cpu_features: cpu::Features) -> Block {
         match detect_implementation(cpu_features) {
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86_64",
-                target_arch = "x86"
-            ))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
             Implementation::HWAES => encrypt_block!(aes_hw_encrypt, a, self),
 
             #[cfg(any(
@@ -248,12 +238,7 @@ impl Key {
         cpu_features: cpu::Features,
     ) {
         match detect_implementation(cpu_features) {
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86_64",
-                target_arch = "x86"
-            ))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
             // SAFETY:
             //  * self.inner was initialized with `aes_hw_set_encrypt_key` above,
             //    as required by `aes_hw_ctr32_encrypt_blocks`.
@@ -439,12 +424,7 @@ pub(super) const ZERO_BLOCK: Block = [0u8; BLOCK_LEN];
 #[derive(Clone, Copy)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Implementation {
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86_64",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
     HWAES,
 
     // On "arm" only, this indicates that the bsaes implementation may be used.
@@ -469,7 +449,7 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     )))]
     let _cpu_features = cpu_features;
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+    #[cfg(target_arch = "aarch64")]
     {
         if cpu::arm::AES.available(cpu_features) {
             return Implementation::HWAES;

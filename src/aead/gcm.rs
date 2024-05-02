@@ -53,12 +53,7 @@ impl Key {
                 }
             }
 
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86_64",
-                target_arch = "x86"
-            ))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
             Implementation::CLMUL => {
                 prefixed_extern! {
                     fn gcm_init_clmul(Htable: &mut HTable, h: &[u64; 2]);
@@ -222,12 +217,7 @@ impl<'key> Context<'key> {
                 ghash!(gcm_ghash_avx, xi, h_table, input, self.cpu_features);
             },
 
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86_64",
-                target_arch = "x86"
-            ))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
             // SAFETY: gcm_ghash_clmul satisfies the ghash! contract on these
             // targets.
             Implementation::CLMUL => unsafe {
@@ -254,12 +244,7 @@ impl<'key> Context<'key> {
         let h_table = &self.h_table;
 
         match detect_implementation(self.cpu_features) {
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86_64",
-                target_arch = "x86"
-            ))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
             Implementation::CLMUL => {
                 prefixed_extern! {
                     fn gcm_gmult_clmul(xi: &mut Xi, Htable: &HTable);
@@ -343,12 +328,7 @@ impl BitXorAssign<Block> for Xi {
 
 #[allow(clippy::upper_case_acronyms)]
 enum Implementation {
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86_64",
-        target_arch = "x86"
-    ))]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
     CLMUL,
 
     #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
@@ -368,7 +348,7 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     )))]
     let _cpu_features = cpu_features;
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+    #[cfg(target_arch = "aarch64")]
     {
         if cpu::arm::PMULL.available(cpu_features) {
             return Implementation::CLMUL;
