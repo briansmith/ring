@@ -92,7 +92,7 @@ macro_rules! features {
                 )
             )+;
 
-        const ALL_FEATURES: [Feature; 5] = [
+        const ALL_FEATURES: &[Feature] = &[
             $(
                 $name
             ),+
@@ -115,7 +115,7 @@ impl Feature {
     }
 }
 
-// Assumes all target feature names are the same for ARM and AAarch64.
+#[cfg(target_arch = "aarch64")]
 features! {
     // Keep in sync with `ARMV7_NEON`.
     "neon" => NEON {
@@ -148,6 +148,14 @@ features! {
     // "sha3" is overloaded for both SHA-3 and SHA512.
     "sha3" => SHA512 {
         mask: 1 << 6,
+    },
+}
+
+#[cfg(target_arch = "arm")]
+features! {
+    // Keep in sync with `ARMV7_NEON`.
+    "neon" => NEON {
+        mask: 1 << 0,
     },
 }
 
@@ -214,6 +222,11 @@ mod tests {
     #[test]
     fn test_mask_abi() {
         assert_eq!(NEON.mask, 1);
+    }
+
+    #[cfg(not(target_arch = "arm"))]
+    #[test]
+    fn test_mask_abi_hw() {
         assert_eq!(AES.mask, 4);
         assert_eq!(SHA256.mask, 16);
         assert_eq!(PMULL.mask, 32);
