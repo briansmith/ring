@@ -92,9 +92,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
 
     (&[AARCH64, X86_64], "crypto/fipsmodule/ec/p256-nistz.c"),
 
-    (&[AARCH64, ARM], "crypto/fipsmodule/aes/asm/aesv8-armx.pl"),
-    (&[AARCH64, ARM], "crypto/fipsmodule/modes/asm/ghashv8-armx.pl"),
-
     (&[ARM], "crypto/fipsmodule/aes/asm/bsaes-armv7.pl"),
     (&[ARM], "crypto/fipsmodule/aes/asm/vpaes-armv7.pl"),
     (&[ARM], "crypto/fipsmodule/bn/asm/armv4-mont.pl"),
@@ -108,11 +105,13 @@ const RING_SRCS: &[(&[&str], &str)] = &[
 
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
     (&[AARCH64], "crypto/cipher_extra/asm/chacha20_poly1305_armv8.pl"),
+    (&[AARCH64], "crypto/fipsmodule/aes/asm/aesv8-armx.pl"),
     (&[AARCH64], "crypto/fipsmodule/aes/asm/vpaes-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/bn/asm/armv8-mont.pl"),
     (&[AARCH64], "crypto/fipsmodule/ec/asm/p256-armv8-asm.pl"),
-    (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/modes/asm/aesv8-gcm-armv8.pl"),
+    (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
+    (&[AARCH64], "crypto/fipsmodule/modes/asm/ghashv8-armx.pl"),
     (&[AARCH64], SHA512_ARMV8),
 ];
 
