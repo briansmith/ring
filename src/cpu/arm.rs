@@ -270,7 +270,6 @@ macro_rules! features {
             !0
         };
 
-        #[cfg(test)]
         const ALL_FEATURES: [Feature; 5] = [
             $(
                 $name
@@ -337,7 +336,10 @@ features! {
 pub unsafe fn init_global_shared_with_assembly() {
     let detected = detect_features();
     let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
-        AES.mask | SHA256.mask | PMULL.mask
+        ALL_FEATURES
+            .iter()
+            .fold(0, |acc, feature| acc | feature.mask)
+            & !NEON.mask
     } else {
         0
     }) | (if cfg!(feature = "unstable-testing-arm-no-neon") {
