@@ -138,7 +138,7 @@ fn test_agreement_ecdh_x25519_rfc_iterated() {
     ) {
         for _ in range {
             let new_k = x25519(k, u);
-            *u = k.clone();
+            u.clone_from(k);
             *k = new_k;
         }
         assert_eq!(&h(expected_result), k);
