@@ -49,7 +49,7 @@ pub(crate) fn xor_assign_at_start<'a>(
     a: impl IntoIterator<Item = &'a mut u8>,
     b: impl IntoIterator<Item = &'a u8>,
 ) {
-    a.into_iter().zip(b.into_iter()).for_each(|(a, b)| *a ^= *b);
+    a.into_iter().zip(b).for_each(|(a, b)| *a ^= *b);
 }
 
 #[cfg(test)]
