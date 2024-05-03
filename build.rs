@@ -19,13 +19,12 @@
 // another for the concrete logging implementation). Instead we use `eprintln!`
 // to log everything to stderr.
 
-use std::process::Stdio;
 use std::{
     ffi::{OsStr, OsString},
     fs::{self, DirEntry},
     io::Write,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
 };
 
 mod env {
