@@ -53,10 +53,7 @@ impl<T: RandomlyConstructable> Random<T> {
 #[inline]
 pub fn generate<T: RandomlyConstructable>(
     rng: &dyn SecureRandom,
-) -> Result<Random<T>, error::Unspecified>
-where
-    T: RandomlyConstructable,
-{
+) -> Result<Random<T>, error::Unspecified> {
     let mut r = T::zero();
     rng.fill(r.as_mut_bytes())?;
     Ok(Random(r))
