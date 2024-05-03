@@ -130,7 +130,7 @@ mod digest_shavs {
             }
             let md_j = mds.last().unwrap();
             assert_eq!(&expected_md, md_j);
-            seed = md_j.clone();
+            seed.clone_from(md_j);
 
             Ok(())
         });
