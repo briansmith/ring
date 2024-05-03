@@ -126,7 +126,7 @@ impl KeyPair {
             der::nested(
                 input,
                 der::Tag::Sequence,
-                error::KeyRejected::invalid_encoding(),
+                KeyRejected::invalid_encoding(),
                 Self::from_der_reader,
             )
         })
@@ -339,7 +339,7 @@ impl KeyPair {
         // length of half_n_bits + 1, this check gives us 2**half_n_bits <= d,
         // and knowing d is odd makes the inequality strict.
         let d = bigint::OwnedModulus::<D>::from_be_bytes(d)
-            .map_err(|_| error::KeyRejected::invalid_component())?;
+            .map_err(|_| KeyRejected::invalid_component())?;
         if !(n_bits.half_rounded_up() < d.len_bits()) {
             return Err(KeyRejected::inconsistent_components());
         }
@@ -430,7 +430,7 @@ impl<M> PrivatePrime<M> {
         }
 
         if p.len_bits().as_bits() % 512 != 0 {
-            return Err(error::KeyRejected::private_modulus_len_not_multiple_of_512_bits());
+            return Err(KeyRejected::private_modulus_len_not_multiple_of_512_bits());
         }
 
         // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
