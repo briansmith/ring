@@ -148,13 +148,13 @@ mod tests {
             "P-256",
             &agreement::ECDH_P256,
             &super::super::curve::P256,
-            &super::super::ops::p256::COMMON_OPS,
+            &ops::p256::COMMON_OPS,
         ),
         (
             "P-384",
             &agreement::ECDH_P384,
             &super::super::curve::P384,
-            &super::super::ops::p384::COMMON_OPS,
+            &ops::p384::COMMON_OPS,
         ),
     ];
 

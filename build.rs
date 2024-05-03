@@ -303,7 +303,7 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
 
-    let is_git = std::fs::metadata(c_root_dir.join(".git")).is_ok();
+    let is_git = fs::metadata(c_root_dir.join(".git")).is_ok();
 
     // Published builds are always built in release mode.
     let is_debug = is_git && env::var("DEBUG").unwrap() != "false";
@@ -359,7 +359,7 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
 
 fn pregenerate_asm_main(c_root_dir: &Path, core_name_and_version: &str) {
     let pregenerated = c_root_dir.join(PREGENERATED);
-    std::fs::create_dir(&pregenerated).unwrap();
+    fs::create_dir(&pregenerated).unwrap();
     generate_sources_and_preassemble(
         &pregenerated,
         ASM_TARGETS.iter(),
@@ -601,9 +601,7 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir:
 
     // Nasm requires that the path end in a path separator.
     let mut include_dir = include_dir.as_os_str().to_os_string();
-    include_dir.push(std::ffi::OsString::from(String::from(
-        std::path::MAIN_SEPARATOR,
-    )));
+    include_dir.push(OsString::from(String::from(std::path::MAIN_SEPARATOR)));
 
     let mut c = Command::new("./target/tools/windows/nasm/nasm");
     let _ = c
@@ -801,10 +799,10 @@ fn generate_prefix_symbols_header(
     prefix: &str,
 ) -> Result<(), std::io::Error> {
     let dir = out_dir.join("ring_core_generated");
-    std::fs::create_dir_all(&dir)?;
+    fs::create_dir_all(&dir)?;
 
     let path = dir.join(filename);
-    let mut file = std::fs::File::create(path)?;
+    let mut file = fs::File::create(path)?;
 
     let filename_ident = filename.replace('.', "_").to_uppercase();
     writeln!(

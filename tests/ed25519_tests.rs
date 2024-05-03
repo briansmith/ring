@@ -190,10 +190,10 @@ fn test_ed25519_from_pkcs8_(
 #[test]
 fn ed25519_test_generate_pkcs8() {
     let rng = rand::SystemRandom::new();
-    let generated = signature::Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
+    let generated = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
     let generated = generated.as_ref();
 
-    let _ronudtripped = signature::Ed25519KeyPair::from_pkcs8(generated).unwrap();
+    let _ronudtripped = Ed25519KeyPair::from_pkcs8(generated).unwrap();
 
     // Regression test: Verify we're generating the correct encoding, as
     // `Ed25519KeyPair::from_pkcs8` also accepts our old wrong encoding.
@@ -208,7 +208,7 @@ fn ed25519_test_public_key_coverage() {
     const PUBLIC_KEY_DEBUG: &str =
         "PublicKey(\"5809e9fef6dcec58f0f2e3b0d67e9880a11957e083ace85835c3b6c8fbaf6b7d\")";
 
-    let key_pair = signature::Ed25519KeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
+    let key_pair = Ed25519KeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
 
     // Test `AsRef<[u8]>`
     assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
