@@ -439,6 +439,68 @@ pub enum Implementation {
     NOHW,
 }
 
+#[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+fn check_aes_support(buffer: &[u8], len: isize) -> bool {
+    let flags_str = b"flags\t\t: ";
+    let features_str = b"Features\t: ";
+    let aes_str = b"aes";
+
+    let data = &buffer[..len as usize];
+
+    if let Some(pos) = data
+        .windows(flags_str.len())
+        .position(|window| window == flags_str)
+    {
+        let flags_section = &data[pos + flags_str.len()..];
+        if let Some(end) = flags_section.iter().position(|&b| b == b'\n') {
+            return flags_section[..end]
+                .windows(aes_str.len())
+                .any(|window| window == aes_str);
+        }
+    } else if let Some(pos) = data
+        .windows(features_str.len())
+        .position(|window| window == features_str)
+    {
+        let features_section = &data[pos + features_str.len()..];
+        if let Some(end) = features_section.iter().position(|&b| b == b'\n') {
+            return features_section[..end]
+                .windows(aes_str.len())
+                .any(|window| window == aes_str);
+        }
+    }
+
+    false
+}
+
+/// check "/proc/cpuinfo" for AES flag
+#[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+pub fn aes_support() -> Result<bool, String> {
+    let path = "/proc/cpuinfo\0";
+    let fd = unsafe { libc::open(path.as_ptr() as *const _, libc::O_RDONLY) };
+
+    if fd < 0 {
+        return Err(format!("Couldn't open \"{path}\""));
+    }
+
+    let mut buffer = [0u8; 4096];
+    let read_bytes = unsafe { libc::read(fd, buffer.as_mut_ptr() as *mut _, buffer.len()) };
+
+    let has_aes = if read_bytes > 0 {
+        check_aes_support(&buffer, read_bytes)
+    } else {
+        false
+    };
+
+    unsafe {
+        let ret = libc::close(fd);
+    }
+    if ret != 0 {
+        Err(format!("Error while closing file: {ret}"))
+    } else {
+        Ok(has_aes)
+    }
+}
+
 fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     // `cpu_features` is only used for specific platforms.
     #[cfg(not(any(
@@ -449,7 +511,22 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     )))]
     let _cpu_features = cpu_features;
 
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+    {
+        match aes_support() {
+            Ok(aes_support) => {
+                if cpu::arm::AES.available(cpu_features) && aes_support {
+                    return Implementation::HWAES;
+                }
+            }
+            Err(err) => {
+                if cpu::arm::AES.available(cpu_features) {
+                    return Implementation::HWAES;
+                }
+            }
+        }
+    }
+    #[cfg(all(target_arch = "aarch64", not(target_os = "linux")))]
     {
         if cpu::arm::AES.available(cpu_features) {
             return Implementation::HWAES;

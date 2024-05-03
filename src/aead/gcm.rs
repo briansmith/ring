@@ -348,7 +348,14 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     )))]
     let _cpu_features = cpu_features;
 
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+    {
+        let aes_support = crate::aead::aes::aes_support();
+        if cpu::arm::PMULL.available(cpu_features) && aes_support {
+            return Implementation::CLMUL;
+        }
+    }
+    #[cfg(all(target_arch = "aarch64", not(target_os = "linux")))]
     {
         if cpu::arm::PMULL.available(cpu_features) {
             return Implementation::CLMUL;
