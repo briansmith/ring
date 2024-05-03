@@ -167,6 +167,8 @@ impl<'key> Context<'key> {
         if in_out_len > aes_gcm::MAX_IN_OUT_LEN {
             return Err(error::Unspecified);
         }
+        let in_out_len = BitLength::from_byte_len(in_out_len)?;
+        let aad_len = BitLength::from_byte_len(aad.as_ref().len())?;
 
         // NIST SP800-38D Section 5.2.1.1 says that the maximum AAD length is
         // 2**64 - 1 bits, i.e. BitLength<u64>::MAX, so we don't need to do an
@@ -175,8 +177,8 @@ impl<'key> Context<'key> {
         let mut ctx = Self {
             Xi: Xi(ZERO_BLOCK),
             h_table: &key.h_table,
-            aad_len: BitLength::from_byte_len(aad.as_ref().len())?,
-            in_out_len: BitLength::from_byte_len(in_out_len)?,
+            aad_len,
+            in_out_len,
             cpu_features,
         };
 
