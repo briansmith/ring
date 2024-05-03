@@ -33,16 +33,20 @@ pub(crate) trait FromByteLen<T>: Sized {
 impl FromByteLen<usize> for BitLength<usize> {
     #[inline]
     fn from_byte_len(bytes: usize) -> Result<Self, error::Unspecified> {
-        let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
-        Ok(Self(bits))
+        match bytes.checked_mul(8) {
+            Some(bits) => Ok(Self(bits)),
+            None => Err(error::Unspecified),
+        }
     }
 }
 
 impl FromByteLen<u64> for BitLength<u64> {
     #[inline]
     fn from_byte_len(bytes: u64) -> Result<Self, error::Unspecified> {
-        let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
-        Ok(Self(bits))
+        match bytes.checked_mul(8) {
+            Some(bits) => Ok(Self(bits)),
+            None => Err(error::Unspecified),
+        }
     }
 }
 
@@ -50,8 +54,10 @@ impl FromByteLen<usize> for BitLength<u64> {
     #[inline]
     fn from_byte_len(bytes: usize) -> Result<Self, error::Unspecified> {
         let bytes = polyfill::u64_from_usize(bytes);
-        let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
-        Ok(Self(bits))
+        match bytes.checked_mul(8) {
+            Some(bits) => Ok(Self(bits)),
+            None => Err(error::Unspecified),
+        }
     }
 }
 
