@@ -14,7 +14,26 @@
 
 use super::{AES, NEON, PMULL, SHA256};
 
-pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
+// Work around a bug in LLVM/rustc where `-C target_cpu=cortex-a72`--
+// and `-C target_cpu=native` on Cortex-A72 Raspberry PI devices in
+// particular--enables crypto features even though not all Cortex-A72
+// CPUs have crypto features:
+//
+// ```
+// $ rustc --print cfg --target=aarch64-unknown-linux-gnu | grep feature
+// target_feature="neon"
+// $ rustc --print cfg --target=aarch64-unknown-linux-gnu -C target_cpu=cortex-a72 | grep feature
+// target_feature="aes"
+// target_feature="crc"
+// target_feature="neon"
+// target_feature="pmuv3"
+// target_feature="sha2"
+// ```
+//
+// XXX/TODO(MSRV https://github.com/llvm/llvm-project/issues/90365): This
+// workaround is heavy-handed since it forces extra branches for devices that
+// have correctly-modeled feature sets, so it should be removed.
+pub const FORCE_DYNAMIC_DETECTION: u32 = !NEON.mask;
 
 // `uclibc` does not provide `getauxval` so just use static feature detection
 // for it.
