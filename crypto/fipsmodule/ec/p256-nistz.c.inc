@@ -116,6 +116,95 @@ static BN_ULONG is_not_zero(BN_ULONG in) {
   return in;
 }
 
+#if defined(OPENSSL_X86_64)
+// Dispatch between CPU variations. The "_adx" suffixed functions use MULX in
+// addition to ADCX/ADOX. MULX is part of BMI2, not ADX, so we must check both
+// capabilities.
+static void ecp_nistz256_mul_mont(BN_ULONG res[P256_LIMBS],
+                                  const BN_ULONG a[P256_LIMBS],
+                                  const BN_ULONG b[P256_LIMBS]) {
+  if (CRYPTO_is_BMI2_capable() && CRYPTO_is_ADX_capable()) {
+    ecp_nistz256_mul_mont_adx(res, a, b);
+  } else {
+    ecp_nistz256_mul_mont_nohw(res, a, b);
+  }
+}
+
+static void ecp_nistz256_sqr_mont(BN_ULONG res[P256_LIMBS],
+                                  const BN_ULONG a[P256_LIMBS]) {
+  if (CRYPTO_is_BMI2_capable() && CRYPTO_is_ADX_capable()) {
+    ecp_nistz256_sqr_mont_adx(res, a);
+  } else {
+    ecp_nistz256_sqr_mont_nohw(res, a);
+  }
+}
+
+static void ecp_nistz256_ord_mul_mont(BN_ULONG res[P256_LIMBS],
+                                      const BN_ULONG a[P256_LIMBS],
+                                      const BN_ULONG b[P256_LIMBS]) {
+  if (CRYPTO_is_BMI2_capable() && CRYPTO_is_ADX_capable()) {
+    ecp_nistz256_ord_mul_mont_adx(res, a, b);
+  } else {
+    ecp_nistz256_ord_mul_mont_nohw(res, a, b);
+  }
+}
+
+static void ecp_nistz256_ord_sqr_mont(BN_ULONG res[P256_LIMBS],
+                                      const BN_ULONG a[P256_LIMBS],
+                                      BN_ULONG rep) {
+  if (CRYPTO_is_BMI2_capable() && CRYPTO_is_ADX_capable()) {
+    ecp_nistz256_ord_sqr_mont_adx(res, a, rep);
+  } else {
+    ecp_nistz256_ord_sqr_mont_nohw(res, a, rep);
+  }
+}
+
+static void ecp_nistz256_select_w5(P256_POINT *val, const P256_POINT in_t[16],
+                                   int index) {
+  if (CRYPTO_is_AVX2_capable()) {
+    ecp_nistz256_select_w5_avx2(val, in_t, index);
+  } else {
+    ecp_nistz256_select_w5_nohw(val, in_t, index);
+  }
+}
+
+static void ecp_nistz256_select_w7(P256_POINT_AFFINE *val,
+                                   const P256_POINT_AFFINE in_t[64],
+                                   int index) {
+  if (CRYPTO_is_AVX2_capable()) {
+    ecp_nistz256_select_w7_avx2(val, in_t, index);
+  } else {
+    ecp_nistz256_select_w7_nohw(val, in_t, index);
+  }
+}
+
+static void ecp_nistz256_point_double(P256_POINT *r, const P256_POINT *a) {
+  if (CRYPTO_is_BMI2_capable() && CRYPTO_is_ADX_capable()) {
+    ecp_nistz256_point_double_adx(r, a);
+  } else {
+    ecp_nistz256_point_double_nohw(r, a);
+  }
+}
+
+static void ecp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
+                                   const P256_POINT *b) {
+  if (CRYPTO_is_BMI2_capable() && CRYPTO_is_ADX_capable()) {
+    ecp_nistz256_point_add_adx(r, a, b);
+  } else {
+    ecp_nistz256_point_add_nohw(r, a, b);
+  }
+}
+
+static void ecp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
+                                          const P256_POINT_AFFINE *b) {
+  if (CRYPTO_is_BMI2_capable() && CRYPTO_is_ADX_capable()) {
+    ecp_nistz256_point_add_affine_adx(r, a, b);
+  } else {
+    ecp_nistz256_point_add_affine_nohw(r, a, b);
+  }
+}
+#endif  // OPENSSL_X86_64
+
 // ecp_nistz256_from_mont sets |res| to |in|, converted from Montgomery domain
 // by multiplying with 1.
 static void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
@@ -620,11 +709,6 @@ static int ecp_nistz256_cmp_x_coordinate(const EC_GROUP *group,
 }
 
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
-  // TODO(crbug.com/42290548): The x86_64 assembly depends on initializing
-  // |OPENSSL_ia32cap_P|. Move the dispatch to C. For now, explicitly initialize
-  // things.
-  OPENSSL_init_cpuid();
-
   out->point_get_affine_coordinates = ecp_nistz256_get_affine;
   out->add = ecp_nistz256_add;
   out->dbl = ecp_nistz256_dbl;

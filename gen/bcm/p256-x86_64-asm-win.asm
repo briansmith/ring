@@ -13,7 +13,6 @@ default	rel
 %endif
 section	.text code align=64
 
-EXTERN	OPENSSL_ia32cap_P
 
 
 section	.rdata rdata align=8
@@ -110,14 +109,14 @@ $L$SEH_end_ecp_nistz256_neg:
 
 
 
-global	ecp_nistz256_ord_mul_mont
+global	ecp_nistz256_ord_mul_mont_nohw
 
 ALIGN	32
-ecp_nistz256_ord_mul_mont:
+ecp_nistz256_ord_mul_mont_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_ord_mul_mont:
+$L$SEH_begin_ecp_nistz256_ord_mul_mont_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -125,11 +124,6 @@ $L$SEH_begin_ecp_nistz256_ord_mul_mont:
 
 
 _CET_ENDBR
-	lea	rcx,[OPENSSL_ia32cap_P]
-	mov	rcx,QWORD[8+rcx]
-	and	ecx,0x80100
-	cmp	ecx,0x80100
-	je	NEAR $L$ecp_nistz256_ord_mul_montx
 	push	rbp
 
 	push	rbx
@@ -441,7 +435,7 @@ $L$ord_mul_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_ord_mul_mont:
+$L$SEH_end_ecp_nistz256_ord_mul_mont_nohw:
 
 
 
@@ -449,14 +443,14 @@ $L$SEH_end_ecp_nistz256_ord_mul_mont:
 
 
 
-global	ecp_nistz256_ord_sqr_mont
+global	ecp_nistz256_ord_sqr_mont_nohw
 
 ALIGN	32
-ecp_nistz256_ord_sqr_mont:
+ecp_nistz256_ord_sqr_mont_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_ord_sqr_mont:
+$L$SEH_begin_ecp_nistz256_ord_sqr_mont_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -464,11 +458,6 @@ $L$SEH_begin_ecp_nistz256_ord_sqr_mont:
 
 
 _CET_ENDBR
-	lea	rcx,[OPENSSL_ia32cap_P]
-	mov	rcx,QWORD[8+rcx]
-	and	ecx,0x80100
-	cmp	ecx,0x80100
-	je	NEAR $L$ecp_nistz256_ord_sqr_montx
 	push	rbp
 
 	push	rbx
@@ -750,22 +739,24 @@ $L$ord_sqr_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_ord_sqr_mont:
+$L$SEH_end_ecp_nistz256_ord_sqr_mont_nohw:
 
+global	ecp_nistz256_ord_mul_mont_adx
 
 ALIGN	32
-ecp_nistz256_ord_mul_montx:
+ecp_nistz256_ord_mul_mont_adx:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_ord_mul_montx:
+$L$SEH_begin_ecp_nistz256_ord_mul_mont_adx:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
 
 
 
-$L$ecp_nistz256_ord_mul_montx:
+$L$ecp_nistz256_ord_mul_mont_adx:
+_CET_ENDBR
 	push	rbp
 
 	push	rbx
@@ -997,22 +988,24 @@ $L$ord_mulx_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_ord_mul_montx:
+$L$SEH_end_ecp_nistz256_ord_mul_mont_adx:
 
+global	ecp_nistz256_ord_sqr_mont_adx
 
 ALIGN	32
-ecp_nistz256_ord_sqr_montx:
+ecp_nistz256_ord_sqr_mont_adx:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_ord_sqr_montx:
+$L$SEH_begin_ecp_nistz256_ord_sqr_mont_adx:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
 
 
 
-$L$ecp_nistz256_ord_sqr_montx:
+_CET_ENDBR
+$L$ecp_nistz256_ord_sqr_mont_adx:
 	push	rbp
 
 	push	rbx
@@ -1216,21 +1209,21 @@ $L$ord_sqrx_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_ord_sqr_montx:
+$L$SEH_end_ecp_nistz256_ord_sqr_mont_adx:
 
 
 
 
 
 
-global	ecp_nistz256_mul_mont
+global	ecp_nistz256_mul_mont_nohw
 
 ALIGN	32
-ecp_nistz256_mul_mont:
+ecp_nistz256_mul_mont_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_mul_mont:
+$L$SEH_begin_ecp_nistz256_mul_mont_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -1238,10 +1231,6 @@ $L$SEH_begin_ecp_nistz256_mul_mont:
 
 
 _CET_ENDBR
-	lea	rcx,[OPENSSL_ia32cap_P]
-	mov	rcx,QWORD[8+rcx]
-	and	ecx,0x80100
-$L$mul_mont:
 	push	rbp
 
 	push	rbx
@@ -1255,8 +1244,6 @@ $L$mul_mont:
 	push	r15
 
 $L$mul_body:
-	cmp	ecx,0x80100
-	je	NEAR $L$mul_montx
 	mov	rbx,rdx
 	mov	rax,QWORD[rdx]
 	mov	r9,QWORD[rsi]
@@ -1265,20 +1252,7 @@ $L$mul_body:
 	mov	r12,QWORD[24+rsi]
 
 	call	__ecp_nistz256_mul_montq
-	jmp	NEAR $L$mul_mont_done
 
-ALIGN	32
-$L$mul_montx:
-	mov	rbx,rdx
-	mov	rdx,QWORD[rdx]
-	mov	r9,QWORD[rsi]
-	mov	r10,QWORD[8+rsi]
-	mov	r11,QWORD[16+rsi]
-	mov	r12,QWORD[24+rsi]
-	lea	rsi,[((-128))+rsi]
-
-	call	__ecp_nistz256_mul_montx
-$L$mul_mont_done:
 	mov	r15,QWORD[rsp]
 
 	mov	r14,QWORD[8+rsp]
@@ -1298,7 +1272,7 @@ $L$mul_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_mul_mont:
+$L$SEH_end_ecp_nistz256_mul_mont_nohw:
 
 
 ALIGN	32
@@ -1525,23 +1499,20 @@ __ecp_nistz256_mul_montq:
 
 
 
-global	ecp_nistz256_sqr_mont
+global	ecp_nistz256_sqr_mont_nohw
 
 ALIGN	32
-ecp_nistz256_sqr_mont:
+ecp_nistz256_sqr_mont_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_sqr_mont:
+$L$SEH_begin_ecp_nistz256_sqr_mont_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 
 
 
 _CET_ENDBR
-	lea	rcx,[OPENSSL_ia32cap_P]
-	mov	rcx,QWORD[8+rcx]
-	and	ecx,0x80100
 	push	rbp
 
 	push	rbx
@@ -1555,26 +1526,13 @@ _CET_ENDBR
 	push	r15
 
 $L$sqr_body:
-	cmp	ecx,0x80100
-	je	NEAR $L$sqr_montx
 	mov	rax,QWORD[rsi]
 	mov	r14,QWORD[8+rsi]
 	mov	r15,QWORD[16+rsi]
 	mov	r8,QWORD[24+rsi]
 
 	call	__ecp_nistz256_sqr_montq
-	jmp	NEAR $L$sqr_mont_done
 
-ALIGN	32
-$L$sqr_montx:
-	mov	rdx,QWORD[rsi]
-	mov	r14,QWORD[8+rsi]
-	mov	r15,QWORD[16+rsi]
-	mov	r8,QWORD[24+rsi]
-	lea	rsi,[((-128))+rsi]
-
-	call	__ecp_nistz256_sqr_montx
-$L$sqr_mont_done:
 	mov	r15,QWORD[rsp]
 
 	mov	r14,QWORD[8+rsp]
@@ -1594,7 +1552,7 @@ $L$sqr_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_sqr_mont:
+$L$SEH_end_ecp_nistz256_sqr_mont_nohw:
 
 
 ALIGN	32
@@ -1758,6 +1716,65 @@ __ecp_nistz256_sqr_montq:
 
 	ret
 
+
+global	ecp_nistz256_mul_mont_adx
+
+ALIGN	32
+ecp_nistz256_mul_mont_adx:
+	mov	QWORD[8+rsp],rdi	;WIN64 prologue
+	mov	QWORD[16+rsp],rsi
+	mov	rax,rsp
+$L$SEH_begin_ecp_nistz256_mul_mont_adx:
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+
+
+
+_CET_ENDBR
+	push	rbp
+
+	push	rbx
+
+	push	r12
+
+	push	r13
+
+	push	r14
+
+	push	r15
+
+$L$mulx_body:
+	mov	rbx,rdx
+	mov	rdx,QWORD[rdx]
+	mov	r9,QWORD[rsi]
+	mov	r10,QWORD[8+rsi]
+	mov	r11,QWORD[16+rsi]
+	mov	r12,QWORD[24+rsi]
+	lea	rsi,[((-128))+rsi]
+
+	call	__ecp_nistz256_mul_montx
+
+	mov	r15,QWORD[rsp]
+
+	mov	r14,QWORD[8+rsp]
+
+	mov	r13,QWORD[16+rsp]
+
+	mov	r12,QWORD[24+rsp]
+
+	mov	rbx,QWORD[32+rsp]
+
+	mov	rbp,QWORD[40+rsp]
+
+	lea	rsp,[48+rsp]
+
+$L$mulx_epilogue:
+	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
+	mov	rsi,QWORD[16+rsp]
+	ret
+
+$L$SEH_end_ecp_nistz256_mul_mont_adx:
 
 
 ALIGN	32
@@ -1928,6 +1945,62 @@ __ecp_nistz256_mul_montx:
 
 
 
+global	ecp_nistz256_sqr_mont_adx
+
+ALIGN	32
+ecp_nistz256_sqr_mont_adx:
+	mov	QWORD[8+rsp],rdi	;WIN64 prologue
+	mov	QWORD[16+rsp],rsi
+	mov	rax,rsp
+$L$SEH_begin_ecp_nistz256_sqr_mont_adx:
+	mov	rdi,rcx
+	mov	rsi,rdx
+
+
+
+_CET_ENDBR
+	push	rbp
+
+	push	rbx
+
+	push	r12
+
+	push	r13
+
+	push	r14
+
+	push	r15
+
+$L$sqrx_body:
+	mov	rdx,QWORD[rsi]
+	mov	r14,QWORD[8+rsi]
+	mov	r15,QWORD[16+rsi]
+	mov	r8,QWORD[24+rsi]
+	lea	rsi,[((-128))+rsi]
+
+	call	__ecp_nistz256_sqr_montx
+
+	mov	r15,QWORD[rsp]
+
+	mov	r14,QWORD[8+rsp]
+
+	mov	r13,QWORD[16+rsp]
+
+	mov	r12,QWORD[24+rsp]
+
+	mov	rbx,QWORD[32+rsp]
+
+	mov	rbp,QWORD[40+rsp]
+
+	lea	rsp,[48+rsp]
+
+$L$sqrx_epilogue:
+	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
+	mov	rsi,QWORD[16+rsp]
+	ret
+
+$L$SEH_end_ecp_nistz256_sqr_mont_adx:
+
 
 ALIGN	32
 __ecp_nistz256_sqr_montx:
@@ -2059,18 +2132,14 @@ __ecp_nistz256_sqr_montx:
 
 
 
-global	ecp_nistz256_select_w5
+global	ecp_nistz256_select_w5_nohw
 
 ALIGN	32
-ecp_nistz256_select_w5:
+ecp_nistz256_select_w5_nohw:
 
 _CET_ENDBR
-	lea	rax,[OPENSSL_ia32cap_P]
-	mov	rax,QWORD[8+rax]
-	test	eax,32
-	jnz	NEAR $L$avx2_select_w5
 	lea	rax,[((-136))+rsp]
-$L$SEH_begin_ecp_nistz256_select_w5:
+$L$SEH_begin_ecp_nistz256_select_w5_nohw:
 	DB	0x48,0x8d,0x60,0xe0
 	DB	0x0f,0x29,0x70,0xe0
 	DB	0x0f,0x29,0x78,0xf0
@@ -2145,23 +2214,19 @@ $L$select_loop_sse_w5:
 	lea	rsp,[168+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_select_w5:
+$L$SEH_end_ecp_nistz256_select_w5_nohw:
 
 
 
 
-global	ecp_nistz256_select_w7
+global	ecp_nistz256_select_w7_nohw
 
 ALIGN	32
-ecp_nistz256_select_w7:
+ecp_nistz256_select_w7_nohw:
 
 _CET_ENDBR
-	lea	rax,[OPENSSL_ia32cap_P]
-	mov	rax,QWORD[8+rax]
-	test	eax,32
-	jnz	NEAR $L$avx2_select_w7
 	lea	rax,[((-136))+rsp]
-$L$SEH_begin_ecp_nistz256_select_w7:
+$L$SEH_begin_ecp_nistz256_select_w7_nohw:
 	DB	0x48,0x8d,0x60,0xe0
 	DB	0x0f,0x29,0x70,0xe0
 	DB	0x0f,0x29,0x78,0xf0
@@ -2225,19 +2290,20 @@ $L$select_loop_sse_w7:
 	lea	rsp,[168+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_select_w7:
+$L$SEH_end_ecp_nistz256_select_w7_nohw:
 
 
 
+global	ecp_nistz256_select_w5_avx2
 
 ALIGN	32
-ecp_nistz256_avx2_select_w5:
+ecp_nistz256_select_w5_avx2:
 
-$L$avx2_select_w5:
+_CET_ENDBR
 	vzeroupper
 	lea	rax,[((-136))+rsp]
 	mov	r11,rsp
-$L$SEH_begin_ecp_nistz256_avx2_select_w5:
+$L$SEH_begin_ecp_nistz256_select_w5_avx2:
 	DB	0x48,0x8d,0x60,0xe0
 	DB	0xc5,0xf8,0x29,0x70,0xe0
 	DB	0xc5,0xf8,0x29,0x78,0xf0
@@ -2313,22 +2379,21 @@ $L$select_loop_avx2_w5:
 	lea	rsp,[r11]
 	ret
 
-$L$SEH_end_ecp_nistz256_avx2_select_w5:
+$L$SEH_end_ecp_nistz256_select_w5_avx2:
 
 
 
 
-global	ecp_nistz256_avx2_select_w7
+global	ecp_nistz256_select_w7_avx2
 
 ALIGN	32
-ecp_nistz256_avx2_select_w7:
+ecp_nistz256_select_w7_avx2:
 
-$L$avx2_select_w7:
 _CET_ENDBR
 	vzeroupper
 	mov	r11,rsp
 	lea	rax,[((-136))+rsp]
-$L$SEH_begin_ecp_nistz256_avx2_select_w7:
+$L$SEH_begin_ecp_nistz256_select_w7_avx2:
 	DB	0x48,0x8d,0x60,0xe0
 	DB	0xc5,0xf8,0x29,0x70,0xe0
 	DB	0xc5,0xf8,0x29,0x78,0xf0
@@ -2419,7 +2484,7 @@ $L$select_loop_avx2_w7:
 	lea	rsp,[r11]
 	ret
 
-$L$SEH_end_ecp_nistz256_avx2_select_w7:
+$L$SEH_end_ecp_nistz256_select_w7_avx2:
 
 
 ALIGN	32
@@ -2550,25 +2615,20 @@ __ecp_nistz256_mul_by_2q:
 	ret
 
 
-global	ecp_nistz256_point_double
+global	ecp_nistz256_point_double_nohw
 
 ALIGN	32
-ecp_nistz256_point_double:
+ecp_nistz256_point_double_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_point_double:
+$L$SEH_begin_ecp_nistz256_point_double_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 
 
 
 _CET_ENDBR
-	lea	rcx,[OPENSSL_ia32cap_P]
-	mov	rcx,QWORD[8+rcx]
-	and	ecx,0x80100
-	cmp	ecx,0x80100
-	je	NEAR $L$point_doublex
 	push	rbp
 
 	push	rbx
@@ -2787,15 +2847,15 @@ $L$point_doubleq_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_point_double:
-global	ecp_nistz256_point_add
+$L$SEH_end_ecp_nistz256_point_double_nohw:
+global	ecp_nistz256_point_add_nohw
 
 ALIGN	32
-ecp_nistz256_point_add:
+ecp_nistz256_point_add_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_point_add:
+$L$SEH_begin_ecp_nistz256_point_add_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -2803,11 +2863,6 @@ $L$SEH_begin_ecp_nistz256_point_add:
 
 
 _CET_ENDBR
-	lea	rcx,[OPENSSL_ia32cap_P]
-	mov	rcx,QWORD[8+rcx]
-	and	ecx,0x80100
-	cmp	ecx,0x80100
-	je	NEAR $L$point_addx
 	push	rbp
 
 	push	rbx
@@ -3229,15 +3284,15 @@ $L$point_addq_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_point_add:
-global	ecp_nistz256_point_add_affine
+$L$SEH_end_ecp_nistz256_point_add_nohw:
+global	ecp_nistz256_point_add_affine_nohw
 
 ALIGN	32
-ecp_nistz256_point_add_affine:
+ecp_nistz256_point_add_affine_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_point_add_affine:
+$L$SEH_begin_ecp_nistz256_point_add_affine_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -3245,11 +3300,6 @@ $L$SEH_begin_ecp_nistz256_point_add_affine:
 
 
 _CET_ENDBR
-	lea	rcx,[OPENSSL_ia32cap_P]
-	mov	rcx,QWORD[8+rcx]
-	and	ecx,0x80100
-	cmp	ecx,0x80100
-	je	NEAR $L$point_add_affinex
 	push	rbp
 
 	push	rbx
@@ -3568,7 +3618,7 @@ $L$add_affineq_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_point_add_affine:
+$L$SEH_end_ecp_nistz256_point_add_affine_nohw:
 
 ALIGN	32
 __ecp_nistz256_add_tox:
@@ -3704,19 +3754,20 @@ __ecp_nistz256_mul_by_2x:
 	ret
 
 
+global	ecp_nistz256_point_double_adx
 
 ALIGN	32
-ecp_nistz256_point_doublex:
+ecp_nistz256_point_double_adx:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_point_doublex:
+$L$SEH_begin_ecp_nistz256_point_double_adx:
 	mov	rdi,rcx
 	mov	rsi,rdx
 
 
 
-$L$point_doublex:
+_CET_ENDBR
 	push	rbp
 
 	push	rbx
@@ -3935,21 +3986,22 @@ $L$point_doublex_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_point_doublex:
+$L$SEH_end_ecp_nistz256_point_double_adx:
+global	ecp_nistz256_point_add_adx
 
 ALIGN	32
-ecp_nistz256_point_addx:
+ecp_nistz256_point_add_adx:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_point_addx:
+$L$SEH_begin_ecp_nistz256_point_add_adx:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
 
 
 
-$L$point_addx:
+_CET_ENDBR
 	push	rbp
 
 	push	rbx
@@ -4371,21 +4423,22 @@ $L$point_addx_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_point_addx:
+$L$SEH_end_ecp_nistz256_point_add_adx:
+global	ecp_nistz256_point_add_affine_adx
 
 ALIGN	32
-ecp_nistz256_point_add_affinex:
+ecp_nistz256_point_add_affine_adx:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ecp_nistz256_point_add_affinex:
+$L$SEH_begin_ecp_nistz256_point_add_affine_adx:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
 
 
 
-$L$point_add_affinex:
+_CET_ENDBR
 	push	rbp
 
 	push	rbx
@@ -4704,7 +4757,7 @@ $L$add_affinex_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	ret
 
-$L$SEH_end_ecp_nistz256_point_add_affinex:
+$L$SEH_end_ecp_nistz256_point_add_affine_adx:
 EXTERN	__imp_RtlVirtualUnwind
 
 
@@ -4843,64 +4896,70 @@ ALIGN	4
 	DD	$L$SEH_end_ecp_nistz256_neg wrt ..imagebase
 	DD	$L$SEH_info_ecp_nistz256_neg wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_ord_mul_mont wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_ord_mul_mont wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_ord_mul_mont wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_ord_mul_mont_nohw wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_ord_mul_mont_nohw wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_ord_mul_mont_nohw wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_ord_sqr_mont wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_ord_sqr_mont wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_ord_sqr_mont wrt ..imagebase
-	DD	$L$SEH_begin_ecp_nistz256_ord_mul_montx wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_ord_mul_montx wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_ord_mul_montx wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_ord_sqr_mont_nohw wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_ord_sqr_mont_nohw wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_ord_sqr_mont_nohw wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_ord_mul_mont_adx wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_ord_mul_mont_adx wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_ord_mul_mont_adx wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_ord_sqr_montx wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_ord_sqr_montx wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_ord_sqr_montx wrt ..imagebase
-	DD	$L$SEH_begin_ecp_nistz256_mul_mont wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_mul_mont wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_mul_mont wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_ord_sqr_mont_adx wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_ord_sqr_mont_adx wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_ord_sqr_mont_adx wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_mul_mont_nohw wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_mul_mont_nohw wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_mul_mont_nohw wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_sqr_mont wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_sqr_mont wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_sqr_mont wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_sqr_mont_nohw wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_sqr_mont_nohw wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_sqr_mont_nohw wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_mul_mont_adx wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_mul_mont_adx wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_mul_mont_adx wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_select_w5 wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_select_w5 wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_select_wX wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_sqr_mont_adx wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_sqr_mont_adx wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_sqr_mont_adx wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_select_w5_nohw wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_select_w5_nohw wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_select_wX_nohw wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_select_w7 wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_select_w7 wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_select_wX wrt ..imagebase
-	DD	$L$SEH_begin_ecp_nistz256_avx2_select_w5 wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_avx2_select_w5 wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_avx2_select_wX wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_select_w7_nohw wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_select_w7_nohw wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_select_wX_nohw wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_select_w5_avx2 wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_select_w5_avx2 wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_select_wX_avx2 wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_avx2_select_w7 wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_avx2_select_w7 wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_avx2_select_wX wrt ..imagebase
-	DD	$L$SEH_begin_ecp_nistz256_point_double wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_point_double wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_point_double wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_select_w7_avx2 wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_select_w7_avx2 wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_select_wX_avx2 wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_point_double_nohw wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_point_double_nohw wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_point_double_nohw wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_point_add wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_point_add wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_point_add wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_point_add_nohw wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_point_add_nohw wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_point_add_nohw wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_point_add_affine wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_point_add_affine wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_point_add_affine wrt ..imagebase
-	DD	$L$SEH_begin_ecp_nistz256_point_doublex wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_point_doublex wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_point_doublex wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_point_add_affine_nohw wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_point_add_affine_nohw wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_point_add_affine_nohw wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_point_double_adx wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_point_double_adx wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_point_double_adx wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_point_addx wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_point_addx wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_point_addx wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_point_add_adx wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_point_add_adx wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_point_add_adx wrt ..imagebase
 
-	DD	$L$SEH_begin_ecp_nistz256_point_add_affinex wrt ..imagebase
-	DD	$L$SEH_end_ecp_nistz256_point_add_affinex wrt ..imagebase
-	DD	$L$SEH_info_ecp_nistz256_point_add_affinex wrt ..imagebase
+	DD	$L$SEH_begin_ecp_nistz256_point_add_affine_adx wrt ..imagebase
+	DD	$L$SEH_end_ecp_nistz256_point_add_affine_adx wrt ..imagebase
+	DD	$L$SEH_info_ecp_nistz256_point_add_affine_adx wrt ..imagebase
 
 section	.xdata rdata align=8
 ALIGN	8
@@ -4908,37 +4967,47 @@ $L$SEH_info_ecp_nistz256_neg:
 	DB	9,0,0,0
 	DD	short_handler wrt ..imagebase
 	DD	$L$neg_body wrt ..imagebase,$L$neg_epilogue wrt ..imagebase
-$L$SEH_info_ecp_nistz256_ord_mul_mont:
+$L$SEH_info_ecp_nistz256_ord_mul_mont_nohw:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$ord_mul_body wrt ..imagebase,$L$ord_mul_epilogue wrt ..imagebase
 	DD	48,0
-$L$SEH_info_ecp_nistz256_ord_sqr_mont:
+$L$SEH_info_ecp_nistz256_ord_sqr_mont_nohw:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$ord_sqr_body wrt ..imagebase,$L$ord_sqr_epilogue wrt ..imagebase
 	DD	48,0
-$L$SEH_info_ecp_nistz256_ord_mul_montx:
+$L$SEH_info_ecp_nistz256_ord_mul_mont_adx:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$ord_mulx_body wrt ..imagebase,$L$ord_mulx_epilogue wrt ..imagebase
 	DD	48,0
-$L$SEH_info_ecp_nistz256_ord_sqr_montx:
+$L$SEH_info_ecp_nistz256_ord_sqr_mont_adx:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$ord_sqrx_body wrt ..imagebase,$L$ord_sqrx_epilogue wrt ..imagebase
 	DD	48,0
-$L$SEH_info_ecp_nistz256_mul_mont:
+$L$SEH_info_ecp_nistz256_mul_mont_nohw:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$mul_body wrt ..imagebase,$L$mul_epilogue wrt ..imagebase
 	DD	48,0
-$L$SEH_info_ecp_nistz256_sqr_mont:
+$L$SEH_info_ecp_nistz256_sqr_mont_nohw:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$sqr_body wrt ..imagebase,$L$sqr_epilogue wrt ..imagebase
 	DD	48,0
-$L$SEH_info_ecp_nistz256_select_wX:
+$L$SEH_info_ecp_nistz256_mul_mont_adx:
+	DB	9,0,0,0
+	DD	full_handler wrt ..imagebase
+	DD	$L$mulx_body wrt ..imagebase,$L$mulx_epilogue wrt ..imagebase
+	DD	48,0
+$L$SEH_info_ecp_nistz256_sqr_mont_adx:
+	DB	9,0,0,0
+	DD	full_handler wrt ..imagebase
+	DD	$L$sqrx_body wrt ..imagebase,$L$sqrx_epilogue wrt ..imagebase
+	DD	48,0
+$L$SEH_info_ecp_nistz256_select_wX_nohw:
 	DB	0x01,0x33,0x16,0x00
 	DB	0x33,0xf8,0x09,0x00
 	DB	0x2e,0xe8,0x08,0x00
@@ -4952,7 +5021,7 @@ $L$SEH_info_ecp_nistz256_select_wX:
 	DB	0x08,0x68,0x00,0x00
 	DB	0x04,0x01,0x15,0x00
 ALIGN	8
-$L$SEH_info_ecp_nistz256_avx2_select_wX:
+$L$SEH_info_ecp_nistz256_select_wX_avx2:
 	DB	0x01,0x36,0x17,0x0b
 	DB	0x36,0xf8,0x09,0x00
 	DB	0x31,0xe8,0x08,0x00
@@ -4967,33 +5036,33 @@ $L$SEH_info_ecp_nistz256_avx2_select_wX:
 	DB	0x04,0x01,0x15,0x00
 	DB	0x00,0xb3,0x00,0x00
 ALIGN	8
-$L$SEH_info_ecp_nistz256_point_double:
+$L$SEH_info_ecp_nistz256_point_double_nohw:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$point_doubleq_body wrt ..imagebase,$L$point_doubleq_epilogue wrt ..imagebase
 	DD	32*5+56,0
-$L$SEH_info_ecp_nistz256_point_add:
+$L$SEH_info_ecp_nistz256_point_add_nohw:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$point_addq_body wrt ..imagebase,$L$point_addq_epilogue wrt ..imagebase
 	DD	32*18+56,0
-$L$SEH_info_ecp_nistz256_point_add_affine:
+$L$SEH_info_ecp_nistz256_point_add_affine_nohw:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$add_affineq_body wrt ..imagebase,$L$add_affineq_epilogue wrt ..imagebase
 	DD	32*15+56,0
 ALIGN	8
-$L$SEH_info_ecp_nistz256_point_doublex:
+$L$SEH_info_ecp_nistz256_point_double_adx:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$point_doublex_body wrt ..imagebase,$L$point_doublex_epilogue wrt ..imagebase
 	DD	32*5+56,0
-$L$SEH_info_ecp_nistz256_point_addx:
+$L$SEH_info_ecp_nistz256_point_add_adx:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$point_addx_body wrt ..imagebase,$L$point_addx_epilogue wrt ..imagebase
 	DD	32*18+56,0
-$L$SEH_info_ecp_nistz256_point_add_affinex:
+$L$SEH_info_ecp_nistz256_point_add_affine_adx:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$add_affinex_body wrt ..imagebase,$L$add_affinex_epilogue wrt ..imagebase
