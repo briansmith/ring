@@ -363,6 +363,43 @@ empty=section
               {"default", {{"key", "\xe2\x98\x83"}}},
           },
       },
+
+      // An escaped backslash is not a line continuation.
+      {
+          R"(
+key1 = value1\\
+key2 = value2
+)",
+          {
+              {"default", {{"key1", "value1\\"}, {"key2", "value2"}}},
+          },
+      },
+
+      // An unterminated escape sequence at the end of a line is silently
+      // ignored. Normally, this would be a line continuation, but the line
+      // continuation logic does not count backslashes and only looks at the
+      // last two characters. This is probably a bug.
+      {
+          R"(
+key1 = value1\\\
+key2 = value2
+)",
+          {
+              {"default", {{"key1", "value1\\"}, {"key2", "value2"}}},
+          },
+      },
+
+      // The above also happens inside a quoted string, even allowing the quoted
+      // string to be unterminated. This is also probably a bug.
+      {
+          R"(
+key1 = "value1\\\
+key2 = value2
+)",
+          {
+              {"default", {{"key1", "value1\\"}, {"key2", "value2"}}},
+          },
+      },
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.in);
