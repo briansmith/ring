@@ -233,7 +233,9 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
       break;
     } else if (*from == '$') {
       // Historically, $foo would expand to a previously-parsed value. This
-      // feature has been removed as it was unused and is a DoS vector.
+      // feature has been removed as it was unused and is a DoS vector. If
+      // trying to embed '$' in a line, either escape it or wrap the value in
+      // quotes.
       OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_EXPANSION_NOT_SUPPORTED);
       goto err;
     } else {
