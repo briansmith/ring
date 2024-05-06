@@ -18,7 +18,7 @@ use crate::{
     c, constant_time, cpu, error,
     polyfill::{self, slice},
 };
-use core::ops::RangeFrom;
+use core::{num::NonZeroUsize, ops::RangeFrom};
 
 #[derive(Clone)]
 pub(super) struct Key {
@@ -98,7 +98,7 @@ macro_rules! ctr32_encrypt_blocks {
             fn $name(
                 input: *const [u8; BLOCK_LEN],
                 output: *mut [u8; BLOCK_LEN],
-                blocks: c::size_t,
+                blocks: c::NonZero_size_t,
                 key: &AES_KEY,
                 ivec: &Counter,
             );
@@ -123,7 +123,7 @@ unsafe fn ctr32_encrypt_blocks(
     f: unsafe extern "C" fn(
         input: *const [u8; BLOCK_LEN],
         output: *mut [u8; BLOCK_LEN],
-        blocks: c::size_t,
+        blocks: c::NonZero_size_t,
         key: &AES_KEY,
         ivec: &Counter,
     ),
@@ -136,10 +136,16 @@ unsafe fn ctr32_encrypt_blocks(
     let (input, leftover) = slice::as_chunks(&in_out[src]);
     debug_assert_eq!(leftover.len(), 0);
 
-    let blocks = input.len();
+    let blocks = match NonZeroUsize::new(input.len()) {
+        Some(blocks) => blocks,
+        None => {
+            return;
+        }
+    };
+
     #[allow(clippy::cast_possible_truncation)]
-    let blocks_u32 = blocks as u32;
-    assert_eq!(blocks, polyfill::usize_from_u32(blocks_u32));
+    let blocks_u32 = blocks.get() as u32;
+    assert_eq!(blocks.get(), polyfill::usize_from_u32(blocks_u32));
 
     let input = input.as_ptr();
     let output: *mut [u8; BLOCK_LEN] = in_out.as_mut_ptr().cast();
@@ -279,11 +285,8 @@ impl Key {
                     // SAFETY:
                     //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
                     //    as required by `bsaes_ctr32_encrypt_blocks_with_vpaes_key`.
-                    //  * `bsaes_ctr32_encrypt_blocks_with_vpaes_key` satisfies the
-                    //     contract for `ctr32_encrypt_blocks`.
                     unsafe {
-                        ctr32_encrypt_blocks(
-                            bsaes_ctr32_encrypt_blocks_with_vpaes_key,
+                        bsaes_ctr32_encrypt_blocks_with_vpaes_key(
                             &mut in_out[..(src.start + bsaes_in_out_len)],
                             src.clone(),
                             &self.inner,
@@ -493,36 +496,18 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
 ///   * Upon returning, `blocks` blocks will have been read from `input` and
 ///     written to `output`.
 #[cfg(target_arch = "arm")]
-unsafe extern "C" fn bsaes_ctr32_encrypt_blocks_with_vpaes_key(
-    input: *const [u8; BLOCK_LEN],
-    output: *mut [u8; BLOCK_LEN],
-    blocks: c::size_t,
+unsafe fn bsaes_ctr32_encrypt_blocks_with_vpaes_key(
+    in_out: &mut [u8],
+    src: RangeFrom<usize>,
     vpaes_key: &AES_KEY,
-    ivec: &Counter,
+    ctr: &mut Counter,
+    cpu_features: cpu::Features,
 ) {
-    use core::num::NonZeroUsize;
-
     prefixed_extern! {
         // bsaes_ctr32_encrypt_blocks requires transformation of an existing
         // VPAES key; there is no `bsaes_set_encrypt_key`.
         fn vpaes_encrypt_key_to_bsaes(bsaes_key: *mut AES_KEY, vpaes_key: &AES_KEY);
-
-        // Unlike other implementations, bsaes_ctr32_encrypt_blocks requires blocks > 0.
-        fn bsaes_ctr32_encrypt_blocks(
-            input: *const [u8; BLOCK_LEN],
-            output: *mut [u8; BLOCK_LEN],
-            blocks: c::NonZero_size_t,
-            key: &AES_KEY,
-            ivec: &Counter,
-        );
     }
-
-    let blocks = match NonZeroUsize::new(blocks) {
-        Some(blocks) => blocks,
-        None => {
-            return;
-        }
-    };
 
     let mut bsaes_key = AES_KEY {
         rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
@@ -542,13 +527,20 @@ unsafe extern "C" fn bsaes_ctr32_encrypt_blocks_with_vpaes_key(
     debug_assert_eq!(bsaes_key.rounds, vpaes_key.rounds + 1);
 
     // SAFETY:
-    //   * `blocks` is non-zero, as it is a `NonZeroUsize`.
-    //   * Our preconditions on `input` and `output` are the same as those of
-    //     `bsaes_ctr32_encrypt_blocks`.
-    //   * `bsaes_key` was initialized by `vpaes_encrypt_key_to_bsaes` as
-    //     required by `bsaes_ctr32_encrypt_blocks`.
-    //   * `bsaes_ctr32_encrypt_blocks` will write `blocks` blocks to `output`.
-    unsafe { bsaes_ctr32_encrypt_blocks(input, output, blocks, &bsaes_key, ivec) }
+    //  * `bsaes_key` is in bsaes format after calling
+    //    `vpaes_encrypt_key_to_bsaes`.
+    //  * `bsaes_ctr32_encrypt_blocks` satisfies the contract for
+    //    `ctr32_encrypt_blocks`.
+    unsafe {
+        ctr32_encrypt_blocks!(
+            bsaes_ctr32_encrypt_blocks,
+            in_out,
+            src,
+            &bsaes_key,
+            ctr,
+            cpu_features
+        );
+    }
 }
 
 #[cfg(test)]
