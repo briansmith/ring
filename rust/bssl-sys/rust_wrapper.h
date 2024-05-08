@@ -16,6 +16,7 @@
 #define OPENSSL_HEADER_RUST_WRAPPER_H
 
 #include <openssl/err.h>
+#include <openssl/bytestring.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -30,7 +31,8 @@ extern "C" {
 int ERR_GET_LIB_RUST(uint32_t packed_error);
 int ERR_GET_REASON_RUST(uint32_t packed_error);
 int ERR_GET_FUNC_RUST(uint32_t packed_error);
-
+void CBS_init_RUST(CBS *cbs, const uint8_t *data, size_t len);
+size_t CBS_len_RUST(const CBS *cbs);
 
 #if defined(__cplusplus)
 }  // extern C
