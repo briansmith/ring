@@ -24,6 +24,8 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use self::{
     dynstate::DynState,
     sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
@@ -33,6 +35,7 @@ use crate::{
     cpu, debug, polyfill,
 };
 use core::num::Wrapping;
+use crate::digest::sha2::{State32, State64};
 
 mod dynstate;
 mod sha1;
@@ -149,7 +152,95 @@ pub struct Context {
     num_pending: usize,
 }
 
+/// Structure to store and restore BlockContext state
+#[derive(Clone)]
+pub struct ContextState {
+    pub name: String,
+    pub data: Vec<u64>,
+}
+
+/// Structure to store and restore Context
+#[derive(Clone)]
+pub struct ContextData {
+    pub state: ContextState,
+    pub completed_bytes: u64,
+    pub algorithm: String,
+    pub num_pending: usize,
+    pub pending: Vec<u8>,
+}
 impl Context {
+    /// Retrieves context data from current context states
+    pub fn serialize(&self) -> ContextData {
+        let (state_name, state_data) = match self.block.state {
+            DynState::As64(as64) => ("as64", as64.iter().map(|w| w.0).collect::<Vec<_>>()),
+            DynState::As32(as32) => ("as32", as32.iter().map(|w| w.0 as u64).collect::<Vec<_>>()),
+        };
+
+        let algo = match self.block.algorithm.id {
+            AlgorithmID::SHA1 => "SHA1",
+            AlgorithmID::SHA256 => "SHA256",
+            AlgorithmID::SHA384 => "SHA384",
+            AlgorithmID::SHA512 => "SHA512",
+            AlgorithmID::SHA512_256 => "SHA512_256",
+        };
+
+        ContextData {
+            completed_bytes: self.block.completed_bytes,
+            state: ContextState {
+                name: state_name.to_string(),
+                data: state_data,
+            },
+            algorithm: algo.to_string(),
+            num_pending: self.num_pending,
+            pending: self.pending.to_vec(),
+        }
+    }
+
+    /// Create context from stored context data
+    pub fn deserialize(data: ContextData) -> Self {
+        let algo = match data.algorithm.as_str() {
+            "SHA1" => &SHA1_FOR_LEGACY_USE_ONLY,
+            "SHA256" => &SHA256,
+            "SHA384" => &SHA384,
+            "SHA512" => &SHA512,
+            "SHA512_256" => &SHA512_256,
+            _ => &SHA256,
+        };
+
+        let mut block = BlockContext::new(algo);
+        block.completed_bytes = data.completed_bytes;
+        block.state = match data.state.name.as_str() {
+            "as64" => {
+                let state: State64 = data
+                    .state
+                    .data
+                    .iter()
+                    .map(|b| Wrapping(*b))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                DynState::As64(state)
+            }
+            _ => {
+                let state: State32 = data
+                    .state
+                    .data
+                    .iter()
+                    .map(|b| Wrapping(*b as u32))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                DynState::As32(state)
+            }
+        };
+
+        Self {
+            block,
+            pending: data.pending.try_into().unwrap(),
+            num_pending: data.num_pending,
+        }
+    }
+
     /// Constructs a new context.
     pub fn new(algorithm: &'static Algorithm) -> Self {
         Self {
