@@ -180,7 +180,7 @@ impl Context {
     pub fn serialize(&self) -> ContextData {
         let (state_name, state_data) = match self.block.state {
             DynState::As64(as64) => ("as64", as64.iter().map(|w| w.0).collect::<Vec<_>>()),
-            DynState::As32(as32) => ("as32", as32.iter().map(|w| w.0 as u64).collect::<Vec<_>>()),
+            DynState::As32(as32) => ("as32", as32.iter().map(|w| u64::from(w.0)).collect::<Vec<_>>()),
         };
 
         let algo = match self.block.algorithm.id {
@@ -233,7 +233,7 @@ impl Context {
                     .state
                     .data
                     .iter()
-                    .map(|b| Wrapping(*b as u32))
+                    .map(|b| Wrapping(u32::try_from(*b).unwrap()))
                     .collect::<Vec<_>>()
                     .try_into()
                     .unwrap();

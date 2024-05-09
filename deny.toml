@@ -6,13 +6,13 @@ version = 2
 allow = [
     "Apache-2.0",
     "ISC",
-    "LicenseRef-ring",
+    "LicenseRef-ringpcx",
     "MIT",
 ]
 confidence-threshold = 1.0
 
 [[licenses.clarify]]
-name = "ring"
+name = "ringpcx"
 expression = "LicenseRef-ring"
 license-files = [
     { path = "LICENSE", hash = 0xbd0eed23 },
