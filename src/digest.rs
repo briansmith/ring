@@ -24,18 +24,18 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use self::{
     dynstate::DynState,
     sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
 };
+use crate::digest::sha2::{State32, State64};
 use crate::{
     bits::{BitLength, FromByteLen as _},
     cpu, debug, polyfill,
 };
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::num::Wrapping;
-use crate::digest::sha2::{State32, State64};
 
 mod dynstate;
 mod sha1;
@@ -155,17 +155,24 @@ pub struct Context {
 /// Structure to store and restore BlockContext state
 #[derive(Clone)]
 pub struct ContextState {
+    /// Field used to determine state enum name
     pub name: String,
+    /// State data
     pub data: Vec<u64>,
 }
 
 /// Structure to store and restore Context
 #[derive(Clone)]
 pub struct ContextData {
+    /// Context state
     pub state: ContextState,
+    /// Completed bytes
     pub completed_bytes: u64,
+    /// Digest algorithm name = AlgorithmID
     pub algorithm: String,
+    /// Number of pending bytes
     pub num_pending: usize,
+    /// Pending bytes
     pub pending: Vec<u8>,
 }
 impl Context {
