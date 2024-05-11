@@ -14,6 +14,54 @@
 
 pub(crate) use self::features::Features;
 
+macro_rules! impl_get_feature {
+    { $feature:path => $T:ident } => {
+        #[derive(Clone, Copy)]
+        pub(crate) struct $T(crate::cpu::Features);
+
+        impl crate::cpu::GetFeature<$T> for super::Features {
+            fn get_feature(&self) -> Option<$T> {
+                if $feature.available(*self) {
+                    Some($T(*self))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+pub(crate) trait GetFeature<T> {
+    fn get_feature(&self) -> Option<T>;
+}
+
+impl<A, B, T> GetFeature<(A, B)> for T
+where
+    T: GetFeature<A>,
+    T: GetFeature<B>,
+{
+    fn get_feature(&self) -> Option<(A, B)> {
+        match (self.get_feature(), self.get_feature()) {
+            (Some(a), Some(b)) => Some((a, b)),
+            _ => None,
+        }
+    }
+}
+
+impl<A, B, C, T> GetFeature<(A, B, C)> for T
+where
+    T: GetFeature<A>,
+    T: GetFeature<B>,
+    T: GetFeature<C>,
+{
+    fn get_feature(&self) -> Option<(A, B, C)> {
+        match (self.get_feature(), self.get_feature(), self.get_feature()) {
+            (Some(a), Some(b), Some(c)) => Some((a, b, c)),
+            _ => None,
+        }
+    }
+}
+
 #[inline(always)]
 pub(crate) fn features() -> Features {
     get_or_init_feature_flags()

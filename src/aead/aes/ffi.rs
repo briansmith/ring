@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Block, KeyBytes, BLOCK_LEN};
-use crate::{bits::BitLength, c, cpu, error, polyfill::slice};
+use crate::{bits::BitLength, c, error, polyfill::slice};
 use core::{num::NonZeroUsize, ops::RangeFrom};
 
 /// nonce || big-endian counter.
@@ -36,7 +36,6 @@ impl AES_KEY {
     pub(super) unsafe fn new(
         f: unsafe extern "C" fn(*const u8, BitLength<c::int>, *mut AES_KEY) -> c::int,
         bytes: KeyBytes<'_>,
-        _cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
         let mut key = Self {
             rd_key: [0; 4 * (MAX_ROUNDS + 1)],
@@ -63,7 +62,6 @@ impl AES_KEY {
     pub(super) unsafe fn derive(
         f: for<'a> unsafe extern "C" fn(*mut AES_KEY, &'a AES_KEY),
         src: &Self,
-        _cpu_features: cpu::Features,
     ) -> Self {
         let mut r = AES_KEY {
             rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
@@ -89,12 +87,12 @@ impl AES_KEY {
 // In BoringSSL, the C prototypes for these are in
 // crypto/fipsmodule/aes/internal.h.
 macro_rules! set_encrypt_key {
-    ( $name:ident, $key_bytes:expr, $cpu_features:expr $(,)? ) => {{
+    ( $name:ident, $key_bytes:expr $(,)? ) => {{
         use crate::{bits::BitLength, c};
         prefixed_extern! {
             fn $name(user_key: *const u8, bits: BitLength<c::int>, key: *mut AES_KEY) -> c::int;
         }
-        $crate::aead::aes::ffi::AES_KEY::new($name, $key_bytes, $cpu_features)
+        $crate::aead::aes::ffi::AES_KEY::new($name, $key_bytes)
     }};
 }
 
@@ -129,7 +127,7 @@ impl AES_KEY {
 ///   * The caller must ensure that fhe function `$name` satisfies the conditions
 ///     for the `f` parameter to `ctr32_encrypt_blocks`.
 macro_rules! ctr32_encrypt_blocks {
-    ($name:ident, $in_out:expr, $src:expr, $key:expr, $ctr:expr, $cpu_features:expr ) => {{
+    ($name:ident, $in_out:expr, $src:expr, $key:expr, $ctr:expr $(,)? ) => {{
         use crate::{
             aead::aes::{ffi::AES_KEY, Counter, BLOCK_LEN},
             c,
@@ -143,7 +141,7 @@ macro_rules! ctr32_encrypt_blocks {
                 ivec: &Counter,
             );
         }
-        $key.ctr32_encrypt_blocks($name, $in_out, $src, $ctr, $cpu_features)
+        $key.ctr32_encrypt_blocks($name, $in_out, $src, $ctr)
     }};
 }
 
@@ -172,7 +170,6 @@ impl AES_KEY {
         in_out: &mut [u8],
         src: RangeFrom<usize>,
         ctr: &mut Counter,
-        cpu_features: cpu::Features,
     ) {
         let (input, leftover) = slice::as_chunks(&in_out[src]);
         debug_assert_eq!(leftover.len(), 0);
@@ -189,8 +186,6 @@ impl AES_KEY {
         let input = input.as_ptr();
         let output: *mut [u8; BLOCK_LEN] = in_out.as_mut_ptr().cast();
 
-        let _: cpu::Features = cpu_features;
-
         // SAFETY:
         //  * `input` points to `blocks` blocks.
         //  * `output` points to space for `blocks` blocks to be written.
@@ -200,8 +195,6 @@ impl AES_KEY {
         //    `blocks` including zero.
         //  * The caller is responsible for ensuring `key` was initialized by the
         //    `set_encrypt_key!` invocation required by `f`.
-        //  * CPU feature detection has been done so `f` can inspect
-        //    CPU features.
         unsafe {
             f(input, output, blocks, self, ctr);
         }
