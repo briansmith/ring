@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use cfg_if::cfg_if;
+
 mod abi_assumptions {
     // TOOD: Support targets that do not have SSE and SSE2 enabled, such as
     // x86_64-unknown-linux-none. See
@@ -118,22 +120,32 @@ pub(crate) const SSE41: Feature = Feature {
     mask: 1 << 19,
 };
 
-#[cfg(target_arch = "x86_64")]
-pub(crate) const MOVBE: Feature = Feature {
-    word: 1,
-    mask: 1 << 22,
-};
-
 pub(crate) const AES: Feature = Feature {
     word: 1,
     mask: 1 << 25,
 };
 
-#[cfg(target_arch = "x86_64")]
-pub(crate) const AVX: Feature = Feature {
-    word: 1,
-    mask: 1 << 28,
-};
+impl_get_feature! { AES => Aes }
+impl_get_feature! { FXSR => Fxsr }
+impl_get_feature! { PCLMULQDQ => ClMul }
+impl_get_feature! { SSSE3 => Ssse3 }
+
+cfg_if! {
+    if #[cfg(any(target_arch = "x86_64"))] {
+        pub(crate) const MOVBE: Feature = Feature {
+            word: 1,
+            mask: 1 << 22,
+        };
+
+        pub(crate) const AVX: Feature = Feature {
+            word: 1,
+            mask: 1 << 28,
+        };
+
+        impl_get_feature!{ MOVBE => Movbe }
+        impl_get_feature!{ AVX => Avx }
+    }
+}
 
 #[cfg(all(target_arch = "x86_64", test))]
 mod x86_64_tests {

@@ -82,6 +82,15 @@
     clippy::cast_precision_loss,
     clippy::cast_sign_loss
 )]
+#![cfg_attr(
+    not(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    )),
+    allow(dead_code, unused_imports, unused_macros)
+)]
 #![no_std]
 
 #[cfg(feature = "alloc")]

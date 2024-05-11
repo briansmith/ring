@@ -22,48 +22,110 @@ use crate::{
 };
 use core::ops::RangeFrom;
 
+#[cfg(target_arch = "x86_64")]
+use aes::EncryptCtr32 as _;
+
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
+use cpu::GetFeature as _;
+
 #[derive(Clone)]
-pub struct Key {
-    gcm_key: gcm::Key, // First because it has a large alignment requirement.
-    aes_key: aes::Key,
-}
+pub(super) struct Key(DynKey);
 
 impl Key {
     pub(super) fn new(
         key: aes::KeyBytes,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
-        let aes_key = aes::Key::new(key, cpu_features)?;
-        let gcm_key = gcm::Key::new(
-            aes_key.encrypt_block(ZERO_BLOCK, cpu_features),
-            cpu_features,
-        );
-        Ok(Self { gcm_key, aes_key })
+        Ok(Self(DynKey::new(key, cpu_features)?))
     }
+}
+
+#[derive(Clone)]
+enum DynKey {
+    #[cfg(target_arch = "x86_64")]
+    AesHwClMulAvxMovbe(Combo<aes::hw::Key, gcm::clmulavxmovbe::Key>),
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
+    AesHwClMul(Combo<aes::hw::Key, gcm::clmul::Key>),
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+    Simd(Combo<aes::vp::Key, gcm::neon::Key>),
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    Simd(Combo<aes::vp::Key, gcm::fallback::Key>),
+
+    Fallback(Combo<aes::fallback::Key, gcm::fallback::Key>),
+}
+
+impl DynKey {
+    fn new(key: aes::KeyBytes, cpu_features: cpu::Features) -> Result<Self, error::Unspecified> {
+        #[cfg(target_arch = "x86_64")]
+        if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
+            let aes_key = aes::hw::Key::new(key, aes)?;
+            let gcm_key_value = derive_gcm_key_value(&aes_key);
+            let gcm_key = gcm::clmulavxmovbe::Key::new(gcm_key_value, gcm);
+            return Ok(Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }));
+        }
+
+        #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
+        if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
+            let aes_key = aes::hw::Key::new(key, aes)?;
+            let gcm_key_value = derive_gcm_key_value(&aes_key);
+            let gcm_key = gcm::clmul::Key::new(gcm_key_value, gcm);
+            return Ok(Self::AesHwClMul(Combo { aes_key, gcm_key }));
+        }
+
+        #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+        if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
+            let aes_key = aes::vp::Key::new(key, aes)?;
+            let gcm_key_value = derive_gcm_key_value(&aes_key);
+            let gcm_key = gcm::neon::Key::new(gcm_key_value, gcm);
+            return Ok(Self::Simd(Combo { aes_key, gcm_key }));
+        }
+
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        if let Some(aes) = cpu_features.get_feature() {
+            let aes_key = aes::vp::Key::new(key, aes)?;
+            let gcm_key_value = derive_gcm_key_value(&aes_key);
+            let gcm_key = gcm::fallback::Key::new(gcm_key_value);
+            return Ok(Self::Simd(Combo { aes_key, gcm_key }));
+        }
+
+        let _ = cpu_features;
+
+        let aes_key = aes::fallback::Key::new(key)?;
+        let gcm_key_value = derive_gcm_key_value(&aes_key);
+        let gcm_key = gcm::fallback::Key::new(gcm_key_value);
+        Ok(Self::Fallback(Combo { aes_key, gcm_key }))
+    }
+}
+
+fn derive_gcm_key_value(aes_key: &impl aes::EncryptBlock) -> gcm::KeyValue {
+    gcm::KeyValue::new(aes_key.encrypt_block(ZERO_BLOCK))
 }
 
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
+#[inline(never)]
 pub(super) fn seal(
-    key: &Key,
+    Key(key): &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
-    cpu_features: cpu::Features,
 ) -> Result<Tag, error::Unspecified> {
-    let Key { gcm_key, aes_key } = key;
-
-    let mut auth = gcm::Context::new(gcm_key, aad, in_out.len(), cpu_features)?;
-
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
 
-    #[cfg(target_arch = "x86_64")]
-    let in_out = {
-        if !aes_key.is_aes_hw(cpu_features) || !auth.is_avx() {
-            in_out
-        } else {
+    match key {
+        #[cfg(target_arch = "x86_64")]
+        DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
             use crate::c;
+            let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
             let (htable, xi) = auth.inner();
             prefixed_extern! {
                 // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
@@ -89,26 +151,27 @@ pub(super) fn seal(
                 )
             };
 
-            match in_out.get_mut(processed..) {
+            let ramaining = match in_out.get_mut(processed..) {
                 Some(remaining) => remaining,
                 None => {
                     // This can't happen. If it did, then the assembly already
                     // caused a buffer overflow.
                     unreachable!()
                 }
-            }
+            };
+            let (whole, remainder) = slice::as_chunks_mut(ramaining);
+            aes_key.ctr32_encrypt_within(slice::flatten_mut(whole), 0.., &mut ctr);
+            auth.update_blocks(whole);
+            seal_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
-    };
 
-    let (whole, remainder) = slice::as_chunks_mut(in_out);
-
-    #[cfg(target_arch = "aarch64")]
-    let whole = {
-        if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
-            whole
-        } else {
+        #[cfg(target_arch = "aarch64")]
+        DynKey::AesHwClMul(Combo { aes_key, gcm_key }) => {
             use crate::bits::BitLength;
 
+            let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
+
+            let (whole, remainder) = slice::as_chunks_mut(in_out);
             let whole_block_bits = auth.in_out_whole_block_bits();
             let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
             if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
@@ -137,20 +200,54 @@ pub(super) fn seal(
                     )
                 }
             }
-
-            &mut []
+            seal_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
-    };
+
+        #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+        DynKey::AesHwClMul(c) => seal_strided(c, aad, in_out, ctr, tag_iv),
+
+        #[cfg(any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86_64",
+            target_arch = "x86"
+        ))]
+        DynKey::Simd(c) => seal_strided(c, aad, in_out, ctr, tag_iv),
+
+        DynKey::Fallback(c) => seal_strided(c, aad, in_out, ctr, tag_iv),
+    }
+}
+
+fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks + gcm::Gmult>(
+    Combo { aes_key, gcm_key }: &Combo<A, G>,
+    aad: Aad<&[u8]>,
+    in_out: &mut [u8],
+    mut ctr: Counter,
+    tag_iv: aes::Iv,
+) -> Result<Tag, error::Unspecified> {
+    let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
+
+    let (whole, remainder) = slice::as_chunks_mut(in_out);
 
     for chunk in whole.chunks_mut(CHUNK_BLOCKS) {
-        aes_key.ctr32_encrypt_within(slice::flatten_mut(chunk), 0.., &mut ctr, cpu_features);
+        aes_key.ctr32_encrypt_within(slice::flatten_mut(chunk), 0.., &mut ctr);
         auth.update_blocks(chunk);
     }
 
+    seal_finish(aes_key, auth, remainder, ctr, tag_iv)
+}
+
+fn seal_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
+    aes_key: &A,
+    mut auth: gcm::Context<G>,
+    remainder: &mut [u8],
+    ctr: Counter,
+    tag_iv: aes::Iv,
+) -> Result<Tag, error::Unspecified> {
     if !remainder.is_empty() {
         let mut input = ZERO_BLOCK;
         overwrite_at_start(&mut input, remainder);
-        let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input, cpu_features);
+        let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input);
         output[remainder.len()..].fill(0);
         auth.update_block(output);
         overwrite_at_start(remainder, &output);
@@ -159,36 +256,26 @@ pub(super) fn seal(
     Ok(finish(aes_key, auth, tag_iv))
 }
 
+#[inline(never)]
 pub(super) fn open(
-    key: &Key,
+    Key(key): &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     src: RangeFrom<usize>,
-    cpu_features: cpu::Features,
 ) -> Result<Tag, error::Unspecified> {
-    let Key { gcm_key, aes_key } = key;
-
-    let mut auth = {
-        let unprefixed_len = in_out
-            .len()
-            .checked_sub(src.start)
-            .ok_or(error::Unspecified)?;
-        gcm::Context::new(gcm_key, aad, unprefixed_len, cpu_features)
-    }?;
+    // Check that `src` is in bounds.
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    let input = in_out.get(src.clone()).ok_or(error::Unspecified)?;
 
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
 
-    let in_prefix_len = src.start;
-
-    #[cfg(target_arch = "x86_64")]
-    let in_out = {
-        if !aes_key.is_aes_hw(cpu_features) || !auth.is_avx() {
-            in_out
-        } else {
+    match key {
+        #[cfg(target_arch = "x86_64")]
+        DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
             use crate::c;
-            let (htable, xi) = auth.inner();
+
             prefixed_extern! {
                 // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
                 // assembly says it needs just nine values in that array.
@@ -202,6 +289,8 @@ pub(super) fn open(
                     Xi: &mut gcm::Xi) -> c::size_t;
             }
 
+            let mut auth = gcm::Context::new(gcm_key, aad, input.len())?;
+            let (htable, xi) = auth.inner();
             let processed = unsafe {
                 aesni_gcm_decrypt(
                     in_out[src.clone()].as_ptr(),
@@ -213,23 +302,47 @@ pub(super) fn open(
                     xi,
                 )
             };
-            match in_out.get_mut(processed..) {
+            let in_out = match in_out.get_mut(processed..) {
                 Some(remaining) => remaining,
                 None => {
                     // This can't happen. If it did, then the assembly already
                     // caused a buffer overflow.
                     unreachable!()
                 }
-            }
-        }
-    };
+            };
+            // Authenticate any remaining whole blocks.
+            let input = match in_out.get(src.clone()) {
+                Some(remaining_input) => remaining_input,
+                None => unreachable!(),
+            };
+            let (whole, _) = slice::as_chunks(input);
+            auth.update_blocks(whole);
 
-    #[cfg(target_arch = "aarch64")]
-    let in_out = {
-        if !aes_key.is_aes_hw(cpu_features) || !auth.is_clmul() {
-            in_out
-        } else {
+            let whole_len = slice::flatten(whole).len();
+
+            // Decrypt any remaining whole blocks.
+            aes_key.ctr32_encrypt_within(
+                &mut in_out[..(src.start + whole_len)],
+                src.clone(),
+                &mut ctr,
+            );
+
+            let in_out = match in_out.get_mut(whole_len..) {
+                Some(partial) => partial,
+                None => unreachable!(),
+            };
+            open_finish(aes_key, auth, in_out, src, ctr, tag_iv)
+        }
+
+        #[cfg(target_arch = "aarch64")]
+        DynKey::AesHwClMul(Combo { aes_key, gcm_key }) => {
             use crate::bits::BitLength;
+
+            let input_len = input.len();
+            let mut auth = gcm::Context::new(gcm_key, aad, input_len)?;
+
+            let remainder_len = input_len % BLOCK_LEN;
+            let whole_len = input_len - remainder_len;
 
             let whole_block_bits = auth.in_out_whole_block_bits();
             let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
@@ -260,15 +373,43 @@ pub(super) fn open(
                     )
                 }
             }
-
-            &mut in_out[whole_block_bits.as_usize_bytes_rounded_up()..]
+            let remainder = &mut in_out[whole_len..];
+            open_finish(aes_key, auth, remainder, src, ctr, tag_iv)
         }
-    };
 
-    let whole_len = {
-        let in_out_len = in_out.len() - in_prefix_len;
-        in_out_len - (in_out_len % BLOCK_LEN)
-    };
+        #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+        DynKey::AesHwClMul(c) => open_strided(c, aad, in_out, src, ctr, tag_iv),
+
+        #[cfg(any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86_64",
+            target_arch = "x86"
+        ))]
+        DynKey::Simd(c) => open_strided(c, aad, in_out, src, ctr, tag_iv),
+
+        DynKey::Fallback(c) => open_strided(c, aad, in_out, src, ctr, tag_iv),
+    }
+}
+
+#[inline(always)]
+fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks + gcm::Gmult>(
+    Combo { aes_key, gcm_key }: &Combo<A, G>,
+    aad: Aad<&[u8]>,
+    in_out: &mut [u8],
+    src: RangeFrom<usize>,
+    mut ctr: Counter,
+    tag_iv: aes::Iv,
+) -> Result<Tag, error::Unspecified> {
+    let input = in_out.get(src.clone()).ok_or(error::Unspecified)?;
+    let input_len = input.len();
+
+    let mut auth = gcm::Context::new(gcm_key, aad, input_len)?;
+
+    let remainder_len = input_len % BLOCK_LEN;
+    let whole_len = input_len - remainder_len;
+    let in_prefix_len = src.start;
+
     {
         let mut chunk_len = CHUNK_BLOCKS * BLOCK_LEN;
         let mut output = 0;
@@ -290,29 +431,40 @@ pub(super) fn open(
                 &mut in_out[output..][..(chunk_len + in_prefix_len)],
                 in_prefix_len..,
                 &mut ctr,
-                cpu_features,
             );
             output += chunk_len;
             input += chunk_len;
         }
     }
 
-    let remainder = &mut in_out[whole_len..];
-    shift::shift_partial((in_prefix_len, remainder), |remainder| {
+    open_finish(aes_key, auth, &mut in_out[whole_len..], src, ctr, tag_iv)
+}
+
+fn open_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
+    aes_key: &A,
+    mut auth: gcm::Context<G>,
+    remainder: &mut [u8],
+    src: RangeFrom<usize>,
+    ctr: Counter,
+    tag_iv: aes::Iv,
+) -> Result<Tag, error::Unspecified> {
+    shift::shift_partial((src.start, remainder), |remainder| {
         let mut input = ZERO_BLOCK;
         overwrite_at_start(&mut input, remainder);
         auth.update_block(input);
-        aes_key.encrypt_iv_xor_block(ctr.into(), input, cpu_features)
+        aes_key.encrypt_iv_xor_block(ctr.into(), input)
     });
 
     Ok(finish(aes_key, auth, tag_iv))
 }
 
-fn finish(aes_key: &aes::Key, gcm_ctx: gcm::Context, tag_iv: aes::Iv) -> Tag {
+fn finish<A: aes::EncryptBlock, G: gcm::Gmult>(
+    aes_key: &A,
+    gcm_ctx: gcm::Context<G>,
+    tag_iv: aes::Iv,
+) -> Tag {
     // Finalize the tag and return it.
-    gcm_ctx.pre_finish(|pre_tag, cpu_features| {
-        Tag(aes_key.encrypt_iv_xor_block(tag_iv, pre_tag, cpu_features))
-    })
+    gcm_ctx.pre_finish(|pre_tag| Tag(aes_key.encrypt_iv_xor_block(tag_iv, pre_tag)))
 }
 
 pub(super) const MAX_IN_OUT_LEN: usize = super::max_input_len(BLOCK_LEN, 2);
@@ -326,3 +478,9 @@ pub(super) const MAX_IN_OUT_LEN: usize = super::max_input_len(BLOCK_LEN, 2);
 // [RFC 5116 Section 5.2]: https://tools.ietf.org/html/rfc5116#section-5.2
 const _MAX_INPUT_LEN_BOUNDED_BY_NIST: () =
     assert!(MAX_IN_OUT_LEN == usize_from_u64_saturated(((1u64 << 39) - 256) / 8));
+
+#[derive(Copy, Clone)]
+pub(super) struct Combo<Aes, Gcm> {
+    pub(super) aes_key: Aes,
+    pub(super) gcm_key: Gcm,
+}

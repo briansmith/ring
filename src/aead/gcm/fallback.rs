@@ -1,5 +1,5 @@
 // Copyright (c) 2019, Google Inc.
-// Portions Copyright 2020 Brian Smith.
+// Portions Copyright 2020-2024 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -22,8 +22,31 @@
 //
 // Unlike the BearSSL notes, we use u128 in the 64-bit implementation.
 
-use super::{ffi::U128, Xi, BLOCK_LEN};
+use super::{ffi::U128, Gmult, KeyValue, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::polyfill::ArraySplitMap as _;
+
+#[derive(Clone)]
+pub struct Key {
+    h: U128,
+}
+
+impl Key {
+    pub(in super::super) fn new(value: KeyValue) -> Self {
+        Self { h: init(value) }
+    }
+}
+
+impl Gmult for Key {
+    fn gmult(&self, xi: &mut Xi) {
+        gmult(xi, self.h);
+    }
+}
+
+impl UpdateBlocks for Key {
+    fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]) {
+        ghash(xi, self.h, input);
+    }
+}
 
 #[cfg(target_pointer_width = "64")]
 fn gcm_mul64_nohw(a: u64, b: u64) -> (u64, u64) {
@@ -138,7 +161,9 @@ fn gcm_mul64_nohw(a: u64, b: u64) -> (u64, u64) {
     (lo ^ (mid << 32), hi ^ (mid >> 32))
 }
 
-pub(super) fn init(xi: [u64; 2]) -> U128 {
+fn init(value: KeyValue) -> U128 {
+    let xi = value.into_inner();
+
     // We implement GHASH in terms of POLYVAL, as described in RFC 8452. This
     // avoids a shift by 1 in the multiplication, needed to account for bit
     // reversal losing a bit after multiplication, that is,
@@ -217,13 +242,13 @@ fn gcm_polyval_nohw(xi: &mut [u64; 2], h: U128) {
     *xi = [r2, r3];
 }
 
-pub(super) fn gmult(xi: &mut Xi, h: U128) {
+fn gmult(xi: &mut Xi, h: U128) {
     with_swapped_xi(xi, |swapped| {
         gcm_polyval_nohw(swapped, h);
     })
 }
 
-pub(super) fn ghash(xi: &mut Xi, h: U128, input: &[[u8; BLOCK_LEN]]) {
+fn ghash(xi: &mut Xi, h: U128, input: &[[u8; BLOCK_LEN]]) {
     with_swapped_xi(xi, |swapped| {
         input.iter().for_each(|&input| {
             let input = input.array_split_map(u64::from_be_bytes);

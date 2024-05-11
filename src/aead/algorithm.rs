@@ -187,13 +187,13 @@ fn aes_gcm_seal(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
-    cpu_features: cpu::Features,
+    _cpu_features: cpu::Features,
 ) -> Result<Tag, error::Unspecified> {
     let key = match key {
         KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
     };
-    aes_gcm::seal(key, nonce, aad, in_out, cpu_features)
+    aes_gcm::seal(key, nonce, aad, in_out)
 }
 
 pub(super) fn aes_gcm_open(
@@ -202,13 +202,13 @@ pub(super) fn aes_gcm_open(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     src: RangeFrom<usize>,
-    cpu_features: cpu::Features,
+    _cpu_features: cpu::Features,
 ) -> Result<Tag, error::Unspecified> {
     let key = match key {
         KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
     };
-    aes_gcm::open(key, nonce, aad, in_out, src, cpu_features)
+    aes_gcm::open(key, nonce, aad, in_out, src)
 }
 
 /// ChaCha20-Poly1305 as described in [RFC 8439].

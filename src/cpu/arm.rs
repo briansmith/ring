@@ -63,7 +63,7 @@ cfg_if::cfg_if! {
 macro_rules! features {
     {
         $(
-            $target_feature_name:expr => $name:ident {
+            $target_feature_name:expr => $TyName:ident($name:ident) {
                 mask: $mask:expr,
             }
         ),+
@@ -74,6 +74,7 @@ macro_rules! features {
             pub(crate) const $name: Feature = Feature {
                 mask: $mask,
             };
+            impl_get_feature!{ $name => $TyName }
         )+
 
         // See const assertions below.
@@ -115,17 +116,17 @@ impl Feature {
 #[cfg(target_arch = "aarch64")]
 features! {
     // Keep in sync with `ARMV7_NEON`.
-    "neon" => NEON {
+    "neon" => Neon(NEON) {
         mask: 1 << 0,
     },
 
     // Keep in sync with `ARMV8_AES`.
-    "aes" => AES {
+    "aes" => Aes(AES) {
         mask: 1 << 2,
     },
 
     // Keep in sync with `ARMV8_SHA256`.
-    "sha2" => SHA256 {
+    "sha2" => Sha256(SHA256) {
         mask: 1 << 4,
     },
 
@@ -137,13 +138,13 @@ features! {
     // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
     // "Features introduced prior to 2020." Change this to use "pmull" when
     // that is supported.
-    "aes" => PMULL {
+    "aes" => PMull(PMULL) {
         mask: 1 << 5,
     },
 
     // Keep in sync with `ARMV8_SHA512`.
     // "sha3" is overloaded for both SHA-3 and SHA512.
-    "sha3" => SHA512 {
+    "sha3" => Sha512(SHA512) {
         mask: 1 << 6,
     },
 }
@@ -151,7 +152,7 @@ features! {
 #[cfg(target_arch = "arm")]
 features! {
     // Keep in sync with `ARMV7_NEON`.
-    "neon" => NEON {
+    "neon" => Neon(NEON) {
         mask: 1 << 0,
     },
 }

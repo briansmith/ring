@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::constant_time;
+use crate::{constant_time, polyfill::ArraySplitMap};
 
 pub(in super::super) const BLOCK_LEN: usize = 16;
 pub(in super::super) type Block = [u8; BLOCK_LEN];
@@ -25,12 +25,12 @@ pub(super) const ZERO_BLOCK: Block = [0u8; BLOCK_LEN];
     target_arch = "x86_64"
 ))]
 macro_rules! htable_new {
-    ( $name:ident, $input:expr, $cpu_features:expr ) => {{
+    ( $name:ident, $value:expr $(,)? ) => {{
         use crate::aead::gcm::ffi::HTable;
         prefixed_extern! {
             fn $name(HTable: &mut HTable, h: &[u64; 2]);
         }
-        HTable::new($name, $input)
+        HTable::new($name, $value)
     }};
 }
 
@@ -41,12 +41,12 @@ macro_rules! htable_new {
     target_arch = "x86_64"
 ))]
 macro_rules! gmult {
-    ( $name:ident, $xi:expr, $h_table:expr, $cpu_features:expr ) => {{
+    ( $name:ident, $xi:expr, $h_table:expr $(,)? ) => {{
         use crate::aead::gcm::ffi::{HTable, Xi};
         prefixed_extern! {
             fn $name(xi: &mut Xi, Htable: &HTable);
         }
-        $h_table.gmult($name, $xi, $cpu_features)
+        $h_table.gmult($name, $xi)
     }};
 }
 
@@ -60,7 +60,7 @@ macro_rules! gmult {
     target_arch = "x86_64"
 ))]
 macro_rules! ghash {
-    ( $name:ident, $xi:expr, $h_table:expr, $input:expr, $cpu_features:expr ) => {{
+    ( $name:ident, $xi:expr, $h_table:expr, $input:expr $(,)? ) => {{
         use crate::aead::gcm::ffi::{HTable, Xi};
         prefixed_extern! {
             fn $name(
@@ -70,8 +70,20 @@ macro_rules! ghash {
                 len: crate::c::NonZero_size_t,
             );
         }
-        $h_table.ghash($name, $xi, $input, $cpu_features)
+        $h_table.ghash($name, $xi, $input)
     }};
+}
+
+pub(in super::super) struct KeyValue([u64; 2]);
+
+impl KeyValue {
+    pub(in super::super) fn new(value: Block) -> Self {
+        Self(value.array_split_map(u64::from_be_bytes))
+    }
+
+    pub(super) fn into_inner(self) -> [u64; 2] {
+        self.0
+    }
 }
 
 /// SAFETY:
@@ -86,13 +98,13 @@ macro_rules! ghash {
 ))]
 impl HTable {
     pub(super) unsafe fn new(
-        init: unsafe extern "C" fn(HTable: &mut HTable, h: &[u64; 2]),
-        value: &[u64; 2],
+        init: unsafe extern "C" fn(HTable: &mut HTable, &[u64; 2]),
+        value: KeyValue,
     ) -> Self {
         let mut r = Self {
             Htable: [U128 { hi: 0, lo: 0 }; HTABLE_LEN],
         };
-        unsafe { init(&mut r, value) };
+        unsafe { init(&mut r, &value.0) };
         r
     }
 
@@ -100,7 +112,6 @@ impl HTable {
         &self,
         f: unsafe extern "C" fn(xi: &mut Xi, h_table: &HTable),
         xi: &mut Xi,
-        _cpu_features: crate::cpu::Features,
     ) {
         unsafe { f(xi, self) }
     }
@@ -115,7 +126,6 @@ impl HTable {
         ),
         xi: &mut Xi,
         input: &[[u8; BLOCK_LEN]],
-        cpu_features: crate::cpu::Features,
     ) {
         use crate::polyfill::slice;
         use core::num::NonZeroUsize;
@@ -129,28 +139,12 @@ impl HTable {
             }
         };
 
-        let _: crate::cpu::Features = cpu_features;
         // SAFETY:
         //  * There are `input_len: NonZeroUsize` bytes available at `input` for
         //    `f` to read.
-        //  * CPU feature detection has been done.
         unsafe {
             f(xi, self, input.as_ptr(), input_len);
         }
-    }
-}
-
-impl HTable {
-    pub(super) fn new_single_entry(first_entry: U128) -> Self {
-        let mut r = Self {
-            Htable: [U128 { hi: 0, lo: 0 }; HTABLE_LEN],
-        };
-        r.Htable[0] = first_entry;
-        r
-    }
-
-    pub(super) fn first_entry(&self) -> U128 {
-        self.Htable[0]
     }
 }
 
@@ -177,10 +171,5 @@ impl Xi {
     #[inline]
     pub(super) fn bitxor_assign(&mut self, a: Block) {
         self.0 = constant_time::xor_16(self.0, a)
-    }
-
-    #[inline]
-    pub(super) fn into_block(self) -> Block {
-        self.0
     }
 }
