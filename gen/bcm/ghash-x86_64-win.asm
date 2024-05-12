@@ -1246,6 +1246,7 @@ $L$SEH_info_gcm_init_clmul_0:
 	DB	$L$SEH_prologue_gcm_init_clmul_2-$L$SEH_begin_gcm_init_clmul_1
 	DB	34
 
+	DW	0
 $L$SEH_info_gcm_ghash_clmul_0:
 	DB	1
 	DB	$L$SEH_endprologue_gcm_ghash_clmul_13-$L$SEH_begin_gcm_ghash_clmul_1
@@ -1296,6 +1297,7 @@ $L$SEH_info_gcm_init_avx_0:
 	DB	$L$SEH_prologue_gcm_init_avx_2-$L$SEH_begin_gcm_init_avx_1
 	DB	34
 
+	DW	0
 $L$SEH_info_gcm_ghash_avx_0:
 	DB	1
 	DB	$L$SEH_endprologue_gcm_ghash_avx_13-$L$SEH_begin_gcm_ghash_avx_1

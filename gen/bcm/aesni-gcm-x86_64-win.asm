@@ -1039,6 +1039,7 @@ $L$SEH_info_aesni_gcm_decrypt_0:
 	DB	$L$SEH_prologue_aesni_gcm_decrypt_2-$L$SEH_begin_aesni_gcm_decrypt_1
 	DB	80
 
+	DW	0
 $L$SEH_info_aesni_gcm_encrypt_0:
 	DB	1
 	DB	$L$SEH_endprologue_aesni_gcm_encrypt_22-$L$SEH_begin_aesni_gcm_encrypt_1
@@ -1097,6 +1098,8 @@ $L$SEH_info_aesni_gcm_encrypt_0:
 	DB	48
 	DB	$L$SEH_prologue_aesni_gcm_encrypt_2-$L$SEH_begin_aesni_gcm_encrypt_1
 	DB	80
+
+	DW	0
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

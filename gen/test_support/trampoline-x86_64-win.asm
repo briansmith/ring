@@ -698,6 +698,7 @@ $L$SEH_info_abi_test_bad_unwind_wrong_register_0:
 	DB	$L$SEH_prologue_abi_test_bad_unwind_wrong_register_2-$L$SEH_begin_abi_test_bad_unwind_wrong_register_1
 	DB	208
 
+	DW	0
 $L$SEH_info_abi_test_bad_unwind_temporary_0:
 	DB	1
 	DB	$L$SEH_endprologue_abi_test_bad_unwind_temporary_3-$L$SEH_begin_abi_test_bad_unwind_temporary_1
@@ -706,6 +707,7 @@ $L$SEH_info_abi_test_bad_unwind_temporary_0:
 	DB	$L$SEH_prologue_abi_test_bad_unwind_temporary_2-$L$SEH_begin_abi_test_bad_unwind_temporary_1
 	DB	192
 
+	DW	0
 $L$SEH_info_abi_test_bad_unwind_epilog_0:
 	DB	1
 	DB	$L$SEH_endprologue_abi_test_bad_unwind_epilog_3-$L$SEH_begin_abi_test_bad_unwind_epilog_1
@@ -713,6 +715,8 @@ $L$SEH_info_abi_test_bad_unwind_epilog_0:
 	DB	0
 	DB	$L$SEH_prologue_abi_test_bad_unwind_epilog_2-$L$SEH_begin_abi_test_bad_unwind_epilog_1
 	DB	192
+
+	DW	0
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

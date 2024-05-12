@@ -903,6 +903,16 @@ $info{info_label}:
 $info{unwind_codes}
 ____
 
+	# UNWIND_INFOs must be 4-byte aligned. If needed, we must add an extra
+	# unwind code. This does not change the unwind code count. Windows
+	# documentation says "For alignment purposes, this array always has an
+	# even number of entries, and the final entry is potentially unused. In
+	# that case, the array is one longer than indicated by the count of
+	# unwind codes field."
+	if ($info{num_codes} & 1) {
+	    $xdata .= "\t.value\t0\n";
+	}
+
 	%info = ();
 	return $end_label;
     }
