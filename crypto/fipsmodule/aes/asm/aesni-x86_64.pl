@@ -3190,9 +3190,12 @@ $code.=<<___;
 .align	16
 ${PREFIX}_set_decrypt_key:
 .cfi_startproc
+.seh_startproc
 	_CET_ENDBR
-	.byte	0x48,0x83,0xEC,0x08	# sub rsp,8
+	sub	\$8,%rsp
 .cfi_adjust_cfa_offset	8
+.seh_stackalloc	8
+.seh_endprologue
 	call	__aesni_set_encrypt_key
 	shl	\$4,$bits		# rounds-1 after _aesni_set_encrypt_key
 	test	%eax,%eax
@@ -3228,7 +3231,7 @@ ${PREFIX}_set_decrypt_key:
 .cfi_adjust_cfa_offset	-8
 	ret
 .cfi_endproc
-.LSEH_end_set_decrypt_key:
+.seh_endproc
 .size	${PREFIX}_set_decrypt_key,.-${PREFIX}_set_decrypt_key
 ___
 
@@ -3263,12 +3266,15 @@ $code.=<<___;
 ${PREFIX}_set_encrypt_key:
 __aesni_set_encrypt_key:
 .cfi_startproc
+.seh_startproc
 	_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 	movb \$1,BORINGSSL_function_hit+3(%rip)
 #endif
-	.byte	0x48,0x83,0xEC,0x08	# sub rsp,8
+	sub	\$8,%rsp
 .cfi_adjust_cfa_offset	8
+.seh_stackalloc	8
+.seh_endprologue
 	mov	\$-1,%rax
 	test	$inp,$inp
 	jz	.Lenc_key_ret
@@ -3565,7 +3571,7 @@ __aesni_set_encrypt_key:
 .cfi_adjust_cfa_offset	-8
 	ret
 .cfi_endproc
-.LSEH_end_set_encrypt_key:
+.seh_endproc
 
 .align	16
 .Lkey_expansion_128:
@@ -3926,14 +3932,6 @@ $code.=<<___;
 	.rva	.LSEH_begin_${PREFIX}_cbc_encrypt
 	.rva	.LSEH_end_${PREFIX}_cbc_encrypt
 	.rva	.LSEH_info_cbc
-
-	.rva	${PREFIX}_set_decrypt_key
-	.rva	.LSEH_end_set_decrypt_key
-	.rva	.LSEH_info_key
-
-	.rva	${PREFIX}_set_encrypt_key
-	.rva	.LSEH_end_set_encrypt_key
-	.rva	.LSEH_info_key
 .section	.xdata
 .align	8
 ___
@@ -3951,9 +3949,6 @@ $code.=<<___;
 .LSEH_info_cbc:
 	.byte	9,0,0,0
 	.rva	cbc_se_handler
-.LSEH_info_key:
-	.byte	0x01,0x04,0x01,0x00
-	.byte	0x04,0x02,0x00,0x00	# sub rsp,8
 ___
 }
 

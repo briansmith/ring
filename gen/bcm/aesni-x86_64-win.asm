@@ -2017,9 +2017,12 @@ global	aes_hw_set_decrypt_key
 ALIGN	16
 aes_hw_set_decrypt_key:
 
+$L$SEH_begin_aes_hw_set_decrypt_key_1:
 _CET_ENDBR
-	DB	0x48,0x83,0xEC,0x08
+	sub	rsp,8
 
+$L$SEH_prologue_aes_hw_set_decrypt_key_2:
+$L$SEH_endprologue_aes_hw_set_decrypt_key_3:
 	call	__aesni_set_encrypt_key
 	shl	edx,4
 	test	eax,eax
@@ -2055,7 +2058,7 @@ $L$dec_key_ret:
 
 	ret
 
-$L$SEH_end_set_decrypt_key:
+$L$SEH_end_aes_hw_set_decrypt_key_4:
 
 global	aes_hw_set_encrypt_key
 
@@ -2063,12 +2066,15 @@ ALIGN	16
 aes_hw_set_encrypt_key:
 __aesni_set_encrypt_key:
 
+$L$SEH_begin_aes_hw_set_encrypt_key_1:
 _CET_ENDBR
 %ifdef BORINGSSL_DISPATCH_TEST
 	mov	BYTE[((BORINGSSL_function_hit+3))],1
 %endif
-	DB	0x48,0x83,0xEC,0x08
+	sub	rsp,8
 
+$L$SEH_prologue_aes_hw_set_encrypt_key_2:
+$L$SEH_endprologue_aes_hw_set_encrypt_key_3:
 	mov	rax,-1
 	test	rcx,rcx
 	jz	NEAR $L$enc_key_ret
@@ -2365,7 +2371,7 @@ $L$enc_key_ret:
 
 	ret
 
-$L$SEH_end_set_encrypt_key:
+$L$SEH_end_aes_hw_set_encrypt_key_4:
 
 ALIGN	16
 $L$key_expansion_128:
@@ -2646,14 +2652,6 @@ ALIGN	4
 	DD	$L$SEH_begin_aes_hw_cbc_encrypt wrt ..imagebase
 	DD	$L$SEH_end_aes_hw_cbc_encrypt wrt ..imagebase
 	DD	$L$SEH_info_cbc wrt ..imagebase
-
-	DD	aes_hw_set_decrypt_key wrt ..imagebase
-	DD	$L$SEH_end_set_decrypt_key wrt ..imagebase
-	DD	$L$SEH_info_key wrt ..imagebase
-
-	DD	aes_hw_set_encrypt_key wrt ..imagebase
-	DD	$L$SEH_end_set_encrypt_key wrt ..imagebase
-	DD	$L$SEH_info_key wrt ..imagebase
 section	.xdata rdata align=8
 ALIGN	8
 $L$SEH_info_ecb:
@@ -2667,9 +2665,37 @@ $L$SEH_info_ctr32:
 $L$SEH_info_cbc:
 	DB	9,0,0,0
 	DD	cbc_se_handler wrt ..imagebase
-$L$SEH_info_key:
-	DB	0x01,0x04,0x01,0x00
-	DB	0x04,0x02,0x00,0x00
+section	.pdata
+ALIGN	4
+	DD	$L$SEH_begin_aes_hw_set_decrypt_key_1 wrt ..imagebase
+	DD	$L$SEH_end_aes_hw_set_decrypt_key_4 wrt ..imagebase
+	DD	$L$SEH_info_aes_hw_set_decrypt_key_0 wrt ..imagebase
+
+	DD	$L$SEH_begin_aes_hw_set_encrypt_key_1 wrt ..imagebase
+	DD	$L$SEH_end_aes_hw_set_encrypt_key_4 wrt ..imagebase
+	DD	$L$SEH_info_aes_hw_set_encrypt_key_0 wrt ..imagebase
+
+
+section	.xdata
+ALIGN	4
+$L$SEH_info_aes_hw_set_decrypt_key_0:
+	DB	1
+	DB	$L$SEH_endprologue_aes_hw_set_decrypt_key_3-$L$SEH_begin_aes_hw_set_decrypt_key_1
+	DB	1
+	DB	0
+	DB	$L$SEH_prologue_aes_hw_set_decrypt_key_2-$L$SEH_begin_aes_hw_set_decrypt_key_1
+	DB	2
+
+	DW	0
+$L$SEH_info_aes_hw_set_encrypt_key_0:
+	DB	1
+	DB	$L$SEH_endprologue_aes_hw_set_encrypt_key_3-$L$SEH_begin_aes_hw_set_encrypt_key_1
+	DB	1
+	DB	0
+	DB	$L$SEH_prologue_aes_hw_set_encrypt_key_2-$L$SEH_begin_aes_hw_set_encrypt_key_1
+	DB	2
+
+	DW	0
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

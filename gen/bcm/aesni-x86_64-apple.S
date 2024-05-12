@@ -1911,8 +1911,11 @@ L$cbc_ret:
 .p2align	4
 _aes_hw_set_decrypt_key:
 
+
 _CET_ENDBR
-.byte	0x48,0x83,0xEC,0x08
+	subq	$8,%rsp
+
+
 
 	call	__aesni_set_encrypt_key
 	shll	$4,%esi
@@ -1949,7 +1952,7 @@ L$dec_key_ret:
 
 	ret
 
-L$SEH_end_set_decrypt_key:
+
 
 .globl	_aes_hw_set_encrypt_key
 .private_extern _aes_hw_set_encrypt_key
@@ -1958,11 +1961,14 @@ L$SEH_end_set_decrypt_key:
 _aes_hw_set_encrypt_key:
 __aesni_set_encrypt_key:
 
+
 _CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 	movb	$1,_BORINGSSL_function_hit+3(%rip)
 #endif
-.byte	0x48,0x83,0xEC,0x08
+	subq	$8,%rsp
+
+
 
 	movq	$-1,%rax
 	testq	%rdi,%rdi
@@ -2260,7 +2266,7 @@ L$enc_key_ret:
 
 	ret
 
-L$SEH_end_set_encrypt_key:
+
 
 .p2align	4
 L$key_expansion_128:
