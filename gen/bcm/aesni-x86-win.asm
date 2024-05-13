@@ -2062,14 +2062,10 @@ align	16
 __aesni_set_encrypt_key:
 	push	ebp
 	push	ebx
-	test	eax,eax
-	jz	NEAR L$093bad_pointer
-	test	edx,edx
-	jz	NEAR L$093bad_pointer
-	call	L$094pic
-L$094pic:
+	call	L$093pic
+L$093pic:
 	pop	ebx
-	lea	ebx,[(L$key_const-L$094pic)+ebx]
+	lea	ebx,[(L$key_const-L$093pic)+ebx]
 	lea	ebp,[_OPENSSL_ia32cap_P]
 	movups	xmm0,[eax]
 	xorps	xmm4,xmm4
@@ -2077,45 +2073,45 @@ L$094pic:
 	lea	edx,[16+edx]
 	and	ebp,268437504
 	cmp	ecx,256
-	je	NEAR L$09514rounds
+	je	NEAR L$09414rounds
 	cmp	ecx,192
-	je	NEAR L$09612rounds
+	je	NEAR L$09512rounds
 	cmp	ecx,128
-	jne	NEAR L$097bad_keybits
+	jne	NEAR L$096bad_keybits
 align	16
-L$09810rounds:
+L$09710rounds:
 	cmp	ebp,268435456
-	je	NEAR L$09910rounds_alt
+	je	NEAR L$09810rounds_alt
 	mov	ecx,9
 	movups	[edx-16],xmm0
 db	102,15,58,223,200,1
-	call	L$100key_128_cold
+	call	L$099key_128_cold
 db	102,15,58,223,200,2
-	call	L$101key_128
+	call	L$100key_128
 db	102,15,58,223,200,4
-	call	L$101key_128
+	call	L$100key_128
 db	102,15,58,223,200,8
-	call	L$101key_128
+	call	L$100key_128
 db	102,15,58,223,200,16
-	call	L$101key_128
+	call	L$100key_128
 db	102,15,58,223,200,32
-	call	L$101key_128
+	call	L$100key_128
 db	102,15,58,223,200,64
-	call	L$101key_128
+	call	L$100key_128
 db	102,15,58,223,200,128
-	call	L$101key_128
+	call	L$100key_128
 db	102,15,58,223,200,27
-	call	L$101key_128
+	call	L$100key_128
 db	102,15,58,223,200,54
-	call	L$101key_128
+	call	L$100key_128
 	movups	[edx],xmm0
 	mov	DWORD [80+edx],ecx
-	jmp	NEAR L$102good_key
+	jmp	NEAR L$101good_key
 align	16
-L$101key_128:
+L$100key_128:
 	movups	[edx],xmm0
 	lea	edx,[16+edx]
-L$100key_128_cold:
+L$099key_128_cold:
 	shufps	xmm4,xmm0,16
 	xorps	xmm0,xmm4
 	shufps	xmm4,xmm0,140
@@ -2124,13 +2120,13 @@ L$100key_128_cold:
 	xorps	xmm0,xmm1
 	ret
 align	16
-L$09910rounds_alt:
+L$09810rounds_alt:
 	movdqa	xmm5,[ebx]
 	mov	ecx,8
 	movdqa	xmm4,[32+ebx]
 	movdqa	xmm2,xmm0
 	movdqu	[edx-16],xmm0
-L$103loop_key128:
+L$102loop_key128:
 db	102,15,56,0,197
 db	102,15,56,221,196
 	pslld	xmm4,1
@@ -2146,7 +2142,7 @@ db	102,15,56,221,196
 	movdqu	[edx-16],xmm0
 	movdqa	xmm2,xmm0
 	dec	ecx
-	jnz	NEAR L$103loop_key128
+	jnz	NEAR L$102loop_key128
 	movdqa	xmm4,[48+ebx]
 db	102,15,56,0,197
 db	102,15,56,221,196
@@ -2174,41 +2170,41 @@ db	102,15,56,221,196
 	movdqu	[16+edx],xmm0
 	mov	ecx,9
 	mov	DWORD [96+edx],ecx
-	jmp	NEAR L$102good_key
+	jmp	NEAR L$101good_key
 align	16
-L$09612rounds:
+L$09512rounds:
 	movq	xmm2,[16+eax]
 	cmp	ebp,268435456
-	je	NEAR L$10412rounds_alt
+	je	NEAR L$10312rounds_alt
 	mov	ecx,11
 	movups	[edx-16],xmm0
 db	102,15,58,223,202,1
-	call	L$105key_192a_cold
+	call	L$104key_192a_cold
 db	102,15,58,223,202,2
-	call	L$106key_192b
+	call	L$105key_192b
 db	102,15,58,223,202,4
-	call	L$107key_192a
+	call	L$106key_192a
 db	102,15,58,223,202,8
-	call	L$106key_192b
+	call	L$105key_192b
 db	102,15,58,223,202,16
-	call	L$107key_192a
+	call	L$106key_192a
 db	102,15,58,223,202,32
-	call	L$106key_192b
+	call	L$105key_192b
 db	102,15,58,223,202,64
-	call	L$107key_192a
+	call	L$106key_192a
 db	102,15,58,223,202,128
-	call	L$106key_192b
+	call	L$105key_192b
 	movups	[edx],xmm0
 	mov	DWORD [48+edx],ecx
-	jmp	NEAR L$102good_key
+	jmp	NEAR L$101good_key
 align	16
-L$107key_192a:
+L$106key_192a:
 	movups	[edx],xmm0
 	lea	edx,[16+edx]
 align	16
-L$105key_192a_cold:
+L$104key_192a_cold:
 	movaps	xmm5,xmm2
-L$108key_192b_warm:
+L$107key_192b_warm:
 	shufps	xmm4,xmm0,16
 	movdqa	xmm3,xmm2
 	xorps	xmm0,xmm4
@@ -2222,21 +2218,21 @@ L$108key_192b_warm:
 	pxor	xmm2,xmm3
 	ret
 align	16
-L$106key_192b:
+L$105key_192b:
 	movaps	xmm3,xmm0
 	shufps	xmm5,xmm0,68
 	movups	[edx],xmm5
 	shufps	xmm3,xmm2,78
 	movups	[16+edx],xmm3
 	lea	edx,[32+edx]
-	jmp	NEAR L$108key_192b_warm
+	jmp	NEAR L$107key_192b_warm
 align	16
-L$10412rounds_alt:
+L$10312rounds_alt:
 	movdqa	xmm5,[16+ebx]
 	movdqa	xmm4,[32+ebx]
 	mov	ecx,8
 	movdqu	[edx-16],xmm0
-L$109loop_key192:
+L$108loop_key192:
 	movq	[edx],xmm2
 	movdqa	xmm1,xmm2
 db	102,15,56,0,213
@@ -2258,54 +2254,54 @@ db	102,15,56,221,212
 	pxor	xmm2,xmm3
 	movdqu	[edx-16],xmm0
 	dec	ecx
-	jnz	NEAR L$109loop_key192
+	jnz	NEAR L$108loop_key192
 	mov	ecx,11
 	mov	DWORD [32+edx],ecx
-	jmp	NEAR L$102good_key
+	jmp	NEAR L$101good_key
 align	16
-L$09514rounds:
+L$09414rounds:
 	movups	xmm2,[16+eax]
 	lea	edx,[16+edx]
 	cmp	ebp,268435456
-	je	NEAR L$11014rounds_alt
+	je	NEAR L$10914rounds_alt
 	mov	ecx,13
 	movups	[edx-32],xmm0
 	movups	[edx-16],xmm2
 db	102,15,58,223,202,1
-	call	L$111key_256a_cold
+	call	L$110key_256a_cold
 db	102,15,58,223,200,1
-	call	L$112key_256b
+	call	L$111key_256b
 db	102,15,58,223,202,2
-	call	L$113key_256a
+	call	L$112key_256a
 db	102,15,58,223,200,2
-	call	L$112key_256b
+	call	L$111key_256b
 db	102,15,58,223,202,4
-	call	L$113key_256a
+	call	L$112key_256a
 db	102,15,58,223,200,4
-	call	L$112key_256b
+	call	L$111key_256b
 db	102,15,58,223,202,8
-	call	L$113key_256a
+	call	L$112key_256a
 db	102,15,58,223,200,8
-	call	L$112key_256b
+	call	L$111key_256b
 db	102,15,58,223,202,16
-	call	L$113key_256a
+	call	L$112key_256a
 db	102,15,58,223,200,16
-	call	L$112key_256b
+	call	L$111key_256b
 db	102,15,58,223,202,32
-	call	L$113key_256a
+	call	L$112key_256a
 db	102,15,58,223,200,32
-	call	L$112key_256b
+	call	L$111key_256b
 db	102,15,58,223,202,64
-	call	L$113key_256a
+	call	L$112key_256a
 	movups	[edx],xmm0
 	mov	DWORD [16+edx],ecx
 	xor	eax,eax
-	jmp	NEAR L$102good_key
+	jmp	NEAR L$101good_key
 align	16
-L$113key_256a:
+L$112key_256a:
 	movups	[edx],xmm2
 	lea	edx,[16+edx]
-L$111key_256a_cold:
+L$110key_256a_cold:
 	shufps	xmm4,xmm0,16
 	xorps	xmm0,xmm4
 	shufps	xmm4,xmm0,140
@@ -2314,7 +2310,7 @@ L$111key_256a_cold:
 	xorps	xmm0,xmm1
 	ret
 align	16
-L$112key_256b:
+L$111key_256b:
 	movups	[edx],xmm0
 	lea	edx,[16+edx]
 	shufps	xmm4,xmm2,16
@@ -2325,14 +2321,14 @@ L$112key_256b:
 	xorps	xmm2,xmm1
 	ret
 align	16
-L$11014rounds_alt:
+L$10914rounds_alt:
 	movdqa	xmm5,[ebx]
 	movdqa	xmm4,[32+ebx]
 	mov	ecx,7
 	movdqu	[edx-32],xmm0
 	movdqa	xmm1,xmm2
 	movdqu	[edx-16],xmm2
-L$114loop_key256:
+L$113loop_key256:
 db	102,15,56,0,213
 db	102,15,56,221,212
 	movdqa	xmm3,xmm0
@@ -2346,7 +2342,7 @@ db	102,15,56,221,212
 	pxor	xmm0,xmm2
 	movdqu	[edx],xmm0
 	dec	ecx
-	jz	NEAR L$115done_key256
+	jz	NEAR L$114done_key256
 	pshufd	xmm2,xmm0,255
 	pxor	xmm3,xmm3
 db	102,15,56,221,211
@@ -2361,11 +2357,11 @@ db	102,15,56,221,211
 	movdqu	[16+edx],xmm2
 	lea	edx,[32+edx]
 	movdqa	xmm1,xmm2
-	jmp	NEAR L$114loop_key256
-L$115done_key256:
+	jmp	NEAR L$113loop_key256
+L$114done_key256:
 	mov	ecx,13
 	mov	DWORD [16+edx],ecx
-L$102good_key:
+L$101good_key:
 	pxor	xmm0,xmm0
 	pxor	xmm1,xmm1
 	pxor	xmm2,xmm2
@@ -2377,13 +2373,7 @@ L$102good_key:
 	pop	ebp
 	ret
 align	4
-L$093bad_pointer:
-	mov	eax,-1
-	pop	ebx
-	pop	ebp
-	ret
-align	4
-L$097bad_keybits:
+L$096bad_keybits:
 	pxor	xmm0,xmm0
 	mov	eax,-2
 	pop	ebx
@@ -2396,10 +2386,10 @@ L$_aes_hw_set_encrypt_key_begin:
 %ifdef BORINGSSL_DISPATCH_TEST
 	push	ebx
 	push	edx
-	call	L$116pic
-L$116pic:
+	call	L$115pic
+L$115pic:
 	pop	ebx
-	lea	ebx,[(_BORINGSSL_function_hit+3-L$116pic)+ebx]
+	lea	ebx,[(_BORINGSSL_function_hit+3-L$115pic)+ebx]
 	mov	edx,1
 	mov	BYTE [ebx],dl
 	pop	edx
@@ -2421,7 +2411,7 @@ L$_aes_hw_set_decrypt_key_begin:
 	mov	edx,DWORD [12+esp]
 	shl	ecx,4
 	test	eax,eax
-	jnz	NEAR L$117dec_key_ret
+	jnz	NEAR L$116dec_key_ret
 	lea	eax,[16+ecx*1+edx]
 	movups	xmm0,[edx]
 	movups	xmm1,[eax]
@@ -2429,7 +2419,7 @@ L$_aes_hw_set_decrypt_key_begin:
 	movups	[edx],xmm1
 	lea	edx,[16+edx]
 	lea	eax,[eax-16]
-L$118dec_key_inverse:
+L$117dec_key_inverse:
 	movups	xmm0,[edx]
 	movups	xmm1,[eax]
 db	102,15,56,219,192
@@ -2439,14 +2429,14 @@ db	102,15,56,219,201
 	movups	[16+eax],xmm0
 	movups	[edx-16],xmm1
 	cmp	eax,edx
-	ja	NEAR L$118dec_key_inverse
+	ja	NEAR L$117dec_key_inverse
 	movups	xmm0,[edx]
 db	102,15,56,219,192
 	movups	[edx],xmm0
 	pxor	xmm0,xmm0
 	pxor	xmm1,xmm1
 	xor	eax,eax
-L$117dec_key_ret:
+L$116dec_key_ret:
 	ret
 align	64
 L$key_const:

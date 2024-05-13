@@ -1970,12 +1970,6 @@ _CET_ENDBR
 
 
 
-	movq	$-1,%rax
-	testq	%rdi,%rdi
-	jz	L$enc_key_ret
-	testq	%rdx,%rdx
-	jz	L$enc_key_ret
-
 	movups	(%rdi),%xmm0
 	xorps	%xmm4,%xmm4
 	leaq	_OPENSSL_ia32cap_P(%rip),%r10

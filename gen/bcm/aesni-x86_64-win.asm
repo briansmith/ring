@@ -2075,12 +2075,6 @@ _CET_ENDBR
 
 $L$SEH_prologue_aes_hw_set_encrypt_key_2:
 $L$SEH_endprologue_aes_hw_set_encrypt_key_3:
-	mov	rax,-1
-	test	rcx,rcx
-	jz	NEAR $L$enc_key_ret
-	test	r8,r8
-	jz	NEAR $L$enc_key_ret
-
 	movups	xmm0,XMMWORD[rcx]
 	xorps	xmm4,xmm4
 	lea	r10,[OPENSSL_ia32cap_P]

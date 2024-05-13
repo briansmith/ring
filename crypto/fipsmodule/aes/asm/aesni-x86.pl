@@ -2122,10 +2122,6 @@ if ($PREFIX eq $AESNI_PREFIX) {
 &function_begin_B("_aesni_set_encrypt_key");
 	&push	("ebp");
 	&push	("ebx");
-	&test	("eax","eax");
-	&jz	(&label("bad_pointer"));
-	&test	($key,$key);
-	&jz	(&label("bad_pointer"));
 
 	&call	(&label("pic"));
 &set_label("pic");
@@ -2474,11 +2470,6 @@ if ($PREFIX eq $AESNI_PREFIX) {
 	&pop	("ebp");
 	&ret	();
 
-&set_label("bad_pointer",4);
-	&mov	("eax",-1);
-	&pop	("ebx");
-	&pop	("ebp");
-	&ret	();
 &set_label("bad_keybits",4);
 	&pxor	("xmm0","xmm0");
 	&mov	("eax",-2);

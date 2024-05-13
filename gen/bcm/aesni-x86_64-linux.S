@@ -1972,12 +1972,6 @@ _CET_ENDBR
 .cfi_adjust_cfa_offset	8
 
 
-	movq	$-1,%rax
-	testq	%rdi,%rdi
-	jz	.Lenc_key_ret
-	testq	%rdx,%rdx
-	jz	.Lenc_key_ret
-
 	movups	(%rdi),%xmm0
 	xorps	%xmm4,%xmm4
 	leaq	OPENSSL_ia32cap_P(%rip),%r10

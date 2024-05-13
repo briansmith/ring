@@ -2105,14 +2105,10 @@ aes_hw_cbc_encrypt:
 _aesni_set_encrypt_key:
 	pushl	%ebp
 	pushl	%ebx
-	testl	%eax,%eax
-	jz	.L093bad_pointer
-	testl	%edx,%edx
-	jz	.L093bad_pointer
-	call	.L094pic
-.L094pic:
+	call	.L093pic
+.L093pic:
 	popl	%ebx
-	leal	.Lkey_const-.L094pic(%ebx),%ebx
+	leal	.Lkey_const-.L093pic(%ebx),%ebx
 	leal	OPENSSL_ia32cap_P-.Lkey_const(%ebx),%ebp
 	movups	(%eax),%xmm0
 	xorps	%xmm4,%xmm4
@@ -2120,45 +2116,45 @@ _aesni_set_encrypt_key:
 	leal	16(%edx),%edx
 	andl	$268437504,%ebp
 	cmpl	$256,%ecx
-	je	.L09514rounds
+	je	.L09414rounds
 	cmpl	$192,%ecx
-	je	.L09612rounds
+	je	.L09512rounds
 	cmpl	$128,%ecx
-	jne	.L097bad_keybits
+	jne	.L096bad_keybits
 .align	16
-.L09810rounds:
+.L09710rounds:
 	cmpl	$268435456,%ebp
-	je	.L09910rounds_alt
+	je	.L09810rounds_alt
 	movl	$9,%ecx
 	movups	%xmm0,-16(%edx)
 .byte	102,15,58,223,200,1
-	call	.L100key_128_cold
+	call	.L099key_128_cold
 .byte	102,15,58,223,200,2
-	call	.L101key_128
+	call	.L100key_128
 .byte	102,15,58,223,200,4
-	call	.L101key_128
+	call	.L100key_128
 .byte	102,15,58,223,200,8
-	call	.L101key_128
+	call	.L100key_128
 .byte	102,15,58,223,200,16
-	call	.L101key_128
+	call	.L100key_128
 .byte	102,15,58,223,200,32
-	call	.L101key_128
+	call	.L100key_128
 .byte	102,15,58,223,200,64
-	call	.L101key_128
+	call	.L100key_128
 .byte	102,15,58,223,200,128
-	call	.L101key_128
+	call	.L100key_128
 .byte	102,15,58,223,200,27
-	call	.L101key_128
+	call	.L100key_128
 .byte	102,15,58,223,200,54
-	call	.L101key_128
+	call	.L100key_128
 	movups	%xmm0,(%edx)
 	movl	%ecx,80(%edx)
-	jmp	.L102good_key
+	jmp	.L101good_key
 .align	16
-.L101key_128:
+.L100key_128:
 	movups	%xmm0,(%edx)
 	leal	16(%edx),%edx
-.L100key_128_cold:
+.L099key_128_cold:
 	shufps	$16,%xmm0,%xmm4
 	xorps	%xmm4,%xmm0
 	shufps	$140,%xmm0,%xmm4
@@ -2167,13 +2163,13 @@ _aesni_set_encrypt_key:
 	xorps	%xmm1,%xmm0
 	ret
 .align	16
-.L09910rounds_alt:
+.L09810rounds_alt:
 	movdqa	(%ebx),%xmm5
 	movl	$8,%ecx
 	movdqa	32(%ebx),%xmm4
 	movdqa	%xmm0,%xmm2
 	movdqu	%xmm0,-16(%edx)
-.L103loop_key128:
+.L102loop_key128:
 .byte	102,15,56,0,197
 .byte	102,15,56,221,196
 	pslld	$1,%xmm4
@@ -2189,7 +2185,7 @@ _aesni_set_encrypt_key:
 	movdqu	%xmm0,-16(%edx)
 	movdqa	%xmm0,%xmm2
 	decl	%ecx
-	jnz	.L103loop_key128
+	jnz	.L102loop_key128
 	movdqa	48(%ebx),%xmm4
 .byte	102,15,56,0,197
 .byte	102,15,56,221,196
@@ -2217,41 +2213,41 @@ _aesni_set_encrypt_key:
 	movdqu	%xmm0,16(%edx)
 	movl	$9,%ecx
 	movl	%ecx,96(%edx)
-	jmp	.L102good_key
+	jmp	.L101good_key
 .align	16
-.L09612rounds:
+.L09512rounds:
 	movq	16(%eax),%xmm2
 	cmpl	$268435456,%ebp
-	je	.L10412rounds_alt
+	je	.L10312rounds_alt
 	movl	$11,%ecx
 	movups	%xmm0,-16(%edx)
 .byte	102,15,58,223,202,1
-	call	.L105key_192a_cold
+	call	.L104key_192a_cold
 .byte	102,15,58,223,202,2
-	call	.L106key_192b
+	call	.L105key_192b
 .byte	102,15,58,223,202,4
-	call	.L107key_192a
+	call	.L106key_192a
 .byte	102,15,58,223,202,8
-	call	.L106key_192b
+	call	.L105key_192b
 .byte	102,15,58,223,202,16
-	call	.L107key_192a
+	call	.L106key_192a
 .byte	102,15,58,223,202,32
-	call	.L106key_192b
+	call	.L105key_192b
 .byte	102,15,58,223,202,64
-	call	.L107key_192a
+	call	.L106key_192a
 .byte	102,15,58,223,202,128
-	call	.L106key_192b
+	call	.L105key_192b
 	movups	%xmm0,(%edx)
 	movl	%ecx,48(%edx)
-	jmp	.L102good_key
+	jmp	.L101good_key
 .align	16
-.L107key_192a:
+.L106key_192a:
 	movups	%xmm0,(%edx)
 	leal	16(%edx),%edx
 .align	16
-.L105key_192a_cold:
+.L104key_192a_cold:
 	movaps	%xmm2,%xmm5
-.L108key_192b_warm:
+.L107key_192b_warm:
 	shufps	$16,%xmm0,%xmm4
 	movdqa	%xmm2,%xmm3
 	xorps	%xmm4,%xmm0
@@ -2265,21 +2261,21 @@ _aesni_set_encrypt_key:
 	pxor	%xmm3,%xmm2
 	ret
 .align	16
-.L106key_192b:
+.L105key_192b:
 	movaps	%xmm0,%xmm3
 	shufps	$68,%xmm0,%xmm5
 	movups	%xmm5,(%edx)
 	shufps	$78,%xmm2,%xmm3
 	movups	%xmm3,16(%edx)
 	leal	32(%edx),%edx
-	jmp	.L108key_192b_warm
+	jmp	.L107key_192b_warm
 .align	16
-.L10412rounds_alt:
+.L10312rounds_alt:
 	movdqa	16(%ebx),%xmm5
 	movdqa	32(%ebx),%xmm4
 	movl	$8,%ecx
 	movdqu	%xmm0,-16(%edx)
-.L109loop_key192:
+.L108loop_key192:
 	movq	%xmm2,(%edx)
 	movdqa	%xmm2,%xmm1
 .byte	102,15,56,0,213
@@ -2301,54 +2297,54 @@ _aesni_set_encrypt_key:
 	pxor	%xmm3,%xmm2
 	movdqu	%xmm0,-16(%edx)
 	decl	%ecx
-	jnz	.L109loop_key192
+	jnz	.L108loop_key192
 	movl	$11,%ecx
 	movl	%ecx,32(%edx)
-	jmp	.L102good_key
+	jmp	.L101good_key
 .align	16
-.L09514rounds:
+.L09414rounds:
 	movups	16(%eax),%xmm2
 	leal	16(%edx),%edx
 	cmpl	$268435456,%ebp
-	je	.L11014rounds_alt
+	je	.L10914rounds_alt
 	movl	$13,%ecx
 	movups	%xmm0,-32(%edx)
 	movups	%xmm2,-16(%edx)
 .byte	102,15,58,223,202,1
-	call	.L111key_256a_cold
+	call	.L110key_256a_cold
 .byte	102,15,58,223,200,1
-	call	.L112key_256b
+	call	.L111key_256b
 .byte	102,15,58,223,202,2
-	call	.L113key_256a
+	call	.L112key_256a
 .byte	102,15,58,223,200,2
-	call	.L112key_256b
+	call	.L111key_256b
 .byte	102,15,58,223,202,4
-	call	.L113key_256a
+	call	.L112key_256a
 .byte	102,15,58,223,200,4
-	call	.L112key_256b
+	call	.L111key_256b
 .byte	102,15,58,223,202,8
-	call	.L113key_256a
+	call	.L112key_256a
 .byte	102,15,58,223,200,8
-	call	.L112key_256b
+	call	.L111key_256b
 .byte	102,15,58,223,202,16
-	call	.L113key_256a
+	call	.L112key_256a
 .byte	102,15,58,223,200,16
-	call	.L112key_256b
+	call	.L111key_256b
 .byte	102,15,58,223,202,32
-	call	.L113key_256a
+	call	.L112key_256a
 .byte	102,15,58,223,200,32
-	call	.L112key_256b
+	call	.L111key_256b
 .byte	102,15,58,223,202,64
-	call	.L113key_256a
+	call	.L112key_256a
 	movups	%xmm0,(%edx)
 	movl	%ecx,16(%edx)
 	xorl	%eax,%eax
-	jmp	.L102good_key
+	jmp	.L101good_key
 .align	16
-.L113key_256a:
+.L112key_256a:
 	movups	%xmm2,(%edx)
 	leal	16(%edx),%edx
-.L111key_256a_cold:
+.L110key_256a_cold:
 	shufps	$16,%xmm0,%xmm4
 	xorps	%xmm4,%xmm0
 	shufps	$140,%xmm0,%xmm4
@@ -2357,7 +2353,7 @@ _aesni_set_encrypt_key:
 	xorps	%xmm1,%xmm0
 	ret
 .align	16
-.L112key_256b:
+.L111key_256b:
 	movups	%xmm0,(%edx)
 	leal	16(%edx),%edx
 	shufps	$16,%xmm2,%xmm4
@@ -2368,14 +2364,14 @@ _aesni_set_encrypt_key:
 	xorps	%xmm1,%xmm2
 	ret
 .align	16
-.L11014rounds_alt:
+.L10914rounds_alt:
 	movdqa	(%ebx),%xmm5
 	movdqa	32(%ebx),%xmm4
 	movl	$7,%ecx
 	movdqu	%xmm0,-32(%edx)
 	movdqa	%xmm2,%xmm1
 	movdqu	%xmm2,-16(%edx)
-.L114loop_key256:
+.L113loop_key256:
 .byte	102,15,56,0,213
 .byte	102,15,56,221,212
 	movdqa	%xmm0,%xmm3
@@ -2389,7 +2385,7 @@ _aesni_set_encrypt_key:
 	pxor	%xmm2,%xmm0
 	movdqu	%xmm0,(%edx)
 	decl	%ecx
-	jz	.L115done_key256
+	jz	.L114done_key256
 	pshufd	$255,%xmm0,%xmm2
 	pxor	%xmm3,%xmm3
 .byte	102,15,56,221,211
@@ -2404,11 +2400,11 @@ _aesni_set_encrypt_key:
 	movdqu	%xmm2,16(%edx)
 	leal	32(%edx),%edx
 	movdqa	%xmm2,%xmm1
-	jmp	.L114loop_key256
-.L115done_key256:
+	jmp	.L113loop_key256
+.L114done_key256:
 	movl	$13,%ecx
 	movl	%ecx,16(%edx)
-.L102good_key:
+.L101good_key:
 	pxor	%xmm0,%xmm0
 	pxor	%xmm1,%xmm1
 	pxor	%xmm2,%xmm2
@@ -2420,13 +2416,7 @@ _aesni_set_encrypt_key:
 	popl	%ebp
 	ret
 .align	4
-.L093bad_pointer:
-	movl	$-1,%eax
-	popl	%ebx
-	popl	%ebp
-	ret
-.align	4
-.L097bad_keybits:
+.L096bad_keybits:
 	pxor	%xmm0,%xmm0
 	movl	$-2,%eax
 	popl	%ebx
@@ -2442,10 +2432,10 @@ aes_hw_set_encrypt_key:
 #ifdef BORINGSSL_DISPATCH_TEST
 	pushl	%ebx
 	pushl	%edx
-	call	.L116pic
-.L116pic:
+	call	.L115pic
+.L115pic:
 	popl	%ebx
-	leal	BORINGSSL_function_hit+3-.L116pic(%ebx),%ebx
+	leal	BORINGSSL_function_hit+3-.L115pic(%ebx),%ebx
 	movl	$1,%edx
 	movb	%dl,(%ebx)
 	popl	%edx
@@ -2470,7 +2460,7 @@ aes_hw_set_decrypt_key:
 	movl	12(%esp),%edx
 	shll	$4,%ecx
 	testl	%eax,%eax
-	jnz	.L117dec_key_ret
+	jnz	.L116dec_key_ret
 	leal	16(%edx,%ecx,1),%eax
 	movups	(%edx),%xmm0
 	movups	(%eax),%xmm1
@@ -2478,7 +2468,7 @@ aes_hw_set_decrypt_key:
 	movups	%xmm1,(%edx)
 	leal	16(%edx),%edx
 	leal	-16(%eax),%eax
-.L118dec_key_inverse:
+.L117dec_key_inverse:
 	movups	(%edx),%xmm0
 	movups	(%eax),%xmm1
 .byte	102,15,56,219,192
@@ -2488,14 +2478,14 @@ aes_hw_set_decrypt_key:
 	movups	%xmm0,16(%eax)
 	movups	%xmm1,-16(%edx)
 	cmpl	%edx,%eax
-	ja	.L118dec_key_inverse
+	ja	.L117dec_key_inverse
 	movups	(%edx),%xmm0
 .byte	102,15,56,219,192
 	movups	%xmm0,(%edx)
 	pxor	%xmm0,%xmm0
 	pxor	%xmm1,%xmm1
 	xorl	%eax,%eax
-.L117dec_key_ret:
+.L116dec_key_ret:
 	ret
 .size	aes_hw_set_decrypt_key,.-.L_aes_hw_set_decrypt_key_begin
 .align	64

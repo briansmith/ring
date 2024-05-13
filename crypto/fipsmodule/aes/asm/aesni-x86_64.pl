@@ -3275,12 +3275,6 @@ __aesni_set_encrypt_key:
 .cfi_adjust_cfa_offset	8
 .seh_stackalloc	8
 .seh_endprologue
-	mov	\$-1,%rax
-	test	$inp,$inp
-	jz	.Lenc_key_ret
-	test	$key,$key
-	jz	.Lenc_key_ret
-
 	movups	($inp),%xmm0		# pull first 128 bits of *userKey
 	xorps	%xmm4,%xmm4		# low dword of xmm4 is assumed 0
 	leaq	OPENSSL_ia32cap_P(%rip),%r10
