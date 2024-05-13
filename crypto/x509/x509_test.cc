@@ -8011,7 +8011,7 @@ class TemporaryHashDir {
   }
 
   int type_;
-  TemporaryDirectory dir_;
+  bssl::TemporaryDirectory dir_;
   std::map<uint32_t, int> next_cert_;
   std::map<uint32_t, int> next_crl_;
 };
@@ -8019,7 +8019,7 @@ class TemporaryHashDir {
 // TODO(davidben): Also test CRL handling. There are some interesting behaviors
 // in here.
 TEST(X509Test, DirHash) {
-  if (SkipTempFileTests()) {
+  if (bssl::SkipTempFileTests()) {
     GTEST_SKIP();
   }
 
@@ -8266,7 +8266,7 @@ TEST(X509Test, DirHashSeparator) {
   const char kSeparator = ':';
 #endif
 
-  if (SkipTempFileTests()) {
+  if (bssl::SkipTempFileTests()) {
     GTEST_SKIP();
   }
 
@@ -8330,7 +8330,7 @@ TEST(X509Test, DirHashSeparator) {
 #if defined(OPENSSL_THREADS)
 // Test that directory hash lookup is thread-safe.
 TEST(X509Test, DirHashThreads) {
-  if (SkipTempFileTests()) {
+  if (bssl::SkipTempFileTests()) {
     GTEST_SKIP();
   }
 
