@@ -30,7 +30,8 @@ use self::{
 };
 use crate::{
     bits::{BitLength, FromByteLen as _},
-    cpu, debug, polyfill,
+    cpu, debug,
+    polyfill::{self, sliceutil},
 };
 use core::num::Wrapping;
 
@@ -149,6 +150,8 @@ pub struct Context {
     block: BlockContext,
     // TODO: More explicitly force 64-bit alignment for |pending|.
     pending: [u8; MAX_BLOCK_LEN],
+
+    // Invariant: `self.num_pending < self.block.algorithm.block_len`.
     num_pending: usize,
 }
 
@@ -175,17 +178,28 @@ impl Context {
         let cpu_features = cpu::features();
 
         let block_len = self.block.algorithm.block_len();
-        if data.len() < block_len - self.num_pending {
-            self.pending[self.num_pending..(self.num_pending + data.len())].copy_from_slice(data);
+        let buffer = &mut self.pending[..block_len];
+
+        let buffer_to_fill = match buffer.get_mut(self.num_pending..) {
+            Some(buffer_to_fill) => buffer_to_fill,
+            None => {
+                // Impossible because of the invariant.
+                unreachable!();
+            }
+        };
+
+        if data.len() < buffer_to_fill.len() {
+            sliceutil::overwrite_at_start(buffer_to_fill, data);
             self.num_pending += data.len();
+            debug_assert!(self.num_pending < block_len);
             return;
         }
 
         let mut remaining = data;
         if self.num_pending > 0 {
-            let to_copy = block_len - self.num_pending;
-            self.pending[self.num_pending..block_len].copy_from_slice(&data[..to_copy]);
-            let leftover = self.block.update(&self.pending[..block_len], cpu_features);
+            let to_copy = buffer_to_fill.len();
+            buffer_to_fill.copy_from_slice(&data[..to_copy]);
+            let leftover = self.block.update(buffer, cpu_features);
             debug_assert_eq!(leftover.len(), 0);
             remaining = &remaining[to_copy..];
             self.num_pending = 0;
@@ -193,8 +207,9 @@ impl Context {
 
         let leftover = self.block.update(remaining, cpu_features);
         if !leftover.is_empty() {
-            self.pending[..leftover.len()].copy_from_slice(leftover);
+            buffer[..leftover.len()].copy_from_slice(leftover);
             self.num_pending = leftover.len();
+            debug_assert!(self.num_pending < block_len);
         }
     }
 
