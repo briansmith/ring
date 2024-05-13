@@ -88,7 +88,7 @@ impl BlockContext {
         block[padding_pos] = 0x80;
         padding_pos += 1;
 
-        if padding_pos > block.len() - self.algorithm.len_len {
+        if padding_pos > block.len() - self.algorithm.block_len.len_len() {
             block[padding_pos..].fill(0);
             let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
             debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
@@ -288,9 +288,6 @@ pub struct Algorithm {
     chaining_len: usize,
     block_len: BlockLen,
 
-    /// The length of the length in the padding.
-    len_len: usize,
-
     /// `block_data_order` processes all the full blocks of data in `data`. It
     /// returns the number of bytes processed and the unprocessed data, which
     /// is guaranteed to be less than `block_len` bytes long.
@@ -356,7 +353,6 @@ pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
     output_len: sha1::OUTPUT_LEN,
     chaining_len: sha1::CHAINING_LEN,
     block_len: sha1::BLOCK_LEN,
-    len_len: 64 / 8,
     block_data_order: dynstate::sha1_block_data_order,
     format_output: dynstate::sha256_format_output,
     initial_state: DynState::new32([
@@ -379,7 +375,6 @@ pub static SHA256: Algorithm = Algorithm {
     output_len: OutputLen::_256,
     chaining_len: SHA256_OUTPUT_LEN,
     block_len: SHA256_BLOCK_LEN,
-    len_len: 64 / 8,
     block_data_order: dynstate::sha256_block_data_order,
     format_output: dynstate::sha256_format_output,
     initial_state: DynState::new32([
@@ -402,7 +397,6 @@ pub static SHA384: Algorithm = Algorithm {
     output_len: OutputLen::_384,
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
-    len_len: SHA512_LEN_LEN,
     block_data_order: dynstate::sha512_block_data_order,
     format_output: dynstate::sha512_format_output,
     initial_state: DynState::new64([
@@ -425,7 +419,6 @@ pub static SHA512: Algorithm = Algorithm {
     output_len: OutputLen::_512,
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
-    len_len: SHA512_LEN_LEN,
     block_data_order: dynstate::sha512_block_data_order,
     format_output: dynstate::sha512_format_output,
     initial_state: DynState::new64([
@@ -452,7 +445,6 @@ pub static SHA512_256: Algorithm = Algorithm {
     output_len: OutputLen::_256,
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
-    len_len: SHA512_LEN_LEN,
     block_data_order: dynstate::sha512_block_data_order,
     format_output: dynstate::sha512_format_output,
     initial_state: DynState::new64([
@@ -515,9 +507,6 @@ pub const SHA512_OUTPUT_LEN: usize = OutputLen::_512.into();
 /// The length of the output of SHA-512/256, in bytes.
 pub const SHA512_256_OUTPUT_LEN: usize = OutputLen::_256.into();
 
-/// The length of the length field for SHA-512-based algorithms, in bytes.
-const SHA512_LEN_LEN: usize = 128 / 8;
-
 #[derive(Clone, Copy)]
 enum BlockLen {
     _512 = 512 / 8,
@@ -530,6 +519,21 @@ impl BlockLen {
     const fn into(self) -> usize {
         self as usize
     }
+
+    #[inline(always)]
+    const fn len_len(self) -> usize {
+        let len_len = match self {
+            BlockLen::_512 => LenLen::_64,
+            BlockLen::_1024 => LenLen::_128,
+        };
+        len_len as usize
+    }
+}
+
+#[derive(Clone, Copy)]
+enum LenLen {
+    _64 = 64 / 8,
+    _128 = 128 / 8,
 }
 
 #[derive(Clone, Copy)]
