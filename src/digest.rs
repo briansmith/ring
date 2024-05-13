@@ -31,7 +31,7 @@ use self::{
 use crate::{
     bits::{BitLength, FromByteLen as _},
     cpu, debug,
-    polyfill::{self, sliceutil},
+    polyfill::{self, slice, sliceutil},
 };
 use core::num::Wrapping;
 
@@ -180,37 +180,39 @@ impl Context {
         let block_len = self.block.algorithm.block_len();
         let buffer = &mut self.pending[..block_len];
 
-        let buffer_to_fill = match buffer.get_mut(self.num_pending..) {
-            Some(buffer_to_fill) => buffer_to_fill,
-            None => {
-                // Impossible because of the invariant.
-                unreachable!();
+        let to_digest = if self.num_pending == 0 {
+            data
+        } else {
+            let buffer_to_fill = match buffer.get_mut(self.num_pending..) {
+                Some(buffer_to_fill) => buffer_to_fill,
+                None => {
+                    // Impossible because of the invariant.
+                    unreachable!();
+                }
+            };
+            sliceutil::overwrite_at_start(buffer_to_fill, data);
+            match slice::split_at_checked(data, buffer_to_fill.len()) {
+                Some((just_copied, to_digest)) => {
+                    debug_assert_eq!(buffer_to_fill.len(), just_copied.len());
+                    debug_assert_eq!(self.num_pending + just_copied.len(), block_len);
+                    let leftover = self.block.update(buffer, cpu_features);
+                    debug_assert_eq!(leftover.len(), 0);
+                    self.num_pending = 0;
+                    to_digest
+                }
+                None => {
+                    self.num_pending += data.len();
+                    // If `data` isn't enough to complete a block, buffer it and stop.
+                    debug_assert!(self.num_pending < block_len);
+                    return;
+                }
             }
         };
 
-        if data.len() < buffer_to_fill.len() {
-            sliceutil::overwrite_at_start(buffer_to_fill, data);
-            self.num_pending += data.len();
-            debug_assert!(self.num_pending < block_len);
-            return;
-        }
-
-        let mut remaining = data;
-        if self.num_pending > 0 {
-            let to_copy = buffer_to_fill.len();
-            buffer_to_fill.copy_from_slice(&data[..to_copy]);
-            let leftover = self.block.update(buffer, cpu_features);
-            debug_assert_eq!(leftover.len(), 0);
-            remaining = &remaining[to_copy..];
-            self.num_pending = 0;
-        }
-
-        let leftover = self.block.update(remaining, cpu_features);
-        if !leftover.is_empty() {
-            buffer[..leftover.len()].copy_from_slice(leftover);
-            self.num_pending = leftover.len();
-            debug_assert!(self.num_pending < block_len);
-        }
+        let leftover = self.block.update(to_digest, cpu_features);
+        sliceutil::overwrite_at_start(buffer, leftover);
+        self.num_pending = leftover.len();
+        debug_assert!(self.num_pending < block_len);
     }
 
     /// Finalizes the digest calculation and returns the digest value.

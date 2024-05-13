@@ -80,3 +80,18 @@ pub fn flatten_mut<T, const N: usize>(slice: &mut [[T; N]]) -> &mut [T] {
     // SAFETY: `[T]` is layout-identical to `[T; N]`
     unsafe { core::slice::from_raw_parts_mut(slice.as_mut_ptr().cast(), len) }
 }
+
+// TODO(MSRV feature(split_at_checked)): Use `slice::split_at_checked`.
+//
+// Note that the libcore version is implemented in terms of
+// `slice::split_at_unchecked()`, and `slice::split_at()` was changed to be
+// implemented in terms of `split_at_checked`. For now, we implement this in
+// terms of `split_at` and rely on the optimizer to eliminate the panic.
+#[inline(always)]
+pub fn split_at_checked<T>(slice: &[T], i: usize) -> Option<(&[T], &[T])> {
+    if slice.len() >= i {
+        Some(slice.split_at(i))
+    } else {
+        None
+    }
+}
