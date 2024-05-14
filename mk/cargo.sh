@@ -255,9 +255,9 @@ if [ -n "${RING_COVERAGE-}" ]; then
 
   while read -r executable; do
     basename=$(basename "$executable")
-    "${llvm_root}"/llvm-profdata merge -sparse "$coverage_dir/$basename.profraw" -o "$coverage_dir/$basename.profdata"
+    "${llvm_root}/llvm-profdata" merge -sparse "$coverage_dir/$basename.profraw" -o "$coverage_dir/$basename.profdata"
     mkdir -p "$coverage_dir"/reports
-    "${llvm_root}"/llvm-cov export \
+    "${llvm_root}/llvm-cov" export \
       --instr-profile "$coverage_dir/$basename.profdata" \
       --format lcov \
       "$executable" \
