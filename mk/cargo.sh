@@ -251,7 +251,7 @@ cargo "$@"
 if [ -n "${RING_COVERAGE-}" ]; then
   # Keep in sync with check-symbol-prefixes.sh.
   # Use the host target-libdir, not the target target-libdir.
-  llvm_root="$(rustc +"${toolchain}" --print target-libdir)/../bin"
+  llvm_root=$(rustc +"${toolchain}" --print target-libdir)/../bin
 
   while read -r executable; do
     basename=$(basename "$executable")
