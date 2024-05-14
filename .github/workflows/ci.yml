@@ -597,11 +597,6 @@ jobs:
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-22.04
 
-          # TODO: Add an ARM target after
-          # https://github.com/rust-lang/rust/issues/79555 is fixed. This may
-          # require https://github.com/rust-lang/rust/issues/79555 to be fixed
-          # too.
-
     steps:
       - if: ${{ contains(matrix.host_os, 'ubuntu') }}
         run: sudo apt-get update -y
