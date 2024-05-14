@@ -526,9 +526,9 @@ jobs:
         target:
           - aarch64-apple-darwin           # Has assembly
           - aarch64-unknown-linux-gnu      # Has assembly
+          - arm-unknown-linux-gnueabi      # Has assembly
           - armv7-unknown-linux-gnueabihf  # Has assembly
           - i686-unknown-linux-gnu         # Has assembly
-          # TODO: arm-unknown-linux-gnueabi # Has assembly but doesn't build w/ clang
           - powerpc-unknown-linux-gnu      # No assembly 32-bit big-endian with flags
           - powerpc64-unknown-linux-gnu    # No assembly 64-bit big-endian with flags
           - powerpc64le-unknown-linux-gnu  # No assembly 64-bit little-endian with flags
@@ -559,6 +559,9 @@ jobs:
             target: aarch64-unknown-linux-gnu
             mode: # debug
             rust_channel: nightly
+            host_os: ubuntu-22.04
+
+          - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-22.04
 
           - target: armv7-unknown-linux-gnueabihf
