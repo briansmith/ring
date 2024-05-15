@@ -600,7 +600,6 @@ set(
   crypto/bytestring/internal.h
   crypto/chacha/internal.h
   crypto/cipher_extra/internal.h
-  crypto/conf/conf_def.h
   crypto/conf/internal.h
   crypto/cpu_arm_linux.h
   crypto/curve25519/curve25519_tables.h
@@ -1106,6 +1105,7 @@ set(
 
   include/openssl/pki/certificate.h
   include/openssl/pki/signature_verify_cache.h
+  include/openssl/pki/verify.h
   include/openssl/pki/verify_error.h
 )
 
