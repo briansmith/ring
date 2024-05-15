@@ -96,31 +96,6 @@ impl DynKey {
             };
         }
 
-        // x86_64 is handled above.
-        #[cfg(any(
-            all(target_arch = "aarch64", target_endian = "little"),
-            target_arch = "x86"
-        ))]
-        if let (Some(aes), Some(gcm)) = (cpu.get_feature(), cpu.get_feature()) {
-            let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature());
-            let gcm_key_value = derive_gcm_key_value(&aes_key);
-            let gcm_key = gcm::clmul::Key::new(gcm_key_value, gcm);
-            return Self::AesHwClMul(Combo { aes_key, gcm_key });
-        }
-
-        #[cfg(any(
-            all(target_arch = "aarch64", target_endian = "little"),
-            all(target_arch = "arm", target_endian = "little")
-        ))]
-        if let Some(cpu) = cpu.get_feature() {
-            return Self::new_neon(key, cpu);
-        }
-
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        if let Some(cpu) = cpu.get_feature() {
-            return Self::new_ssse3(key, cpu);
-        }
-
         let _ = cpu;
         Self::new_fallback(key)
     }

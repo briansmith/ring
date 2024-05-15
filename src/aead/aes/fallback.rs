@@ -51,6 +51,6 @@ impl EncryptBlock for Key {
 
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        unsafe { ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
+        aes_nohw::ctr32_encrypt_within(&self.inner, in_out, ctr)
     }
 }

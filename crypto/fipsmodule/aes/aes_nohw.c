@@ -189,7 +189,7 @@ typedef struct {
 
 // aes_nohw_batch_get writes the |i|th block of |batch| to |out|. |batch| is in
 // compact form.
-static inline void aes_nohw_batch_get(const AES_NOHW_BATCH *batch,
+/*static inline*/ void aes_nohw_batch_get(const AES_NOHW_BATCH *batch,
                                       aes_word_t out[AES_NOHW_BLOCK_WORDS],
                                       size_t i) {
   dev_assert_secret(i < AES_NOHW_BATCH_SIZE);
@@ -293,7 +293,7 @@ static inline uint8_t lo(uint32_t a) {
 
 #endif  // OPENSSL_64_BIT
 
-static inline void aes_nohw_compact_block(aes_word_t out[AES_NOHW_BLOCK_WORDS],
+void aes_nohw_compact_block(aes_word_t out[AES_NOHW_BLOCK_WORDS],
                                           const uint8_t in[16]) {
   OPENSSL_memcpy(out, in, 16);
 #if defined(OPENSSL_64_BIT)
@@ -400,22 +400,6 @@ void aes_nohw_transpose(AES_NOHW_BATCH *batch) {
 #endif
 }
 
-// aes_nohw_to_batch initializes |out| with the |num_blocks| blocks from |in|.
-// |num_blocks| must be at most |AES_NOHW_BATCH|.
-void aes_nohw_to_batch(AES_NOHW_BATCH *out, const uint8_t *in,
-                              size_t num_blocks) {
-  // Don't leave unused blocks uninitialized.
-  OPENSSL_memset(out, 0, sizeof(AES_NOHW_BATCH));
-  debug_assert_nonsecret(num_blocks <= AES_NOHW_BATCH_SIZE);
-  for (size_t i = 0; i < num_blocks; i++) {
-    aes_word_t block[AES_NOHW_BLOCK_WORDS];
-    aes_nohw_compact_block(block, in + 16 * i);
-    aes_nohw_batch_set(out, block, i);
-  }
-
-  aes_nohw_transpose(out);
-}
-
 // aes_nohw_to_batch writes the first |num_blocks| blocks in |batch| to |out|.
 // |num_blocks| must be at most |AES_NOHW_BATCH|.
 void aes_nohw_from_batch(uint8_t *out, size_t num_blocks,
@@ -430,7 +414,6 @@ void aes_nohw_from_batch(uint8_t *out, size_t num_blocks,
     aes_nohw_uncompact_block(out + 16 * i, block);
   }
 }
-
 
 // AES round steps.
 
@@ -690,19 +673,6 @@ void aes_nohw_encrypt_batch(const AES_NOHW_SCHEDULE *key,
 
 // Key schedule.
 
-static void aes_nohw_expand_round_keys(AES_NOHW_SCHEDULE *out,
-                                       const AES_KEY *key) {
-  for (size_t i = 0; i <= key->rounds; i++) {
-    // Copy the round key into each block in the batch.
-    for (size_t j = 0; j < AES_NOHW_BATCH_SIZE; j++) {
-      aes_word_t tmp[AES_NOHW_BLOCK_WORDS];
-      OPENSSL_memcpy(tmp, key->rd_key + 4 * i, 16);
-      aes_nohw_batch_set(&out->keys[i], tmp, j);
-    }
-    aes_nohw_transpose(&out->keys[i]);
-  }
-}
-
 static const uint8_t aes_nohw_rcon[10] = {0x01, 0x02, 0x04, 0x08, 0x10,
                                           0x20, 0x40, 0x80, 0x1b, 0x36};
 
@@ -796,61 +766,5 @@ void aes_nohw_setup_key_256(AES_KEY *key, const uint8_t in[32]) {
       block2[j] = aes_nohw_xor(block2[j], aes_nohw_shift_left(v, 12));
     }
     OPENSSL_memcpy(key->rd_key + 4 * (i + 1), block2, 16);
-  }
-}
-
-static inline void aes_nohw_xor_block(uint8_t out[16], const uint8_t a[16],
-                                      const uint8_t b[16]) {
-  for (size_t i = 0; i < 16; i += sizeof(aes_word_t)) {
-    aes_word_t x, y;
-    OPENSSL_memcpy(&x, a + i, sizeof(aes_word_t));
-    OPENSSL_memcpy(&y, b + i, sizeof(aes_word_t));
-    x = aes_nohw_xor(x, y);
-    OPENSSL_memcpy(out + i, &x, sizeof(aes_word_t));
-  }
-}
-
-void aes_nohw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
-                                   size_t blocks, const AES_KEY *key,
-                                   const uint8_t ivec[16]) {
-  if (blocks == 0) {
-    return;
-  }
-
-  AES_NOHW_SCHEDULE sched;
-  aes_nohw_expand_round_keys(&sched, key);
-
-  // Make |AES_NOHW_BATCH_SIZE| copies of |ivec|.
-  alignas(AES_NOHW_WORD_SIZE) uint8_t ivs[AES_NOHW_BATCH_SIZE * 16];
-  alignas(AES_NOHW_WORD_SIZE) uint8_t enc_ivs[AES_NOHW_BATCH_SIZE * 16];
-  for (size_t i = 0; i < AES_NOHW_BATCH_SIZE; i++) {
-    OPENSSL_memcpy(ivs + 16 * i, ivec, 16);
-  }
-
-  uint32_t ctr = CRYPTO_load_u32_be(ivs + 12);
-  for (;;) {
-    // Update counters.
-    for (size_t i = 0; i < AES_NOHW_BATCH_SIZE; i++) {
-      CRYPTO_store_u32_be(ivs + 16 * i + 12, ctr + (uint32_t)i);
-    }
-
-    size_t todo = blocks >= AES_NOHW_BATCH_SIZE ? AES_NOHW_BATCH_SIZE : blocks;
-    AES_NOHW_BATCH batch;
-    aes_nohw_to_batch(&batch, ivs, todo);
-    aes_nohw_encrypt_batch(&sched, key->rounds, &batch);
-    aes_nohw_from_batch(enc_ivs, todo, &batch);
-
-    for (size_t i = 0; i < todo; i++) {
-      aes_nohw_xor_block(out + 16 * i, in + 16 * i, enc_ivs + 16 * i);
-    }
-
-    blocks -= todo;
-    if (blocks == 0) {
-      break;
-    }
-
-    in += 16 * AES_NOHW_BATCH_SIZE;
-    out += 16 * AES_NOHW_BATCH_SIZE;
-    ctr += AES_NOHW_BATCH_SIZE;
   }
 }
