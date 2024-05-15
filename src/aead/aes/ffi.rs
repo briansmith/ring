@@ -40,10 +40,7 @@ impl AES_KEY {
         f: unsafe extern "C" fn(*const u8, BitLength<c_int>, *mut AES_KEY) -> c_int,
         bytes: KeyBytes<'_>,
     ) -> Self {
-        let mut key = Self {
-            rd_key: [0; 4 * (MAX_ROUNDS + 1)],
-            rounds: 0,
-        };
+        let mut key = Self::invalid_zero();
 
         let (bytes, key_bits) = match bytes {
             KeyBytes::AES_128(bytes) => (&bytes[..], BitLength::from_bits(128)),
@@ -54,6 +51,13 @@ impl AES_KEY {
         let r = unsafe { f(bytes.as_ptr(), key_bits, &mut key) };
         assert_eq!(r, 0);
         key
+    }
+
+    pub(super) fn invalid_zero() -> Self {
+        Self {
+            rd_key: [0; 4 * (MAX_ROUNDS + 1)],
+            rounds: 0,
+        }
     }
 }
 

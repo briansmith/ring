@@ -43,7 +43,7 @@ impl Key {
         bytes: KeyBytes<'_>,
         _required_cpu_features: (cpu::intel::Aes, cpu::intel::Ssse3),
         optional_cpu_features: Option<cpu::intel::Avx>,
-    ) -> Result<Self, error::Unspecified> {
+    ) -> Self {
         // Ssse3 is required, but upstream only uses this if there is also Avx;
         // presumably the base version is faster on pre-AVX CPUs.
         if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
