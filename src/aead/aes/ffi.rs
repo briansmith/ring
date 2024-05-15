@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, KeyBytes, Overlapping, BLOCK_LEN};
+use super::{KeyBytes, Overlapping, BLOCK_LEN};
 use crate::{bits::BitLength, c};
 use core::{
     ffi::{c_int, c_uint},
@@ -27,12 +27,12 @@ pub(in super::super) struct Counter(pub(super) [u8; BLOCK_LEN]);
 #[repr(C)]
 #[derive(Clone)]
 pub(in super::super) struct AES_KEY {
-    pub rd_key: [u32; 4 * (MAX_ROUNDS + 1)],
+    pub rd_key: [[u32; 4]; MAX_ROUNDS + 1],
     pub rounds: c_uint,
 }
 
 // Keep this in sync with `AES_MAXNR` in aes.h.
-const MAX_ROUNDS: usize = 14;
+pub(crate) const MAX_ROUNDS: usize = 14;
 
 impl AES_KEY {
     #[inline]
@@ -55,7 +55,7 @@ impl AES_KEY {
 
     pub(super) fn invalid_zero() -> Self {
         Self {
-            rd_key: [0; 4 * (MAX_ROUNDS + 1)],
+            rd_key: [[0; 4]; MAX_ROUNDS + 1],
             rounds: 0,
         }
     }
@@ -67,10 +67,7 @@ impl AES_KEY {
         f: for<'a> unsafe extern "C" fn(*mut AES_KEY, &'a AES_KEY),
         src: &Self,
     ) -> Self {
-        let mut r = AES_KEY {
-            rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
-            rounds: 0,
-        };
+        let mut r = Self::invalid_zero();
         unsafe { f(&mut r, src) };
         r
     }
@@ -100,6 +97,7 @@ macro_rules! set_encrypt_key {
     }};
 }
 
+#[cfg(target_arch = "x86")]
 macro_rules! encrypt_block {
     ($name:ident, $block:expr, $key:expr) => {{
         use crate::aead::aes::{ffi::AES_KEY, Block};
@@ -111,12 +109,13 @@ macro_rules! encrypt_block {
 }
 
 impl AES_KEY {
+    #[cfg(target_arch = "x86")]
     #[inline]
     pub(super) unsafe fn encrypt_block(
         &self,
-        f: unsafe extern "C" fn(&Block, *mut Block, &AES_KEY),
-        a: Block,
-    ) -> Block {
+        f: unsafe extern "C" fn(&super::Block, *mut super::Block, &AES_KEY),
+        a: super::Block,
+    ) -> super::Block {
         let mut result = core::mem::MaybeUninit::uninit();
         unsafe {
             f(&a, result.as_mut_ptr(), self);
