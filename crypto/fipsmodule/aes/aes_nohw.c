@@ -724,7 +724,7 @@ static void aes_nohw_sub_block(aes_word_t out[AES_NOHW_BLOCK_WORDS],
   aes_nohw_batch_get(&batch, out, 0);
 }
 
-static void aes_nohw_setup_key_128(AES_KEY *key, const uint8_t in[16]) {
+void aes_nohw_setup_key_128(AES_KEY *key, const uint8_t in[16]) {
   key->rounds = 10;
 
   aes_word_t block[AES_NOHW_BLOCK_WORDS];
@@ -752,7 +752,7 @@ static void aes_nohw_setup_key_128(AES_KEY *key, const uint8_t in[16]) {
   }
 }
 
-static void aes_nohw_setup_key_256(AES_KEY *key, const uint8_t in[32]) {
+void aes_nohw_setup_key_256(AES_KEY *key, const uint8_t in[32]) {
   key->rounds = 14;
 
   // Each key schedule iteration produces two round keys.
@@ -797,22 +797,6 @@ static void aes_nohw_setup_key_256(AES_KEY *key, const uint8_t in[32]) {
     }
     OPENSSL_memcpy(key->rd_key + 4 * (i + 1), block2, 16);
   }
-}
-
-
-// External API.
-
-int aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
-                             AES_KEY *aeskey) {
-  switch (bits) {
-    case 128:
-      aes_nohw_setup_key_128(aeskey, key);
-      return 0;
-    case 256:
-      aes_nohw_setup_key_256(aeskey, key);
-      return 0;
-  }
-  return 1;
 }
 
 void aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {

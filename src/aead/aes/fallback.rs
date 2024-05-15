@@ -21,9 +21,18 @@ pub struct Key {
 
 impl Key {
     pub(in super::super) fn new(bytes: KeyBytes<'_>) -> Self {
-        Self {
-            inner: unsafe { set_encrypt_key!(aes_nohw_set_encrypt_key, bytes) },
+        prefixed_extern! {
+            fn aes_nohw_setup_key_128(key: *mut AES_KEY, input: &[u8; 128 / 8]);
+            fn aes_nohw_setup_key_256(key: *mut AES_KEY, input: &[u8; 256 / 8]);
         }
+        let mut r = Self {
+            inner: AES_KEY::invalid_zero(),
+        };
+        match bytes {
+            KeyBytes::AES_128(bytes) => unsafe { aes_nohw_setup_key_128(&mut r.inner, bytes) },
+            KeyBytes::AES_256(bytes) => unsafe { aes_nohw_setup_key_256(&mut r.inner, bytes) },
+        }
+        r
     }
 }
 
