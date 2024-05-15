@@ -20,12 +20,14 @@ use crate::{
 };
 use cfg_if::cfg_if;
 use core::num::NonZeroU32;
+use ffi::MAX_ROUNDS;
 
 pub(super) use ffi::Counter;
 
 #[macro_use]
 mod ffi;
 
+mod aes_nohw;
 mod bs;
 pub(super) mod fallback;
 pub(super) mod hw;

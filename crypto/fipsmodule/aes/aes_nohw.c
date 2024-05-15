@@ -166,7 +166,7 @@ typedef struct {
 
 // aes_nohw_batch_set sets the |i|th block of |batch| to |in|. |batch| is in
 // compact form.
-static inline void aes_nohw_batch_set(AES_NOHW_BATCH *batch,
+/*static inline*/ void aes_nohw_batch_set(AES_NOHW_BATCH *batch,
                                       const aes_word_t in[AES_NOHW_BLOCK_WORDS],
                                       size_t i) {
   // Note the words are interleaved. The order comes from |aes_nohw_transpose|.
@@ -376,7 +376,7 @@ static inline void aes_nohw_swap_bits(aes_word_t *a, aes_word_t *b,
 // aes_nohw_transpose converts |batch| to and from bitsliced form. It divides
 // the 8 × word_size bits into AES_NOHW_BATCH_SIZE × AES_NOHW_BATCH_SIZE squares
 // and transposes each square.
-static void aes_nohw_transpose(AES_NOHW_BATCH *batch) {
+void aes_nohw_transpose(AES_NOHW_BATCH *batch) {
   // Swap bits with index 0 and 1 mod 2 (0x55 = 0b01010101).
   aes_nohw_swap_bits(&batch->w[0], &batch->w[1], 0x55555555, 1);
   aes_nohw_swap_bits(&batch->w[2], &batch->w[3], 0x55555555, 1);
@@ -402,7 +402,7 @@ static void aes_nohw_transpose(AES_NOHW_BATCH *batch) {
 
 // aes_nohw_to_batch initializes |out| with the |num_blocks| blocks from |in|.
 // |num_blocks| must be at most |AES_NOHW_BATCH|.
-static void aes_nohw_to_batch(AES_NOHW_BATCH *out, const uint8_t *in,
+void aes_nohw_to_batch(AES_NOHW_BATCH *out, const uint8_t *in,
                               size_t num_blocks) {
   // Don't leave unused blocks uninitialized.
   OPENSSL_memset(out, 0, sizeof(AES_NOHW_BATCH));
@@ -418,7 +418,7 @@ static void aes_nohw_to_batch(AES_NOHW_BATCH *out, const uint8_t *in,
 
 // aes_nohw_to_batch writes the first |num_blocks| blocks in |batch| to |out|.
 // |num_blocks| must be at most |AES_NOHW_BATCH|.
-static void aes_nohw_from_batch(uint8_t *out, size_t num_blocks,
+void aes_nohw_from_batch(uint8_t *out, size_t num_blocks,
                                 const AES_NOHW_BATCH *batch) {
   AES_NOHW_BATCH copy = *batch;
   aes_nohw_transpose(&copy);
@@ -674,7 +674,7 @@ static void aes_nohw_mix_columns(AES_NOHW_BATCH *batch) {
       aes_nohw_xor(aes_nohw_xor(a6_r6, r7), aes_nohw_rotate_rows_twice(a7_r7));
 }
 
-static void aes_nohw_encrypt_batch(const AES_NOHW_SCHEDULE *key,
+void aes_nohw_encrypt_batch(const AES_NOHW_SCHEDULE *key,
                                    size_t num_rounds, AES_NOHW_BATCH *batch) {
   aes_nohw_add_round_key(batch, &key->keys[0]);
   for (size_t i = 1; i < num_rounds; i++) {
@@ -797,15 +797,6 @@ void aes_nohw_setup_key_256(AES_KEY *key, const uint8_t in[32]) {
     }
     OPENSSL_memcpy(key->rd_key + 4 * (i + 1), block2, 16);
   }
-}
-
-void aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-  AES_NOHW_SCHEDULE sched;
-  aes_nohw_expand_round_keys(&sched, key);
-  AES_NOHW_BATCH batch;
-  aes_nohw_to_batch(&batch, in, /*num_blocks=*/1);
-  aes_nohw_encrypt_batch(&sched, key->rounds, &batch);
-  aes_nohw_from_batch(out, /*num_blocks=*/1, &batch);
 }
 
 static inline void aes_nohw_xor_block(uint8_t out[16], const uint8_t a[16],

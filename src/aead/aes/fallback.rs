@@ -12,7 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
+use super::{
+    aes_nohw, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY,
+};
 
 #[derive(Clone)]
 pub struct Key {
@@ -37,8 +39,9 @@ impl Key {
 }
 
 impl EncryptBlock for Key {
-    fn encrypt_block(&self, block: Block) -> Block {
-        unsafe { encrypt_block!(aes_nohw_encrypt, block, &self.inner) }
+    fn encrypt_block(&self, mut block: Block) -> Block {
+        aes_nohw::encrypt_block(&self.inner, &mut block);
+        block
     }
 
     fn encrypt_iv_xor_block(&self, iv: Iv, block: Block) -> Block {
