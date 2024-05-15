@@ -2172,6 +2172,14 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   if (enable_signed_cert_timestamps) {
     SSL_enable_signed_cert_timestamps(ssl.get());
   }
+  // (D)TLS 1.0 and 1.1 are disabled by default, but the runner expects them to
+  // be enabled.
+  // TODO(davidben): Update the tests to explicitly enable the versions they
+  // need.
+  if (!SSL_set_min_proto_version(
+          ssl.get(), SSL_is_dtls(ssl.get()) ? DTLS1_VERSION : TLS1_VERSION)) {
+    return nullptr;
+  }
   if (min_version != 0 &&
       !SSL_set_min_proto_version(ssl.get(), min_version)) {
     return nullptr;
