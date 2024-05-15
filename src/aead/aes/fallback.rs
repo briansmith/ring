@@ -14,13 +14,14 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY, BLOCK_LEN,
-    MAX_ROUNDS,
+    super::overlapping::IndexError, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes,
+    Overlapping, AES_KEY, BLOCK_LEN, MAX_ROUNDS,
 };
 use crate::{bb, c, polyfill::usize_from_u32};
 use core::{
-    array,
-    mem::{size_of, MaybeUninit},
+    array, cmp,
+    mem::{self, size_of, MaybeUninit},
+    num::NonZeroU32,
 };
 
 #[derive(Clone)]
@@ -58,15 +59,28 @@ impl EncryptBlock for Key {
 
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        unsafe { ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
+        ctr32_encrypt_within(&self.inner, in_out, ctr)
     }
 }
 
 type Word = bb::Word;
 const WORD_SIZE: usize = size_of::<Word>();
 const BATCH_SIZE: usize = WORD_SIZE / 2;
+#[allow(clippy::cast_possible_truncation)]
+const BATCH_SIZE_U32: u32 = BATCH_SIZE as u32;
 
 const BLOCK_WORDS: usize = 16 / WORD_SIZE;
+
+fn compact_block(input: &[u8; 16]) -> [Word; BLOCK_WORDS] {
+    prefixed_extern! {
+        fn aes_nohw_compact_block(out: *mut [Word; BLOCK_WORDS], input: &[u8; 16]);
+    }
+    let mut block = MaybeUninit::uninit();
+    unsafe {
+        aes_nohw_compact_block(block.as_mut_ptr(), input);
+        block.assume_init()
+    }
+}
 
 // An AES_NOHW_BATCH stores |AES_NOHW_BATCH_SIZE| blocks. Unless otherwise
 // specified, it is in bitsliced form.
@@ -79,14 +93,15 @@ impl Batch {
     // aes_nohw_to_batch initializes |out| with the |num_blocks| blocks from |in|.
     // |num_blocks| must be at most |AES_NOHW_BATCH|.
     fn from_bytes(input: &[[u8; BLOCK_LEN]]) -> Self {
-        prefixed_extern! {
-            fn aes_nohw_to_batch(out: *mut Batch, input: *const u8, num_blocks: c::size_t);
-        }
-        let mut r = MaybeUninit::uninit();
-        unsafe {
-            aes_nohw_to_batch(r.as_mut_ptr(), input.as_ptr().cast::<u8>(), input.len());
-            r.assume_init()
-        }
+        let mut r = Self {
+            w: Default::default(),
+        };
+        input.iter().enumerate().for_each(|(i, input)| {
+            let block = compact_block(input);
+            r.set(&block, i);
+        });
+        r.transpose();
+        r
     }
 
     // aes_nohw_batch_set sets the |i|th block of |batch| to |in|. |batch| is in
@@ -98,32 +113,23 @@ impl Batch {
         unsafe { aes_nohw_batch_set(self, input, i) }
     }
 
-    // aes_nohw_transpose converts |batch| to and from bitsliced form. It divides
-    // the 8 × word_size bits into AES_NOHW_BATCH_SIZE × AES_NOHW_BATCH_SIZE squares
-    // and transposes each square.
+    fn encrypt(mut self, key: &Schedule, rounds: usize, out: &mut [[u8; BLOCK_LEN]]) {
+        assert!(out.len() <= BATCH_SIZE);
+        prefixed_extern! {
+            fn aes_nohw_encrypt_batch(key: &Schedule, num_rounds: usize, batch: &mut Batch);
+            fn aes_nohw_from_batch(out: *mut [u8; BLOCK_LEN], num_blocks: c::size_t, batch: &Batch);
+        }
+        unsafe {
+            aes_nohw_encrypt_batch(key, rounds, &mut self);
+            aes_nohw_from_batch(out.as_mut_ptr(), out.len(), &self);
+        }
+    }
+
     fn transpose(&mut self) {
         prefixed_extern! {
             fn aes_nohw_transpose(batch: &mut Batch);
         }
-        unsafe {
-            aes_nohw_transpose(self);
-        }
-    }
-
-    // aes_nohw_to_batch writes the first |num_blocks| blocks in |batch| to |out|.
-    // |num_blocks| must be at most |AES_NOHW_BATCH|.
-    fn into_bytes(self, out: &mut [[u8; BLOCK_LEN]]) {
-        prefixed_extern! {
-            fn aes_nohw_from_batch(out: *mut u8, num_blocks: c::size_t, batch: &Batch);
-        }
-        unsafe { aes_nohw_from_batch(out.as_mut_ptr().cast::<u8>(), out.len(), &self) }
-    }
-
-    fn encrypt(&mut self, key: &Schedule, num_rounds: usize) {
-        prefixed_extern! {
-            fn aes_nohw_encrypt_batch(key: &Schedule, num_rounds: usize, batch: &mut Batch);
-        }
-        unsafe { aes_nohw_encrypt_batch(key, num_rounds, self) }
+        unsafe { aes_nohw_transpose(self) }
     }
 }
 
@@ -143,7 +149,7 @@ impl Schedule {
     fn expand_round_keys(key: &AES_KEY) -> Self {
         Self {
             keys: array::from_fn(|i| {
-                let tmp: [Word; BLOCK_WORDS] = unsafe { core::mem::transmute(key.rd_key[i]) };
+                let tmp: [Word; BLOCK_WORDS] = unsafe { mem::transmute(key.rd_key[i]) };
 
                 let mut r = Batch { w: [0; 8] };
                 // Copy the round key into each block in the batch.
@@ -159,7 +165,74 @@ impl Schedule {
 
 fn encrypt_block(key: &AES_KEY, in_out: &mut [u8; BLOCK_LEN]) {
     let sched = Schedule::expand_round_keys(key);
-    let mut batch = Batch::from_bytes(core::slice::from_ref(in_out));
-    batch.encrypt(&sched, usize_from_u32(key.rounds));
-    batch.into_bytes(core::slice::from_mut(in_out));
+    let batch = Batch::from_bytes(core::slice::from_ref(in_out));
+    batch.encrypt(&sched, usize_from_u32(key.rounds), array::from_mut(in_out));
+}
+
+fn ctr32_encrypt_within(key: &AES_KEY, mut in_out: Overlapping, ctr: &mut Counter) {
+    assert_eq!(in_out.len() % BLOCK_LEN, 0);
+
+    // XXX(unwrap): The caller is responsible for ensuring that the input is
+    // short enough to avoid overflow.
+    let blocks = match NonZeroU32::new(u32::try_from(in_out.len() / 16).unwrap()) {
+        Some(n) => n,
+        None => return,
+    };
+
+    let sched = Schedule::expand_round_keys(key);
+
+    let initial_iv = *ctr.as_bytes_less_safe();
+    // XXX(overflow): The caller is responsible to ensure this doesn't
+    // wrap/overflow.
+    ctr.increment_by_less_safe(blocks);
+
+    const _ALIGNMENT_MAKES_SENSE: () =
+        assert!(size_of::<Word>() == 4 || size_of::<Word>() == 8 || size_of::<Word>() == 16);
+
+    #[repr(align(16))] // Was `align(WORD_SIZE)` in the C version.
+    struct AlignedIvs([[u8; BLOCK_LEN]; BATCH_SIZE]);
+
+    let ctr: &[u8; 4] = initial_iv[12..].try_into().unwrap();
+    let mut ctr = u32::from_be_bytes(*ctr);
+
+    let mut ivs = AlignedIvs([initial_iv; BATCH_SIZE]);
+
+    // XXX(perf): Unwanted zero initialization here that isn't in the original.
+    let mut enc_ivs: AlignedIvs = AlignedIvs([[0u8; BLOCK_LEN]; BATCH_SIZE]);
+
+    let mut blocks = usize_from_u32(blocks.get());
+    assert!(blocks > 0);
+
+    loop {
+        // Update counters.
+        for i in 0..BATCH_SIZE_U32 {
+            let iv = &mut ivs.0[usize_from_u32(i)];
+            let iv_ctr: &mut [u8; 4] = (&mut iv[12..]).try_into().unwrap();
+            // HAZARD: The caller is responsible for ensuring this is a
+            // valid, unused, counter.
+            // HAZARD: The caller is responsible for ensuring this addition
+            // doesn't actually wrap.
+            *iv_ctr = ctr.wrapping_add(i).to_be_bytes();
+        }
+
+        let todo = cmp::min(BATCH_SIZE, blocks);
+        let batch = Batch::from_bytes(&ivs.0[..todo]);
+        let enc_ivs = &mut enc_ivs.0[..todo];
+        batch.encrypt(&sched, usize_from_u32(key.rounds), enc_ivs);
+
+        for enc_iv in enc_ivs {
+            in_out = in_out
+                .split_first_chunk::<BLOCK_LEN>(|in_out| {
+                    bb::xor_assign_at_start(enc_iv.as_mut(), in_out.input());
+                    in_out.into_unwritten_output().copy_from_slice(enc_iv);
+                })
+                .unwrap_or_else(|_: IndexError| unreachable!());
+        }
+
+        blocks -= todo;
+        if blocks == 0 {
+            break;
+        }
+        ctr = ctr.wrapping_add(BATCH_SIZE_U32);
+    }
 }

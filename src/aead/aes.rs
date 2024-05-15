@@ -150,6 +150,10 @@ impl Counter {
         let new_value = old_value.wrapping_add(increment_by.get());
         [*c0, *c1, *c2, *c3] = u32::to_be_bytes(new_value);
     }
+
+    fn as_bytes_less_safe(&self) -> &[u8; BLOCK_LEN] {
+        &self.0
+    }
 }
 
 /// The IV for a single block encryption.
