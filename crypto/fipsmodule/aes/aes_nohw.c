@@ -155,38 +155,6 @@ typedef struct {
   aes_word_t w[8];
 } AES_NOHW_BATCH;
 
-// An AES_NOHW_SCHEDULE is an expanded bitsliced AES key schedule. It is
-// suitable for encryption or decryption. It is as large as |AES_NOHW_BATCH|
-// |AES_KEY|s so it should not be used as a long-term key representation.
-typedef struct {
-  // keys is an array of batches, one for each round key. Each batch stores
-  // |AES_NOHW_BATCH_SIZE| copies of the round key in bitsliced form.
-  AES_NOHW_BATCH keys[AES_MAXNR + 1];
-} AES_NOHW_SCHEDULE;
-
-// aes_nohw_batch_set sets the |i|th block of |batch| to |in|. |batch| is in
-// compact form.
-/*static inline*/ void aes_nohw_batch_set(AES_NOHW_BATCH *batch,
-                                      const aes_word_t in[AES_NOHW_BLOCK_WORDS],
-                                      size_t i) {
-  // Note the words are interleaved. The order comes from |aes_nohw_transpose|.
-  // If |i| is zero and this is the 64-bit implementation, in[0] contains bits
-  // 0-3 and in[1] contains bits 4-7. We place in[0] at w[0] and in[1] at
-  // w[4] so that bits 0 and 4 are in the correct position. (In general, bits
-  // along diagonals of |AES_NOHW_BATCH_SIZE| by |AES_NOHW_BATCH_SIZE| squares
-  // will be correctly placed.)
-  dev_assert_secret(i < AES_NOHW_BATCH_SIZE);
-#if defined(OPENSSL_64_BIT)
-  batch->w[i] = in[0];
-  batch->w[i + 4] = in[1];
-#else
-  batch->w[i] = in[0];
-  batch->w[i + 2] = in[1];
-  batch->w[i + 4] = in[2];
-  batch->w[i + 6] = in[3];
-#endif
-}
-
 // aes_nohw_delta_swap returns |a| with bits |a & mask| and
 // |a & (mask << shift)| swapped. |mask| and |mask << shift| may not overlap.
 static inline aes_word_t aes_nohw_delta_swap(aes_word_t a, aes_word_t mask,

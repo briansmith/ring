@@ -21,6 +21,7 @@ use crate::{
     bb,
     polyfill::{self, usize_from_u32},
 };
+use cfg_if::cfg_if;
 use core::{
     array, cmp,
     mem::{self, size_of, MaybeUninit},
@@ -154,10 +155,26 @@ impl Batch {
     // compact form.
     fn set(&mut self, input: &[Word; BLOCK_WORDS], i: usize) {
         assert!(i < self.w.len());
-        prefixed_extern! {
-            fn aes_nohw_batch_set(batch: *mut Batch, input: &[Word; BLOCK_WORDS], i: usize);
+
+        // Note the words are interleaved. The order comes from |aes_nohw_transpose|.
+        // If |i| is zero and this is the 64-bit implementation, in[0] contains bits
+        // 0-3 and in[1] contains bits 4-7. We place in[0] at w[0] and in[1] at
+        // w[4] so that bits 0 and 4 are in the correct position. (In general, bits
+        // along diagonals of |AES_NOHW_BATCH_SIZE| by |AES_NOHW_BATCH_SIZE| squares
+        // will be correctly placed.)
+        cfg_if! {
+            if #[cfg(target_pointer_width = "64")] {
+                self.w[i] = input[0];
+                self.w[i + 4] = input[1];
+            } else if #[cfg(target_pointer_width = "32")] {
+                self.w[i] = input[0];
+                self.w[i + 2] = input[1];
+                self.w[i + 4] = input[2];
+                self.w[i + 6] = input[3];
+            } else {
+                todo!()
+            }
         }
-        unsafe { aes_nohw_batch_set(self, input, i) }
     }
 
     // aes_nohw_batch_get writes the |i|th block of |batch| to |out|. |batch| is in
@@ -268,7 +285,6 @@ fn rotate_rows_down(v: Word) -> Word {
 // An AES_NOHW_SCHEDULE is an expanded bitsliced AES key schedule. It is
 // suitable for encryption or decryption. It is as large as |AES_NOHW_BATCH|
 // |AES_KEY|s so it should not be used as a long-term key representation.
-#[repr(C)]
 struct Schedule {
     // keys is an array of batches, one for each round key. Each batch stores
     // |AES_NOHW_BATCH_SIZE| copies of the round key in bitsliced form.
