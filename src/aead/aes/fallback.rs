@@ -22,12 +22,7 @@ use crate::{
     polyfill::{self, usize_from_u32},
 };
 use cfg_if::cfg_if;
-use core::{
-    array, cmp,
-    mem::{self, size_of, MaybeUninit},
-    num::NonZeroU32,
-    slice,
-};
+use core::{array, cmp, mem::size_of, num::NonZeroU32, slice};
 
 #[derive(Clone)]
 pub struct Key {
@@ -62,24 +57,160 @@ fn u32s_to_words(u32s: [u32; 4]) -> [Word; BLOCK_WORDS] {
     unsafe { mem::transmute(u32s) }
 }
 
-fn compact_block(input: &[u8; 16]) -> [Word; BLOCK_WORDS] {
-    prefixed_extern! {
-        fn aes_nohw_compact_block(out: *mut [Word; BLOCK_WORDS], input: &[u8; 16]);
-    }
-    let mut block = MaybeUninit::uninit();
-    unsafe {
-        aes_nohw_compact_block(block.as_mut_ptr(), input);
-        block.assume_init()
+// aes_nohw_delta_swap returns |a| with bits |a & mask| and
+// |a & (mask << shift)| swapped. |mask| and |mask << shift| may not overlap.
+#[inline(always)]
+fn delta_swap<const MASK: Word, const SHIFT: u8>(a: Word) -> Word {
+    // See
+    // https://reflectionsonsecurity.wordpress.com/2014/05/11/efficient-bit-permutation-using-delta-swaps/
+    let b = (a ^ (a >> SHIFT)) & MASK;
+    a ^ b ^ (b << SHIFT)
+}
+
+// In the 32-bit and 64-bit implementations, a block spans multiple words.
+// |aes_nohw_compact_block| must permute bits across different words. First we
+// implement |aes_nohw_compact_word| which performs a smaller version of the
+// transformation which stays within a single word.
+//
+// These transformations are generalizations of the output of
+// http://programming.sirrida.de/calcperm.php on smaller inputs.
+#[inline(always)]
+fn compact_word(a: Word) -> Word {
+    let a = Word::from_le(a);
+    cfg_if! {
+        if #[cfg(target_pointer_width = "64")] {
+            // Numbering the 64/2 = 16 4-bit chunks, least to most significant, we swap
+            // quartets of those chunks:
+            //   0 1 2 3 | 4 5 6 7 | 8  9 10 11 | 12 13 14 15 =>
+            //   0 2 1 3 | 4 6 5 7 | 8 10  9 11 | 12 14 13 15
+            let a = delta_swap::<0x00f000f000f000f0, 4>(a);
+            // Swap quartets of 8-bit chunks (still numbering by 4-bit chunks):
+            //   0 2 1 3 | 4 6 5 7 | 8 10  9 11 | 12 14 13 15 =>
+            //   0 2 4 6 | 1 3 5 7 | 8 10 12 14 |  9 11 13 15
+            let a = delta_swap::<0x0000ff000000ff00, 8>(a);
+            // Swap quartets of 16-bit chunks (still numbering by 4-bit chunks):
+            //   0 2 4 6 | 1  3  5  7 | 8 10 12 14 | 9 11 13 15 =>
+            //   0 2 4 6 | 8 10 12 14 | 1  3  5  7 | 9 11 13 15
+            delta_swap::<0x00000000ffff0000, 16>(a)
+        } else if #[cfg(target_pointer_width = "32")] {
+            // Numbering the 32/2 = 16 pairs of bits, least to most significant, we swap:
+            //   0 1 2 3 | 4 5 6 7 | 8  9 10 11 | 12 13 14 15 =>
+            //   0 4 2 6 | 1 5 3 7 | 8 12 10 14 |  9 13 11 15
+            // Note:  0x00cc = 0b0000_0000_1100_1100
+            //   0x00cc << 6 = 0b0011_0011_0000_0000
+            let a = delta_swap::<0x00cc00cc, 6>(a);
+            // Now we swap groups of four bits (still numbering by pairs):
+            //   0 4 2  6 | 1 5 3  7 | 8 12 10 14 | 9 13 11 15 =>
+            //   0 4 8 12 | 1 5 9 13 | 2  6 10 14 | 3  7 11 15
+            // Note: 0x0000_f0f0 << 12 = 0x0f0f_0000
+            delta_swap::<0x0000f0f0, 12>(a)
+        } else {
+            unimplemented!()
+        }
     }
 }
 
-fn uncompact_block(input: &[Word; BLOCK_WORDS], out: &mut [u8; BLOCK_LEN]) {
-    prefixed_extern! {
-        fn aes_nohw_uncompact_block(out: *mut [u8; BLOCK_LEN], input: &[Word; BLOCK_WORDS]);
+#[inline(always)]
+fn uncompact_word(a: Word) -> Word {
+    #[cfg(target_pointer_width = "64")]
+    let r = {
+        // Reverse the steps of |aes_nohw_uncompact_word|.
+        let a = delta_swap::<0x00000000ffff0000, 16>(a);
+        let a = delta_swap::<0x0000ff000000ff00, 8>(a);
+        delta_swap::<0x00f000f000f000f0, 4>(a)
+    };
+
+    #[cfg(target_pointer_width = "32")]
+    let r = {
+        let a = delta_swap::<0x0000f0f0, 12>(a);
+        delta_swap::<0x00cc00cc, 6>(a)
+    };
+
+    Word::to_le(r)
+}
+
+fn compact_block(input: &[u8; 16]) -> [Word; BLOCK_WORDS] {
+    let (input, _) = polyfill::slice::as_chunks(input);
+    let out: [Word; BLOCK_WORDS] = array::from_fn(|i| Word::from_ne_bytes(input[i]));
+    let a0 = compact_word(out[0]);
+    let a1 = compact_word(out[1]);
+
+    #[cfg(target_pointer_width = "64")]
+    let r = [
+        (a0 & 0x00000000ffffffff) | (a1 << 32),
+        (a1 & 0xffffffff00000000) | (a0 >> 32),
+    ];
+
+    #[cfg(target_pointer_width = "32")]
+    let r = {
+        let a2 = compact_word(out[2]);
+        let a3 = compact_word(out[3]);
+        // Note clang, when building for ARM Thumb2, will sometimes miscompile
+        // expressions such as (a0 & 0x0000ff00) << 8, particularly when building
+        // without optimizations. This bug was introduced in
+        // https://reviews.llvm.org/rL340261 and fixed in
+        // https://reviews.llvm.org/rL351310. The following is written to avoid this.
+        [
+            Word::from_le_bytes([lo(a0), lo(a1), lo(a2), lo(a3)]),
+            Word::from_le_bytes([lo(a0 >> 8), lo(a1 >> 8), lo(a2 >> 8), lo(a3 >> 8)]),
+            Word::from_le_bytes([lo(a0 >> 16), lo(a1 >> 16), lo(a2 >> 16), lo(a3 >> 16)]),
+            Word::from_le_bytes([lo(a0 >> 24), lo(a1 >> 24), lo(a2 >> 24), lo(a3 >> 24)]),
+        ]
+    };
+
+    r
+}
+
+fn uncompact_block(out: &mut [u8; BLOCK_LEN], input: &[Word; BLOCK_WORDS]) {
+    let a0 = input[0];
+    let a1 = input[1];
+
+    #[cfg(target_pointer_width = "64")]
+    let [b0, b1] = {
+        [
+            (a0 & 0x00000000ffffffff) | (a1 << 32),
+            (a1 & 0xffffffff00000000) | (a0 >> 32),
+        ]
+    };
+
+    #[cfg(target_pointer_width = "32")]
+    let [b0, b1, b2, b3] = {
+        let a2 = input[2];
+        let a3 = input[3];
+
+        // Note clang, when building for ARM Thumb2, will sometimes miscompile
+        // expressions such as (a0 & 0x0000ff00) << 8, particularly when building
+        // without optimizations. This bug was introduced in
+        // https://reviews.llvm.org/rL340261 and fixed in
+        // https://reviews.llvm.org/rL351310. The following is written to avoid this.
+        let b0 = Word::from_le_bytes([lo(a0), lo(a1), lo(a2), lo(a3)]);
+        let b1 = Word::from_le_bytes([lo(a0 >> 8), lo(a1 >> 8), lo(a2 >> 8), lo(a3 >> 8)]);
+        let b2 = Word::from_le_bytes([lo(a0 >> 16), lo(a1 >> 16), lo(a2 >> 16), lo(a3 >> 16)]);
+        let b3 = Word::from_le_bytes([lo(a0 >> 24), lo(a1 >> 24), lo(a2 >> 24), lo(a3 >> 24)]);
+        [b0, b1, b2, b3]
+    };
+
+    let b0 = uncompact_word(b0);
+    let b1 = uncompact_word(b1);
+
+    #[cfg(target_pointer_width = "32")]
+    let (b2, b3) = (uncompact_word(b2), uncompact_word(b3));
+
+    let mut out = out.chunks_mut(size_of::<Word>());
+    out.next().unwrap().copy_from_slice(&Word::to_ne_bytes(b0));
+    out.next().unwrap().copy_from_slice(&Word::to_ne_bytes(b1));
+
+    #[cfg(target_pointer_width = "32")]
+    {
+        out.next().unwrap().copy_from_slice(&Word::to_ne_bytes(b2));
+        out.next().unwrap().copy_from_slice(&Word::to_ne_bytes(b3));
     }
-    unsafe {
-        aes_nohw_uncompact_block(out, input);
-    }
+}
+
+#[cfg(target_pointer_width = "32")]
+#[inline(always)]
+fn lo(w: Word) -> u8 {
+    w as u8
 }
 
 // aes_nohw_swap_bits is a variation on a delta swap. It swaps the bits in
@@ -195,7 +326,7 @@ impl Batch {
         copy.transpose();
         out.iter_mut().enumerate().for_each(|(i, out)| {
             let block = copy.get(i);
-            uncompact_block(&block, out);
+            uncompact_block(out, &block);
         });
     }
 
