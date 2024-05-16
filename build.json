@@ -93,6 +93,10 @@
             "crypto/fipsmodule/sha/sha512.c",
             "crypto/fipsmodule/tls/kdf.c"
         ],
+        "asm": [
+            "third_party/fiat/asm/fiat_p256_adx_mul.S",
+            "third_party/fiat/asm/fiat_p256_adx_sqr.S"
+        ],
         "perlasm_aarch64": [
             {"src": "crypto/fipsmodule/aes/asm/aesv8-armx.pl", "dst": "aesv8-armv8"},
             {"src": "crypto/fipsmodule/modes/asm/aesv8-gcm-armv8.pl"},
@@ -548,9 +552,7 @@
             "crypto/hrss/asm/poly_rq_mul.S",
             "crypto/poly1305/poly1305_arm_asm.S",
             "third_party/fiat/asm/fiat_curve25519_adx_mul.S",
-            "third_party/fiat/asm/fiat_curve25519_adx_square.S",
-            "third_party/fiat/asm/fiat_p256_adx_mul.S",
-            "third_party/fiat/asm/fiat_p256_adx_sqr.S"
+            "third_party/fiat/asm/fiat_curve25519_adx_square.S"
         ],
         "perlasm_aarch64": [
             {"src": "crypto/chacha/asm/chacha-armv8.pl"},

@@ -195,6 +195,8 @@ bcm_sources_asm = [
   "gen/bcm/x86_64-mont-linux.S",
   "gen/bcm/x86_64-mont5-apple.S",
   "gen/bcm/x86_64-mont5-linux.S",
+  "third_party/fiat/asm/fiat_p256_adx_mul.S",
+  "third_party/fiat/asm/fiat_p256_adx_sqr.S",
 ]
 
 bcm_sources_nasm = [
@@ -666,8 +668,6 @@ crypto_sources_asm = [
   "gen/crypto/chacha20_poly1305_x86_64-linux.S",
   "third_party/fiat/asm/fiat_curve25519_adx_mul.S",
   "third_party/fiat/asm/fiat_curve25519_adx_square.S",
-  "third_party/fiat/asm/fiat_p256_adx_mul.S",
-  "third_party/fiat/asm/fiat_p256_adx_sqr.S",
 ]
 
 crypto_sources_nasm = [
