@@ -103,6 +103,15 @@ fn compact_block(input: &[u8; 16]) -> [Word; BLOCK_WORDS] {
     }
 }
 
+fn uncompact_block(input: &[Word; BLOCK_WORDS], out: &mut [u8; BLOCK_LEN]) {
+    prefixed_extern! {
+        fn aes_nohw_uncompact_block(out: *mut [u8; BLOCK_LEN], input: &[Word; BLOCK_WORDS]);
+    }
+    unsafe {
+        aes_nohw_uncompact_block(out, input);
+    }
+}
+
 // An AES_NOHW_BATCH stores |AES_NOHW_BATCH_SIZE| blocks. Unless otherwise
 // specified, it is in bitsliced form.
 #[repr(C)]
@@ -172,6 +181,20 @@ impl Batch {
         unsafe { aes_nohw_mix_columns(self) };
     }
 
+    // aes_nohw_from_batch writes the first |num_blocks| blocks in |batch| to |out|.
+    // |num_blocks| must be at most |AES_NOHW_BATCH|.
+    pub fn into_bytes(self, out: &mut [[u8; BLOCK_LEN]]) {
+        assert!(out.len() <= BATCH_SIZE);
+
+        // TODO: Why did the original code copy `self`?
+        let mut copy = self;
+        copy.transpose();
+        out.iter_mut().enumerate().for_each(|(i, out)| {
+            let block = copy.get(i);
+            uncompact_block(&block, out);
+        });
+    }
+
     fn encrypt(mut self, key: &Schedule, rounds: usize, out: &mut [[u8; BLOCK_LEN]]) {
         assert!(out.len() <= BATCH_SIZE);
         self.add_round_key(&key.keys[0]);
@@ -184,13 +207,7 @@ impl Batch {
         self.sub_bytes();
         self.shift_rows();
         self.add_round_key(&key.keys[rounds]);
-
-        prefixed_extern! {
-            fn aes_nohw_from_batch(out: *mut [u8; BLOCK_LEN], num_blocks: c::size_t, batch: &Batch);
-        }
-        unsafe {
-            aes_nohw_from_batch(out.as_mut_ptr(), out.len(), &self);
-        }
+        self.into_bytes(out);
     }
 
     fn transpose(&mut self) {

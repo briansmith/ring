@@ -318,7 +318,7 @@ void aes_nohw_compact_block(aes_word_t out[AES_NOHW_BLOCK_WORDS],
 #endif
 }
 
-static inline void aes_nohw_uncompact_block(
+void aes_nohw_uncompact_block(
     uint8_t out[16], const aes_word_t in[AES_NOHW_BLOCK_WORDS]) {
 #if defined(OPENSSL_64_BIT)
   uint64_t a0 = in[0];
