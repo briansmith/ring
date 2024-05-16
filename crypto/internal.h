@@ -1174,6 +1174,11 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 
 // Arithmetic functions.
 
+// The most efficient versions of these functions on GCC and Clang depend on C11
+// |_Generic|. If we ever need to call these from C++, we'll need to add a
+// variant that uses C++ overloads instead.
+#if !defined(__cplusplus)
+
 // CRYPTO_addc_* returns |x + y + carry|, and sets |*out_carry| to the carry
 // bit. |carry| must be zero or one.
 #if OPENSSL_HAS_BUILTIN(__builtin_addc)
@@ -1274,6 +1279,8 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 #define CRYPTO_addc_w CRYPTO_addc_u32
 #define CRYPTO_subc_w CRYPTO_subc_u32
 #endif
+
+#endif  // !__cplusplus
 
 
 // FIPS functions.
