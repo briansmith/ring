@@ -154,14 +154,41 @@ impl Batch {
         unsafe { aes_nohw_sub_bytes(self) };
     }
 
+    fn add_round_key(&mut self, key: &Batch) {
+        bb::xor_assign_at_start(&mut self.w, &key.w)
+    }
+
+    fn shift_rows(&mut self) {
+        prefixed_extern! {
+            fn aes_nohw_shift_rows(batch: &mut Batch);
+        }
+        unsafe { aes_nohw_shift_rows(self) };
+    }
+
+    fn mix_columns(&mut self) {
+        prefixed_extern! {
+            fn aes_nohw_mix_columns(batch: &mut Batch);
+        }
+        unsafe { aes_nohw_mix_columns(self) };
+    }
+
     fn encrypt(mut self, key: &Schedule, rounds: usize, out: &mut [[u8; BLOCK_LEN]]) {
         assert!(out.len() <= BATCH_SIZE);
+        self.add_round_key(&key.keys[0]);
+        key.keys[1..rounds].iter().for_each(|key| {
+            self.sub_bytes();
+            self.shift_rows();
+            self.mix_columns();
+            self.add_round_key(key);
+        });
+        self.sub_bytes();
+        self.shift_rows();
+        self.add_round_key(&key.keys[rounds]);
+
         prefixed_extern! {
-            fn aes_nohw_encrypt_batch(key: &Schedule, num_rounds: usize, batch: &mut Batch);
             fn aes_nohw_from_batch(out: *mut [u8; BLOCK_LEN], num_blocks: c::size_t, batch: &Batch);
         }
         unsafe {
-            aes_nohw_encrypt_batch(key, rounds, &mut self);
             aes_nohw_from_batch(out.as_mut_ptr(), out.len(), &self);
         }
     }

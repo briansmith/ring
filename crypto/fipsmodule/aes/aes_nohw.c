@@ -417,13 +417,6 @@ void aes_nohw_from_batch(uint8_t *out, size_t num_blocks,
 
 // AES round steps.
 
-static void aes_nohw_add_round_key(AES_NOHW_BATCH *batch,
-                                   const AES_NOHW_BATCH *key) {
-  for (size_t i = 0; i < 8; i++) {
-    batch->w[i] = aes_nohw_xor(batch->w[i], key->w[i]);
-  }
-}
-
 void aes_nohw_sub_bytes(AES_NOHW_BATCH *batch) {
   // See https://eprint.iacr.org/2009/191.pdf, Appendix C.
   aes_word_t x0 = batch->w[7];
@@ -573,7 +566,7 @@ void aes_nohw_sub_bytes(AES_NOHW_BATCH *batch) {
   (aes_nohw_or(aes_nohw_shift_right((v), (n)*4),                      \
                aes_nohw_shift_left((v), 16 - (n)*4)))
 
-static void aes_nohw_shift_rows(AES_NOHW_BATCH *batch) {
+void aes_nohw_shift_rows(AES_NOHW_BATCH *batch) {
   for (size_t i = 0; i < 8; i++) {
     aes_word_t row0 = aes_nohw_and(batch->w[i], AES_NOHW_ROW0_MASK);
     aes_word_t row1 = aes_nohw_and(batch->w[i], AES_NOHW_ROW1_MASK);
@@ -608,7 +601,7 @@ static inline aes_word_t aes_nohw_rotate_rows_twice(aes_word_t v) {
 #endif
 }
 
-static void aes_nohw_mix_columns(AES_NOHW_BATCH *batch) {
+void aes_nohw_mix_columns(AES_NOHW_BATCH *batch) {
   // See https://eprint.iacr.org/2009/129.pdf, section 4.4 and appendix A.
   aes_word_t a0 = batch->w[0];
   aes_word_t a1 = batch->w[1];
@@ -655,18 +648,4 @@ static void aes_nohw_mix_columns(AES_NOHW_BATCH *batch) {
       aes_nohw_xor(aes_nohw_xor(a5_r5, r6), aes_nohw_rotate_rows_twice(a6_r6));
   batch->w[7] =
       aes_nohw_xor(aes_nohw_xor(a6_r6, r7), aes_nohw_rotate_rows_twice(a7_r7));
-}
-
-void aes_nohw_encrypt_batch(const AES_NOHW_SCHEDULE *key,
-                                   size_t num_rounds, AES_NOHW_BATCH *batch) {
-  aes_nohw_add_round_key(batch, &key->keys[0]);
-  for (size_t i = 1; i < num_rounds; i++) {
-    aes_nohw_sub_bytes(batch);
-    aes_nohw_shift_rows(batch);
-    aes_nohw_mix_columns(batch);
-    aes_nohw_add_round_key(batch, &key->keys[i]);
-  }
-  aes_nohw_sub_bytes(batch);
-  aes_nohw_shift_rows(batch);
-  aes_nohw_add_round_key(batch, &key->keys[num_rounds]);
 }
