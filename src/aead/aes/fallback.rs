@@ -81,6 +81,22 @@ fn uncompact_block(input: &[Word; BLOCK_WORDS], out: &mut [u8; BLOCK_LEN]) {
     }
 }
 
+// aes_nohw_swap_bits is a variation on a delta swap. It swaps the bits in
+// |*a & (mask << shift)| with the bits in |*b & mask|. |mask| and
+// |mask << shift| must not overlap. |mask| is specified as a |uint32_t|, but it
+// is repeated to the full width of |aes_word_t|.
+fn swap_bits<const A: usize, const B: usize, const MASK_BYTE: u8, const SHIFT: u8>(
+    w: &mut [Word; 8],
+) {
+    // TODO: const MASK: Word = ...
+    let mask = Word::from_ne_bytes([MASK_BYTE; core::mem::size_of::<Word>()]);
+
+    // This is a variation on a delta swap.
+    let swap = ((w[A] >> SHIFT) ^ w[B]) & mask;
+    w[A] ^= swap << SHIFT;
+    w[B] ^= swap;
+}
+
 // An AES_NOHW_BATCH stores |AES_NOHW_BATCH_SIZE| blocks. Unless otherwise
 // specified, it is in bitsliced form.
 #[repr(C)]
@@ -181,11 +197,25 @@ impl Batch {
         self.into_bytes(out);
     }
 
+    // aes_nohw_transpose converts |batch| to and from bitsliced form. It divides
+    // the 8 × word_size bits into AES_NOHW_BATCH_SIZE × AES_NOHW_BATCH_SIZE squares
+    // and transposes each square.
     fn transpose(&mut self) {
-        prefixed_extern! {
-            fn aes_nohw_transpose(batch: &mut Batch);
+        const _: () = assert!(BATCH_SIZE == 2 || BATCH_SIZE == 4);
+
+        // Swap bits with index 0 and 1 mod 2 (0x55 = 0b01010101).
+        swap_bits::<0, 1, 0x55, 1>(&mut self.w);
+        swap_bits::<2, 3, 0x55, 1>(&mut self.w);
+        swap_bits::<4, 5, 0x55, 1>(&mut self.w);
+        swap_bits::<6, 7, 0x55, 1>(&mut self.w);
+
+        if BATCH_SIZE >= 4 {
+            // Swap bits with index 0-1 and 2-3 mod 4 (0x33 = 0b00110011).
+            swap_bits::<0, 2, 0x33, 2>(&mut self.w);
+            swap_bits::<1, 3, 0x33, 2>(&mut self.w);
+            swap_bits::<4, 6, 0x33, 2>(&mut self.w);
+            swap_bits::<5, 7, 0x33, 2>(&mut self.w);
         }
-        unsafe { aes_nohw_transpose(self) }
     }
 }
 
