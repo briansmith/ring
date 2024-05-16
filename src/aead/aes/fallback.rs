@@ -53,12 +53,12 @@ fn shift_right<const I: u32>(a: Word) -> Word {
 
 #[inline(always)]
 fn words_to_u32s(words: [Word; BLOCK_WORDS]) -> [u32; 4] {
-    unsafe {
-        mem::transmute::<
-            [Word; BLOCK_WORDS],
-            [u32; BLOCK_WORDS * (size_of::<Word>() / size_of::<u32>())],
-        >(words)
-    }
+    unsafe { mem::transmute(words) }
+}
+
+#[inline(always)]
+fn u32s_to_words(u32s: [u32; 4]) -> [Word; BLOCK_WORDS] {
+    unsafe { mem::transmute(u32s) }
 }
 
 fn compact_block(input: &[u8; 16]) -> [Word; BLOCK_WORDS] {
@@ -102,6 +102,25 @@ impl Batch {
             fn aes_nohw_batch_set(batch: *mut Batch, input: &[Word; BLOCK_WORDS], i: usize);
         }
         unsafe { aes_nohw_batch_set(self, input, i) }
+    }
+
+    fn get(&self, i: usize) -> [Word; BLOCK_WORDS] {
+        assert!(i < self.w.len());
+        prefixed_extern! {
+            fn aes_nohw_batch_get(batch: &Batch, out: *mut [Word; BLOCK_WORDS], i: c::size_t);
+        }
+        let mut out = MaybeUninit::uninit();
+        unsafe {
+            aes_nohw_batch_get(self, out.as_mut_ptr(), i);
+            out.assume_init()
+        }
+    }
+
+    fn sub_bytes(&mut self) {
+        prefixed_extern! {
+            fn aes_nohw_sub_bytes(batch: &mut Batch);
+        }
+        unsafe { aes_nohw_sub_bytes(self) };
     }
 
     fn encrypt(mut self, key: &Schedule, rounds: usize, out: &mut [[u8; BLOCK_LEN]]) {
@@ -153,7 +172,7 @@ impl Schedule {
     fn expand_round_keys(key: &AES_KEY) -> Self {
         Self {
             keys: array::from_fn(|i| {
-                let tmp: [Word; BLOCK_WORDS] = unsafe { mem::transmute(key.rd_key[i]) };
+                let tmp: [Word; BLOCK_WORDS] = u32s_to_words(key.rd_key[i]);
 
                 let mut r = Batch { w: [0; 8] };
                 // Copy the round key into each block in the batch.
@@ -261,14 +280,14 @@ fn derive_round_key(
 }
 
 fn sub_block(input: &[Word; BLOCK_WORDS]) -> [Word; BLOCK_WORDS] {
-    prefixed_extern! {
-        fn aes_nohw_sub_block(out: *mut [Word; BLOCK_WORDS], input: &[Word; BLOCK_WORDS]);
-    }
-    let mut r = MaybeUninit::uninit();
-    unsafe {
-        aes_nohw_sub_block(r.as_mut_ptr(), input);
-        r.assume_init()
-    }
+    let mut batch = Batch {
+        w: Default::default(),
+    };
+    batch.set(input, 0);
+    batch.transpose();
+    batch.sub_bytes();
+    batch.transpose();
+    batch.get(0)
 }
 
 impl EncryptBlock for Key {
