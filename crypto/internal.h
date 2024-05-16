@@ -343,18 +343,6 @@ static inline int constant_time_declassify_int(int v) {
 static inline uint32_t CRYPTO_bswap4(uint32_t x) {
   return __builtin_bswap32(x);
 }
-
-static inline uint64_t CRYPTO_bswap8(uint64_t x) {
-  return __builtin_bswap64(x);
-}
-#elif defined(_MSC_VER)
-#pragma warning(push, 3)
-#include <stdlib.h>
-#pragma warning(pop)
-#pragma intrinsic(_byteswap_ulong)
-static inline uint32_t CRYPTO_bswap4(uint32_t x) {
-  return _byteswap_ulong(x);
-}
 #endif
 
 #if !defined(RING_CORE_NOSTDLIBINC)
