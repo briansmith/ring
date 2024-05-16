@@ -424,7 +424,7 @@ static void aes_nohw_add_round_key(AES_NOHW_BATCH *batch,
   }
 }
 
-static void aes_nohw_sub_bytes(AES_NOHW_BATCH *batch) {
+void aes_nohw_sub_bytes(AES_NOHW_BATCH *batch) {
   // See https://eprint.iacr.org/2009/191.pdf, Appendix C.
   aes_word_t x0 = batch->w[7];
   aes_word_t x1 = batch->w[6];
@@ -669,17 +669,4 @@ void aes_nohw_encrypt_batch(const AES_NOHW_SCHEDULE *key,
   aes_nohw_sub_bytes(batch);
   aes_nohw_shift_rows(batch);
   aes_nohw_add_round_key(batch, &key->keys[num_rounds]);
-}
-
-// Key schedule.
-
-void aes_nohw_sub_block(aes_word_t out[AES_NOHW_BLOCK_WORDS],
-                               const aes_word_t in[AES_NOHW_BLOCK_WORDS]) {
-  AES_NOHW_BATCH batch;
-  OPENSSL_memset(&batch, 0, sizeof(batch));
-  aes_nohw_batch_set(&batch, in, 0);
-  aes_nohw_transpose(&batch);
-  aes_nohw_sub_bytes(&batch);
-  aes_nohw_transpose(&batch);
-  aes_nohw_batch_get(&batch, out, 0);
 }

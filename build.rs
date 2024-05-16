@@ -937,7 +937,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "aes_nohw_compact_block",
         "aes_nohw_encrypt_batch",
         "aes_nohw_from_batch",
-        "aes_nohw_sub_block",
+        "aes_nohw_sub_bytes",
         "aes_nohw_transpose",
         "aesni_gcm_decrypt",
         "aesni_gcm_encrypt",
