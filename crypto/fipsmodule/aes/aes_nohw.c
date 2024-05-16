@@ -187,23 +187,6 @@ typedef struct {
 #endif
 }
 
-// aes_nohw_batch_get writes the |i|th block of |batch| to |out|. |batch| is in
-// compact form.
-/*static inline*/ void aes_nohw_batch_get(const AES_NOHW_BATCH *batch,
-                                      aes_word_t out[AES_NOHW_BLOCK_WORDS],
-                                      size_t i) {
-  dev_assert_secret(i < AES_NOHW_BATCH_SIZE);
-#if defined(OPENSSL_64_BIT)
-  out[0] = batch->w[i];
-  out[1] = batch->w[i + 4];
-#else
-  out[0] = batch->w[i];
-  out[1] = batch->w[i + 2];
-  out[2] = batch->w[i + 4];
-  out[3] = batch->w[i + 6];
-#endif
-}
-
 // aes_nohw_delta_swap returns |a| with bits |a & mask| and
 // |a & (mask << shift)| swapped. |mask| and |mask << shift| may not overlap.
 static inline aes_word_t aes_nohw_delta_swap(aes_word_t a, aes_word_t mask,
@@ -398,21 +381,6 @@ void aes_nohw_transpose(AES_NOHW_BATCH *batch) {
   aes_nohw_swap_bits(&batch->w[2], &batch->w[6], 0x0f0f0f0f, 4);
   aes_nohw_swap_bits(&batch->w[3], &batch->w[7], 0x0f0f0f0f, 4);
 #endif
-}
-
-// aes_nohw_to_batch writes the first |num_blocks| blocks in |batch| to |out|.
-// |num_blocks| must be at most |AES_NOHW_BATCH|.
-void aes_nohw_from_batch(uint8_t *out, size_t num_blocks,
-                                const AES_NOHW_BATCH *batch) {
-  AES_NOHW_BATCH copy = *batch;
-  aes_nohw_transpose(&copy);
-
-  debug_assert_nonsecret(num_blocks <= AES_NOHW_BATCH_SIZE);
-  for (size_t i = 0; i < num_blocks; i++) {
-    aes_word_t block[AES_NOHW_BLOCK_WORDS];
-    aes_nohw_batch_get(&copy, block, i);
-    aes_nohw_uncompact_block(out + 16 * i, block);
-  }
 }
 
 // AES round steps.
