@@ -18,7 +18,11 @@ use crate::{
     c, constant_time, cpu, error,
     polyfill::{self, slice},
 };
-use core::{num::NonZeroUsize, ops::RangeFrom};
+use core::{
+    ffi::{c_int, c_uint},
+    num::NonZeroUsize,
+    ops::RangeFrom,
+};
 
 #[derive(Clone)]
 pub(super) struct Key {
@@ -38,7 +42,7 @@ pub(super) struct Key {
 macro_rules! set_encrypt_key {
     ( $name:ident, $key_bytes:expr, $key:expr, $cpu_features:expr ) => {{
         prefixed_extern! {
-            fn $name(user_key: *const u8, bits: BitLength<c::int>, key: *mut AES_KEY) -> c::int;
+            fn $name(user_key: *const u8, bits: BitLength<c_int>, key: *mut AES_KEY) -> c_int;
         }
         set_encrypt_key($name, $key_bytes, $key, $cpu_features)
     }};
@@ -46,7 +50,7 @@ macro_rules! set_encrypt_key {
 
 #[inline]
 unsafe fn set_encrypt_key(
-    f: unsafe extern "C" fn(*const u8, BitLength<c::int>, *mut AES_KEY) -> c::int,
+    f: unsafe extern "C" fn(*const u8, BitLength<c_int>, *mut AES_KEY) -> c_int,
     bytes: KeyBytes<'_>,
     key: &mut AES_KEY,
     _cpu_features: cpu::Features,
@@ -363,7 +367,7 @@ impl Key {
 #[derive(Clone)]
 pub(super) struct AES_KEY {
     pub rd_key: [u32; 4 * (MAX_ROUNDS + 1)],
-    pub rounds: c::uint,
+    pub rounds: c_uint,
 }
 
 // Keep this in sync with `AES_MAXNR` in aes.h.

@@ -15,6 +15,7 @@
 //! Constant-time operations.
 
 use crate::{c, error};
+use core::ffi::c_int;
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
 /// The comparison of `a` and `b` is done in constant time with respect to the
@@ -32,7 +33,7 @@ pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecif
 }
 
 prefixed_extern! {
-    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
+    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c_int;
 }
 
 pub(crate) fn xor<const N: usize>(mut a: [u8; N], b: [u8; N]) -> [u8; N] {

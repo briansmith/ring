@@ -11,7 +11,7 @@ repository = "https://github.com/briansmith/ring"
 
 # Keep in sync with .github/workflows/ci.yml ("MSRV") and see the MSRV note
 # in cpu/arm.rs
-rust-version = "1.63.0"
+rust-version = "1.64.0"
 
 # Keep in sync with `links` below.
 version = "0.17.8"
@@ -170,9 +170,6 @@ windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen-test = { version = "0.3.37", default-features = false }
-
-[target.'cfg(any(unix, windows, target_os = "wasi"))'.dev-dependencies]
-libc = { version = "0.2.148", default-features = false }
 
 [build-dependencies]
 cc = { version = "1.0.83", default-features = false }

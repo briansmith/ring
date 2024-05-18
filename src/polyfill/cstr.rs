@@ -12,38 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Work around lack of `core::ffi::CStr` prior to Rust 1.64, and the lack of
-//! `const fn` support for `CStr` in later versions.
+//! Work around lack of `const fn` support for `CStr`.
 
 #![cfg(all(target_arch = "aarch64", target_vendor = "apple"))]
 
-// TODO(MSRV 1.64): Use `core::ffi::c_char`.
-use libc::c_char;
+use core::ffi::CStr;
 
-// TODO(MSRV 1.64): Replace with `&core::ffi::CStr`.
-pub struct Ref(&'static [u8]);
-
-impl Ref {
-    #[inline(always)]
-    pub fn as_ptr(&self) -> *const c_char {
-        const _SAME_ALIGNMENT: () =
-            assert!(core::mem::align_of::<u8>() == core::mem::align_of::<c_char>());
-        const _SAME_SIZE: () =
-            assert!(core::mem::size_of::<u8>() == core::mem::size_of::<c_char>());
-
-        // It is safe to cast a `*const u8` to a `const c_char` as they are the
-        // same size and alignment.
-        self.0.as_ptr().cast()
-    }
-
-    // SAFETY: Same as `CStr::from_bytes_with_nul_unchecked`.
-    const unsafe fn from_bytes_with_nul_unchecked(value: &'static [u8]) -> Self {
-        Self(value)
-    }
-}
-
-pub const fn unwrap_const_from_bytes_with_nul(value: &'static [u8]) -> Ref {
-    // XXX: We cannot use `unwrap_const` since `Ref`/`CStr` is not `Copy`.
+pub const fn unwrap_const_from_bytes_with_nul(value: &'static [u8]) -> &'static CStr {
+    // XXX: We cannot use `unwrap_const` since `CStr` is not `Copy`.
     match const_from_bytes_with_nul(value) {
         Some(r) => r,
         None => panic!("const_from_bytes_with_nul failed"),
@@ -52,7 +28,7 @@ pub const fn unwrap_const_from_bytes_with_nul(value: &'static [u8]) -> Ref {
 
 // TODO(MSRV 1.72): Replace with `CStr::from_bytes_with_nul`.
 #[inline(always)]
-const fn const_from_bytes_with_nul(value: &'static [u8]) -> Option<Ref> {
+const fn const_from_bytes_with_nul(value: &'static [u8]) -> Option<&'static CStr> {
     const fn const_contains(mut value: &[u8], needle: &u8) -> bool {
         while let [head, tail @ ..] = value {
             if *head == *needle {
@@ -69,8 +45,7 @@ const fn const_from_bytes_with_nul(value: &'static [u8]) -> Option<Ref> {
             // SAFETY:
             //   * `value` is nul-terminated according to the slice pattern.
             //   * `value` doesn't contain any interior null, by the guard.
-            // TODO(MSRV 1.64): Use `CStr::from_bytes_with_nul_unchecked`
-            Some(unsafe { Ref::from_bytes_with_nul_unchecked(value) })
+            Some(unsafe { CStr::from_bytes_with_nul_unchecked(value) })
         }
         _ => None,
     }

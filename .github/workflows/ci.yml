@@ -169,7 +169,7 @@ jobs:
         rust_channel:
           - stable
           # Keep in sync with Cargo.toml and similar `rust_channel` sections.
-          - 1.63.0 # MSRV
+          - 1.64.0 # MSRV
           # TODO: Move these to a daily/pre-release job.
           # - nightly
           # - beta
@@ -305,12 +305,10 @@ jobs:
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
 
-      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.63.0') &&
-                !contains(matrix.host_os, 'windows') }}
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
 
-      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.63.0') &&
-                !contains(matrix.host_os, 'windows') }}
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   test-bench:
@@ -387,7 +385,7 @@ jobs:
           - stable
           - nightly
           # Keep in sync with Cargo.toml and similar `rust_channel` sections.
-          - 1.63.0 # MSRV
+          - 1.64.0 # MSRV
 
         include:
           - target: aarch64-unknown-linux-musl
@@ -435,12 +433,9 @@ jobs:
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
 
-      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.63.0') &&
-          !contains(matrix.host_os, 'windows') }}
-        run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
+      - run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
 
-      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.63.0') &&
-          !contains(matrix.host_os, 'windows') }}
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   # The wasm32-unknown-unknown targets have a different set of feature sets and
@@ -498,7 +493,6 @@ jobs:
           ${{ matrix.webdriver }} mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
 
       # Check that all the needed symbol renaming was done.
-      # TODO: Do this check on Windows too.
       - run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
       - run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 

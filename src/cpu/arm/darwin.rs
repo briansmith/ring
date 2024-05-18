@@ -14,6 +14,7 @@
 
 use super::{AES, ARMCAP_STATIC, NEON, PMULL, SHA256, SHA512};
 use crate::polyfill::cstr;
+use core::ffi::{c_int, c_void, CStr};
 
 // ```
 // $ rustc +1.61.0 --print cfg --target=aarch64-apple-ios | grep -E "neon|aes|sha|pmull"
@@ -51,10 +52,9 @@ const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () =
     assert!(ARMCAP_STATIC == MIN_STATIC_FEATURES);
 
 pub fn detect_features() -> u32 {
-    fn detect_feature(name: cstr::Ref) -> bool {
+    fn detect_feature(name: &CStr) -> bool {
         use crate::polyfill;
         use core::mem;
-        use libc::{c_int, c_void};
 
         let mut value: c_int = 0;
         let mut len = mem::size_of_val(&value);
@@ -80,7 +80,7 @@ pub fn detect_features() -> u32 {
     let mut features = 0;
 
     // TODO(MSRV 1.77): Use c"..." literal.
-    const SHA512_NAME: cstr::Ref =
+    const SHA512_NAME: &CStr =
         cstr::unwrap_const_from_bytes_with_nul(b"hw.optional.armv8_2_sha512\0");
     if detect_feature(SHA512_NAME) {
         features |= SHA512.mask;
