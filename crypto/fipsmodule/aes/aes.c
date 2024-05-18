@@ -116,4 +116,12 @@ int aes_hw_set_decrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
   }
   return ret;
 }
+
+int aes_hw_set_encrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
+  if (aes_hw_set_encrypt_key_alt_preferred()) {
+    return aes_hw_set_encrypt_key_alt(user_key, bits, key);
+  } else {
+    return aes_hw_set_encrypt_key_base(user_key, bits, key);
+  }
+}
 #endif

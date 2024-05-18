@@ -79,7 +79,27 @@ void aes_hw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
 // On x86 and x86_64, |aes_hw_set_decrypt_key| is implemented in terms of
 // |aes_hw_set_encrypt_key| and a conversion function.
 void aes_hw_encrypt_key_to_decrypt_key(AES_KEY *key);
-#endif
+
+// There are two variants of this function, one which uses aeskeygenassist
+// ("base") and one which uses aesenclast + pshufb ("alt"). aesenclast is
+// overall faster but is slower on some older processors. It doesn't use AVX,
+// but AVX is used as a proxy to detecting this. See
+// https://groups.google.com/g/mailing.openssl.dev/c/OuFXwW4NfO8/m/7d2ZXVjkxVkJ
+//
+// TODO(davidben): It is unclear if the aeskeygenassist version is still
+// worthwhile. However, the aesenclast version requires SSSE3. SSSE3 long
+// predates AES-NI, but it's not clear if AES-NI implies SSSE3. In OpenSSL, the
+// CCM AES-NI assembly seems to assume it does.
+OPENSSL_INLINE int aes_hw_set_encrypt_key_alt_capable(void) {
+  return hwaes_capable() && CRYPTO_is_SSSE3_capable();
+}
+OPENSSL_INLINE int aes_hw_set_encrypt_key_alt_preferred(void) {
+  return hwaes_capable() && CRYPTO_is_AVX_capable();
+}
+int aes_hw_set_encrypt_key_base(const uint8_t *user_key, int bits,
+                                AES_KEY *key);
+int aes_hw_set_encrypt_key_alt(const uint8_t *user_key, int bits, AES_KEY *key);
+#endif  // OPENSSL_X86 || OPENSSL_X86_64
 
 #else
 

@@ -5,8 +5,6 @@
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__ELF__)
 .text	
-.extern	OPENSSL_ia32cap_P
-.hidden OPENSSL_ia32cap_P
 .globl	aes_hw_encrypt
 .hidden aes_hw_encrypt
 .type	aes_hw_encrypt,@function
@@ -1947,11 +1945,11 @@ _CET_ENDBR
 	ret
 .cfi_endproc	
 .size	aes_hw_encrypt_key_to_decrypt_key,.-aes_hw_encrypt_key_to_decrypt_key
-.globl	aes_hw_set_encrypt_key
-.hidden aes_hw_set_encrypt_key
-.type	aes_hw_set_encrypt_key,@function
+.globl	aes_hw_set_encrypt_key_base
+.hidden aes_hw_set_encrypt_key_base
+.type	aes_hw_set_encrypt_key_base,@function
 .align	16
-aes_hw_set_encrypt_key:
+aes_hw_set_encrypt_key_base:
 .cfi_startproc	
 
 _CET_ENDBR
@@ -1964,9 +1962,6 @@ _CET_ENDBR
 
 	movups	(%rdi),%xmm0
 	xorps	%xmm4,%xmm4
-	leaq	OPENSSL_ia32cap_P(%rip),%r10
-	movl	4(%r10),%r10d
-	andl	$268437504,%r10d
 	leaq	16(%rdx),%rax
 	cmpl	$256,%esi
 	je	.L14rounds
@@ -1977,8 +1972,6 @@ _CET_ENDBR
 
 .L10rounds:
 	movl	$9,%esi
-	cmpl	$268435456,%r10d
-	je	.L10rounds_alt
 
 	movups	%xmm0,(%rdx)
 .byte	102,15,58,223,200,1
@@ -2007,78 +2000,9 @@ _CET_ENDBR
 	jmp	.Lenc_key_ret
 
 .align	16
-.L10rounds_alt:
-	movdqa	.Lkey_rotate(%rip),%xmm5
-	movl	$8,%r10d
-	movdqa	.Lkey_rcon1(%rip),%xmm4
-	movdqa	%xmm0,%xmm2
-	movdqu	%xmm0,(%rdx)
-	jmp	.Loop_key128
-
-.align	16
-.Loop_key128:
-.byte	102,15,56,0,197
-.byte	102,15,56,221,196
-	pslld	$1,%xmm4
-	leaq	16(%rax),%rax
-
-	movdqa	%xmm2,%xmm3
-	pslldq	$4,%xmm2
-	pxor	%xmm2,%xmm3
-	pslldq	$4,%xmm2
-	pxor	%xmm2,%xmm3
-	pslldq	$4,%xmm2
-	pxor	%xmm3,%xmm2
-
-	pxor	%xmm2,%xmm0
-	movdqu	%xmm0,-16(%rax)
-	movdqa	%xmm0,%xmm2
-
-	decl	%r10d
-	jnz	.Loop_key128
-
-	movdqa	.Lkey_rcon1b(%rip),%xmm4
-
-.byte	102,15,56,0,197
-.byte	102,15,56,221,196
-	pslld	$1,%xmm4
-
-	movdqa	%xmm2,%xmm3
-	pslldq	$4,%xmm2
-	pxor	%xmm2,%xmm3
-	pslldq	$4,%xmm2
-	pxor	%xmm2,%xmm3
-	pslldq	$4,%xmm2
-	pxor	%xmm3,%xmm2
-
-	pxor	%xmm2,%xmm0
-	movdqu	%xmm0,(%rax)
-
-	movdqa	%xmm0,%xmm2
-.byte	102,15,56,0,197
-.byte	102,15,56,221,196
-
-	movdqa	%xmm2,%xmm3
-	pslldq	$4,%xmm2
-	pxor	%xmm2,%xmm3
-	pslldq	$4,%xmm2
-	pxor	%xmm2,%xmm3
-	pslldq	$4,%xmm2
-	pxor	%xmm3,%xmm2
-
-	pxor	%xmm2,%xmm0
-	movdqu	%xmm0,16(%rax)
-
-	movl	%esi,96(%rax)
-	xorl	%eax,%eax
-	jmp	.Lenc_key_ret
-
-.align	16
 .L12rounds:
 	movq	16(%rdi),%xmm2
 	movl	$11,%esi
-	cmpl	$268435456,%r10d
-	je	.L12rounds_alt
 
 	movups	%xmm0,(%rdx)
 .byte	102,15,58,223,202,1
@@ -2103,53 +2027,10 @@ _CET_ENDBR
 	jmp	.Lenc_key_ret
 
 .align	16
-.L12rounds_alt:
-	movdqa	.Lkey_rotate192(%rip),%xmm5
-	movdqa	.Lkey_rcon1(%rip),%xmm4
-	movl	$8,%r10d
-	movdqu	%xmm0,(%rdx)
-	jmp	.Loop_key192
-
-.align	16
-.Loop_key192:
-	movq	%xmm2,0(%rax)
-	movdqa	%xmm2,%xmm1
-.byte	102,15,56,0,213
-.byte	102,15,56,221,212
-	pslld	$1,%xmm4
-	leaq	24(%rax),%rax
-
-	movdqa	%xmm0,%xmm3
-	pslldq	$4,%xmm0
-	pxor	%xmm0,%xmm3
-	pslldq	$4,%xmm0
-	pxor	%xmm0,%xmm3
-	pslldq	$4,%xmm0
-	pxor	%xmm3,%xmm0
-
-	pshufd	$0xff,%xmm0,%xmm3
-	pxor	%xmm1,%xmm3
-	pslldq	$4,%xmm1
-	pxor	%xmm1,%xmm3
-
-	pxor	%xmm2,%xmm0
-	pxor	%xmm3,%xmm2
-	movdqu	%xmm0,-16(%rax)
-
-	decl	%r10d
-	jnz	.Loop_key192
-
-	movl	%esi,32(%rax)
-	xorl	%eax,%eax
-	jmp	.Lenc_key_ret
-
-.align	16
 .L14rounds:
 	movups	16(%rdi),%xmm2
 	movl	$13,%esi
 	leaq	16(%rax),%rax
-	cmpl	$268435456,%r10d
-	je	.L14rounds_alt
 
 	movups	%xmm0,(%rdx)
 	movups	%xmm2,16(%rdx)
@@ -2182,60 +2063,6 @@ _CET_ENDBR
 	movups	%xmm0,(%rax)
 	movl	%esi,16(%rax)
 	xorq	%rax,%rax
-	jmp	.Lenc_key_ret
-
-.align	16
-.L14rounds_alt:
-	movdqa	.Lkey_rotate(%rip),%xmm5
-	movdqa	.Lkey_rcon1(%rip),%xmm4
-	movl	$7,%r10d
-	movdqu	%xmm0,0(%rdx)
-	movdqa	%xmm2,%xmm1
-	movdqu	%xmm2,16(%rdx)
-	jmp	.Loop_key256
-
-.align	16
-.Loop_key256:
-.byte	102,15,56,0,213
-.byte	102,15,56,221,212
-
-	movdqa	%xmm0,%xmm3
-	pslldq	$4,%xmm0
-	pxor	%xmm0,%xmm3
-	pslldq	$4,%xmm0
-	pxor	%xmm0,%xmm3
-	pslldq	$4,%xmm0
-	pxor	%xmm3,%xmm0
-	pslld	$1,%xmm4
-
-	pxor	%xmm2,%xmm0
-	movdqu	%xmm0,(%rax)
-
-	decl	%r10d
-	jz	.Ldone_key256
-
-	pshufd	$0xff,%xmm0,%xmm2
-	pxor	%xmm3,%xmm3
-.byte	102,15,56,221,211
-
-	movdqa	%xmm1,%xmm3
-	pslldq	$4,%xmm1
-	pxor	%xmm1,%xmm3
-	pslldq	$4,%xmm1
-	pxor	%xmm1,%xmm3
-	pslldq	$4,%xmm1
-	pxor	%xmm3,%xmm1
-
-	pxor	%xmm1,%xmm2
-	movdqu	%xmm2,16(%rax)
-	leaq	32(%rax),%rax
-	movdqa	%xmm2,%xmm1
-
-	jmp	.Loop_key256
-
-.Ldone_key256:
-	movl	%esi,16(%rax)
-	xorl	%eax,%eax
 	jmp	.Lenc_key_ret
 
 .align	16
@@ -2322,7 +2149,215 @@ _CET_ENDBR
 	shufps	$170,%xmm1,%xmm1
 	xorps	%xmm1,%xmm2
 	ret
-.size	aes_hw_set_encrypt_key,.-aes_hw_set_encrypt_key
+.size	aes_hw_set_encrypt_key_base,.-aes_hw_set_encrypt_key_base
+
+.globl	aes_hw_set_encrypt_key_alt
+.hidden aes_hw_set_encrypt_key_alt
+.type	aes_hw_set_encrypt_key_alt,@function
+.align	16
+aes_hw_set_encrypt_key_alt:
+.cfi_startproc	
+
+_CET_ENDBR
+#ifdef BORINGSSL_DISPATCH_TEST
+	movb	$1,BORINGSSL_function_hit+3(%rip)
+#endif
+	subq	$8,%rsp
+.cfi_adjust_cfa_offset	8
+
+
+	movups	(%rdi),%xmm0
+	xorps	%xmm4,%xmm4
+	leaq	16(%rdx),%rax
+	cmpl	$256,%esi
+	je	.L14rounds_alt
+	cmpl	$192,%esi
+	je	.L12rounds_alt
+	cmpl	$128,%esi
+	jne	.Lbad_keybits_alt
+
+	movl	$9,%esi
+	movdqa	.Lkey_rotate(%rip),%xmm5
+	movl	$8,%r10d
+	movdqa	.Lkey_rcon1(%rip),%xmm4
+	movdqa	%xmm0,%xmm2
+	movdqu	%xmm0,(%rdx)
+	jmp	.Loop_key128
+
+.align	16
+.Loop_key128:
+.byte	102,15,56,0,197
+.byte	102,15,56,221,196
+	pslld	$1,%xmm4
+	leaq	16(%rax),%rax
+
+	movdqa	%xmm2,%xmm3
+	pslldq	$4,%xmm2
+	pxor	%xmm2,%xmm3
+	pslldq	$4,%xmm2
+	pxor	%xmm2,%xmm3
+	pslldq	$4,%xmm2
+	pxor	%xmm3,%xmm2
+
+	pxor	%xmm2,%xmm0
+	movdqu	%xmm0,-16(%rax)
+	movdqa	%xmm0,%xmm2
+
+	decl	%r10d
+	jnz	.Loop_key128
+
+	movdqa	.Lkey_rcon1b(%rip),%xmm4
+
+.byte	102,15,56,0,197
+.byte	102,15,56,221,196
+	pslld	$1,%xmm4
+
+	movdqa	%xmm2,%xmm3
+	pslldq	$4,%xmm2
+	pxor	%xmm2,%xmm3
+	pslldq	$4,%xmm2
+	pxor	%xmm2,%xmm3
+	pslldq	$4,%xmm2
+	pxor	%xmm3,%xmm2
+
+	pxor	%xmm2,%xmm0
+	movdqu	%xmm0,(%rax)
+
+	movdqa	%xmm0,%xmm2
+.byte	102,15,56,0,197
+.byte	102,15,56,221,196
+
+	movdqa	%xmm2,%xmm3
+	pslldq	$4,%xmm2
+	pxor	%xmm2,%xmm3
+	pslldq	$4,%xmm2
+	pxor	%xmm2,%xmm3
+	pslldq	$4,%xmm2
+	pxor	%xmm3,%xmm2
+
+	pxor	%xmm2,%xmm0
+	movdqu	%xmm0,16(%rax)
+
+	movl	%esi,96(%rax)
+	xorl	%eax,%eax
+	jmp	.Lenc_key_ret_alt
+
+.align	16
+.L12rounds_alt:
+	movq	16(%rdi),%xmm2
+	movl	$11,%esi
+	movdqa	.Lkey_rotate192(%rip),%xmm5
+	movdqa	.Lkey_rcon1(%rip),%xmm4
+	movl	$8,%r10d
+	movdqu	%xmm0,(%rdx)
+	jmp	.Loop_key192
+
+.align	16
+.Loop_key192:
+	movq	%xmm2,0(%rax)
+	movdqa	%xmm2,%xmm1
+.byte	102,15,56,0,213
+.byte	102,15,56,221,212
+	pslld	$1,%xmm4
+	leaq	24(%rax),%rax
+
+	movdqa	%xmm0,%xmm3
+	pslldq	$4,%xmm0
+	pxor	%xmm0,%xmm3
+	pslldq	$4,%xmm0
+	pxor	%xmm0,%xmm3
+	pslldq	$4,%xmm0
+	pxor	%xmm3,%xmm0
+
+	pshufd	$0xff,%xmm0,%xmm3
+	pxor	%xmm1,%xmm3
+	pslldq	$4,%xmm1
+	pxor	%xmm1,%xmm3
+
+	pxor	%xmm2,%xmm0
+	pxor	%xmm3,%xmm2
+	movdqu	%xmm0,-16(%rax)
+
+	decl	%r10d
+	jnz	.Loop_key192
+
+	movl	%esi,32(%rax)
+	xorl	%eax,%eax
+	jmp	.Lenc_key_ret_alt
+
+.align	16
+.L14rounds_alt:
+	movups	16(%rdi),%xmm2
+	movl	$13,%esi
+	leaq	16(%rax),%rax
+	movdqa	.Lkey_rotate(%rip),%xmm5
+	movdqa	.Lkey_rcon1(%rip),%xmm4
+	movl	$7,%r10d
+	movdqu	%xmm0,0(%rdx)
+	movdqa	%xmm2,%xmm1
+	movdqu	%xmm2,16(%rdx)
+	jmp	.Loop_key256
+
+.align	16
+.Loop_key256:
+.byte	102,15,56,0,213
+.byte	102,15,56,221,212
+
+	movdqa	%xmm0,%xmm3
+	pslldq	$4,%xmm0
+	pxor	%xmm0,%xmm3
+	pslldq	$4,%xmm0
+	pxor	%xmm0,%xmm3
+	pslldq	$4,%xmm0
+	pxor	%xmm3,%xmm0
+	pslld	$1,%xmm4
+
+	pxor	%xmm2,%xmm0
+	movdqu	%xmm0,(%rax)
+
+	decl	%r10d
+	jz	.Ldone_key256
+
+	pshufd	$0xff,%xmm0,%xmm2
+	pxor	%xmm3,%xmm3
+.byte	102,15,56,221,211
+
+	movdqa	%xmm1,%xmm3
+	pslldq	$4,%xmm1
+	pxor	%xmm1,%xmm3
+	pslldq	$4,%xmm1
+	pxor	%xmm1,%xmm3
+	pslldq	$4,%xmm1
+	pxor	%xmm3,%xmm1
+
+	pxor	%xmm1,%xmm2
+	movdqu	%xmm2,16(%rax)
+	leaq	32(%rax),%rax
+	movdqa	%xmm2,%xmm1
+
+	jmp	.Loop_key256
+
+.Ldone_key256:
+	movl	%esi,16(%rax)
+	xorl	%eax,%eax
+	jmp	.Lenc_key_ret_alt
+
+.align	16
+.Lbad_keybits_alt:
+	movq	$-2,%rax
+.Lenc_key_ret_alt:
+	pxor	%xmm0,%xmm0
+	pxor	%xmm1,%xmm1
+	pxor	%xmm2,%xmm2
+	pxor	%xmm3,%xmm3
+	pxor	%xmm4,%xmm4
+	pxor	%xmm5,%xmm5
+	addq	$8,%rsp
+.cfi_adjust_cfa_offset	-8
+	ret
+.cfi_endproc	
+
+.size	aes_hw_set_encrypt_key_alt,.-aes_hw_set_encrypt_key_alt
 .section	.rodata
 .align	64
 .Lbswap_mask:
