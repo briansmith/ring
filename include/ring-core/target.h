@@ -60,6 +60,10 @@
 #define OPENSSL_32_BIT
 #elif defined(__s390x__)
 #define OPENSSL_64_BIT
+#elif defined(__sparc__) && defined(__arch64__)
+#define OPENSSL_64_BIT
+#elif defined(__sparc__)
+#define OPENSSL_32_BIT
 #else
 #error "Unknown target CPU"
 #endif
