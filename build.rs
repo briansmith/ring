@@ -547,12 +547,14 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
 }
 
 fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_dir: &Path) {
-    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
-    if target.os == WINDOWS && target.arch == AARCH64 && !c.get_compiler().is_like_clang() {
-        let _ = c.compiler("clang");
-    }
-
     let compiler = c.get_compiler();
+    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
+    let compiler = if target.os == WINDOWS && target.arch == AARCH64 && !compiler.is_like_clang() {
+        let _ = c.compiler("clang");
+        c.get_compiler()
+    } else {
+        compiler
+    };
 
     let _ = c.include(c_root_dir.join("include"));
     let _ = c.include(include_dir);
@@ -577,12 +579,10 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
     if (target.arch == WASM32)
         || (target.os == "linux" && target.env == "musl" && target.arch != X86_64)
     {
-        if let Ok(compiler) = c.try_get_compiler() {
-            // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
-            if compiler.is_like_clang() {
-                let _ = c.flag("-nostdlibinc");
-                let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
-            }
+        // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
+        if compiler.is_like_clang() {
+            let _ = c.flag("-nostdlibinc");
+            let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
         }
     }
 
