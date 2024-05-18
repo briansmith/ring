@@ -2490,17 +2490,11 @@ if ($PREFIX eq $AESNI_PREFIX) {
 	&ret	();
 &function_end_B("${PREFIX}_set_encrypt_key");
 
-# int $PREFIX_set_decrypt_key (const unsigned char *userKey, int bits,
-#                              AES_KEY *key)
-&function_begin_B("${PREFIX}_set_decrypt_key");
-	&mov	("eax",&wparam(0));
-	&mov	($rounds,&wparam(1));
-	&mov	($key,&wparam(2));
-	&call	("_aesni_set_encrypt_key");
-	&mov	($key,&wparam(2));
-	&shl	($rounds,4);	# rounds-1 after _aesni_set_encrypt_key
-	&test	("eax","eax");
-	&jnz	(&label("dec_key_ret"));
+# void $PREFIX_encrypt_key_to_decrypt_key (AES_KEY *key)
+&function_begin_B("${PREFIX}_encrypt_key_to_decrypt_key");
+	&mov	($key,&wparam(0));
+	&mov	($rounds,&DWP(240,$key));
+	&shl	($rounds,4);
 	&lea	("eax",&DWP(16,$key,$rounds));	# end of key schedule
 
 	&$movekey	("xmm0",&QWP(0,$key));	# just swap
@@ -2528,10 +2522,8 @@ if ($PREFIX eq $AESNI_PREFIX) {
 
 	&pxor		("xmm0","xmm0");
 	&pxor		("xmm1","xmm1");
-	&xor		("eax","eax");		# return success
-&set_label("dec_key_ret");
 	&ret	();
-&function_end_B("${PREFIX}_set_decrypt_key");
+&function_end_B("${PREFIX}_encrypt_key_to_decrypt_key");
 
 &set_label("key_const",64);
 &data_word(0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d);

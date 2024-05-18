@@ -66,16 +66,20 @@ OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 
 #if defined(HWAES)
 
-int aes_hw_set_encrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-int aes_hw_set_decrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
+int aes_hw_set_encrypt_key(const uint8_t *user_key, int bits, AES_KEY *key);
+int aes_hw_set_decrypt_key(const uint8_t *user_key, int bits, AES_KEY *key);
 void aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void aes_hw_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void aes_hw_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const AES_KEY *key, uint8_t *ivec, const int enc);
+                        const AES_KEY *key, uint8_t *ivec, int enc);
 void aes_hw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                  const AES_KEY *key, const uint8_t ivec[16]);
+
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+// On x86 and x86_64, |aes_hw_set_decrypt_key| is implemented in terms of
+// |aes_hw_set_encrypt_key| and a conversion function.
+void aes_hw_encrypt_key_to_decrypt_key(AES_KEY *key);
+#endif
 
 #else
 
@@ -120,7 +124,7 @@ OPENSSL_INLINE void aes_hw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
 
 #if defined(HWAES_ECB)
 void aes_hw_ecb_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const AES_KEY *key, const int enc);
+                        const AES_KEY *key, int enc);
 #endif  // HWAES_ECB
 
 
@@ -218,7 +222,7 @@ void aes_nohw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
                                    size_t blocks, const AES_KEY *key,
                                    const uint8_t ivec[16]);
 void aes_nohw_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                          const AES_KEY *key, uint8_t *ivec, const int enc);
+                          const AES_KEY *key, uint8_t *ivec, int enc);
 
 
 #if defined(__cplusplus)

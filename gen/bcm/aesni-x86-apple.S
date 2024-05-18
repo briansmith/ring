@@ -2409,19 +2409,14 @@ L115pic:
 	movl	12(%esp),%edx
 	call	__aesni_set_encrypt_key
 	ret
-.globl	_aes_hw_set_decrypt_key
-.private_extern	_aes_hw_set_decrypt_key
+.globl	_aes_hw_encrypt_key_to_decrypt_key
+.private_extern	_aes_hw_encrypt_key_to_decrypt_key
 .align	4
-_aes_hw_set_decrypt_key:
-L_aes_hw_set_decrypt_key_begin:
-	movl	4(%esp),%eax
-	movl	8(%esp),%ecx
-	movl	12(%esp),%edx
-	call	__aesni_set_encrypt_key
-	movl	12(%esp),%edx
+_aes_hw_encrypt_key_to_decrypt_key:
+L_aes_hw_encrypt_key_to_decrypt_key_begin:
+	movl	4(%esp),%edx
+	movl	240(%edx),%ecx
 	shll	$4,%ecx
-	testl	%eax,%eax
-	jnz	L116dec_key_ret
 	leal	16(%edx,%ecx,1),%eax
 	movups	(%edx),%xmm0
 	movups	(%eax),%xmm1
@@ -2429,7 +2424,7 @@ L_aes_hw_set_decrypt_key_begin:
 	movups	%xmm1,(%edx)
 	leal	16(%edx),%edx
 	leal	-16(%eax),%eax
-L117dec_key_inverse:
+L116dec_key_inverse:
 	movups	(%edx),%xmm0
 	movups	(%eax),%xmm1
 .byte	102,15,56,219,192
@@ -2439,14 +2434,12 @@ L117dec_key_inverse:
 	movups	%xmm0,16(%eax)
 	movups	%xmm1,-16(%edx)
 	cmpl	%edx,%eax
-	ja	L117dec_key_inverse
+	ja	L116dec_key_inverse
 	movups	(%edx),%xmm0
 .byte	102,15,56,219,192
 	movups	%xmm0,(%edx)
 	pxor	%xmm0,%xmm0
 	pxor	%xmm1,%xmm1
-	xorl	%eax,%eax
-L116dec_key_ret:
 	ret
 .align	6,0x90
 Lkey_const:

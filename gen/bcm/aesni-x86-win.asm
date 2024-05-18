@@ -2400,18 +2400,13 @@ L$115pic:
 	mov	edx,DWORD [12+esp]
 	call	__aesni_set_encrypt_key
 	ret
-global	_aes_hw_set_decrypt_key
+global	_aes_hw_encrypt_key_to_decrypt_key
 align	16
-_aes_hw_set_decrypt_key:
-L$_aes_hw_set_decrypt_key_begin:
-	mov	eax,DWORD [4+esp]
-	mov	ecx,DWORD [8+esp]
-	mov	edx,DWORD [12+esp]
-	call	__aesni_set_encrypt_key
-	mov	edx,DWORD [12+esp]
+_aes_hw_encrypt_key_to_decrypt_key:
+L$_aes_hw_encrypt_key_to_decrypt_key_begin:
+	mov	edx,DWORD [4+esp]
+	mov	ecx,DWORD [240+edx]
 	shl	ecx,4
-	test	eax,eax
-	jnz	NEAR L$116dec_key_ret
 	lea	eax,[16+ecx*1+edx]
 	movups	xmm0,[edx]
 	movups	xmm1,[eax]
@@ -2419,7 +2414,7 @@ L$_aes_hw_set_decrypt_key_begin:
 	movups	[edx],xmm1
 	lea	edx,[16+edx]
 	lea	eax,[eax-16]
-L$117dec_key_inverse:
+L$116dec_key_inverse:
 	movups	xmm0,[edx]
 	movups	xmm1,[eax]
 db	102,15,56,219,192
@@ -2429,14 +2424,12 @@ db	102,15,56,219,201
 	movups	[16+eax],xmm0
 	movups	[edx-16],xmm1
 	cmp	eax,edx
-	ja	NEAR L$117dec_key_inverse
+	ja	NEAR L$116dec_key_inverse
 	movups	xmm0,[edx]
 db	102,15,56,219,192
 	movups	[edx],xmm0
 	pxor	xmm0,xmm0
 	pxor	xmm1,xmm1
-	xor	eax,eax
-L$116dec_key_ret:
 	ret
 align	64
 L$key_const:

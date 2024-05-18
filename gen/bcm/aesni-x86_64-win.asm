@@ -2012,59 +2012,49 @@ $L$cbc_ret:
 	ret
 
 $L$SEH_end_aes_hw_cbc_encrypt:
-global	aes_hw_set_decrypt_key
+global	aes_hw_encrypt_key_to_decrypt_key
 
 ALIGN	16
-aes_hw_set_decrypt_key:
+aes_hw_encrypt_key_to_decrypt_key:
 
-$L$SEH_begin_aes_hw_set_decrypt_key_1:
 _CET_ENDBR
-	sub	rsp,8
 
-$L$SEH_prologue_aes_hw_set_decrypt_key_2:
-$L$SEH_endprologue_aes_hw_set_decrypt_key_3:
-	call	__aesni_set_encrypt_key
+	mov	edx,DWORD[240+rcx]
 	shl	edx,4
-	test	eax,eax
-	jnz	NEAR $L$dec_key_ret
-	lea	rcx,[16+rdx*1+r8]
 
-	movups	xmm0,XMMWORD[r8]
-	movups	xmm1,XMMWORD[rcx]
-	movups	XMMWORD[rcx],xmm0
-	movups	XMMWORD[r8],xmm1
-	lea	r8,[16+r8]
-	lea	rcx,[((-16))+rcx]
+	lea	r8,[16+rdx*1+rcx]
+
+	movups	xmm0,XMMWORD[rcx]
+	movups	xmm1,XMMWORD[r8]
+	movups	XMMWORD[r8],xmm0
+	movups	XMMWORD[rcx],xmm1
+	lea	rcx,[16+rcx]
+	lea	r8,[((-16))+r8]
 
 $L$dec_key_inverse:
-	movups	xmm0,XMMWORD[r8]
-	movups	xmm1,XMMWORD[rcx]
+	movups	xmm0,XMMWORD[rcx]
+	movups	xmm1,XMMWORD[r8]
 	DB	102,15,56,219,192
 	DB	102,15,56,219,201
-	lea	r8,[16+r8]
-	lea	rcx,[((-16))+rcx]
-	movups	XMMWORD[16+rcx],xmm0
-	movups	XMMWORD[(-16)+r8],xmm1
-	cmp	rcx,r8
+	lea	rcx,[16+rcx]
+	lea	r8,[((-16))+r8]
+	movups	XMMWORD[16+r8],xmm0
+	movups	XMMWORD[(-16)+rcx],xmm1
+	cmp	r8,rcx
 	ja	NEAR $L$dec_key_inverse
 
-	movups	xmm0,XMMWORD[r8]
+	movups	xmm0,XMMWORD[rcx]
 	DB	102,15,56,219,192
 	pxor	xmm1,xmm1
-	movups	XMMWORD[rcx],xmm0
+	movups	XMMWORD[r8],xmm0
 	pxor	xmm0,xmm0
-$L$dec_key_ret:
-	add	rsp,8
-
 	ret
 
-$L$SEH_end_aes_hw_set_decrypt_key_4:
 
 global	aes_hw_set_encrypt_key
 
 ALIGN	16
 aes_hw_set_encrypt_key:
-__aesni_set_encrypt_key:
 
 $L$SEH_begin_aes_hw_set_encrypt_key_1:
 _CET_ENDBR
@@ -2436,7 +2426,6 @@ $L$key_expansion_256b:
 	xorps	xmm2,xmm1
 	ret
 
-
 section	.rdata rdata align=8
 ALIGN	64
 $L$bswap_mask:
@@ -2661,10 +2650,6 @@ $L$SEH_info_cbc:
 	DD	cbc_se_handler wrt ..imagebase
 section	.pdata
 ALIGN	4
-	DD	$L$SEH_begin_aes_hw_set_decrypt_key_1 wrt ..imagebase
-	DD	$L$SEH_end_aes_hw_set_decrypt_key_4 wrt ..imagebase
-	DD	$L$SEH_info_aes_hw_set_decrypt_key_0 wrt ..imagebase
-
 	DD	$L$SEH_begin_aes_hw_set_encrypt_key_1 wrt ..imagebase
 	DD	$L$SEH_end_aes_hw_set_encrypt_key_4 wrt ..imagebase
 	DD	$L$SEH_info_aes_hw_set_encrypt_key_0 wrt ..imagebase
@@ -2672,15 +2657,6 @@ ALIGN	4
 
 section	.xdata
 ALIGN	4
-$L$SEH_info_aes_hw_set_decrypt_key_0:
-	DB	1
-	DB	$L$SEH_endprologue_aes_hw_set_decrypt_key_3-$L$SEH_begin_aes_hw_set_decrypt_key_1
-	DB	1
-	DB	0
-	DB	$L$SEH_prologue_aes_hw_set_decrypt_key_2-$L$SEH_begin_aes_hw_set_decrypt_key_1
-	DB	2
-
-	DW	0
 $L$SEH_info_aes_hw_set_encrypt_key_0:
 	DB	1
 	DB	$L$SEH_endprologue_aes_hw_set_encrypt_key_3-$L$SEH_begin_aes_hw_set_encrypt_key_1

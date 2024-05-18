@@ -3172,69 +3172,55 @@ $code.=<<___;
 .size	${PREFIX}_cbc_encrypt,.-${PREFIX}_cbc_encrypt
 ___
 }
-# int ${PREFIX}_set_decrypt_key(const unsigned char *inp,
-#				int bits, AES_KEY *key)
-#
-# input:	$inp	user-supplied key
-#		$bits	$inp length in bits
-#		$key	pointer to key schedule
-# output:	%eax	0 denoting success, -1 or -2 - failure (see C)
-#		*$key	key schedule
-#
-{ my ($inp,$bits,$key) = @_4args;
-  $bits =~ s/%r/%e/;
+{ my ($key, $rounds, $tmp) = @_4args;
+  $rounds =~ s/%r/%e/;
 
+# void ${PREFIX}_encrypt_key_to_decrypt_key(AES_KEY *key)
 $code.=<<___;
-.globl	${PREFIX}_set_decrypt_key
-.type	${PREFIX}_set_decrypt_key,\@abi-omnipotent
+.globl	${PREFIX}_encrypt_key_to_decrypt_key
+.type	${PREFIX}_encrypt_key_to_decrypt_key,\@abi-omnipotent
 .align	16
-${PREFIX}_set_decrypt_key:
+${PREFIX}_encrypt_key_to_decrypt_key:
 .cfi_startproc
-.seh_startproc
 	_CET_ENDBR
-	sub	\$8,%rsp
-.cfi_adjust_cfa_offset	8
-.seh_stackalloc	8
-.seh_endprologue
-	call	__aesni_set_encrypt_key
-	shl	\$4,$bits		# rounds-1 after _aesni_set_encrypt_key
-	test	%eax,%eax
-	jnz	.Ldec_key_ret
-	lea	16($key,$bits),$inp	# points at the end of key schedule
+
+	mov	240($key), $rounds
+	shl	\$4,$rounds
+
+	lea	16($key,$rounds),$tmp	# points at the end of key schedule
 
 	$movkey	($key),%xmm0		# just swap
-	$movkey	($inp),%xmm1
-	$movkey	%xmm0,($inp)
+	$movkey	($tmp),%xmm1
+	$movkey	%xmm0,($tmp)
 	$movkey	%xmm1,($key)
 	lea	16($key),$key
-	lea	-16($inp),$inp
+	lea	-16($tmp),$tmp
 
 .Ldec_key_inverse:
 	$movkey	($key),%xmm0		# swap and inverse
-	$movkey	($inp),%xmm1
+	$movkey	($tmp),%xmm1
 	aesimc	%xmm0,%xmm0
 	aesimc	%xmm1,%xmm1
 	lea	16($key),$key
-	lea	-16($inp),$inp
-	$movkey	%xmm0,16($inp)
+	lea	-16($tmp),$tmp
+	$movkey	%xmm0,16($tmp)
 	$movkey	%xmm1,-16($key)
-	cmp	$key,$inp
+	cmp	$key,$tmp
 	ja	.Ldec_key_inverse
 
 	$movkey	($key),%xmm0		# inverse middle
 	aesimc	%xmm0,%xmm0
 	pxor	%xmm1,%xmm1
-	$movkey	%xmm0,($inp)
+	$movkey	%xmm0,($tmp)
 	pxor	%xmm0,%xmm0
-.Ldec_key_ret:
-	add	\$8,%rsp
-.cfi_adjust_cfa_offset	-8
 	ret
 .cfi_endproc
-.seh_endproc
-.size	${PREFIX}_set_decrypt_key,.-${PREFIX}_set_decrypt_key
+.size	${PREFIX}_encrypt_key_to_decrypt_key,.-${PREFIX}_encrypt_key_to_decrypt_key
 ___
+}
 
+{ my ($inp,$bits,$key) = @_4args;
+  $bits =~ s/%r/%e/;
 # This is based on submission from Intel by
 #	Huang Ying
 #	Vinodh Gopal
@@ -3264,7 +3250,6 @@ $code.=<<___;
 .type	${PREFIX}_set_encrypt_key,\@abi-omnipotent
 .align	16
 ${PREFIX}_set_encrypt_key:
-__aesni_set_encrypt_key:
 .cfi_startproc
 .seh_startproc
 	_CET_ENDBR
@@ -3636,7 +3621,6 @@ __aesni_set_encrypt_key:
 	xorps	%xmm1,%xmm2
 	ret
 .size	${PREFIX}_set_encrypt_key,.-${PREFIX}_set_encrypt_key
-.size	__aesni_set_encrypt_key,.-__aesni_set_encrypt_key
 ___
 }
 

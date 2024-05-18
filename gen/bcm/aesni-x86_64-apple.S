@@ -1905,53 +1905,44 @@ L$cbc_ret:
 	ret
 
 
-.globl	_aes_hw_set_decrypt_key
-.private_extern _aes_hw_set_decrypt_key
+.globl	_aes_hw_encrypt_key_to_decrypt_key
+.private_extern _aes_hw_encrypt_key_to_decrypt_key
 
 .p2align	4
-_aes_hw_set_decrypt_key:
-
+_aes_hw_encrypt_key_to_decrypt_key:
 
 _CET_ENDBR
-	subq	$8,%rsp
 
-
-
-	call	__aesni_set_encrypt_key
+	movl	240(%rdi),%esi
 	shll	$4,%esi
-	testl	%eax,%eax
-	jnz	L$dec_key_ret
-	leaq	16(%rdx,%rsi,1),%rdi
 
-	movups	(%rdx),%xmm0
-	movups	(%rdi),%xmm1
-	movups	%xmm0,(%rdi)
-	movups	%xmm1,(%rdx)
-	leaq	16(%rdx),%rdx
-	leaq	-16(%rdi),%rdi
+	leaq	16(%rdi,%rsi,1),%rdx
+
+	movups	(%rdi),%xmm0
+	movups	(%rdx),%xmm1
+	movups	%xmm0,(%rdx)
+	movups	%xmm1,(%rdi)
+	leaq	16(%rdi),%rdi
+	leaq	-16(%rdx),%rdx
 
 L$dec_key_inverse:
-	movups	(%rdx),%xmm0
-	movups	(%rdi),%xmm1
+	movups	(%rdi),%xmm0
+	movups	(%rdx),%xmm1
 .byte	102,15,56,219,192
 .byte	102,15,56,219,201
-	leaq	16(%rdx),%rdx
-	leaq	-16(%rdi),%rdi
-	movups	%xmm0,16(%rdi)
-	movups	%xmm1,-16(%rdx)
-	cmpq	%rdx,%rdi
+	leaq	16(%rdi),%rdi
+	leaq	-16(%rdx),%rdx
+	movups	%xmm0,16(%rdx)
+	movups	%xmm1,-16(%rdi)
+	cmpq	%rdi,%rdx
 	ja	L$dec_key_inverse
 
-	movups	(%rdx),%xmm0
+	movups	(%rdi),%xmm0
 .byte	102,15,56,219,192
 	pxor	%xmm1,%xmm1
-	movups	%xmm0,(%rdi)
+	movups	%xmm0,(%rdx)
 	pxor	%xmm0,%xmm0
-L$dec_key_ret:
-	addq	$8,%rsp
-
 	ret
-
 
 
 .globl	_aes_hw_set_encrypt_key
@@ -1959,7 +1950,6 @@ L$dec_key_ret:
 
 .p2align	4
 _aes_hw_set_encrypt_key:
-__aesni_set_encrypt_key:
 
 
 _CET_ENDBR
@@ -2330,7 +2320,6 @@ L$key_expansion_256b:
 	shufps	$170,%xmm1,%xmm1
 	xorps	%xmm1,%xmm2
 	ret
-
 
 .section	__DATA,__const
 .p2align	6

@@ -1907,61 +1907,51 @@ _CET_ENDBR
 	ret
 .cfi_endproc	
 .size	aes_hw_cbc_encrypt,.-aes_hw_cbc_encrypt
-.globl	aes_hw_set_decrypt_key
-.hidden aes_hw_set_decrypt_key
-.type	aes_hw_set_decrypt_key,@function
+.globl	aes_hw_encrypt_key_to_decrypt_key
+.hidden aes_hw_encrypt_key_to_decrypt_key
+.type	aes_hw_encrypt_key_to_decrypt_key,@function
 .align	16
-aes_hw_set_decrypt_key:
+aes_hw_encrypt_key_to_decrypt_key:
 .cfi_startproc	
-
 _CET_ENDBR
-	subq	$8,%rsp
-.cfi_adjust_cfa_offset	8
 
-
-	call	__aesni_set_encrypt_key
+	movl	240(%rdi),%esi
 	shll	$4,%esi
-	testl	%eax,%eax
-	jnz	.Ldec_key_ret
-	leaq	16(%rdx,%rsi,1),%rdi
 
-	movups	(%rdx),%xmm0
-	movups	(%rdi),%xmm1
-	movups	%xmm0,(%rdi)
-	movups	%xmm1,(%rdx)
-	leaq	16(%rdx),%rdx
-	leaq	-16(%rdi),%rdi
+	leaq	16(%rdi,%rsi,1),%rdx
+
+	movups	(%rdi),%xmm0
+	movups	(%rdx),%xmm1
+	movups	%xmm0,(%rdx)
+	movups	%xmm1,(%rdi)
+	leaq	16(%rdi),%rdi
+	leaq	-16(%rdx),%rdx
 
 .Ldec_key_inverse:
-	movups	(%rdx),%xmm0
-	movups	(%rdi),%xmm1
+	movups	(%rdi),%xmm0
+	movups	(%rdx),%xmm1
 .byte	102,15,56,219,192
 .byte	102,15,56,219,201
-	leaq	16(%rdx),%rdx
-	leaq	-16(%rdi),%rdi
-	movups	%xmm0,16(%rdi)
-	movups	%xmm1,-16(%rdx)
-	cmpq	%rdx,%rdi
+	leaq	16(%rdi),%rdi
+	leaq	-16(%rdx),%rdx
+	movups	%xmm0,16(%rdx)
+	movups	%xmm1,-16(%rdi)
+	cmpq	%rdi,%rdx
 	ja	.Ldec_key_inverse
 
-	movups	(%rdx),%xmm0
+	movups	(%rdi),%xmm0
 .byte	102,15,56,219,192
 	pxor	%xmm1,%xmm1
-	movups	%xmm0,(%rdi)
+	movups	%xmm0,(%rdx)
 	pxor	%xmm0,%xmm0
-.Ldec_key_ret:
-	addq	$8,%rsp
-.cfi_adjust_cfa_offset	-8
 	ret
 .cfi_endproc	
-
-.size	aes_hw_set_decrypt_key,.-aes_hw_set_decrypt_key
+.size	aes_hw_encrypt_key_to_decrypt_key,.-aes_hw_encrypt_key_to_decrypt_key
 .globl	aes_hw_set_encrypt_key
 .hidden aes_hw_set_encrypt_key
 .type	aes_hw_set_encrypt_key,@function
 .align	16
 aes_hw_set_encrypt_key:
-__aesni_set_encrypt_key:
 .cfi_startproc	
 
 _CET_ENDBR
@@ -2333,7 +2323,6 @@ _CET_ENDBR
 	xorps	%xmm1,%xmm2
 	ret
 .size	aes_hw_set_encrypt_key,.-aes_hw_set_encrypt_key
-.size	__aesni_set_encrypt_key,.-__aesni_set_encrypt_key
 .section	.rodata
 .align	64
 .Lbswap_mask:

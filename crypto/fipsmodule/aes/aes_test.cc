@@ -346,7 +346,12 @@ TEST(AESTest, ABI) {
 #endif
       }
 
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+      ASSERT_EQ(CHECK_ABI_SEH(aes_hw_set_encrypt_key, kKey, bits, &key), 0);
+      CHECK_ABI_SEH(aes_hw_encrypt_key_to_decrypt_key, &key);
+#else
       ASSERT_EQ(CHECK_ABI_SEH(aes_hw_set_decrypt_key, kKey, bits, &key), 0);
+#endif
       CHECK_ABI(aes_hw_decrypt, block, block, &key);
       for (size_t blocks : block_counts) {
         SCOPED_TRACE(blocks);
