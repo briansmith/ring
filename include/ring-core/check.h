@@ -32,6 +32,13 @@
 # else
 #  define debug_assert_nonsecret(x) ((void)0)
 # endif
+# if defined(__has_include)
+#  if __has_include(<assert.h>)
+#   include <assert.h>
+#   undef debug_assert_nonsecret
+#   define debug_assert_nonsecret(x) assert(x)
+#  endif
+# endif
 #endif
 
 // |dev_assert_secret| is like |assert| and should be used (only) when the
