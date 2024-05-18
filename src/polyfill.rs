@@ -48,6 +48,8 @@ mod array_flat_map;
 mod array_flatten;
 mod array_split_map;
 
+pub mod cstr;
+
 pub mod sliceutil;
 
 #[cfg(feature = "alloc")]
