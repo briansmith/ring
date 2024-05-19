@@ -55,8 +55,15 @@ int main(int argc, char **argv) {
     printf("No module version set\n");
     goto err;
   }
-  printf("Module: '%s', version: %" PRIu32 "\n", FIPS_module_name(),
+  printf("Module: '%s', version: %" PRIu32 " hash:\n", FIPS_module_name(),
          module_version);
+
+#if !defined(OPENSSL_ASAN)
+  hexdump(FIPS_module_hash(), SHA256_DIGEST_LENGTH);
+#else
+  printf("(not available when compiled for ASAN)");
+#endif
+  printf("\n");
 
   static const uint8_t kAESKey[16] = "BoringCrypto Key";
   static const uint8_t kPlaintext[64] =

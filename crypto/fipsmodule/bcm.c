@@ -263,6 +263,11 @@ int BORINGSSL_integrity_test(void) {
   OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
   return 1;
 }
+
+const uint8_t* FIPS_module_hash(void) {
+  return BORINGSSL_bcm_text_hash;
+}
+
 #endif  // OPENSSL_ASAN
 
 void BORINGSSL_FIPS_abort(void) {
