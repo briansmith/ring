@@ -97,3 +97,23 @@ pub fn detect_features() -> u32 {
 
     features
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cpu;
+
+    #[test]
+    fn sha512_detection() {
+        // We intentionally disable static feature detection for SHA-512.
+        const _SHA512_NOT_STATICALLY_DETECTED: () = assert!((ARMCAP_STATIC & SHA512.mask) == 0);
+
+        if cfg!(target_os = "macos") {
+            // All aarch64-apple-darwin targets have SHA3 enabled statically...
+            assert!(cfg!(target_feature = "sha3"));
+
+            // ...so we should detect it.
+            assert!(SHA512.available(cpu::features()));
+        }
+    }
+}
