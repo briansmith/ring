@@ -72,64 +72,6 @@
 #define OPENSSL_WINDOWS
 #endif
 
-// Trusty isn't Linux but currently defines __linux__. As a workaround, we
-// exclude it here.
-// TODO(b/169780122): Remove this workaround once Trusty no longer defines it.
-#if defined(__linux__) && !defined(__TRUSTY__)
-#define OPENSSL_LINUX
-#endif
-
-#if defined(__Fuchsia__)
-#define OPENSSL_FUCHSIA
-#endif
-
-#if defined(__TRUSTY__)
-#define OPENSSL_TRUSTY
-#define OPENSSL_NO_POSIX_IO
-#define OPENSSL_NO_SOCK
-#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
-#endif
-
-#if defined(OPENSSL_NANOLIBC)
-#define OPENSSL_NO_POSIX_IO
-#define OPENSSL_NO_SOCK
-#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
-#endif
-
-#if defined(__ANDROID_API__)
-#define OPENSSL_ANDROID
-#endif
-
-#if defined(__FreeBSD__)
-#define OPENSSL_FREEBSD
-#endif
-
-#if defined(__OpenBSD__)
-#define OPENSSL_OPENBSD
-#endif
-
-// BoringSSL requires platform's locking APIs to make internal global state
-// thread-safe, including the PRNG. On some single-threaded embedded platforms,
-// locking APIs may not exist, so this dependency may be disabled with the
-// following build flag.
-//
-// IMPORTANT: Doing so means the consumer promises the library will never be
-// used in any multi-threaded context. It causes BoringSSL to be globally
-// thread-unsafe. Setting it inappropriately will subtly and unpredictably
-// corrupt memory and leak secret keys.
-//
-// Do not set this flag on any platform where threads are possible. BoringSSL
-// maintainers will not provide support for any consumers that do so. Changes
-// which break such unsupported configurations will not be reverted.
-#if !defined(OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED)
-#define OPENSSL_THREADS
-#endif
-
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
-#define BORINGSSL_UNSAFE_DETERMINISTIC_MODE
-#endif
-
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer)
 #define OPENSSL_ASAN
