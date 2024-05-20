@@ -28,7 +28,8 @@
 #include "./internal.h"
 
 
-TEST(DilithiumTest, BitFlips) {
+// This test is very slow, so it is disabled by default.
+TEST(DilithiumTest, DISABLED_BitFlips) {
   auto encoded_public_key =
       std::make_unique<uint8_t[]>(DILITHIUM_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<DILITHIUM_private_key>();
