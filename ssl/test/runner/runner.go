@@ -12060,8 +12060,7 @@ func addCurveTests() {
 		flags: []string{
 			"-curves", strconv.Itoa(int(CurveX25519Kyber768)),
 			"-curves", strconv.Itoa(int(CurveX25519)),
-			// Cannot expect Kyber until we have a Go implementation of it.
-			// "-expect-curve-id", strconv.Itoa(int(CurveX25519Kyber768)),
+			"-expect-curve-id", strconv.Itoa(int(CurveX25519Kyber768)),
 		},
 	})
 
