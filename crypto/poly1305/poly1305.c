@@ -22,8 +22,6 @@
 #include "../internal.h"
 
 
-#if !defined(BORINGSSL_HAS_UINT128) || !defined(OPENSSL_X86_64)
-
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #pragma GCC diagnostic ignored "-Wconversion"
@@ -292,5 +290,3 @@ void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   f3 += (f2 >> 32);
   CRYPTO_store_u32_le(&mac[12], (uint32_t)f3);
 }
-
-#endif  // !BORINGSSL_HAS_UINT128 || !OPENSSL_X86_64

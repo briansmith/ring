@@ -474,20 +474,6 @@ static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
-#if !defined(RING_BIG_ENDIAN)
-
-static inline uint64_t CRYPTO_load_u64_le(const void *in) {
-  uint64_t v;
-  OPENSSL_memcpy(&v, in, sizeof(v));
-  return v;
-}
-
-static inline void CRYPTO_store_u64_le(void *out, uint64_t v) {
-  OPENSSL_memcpy(out, &v, sizeof(v));
-}
-
-#endif // !defined(RING_BIG_ENDIAN)
-
 // Runtime CPU feature support
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
