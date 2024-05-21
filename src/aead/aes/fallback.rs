@@ -37,6 +37,40 @@ const BATCH_SIZE_U32: u32 = BATCH_SIZE as u32;
 
 const BLOCK_WORDS: usize = 16 / WORD_SIZE;
 
+cfg_if! {
+    if #[cfg(target_pointer_width = "64")] {
+        const ROW0_MASK: Word = 0x000f000f000f000f;
+        const ROW1_MASK: Word = 0x00f000f000f000f0;
+        const ROW2_MASK: Word = 0x0f000f000f000f00;
+        const ROW3_MASK: Word = 0xf000f000f000f000;
+    } else if #[cfg(target_pointer_width = "32")] {
+        const ROW0_MASK: Word = 0x03030303;
+        const ROW1_MASK: Word = 0x0c0c0c0c;
+        const ROW2_MASK: Word = 0x30303030;
+        const ROW3_MASK: Word = 0xc0c0c0c0;
+    }
+}
+
+#[inline(always)]
+fn and(a: Word, b: Word) -> Word {
+    a & b
+}
+
+#[inline(always)]
+fn or(a: Word, b: Word) -> Word {
+    a | b
+}
+
+#[inline(always)]
+fn xor(a: Word, b: Word) -> Word {
+    a ^ b
+}
+
+#[inline(always)]
+fn not(a: Word) -> Word {
+    !a
+}
+
 #[inline(always)]
 fn shift_left<const I: u32>(a: Word) -> Word {
     a << (I * BATCH_SIZE_U32)
@@ -290,30 +324,227 @@ impl Batch {
             self.w[i + (j * STRIDE)]
         })
     }
+}
 
+// AES round steps.
+impl Batch {
     fn sub_bytes(&mut self) {
-        prefixed_extern! {
-            fn aes_nohw_sub_bytes(batch: &mut Batch);
-        }
-        unsafe { aes_nohw_sub_bytes(self) };
+        // See https://eprint.iacr.org/2009/191.pdf, Appendix C.
+        let x0 = self.w[7];
+        let x1 = self.w[6];
+        let x2 = self.w[5];
+        let x3 = self.w[4];
+        let x4 = self.w[3];
+        let x5 = self.w[2];
+        let x6 = self.w[1];
+        let x7 = self.w[0];
+
+        // Figure 2, the top linear transformation.
+        let y14 = xor(x3, x5);
+        let y13 = xor(x0, x6);
+        let y9 = xor(x0, x3);
+        let y8 = xor(x0, x5);
+        let t0 = xor(x1, x2);
+        let y1 = xor(t0, x7);
+        let y4 = xor(y1, x3);
+        let y12 = xor(y13, y14);
+        let y2 = xor(y1, x0);
+        let y5 = xor(y1, x6);
+        let y3 = xor(y5, y8);
+        let t1 = xor(x4, y12);
+        let y15 = xor(t1, x5);
+        let y20 = xor(t1, x1);
+        let y6 = xor(y15, x7);
+        let y10 = xor(y15, t0);
+        let y11 = xor(y20, y9);
+        let y7 = xor(x7, y11);
+        let y17 = xor(y10, y11);
+        let y19 = xor(y10, y8);
+        let y16 = xor(t0, y11);
+        let y21 = xor(y13, y16);
+        let y18 = xor(x0, y16);
+
+        // Figure 3, the middle non-linear section.
+        let t2 = and(y12, y15);
+        let t3 = and(y3, y6);
+        let t4 = xor(t3, t2);
+        let t5 = and(y4, x7);
+        let t6 = xor(t5, t2);
+        let t7 = and(y13, y16);
+        let t8 = and(y5, y1);
+        let t9 = xor(t8, t7);
+        let t10 = and(y2, y7);
+        let t11 = xor(t10, t7);
+        let t12 = and(y9, y11);
+        let t13 = and(y14, y17);
+        let t14 = xor(t13, t12);
+        let t15 = and(y8, y10);
+        let t16 = xor(t15, t12);
+        let t17 = xor(t4, t14);
+        let t18 = xor(t6, t16);
+        let t19 = xor(t9, t14);
+        let t20 = xor(t11, t16);
+        let t21 = xor(t17, y20);
+        let t22 = xor(t18, y19);
+        let t23 = xor(t19, y21);
+        let t24 = xor(t20, y18);
+        let t25 = xor(t21, t22);
+        let t26 = and(t21, t23);
+        let t27 = xor(t24, t26);
+        let t28 = and(t25, t27);
+        let t29 = xor(t28, t22);
+        let t30 = xor(t23, t24);
+        let t31 = xor(t22, t26);
+        let t32 = and(t31, t30);
+        let t33 = xor(t32, t24);
+        let t34 = xor(t23, t33);
+        let t35 = xor(t27, t33);
+        let t36 = and(t24, t35);
+        let t37 = xor(t36, t34);
+        let t38 = xor(t27, t36);
+        let t39 = and(t29, t38);
+        let t40 = xor(t25, t39);
+        let t41 = xor(t40, t37);
+        let t42 = xor(t29, t33);
+        let t43 = xor(t29, t40);
+        let t44 = xor(t33, t37);
+        let t45 = xor(t42, t41);
+        let z0 = and(t44, y15);
+        let z1 = and(t37, y6);
+        let z2 = and(t33, x7);
+        let z3 = and(t43, y16);
+        let z4 = and(t40, y1);
+        let z5 = and(t29, y7);
+        let z6 = and(t42, y11);
+        let z7 = and(t45, y17);
+        let z8 = and(t41, y10);
+        let z9 = and(t44, y12);
+        let z10 = and(t37, y3);
+        let z11 = and(t33, y4);
+        let z12 = and(t43, y13);
+        let z13 = and(t40, y5);
+        let z14 = and(t29, y2);
+        let z15 = and(t42, y9);
+        let z16 = and(t45, y14);
+        let z17 = and(t41, y8);
+
+        // Figure 4, bottom linear transformation.
+        let t46 = xor(z15, z16);
+        let t47 = xor(z10, z11);
+        let t48 = xor(z5, z13);
+        let t49 = xor(z9, z10);
+        let t50 = xor(z2, z12);
+        let t51 = xor(z2, z5);
+        let t52 = xor(z7, z8);
+        let t53 = xor(z0, z3);
+        let t54 = xor(z6, z7);
+        let t55 = xor(z16, z17);
+        let t56 = xor(z12, t48);
+        let t57 = xor(t50, t53);
+        let t58 = xor(z4, t46);
+        let t59 = xor(z3, t54);
+        let t60 = xor(t46, t57);
+        let t61 = xor(z14, t57);
+        let t62 = xor(t52, t58);
+        let t63 = xor(t49, t58);
+        let t64 = xor(z4, t59);
+        let t65 = xor(t61, t62);
+        let t66 = xor(z1, t63);
+        let s0 = xor(t59, t63);
+        let s6 = xor(t56, not(t62));
+        let s7 = xor(t48, not(t60));
+        let t67 = xor(t64, t65);
+        let s3 = xor(t53, t66);
+        let s4 = xor(t51, t66);
+        let s5 = xor(t47, t65);
+        let s1 = xor(t64, not(s3));
+        let s2 = xor(t55, not(t67));
+
+        self.w[0] = s7;
+        self.w[1] = s6;
+        self.w[2] = s5;
+        self.w[3] = s4;
+        self.w[4] = s3;
+        self.w[5] = s2;
+        self.w[6] = s1;
+        self.w[7] = s0;
     }
 
     fn add_round_key(&mut self, key: &Batch) {
         bb::xor_assign_at_start(&mut self.w, &key.w)
     }
 
+    #[inline(always)]
+    fn rotate_cols_right<const N_TIMES_4: u32, const BLOCK_LEN_MINUS_N_TIMES_4: u32>(
+        v: Word,
+    ) -> Word {
+        or(
+            shift_right::<N_TIMES_4>(v),
+            shift_left::<BLOCK_LEN_MINUS_N_TIMES_4>(v),
+        )
+    }
+}
+
+// aes_nohw_rotate_cols_right returns |v| with the columns in each row rotated
+// to the right by |n|. This is a macro because |aes_nohw_shift_*| require
+// constant shift counts in the SSE2 implementation.
+// TODO(MSRV feature(generic_const_exprs)): Replace this.
+macro_rules! rotate_cols_right {
+    ( Self::rotate_cols_right::<$N:literal>($v:expr) ) => {
+        Self::rotate_cols_right::<{ $N * 4 }, { 16 - ($N * 4) }>($v)
+    };
+}
+
+impl Batch {
     fn shift_rows(&mut self) {
-        prefixed_extern! {
-            fn aes_nohw_shift_rows(batch: &mut Batch);
-        }
-        unsafe { aes_nohw_shift_rows(self) };
+        self.w.iter_mut().for_each(|w| {
+            let row0 = and(*w, ROW0_MASK);
+            let row1 = and(*w, ROW1_MASK);
+            let row2 = and(*w, ROW2_MASK);
+            let row3 = and(*w, ROW3_MASK);
+            let row1 = rotate_cols_right!(Self::rotate_cols_right::<1>(row1));
+            let row2 = rotate_cols_right!(Self::rotate_cols_right::<2>(row2));
+            let row3 = rotate_cols_right!(Self::rotate_cols_right::<3>(row3));
+            *w = or(or(row0, row1), or(row2, row3));
+        });
     }
 
     fn mix_columns(&mut self) {
-        prefixed_extern! {
-            fn aes_nohw_mix_columns(batch: &mut Batch);
-        }
-        unsafe { aes_nohw_mix_columns(self) };
+        // See https://eprint.iacr.org/2009/129.pdf, section 4.4 and appendix A.
+        let a0 = self.w[0];
+        let a1 = self.w[1];
+        let a2 = self.w[2];
+        let a3 = self.w[3];
+        let a4 = self.w[4];
+        let a5 = self.w[5];
+        let a6 = self.w[6];
+        let a7 = self.w[7];
+
+        let r0 = rotate_rows_down(a0);
+        let a0_r0 = xor(a0, r0);
+        let r1 = rotate_rows_down(a1);
+        let a1_r1 = xor(a1, r1);
+        let r2 = rotate_rows_down(a2);
+        let a2_r2 = xor(a2, r2);
+        let r3 = rotate_rows_down(a3);
+        let a3_r3 = xor(a3, r3);
+        let r4 = rotate_rows_down(a4);
+        let a4_r4 = xor(a4, r4);
+        let r5 = rotate_rows_down(a5);
+        let a5_r5 = xor(a5, r5);
+        let r6 = rotate_rows_down(a6);
+        let a6_r6 = xor(a6, r6);
+        let r7 = rotate_rows_down(a7);
+        let a7_r7 = xor(a7, r7);
+
+        self.w[0] = xor(xor(a7_r7, r0), rotate_rows_twice(a0_r0));
+        self.w[1] = xor(xor(a0_r0, a7_r7), xor(r1, rotate_rows_twice(a1_r1)));
+        self.w[2] = xor(xor(a1_r1, r2), rotate_rows_twice(a2_r2));
+        self.w[3] = xor(xor(a2_r2, a7_r7), xor(r3, rotate_rows_twice(a3_r3)));
+        self.w[4] = xor(xor(a3_r3, a7_r7), xor(r4, rotate_rows_twice(a4_r4)));
+        self.w[5] = xor(xor(a4_r4, r5), rotate_rows_twice(a5_r5));
+        self.w[6] = xor(xor(a5_r5, r6), rotate_rows_twice(a6_r6));
+        self.w[7] = xor(xor(a6_r6, r7), rotate_rows_twice(a7_r7));
     }
 
     // aes_nohw_from_batch writes the first |num_blocks| blocks in |batch| to |out|.
@@ -377,6 +608,21 @@ fn rotate_rows_down(v: Word) -> Word {
     #[cfg(target_pointer_width = "32")]
     {
         ((v >> 2) & 0x3f3f3f3f) | ((v << 6) & 0xc0c0c0c0)
+    }
+}
+
+// rotate_rows_twice returns |v| with the rows in each column rotated
+// by two.
+#[inline(always)]
+fn rotate_rows_twice(v: Word) -> Word {
+    #[cfg(target_pointer_width = "64")]
+    {
+        ((v >> 8) & 0x00ff00ff00ff00ff) | ((v << 8) & 0xff00ff00ff00ff00)
+    }
+
+    #[cfg(target_pointer_width = "32")]
+    {
+        ((v >> 4) & 0x0f0f0f0f) | ((v << 4) & 0xf0f0f0f0)
     }
 }
 

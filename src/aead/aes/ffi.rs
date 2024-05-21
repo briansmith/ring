@@ -23,7 +23,7 @@ use core::{
 #[repr(transparent)]
 pub(in super::super) struct Counter(pub(super) [u8; BLOCK_LEN]);
 
-// Keep this in sync with AES_KEY in aes.h.
+// `AES_KEY` in BoringSSL's aes.h.
 #[repr(C)]
 #[derive(Clone)]
 pub(in super::super) struct AES_KEY {
@@ -31,7 +31,7 @@ pub(in super::super) struct AES_KEY {
     pub rounds: c_uint,
 }
 
-// Keep this in sync with `AES_MAXNR` in aes.h.
+// `AES_MAXNR` in BoringSSL's aes.h.
 pub(crate) const MAX_ROUNDS: usize = 14;
 
 impl AES_KEY {
