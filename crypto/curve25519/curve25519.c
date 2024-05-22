@@ -306,12 +306,8 @@ static void fe_neg(fe_loose *h, const fe *f) {
 //
 // Preconditions: b in {0,1}.
 static void fe_cmov(fe_loose *f, const fe_loose *g, fe_limb_t b) {
-  // Silence an unused function warning. |fiat_25519_selectznz| isn't quite the
-  // calling convention the rest of this code wants, so implement it by hand.
-  //
   // TODO(davidben): Switch to fiat's calling convention, or ask fiat to emit a
   // different one.
-  (void)fiat_25519_selectznz;
 
   b = 0-b;
   for (unsigned i = 0; i < FE_NUM_LIMBS; i++) {

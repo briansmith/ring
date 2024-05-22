@@ -929,52 +929,6 @@ static FIAT_25519_FIAT_INLINE void fiat_25519_opp(fiat_25519_loose_field_element
 }
 
 /*
- * The function fiat_25519_selectznz is a multi-limb conditional select.
- *
- * Postconditions:
- *   eval out1 = (if arg1 = 0 then eval arg2 else eval arg3)
- *
- * Input Bounds:
- *   arg1: [0x0 ~> 0x1]
- *   arg2: [[0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff]]
- *   arg3: [[0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff]]
- * Output Bounds:
- *   out1: [[0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff], [0x0 ~> 0xffffffff]]
- */
-static FIAT_25519_FIAT_INLINE void fiat_25519_selectznz(uint32_t out1[10], fiat_25519_uint1 arg1, const uint32_t arg2[10], const uint32_t arg3[10]) {
-  uint32_t x1;
-  uint32_t x2;
-  uint32_t x3;
-  uint32_t x4;
-  uint32_t x5;
-  uint32_t x6;
-  uint32_t x7;
-  uint32_t x8;
-  uint32_t x9;
-  uint32_t x10;
-  fiat_25519_cmovznz_u32(&x1, arg1, (arg2[0]), (arg3[0]));
-  fiat_25519_cmovznz_u32(&x2, arg1, (arg2[1]), (arg3[1]));
-  fiat_25519_cmovznz_u32(&x3, arg1, (arg2[2]), (arg3[2]));
-  fiat_25519_cmovznz_u32(&x4, arg1, (arg2[3]), (arg3[3]));
-  fiat_25519_cmovznz_u32(&x5, arg1, (arg2[4]), (arg3[4]));
-  fiat_25519_cmovznz_u32(&x6, arg1, (arg2[5]), (arg3[5]));
-  fiat_25519_cmovznz_u32(&x7, arg1, (arg2[6]), (arg3[6]));
-  fiat_25519_cmovznz_u32(&x8, arg1, (arg2[7]), (arg3[7]));
-  fiat_25519_cmovznz_u32(&x9, arg1, (arg2[8]), (arg3[8]));
-  fiat_25519_cmovznz_u32(&x10, arg1, (arg2[9]), (arg3[9]));
-  out1[0] = x1;
-  out1[1] = x2;
-  out1[2] = x3;
-  out1[3] = x4;
-  out1[4] = x5;
-  out1[5] = x6;
-  out1[6] = x7;
-  out1[7] = x8;
-  out1[8] = x9;
-  out1[9] = x10;
-}
-
-/*
  * The function fiat_25519_to_bytes serializes a field element to bytes in little-endian order.
  *
  * Postconditions:
