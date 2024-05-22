@@ -1170,31 +1170,6 @@ static FIAT_25519_FIAT_INLINE void fiat_25519_from_bytes(fiat_25519_tight_field_
 }
 
 /*
- * The function fiat_25519_relax is the identity function converting from tight field elements to loose field elements.
- *
- * Postconditions:
- *   out1 = arg1
- *
- */
-static FIAT_25519_FIAT_INLINE void fiat_25519_relax(fiat_25519_loose_field_element out1, const fiat_25519_tight_field_element arg1) {
-  uint64_t x1;
-  uint64_t x2;
-  uint64_t x3;
-  uint64_t x4;
-  uint64_t x5;
-  x1 = (arg1[0]);
-  x2 = (arg1[1]);
-  x3 = (arg1[2]);
-  x4 = (arg1[3]);
-  x5 = (arg1[4]);
-  out1[0] = x1;
-  out1[1] = x2;
-  out1[2] = x3;
-  out1[3] = x4;
-  out1[4] = x5;
-}
-
-/*
  * The function fiat_25519_carry_scmul_121666 multiplies a field element by 121666 and reduces the result.
  *
  * Postconditions:
