@@ -1474,16 +1474,19 @@ bool ssl_is_alpn_protocol_allowed(const SSL_HANDSHAKE *hs,
   }
 
   // Check that the protocol name is one of the ones we advertised.
-  CBS client_protocol_name_list =
-          MakeConstSpan(hs->config->alpn_client_proto_list),
-      client_protocol_name;
-  while (CBS_len(&client_protocol_name_list) > 0) {
-    if (!CBS_get_u8_length_prefixed(&client_protocol_name_list,
-                                    &client_protocol_name)) {
+  return ssl_alpn_list_contains_protocol(hs->config->alpn_client_proto_list,
+                                         protocol);
+}
+
+bool ssl_alpn_list_contains_protocol(Span<const uint8_t> list,
+                                     Span<const uint8_t> protocol) {
+  CBS cbs = list, candidate;
+  while (CBS_len(&cbs) > 0) {
+    if (!CBS_get_u8_length_prefixed(&cbs, &candidate)) {
       return false;
     }
 
-    if (client_protocol_name == protocol) {
+    if (candidate == protocol) {
       return true;
     }
   }

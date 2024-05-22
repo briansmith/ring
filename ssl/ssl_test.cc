@@ -5335,17 +5335,52 @@ TEST(SSLTest, SelectNextProto) {
                                   (const uint8_t *)"\3ccc\2bb\1a", 9));
   EXPECT_EQ(Bytes("a"), Bytes(result, result_len));
 
-  // If there is no overlap, return the first local protocol.
+  // If there is no overlap, opportunistically select the first local protocol.
+  // ALPN callers should ignore this, but NPN callers may use this per
+  // draft-agl-tls-nextprotoneg-03, section 6.
   EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
             SSL_select_next_proto(&result, &result_len,
                                   (const uint8_t *)"\1a\2bb\3ccc", 9,
                                   (const uint8_t *)"\1x\2yy\3zzz", 9));
   EXPECT_EQ(Bytes("x"), Bytes(result, result_len));
 
+  // The peer preference order may be empty in NPN. This should be treated as no
+  // overlap and continue to select an opportunistic protocol.
   EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
             SSL_select_next_proto(&result, &result_len, nullptr, 0,
                                   (const uint8_t *)"\1x\2yy\3zzz", 9));
   EXPECT_EQ(Bytes("x"), Bytes(result, result_len));
+
+  // Although calling this function with no local protocols is a caller error,
+  // it should cleanly return an empty protocol.
+  EXPECT_EQ(
+      OPENSSL_NPN_NO_OVERLAP,
+      SSL_select_next_proto(&result, &result_len,
+                            (const uint8_t *)"\1a\2bb\3ccc", 9, nullptr, 0));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
+
+  // Syntax errors are similarly caller errors.
+  EXPECT_EQ(
+      OPENSSL_NPN_NO_OVERLAP,
+      SSL_select_next_proto(&result, &result_len, (const uint8_t *)"\4aaa", 4,
+                            (const uint8_t *)"\1a\2bb\3ccc", 9));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\4aaa", 4));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
+
+  // Protocols in protocol lists may not be empty.
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\0\2bb\3ccc", 8,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9));
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\0\2bb\3ccc", 8));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
 }
 
 // The client should gracefully handle no suitable ciphers being enabled.

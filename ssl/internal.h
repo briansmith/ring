@@ -2324,6 +2324,11 @@ bool ssl_is_valid_alpn_list(Span<const uint8_t> in);
 bool ssl_is_alpn_protocol_allowed(const SSL_HANDSHAKE *hs,
                                   Span<const uint8_t> protocol);
 
+// ssl_alpn_list_contains_protocol returns whether |list|, a serialized ALPN
+// protocol list, contains |protocol|.
+bool ssl_alpn_list_contains_protocol(Span<const uint8_t> list,
+                                     Span<const uint8_t> protocol);
+
 // ssl_negotiate_alpn negotiates the ALPN extension, if applicable. It returns
 // true on successful negotiation or if nothing was negotiated. It returns false
 // and sets |*out_alert| to an alert on error.
