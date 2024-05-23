@@ -16,6 +16,12 @@
 
 use crate::{c, error};
 
+#[cfg(target_pointer_width = "64")]
+pub(crate) type Word = u64;
+
+#[cfg(target_pointer_width = "32")]
+pub(crate) type Word = u32;
+
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
 /// The comparison of `a` and `b` is done in constant time with respect to the
 /// contents of each, but NOT in constant time with respect to the lengths of
