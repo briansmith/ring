@@ -131,16 +131,14 @@ impl crate::sealed::Sealed for SystemRandom {}
     target_os = "haiku",
     target_os = "hermit",
     target_os = "illumos",
-    target_os = "ios",
     target_os = "linux",
-    target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "redox",
     target_os = "solaris",
-    target_os = "tvos",
     target_os = "vita",
     target_os = "windows",
+    target_vendor = "apple",
     all(
         target_arch = "wasm32",
         any(

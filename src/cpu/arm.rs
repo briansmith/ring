@@ -41,8 +41,7 @@ mod abi_assumptions {
 // detection.
 
 cfg_if::cfg_if! {
-    if #[cfg(all(target_arch = "aarch64",
-                 any(target_os = "ios", target_os = "macos", target_os = "tvos")))] {
+    if #[cfg(all(target_arch = "aarch64", target_vendor = "apple"))] {
         mod darwin;
         use darwin as detect;
     } else if #[cfg(all(target_arch = "aarch64", target_os = "fuchsia"))] {

@@ -161,7 +161,7 @@ untrusted = { version = "0.9" }
 [target.'cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86",target_arch = "x86_64"))'.dependencies]
 spin = { version = "0.9.8", default-features = false, features = ["once"] }
 
-[target.'cfg(all(any(target_os = "android", target_os = "linux", any(target_os = "ios", target_os = "macos", target_os = "tvos")), any(target_arch = "aarch64", target_arch = "arm")))'.dependencies]
+[target.'cfg(all(any(target_os = "android", target_os = "linux", target_vendor = "apple"), any(target_arch = "aarch64", target_arch = "arm")))'.dependencies]
 libc = { version = "0.2.148", default-features = false }
 
 [target.'cfg(all(target_arch = "aarch64", target_os = "windows"))'.dependencies]
@@ -174,7 +174,7 @@ wasm-bindgen-test = { version = "0.3.37", default-features = false }
 libc = { version = "0.2.148", default-features = false }
 
 [build-dependencies]
-cc = { version = "1.0.83", default-features = false }
+cc = { version = "1.0.94", default-features = false }
 
 [features]
 # These features are documented in the top-level module's documentation.
