@@ -165,6 +165,12 @@ s390x-unknown-linux-gnu)
     gcc-s390x-linux-gnu \
     libc6-dev-s390x-cross
   ;;
+sparc64-unknown-linux-gnu)
+  install_packages \
+    qemu-user \
+    gcc-sparc64-linux-gnu \
+    libc6-dev-sparc64-cross
+  ;;
 wasm32-unknown-unknown)
   cargo install wasm-bindgen-cli --bin wasm-bindgen-test-runner
   use_clang=1
