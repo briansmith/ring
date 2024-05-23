@@ -21,34 +21,20 @@
 use crate::{c, error, polyfill::ArrayFlatMap};
 
 #[cfg(any(test, feature = "alloc"))]
-use crate::bits;
+use crate::{bits, constant_time, polyfill::usize_from_u32};
 
 #[cfg(feature = "alloc")]
 use core::num::Wrapping;
 
 // XXX: Not correct for x32 ABIs.
-#[cfg(target_pointer_width = "64")]
-pub type Limb = u64;
-#[cfg(target_pointer_width = "32")]
-pub type Limb = u32;
-#[cfg(target_pointer_width = "64")]
-pub const LIMB_BITS: usize = 64;
-#[cfg(target_pointer_width = "32")]
-pub const LIMB_BITS: usize = 32;
+pub type Limb = constant_time::Word;
+pub const LIMB_BITS: usize = usize_from_u32(Limb::BITS);
 
-#[cfg(target_pointer_width = "64")]
+#[cfg_attr(target_pointer_width = "64", repr(u64))]
+#[cfg_attr(target_pointer_width = "32", repr(u32))]
 #[derive(Debug, PartialEq)]
-#[repr(u64)]
 pub enum LimbMask {
-    True = 0xffff_ffff_ffff_ffff,
-    False = 0,
-}
-
-#[cfg(target_pointer_width = "32")]
-#[derive(Debug, PartialEq)]
-#[repr(u32)]
-pub enum LimbMask {
-    True = 0xffff_ffff,
+    True = Limb::MAX,
     False = 0,
 }
 
