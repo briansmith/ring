@@ -167,7 +167,7 @@ case $target in
     # XXX: Using -march=zEC12 to work around a z13 instruction bug in
     # QEMU 8.0.2 and earlier that causes `test_constant_time` to fail
     # (https://lists.gnu.org/archive/html/qemu-devel/2023-05/msg06965.html).
-    export CFLAGS_s390x_unknown_linux_gnu="--sysroot=/usr/s390x-linux-gnu -march=zEC12"
+    export CFLAGS_s390x_unknown_linux_gnu="--sysroot=/usr/s390x-linux-gnu"
     export CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_LINKER=s390x-linux-gnu-gcc
     export CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_RUNNER="$qemu_s390x"
     ;;
