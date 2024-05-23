@@ -20364,19 +20364,19 @@ func statusPrinter(doneChan chan *testresult.Results, statusChan chan statusMsg,
 					if *allowUnimplemented {
 						testOutput.AddSkip(msg.test.name)
 					} else {
-						testOutput.AddResult(msg.test.name, "SKIP")
+						testOutput.AddResult(msg.test.name, "SKIP", nil)
 					}
 				} else {
 					fmt.Printf("FAILED (%s)\n%s\n", msg.test.name, msg.err)
 					failed++
-					testOutput.AddResult(msg.test.name, "FAIL")
+					testOutput.AddResult(msg.test.name, "FAIL", msg.err)
 				}
 			} else {
 				if *pipe {
 					// Print each test instead of a status line.
 					fmt.Printf("PASSED (%s)\n", msg.test.name)
 				}
-				testOutput.AddResult(msg.test.name, "PASS")
+				testOutput.AddResult(msg.test.name, "PASS", nil)
 			}
 		}
 

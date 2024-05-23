@@ -398,15 +398,15 @@ func main() {
 			fmt.Printf("%s\n", test.longName())
 			fmt.Printf("%s failed to complete: %s\n", args[0], testResult.Error)
 			failed = append(failed, test)
-			testOutput.AddResult(test.longName(), "CRASH")
+			testOutput.AddResult(test.longName(), "CRASH", testResult.Error)
 		} else if !testResult.Passed {
 			fmt.Printf("%s\n", test.longName())
 			fmt.Printf("%s failed to print PASS on the last line.\n", args[0])
 			failed = append(failed, test)
-			testOutput.AddResult(test.longName(), "FAIL")
+			testOutput.AddResult(test.longName(), "FAIL", nil)
 		} else {
 			fmt.Printf("%s\n", test.shortName())
-			testOutput.AddResult(test.longName(), "PASS")
+			testOutput.AddResult(test.longName(), "PASS", nil)
 		}
 	}
 
