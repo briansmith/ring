@@ -30,6 +30,7 @@ qemu_powerpc64="qemu-ppc64 -L /usr/powerpc64-linux-gnu"
 qemu_powerpc64le="qemu-ppc64le -L /usr/powerpc64le-linux-gnu"
 qemu_riscv64="qemu-riscv64 -L /usr/riscv64-linux-gnu"
 qemu_s390x="qemu-s390x -L /usr/s390x-linux-gnu"
+qemu_sparc64="qemu-sparc64 -L /usr/sparc64-linux-gnu"
 
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may
@@ -169,6 +170,11 @@ case $target in
     export CFLAGS_s390x_unknown_linux_gnu="--sysroot=/usr/s390x-linux-gnu -march=zEC12"
     export CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_LINKER=s390x-linux-gnu-gcc
     export CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_RUNNER="$qemu_s390x"
+    ;;
+  sparc64-unknown-linux-gnu)
+    export CFLAGS_sparc64_unknown_linux_gnu="--sysroot=/usr/sparc64-linux-gnu"
+    export CARGO_TARGET_SPARC64_UNKNOWN_LINUX_GNU_LINKER=sparc64-linux-gnu-gcc
+    export CARGO_TARGET_SPARC64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_sparc64"
     ;;
   x86_64-unknown-linux-musl)
     use_clang=1
