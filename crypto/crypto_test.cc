@@ -47,18 +47,14 @@ TEST(CryptoTest, Strndup) {
 using CounterArray = size_t[fips_counter_max + 1];
 
 static void read_all_counters(CounterArray counters) {
-  for (fips_counter_t counter = static_cast<fips_counter_t>(0);
-       counter <= fips_counter_max;
-       counter = static_cast<fips_counter_t>(counter + 1)) {
-    counters[counter] = FIPS_read_counter(counter);
+  for (int counter = 0; counter <= fips_counter_max; counter++) {
+    counters[counter] = FIPS_read_counter(static_cast<fips_counter_t>(counter));
   }
 }
 
 static void expect_counter_delta_is_zero_except_for_a_one_at(
     CounterArray before, CounterArray after, fips_counter_t position) {
-  for (fips_counter_t counter = static_cast<fips_counter_t>(0);
-       counter <= fips_counter_max;
-       counter = static_cast<fips_counter_t>(counter + 1)) {
+  for (int counter = 0; counter <= fips_counter_max; counter++) {
     const size_t expected_delta = counter == position ? 1 : 0;
     EXPECT_EQ(after[counter], before[counter] + expected_delta) << counter;
   }
