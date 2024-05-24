@@ -219,6 +219,11 @@ jobs:
           - target: i686-unknown-linux-musl
             host_os: ubuntu-22.04
 
+          - target: mips64-unknown-linux-gnu
+            mode: --release
+            rust_channel: 1.71.0 # No prebuilt toolchain for later versions.
+            host_os: ubuntu-22.04
+
           - target: mips-unknown-linux-gnu
             mode: --release
             rust_channel: 1.71.0 # No prebuilt toolchain for later versions.
