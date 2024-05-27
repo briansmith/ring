@@ -18,12 +18,6 @@
 //! function should be used. Otherwise, the digest can be calculated in
 //! multiple steps using `Context`.
 
-// Note on why are we doing things the hard way: It would be easy to implement
-// this using the C `EVP_MD`/`EVP_MD_CTX` interface. However, if we were to do
-// things that way, we'd have a hard dependency on `malloc` and other overhead.
-// The goal for this implementation is to drive the overhead as close to zero
-// as possible.
-
 use self::{
     dynstate::DynState,
     sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
