@@ -5,7 +5,7 @@ publish = false
 version = "0.1.0"
 
 [dependencies]
-ring = { path = "../", package = "ring" }
+ring = { path = "../" }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", default-features = false }

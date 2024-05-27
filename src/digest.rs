@@ -161,14 +161,17 @@ pub struct Context {
 
 #[cfg(any(feature = "serde", feature = "serialize"))]
 mod ctx_serialize {
+    use crate::digest::dynstate::DynState;
+    use crate::digest::sha2::{State32, State64};
+    use crate::digest::{
+        AlgorithmID, BlockContext, Context, SHA1_FOR_LEGACY_USE_ONLY, SHA256, SHA384, SHA512,
+        SHA512_256,
+    };
     use alloc::string::{String, ToString};
     use alloc::vec::Vec;
     use core::num::Wrapping;
     #[cfg(feature = "serde")]
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
-    use crate::digest::{AlgorithmID, BlockContext, Context, SHA1_FOR_LEGACY_USE_ONLY, SHA256, SHA384, SHA512, SHA512_256};
-    use crate::digest::dynstate::DynState;
-    use crate::digest::sha2::{State32, State64};
 
     /// Structure used to store and restore Context
     #[derive(Clone)]
@@ -190,14 +193,20 @@ mod ctx_serialize {
 
     #[cfg(feature = "serde")]
     impl Serialize for Context {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
             self.serialize().serialize(serializer)
         }
     }
 
     #[cfg(feature = "serde")]
     impl<'de> Deserialize<'de> for Context {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
             let c_data = ContextData::deserialize(deserializer)?;
             Ok(Context::deserialize(c_data))
         }
@@ -702,11 +711,12 @@ mod tests {
             let mut context = Context::new(algo);
 
             // Compute and store half file context
-            context.update(&license.as_bytes()[..len/2]);
-            let stored_context = serde_json::to_string(&context).expect("Error serializing context");
+            context.update(&license.as_bytes()[..len / 2]);
+            let stored_context =
+                serde_json::to_string(&context).expect("Error serializing context");
 
             context = serde_json::from_str(&stored_context).expect("Error deserialize context");
-            context.update(&license.as_bytes()[len/2..]);
+            context.update(&license.as_bytes()[len / 2..]);
             let digest = context.finish();
             assert_eq!(expected_digest.value.0, digest.value.0);
         }
@@ -722,11 +732,11 @@ mod tests {
             let mut context = Context::new(algo);
 
             // Compute and store half file context
-            context.update(&license.as_bytes()[..len/2]);
+            context.update(&license.as_bytes()[..len / 2]);
             let stored_context = context.serialize();
 
             context = Context::deserialize(stored_context);
-            context.update(&license.as_bytes()[len/2..]);
+            context.update(&license.as_bytes()[len / 2..]);
             let digest = context.finish();
             assert_eq!(expected_digest.value.0, digest.value.0);
         }
