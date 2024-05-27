@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{AES, ARMCAP_STATIC, NEON, PMULL, SHA256, SHA512};
+use crate::polyfill::cstr;
 
 // ```
 // $ rustc +1.61.0 --print cfg --target=aarch64-apple-ios | grep -E "neon|aes|sha|pmull"
@@ -50,28 +51,18 @@ const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () =
     assert!(ARMCAP_STATIC == MIN_STATIC_FEATURES);
 
 pub fn detect_features() -> u32 {
-    // TODO(MSRV 1.64): Use `name: &core::ffi::CStr`.
-    fn detect_feature(name: &[u8]) -> bool {
+    fn detect_feature(name: cstr::Ref) -> bool {
         use crate::polyfill;
         use core::mem;
-        use libc::{c_char, c_int, c_void};
-
-        let nul_terminated = name
-            .iter()
-            .position(|&b| b == 0)
-            .map(|index| (index + 1) == name.len())
-            .unwrap_or(false);
-        if !nul_terminated {
-            return false;
-        }
-        let name = polyfill::ptr::from_ref(name).cast::<c_char>();
+        use libc::{c_int, c_void};
 
         let mut value: c_int = 0;
         let mut len = mem::size_of_val(&value);
         let value_ptr = polyfill::ptr::from_mut(&mut value).cast::<c_void>();
-        // SAFETY: `name` is nul-terminated and it doesn't contain interior nul bytes. `value_ptr`
-        // is a valid pointer to `value` and `len` is the size of `value`.
-        let rc = unsafe { libc::sysctlbyname(name, value_ptr, &mut len, core::ptr::null_mut(), 0) };
+        // SAFETY: `value_ptr` is a valid pointer to `value` and `len` is the size of `value`.
+        let rc = unsafe {
+            libc::sysctlbyname(name.as_ptr(), value_ptr, &mut len, core::ptr::null_mut(), 0)
+        };
         // All the conditions are separated so we can observe them in code coverage.
         if rc != 0 {
             return false;
@@ -88,12 +79,32 @@ pub fn detect_features() -> u32 {
 
     let mut features = 0;
 
-    // TODO(MSRV 1.64): Use `: &CStr = CStr::from_bytes_with_nul_unchecked`.
     // TODO(MSRV 1.77): Use c"..." literal.
-    const SHA512_NAME: &[u8] = b"hw.optional.armv8_2_sha512\0";
+    const SHA512_NAME: cstr::Ref =
+        cstr::unwrap_const_from_bytes_with_nul(b"hw.optional.armv8_2_sha512\0");
     if detect_feature(SHA512_NAME) {
         features |= SHA512.mask;
     }
 
     features
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cpu;
+
+    #[test]
+    fn sha512_detection() {
+        // We intentionally disable static feature detection for SHA-512.
+        const _SHA512_NOT_STATICALLY_DETECTED: () = assert!((ARMCAP_STATIC & SHA512.mask) == 0);
+
+        if cfg!(target_os = "macos") {
+            // All aarch64-apple-darwin targets have SHA3 enabled statically...
+            assert!(cfg!(target_feature = "sha3"));
+
+            // ...so we should detect it.
+            assert!(SHA512.available(cpu::features()));
+        }
+    }
 }

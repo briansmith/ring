@@ -32,6 +32,14 @@
 //!         </a> and <a href="https://docs.rs/getrandom/0.2.10/getrandom/#rdrand-on-x86">
 //!             RDRAND on x86
 //!         </a> for additional details.
+//! <tr><td><code>less-safe-getrandom-espidf</code>
+//!     <td>Treat getrandom as a secure random number generator (see
+//!         <code>SecureRandom</code>) on the esp-idf target. While the esp-idf
+//!         target does have hardware RNG, it is beyond the scope of ring to
+//!         ensure its configuration. This feature allows ring to build
+//!         on esp-idf despite the liklihood that RNG is not secure.
+//!         This feature only works with <code>os = espidf</code> targets.
+//!         See <a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/random.html">
 //! <tr><td><code>std</code>
 //!     <td>Enable features that use libstd, in particular
 //!         <code>std::error::Error</code> integration. Implies `alloc`.

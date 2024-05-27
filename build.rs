@@ -83,7 +83,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86_64], "crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl"),
     (&[X86_64], "crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/modes/asm/ghash-x86_64.pl"),
-    (&[X86_64], "crypto/poly1305/poly1305_vec.c"),
     (&[X86_64], SHA512_X86_64),
     (&[X86_64], "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl"),
     (&[X86_64], "third_party/fiat/asm/fiat_curve25519_adx_mul.S"),
@@ -547,12 +546,14 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
 }
 
 fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_dir: &Path) {
-    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
-    if target.os == WINDOWS && target.arch == AARCH64 && !c.get_compiler().is_like_clang() {
-        let _ = c.compiler("clang");
-    }
-
     let compiler = c.get_compiler();
+    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
+    let compiler = if target.os == WINDOWS && target.arch == AARCH64 && !compiler.is_like_clang() {
+        let _ = c.compiler("clang");
+        c.get_compiler()
+    } else {
+        compiler
+    };
 
     let _ = c.include(c_root_dir.join("include"));
     let _ = c.include(include_dir);
@@ -572,17 +573,13 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
     }
 
     // Allow cross-compiling without a target sysroot for these targets.
-    //
-    // poly1305_vec.c requires <emmintrin.h> which requires <stdlib.h>.
     if (target.arch == WASM32)
         || (target.os == "linux" && target.env == "musl" && target.arch != X86_64)
     {
-        if let Ok(compiler) = c.try_get_compiler() {
-            // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
-            if compiler.is_like_clang() {
-                let _ = c.flag("-nostdlibinc");
-                let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
-            }
+        // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
+        if compiler.is_like_clang() {
+            let _ = c.flag("-nostdlibinc");
+            let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
         }
     }
 

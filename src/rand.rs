@@ -123,6 +123,7 @@ impl crate::sealed::Sealed for SystemRandom {}
 // implementation.
 #[cfg(any(
     all(feature = "less-safe-getrandom-custom-or-rdrand", target_os = "none"),
+    all(feature = "less-safe-getrandom-espidf", target_os = "espidf"),
     target_os = "aix",
     target_os = "android",
     target_os = "dragonfly",

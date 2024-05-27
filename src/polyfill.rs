@@ -21,11 +21,6 @@ pub const fn u64_from_usize(x: usize) -> u64 {
     x as u64
 }
 
-#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
-pub fn usize_from_u32(x: u32) -> usize {
-    x as usize
-}
-
 #[cfg(all(target_arch = "aarch64", target_pointer_width = "64"))]
 #[allow(clippy::cast_possible_truncation)]
 pub fn usize_from_u64(x: u64) -> usize {
@@ -47,6 +42,8 @@ pub const fn usize_from_u64_saturated(x: u64) -> usize {
 mod array_flat_map;
 mod array_flatten;
 mod array_split_map;
+
+pub mod cstr;
 
 pub mod sliceutil;
 

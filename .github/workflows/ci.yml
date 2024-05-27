@@ -526,9 +526,9 @@ jobs:
         target:
           - aarch64-apple-darwin           # Has assembly
           - aarch64-unknown-linux-gnu      # Has assembly
+          - arm-unknown-linux-gnueabi      # Has assembly
+          - armv7-unknown-linux-gnueabihf  # Has assembly
           - i686-unknown-linux-gnu         # Has assembly
-          # TODO: arm-unknown-linux-gnueabi # Has assembly but doesn't build w/ clang
-          # TODO: armv7-unknown-linux-gnueabihf # Has assembly but doesn't have profiler builtins
           - powerpc-unknown-linux-gnu      # No assembly 32-bit big-endian with flags
           - powerpc64-unknown-linux-gnu    # No assembly 64-bit big-endian with flags
           - powerpc64le-unknown-linux-gnu  # No assembly 64-bit little-endian with flags
@@ -561,8 +561,14 @@ jobs:
             rust_channel: nightly
             host_os: ubuntu-22.04
 
+          - target: arm-unknown-linux-gnueabi
+            host_os: ubuntu-22.04
+
+          - target: armv7-unknown-linux-gnueabihf
+            host_os: ubuntu-22.04
+
           - features: --features=unstable-testing-arm-no-neon,std
-            target: aarch64-unknown-linux-gnu
+            target: armv7-unknown-linux-gnueabihf
             mode: # debug
             rust_channel: nightly
             host_os: ubuntu-22.04
@@ -593,11 +599,6 @@ jobs:
 
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-22.04
-
-          # TODO: Add an ARM target after
-          # https://github.com/rust-lang/rust/issues/79555 is fixed. This may
-          # require https://github.com/rust-lang/rust/issues/79555 to be fixed
-          # too.
 
     steps:
       - if: ${{ contains(matrix.host_os, 'ubuntu') }}

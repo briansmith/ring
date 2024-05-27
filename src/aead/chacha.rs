@@ -195,7 +195,7 @@ mod tests {
 
     const MAX_ALIGNMENT_AND_OFFSET: (usize, usize) = (15, 259);
     const MAX_ALIGNMENT_AND_OFFSET_SUBSET: (usize, usize) =
-        if cfg!(any(debug_assertions = "false", feature = "slow_tests")) {
+        if cfg!(any(not(debug_assertions), feature = "slow_tests")) {
             MAX_ALIGNMENT_AND_OFFSET
         } else {
             (0, 0)

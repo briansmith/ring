@@ -103,7 +103,6 @@ include = [
     "crypto/poly1305/poly1305.c",
     "crypto/poly1305/poly1305_arm.c",
     "crypto/poly1305/poly1305_arm_asm.S",
-    "crypto/poly1305/poly1305_vec.c",
     "crypto/cipher_extra/asm/chacha20_poly1305_armv8.pl",
     "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl",
     "examples/**/*.rs",
@@ -183,6 +182,7 @@ default = ["alloc", "dev_urandom_fallback"]
 alloc = []
 dev_urandom_fallback = []
 less-safe-getrandom-custom-or-rdrand = []
+less-safe-getrandom-espidf = []
 slow_tests = []
 std = ["alloc"]
 unstable-testing-arm-no-hw = []

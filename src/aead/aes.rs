@@ -13,11 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{nonce::Nonce, quic::Sample};
-use crate::{
-    bits::BitLength,
-    c, constant_time, cpu, error,
-    polyfill::{self, slice},
-};
+use crate::{bits::BitLength, c, constant_time, cpu, error, polyfill::slice};
 use core::{num::NonZeroUsize, ops::RangeFrom};
 
 #[derive(Clone)]
@@ -143,9 +139,7 @@ unsafe fn ctr32_encrypt_blocks(
         }
     };
 
-    #[allow(clippy::cast_possible_truncation)]
-    let blocks_u32 = blocks.get() as u32;
-    assert_eq!(blocks.get(), polyfill::usize_from_u32(blocks_u32));
+    let blocks_u32: u32 = blocks.get().try_into().unwrap();
 
     let input = input.as_ptr();
     let output: *mut [u8; BLOCK_LEN] = in_out.as_mut_ptr().cast();

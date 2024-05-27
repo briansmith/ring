@@ -764,37 +764,6 @@ static FIAT_25519_FIAT_INLINE void fiat_25519_opp(fiat_25519_loose_field_element
 }
 
 /*
- * The function fiat_25519_selectznz is a multi-limb conditional select.
- *
- * Postconditions:
- *   out1 = (if arg1 = 0 then arg2 else arg3)
- *
- * Input Bounds:
- *   arg1: [0x0 ~> 0x1]
- *   arg2: [[0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff]]
- *   arg3: [[0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff]]
- * Output Bounds:
- *   out1: [[0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff]]
- */
-static FIAT_25519_FIAT_INLINE void fiat_25519_selectznz(uint64_t out1[5], fiat_25519_uint1 arg1, const uint64_t arg2[5], const uint64_t arg3[5]) {
-  uint64_t x1;
-  uint64_t x2;
-  uint64_t x3;
-  uint64_t x4;
-  uint64_t x5;
-  fiat_25519_cmovznz_u64(&x1, arg1, (arg2[0]), (arg3[0]));
-  fiat_25519_cmovznz_u64(&x2, arg1, (arg2[1]), (arg3[1]));
-  fiat_25519_cmovznz_u64(&x3, arg1, (arg2[2]), (arg3[2]));
-  fiat_25519_cmovznz_u64(&x4, arg1, (arg2[3]), (arg3[3]));
-  fiat_25519_cmovznz_u64(&x5, arg1, (arg2[4]), (arg3[4]));
-  out1[0] = x1;
-  out1[1] = x2;
-  out1[2] = x3;
-  out1[3] = x4;
-  out1[4] = x5;
-}
-
-/*
  * The function fiat_25519_to_bytes serializes a field element to bytes in little-endian order.
  *
  * Postconditions:
@@ -1167,31 +1136,6 @@ static FIAT_25519_FIAT_INLINE void fiat_25519_from_bytes(fiat_25519_tight_field_
   out1[2] = x56;
   out1[3] = x64;
   out1[4] = x71;
-}
-
-/*
- * The function fiat_25519_relax is the identity function converting from tight field elements to loose field elements.
- *
- * Postconditions:
- *   out1 = arg1
- *
- */
-static FIAT_25519_FIAT_INLINE void fiat_25519_relax(fiat_25519_loose_field_element out1, const fiat_25519_tight_field_element arg1) {
-  uint64_t x1;
-  uint64_t x2;
-  uint64_t x3;
-  uint64_t x4;
-  uint64_t x5;
-  x1 = (arg1[0]);
-  x2 = (arg1[1]);
-  x3 = (arg1[2]);
-  x4 = (arg1[3]);
-  x5 = (arg1[4]);
-  out1[0] = x1;
-  out1[1] = x2;
-  out1[2] = x3;
-  out1[3] = x4;
-  out1[4] = x5;
 }
 
 /*
