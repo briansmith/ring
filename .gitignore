@@ -41,4 +41,3 @@ target/
 .idea
 *.iml
 CMakeLists.txt
-/pregenerated/
