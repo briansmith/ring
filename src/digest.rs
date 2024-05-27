@@ -659,7 +659,9 @@ impl OutputLen {
 
 #[cfg(test)]
 mod tests {
-    mod store_restore_context {}
+    mod store_restore_context {
+
+    }
 
     mod max_input {
         extern crate alloc;
