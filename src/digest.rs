@@ -197,7 +197,7 @@ mod ctx_serialize {
         where
             S: Serializer,
         {
-            self.serialize().serialize(serializer)
+            ContextData::from(self).serialize(serializer)
         }
     }
 
@@ -208,14 +208,13 @@ mod ctx_serialize {
             D: Deserializer<'de>,
         {
             let c_data = ContextData::deserialize(deserializer)?;
-            Ok(Context::deserialize(c_data))
+            Ok(Context::from(c_data))
         }
     }
 
-    impl Context {
-        /// Retrieves context data from current context states
-        pub fn serialize(&self) -> ContextData {
-            let (state_name, state_data) = match self.block.state {
+    impl From<&Context> for ContextData {
+        fn from(value: &Context) -> Self {
+            let (state_name, state_data) = match value.block.state {
                 DynState::As64(as64) => ("as64", as64.iter().map(|w| w.0).collect::<Vec<_>>()),
                 DynState::As32(as32) => (
                     "as32",
@@ -223,7 +222,7 @@ mod ctx_serialize {
                 ),
             };
 
-            let algo = match self.block.algorithm.id {
+            let algo = match value.block.algorithm.id {
                 AlgorithmID::SHA1 => "SHA1",
                 AlgorithmID::SHA256 => "SHA256",
                 AlgorithmID::SHA384 => "SHA384",
@@ -232,17 +231,18 @@ mod ctx_serialize {
             };
 
             ContextData {
-                completed_bytes: self.block.completed_bytes,
+                completed_bytes: value.block.completed_bytes,
                 state_name: state_name.to_string(),
                 state_data,
                 algorithm: algo.to_string(),
-                num_pending: self.num_pending,
-                pending: self.pending.to_vec(),
+                num_pending: value.num_pending,
+                pending: value.pending.to_vec(),
             }
         }
+    }
 
-        /// Create context from stored context data
-        pub fn deserialize(data: ContextData) -> Self {
+    impl From<ContextData> for Context {
+        fn from(data: ContextData) -> Self {
             let algo = match data.algorithm.as_str() {
                 "SHA1" => &SHA1_FOR_LEGACY_USE_ONLY,
                 "SHA256" => &SHA256,
@@ -692,7 +692,7 @@ mod tests {
     #[cfg(any(feature = "serde", feature = "serialize"))]
     mod store_restore_context {
         use crate::digest;
-        use crate::digest::{Context, Digest, SHA256};
+        use crate::digest::{Context, ContextData, Digest, SHA256};
 
         fn compute_full_digest(alg: &'static digest::Algorithm, data: &[u8]) -> Digest {
             let mut context = Context::new(alg);
@@ -733,9 +733,9 @@ mod tests {
 
             // Compute and store half file context
             context.update(&license.as_bytes()[..len / 2]);
-            let stored_context = context.serialize();
+            let stored_context = ContextData::from(&context);
 
-            context = Context::deserialize(stored_context);
+            context = Context::from(stored_context);
             context.update(&license.as_bytes()[len / 2..]);
             let digest = context.finish();
             assert_eq!(expected_digest.value.0, digest.value.0);
