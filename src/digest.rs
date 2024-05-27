@@ -28,15 +28,16 @@ use self::{
     dynstate::DynState,
     sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
 };
-use crate::digest::sha2::{State32, State64};
+
 use crate::{
     bits::{BitLength, FromByteLen as _},
     cpu, debug,
     polyfill::{self, slice, sliceutil},
 };
-use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use core::num::Wrapping;
+
+#[cfg(any(feature = "serde", feature = "serialize"))]
+pub use ctx_serialize::ContextData;
 
 mod dynstate;
 mod sha1;
@@ -158,105 +159,125 @@ pub struct Context {
     num_pending: usize,
 }
 
-/// Structure to store and restore BlockContext state
-#[derive(Clone)]
-pub struct ContextState {
-    /// Field used to determine state enum name
-    pub name: String,
-    /// State data
-    pub data: Vec<u64>,
+#[cfg(any(feature = "serde", feature = "serialize"))]
+mod ctx_serialize {
+    use alloc::string::{String, ToString};
+    use alloc::vec::Vec;
+    use core::num::Wrapping;
+    #[cfg(feature = "serde")]
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use crate::digest::{AlgorithmID, BlockContext, Context, SHA1_FOR_LEGACY_USE_ONLY, SHA256, SHA384, SHA512, SHA512_256};
+    use crate::digest::dynstate::DynState;
+    use crate::digest::sha2::{State32, State64};
+
+    /// Structure used to store and restore Context
+    #[derive(Clone)]
+    #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+    pub struct ContextData {
+        /// Context state name
+        pub state_name: String,
+        /// Context state data
+        pub state_data: Vec<u64>,
+        /// Completed bytes
+        pub completed_bytes: u64,
+        /// Digest algorithm name = AlgorithmID
+        pub algorithm: String,
+        /// Number of pending bytes
+        pub num_pending: usize,
+        /// Pending bytes
+        pub pending: Vec<u8>,
+    }
+
+    #[cfg(feature = "serde")]
+    impl Serialize for Context {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+            self.serialize().serialize(serializer)
+        }
+    }
+
+    #[cfg(feature = "serde")]
+    impl<'de> Deserialize<'de> for Context {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+            let c_data = ContextData::deserialize(deserializer)?;
+            Ok(Context::deserialize(c_data))
+        }
+    }
+
+    impl Context {
+        /// Retrieves context data from current context states
+        pub fn serialize(&self) -> ContextData {
+            let (state_name, state_data) = match self.block.state {
+                DynState::As64(as64) => ("as64", as64.iter().map(|w| w.0).collect::<Vec<_>>()),
+                DynState::As32(as32) => (
+                    "as32",
+                    as32.iter().map(|w| u64::from(w.0)).collect::<Vec<_>>(),
+                ),
+            };
+
+            let algo = match self.block.algorithm.id {
+                AlgorithmID::SHA1 => "SHA1",
+                AlgorithmID::SHA256 => "SHA256",
+                AlgorithmID::SHA384 => "SHA384",
+                AlgorithmID::SHA512 => "SHA512",
+                AlgorithmID::SHA512_256 => "SHA512_256",
+            };
+
+            ContextData {
+                completed_bytes: self.block.completed_bytes,
+                state_name: state_name.to_string(),
+                state_data,
+                algorithm: algo.to_string(),
+                num_pending: self.num_pending,
+                pending: self.pending.to_vec(),
+            }
+        }
+
+        /// Create context from stored context data
+        pub fn deserialize(data: ContextData) -> Self {
+            let algo = match data.algorithm.as_str() {
+                "SHA1" => &SHA1_FOR_LEGACY_USE_ONLY,
+                "SHA256" => &SHA256,
+                "SHA384" => &SHA384,
+                "SHA512" => &SHA512,
+                "SHA512_256" => &SHA512_256,
+                _ => &SHA256,
+            };
+
+            let mut block = BlockContext::new(algo);
+            block.completed_bytes = data.completed_bytes;
+            block.state = match data.state_name.as_str() {
+                "as64" => {
+                    let state: State64 = data
+                        .state_data
+                        .iter()
+                        .map(|b| Wrapping(*b))
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .unwrap();
+                    DynState::As64(state)
+                }
+                _ => {
+                    let state: State32 = data
+                        .state_data
+                        .iter()
+                        .map(|b| Wrapping(u32::try_from(*b).unwrap()))
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .unwrap();
+                    DynState::As32(state)
+                }
+            };
+
+            Self {
+                block,
+                pending: data.pending.try_into().unwrap(),
+                num_pending: data.num_pending,
+            }
+        }
+    }
 }
 
-/// Structure to store and restore Context
-#[derive(Clone)]
-pub struct ContextData {
-    /// Context state
-    pub state: ContextState,
-    /// Completed bytes
-    pub completed_bytes: u64,
-    /// Digest algorithm name = AlgorithmID
-    pub algorithm: String,
-    /// Number of pending bytes
-    pub num_pending: usize,
-    /// Pending bytes
-    pub pending: Vec<u8>,
-}
 impl Context {
-    /// Retrieves context data from current context states
-    pub fn serialize(&self) -> ContextData {
-        let (state_name, state_data) = match self.block.state {
-            DynState::As64(as64) => ("as64", as64.iter().map(|w| w.0).collect::<Vec<_>>()),
-            DynState::As32(as32) => (
-                "as32",
-                as32.iter().map(|w| u64::from(w.0)).collect::<Vec<_>>(),
-            ),
-        };
-
-        let algo = match self.block.algorithm.id {
-            AlgorithmID::SHA1 => "SHA1",
-            AlgorithmID::SHA256 => "SHA256",
-            AlgorithmID::SHA384 => "SHA384",
-            AlgorithmID::SHA512 => "SHA512",
-            AlgorithmID::SHA512_256 => "SHA512_256",
-        };
-
-        ContextData {
-            completed_bytes: self.block.completed_bytes,
-            state: ContextState {
-                name: state_name.to_string(),
-                data: state_data,
-            },
-            algorithm: algo.to_string(),
-            num_pending: self.num_pending,
-            pending: self.pending.to_vec(),
-        }
-    }
-
-    /// Create context from stored context data
-    pub fn deserialize(data: ContextData) -> Self {
-        let algo = match data.algorithm.as_str() {
-            "SHA1" => &SHA1_FOR_LEGACY_USE_ONLY,
-            "SHA256" => &SHA256,
-            "SHA384" => &SHA384,
-            "SHA512" => &SHA512,
-            "SHA512_256" => &SHA512_256,
-            _ => &SHA256,
-        };
-
-        let mut block = BlockContext::new(algo);
-        block.completed_bytes = data.completed_bytes;
-        block.state = match data.state.name.as_str() {
-            "as64" => {
-                let state: State64 = data
-                    .state
-                    .data
-                    .iter()
-                    .map(|b| Wrapping(*b))
-                    .collect::<Vec<_>>()
-                    .try_into()
-                    .unwrap();
-                DynState::As64(state)
-            }
-            _ => {
-                let state: State32 = data
-                    .state
-                    .data
-                    .iter()
-                    .map(|b| Wrapping(u32::try_from(*b).unwrap()))
-                    .collect::<Vec<_>>()
-                    .try_into()
-                    .unwrap();
-                DynState::As32(state)
-            }
-        };
-
-        Self {
-            block,
-            pending: data.pending.try_into().unwrap(),
-            num_pending: data.num_pending,
-        }
-    }
-
     /// Constructs a new context.
     pub fn new(algorithm: &'static Algorithm) -> Self {
         Self {
@@ -659,8 +680,56 @@ impl OutputLen {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(any(feature = "serde", feature = "serialize"))]
     mod store_restore_context {
+        use crate::digest;
+        use crate::digest::{Context, Digest, SHA256};
 
+        fn compute_full_digest(alg: &'static digest::Algorithm, data: &[u8]) -> Digest {
+            let mut context = Context::new(alg);
+            context.update(data);
+            context.finish()
+        }
+
+        #[cfg(feature = "serde")]
+        #[test]
+        fn test_context_serde() {
+            let algo = &SHA256;
+            let license = include_str!("../LICENSE");
+            let expected_digest = compute_full_digest(algo, license.as_bytes());
+
+            let len = license.len();
+            let mut context = Context::new(algo);
+
+            // Compute and store half file context
+            context.update(&license.as_bytes()[..len/2]);
+            let stored_context = serde_json::to_string(&context).expect("Error serializing context");
+
+            context = serde_json::from_str(&stored_context).expect("Error deserialize context");
+            context.update(&license.as_bytes()[len/2..]);
+            let digest = context.finish();
+            assert_eq!(expected_digest.value.0, digest.value.0);
+        }
+
+        #[cfg(feature = "serialize")]
+        #[test]
+        fn test_context_serialization() {
+            let algo = &SHA256;
+            let license = include_str!("../LICENSE");
+            let expected_digest = compute_full_digest(algo, license.as_bytes());
+
+            let len = license.len();
+            let mut context = Context::new(algo);
+
+            // Compute and store half file context
+            context.update(&license.as_bytes()[..len/2]);
+            let stored_context = context.serialize();
+
+            context = Context::deserialize(stored_context);
+            context.update(&license.as_bytes()[len/2..]);
+            let digest = context.finish();
+            assert_eq!(expected_digest.value.0, digest.value.0);
+        }
     }
 
     mod max_input {
