@@ -186,7 +186,10 @@ impl Context {
     pub fn serialize(&self) -> ContextData {
         let (state_name, state_data) = match self.block.state {
             DynState::As64(as64) => ("as64", as64.iter().map(|w| w.0).collect::<Vec<_>>()),
-            DynState::As32(as32) => ("as32", as32.iter().map(|w| u64::from(w.0)).collect::<Vec<_>>()),
+            DynState::As32(as32) => (
+                "as32",
+                as32.iter().map(|w| u64::from(w.0)).collect::<Vec<_>>(),
+            ),
         };
 
         let algo = match self.block.algorithm.id {
@@ -656,6 +659,8 @@ impl OutputLen {
 
 #[cfg(test)]
 mod tests {
+    mod store_restore_context {}
+
     mod max_input {
         extern crate alloc;
         use super::super::super::digest;
