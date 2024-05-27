@@ -23,9 +23,9 @@
 #include <openssl/cmac.h>
 #include <openssl/mem.h>
 
-#include "../../test/file_test.h"
-#include "../../test/test_util.h"
-#include "../../test/wycheproof_util.h"
+#include "../test/file_test.h"
+#include "../test/test_util.h"
+#include "../test/wycheproof_util.h"
 
 
 static void test(const char *name, const uint8_t *key, size_t key_len,

@@ -17,9 +17,9 @@
 #include <openssl/ctrdrbg.h>
 #include <openssl/sha.h>
 
-#include "internal.h"
-#include "../../test/file_test.h"
-#include "../../test/test_util.h"
+#include "../fipsmodule/rand/internal.h"
+#include "../test/file_test.h"
+#include "../test/test_util.h"
 
 
 TEST(CTRDRBGTest, Basic) {
@@ -94,7 +94,7 @@ TEST(CTRDRBGTest, Large) {
 }
 
 TEST(CTRDRBGTest, TestVectors) {
-  FileTestGTest("crypto/fipsmodule/rand/ctrdrbg_vectors.txt", [](FileTest *t) {
+  FileTestGTest("crypto/rand_extra/ctrdrbg_vectors.txt", [](FileTest *t) {
     std::vector<uint8_t> seed, personalisation, reseed, ai_reseed, ai1, ai2,
         expected;
     ASSERT_TRUE(t->GetBytes(&seed, "EntropyInput"));

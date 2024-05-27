@@ -18,9 +18,9 @@
 
 #include <gtest/gtest.h>
 
-#include "internal.h"
-#include "../../test/abi_test.h"
-#include "../../test/test_util.h"
+#include "../fipsmodule/sha/internal.h"
+#include "../test/abi_test.h"
+#include "../test/test_util.h"
 
 
 TEST(SHATest, FIPS1862PRF) {

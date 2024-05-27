@@ -13,13 +13,13 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <gtest/gtest.h>
-#include "../../internal.h"
-#include "../../test/abi_test.h"
+#include "../internal.h"
+#include "../test/abi_test.h"
 
 #if !defined(OPENSSL_NO_ASM) && defined(__GNUC__) && defined(__x86_64__) && \
     defined(SUPPORTS_ABI_TEST)
 extern "C" {
-#include "../../../third_party/fiat/p256_64.h"
+#include "../../third_party/fiat/p256_64.h"
 }
 
 TEST(P256Test, AdxMulABI) {

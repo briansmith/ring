@@ -64,9 +64,9 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
-#include "../ec/internal.h"
-#include "../../test/file_test.h"
-#include "../../test/test_util.h"
+//#include "../ec/internal.h"
+#include "../test/file_test.h"
+#include "../test/test_util.h"
 
 
 static bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex) {

@@ -707,11 +707,18 @@ set(
   crypto/base64/base64_test.cc
   crypto/bio/bio_test.cc
   crypto/blake2/blake2_test.cc
+  crypto/bn_extra/bn_test.cc
   crypto/buf/buf_test.cc
   crypto/bytestring/bytestring_test.cc
   crypto/chacha/chacha_test.cc
   crypto/cipher_extra/aead_test.cc
+  crypto/cipher_extra/aes_test.cc
   crypto/cipher_extra/cipher_test.cc
+  crypto/cipher_extra/cmac_test.cc
+  crypto/cipher_extra/gcm_test.cc
+  crypto/cipher_extra/hkdf_test.cc
+  crypto/cipher_extra/md5_test.cc
+  crypto/cipher_extra/sha_test.cc
   crypto/compiler_test.cc
   crypto/conf/conf_test.cc
   crypto/constant_time_test.cc
@@ -724,26 +731,17 @@ set(
   crypto/digest_extra/digest_test.cc
   crypto/dilithium/dilithium_test.cc
   crypto/dsa/dsa_test.cc
+  crypto/ec_extra/ec_test.cc
+  crypto/ec_extra/p256-nistz_test.cc
+  crypto/ec_extra/p256_test.cc
   crypto/ecdh_extra/ecdh_test.cc
+  crypto/ecdsa_extra/ecdsa_test.cc
   crypto/err/err_test.cc
   crypto/evp/evp_extra_test.cc
   crypto/evp/evp_test.cc
   crypto/evp/pbkdf_test.cc
   crypto/evp/scrypt_test.cc
-  crypto/fipsmodule/aes/aes_test.cc
-  crypto/fipsmodule/bn/bn_test.cc
-  crypto/fipsmodule/cmac/cmac_test.cc
-  crypto/fipsmodule/ec/ec_test.cc
-  crypto/fipsmodule/ec/p256-nistz_test.cc
-  crypto/fipsmodule/ec/p256_test.cc
-  crypto/fipsmodule/ecdsa/ecdsa_test.cc
-  crypto/fipsmodule/hkdf/hkdf_test.cc
-  crypto/fipsmodule/md5/md5_test.cc
-  crypto/fipsmodule/modes/gcm_test.cc
-  crypto/fipsmodule/rand/ctrdrbg_test.cc
-  crypto/fipsmodule/rand/fork_detect_test.cc
   crypto/fipsmodule/service_indicator/service_indicator_test.cc
-  crypto/fipsmodule/sha/sha_test.cc
   crypto/hmac_extra/hmac_test.cc
   crypto/hpke/hpke_test.cc
   crypto/hrss/hrss_test.cc
@@ -758,6 +756,8 @@ set(
   crypto/pkcs8/pkcs8_test.cc
   crypto/poly1305/poly1305_test.cc
   crypto/pool/pool_test.cc
+  crypto/rand_extra/ctrdrbg_test.cc
+  crypto/rand_extra/fork_detect_test.cc
   crypto/rand_extra/getentropy_test.cc
   crypto/rand_extra/rand_test.cc
   crypto/refcount_test.cc
@@ -813,6 +813,7 @@ set(
   crypto/dilithium/dilithium_tests.txt
   crypto/dilithium/edge_cases_draft_dilithium3_sign.txt
   crypto/dilithium/edge_cases_draft_dilithium3_verify.txt
+  crypto/ec_extra/p256-nistz_tests.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp/evp_tests.txt
   crypto/evp/scrypt_tests.txt
@@ -833,11 +834,9 @@ set(
   crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt
   crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt
   crypto/fipsmodule/ec/ec_scalar_base_mult_tests.txt
-  crypto/fipsmodule/ec/p256-nistz_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/modes/gcm_tests.txt
-  crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
   crypto/keccak/keccak_tests.txt
@@ -857,6 +856,7 @@ set(
   crypto/pkcs8/test/unicode_password.p12
   crypto/pkcs8/test/windows.p12
   crypto/poly1305/poly1305_tests.txt
+  crypto/rand_extra/ctrdrbg_vectors.txt
   crypto/siphash/siphash_tests.txt
   crypto/spx/spx_tests.txt
   crypto/spx/spx_tests_deterministic.txt
@@ -2741,5 +2741,5 @@ set(
 set(
   URANDOM_TEST_SOURCES
 
-  crypto/fipsmodule/rand/urandom_test.cc
+  crypto/rand_extra/urandom_test.cc
 )

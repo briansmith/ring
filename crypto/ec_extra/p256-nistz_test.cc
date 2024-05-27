@@ -25,12 +25,11 @@
 #include <openssl/nid.h>
 
 #include "internal.h"
-#include "../bn/internal.h"
-#include "../../internal.h"
-#include "../../test/abi_test.h"
-#include "../../test/file_test.h"
-#include "../../test/test_util.h"
-#include "p256-nistz.h"
+#include "../internal.h"
+#include "../test/abi_test.h"
+#include "../test/file_test.h"
+#include "../test/test_util.h"
+#include "../fipsmodule/ec/p256-nistz.h"
 
 
 // Disable tests if BORINGSSL_SHARED_LIBRARY is defined. These tests need access
@@ -487,7 +486,7 @@ static void TestOrdMulMont(FileTest *t) {
 }
 
 TEST(P256_NistzTest, TestVectors) {
-  return FileTestGTest("crypto/fipsmodule/ec/p256-nistz_tests.txt",
+  return FileTestGTest("crypto/ec_extra/p256-nistz_tests.txt",
                        [](FileTest *t) {
     if (t->GetParameter() == "Negate") {
       TestNegate(t);
