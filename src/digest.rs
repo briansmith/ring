@@ -36,7 +36,7 @@ use crate::{
 };
 use core::num::Wrapping;
 
-#[cfg(any(feature = "serde", feature = "serialize"))]
+#[cfg(feature = "serialize")]
 pub use ctx_serialize::ContextData;
 
 mod dynstate;
@@ -170,12 +170,9 @@ mod ctx_serialize {
     use alloc::string::{String, ToString};
     use alloc::vec::Vec;
     use core::num::Wrapping;
-    #[cfg(feature = "serde")]
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     /// Structure used to store and restore Context
     #[derive(Clone)]
-    #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
     pub struct ContextData {
         /// Context state name
         pub state_name: String,
@@ -189,27 +186,6 @@ mod ctx_serialize {
         pub num_pending: usize,
         /// Pending bytes
         pub pending: Vec<u8>,
-    }
-
-    #[cfg(feature = "serde")]
-    impl Serialize for Context {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            ContextData::from(self).serialize(serializer)
-        }
-    }
-
-    #[cfg(feature = "serde")]
-    impl<'de> Deserialize<'de> for Context {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            let c_data = ContextData::deserialize(deserializer)?;
-            Ok(Context::from(c_data))
-        }
     }
 
     impl From<&Context> for ContextData {
@@ -698,27 +674,6 @@ mod tests {
             let mut context = Context::new(alg);
             context.update(data);
             context.finish()
-        }
-
-        #[cfg(feature = "serde")]
-        #[test]
-        fn test_context_serde() {
-            let algo = &SHA256;
-            let license = include_str!("../LICENSE");
-            let expected_digest = compute_full_digest(algo, license.as_bytes());
-
-            let len = license.len();
-            let mut context = Context::new(algo);
-
-            // Compute and store half file context
-            context.update(&license.as_bytes()[..len / 2]);
-            let stored_context =
-                serde_json::to_string(&context).expect("Error serializing context");
-
-            context = serde_json::from_str(&stored_context).expect("Error deserialize context");
-            context.update(&license.as_bytes()[len / 2..]);
-            let digest = context.finish();
-            assert_eq!(expected_digest.value.0, digest.value.0);
         }
 
         #[cfg(feature = "serialize")]
