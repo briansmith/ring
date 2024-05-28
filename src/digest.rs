@@ -159,7 +159,7 @@ pub struct Context {
     num_pending: usize,
 }
 
-#[cfg(any(feature = "serde", feature = "serialize"))]
+#[cfg(feature = "serialize")]
 mod ctx_serialize {
     use crate::digest::dynstate::DynState;
     use crate::digest::sha2::{State32, State64};
