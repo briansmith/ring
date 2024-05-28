@@ -665,7 +665,7 @@ impl OutputLen {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(feature = "serde", feature = "serialize"))]
+    #[cfg(feature = "serialize")]
     mod store_restore_context {
         use crate::digest;
         use crate::digest::{Context, ContextData, Digest, SHA256};
@@ -676,7 +676,6 @@ mod tests {
             context.finish()
         }
 
-        #[cfg(feature = "serialize")]
         #[test]
         fn test_context_serialization() {
             let algo = &SHA256;
