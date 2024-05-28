@@ -176,9 +176,6 @@ libc = { version = "0.2.148", default-features = false }
 [build-dependencies]
 cc = { version = "1.0.83", default-features = false }
 
-[dev-dependencies]
-serde_json = "1.0.117"
-
 [features]
 # These features are documented in the top-level module's documentation.
 default = ["alloc", "dev_urandom_fallback"]
