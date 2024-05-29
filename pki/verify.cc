@@ -103,8 +103,7 @@ std::unique_ptr<VerifyTrustStore> VerifyTrustStore::FromDER(
       return {};
     }
 
-    auto parsed_cert = InternalParseCertificate(
-        Span(CBS_data(&cert), CBS_len(&cert)), out_diagnostic);
+    auto parsed_cert = InternalParseCertificate(cert, out_diagnostic);
     if (!parsed_cert.has_value()) {
       return {};
     }
