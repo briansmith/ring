@@ -1039,52 +1039,52 @@ static void RunBNFileTest(FileTest *t, BN_CTX *ctx) {
 }
 
 TEST_F(BNTest, ExpTestVectors) {
-  FileTestGTest("crypto/fipsmodule/bn/test/exp_tests.txt",
+  FileTestGTest("crypto/bn_extra/test/exp_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
 TEST_F(BNTest, GCDTestVectors) {
-  FileTestGTest("crypto/fipsmodule/bn/test/gcd_tests.txt",
+  FileTestGTest("crypto/bn_extra/test/gcd_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
 TEST_F(BNTest, ModExpTestVectors) {
-  FileTestGTest("crypto/fipsmodule/bn/test/mod_exp_tests.txt",
+  FileTestGTest("crypto/bn_extra/test/mod_exp_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
 TEST_F(BNTest, ModInvTestVectors) {
-  FileTestGTest("crypto/fipsmodule/bn/test/mod_inv_tests.txt",
+  FileTestGTest("crypto/bn_extra/test/mod_inv_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
 TEST_F(BNTest, ModMulTestVectors) {
-  FileTestGTest("crypto/fipsmodule/bn/test/mod_mul_tests.txt",
+  FileTestGTest("crypto/bn_extra/test/mod_mul_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
 TEST_F(BNTest, ModSqrtTestVectors) {
-  FileTestGTest("crypto/fipsmodule/bn/test/mod_sqrt_tests.txt",
+  FileTestGTest("crypto/bn_extra/test/mod_sqrt_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
 TEST_F(BNTest, ProductTestVectors) {
-  FileTestGTest("crypto/fipsmodule/bn/test/product_tests.txt",
+  FileTestGTest("crypto/bn_extra/test/product_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
 TEST_F(BNTest, QuotientTestVectors) {
-  FileTestGTest("crypto/fipsmodule/bn/test/quotient_tests.txt",
+  FileTestGTest("crypto/bn_extra/test/quotient_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
 TEST_F(BNTest, ShiftTestVectors) {
-  FileTestGTest("crypto/fipsmodule/bn/test/shift_tests.txt",
+  FileTestGTest("crypto/bn_extra/test/shift_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
 TEST_F(BNTest, SumTestVectors) {
-  FileTestGTest("crypto/fipsmodule/bn/test/sum_tests.txt",
+  FileTestGTest("crypto/bn_extra/test/sum_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
@@ -2380,7 +2380,7 @@ TEST_F(BNTest, PrimeChecking) {
 
 TEST_F(BNTest, MillerRabinIteration) {
   FileTestGTest(
-      "crypto/fipsmodule/bn/test/miller_rabin_tests.txt", [&](FileTest *t) {
+      "crypto/bn_extra/test/miller_rabin_tests.txt", [&](FileTest *t) {
         BIGNUMFileTest bn_test(t, /*large_mask=*/0);
 
         bssl::UniquePtr<BIGNUM> w = bn_test.GetBIGNUM("W");

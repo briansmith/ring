@@ -64,7 +64,6 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
-//#include "../ec/internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 
@@ -376,7 +375,7 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
 }
 
 TEST(ECDSATest, VerifyTestVectors) {
-  FileTestGTest("crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt",
+  FileTestGTest("crypto/ecdsa_extra/ecdsa_verify_tests.txt",
                 [](FileTest *t) {
     for (bool custom_group : {false, true}) {
       SCOPED_TRACE(custom_group);
@@ -418,7 +417,7 @@ TEST(ECDSATest, VerifyTestVectors) {
 }
 
 TEST(ECDSATest, SignTestVectors) {
-  FileTestGTest("crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt",
+  FileTestGTest("crypto/ecdsa_extra/ecdsa_sign_tests.txt",
                 [](FileTest *t) {
     for (bool custom_group : {false, true}) {
       SCOPED_TRACE(custom_group);

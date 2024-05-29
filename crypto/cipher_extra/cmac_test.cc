@@ -248,21 +248,21 @@ static void RunCAVPTest(const char *path, const EVP_CIPHER *cipher,
 }
 
 TEST(CMACTest, CAVPAES128) {
-  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes128_cmac_tests.txt",
+  RunCAVPTest("crypto/cipher_extra/cavp_aes128_cmac_tests.txt",
               EVP_aes_128_cbc(), false);
 }
 
 TEST(CMACTest, CAVPAES192) {
-  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt",
+  RunCAVPTest("crypto/cipher_extra/cavp_aes192_cmac_tests.txt",
               EVP_aes_192_cbc(), false);
 }
 
 TEST(CMACTest, CAVPAES256) {
-  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt",
+  RunCAVPTest("crypto/cipher_extra/cavp_aes256_cmac_tests.txt",
               EVP_aes_256_cbc(), false);
 }
 
 TEST(CMACTest, CAVP3DES) {
-  RunCAVPTest("crypto/fipsmodule/cmac/cavp_3des_cmac_tests.txt",
+  RunCAVPTest("crypto/cipher_extra/cavp_3des_cmac_tests.txt",
               EVP_des_ede3_cbc(), true);
 }

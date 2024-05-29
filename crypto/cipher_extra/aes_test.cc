@@ -150,7 +150,7 @@ static void TestKeyWrapWithPadding(FileTest *t) {
 }
 
 TEST(AESTest, TestVectors) {
-  FileTestGTest("crypto/fipsmodule/aes/aes_tests.txt", [](FileTest *t) {
+  FileTestGTest("crypto/cipher_extra/aes_tests.txt", [](FileTest *t) {
     if (t->GetParameter() == "Raw") {
       TestRaw(t);
     } else if (t->GetParameter() == "KeyWrap") {

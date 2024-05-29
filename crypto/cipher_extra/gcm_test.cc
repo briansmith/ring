@@ -63,7 +63,7 @@
 
 
 TEST(GCMTest, TestVectors) {
-  FileTestGTest("crypto/fipsmodule/modes/gcm_tests.txt", [](FileTest *t) {
+  FileTestGTest("crypto/cipher_extra/gcm_tests.txt", [](FileTest *t) {
     std::vector<uint8_t> key, plaintext, additional_data, nonce, ciphertext,
         tag;
     ASSERT_TRUE(t->GetBytes(&key, "Key"));
