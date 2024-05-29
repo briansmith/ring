@@ -25,11 +25,12 @@
 #include <openssl/aes.h>
 #include <openssl/rand.h>
 
-#include "../fipsmodule/aes/internal.h"
-#include "../test/abi_test.h"
-#include "../test/file_test.h"
-#include "../test/test_util.h"
-#include "../test/wycheproof_util.h"
+#include "internal.h"
+#include "../../internal.h"
+#include "../../test/abi_test.h"
+#include "../../test/file_test.h"
+#include "../../test/test_util.h"
+#include "../../test/wycheproof_util.h"
 
 
 static void TestRaw(FileTest *t) {

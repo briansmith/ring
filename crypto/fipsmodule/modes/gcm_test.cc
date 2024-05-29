@@ -55,11 +55,12 @@
 
 #include <openssl/aes.h>
 
-#include "../test/abi_test.h"
-#include "../test/file_test.h"
-#include "../test/test_util.h"
-#include "../fipsmodule/aes/internal.h"
-#include "../fipsmodule/modes/internal.h"
+#include "../../internal.h"
+#include "../../test/abi_test.h"
+#include "../../test/file_test.h"
+#include "../../test/test_util.h"
+#include "../aes/internal.h"
+#include "internal.h"
 
 
 TEST(GCMTest, TestVectors) {

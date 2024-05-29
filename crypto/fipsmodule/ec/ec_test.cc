@@ -30,9 +30,11 @@
 #include <openssl/obj.h>
 #include <openssl/span.h>
 
-#include "./internal.h"
-#include "../test/file_test.h"
-#include "../test/test_util.h"
+#include "../../ec_extra/internal.h"
+#include "../../test/file_test.h"
+#include "../../test/test_util.h"
+#include "../bn/internal.h"
+#include "internal.h"
 
 
 // kECKeyWithoutPublic is an ECPrivateKey with the optional publicKey field

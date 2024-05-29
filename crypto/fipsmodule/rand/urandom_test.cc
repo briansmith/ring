@@ -19,7 +19,8 @@
 #include <openssl/ctrdrbg.h>
 #include <openssl/rand.h>
 
-#include "../fipsmodule/rand/getrandom_fillin.h"
+#include "getrandom_fillin.h"
+#include "internal.h"
 
 #if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&               \
     !defined(BORINGSSL_SHARED_LIBRARY) && defined(OPENSSL_RAND_URANDOM) && \
