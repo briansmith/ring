@@ -25,6 +25,9 @@
 
 #include <gtest/gtest.h>
 
+#include "internal.h"
+
+
 // Test that OPENSSL_VERSION_NUMBER and OPENSSL_VERSION_TEXT are consistent.
 // Node.js parses the version out of OPENSSL_VERSION_TEXT instead of using
 // OPENSSL_VERSION_NUMBER.
@@ -41,6 +44,12 @@ TEST(CryptoTest, Strndup) {
   bssl::UniquePtr<char> str(OPENSSL_strndup(nullptr, 0));
   EXPECT_TRUE(str);
   EXPECT_STREQ("", str.get());
+}
+
+TEST(CryptoTest, ByteSwap) {
+  EXPECT_EQ(0x04030201u, CRYPTO_bswap4(0x01020304u));
+  EXPECT_EQ(UINT64_C(0x0807060504030201),
+            CRYPTO_bswap8(UINT64_C(0x0102030405060708)));
 }
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
