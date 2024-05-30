@@ -219,7 +219,7 @@ func buildVariablesTask(targets map[string]build.Target, dst, comment string, wr
 func writeBazelVariable(b *bytes.Buffer, name string, val []string) {
 	fmt.Fprintf(b, "\n%s = [\n", name)
 	for _, v := range val {
-		fmt.Fprintf(b, "  %q,\n", v)
+		fmt.Fprintf(b, "    %q,\n", v)
 	}
 	fmt.Fprintf(b, "]\n")
 }
@@ -245,8 +245,11 @@ func writeMakeVariable(b *bytes.Buffer, name string, val []string) {
 }
 
 func writeGNVariable(b *bytes.Buffer, name string, val []string) {
-	// Bazel and GN have the same syntax similar syntax.
-	writeBazelVariable(b, name, val)
+	fmt.Fprintf(b, "\n%s = [\n", name)
+	for _, v := range val {
+		fmt.Fprintf(b, "  %q,\n", v)
+	}
+	fmt.Fprintf(b, "]\n")
 }
 
 func jsonTask(targets map[string]build.Target, dst string) Task {
