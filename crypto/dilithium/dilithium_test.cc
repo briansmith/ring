@@ -12,15 +12,17 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <string.h>
+#define OPENSSL_UNSTABLE_EXPERIMENTAL_DILITHIUM
+#include <openssl/experimental/dilithium.h>
+
+#include <memory>
+#include <vector>
 
 #include <gtest/gtest.h>
 
 #include <openssl/bytestring.h>
 #include <openssl/ctrdrbg.h>
-#define OPENSSL_UNSTABLE_EXPERIMENTAL_DILITHIUM
-#include <openssl/experimental/dilithium.h>
-#include <cstddef>
+#include <openssl/span.h>
 
 #include "../internal.h"
 #include "../test/file_test.h"
@@ -30,106 +32,92 @@
 
 // This test is very slow, so it is disabled by default.
 TEST(DilithiumTest, DISABLED_BitFlips) {
-  auto encoded_public_key =
-      std::make_unique<uint8_t[]>(DILITHIUM_PUBLIC_KEY_BYTES);
+  std::vector<uint8_t> encoded_public_key(DILITHIUM_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<DILITHIUM_private_key>();
-  EXPECT_TRUE(DILITHIUM_generate_key(encoded_public_key.get(), priv.get()));
+  EXPECT_TRUE(DILITHIUM_generate_key(encoded_public_key.data(), priv.get()));
 
-  auto encoded_signature =
-      std::make_unique<uint8_t[]>(DILITHIUM_SIGNATURE_BYTES);
-  const char *message = "Hello world";
-  EXPECT_TRUE(DILITHIUM_sign(encoded_signature.get(), priv.get(),
-                             (const uint8_t *)message, strlen(message)));
+  std::vector<uint8_t> encoded_signature(DILITHIUM_SIGNATURE_BYTES);
+  static const uint8_t kMessage[] = {'H', 'e', 'l', 'l', 'o', ' ',
+                                     'w', 'o', 'r', 'l', 'd'};
+  EXPECT_TRUE(DILITHIUM_sign(encoded_signature.data(), priv.get(), kMessage,
+                             sizeof(kMessage)));
 
   auto pub = std::make_unique<DILITHIUM_public_key>();
-  CBS cbs;
-  CBS_init(&cbs, encoded_public_key.get(), DILITHIUM_PUBLIC_KEY_BYTES);
+  CBS cbs = bssl::MakeConstSpan(encoded_public_key);
   ASSERT_TRUE(DILITHIUM_parse_public_key(pub.get(), &cbs));
 
-  EXPECT_EQ(DILITHIUM_verify(pub.get(), encoded_signature.get(),
-                             (const uint8_t *)message, strlen(message)),
+  EXPECT_EQ(DILITHIUM_verify(pub.get(), encoded_signature.data(), kMessage,
+                             sizeof(kMessage)),
             1);
 
   for (size_t i = 0; i < DILITHIUM_SIGNATURE_BYTES; i++) {
     for (int j = 0; j < 8; j++) {
-      uint8_t *to_mangle = encoded_signature.get();
-      to_mangle[i] ^= 1 << j;
-      EXPECT_EQ(DILITHIUM_verify(pub.get(), to_mangle, (const uint8_t *)message,
-                                 strlen(message)),
+      encoded_signature[i] ^= 1 << j;
+      EXPECT_EQ(DILITHIUM_verify(pub.get(), encoded_signature.data(), kMessage,
+                                 sizeof(kMessage)),
                 0)
           << "Bit flip in signature at byte " << i << " bit " << j
           << " didn't cause a verification failure";
-      to_mangle[i] ^= 1 << j;
+      encoded_signature[i] ^= 1 << j;
     }
   }
 }
 
 TEST(DilithiumTest, SignatureIsRandomized) {
-  auto encoded_public_key =
-      std::make_unique<uint8_t[]>(DILITHIUM_PUBLIC_KEY_BYTES);
+  std::vector<uint8_t> encoded_public_key(DILITHIUM_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<DILITHIUM_private_key>();
-  EXPECT_TRUE(DILITHIUM_generate_key(encoded_public_key.get(), priv.get()));
+  EXPECT_TRUE(DILITHIUM_generate_key(encoded_public_key.data(), priv.get()));
 
   auto pub = std::make_unique<DILITHIUM_public_key>();
-  CBS cbs;
-  CBS_init(&cbs, encoded_public_key.get(), DILITHIUM_PUBLIC_KEY_BYTES);
+  CBS cbs = bssl::MakeConstSpan(encoded_public_key);
   ASSERT_TRUE(DILITHIUM_parse_public_key(pub.get(), &cbs));
 
-  auto encoded_signature1 =
-      std::make_unique<uint8_t[]>(DILITHIUM_SIGNATURE_BYTES);
-  auto encoded_signature2 =
-      std::make_unique<uint8_t[]>(DILITHIUM_SIGNATURE_BYTES);
-  const char *message = "Hello world";
-  EXPECT_TRUE(DILITHIUM_sign(encoded_signature1.get(), priv.get(),
-                             (const uint8_t *)message, strlen(message)));
-  EXPECT_TRUE(DILITHIUM_sign(encoded_signature2.get(), priv.get(),
-                             (const uint8_t *)message, strlen(message)));
+  std::vector<uint8_t> encoded_signature1(DILITHIUM_SIGNATURE_BYTES);
+  std::vector<uint8_t> encoded_signature2(DILITHIUM_SIGNATURE_BYTES);
+  static const uint8_t kMessage[] = {'H', 'e', 'l', 'l', 'o', ' ',
+                                     'w', 'o', 'r', 'l', 'd'};
+  EXPECT_TRUE(DILITHIUM_sign(encoded_signature1.data(), priv.get(), kMessage,
+                             sizeof(kMessage)));
+  EXPECT_TRUE(DILITHIUM_sign(encoded_signature2.data(), priv.get(), kMessage,
+                             sizeof(kMessage)));
 
-  EXPECT_NE(Bytes(encoded_signature1.get(), DILITHIUM_SIGNATURE_BYTES),
-            Bytes(encoded_signature2.get(), DILITHIUM_SIGNATURE_BYTES));
+  EXPECT_NE(Bytes(encoded_signature1), Bytes(encoded_signature2));
 
   // Even though the signatures are different, they both verify.
-  EXPECT_EQ(DILITHIUM_verify(pub.get(), encoded_signature1.get(),
-                             (const uint8_t *)message, strlen(message)),
+  EXPECT_EQ(DILITHIUM_verify(pub.get(), encoded_signature1.data(), kMessage,
+                             sizeof(kMessage)),
             1);
-  EXPECT_EQ(DILITHIUM_verify(pub.get(), encoded_signature2.get(),
-                             (const uint8_t *)message, strlen(message)),
+  EXPECT_EQ(DILITHIUM_verify(pub.get(), encoded_signature2.data(), kMessage,
+                             sizeof(kMessage)),
             1);
 }
 
 TEST(DilithiumTest, InvalidPublicKeyEncodingLength) {
-  auto encoded_public_key =
-      std::make_unique<uint8_t[]>(DILITHIUM_PUBLIC_KEY_BYTES);
+  // Encode a public key with a trailing 0 at the end.
+  std::vector<uint8_t> encoded_public_key(DILITHIUM_PUBLIC_KEY_BYTES + 1);
   auto priv = std::make_unique<DILITHIUM_private_key>();
-  EXPECT_TRUE(DILITHIUM_generate_key(encoded_public_key.get(), priv.get()));
-
-  auto malformed_public_key =
-      std::make_unique<uint8_t[]>(DILITHIUM_PUBLIC_KEY_BYTES + 1);
-  OPENSSL_memcpy(malformed_public_key.get(), encoded_public_key.get(),
-                 DILITHIUM_PUBLIC_KEY_BYTES);
-  malformed_public_key[DILITHIUM_PUBLIC_KEY_BYTES] = 0;
-
-  CBS cbs;
-  auto parsed_pub = std::make_unique<DILITHIUM_public_key>();
+  EXPECT_TRUE(DILITHIUM_generate_key(encoded_public_key.data(), priv.get()));
 
   // Public key is 1 byte too short.
-  CBS_init(&cbs, malformed_public_key.get(), DILITHIUM_PUBLIC_KEY_BYTES - 1);
+  CBS cbs = bssl::MakeConstSpan(encoded_public_key)
+            .first(DILITHIUM_PUBLIC_KEY_BYTES - 1);
+  auto parsed_pub = std::make_unique<DILITHIUM_public_key>();
   EXPECT_FALSE(DILITHIUM_parse_public_key(parsed_pub.get(), &cbs));
 
   // Public key has the correct length.
-  CBS_init(&cbs, malformed_public_key.get(), DILITHIUM_PUBLIC_KEY_BYTES);
+  cbs = bssl::MakeConstSpan(encoded_public_key)
+            .first(DILITHIUM_PUBLIC_KEY_BYTES);
   EXPECT_TRUE(DILITHIUM_parse_public_key(parsed_pub.get(), &cbs));
 
   // Public key is 1 byte too long.
-  CBS_init(&cbs, malformed_public_key.get(), DILITHIUM_PUBLIC_KEY_BYTES + 1);
+  cbs = bssl::MakeConstSpan(encoded_public_key);
   EXPECT_FALSE(DILITHIUM_parse_public_key(parsed_pub.get(), &cbs));
 }
 
 TEST(DilithiumTest, InvalidPrivateKeyEncodingLength) {
-  auto encoded_public_key =
-      std::make_unique<uint8_t[]>(DILITHIUM_PUBLIC_KEY_BYTES);
+  std::vector<uint8_t> encoded_public_key(DILITHIUM_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<DILITHIUM_private_key>();
-  EXPECT_TRUE(DILITHIUM_generate_key(encoded_public_key.get(), priv.get()));
+  EXPECT_TRUE(DILITHIUM_generate_key(encoded_public_key.data(), priv.get()));
 
   CBB cbb;
   std::vector<uint8_t> malformed_private_key(DILITHIUM_PRIVATE_KEY_BYTES + 1,
@@ -186,74 +174,64 @@ static void DilithiumFileTest(FileTest *t) {
   // Reproduce key generation.
   auto parsed_pub = std::make_unique<DILITHIUM_public_key>();
   auto priv = std::make_unique<DILITHIUM_private_key>();
-  std::unique_ptr<uint8_t[]> encoded_private_key =
-      std::make_unique<uint8_t[]>(DILITHIUM_PRIVATE_KEY_BYTES);
-  std::unique_ptr<uint8_t[]> encoded_public_key =
-      std::make_unique<uint8_t[]>(DILITHIUM_PUBLIC_KEY_BYTES);
+  std::vector<uint8_t> encoded_private_key(DILITHIUM_PRIVATE_KEY_BYTES);
+  std::vector<uint8_t> encoded_public_key(DILITHIUM_PUBLIC_KEY_BYTES);
 
   EXPECT_TRUE(DILITHIUM_generate_key_external_entropy(
-      encoded_public_key.get(), priv.get(), gen_key_entropy));
+      encoded_public_key.data(), priv.get(), gen_key_entropy));
 
   CBB cbb;
-  CBB_init_fixed(&cbb, encoded_private_key.get(), DILITHIUM_PRIVATE_KEY_BYTES);
+  CBB_init_fixed(&cbb, encoded_private_key.data(), encoded_private_key.size());
   ASSERT_TRUE(DILITHIUM_marshal_private_key(&cbb, priv.get()));
-  CONSTTIME_DECLASSIFY(encoded_private_key.get(), DILITHIUM_PRIVATE_KEY_BYTES);
+  CONSTTIME_DECLASSIFY(encoded_private_key.data(), encoded_private_key.size());
 
-  EXPECT_EQ(Bytes(encoded_public_key.get(), DILITHIUM_PUBLIC_KEY_BYTES),
-            Bytes(public_key_expected));
-  EXPECT_EQ(Bytes(encoded_private_key.get(), DILITHIUM_PRIVATE_KEY_BYTES),
-            Bytes(private_key_expected));
+  EXPECT_EQ(Bytes(encoded_public_key), Bytes(public_key_expected));
+  EXPECT_EQ(Bytes(encoded_private_key), Bytes(private_key_expected));
 
   // Reproduce signature.
-  std::unique_ptr<uint8_t[]> encoded_signature =
-      std::make_unique<uint8_t[]>(DILITHIUM_SIGNATURE_BYTES);
-  EXPECT_TRUE(DILITHIUM_sign_deterministic(encoded_signature.get(), priv.get(),
+  std::vector<uint8_t> encoded_signature(DILITHIUM_SIGNATURE_BYTES);
+  EXPECT_TRUE(DILITHIUM_sign_deterministic(encoded_signature.data(), priv.get(),
                                            message.data(), message.size()));
 
-  ASSERT_GE(signed_message_expected.size(), (size_t)DILITHIUM_SIGNATURE_BYTES);
-  EXPECT_EQ(Bytes(encoded_signature.get(), DILITHIUM_SIGNATURE_BYTES),
-            Bytes(signed_message_expected.data(), DILITHIUM_SIGNATURE_BYTES));
-  EXPECT_EQ(Bytes(message),
-            Bytes(&signed_message_expected[DILITHIUM_SIGNATURE_BYTES],
-                  signed_message_expected.size() - DILITHIUM_SIGNATURE_BYTES));
+  ASSERT_GE(signed_message_expected.size(), size_t{DILITHIUM_SIGNATURE_BYTES});
+  EXPECT_EQ(Bytes(encoded_signature),
+            Bytes(bssl::MakeConstSpan(signed_message_expected)
+                      .first(DILITHIUM_SIGNATURE_BYTES)));
+  EXPECT_EQ(Bytes(message), Bytes(bssl::MakeConstSpan(signed_message_expected)
+                                      .subspan(DILITHIUM_SIGNATURE_BYTES)));
 
   // Check that verification matches.
   CBS cbs;
-  CBS_init(&cbs, encoded_public_key.get(), DILITHIUM_PUBLIC_KEY_BYTES);
+  CBS_init(&cbs, encoded_public_key.data(), encoded_public_key.size());
   ASSERT_TRUE(DILITHIUM_parse_public_key(parsed_pub.get(), &cbs));
-  EXPECT_EQ(DILITHIUM_verify(parsed_pub.get(), encoded_signature.get(),
+  EXPECT_EQ(DILITHIUM_verify(parsed_pub.get(), encoded_signature.data(),
                              message.data(), message.size()),
             1);
 
   // Test that parsing the encoded private key yields a functional object.
   auto parsed_priv = std::make_unique<DILITHIUM_private_key>();
-  std::unique_ptr<uint8_t[]> encoded_signature2 =
-      std::make_unique<uint8_t[]>(DILITHIUM_SIGNATURE_BYTES);
+  std::vector<uint8_t> encoded_signature2(DILITHIUM_SIGNATURE_BYTES);
 
-  CBS_init(&cbs, encoded_private_key.get(), DILITHIUM_PRIVATE_KEY_BYTES);
+  CBS_init(&cbs, encoded_private_key.data(), encoded_private_key.size());
   ASSERT_TRUE(DILITHIUM_parse_private_key(parsed_priv.get(), &cbs));
 
-  EXPECT_TRUE(DILITHIUM_sign_deterministic(encoded_signature2.get(),
+  EXPECT_TRUE(DILITHIUM_sign_deterministic(encoded_signature2.data(),
                                            parsed_priv.get(), message.data(),
                                            message.size()));
-  EXPECT_EQ(Bytes(encoded_signature2.get(), DILITHIUM_SIGNATURE_BYTES),
-            Bytes(encoded_signature.get(), DILITHIUM_SIGNATURE_BYTES));
+  EXPECT_EQ(Bytes(encoded_signature2), Bytes(encoded_signature));
 
   // Test that parsing + encoding is idempotent.
-  std::unique_ptr<uint8_t[]> encoded_private_key2 =
-      std::make_unique<uint8_t[]>(DILITHIUM_PRIVATE_KEY_BYTES);
-  std::unique_ptr<uint8_t[]> encoded_public_key2 =
-      std::make_unique<uint8_t[]>(DILITHIUM_PUBLIC_KEY_BYTES);
+  std::vector<uint8_t> encoded_private_key2(DILITHIUM_PRIVATE_KEY_BYTES);
+  std::vector<uint8_t> encoded_public_key2(DILITHIUM_PUBLIC_KEY_BYTES);
 
-  CBB_init_fixed(&cbb, encoded_private_key2.get(), DILITHIUM_PRIVATE_KEY_BYTES);
+  CBB_init_fixed(&cbb, encoded_private_key2.data(),
+                 encoded_private_key2.size());
   ASSERT_TRUE(DILITHIUM_marshal_private_key(&cbb, parsed_priv.get()));
-  CBB_init_fixed(&cbb, encoded_public_key2.get(), DILITHIUM_PUBLIC_KEY_BYTES);
+  CBB_init_fixed(&cbb, encoded_public_key2.data(), encoded_public_key2.size());
   ASSERT_TRUE(DILITHIUM_marshal_public_key(&cbb, parsed_pub.get()));
 
-  EXPECT_EQ(Bytes(encoded_public_key2.get(), DILITHIUM_PUBLIC_KEY_BYTES),
-            Bytes(encoded_public_key.get(), DILITHIUM_PUBLIC_KEY_BYTES));
-  EXPECT_EQ(Bytes(encoded_private_key2.get(), DILITHIUM_PRIVATE_KEY_BYTES),
-            Bytes(encoded_private_key.get(), DILITHIUM_PRIVATE_KEY_BYTES));
+  EXPECT_EQ(Bytes(encoded_public_key2), Bytes(encoded_public_key));
+  EXPECT_EQ(Bytes(encoded_private_key2), Bytes(encoded_private_key));
 }
 
 static void DilithiumSignFileTest(FileTest *t) {
@@ -285,7 +263,7 @@ static void DilithiumSignFileTest(FileTest *t) {
   DILITHIUM_sign_deterministic(encoded_signature, &priv, message.data(),
                                message.size());
 
-  ASSERT_GE(signed_message_expected.size(), (size_t)DILITHIUM_SIGNATURE_BYTES);
+  ASSERT_GE(signed_message_expected.size(), size_t{DILITHIUM_SIGNATURE_BYTES});
   EXPECT_EQ(Bytes(encoded_signature),
             Bytes(signed_message_expected.data(), DILITHIUM_SIGNATURE_BYTES))
       << "Unexpected signing result for edge case: " << description;
@@ -322,7 +300,7 @@ static void DilithiumVerifyFileTest(FileTest *t) {
   }
 
   // Verify signature.
-  ASSERT_GE(signed_message.size(), (size_t)DILITHIUM_SIGNATURE_BYTES);
+  ASSERT_GE(signed_message.size(), size_t{DILITHIUM_SIGNATURE_BYTES});
   EXPECT_EQ(DILITHIUM_verify(&pub, signed_message.data(),
                              &signed_message[DILITHIUM_SIGNATURE_BYTES],
                              signed_message.size() - DILITHIUM_SIGNATURE_BYTES),
@@ -351,10 +329,9 @@ TEST(DilithiumTest, KeyGenerationHardCodedNIST) {
       0x72, 0xC3, 0xC5, 0xE0, 0xCC, 0x9F, 0x33, 0x2F, 0x49, 0xD0, 0xFC,
       0x0F, 0xD6, 0x39, 0x9D, 0xA7, 0x56, 0x45, 0xA3, 0xE3, 0x3D, 0xBF,
       0x56, 0xF1, 0xE9, 0x68, 0x97, 0x66, 0x2D, 0x0A, 0x9B, 0x37};
-  auto encoded_public_key =
-      std::make_unique<uint8_t[]>(DILITHIUM_PUBLIC_KEY_BYTES);
+  std::vector<uint8_t> encoded_public_key(DILITHIUM_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<DILITHIUM_private_key>();
-  EXPECT_TRUE(DILITHIUM_generate_key_external_entropy(encoded_public_key.get(),
+  EXPECT_TRUE(DILITHIUM_generate_key_external_entropy(encoded_public_key.data(),
                                                       priv.get(), entropy));
 
   static const uint8_t expected_public_key[DILITHIUM_PUBLIC_KEY_BYTES] = {
@@ -521,8 +498,7 @@ TEST(DilithiumTest, KeyGenerationHardCodedNIST) {
       0xE2, 0x39, 0xAB, 0xC9, 0x63, 0xB5, 0x0A, 0x7E, 0xF8, 0x70, 0xB0, 0x5F,
       0x27, 0x21, 0x21, 0x5E, 0xB9, 0x0A, 0x60, 0xE4, 0x66, 0x95, 0x5D, 0x52,
       0x2C, 0xA4, 0x21, 0x69, 0x44, 0x69, 0x35, 0x46};
-  EXPECT_EQ(Bytes(encoded_public_key.get(), DILITHIUM_PUBLIC_KEY_BYTES),
-            Bytes(expected_public_key, DILITHIUM_PUBLIC_KEY_BYTES));
+  EXPECT_EQ(Bytes(encoded_public_key), Bytes(expected_public_key));
 
   static const uint8_t expected_private_key[DILITHIUM_PRIVATE_KEY_BYTES] = {
       0x88, 0xC9, 0x3D, 0xEB, 0x90, 0x1A, 0x24, 0xA9, 0x45, 0xFA, 0x94, 0xAE,
@@ -866,14 +842,9 @@ TEST(DilithiumTest, KeyGenerationHardCodedNIST) {
   EXPECT_TRUE(CBB_init(cbb.get(), DILITHIUM_PRIVATE_KEY_BYTES));
   EXPECT_TRUE(DILITHIUM_marshal_private_key(cbb.get(), priv.get()));
 
-  uint8_t *m_data;
-  size_t m_size;
-  EXPECT_TRUE(CBB_finish(cbb.get(), &m_data, &m_size));
-
-  EXPECT_EQ(m_size, (size_t)DILITHIUM_PRIVATE_KEY_BYTES);
-  EXPECT_EQ(Bytes(m_data, m_size),
-            Bytes(expected_private_key, DILITHIUM_PRIVATE_KEY_BYTES));
-  OPENSSL_free(m_data);
+  EXPECT_EQ(CBB_len(cbb.get()), size_t{DILITHIUM_PRIVATE_KEY_BYTES});
+  EXPECT_EQ(Bytes(CBB_data(cbb.get()), CBB_len(cbb.get())),
+            Bytes(expected_private_key));
 }
 
 TEST(DilithiumTest, SignatureHardCodedNIST) {
@@ -1402,9 +1373,8 @@ TEST(DilithiumTest, SignatureHardCodedNIST) {
       0x0B, 0xB3, 0xCA, 0x21, 0x39, 0x68, 0xD2, 0x42, 0xC1, 0x1A, 0xC0, 0xA3,
       0x41};
 
-  auto encoded_signature =
-      std::make_unique<uint8_t[]>(DILITHIUM_SIGNATURE_BYTES);
-  EXPECT_TRUE(DILITHIUM_sign_deterministic(encoded_signature.get(), priv.get(),
+  std::vector<uint8_t> encoded_signature(DILITHIUM_SIGNATURE_BYTES);
+  EXPECT_TRUE(DILITHIUM_sign_deterministic(encoded_signature.data(), priv.get(),
                                            message, sizeof(message)));
 
   static const uint8_t expected_signature[DILITHIUM_SIGNATURE_BYTES] = {
@@ -1684,6 +1654,5 @@ TEST(DilithiumTest, SignatureHardCodedNIST) {
       0xA9, 0xB4, 0x4D, 0x93, 0xA2, 0xC0, 0xF9, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x06, 0x0E, 0x13, 0x18, 0x1E, 0x23};
-  EXPECT_EQ(Bytes(encoded_signature.get(), DILITHIUM_SIGNATURE_BYTES),
-            Bytes(expected_signature));
+  EXPECT_EQ(Bytes(encoded_signature), Bytes(expected_signature));
 }
