@@ -48,6 +48,7 @@ var (
 	mallocTest      = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
 	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask each test to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
 	simulateARMCPUs = flag.Bool("simulate-arm-cpus", simulateARMCPUsDefault(), "If true, runs tests simulating different ARM CPUs.")
+	qemuBinary      = flag.String("qemu", "", "Optional, absolute path to a binary location for QEMU runtime.")
 )
 
 func simulateARMCPUsDefault() bool {
@@ -145,6 +146,13 @@ func sdeOf(cpu, path string, args ...string) *exec.Cmd {
 	return exec.Command(*sdePath, sdeArgs...)
 }
 
+func qemuOf(path string, args ...string) *exec.Cmd {
+	// The QEMU binary becomes the program to run, and the previous test program
+	// to run instead becomes an additional argument to the QEMU binary.
+	args = append([]string{path}, args...)
+	return exec.Command(*qemuBinary, args...)
+}
+
 var (
 	errMoreMallocs = errors.New("child process did not exhaust all allocation calls")
 	errTestSkipped = errors.New("test was skipped")
@@ -161,6 +169,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		// detected.
 		args = append(args, "--no_unwind_tests")
 	}
+
 	var cmd *exec.Cmd
 	if *useValgrind {
 		cmd = valgrindOf(false, prog, args...)
@@ -170,6 +179,8 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		cmd = gdbOf(prog, args...)
 	} else if *useSDE {
 		cmd = sdeOf(test.cpu, prog, args...)
+	} else if *qemuBinary != "" {
+		cmd = qemuOf(prog, args...)
 	} else {
 		cmd = exec.Command(prog, args...)
 	}
