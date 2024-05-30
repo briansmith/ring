@@ -2265,6 +2265,10 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 	if hs.serverHello.extensions.nextProtoNeg {
 		nextProto := new(nextProtoMsg)
 		proto, fallback := mutualProtocol(c.config.NextProtos, hs.serverHello.extensions.nextProtos)
+		if fallback && c.config.NoFallbackNextProto {
+			proto = ""
+			fallback = false
+		}
 		nextProto.proto = proto
 		c.clientProtocol = proto
 		c.clientProtocolFallback = fallback

@@ -5683,7 +5683,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			expectedError:        halfHelloRequestError,
 		})
 
-		// NPN on client and server; results in post-handshake message.
+		// NPN on client and server; results in post-ChangeCipherSpec message.
 		tests = append(tests, testCase{
 			name: "NPN-Client",
 			config: Config{
@@ -5711,6 +5711,73 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			resumeSession: true,
 			expectations: connectionExpectations{
 				nextProto:     "bar",
+				nextProtoType: npn,
+			},
+		})
+
+		// The client may select no protocol after seeing the server list.
+		tests = append(tests, testCase{
+			name: "NPN-Client-ClientSelectEmpty",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				NextProtos: []string{"foo"},
+			},
+			flags:         []string{"-select-empty-next-proto"},
+			resumeSession: true,
+			expectations: connectionExpectations{
+				noNextProto:   true,
+				nextProtoType: npn,
+			},
+		})
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "NPN-Server-ClientSelectEmpty",
+			config: Config{
+				MaxVersion:          VersionTLS12,
+				NextProtos:          []string{"no-match"},
+				NoFallbackNextProto: true,
+			},
+			flags: []string{
+				"-advertise-npn", "\x03foo\x03bar\x03baz",
+				"-expect-no-next-proto",
+			},
+			resumeSession: true,
+			expectations: connectionExpectations{
+				noNextProto:   true,
+				nextProtoType: npn,
+			},
+		})
+
+		// The server may negotiate NPN, despite offering no protocols. In this
+		// case, the server must still be prepared for the client to select a
+		// fallback protocol.
+		tests = append(tests, testCase{
+			name: "NPN-Client-ServerAdvertiseEmpty",
+			config: Config{
+				MaxVersion:               VersionTLS12,
+				NegotiateNPNWithNoProtos: true,
+			},
+			flags:         []string{"-select-next-proto", "foo"},
+			resumeSession: true,
+			expectations: connectionExpectations{
+				nextProto:     "foo",
+				nextProtoType: npn,
+			},
+		})
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "NPN-Server-ServerAdvertiseEmpty",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				NextProtos: []string{"foo"},
+			},
+			flags: []string{
+				"-advertise-empty-npn",
+				"-expect-next-proto", "foo",
+			},
+			resumeSession: true,
+			expectations: connectionExpectations{
+				nextProto:     "foo",
 				nextProtoType: npn,
 			},
 		})

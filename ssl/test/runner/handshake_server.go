@@ -1664,11 +1664,7 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 
 	if c.vers < VersionTLS13 || config.Bugs.NegotiateNPNAtAllVersions {
 		if len(hs.clientHello.alpnProtocols) == 0 || c.config.Bugs.NegotiateALPNAndNPN {
-			// Although sending an empty NPN extension is reasonable, Firefox has
-			// had a bug around this. Best to send nothing at all if
-			// config.NextProtos is empty. See
-			// https://code.google.com/p/go/issues/detail?id=5445.
-			if hs.clientHello.nextProtoNeg && len(config.NextProtos) > 0 {
+			if hs.clientHello.nextProtoNeg && (len(config.NextProtos) > 0 || config.NegotiateNPNWithNoProtos) {
 				serverExtensions.nextProtoNeg = true
 				serverExtensions.nextProtos = config.NextProtos
 				serverExtensions.npnAfterAlpn = config.Bugs.SwapNPNAndALPN

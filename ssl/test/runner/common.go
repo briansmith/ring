@@ -455,6 +455,14 @@ type Config struct {
 	// NextProtos is a list of supported, application level protocols.
 	NextProtos []string
 
+	// NoFallbackNextProto, if true, causes the client to decline to pick an NPN
+	// protocol, instead of picking an opportunistic, fallback protocol.
+	NoFallbackNextProto bool
+
+	// NegotiateNPNWithNoProtos, if true, causes the server to negotiate NPN
+	// despite having no protocols configured.
+	NegotiateNPNWithNoProtos bool
+
 	// ApplicationSettings is a set of application settings to use which each
 	// application protocol.
 	ApplicationSettings map[string][]byte
