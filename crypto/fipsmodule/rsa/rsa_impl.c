@@ -65,10 +65,10 @@
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
+#include "../../bcm_support.h"
 #include "../../internal.h"
 #include "../bn/internal.h"
 #include "../delocate.h"
-#include "../rand/fork_detect.h"
 #include "../service_indicator/internal.h"
 #include "internal.h"
 

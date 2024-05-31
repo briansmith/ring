@@ -16,7 +16,6 @@
 
 #include <assert.h>
 
-#include "fipsmodule/rand/fork_detect.h"
 #include "fipsmodule/rand/internal.h"
 #include "bcm_support.h"
 #include "internal.h"

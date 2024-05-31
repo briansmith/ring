@@ -93,7 +93,6 @@
 #include "modes/ofb.c"
 #include "modes/polyval.c"
 #include "rand/ctrdrbg.c"
-#include "rand/fork_detect.c"
 #include "rand/rand.c"
 #include "rsa/blinding.c"
 #include "rsa/padding.c"

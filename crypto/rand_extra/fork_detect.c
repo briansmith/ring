@@ -16,8 +16,7 @@
 #define _GNU_SOURCE  // needed for madvise() and MAP_ANONYMOUS on Linux.
 #endif
 
-#include <openssl/base.h>
-#include "fork_detect.h"
+#include "../bcm_support.h"
 
 #if defined(OPENSSL_FORK_DETECTION_MADVISE)
 #include <unistd.h>
@@ -35,19 +34,18 @@ static_assert(MADV_WIPEONFORK == 18, "MADV_WIPEONFORK is not 18");
 #include <pthread.h>
 #endif // OPENSSL_FORK_DETECTION_MADVISE
 
-#include "../delocate.h"
-#include "../../internal.h"
+#include "../internal.h"
 
 #if defined(OPENSSL_FORK_DETECTION_MADVISE)
-DEFINE_BSS_GET(int, g_force_madv_wipeonfork);
-DEFINE_BSS_GET(int, g_force_madv_wipeonfork_enabled);
-DEFINE_STATIC_ONCE(g_fork_detect_once);
-DEFINE_STATIC_MUTEX(g_fork_detect_lock);
-DEFINE_BSS_GET(CRYPTO_atomic_u32 *, g_fork_detect_addr);
-DEFINE_BSS_GET(uint64_t, g_fork_generation);
+static int g_force_madv_wipeonfork;
+static int g_force_madv_wipeonfork_enabled;
+static CRYPTO_once_t g_fork_detect_once = CRYPTO_ONCE_INIT;
+static CRYPTO_MUTEX g_fork_detect_lock = CRYPTO_MUTEX_INIT;
+static CRYPTO_atomic_u32 * g_fork_detect_addr;
+static uint64_t g_fork_generation;
 
 static void init_fork_detect(void) {
-  if (*g_force_madv_wipeonfork_bss_get()) {
+  if (g_force_madv_wipeonfork) {
     return;
   }
 
@@ -74,13 +72,13 @@ static void init_fork_detect(void) {
   }
 
   CRYPTO_atomic_store_u32(addr, 1);
-  *g_fork_detect_addr_bss_get() = addr;
-  *g_fork_generation_bss_get() = 1;
+  g_fork_detect_addr = addr;
+  g_fork_generation = 1;
 
 }
 
 uint64_t CRYPTO_get_fork_generation(void) {
-  CRYPTO_once(g_fork_detect_once_bss_get(), init_fork_detect);
+  CRYPTO_once(&g_fork_detect_once, init_fork_detect);
 
   // In a single-threaded process, there are obviously no races because there's
   // only a single mutator in the address space.
@@ -93,12 +91,12 @@ uint64_t CRYPTO_get_fork_generation(void) {
   // child process is single-threaded, the child may become multi-threaded
   // before it observes this. Therefore, we must synchronize the logic below.
 
-  CRYPTO_atomic_u32 *const flag_ptr = *g_fork_detect_addr_bss_get();
+  CRYPTO_atomic_u32 *const flag_ptr = g_fork_detect_addr;
   if (flag_ptr == NULL) {
     // Our kernel is too old to support |MADV_WIPEONFORK| or
     // |g_force_madv_wipeonfork| is set.
-    if (*g_force_madv_wipeonfork_bss_get() &&
-        *g_force_madv_wipeonfork_enabled_bss_get()) {
+    if (g_force_madv_wipeonfork &&
+        g_force_madv_wipeonfork_enabled) {
       // A constant generation number to simulate support, even if the kernel
       // doesn't support it.
       return 42;
@@ -114,7 +112,7 @@ uint64_t CRYPTO_get_fork_generation(void) {
 
   // In the common case, try to observe the flag without taking a lock. This
   // avoids cacheline contention in the PRNG.
-  uint64_t *const generation_ptr = g_fork_generation_bss_get();
+  uint64_t *const generation_ptr = &g_fork_generation;
   if (CRYPTO_atomic_load_u32(flag_ptr) != 0) {
     // If we observe a non-zero flag, it is safe to read |generation_ptr|
     // without a lock. The flag and generation number are fixed for this copy of
@@ -125,7 +123,7 @@ uint64_t CRYPTO_get_fork_generation(void) {
   // The flag was zero. The generation number must be incremented, but other
   // threads may have concurrently observed the zero, so take a lock before
   // incrementing.
-  CRYPTO_MUTEX *const lock = g_fork_detect_lock_bss_get();
+  CRYPTO_MUTEX *const lock = &g_fork_detect_lock;
   CRYPTO_MUTEX_lock_write(lock);
   uint64_t current_generation = *generation_ptr;
   if (CRYPTO_atomic_load_u32(flag_ptr) == 0) {
@@ -147,35 +145,35 @@ uint64_t CRYPTO_get_fork_generation(void) {
 }
 
 void CRYPTO_fork_detect_force_madv_wipeonfork_for_testing(int on) {
-  *g_force_madv_wipeonfork_bss_get() = 1;
-  *g_force_madv_wipeonfork_enabled_bss_get() = on;
+  g_force_madv_wipeonfork = 1;
+  g_force_madv_wipeonfork_enabled = on;
 }
 
 #elif defined(OPENSSL_FORK_DETECTION_PTHREAD_ATFORK)
 
-DEFINE_STATIC_ONCE(g_pthread_fork_detection_once);
-DEFINE_BSS_GET(uint64_t, g_atfork_fork_generation);
+static CRYPTO_once_t g_pthread_fork_detection_once = CRYPTO_ONCE_INIT;
+static uint64_t g_atfork_fork_generation;
 
 static void we_are_forked(void) {
   // Immediately after a fork, the process must be single-threaded.
-  uint64_t value = *g_atfork_fork_generation_bss_get() + 1;
+  uint64_t value = g_atfork_fork_generation + 1;
   if (value == 0) {
     value = 1;
   }
-  *g_atfork_fork_generation_bss_get() = value;
+  g_atfork_fork_generation = value;
 }
 
 static void init_pthread_fork_detection(void) {
   if (pthread_atfork(NULL, NULL, we_are_forked) != 0) {
     abort();
   }
-  *g_atfork_fork_generation_bss_get() = 1;
+  g_atfork_fork_generation = 1;
 }
 
 uint64_t CRYPTO_get_fork_generation(void) {
-  CRYPTO_once(g_pthread_fork_detection_once_bss_get(), init_pthread_fork_detection);
+  CRYPTO_once(&g_pthread_fork_detection_once, init_pthread_fork_detection);
 
-  return *g_atfork_fork_generation_bss_get();
+  return g_atfork_fork_generation;
 }
 
 #elif defined(OPENSSL_DOES_NOT_FORK)

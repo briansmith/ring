@@ -23,6 +23,24 @@
 extern "C" {
 #endif
 
+#if defined(OPENSSL_LINUX)
+// On linux we use MADVISE instead of pthread_atfork(), due
+// to concerns about clone() being used for address space
+// duplication.
+#define OPENSSL_FORK_DETECTION
+#define OPENSSL_FORK_DETECTION_MADVISE
+#elif defined(OPENSSL_MACOS) || defined(OPENSSL_IOS) || \
+    defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)
+// These platforms may detect address space duplication with pthread_atfork.
+// iOS doesn't normally allow fork in apps, but it's there.
+#define OPENSSL_FORK_DETECTION
+#define OPENSSL_FORK_DETECTION_PTHREAD_ATFORK
+#elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY) || \
+    defined(__ZEPHYR__) || defined(CROS_EC)
+// These platforms do not fork.
+#define OPENSSL_DOES_NOT_FORK
+#endif
+
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 #define OPENSSL_RAND_DETERMINISTIC
 #elif defined(OPENSSL_TRUSTY)
@@ -65,6 +83,28 @@ void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
 // RAND_need_entropy is called whenever the BCM module has stopped because it
 // has run out of entropy.
 void RAND_need_entropy(size_t bytes_needed);
+
+// crypto_get_fork_generation returns the fork generation number for the current
+// process, or zero if not supported on the platform. The fork generation number
+// is a non-zero, strictly-monotonic counter with the property that, if queried
+// in an address space and then again in a subsequently forked copy, the forked
+// address space will observe a greater value.
+//
+// This function may be used to clear cached values across a fork. When
+// initializing a cache, record the fork generation. Before using the cache,
+// check if the fork generation has changed. If so, drop the cache and update
+// the save fork generation. Note this logic transparently handles platforms
+// which always return zero.
+//
+// This is not reliably supported on all platforms which implement |fork|, so it
+// should only be used as a hardening measure.
+OPENSSL_EXPORT uint64_t CRYPTO_get_fork_generation(void);
+
+// CRYPTO_fork_detect_force_madv_wipeonfork_for_testing is an internal detail
+// used for testing purposes.
+OPENSSL_EXPORT void CRYPTO_fork_detect_force_madv_wipeonfork_for_testing(
+    int on);
+
 
 #if defined(__cplusplus)
 }  // extern C

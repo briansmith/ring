@@ -14,7 +14,7 @@
 
 #include <openssl/base.h>
 
-#include "fork_detect.h"
+#include "../bcm_support.h"
 
 // TSAN cannot cope with this test and complains that "starting new threads
 // after multi-threaded fork is not supported".
