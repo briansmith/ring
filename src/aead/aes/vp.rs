@@ -19,7 +19,10 @@
     target_arch = "x86_64"
 ))]
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, AES_KEY};
+use super::{
+    Block, EncryptBlock, EncryptCtr32, InOutLenInconsistentWithIvBlockLenError, Iv, IvBlock,
+    KeyBytes, AES_KEY,
+};
 use crate::{cpu, error};
 use core::ops::RangeFrom;
 
@@ -57,34 +60,53 @@ impl EncryptBlock for Key {
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter) {
-        unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr) }
+    fn ctr32_encrypt_within(
+        &self,
+        in_out: &mut [u8],
+        src: RangeFrom<usize>,
+        iv_block: IvBlock,
+    ) -> Result<(), InOutLenInconsistentWithIvBlockLenError> {
+        unsafe {
+            ctr32_encrypt_blocks!(
+                vpaes_ctr32_encrypt_blocks,
+                in_out,
+                src,
+                &self.inner,
+                iv_block
+            )
+        }
     }
 }
 
 #[cfg(target_arch = "arm")]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(
+        &self,
+        in_out: &mut [u8],
+        src: RangeFrom<usize>,
+        iv_block: IvBlock,
+    ) -> Result<(), InOutLenInconsistentWithIvBlockLenError> {
         use super::{bs, BLOCK_LEN};
 
-        let in_out = {
-            let blocks = in_out[src.clone()].len() / BLOCK_LEN;
+        let blocks = in_out[src.clone()].len() / BLOCK_LEN;
 
-            // bsaes operates in batches of 8 blocks.
-            let bsaes_blocks = if blocks >= 8 && (blocks % 8) < 6 {
-                // It's faster to use bsaes for all the full batches and then
-                // switch to vpaes for the last partial batch (if any).
-                blocks - (blocks % 8)
-            } else if blocks >= 8 {
-                // It's faster to let bsaes handle everything including
-                // the last partial batch.
-                blocks
-            } else {
-                // It's faster to let vpaes handle everything.
-                0
-            };
-            let bsaes_in_out_len = bsaes_blocks * BLOCK_LEN;
+        // bsaes operates in batches of 8 blocks.
+        let bsaes_blocks = if blocks >= 8 && (blocks % 8) < 6 {
+            // It's faster to use bsaes for all the full batches and then
+            // switch to vpaes for the last partial batch (if any).
+            blocks - (blocks % 8)
+        } else if blocks >= 8 {
+            // It's faster to let bsaes handle everything including
+            // the last partial batch.
+            blocks
+        } else {
+            // It's faster to let vpaes handle everything.
+            0
+        };
+        let (bsaes_iv_block, vpaes_iv_block) = iv_block.split_at(bsaes_blocks)?;
+        let bsaes_in_out_len = bsaes_blocks * BLOCK_LEN;
 
+        if let Some(iv_block) = bsaes_iv_block {
             // SAFETY:
             //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
             //    as required by `bsaes_ctr32_encrypt_blocks_with_vpaes_key`.
@@ -93,19 +115,30 @@ impl EncryptCtr32 for Key {
                     &mut in_out[..(src.start + bsaes_in_out_len)],
                     src.clone(),
                     &self.inner,
-                    ctr,
-                );
-            }
+                    iv_block,
+                )
+            }?;
+        }
 
-            &mut in_out[bsaes_in_out_len..]
-        };
+        if let Some(iv_block) = vpaes_iv_block {
+            let in_out = &mut in_out[bsaes_in_out_len..];
+            // SAFETY:
+            //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
+            //    as required by `vpaes_ctr32_encrypt_blocks`.
+            //  * `vpaes_ctr32_encrypt_blocks` satisfies the contract for
+            //    `ctr32_encrypt_blocks`.
+            unsafe {
+                ctr32_encrypt_blocks!(
+                    vpaes_ctr32_encrypt_blocks,
+                    in_out,
+                    src,
+                    &self.inner,
+                    iv_block
+                )
+            }?;
+        }
 
-        // SAFETY:
-        //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
-        //    as required by `vpaes_ctr32_encrypt_blocks`.
-        //  * `vpaes_ctr32_encrypt_blocks` satisfies the contract for
-        //    `ctr32_encrypt_blocks`.
-        unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr) }
+        Ok(())
     }
 }
 
@@ -122,9 +155,19 @@ impl EncryptBlock for Key {
 
 #[cfg(target_arch = "x86")]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(
+        &self,
+        in_out: &mut [u8],
+        src: RangeFrom<usize>,
+        iv_block: IvBlock,
+    ) -> Result<(), InOutLenInconsistentWithIvBlockLenError> {
+        let (input_blocks, leftover): (&[[u8; super::BLOCK_LEN]], _) =
+            crate::polyfill::slice::as_chunks(&in_out[src.clone()]);
+        debug_assert_eq!(leftover.len(), 0);
+        let mut ctr = iv_block.into_counter_less_safe(input_blocks.len())?;
         super::super::shift::shift_full_blocks(in_out, src, |input| {
-            self.encrypt_iv_xor_block(ctr.increment(), *input)
+            self.encrypt_iv_xor_block(ctr.increment_unchecked_less_safe(), *input)
         });
+        Ok(())
     }
 }

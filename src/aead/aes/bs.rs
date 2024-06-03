@@ -14,7 +14,7 @@
 
 #![cfg(target_arch = "arm")]
 
-use super::{Counter, AES_KEY};
+use super::{IvBlock, AES_KEY};
 use core::ops::RangeFrom;
 
 /// SAFETY:
@@ -31,8 +31,8 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
     in_out: &mut [u8],
     src: RangeFrom<usize>,
     vpaes_key: &AES_KEY,
-    ctr: &mut Counter,
-) {
+    iv_block: IvBlock,
+) -> Result<(), super::InOutLenInconsistentWithIvBlockLenError> {
     prefixed_extern! {
         // bsaes_ctr32_encrypt_blocks requires transformation of an existing
         // VPAES key; there is no `bsaes_set_encrypt_key`.
@@ -57,6 +57,12 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
     //  * `bsaes_ctr32_encrypt_blocks` satisfies the contract for
     //    `ctr32_encrypt_blocks`.
     unsafe {
-        ctr32_encrypt_blocks!(bsaes_ctr32_encrypt_blocks, in_out, src, &bsaes_key, ctr);
+        ctr32_encrypt_blocks!(
+            bsaes_ctr32_encrypt_blocks,
+            in_out,
+            src,
+            &bsaes_key,
+            iv_block
+        )
     }
 }

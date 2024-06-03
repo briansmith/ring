@@ -12,9 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, KeyBytes, BLOCK_LEN};
+use super::{Block, InOutLenInconsistentWithIvBlockLenError, IvBlock, KeyBytes, BLOCK_LEN};
 use crate::{bits::BitLength, c, error, polyfill::slice};
-use core::{num::NonZeroUsize, ops::RangeFrom};
+use core::ops::RangeFrom;
 
 /// nonce || big-endian counter.
 #[repr(transparent)]
@@ -127,9 +127,9 @@ impl AES_KEY {
 ///   * The caller must ensure that fhe function `$name` satisfies the conditions
 ///     for the `f` parameter to `ctr32_encrypt_blocks`.
 macro_rules! ctr32_encrypt_blocks {
-    ($name:ident, $in_out:expr, $src:expr, $key:expr, $ctr:expr $(,)? ) => {{
+    ($name:ident, $in_out:expr, $src:expr, $key:expr, $iv_block:expr $(,)? ) => {{
         use crate::{
-            aead::aes::{ffi::AES_KEY, Counter, BLOCK_LEN},
+            aead::aes::{ffi::AES_KEY, BLOCK_LEN},
             c,
         };
         prefixed_extern! {
@@ -138,10 +138,10 @@ macro_rules! ctr32_encrypt_blocks {
                 output: *mut [u8; BLOCK_LEN],
                 blocks: c::NonZero_size_t,
                 key: &AES_KEY,
-                ivec: &Counter,
+                ivec: &[u8; BLOCK_LEN],
             );
         }
-        $key.ctr32_encrypt_blocks($name, $in_out, $src, $ctr)
+        $key.ctr32_encrypt_blocks($name, $in_out, $src, $iv_block)
     }};
 }
 
@@ -165,23 +165,22 @@ impl AES_KEY {
             output: *mut [u8; BLOCK_LEN],
             blocks: c::NonZero_size_t,
             key: &AES_KEY,
-            ivec: &Counter,
+            ivec: &[u8; BLOCK_LEN],
         ),
         in_out: &mut [u8],
         src: RangeFrom<usize>,
-        ctr: &mut Counter,
-    ) {
+        iv_block: IvBlock,
+    ) -> Result<(), InOutLenInconsistentWithIvBlockLenError> {
         let (input, leftover) = slice::as_chunks(&in_out[src]);
         debug_assert_eq!(leftover.len(), 0);
 
-        let blocks = match NonZeroUsize::new(input.len()) {
-            Some(blocks) => blocks,
-            None => {
-                return;
-            }
-        };
+        if input.len() != iv_block.len().get() {
+            return Err(InOutLenInconsistentWithIvBlockLenError::new());
+        }
+        debug_assert!(!input.is_empty());
 
-        let blocks_u32: u32 = blocks.get().try_into().unwrap();
+        let iv_block_len = iv_block.len();
+        let initial_iv = iv_block.into_initial_iv().into_block_less_safe();
 
         let input = input.as_ptr();
         let output: *mut [u8; BLOCK_LEN] = in_out.as_mut_ptr().cast();
@@ -196,9 +195,9 @@ impl AES_KEY {
         //  * The caller is responsible for ensuring `key` was initialized by the
         //    `set_encrypt_key!` invocation required by `f`.
         unsafe {
-            f(input, output, blocks, self, ctr);
+            f(input, output, iv_block_len, self, &initial_iv);
         }
 
-        ctr.increment_by_less_safe(blocks_u32);
+        Ok(())
     }
 }

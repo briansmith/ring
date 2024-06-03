@@ -21,7 +21,10 @@ use crate::{
 use cfg_if::cfg_if;
 use core::ops::RangeFrom;
 
-pub(super) use self::{counter::Iv, ffi::Counter};
+pub(super) use self::{
+    counter::{CounterOverflowError, Iv, IvBlock},
+    ffi::Counter,
+};
 
 #[macro_use]
 mod ffi;
@@ -114,6 +117,14 @@ pub enum KeyBytes<'a> {
     AES_256(&'a [u8; AES_256_KEY_LEN]),
 }
 
+pub(super) struct InOutLenInconsistentWithIvBlockLenError(());
+impl InOutLenInconsistentWithIvBlockLenError {
+    #[cold]
+    fn new() -> Self {
+        Self(())
+    }
+}
+
 pub(super) type Block = [u8; BLOCK_LEN];
 pub(super) const BLOCK_LEN: usize = 16;
 pub(super) const ZERO_BLOCK: Block = [0u8; BLOCK_LEN];
@@ -124,7 +135,12 @@ pub(super) trait EncryptBlock {
 }
 
 pub(super) trait EncryptCtr32 {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter);
+    fn ctr32_encrypt_within(
+        &self,
+        in_out: &mut [u8],
+        src: RangeFrom<usize>,
+        iv_block: IvBlock,
+    ) -> Result<(), InOutLenInconsistentWithIvBlockLenError>;
 }
 
 #[allow(dead_code)]
@@ -144,11 +160,11 @@ fn encrypt_iv_xor_block_using_encrypt_block(
 
 #[allow(dead_code)]
 fn encrypt_iv_xor_block_using_ctr32(key: &impl EncryptCtr32, iv: Iv, mut block: Block) -> Block {
-    // This is OK because we're only encrypting one block, and `iv` is already
-    // reserved for us to use.
-    let mut ctr = Counter(iv.into_block_less_safe());
-    key.ctr32_encrypt_within(&mut block, 0.., &mut ctr);
-    block
+    let iv_block = IvBlock::from_iv(iv);
+    match key.ctr32_encrypt_within(&mut block, 0.., iv_block) {
+        Ok(()) => block,
+        Result::<_, InOutLenInconsistentWithIvBlockLenError>::Err(_) => unreachable!(),
+    }
 }
 
 #[cfg(test)]

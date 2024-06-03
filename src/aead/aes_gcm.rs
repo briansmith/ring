@@ -13,14 +13,17 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    aes::{self, Counter, BLOCK_LEN, ZERO_BLOCK},
+    aes::{
+        self, Counter, CounterOverflowError, InOutLenInconsistentWithIvBlockLenError, BLOCK_LEN,
+        ZERO_BLOCK,
+    },
     gcm, shift, Aad, Nonce, Tag,
 };
 use crate::{
     cpu, error,
     polyfill::{slice, sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
-use core::ops::RangeFrom;
+use core::{num::NonZeroUsize, ops::RangeFrom};
 
 #[cfg(target_arch = "x86_64")]
 use aes::EncryptCtr32 as _;
@@ -118,8 +121,10 @@ pub(super) fn seal(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
 ) -> Result<Tag, error::Unspecified> {
-    let mut ctr = Counter::one(nonce);
-    let tag_iv = ctr.increment();
+    let (tag_iv, ctr) = Counter::one_two(nonce);
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    let mut ctr = ctr;
 
     match key {
         #[cfg(target_arch = "x86_64")]
@@ -160,8 +165,16 @@ pub(super) fn seal(
                 }
             };
             let (whole, remainder) = slice::as_chunks_mut(ramaining);
-            aes_key.ctr32_encrypt_within(slice::flatten_mut(whole), 0.., &mut ctr);
-            auth.update_blocks(whole);
+            if let Some(whole_len) = NonZeroUsize::new(whole.len()) {
+                let iv_block = ctr
+                    .increment_by(whole_len)
+                    .map_err(|_: CounterOverflowError| error::Unspecified)?;
+                match aes_key.ctr32_encrypt_within(slice::flatten_mut(whole), 0.., iv_block) {
+                    Ok(()) => {}
+                    Result::<_, InOutLenInconsistentWithIvBlockLenError>::Err(_) => unreachable!(),
+                }
+                auth.update_blocks(whole);
+            }
             seal_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
 
@@ -240,7 +253,14 @@ fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
     let (whole, remainder) = slice::as_chunks_mut(in_out);
 
     for chunk in whole.chunks_mut(CHUNK_BLOCKS) {
-        aes_key.ctr32_encrypt_within(slice::flatten_mut(chunk), 0.., &mut ctr);
+        let chunk_len = NonZeroUsize::new(chunk.len()).unwrap(); // Guaranteed by chunks_mut
+        let iv_block = ctr
+            .increment_by(chunk_len)
+            .map_err(|_: CounterOverflowError| error::Unspecified)?;
+        match aes_key.ctr32_encrypt_within(slice::flatten_mut(chunk), 0.., iv_block) {
+            Ok(_) => {}
+            Err(_) => unreachable!(),
+        }
         auth.update_blocks(chunk);
     }
 
@@ -257,7 +277,8 @@ fn seal_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
     if !remainder.is_empty() {
         let mut input = ZERO_BLOCK;
         overwrite_at_start(&mut input, remainder);
-        let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input);
+        let iv = ctr.try_into_iv().map_err(|_| error::Unspecified)?;
+        let mut output = aes_key.encrypt_iv_xor_block(iv, input);
         output[remainder.len()..].fill(0);
         auth.update_block(output);
         overwrite_at_start(remainder, &output);
@@ -278,8 +299,10 @@ pub(super) fn open(
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     let input = in_out.get(src.clone()).ok_or(error::Unspecified)?;
 
-    let mut ctr = Counter::one(nonce);
-    let tag_iv = ctr.increment();
+    let (tag_iv, ctr) = Counter::one_two(nonce);
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    let mut ctr = ctr;
 
     match key {
         #[cfg(target_arch = "x86_64")]
@@ -320,22 +343,31 @@ pub(super) fn open(
                     unreachable!()
                 }
             };
-            // Authenticate any remaining whole blocks.
+
             let input = match in_out.get(src.clone()) {
                 Some(remaining_input) => remaining_input,
                 None => unreachable!(),
             };
+
             let (whole, _) = slice::as_chunks(input);
-            auth.update_blocks(whole);
-
-            let whole_len = slice::flatten(whole).len();
-
-            // Decrypt any remaining whole blocks.
-            aes_key.ctr32_encrypt_within(
-                &mut in_out[..(src.start + whole_len)],
-                src.clone(),
-                &mut ctr,
-            );
+            let whole_len = if let Some(whole_len) = NonZeroUsize::new(whole.len()) {
+                let iv_block = ctr
+                    .increment_by(whole_len)
+                    .map_err(|_: CounterOverflowError| error::Unspecified)?;
+                auth.update_blocks(whole);
+                let whole_len = slice::flatten(whole).len();
+                match aes_key.ctr32_encrypt_within(
+                    &mut in_out[..(src.start + whole_len)],
+                    src.clone(),
+                    iv_block,
+                ) {
+                    Ok(()) => {}
+                    Result::<_, InOutLenInconsistentWithIvBlockLenError>::Err(_) => unreachable!(),
+                }
+                whole_len
+            } else {
+                0
+            };
 
             let in_out = match in_out.get_mut(whole_len..) {
                 Some(partial) => partial,
@@ -445,16 +477,24 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
             let ciphertext = &in_out[input..][..chunk_len];
             let (ciphertext, leftover) = slice::as_chunks(ciphertext);
             debug_assert_eq!(leftover.len(), 0);
-            if ciphertext.is_empty() {
-                break;
-            }
+            let num_blocks = match NonZeroUsize::new(ciphertext.len()) {
+                Some(blocks) => blocks,
+                None => break,
+            };
+            let iv_block = ctr
+                .increment_by(num_blocks)
+                .map_err(|_| error::Unspecified)?;
+
             auth.update_blocks(ciphertext);
 
-            aes_key.ctr32_encrypt_within(
+            match aes_key.ctr32_encrypt_within(
                 &mut in_out[output..][..(chunk_len + in_prefix_len)],
                 in_prefix_len..,
-                &mut ctr,
-            );
+                iv_block,
+            ) {
+                Ok(()) => {}
+                Result::<_, InOutLenInconsistentWithIvBlockLenError>::Err(_) => unreachable!(),
+            }
             output += chunk_len;
             input += chunk_len;
         }
@@ -471,11 +511,12 @@ fn open_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
     ctr: Counter,
     tag_iv: aes::Iv,
 ) -> Result<Tag, error::Unspecified> {
+    let iv = ctr.try_into_iv().map_err(|_| error::Unspecified)?;
     shift::shift_partial((src.start, remainder), |remainder| {
         let mut input = ZERO_BLOCK;
         overwrite_at_start(&mut input, remainder);
         auth.update_block(input);
-        aes_key.encrypt_iv_xor_block(ctr.into(), input)
+        aes_key.encrypt_iv_xor_block(iv, input)
     });
 
     Ok(finish(aes_key, auth, tag_iv))
