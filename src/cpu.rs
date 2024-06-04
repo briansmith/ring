@@ -12,38 +12,50 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-/// A witness indicating that CPU features have been detected and cached.
-///
-/// TODO: Eventually all feature detection logic should be done through
-/// functions that accept a `Features` parameter, to guarantee that nothing
-/// tries to read the cached values before they are written.
-///
-/// This is a zero-sized type so that it can be "stored" wherever convenient.
-#[derive(Copy, Clone)]
-pub(crate) struct Features(());
+pub(crate) use self::features::Features;
 
 #[inline(always)]
 pub(crate) fn features() -> Features {
-    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
-    use arm::init_global_shared_with_assembly;
-
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    use intel::init_global_shared_with_assembly;
-
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86",
-        target_arch = "x86_64",
-    ))]
-    {
-        static INIT: spin::Once<()> = spin::Once::new();
-        let () = INIT.call_once(|| unsafe { init_global_shared_with_assembly() });
-    }
-
-    Features(())
+    get_or_init_feature_flags()
 }
 
-pub mod arm;
+mod features {
+    /// A witness indicating that CPU features have been detected and cached.
+    ///
+    /// This is a zero-sized type so that it can be "stored" wherever convenient.
+    #[derive(Copy, Clone)]
+    pub(crate) struct Features(());
 
-pub mod intel;
+    cfg_if::cfg_if! {
+        if #[cfg(any(target_arch = "aarch64", target_arch = "arm",
+                     target_arch = "x86", target_arch = "x86_64"))] {
+            impl Features {
+                // SAFETY: This must only be called after CPU features have been written
+                // and synchronized.
+                pub(super) unsafe fn new_after_feature_flags_written_and_synced_unchecked() -> Self {
+                    Self(())
+                }
+            }
+        } else {
+            impl Features {
+                pub(super) fn new_no_features_to_detect() -> Self {
+                    Self(())
+                }
+            }
+        }
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(any(target_arch = "aarch64", target_arch = "arm"))] {
+        pub mod arm;
+        use arm::featureflags::get_or_init as get_or_init_feature_flags;
+    } else if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+        pub mod intel;
+        use intel::featureflags::get_or_init as get_or_init_feature_flags;
+    } else {
+        pub(super) fn get_or_init_feature_flags() -> Features {
+            Features::new_no_features_to_detect()
+        }
+    }
+}
