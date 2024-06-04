@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-
 mod abi_assumptions {
     // TODO: Support ARM64_32; see
     // https://github.com/briansmith/ring/issues/1832#issuecomment-1892928147. This also requires
@@ -106,12 +104,11 @@ pub(crate) struct Feature {
 
 impl Feature {
     #[inline(always)]
-    pub fn available(&self, _: super::Features) -> bool {
+    pub fn available(&self, cpu_features: super::Features) -> bool {
         if self.mask == self.mask & ARMCAP_STATIC {
             return true;
         }
-        // SAFETY: See `OPENSSL_armcap_P`'s safety documentation.
-        self.mask == self.mask & unsafe { OPENSSL_armcap_P }
+        self.mask == self.mask & featureflags::get(cpu_features)
     }
 }
 
@@ -159,52 +156,69 @@ features! {
     },
 }
 
-// SAFETY:
-// - This may only be called from within `cpu::features()` and only while it is initializing its
-//   `INIT`.
-// - See the safety invariants of `OPENSSL_armcap_P` below.
-pub unsafe fn init_global_shared_with_assembly() {
-    let detected = detect::detect_features();
-    let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
-        ALL_FEATURES
-            .iter()
-            .fold(0, |acc, feature| acc | feature.mask)
-            & !NEON.mask
-    } else {
-        0
-    }) | (if cfg!(feature = "unstable-testing-arm-no-neon") {
-        NEON.mask
-    } else {
-        0
-    });
-    let detected = detected & !filtered;
-    unsafe {
-        OPENSSL_armcap_P = ARMCAP_STATIC | detected;
-    }
-}
+pub(super) mod featureflags {
+    use super::{detect, ALL_FEATURES, ARMCAP_STATIC, NEON};
+    use crate::cpu;
+    use core::ptr;
 
-// Some non-Rust code still checks this even when it is statically known
-// the given feature is available, so we have to ensure that this is
-// initialized properly. Keep this in sync with the initialization in
-// BoringSSL's crypto.c.
-//
-// TODO: This should have "hidden" visibility but we don't have a way of
-// controlling that yet: https://github.com/rust-lang/rust/issues/73958.
-//
-// SAFETY:
-// - Rust code only accesses this through `cpu::Features`, which acts as a witness that
-//   `cpu::features()` was called to initialize this.
-// - Some assembly language functions access `OPENSSL_armcap_P` directly. Callers of those functions
-//   must obtain a `cpu::Features` before calling them.
-// - An instance of `cpu::Features` is a witness that this was initialized.
-// - The initialization of the `INIT` in `cpu::features()` initializes this, and that `OnceCell`
-//   implements acquire/release semantics that allow all the otherwise-apparently-unsynchronized
-//   access.
-// - `OPENSSL_armcap_P` must always be a superset of `ARMCAP_STATIC`.
-// TODO: Remove all the direct accesses of this from assembly language code, and then replace this
-// with a `OnceCell<u32>` that will provide all the necessary safety guarantees.
-prefixed_extern! {
-    static mut OPENSSL_armcap_P: u32;
+    pub(in super::super) fn get_or_init() -> cpu::Features {
+        fn init() {
+            let detected = detect::detect_features();
+            let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
+                ALL_FEATURES
+                    .iter()
+                    .fold(0, |acc, feature| acc | feature.mask)
+                    & !NEON.mask
+            } else {
+                0
+            }) | (if cfg!(feature = "unstable-testing-arm-no-neon") {
+                NEON.mask
+            } else {
+                0
+            });
+            let detected = detected & !filtered;
+            let merged = ARMCAP_STATIC | detected;
+            // SAFETY: https://github.com/rust-lang/rust/issues/125833
+            let p = unsafe { ptr::addr_of_mut!(OPENSSL_armcap_P) };
+            // SAFETY: This is the only writer. Any concurrent reading doesn't
+            // affect the safety of this write.
+            unsafe {
+                p.write(merged);
+            }
+        }
+        static INIT: spin::Once<()> = spin::Once::new();
+        let () = INIT.call_once(init);
+
+        // SAFETY: We initialized the CPU features as required.
+        unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }
+    }
+
+    pub(super) fn get(_cpu_features: cpu::Features) -> u32 {
+        // SAFETY: https://github.com/rust-lang/rust/issues/125833
+        let p = unsafe { ptr::addr_of!(OPENSSL_armcap_P) };
+
+        // SAFETY: Since only `get_or_init()` could have created
+        // `_cpu_features`, and it only does so after the `INIT.call_once()`,
+        // which guarantees `happens-before` semantics, we can read from
+        // `OPENSSL_armcap_P` without further synchronization.
+        unsafe { ptr::read(p) }
+    }
+
+    // Some non-Rust code still checks this even when it is statically known
+    // the given feature is available, so we have to ensure that this is
+    // initialized properly. Keep this in sync with the initialization in
+    // BoringSSL's crypto.c.
+    //
+    // SAFETY:
+    // - Some assembly language functions access `OPENSSL_armcap_P` directly.
+    //   Callers of those functions must obtain a `cpu::Features` before calling
+    //   them.
+    // - `OPENSSL_armcap_P` must always be a superset of `ARMCAP_STATIC`.
+    // TODO: Remove all the direct accesses of this from assembly language code, and then replace this
+    // with a `OnceCell<u32>` that will provide all the necessary safety guarantees.
+    prefixed_extern! {
+        static mut OPENSSL_armcap_P: u32;
+    }
 }
 
 #[allow(clippy::assertions_on_constants)]
@@ -218,6 +232,7 @@ const _FORCE_DYNAMIC_DETECTION_HONORED: () =
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cpu;
 
     #[test]
     fn test_mask_abi() {
@@ -235,10 +250,8 @@ mod tests {
 
     #[test]
     fn test_armcap_static_is_subset_of_armcap_dynamic() {
-        // Ensure `OPENSSL_armcap_P` is initialized.
-        let cpu = crate::cpu::features();
-
-        let armcap_dynamic = unsafe { OPENSSL_armcap_P };
+        let cpu = cpu::features();
+        let armcap_dynamic = featureflags::get(cpu);
         assert_eq!(armcap_dynamic & ARMCAP_STATIC, ARMCAP_STATIC);
 
         ALL_FEATURES.iter().for_each(|feature| {

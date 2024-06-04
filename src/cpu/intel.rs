@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-
 mod abi_assumptions {
     // TOOD: Support targets that do not have SSE and SSE2 enabled, such as
     // x86_64-unknown-linux-none. See
@@ -39,23 +37,42 @@ pub(crate) struct Feature {
     mask: u32,
 }
 
-pub(super) unsafe fn init_global_shared_with_assembly() {
-    prefixed_extern! {
-        fn OPENSSL_cpuid_setup();
+pub(super) mod featureflags {
+    use crate::cpu;
+    use core::ptr;
+
+    pub(in super::super) fn get_or_init() -> cpu::Features {
+        prefixed_extern! {
+            fn OPENSSL_cpuid_setup();
+        }
+        static INIT: spin::Once<()> = spin::Once::new();
+        // SAFETY: This is the only writer. Any concurrent reading doesn't
+        // affect the safety of the writing.
+        let () = INIT.call_once(|| unsafe { OPENSSL_cpuid_setup() });
+        // SAFETY: We initialized the CPU features as required.
+        unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }
     }
-    unsafe {
-        OPENSSL_cpuid_setup();
+
+    pub(super) fn get(_cpu_features: cpu::Features) -> &'static [u32; 4] {
+        prefixed_extern! {
+            static mut OPENSSL_ia32cap_P: [u32; 4];
+        }
+        // SAFETY: https://github.com/rust-lang/rust/issues/125833
+        let p = unsafe { ptr::addr_of!(OPENSSL_ia32cap_P) };
+        // SAFETY: Since only `get_or_init()` could have created
+        // `_cpu_features`, and it only does so after the `INIT.call_once()`,
+        // which guarantees `happens-before` semantics, we can read from
+        // `OPENSSL_ia32cap_P` without further synchronization.
+        unsafe { &*p }
     }
 }
 
 impl Feature {
     #[allow(clippy::needless_return)]
     #[inline(always)]
-    pub fn available(&self, _: super::Features) -> bool {
-        prefixed_extern! {
-            static mut OPENSSL_ia32cap_P: [u32; 4];
-        }
-        self.mask == self.mask & unsafe { OPENSSL_ia32cap_P[self.word] }
+    pub fn available(&self, cpu_features: super::Features) -> bool {
+        let flags = featureflags::get(cpu_features);
+        self.mask == self.mask & flags[self.word]
     }
 }
 
