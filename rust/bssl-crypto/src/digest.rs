@@ -16,7 +16,7 @@
 //! Hash functions.
 //!
 //! ```
-//! use bssl_crypto::digest;
+//! use bssl_crypto::digest::{self, Algorithm, WithOutputLength};
 //!
 //! // One-shot hashing.
 //! let digest: [u8; 32] = digest::Sha256::hash(b"hello");
