@@ -59,7 +59,7 @@ macro_rules! unsafe_iuf_algo {
             }
 
             /// Finish the hashing and return the digest.
-            fn digest_to_vec(mut self) -> alloc::vec::Vec<u8> {
+            fn digest_to_vec(self) -> alloc::vec::Vec<u8> {
                 WithOutputLength::<$output_len>::digest(self).to_vec()
             }
         }

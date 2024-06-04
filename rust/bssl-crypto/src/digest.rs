@@ -62,7 +62,7 @@ pub trait Algorithm {
     fn update(&mut self, input: &[u8]);
 
     /// Finish the hashing and return the digest.
-    fn digest_to_vec(mut self) -> Vec<u8>;
+    fn digest_to_vec(self) -> Vec<u8>;
 }
 
 /// Trait parameterized by the size of the output of the digest
@@ -70,7 +70,7 @@ pub trait Algorithm {
 /// this parameter.
 pub trait WithOutputLength<const OUTPUT_LEN: usize> {
     /// Finish the hashing and return the digest.
-    fn digest(mut self) -> [u8; OUTPUT_LEN];
+    fn digest(self) -> [u8; OUTPUT_LEN];
 }
 
 /// The insecure SHA-1 hash algorithm.
