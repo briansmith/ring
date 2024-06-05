@@ -241,6 +241,7 @@ const LINUX_ABI: &[&str] = &[
     "freebsd",
     "fuchsia",
     "haiku",
+    "hurd",
     "illumos",
     "netbsd",
     "openbsd",
