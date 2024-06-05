@@ -42,14 +42,17 @@ pub(super) mod featureflags {
     use core::ptr;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
+        // SAFETY: `OPENSSL_cpuid_setup` must be called only in
+        // `INIT.call_once()` below.
         prefixed_extern! {
             fn OPENSSL_cpuid_setup();
         }
         static INIT: spin::Once<()> = spin::Once::new();
-        // SAFETY: This is the only writer. Any concurrent reading doesn't
+        // SAFETY: This is the only caller. Any concurrent reading doesn't
         // affect the safety of the writing.
         let () = INIT.call_once(|| unsafe { OPENSSL_cpuid_setup() });
         // SAFETY: We initialized the CPU features as required.
+        // `INIT.call_once` has `happens-before` semantics.
         unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }
     }
 

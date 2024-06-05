@@ -162,7 +162,8 @@ pub(super) mod featureflags {
     use core::ptr;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
-        fn init() {
+        // SAFETY: `init` must be called only in `INIT.call_once(init)` below.
+        unsafe fn init() {
             let detected = detect::detect_features();
             let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
                 ALL_FEATURES
@@ -187,9 +188,11 @@ pub(super) mod featureflags {
             }
         }
         static INIT: spin::Once<()> = spin::Once::new();
-        let () = INIT.call_once(init);
-
+        // SAFETY: This is the only caller. Any concurrent reading doesn't
+        // affect the safety of the writing.
+        let () = INIT.call_once(|| unsafe { init() });
         // SAFETY: We initialized the CPU features as required.
+        // `INIT.call_once` has `happens-before` semantics.
         unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }
     }
 
