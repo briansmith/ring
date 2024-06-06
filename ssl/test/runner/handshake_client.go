@@ -583,6 +583,10 @@ func (hs *clientHandshakeState) createClientHello(innerHello *clientHelloMsg, ec
 		hello.serverName = c.config.ServerName
 	}
 
+	if !isInner && c.config.Bugs.OmitPublicName {
+		hello.serverName = ""
+	}
+
 	disableEMS := c.config.Bugs.NoExtendedMasterSecret
 	if c.cipherSuite != nil {
 		disableEMS = c.config.Bugs.NoExtendedMasterSecretOnRenegotiation

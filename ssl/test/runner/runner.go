@@ -17343,6 +17343,56 @@ write hs 4
 			},
 		})
 
+		// Test that we successfully rewind the TLS state machine and disable ECH in the
+		// case that the select_cert_cb signals that ECH is not possible for the SNI in
+		// ClientHelloInner.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-FailCallbackNeedRewind",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: echConfig.ECHConfig,
+			},
+			flags: []string{
+				"-async",
+				"-fail-early-callback-ech-rewind",
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
+				"-ech-is-retry-config", "1",
+				"-expect-server-name", "public.example",
+			},
+			expectations: connectionExpectations{
+				echAccepted: false,
+			},
+		})
+
+		// Test that we correctly handle falling back to a ClientHelloOuter with
+		// no SNI (public name).
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-RewindWithNoPublicName",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: echConfig.ECHConfig,
+				Bugs: ProtocolBugs{
+					OmitPublicName: true,
+				},
+			},
+			flags: []string{
+				"-async",
+				"-fail-early-callback-ech-rewind",
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
+				"-ech-is-retry-config", "1",
+				"-expect-no-server-name",
+			},
+			expectations: connectionExpectations{
+				echAccepted: false,
+			},
+		})
+
 		// Test ECH-enabled server with two ECHConfigs can decrypt client's ECH when
 		// it uses the second ECHConfig.
 		testCases = append(testCases, testCase{

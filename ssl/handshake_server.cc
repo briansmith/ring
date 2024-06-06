@@ -613,6 +613,10 @@ static bool extract_sni(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   if (!ssl_client_hello_get_extension(client_hello, &sni,
                                       TLSEXT_TYPE_server_name)) {
     // No SNI extension to parse.
+    //
+    // Clear state in case we previously extracted SNI from ClientHelloOuter.
+    ssl->s3->hostname.reset();
+    hs->should_ack_sni = false;
     return true;
   }
 
@@ -686,7 +690,10 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  if (!decrypt_ech(hs, &alert, &client_hello)) {
+  // We check for rejection status in case we've rewound the state machine after
+  // determining `ClientHelloInner` is invalid.
+  if (ssl->s3->ech_status != ssl_ech_rejected &&
+      !decrypt_ech(hs, &alert, &client_hello)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
@@ -721,6 +728,13 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
     switch (ssl->ctx->select_certificate_cb(&client_hello)) {
       case ssl_select_cert_retry:
         return ssl_hs_certificate_selection_pending;
+
+      case ssl_select_cert_disable_ech:
+        hs->ech_client_hello_buf.Reset();
+        hs->ech_keys = nullptr;
+        hs->state = state12_read_client_hello;
+        ssl->s3->ech_status = ssl_ech_rejected;
+        return ssl_hs_ok;
 
       case ssl_select_cert_error:
         // Connection rejected.

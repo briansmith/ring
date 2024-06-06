@@ -4617,6 +4617,16 @@ enum ssl_select_cert_result_t BORINGSSL_ENUM_INT {
   // ssl_select_cert_error indicates that a fatal error occured and the
   // handshake should be terminated.
   ssl_select_cert_error = -1,
+  // ssl_select_cert_disable_ech indicates that, although an encrypted
+  // ClientHelloInner was decrypted, it should be discarded. The certificate
+  // selection callback will then be called again, passing in the
+  // ClientHelloOuter instead. From there, the handshake will proceed
+  // without retry_configs, to signal to the client to disable ECH.
+  //
+  // This value may only be returned when |SSL_ech_accepted| returnes one. It
+  // may be useful if the ClientHelloInner indicated a service which does not
+  // support ECH, e.g. if it is a TLS-1.2 only service.
+  ssl_select_cert_disable_ech = -2,
 };
 
 // SSL_early_callback_ctx_extension_get searches the extensions in

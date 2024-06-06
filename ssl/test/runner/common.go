@@ -1965,6 +1965,9 @@ type ProtocolBugs struct {
 	// EncryptSessionTicketKey, if non-nil, is the ticket key to use when
 	// encrypting tickets.
 	EncryptSessionTicketKey *[32]byte
+
+	// OmitPublicName omits the server name extension from ClientHelloOuter.
+	OmitPublicName bool
 }
 
 func (c *Config) serverInit() {
