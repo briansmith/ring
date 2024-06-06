@@ -24,7 +24,7 @@ not part of the NDK) and a number of other apps/programs.
 Project links:
 
   * [API documentation](https://commondatastorage.googleapis.com/chromium-boringssl-docs/headers.html)
-  * [Bug tracker](https://bugs.chromium.org/p/boringssl/issues/list)
+  * [Bug tracker](https://issues.chromium.org/issues/new?component=1590116&template=2003337)
   * [CI](https://ci.chromium.org/p/boringssl/g/main/console)
   * [Code review](https://boringssl-review.googlesource.com)
 
