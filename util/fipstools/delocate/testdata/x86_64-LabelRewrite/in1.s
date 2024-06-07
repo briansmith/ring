@@ -8,17 +8,20 @@ bar:
 	# References to globals must be rewritten to their local targets.
 	call foo
 	jmp foo
+	notrack jmp foo
 	jbe foo
 	jne foo
 
 	# Jumps to PLT symbols are rewritten through redirectors.
 	call memcpy@PLT
 	jmp memcpy@PLT
+	notrack jmp memcpy@PLT
 	jbe memcpy@PLT
 
 	# Jumps to local PLT symbols use their local targets.
 	call foo@PLT
 	jmp foo@PLT
+	notrack jmp foo@PLT
 	jbe foo@PLT
 
 	# Synthesized symbols are treated as local ones.
