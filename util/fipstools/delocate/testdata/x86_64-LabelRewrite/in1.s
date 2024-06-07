@@ -46,3 +46,7 @@ bar:
 	jmp 1f
 1:
 	jmp 1b
+2:
+
+	.quad 2b - 1b
+	.quad 2b - .L2

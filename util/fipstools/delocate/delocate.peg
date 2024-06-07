@@ -50,7 +50,7 @@ SymbolArgs <- SymbolArg ((WS? ',' WS?) SymbolArg)*
 
 SymbolArg <- SymbolExpr
 SymbolExpr <- SymbolAtom (WS? SymbolOperator WS? SymbolExpr)?
-SymbolAtom <- Offset / SymbolType / LocalSymbol TCMarker? / SymbolName Offset / SymbolName TCMarker? / Dot / OpenParen WS? SymbolExpr WS? CloseParen
+SymbolAtom <- LocalLabelRef / Offset / SymbolType / LocalSymbol TCMarker? / SymbolName Offset / SymbolName TCMarker? / Dot / OpenParen WS? SymbolExpr WS? CloseParen
 SymbolOperator <- '+' / '-' / '|' / '<<' / '>>'
 OpenParen <- '('
 CloseParen <- ')'
