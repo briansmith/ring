@@ -99,6 +99,10 @@ OPENSSL_EXPORT int DSA_up_ref(DSA *dsa);
 
 // Properties.
 
+// OPENSSL_DSA_MAX_MODULUS_BITS is the maximum supported DSA group modulus, in
+// bits.
+#define OPENSSL_DSA_MAX_MODULUS_BITS 10000
+
 // DSA_bits returns the size of |dsa|'s group modulus, in bits.
 OPENSSL_EXPORT unsigned DSA_bits(const DSA *dsa);
 

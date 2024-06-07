@@ -410,6 +410,7 @@ set(
   crypto/refcount.c
   crypto/rsa_extra/rsa_asn1.c
   crypto/rsa_extra/rsa_crypt.c
+  crypto/rsa_extra/rsa_extra.c
   crypto/rsa_extra/rsa_print.c
   crypto/sha/sha1.c
   crypto/sha/sha256.c

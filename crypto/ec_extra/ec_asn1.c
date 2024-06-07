@@ -478,6 +478,41 @@ int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp) {
   return CBB_finish_i2d(&cbb, outp);
 }
 
+EC_GROUP *d2i_ECPKParameters(EC_GROUP **out, const uint8_t **inp, long len) {
+  if (len < 0) {
+    return NULL;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, *inp, (size_t)len);
+  EC_GROUP *ret = EC_KEY_parse_parameters(&cbs);
+  if (ret == NULL) {
+    return NULL;
+  }
+
+  if (out != NULL) {
+    EC_GROUP_free(*out);
+    *out = ret;
+  }
+  *inp = CBS_data(&cbs);
+  return ret;
+}
+
+int i2d_ECPKParameters(const EC_GROUP *group, uint8_t **outp) {
+  if (group == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return -1;
+  }
+
+  CBB cbb;
+  if (!CBB_init(&cbb, 0) ||  //
+      !EC_KEY_marshal_curve_name(&cbb, group)) {
+    CBB_cleanup(&cbb);
+    return -1;
+  }
+  return CBB_finish_i2d(&cbb, outp);
+}
+
 EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp, long len) {
   if (len < 0) {
     return NULL;

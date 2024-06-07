@@ -26,8 +26,6 @@ extern "C" {
 #endif
 
 
-#define OPENSSL_DH_MAX_MODULUS_BITS 10000
-
 struct dh_st {
   BIGNUM *p;
   BIGNUM *g;

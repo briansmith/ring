@@ -111,6 +111,11 @@ OPENSSL_EXPORT int RSA_up_ref(RSA *rsa);
 
 // Properties.
 
+// OPENSSL_RSA_MAX_MODULUS_BITS is the maximum supported RSA modulus, in bits.
+//
+// TODO(davidben): Reduce this to 8192.
+#define OPENSSL_RSA_MAX_MODULUS_BITS 16384
+
 // RSA_bits returns the size of |rsa|, in bits.
 OPENSSL_EXPORT unsigned RSA_bits(const RSA *rsa);
 
@@ -670,11 +675,8 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 #define RSA_FLAG_OPAQUE 1
 
 // RSA_FLAG_NO_BLINDING disables blinding of private operations, which is a
-// dangerous thing to do. It is deprecated and should not be used. It will
-// be ignored whenever possible.
-//
-// This flag must be used if a key without the public exponent |e| is used for
-// private key operations; avoid using such keys whenever possible.
+// dangerous thing to do. This flag is set internally as part of self-tests but
+// is otherwise impossible to set externally.
 #define RSA_FLAG_NO_BLINDING 8
 
 // RSA_FLAG_EXT_PKEY is deprecated and ignored.
@@ -711,6 +713,9 @@ OPENSSL_EXPORT int RSA_test_flags(const RSA *rsa, int flags);
 
 // RSA_blinding_on returns one.
 OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
+
+// RSA_blinding_off does nothing.
+OPENSSL_EXPORT void RSA_blinding_off(RSA *rsa);
 
 // RSA_generate_key behaves like |RSA_generate_key_ex|, which is what you
 // should use instead. It returns NULL on error, or a newly-allocated |RSA| on

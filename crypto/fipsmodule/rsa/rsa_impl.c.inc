@@ -79,10 +79,8 @@ int rsa_check_public_key(const RSA *rsa) {
     return 0;
   }
 
-  // TODO(davidben): 16384-bit RSA is huge. Can we bring this down to a limit of
-  // 8192-bit?
   unsigned n_bits = BN_num_bits(rsa->n);
-  if (n_bits > 16 * 1024) {
+  if (n_bits > OPENSSL_RSA_MAX_MODULUS_BITS) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
     return 0;
   }
