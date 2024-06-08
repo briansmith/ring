@@ -94,8 +94,6 @@ var sdeCPUs = []string{
 	"clx", // Cascade Lake
 	"cpx", // Cooper Lake
 	"icx", // Ice Lake server
-	"knl", // Knights landing
-	"knm", // Knights mill
 	"tgl", // Tiger Lake
 }
 
