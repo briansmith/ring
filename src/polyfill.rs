@@ -40,7 +40,6 @@ pub const fn usize_from_u64_saturated(x: u64) -> usize {
 }
 
 mod array_flat_map;
-mod array_flatten;
 mod array_split_map;
 
 pub mod cstr;
@@ -60,8 +59,7 @@ mod test;
 mod unwrap_const;
 
 pub use self::{
-    array_flat_map::ArrayFlatMap, array_flatten::ArrayFlatten, array_split_map::ArraySplitMap,
-    unwrap_const::unwrap_const,
+    array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, unwrap_const::unwrap_const,
 };
 
 #[cfg(feature = "alloc")]
