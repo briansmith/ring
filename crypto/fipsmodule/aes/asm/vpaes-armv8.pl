@@ -235,24 +235,6 @@ _vpaes_encrypt_core:
 	ret
 .size	_vpaes_encrypt_core,.-_vpaes_encrypt_core
 
-.globl	vpaes_encrypt
-.type	vpaes_encrypt,%function
-.align	4
-vpaes_encrypt:
-	AARCH64_SIGN_LINK_REGISTER
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-
-	ld1	{v7.16b}, [$inp]
-	bl	_vpaes_encrypt_preheat
-	bl	_vpaes_encrypt_core
-	st1	{v0.16b}, [$out]
-
-	ldp	x29,x30,[sp],#16
-	AARCH64_VALIDATE_LINK_REGISTER
-	ret
-.size	vpaes_encrypt,.-vpaes_encrypt
-
 .type	_vpaes_encrypt_2x,%function
 .align 4
 _vpaes_encrypt_2x:

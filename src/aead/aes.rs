@@ -209,14 +209,15 @@ impl Key {
     pub fn encrypt_block(&self, a: Block, cpu_features: cpu::Features) -> Block {
         match detect_implementation(cpu_features) {
             #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
-            Implementation::HWAES => encrypt_block!(aes_hw_encrypt, a, self),
+            Implementation::HWAES => self.encrypt_iv_xor_block(Iv(a), ZERO_BLOCK, cpu_features),
 
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "x86_64",
-                target_arch = "x86"
-            ))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
+            Implementation::VPAES_BSAES => {
+                self.encrypt_iv_xor_block(Iv(a), ZERO_BLOCK, cpu_features)
+            }
+
+            // `encrypt_iv_xor_block` calls `encrypt_block` on `target_arch = "x86"`.
+            #[cfg(target_arch = "x86")]
             Implementation::VPAES_BSAES => encrypt_block!(vpaes_encrypt, a, self),
 
             Implementation::NOHW => encrypt_block!(aes_nohw_encrypt, a, self),
