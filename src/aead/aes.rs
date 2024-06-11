@@ -226,7 +226,7 @@ impl Key {
     #[inline]
     pub fn encrypt_iv_xor_block(&self, iv: Iv, input: Block, cpu_features: cpu::Features) -> Block {
         let encrypted_iv = self.encrypt_block(iv.into_block_less_safe(), cpu_features);
-        constant_time::xor(encrypted_iv, input)
+        constant_time::xor_16(encrypted_iv, input)
     }
 
     #[inline]

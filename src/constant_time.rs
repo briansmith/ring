@@ -35,11 +35,11 @@ prefixed_extern! {
     fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
 }
 
-pub(crate) fn xor<const N: usize>(mut a: [u8; N], b: [u8; N]) -> [u8; N] {
-    // `xor_assign_at_start()`, but avoiding relying on the compiler to
-    // optimize the slice iterators.
-    a.iter_mut().zip(b.iter()).for_each(|(a, b)| *a ^= *b);
-    a
+pub(crate) fn xor_16(a: [u8; 16], b: [u8; 16]) -> [u8; 16] {
+    let a = u128::from_ne_bytes(a);
+    let b = u128::from_ne_bytes(b);
+    let r = a ^ b;
+    r.to_ne_bytes()
 }
 
 /// XORs the first N bytes of `b` into `a`, where N is
@@ -54,9 +54,7 @@ pub(crate) fn xor_assign_at_start<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::limb::LimbMask;
-    use crate::{bssl, error, rand};
+    use crate::{bssl, constant_time::xor_assign_at_start, error, limb::LimbMask, rand};
 
     #[test]
     fn test_constant_time() -> Result<(), error::Unspecified> {
@@ -107,7 +105,10 @@ mod tests {
             let b = (rand::generate::<[u8; 1]>(&rng)?.expose()[0] & 0x0f) != 0;
 
             let ref_in = input;
-            let ref_out = if b { xor(out, ref_in) } else { out };
+            let mut ref_out = out;
+            if b {
+                xor_assign_at_start(&mut ref_out, &ref_in)
+            };
 
             prefixed_extern! {
                 fn bssl_constant_time_test_conditional_memxor(dst: &mut [u8; 256], src: &[u8; 256], b: LimbMask);

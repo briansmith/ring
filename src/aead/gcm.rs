@@ -322,7 +322,7 @@ pub struct Xi(Block);
 impl BitXorAssign<Block> for Xi {
     #[inline]
     fn bitxor_assign(&mut self, a: Block) {
-        self.0 = constant_time::xor(self.0, a)
+        self.0 = constant_time::xor_16(self.0, a)
     }
 }
 
