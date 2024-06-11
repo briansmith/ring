@@ -89,7 +89,14 @@ pub(super) fn seal(
                 )
             };
 
-            &mut in_out[processed..]
+            match in_out.get_mut(processed..) {
+                Some(remaining) => remaining,
+                None => {
+                    // This can't happen. If it did, then the assembly already
+                    // caused a buffer overflow.
+                    unreachable!()
+                }
+            }
         }
     };
 
@@ -206,7 +213,14 @@ pub(super) fn open(
                     xi,
                 )
             };
-            &mut in_out[processed..]
+            match in_out.get_mut(processed..) {
+                Some(remaining) => remaining,
+                None => {
+                    // This can't happen. If it did, then the assembly already
+                    // caused a buffer overflow.
+                    unreachable!()
+                }
+            }
         }
     };
 
