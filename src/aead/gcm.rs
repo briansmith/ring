@@ -13,11 +13,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{aes_gcm, Aad};
-
 use crate::{
     bits::{BitLength, FromByteLen as _},
     constant_time, cpu, error,
-    polyfill::{sliceutil::overwrite_at_start, ArrayFlatten as _, ArraySplitMap as _},
+    polyfill::{sliceutil::overwrite_at_start, ArraySplitMap as _},
 };
 use core::ops::BitXorAssign;
 
@@ -276,12 +275,11 @@ impl<'key> Context<'key> {
     where
         F: FnOnce(Block, cpu::Features) -> super::Tag,
     {
-        self.update_block(
-            [self.aad_len, self.in_out_len]
-                .map(BitLength::to_be_bytes)
-                .array_flatten(),
-        );
-
+        let mut block = [0u8; BLOCK_LEN];
+        let (alen, clen) = block.split_at_mut(BLOCK_LEN / 2);
+        alen.copy_from_slice(&BitLength::<u64>::to_be_bytes(self.aad_len));
+        clen.copy_from_slice(&BitLength::<u64>::to_be_bytes(self.in_out_len));
+        self.update_block(block);
         f(self.Xi.0, self.cpu_features)
     }
 

@@ -18,7 +18,7 @@ use super::{
 };
 use crate::{
     cpu, error,
-    polyfill::{u64_from_usize, usize_from_u64_saturated, ArrayFlatten},
+    polyfill::{u64_from_usize, usize_from_u64_saturated},
 };
 use core::ops::RangeFrom;
 
@@ -223,10 +223,11 @@ fn has_integrated(cpu_features: cpu::Features) -> bool {
 }
 
 fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
-    let block: [[u8; 8]; 2] = [aad_len, in_out_len]
-        .map(u64_from_usize)
-        .map(u64::to_le_bytes);
-    auth.update(&block.array_flatten());
+    let mut block = [0u8; poly1305::BLOCK_LEN];
+    let (alen, clen) = block.split_at_mut(poly1305::BLOCK_LEN / 2);
+    alen.copy_from_slice(&u64::to_le_bytes(u64_from_usize(aad_len)));
+    clen.copy_from_slice(&u64::to_le_bytes(u64_from_usize(in_out_len)));
+    auth.update(&block);
     auth.finish()
 }
 
