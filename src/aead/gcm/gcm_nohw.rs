@@ -138,6 +138,15 @@ fn gcm_mul64_nohw(a: u64, b: u64) -> (u64, u64) {
     (lo ^ (mid << 32), hi ^ (mid >> 32))
 }
 
+#[cfg_attr(
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64",
+    ),
+    inline(never)
+)]
 pub(super) fn init(xi: [u64; 2]) -> super::U128 {
     // We implement GHASH in terms of POLYVAL, as described in RFC 8452. This
     // avoids a shift by 1 in the multiplication, needed to account for bit
@@ -217,12 +226,30 @@ fn gcm_polyval_nohw(xi: &mut [u64; 2], h: super::U128) {
     *xi = [r2, r3];
 }
 
+#[cfg_attr(
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64",
+    ),
+    inline(never)
+)]
 pub(super) fn gmult(xi: &mut Xi, h: super::U128) {
     with_swapped_xi(xi, |swapped| {
         gcm_polyval_nohw(swapped, h);
     })
 }
 
+#[cfg_attr(
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64",
+    ),
+    inline(never)
+)]
 pub(super) fn ghash(xi: &mut Xi, h: super::U128, input: &[[u8; BLOCK_LEN]]) {
     with_swapped_xi(xi, |swapped| {
         input.iter().for_each(|&input| {
