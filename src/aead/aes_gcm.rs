@@ -17,7 +17,7 @@ use super::{
     gcm, shift, Aad, Nonce, Tag,
 };
 use crate::{
-    constant_time, cpu, error,
+    cpu, error,
     polyfill::{slice, sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
 use core::ops::RangeFrom;
@@ -297,8 +297,7 @@ pub(super) fn open(
 fn finish(aes_key: &aes::Key, gcm_ctx: gcm::Context, tag_iv: aes::Iv) -> Tag {
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag, cpu_features| {
-        let encrypted_iv = aes_key.encrypt_block(tag_iv.into_block_less_safe(), cpu_features);
-        Tag(constant_time::xor_16(pre_tag, encrypted_iv))
+        Tag(aes_key.encrypt_iv_xor_block(tag_iv, pre_tag, cpu_features))
     })
 }
 
