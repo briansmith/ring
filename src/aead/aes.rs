@@ -223,10 +223,29 @@ impl Key {
         }
     }
 
-    #[inline]
-    pub fn encrypt_iv_xor_block(&self, iv: Iv, input: Block, cpu_features: cpu::Features) -> Block {
-        let encrypted_iv = self.encrypt_block(iv.into_block_less_safe(), cpu_features);
-        constant_time::xor_16(encrypted_iv, input)
+    pub fn encrypt_iv_xor_block(
+        &self,
+        iv: Iv,
+        mut block: Block,
+        cpu_features: cpu::Features,
+    ) -> Block {
+        let use_ctr32 = match detect_implementation(cpu_features) {
+            // These have specialized one-block implementations.
+            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
+            Implementation::HWAES => true,
+            // `ctr32_encrypt_within` calls `encrypt_iv_xor_block` on `target_arch = "x86"`.
+            #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
+            Implementation::VPAES_BSAES => true,
+            _ => false,
+        };
+        if use_ctr32 {
+            let mut ctr = Counter(iv.0); // We're only doing one block so this is OK.
+            self.ctr32_encrypt_within(&mut block, 0.., &mut ctr, cpu_features);
+            block
+        } else {
+            let encrypted_iv = self.encrypt_block(iv.into_block_less_safe(), cpu_features);
+            constant_time::xor_16(encrypted_iv, block)
+        }
     }
 
     #[inline]
