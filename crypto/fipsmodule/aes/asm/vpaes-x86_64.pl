@@ -691,56 +691,6 @@ $code.=<<___;
 	ret
 .cfi_endproc
 .size	${PREFIX}_set_encrypt_key,.-${PREFIX}_set_encrypt_key
-
-.globl	${PREFIX}_encrypt
-.type	${PREFIX}_encrypt,\@function,3
-.align	16
-${PREFIX}_encrypt:
-.cfi_startproc
-	_CET_ENDBR
-#ifdef BORINGSSL_DISPATCH_TEST
-.extern        BORINGSSL_function_hit
-       movb \$1, BORINGSSL_function_hit+4(%rip)
-#endif
-___
-$code.=<<___ if ($win64);
-	lea	-0xb8(%rsp),%rsp
-	movaps	%xmm6,0x10(%rsp)
-	movaps	%xmm7,0x20(%rsp)
-	movaps	%xmm8,0x30(%rsp)
-	movaps	%xmm9,0x40(%rsp)
-	movaps	%xmm10,0x50(%rsp)
-	movaps	%xmm11,0x60(%rsp)
-	movaps	%xmm12,0x70(%rsp)
-	movaps	%xmm13,0x80(%rsp)
-	movaps	%xmm14,0x90(%rsp)
-	movaps	%xmm15,0xa0(%rsp)
-.Lenc_body:
-___
-$code.=<<___;
-	movdqu	(%rdi),%xmm0
-	call	_vpaes_preheat
-	call	_vpaes_encrypt_core
-	movdqu	%xmm0,(%rsi)
-___
-$code.=<<___ if ($win64);
-	movaps	0x10(%rsp),%xmm6
-	movaps	0x20(%rsp),%xmm7
-	movaps	0x30(%rsp),%xmm8
-	movaps	0x40(%rsp),%xmm9
-	movaps	0x50(%rsp),%xmm10
-	movaps	0x60(%rsp),%xmm11
-	movaps	0x70(%rsp),%xmm12
-	movaps	0x80(%rsp),%xmm13
-	movaps	0x90(%rsp),%xmm14
-	movaps	0xa0(%rsp),%xmm15
-	lea	0xb8(%rsp),%rsp
-.Lenc_epilogue:
-___
-$code.=<<___;
-	ret
-.cfi_endproc
-.size	${PREFIX}_encrypt,.-${PREFIX}_encrypt
 ___
 {
 my ($inp,$out,$blocks,$key,$ivp)=("%rdi","%rsi","%rdx","%rcx","%r8");
@@ -1042,9 +992,6 @@ se_handler:
 	.rva	.LSEH_end_${PREFIX}_set_encrypt_key
 	.rva	.LSEH_info_${PREFIX}_set_encrypt_key
 
-	.rva	.LSEH_begin_${PREFIX}_encrypt
-	.rva	.LSEH_end_${PREFIX}_encrypt
-	.rva	.LSEH_info_${PREFIX}_encrypt
 	.rva	.LSEH_begin_${PREFIX}_ctr32_encrypt_blocks
 	.rva	.LSEH_end_${PREFIX}_ctr32_encrypt_blocks
 	.rva	.LSEH_info_${PREFIX}_ctr32_encrypt_blocks
@@ -1055,10 +1002,6 @@ se_handler:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lenc_key_body,.Lenc_key_epilogue	# HandlerData[]
-.LSEH_info_${PREFIX}_encrypt:
-	.byte	9,0,0,0
-	.rva	se_handler
-	.rva	.Lenc_body,.Lenc_epilogue		# HandlerData[]
 .LSEH_info_${PREFIX}_ctr32_encrypt_blocks:
 	.byte	9,0,0,0
 	.rva	se_handler

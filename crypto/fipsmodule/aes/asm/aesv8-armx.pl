@@ -239,51 +239,6 @@ $code.=<<___;
 ___
 }}}
 {{{
-sub gen_block () {
-my $dir = shift;
-my ($e,$mc) = $dir eq "en" ? ("e","mc") : ("d","imc");
-my ($inp,$out,$key)=map("x$_",(0..2));
-my $rounds="w3";
-my ($rndkey0,$rndkey1,$inout)=map("q$_",(0..3));
-
-$code.=<<___;
-.globl	${prefix}_${dir}crypt
-.type	${prefix}_${dir}crypt,%function
-.align	5
-${prefix}_${dir}crypt:
-	AARCH64_VALID_CALL_TARGET
-	ldr	$rounds,[$key,#240]
-	vld1.32	{$rndkey0},[$key],#16
-	vld1.8	{$inout},[$inp]
-	sub	$rounds,$rounds,#2
-	vld1.32	{$rndkey1},[$key],#16
-
-.Loop_${dir}c:
-	aes$e	$inout,$rndkey0
-	aes$mc	$inout,$inout
-	vld1.32	{$rndkey0},[$key],#16
-	subs	$rounds,$rounds,#2
-	aes$e	$inout,$rndkey1
-	aes$mc	$inout,$inout
-	vld1.32	{$rndkey1},[$key],#16
-	b.gt	.Loop_${dir}c
-
-	aes$e	$inout,$rndkey0
-	aes$mc	$inout,$inout
-	vld1.32	{$rndkey0},[$key]
-	aes$e	$inout,$rndkey1
-	veor	$inout,$inout,$rndkey0
-
-	vst1.8	{$inout},[$out]
-	ret
-.size	${prefix}_${dir}crypt,.-${prefix}_${dir}crypt
-___
-}
-&gen_block("en");
-# Decryption removed in *ring*.
-# &gen_block("de");
-}}}
-{{{
 my ($inp,$out,$len,$key,$ivp)=map("x$_",(0..4));
 my ($rounds,$cnt,$key_)=("w5","w6","x7");
 my ($ctr,$tctr0,$tctr1,$tctr2)=map("w$_",(8..10,12));

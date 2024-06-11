@@ -192,26 +192,6 @@ sub aesni_generate1	# fully unrolled loop
     &function_end_B("_aesni_${p}rypt1");
 }
 
-# void $PREFIX_encrypt (const void *inp,void *out,const AES_KEY *key);
-&aesni_generate1("enc") if (!$inline);
-&function_begin_B("${PREFIX}_encrypt");
-	&record_function_hit(1);
-
-	&mov	("eax",&wparam(0));
-	&mov	($key,&wparam(2));
-	&movups	($inout0,&QWP(0,"eax"));
-	&mov	($rounds,&DWP(240,$key));
-	&mov	("eax",&wparam(1));
-	if ($inline)
-	{   &aesni_inline_generate1("enc");	}
-	else
-	{   &call	("_aesni_encrypt1");	}
-	&pxor	($rndkey0,$rndkey0);		# clear register bank
-	&pxor	($rndkey1,$rndkey1);
-	&movups	(&QWP(0,"eax"),$inout0);
-	&pxor	($inout0,$inout0);
-	&ret	();
-&function_end_B("${PREFIX}_encrypt");
 
 # _aesni_[en|de]cryptN are private interfaces, N denotes interleave
 # factor. Why 3x subroutine were originally used in loops? Even though

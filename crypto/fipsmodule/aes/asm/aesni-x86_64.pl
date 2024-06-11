@@ -260,35 +260,6 @@ $code.=<<___;
 	aes${p}last	$rndkey1,$inout
 ___
 }}
-# void $PREFIX_[en|de]crypt (const void *inp,void *out,const AES_KEY *key);
-#
-{ my ($inp,$out,$key) = @_4args;
-
-$code.=<<___;
-.globl	${PREFIX}_encrypt
-.type	${PREFIX}_encrypt,\@abi-omnipotent
-.align	16
-${PREFIX}_encrypt:
-.cfi_startproc
-	_CET_ENDBR
-#ifdef BORINGSSL_DISPATCH_TEST
-.extern	BORINGSSL_function_hit
-	movb \$1,BORINGSSL_function_hit+1(%rip)
-#endif
-	movups	($inp),$inout0		# load input
-	mov	240($key),$rounds	# key->rounds
-___
-	&aesni_generate1("enc",$key,$rounds);
-$code.=<<___;
-	 pxor	$rndkey0,$rndkey0	# clear register bank
-	 pxor	$rndkey1,$rndkey1
-	movups	$inout0,($out)		# output
-	 pxor	$inout0,$inout0
-	ret
-.cfi_endproc
-.size	${PREFIX}_encrypt,.-${PREFIX}_encrypt
-___
-}
 
 # _aesni_[en|de]cryptN are private interfaces, N denotes interleave
 # factor. Why 3x subroutine were originally used in loops? Even though

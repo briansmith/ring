@@ -310,25 +310,6 @@ _vpaes_encrypt_core:
 	vtbl.8	q0#hi, {q2}, q1#hi
 	bx	lr
 .size	_vpaes_encrypt_core,.-_vpaes_encrypt_core
-
-.globl	vpaes_encrypt
-.type	vpaes_encrypt,%function
-.align	4
-vpaes_encrypt:
-	@ _vpaes_encrypt_core uses r8-r11. Round up to r7-r11 to maintain stack
-	@ alignment.
-	stmdb	sp!, {r7-r11,lr}
-	@ _vpaes_encrypt_core uses q4-q5 (d8-d11), which are callee-saved.
-	vstmdb	sp!, {d8-d11}
-
-	vld1.64	{q0}, [$inp]
-	bl	_vpaes_preheat
-	bl	_vpaes_encrypt_core
-	vst1.64	{q0}, [$out]
-
-	vldmia	sp!, {d8-d11}
-	ldmia	sp!, {r7-r11, pc}	@ return
-.size	vpaes_encrypt,.-vpaes_encrypt
 ___
 }
 {
