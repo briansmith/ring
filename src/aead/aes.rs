@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{nonce::Nonce, quic::Sample};
+use super::{nonce::Nonce, quic::Sample, NONCE_LEN};
 use crate::{bits::BitLength, c, constant_time, cpu, error, polyfill::slice};
 use core::{num::NonZeroUsize, ops::RangeFrom};
 
@@ -377,8 +377,10 @@ pub(super) struct Counter([u8; BLOCK_LEN]);
 
 impl Counter {
     pub fn one(nonce: Nonce) -> Self {
-        let [n0, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11] = *nonce.as_ref();
-        Self([n0, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, 0, 0, 0, 1])
+        let mut value = [0u8; BLOCK_LEN];
+        value[..NONCE_LEN].copy_from_slice(nonce.as_ref());
+        value[BLOCK_LEN - 1] = 1;
+        Self(value)
     }
 
     pub fn increment(&mut self) -> Iv {
