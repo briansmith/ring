@@ -74,6 +74,7 @@ pub struct Algorithm {
         out: &mut [u8],
         private_key: &ec::Seed,
         peer_public_key: untrusted::Input,
+        cpu: cpu::Features,
     ) -> Result<(), error::Unspecified>,
 }
 
@@ -128,7 +129,7 @@ impl EphemeralPrivateKey {
         // key generation and the sending of the public key to the peer. `out`
         // is what should be sent to the peer.
         self.private_key
-            .compute_public_key()
+            .compute_public_key(cpu::features())
             .map(|public_key| PublicKey {
                 algorithm: self.algorithm,
                 bytes: public_key,
@@ -251,13 +252,14 @@ pub fn agree_ephemeral<B: AsRef<[u8]>, R>(
         algorithm: peer_public_key.algorithm,
         bytes: peer_public_key.bytes.as_ref(),
     };
-    agree_ephemeral_(my_private_key, peer_public_key, kdf)
+    agree_ephemeral_(my_private_key, peer_public_key, kdf, cpu::features())
 }
 
 fn agree_ephemeral_<R>(
     my_private_key: EphemeralPrivateKey,
     peer_public_key: UnparsedPublicKey<&[u8]>,
     kdf: impl FnOnce(&[u8]) -> R,
+    cpu: cpu::Features,
 ) -> Result<R, error::Unspecified> {
     // NSA Guide Prerequisite 1.
     //
@@ -291,6 +293,7 @@ fn agree_ephemeral_<R>(
         shared_key,
         &my_private_key.private_key,
         untrusted::Input::from(peer_public_key.bytes),
+        cpu,
     )?;
 
     // NSA Guide Steps 5 and 6.

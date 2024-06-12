@@ -49,8 +49,9 @@ impl Ed25519KeyPair {
     pub fn generate_pkcs8(
         rng: &dyn rand::SecureRandom,
     ) -> Result<pkcs8::Document, error::Unspecified> {
+        let cpu_features = cpu::features();
         let seed: [u8; SEED_LEN] = rand::generate(rng)?.expose();
-        let key_pair = Self::from_seed_(&seed);
+        let key_pair = Self::from_seed_(&seed, cpu_features);
         Ok(pkcs8::wrap_key(
             &PKCS8_TEMPLATE,
             &seed[..],
@@ -166,27 +167,28 @@ impl Ed25519KeyPair {
         let seed = seed
             .try_into()
             .map_err(|_| error::KeyRejected::invalid_encoding())?;
-        Ok(Self::from_seed_(seed))
+        Ok(Self::from_seed_(seed, cpu::features()))
     }
 
-    fn from_seed_(seed: &Seed) -> Self {
+    fn from_seed_(seed: &Seed, cpu_features: cpu::Features) -> Self {
         let h = digest::digest(&digest::SHA512, seed);
         let (private_scalar, private_prefix) = h.as_ref().split_at(SCALAR_LEN);
 
         let private_scalar =
             MaskedScalar::from_bytes_masked(private_scalar.try_into().unwrap()).into();
 
-        let a = ExtPoint::from_scalarmult_base_consttime(&private_scalar, cpu::features());
+        let a = ExtPoint::from_scalarmult_base_consttime(&private_scalar, cpu_features);
 
         Self {
             private_scalar,
             private_prefix: private_prefix.try_into().unwrap(),
-            public_key: PublicKey(a.into_encoded_point()),
+            public_key: PublicKey(a.into_encoded_point(cpu_features)),
         }
     }
 
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
+        let cpu_features = cpu::features();
         signature::Signature::new(|signature_bytes| {
             prefixed_extern! {
                 fn x25519_sc_muladd(
@@ -207,8 +209,8 @@ impl Ed25519KeyPair {
             };
             let nonce = Scalar::from_sha512_digest_reduced(nonce);
 
-            let r = ExtPoint::from_scalarmult_base_consttime(&nonce, cpu::features());
-            signature_r.copy_from_slice(&r.into_encoded_point());
+            let r = ExtPoint::from_scalarmult_base_consttime(&nonce, cpu_features);
+            signature_r.copy_from_slice(&r.into_encoded_point(cpu_features));
             let hram_digest = eddsa_digest(signature_r, self.public_key.as_ref(), msg);
             let hram = Scalar::from_sha512_digest_reduced(hram_digest);
             unsafe {

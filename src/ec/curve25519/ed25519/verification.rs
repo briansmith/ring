@@ -15,7 +15,7 @@
 //! EdDSA Signatures.
 
 use super::{super::ops::*, eddsa_digest};
-use crate::{error, sealed, signature};
+use crate::{cpu, error, sealed, signature};
 
 /// Parameters for EdDSA signing and verification.
 pub struct EdDSAParameters;
@@ -40,6 +40,8 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         msg: untrusted::Input,
         signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
+        let cpu_features = cpu::features();
+
         let public_key: &[u8; ELEM_LEN] = public_key.as_slice_less_safe().try_into()?;
         let (signature_r, signature_s) = signature.read_all(error::Unspecified, |input| {
             let signature_r: &[u8; ELEM_LEN] = input
@@ -63,7 +65,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 
         let mut r = Point::new_at_infinity();
         unsafe { x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s) };
-        let r_check = r.into_encoded_point();
+        let r_check = r.into_encoded_point(cpu_features);
         if *signature_r != r_check {
             return Err(error::Unspecified);
         }

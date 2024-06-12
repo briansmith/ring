@@ -55,10 +55,9 @@ fn x25519_generate_private_key(
 fn x25519_public_from_private(
     public_out: &mut [u8],
     private_key: &ec::Seed,
+    cpu_features: cpu::Features,
 ) -> Result<(), error::Unspecified> {
     let public_out = public_out.try_into()?;
-
-    let cpu_features = private_key.cpu_features;
 
     let private_key: &[u8; SCALAR_LEN] = private_key.bytes_less_safe().try_into()?;
     let private_key = ops::MaskedScalar::from_bytes_masked(*private_key);
@@ -97,8 +96,8 @@ fn x25519_ecdh(
     out: &mut [u8],
     my_private_key: &ec::Seed,
     peer_public_key: untrusted::Input,
+    cpu_features: cpu::Features,
 ) -> Result<(), error::Unspecified> {
-    let cpu_features = my_private_key.cpu_features;
     let my_private_key: &[u8; SCALAR_LEN] = my_private_key.bytes_less_safe().try_into()?;
     let my_private_key = ops::MaskedScalar::from_bytes_masked(*my_private_key);
     let peer_public_key: &[u8; PUBLIC_KEY_LEN] = peer_public_key.as_slice_less_safe().try_into()?;
@@ -227,7 +226,7 @@ mod tests {
                 ec::Seed::from_bytes(&CURVE25519, Input::from(&test_case.private), cpu_features)
                     .unwrap();
             let mut output = [0u8; 32];
-            x25519_public_from_private(&mut output, &seed).unwrap();
+            x25519_public_from_private(&mut output, &seed, cpu_features).unwrap();
             assert_eq!(output, test_case.public);
         }
     }

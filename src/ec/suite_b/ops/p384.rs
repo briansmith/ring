@@ -47,7 +47,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     point_mul_impl: p384_point_mul,
 };
 
-fn p384_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
+fn p384_elem_inv_squared(a: &Elem<R>, _cpu: cpu::Features) -> Elem<R> {
     // Calculate a**-2 (mod q) == a**(q - 3) (mod q)
     //
     // The exponent (q - 3) is:
@@ -103,9 +103,9 @@ fn p384_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
     acc
 }
 
-fn p384_point_mul_base_impl(a: &Scalar) -> Point {
+fn p384_point_mul_base_impl(a: &Scalar, cpu: cpu::Features) -> Point {
     // XXX: Not efficient. TODO: Precompute multiples of the generator.
-    PRIVATE_KEY_OPS.point_mul(a, &GENERATOR)
+    PRIVATE_KEY_OPS.point_mul(a, &GENERATOR, cpu)
 }
 
 pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
@@ -120,14 +120,14 @@ pub static SCALAR_OPS: ScalarOps = ScalarOps {
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_ops: &SCALAR_OPS,
     public_key_ops: &PUBLIC_KEY_OPS,
-    twin_mul: |g_scalar, p_scalar, p_xy| {
-        twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy)
+    twin_mul: |g_scalar, p_scalar, p_xy, cpu| {
+        twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy, cpu)
     },
 
     q_minus_n: Elem::from_hex("389cb27e0bc8d21fa7e5f24cb74f58851313e696333ad68c"),
 
     // TODO: Use an optimized variable-time implementation.
-    scalar_inv_to_mont_vartime: |s| PRIVATE_SCALAR_OPS.scalar_inv_to_mont(s),
+    scalar_inv_to_mont_vartime: |s, cpu| PRIVATE_SCALAR_OPS.scalar_inv_to_mont(s, cpu),
 };
 
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
@@ -137,7 +137,7 @@ pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_inv_to_mont: p384_scalar_inv_to_mont,
 };
 
-fn p384_scalar_inv_to_mont(a: Scalar<R>) -> Scalar<R> {
+fn p384_scalar_inv_to_mont(a: Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:
     //

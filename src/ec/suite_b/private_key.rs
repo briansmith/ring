@@ -16,7 +16,7 @@
 //! ECDSA signing).
 
 use super::{ops::*, verify_affine_point_is_on_the_curve};
-use crate::{arithmetic::montgomery::R, ec, error, limb, rand};
+use crate::{arithmetic::montgomery::R, cpu, ec, error, limb, rand};
 
 /// Generates a random scalar in the range [1, n).
 pub fn random_scalar(
@@ -124,26 +124,28 @@ pub fn scalar_from_big_endian_bytes(
     scalar_parse_big_endian_fixed_consttime(ops.common, untrusted::Input::from(bytes))
 }
 
-pub fn public_from_private(
+pub(super) fn public_from_private(
     ops: &PrivateKeyOps,
     public_out: &mut [u8],
     my_private_key: &ec::Seed,
+    cpu: cpu::Features,
 ) -> Result<(), error::Unspecified> {
     let elem_and_scalar_bytes = ops.common.len();
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
     let my_private_key = private_key_as_scalar(ops, my_private_key);
-    let my_public_key = ops.point_mul_base(&my_private_key);
+    let my_public_key = ops.point_mul_base(&my_private_key, cpu);
     public_out[0] = 4; // Uncompressed encoding.
     let (x_out, y_out) = public_out[1..].split_at_mut(elem_and_scalar_bytes);
 
     // `big_endian_affine_from_jacobian` verifies that the point is not at
     // infinity and is on the curve.
-    big_endian_affine_from_jacobian(ops, Some(x_out), Some(y_out), &my_public_key)
+    big_endian_affine_from_jacobian(ops, Some(x_out), Some(y_out), &my_public_key, cpu)
 }
 
-pub fn affine_from_jacobian(
+pub(super) fn affine_from_jacobian(
     ops: &PrivateKeyOps,
     p: &Point,
+    cpu: cpu::Features,
 ) -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
     let z = ops.common.point_z(p);
 
@@ -156,7 +158,7 @@ pub fn affine_from_jacobian(
     let x = ops.common.point_x(p);
     let y = ops.common.point_y(p);
 
-    let zz_inv = ops.elem_inverse_squared(&z);
+    let zz_inv = ops.elem_inverse_squared(&z, cpu);
 
     let x_aff = ops.common.elem_product(&x, &zz_inv);
 
@@ -176,13 +178,14 @@ pub fn affine_from_jacobian(
     Ok((x_aff, y_aff))
 }
 
-pub fn big_endian_affine_from_jacobian(
+pub(super) fn big_endian_affine_from_jacobian(
     ops: &PrivateKeyOps,
     x_out: Option<&mut [u8]>,
     y_out: Option<&mut [u8]>,
     p: &Point,
+    cpu: cpu::Features,
 ) -> Result<(), error::Unspecified> {
-    let (x_aff, y_aff) = affine_from_jacobian(ops, p)?;
+    let (x_aff, y_aff) = affine_from_jacobian(ops, p, cpu)?;
     if let Some(x_out) = x_out {
         let x = ops.common.elem_unencoded(&x_aff);
         limb::big_endian_from_limbs(ops.leak_limbs(&x), x_out);

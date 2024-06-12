@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{error, rand};
+use crate::{cpu, error, rand};
 
 pub use self::keys::{KeyPair, PublicKey, Seed};
 
@@ -28,8 +28,11 @@ pub struct Curve {
     generate_private_key:
         fn(rng: &dyn rand::SecureRandom, &mut [u8]) -> Result<(), error::Unspecified>,
 
-    public_from_private:
-        fn(public_out: &mut [u8], private_key: &Seed) -> Result<(), error::Unspecified>,
+    public_from_private: fn(
+        public_out: &mut [u8],
+        private_key: &Seed,
+        cpu: cpu::Features,
+    ) -> Result<(), error::Unspecified>,
 }
 
 derive_debug_via_id!(Curve);

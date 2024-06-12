@@ -101,11 +101,11 @@ impl ExtPoint {
         Result::from(unsafe { x25519_ge_frombytes_vartime(&mut point, encoded) }).map(|()| point)
     }
 
-    pub fn into_encoded_point(self) -> EncodedPoint {
-        encode_point(self.x, self.y, self.z)
+    pub(super) fn into_encoded_point(self, cpu_features: cpu::Features) -> EncodedPoint {
+        encode_point(self.x, self.y, self.z, cpu_features)
     }
 
-    pub fn invert_vartime(&mut self) {
+    pub(super) fn invert_vartime(&mut self) {
         self.x.negate();
         self.t.negate();
     }
@@ -128,12 +128,12 @@ impl Point {
         }
     }
 
-    pub fn into_encoded_point(self) -> EncodedPoint {
-        encode_point(self.x, self.y, self.z)
+    pub(super) fn into_encoded_point(self, cpu_features: cpu::Features) -> EncodedPoint {
+        encode_point(self.x, self.y, self.z, cpu_features)
     }
 }
 
-fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>) -> EncodedPoint {
+fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>, _cpu_features: cpu::Features) -> EncodedPoint {
     let mut bytes = [0; ELEM_LEN];
 
     let sign_bit: u8 = unsafe {

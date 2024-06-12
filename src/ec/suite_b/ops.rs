@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{arithmetic::limbs_from_hex, arithmetic::montgomery::*, error, limb::*};
+use crate::{arithmetic::limbs_from_hex, arithmetic::montgomery::*, cpu, error, limb::*};
 use core::marker::PhantomData;
 
 pub use self::elem::*;
@@ -139,7 +139,7 @@ impl CommonOps {
         }
     }
 
-    pub fn point_sum(&self, a: &Point, b: &Point) -> Point {
+    pub(super) fn point_sum(&self, a: &Point, b: &Point, _cpu: cpu::Features) -> Point {
         let mut r = Point::new_at_infinity();
         unsafe {
             (self.point_add_jacobian_impl)(r.xyz.as_mut_ptr(), a.xyz.as_ptr(), b.xyz.as_ptr())
@@ -175,8 +175,8 @@ struct Modulus {
 /// Operations on private keys, for ECDH and ECDSA signing.
 pub struct PrivateKeyOps {
     pub common: &'static CommonOps,
-    elem_inv_squared: fn(a: &Elem<R>) -> Elem<R>,
-    point_mul_base_impl: fn(a: &Scalar) -> Point,
+    elem_inv_squared: fn(a: &Elem<R>, cpu: cpu::Features) -> Elem<R>,
+    point_mul_base_impl: fn(a: &Scalar, cpu: cpu::Features) -> Point,
     point_mul_impl: unsafe extern "C" fn(
         r: *mut Limb,          // [3][num_limbs]
         p_scalar: *const Limb, // [num_limbs]
@@ -191,12 +191,17 @@ impl PrivateKeyOps {
     }
 
     #[inline(always)]
-    pub fn point_mul_base(&self, a: &Scalar) -> Point {
-        (self.point_mul_base_impl)(a)
+    pub(super) fn point_mul_base(&self, a: &Scalar, cpu: cpu::Features) -> Point {
+        (self.point_mul_base_impl)(a, cpu)
     }
 
     #[inline(always)]
-    pub fn point_mul(&self, p_scalar: &Scalar, (p_x, p_y): &(Elem<R>, Elem<R>)) -> Point {
+    pub(super) fn point_mul(
+        &self,
+        p_scalar: &Scalar,
+        (p_x, p_y): &(Elem<R>, Elem<R>),
+        _cpu: cpu::Features,
+    ) -> Point {
         let mut r = Point::new_at_infinity();
         unsafe {
             (self.point_mul_impl)(
@@ -210,8 +215,8 @@ impl PrivateKeyOps {
     }
 
     #[inline]
-    pub fn elem_inverse_squared(&self, a: &Elem<R>) -> Elem<R> {
-        (self.elem_inv_squared)(a)
+    pub(super) fn elem_inverse_squared(&self, a: &Elem<R>, cpu: cpu::Features) -> Elem<R> {
+        (self.elem_inv_squared)(a, cpu)
     }
 }
 
@@ -227,7 +232,12 @@ impl PublicKeyOps {
     // most significant limb. Besides the parsing, conversion, this also
     // implements NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers
     // in the interval [0, p-1] in the case that q is an odd prime p[.]"
-    pub fn elem_parse(&self, input: &mut untrusted::Reader) -> Result<Elem<R>, error::Unspecified> {
+    pub(super) fn elem_parse(
+        &self,
+        input: &mut untrusted::Reader,
+        _cpu: cpu::Features,
+    ) -> Result<Elem<R>, error::Unspecified> {
+        let _cpu = cpu::features();
         let encoded_value = input.read_bytes(self.common.len())?;
         let parsed = elem_parse_big_endian_fixed_consttime(self.common, encoded_value)?;
         let mut r = Elem::zero();
@@ -263,10 +273,11 @@ impl ScalarOps {
     }
 
     #[inline]
-    pub fn scalar_product<EA: Encoding, EB: Encoding>(
+    pub(super) fn scalar_product<EA: Encoding, EB: Encoding>(
         &self,
         a: &Scalar<EA>,
         b: &Scalar<EB>,
+        _cpu: cpu::Features,
     ) -> Scalar<<(EA, EB) as ProductEncoding>::Output>
     where
         (EA, EB): ProductEncoding,
@@ -280,9 +291,14 @@ pub struct PublicScalarOps {
     pub scalar_ops: &'static ScalarOps,
     pub public_key_ops: &'static PublicKeyOps,
 
-    pub twin_mul: fn(g_scalar: &Scalar, p_scalar: &Scalar, p_xy: &(Elem<R>, Elem<R>)) -> Point,
-    pub scalar_inv_to_mont_vartime: fn(s: &Scalar<Unencoded>) -> Scalar<R>,
-    pub q_minus_n: Elem<Unencoded>,
+    pub(super) twin_mul: fn(
+        g_scalar: &Scalar,
+        p_scalar: &Scalar,
+        p_xy: &(Elem<R>, Elem<R>),
+        cpu: cpu::Features,
+    ) -> Point,
+    scalar_inv_to_mont_vartime: fn(s: &Scalar<Unencoded>, cpu: cpu::Features) -> Scalar<R>,
+    pub(super) q_minus_n: Elem<Unencoded>,
 }
 
 impl PublicScalarOps {
@@ -309,8 +325,12 @@ impl PublicScalarOps {
         limbs_less_than_limbs_vartime(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
     }
 
-    pub fn scalar_inv_to_mont_vartime(&self, s: &Scalar<Unencoded>) -> Scalar<R> {
-        (self.scalar_inv_to_mont_vartime)(s)
+    pub(super) fn scalar_inv_to_mont_vartime(
+        &self,
+        s: &Scalar<Unencoded>,
+        cpu: cpu::Features,
+    ) -> Scalar<R> {
+        (self.scalar_inv_to_mont_vartime)(s, cpu)
     }
 }
 
@@ -319,19 +339,19 @@ pub struct PrivateScalarOps {
     pub scalar_ops: &'static ScalarOps,
 
     oneRR_mod_n: Scalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
-    scalar_inv_to_mont: fn(a: Scalar<R>) -> Scalar<R>,
+    scalar_inv_to_mont: fn(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R>,
 }
 
 impl PrivateScalarOps {
-    pub fn to_mont(&self, s: &Scalar<Unencoded>) -> Scalar<R> {
-        self.scalar_ops.scalar_product(s, &self.oneRR_mod_n)
+    pub(super) fn to_mont(&self, s: &Scalar<Unencoded>, cpu: cpu::Features) -> Scalar<R> {
+        self.scalar_ops.scalar_product(s, &self.oneRR_mod_n, cpu)
     }
 
     /// Returns the modular inverse of `a` (mod `n`). Panics if `a` is zero.
-    pub fn scalar_inv_to_mont(&self, a: &Scalar) -> Scalar<R> {
+    pub(super) fn scalar_inv_to_mont(&self, a: &Scalar, cpu: cpu::Features) -> Scalar<R> {
         assert!(!self.scalar_ops.common.is_zero(a));
-        let a = self.to_mont(a);
-        (self.scalar_inv_to_mont)(a)
+        let a = self.to_mont(a, cpu);
+        (self.scalar_inv_to_mont)(a, cpu)
     }
 }
 
@@ -342,10 +362,11 @@ fn twin_mul_inefficient(
     g_scalar: &Scalar,
     p_scalar: &Scalar,
     p_xy: &(Elem<R>, Elem<R>),
+    cpu: cpu::Features,
 ) -> Point {
-    let scaled_g = ops.point_mul_base(g_scalar);
-    let scaled_p = ops.point_mul(p_scalar, p_xy);
-    ops.common.point_sum(&scaled_g, &scaled_p)
+    let scaled_g = ops.point_mul_base(g_scalar, cpu);
+    let scaled_p = ops.point_mul(p_scalar, p_xy, cpu);
+    ops.common.point_sum(&scaled_g, &scaled_p, cpu)
 }
 
 // This assumes n < q < 2*n.
@@ -724,13 +745,14 @@ mod tests {
     }
 
     fn scalar_mul_test(ops: &ScalarOps, test_file: test::File) {
+        let cpu = cpu::features();
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let cops = ops.common;
             let a = consume_scalar(cops, test_case, "a");
             let b = consume_scalar_mont(cops, test_case, "b");
             let expected_result = consume_scalar(cops, test_case, "r");
-            let actual_result = ops.scalar_product(&a, &b);
+            let actual_result = ops.scalar_product(&a, &b, cpu);
             assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
 
             Ok(())
@@ -759,6 +781,7 @@ mod tests {
     ) {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
+            let cpu = cpu::features();
             let cops = &ops.common;
             let a = consume_scalar(cops, test_case, "a");
             let expected_result = consume_scalar(cops, test_case, "r");
@@ -776,7 +799,7 @@ mod tests {
             }
 
             {
-                let actual_result = ops.scalar_product(&a, &a);
+                let actual_result = ops.scalar_product(&a, &a, cpu);
                 assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
             }
 
@@ -787,13 +810,13 @@ mod tests {
     #[test]
     #[should_panic(expected = "!self.scalar_ops.common.is_zero(a)")]
     fn p256_scalar_inv_to_mont_zero_panic_test() {
-        let _ = p256::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
+        let _ = p256::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR, cpu::features());
     }
 
     #[test]
     #[should_panic(expected = "!self.scalar_ops.common.is_zero(a)")]
     fn p384_scalar_inv_to_mont_zero_panic_test() {
-        let _ = p384::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
+        let _ = p384::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR, cpu::features());
     }
 
     #[test]
@@ -813,6 +836,8 @@ mod tests {
     }
 
     fn point_sum_test(ops: &PrivateKeyOps, test_file: test::File) {
+        let cpu = cpu::features();
+
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
@@ -820,7 +845,7 @@ mod tests {
             let b = consume_jacobian_point(ops, test_case, "b");
             let r_expected: TestPoint<R> = consume_point(ops, test_case, "r");
 
-            let r_actual = ops.common.point_sum(&a, &b);
+            let r_actual = ops.common.point_sum(&a, &b, cpu);
             assert_point_actual_equals_expected(ops, &r_actual, &r_expected);
 
             Ok(())
@@ -932,7 +957,7 @@ mod tests {
     fn p256_point_mul_test() {
         point_mul_base_tests(
             &p256::PRIVATE_KEY_OPS,
-            |s| p256::PRIVATE_KEY_OPS.point_mul(s, &p256::GENERATOR),
+            |s, cpu| p256::PRIVATE_KEY_OPS.point_mul(s, &p256::GENERATOR, cpu),
             test_file!("ops/p256_point_mul_base_tests.txt"),
         );
     }
@@ -942,7 +967,7 @@ mod tests {
     fn p384_point_mul_test() {
         point_mul_base_tests(
             &p384::PRIVATE_KEY_OPS,
-            |s| p384::PRIVATE_KEY_OPS.point_mul(s, &p384::GENERATOR),
+            |s, cpu| p384::PRIVATE_KEY_OPS.point_mul(s, &p384::GENERATOR, cpu),
             test_file!("ops/p384_point_mul_base_tests.txt"),
         );
     }
@@ -961,6 +986,7 @@ mod tests {
         pub_ops: &PublicKeyOps,
         test_file: test::File,
     ) {
+        let cpu = cpu::features();
         let cops = pub_ops.common;
 
         test::run(test_file, |section, test_case| {
@@ -971,12 +997,13 @@ mod tests {
             let p = super::super::public_key::parse_uncompressed_point(
                 pub_ops,
                 untrusted::Input::from(&p),
+                cpu,
             )
             .expect("valid point");
 
             let expected_result = test_case.consume_bytes("r");
 
-            let product = priv_ops.point_mul(&p_scalar, &p);
+            let product = priv_ops.point_mul(&p_scalar, &p, cpu::features());
 
             let mut actual_result = vec![4u8; 1 + (2 * cops.len())];
             {
@@ -986,6 +1013,7 @@ mod tests {
                     Some(x),
                     Some(y),
                     &product,
+                    cpu,
                 )
                 .expect("successful encoding");
             }
@@ -1000,7 +1028,7 @@ mod tests {
     fn p256_point_mul_base_test() {
         point_mul_base_tests(
             &p256::PRIVATE_KEY_OPS,
-            |s| p256::PRIVATE_KEY_OPS.point_mul_base(s),
+            |s, cpu| p256::PRIVATE_KEY_OPS.point_mul_base(s, cpu),
             test_file!("ops/p256_point_mul_base_tests.txt"),
         );
     }
@@ -1009,21 +1037,22 @@ mod tests {
     fn p384_point_mul_base_test() {
         point_mul_base_tests(
             &p384::PRIVATE_KEY_OPS,
-            |s| p384::PRIVATE_KEY_OPS.point_mul_base(s),
+            |s, cpu| p384::PRIVATE_KEY_OPS.point_mul_base(s, cpu),
             test_file!("ops/p384_point_mul_base_tests.txt"),
         );
     }
 
     pub(super) fn point_mul_base_tests(
         ops: &PrivateKeyOps,
-        f: impl Fn(&Scalar) -> Point,
+        f: impl Fn(&Scalar, cpu::Features) -> Point,
         test_file: test::File,
     ) {
+        let cpu = cpu::features();
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let g_scalar = consume_scalar(ops.common, test_case, "g_scalar");
             let expected_result: TestPoint<Unencoded> = consume_point(ops, test_case, "r");
-            let actual_result = f(&g_scalar);
+            let actual_result = f(&g_scalar, cpu);
             assert_point_actual_equals_expected(ops, &actual_result, &expected_result);
             Ok(())
         })
@@ -1036,6 +1065,8 @@ mod tests {
     ) where
         Elem<R>: Convert<E>,
     {
+        let cpu = cpu::features();
+
         let cops = ops.common;
         let actual_x = &cops.point_x(actual_point);
         let actual_y = &cops.point_y(actual_point);
@@ -1046,7 +1077,7 @@ mod tests {
                 assert_elems_are_equal(cops, actual_z, &zero);
             }
             TestPoint::Affine(expected_x, expected_y) => {
-                let zz_inv = ops.elem_inverse_squared(actual_z);
+                let zz_inv = ops.elem_inverse_squared(actual_z, cpu);
                 let x_aff = cops.elem_product(actual_x, &zz_inv);
                 let y_aff = {
                     let zzzz_inv = cops.elem_squared(&zz_inv);
