@@ -1196,7 +1196,7 @@ int DILITHIUM_generate_key_external_entropy(
 
   vectork_power2_round(&values->pub.t1, &priv->t0, &values->t);
   // t1 is public.
-  CONSTTIME_DECLASSIFY(&pub.t1, sizeof(pub.t1));
+  CONSTTIME_DECLASSIFY(&values->pub.t1, sizeof(values->pub.t1));
 
   CBB cbb;
   CBB_init_fixed(&cbb, out_encoded_public_key, DILITHIUM_PUBLIC_KEY_BYTES);
