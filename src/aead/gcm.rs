@@ -218,7 +218,14 @@ impl<'key> Context<'key> {
                 ghash!(gcm_ghash_avx, xi, h_table, input, self.cpu_features);
             },
 
-            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
+            #[cfg(target_arch = "aarch64")]
+            // If we have CLMUL then we probably have AES, so the integrated
+            // implementation will take care of everything except any final
+            // partial block. Thus, we avoid having an optimized implementation
+            // here.
+            Implementation::CLMUL => self.update_blocks_1x(input),
+
+            #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
             // SAFETY: gcm_ghash_clmul satisfies the ghash! contract on these
             // targets.
             Implementation::CLMUL => unsafe {
@@ -235,6 +242,14 @@ impl<'key> Context<'key> {
             Implementation::Fallback => {
                 gcm_nohw::ghash(xi, h_table.Htable[0], input);
             }
+        }
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    #[inline(never)]
+    fn update_blocks_1x(&mut self, input: &[[u8; BLOCK_LEN]]) {
+        for input in input {
+            self.update_block(*input);
         }
     }
 
