@@ -17,7 +17,7 @@
 use super::digest_scalar::digest_scalar;
 use crate::{
     arithmetic::montgomery::*,
-    digest,
+    cpu, digest,
     ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve},
     error,
     io::der,
@@ -78,6 +78,8 @@ impl EcdsaVerificationAlgorithm {
         e: Scalar,
         signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
+        let cpu = cpu::features();
+
         // NSA Suite B Implementer's Guide to ECDSA Section 3.4.2.
 
         let public_key_ops = self.ops.public_key_ops;
@@ -100,7 +102,7 @@ impl EcdsaVerificationAlgorithm {
         // can do. Prerequisite #2 is handled implicitly as the domain
         // parameters are hard-coded into the source. Prerequisite #3 is
         // handled by `parse_uncompressed_point`.
-        let peer_pub_key = parse_uncompressed_point(public_key_ops, public_key)?;
+        let peer_pub_key = parse_uncompressed_point(public_key_ops, public_key, cpu)?;
 
         let (r, s) = signature.read_all(error::Unspecified, |input| {
             (self.split_rs)(scalar_ops, input)
@@ -113,17 +115,17 @@ impl EcdsaVerificationAlgorithm {
 
         // NSA Guide Step 4: "Compute w = s**−1 mod n, using the routine in
         // Appendix B.1."
-        let w = self.ops.scalar_inv_to_mont_vartime(&s);
+        let w = self.ops.scalar_inv_to_mont_vartime(&s, cpu);
 
         // NSA Guide Step 5: "Compute u1 = (e * w) mod n, and compute
         // u2 = (r * w) mod n."
-        let u1 = scalar_ops.scalar_product(&e, &w);
-        let u2 = scalar_ops.scalar_product(&r, &w);
+        let u1 = scalar_ops.scalar_product(&e, &w, cpu);
+        let u2 = scalar_ops.scalar_product(&r, &w, cpu);
 
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
         // addition. If R is equal to the point at infinity, output INVALID."
-        let product = (self.ops.twin_mul)(&u1, &u2, &peer_pub_key);
+        let product = (self.ops.twin_mul)(&u1, &u2, &peer_pub_key, cpu);
 
         // Verify that the point we computed is on the curve; see
         // `verify_affine_point_is_on_the_curve_scaled` for details on why. It

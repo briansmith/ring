@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{ec, error, rand};
+use crate::{cpu, ec, error, rand};
 
 /// A key agreement algorithm.
 macro_rules! suite_b_curve {
@@ -56,8 +56,14 @@ macro_rules! suite_b_curve {
         fn $public_from_private(
             public_out: &mut [u8],
             private_key: &ec::Seed,
+            cpu_features: cpu::Features,
         ) -> Result<(), error::Unspecified> {
-            ec::suite_b::private_key::public_from_private($private_key_ops, public_out, private_key)
+            ec::suite_b::private_key::public_from_private(
+                $private_key_ops,
+                public_out,
+                private_key,
+                cpu_features,
+            )
         }
     };
 }

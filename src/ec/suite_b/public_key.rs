@@ -16,7 +16,7 @@
 //! ECDH agreement).
 
 use super::{ops::*, verify_affine_point_is_on_the_curve};
-use crate::{arithmetic::montgomery::*, error};
+use crate::{arithmetic::montgomery::*, cpu, error};
 
 /// Parses a public key encoded in uncompressed form. The key is validated
 /// using the ECC Partial Public-Key Validation Routine from
@@ -26,9 +26,10 @@ use crate::{arithmetic::montgomery::*, error};
 ///
 /// [NIST SP 800-56A, revision 2]:
 ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
-pub fn parse_uncompressed_point(
+pub(super) fn parse_uncompressed_point(
     ops: &PublicKeyOps,
     input: untrusted::Input,
+    cpu: cpu::Features,
 ) -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
     // NIST SP 800-56A Step 1: "Verify that Q is not the point at infinity.
     // This can be done by inspection if the point is entered in the standard
@@ -43,8 +44,8 @@ pub fn parse_uncompressed_point(
 
         // NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers in the
         // interval [0, p-1] in the case that q is an odd prime p[.]"
-        let x = ops.elem_parse(input)?;
-        let y = ops.elem_parse(input)?;
+        let x = ops.elem_parse(input, cpu)?;
+        let y = ops.elem_parse(input, cpu)?;
         Ok((x, y))
     })?;
 
@@ -71,6 +72,7 @@ mod tests {
 
     #[test]
     fn parse_uncompressed_point_test() {
+        let cpu = cpu::features();
         test::run(
             test_file!("suite_b_public_key_tests.txt"),
             |section, test_case| {
@@ -84,7 +86,7 @@ mod tests {
 
                 let curve_ops = public_key_ops_from_curve_name(&curve_name);
 
-                let result = parse_uncompressed_point(curve_ops, public_key);
+                let result = parse_uncompressed_point(curve_ops, public_key, cpu);
                 assert_eq!(is_valid, result.is_ok());
 
                 // TODO: Verify that we when we re-serialize the parsed (x, y), the

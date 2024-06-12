@@ -218,7 +218,7 @@ pub(crate) fn key_pair_from_bytes(
     let seed = ec::Seed::from_bytes(curve, private_key_bytes, cpu_features)
         .map_err(|error::Unspecified| error::KeyRejected::invalid_component())?;
 
-    let r = ec::KeyPair::derive(seed)
+    let r = ec::KeyPair::derive(seed, cpu_features)
         .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
     if public_key_bytes.as_slice_less_safe() != r.public_key().as_ref() {
         return Err(error::KeyRejected::inconsistent_components());

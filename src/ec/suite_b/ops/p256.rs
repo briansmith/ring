@@ -48,7 +48,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     point_mul_impl: p256_point_mul,
 };
 
-fn p256_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
+fn p256_elem_inv_squared(a: &Elem<R>, _cpu: cpu::Features) -> Elem<R> {
     // Calculate a**-2 (mod q) == a**(q - 3) (mod q)
     //
     // The exponent (q - 3) is:
@@ -93,7 +93,7 @@ fn p256_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
     acc
 }
 
-fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {
+fn p256_point_mul_base_impl(g_scalar: &Scalar, _cpu: cpu::Features) -> Point {
     prefixed_extern! {
         fn p256_point_mul_base(
             r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
@@ -125,25 +125,30 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     twin_mul: twin_mul_nistz256,
 
     #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
-    twin_mul: |g_scalar, p_scalar, p_xy| {
-        twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy)
+    twin_mul: |g_scalar, p_scalar, p_xy, cpu| {
+        twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy, cpu)
     },
 
     q_minus_n: Elem::from_hex("4319055358e8617b0c46353d039cdaae"),
 
     // TODO: Use an optimized variable-time implementation.
-    scalar_inv_to_mont_vartime: |s| PRIVATE_SCALAR_OPS.scalar_inv_to_mont(s),
+    scalar_inv_to_mont_vartime: |s, cpu| PRIVATE_SCALAR_OPS.scalar_inv_to_mont(s, cpu),
 };
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-fn twin_mul_nistz256(g_scalar: &Scalar, p_scalar: &Scalar, p_xy: &(Elem<R>, Elem<R>)) -> Point {
-    let scaled_g = point_mul_base_vartime(g_scalar);
-    let scaled_p = PRIVATE_KEY_OPS.point_mul(p_scalar, p_xy);
-    PRIVATE_KEY_OPS.common.point_sum(&scaled_g, &scaled_p)
+fn twin_mul_nistz256(
+    g_scalar: &Scalar,
+    p_scalar: &Scalar,
+    p_xy: &(Elem<R>, Elem<R>),
+    cpu: cpu::Features,
+) -> Point {
+    let scaled_g = point_mul_base_vartime(g_scalar, cpu);
+    let scaled_p = PRIVATE_KEY_OPS.point_mul(p_scalar, p_xy, cpu::features());
+    PRIVATE_KEY_OPS.common.point_sum(&scaled_g, &scaled_p, cpu)
 }
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-fn point_mul_base_vartime(g_scalar: &Scalar) -> Point {
+fn point_mul_base_vartime(g_scalar: &Scalar, _cpu: cpu::Features) -> Point {
     prefixed_extern! {
         fn p256_point_mul_base_vartime(r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
                                        g_scalar: *const Limb, // [COMMON_OPS.num_limbs]
@@ -165,7 +170,7 @@ pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_inv_to_mont: p256_scalar_inv_to_mont,
 };
 
-fn p256_scalar_inv_to_mont(a: Scalar<R>) -> Scalar<R> {
+fn p256_scalar_inv_to_mont(a: Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:
     //
