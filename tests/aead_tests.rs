@@ -492,6 +492,8 @@ fn aead_chacha20_poly1305_openssh() {
 
 #[test]
 fn aead_test_aad_traits() {
+    test::compile_time_assert_send::<aead::Aad<&'_ [u8]>>();
+    test::compile_time_assert_sync::<aead::Aad<&'_ [u8]>>();
     test::compile_time_assert_copy::<aead::Aad<&'_ [u8]>>();
     test::compile_time_assert_eq::<aead::Aad<Vec<u8>>>(); // `!Copy`
 
@@ -501,6 +503,12 @@ fn aead_test_aad_traits() {
         format!("{:?}", aead::Aad::from(&[1, 2, 3])),
         "Aad([1, 2, 3])"
     );
+}
+
+#[test]
+fn test_nonce_traits() {
+    test::compile_time_assert_send::<aead::Nonce>();
+    test::compile_time_assert_sync::<aead::Nonce>();
 }
 
 #[test]
@@ -514,6 +522,15 @@ fn test_tag_traits() {
     let tag = aead::Tag::from([4u8; 16]);
     let _tag_2 = tag; // Cover `Copy`
     assert_eq!(tag.as_ref(), tag.clone().as_ref()); // Cover `Clone`
+}
+
+fn test_aead_key_traits<T: Send + Sync>() {}
+
+#[test]
+fn test_aead_key_traits_all() {
+    test_aead_key_traits::<aead::OpeningKey<OneNonceSequence>>();
+    test_aead_key_traits::<aead::SealingKey<OneNonceSequence>>();
+    test_aead_key_traits::<aead::LessSafeKey>();
 }
 
 #[test]
