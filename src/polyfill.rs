@@ -54,6 +54,7 @@ pub mod sliceutil;
 #[cfg(feature = "alloc")]
 mod leading_zeros_skipped;
 
+mod notsend;
 pub mod ptr;
 
 pub mod slice;
@@ -64,7 +65,8 @@ mod test;
 mod unwrap_const;
 
 pub use self::{
-    array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, unwrap_const::unwrap_const,
+    array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, notsend::NotSend,
+    unwrap_const::unwrap_const,
 };
 
 #[cfg(feature = "alloc")]
