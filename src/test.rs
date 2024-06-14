@@ -128,28 +128,28 @@ extern crate std;
 
 /// `compile_time_assert_clone::<T>();` fails to compile if `T` doesn't
 /// implement `Clone`.
-pub fn compile_time_assert_clone<T: Clone>() {}
+pub const fn compile_time_assert_clone<T: Clone>() {}
 
 /// `compile_time_assert_copy::<T>();` fails to compile if `T` doesn't
 /// implement `Copy`.
-pub fn compile_time_assert_copy<T: Copy>() {}
+pub const fn compile_time_assert_copy<T: Copy>() {}
 
 /// `compile_time_assert_eq::<T>();` fails to compile if `T` doesn't
 /// implement `Eq`.
-pub fn compile_time_assert_eq<T: Eq>() {}
+pub const fn compile_time_assert_eq<T: Eq>() {}
 
 /// `compile_time_assert_send::<T>();` fails to compile if `T` doesn't
 /// implement `Send`.
-pub fn compile_time_assert_send<T: Send>() {}
+pub const fn compile_time_assert_send<T: Send>() {}
 
 /// `compile_time_assert_sync::<T>();` fails to compile if `T` doesn't
 /// implement `Sync`.
-pub fn compile_time_assert_sync<T: Sync>() {}
+pub const fn compile_time_assert_sync<T: Sync>() {}
 
 /// `compile_time_assert_std_error_error::<T>();` fails to compile if `T`
 /// doesn't implement `std::error::Error`.
 #[cfg(feature = "std")]
-pub fn compile_time_assert_std_error_error<T: std::error::Error>() {}
+pub const fn compile_time_assert_std_error_error<T: std::error::Error>() {}
 
 /// A test case. A test case consists of a set of named attributes. Every
 /// attribute in the test case must be consumed exactly once; this helps catch
