@@ -20,11 +20,13 @@ pub(crate) fn features() -> Features {
 }
 
 mod features {
+    use crate::polyfill::NotSend;
+
     /// A witness indicating that CPU features have been detected and cached.
     ///
     /// This is a zero-sized type so that it can be "stored" wherever convenient.
     #[derive(Copy, Clone)]
-    pub(crate) struct Features(());
+    pub(crate) struct Features(NotSend);
 
     cfg_if::cfg_if! {
         if #[cfg(any(target_arch = "aarch64", target_arch = "arm",
@@ -33,18 +35,20 @@ mod features {
                 // SAFETY: This must only be called after CPU features have been written
                 // and synchronized.
                 pub(super) unsafe fn new_after_feature_flags_written_and_synced_unchecked() -> Self {
-                    Self(())
+                    Self(NotSend::VALUE)
                 }
             }
         } else {
             impl Features {
                 pub(super) fn new_no_features_to_detect() -> Self {
-                    Self(())
+                    Self(NotSend::VALUE)
                 }
             }
         }
     }
 }
+
+const _: () = assert!(core::mem::size_of::<Features>() == 0);
 
 cfg_if::cfg_if! {
     if #[cfg(any(target_arch = "aarch64", target_arch = "arm"))] {
