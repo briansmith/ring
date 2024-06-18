@@ -1219,7 +1219,11 @@ func (m *serverHelloMsg) marshal() []byte {
 		if m.versOverride != 0 {
 			hello.AddUint16(m.versOverride)
 		} else if vers >= VersionTLS13 {
-			hello.AddUint16(VersionTLS12)
+			legacyVersion := uint16(VersionTLS12)
+			if m.isDTLS {
+				legacyVersion = VersionDTLS12
+			}
+			hello.AddUint16(legacyVersion)
 		} else {
 			hello.AddUint16(m.vers)
 		}
@@ -1316,7 +1320,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	}
 
 	// Parse out the version from supported_versions if available.
-	if m.vers == VersionTLS12 {
+	if vers == VersionTLS12 {
 		extensionsCopy := extensions
 		for len(extensionsCopy) > 0 {
 			var extension uint16

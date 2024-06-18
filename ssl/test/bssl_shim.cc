@@ -1264,7 +1264,8 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     return false;
   }
 
-  if (GetProtocolVersion(ssl) >= TLS1_3_VERSION && !config->is_server) {
+  if (GetProtocolVersion(ssl) >= TLS1_3_VERSION && !SSL_is_dtls(ssl) &&
+      !config->is_server) {
     bool expect_new_session =
         !config->expect_no_session && !config->shim_shuts_down;
     if (expect_new_session != test_state->got_new_session) {

@@ -242,7 +242,7 @@ func (hc *halfConn) changeCipherSpec(config *Config) error {
 }
 
 // useTrafficSecret sets the current cipher state for TLS 1.3.
-func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret []byte, side trafficDirection) {
+func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret []byte, side trafficDirection, level encryptionLevel) {
 	hc.wireVersion = version
 	protocolVersion, ok := wireToVersion(version, hc.isDTLS)
 	if !ok {
@@ -254,7 +254,11 @@ func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret 
 		hc.cipher = nullCipher{}
 	}
 	hc.trafficSecret = secret
-	hc.incEpoch()
+	if hc.isDTLS && protocolVersion == VersionTLS13 {
+		hc.setEpoch(uint16(level))
+	} else {
+		hc.incEpoch()
+	}
 }
 
 // resetCipher changes the cipher state back to no encryption to be able
@@ -323,6 +327,19 @@ func (hc *halfConn) incEpoch() {
 		}
 	}
 
+	hc.updateOutSeq()
+}
+
+func (hc *halfConn) setEpoch(epoch uint16) {
+	if !hc.isDTLS {
+		panic("Internal error: called setEpoch on non-DTLS connection")
+	}
+	hc.seq[0] = byte(epoch >> 8)
+	hc.seq[1] = byte(epoch)
+	copy(hc.seq[2:], hc.nextSeq[:])
+	for i := range hc.nextSeq {
+		hc.nextSeq[i] = 0
+	}
 	hc.updateOutSeq()
 }
 
@@ -486,7 +503,7 @@ func (hc *halfConn) decrypt(b *block) (ok bool, prefixLen int, contentType recor
 			panic("unknown cipher type")
 		}
 
-		if hc.version >= VersionTLS13 {
+		if hc.version >= VersionTLS13 && !hc.isDTLS {
 			i := len(payload)
 			for i > 0 && payload[i-1] == 0 {
 				i--
@@ -734,7 +751,7 @@ func (c *Conn) useInTrafficSecret(level encryptionLevel, version uint16, suite *
 		c.config.Bugs.MockQUICTransport.readSecret = secret
 		c.config.Bugs.MockQUICTransport.readCipherSuite = suite.id
 	}
-	c.in.useTrafficSecret(version, suite, secret, side)
+	c.in.useTrafficSecret(version, suite, secret, side, level)
 	c.seenHandshakePackEnd = false
 	return nil
 }
@@ -749,7 +766,7 @@ func (c *Conn) useOutTrafficSecret(level encryptionLevel, version uint16, suite 
 		c.config.Bugs.MockQUICTransport.writeSecret = secret
 		c.config.Bugs.MockQUICTransport.writeCipherSuite = suite.id
 	}
-	c.out.useTrafficSecret(version, suite, secret, side)
+	c.out.useTrafficSecret(version, suite, secret, side, level)
 }
 
 func (c *Conn) setSkipEarlyData() {
@@ -894,6 +911,10 @@ RestartReadRecord:
 
 func (c *Conn) readTLS13ChangeCipherSpec() error {
 	if c.config.Bugs.MockQUICTransport != nil {
+		return nil
+	}
+	if c.isDTLS {
+		// ChangeCipherSpec in DTLS 1.3 is handled within dtlsDoReadRecord.
 		return nil
 	}
 	if !c.expectTLS13ChangeCipherSpec {
@@ -1173,17 +1194,21 @@ func (c *Conn) addTLS13Padding(b *block, recordHeaderLen, recordLen int, typ rec
 	if c.out.version < VersionTLS13 || c.out.cipher == nil {
 		return recordLen
 	}
-	paddingLen := c.config.Bugs.RecordPadding
-	if c.config.Bugs.OmitRecordContents {
-		recordLen = paddingLen
-		b.resize(recordHeaderLen + paddingLen)
-	} else {
-		recordLen += 1 + paddingLen
-		b.resize(len(b.data) + 1 + paddingLen)
-		b.data[len(b.data)-paddingLen-1] = byte(typ)
-	}
-	for i := 0; i < paddingLen; i++ {
-		b.data[len(b.data)-paddingLen+i] = 0
+	// TODO(nharper): DTLS 1.3 should be adding padding, but the currently
+	// implemented DTLS 1.25 doesn't include padding.
+	if !c.isDTLS {
+		paddingLen := c.config.Bugs.RecordPadding
+		if c.config.Bugs.OmitRecordContents {
+			recordLen = paddingLen
+			b.resize(recordHeaderLen + paddingLen)
+		} else {
+			recordLen += 1 + paddingLen
+			b.resize(len(b.data) + 1 + paddingLen)
+			b.data[len(b.data)-paddingLen-1] = byte(typ)
+		}
+		for i := 0; i < paddingLen; i++ {
+			b.data[len(b.data)-paddingLen+i] = 0
+		}
 	}
 	if c, ok := c.out.cipher.(*tlsAead); ok {
 		recordLen += c.Overhead()

@@ -2205,6 +2205,10 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       !SSL_set_min_proto_version(ssl.get(), min_version)) {
     return nullptr;
   }
+  if (is_dtls && max_version == 0 &&
+      !SSL_set_max_proto_version(ssl.get(), DTLS1_3_EXPERIMENTAL_VERSION)) {
+    return nullptr;
+  }
   if (max_version != 0 &&
       !SSL_set_max_proto_version(ssl.get(), max_version)) {
     return nullptr;

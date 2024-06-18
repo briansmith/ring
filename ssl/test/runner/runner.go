@@ -1835,6 +1835,8 @@ var tlsVersions = []tlsVersion{
 		version:     VersionTLS13,
 		excludeFlag: "-no-tls13",
 		hasQUIC:     true,
+		hasDTLS:     true,
+		versionDTLS: VersionDTLS125Experimental,
 		versionWire: VersionTLS13,
 	},
 }
@@ -2353,7 +2355,7 @@ read alert 1 0
 		{
 			protocol:      dtls,
 			name:          "DisableEverything-DTLS",
-			flags:         []string{"-no-tls12", "-no-tls1"},
+			flags:         []string{"-no-tls13", "-no-tls12", "-no-tls1"},
 			shouldFail:    true,
 			expectedError: ":NO_SUPPORTED_VERSIONS_ENABLED:",
 		},
@@ -3219,10 +3221,13 @@ read alert 1 0
 			},
 			resumeSession: true,
 		},
+		// TODO(crbug.com/boringssl/715): This test and the next shouldn't be
+		// restricted to a max version of TLS 1.2, but they're broken in DTLS 1.3.
 		{
 			protocol: dtls,
 			name:     "DTLS-SendExtraFinished",
 			config: Config{
+				MaxVersion: VersionTLS12,
 				Bugs: ProtocolBugs{
 					SendExtraFinished: true,
 				},
@@ -3234,6 +3239,7 @@ read alert 1 0
 			protocol: dtls,
 			name:     "DTLS-SendExtraFinished-Reordered",
 			config: Config{
+				MaxVersion: VersionTLS12,
 				Bugs: ProtocolBugs{
 					MaxHandshakeRecordLength:  2,
 					ReorderHandshakeFragments: true,
@@ -3767,51 +3773,53 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 	// Verify exporters interoperate.
 	exportKeyingMaterial := 1024
 
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		protocol: protocol,
-		name:     prefix + ver.name + "-" + suite.name + "-server",
-		config: Config{
-			MinVersion:           ver.version,
-			MaxVersion:           ver.version,
-			CipherSuites:         []uint16{suite.id},
-			Credential:           cert,
-			PreSharedKey:         []byte(psk),
-			PreSharedKeyIdentity: pskIdentity,
-			Bugs: ProtocolBugs{
-				AdvertiseAllConfiguredCiphers: true,
+	if ver.version != VersionTLS13 || !ver.hasDTLS {
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + ver.name + "-" + suite.name + "-server",
+			config: Config{
+				MinVersion:           ver.version,
+				MaxVersion:           ver.version,
+				CipherSuites:         []uint16{suite.id},
+				Credential:           cert,
+				PreSharedKey:         []byte(psk),
+				PreSharedKeyIdentity: pskIdentity,
+				Bugs: ProtocolBugs{
+					AdvertiseAllConfiguredCiphers: true,
+				},
 			},
-		},
-		shimCertificate:      cert,
-		flags:                flags,
-		resumeSession:        true,
-		shouldFail:           shouldFail,
-		expectedError:        expectedServerError,
-		exportKeyingMaterial: exportKeyingMaterial,
-	})
+			shimCertificate:      cert,
+			flags:                flags,
+			resumeSession:        true,
+			shouldFail:           shouldFail,
+			expectedError:        expectedServerError,
+			exportKeyingMaterial: exportKeyingMaterial,
+		})
 
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		protocol: protocol,
-		name:     prefix + ver.name + "-" + suite.name + "-client",
-		config: Config{
-			MinVersion:           ver.version,
-			MaxVersion:           ver.version,
-			CipherSuites:         serverCipherSuites,
-			Credential:           cert,
-			PreSharedKey:         []byte(psk),
-			PreSharedKeyIdentity: pskIdentity,
-			Bugs: ProtocolBugs{
-				IgnorePeerCipherPreferences: shouldFail,
-				SendCipherSuite:             sendCipherSuite,
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + ver.name + "-" + suite.name + "-client",
+			config: Config{
+				MinVersion:           ver.version,
+				MaxVersion:           ver.version,
+				CipherSuites:         serverCipherSuites,
+				Credential:           cert,
+				PreSharedKey:         []byte(psk),
+				PreSharedKeyIdentity: pskIdentity,
+				Bugs: ProtocolBugs{
+					IgnorePeerCipherPreferences: shouldFail,
+					SendCipherSuite:             sendCipherSuite,
+				},
 			},
-		},
-		flags:                flags,
-		resumeSession:        true,
-		shouldFail:           shouldFail,
-		expectedError:        expectedClientError,
-		exportKeyingMaterial: exportKeyingMaterial,
-	})
+			flags:                flags,
+			resumeSession:        true,
+			shouldFail:           shouldFail,
+			expectedError:        expectedClientError,
+			exportKeyingMaterial: exportKeyingMaterial,
+		})
+	}
 
 	if shouldFail {
 		return
@@ -6579,7 +6587,8 @@ func addVersionNegotiationTests() {
 		name:     "VersionTooLow-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion: 0xffff,
+				SendClientVersion:     0xffff,
+				OmitSupportedVersions: true,
 			},
 		},
 		shouldFail:    true,
@@ -8201,7 +8210,7 @@ func addExtensionTests() {
 						},
 						flags: []string{
 							"-max-version",
-							strconv.Itoa(int(ver.versionWire)),
+							ver.shimFlag(protocol),
 							"-quic-transport-params",
 							base64FlagValue([]byte{3, 4}),
 							"-quic-use-legacy-codepoint", useCodepointFlag,
@@ -20661,6 +20670,27 @@ func checkTests() {
 	}
 }
 
+// TODO(crbug.com/boringssl/715): Once our DTLS 1.3 implementation supports
+// resumption, remove this filter.
+func filterTests() {
+	tests := make([]testCase, 0, len(testCases))
+	isDTLS13ResumptionTest := func(test testCase) bool {
+		if !test.resumeSession {
+			return false
+		}
+		if test.protocol != dtls {
+			return false
+		}
+		return test.config.MaxVersion == VersionTLS13 || test.config.MinVersion == VersionTLS13 || test.expectations.version == VersionTLS13
+	}
+	for _, test := range testCases {
+		if !isDTLS13ResumptionTest(test) {
+			tests = append(tests, test)
+		}
+	}
+	testCases = tests
+}
+
 func main() {
 	flag.Parse()
 	var err error
@@ -20746,6 +20776,7 @@ func main() {
 	testCases = append(testCases, toAppend...)
 
 	checkTests()
+	filterTests()
 
 	dispatcher, err := newShimDispatcher()
 	if err != nil {
