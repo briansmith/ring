@@ -48,8 +48,6 @@ static void hexdump(const void *a, size_t len) {
 }
 
 int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
   // Ensure that the output is line-buffered rather than fully buffered. When
   // some of the tests fail, some of the output can otherwise be lost.
   setvbuf(stdout, NULL, _IOLBF, 0);

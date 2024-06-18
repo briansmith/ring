@@ -505,13 +505,9 @@ BSSL_NAMESPACE_END
 
 using namespace bssl;
 
-int SSL_library_init(void) {
-  CRYPTO_library_init();
-  return 1;
-}
+int SSL_library_init(void) { return 1; }
 
 int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings) {
-  CRYPTO_library_init();
   return 1;
 }
 

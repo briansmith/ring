@@ -46,7 +46,7 @@ static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   // worth adjusting the assembly calling convention. The assembly functions do
   // too much work right now. For now, explicitly initialize |OPENSSL_ia32cap_P|
   // first.
-  CRYPTO_library_init();
+  OPENSSL_init_cpuid();
 
   struct aead_chacha20_poly1305_ctx *c20_ctx =
       (struct aead_chacha20_poly1305_ctx *)&ctx->state;

@@ -4864,7 +4864,7 @@ OPENSSL_EXPORT void SSL_set_check_ecdsa_curve(SSL *ssl, int enable);
 
 // Deprecated functions.
 
-// SSL_library_init calls |CRYPTO_library_init| and returns one.
+// SSL_library_init returns one.
 OPENSSL_EXPORT int SSL_library_init(void);
 
 // SSL_CIPHER_description writes a description of |cipher| into |buf| and
@@ -5427,7 +5427,7 @@ OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
 #define OPENSSL_INIT_LOAD_SSL_STRINGS 0
 #define OPENSSL_INIT_SSL_DEFAULT 0
 
-// OPENSSL_init_ssl calls |CRYPTO_library_init| and returns one.
+// OPENSSL_init_ssl returns one.
 OPENSSL_EXPORT int OPENSSL_init_ssl(uint64_t opts,
                                     const OPENSSL_INIT_SETTINGS *settings);
 

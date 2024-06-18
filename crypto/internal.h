@@ -180,17 +180,29 @@ extern "C" {
 #endif
 
 
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
-    defined(OPENSSL_AARCH64)
-// OPENSSL_cpuid_setup initializes the platform-specific feature cache.
+#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_STATIC_ARMCAP) && \
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) ||            \
+     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
+// x86, x86_64, and the ARMs need to record the result of a cpuid/getauxval call
+// for the asm to work correctly, unless compiled without asm code.
+#define NEED_CPUID
+
+// OPENSSL_cpuid_setup initializes the platform-specific feature cache. This
+// function should not be called directly. Call |OPENSSL_init_cpuid| instead.
 void OPENSSL_cpuid_setup(void);
+
+// OPENSSL_init_cpuid initializes the platform-specific feature cache, if
+// needed. This function is idempotent and may be called concurrently.
+void OPENSSL_init_cpuid(void);
+#else
+OPENSSL_INLINE void OPENSSL_init_cpuid(void) {}
 #endif
 
 #if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && \
     !defined(OPENSSL_STATIC_ARMCAP)
 // OPENSSL_get_armcap_pointer_for_test returns a pointer to |OPENSSL_armcap_P|
-// for unit tests. Any modifications to the value must be made after
-// |CRYPTO_library_init| but before any other function call in BoringSSL.
+// for unit tests. Any modifications to the value must be made before any other
+// function call in BoringSSL.
 OPENSSL_EXPORT uint32_t *OPENSSL_get_armcap_pointer_for_test(void);
 #endif
 

@@ -1374,8 +1374,6 @@ int main(int argc, char **argv) {
   signal(SIGPIPE, SIG_IGN);
 #endif
 
-  CRYPTO_library_init();
-
   TestConfig initial_config, resume_config, retry_config;
   if (!ParseConfig(argc - 1, argv + 1, /*is_shim=*/true, &initial_config,
                    &resume_config, &retry_config)) {

@@ -55,8 +55,6 @@ pub use { ERR_GET_LIB_RUST as ERR_GET_LIB,
           CBS_len_RUST as CBS_len };
 
 pub fn init() {
-    // Safety: `CRYPTO_library_init` may be called multiple times and concurrently.
-    unsafe {
-        CRYPTO_library_init();
-    }
+    // This function does nothing.
+    // TODO(davidben): Remove rust-openssl's dependency on this and remove this.
 }

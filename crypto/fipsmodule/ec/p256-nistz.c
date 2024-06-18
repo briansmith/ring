@@ -615,7 +615,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   // TODO(crbug.com/42290548): The x86_64 assembly depends on initializing
   // |OPENSSL_ia32cap_P|. Move the dispatch to C. For now, explicitly initialize
   // things.
-  CRYPTO_library_init();
+  OPENSSL_init_cpuid();
 
   out->point_get_affine_coordinates = ecp_nistz256_get_affine;
   out->add = ecp_nistz256_add;

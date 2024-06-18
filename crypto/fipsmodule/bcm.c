@@ -168,8 +168,6 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {}
 
 static void __attribute__((constructor))
 BORINGSSL_bcm_power_on_self_test(void) {
-  CRYPTO_library_init();
-
 #if !defined(OPENSSL_ASAN)
   // Integrity tests cannot run under ASAN because it involves reading the full
   // .text section, which triggers the global-buffer overflow detection.
