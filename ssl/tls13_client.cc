@@ -107,9 +107,13 @@ static bool parse_server_hello_tls13(const SSL_HANDSHAKE *hs,
   if (!ssl_parse_server_hello(out, out_alert, msg)) {
     return false;
   }
+  uint16_t server_hello_version = TLS1_2_VERSION;
+  if (SSL_is_dtls(hs->ssl)) {
+    server_hello_version = DTLS1_2_VERSION;
+  }
   // The RFC8446 version of the structure fixes some legacy values.
   // Additionally, the session ID must echo the original one.
-  if (out->legacy_version != TLS1_2_VERSION ||
+  if (out->legacy_version != server_hello_version ||
       out->compression_method != 0 ||
       !CBS_mem_equal(&out->session_id, hs->session_id, hs->session_id_len) ||
       CBS_len(&out->extensions) == 0) {

@@ -175,7 +175,7 @@ uint16_t SSLAEADContext::RecordVersion() const {
     return version_;
   }
 
-  return TLS1_2_VERSION;
+  return is_dtls_ ? DTLS1_2_VERSION : TLS1_2_VERSION;
 }
 
 size_t SSLAEADContext::ExplicitNonceLen() const {

@@ -651,6 +651,17 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
 #define DTLS1_VERSION 0xfeff
 #define DTLS1_2_VERSION 0xfefd
+// DTLS1_3_EXPERIMENTAL_VERSION gates experimental, in-progress code for DTLS
+// 1.3.
+//
+// WARNING: Do not use this value. BoringSSL's DTLS 1.3 implementation is still
+// under development. The code enabled by this value is neither stable nor
+// secure. It does not correspond to any real protocol. It is also incompatible
+// with other DTLS implementations, and it is not compatible with future or past
+// versions of BoringSSL.
+//
+// When the DTLS 1.3 implementation is complete, this symbol will be replaced.
+#define DTLS1_3_EXPERIMENTAL_VERSION 0xfc25
 
 // SSL_CTX_set_min_proto_version sets the minimum protocol version for |ctx| to
 // |version|. If |version| is zero, the default minimum version is used. It
@@ -3635,13 +3646,13 @@ OPENSSL_EXPORT int SSL_CREDENTIAL_set1_delegated_credential(
 // holds for any application protocol state remembered for 0-RTT, e.g. HTTP/3
 // SETTINGS.
 
-// ssl_encryption_level_t represents a specific QUIC encryption level used to
-// transmit handshake messages.
+// ssl_encryption_level_t represents an encryption level in TLS 1.3. Values in
+// this enum match the first 4 epochs used in DTLS 1.3 (section 6.1).
 enum ssl_encryption_level_t BORINGSSL_ENUM_INT {
   ssl_encryption_initial = 0,
-  ssl_encryption_early_data,
-  ssl_encryption_handshake,
-  ssl_encryption_application,
+  ssl_encryption_early_data = 1,
+  ssl_encryption_handshake = 2,
+  ssl_encryption_application = 3,
 };
 
 // ssl_quic_method_st (aka |SSL_QUIC_METHOD|) describes custom QUIC hooks.

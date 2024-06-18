@@ -372,9 +372,13 @@ bool ssl_add_client_hello(SSL_HANDSHAKE *hs) {
 static bool parse_server_version(const SSL_HANDSHAKE *hs, uint16_t *out_version,
                                  uint8_t *out_alert,
                                  const ParsedServerHello &server_hello) {
+  uint16_t legacy_version = TLS1_2_VERSION;
+  if (SSL_is_dtls(hs->ssl)) {
+    legacy_version = DTLS1_2_VERSION;
+  }
   // If the outer version is not TLS 1.2, use it.
   // TODO(davidben): This function doesn't quite match the RFC8446 formulation.
-  if (server_hello.legacy_version != TLS1_2_VERSION) {
+  if (server_hello.legacy_version != legacy_version) {
     *out_version = server_hello.legacy_version;
     return true;
   }
@@ -618,10 +622,6 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
 
   assert(SSL_is_dtls(ssl));
 
-  // When implementing DTLS 1.3, we need to handle the interactions between
-  // HelloVerifyRequest, DTLS 1.3's HelloVerifyRequest removal, and ECH.
-  assert(hs->max_version < TLS1_3_VERSION);
-
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;
@@ -631,6 +631,12 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
     hs->state = state_read_server_hello;
     return ssl_hs_ok;
   }
+
+  // TODO(crbug.com/boringssl/715): At the point when we read an HVR, we don't
+  // know whether the connection is DTLS 1.2 (or earlier) or DTLS 1.3 - that's
+  // determined when we read the supported_versions in the ServerHello. If we
+  // receive HVR and then the ServerHello selects DTLS 1.3, that is an error and
+  // we should close the connection.
 
   CBS hello_verify_request = msg.body, cookie;
   uint16_t server_version;
@@ -715,6 +721,15 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
     return ssl_hs_error;
   }
+
+  // TODO(crbug.com/boringssl/715): Check that if the server picked DTLS 1.3,
+  // that it didn't also previously send an HVR, as that is not allowed by RFC
+  // 9147. (DTLS 1.25 still uses HVR instead of HRR.) Also add a runner test to
+  // test that we handle that case properly.
+  //
+  // See
+  // https://boringssl-review.googlesource.com/c/boringssl/+/68027/3/ssl/handshake_client.cc
+  // for an example of what this check might look like.
 
   assert(ssl->s3->have_version == ssl->s3->initial_handshake_complete);
   if (!ssl->s3->have_version) {

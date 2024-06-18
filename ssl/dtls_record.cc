@@ -258,14 +258,17 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
   return ssl_open_record_success;
 }
 
-static const SSLAEADContext *get_write_aead(const SSL *ssl,
-                                            uint16_t epoch) {
+static SSLAEADContext *get_write_aead(const SSL *ssl, uint16_t epoch) {
+  if (epoch == 0) {
+    return ssl->d1->initial_aead_write_ctx.get();
+  }
+
   if (epoch < ssl->d1->w_epoch) {
-    assert(epoch + 1 == ssl->d1->w_epoch);
+    BSSL_CHECK(epoch + 1 == ssl->d1->w_epoch);
     return ssl->d1->last_aead_write_ctx.get();
   }
 
-  assert(epoch == ssl->d1->w_epoch);
+  BSSL_CHECK(epoch == ssl->d1->w_epoch);
   return ssl->s3->aead_write_ctx.get();
 }
 
@@ -296,15 +299,13 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   }
 
   // Determine the parameters for the current epoch.
-  SSLAEADContext *aead = ssl->s3->aead_write_ctx.get();
+  SSLAEADContext *aead = get_write_aead(ssl, epoch);
   uint64_t *seq = &ssl->s3->write_sequence;
   if (epoch < ssl->d1->w_epoch) {
-    assert(epoch + 1 == ssl->d1->w_epoch);
-    aead = ssl->d1->last_aead_write_ctx.get();
     seq = &ssl->d1->last_write_sequence;
-  } else {
-    assert(epoch == ssl->d1->w_epoch);
   }
+  // TODO(crbug.com/boringssl/715): If epoch is initial or handshake, the value
+  // of seq is probably wrong for a retransmission.
 
   const size_t record_header_len = dtls_record_header_write_len(ssl, epoch);
   if (max_out < record_header_len) {

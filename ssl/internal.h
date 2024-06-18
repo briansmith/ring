@@ -3015,6 +3015,11 @@ struct DTLS1_STATE {
   uint64_t last_write_sequence = 0;
   UniquePtr<SSLAEADContext> last_aead_write_ctx;
 
+
+  // In DTLS 1.3, this contains the write AEAD for the initial encryption level.
+  // TODO(crbug.com/boringssl/715): Drop this when it is no longer needed.
+  UniquePtr<SSLAEADContext> initial_aead_write_ctx;
+
   // incoming_messages is a ring buffer of incoming handshake messages that have
   // yet to be processed. The front of the ring buffer is message number
   // |handshake_read_seq|, at position |handshake_read_seq| %
