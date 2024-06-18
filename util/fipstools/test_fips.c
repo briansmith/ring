@@ -299,9 +299,9 @@ int main(int argc, char **argv) {
   static const uint8_t kNotValidX926[] = {1,2,3,4,5,6};
   if (!EC_KEY_oct2key(ec_key, kNotValidX926, sizeof(kNotValidX926),
                       /*ctx=*/NULL)) {
-    printf("Error while parsing invalid ECDSA public key");
+    printf("Error while parsing invalid ECDSA public key\n");
   } else {
-    printf("Unexpected success while parsing invalid ECDSA public key");
+    printf("Unexpected success while parsing invalid ECDSA public key\n");
     goto err;
   }
   EC_KEY_free(ec_key);
