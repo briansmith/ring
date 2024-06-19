@@ -31,6 +31,8 @@ qemu_powerpc64le="qemu-ppc64le -L /usr/powerpc64le-linux-gnu"
 qemu_riscv64="qemu-riscv64 -L /usr/riscv64-linux-gnu"
 qemu_s390x="qemu-s390x -L /usr/s390x-linux-gnu"
 qemu_sparc64="qemu-sparc64 -L /usr/sparc64-linux-gnu"
+qemu_x86="qemu-i386"
+qemu_x86_64="qemu-x86_64"
 
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may
@@ -110,6 +112,9 @@ case $target in
   i686-unknown-linux-gnu)
     use_clang=1
     export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang-$llvm_version
+    if [ -n "${RING_CPU_MODEL-}" ]; then
+      export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_RUNNER="$qemu_x86 -cpu ${RING_CPU_MODEL}"
+    fi
     ;;
   i686-unknown-linux-musl)
     use_clang=1
@@ -175,6 +180,11 @@ case $target in
     export CFLAGS_sparc64_unknown_linux_gnu="--sysroot=/usr/sparc64-linux-gnu"
     export CARGO_TARGET_SPARC64_UNKNOWN_LINUX_GNU_LINKER=sparc64-linux-gnu-gcc
     export CARGO_TARGET_SPARC64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_sparc64"
+    ;;
+  x86_64-unknown-linux-gnu)
+    if [ -n "${RING_CPU_MODEL-}" ]; then
+      export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_x86_64 -cpu ${RING_CPU_MODEL}"
+    fi
     ;;
   x86_64-unknown-linux-musl)
     use_clang=1

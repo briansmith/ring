@@ -98,6 +98,9 @@ i686-unknown-linux-gnu)
   install_packages \
     gcc-multilib \
     libc6-dev-i386
+  if [ -n "${RING_CPU_MODEL-}" ]; then
+    install_packages qemu-user
+  fi
   ;;
 i686-unknown-linux-musl|x86_64-unknown-linux-musl)
   use_clang=1
@@ -182,6 +185,11 @@ wasm32-wasi)
       --depth 1 \
       https://github.com/briansmith/ring-toolchain \
       target/tools/linux-x86_64
+  ;;
+x86_64-unknown-linux-gnu)
+  if [ -n "${RING_CPU_MODEL-}" ]; then
+    install_packages qemu-user
+  fi
   ;;
 *)
   ;;
