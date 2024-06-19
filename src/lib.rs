@@ -119,7 +119,6 @@ pub mod io;
 mod cpu;
 pub mod digest;
 mod ec;
-mod endian;
 pub mod error;
 pub mod hkdf;
 pub mod hmac;
