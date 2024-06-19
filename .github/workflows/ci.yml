@@ -550,7 +550,7 @@ jobs:
           - aarch64-unknown-linux-gnu      # Has assembly
           - arm-unknown-linux-gnueabi      # Has assembly
           - armv7-unknown-linux-gnueabihf  # Has assembly
-          - i686-unknown-linux-gnu         # Has assembly
+          # - i686-unknown-linux-gnu       # Has assembly; handled specially below.
           - powerpc-unknown-linux-gnu      # No assembly 32-bit big-endian with flags
           - powerpc64-unknown-linux-gnu    # No assembly 64-bit big-endian with flags
           - powerpc64le-unknown-linux-gnu  # No assembly 64-bit little-endian with flags
@@ -599,6 +599,17 @@ jobs:
           # https://github.com/rust-lang/rust/issues/79556 and
           # https://github.com/rust-lang/rust/issues/79555 are fixed.
           - target: i686-unknown-linux-gnu
+            cpu_model: # default
+            features: --features=std
+            mode: # debug
+            rust_channel: nightly
+            host_os: ubuntu-22.04
+
+          - target: i686-unknown-linux-gnu
+            cpu_model: Conroe-v1
+            features: --features=std
+            mode: # debug
+            rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: powerpc-unknown-linux-gnu
@@ -619,6 +630,20 @@ jobs:
           - target: x86_64-apple-darwin
             host_os: macos-13
 
+          - target: x86_64-unknown-linux-gnu
+            cpu_model: Conroe-v1
+            features: --features=std
+            mode: # debug
+            rust_channel: nightly
+            host_os: ubuntu-22.04
+
+          - target: x86_64-unknown-linux-gnu
+            cpu_model: Denverton-v2
+            features: --features=std
+            mode: # debug
+            rust_channel: nightly
+            host_os: ubuntu-22.04
+
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-22.04
 
@@ -630,7 +655,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: RING_COVERAGE=1 mk/install-build-tools.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
+      - run: RING_CPU_MODEL=${{ matrix.cpu_model }} RING_COVERAGE=1 mk/install-build-tools.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
         shell: sh
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
@@ -638,7 +663,7 @@ jobs:
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
-          RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          RING_CPU_MODEL=${{ matrix.cpu_model }} RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       - uses: briansmith/codecov-codecov-action@v4
         with:
