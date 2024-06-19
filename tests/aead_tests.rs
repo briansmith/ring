@@ -207,7 +207,7 @@ fn test_open_in_place_seperate_tag(
         assert_eq!(&in_out[..tc.plaintext.len()], tc.plaintext);
     }
 
-    // Test that ciphertext range shifing works as expected.
+    // Test that ciphertext range shifting works as expected.
     {
         let range = in_out.len()..;
         in_out.extend_from_slice(tc.ciphertext);

@@ -450,7 +450,7 @@ fn parse_test_case(
                 let key = parts[0].trim();
                 let value = parts[1].trim();
 
-                // Don't allow the value to be ommitted. An empty value can be
+                // Don't allow the value to be omitted. An empty value can be
                 // represented as an empty quoted string.
                 assert_ne!(value.len(), 0);
 
