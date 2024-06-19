@@ -50,6 +50,17 @@ static void hexdump(const void *a, size_t len) {
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
+  // Ensure that the output is line-buffered rather than fully buffered. When
+  // some of the tests fail, some of the output can otherwise be lost.
+  setvbuf(stdout, NULL, _IOLBF, 0);
+  setvbuf(stderr, NULL, _IOLBF, 0);
+
+  if (!FIPS_mode()) {
+    printf("Module not in FIPS mode\n");
+    goto err;
+  }
+  printf("Module is in FIPS mode\n");
+
   const uint32_t module_version = FIPS_version();
   if (module_version == 0) {
     printf("No module version set\n");
