@@ -248,7 +248,7 @@ if [ -n "${RING_COVERAGE-}" ]; then
   declare -x "${runner_var}=mk/runner ${!runner_var-}"
 
   rustflags_var=CARGO_TARGET_${target_upper}_RUSTFLAGS
-  declare -x "${rustflags_var}=${additional_rustflags} -Cinstrument-coverage ${!rustflags_var-}"
+  declare -x "${rustflags_var}=${additional_rustflags} -Cinstrument-coverage ${!rustflags_var-} -Z coverage-options=branch"
 fi
 
 if [ -n "${use_clang}" ]; then
