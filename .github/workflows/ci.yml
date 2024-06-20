@@ -164,8 +164,11 @@ jobs:
           - # Default
 
         target:
-          - aarch64-apple-ios
           - aarch64-apple-darwin
+          - aarch64-apple-ios
+          # - aarch64-apple-tvos      Tier 3; handled below
+          # - aarch64-apple-visionos  Tier 3; handled below
+          # - aarch64-apple-watchos   Tier 3; handled below
           - aarch64-linux-android
           - aarch64-pc-windows-msvc
           - aarch64-unknown-linux-gnu
@@ -204,6 +207,28 @@ jobs:
             host_os: macos-14
             # TODO: Run in the emulator.
             cargo_options: --no-run
+
+          - target: aarch64-apple-tvos
+            host_os: macos-14
+            rust_channel: nightly
+            mode: --release
+            # TODO: Run in the emulator.
+            cargo_options: --no-run -Z build-std
+
+          - target: aarch64-apple-visionos
+            host_os: macos-14
+            rust_channel: nightly
+            mode: --release
+            xcode_version: 15.2
+            # TODO: Run in the emulator.
+            cargo_options: --no-run -Z build-std
+
+          - target: aarch64-apple-watchos
+            host_os: macos-14
+            rust_channel: nightly
+            mode: --release
+            # TODO: Run in the emulator.
+            cargo_options: --no-run -Z build-std
 
           - target: aarch64-linux-android
             host_os: ubuntu-22.04
@@ -315,6 +340,9 @@ jobs:
         run: |
           echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
         shell: bash
+
+      - if: ${{ matrix.xcode_version != '' }}
+        run: sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode_version }}.app
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |

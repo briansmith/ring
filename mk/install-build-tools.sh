@@ -68,6 +68,11 @@ case ${target-} in
 esac
 
 case ${target-} in
+aarch64-apple-tvos | aarch64-apple-tvos-sim | \
+aarch64-apple-visionos | aarch64-apple-visionos-sim | \
+aarch64-apple-watchos | aarch64-apple-watchos-sim)
+  build_std=1
+  ;;
 aarch64-unknown-linux-gnu)
   # Clang is needed for code coverage.
   use_clang=1
@@ -214,8 +219,12 @@ esac
 
 rustup toolchain install --no-self-update --profile=minimal ${toolchain}
 if [ -n "${target-}" ]; then
-  rustup target add --toolchain=${toolchain} ${target}
+  if [ -n "${build_std-}" ]; then
+    rustup +${toolchain} component add rust-src
+  else
+    rustup +${toolchain} target add ${target}
+  fi
 fi
 if [ -n "${RING_COVERAGE-}" ]; then
-  rustup toolchain install --profile=minimal ${toolchain} --component llvm-tools-preview
+  rustup +${toolchain} component add llvm-tools-preview
 fi

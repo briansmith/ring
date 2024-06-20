@@ -190,12 +190,12 @@ const ASM_TARGETS: &[AsmTarget] = &[
         perlasm_format: "elf",
     },
     AsmTarget {
-        oss: MACOS_ABI,
+        oss: APPLE_ABI,
         arch: AARCH64,
         perlasm_format: "ios64",
     },
     AsmTarget {
-        oss: MACOS_ABI,
+        oss: APPLE_ABI,
         arch: X86_64,
         perlasm_format: "macosx",
     },
@@ -255,9 +255,8 @@ const NASM: &str = "nasm";
 
 /// Operating systems that have the same ABI as macOS on every architecture
 /// mentioned in `ASM_TARGETS`.
-const MACOS_ABI: &[&str] = &["ios", MACOS, "tvos"];
+const APPLE_ABI: &[&str] = &["ios", "macos", "tvos", "visionos", "watchos"];
 
-const MACOS: &str = "macos";
 const WINDOWS: &str = "windows";
 
 fn main() {
@@ -562,7 +561,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
         let _ = c.flag(f);
     }
 
-    if target.os.as_str() == MACOS {
+    if APPLE_ABI.contains(&target.os.as_str()) {
         // ``-gfull`` is required for Darwin's |-dead_strip|.
         let _ = c.flag("-gfull");
     } else if !compiler.is_like_msvc() {

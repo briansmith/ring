@@ -132,16 +132,23 @@ impl crate::sealed::Sealed for SystemRandom {}
     target_os = "hermit",
     target_os = "hurd",
     target_os = "illumos",
-    target_os = "ios",
     target_os = "linux",
-    target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "redox",
     target_os = "solaris",
-    target_os = "tvos",
     target_os = "vita",
     target_os = "windows",
+    all(
+        target_vendor = "apple",
+        any(
+            target_os = "ios",
+            target_os = "macos",
+            target_os = "tvos",
+            target_os = "visionos",
+            target_os = "watchos",
+        )
+    ),
     all(
         target_arch = "wasm32",
         any(
