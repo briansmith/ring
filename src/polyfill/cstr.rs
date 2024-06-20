@@ -12,6 +12,17 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#![cfg(all(
+    target_vendor = "apple",
+    any(
+        target_os = "ios",
+        target_os = "macos",
+        target_os = "tvos",
+        target_os = "visionos",
+        target_os = "watchos"
+    )
+))]
+
 //! Work around lack of `core::ffi::CStr` prior to Rust 1.64, and the lack of
 //! `const fn` support for `CStr` in later versions.
 
