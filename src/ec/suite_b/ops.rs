@@ -1010,7 +1010,7 @@ mod tests {
                 let (x, y) = actual_result[1..].split_at_mut(cops.len());
                 super::super::private_key::big_endian_affine_from_jacobian(
                     priv_ops,
-                    Some(x),
+                    x,
                     Some(y),
                     &product,
                     cpu,

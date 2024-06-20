@@ -134,7 +134,7 @@ fn ecdh(
     // `big_endian_affine_from_jacobian` verifies that the result is not at
     // infinity and also does an extra check to verify that the point is on
     // the curve.
-    big_endian_affine_from_jacobian(private_key_ops, Some(out), None, &product, cpu)
+    big_endian_affine_from_jacobian(private_key_ops, out, None, &product, cpu)
 
     // NSA Guide Step 5 & 6 are deferred to the caller. Again, we have a
     // pretty liberal interpretation of the NIST's spec's "Destroy" that
