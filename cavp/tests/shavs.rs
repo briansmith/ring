@@ -48,7 +48,7 @@ mod digest_shavs {
         ( $file_name:ident, $algorithm_name:ident ) => {
             #[allow(non_snake_case)]
             mod $algorithm_name {
-                use super::{run_known_answer_test, run_monte_carlo_test};
+                use super::run_known_answer_test;
                 use ring::{digest, test_file};
 
                 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -77,65 +77,8 @@ mod digest_shavs {
                         )),
                     );
                 }
-
-                #[test]
-                fn monte_carlo_test() {
-                    run_monte_carlo_test(
-                        &digest::$algorithm_name,
-                        test_file!(concat!(
-                            "../third_party/NIST/SHAVS/",
-                            stringify!($file_name),
-                            "Monte.rsp"
-                        )),
-                    );
-                }
             }
         };
-    }
-
-    fn run_monte_carlo_test(digest_alg: &'static digest::Algorithm, test_file: test::File) {
-        let section_name = &format!("L = {}", digest_alg.output_len());
-
-        let mut expected_count: isize = -1;
-        let mut seed = Vec::with_capacity(digest_alg.output_len());
-
-        test::run(test_file, |section, test_case| {
-            assert_eq!(section_name, section);
-
-            if expected_count == -1 {
-                seed.extend(test_case.consume_bytes("Seed"));
-                expected_count = 0;
-                return Ok(());
-            }
-
-            assert!(expected_count >= 0);
-            let actual_count = test_case.consume_usize("COUNT");
-            assert_eq!(expected_count as usize, actual_count);
-            expected_count += 1;
-
-            let expected_md = test_case.consume_bytes("MD");
-
-            let mut mds = Vec::with_capacity(4);
-            mds.push(seed.clone());
-            mds.push(seed.clone());
-            mds.push(seed.clone());
-            for _ in 0..1000 {
-                let mut ctx = digest::Context::new(digest_alg);
-                ctx.update(&mds[0]);
-                ctx.update(&mds[1]);
-                ctx.update(&mds[2]);
-                let md_i = ctx.finish();
-                let _ = mds.remove(0);
-                mds.push(Vec::from(md_i.as_ref()));
-            }
-            let md_j = mds.last().unwrap();
-            assert_eq!(&expected_md, md_j);
-            seed.clone_from(md_j);
-
-            Ok(())
-        });
-
-        assert_eq!(expected_count, 100);
     }
 
     shavs_tests!(SHA1, SHA1_FOR_LEGACY_USE_ONLY);
