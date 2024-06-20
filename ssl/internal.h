@@ -1044,26 +1044,21 @@ size_t ssl_seal_align_prefix_len(const SSL *ssl);
 bool tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                      uint8_t type, const uint8_t *in, size_t in_len);
 
-enum dtls1_use_epoch_t {
-  dtls1_use_previous_epoch,
-  dtls1_use_current_epoch,
-};
-
 // dtls_max_seal_overhead returns the maximum overhead, in bytes, of sealing a
 // record.
-size_t dtls_max_seal_overhead(const SSL *ssl, enum dtls1_use_epoch_t use_epoch);
+size_t dtls_max_seal_overhead(const SSL *ssl, uint16_t epoch);
 
 // dtls_seal_prefix_len returns the number of bytes of prefix to reserve in
 // front of the plaintext when sealing a record in-place.
-size_t dtls_seal_prefix_len(const SSL *ssl, enum dtls1_use_epoch_t use_epoch);
+size_t dtls_seal_prefix_len(const SSL *ssl, uint16_t epoch);
 
-// dtls_seal_record implements |tls_seal_record| for DTLS. |use_epoch| selects
-// which epoch's cipher state to use. Unlike |tls_seal_record|, |in| and |out|
-// may alias but, if they do, |in| must be exactly |dtls_seal_prefix_len| bytes
+// dtls_seal_record implements |tls_seal_record| for DTLS. |epoch| selects which
+// epoch's cipher state to use. Unlike |tls_seal_record|, |in| and |out| may
+// alias but, if they do, |in| must be exactly |dtls_seal_prefix_len| bytes
 // ahead of |out|.
 bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                       uint8_t type, const uint8_t *in, size_t in_len,
-                      enum dtls1_use_epoch_t use_epoch);
+                      uint16_t epoch);
 
 // ssl_process_alert processes |in| as an alert and updates |ssl|'s shutdown
 // state. It returns one of |ssl_open_record_discard|, |ssl_open_record_error|,
@@ -3379,7 +3374,7 @@ int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
 // dtls1_write_record sends a record. It returns one on success and <= 0 on
 // error.
 int dtls1_write_record(SSL *ssl, int type, Span<const uint8_t> in,
-                       enum dtls1_use_epoch_t use_epoch);
+                       uint16_t epoch);
 
 int dtls1_retransmit_outgoing_messages(SSL *ssl);
 bool dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
