@@ -139,7 +139,7 @@ pub(super) fn public_from_private(
 
     // `big_endian_affine_from_jacobian` verifies that the point is not at
     // infinity and is on the curve.
-    big_endian_affine_from_jacobian(ops, Some(x_out), Some(y_out), &my_public_key, cpu)
+    big_endian_affine_from_jacobian(ops, x_out, Some(y_out), &my_public_key, cpu)
 }
 
 pub(super) fn affine_from_jacobian(
@@ -180,16 +180,14 @@ pub(super) fn affine_from_jacobian(
 
 pub(super) fn big_endian_affine_from_jacobian(
     ops: &PrivateKeyOps,
-    x_out: Option<&mut [u8]>,
+    x_out: &mut [u8],
     y_out: Option<&mut [u8]>,
     p: &Point,
     cpu: cpu::Features,
 ) -> Result<(), error::Unspecified> {
     let (x_aff, y_aff) = affine_from_jacobian(ops, p, cpu)?;
-    if let Some(x_out) = x_out {
-        let x = ops.common.elem_unencoded(&x_aff);
-        limb::big_endian_from_limbs(ops.leak_limbs(&x), x_out);
-    }
+    let x = ops.common.elem_unencoded(&x_aff);
+    limb::big_endian_from_limbs(ops.leak_limbs(&x), x_out);
     if let Some(y_out) = y_out {
         let y = ops.common.elem_unencoded(&y_aff);
         limb::big_endian_from_limbs(ops.leak_limbs(&y), y_out);
