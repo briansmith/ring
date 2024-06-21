@@ -567,11 +567,22 @@ static inline void constant_time_conditional_memcpy(void *dst, const void *src,
 // |mask| is 0xff..ff and does nothing if |mask| is 0. The |n|-byte memory
 // ranges at |dst| and |src| must not overlap, as when calling |memcpy|.
 static inline void constant_time_conditional_memxor(void *dst, const void *src,
-                                                    const size_t n,
+                                                    size_t n,
                                                     const crypto_word_t mask) {
   assert(!buffers_alias(dst, n, src, n));
   uint8_t *out = (uint8_t *)dst;
   const uint8_t *in = (const uint8_t *)src;
+#if defined(__GNUC__) && !defined(__clang__)
+  // gcc 13.2.0 doesn't automatically vectorize this loop regardless of barrier
+  typedef uint8_t v32u8 __attribute__((vector_size(32), aligned(1), may_alias));
+  size_t n_vec = n&~(size_t)31;
+  v32u8 masks = ((uint8_t)mask-(v32u8){}); // broadcast
+  for (size_t i = 0; i < n_vec; i += 32) {
+    *(v32u8*)&out[i] ^= masks & *(v32u8*)&in[i];
+  }
+  out += n_vec;
+  n -= n_vec;
+#endif
   for (size_t i = 0; i < n; i++) {
     out[i] ^= value_barrier_w(mask) & in[i];
   }
