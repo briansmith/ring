@@ -87,7 +87,7 @@ mod tests {
     const _INTERNAL_NUL_UNTERMINATED: () = assert!(const_from_bytes_with_nul(b"\0a").is_none());
 
     // Good.
-    const EMPTY_TERMINATED: () = assert!(const_from_bytes_with_nul(b"\0").is_some());
+    const _EMPTY_TERMINATED: () = assert!(const_from_bytes_with_nul(b"\0").is_some());
     const _NONEMPTY: () = assert!(const_from_bytes_with_nul(b"asdf\0").is_some());
     const _1_CHAR: () = assert!(const_from_bytes_with_nul(b"a\0").is_some());
 }
