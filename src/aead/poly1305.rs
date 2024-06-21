@@ -55,8 +55,8 @@ macro_rules! dispatch {
       ( $( $p:ident : $t:ty ),+ )
       ( $( $a:expr ),+ ) ) => {
         match () {
-            // Apple's 32-bit ARM ABI is incompatible with the assembly code.
-            #[cfg(all(target_arch = "arm", not(target_vendor = "apple")))]
+            // BoringSSL uses `!defined(OPENSSL_APPLE)`.
+            #[cfg(all(target_arch = "arm", any(target_os = "android", target_os = "linux")))]
             () if cpu::arm::NEON.available($features) => {
                 prefixed_extern! {
                     fn $neon_f( $( $p : $t ),+ );
