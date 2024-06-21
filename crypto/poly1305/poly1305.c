@@ -18,7 +18,6 @@
 
 #include <ring-core/poly1305.h>
 
-#include "internal.h"
 #include "../internal.h"
 
 

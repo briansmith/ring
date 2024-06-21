@@ -17,11 +17,8 @@
 
 #include <ring-core/poly1305.h>
 
-#include "internal.h"
 #include "../internal.h"
 
-
-#if defined(OPENSSL_POLY1305_NEON)
 
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #pragma GCC diagnostic ignored "-Wcast-align"
@@ -304,5 +301,3 @@ void CRYPTO_poly1305_finish_neon(poly1305_state *state, uint8_t mac[16]) {
   h->v[8] += c->v[8];
   fe1305x2_tobytearray(mac, h);
 }
-
-#endif  // OPENSSL_POLY1305_NEON
