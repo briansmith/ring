@@ -220,24 +220,14 @@ pub(super) fn seal(
 
 #[cfg_attr(
     any(
-        all(
-            any(target_arch = "aarch64", target_arch = "arm"),
-            target_feature = "neon"
-        ),
-        all(
-            any(target_arch = "x86", target_arch = "x86_64"),
-            target_feature = "sse"
-        )
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
     ),
     inline(never)
 )]
-#[cfg_attr(
-    any(
-        all(target_arch = "aarch64", target_feature = "neon"),
-        all(target_arch = "x86_64", target_feature = "sse")
-    ),
-    cold
-)]
+#[cfg_attr(any(target_arch = "aarch64", target_arch = "x86_64"), cold)]
 fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks + gcm::Gmult>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
@@ -425,13 +415,7 @@ pub(super) fn open(
     ),
     inline(never)
 )]
-#[cfg_attr(
-    any(
-        all(target_arch = "aarch64", target_feature = "neon"),
-        all(target_arch = "x86_64", target_feature = "sse")
-    ),
-    cold
-)]
+#[cfg_attr(any(target_arch = "aarch64", target_arch = "x86_64"), cold)]
 fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks + gcm::Gmult>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
