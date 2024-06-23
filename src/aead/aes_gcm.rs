@@ -120,7 +120,7 @@ pub(super) fn seal(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, SealError> {
     let (tag_iv, ctr) = Counter::one_two(nonce);
 
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
@@ -130,7 +130,8 @@ pub(super) fn seal(
         #[cfg(target_arch = "x86_64")]
         DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
             use crate::c;
-            let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
+            let mut auth =
+                gcm::Context::new(gcm_key, aad, in_out.len()).map_err(SealError::from_gcm_error)?;
             let (htable, xi) = auth.inner();
             prefixed_extern! {
                 // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
@@ -168,7 +169,7 @@ pub(super) fn seal(
             if let Some(whole_len) = NonZeroUsize::new(whole.len()) {
                 let iv_block = ctr
                     .increment_by(whole_len)
-                    .map_err(|_: CounterOverflowError| error::Unspecified)?;
+                    .map_err(SealError::counter_overflow)?;
                 match aes_key.ctr32_encrypt_within(slice::flatten_mut(whole), 0.., iv_block) {
                     Ok(()) => {}
                     Result::<_, InOutLenInconsistentWithIvBlockLenError>::Err(_) => unreachable!(),
@@ -182,7 +183,8 @@ pub(super) fn seal(
         DynKey::AesHwClMul(Combo { aes_key, gcm_key }) => {
             use crate::bits::BitLength;
 
-            let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
+            let mut auth =
+                gcm::Context::new(gcm_key, aad, in_out.len()).map_err(SealError::from_gcm_error)?;
 
             let (whole, remainder) = slice::as_chunks_mut(in_out);
             let whole_block_bits = auth.in_out_whole_block_bits();
@@ -247,8 +249,9 @@ fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
     in_out: &mut [u8],
     mut ctr: Counter,
     tag_iv: aes::Iv,
-) -> Result<Tag, error::Unspecified> {
-    let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
+) -> Result<Tag, SealError> {
+    let mut auth =
+        gcm::Context::new(gcm_key, aad, in_out.len()).map_err(SealError::from_gcm_error)?;
 
     let (whole, remainder) = slice::as_chunks_mut(in_out);
 
@@ -256,7 +259,7 @@ fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
         let chunk_len = NonZeroUsize::new(chunk.len()).unwrap(); // Guaranteed by chunks_mut
         let iv_block = ctr
             .increment_by(chunk_len)
-            .map_err(|_: CounterOverflowError| error::Unspecified)?;
+            .map_err(SealError::counter_overflow)?;
         match aes_key.ctr32_encrypt_within(slice::flatten_mut(chunk), 0.., iv_block) {
             Ok(_) => {}
             Err(_) => unreachable!(),
@@ -273,11 +276,11 @@ fn seal_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
     remainder: &mut [u8],
     ctr: Counter,
     tag_iv: aes::Iv,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, SealError> {
     if !remainder.is_empty() {
         let mut input = ZERO_BLOCK;
         overwrite_at_start(&mut input, remainder);
-        let iv = ctr.try_into_iv().map_err(|_| error::Unspecified)?;
+        let iv = ctr.try_into_iv().map_err(SealError::counter_overflow)?;
         let mut output = aes_key.encrypt_iv_xor_block(iv, input);
         output[remainder.len()..].fill(0);
         auth.update_block(output);
@@ -287,6 +290,27 @@ fn seal_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
     Ok(finish(aes_key, auth, tag_iv))
 }
 
+#[non_exhaustive]
+pub(super) enum SealError {
+    #[allow(dead_code)]
+    InputTooLong(gcm::Error),
+    CounterOverflow(CounterOverflowError),
+}
+
+impl SealError {
+    #[cold]
+    #[inline(never)]
+    fn from_gcm_error(error: gcm::Error) -> Self {
+        Self::InputTooLong(error)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn counter_overflow(counter_overflow_error: CounterOverflowError) -> Self {
+        Self::CounterOverflow(counter_overflow_error)
+    }
+}
+
 #[inline(never)]
 pub(super) fn open(
     Key(key): &Key,
@@ -294,10 +318,10 @@ pub(super) fn open(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     src: RangeFrom<usize>,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, OpenError> {
     // Check that `src` is in bounds.
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-    let input = in_out.get(src.clone()).ok_or(error::Unspecified)?;
+    let input = in_out.get(src.clone()).ok_or_else(OpenError::invalid_src)?;
 
     let (tag_iv, ctr) = Counter::one_two(nonce);
 
@@ -322,7 +346,8 @@ pub(super) fn open(
                     Xi: &mut gcm::Xi) -> c::size_t;
             }
 
-            let mut auth = gcm::Context::new(gcm_key, aad, input.len())?;
+            let mut auth =
+                gcm::Context::new(gcm_key, aad, input.len()).map_err(OpenError::from_gcm_error)?;
             let (htable, xi) = auth.inner();
             let processed = unsafe {
                 aesni_gcm_decrypt(
@@ -353,7 +378,7 @@ pub(super) fn open(
             let whole_len = if let Some(whole_len) = NonZeroUsize::new(whole.len()) {
                 let iv_block = ctr
                     .increment_by(whole_len)
-                    .map_err(|_: CounterOverflowError| error::Unspecified)?;
+                    .map_err(OpenError::counter_overflow)?;
                 auth.update_blocks(whole);
                 let whole_len = slice::flatten(whole).len();
                 match aes_key.ctr32_encrypt_within(
@@ -381,7 +406,8 @@ pub(super) fn open(
             use crate::bits::BitLength;
 
             let input_len = input.len();
-            let mut auth = gcm::Context::new(gcm_key, aad, input_len)?;
+            let mut auth =
+                gcm::Context::new(gcm_key, aad, input_len).map_err(OpenError::from_gcm_error)?;
 
             let remainder_len = input_len % BLOCK_LEN;
             let whole_len = input_len - remainder_len;
@@ -455,11 +481,11 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
     src: RangeFrom<usize>,
     mut ctr: Counter,
     tag_iv: aes::Iv,
-) -> Result<Tag, error::Unspecified> {
-    let input = in_out.get(src.clone()).ok_or(error::Unspecified)?;
+) -> Result<Tag, OpenError> {
+    let input = in_out.get(src.clone()).ok_or_else(OpenError::invalid_src)?;
     let input_len = input.len();
 
-    let mut auth = gcm::Context::new(gcm_key, aad, input_len)?;
+    let mut auth = gcm::Context::new(gcm_key, aad, input_len).map_err(OpenError::from_gcm_error)?;
 
     let remainder_len = input_len % BLOCK_LEN;
     let whole_len = input_len - remainder_len;
@@ -483,7 +509,7 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
             };
             let iv_block = ctr
                 .increment_by(num_blocks)
-                .map_err(|_| error::Unspecified)?;
+                .map_err(OpenError::counter_overflow)?;
 
             auth.update_blocks(ciphertext);
 
@@ -510,8 +536,8 @@ fn open_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
     src: RangeFrom<usize>,
     ctr: Counter,
     tag_iv: aes::Iv,
-) -> Result<Tag, error::Unspecified> {
-    let iv = ctr.try_into_iv().map_err(|_| error::Unspecified)?;
+) -> Result<Tag, OpenError> {
+    let iv = ctr.try_into_iv().map_err(OpenError::counter_overflow)?;
     shift::shift_partial((src.start, remainder), |remainder| {
         let mut input = ZERO_BLOCK;
         overwrite_at_start(&mut input, remainder);
@@ -529,6 +555,34 @@ fn finish<A: aes::EncryptBlock, G: gcm::Gmult>(
 ) -> Tag {
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag| Tag(aes_key.encrypt_iv_xor_block(tag_iv, pre_tag)))
+}
+
+#[non_exhaustive]
+pub(super) enum OpenError {
+    #[allow(dead_code)]
+    InputTooLong(gcm::Error),
+    InvalidSrc,
+    CounterOverflow(CounterOverflowError),
+}
+
+impl OpenError {
+    #[cold]
+    #[inline(never)]
+    fn from_gcm_error(error: gcm::Error) -> Self {
+        Self::InputTooLong(error)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn counter_overflow(counter_overflow_error: CounterOverflowError) -> Self {
+        Self::CounterOverflow(counter_overflow_error)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn invalid_src() -> Self {
+        Self::InvalidSrc
+    }
 }
 
 pub(super) const MAX_IN_OUT_LEN: usize = super::max_input_len(BLOCK_LEN, 2);
