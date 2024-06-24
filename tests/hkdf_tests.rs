@@ -46,9 +46,8 @@ fn hkdf_tests() {
         // TODO: test multi-part info, especially with empty parts.
         let My(out) = salt
             .extract(&secret)
-            .expand(&[&info], My(expected_out.len()))
-            .unwrap()
-            .into();
+            .expand_to_secret(&[&info], My(expected_out.len()))
+            .unwrap();
         assert_eq!(out, expected_out);
 
         Ok(())
