@@ -37,7 +37,9 @@
 #include "../../crypto/fipsmodule/tls/internal.h"
 #include "../../crypto/internal.h"
 
+OPENSSL_MSVC_PRAGMA(warning(disable : 4295))
 
+#if defined(BORINGSSL_FIPS)
 static void hexdump(const void *a, size_t len) {
   const unsigned char *in = (const unsigned char *)a;
   for (size_t i = 0; i < len; i++) {
@@ -46,6 +48,7 @@ static void hexdump(const void *a, size_t len) {
 
   printf("\n");
 }
+#endif
 
 int main(int argc, char **argv) {
   // Ensure that the output is line-buffered rather than fully buffered. When
@@ -67,12 +70,17 @@ int main(int argc, char **argv) {
   printf("Module: '%s', version: %" PRIu32 " hash:\n", FIPS_module_name(),
          module_version);
 
-#if !defined(OPENSSL_ASAN)
-  hexdump(FIPS_module_hash(), SHA256_DIGEST_LENGTH);
+#if !defined(BORINGSSL_FIPS)
+  // |module_version| will be zero, so the non-FIPS build will never get
+  // this far.
+  printf("Non zero module version in non-FIPS build - should not happen!\n");
+  goto err;
 #else
+#if defined(OPENSSL_ASAN)
   printf("(not available when compiled for ASAN)");
+#else
+  hexdump(FIPS_module_hash(), SHA256_DIGEST_LENGTH);
 #endif
-  printf("\n");
 
   static const uint8_t kAESKey[16] = "BoringCrypto Key";
   static const uint8_t kPlaintext[64] =
@@ -149,8 +157,8 @@ int main(int argc, char **argv) {
   printf("About to AES-GCM open ");
   hexdump(output, out_len);
   if (!EVP_AEAD_CTX_open(&aead_ctx, output, &out_len, sizeof(output), nonce,
-                         EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
-                         output, out_len, NULL, 0)) {
+                         EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()), output,
+                         out_len, NULL, 0)) {
     printf("AES-GCM decrypt failed\n");
     goto err;
   }
@@ -178,8 +186,8 @@ int main(int argc, char **argv) {
   memcpy(&des_iv, &kDESIV, sizeof(des_iv));
   printf("About to 3DES-CBC decrypt ");
   hexdump(kPlaintext, sizeof(kPlaintext));
-  DES_ede3_cbc_encrypt(output, output, sizeof(kPlaintext), &des1,
-                       &des2, &des3, &des_iv, DES_DECRYPT);
+  DES_ede3_cbc_encrypt(output, output, sizeof(kPlaintext), &des1, &des2, &des3,
+                       &des_iv, DES_DECRYPT);
   printf("  got ");
   hexdump(output, sizeof(kPlaintext));
 
@@ -281,9 +289,8 @@ int main(int argc, char **argv) {
   hexdump(kPlaintextSHA256, sizeof(kPlaintextSHA256));
   ECDSA_SIG *sig =
       ECDSA_do_sign(kPlaintextSHA256, sizeof(kPlaintextSHA256), ec_key);
-  if (sig == NULL ||
-      !ECDSA_do_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), sig,
-                       ec_key)) {
+  if (sig == NULL || !ECDSA_do_verify(kPlaintextSHA256,
+                                      sizeof(kPlaintextSHA256), sig, ec_key)) {
     printf("ECDSA Sign/Verify PWCT failed.\n");
     goto err;
   }
@@ -305,7 +312,7 @@ int main(int argc, char **argv) {
 
   /* ECDSA with an invalid public key. */
   ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-  static const uint8_t kNotValidX926[] = {1,2,3,4,5,6};
+  static const uint8_t kNotValidX926[] = {1, 2, 3, 4, 5, 6};
   if (!EC_KEY_oct2key(ec_key, kNotValidX926, sizeof(kNotValidX926),
                       /*ctx=*/NULL)) {
     printf("Error while parsing invalid ECDSA public key\n");
@@ -387,10 +394,8 @@ int main(int argc, char **argv) {
   /* FFDH */
   printf("About to compute FFDH key-agreement:\n");
   DH *dh = DH_get_rfc7919_2048();
-  uint8_t dh_result[2048/8];
-  if (!dh ||
-      !DH_generate_key(dh) ||
-      sizeof(dh_result) != DH_size(dh) ||
+  uint8_t dh_result[2048 / 8];
+  if (!dh || !DH_generate_key(dh) || sizeof(dh_result) != DH_size(dh) ||
       DH_compute_key_padded(dh_result, DH_get0_pub_key(dh), dh) !=
           sizeof(dh_result)) {
     fprintf(stderr, "FFDH failed.\n");
@@ -403,6 +408,7 @@ int main(int argc, char **argv) {
 
   printf("PASS\n");
   return 0;
+#endif // !defined(BORINGSSL_FIPS)
 
 err:
   printf("FAIL\n");
