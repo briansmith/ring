@@ -129,7 +129,8 @@ pub(super) trait EncryptCtr32 {
 
 #[allow(dead_code)]
 fn encrypt_block_using_encrypt_iv_xor_block(key: &impl EncryptBlock, block: Block) -> Block {
-    key.encrypt_iv_xor_block(Iv(block), ZERO_BLOCK)
+    // It is OK to use `Iv::new_less_safe` because we're not really dealing with a counter.
+    key.encrypt_iv_xor_block(Iv::new_less_safe(block), ZERO_BLOCK)
 }
 
 fn encrypt_iv_xor_block_using_encrypt_block(
@@ -137,13 +138,15 @@ fn encrypt_iv_xor_block_using_encrypt_block(
     iv: Iv,
     block: Block,
 ) -> Block {
-    let encrypted_iv = key.encrypt_block(iv.0);
+    let encrypted_iv = key.encrypt_block(iv.into_block_less_safe());
     constant_time::xor_16(encrypted_iv, block)
 }
 
 #[allow(dead_code)]
 fn encrypt_iv_xor_block_using_ctr32(key: &impl EncryptCtr32, iv: Iv, mut block: Block) -> Block {
-    let mut ctr = Counter(iv.0); // This is OK because we're only encrypting one block.
+    // This is OK because we're only encrypting one block, and `iv` is already
+    // reserved for us to use.
+    let mut ctr = Counter(iv.into_block_less_safe());
     key.ctr32_encrypt_within(&mut block, 0.., &mut ctr);
     block
 }

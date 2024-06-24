@@ -45,7 +45,17 @@ impl Counter {
 /// The IV for a single block encryption.
 ///
 /// Intentionally not `Clone` to ensure each is used only once.
-pub struct Iv(pub(super) Block);
+pub struct Iv(Block);
+
+impl Iv {
+    pub(super) fn new_less_safe(value: Block) -> Self {
+        Self(value)
+    }
+
+    pub(super) fn into_block_less_safe(self) -> Block {
+        self.0
+    }
+}
 
 impl From<Counter> for Iv {
     fn from(counter: Counter) -> Self {
