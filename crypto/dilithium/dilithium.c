@@ -1214,6 +1214,48 @@ err:
   return ret;
 }
 
+int DILITHIUM_public_from_private(
+    struct DILITHIUM_public_key *out_public_key,
+    const struct DILITHIUM_private_key *private_key) {
+  int ret = 0;
+
+  // Intermediate values, allocated on the heap to allow use when there is a
+  // limited amount of stack.
+  struct values_st {
+    matrix a_ntt;
+    vectorl s1_ntt;
+    vectork t;
+    vectork t0;
+  };
+  struct values_st *values = OPENSSL_malloc(sizeof(*values));
+  if (values == NULL) {
+    goto err;
+  }
+
+  const struct private_key *priv = private_key_from_external(private_key);
+  struct public_key *pub = public_key_from_external(out_public_key);
+
+  OPENSSL_memcpy(pub->rho, priv->rho, sizeof(pub->rho));
+  OPENSSL_memcpy(pub->public_key_hash, priv->public_key_hash,
+                 sizeof(pub->public_key_hash));
+
+  matrix_expand(&values->a_ntt, priv->rho);
+
+  OPENSSL_memcpy(&values->s1_ntt, &priv->s1, sizeof(values->s1_ntt));
+  vectorl_ntt(&values->s1_ntt);
+
+  matrix_mult(&values->t, &values->a_ntt, &values->s1_ntt);
+  vectork_inverse_ntt(&values->t);
+  vectork_add(&values->t, &values->t, &priv->s2);
+
+  vectork_power2_round(&pub->t1, &values->t0, &values->t);
+
+  ret = 1;
+err:
+  OPENSSL_free(values);
+  return ret;
+}
+
 // FIPS 204, Algorithm 2 (`ML-DSA.Sign`). Returns 1 on success and 0 on failure.
 static int dilithium_sign_with_randomizer(
     uint8_t out_encoded_signature[DILITHIUM_SIGNATURE_BYTES],

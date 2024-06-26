@@ -92,6 +92,23 @@ TEST(DilithiumTest, SignatureIsRandomized) {
             1);
 }
 
+TEST(DilithiumTest, PublicFromPrivateIsConsistent) {
+  std::vector<uint8_t> encoded_public_key(DILITHIUM_PUBLIC_KEY_BYTES);
+  auto priv = std::make_unique<DILITHIUM_private_key>();
+  EXPECT_TRUE(DILITHIUM_generate_key(encoded_public_key.data(), priv.get()));
+
+  auto pub = std::make_unique<DILITHIUM_public_key>();
+  EXPECT_TRUE(DILITHIUM_public_from_private(pub.get(), priv.get()));
+
+  std::vector<uint8_t> encoded_public_key2(DILITHIUM_PUBLIC_KEY_BYTES);
+
+  CBB cbb;
+  CBB_init_fixed(&cbb, encoded_public_key2.data(), encoded_public_key2.size());
+  ASSERT_TRUE(DILITHIUM_marshal_public_key(&cbb, pub.get()));
+
+  EXPECT_EQ(Bytes(encoded_public_key2), Bytes(encoded_public_key));
+}
+
 TEST(DilithiumTest, InvalidPublicKeyEncodingLength) {
   // Encode a public key with a trailing 0 at the end.
   std::vector<uint8_t> encoded_public_key(DILITHIUM_PUBLIC_KEY_BYTES + 1);
@@ -100,13 +117,13 @@ TEST(DilithiumTest, InvalidPublicKeyEncodingLength) {
 
   // Public key is 1 byte too short.
   CBS cbs = bssl::MakeConstSpan(encoded_public_key)
-            .first(DILITHIUM_PUBLIC_KEY_BYTES - 1);
+                .first(DILITHIUM_PUBLIC_KEY_BYTES - 1);
   auto parsed_pub = std::make_unique<DILITHIUM_public_key>();
   EXPECT_FALSE(DILITHIUM_parse_public_key(parsed_pub.get(), &cbs));
 
   // Public key has the correct length.
-  cbs = bssl::MakeConstSpan(encoded_public_key)
-            .first(DILITHIUM_PUBLIC_KEY_BYTES);
+  cbs =
+      bssl::MakeConstSpan(encoded_public_key).first(DILITHIUM_PUBLIC_KEY_BYTES);
   EXPECT_TRUE(DILITHIUM_parse_public_key(parsed_pub.get(), &cbs));
 
   // Public key is 1 byte too long.
@@ -141,10 +158,6 @@ TEST(DilithiumTest, InvalidPrivateKeyEncodingLength) {
   CBS_init(&cbs, malformed_private_key.data(), DILITHIUM_PRIVATE_KEY_BYTES + 1);
   EXPECT_FALSE(DILITHIUM_parse_private_key(parsed_priv.get(), &cbs));
 }
-
-// TODO: Add more parsing tests:
-// - signed values out of range (private key's s1/s2 beyond ETA)
-// - signature hints not in the canonical order (signature malleability)
 
 static void DilithiumFileTest(FileTest *t) {
   std::vector<uint8_t> seed, message, public_key_expected, private_key_expected,

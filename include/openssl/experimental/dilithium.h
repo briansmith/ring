@@ -70,6 +70,12 @@ OPENSSL_EXPORT int DILITHIUM_generate_key(
     uint8_t out_encoded_public_key[DILITHIUM_PUBLIC_KEY_BYTES],
     struct DILITHIUM_private_key *out_private_key);
 
+// DILITHIUM_public_from_private sets |*out_public_key| to the public key that
+// corresponds to |private_key|. Returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int DILITHIUM_public_from_private(
+    struct DILITHIUM_public_key *out_public_key,
+    const struct DILITHIUM_private_key *private_key);
+
 // DILITHIUM_sign generates a signature for the message |msg| of length
 // |msg_len| using |private_key| following the randomized algorithm, and writes
 // the encoded signature to |out_encoded_signature|. Returns 1 on success and 0
