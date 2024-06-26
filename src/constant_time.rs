@@ -14,7 +14,7 @@
 
 //! Constant-time operations.
 
-use crate::{c, error};
+use crate::error;
 
 #[cfg(target_pointer_width = "64")]
 pub(crate) type Word = u64;
@@ -27,18 +27,60 @@ pub(crate) type Word = u32;
 /// contents of each, but NOT in constant time with respect to the lengths of
 /// `a` and `b`.
 pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecified> {
+    verify_equal(a.iter().copied(), b.iter().copied())
+}
+
+/// Types that have a zero value.
+pub(crate) trait Zero {
+    /// The zero value.
+    fn zero() -> Self;
+}
+
+/// All operations in the supertraits are assumed to be constant time.
+pub(crate) trait CryptoValue:
+    Zero + Into<Word> + core::ops::BitXor<Self, Output = Self> + core::ops::BitOr<Self, Output = Self>
+{
+}
+
+impl Zero for u8 {
+    fn zero() -> Self {
+        0
+    }
+}
+
+impl CryptoValue for u8 {}
+
+// TODO: Use this in internal callers, in favor of `verify_slices_are_equal`.
+#[inline]
+pub(crate) fn verify_equal<T>(
+    a: impl ExactSizeIterator<Item = T>,
+    b: impl ExactSizeIterator<Item = T>,
+) -> Result<(), error::Unspecified>
+where
+    T: CryptoValue,
+{
     if a.len() != b.len() {
         return Err(error::Unspecified);
     }
-    let result = unsafe { CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len()) };
-    match result {
+    let zero_if_equal = a.zip(b).fold(T::zero(), |accum, (a, b)| accum | (a ^ b));
+    let zero_if_equal = unsafe { RING_value_barrier_w(zero_if_equal.into()) };
+    match zero_if_equal {
         0 => Ok(()),
         _ => Err(error::Unspecified),
     }
 }
 
+/// The integer type that's the "natural" unsigned machine word size.
+pub(crate) type Word = CryptoWord;
+
+// Keep in sync with `crypto_word_t` in crypto/internal.h.
+#[cfg(target_pointer_width = "32")]
+type CryptoWord = u32;
+#[cfg(target_pointer_width = "64")]
+type CryptoWord = u64;
+
 prefixed_extern! {
-    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
+    fn RING_value_barrier_w(a: CryptoWord) -> CryptoWord;
 }
 
 pub(crate) fn xor_16(a: [u8; 16], b: [u8; 16]) -> [u8; 16] {
