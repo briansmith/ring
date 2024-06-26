@@ -140,7 +140,7 @@ static const uint8_t kMaxWarningAlerts = 4;
 
 // ssl_needs_record_splitting returns one if |ssl|'s current outgoing cipher
 // state needs record-splitting and zero otherwise.
-static bool ssl_needs_record_splitting(const SSL *ssl) {
+bool ssl_needs_record_splitting(const SSL *ssl) {
 #if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   return !ssl->s3->aead_write_ctx->is_null_cipher() &&
          ssl->s3->aead_write_ctx->ProtocolVersion() < TLS1_1_VERSION &&
@@ -152,28 +152,8 @@ static bool ssl_needs_record_splitting(const SSL *ssl) {
 }
 
 size_t ssl_record_prefix_len(const SSL *ssl) {
-  size_t header_len;
-  if (SSL_is_dtls(ssl)) {
-    header_len = DTLS1_RT_HEADER_LENGTH;
-  } else {
-    header_len = SSL3_RT_HEADER_LENGTH;
-  }
-
-  return header_len + ssl->s3->aead_read_ctx->ExplicitNonceLen();
-}
-
-size_t ssl_seal_align_prefix_len(const SSL *ssl) {
-  if (SSL_is_dtls(ssl)) {
-    return DTLS1_RT_HEADER_LENGTH + ssl->s3->aead_write_ctx->ExplicitNonceLen();
-  }
-
-  size_t ret =
-      SSL3_RT_HEADER_LENGTH + ssl->s3->aead_write_ctx->ExplicitNonceLen();
-  if (ssl_needs_record_splitting(ssl)) {
-    ret += SSL3_RT_HEADER_LENGTH;
-    ret += ssl_cipher_get_record_split_len(ssl->s3->aead_write_ctx->cipher());
-  }
-  return ret;
+  assert(!SSL_is_dtls(ssl));
+  return SSL3_RT_HEADER_LENGTH + ssl->s3->aead_read_ctx->ExplicitNonceLen();
 }
 
 static ssl_open_record_t skip_early_data(SSL *ssl, uint8_t *out_alert,

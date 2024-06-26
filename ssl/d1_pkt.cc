@@ -216,6 +216,11 @@ int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
   return 1;
 }
 
+static size_t dtls_seal_align_prefix_len(const SSL *ssl, uint16_t epoch) {
+  return dtls_record_header_write_len(ssl, epoch) +
+         ssl->s3->aead_write_ctx->ExplicitNonceLen();
+}
+
 int dtls1_write_record(SSL *ssl, int type, Span<const uint8_t> in,
                        uint16_t epoch) {
   SSLBuffer *buf = &ssl->s3->write_buffer;
@@ -231,7 +236,7 @@ int dtls1_write_record(SSL *ssl, int type, Span<const uint8_t> in,
   }
 
   size_t ciphertext_len;
-  if (!buf->EnsureCap(ssl_seal_align_prefix_len(ssl),
+  if (!buf->EnsureCap(dtls_seal_align_prefix_len(ssl, epoch),
                       in.size() + SSL_max_seal_overhead(ssl)) ||
       !dtls_seal_record(ssl, buf->remaining().data(), &ciphertext_len,
                         buf->remaining().size(), type, in.data(), in.size(),

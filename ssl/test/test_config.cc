@@ -752,9 +752,13 @@ static void MessageCallback(int is_write, int version, int content_type,
   }
 
   if (content_type == SSL3_RT_HEADER) {
-    size_t header_len =
-        config->is_dtls ? DTLS1_RT_HEADER_LENGTH : SSL3_RT_HEADER_LENGTH;
-    if (len != header_len) {
+    if (config->is_dtls) {
+      if (len > DTLS1_RT_MAX_HEADER_LENGTH) {
+        fprintf(stderr, "DTLS record header is too long: %zu.\n", len);
+      }
+      return;
+    }
+    if (len != SSL3_RT_HEADER_LENGTH) {
       fprintf(stderr, "Incorrect length for record header: %zu.\n", len);
       state->msg_callback_ok = false;
     }

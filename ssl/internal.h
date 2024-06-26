@@ -1018,17 +1018,9 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
                                         size_t *out_consumed,
                                         uint8_t *out_alert, Span<uint8_t> in);
 
-// ssl_seal_align_prefix_len returns the length of the prefix before the start
-// of the bulk of the ciphertext when sealing a record with |ssl|. Callers may
-// use this to align buffers.
-//
-// Note when TLS 1.0 CBC record-splitting is enabled, this includes the one byte
-// record and is the offset into second record's ciphertext. Thus sealing a
-// small record may result in a smaller output than this value.
-//
-// TODO(davidben): Is this alignment valuable? Record-splitting makes this a
-// mess.
-size_t ssl_seal_align_prefix_len(const SSL *ssl);
+// ssl_needs_record_splitting returns one if |ssl|'s current outgoing cipher
+// state needs record-splitting and zero otherwise.
+bool ssl_needs_record_splitting(const SSL *ssl);
 
 // tls_seal_record seals a new record of type |type| and body |in| and writes it
 // to |out|. At most |max_out| bytes will be written. It returns true on success
@@ -1043,6 +1035,10 @@ size_t ssl_seal_align_prefix_len(const SSL *ssl);
 // |in| and |out| may not alias.
 bool tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                      uint8_t type, const uint8_t *in, size_t in_len);
+
+// dtls_record_header_write_len returns the length of the record header that
+// will be written at |epoch|.
+size_t dtls_record_header_write_len(const SSL *ssl, uint16_t epoch);
 
 // dtls_max_seal_overhead returns the maximum overhead, in bytes, of sealing a
 // record.
@@ -2939,7 +2935,7 @@ struct SSL3_STATE {
 };
 
 // lengths of messages
-#define DTLS1_RT_HEADER_LENGTH 13
+#define DTLS1_RT_MAX_HEADER_LENGTH 13
 
 #define DTLS1_HM_HEADER_LENGTH 12
 
