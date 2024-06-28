@@ -14,7 +14,10 @@
 
 #![cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, AES_KEY};
+use super::{
+    Block, EncryptBlock, EncryptCtr32, InOutLenInconsistentWithIvBlockLenError, Iv, IvBlock,
+    KeyBytes, AES_KEY,
+};
 use crate::{cpu, error};
 use core::ops::RangeFrom;
 
@@ -56,9 +59,22 @@ impl EncryptBlock for Key {
 }
 
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(
+        &self,
+        in_out: &mut [u8],
+        src: RangeFrom<usize>,
+        iv_block: IvBlock,
+    ) -> Result<(), InOutLenInconsistentWithIvBlockLenError> {
         #[cfg(target_arch = "x86_64")]
         let _: cpu::Features = cpu::features();
-        unsafe { ctr32_encrypt_blocks!(aes_hw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr) }
+        unsafe {
+            ctr32_encrypt_blocks!(
+                aes_hw_ctr32_encrypt_blocks,
+                in_out,
+                src,
+                &self.inner,
+                iv_block
+            )
+        }
     }
 }

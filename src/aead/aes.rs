@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{nonce::Nonce, quic::Sample, NONCE_LEN};
+use super::quic::Sample;
 use crate::{
     constant_time,
     cpu::{self, GetFeature as _},
@@ -21,12 +21,16 @@ use crate::{
 use cfg_if::cfg_if;
 use core::ops::RangeFrom;
 
-pub(super) use ffi::Counter;
+pub(super) use self::{
+    counter::{CounterOverflowError, Iv, IvBlock},
+    ffi::Counter,
+};
 
 #[macro_use]
 mod ffi;
 
 mod bs;
+mod counter;
 pub(super) mod fallback;
 pub(super) mod hw;
 pub(super) mod vp;
@@ -113,38 +117,11 @@ pub enum KeyBytes<'a> {
     AES_256(&'a [u8; AES_256_KEY_LEN]),
 }
 
-// `Counter` is `ffi::Counter` as its representation is dictated by its use in
-// the FFI.
-impl Counter {
-    pub fn one(nonce: Nonce) -> Self {
-        let mut value = [0u8; BLOCK_LEN];
-        value[..NONCE_LEN].copy_from_slice(nonce.as_ref());
-        value[BLOCK_LEN - 1] = 1;
-        Self(value)
-    }
-
-    pub fn increment(&mut self) -> Iv {
-        let iv = Iv(self.0);
-        self.increment_by_less_safe(1);
-        iv
-    }
-
-    fn increment_by_less_safe(&mut self, increment_by: u32) {
-        let [.., c0, c1, c2, c3] = &mut self.0;
-        let old_value: u32 = u32::from_be_bytes([*c0, *c1, *c2, *c3]);
-        let new_value = old_value + increment_by;
-        [*c0, *c1, *c2, *c3] = u32::to_be_bytes(new_value);
-    }
-}
-
-/// The IV for a single block encryption.
-///
-/// Intentionally not `Clone` to ensure each is used only once.
-pub struct Iv(Block);
-
-impl From<Counter> for Iv {
-    fn from(counter: Counter) -> Self {
-        Self(counter.0)
+pub(super) struct InOutLenInconsistentWithIvBlockLenError(());
+impl InOutLenInconsistentWithIvBlockLenError {
+    #[cold]
+    fn new() -> Self {
+        Self(())
     }
 }
 
@@ -158,12 +135,18 @@ pub(super) trait EncryptBlock {
 }
 
 pub(super) trait EncryptCtr32 {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter);
+    fn ctr32_encrypt_within(
+        &self,
+        in_out: &mut [u8],
+        src: RangeFrom<usize>,
+        iv_block: IvBlock,
+    ) -> Result<(), InOutLenInconsistentWithIvBlockLenError>;
 }
 
 #[allow(dead_code)]
 fn encrypt_block_using_encrypt_iv_xor_block(key: &impl EncryptBlock, block: Block) -> Block {
-    key.encrypt_iv_xor_block(Iv(block), ZERO_BLOCK)
+    // It is OK to use `Iv::new_less_safe` because we're not really dealing with a counter.
+    key.encrypt_iv_xor_block(Iv::new_less_safe(block), ZERO_BLOCK)
 }
 
 fn encrypt_iv_xor_block_using_encrypt_block(
@@ -171,15 +154,17 @@ fn encrypt_iv_xor_block_using_encrypt_block(
     iv: Iv,
     block: Block,
 ) -> Block {
-    let encrypted_iv = key.encrypt_block(iv.0);
+    let encrypted_iv = key.encrypt_block(iv.into_block_less_safe());
     constant_time::xor_16(encrypted_iv, block)
 }
 
 #[allow(dead_code)]
 fn encrypt_iv_xor_block_using_ctr32(key: &impl EncryptCtr32, iv: Iv, mut block: Block) -> Block {
-    let mut ctr = Counter(iv.0); // This is OK because we're only encrypting one block.
-    key.ctr32_encrypt_within(&mut block, 0.., &mut ctr);
-    block
+    let iv_block = IvBlock::from_iv(iv);
+    match key.ctr32_encrypt_within(&mut block, 0.., iv_block) {
+        Ok(()) => block,
+        Result::<_, InOutLenInconsistentWithIvBlockLenError>::Err(_) => unreachable!(),
+    }
 }
 
 #[cfg(test)]

@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, AES_KEY};
+use super::{
+    Block, EncryptBlock, EncryptCtr32, InOutLenInconsistentWithIvBlockLenError, Iv, IvBlock,
+    KeyBytes, AES_KEY,
+};
 use crate::error;
 use core::ops::RangeFrom;
 
@@ -39,9 +42,20 @@ impl EncryptBlock for Key {
 }
 
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(
+        &self,
+        in_out: &mut [u8],
+        src: RangeFrom<usize>,
+        iv_block: IvBlock,
+    ) -> Result<(), InOutLenInconsistentWithIvBlockLenError> {
         unsafe {
-            ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+            ctr32_encrypt_blocks!(
+                aes_nohw_ctr32_encrypt_blocks,
+                in_out,
+                src,
+                &self.inner,
+                iv_block
+            )
         }
     }
 }

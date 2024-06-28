@@ -18,10 +18,13 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use crate::{c, error, polyfill::ArrayFlatMap};
+use crate::{
+    c, error,
+    polyfill::{usize_from_u32, ArrayFlatMap},
+};
 
 #[cfg(any(test, feature = "alloc"))]
-use crate::{bits, constant_time, polyfill::usize_from_u32};
+use crate::{bits, constant_time};
 
 #[cfg(feature = "alloc")]
 use core::num::Wrapping;
