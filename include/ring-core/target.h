@@ -47,7 +47,7 @@
 #elif defined(__ILP32__)
 #define OPENSSL_32_BIT
 // Versions of GCC before 10.0 didn't define `__ILP32__` for all 32-bit targets.
-#elif defined(__MIPSEL__) || defined(__MIPSEB__) || defined(__PPC__) || defined(__powerpc__) || defined(__csky__)
+#elif defined(__MIPSEL__) || defined(__MIPSEB__) || defined(__PPC__) || defined(__powerpc__) || defined(__csky__) || defined(__XTENSA__)
 #define OPENSSL_32_BIT
 #else
 #error "Unknown target CPU"
