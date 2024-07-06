@@ -19,8 +19,6 @@
 //
 // The field functions are shared by Ed25519 and X25519 where possible.
 
-#include <ring-core/mem.h>
-
 #include "internal.h"
 #include "../internal.h"
 
@@ -393,14 +391,19 @@ static void fe_invert(fe *out, const fe *z) {
 
 // return 0 if f == 0
 // return 1 if f != 0
-static int fe_isnonzero(const fe_loose *f) {
+static int fe_isnonzero_vartime(const fe_loose *f) {
   fe tight;
   fe_carry(&tight, f);
   uint8_t s[32];
   fe_tobytes(s, &tight);
 
-  static const uint8_t zero[32] = {0};
-  return CRYPTO_memcmp(s, zero, sizeof(zero)) != 0;
+  for (size_t i = 0; i < sizeof(s); i++) {
+    if (s[i] != 0) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 // return 1 if f is in {1,3,5,...,q-2}
@@ -503,9 +506,9 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]) {
   fe_sq_tt(&vxx, &h->X);
   fe_mul_ttl(&vxx, &vxx, &v);
   fe_sub(&check, &vxx, &u);
-  if (fe_isnonzero(&check)) {
+  if (fe_isnonzero_vartime(&check)) {
     fe_add(&check, &vxx, &u);
-    if (fe_isnonzero(&check)) {
+    if (fe_isnonzero_vartime(&check)) {
       return 0;
     }
     fe_mul_ttt(&h->X, &h->X, &sqrtm1);
