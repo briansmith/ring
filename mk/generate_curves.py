@@ -17,7 +17,7 @@
 from textwrap import wrap
 
 rs_template = """
-// Copyright 2016-2023 Brian Smith.
+// Copyright 2016-2024 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -215,6 +215,7 @@ prefixed_extern! {
         a: *const Limb, // [3][COMMON_OPS.num_limbs]
         b: *const Limb, // [3][COMMON_OPS.num_limbs]
     );
+
     fn p%(bits)s_point_mul(
         r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
@@ -345,19 +346,25 @@ c_template = """
 
 #include "../../limbs/limbs.inl"
 
-typedef Limb Elem[P%(bits)d_LIMBS];
-typedef Limb ScalarMont[P%(bits)d_LIMBS];
-typedef Limb Scalar[P%(bits)d_LIMBS];
+#define BITS %(bits)d
 
-static const BN_ULONG Q[P%(bits)d_LIMBS] = {
+#define P%(bits)d_LIMBS (%(bits)du / LIMB_BITS)
+
+#define FE_LIMBS P%(bits)d_LIMBS
+
+typedef Limb Elem[FE_LIMBS];
+typedef Limb ScalarMont[FE_LIMBS];
+typedef Limb Scalar[FE_LIMBS];
+
+static const Elem Q = {
 %(q)s
 };
 
-static const BN_ULONG N[P%(bits)d_LIMBS] = {
+static const Elem N = {
 %(n)s
 };
 
-static const BN_ULONG ONE[P%(bits)d_LIMBS] = {
+static const Elem ONE = {
 %(q_one)s
 };
 
@@ -372,6 +379,20 @@ static const BN_ULONG Q_N0[] = {
 static const BN_ULONG N_N0[] = {
   %(n_n0)s
 };
+
+/* XXX: MSVC for x86 warns when it fails to inline these functions it should
+ * probably inline. */
+#if defined(_MSC_VER) && !defined(__clang__) && defined(OPENSSL_X86)
+#define INLINE_IF_POSSIBLE __forceinline
+#else
+#define INLINE_IF_POSSIBLE inline
+#endif
+
+/* Window values that are Ok for P384 (look at `ecp_nistz.h`): 2, 5, 6, 7 */
+/* Window values that are Ok for P521 (look at `ecp_nistz.h`): 4 */
+#define W_BITS %(w_bits)d
+
+#include "ecp_nistz.inl"
 
 """
 
@@ -437,6 +458,7 @@ def generate_c(g, out_dir):
         "q_plus_1_shr_1": format_big_int(const((q + 1) >> 1), big_int_limbs(q)),
         "n" : format_big_int(const(n), big_int_limbs(q)),
         "n_n0": format_n0(n),
+        "w_bits": g["w_bits"],
     }
 
     out_path = os.path.join(out_dir, "gfp_%s.c" % name)
@@ -476,6 +498,7 @@ p256 = {
     "Gx": 0x6b17d1f2_e12c4247_f8bce6e5_63a440f2_77037d81_2deb33a0_f4a13945_d898c296,
     "Gy": 0x4fe342e2_fe1a7f9b_8ee7eb4a_7c0f9e16_2bce3357_6b315ece_cbb64068_37bf51f5,
     "cofactor": 1,
+    "w_bits": 5,
 }
 
 p384 = {
@@ -488,6 +511,7 @@ p384 = {
     "Gx": 0xaa87ca22_be8b0537_8eb1c71e_f320ad74_6e1d3b62_8ba79b98_59f741e0_82542a38_5502f25d_bf55296c_3a545e38_72760ab7,
     "Gy": 0x3617de4a_96262c6f_5d9e98bf_9292dc29_f8f41dbd_289a147c_e9da3113_b5f0b8c0_0a60b1ce_1d7e819d_7a431d7c_90ea0e5f,
     "cofactor": 1,
+    "w_bits": 5,
 }
 
 p521 = {
@@ -500,6 +524,7 @@ p521 = {
     "Gx": 0xc6_858e06b7_0404e9cd_9e3ecb66_2395b442_9c648139_053fb521_f828af60_6b4d3dba_a14b5e77_efe75928_fe1dc127_a2ffa8de_3348b3c1_856a429b_f97e7e31_c2e5bd66,
     "Gy": 0x118_39296a78_9a3bc004_5c8a5fb4_2c7d1bd9_98f54449_579b4468_17afbd17_273e662c_97ee7299_5ef42640_c550b901_3fad0761_353c7086_a272c240_88be9476_9fd16650,
     "cofactor": 1,
+    "w_bits": 4,
 }
 
 import os
