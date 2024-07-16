@@ -3794,6 +3794,7 @@ static bool ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
       return true;
 
     default:
+      hs->should_ack_sni = ssl->s3->hostname != nullptr;
       return true;
   }
 }

@@ -616,7 +616,6 @@ static bool extract_sni(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     //
     // Clear state in case we previously extracted SNI from ClientHelloOuter.
     ssl->s3->hostname.reset();
-    hs->should_ack_sni = false;
     return true;
   }
 
@@ -653,8 +652,6 @@ static bool extract_sni(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return false;
   }
   ssl->s3->hostname.reset(raw);
-
-  hs->should_ack_sni = true;
   return true;
 }
 
