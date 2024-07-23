@@ -101,7 +101,7 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 	b, c.rawInput = c.in.splitBlock(b, recordHeaderLen+n)
 
 	// Process message.
-	ok, off, _, alertValue := c.in.decrypt(b)
+	ok, off, _, alertValue := c.in.decrypt(b.data[3:11], recordHeaderLen, b)
 	if !ok {
 		// A real DTLS implementation would silently ignore bad records,
 		// but we want to notice errors from the implementation under

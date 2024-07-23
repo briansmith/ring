@@ -416,9 +416,7 @@ type cbcMode interface {
 // success boolean, the number of bytes to skip from the start of the record in
 // order to get the application payload, the encrypted record type (or 0
 // if there is none), and an optional alert value.
-func (hc *halfConn) decrypt(b *block) (ok bool, prefixLen int, contentType recordType, alertValue alert) {
-	recordHeaderLen := hc.recordHeaderLen()
-
+func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, b *block) (ok bool, prefixLen int, contentType recordType, alertValue alert) {
 	// pull out payload
 	payload := b.data[recordHeaderLen:]
 
@@ -429,12 +427,6 @@ func (hc *halfConn) decrypt(b *block) (ok bool, prefixLen int, contentType recor
 
 	paddingGood := byte(255)
 	explicitIVLen := 0
-
-	seq := hc.seq[:]
-	if hc.isDTLS {
-		// DTLS sequence numbers are explicit.
-		seq = b.data[3:11]
-	}
 
 	// decrypt
 	if hc.cipher != nil {
@@ -873,7 +865,7 @@ RestartReadRecord:
 
 	// Process message.
 	b, c.rawInput = c.in.splitBlock(b, recordHeaderLen+n)
-	ok, off, encTyp, alertValue := c.in.decrypt(b)
+	ok, off, encTyp, alertValue := c.in.decrypt(c.in.seq[:], recordHeaderLen, b)
 
 	// Handle skipping over early data.
 	if !ok && c.skipEarlyData {
