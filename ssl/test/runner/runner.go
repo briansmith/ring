@@ -2725,7 +2725,7 @@ read alert 1 0
 			name:     "SplitFragments-Boundary-DTLS",
 			config: Config{
 				Bugs: ProtocolBugs{
-					SplitFragments: dtlsRecordHeaderLen,
+					SplitFragments: dtlsMaxRecordHeaderLen,
 				},
 			},
 			shouldFail:    true,
@@ -2736,7 +2736,7 @@ read alert 1 0
 			name:     "SplitFragments-Body-DTLS",
 			config: Config{
 				Bugs: ProtocolBugs{
-					SplitFragments: dtlsRecordHeaderLen + 1,
+					SplitFragments: dtlsMaxRecordHeaderLen + 1,
 				},
 			},
 			shouldFail:    true,

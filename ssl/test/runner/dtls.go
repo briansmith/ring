@@ -24,7 +24,7 @@ import (
 )
 
 func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
-	recordHeaderLen := dtlsRecordHeaderLen
+	recordHeaderLen := dtlsMaxRecordHeaderLen
 
 	if c.rawInput == nil {
 		c.rawInput = c.in.newBlock()
@@ -335,7 +335,7 @@ func (c *Conn) dtlsFlushHandshake() error {
 // if necessary. The caller should call dtlsFlushPacket to flush the current
 // pending packet afterwards.
 func (c *Conn) dtlsPackRecord(typ recordType, data []byte, mustPack bool) (n int, err error) {
-	recordHeaderLen := dtlsRecordHeaderLen
+	recordHeaderLen := c.out.writeRecordHeaderLen()
 	maxLen := c.config.Bugs.MaxHandshakeRecordLength
 	if maxLen <= 0 {
 		maxLen = 1024
