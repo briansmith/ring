@@ -28,6 +28,19 @@
 //! let digest2: [u8; 32] = ctx.digest();
 //!
 //! assert_eq!(digest, digest2);
+//!
+//! // Hashing with dynamic dispatch.
+//! #[cfg(feature = "std")]
+//! {
+//!     fn update_hash(ctx: &mut dyn std::io::Write) {
+//!         ctx.write(b"hel");
+//!         ctx.write(b"lo");
+//!     }
+//!
+//!     let mut ctx = digest::Sha256::new();
+//!     update_hash(&mut ctx);
+//!     assert_eq!(ctx.digest(), digest);
+//! }
 //! ```
 
 use crate::{sealed, FfiSlice, ForeignTypeRef};
