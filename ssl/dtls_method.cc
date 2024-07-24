@@ -95,13 +95,10 @@ static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
     // reordering around KeyUpdate (i.e. accept records from both epochs), we'll
     // need a separate bitmap for each epoch.
     ssl->d1->r_epoch = level;
-    // |ssl->d1->bitmap| incorporates epochs into sequence numbers, so it
-    // doesn't need to be reset. Preserving it allows |SSL_get_read_sequence| to
-    // query the maximum sequence number received.
   } else {
     ssl->d1->r_epoch++;
-    ssl->d1->bitmap = DTLS1_BITMAP();
   }
+  ssl->d1->bitmap = DTLS1_BITMAP();
   ssl->s3->read_sequence = 0;
 
   ssl->s3->aead_read_ctx = std::move(aead_ctx);

@@ -4397,6 +4397,13 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
 }
 
 TEST_P(SSLVersionTest, RecordCallback) {
+  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
+    // The DTLS 1.3 record header is vastly different than the TLS or DTLS < 1.3
+    // header format. Instead of checking that the record header is formatted as
+    // expected here, the runner implementation in dtls.go is strict about what
+    // it accepts.
+    return;
+  }
   for (bool test_server : {true, false}) {
     SCOPED_TRACE(test_server);
     ASSERT_NO_FATAL_FAILURE(ResetContexts());
@@ -4430,9 +4437,6 @@ TEST_P(SSLVersionTest, RecordCallback) {
         uint16_t epoch;
         ASSERT_TRUE(CBS_get_u16(&cbs, &epoch));
         uint16_t max_epoch = 1;
-        if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-          max_epoch = 3;
-        }
         EXPECT_LE(epoch, max_epoch) << "Invalid epoch: " << epoch;
         ASSERT_TRUE(CBS_skip(&cbs, 6));
       }

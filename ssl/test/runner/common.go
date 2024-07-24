@@ -617,6 +617,16 @@ type Config struct {
 
 	CertCompressionAlgs map[uint16]CertCompressionAlg
 
+	// DTLSUseShortSeqNums specifies whether the DTLS 1.3 record header
+	// should use short (8-bit) or long (16-bit) sequence numbers. The
+	// default is to use long sequence numbers.
+	DTLSUseShortSeqNums bool
+
+	// DTLSRecordHeaderOmitLength specified whether the DTLS 1.3 record
+	// header includes a length field. The default is to include the length
+	// field.
+	DTLSRecordHeaderOmitLength bool
+
 	// Bugs specifies optional misbehaviour to be used for testing other
 	// implementations.
 	Bugs ProtocolBugs
@@ -1967,6 +1977,14 @@ type ProtocolBugs struct {
 	// DTLS13EchoSessionID, if true, has DTLS 1.3 servers echo the client's
 	// session ID in the ServerHello.
 	DTLS13EchoSessionID bool
+
+	// DTLSUsePlaintextRecord header, if true, has DTLS connections never
+	// use the DTLS 1.3 record header.
+	DTLSUsePlaintextRecordHeader bool
+
+	// DTLS13RecordHeaderSetCIDBit, if true, sets the Connection ID bit in
+	// the DTLS 1.3 record header.
+	DTLS13RecordHeaderSetCIDBit bool
 
 	// EncryptSessionTicketKey, if non-nil, is the ticket key to use when
 	// encrypting tickets.

@@ -130,6 +130,8 @@ func (c *Conn) init() {
 	c.out.isDTLS = c.isDTLS
 	c.in.config = c.config
 	c.out.config = c.config
+	c.in.conn = c
+	c.out.conn = c
 
 	c.out.updateOutSeq()
 }
@@ -193,6 +195,7 @@ type halfConn struct {
 	trafficSecret []byte
 
 	config *Config
+	conn   *Conn
 }
 
 func (hc *halfConn) setErrorLocked(err error) error {
@@ -362,10 +365,25 @@ func (hc *halfConn) updateOutSeq() {
 // that can depend on the bytes read.
 func (hc *halfConn) writeRecordHeaderLen() int {
 	if hc.isDTLS {
-		// TODO(nharper): Change this to be the actual record header
-		// length that will be written. This will depend on version and
-		// write cipher, as well as configuration or protocol bugs to
-		// exercise all options of the DTLS 1.3 record header.
+		usePlaintextHeader := hc.config.Bugs.DTLSUsePlaintextRecordHeader && hc.conn.handshakeComplete
+		if hc.version >= VersionTLS13 && hc.cipher != nil && !usePlaintextHeader {
+			// The DTLS 1.3 record header consists of a
+			// demultiplexing/type byte, some number of connection
+			// ID bytes, 1 or 2 sequence number bytes, and 0 or 2
+			// length bytes. Configuration options or protocol bugs
+			// will change these values to test all options of the
+			// DTLS 1.3 record header.
+			cidSize := 0
+			seqSize := 2
+			if hc.config.DTLSUseShortSeqNums {
+				seqSize = 1
+			}
+			lenSize := 2
+			if hc.config.DTLSRecordHeaderOmitLength {
+				lenSize = 0
+			}
+			return 1 + cidSize + seqSize + lenSize
+		}
 		return dtlsMaxRecordHeaderLen
 	}
 	return tlsRecordHeaderLen
@@ -502,7 +520,7 @@ func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, b *block) (ok bool,
 			panic("unknown cipher type")
 		}
 
-		if hc.version >= VersionTLS13 && !hc.isDTLS {
+		if hc.version >= VersionTLS13 {
 			i := len(payload)
 			for i > 0 && payload[i-1] == 0 {
 				i--
@@ -597,6 +615,11 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int, typ recordType) (bool, 
 			if c.explicitNonce {
 				nonce = b.data[recordHeaderLen : recordHeaderLen+explicitIVLen]
 			}
+			usePlaintextHeader := hc.config.Bugs.DTLSUsePlaintextRecordHeader && hc.conn.handshakeComplete
+			if hc.isDTLS && hc.version >= VersionTLS13 && !usePlaintextHeader {
+				nonce = make([]byte, 8)
+				copy(nonce[2:], hc.outSeq[2:])
+			}
 			payload := b.data[recordHeaderLen+explicitIVLen:]
 			payload = payload[:payloadLen]
 
@@ -631,9 +654,11 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int, typ recordType) (bool, 
 	}
 
 	// update length to include MAC and any block padding needed.
-	n := len(b.data) - recordHeaderLen
-	b.data[recordHeaderLen-2] = byte(n >> 8)
-	b.data[recordHeaderLen-1] = byte(n)
+	if !hc.config.DTLSRecordHeaderOmitLength {
+		n := len(b.data) - recordHeaderLen
+		b.data[recordHeaderLen-2] = byte(n >> 8)
+		b.data[recordHeaderLen-1] = byte(n)
+	}
 	hc.incSeq(true)
 
 	return true, 0
@@ -1193,21 +1218,17 @@ func (c *Conn) addTLS13Padding(b *block, recordHeaderLen, recordLen int, typ rec
 	if c.out.version < VersionTLS13 || c.out.cipher == nil {
 		return recordLen
 	}
-	// TODO(nharper): DTLS 1.3 should be adding padding, but the currently
-	// implemented DTLS 1.25 doesn't include padding.
-	if !c.isDTLS {
-		paddingLen := c.config.Bugs.RecordPadding
-		if c.config.Bugs.OmitRecordContents {
-			recordLen = paddingLen
-			b.resize(recordHeaderLen + paddingLen)
-		} else {
-			recordLen += 1 + paddingLen
-			b.resize(len(b.data) + 1 + paddingLen)
-			b.data[len(b.data)-paddingLen-1] = byte(typ)
-		}
-		for i := 0; i < paddingLen; i++ {
-			b.data[len(b.data)-paddingLen+i] = 0
-		}
+	paddingLen := c.config.Bugs.RecordPadding
+	if c.config.Bugs.OmitRecordContents {
+		recordLen = paddingLen
+		b.resize(recordHeaderLen + paddingLen)
+	} else {
+		recordLen += 1 + paddingLen
+		b.resize(len(b.data) + 1 + paddingLen)
+		b.data[len(b.data)-paddingLen-1] = byte(typ)
+	}
+	for i := 0; i < paddingLen; i++ {
+		b.data[len(b.data)-paddingLen+i] = 0
 	}
 	if c, ok := c.out.cipher.(*tlsAead); ok {
 		recordLen += c.Overhead()

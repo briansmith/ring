@@ -2938,6 +2938,22 @@ struct SSL3_STATE {
 // lengths of messages
 #define DTLS1_RT_MAX_HEADER_LENGTH 13
 
+// DTLS_PLAINTEXT_RECORD_HEADER_LENGTH is the length of the DTLS record header
+// for plaintext records (in DTLS 1.3) or DTLS versions <= 1.2.
+#define DTLS_PLAINTEXT_RECORD_HEADER_LENGTH 13
+
+// DTLS1_3_RECORD_HEADER_LENGTH is the length of the DTLS 1.3 record header
+// sent by BoringSSL for encrypted records. Note that received encrypted DTLS
+// 1.3 records might have a different length header.
+#define DTLS1_3_RECORD_HEADER_WRITE_LENGTH 5
+
+static_assert(DTLS1_RT_MAX_HEADER_LENGTH >= DTLS_PLAINTEXT_RECORD_HEADER_LENGTH,
+              "DTLS1_RT_MAX_HEADER_LENGTH must not be smaller than defined "
+              "record header lengths");
+static_assert(DTLS1_RT_MAX_HEADER_LENGTH >= DTLS1_3_RECORD_HEADER_WRITE_LENGTH,
+              "DTLS1_RT_MAX_HEADER_LENGTH must not be smaller than defined "
+              "record header lengths");
+
 #define DTLS1_HM_HEADER_LENGTH 12
 
 #define DTLS1_CCS_HEADER_LENGTH 1

@@ -159,6 +159,132 @@ static void dtls1_bitmap_record(DTLS1_BITMAP *bitmap, uint64_t seq_num) {
   }
 }
 
+// reconstruct_epoch finds the largest epoch that ends with the epoch bits from
+// |wire_epoch| that is less than or equal to |current_epoch|, to match the
+// epoch reconstruction algorithm described in RFC 9147 section 4.2.2.
+static uint16_t reconstruct_epoch(uint8_t wire_epoch, uint16_t current_epoch) {
+  uint16_t current_epoch_high = current_epoch & 0xfffc;
+  uint16_t epoch = (wire_epoch & 0x3) | current_epoch_high;
+  if (epoch > current_epoch && current_epoch_high > 0) {
+    epoch -= 0x4;
+  }
+  return epoch;
+}
+
+// reconstruct_seqnum returns the smallest sequence number that hasn't been seen
+// in |bitmap| and is still within |bitmap|'s window to handle as a reordered
+// record.
+//
+// Section 4.2.2 of RFC 9147 describes an algorithm for reconstructing sequence
+// numbers, which is implemented here. This algorithm finds the sequence number
+// that is numerically closest to one plus the largest sequence number seen in
+// this epoch.
+static uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
+                                   DTLS1_BITMAP *bitmap) {
+  uint64_t max_seqnum_plus_one = bitmap->max_seq_num + 1;
+  uint64_t diff = (wire_seq - max_seqnum_plus_one) & seq_mask;
+  uint64_t step = seq_mask + 1;
+  uint64_t seqnum = max_seqnum_plus_one + diff;
+  // diff is always non-negative, so seqnum is >= max_seqnum_plus_one. If the
+  // diff is larger than half the step size, then the numerically closest
+  // sequence number is less than max_seqnum_plus_one instead of greater.
+  if (diff > step / 2) {
+    seqnum -= step;
+  }
+  return seqnum;
+}
+
+static bool parse_dtls13_record_header(SSL *ssl, CBS *in, size_t packet_size,
+                                       uint8_t type, CBS *out_body,
+                                       uint64_t *out_sequence,
+                                       uint16_t *out_epoch,
+                                       size_t *out_header_len) {
+  // TODO(crbug.com/boringssl/715): Decrypt the sequence number before
+  // decoding it.
+  if ((type & 0x10) == 0x10) {
+    // Connection ID bit set, which we didn't negotiate.
+    return false;
+  }
+  // TODO(crbug.com/boringssl/715): Add a runner test that performs many
+  // key updates to verify epoch reconstruction works for epochs larger than
+  // 3.
+  *out_epoch = reconstruct_epoch(type, ssl->d1->r_epoch);
+  if ((type & 0x08) == 0x08) {
+    // 16-bit sequence number.
+    uint16_t seq;
+    if (!CBS_get_u16(in, &seq)) {
+      // The record header was incomplete or malformed.
+      return false;
+    }
+    *out_sequence = reconstruct_seqnum(seq, 0xffff, &ssl->d1->bitmap);
+  } else {
+    // 8-bit sequence number.
+    uint8_t seq;
+    if (!CBS_get_u8(in, &seq)) {
+      // The record header was incomplete or malformed.
+      return false;
+    }
+    *out_sequence = reconstruct_seqnum(seq, 0xff, &ssl->d1->bitmap);
+  }
+  *out_header_len = packet_size - CBS_len(in);
+  if ((type & 0x04) == 0x04) {
+    *out_header_len += 2;
+    // 16-bit length present
+    if (!CBS_get_u16_length_prefixed(in, out_body)) {
+      // The record header was incomplete or malformed.
+      return false;
+    }
+  } else {
+    // No length present - the remaining contents are the whole packet.
+    // CBS_get_bytes is used here to advance |in| to the end so that future
+    // code that computes the number of consumed bytes functions correctly.
+    if (!CBS_get_bytes(in, out_body, CBS_len(in))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool parse_dtls_plaintext_record_header(
+    SSL *ssl, CBS *in, size_t packet_size, uint8_t type, CBS *out_body,
+    uint64_t *out_sequence, uint16_t *out_epoch, size_t *out_header_len,
+    uint16_t *out_version) {
+  SSLAEADContext *aead = ssl->s3->aead_read_ctx.get();
+  uint8_t sequence_bytes[8];
+  if (!CBS_get_u16(in, out_version) ||
+      !CBS_copy_bytes(in, sequence_bytes, sizeof(sequence_bytes))) {
+    return false;
+  }
+  *out_header_len = packet_size - CBS_len(in) + 2;
+  if (!CBS_get_u16_length_prefixed(in, out_body) ||
+      CBS_len(out_body) > SSL3_RT_MAX_ENCRYPTED_LENGTH) {
+    return false;
+  }
+
+  bool version_ok;
+  if (aead->is_null_cipher()) {
+    // Only check the first byte. Enforcing beyond that can prevent decoding
+    // version negotiation failure alerts.
+    version_ok = (*out_version >> 8) == DTLS1_VERSION_MAJOR;
+  } else {
+    version_ok = *out_version == aead->RecordVersion();
+  }
+
+  if (!version_ok) {
+    return false;
+  }
+
+  *out_sequence = CRYPTO_load_u64_be(sequence_bytes);
+  *out_epoch = static_cast<uint16_t>(*out_sequence >> 48);
+
+  // Discard the packet if we're expecting an encrypted DTLS 1.3 record but we
+  // get the old record header format.
+  if (!aead->is_null_cipher() && aead->ProtocolVersion() >= TLS1_3_VERSION) {
+    return false;
+  }
+  return true;
+}
+
 enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
                                         Span<uint8_t> *out,
                                         size_t *out_consumed,
@@ -174,42 +300,42 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
 
   CBS cbs = CBS(in);
 
-  // Decode the record.
   uint8_t type;
-  uint16_t version;
-  uint8_t sequence_bytes[8];
+  size_t record_header_len;
+  if (!CBS_get_u8(&cbs, &type)) {
+    // The record header was incomplete or malformed. Drop the entire packet.
+    *out_consumed = in.size();
+    return ssl_open_record_discard;
+  }
+  SSLAEADContext *aead = ssl->s3->aead_read_ctx.get();
+  uint64_t sequence;
+  uint16_t epoch;
+  uint16_t version = 0;
   CBS body;
-  if (!CBS_get_u8(&cbs, &type) ||
-      !CBS_get_u16(&cbs, &version) ||
-      !CBS_copy_bytes(&cbs, sequence_bytes, sizeof(sequence_bytes)) ||
-      !CBS_get_u16_length_prefixed(&cbs, &body) ||
-      CBS_len(&body) > SSL3_RT_MAX_ENCRYPTED_LENGTH) {
-    // The record header was incomplete or malformed. Drop the entire packet.
-    *out_consumed = in.size();
-    return ssl_open_record_discard;
-  }
-
-  bool version_ok;
-  if (ssl->s3->aead_read_ctx->is_null_cipher()) {
-    // Only check the first byte. Enforcing beyond that can prevent decoding
-    // version negotiation failure alerts.
-    version_ok = (version >> 8) == DTLS1_VERSION_MAJOR;
+  bool valid_record_header;
+  // Decode the record header. If the 3 high bits of the type are 001, then the
+  // record header is the DTLS 1.3 format. The DTLS 1.3 format should only be
+  // used for encrypted records with DTLS 1.3. Plaintext records or DTLS 1.2
+  // records use the old record header format.
+  if ((type & 0xe0) == 0x20 && !aead->is_null_cipher() &&
+      aead->ProtocolVersion() >= TLS1_3_VERSION) {
+    valid_record_header =
+        parse_dtls13_record_header(ssl, &cbs, in.size(), type, &body, &sequence,
+                                   &epoch, &record_header_len);
   } else {
-    version_ok = version == ssl->s3->aead_read_ctx->RecordVersion();
+    valid_record_header = parse_dtls_plaintext_record_header(
+        ssl, &cbs, in.size(), type, &body, &sequence, &epoch,
+        &record_header_len, &version);
   }
-
-  if (!version_ok) {
+  if (!valid_record_header) {
     // The record header was incomplete or malformed. Drop the entire packet.
     *out_consumed = in.size();
     return ssl_open_record_discard;
   }
 
-  Span<const uint8_t> header =
-      in.subspan(0, dtls_record_header_write_len(ssl, ssl->d1->r_epoch));
+  Span<const uint8_t> header = in.subspan(0, record_header_len);
   ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER, header);
 
-  uint64_t sequence = CRYPTO_load_u64_be(sequence_bytes);
-  uint16_t epoch = static_cast<uint16_t>(sequence >> 48);
   if (epoch != ssl->d1->r_epoch ||
       dtls1_bitmap_should_discard(&ssl->d1->bitmap, sequence)) {
     // Drop this record. It's from the wrong epoch or is a replay. Note that if
@@ -221,7 +347,7 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
   }
 
   // discard the body in-place.
-  if (!ssl->s3->aead_read_ctx->Open(
+  if (!aead->Open(
           out, type, version, sequence, header,
           MakeSpan(const_cast<uint8_t *>(CBS_data(&body)), CBS_len(&body)))) {
     // Bad packets are silently dropped in DTLS. See section 4.2.1 of RFC 6347.
@@ -236,11 +362,27 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
   }
   *out_consumed = in.size() - CBS_len(&cbs);
 
+  // DTLS 1.3 hides the record type inside the encrypted data.
+  bool has_padding =
+      !aead->is_null_cipher() && aead->ProtocolVersion() >= TLS1_3_VERSION;
   // Check the plaintext length.
-  if (out->size() > SSL3_RT_MAX_PLAIN_LENGTH) {
+  size_t plaintext_limit = SSL3_RT_MAX_PLAIN_LENGTH + (has_padding ? 1 : 0);
+  if (out->size() > plaintext_limit) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
     *out_alert = SSL_AD_RECORD_OVERFLOW;
     return ssl_open_record_error;
+  }
+
+  if (has_padding) {
+    do {
+      if (out->empty()) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);
+        *out_alert = SSL_AD_DECRYPT_ERROR;
+        return ssl_open_record_error;
+      }
+      type = out->back();
+      *out = out->subspan(0, out->size() - 1);
+    } while (type == 0);
   }
 
   dtls1_bitmap_record(&ssl->d1->bitmap, sequence);
@@ -272,15 +414,34 @@ static SSLAEADContext *get_write_aead(const SSL *ssl, uint16_t epoch) {
   return ssl->s3->aead_write_ctx.get();
 }
 
+static bool use_dtls13_record_header(const SSL *ssl, uint16_t epoch) {
+  // Plaintext records in DTLS 1.3 also use the DTLSPlaintext structure for
+  // backwards compatibility.
+  return ssl->s3->have_version && ssl_protocol_version(ssl) > TLS1_2_VERSION &&
+         epoch > 0;
+}
+
 size_t dtls_record_header_write_len(const SSL *ssl, uint16_t epoch) {
-  // 13 is the value of the former DTLS1_RT_HEADER_LENGTH constant.
-  return 13;
+  if (!use_dtls13_record_header(ssl, epoch)) {
+    return DTLS_PLAINTEXT_RECORD_HEADER_LENGTH;
+  }
+  // The DTLS 1.3 has a variable length record header. We never send Connection
+  // ID, we always send 16-bit sequence numbers, and we send a length. (Length
+  // can be omitted, but only for the last record of a packet. Since we send
+  // multiple records in one packet, it's easier to implement always sending the
+  // length.)
+  return DTLS1_3_RECORD_HEADER_WRITE_LENGTH;
 }
 
 size_t dtls_max_seal_overhead(const SSL *ssl,
                               uint16_t epoch) {
-  return dtls_record_header_write_len(ssl, epoch) +
-         get_write_aead(ssl, epoch)->MaxOverhead();
+  size_t ret = dtls_record_header_write_len(ssl, epoch) +
+               get_write_aead(ssl, epoch)->MaxOverhead();
+  if (use_dtls13_record_header(ssl, epoch)) {
+    // Add 1 byte for the encrypted record type.
+    ret++;
+  }
+  return ret;
 }
 
 size_t dtls_seal_prefix_len(const SSL *ssl, uint16_t epoch) {
@@ -308,16 +469,6 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   // of seq is probably wrong for a retransmission.
 
   const size_t record_header_len = dtls_record_header_write_len(ssl, epoch);
-  if (max_out < record_header_len) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
-    return false;
-  }
-
-  out[0] = type;
-
-  uint16_t record_version = ssl->s3->aead_write_ctx->RecordVersion();
-  out[1] = record_version >> 8;
-  out[2] = record_version & 0xff;
 
   // Ensure the sequence number update does not overflow.
   const uint64_t kMaxSequenceNumber = (uint64_t{1} << 48) - 1;
@@ -326,25 +477,68 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     return false;
   }
 
+  uint16_t record_version = ssl->s3->aead_write_ctx->RecordVersion();
   uint64_t seq_with_epoch = (uint64_t{epoch} << 48) | *seq;
-  CRYPTO_store_u64_be(&out[3], seq_with_epoch);
+
+  bool dtls13_header = use_dtls13_record_header(ssl, epoch);
+  uint8_t *extra_in = NULL;
+  size_t extra_in_len = 0;
+  if (dtls13_header) {
+    extra_in = &type;
+    extra_in_len = 1;
+  }
 
   size_t ciphertext_len;
-  if (!aead->CiphertextLen(&ciphertext_len, in_len, 0)) {
+  if (!aead->CiphertextLen(&ciphertext_len, in_len, extra_in_len)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
     return false;
   }
-  out[11] = ciphertext_len >> 8;
-  out[12] = ciphertext_len & 0xff;
-  Span<const uint8_t> header = MakeConstSpan(out, record_header_len);
-
-  size_t len_copy;
-  if (!aead->Seal(out + record_header_len, &len_copy,
-                  max_out - record_header_len, type, record_version,
-                  seq_with_epoch, header, in, in_len)) {
+  if (max_out < record_header_len + ciphertext_len) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
     return false;
   }
-  assert(ciphertext_len == len_copy);
+
+  if (dtls13_header) {
+    // The first byte of the DTLS 1.3 record header has the following format:
+    // 0 1 2 3 4 5 6 7
+    // +-+-+-+-+-+-+-+-+
+    // |0|0|1|C|S|L|E E|
+    // +-+-+-+-+-+-+-+-+
+    //
+    // We set C=0 (no Connection ID), S=1 (16-bit sequence number), L=1 (length
+    // is present), which is a mask of 0x2c. The E E bits are the low-order two
+    // bits of the epoch.
+    //
+    // +-+-+-+-+-+-+-+-+
+    // |0|0|1|0|1|1|E E|
+    // +-+-+-+-+-+-+-+-+
+    out[0] = 0x2c | (epoch & 0x3);
+    out[1] = *seq >> 8;
+    out[2] = *seq & 0xff;
+    out[3] = ciphertext_len >> 8;
+    out[4] = ciphertext_len & 0xff;
+    // DTLS 1.3 uses the sequence number without the epoch for the AEAD.
+    seq_with_epoch = *seq;
+  } else {
+    out[0] = type;
+    out[1] = record_version >> 8;
+    out[2] = record_version & 0xff;
+    CRYPTO_store_u64_be(&out[3], seq_with_epoch);
+    out[11] = ciphertext_len >> 8;
+    out[12] = ciphertext_len & 0xff;
+  }
+  Span<const uint8_t> header = MakeConstSpan(out, record_header_len);
+
+
+  if (!aead->SealScatter(out + record_header_len, out + prefix,
+                         out + prefix + in_len, type, record_version,
+                         seq_with_epoch, header, in, in_len, extra_in,
+                         extra_in_len)) {
+    return false;
+  }
+
+  // TODO(crbug.com/boringssl/715): Perform record number encryption (RFC 9147
+  // section 4.2.3).
 
   (*seq)++;
   *out_len = record_header_len + ciphertext_len;
