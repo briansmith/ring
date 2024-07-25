@@ -14,6 +14,7 @@ BoringCrypto has undergone the following validations:
 1. 2019-10-20: certificate [#3753](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/3753), [security policy](./policydocs/BoringCrypto-Android-Security-Policy-20191020.docx) (in docx format).
 1. 2021-01-28: certificate [#4156](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/4156), [security policy](./policydocs/BoringCrypto-Android-Security-Policy-20210319.docx) (in docx format).
 1. 2021-04-29: certificate [#4407](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4407).
+1. 2022-06-13: certificate [#4735](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4735).
 
 ## Running ACVP tests
 
