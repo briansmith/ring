@@ -3403,6 +3403,21 @@ static int Configure(SSL *ssl) {
 
 }  // namespace wpa202304
 
+namespace cnsa202407 {
+
+static int Configure(SSL_CTX *ctx) {
+  ctx->tls13_cipher_policy = ssl_compliance_policy_cnsa_202407;
+  return 1;
+}
+
+static int Configure(SSL *ssl) {
+  ssl->config->tls13_cipher_policy =
+      ssl_compliance_policy_cnsa_202407;
+  return 1;
+}
+
+}
+
 int SSL_CTX_set_compliance_policy(SSL_CTX *ctx,
                                   enum ssl_compliance_policy_t policy) {
   switch (policy) {
@@ -3410,6 +3425,8 @@ int SSL_CTX_set_compliance_policy(SSL_CTX *ctx,
       return fips202205::Configure(ctx);
     case ssl_compliance_policy_wpa3_192_202304:
       return wpa202304::Configure(ctx);
+    case ssl_compliance_policy_cnsa_202407:
+      return cnsa202407::Configure(ctx);
     default:
       return 0;
   }
@@ -3421,6 +3438,8 @@ int SSL_set_compliance_policy(SSL *ssl, enum ssl_compliance_policy_t policy) {
       return fips202205::Configure(ssl);
     case ssl_compliance_policy_wpa3_192_202304:
       return wpa202304::Configure(ssl);
+    case ssl_compliance_policy_cnsa_202407:
+      return cnsa202407::Configure(ssl);
     default:
       return 0;
   }

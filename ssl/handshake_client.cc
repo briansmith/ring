@@ -244,23 +244,36 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
   // Add TLS 1.3 ciphers. Order ChaCha20-Poly1305 relative to AES-GCM based on
   // hardware support.
   if (hs->max_version >= TLS1_3_VERSION) {
+    static const uint16_t kCiphersNoAESHardware[] = {
+        TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff,
+        TLS1_3_CK_AES_128_GCM_SHA256 & 0xffff,
+        TLS1_3_CK_AES_256_GCM_SHA384 & 0xffff,
+    };
+    static const uint16_t kCiphersAESHardware[] = {
+        TLS1_3_CK_AES_128_GCM_SHA256 & 0xffff,
+        TLS1_3_CK_AES_256_GCM_SHA384 & 0xffff,
+        TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff,
+    };
+    static const uint16_t kCiphersCNSA[] = {
+        TLS1_3_CK_AES_256_GCM_SHA384 & 0xffff,
+        TLS1_3_CK_AES_128_GCM_SHA256 & 0xffff,
+        TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff,
+    };
+
     const bool has_aes_hw = ssl->config->aes_hw_override
                                 ? ssl->config->aes_hw_override_value
                                 : EVP_has_aes_hardware();
+    const bssl::Span<const uint16_t> ciphers =
+        ssl->config->tls13_cipher_policy == ssl_compliance_policy_cnsa_202407
+            ? bssl::Span<const uint16_t>(kCiphersCNSA)
+            : (has_aes_hw ? bssl::Span<const uint16_t>(kCiphersAESHardware)
+                          : bssl::Span<const uint16_t>(kCiphersNoAESHardware));
 
-    if ((!has_aes_hw &&  //
-         !ssl_add_tls13_cipher(&child,
-                               TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff,
-                               ssl->config->tls13_cipher_policy)) ||
-        !ssl_add_tls13_cipher(&child, TLS1_3_CK_AES_128_GCM_SHA256 & 0xffff,
-                              ssl->config->tls13_cipher_policy) ||
-        !ssl_add_tls13_cipher(&child, TLS1_3_CK_AES_256_GCM_SHA384 & 0xffff,
-                              ssl->config->tls13_cipher_policy) ||
-        (has_aes_hw &&  //
-         !ssl_add_tls13_cipher(&child,
-                               TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff,
-                               ssl->config->tls13_cipher_policy))) {
-      return false;
+    for (auto cipher : ciphers) {
+      if (!ssl_add_tls13_cipher(&child, cipher,
+                                ssl->config->tls13_cipher_policy)) {
+        return false;
+      }
     }
   }
 

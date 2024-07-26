@@ -5637,6 +5637,14 @@ enum ssl_compliance_policy_t BORINGSSL_ENUM_INT {
   // implementation risks of using a more obscure primitive like P-384
   // dominate other considerations.
   ssl_compliance_policy_wpa3_192_202304,
+
+  // ssl_compliance_policy_cnsa_202407 confingures a TLS connection to use:
+  //   * For TLS 1.3, AES-256-GCM over AES-128-GCM over ChaCha20-Poly1305.
+  //
+  // I.e. it ensures that AES-GCM will be used whenever the client supports it.
+  // The cipher suite configuration mini-language can be used to similarly
+  // configure prior TLS versions if they are enabled.
+  ssl_compliance_policy_cnsa_202407,
 };
 
 // SSL_CTX_set_compliance_policy configures various aspects of |ctx| based on
