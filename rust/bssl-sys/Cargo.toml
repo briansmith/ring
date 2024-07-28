@@ -9,3 +9,6 @@ license = "ISC"
 # This exists to workaround a limitation in cargo:
 # https://github.com/rust-lang/cargo/issues/3544
 links = "bssl"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(unsupported_inline_wrappers)', 'cfg(soong)'] }
