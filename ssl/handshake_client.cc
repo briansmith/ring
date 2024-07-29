@@ -526,25 +526,28 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  // Never send a session ID in QUIC. QUIC uses TLS 1.3 at a minimum and
-  // disables TLS 1.3 middlebox compatibility mode.
-  if (ssl->quic_method == nullptr) {
-    const bool has_id_session = ssl->session != nullptr &&
-                                ssl->session->session_id_length > 0 &&
-                                ssl->session->ticket.empty();
-    const bool has_ticket_session =
-        ssl->session != nullptr && !ssl->session->ticket.empty();
-    if (has_id_session) {
-      hs->session_id_len = ssl->session->session_id_length;
-      OPENSSL_memcpy(hs->session_id, ssl->session->session_id,
-                     hs->session_id_len);
-    } else if (has_ticket_session || hs->max_version >= TLS1_3_VERSION) {
-      // Send a random session ID. TLS 1.3 always sends one, and TLS 1.2 session
-      // tickets require a placeholder value to signal resumption.
-      hs->session_id_len = sizeof(hs->session_id);
-      if (!RAND_bytes(hs->session_id, hs->session_id_len)) {
-        return ssl_hs_error;
-      }
+  const bool has_id_session = ssl->session != nullptr &&
+                              ssl->session->session_id_length > 0 &&
+                              ssl->session->ticket.empty();
+  const bool has_ticket_session =
+      ssl->session != nullptr && !ssl->session->ticket.empty();
+  // TLS 1.2 session tickets require a placeholder value to signal resumption.
+  const bool ticket_session_requires_random_id =
+      has_ticket_session &&
+      ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION;
+  // Compatibility mode sends a random session ID. Compatibility mode is
+  // enabled for TLS 1.3, but not when it's run over QUIC or DTLS.
+  const bool enable_compatibility_mode = hs->max_version >= TLS1_3_VERSION &&
+                                         ssl->quic_method == nullptr &&
+                                         !SSL_is_dtls(hs->ssl);
+  if (has_id_session) {
+    hs->session_id_len = ssl->session->session_id_length;
+    OPENSSL_memcpy(hs->session_id, ssl->session->session_id,
+                   hs->session_id_len);
+  } else if (ticket_session_requires_random_id || enable_compatibility_mode) {
+    hs->session_id_len = sizeof(hs->session_id);
+    if (!RAND_bytes(hs->session_id, hs->session_id_len)) {
+      return ssl_hs_error;
     }
   }
 

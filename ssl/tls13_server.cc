@@ -244,9 +244,15 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
-  OPENSSL_memcpy(hs->session_id, client_hello.session_id,
-                 client_hello.session_id_len);
-  hs->session_id_len = client_hello.session_id_len;
+  // DTLS 1.3 disables compatibility mode, and even if the client advertised a
+  // session ID (for resumption in DTLS 1.2), the server "MUST NOT echo the
+  // 'legacy_session_id' value from the client" (RFC 9147, section 5) as it
+  // would in a TLS 1.3 handshake.
+  if (!SSL_is_dtls(ssl)) {
+    OPENSSL_memcpy(hs->session_id, client_hello.session_id,
+                   client_hello.session_id_len);
+    hs->session_id_len = client_hello.session_id_len;
+  }
 
   Array<SSL_CREDENTIAL *> creds;
   if (!ssl_get_credential_list(hs, &creds)) {

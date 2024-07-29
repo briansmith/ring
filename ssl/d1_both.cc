@@ -584,6 +584,11 @@ bool dtls1_add_message(SSL *ssl, Array<uint8_t> data) {
 }
 
 bool dtls1_add_change_cipher_spec(SSL *ssl) {
+  // DTLS 1.3 disables compatibility mode, which means that DTLS 1.3 never sends
+  // a ChangeCipherSpec message.
+  if (ssl_protocol_version(ssl) > TLS1_2_VERSION) {
+    return true;
+  }
   return add_outgoing(ssl, true /* ChangeCipherSpec */, Array<uint8_t>());
 }
 

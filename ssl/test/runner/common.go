@@ -1965,6 +1965,10 @@ type ProtocolBugs struct {
 	// when running over QUIC.
 	CompatModeWithQUIC bool
 
+	// DTLS13EchoSessionID, if true, has DTLS 1.3 servers echo the client's
+	// session ID in the ServerHello.
+	DTLS13EchoSessionID bool
+
 	// EncryptSessionTicketKey, if non-nil, is the ticket key to use when
 	// encrypting tickets.
 	EncryptSessionTicketKey *[32]byte

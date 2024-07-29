@@ -3710,6 +3710,25 @@ read alert 1 0
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_COMPATIBILITY_MODE:",
 	})
+
+	// Clients should reject DTLS 1.3 ServerHellos that echo the legacy
+	// session ID.
+	testCases = append(testCases, testCase{
+		protocol:      dtls,
+		name:          "DTLS13CompatibilityMode-EchoSessionID",
+		resumeSession: true,
+		config: Config{
+			MaxVersion: VersionTLS12,
+		},
+		resumeConfig: &Config{
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				DTLS13EchoSessionID: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":DECODE_ERROR:",
+	})
 }
 
 func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol protocol) {
@@ -4884,6 +4903,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 	}
 
 	// TLS 1.3 basic handshake shapes. DTLS 1.3 isn't supported yet.
+	// TODO(crbug.com/boringssl/715): Enable these tests.
 	if config.protocol != dtls {
 		tests = append(tests, testCase{
 			name: "TLS13-1RTT-Client",
@@ -6154,8 +6174,8 @@ read alert 1 0
 		}
 	}
 	if config.protocol == dtls {
-		// TODO(davidben): DTLS 1.3 will want a similar thing for
-		// HelloRetryRequest.
+		// TODO(crbug.com/boringssl/715): DTLS 1.3 will want a similar
+		// thing for HelloRetryRequest.
 		tests = append(tests, testCase{
 			name: "SkipHelloVerifyRequest",
 			config: Config{

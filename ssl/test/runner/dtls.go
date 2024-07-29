@@ -80,25 +80,17 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 	}
 	epoch := b.data[3:5]
 	seq := b.data[5:11]
-	if c.expectTLS13ChangeCipherSpec && typ == recordTypeChangeCipherSpec {
-		// CCS should only be at epoch 0
-		if !bytes.Equal(epoch, []byte{0, 0}) {
-			c.sendAlert(alertIllegalParameter)
-			return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad epoch, expected CCS at epoch 0"))
-		}
-	} else {
-		// For test purposes, require the sequence number be monotonically
-		// increasing, so c.in includes the minimum next sequence number. Gaps
-		// may occur if packets failed to be sent out. A real implementation
-		// would maintain a replay window and such.
-		if !bytes.Equal(epoch, c.in.seq[:2]) {
-			c.sendAlert(alertIllegalParameter)
-			return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad epoch, want %x, got %x", c.in.seq[:2], epoch))
-		}
-		if bytes.Compare(seq, c.in.seq[2:]) < 0 {
-			c.sendAlert(alertIllegalParameter)
-			return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad sequence number"))
-		}
+	// For test purposes, require the sequence number be monotonically
+	// increasing, so c.in includes the minimum next sequence number. Gaps
+	// may occur if packets failed to be sent out. A real implementation
+	// would maintain a replay window and such.
+	if !bytes.Equal(epoch, c.in.seq[:2]) {
+		c.sendAlert(alertIllegalParameter)
+		return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad epoch, want %x, got %x", c.in.seq[:2], epoch))
+	}
+	if bytes.Compare(seq, c.in.seq[2:]) < 0 {
+		c.sendAlert(alertIllegalParameter)
+		return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad sequence number"))
 	}
 	copy(c.in.seq[2:], seq)
 	n := int(b.data[11])<<8 | int(b.data[12])
@@ -107,21 +99,6 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 		return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: oversized record received with length %d", n))
 	}
 	b, c.rawInput = c.in.splitBlock(b, recordHeaderLen+n)
-
-	// Process CCS
-	if c.expectTLS13ChangeCipherSpec {
-		c.expectTLS13ChangeCipherSpec = false
-		ccsData := b.data[recordHeaderLen:]
-		if typ == recordTypeChangeCipherSpec {
-			if !bytes.Equal(ccsData, []byte{1}) {
-				return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: ChangeCipherSpec of length %d did not contain single byte value 0x01", len(ccsData)))
-			}
-			return c.dtlsDoReadRecord(want)
-		}
-		if typ != recordTypeAlert {
-			return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: Expected ChangeCipherSpec but got record type %d", typ))
-		}
-	}
 
 	// Process message.
 	ok, off, _, alertValue := c.in.decrypt(b)

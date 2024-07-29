@@ -521,11 +521,15 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 
 	// We've read the ClientHello, so the next record must be preceded with ChangeCipherSpec.
 	c.expectTLS13ChangeCipherSpec = true
+	sessionID := hs.clientHello.sessionID
+	if c.isDTLS && !config.Bugs.DTLS13EchoSessionID {
+		sessionID = nil
+	}
 
 	hs.hello = &serverHelloMsg{
 		isDTLS:                c.isDTLS,
 		vers:                  c.wireVersion,
-		sessionID:             hs.clientHello.sessionID,
+		sessionID:             sessionID,
 		compressionMethod:     config.Bugs.SendCompressionMethod,
 		versOverride:          config.Bugs.SendServerHelloVersion,
 		supportedVersOverride: config.Bugs.SendServerSupportedVersionExtension,
