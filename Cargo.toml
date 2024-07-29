@@ -195,7 +195,8 @@ std = ["alloc"]
 unstable-testing-arm-no-hw = []
 unstable-testing-arm-no-neon = []
 test_logging = []
-wasm32_unknown_unknown_js = ["getrandom/js"]
+wasm32_unknown_unknown_js = ["getrandom/js", "wasm32_unknown_unknown"]
+wasm32_unknown_unknown = []
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 

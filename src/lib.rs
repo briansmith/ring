@@ -49,6 +49,10 @@
 //!         require an operating environment of some kind. This has no effect
 //!         for any other target. This enables the `getrandom` crate's `js`
 //!         feature.
+//! <tr><td><code>wasm32_unknown_unknown</code>
+//!     <td>When this feature is enabled, for the wasm32-unknown-unknown target,
+//!         `getrandom` is used and assumed to be preconfigured in a WASM
+//!         environment. This has no effect for any other target.
 //! </table>
 
 // When running mk/package.sh, don't actually build any code.
