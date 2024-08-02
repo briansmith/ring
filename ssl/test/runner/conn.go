@@ -249,7 +249,7 @@ func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret 
 		panic("TLS: unknown version")
 	}
 	hc.version = protocolVersion
-	hc.cipher = deriveTrafficAEAD(version, suite, secret, side)
+	hc.cipher = deriveTrafficAEAD(version, suite, secret, side, hc.isDTLS)
 	if hc.config.Bugs.NullAllCiphers {
 		hc.cipher = nullCipher{}
 	}
@@ -1621,7 +1621,7 @@ func (c *Conn) processTLS13NewSessionTicket(newSessionTicket *newSessionTicketMs
 		vers:                        c.vers,
 		wireVersion:                 c.wireVersion,
 		cipherSuite:                 cipherSuite,
-		secret:                      deriveSessionPSK(cipherSuite, c.wireVersion, c.resumptionSecret, newSessionTicket.ticketNonce),
+		secret:                      deriveSessionPSK(cipherSuite, c.wireVersion, c.resumptionSecret, newSessionTicket.ticketNonce, c.isDTLS),
 		serverCertificates:          c.peerCertificates,
 		sctList:                     c.sctList,
 		ocspResponse:                c.ocspResponse,
@@ -1680,7 +1680,7 @@ func (c *Conn) handlePostHandshakeMessage() error {
 		if c.config.Bugs.RejectUnsolicitedKeyUpdate {
 			return errors.New("tls: unexpected KeyUpdate message")
 		}
-		if err := c.useInTrafficSecret(encryptionApplication, c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret)); err != nil {
+		if err := c.useInTrafficSecret(encryptionApplication, c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret, c.isDTLS)); err != nil {
 			return err
 		}
 		if keyUpdate.keyUpdateRequest == keyUpdateRequested {
@@ -1714,7 +1714,7 @@ func (c *Conn) ReadKeyUpdateACK() error {
 		return errors.New("tls: received invalid KeyUpdate message")
 	}
 
-	return c.useInTrafficSecret(encryptionApplication, c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret))
+	return c.useInTrafficSecret(encryptionApplication, c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret, c.isDTLS))
 }
 
 func (c *Conn) Renegotiate() error {
@@ -1927,8 +1927,8 @@ func (c *Conn) exportKeyingMaterialTLS13(length int, secret, label, context []by
 	contextHash := hash.New()
 	contextHash.Write(context)
 	exporterContext := hash.New().Sum(nil)
-	derivedSecret := hkdfExpandLabel(c.cipherSuite.hash(), secret, label, exporterContext, hash.Size())
-	return hkdfExpandLabel(c.cipherSuite.hash(), derivedSecret, exporterKeyingLabel, contextHash.Sum(nil), length)
+	derivedSecret := hkdfExpandLabel(c.cipherSuite.hash(), secret, label, exporterContext, hash.Size(), c.isDTLS)
+	return hkdfExpandLabel(c.cipherSuite.hash(), derivedSecret, exporterKeyingLabel, contextHash.Sum(nil), length, c.isDTLS)
 }
 
 // ExportKeyingMaterial exports keying material from the current connection
@@ -2027,7 +2027,7 @@ func (c *Conn) SendNewSessionTicket(nonce []byte) error {
 	state := sessionState{
 		vers:                        c.vers,
 		cipherSuite:                 c.cipherSuite.id,
-		secret:                      deriveSessionPSK(c.cipherSuite, c.wireVersion, c.resumptionSecret, nonce),
+		secret:                      deriveSessionPSK(c.cipherSuite, c.wireVersion, c.resumptionSecret, nonce, c.isDTLS),
 		certificates:                peerCertificatesRaw,
 		ticketCreationTime:          c.config.time(),
 		ticketExpiration:            c.config.time().Add(time.Duration(m.ticketLifetime) * time.Second),
@@ -2074,7 +2074,7 @@ func (c *Conn) sendKeyUpdateLocked(keyUpdateRequest byte) error {
 	if err := c.flushHandshake(); err != nil {
 		return err
 	}
-	c.useOutTrafficSecret(encryptionApplication, c.out.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.out.trafficSecret))
+	c.useOutTrafficSecret(encryptionApplication, c.out.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.out.trafficSecret, c.isDTLS))
 	return nil
 }
 

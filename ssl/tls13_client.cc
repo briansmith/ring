@@ -1130,7 +1130,8 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
     session->timeout = server_timeout;
   }
 
-  if (!tls13_derive_session_psk(session.get(), ticket_nonce)) {
+  if (!tls13_derive_session_psk(session.get(), ticket_nonce,
+                                SSL_is_dtls(ssl))) {
     return nullptr;
   }
 

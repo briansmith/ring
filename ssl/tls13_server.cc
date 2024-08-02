@@ -175,7 +175,7 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
         !CBB_add_u8_length_prefixed(&body, &nonce_cbb) ||
         !CBB_add_bytes(&nonce_cbb, nonce, sizeof(nonce)) ||
         !CBB_add_u16_length_prefixed(&body, &ticket) ||
-        !tls13_derive_session_psk(session.get(), nonce) ||
+        !tls13_derive_session_psk(session.get(), nonce, SSL_is_dtls(ssl)) ||
         !ssl_encrypt_ticket(hs, &ticket, session.get()) ||
         !CBB_add_u16_length_prefixed(&body, &extensions)) {
       return false;
