@@ -55,7 +55,13 @@ func (c *Conn) readDTLS13RecordHeader(b *block) (headerLen int, recordLen int, r
 		c.sendAlert(alertIllegalParameter)
 		return 0, 0, 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad epoch"))
 	}
-	wireSeq := binary.BigEndian.Uint16(b.data[1:3])
+	wireSeq := b.data[1:3]
+	if !c.config.Bugs.NullAllCiphers {
+		sample := b.data[recordHeaderLen:]
+		mask := c.in.recordNumberEncrypter.generateMask(sample)
+		xorSlice(wireSeq, mask)
+	}
+	decWireSeq := binary.BigEndian.Uint16(wireSeq)
 	// Reconstruct the sequence number from the low 16 bits on the wire.
 	// A real implementation would compute the full sequence number that is
 	// closest to the highest successfully decrypted record in the
@@ -67,7 +73,7 @@ func (c *Conn) readDTLS13RecordHeader(b *block) (headerLen int, recordLen int, r
 	seqInt := binary.BigEndian.Uint64(c.in.seq[:])
 	// c.in.seq has the epoch in the upper two bytes - clear those.
 	seqInt = seqInt &^ (0xffff << 48)
-	newSeq := seqInt&^0xffff | uint64(wireSeq)
+	newSeq := seqInt&^0xffff | uint64(decWireSeq)
 	if newSeq < seqInt {
 		newSeq += 0x10000
 	}
@@ -500,7 +506,10 @@ func (c *Conn) dtlsPackRecord(typ recordType, data []byte, mustPack bool) (n int
 	}
 	copy(b.data[recordHeaderLen+explicitIVLen:], data)
 	recordLen := c.addTLS13Padding(b, recordHeaderLen, len(data), typ)
-	if c.out.version < VersionTLS13 || c.out.cipher == nil || (c.config.Bugs.DTLSUsePlaintextRecordHeader && c.handshakeComplete) {
+	useDTLS13RecordHeader := c.out.version >= VersionTLS13 && c.out.cipher != nil && !(c.config.Bugs.DTLSUsePlaintextRecordHeader && c.handshakeComplete)
+	if useDTLS13RecordHeader {
+		c.writeDTLS13RecordHeader(b, recordLen)
+	} else {
 		b.data[0] = byte(typ)
 		b.data[1] = byte(vers >> 8)
 		b.data[2] = byte(vers)
@@ -508,10 +517,26 @@ func (c *Conn) dtlsPackRecord(typ recordType, data []byte, mustPack bool) (n int
 		copy(b.data[3:11], c.out.outSeq[0:])
 		b.data[11] = byte(recordLen >> 8)
 		b.data[12] = byte(recordLen)
-	} else {
-		c.writeDTLS13RecordHeader(b, recordLen)
 	}
+	// encrypt will increment the sequence number. Copy it here to use when
+	// performing sequence number encryption.
+	seqBytes := make([]byte, 2)
+	copy(seqBytes, c.out.outSeq[6:8])
 	c.out.encrypt(b, explicitIVLen, typ)
+	if useDTLS13RecordHeader && !c.config.Bugs.NullAllCiphers {
+		recordHeaderLen := c.out.writeRecordHeaderLen()
+		sample := b.data[recordHeaderLen:]
+		mask := c.out.recordNumberEncrypter.generateMask(sample)
+		if c.config.DTLSUseShortSeqNums {
+			seqBytes = seqBytes[1:2]
+		}
+		xorSlice(seqBytes, mask)
+		for i := range seqBytes {
+			// The sequence number starts at index 1 in the record
+			// header.
+			b.data[1+i] = seqBytes[i]
+		}
+	}
 
 	// Flush the current pending packet if necessary.
 	if !mustPack && len(b.data)+len(c.pendingPacket) > c.config.Bugs.PackHandshakeRecords {

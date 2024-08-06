@@ -184,6 +184,8 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
                            const SSL_SESSION *session,
                            Span<const uint8_t> traffic_secret) {
   uint16_t version = ssl_session_protocol_version(session);
+  const EVP_MD *digest = ssl_session_get_digest(session);
+  bool is_dtls = SSL_is_dtls(ssl);
   UniquePtr<SSLAEADContext> traffic_aead;
   Span<const uint8_t> secret_for_quic;
   if (ssl->quic_method != nullptr) {
@@ -197,18 +199,16 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
     const EVP_AEAD *aead;
     size_t discard;
     if (!ssl_cipher_get_evp_aead(&aead, &discard, &discard, session->cipher,
-                                 version, SSL_is_dtls(ssl))) {
+                                 version, is_dtls)) {
       return false;
     }
-
-    const EVP_MD *digest = ssl_session_get_digest(session);
 
     // Derive the key.
     size_t key_len = EVP_AEAD_key_length(aead);
     uint8_t key_buf[EVP_AEAD_MAX_KEY_LENGTH];
     auto key = MakeSpan(key_buf, key_len);
     if (!hkdf_expand_label(key, digest, traffic_secret, label_to_span("key"),
-                           {}, SSL_is_dtls(ssl))) {
+                           {}, is_dtls)) {
       return false;
     }
 
@@ -217,17 +217,32 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
     uint8_t iv_buf[EVP_AEAD_MAX_NONCE_LENGTH];
     auto iv = MakeSpan(iv_buf, iv_len);
     if (!hkdf_expand_label(iv, digest, traffic_secret, label_to_span("iv"), {},
-                           SSL_is_dtls(ssl))) {
+                           is_dtls)) {
       return false;
     }
 
-    traffic_aead = SSLAEADContext::Create(direction, session->ssl_version,
-                                          SSL_is_dtls(ssl), session->cipher,
-                                          key, Span<const uint8_t>(), iv);
+    traffic_aead =
+        SSLAEADContext::Create(direction, session->ssl_version, is_dtls,
+                               session->cipher, key, Span<const uint8_t>(), iv);
   }
 
   if (!traffic_aead) {
     return false;
+  }
+
+  if (is_dtls) {
+    RecordNumberEncrypter *rn_encrypter =
+        traffic_aead->GetRecordNumberEncrypter();
+    if (!rn_encrypter) {
+      return false;
+    }
+    Array<uint8_t> rne_key;
+    if (!rne_key.Init(rn_encrypter->KeySize()) ||
+        !hkdf_expand_label(MakeSpan(rne_key), digest, traffic_secret,
+                           label_to_span("sn"), {}, is_dtls) ||
+        !rn_encrypter->SetKey(MakeSpan(rne_key))) {
+      return false;
+    }
   }
 
   if (traffic_secret.size() >

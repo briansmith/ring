@@ -8,6 +8,7 @@ package runner
 
 import (
 	"bytes"
+	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/subtle"
@@ -19,6 +20,9 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/chacha20"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 // A Conn represents a secured connection.
@@ -175,15 +179,16 @@ func (c *Conn) SetWriteDeadline(t time.Time) error {
 type halfConn struct {
 	sync.Mutex
 
-	err         error  // first permanent error
-	version     uint16 // protocol version
-	wireVersion uint16 // wire version
-	isDTLS      bool
-	cipher      any // cipher algorithm
-	mac         macFunction
-	seq         [8]byte // 64-bit sequence number
-	outSeq      [8]byte // Mapped sequence number
-	bfree       *block  // list of free blocks
+	err                   error  // first permanent error
+	version               uint16 // protocol version
+	wireVersion           uint16 // wire version
+	isDTLS                bool
+	cipher                any // cipher algorithm
+	recordNumberEncrypter recordNumberEncrypter
+	mac                   macFunction
+	seq                   [8]byte // 64-bit sequence number
+	outSeq                [8]byte // Mapped sequence number
+	bfree                 *block  // list of free blocks
 
 	nextCipher any         // next encryption state
 	nextMac    macFunction // next MAC algorithm
@@ -253,6 +258,17 @@ func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret 
 	}
 	hc.version = protocolVersion
 	hc.cipher = deriveTrafficAEAD(version, suite, secret, side, hc.isDTLS)
+	if hc.isDTLS && !hc.config.Bugs.NullAllCiphers {
+		sn_key := hkdfExpandLabel(suite.hash(), secret, []byte("sn"), nil, suite.keyLen, hc.isDTLS)
+		switch suite.id {
+		case TLS_CHACHA20_POLY1305_SHA256:
+			hc.recordNumberEncrypter = newChachaRecordNumberEncrypter(sn_key)
+		case TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384:
+			hc.recordNumberEncrypter = newAESRecordNumberEncrypter(sn_key)
+		default:
+			panic("Cipher suite does not support TLS 1.3")
+		}
+	}
 	if hc.config.Bugs.NullAllCiphers {
 		hc.cipher = nullCipher{}
 	}
@@ -760,6 +776,63 @@ func (hc *halfConn) splitBlock(b *block, n int) (*block, *block) {
 	copy(bb.data, b.data[n:])
 	b.data = b.data[0:n]
 	return b, bb
+}
+
+type recordNumberEncrypter interface {
+	// GenerateMask takes a sample of the encrypted record and returns the
+	// mask used to encrypt and decrypt record numbers.
+	generateMask(sample []byte) []byte
+}
+
+type aesRecordNumberEncrypter struct {
+	aesCipher cipher.Block
+}
+
+func newAESRecordNumberEncrypter(key []byte) *aesRecordNumberEncrypter {
+	aesCipher, err := aes.NewCipher(key)
+	if err != nil {
+		panic("Incorrect usage of newAESRecordNumberEncrypter")
+	}
+	return &aesRecordNumberEncrypter{
+		aesCipher: aesCipher,
+	}
+}
+
+func (a *aesRecordNumberEncrypter) generateMask(sample []byte) []byte {
+	out := make([]byte, len(sample))
+	a.aesCipher.Encrypt(out, sample)
+	return out
+}
+
+type chachaRecordNumberEncrypter struct {
+	key []byte
+}
+
+func newChachaRecordNumberEncrypter(key []byte) *chachaRecordNumberEncrypter {
+	out := &chachaRecordNumberEncrypter{
+		key: key,
+	}
+	fmt.Printf("new RNE with key %x\n", key)
+	return out
+}
+
+func (c *chachaRecordNumberEncrypter) generateMask(sample []byte) []byte {
+	var counter uint32
+	nonce := make([]byte, 12)
+	sampleReader := cryptobyte.String(sample)
+	if !sampleReader.ReadUint32(&counter) || !sampleReader.CopyBytes(nonce) {
+		panic("chachaRecordNumberEncrypter.GenerateMask called with wrong size sample")
+	}
+	cipher, err := chacha20.NewUnauthenticatedCipher(c.key, nonce)
+	if err != nil {
+		panic("Failed to create chacha20 cipher for record number encryption")
+	}
+	cipher.SetCounter(counter)
+	zeroes := make([]byte, 2)
+	out := make([]byte, 2)
+	cipher.XORKeyStream(out, zeroes)
+	fmt.Printf("golang generateMask: sample: %x, key: %x, mask: %x\n", sample[:16], c.key, out)
+	return out
 }
 
 func (c *Conn) useInTrafficSecret(level encryptionLevel, version uint16, suite *cipherSuite, secret []byte) error {

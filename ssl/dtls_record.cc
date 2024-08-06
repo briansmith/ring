@@ -195,7 +195,7 @@ uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
   return seqnum;
 }
 
-static bool parse_dtls13_record_header(SSL *ssl, CBS *in, size_t packet_size,
+static bool parse_dtls13_record_header(SSL *ssl, CBS *in, Span<uint8_t> packet,
                                        uint8_t type, CBS *out_body,
                                        uint64_t *out_sequence,
                                        uint16_t *out_epoch,
@@ -206,29 +206,23 @@ static bool parse_dtls13_record_header(SSL *ssl, CBS *in, size_t packet_size,
     // Connection ID bit set, which we didn't negotiate.
     return false;
   }
+
   // TODO(crbug.com/boringssl/715): Add a runner test that performs many
   // key updates to verify epoch reconstruction works for epochs larger than
   // 3.
   *out_epoch = reconstruct_epoch(type, ssl->d1->r_epoch);
+  size_t seqlen = 1;
   if ((type & 0x08) == 0x08) {
-    // 16-bit sequence number.
-    uint16_t seq;
-    if (!CBS_get_u16(in, &seq)) {
-      // The record header was incomplete or malformed.
-      return false;
-    }
-    *out_sequence =
-        reconstruct_seqnum(seq, 0xffff, ssl->d1->bitmap.max_seq_num);
-  } else {
-    // 8-bit sequence number.
-    uint8_t seq;
-    if (!CBS_get_u8(in, &seq)) {
-      // The record header was incomplete or malformed.
-      return false;
-    }
-    *out_sequence = reconstruct_seqnum(seq, 0xff, ssl->d1->bitmap.max_seq_num);
+    // If this bit is set, the sequence number is 16 bits long, otherwise it is
+    // 8 bits. The seqlen variable tracks the length of the sequence number in
+    // bytes.
+    seqlen = 2;
   }
-  *out_header_len = packet_size - CBS_len(in);
+  if (!CBS_skip(in, seqlen)) {
+    // The record header was incomplete or malformed.
+    return false;
+  }
+  *out_header_len = packet.size() - CBS_len(in);
   if ((type & 0x04) == 0x04) {
     *out_header_len += 2;
     // 16-bit length present
@@ -244,6 +238,26 @@ static bool parse_dtls13_record_header(SSL *ssl, CBS *in, size_t packet_size,
       return false;
     }
   }
+
+  // Decrypt and reconstruct the sequence number:
+  uint8_t mask[AES_BLOCK_SIZE];
+  SSLAEADContext *aead = ssl->s3->aead_read_ctx.get();
+  if (!aead->GenerateRecordNumberMask(mask, *out_body)) {
+    // GenerateRecordNumberMask most likely failed because the record body was
+    // not long enough.
+    return false;
+  }
+  // Apply the mask to the sequence number as it exists in the header. The
+  // header (with the decrypted sequence number bytes) is used as the
+  // additional data for the AEAD function. Since we don't support Connection
+  // ID, the sequence number starts immediately after the type byte.
+  uint64_t seq = 0;
+  for (size_t i = 0; i < seqlen; i++) {
+    packet[i + 1] ^= mask[i];
+    seq = (seq << 8) | packet[i + 1];
+  }
+  *out_sequence = reconstruct_seqnum(seq, (1 << (seqlen * 8)) - 1,
+                                     ssl->d1->bitmap.max_seq_num);
   return true;
 }
 
@@ -321,9 +335,8 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
   // records use the old record header format.
   if ((type & 0xe0) == 0x20 && !aead->is_null_cipher() &&
       aead->ProtocolVersion() >= TLS1_3_VERSION) {
-    valid_record_header =
-        parse_dtls13_record_header(ssl, &cbs, in.size(), type, &body, &sequence,
-                                   &epoch, &record_header_len);
+    valid_record_header = parse_dtls13_record_header(
+        ssl, &cbs, in, type, &body, &sequence, &epoch, &record_header_len);
   } else {
     valid_record_header = parse_dtls_plaintext_record_header(
         ssl, &cbs, in.size(), type, &body, &sequence, &epoch,
@@ -539,8 +552,24 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     return false;
   }
 
-  // TODO(crbug.com/boringssl/715): Perform record number encryption (RFC 9147
-  // section 4.2.3).
+  // Perform record number encryption (RFC 9147 section 4.2.3).
+  if (dtls13_header) {
+    // Record number encryption uses bytes from the ciphertext as a sample to
+    // generate the mask used for encryption. For simplicity, pass in the whole
+    // ciphertext as the sample - GenerateRecordNumberMask will read only what
+    // it needs (and error if |sample| is too short).
+    Span<const uint8_t> sample =
+        MakeConstSpan(out + record_header_len, ciphertext_len);
+    // AES cipher suites require the mask be exactly AES_BLOCK_SIZE; ChaCha20
+    // cipher suites have no requirements on the mask size. We only need the
+    // first two bytes from the mask.
+    uint8_t mask[AES_BLOCK_SIZE];
+    if (!aead->GenerateRecordNumberMask(mask, sample)) {
+      return false;
+    }
+    out[1] ^= mask[0];
+    out[2] ^= mask[1];
+  }
 
   (*seq)++;
   *out_len = record_header_len + ciphertext_len;
