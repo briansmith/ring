@@ -1,13 +1,12 @@
 #![no_std]
-use sgx_trts::trts::rsgx_read_rand;
+use mc_sgx_types::{sgx_read_rand, sgx_status_t};
 #[inline]
 pub fn getrandom(dest: &mut [u8]) -> Result<(), Error> {
-    // SAFETY: The `&mut MaybeUninit<_>` reference doesn't escape, and
-    // `getrandom_uninit` guarantees it will never de-initialize any part of
-    // `dest`.
-    // getrandom_uninit(unsafe { slice_as_uninit_mut(dest) })?;
-    rsgx_read_rand(dest).expect("getrandom::rsgx_read_rand failed!");
-    Ok(())
+    match unsafe { sgx_read_rand(dest.as_mut_ptr(), dest.len()) } {
+        sgx_status_t::SGX_SUCCESS => Ok(()),
+        _ => Err(Error),
+    }
 }
+
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct Error();
+pub struct Error;

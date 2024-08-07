@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sgx_trts = { git = "https://github.com/apache/teaclave-sgx-sdk.git", version = "1.1.6" }
+mc-sgx-types = { git = "https://github.com/mobilecoinfoundation/mobilecoin.git", tag = "v6.0.2" }
 
 [features]
 js = []
