@@ -17,6 +17,16 @@ void CertIssuerSourceStatic::AddCert(
 
 void CertIssuerSourceStatic::Clear() { intermediates_.clear(); }
 
+std::vector<std::shared_ptr<const ParsedCertificate>>
+CertIssuerSourceStatic::Certs() const {
+  std::vector<std::shared_ptr<const ParsedCertificate>> result;
+  result.reserve(intermediates_.size());
+  for (const auto& [key, cert] : intermediates_) {
+    result.push_back(cert);
+  }
+  return result;
+}
+
 void CertIssuerSourceStatic::SyncGetIssuersOf(const ParsedCertificate *cert,
                                               ParsedCertificateList *issuers) {
   auto range =
