@@ -30,6 +30,28 @@ extern "C++" {
 #include <string_view>
 #endif
 
+#if defined(__has_include)
+#if __has_include(<version>)
+#include <version>
+#endif
+#endif
+
+#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
+#include <ranges>
+BSSL_NAMESPACE_BEGIN
+template <typename T>
+class Span;
+BSSL_NAMESPACE_END
+
+// Mark `Span` as satisfying the `view` and `borrowed_range` concepts. This
+// should be done before the definition of `Span`, so that any inlined calls to
+// range functionality use the correct specializations.
+template <typename T>
+inline constexpr bool std::ranges::enable_view<bssl::Span<T>> = true;
+template <typename T>
+inline constexpr bool std::ranges::enable_borrowed_range<bssl::Span<T>> = true;
+#endif
+
 BSSL_NAMESPACE_BEGIN
 
 template <typename T>

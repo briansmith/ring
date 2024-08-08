@@ -14,6 +14,28 @@
 #include <openssl/base.h>
 #include <openssl/span.h>
 
+#if defined(__has_include)
+#if __has_include(<version>)
+#include <version>
+#endif
+#endif
+
+#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
+#include <ranges>
+namespace bssl::der {
+class OPENSSL_EXPORT Input;
+}
+
+// Mark `Input` as satisfying the `view` and `borrowed_range` concepts. This
+// should be done before the definition of `Input`, so that any inlined calls to
+// range functionality use the correct specializations.
+template <>
+inline constexpr bool std::ranges::enable_view<bssl::der::Input> = true;
+template <>
+inline constexpr bool std::ranges::enable_borrowed_range<bssl::der::Input> =
+    true;
+#endif
+
 namespace bssl::der {
 
 // An opaque class that represents a fixed buffer of data of a fixed length,
