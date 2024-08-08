@@ -659,10 +659,14 @@ void tls_next_message(SSL *ssl) {
   }
 }
 
+namespace {
+
 class CipherScorer {
  public:
   using Score = int;
   static constexpr Score kMinScore = 0;
+
+  virtual ~CipherScorer() = default;
 
   virtual Score Evaluate(const SSL_CIPHER *cipher) const = 0;
 };
@@ -672,6 +676,8 @@ class CipherScorer {
 class AesHwCipherScorer : public CipherScorer {
  public:
   explicit AesHwCipherScorer(bool has_aes_hw) : aes_is_fine_(has_aes_hw) {}
+
+  virtual ~AesHwCipherScorer() override = default;
 
   Score Evaluate(const SSL_CIPHER *a) const override {
     return
@@ -687,6 +693,9 @@ class AesHwCipherScorer : public CipherScorer {
 
 // CNsaCipherScorer prefers AES-256-GCM over AES-128-GCM over anything else.
 class CNsaCipherScorer : public CipherScorer {
+ public:
+  virtual ~CNsaCipherScorer() override = default;
+
   Score Evaluate(const SSL_CIPHER *a) const override {
     if (a->id == TLS1_3_CK_AES_256_GCM_SHA384) {
       return 3;
@@ -696,6 +705,8 @@ class CNsaCipherScorer : public CipherScorer {
     return 1;
   }
 };
+
+}
 
 bool ssl_tls13_cipher_meets_policy(uint16_t cipher_id,
                                    enum ssl_compliance_policy_t policy) {
