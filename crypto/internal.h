@@ -217,7 +217,9 @@ typedef __uint128_t uint128_t;
 // __uint128_t division depends on intrinsics in the compiler runtime. Those
 // intrinsics are missing in clang-cl (https://crbug.com/787617) and nanolibc.
 // These may be bugs in the toolchain definition, but just disable it for now.
-#if !defined(_MSC_VER) && !defined(OPENSSL_NANOLIBC)
+// EDK2's toolchain is missing __udivti3 (b/339380897) so cannot support
+// 128-bit division currently.
+#if !defined(_MSC_VER) && !defined(OPENSSL_NANOLIBC) && !defined(__EDK2_BORINGSSL__)
 #define BORINGSSL_CAN_DIVIDE_UINT128
 #endif
 #endif
