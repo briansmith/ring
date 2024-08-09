@@ -175,22 +175,28 @@ static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
 #endif
 }
 
-// This was specifically designed to contain fewer branches that may leak
-// sensitive information; see "New Branch Prediction Vulnerabilities in OpenSSL
-// and Necessary Software Countermeasures" by Onur Acıçmez, Shay Gueron, and
-// Jean-Pierre Seifert.
 int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
            const BIGNUM *divisor, BN_CTX *ctx) {
+  // This function implements long division, per Knuth, The Art of Computer
+  // Programming, Volume 2, Chapter 4.3.1, Algorithm D. This algorithm only
+  // divides non-negative integers, but we round towards zero, so we divide
+  // absolute values and adjust the signs separately.
+  //
+  // Inputs to this function are assumed public and may be leaked by timing and
+  // cache side channels. Division with secret inputs should use other
+  // implementation strategies such as Montgomery reduction.
+  //
+  // Historically, this function diverged from Knuth's algorithm with some
+  // shortcuts in some cases. Those have been removed per "New Branch Prediction
+  // Vulnerabilities in OpenSSL and Necessary Software Countermeasures" by Onur
+  // Acıçmez, Shay Gueron, and Jean-Pierre Seifert. We continue to omit them for
+  // simplicity, but this function is no longer used with secret inputs. (We
+  // implement a variation on "Smooth CRT-RSA" as described in the paper.)
   int norm_shift, loop;
   BIGNUM wnum;
   BN_ULONG *resp, *wnump;
   BN_ULONG d0, d1;
   int num_n, div_n;
-
-  // This function relies on the historical minimal-width |BIGNUM| invariant.
-  // It is already not constant-time (constant-time reductions should use
-  // Montgomery logic), so we shrink all inputs and intermediate values to
-  // retain the previous behavior.
 
   // Invalid zero-padding would have particularly bad consequences.
   int numerator_width = bn_minimal_width(numerator);
