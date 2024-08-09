@@ -198,15 +198,6 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   BN_ULONG d0, d1;
   int num_n, div_n;
 
-  // Invalid zero-padding would have particularly bad consequences.
-  int numerator_width = bn_minimal_width(numerator);
-  int divisor_width = bn_minimal_width(divisor);
-  if ((numerator_width > 0 && numerator->d[numerator_width - 1] == 0) ||
-      (divisor_width > 0 && divisor->d[divisor_width - 1] == 0)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_NOT_INITIALIZED);
-    return 0;
-  }
-
   if (BN_is_zero(divisor)) {
     OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
     return 0;
