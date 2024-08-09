@@ -3385,6 +3385,7 @@ ${PREFIX}_set_encrypt_key_base:
 
 .align	16
 .Lkey_expansion_128:
+.cfi_startproc
 	$movkey	%xmm0,(%rax)
 	lea	16(%rax),%rax
 .Lkey_expansion_128_cold:
@@ -3395,9 +3396,11 @@ ${PREFIX}_set_encrypt_key_base:
 	shufps	\$0b11111111,%xmm1,%xmm1	# critical path
 	xorps	%xmm1,%xmm0
 	ret
+.cfi_endproc
 
 .align 16
 .Lkey_expansion_192a:
+.cfi_startproc
 	$movkey	%xmm0,(%rax)
 	lea	16(%rax),%rax
 .Lkey_expansion_192a_cold:
@@ -3415,9 +3418,11 @@ ${PREFIX}_set_encrypt_key_base:
 	pshufd	\$0b11111111,%xmm0,%xmm3
 	pxor	%xmm3,%xmm2
 	ret
+.cfi_endproc
 
 .align 16
 .Lkey_expansion_192b:
+.cfi_startproc
 	movaps	%xmm0,%xmm3
 	shufps	\$0b01000100,%xmm0,%xmm5
 	$movkey	%xmm5,(%rax)
@@ -3425,9 +3430,11 @@ ${PREFIX}_set_encrypt_key_base:
 	$movkey	%xmm3,16(%rax)
 	lea	32(%rax),%rax
 	jmp	.Lkey_expansion_192b_warm
+.cfi_endproc
 
 .align	16
 .Lkey_expansion_256a:
+.cfi_startproc
 	$movkey	%xmm2,(%rax)
 	lea	16(%rax),%rax
 .Lkey_expansion_256a_cold:
@@ -3438,9 +3445,11 @@ ${PREFIX}_set_encrypt_key_base:
 	shufps	\$0b11111111,%xmm1,%xmm1	# critical path
 	xorps	%xmm1,%xmm0
 	ret
+.cfi_endproc
 
 .align 16
 .Lkey_expansion_256b:
+.cfi_startproc
 	$movkey	%xmm0,(%rax)
 	lea	16(%rax),%rax
 
@@ -3451,6 +3460,7 @@ ${PREFIX}_set_encrypt_key_base:
 	shufps	\$0b10101010,%xmm1,%xmm1	# critical path
 	xorps	%xmm1,%xmm2
 	ret
+.cfi_endproc
 .size	${PREFIX}_set_encrypt_key_base,.-${PREFIX}_set_encrypt_key_base
 
 .globl	${PREFIX}_set_encrypt_key_alt

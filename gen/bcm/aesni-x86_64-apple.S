@@ -2082,6 +2082,7 @@ L$enc_key_ret:
 
 .p2align	4
 L$key_expansion_128:
+
 	movups	%xmm0,(%rax)
 	leaq	16(%rax),%rax
 L$key_expansion_128_cold:
@@ -2093,8 +2094,10 @@ L$key_expansion_128_cold:
 	xorps	%xmm1,%xmm0
 	ret
 
+
 .p2align	4
 L$key_expansion_192a:
+
 	movups	%xmm0,(%rax)
 	leaq	16(%rax),%rax
 L$key_expansion_192a_cold:
@@ -2113,8 +2116,10 @@ L$key_expansion_192b_warm:
 	pxor	%xmm3,%xmm2
 	ret
 
+
 .p2align	4
 L$key_expansion_192b:
+
 	movaps	%xmm0,%xmm3
 	shufps	$68,%xmm0,%xmm5
 	movups	%xmm5,(%rax)
@@ -2123,8 +2128,10 @@ L$key_expansion_192b:
 	leaq	32(%rax),%rax
 	jmp	L$key_expansion_192b_warm
 
+
 .p2align	4
 L$key_expansion_256a:
+
 	movups	%xmm2,(%rax)
 	leaq	16(%rax),%rax
 L$key_expansion_256a_cold:
@@ -2136,8 +2143,10 @@ L$key_expansion_256a_cold:
 	xorps	%xmm1,%xmm0
 	ret
 
+
 .p2align	4
 L$key_expansion_256b:
+
 	movups	%xmm0,(%rax)
 	leaq	16(%rax),%rax
 
@@ -2148,6 +2157,7 @@ L$key_expansion_256b:
 	shufps	$170,%xmm1,%xmm1
 	xorps	%xmm1,%xmm2
 	ret
+
 
 
 .globl	_aes_hw_set_encrypt_key_alt

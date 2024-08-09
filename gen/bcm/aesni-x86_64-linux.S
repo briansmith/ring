@@ -2083,6 +2083,7 @@ _CET_ENDBR
 
 .align	16
 .Lkey_expansion_128:
+.cfi_startproc	
 	movups	%xmm0,(%rax)
 	leaq	16(%rax),%rax
 .Lkey_expansion_128_cold:
@@ -2093,9 +2094,11 @@ _CET_ENDBR
 	shufps	$255,%xmm1,%xmm1
 	xorps	%xmm1,%xmm0
 	ret
+.cfi_endproc	
 
 .align	16
 .Lkey_expansion_192a:
+.cfi_startproc	
 	movups	%xmm0,(%rax)
 	leaq	16(%rax),%rax
 .Lkey_expansion_192a_cold:
@@ -2113,9 +2116,11 @@ _CET_ENDBR
 	pshufd	$255,%xmm0,%xmm3
 	pxor	%xmm3,%xmm2
 	ret
+.cfi_endproc	
 
 .align	16
 .Lkey_expansion_192b:
+.cfi_startproc	
 	movaps	%xmm0,%xmm3
 	shufps	$68,%xmm0,%xmm5
 	movups	%xmm5,(%rax)
@@ -2123,9 +2128,11 @@ _CET_ENDBR
 	movups	%xmm3,16(%rax)
 	leaq	32(%rax),%rax
 	jmp	.Lkey_expansion_192b_warm
+.cfi_endproc	
 
 .align	16
 .Lkey_expansion_256a:
+.cfi_startproc	
 	movups	%xmm2,(%rax)
 	leaq	16(%rax),%rax
 .Lkey_expansion_256a_cold:
@@ -2136,9 +2143,11 @@ _CET_ENDBR
 	shufps	$255,%xmm1,%xmm1
 	xorps	%xmm1,%xmm0
 	ret
+.cfi_endproc	
 
 .align	16
 .Lkey_expansion_256b:
+.cfi_startproc	
 	movups	%xmm0,(%rax)
 	leaq	16(%rax),%rax
 
@@ -2149,6 +2158,7 @@ _CET_ENDBR
 	shufps	$170,%xmm1,%xmm1
 	xorps	%xmm1,%xmm2
 	ret
+.cfi_endproc	
 .size	aes_hw_set_encrypt_key_base,.-aes_hw_set_encrypt_key_base
 
 .globl	aes_hw_set_encrypt_key_alt

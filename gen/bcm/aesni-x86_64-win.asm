@@ -2187,6 +2187,7 @@ $L$SEH_end_aes_hw_set_encrypt_key_base_4:
 
 ALIGN	16
 $L$key_expansion_128:
+
 	movups	XMMWORD[rax],xmm0
 	lea	rax,[16+rax]
 $L$key_expansion_128_cold:
@@ -2198,8 +2199,10 @@ $L$key_expansion_128_cold:
 	xorps	xmm0,xmm1
 	ret
 
+
 ALIGN	16
 $L$key_expansion_192a:
+
 	movups	XMMWORD[rax],xmm0
 	lea	rax,[16+rax]
 $L$key_expansion_192a_cold:
@@ -2218,8 +2221,10 @@ $L$key_expansion_192b_warm:
 	pxor	xmm2,xmm3
 	ret
 
+
 ALIGN	16
 $L$key_expansion_192b:
+
 	movaps	xmm3,xmm0
 	shufps	xmm5,xmm0,68
 	movups	XMMWORD[rax],xmm5
@@ -2228,8 +2233,10 @@ $L$key_expansion_192b:
 	lea	rax,[32+rax]
 	jmp	NEAR $L$key_expansion_192b_warm
 
+
 ALIGN	16
 $L$key_expansion_256a:
+
 	movups	XMMWORD[rax],xmm2
 	lea	rax,[16+rax]
 $L$key_expansion_256a_cold:
@@ -2241,8 +2248,10 @@ $L$key_expansion_256a_cold:
 	xorps	xmm0,xmm1
 	ret
 
+
 ALIGN	16
 $L$key_expansion_256b:
+
 	movups	XMMWORD[rax],xmm0
 	lea	rax,[16+rax]
 
@@ -2253,6 +2262,7 @@ $L$key_expansion_256b:
 	shufps	xmm1,xmm1,170
 	xorps	xmm2,xmm1
 	ret
+
 
 
 global	aes_hw_set_encrypt_key_alt
