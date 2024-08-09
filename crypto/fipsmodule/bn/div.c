@@ -192,12 +192,6 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   // Acıçmez, Shay Gueron, and Jean-Pierre Seifert. We continue to omit them for
   // simplicity, but this function is no longer used with secret inputs. (We
   // implement a variation on "Smooth CRT-RSA" as described in the paper.)
-  int norm_shift, loop;
-  BIGNUM wnum;
-  BN_ULONG *resp, *wnump;
-  BN_ULONG d0, d1;
-  int num_n, div_n;
-
   if (BN_is_zero(divisor)) {
     OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
     return 0;
@@ -217,13 +211,19 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     goto err;
   }
 
-  // First we normalise the numbers
-  norm_shift = BN_BITS2 - (BN_num_bits(divisor) % BN_BITS2);
+  // First we normalise the numbers such that the divisor's MSB is set. This
+  // ensures, in Knuth's terminology, that v1 >= b/2, needed for the quotient
+  // estimation step.
+  int norm_shift = BN_BITS2 - (BN_num_bits(divisor) % BN_BITS2);
   if (!BN_lshift(sdiv, divisor, norm_shift)) {
     goto err;
   }
   bn_set_minimal_width(sdiv);
   sdiv->neg = 0;
+
+  // TODO(crbug.com/358687140): We also shift the numerator up by one extra
+  // word. This was done for convenience so that |wnump[-2]| below always
+  // exists, but makes the offsets confusing. Remove it.
   norm_shift += BN_BITS2;
   if (!BN_lshift(snum, numerator, norm_shift)) {
     goto err;
@@ -250,25 +250,28 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     snum->width++;
   }
 
-  div_n = sdiv->width;
-  num_n = snum->width;
-  loop = num_n - div_n;
+  int div_n = sdiv->width;
+  int num_n = snum->width;
+  int loop = num_n - div_n;
   // Lets setup a 'window' into snum
   // This is the part that corresponds to the current
   // 'area' being divided
+  BIGNUM wnum;
   wnum.neg = 0;
   wnum.d = &(snum->d[loop]);
   wnum.width = div_n;
   // only needed when BN_ucmp messes up the values between width and max
   wnum.dmax = snum->dmax - loop;  // so we don't step out of bounds
 
-  // Get the top 2 words of sdiv
-  // div_n=sdiv->width;
-  d0 = sdiv->d[div_n - 1];
-  d1 = (div_n == 1) ? 0 : sdiv->d[div_n - 2];
+  // Get the top 2 words of sdiv.
+  const BN_ULONG d0 = sdiv->d[div_n - 1];
+  const BN_ULONG d1 = (div_n == 1) ? 0 : sdiv->d[div_n - 2];
+
+  // The normalization step ensures that |sdiv|'s MSB is one.
+  assert(d0 & (((BN_ULONG)1) << (BN_BITS2 - 1)));
 
   // pointer to the 'top' of snum
-  wnump = &(snum->d[num_n - 1]);
+  BN_ULONG *wnump = &(snum->d[num_n - 1]);
 
   // Setup |res|. |numerator| and |res| may alias, so we save |numerator->neg|
   // for later.
@@ -278,7 +281,7 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     goto err;
   }
   res->width = loop - 1;
-  resp = &(res->d[loop - 1]);
+  BN_ULONG *resp = &(res->d[loop - 1]);
 
   // space for temp
   if (!bn_wexpand(tmp, div_n + 1)) {
