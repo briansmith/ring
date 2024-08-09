@@ -231,27 +231,17 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   bn_set_minimal_width(snum);
   snum->neg = 0;
 
-  // Since we don't want to have special-case logic for the case where snum is
-  // larger than sdiv, we pad snum with enough zeroes without changing its
-  // value.
-  if (snum->width <= sdiv->width + 1) {
-    if (!bn_wexpand(snum, sdiv->width + 2)) {
-      goto err;
-    }
-    for (int i = snum->width; i < sdiv->width + 2; i++) {
-      snum->d[i] = 0;
-    }
-    snum->width = sdiv->width + 2;
-  } else {
-    if (!bn_wexpand(snum, snum->width + 1)) {
-      goto err;
-    }
-    snum->d[snum->width] = 0;
-    snum->width++;
+  // Extend |snum| with zeros to satisfy the long division invariants:
+  // - |snum|, minus the extra word, must have at least |div_n| + 1 words.
+  // - |snum|'s most significant word must be zero to guarantee the first loop
+  //   iteration works with a prefix greater than |sdiv|. (This is the extra u0
+  //   digit in Knuth.)
+  int div_n = sdiv->width;
+  int num_n = snum->width <= div_n + 1 ? div_n + 2 : snum->width + 1;
+  if (!bn_resize_words(snum, num_n)) {
+    goto err;
   }
 
-  int div_n = sdiv->width;
-  int num_n = snum->width;
   int loop = num_n - div_n;
   // Lets setup a 'window' into snum
   // This is the part that corresponds to the current
