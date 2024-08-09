@@ -297,13 +297,11 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   }
 
   for (int i = 0; i < loop - 1; i++, wnump--, resp--) {
-    BN_ULONG q, l0;
     // the first part of the loop uses the top two words of snum and sdiv to
     // calculate a BN_ULONG q such that | wnum - sdiv * q | < sdiv
-    BN_ULONG n0, n1, rm = 0;
-
-    n0 = wnump[0];
-    n1 = wnump[-1];
+    BN_ULONG q, rm = 0;
+    BN_ULONG n0 = wnump[0];
+    BN_ULONG n1 = wnump[-1];
     if (n0 == d0) {
       q = BN_MASK2;
     } else {
@@ -344,8 +342,7 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
 #endif  // !BN_ULLONG
     }
 
-    l0 = bn_mul_words(tmp->d, sdiv->d, div_n, q);
-    tmp->d[div_n] = l0;
+    tmp->d[div_n] = bn_mul_words(tmp->d, sdiv->d, div_n, q);
     wnum.d--;
     // ingore top values of the bignums just sub the two
     // BN_ULONG arrays with bn_sub_words
