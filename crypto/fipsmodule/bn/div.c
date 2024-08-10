@@ -296,7 +296,17 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     resp--;
   }
 
-  for (int i = 0; i < loop - 1; i++, wnump--, resp--) {
+  // Compute the quotient with a word-by-word long division. Note that Knuth
+  // indexes words from most to least significant, so our index is reversed.
+  // Each loop iteration computes res->d[i] of the quotient and updates snum
+  // with the running remainder. Before each loop iteration, wnum <= sdiv.
+  for (int i = loop - 2; i >= 0; i--, wnump--, resp--) {
+    // TODO(crbug.com/358687140): Remove these running pointers.
+    wnum.d--;
+    assert(resp == res->d + i);
+    assert(wnum.d == snum->d + i + 1);
+    assert(wnump == wnum.d + div_n);
+
     // the first part of the loop uses the top two words of snum and sdiv to
     // calculate a BN_ULONG q such that | wnum - sdiv * q | < sdiv
     BN_ULONG q, rm = 0;
@@ -305,7 +315,7 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     if (n0 == d0) {
       q = BN_MASK2;
     } else {
-      // n0 < d0
+      assert(n0 < d0);
       bn_div_rem_words(&q, &rm, n0, n1, d0);
 
 #ifdef BN_ULLONG
@@ -343,7 +353,6 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     }
 
     tmp->d[div_n] = bn_mul_words(tmp->d, sdiv->d, div_n, q);
-    wnum.d--;
     // ingore top values of the bignums just sub the two
     // BN_ULONG arrays with bn_sub_words
     if (bn_sub_words(wnum.d, wnum.d, tmp->d, div_n + 1)) {
