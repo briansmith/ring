@@ -271,29 +271,19 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     goto err;
   }
   res->width = loop - 1;
-  BN_ULONG *resp = &(res->d[loop - 1]);
 
   // space for temp
   if (!bn_wexpand(tmp, div_n + 1)) {
     goto err;
   }
 
-  // if res->width == 0 then clear the neg value otherwise decrease
-  // the resp pointer
-  if (res->width == 0) {
-    res->neg = 0;
-  } else {
-    resp--;
-  }
-
   // Compute the quotient with a word-by-word long division. Note that Knuth
   // indexes words from most to least significant, so our index is reversed.
   // Each loop iteration computes res->d[i] of the quotient and updates snum
   // with the running remainder. Before each loop iteration, wnum <= sdiv.
-  for (int i = loop - 2; i >= 0; i--, wnump--, resp--) {
+  for (int i = loop - 2; i >= 0; i--, wnump--) {
     // TODO(crbug.com/358687140): Remove these running pointers.
     wnum.d--;
-    assert(resp == res->d + i);
     assert(wnum.d == snum->d + i + 1);
     assert(wnump == wnum.d + div_n);
 
@@ -359,7 +349,7 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
       }
     }
     // store part of the result
-    *resp = q;
+    res->d[i] = q;
   }
 
   bn_set_minimal_width(snum);
