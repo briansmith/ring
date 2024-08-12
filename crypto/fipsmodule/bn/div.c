@@ -215,29 +215,22 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   // This ensures, in Knuth's terminology, that v1 >= b/2, needed for the
   // quotient estimation step.
   int norm_shift = BN_BITS2 - (BN_num_bits(divisor) % BN_BITS2);
-  if (!BN_lshift(sdiv, divisor, norm_shift)) {
+  if (!BN_lshift(sdiv, divisor, norm_shift) ||
+      !BN_lshift(snum, numerator, norm_shift)) {
     goto err;
   }
   bn_set_minimal_width(sdiv);
-  sdiv->neg = 0;
-
-  // TODO(crbug.com/358687140): We also shift the numerator up by one extra
-  // word. This was done for convenience so that |wnump[-2]| below always
-  // exists, but makes the offsets confusing. Remove it.
-  norm_shift += BN_BITS2;
-  if (!BN_lshift(snum, numerator, norm_shift)) {
-    goto err;
-  }
   bn_set_minimal_width(snum);
+  sdiv->neg = 0;
   snum->neg = 0;
 
   // Extend |snum| with zeros to satisfy the long division invariants:
-  // - |snum|, minus the extra word, must have at least |div_n| + 1 words.
+  // - |snum| must have at least |div_n| + 1 words.
   // - |snum|'s most significant word must be zero to guarantee the first loop
   //   iteration works with a prefix greater than |sdiv|. (This is the extra u0
   //   digit in Knuth step D1.)
   int div_n = sdiv->width;
-  int num_n = snum->width <= div_n + 1 ? div_n + 2 : snum->width + 1;
+  int num_n = snum->width <= div_n ? div_n + 1 : snum->width + 1;
   if (!bn_resize_words(snum, num_n)) {
     goto err;
   }
@@ -267,10 +260,10 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   // for later.
   const int numerator_neg = numerator->neg;
   res->neg = (numerator_neg ^ divisor->neg);
-  if (!bn_wexpand(res, loop - 1)) {
+  if (!bn_wexpand(res, loop)) {
     goto err;
   }
-  res->width = loop - 1;
+  res->width = loop;
 
   if (!bn_wexpand(tmp, div_n + 1)) {
     goto err;
@@ -281,10 +274,10 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   // our index is reversed. Each loop iteration computes res->d[i] of the
   // quotient and updates snum with the running remainder. Before each loop
   // iteration, wnum <= sdiv.
-  for (int i = loop - 2; i >= 0; i--, wnump--) {
+  for (int i = loop - 1; i >= 0; i--, wnump--) {
     // TODO(crbug.com/358687140): Remove these running pointers.
     wnum.d--;
-    assert(wnum.d == snum->d + i + 1);
+    assert(wnum.d == snum->d + i);
     assert(wnump == wnum.d + div_n);
 
     // Knuth step D3: Compute q', an estimate of q = floor(wnum / sdiv) by
@@ -331,47 +324,43 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
       // 20, and 21. Although only one iteration is needed to correct q + 2 to
       // q + 1, Knuth uses a loop. A loop will often also correct q + 1 to q,
       // saving the slightly more expensive underflow handling below.
-      //
-      // TODO(crbug.com/358687140): This assumes div_n is at least 2, otherwise
-      // there is no wnump[-2] (u_(j+2) in Knuth) term to read. We avoid going
-      // out of bounds because of the extra word, and t2 will be zero in this
-      // case, so the loop is a no-op. Still, this is confusing.
+      if (div_n > 1) {
 #ifdef BN_ULLONG
-      BN_ULLONG t2 = (BN_ULLONG)d1 * q;
-      for (;;) {
-        if (t2 <= ((((BN_ULLONG)rm) << BN_BITS2) | wnump[-2])) {
-          break;
+        BN_ULLONG t2 = (BN_ULLONG)d1 * q;
+        for (;;) {
+          if (t2 <= ((((BN_ULLONG)rm) << BN_BITS2) | wnump[-2])) {
+            break;
+          }
+          q--;
+          rm += d0;
+          if (rm < d0) {
+            // If rm overflows, the true value exceeds BN_ULONG and the next
+            // t2 comparison should exit the loop.
+            break;
+          }
+          t2 -= d1;
         }
-        q--;
-        rm += d0;
-        if (rm < d0) {
-          // If rm overflows, the true value exceeds BN_ULONG and the next
-          // t2 comparison should exit the loop.
-          break;
+#else   // !BN_ULLONG
+        BN_ULONG t2l, t2h;
+        BN_UMULT_LOHI(t2l, t2h, d1, q);
+        for (;;) {
+          if (t2h < rm || (t2h == rm && t2l <= wnump[-2])) {
+            break;
+          }
+          q--;
+          rm += d0;
+          if (rm < d0) {
+            // If rm overflows, the true value exceeds BN_ULONG and the next
+            // t2 comparison should exit the loop.
+            break;
+          }
+          if (t2l < d1) {
+            t2h--;
+          }
+          t2l -= d1;
         }
-        t2 -= d1;
-      }
-#else  // !BN_ULLONG
-      BN_ULONG t2l, t2h;
-      BN_UMULT_LOHI(t2l, t2h, d1, q);
-      for (;;) {
-        if (t2h < rm ||
-            (t2h == rm && t2l <= wnump[-2])) {
-          break;
-        }
-        q--;
-        rm += d0;
-        if (rm < d0) {
-          // If rm overflows, the true value exceeds BN_ULONG and the next
-          // t2 comparison should exit the loop.
-          break;
-        }
-        if (t2l < d1) {
-          t2h--;
-        }
-        t2l -= d1;
-      }
 #endif  // !BN_ULLONG
+      }
     }
 
     // Knuth step D4 through D6: Now q' = q or q' = q + 1, and
