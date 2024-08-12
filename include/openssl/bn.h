@@ -424,9 +424,14 @@ OPENSSL_EXPORT int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
 
 // BN_div divides |numerator| by |divisor| and places the result in |quotient|
 // and the remainder in |rem|. Either of |quotient| or |rem| may be NULL, in
-// which case the respective value is not returned. The result is rounded
-// towards zero; thus if |numerator| is negative, the remainder will be zero or
-// negative. It returns one on success or zero on error.
+// which case the respective value is not returned. It returns one on success or
+// zero on error. It is an error condition if |divisor| is zero.
+//
+// The outputs will be such that |quotient| * |divisor| + |rem| = |numerator|,
+// with the quotient rounded towards zero. Thus, if |numerator| is negative,
+// |rem| will be zero or negative. If |divisor| is negative, the sign of
+// |quotient| will be flipped to compensate but otherwise rounding will be as if
+// |divisor| were its absolute value.
 OPENSSL_EXPORT int BN_div(BIGNUM *quotient, BIGNUM *rem,
                           const BIGNUM *numerator, const BIGNUM *divisor,
                           BN_CTX *ctx);

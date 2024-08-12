@@ -175,18 +175,6 @@ static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
 #endif
 }
 
-// BN_div computes "quotient := numerator / divisor", rounding towards zero,
-// and sets up |rem| such that "quotient * divisor + rem = numerator" holds.
-//
-// Thus:
-//
-//     quotient->neg == numerator->neg ^ divisor->neg
-//        (unless the result is zero)
-//     rem->neg == numerator->neg
-//        (unless the remainder is zero)
-//
-// If |quotient| or |rem| is NULL, the respective value is not returned.
-//
 // This was specifically designed to contain fewer branches that may leak
 // sensitive information; see "New Branch Prediction Vulnerabilities in OpenSSL
 // and Necessary Software Countermeasures" by Onur Acıçmez, Shay Gueron, and
