@@ -4,9 +4,9 @@
 #define _LIBCPP_HAS_NO_VENDOR_AVAILABILITY_ANNOTATIONS
 
 #if defined(__APPLE__)
-#define _LIBCPP_PSTL_CPU_BACKEND_LIBDISPATCH
+#define _LIBCPP_PSTL_BACKEND_LIBDISPATCH
 #else
-#define _LIBCPP_PSTL_CPU_BACKEND_THREAD
+#define _LIBCPP_PSTL_BACKEND_STD_THREAD
 #endif
 
 // We only use our custom libc++ for testing, so enable all checks.

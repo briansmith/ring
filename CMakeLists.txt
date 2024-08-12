@@ -508,6 +508,10 @@ if(FIPS_DELOCATE)
   target_include_directories(bcm_c_generated_asm PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  if(CLANG)
+    # Clang warns when passing both -c (from CMake) and -S.
+    set_property(TARGET bcm_c_generated_asm APPEND PROPERTY COMPILE_OPTIONS "-Wno-unused-command-line-argument")
+  endif()
 
   set(TARGET_FLAG "")
   if(CMAKE_ASM_COMPILER_TARGET)
