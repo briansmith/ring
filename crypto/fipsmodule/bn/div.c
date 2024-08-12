@@ -211,9 +211,9 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     goto err;
   }
 
-  // First we normalise the numbers such that the divisor's MSB is set. This
-  // ensures, in Knuth's terminology, that v1 >= b/2, needed for the quotient
-  // estimation step.
+  // Knuth step D1: Normalise the numbers such that the divisor's MSB is set.
+  // This ensures, in Knuth's terminology, that v1 >= b/2, needed for the
+  // quotient estimation step.
   int norm_shift = BN_BITS2 - (BN_num_bits(divisor) % BN_BITS2);
   if (!BN_lshift(sdiv, divisor, norm_shift)) {
     goto err;
@@ -235,7 +235,7 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   // - |snum|, minus the extra word, must have at least |div_n| + 1 words.
   // - |snum|'s most significant word must be zero to guarantee the first loop
   //   iteration works with a prefix greater than |sdiv|. (This is the extra u0
-  //   digit in Knuth.)
+  //   digit in Knuth step D1.)
   int div_n = sdiv->width;
   int num_n = snum->width <= div_n + 1 ? div_n + 2 : snum->width + 1;
   if (!bn_resize_words(snum, num_n)) {
@@ -272,32 +272,70 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   }
   res->width = loop - 1;
 
-  // space for temp
   if (!bn_wexpand(tmp, div_n + 1)) {
     goto err;
   }
 
-  // Compute the quotient with a word-by-word long division. Note that Knuth
-  // indexes words from most to least significant, so our index is reversed.
-  // Each loop iteration computes res->d[i] of the quotient and updates snum
-  // with the running remainder. Before each loop iteration, wnum <= sdiv.
+  // Knuth steps D2 through D7: Compute the quotient with a word-by-word long
+  // division. Note that Knuth indexes words from most to least significant, so
+  // our index is reversed. Each loop iteration computes res->d[i] of the
+  // quotient and updates snum with the running remainder. Before each loop
+  // iteration, wnum <= sdiv.
   for (int i = loop - 2; i >= 0; i--, wnump--) {
     // TODO(crbug.com/358687140): Remove these running pointers.
     wnum.d--;
     assert(wnum.d == snum->d + i + 1);
     assert(wnump == wnum.d + div_n);
 
-    // the first part of the loop uses the top two words of snum and sdiv to
-    // calculate a BN_ULONG q such that | wnum - sdiv * q | < sdiv
+    // Knuth step D3: Compute q', an estimate of q = floor(wnum / sdiv) by
+    // looking at the top words. We must estimate such that q' = q or
+    // q' = q + 1.
     BN_ULONG q, rm = 0;
     BN_ULONG n0 = wnump[0];
     BN_ULONG n1 = wnump[-1];
     if (n0 == d0) {
+      // Estimate q' = b - 1, where b is the base.
       q = BN_MASK2;
+      // Knuth also runs the fixup routine in this case, but this would require
+      // computing rm and is unnecessary. q' is already close enough. That is,
+      // the true quotient, q is either b - 1 or b - 2.
+      //
+      // By the loop invariant, q <= b - 1, so we must show that q >= b - 2. We
+      // do this by showing wnum / sdiv >= b - 2. Suppose wnum / sdiv < b - 2.
+      // wnum and sdiv have the same most significant word, so:
+      //
+      //    wnum >= n0 * b^div_n
+      //    sdiv <  (n0 + 1) * b^(d_div - 1)
+      //
+      // Thus:
+      //
+      //    b - 2 > wnum / sdiv
+      //          > (n0 * b^div_n) / (n0 + 1) * b^(div_n - 1)
+      //          = (n0 * b) / (n0 + 1)
+      //
+      //         (n0 + 1) * (b - 2) > n0 * b
+      //    n0 * b + b - 2 * n0 - 2 > n0 * b
+      //                      b - 2 > 2 * n0
+      //                    b/2 - 1 > n0
+      //
+      // This contradicts the normalization condition, so q >= b - 2 and our
+      // estimate is close enough.
     } else {
+      // Estimate q' = floor(n0n1 / d0). Per Theorem B, q' - 2 <= q <= q', which
+      // is slightly outside of our bounds.
       assert(n0 < d0);
       bn_div_rem_words(&q, &rm, n0, n1, d0);
 
+      // Fix the estimate by examining one more word and adjusting q' as needed.
+      // This is the second half of step D3 and is sufficient per exercises 19,
+      // 20, and 21. Although only one iteration is needed to correct q + 2 to
+      // q + 1, Knuth uses a loop. A loop will often also correct q + 1 to q,
+      // saving the slightly more expensive underflow handling below.
+      //
+      // TODO(crbug.com/358687140): This assumes div_n is at least 2, otherwise
+      // there is no wnump[-2] (u_(j+2) in Knuth) term to read. We avoid going
+      // out of bounds because of the extra word, and t2 will be zero in this
+      // case, so the loop is a no-op. Still, this is confusing.
 #ifdef BN_ULLONG
       BN_ULLONG t2 = (BN_ULLONG)d1 * q;
       for (;;) {
@@ -307,7 +345,9 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
         q--;
         rm += d0;
         if (rm < d0) {
-          break;  // don't let rm overflow
+          // If rm overflows, the true value exceeds BN_ULONG and the next
+          // t2 comparison should exit the loop.
+          break;
         }
         t2 -= d1;
       }
@@ -322,7 +362,9 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
         q--;
         rm += d0;
         if (rm < d0) {
-          break;  // don't let rm overflow
+          // If rm overflows, the true value exceeds BN_ULONG and the next
+          // t2 comparison should exit the loop.
+          break;
         }
         if (t2l < d1) {
           t2h--;
@@ -332,23 +374,17 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
 #endif  // !BN_ULLONG
     }
 
+    // Knuth step D4 through D6: Now q' = q or q' = q + 1, and
+    // -sdiv < wnum - sdiv * q < sdiv. If q' = q + 1, the subtraction will
+    // underflow, and we fix it up below.
     tmp->d[div_n] = bn_mul_words(tmp->d, sdiv->d, div_n, q);
-    // ingore top values of the bignums just sub the two
-    // BN_ULONG arrays with bn_sub_words
     if (bn_sub_words(wnum.d, wnum.d, tmp->d, div_n + 1)) {
-      // Note: As we have considered only the leading
-      // two BN_ULONGs in the calculation of q, sdiv * q
-      // might be greater than wnum (but then (q-1) * sdiv
-      // is less or equal than wnum)
       q--;
-      if (bn_add_words(wnum.d, wnum.d, sdiv->d, div_n)) {
-        // we can't have an overflow here (assuming
-        // that q != 0, but if q == 0 then tmp is
-        // zero anyway)
-        (*wnump)++;
-      }
+      // The final addition is expected to overflow, canceling the underflow.
+      wnum.d[div_n] += bn_add_words(wnum.d, wnum.d, sdiv->d, div_n);
     }
-    // store part of the result
+
+    // q is now correct, and wnum has been updated to the running remainder.
     res->d[i] = q;
   }
 
