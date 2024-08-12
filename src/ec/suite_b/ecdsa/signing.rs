@@ -142,7 +142,7 @@ impl EcdsaKeyPair {
         let key_pair = ec::suite_b::key_pair_from_bytes(
             alg.curve,
             untrusted::Input::from(private_key),
-            untrusted::Input::from(public_key),
+            Some(untrusted::Input::from(public_key)),
             cpu::features(),
         )?;
         Self::new(alg, key_pair, rng)

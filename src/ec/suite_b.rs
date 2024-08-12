@@ -176,7 +176,7 @@ pub(crate) fn key_pair_from_pkcs8(
 fn key_pair_from_pkcs8_<'a>(
     template: &pkcs8::Template,
     input: &mut untrusted::Reader<'a>,
-) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::KeyRejected> {
+) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::KeyRejected> {
     let version = der::small_nonnegative_integer(input)
         .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
     if version != 1 {
@@ -196,15 +196,14 @@ fn key_pair_from_pkcs8_<'a>(
         }
     }
 
-    // [1] publicKey. The RFC says it is optional, but we require it
-    // to be present.
+    // [1] publicKey. The RFC says it is optional.
     let public_key = der::nested(
         input,
         der::Tag::ContextSpecificConstructed1,
         error::Unspecified,
         der::bit_string_with_no_unused_bits,
     )
-    .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
+    .ok();
 
     Ok((private_key, public_key))
 }
@@ -212,7 +211,7 @@ fn key_pair_from_pkcs8_<'a>(
 pub(crate) fn key_pair_from_bytes(
     curve: &'static ec::Curve,
     private_key_bytes: untrusted::Input,
-    public_key_bytes: untrusted::Input,
+    public_key_bytes: Option<untrusted::Input>,
     cpu_features: cpu::Features,
 ) -> Result<ec::KeyPair, error::KeyRejected> {
     let seed = ec::Seed::from_bytes(curve, private_key_bytes, cpu_features)
@@ -220,8 +219,10 @@ pub(crate) fn key_pair_from_bytes(
 
     let r = ec::KeyPair::derive(seed, cpu_features)
         .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-    if public_key_bytes.as_slice_less_safe() != r.public_key().as_ref() {
-        return Err(error::KeyRejected::inconsistent_components());
+    if let Some(public_key_bytes) = public_key_bytes {
+        if public_key_bytes.as_slice_less_safe() != r.public_key().as_ref() {
+            return Err(error::KeyRejected::inconsistent_components());
+        }
     }
 
     Ok(r)
