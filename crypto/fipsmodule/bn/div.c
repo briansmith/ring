@@ -267,7 +267,7 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   // for later.
   const int numerator_neg = numerator->neg;
   res->neg = (numerator_neg ^ divisor->neg);
-  if (!bn_wexpand(res, loop + 1)) {
+  if (!bn_wexpand(res, loop - 1)) {
     goto err;
   }
   res->width = loop - 1;
