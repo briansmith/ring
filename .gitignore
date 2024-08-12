@@ -27,6 +27,7 @@
 /util/bot/nasm-win32.exe
 /util/bot/ninja
 /util/bot/perl-win32
+/util/bot/qemu-static
 /util/bot/sde-linux64
 /util/bot/sde-linux64.tar.xz
 /util/bot/sde-win32

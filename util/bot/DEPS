@@ -20,6 +20,7 @@ vars = {
   'checkout_sde': False,
   'checkout_nasm': False,
   'checkout_libcxx': False,
+  'checkout_riscv64': False,
   'vs_version': '2019',
 
   # Run the following command to see the latest builds in CIPD:
@@ -43,6 +44,7 @@ vars = {
   # The Android NDK cannot be updated until https://crbug.com/boringssl/454 is fixed.
   # We rely on an older NDK to test building without NEON instructions as the baseline.
   'android_ndk_revision': 'U0e8L6l52ySjBrUBB82Vdyhsg60vVMqH0ItTW3TRHAQC',
+  'qemu_static_version': 'gYNEUqCr-Tu1C_vBu68YFtN31hjjLe61dnI2AtuyEsYC',
 }
 
 deps = {
@@ -80,15 +82,6 @@ deps = {
     'dep_type': 'cipd',
   },
 
-  'boringssl/util/bot/perl-win32': {
-    'packages': [{
-      'package': 'infra/3pp/tools/perl/${{platform}}',
-      'version': Var('perl_version'),
-    }],
-    'condition': 'host_os == "win"',
-    'dep_type': 'cipd',
-  },
-
   'boringssl/util/bot/libFuzzer': {
     'url': Var('chromium_git') + '/external/github.com/llvm/llvm-project/compiler-rt/lib/fuzzer.git' +'@' + Var('libfuzzer_revision'),
     'condition': 'checkout_fuzzer',
@@ -109,6 +102,24 @@ deps = {
       'version': Var('ninja_version'),
     }],
     'dep_type': 'cipd',
+  },
+
+  'boringssl/util/bot/perl-win32': {
+    'packages': [{
+      'package': 'infra/3pp/tools/perl/${{platform}}',
+      'version': Var('perl_version'),
+    }],
+    'condition': 'host_os == "win"',
+    'dep_type': 'cipd',
+  },
+
+  'boringssl/util/bot/qemu-static': {
+      'packages': [{
+          'package': 'infra/3pp/tools/qemu_static/linux-amd64',
+          'version': Var('qemu_static_version')
+      }],
+      'condition': 'checkout_riscv64',
+      'dep_type': 'cipd',
   }
 }
 
