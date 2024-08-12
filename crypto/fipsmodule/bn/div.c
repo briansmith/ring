@@ -149,11 +149,11 @@ static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
   //   * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=65668
   //
   // Clang bugs:
-  //   * https://llvm.org/bugs/show_bug.cgi?id=6397
-  //   * https://llvm.org/bugs/show_bug.cgi?id=12418
+  //   * https://github.com/llvm/llvm-project/issues/6769
+  //   * https://github.com/llvm/llvm-project/issues/12790
   //
-  // These issues aren't specific to x86 and x86_64, so it might be worthwhile
-  // to add more assembly language implementations.
+  // These is specific to x86 and x86_64; Arm and RISC-V do not have double-wide
+  // division instructions.
 #if defined(BN_CAN_USE_INLINE_ASM) && defined(OPENSSL_X86)
   __asm__ volatile("divl %4"
                    : "=a"(*quotient_out), "=d"(*rem_out)
