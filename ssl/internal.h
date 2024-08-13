@@ -1028,7 +1028,7 @@ bool ssl_needs_record_splitting(const SSL *ssl);
 // 1/n-1 record splitting and may write two records concatenated.
 //
 // For a large record, the bulk of the ciphertext will begin
-// |ssl_seal_align_prefix_len| bytes into out. Aligning |out| appropriately may
+// |tls_seal_align_prefix_len| bytes into out. Aligning |out| appropriately may
 // improve performance. It writes at most |in_len| + |SSL_max_seal_overhead|
 // bytes to |out|.
 //
