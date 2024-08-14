@@ -311,6 +311,7 @@ static bool SpeedRSA(const std::string &selected) {
     const size_t key_len;
   } kRSAKeys[] = {
       {"RSA 2048", kDERRSAPrivate2048, kDERRSAPrivate2048Len},
+      {"RSA 3072", kDERRSAPrivate3072, kDERRSAPrivate3072Len},
       {"RSA 4096", kDERRSAPrivate4096, kDERRSAPrivate4096Len},
   };
 
