@@ -6,6 +6,7 @@
 #define BSSL_PKI_STRING_UTIL_H_
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <vector>
 
