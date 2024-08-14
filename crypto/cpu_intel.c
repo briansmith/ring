@@ -227,19 +227,39 @@ void OPENSSL_cpuid_setup(void) {
     ecx &= ~(1u << 28);  // AVX
     ecx &= ~(1u << 12);  // FMA
     ecx &= ~(1u << 11);  // AMD XOP
-    // Clear AVX2 and AVX512* bits.
-    //
-    // TODO(davidben): Should bits 17 and 26-28 also be cleared? Upstream
-    // doesn't clear those. See the comments in
-    // |CRYPTO_hardware_supports_XSAVE|.
-    extended_features[0] &=
-        ~((1u << 5) | (1u << 16) | (1u << 21) | (1u << 30) | (1u << 31));
+    extended_features[0] &= ~(1u << 5);   // AVX2
   }
-  // See Intel manual, volume 1, section 15.2.
+  // See Intel manual, volume 1, sections 15.2 ("Detection of AVX-512 Foundation
+  // Instructions") through 15.4 ("Detection of Intel AVX-512 Instruction Groups
+  // Operating at 256 and 128-bit Vector Lengths").
   if ((xcr0 & 0xe6) != 0xe6) {
-    // Clear AVX512F. Note we don't touch other AVX512 extensions because they
-    // can be used with YMM.
-    extended_features[0] &= ~(1u << 16);
+    // Without XCR0.111xx11x, no AVX512 feature can be used. This includes ZMM
+    // registers, masking, SIMD registers 16-31 (even if accessed as YMM or
+    // XMM), and EVEX-coded instructions (even on YMM or XMM). Even if only
+    // XCR0.ZMM_Hi256 is missing, it isn't valid to use AVX512 features on
+    // shorter vectors, since AVX512 ties everything to the availability of
+    // 512-bit vectors. See the above-mentioned sections of the Intel manual,
+    // which say that *all* these XCR0 bits must be checked even when just using
+    // 128-bit or 256-bit vectors, and also volume 2a section 2.7.11 ("#UD
+    // Equations for EVEX") which says that all EVEX-coded instructions raise an
+    // undefined-instruction exception if any of these XCR0 bits is zero.
+    //
+    // AVX10 fixes this by reorganizing the features that used to be part of
+    // "AVX512" and allowing them to be used independently of 512-bit support.
+    // TODO: add AVX10 detection.
+    extended_features[0] &= ~(1u << 16);  // AVX512F
+    extended_features[0] &= ~(1u << 17);  // AVX512DQ
+    extended_features[0] &= ~(1u << 21);  // AVX512IFMA
+    extended_features[0] &= ~(1u << 26);  // AVX512PF
+    extended_features[0] &= ~(1u << 27);  // AVX512ER
+    extended_features[0] &= ~(1u << 28);  // AVX512CD
+    extended_features[0] &= ~(1u << 30);  // AVX512BW
+    extended_features[0] &= ~(1u << 31);  // AVX512VL
+    extended_features[1] &= ~(1u << 1);   // AVX512VBMI
+    extended_features[1] &= ~(1u << 6);   // AVX512VBMI2
+    extended_features[1] &= ~(1u << 11);  // AVX512VNNI
+    extended_features[1] &= ~(1u << 12);  // AVX512BITALG
+    extended_features[1] &= ~(1u << 14);  // AVX512VPOPCNTDQ
   }
 
   OPENSSL_ia32cap_P[0] = edx;
