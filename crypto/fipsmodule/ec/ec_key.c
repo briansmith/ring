@@ -75,10 +75,12 @@
 #include <openssl/err.h>
 #include <openssl/ex_data.h>
 #include <openssl/mem.h>
+#include <openssl/sha.h>
 #include <openssl/thread.h>
 
 #include "internal.h"
 #include "../delocate.h"
+#include "../ecdsa/internal.h"
 #include "../service_indicator/internal.h"
 #include "../../internal.h"
 
@@ -344,15 +346,17 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   }
 
   if (key->priv_key) {
-    uint8_t data[16] = {0};
-    ECDSA_SIG *sig = ECDSA_do_sign(data, sizeof(data), key);
-    if (boringssl_fips_break_test("ECDSA_PWCT")) {
-      data[0] = ~data[0];
+    uint8_t digest[SHA256_DIGEST_LENGTH] = {0};
+    uint8_t sig[ECDSA_MAX_FIXED_LEN];
+    size_t sig_len;
+    if (!ecdsa_sign_fixed(digest, sizeof(digest), sig, &sig_len, sizeof(sig),
+                          key)) {
+      goto end;
     }
-    int ok = sig != NULL &&
-             ECDSA_do_verify(data, sizeof(data), sig, key);
-    ECDSA_SIG_free(sig);
-    if (!ok) {
+    if (boringssl_fips_break_test("ECDSA_PWCT")) {
+      digest[0] = ~digest[0];
+    }
+    if (!ecdsa_verify_fixed(digest, sizeof(digest), sig, sig_len, key)) {
       OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
       goto end;
     }

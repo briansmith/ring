@@ -95,61 +95,9 @@ static void digest_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
                           order->width);
 }
 
-ECDSA_SIG *ECDSA_SIG_new(void) {
-  ECDSA_SIG *sig = OPENSSL_malloc(sizeof(ECDSA_SIG));
-  if (sig == NULL) {
-    return NULL;
-  }
-  sig->r = BN_new();
-  sig->s = BN_new();
-  if (sig->r == NULL || sig->s == NULL) {
-    ECDSA_SIG_free(sig);
-    return NULL;
-  }
-  return sig;
-}
-
-void ECDSA_SIG_free(ECDSA_SIG *sig) {
-  if (sig == NULL) {
-    return;
-  }
-
-  BN_free(sig->r);
-  BN_free(sig->s);
-  OPENSSL_free(sig);
-}
-
-const BIGNUM *ECDSA_SIG_get0_r(const ECDSA_SIG *sig) {
-  return sig->r;
-}
-
-const BIGNUM *ECDSA_SIG_get0_s(const ECDSA_SIG *sig) {
-  return sig->s;
-}
-
-void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **out_r,
-                    const BIGNUM **out_s) {
-  if (out_r != NULL) {
-    *out_r = sig->r;
-  }
-  if (out_s != NULL) {
-    *out_s = sig->s;
-  }
-}
-
-int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s) {
-  if (r == NULL || s == NULL) {
-    return 0;
-  }
-  BN_free(sig->r);
-  BN_free(sig->s);
-  sig->r = r;
-  sig->s = s;
-  return 1;
-}
-
-int ecdsa_do_verify_no_self_test(const uint8_t *digest, size_t digest_len,
-                                 const ECDSA_SIG *sig, const EC_KEY *eckey) {
+int ecdsa_verify_fixed_no_self_test(const uint8_t *digest, size_t digest_len,
+                                    const uint8_t *sig, size_t sig_len,
+                                    const EC_KEY *eckey) {
   const EC_GROUP *group = EC_KEY_get0_group(eckey);
   const EC_POINT *pub_key = EC_KEY_get0_public_key(eckey);
   if (group == NULL || pub_key == NULL || sig == NULL) {
@@ -157,11 +105,13 @@ int ecdsa_do_verify_no_self_test(const uint8_t *digest, size_t digest_len,
     return 0;
   }
 
+  size_t scalar_len = BN_num_bytes(EC_GROUP_get0_order(group));
   EC_SCALAR r, s, u1, u2, s_inv_mont, m;
-  if (BN_is_zero(sig->r) ||
-      !ec_bignum_to_scalar(group, &r, sig->r) ||
-      BN_is_zero(sig->s) ||
-      !ec_bignum_to_scalar(group, &s, sig->s)) {
+  if (sig_len != 2 * scalar_len ||
+      !ec_scalar_from_bytes(group, &r, sig, scalar_len) ||
+      ec_scalar_is_zero(group, &r) ||
+      !ec_scalar_from_bytes(group, &s, sig + scalar_len, scalar_len) ||
+      ec_scalar_is_zero(group, &s)) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     return 0;
   }
@@ -195,24 +145,31 @@ int ecdsa_do_verify_no_self_test(const uint8_t *digest, size_t digest_len,
   return 1;
 }
 
-int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
-                    const ECDSA_SIG *sig, const EC_KEY *eckey) {
+int ecdsa_verify_fixed(const uint8_t *digest, size_t digest_len,
+                       const uint8_t *sig, size_t sig_len, const EC_KEY *key) {
   boringssl_ensure_ecc_self_test();
 
-  return ecdsa_do_verify_no_self_test(digest, digest_len, sig, eckey);
+  return ecdsa_verify_fixed_no_self_test(digest, digest_len, sig, sig_len, key);
 }
 
-static ECDSA_SIG *ecdsa_sign_impl(const EC_GROUP *group, int *out_retry,
-                                  const EC_SCALAR *priv_key, const EC_SCALAR *k,
-                                  const uint8_t *digest, size_t digest_len) {
+static int ecdsa_sign_impl(const EC_GROUP *group, int *out_retry, uint8_t *sig,
+                           size_t *out_sig_len, size_t max_sig_len,
+                           const EC_SCALAR *priv_key, const EC_SCALAR *k,
+                           const uint8_t *digest, size_t digest_len) {
   *out_retry = 0;
 
   // Check that the size of the group order is FIPS compliant (FIPS 186-4
   // B.5.2).
   const BIGNUM *order = EC_GROUP_get0_order(group);
   if (BN_num_bits(order) < 160) {
-    OPENSSL_PUT_ERROR(ECDSA, EC_R_INVALID_GROUP_ORDER);
-    return NULL;
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_GROUP_ORDER);
+    return 0;
+  }
+
+  size_t sig_len = 2 * BN_num_bytes(order);
+  if (sig_len > max_sig_len) {
+    OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
+    return 0;
   }
 
   // Compute r, the x-coordinate of k * generator.
@@ -220,12 +177,12 @@ static ECDSA_SIG *ecdsa_sign_impl(const EC_GROUP *group, int *out_retry,
   EC_SCALAR r;
   if (!ec_point_mul_scalar_base(group, &tmp_point, k) ||
       !ec_get_x_coordinate_as_scalar(group, &r, &tmp_point)) {
-    return NULL;
+    return 0;
   }
 
   if (constant_time_declassify_int(ec_scalar_is_zero(group, &r))) {
     *out_retry = 1;
-    return NULL;
+    return 0;
   }
 
   // s = priv_key * r. Note if only one parameter is in the Montgomery domain,
@@ -252,71 +209,59 @@ static ECDSA_SIG *ecdsa_sign_impl(const EC_GROUP *group, int *out_retry,
   ec_scalar_mul_montgomery(group, &s, &s, &tmp);
   if (constant_time_declassify_int(ec_scalar_is_zero(group, &s))) {
     *out_retry = 1;
-    return NULL;
+    return 0;
   }
 
   CONSTTIME_DECLASSIFY(r.words, sizeof(r.words));
   CONSTTIME_DECLASSIFY(s.words, sizeof(r.words));
-  ECDSA_SIG *ret = ECDSA_SIG_new();
-  if (ret == NULL ||  //
-      !bn_set_words(ret->r, r.words, order->width) ||
-      !bn_set_words(ret->s, s.words, order->width)) {
-    ECDSA_SIG_free(ret);
-    return NULL;
-  }
-  return ret;
+  size_t len;
+  ec_scalar_to_bytes(group, sig, &len, &r);
+  assert(len == sig_len / 2);
+  ec_scalar_to_bytes(group, sig + len, &len, &s);
+  assert(len == sig_len / 2);
+  *out_sig_len = sig_len;
+  return 1;
 }
 
-ECDSA_SIG *ecdsa_sign_with_nonce_for_known_answer_test(const uint8_t *digest,
-                                                       size_t digest_len,
-                                                       const EC_KEY *eckey,
-                                                       const uint8_t *nonce,
-                                                       size_t nonce_len) {
+int ecdsa_sign_fixed_with_nonce_for_known_answer_test(
+    const uint8_t *digest, size_t digest_len, uint8_t *sig, size_t *out_sig_len,
+    size_t max_sig_len, const EC_KEY *eckey, const uint8_t *nonce,
+    size_t nonce_len) {
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NOT_IMPLEMENTED);
-    return NULL;
+    return 0;
   }
 
   const EC_GROUP *group = EC_KEY_get0_group(eckey);
   if (group == NULL || eckey->priv_key == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_PASSED_NULL_PARAMETER);
-    return NULL;
+    return 0;
   }
   const EC_SCALAR *priv_key = &eckey->priv_key->scalar;
 
   EC_SCALAR k;
   if (!ec_scalar_from_bytes(group, &k, nonce, nonce_len)) {
-    return NULL;
+    return 0;
   }
   int retry_ignored;
-  return ecdsa_sign_impl(group, &retry_ignored, priv_key, &k, digest,
-                         digest_len);
+  return ecdsa_sign_impl(group, &retry_ignored, sig, out_sig_len, max_sig_len,
+                         priv_key, &k, digest, digest_len);
 }
 
-// This function is only exported for testing and is not called in production
-// code.
-ECDSA_SIG *ECDSA_sign_with_nonce_and_leak_private_key_for_testing(
-    const uint8_t *digest, size_t digest_len, const EC_KEY *eckey,
-    const uint8_t *nonce, size_t nonce_len) {
-  boringssl_ensure_ecc_self_test();
-
-  return ecdsa_sign_with_nonce_for_known_answer_test(digest, digest_len, eckey,
-                                                     nonce, nonce_len);
-}
-
-ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
-                         const EC_KEY *eckey) {
+int ecdsa_sign_fixed(const uint8_t *digest, size_t digest_len, uint8_t *sig,
+                     size_t *out_sig_len, size_t max_sig_len,
+                     const EC_KEY *eckey) {
   boringssl_ensure_ecc_self_test();
 
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NOT_IMPLEMENTED);
-    return NULL;
+    return 0;
   }
 
   const EC_GROUP *group = EC_KEY_get0_group(eckey);
   if (group == NULL || eckey->priv_key == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_PASSED_NULL_PARAMETER);
-    return NULL;
+    return 0;
   }
   const BIGNUM *order = EC_GROUP_get0_order(group);
   const EC_SCALAR *priv_key = &eckey->priv_key->scalar;
@@ -340,12 +285,11 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   // FIPS) because the probability of requiring even one retry is negligible,
   // let alone 32.
   static const int kMaxIterations = 32;
-  ECDSA_SIG *ret = NULL;
+  int ret = 0;
   int iters = 0;
   for (;;) {
     EC_SCALAR k;
     if (!ec_random_nonzero_scalar(group, &k, additional_data)) {
-      ret = NULL;
       goto out;
     }
 
@@ -354,8 +298,9 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
     CONSTTIME_SECRET(k.words, sizeof(k.words));
 
     int retry;
-    ret = ecdsa_sign_impl(group, &retry, priv_key, &k, digest, digest_len);
-    if (ret != NULL || !retry) {
+    ret = ecdsa_sign_impl(group, &retry, sig, out_sig_len, max_sig_len,
+                          priv_key, &k, digest, digest_len);
+    if (ret || !retry) {
       goto out;
     }
 

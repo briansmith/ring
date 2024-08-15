@@ -77,28 +77,6 @@ static int set_bignum(BIGNUM **out, const uint8_t *in, size_t len) {
   return *out != NULL;
 }
 
-static int serialize_ecdsa_sig(uint8_t *out, size_t out_len,
-                               const ECDSA_SIG *sig) {
-  if ((out_len & 1) ||  //
-      !BN_bn2bin_padded(out, out_len / 2, sig->r) ||
-      !BN_bn2bin_padded(out + out_len / 2, out_len / 2, sig->s)) {
-    return 0;
-  }
-  return 1;
-}
-
-static ECDSA_SIG *parse_ecdsa_sig(const uint8_t *in, size_t in_len) {
-  ECDSA_SIG *ret = ECDSA_SIG_new();
-  if (!ret || //
-      (in_len & 1) ||
-      BN_bin2bn(in, in_len/2, ret->r) == NULL ||
-      BN_bin2bn(in + in_len/2, in_len/2, ret->s) == NULL) {
-    ECDSA_SIG_free(ret);
-    ret = NULL;
-  }
-  return ret;
-}
-
 static RSA *self_test_rsa_key(void) {
   static const uint8_t kN[] = {
       0xd3, 0x3a, 0x62, 0x9f, 0x07, 0x77, 0xb0, 0x18, 0xf3, 0xff, 0xfe, 0xcc,
@@ -415,7 +393,6 @@ static int boringssl_self_test_ecc(void) {
   EC_POINT *ec_point_in = NULL;
   EC_POINT *ec_point_out = NULL;
   BIGNUM *ec_scalar = NULL;
-  ECDSA_SIG *sig = NULL;
 
   ec_key = self_test_ecdsa_key();
   if (ec_key == NULL) {
@@ -443,13 +420,12 @@ static int boringssl_self_test_ecc(void) {
   uint8_t ecdsa_k[32] = {0};
   ecdsa_k[31] = 42;
 
-  sig = ecdsa_sign_with_nonce_for_known_answer_test(
-      kECDSASignDigest, sizeof(kECDSASignDigest), ec_key, ecdsa_k,
-      sizeof(ecdsa_k));
-
   uint8_t ecdsa_sign_output[64];
-  if (sig == NULL ||
-      !serialize_ecdsa_sig(ecdsa_sign_output, sizeof(ecdsa_sign_output), sig) ||
+  size_t ecdsa_sign_output_len;
+  if (!ecdsa_sign_fixed_with_nonce_for_known_answer_test(
+          kECDSASignDigest, sizeof(kECDSASignDigest), ecdsa_sign_output,
+          &ecdsa_sign_output_len, sizeof(ecdsa_sign_output), ec_key, ecdsa_k,
+          sizeof(ecdsa_k)) ||
       !check_test(kECDSASignSig, ecdsa_sign_output, sizeof(ecdsa_sign_output),
                   "ECDSA-sign signature")) {
     fprintf(stderr, "ECDSA-sign KAT failed.\n");
@@ -470,11 +446,9 @@ static int boringssl_self_test_ecc(void) {
       0x8e, 0x5f, 0x64, 0xc3, 0x7e, 0xa2, 0xcf, 0x05, 0x29,
   };
 
-  ECDSA_SIG_free(sig);
-  sig = parse_ecdsa_sig(kECDSAVerifySig, sizeof(kECDSAVerifySig));
-  if (!sig ||
-      !ecdsa_do_verify_no_self_test(kECDSAVerifyDigest,
-                                    sizeof(kECDSAVerifyDigest), sig, ec_key)) {
+  if (!ecdsa_verify_fixed_no_self_test(
+          kECDSAVerifyDigest, sizeof(kECDSAVerifyDigest), kECDSAVerifySig,
+          sizeof(kECDSAVerifySig), ec_key)) {
     fprintf(stderr, "ECDSA-verify KAT failed.\n");
     goto err;
   }
@@ -532,7 +506,6 @@ err:
   EC_POINT_free(ec_point_in);
   EC_POINT_free(ec_point_out);
   BN_free(ec_scalar);
-  ECDSA_SIG_free(sig);
 
   return ret;
 }

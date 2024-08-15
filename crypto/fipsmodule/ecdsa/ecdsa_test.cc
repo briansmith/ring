@@ -285,6 +285,14 @@ TEST(ECDSATest, BuiltinCurves) {
 
     // Verify a tampered signature.
     TestTamperedSig(kRawAPI, digest, 20, ecdsa_sig.get(), eckey.get(), order);
+
+    // Negative components should not be accepted.
+    BN_set_negative(ecdsa_sig->r, 1);
+    EXPECT_FALSE(ECDSA_do_verify(digest, 20, ecdsa_sig.get(), eckey.get()));
+    BN_set_negative(ecdsa_sig->r, 0);
+    BN_set_negative(ecdsa_sig->s, 1);
+    EXPECT_FALSE(ECDSA_do_verify(digest, 20, ecdsa_sig.get(), eckey.get()));
+    BN_set_negative(ecdsa_sig->s, 0);
   }
 }
 
