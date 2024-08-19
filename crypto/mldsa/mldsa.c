@@ -18,6 +18,7 @@
 #include <stdlib.h>
 
 #include <openssl/bytestring.h>
+#include <openssl/mem.h>
 #include <openssl/rand.h>
 
 #include "../internal.h"
@@ -641,10 +642,10 @@ static void scalar_encode_signed_13_12(uint8_t out[416], const scalar *s) {
     e |= g << 14;
     e |= h << 27;
     h >>= 5;
-    memcpy(&out[13 * i], &a, sizeof(a));
-    memcpy(&out[13 * i + 4], &c, sizeof(c));
-    memcpy(&out[13 * i + 8], &e, sizeof(e));
-    memcpy(&out[13 * i + 12], &h, 1);
+    OPENSSL_memcpy(&out[13 * i], &a, sizeof(a));
+    OPENSSL_memcpy(&out[13 * i + 4], &c, sizeof(c));
+    OPENSSL_memcpy(&out[13 * i + 8], &e, sizeof(e));
+    OPENSSL_memcpy(&out[13 * i + 12], &h, 1);
   }
 }
 
@@ -668,9 +669,9 @@ static void scalar_encode_signed_20_19(uint8_t out[640], const scalar *s) {
     b |= c << 8;
     b |= d << 28;
     d >>= 4;
-    memcpy(&out[10 * i], &a, sizeof(a));
-    memcpy(&out[10 * i + 4], &b, sizeof(b));
-    memcpy(&out[10 * i + 8], &d, 2);
+    OPENSSL_memcpy(&out[10 * i], &a, sizeof(a));
+    OPENSSL_memcpy(&out[10 * i + 4], &b, sizeof(b));
+    OPENSSL_memcpy(&out[10 * i + 8], &d, 2);
   }
 }
 
@@ -1267,7 +1268,7 @@ int MLDSA65_generate_key(
   uint8_t entropy[MLDSA_SEED_BYTES];
   RAND_bytes(entropy, sizeof(entropy));
   if (optional_out_seed) {
-    memcpy(optional_out_seed, entropy, MLDSA_SEED_BYTES);
+    OPENSSL_memcpy(optional_out_seed, entropy, MLDSA_SEED_BYTES);
   }
   return MLDSA65_generate_key_external_entropy(out_encoded_public_key,
                                                out_private_key, entropy);

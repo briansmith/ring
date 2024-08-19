@@ -20,7 +20,7 @@
 #include <gtest/gtest.h>
 
 #include <openssl/bytestring.h>
-#include <openssl/ctrdrbg.h>
+#include <openssl/mem.h>
 #include <openssl/span.h>
 
 #include "../test/file_test.h"
