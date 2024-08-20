@@ -228,6 +228,8 @@ void OPENSSL_cpuid_setup(void) {
     ecx &= ~(1u << 12);  // FMA
     ecx &= ~(1u << 11);  // AMD XOP
     extended_features[0] &= ~(1u << 5);   // AVX2
+    extended_features[1] &= ~(1u << 9);   // VAES
+    extended_features[1] &= ~(1u << 10);  // VPCLMULQDQ
   }
   // See Intel manual, volume 1, sections 15.2 ("Detection of AVX-512 Foundation
   // Instructions") through 15.4 ("Detection of Intel AVX-512 Instruction Groups

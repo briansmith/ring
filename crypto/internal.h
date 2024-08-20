@@ -1564,6 +1564,38 @@ OPENSSL_INLINE int CRYPTO_cpu_perf_is_like_silvermont(void) {
   return !hardware_supports_xsave && CRYPTO_is_MOVBE_capable();
 }
 
+OPENSSL_INLINE int CRYPTO_is_AVX512BW_capable(void) {
+#if defined(__AVX512BW__)
+  return 1;
+#else
+  return (OPENSSL_get_ia32cap(2) & (1u << 30)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_AVX512VL_capable(void) {
+#if defined(__AVX512VL__)
+  return 1;
+#else
+  return (OPENSSL_get_ia32cap(2) & (1u << 31)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_VAES_capable(void) {
+#if defined(__VAES__)
+  return 1;
+#else
+  return (OPENSSL_get_ia32cap(3) & (1u << 9)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_VPCLMULQDQ_capable(void) {
+#if defined(__VPCLMULQDQ__)
+  return 1;
+#else
+  return (OPENSSL_get_ia32cap(3) & (1u << 10)) != 0;
+#endif
+}
+
 #endif  // OPENSSL_X86 || OPENSSL_X86_64
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
