@@ -965,6 +965,17 @@ struct DTLS1_BITMAP {
   uint64_t max_seq_num = 0;
 };
 
+// reconstruct_seqnum takes the low order bits of a record sequence number from
+// the wire and reconstructs the full sequence number. It does so using the
+// algorithm described in section 4.2.2 of RFC 9147, where |wire_seq| is the
+// low bits of the sequence number as seen on the wire, |seq_mask| is a bitmask
+// of 8 or 16 1 bits corresponding to the length of the sequence number on the
+// wire, and |max_valid_seqnum| is the largest sequence number of a record
+// successfully deprotected in this epoch. This function returns the sequence
+// number that is numerically closest to one plus |max_valid_seqnum| that when
+// bitwise and-ed with |seq_mask| equals |wire_seq|.
+OPENSSL_EXPORT uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
+                                           uint64_t max_valid_seqnum);
 
 // Record layer.
 

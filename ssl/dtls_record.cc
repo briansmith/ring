@@ -171,24 +171,25 @@ static uint16_t reconstruct_epoch(uint8_t wire_epoch, uint16_t current_epoch) {
   return epoch;
 }
 
-// reconstruct_seqnum returns the smallest sequence number that hasn't been seen
-// in |bitmap| and is still within |bitmap|'s window to handle as a reordered
-// record.
-//
-// Section 4.2.2 of RFC 9147 describes an algorithm for reconstructing sequence
-// numbers, which is implemented here. This algorithm finds the sequence number
-// that is numerically closest to one plus the largest sequence number seen in
-// this epoch.
-static uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
-                                   DTLS1_BITMAP *bitmap) {
-  uint64_t max_seqnum_plus_one = bitmap->max_seq_num + 1;
+uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
+                            uint64_t max_valid_seqnum) {
+  uint64_t max_seqnum_plus_one = max_valid_seqnum + 1;
   uint64_t diff = (wire_seq - max_seqnum_plus_one) & seq_mask;
   uint64_t step = seq_mask + 1;
   uint64_t seqnum = max_seqnum_plus_one + diff;
-  // diff is always non-negative, so seqnum is >= max_seqnum_plus_one. If the
-  // diff is larger than half the step size, then the numerically closest
-  // sequence number is less than max_seqnum_plus_one instead of greater.
-  if (diff > step / 2) {
+  // seqnum is computed as the addition of 3 non-negative values
+  // (max_valid_seqnum, 1, and diff). The values 1 and diff are small (relative
+  // to the size of a uint64_t), while max_valid_seqnum can span the range of
+  // all uint64_t values. If seqnum is less than max_valid_seqnum, then the
+  // addition overflowed.
+  bool overflowed = seqnum < max_valid_seqnum;
+  // If the diff is larger than half the step size, then the closest seqnum
+  // to max_seqnum_plus_one (in Z_{2^64}) is seqnum minus step instead of
+  // seqnum.
+  bool closer_is_less = diff > step / 2;
+  // Subtracting step from seqnum will cause underflow if seqnum is too small.
+  bool would_underflow = seqnum < step;
+  if (overflowed || (closer_is_less && !would_underflow)) {
     seqnum -= step;
   }
   return seqnum;
@@ -216,7 +217,8 @@ static bool parse_dtls13_record_header(SSL *ssl, CBS *in, size_t packet_size,
       // The record header was incomplete or malformed.
       return false;
     }
-    *out_sequence = reconstruct_seqnum(seq, 0xffff, &ssl->d1->bitmap);
+    *out_sequence =
+        reconstruct_seqnum(seq, 0xffff, ssl->d1->bitmap.max_seq_num);
   } else {
     // 8-bit sequence number.
     uint8_t seq;
@@ -224,7 +226,7 @@ static bool parse_dtls13_record_header(SSL *ssl, CBS *in, size_t packet_size,
       // The record header was incomplete or malformed.
       return false;
     }
-    *out_sequence = reconstruct_seqnum(seq, 0xff, &ssl->d1->bitmap);
+    *out_sequence = reconstruct_seqnum(seq, 0xff, ssl->d1->bitmap.max_seq_num);
   }
   *out_header_len = packet_size - CBS_len(in);
   if ((type & 0x04) == 0x04) {
