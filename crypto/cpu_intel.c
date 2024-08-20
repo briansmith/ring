@@ -173,20 +173,21 @@ void OPENSSL_cpuid_setup(void) {
 
   OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 1);
 
+  const uint32_t base_family = (eax >> 8) & 15;
+  const uint32_t base_model = (eax >> 4) & 15;
+
+  uint32_t family = base_family;
+  uint32_t model = base_model;
+  if (base_family == 15) {
+    const uint32_t ext_family = (eax >> 20) & 255;
+    family += ext_family;
+  }
+  if (base_family == 6 || base_family == 15) {
+    const uint32_t ext_model = (eax >> 16) & 15;
+    model |= ext_model << 4;
+  }
+
   if (is_amd) {
-    // See https://www.amd.com/system/files/TechDocs/25481.pdf, page 10.
-    const uint32_t base_family = (eax >> 8) & 15;
-    const uint32_t base_model = (eax >> 4) & 15;
-
-    uint32_t family = base_family;
-    uint32_t model = base_model;
-    if (base_family == 0xf) {
-      const uint32_t ext_family = (eax >> 20) & 255;
-      family += ext_family;
-      const uint32_t ext_model = (eax >> 16) & 15;
-      model |= ext_model << 4;
-    }
-
     if (family < 0x17 || (family == 0x17 && 0x70 <= model && model <= 0x7f)) {
       // Disable RDRAND on AMD families before 0x17 (Zen) due to reported
       // failures after suspend.
@@ -262,6 +263,32 @@ void OPENSSL_cpuid_setup(void) {
     extended_features[1] &= ~(1u << 11);  // AVX512VNNI
     extended_features[1] &= ~(1u << 12);  // AVX512BITALG
     extended_features[1] &= ~(1u << 14);  // AVX512VPOPCNTDQ
+  }
+
+  // Repurpose the bit for the removed MPX feature to indicate when using zmm
+  // registers should be avoided even when they are supported. (When set, AVX512
+  // features can still be used, but only using ymm or xmm registers.) Skylake
+  // suffered from severe downclocking when zmm registers were used, which
+  // affected unrelated code running on the system, making zmm registers not too
+  // useful outside of benchmarks. The situation improved significantly by Ice
+  // Lake, but a small amount of downclocking remained. (See
+  // https://lore.kernel.org/linux-crypto/e8ce1146-3952-6977-1d0e-a22758e58914@intel.com/)
+  // We take a conservative approach of not allowing zmm registers until after
+  // Ice Lake and Tiger Lake, i.e. until Sapphire Rapids on the server side.
+  //
+  // AMD CPUs, which support AVX512 starting with Zen 4, have not been reported
+  // to have any downclocking problem when zmm registers are used.
+  if (is_intel && family == 6 &&
+      (model == 85 ||    // Skylake, Cascade Lake, Cooper Lake (server)
+       model == 106 ||   // Ice Lake (server)
+       model == 108 ||   // Ice Lake (micro server)
+       model == 125 ||   // Ice Lake (client)
+       model == 126 ||   // Ice Lake (mobile)
+       model == 140 ||   // Tiger Lake (mobile)
+       model == 141)) {  // Tiger Lake (client)
+    extended_features[0] |= 1u << 14;
+  } else {
+    extended_features[0] &= ~(1u << 14);
   }
 
   OPENSSL_ia32cap_P[0] = edx;

@@ -1391,6 +1391,8 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //     Bit 11 is used to indicate AMD XOP support, not SDBG
 //   Index 2:
 //     EBX for CPUID where EAX = 7, ECX = 0
+//     Bit 14 (for removed feature MPX) is used to indicate a preference for ymm
+//       registers over zmm even when zmm registers are supported
 //   Index 3:
 //     ECX for CPUID where EAX = 7, ECX = 0
 //
@@ -1578,6 +1580,14 @@ OPENSSL_INLINE int CRYPTO_is_AVX512VL_capable(void) {
 #else
   return (OPENSSL_get_ia32cap(2) & (1u << 31)) != 0;
 #endif
+}
+
+// CRYPTO_cpu_avoid_zmm_registers returns 1 if zmm registers (512-bit vectors)
+// should not be used even if the CPU supports them.
+//
+// Note that this reuses the bit for the removed MPX feature.
+OPENSSL_INLINE int CRYPTO_cpu_avoid_zmm_registers(void) {
+  return (OPENSSL_get_ia32cap(2) & (1u << 14)) != 0;
 }
 
 OPENSSL_INLINE int CRYPTO_is_VAES_capable(void) {
