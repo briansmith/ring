@@ -29,6 +29,7 @@
 #include "../test/test_util.h"
 #include "./internal.h"
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
 
 // This test is very slow, so it is disabled by default.
 TEST(DilithiumTest, DISABLED_BitFlips) {
