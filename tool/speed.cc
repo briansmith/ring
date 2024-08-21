@@ -71,6 +71,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "../crypto/ec_extra/internal.h"
 #include "../crypto/fipsmodule/ec/internal.h"
 #include "../crypto/internal.h"
+#include "../crypto/mldsa/internal.h"
 #include "../crypto/trust_token/internal.h"
 #include "internal.h"
 
@@ -1142,8 +1143,8 @@ static bool SpeedMLDSA(const std::string &selected) {
       std::make_unique<uint8_t[]>(MLDSA65_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<MLDSA65_private_key>();
   if (!TimeFunctionParallel(&results, [&]() -> bool {
-        if (!MLDSA65_generate_key(encoded_public_key.get(), nullptr,
-                                  priv.get())) {
+        uint8_t seed[MLDSA_SEED_BYTES];
+        if (!MLDSA65_generate_key(encoded_public_key.get(), seed, priv.get())) {
           fprintf(stderr, "Failure in MLDSA65_generate_key.\n");
           return false;
         }

@@ -154,16 +154,16 @@ template <typename PUBLIC_KEY, size_t PUBLIC_KEY_BYTES, typename PRIVATE_KEY,
           int (*MARSHAL_PRIVATE)(CBB *, const PRIVATE_KEY *),
           void (*GENERATE)(uint8_t *, PRIVATE_KEY *, const uint8_t *)>
 void MLKEMKeyGenFileTest(FileTest *t) {
-  std::vector<uint8_t> expected_pub_key_bytes, entropy, expected_priv_key_bytes;
-  ASSERT_TRUE(t->GetBytes(&entropy, "seed"));
+  std::vector<uint8_t> expected_pub_key_bytes, seed, expected_priv_key_bytes;
+  ASSERT_TRUE(t->GetBytes(&seed, "seed"));
   ASSERT_TRUE(t->GetBytes(&expected_pub_key_bytes, "public_key"));
   ASSERT_TRUE(t->GetBytes(&expected_priv_key_bytes, "private_key"));
 
-  ASSERT_EQ(entropy.size(), size_t{MLKEM_SEED_BYTES});
+  ASSERT_EQ(seed.size(), size_t{MLKEM_SEED_BYTES});
 
   std::vector<uint8_t> pub_key_bytes(PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<PRIVATE_KEY>();
-  GENERATE(pub_key_bytes.data(), priv.get(), entropy.data());
+  GENERATE(pub_key_bytes.data(), priv.get(), seed.data());
   const std::vector<uint8_t> priv_key_bytes(
       Marshal(MARSHAL_PRIVATE, priv.get()));
 
@@ -200,12 +200,12 @@ void MLKEMNistKeyGenFileTest(FileTest *t) {
   ASSERT_EQ(z.size(), size_t{MLKEM_SEED_BYTES} / 2);
   ASSERT_EQ(d.size(), size_t{MLKEM_SEED_BYTES} / 2);
 
-  uint8_t entropy[MLKEM_SEED_BYTES];
-  OPENSSL_memcpy(&entropy[0], d.data(), d.size());
-  OPENSSL_memcpy(&entropy[MLKEM_SEED_BYTES / 2], z.data(), z.size());
+  uint8_t seed[MLKEM_SEED_BYTES];
+  OPENSSL_memcpy(&seed[0], d.data(), d.size());
+  OPENSSL_memcpy(&seed[MLKEM_SEED_BYTES / 2], z.data(), z.size());
   std::vector<uint8_t> pub_key_bytes(PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<PRIVATE_KEY>();
-  GENERATE(pub_key_bytes.data(), priv.get(), entropy);
+  GENERATE(pub_key_bytes.data(), priv.get(), seed);
   const std::vector<uint8_t> priv_key_bytes(
       Marshal(MARSHAL_PRIVATE, priv.get()));
 
@@ -376,11 +376,10 @@ void IteratedTest(uint8_t out[32]) {
   auto priv = std::make_unique<PRIVATE_KEY>();
   auto pub = std::make_unique<PUBLIC_KEY>();
   for (int i = 0; i < 10000; i++) {
-    uint8_t generate_entropy[MLKEM_SEED_BYTES];
-    BORINGSSL_keccak_squeeze(&generate_st, generate_entropy,
-                             sizeof(generate_entropy));
+    uint8_t seed[MLKEM_SEED_BYTES];
+    BORINGSSL_keccak_squeeze(&generate_st, seed, sizeof(seed));
     uint8_t encoded_pub[PUBLIC_KEY_BYTES];
-    GENERATE(encoded_pub, priv.get(), generate_entropy);
+    GENERATE(encoded_pub, priv.get(), seed);
     TO_PUBLIC(pub.get(), priv.get());
 
     BORINGSSL_keccak_absorb(&results_st, encoded_pub, sizeof(encoded_pub));

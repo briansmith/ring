@@ -1263,15 +1263,11 @@ static struct public_key *public_key_from_external(
 // |RAND_bytes|. Returns 1 on success and 0 on failure.
 int MLDSA65_generate_key(
     uint8_t out_encoded_public_key[MLDSA65_PUBLIC_KEY_BYTES],
-    uint8_t optional_out_seed[MLDSA_SEED_BYTES],
+    uint8_t out_seed[MLDSA_SEED_BYTES],
     struct MLDSA65_private_key *out_private_key) {
-  uint8_t entropy[MLDSA_SEED_BYTES];
-  RAND_bytes(entropy, sizeof(entropy));
-  if (optional_out_seed) {
-    OPENSSL_memcpy(optional_out_seed, entropy, MLDSA_SEED_BYTES);
-  }
+  RAND_bytes(out_seed, MLDSA_SEED_BYTES);
   return MLDSA65_generate_key_external_entropy(out_encoded_public_key,
-                                               out_private_key, entropy);
+                                               out_private_key, out_seed);
 }
 
 int MLDSA65_private_key_from_seed(struct MLDSA65_private_key *out_private_key,

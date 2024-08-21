@@ -59,6 +59,12 @@ OPENSSL_EXPORT int MLDSA65_verify_internal(
     const uint8_t *msg, size_t msg_len, const uint8_t *context_prefix,
     size_t context_prefix_len, const uint8_t *context, size_t context_len);
 
+// MLDSA65_marshal_private_key serializes |private_key| to |out| in the
+// NIST format for ML-DSA-65 private keys. It returns 1 on success or 0
+// on allocation error.
+OPENSSL_EXPORT int MLDSA65_marshal_private_key(
+    CBB *out, const struct MLDSA65_private_key *private_key);
+
 
 #if defined(__cplusplus)
 }  // extern C

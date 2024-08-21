@@ -51,8 +51,9 @@ std::vector<uint8_t> Marshal(int (*marshal_func)(CBB *, const T *),
 TEST(MLDSATest, DISABLED_BitFlips) {
   std::vector<uint8_t> encoded_public_key(MLDSA65_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<MLDSA65_private_key>();
+  uint8_t seed[MLDSA_SEED_BYTES];
   EXPECT_TRUE(
-      MLDSA65_generate_key(encoded_public_key.data(), nullptr, priv.get()));
+      MLDSA65_generate_key(encoded_public_key.data(), seed, priv.get()));
 
   std::vector<uint8_t> encoded_signature(MLDSA65_SIGNATURE_BYTES);
   static const uint8_t kMessage[] = {'H', 'e', 'l', 'l', 'o', ' ',
@@ -116,8 +117,9 @@ TEST(MLDSATest, Basic) {
 TEST(MLDSATest, SignatureIsRandomized) {
   std::vector<uint8_t> encoded_public_key(MLDSA65_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<MLDSA65_private_key>();
+  uint8_t seed[MLDSA_SEED_BYTES];
   EXPECT_TRUE(
-      MLDSA65_generate_key(encoded_public_key.data(), nullptr, priv.get()));
+      MLDSA65_generate_key(encoded_public_key.data(), seed, priv.get()));
 
   auto pub = std::make_unique<MLDSA65_public_key>();
   CBS cbs = bssl::MakeConstSpan(encoded_public_key);
@@ -148,8 +150,9 @@ TEST(MLDSATest, SignatureIsRandomized) {
 TEST(MLDSATest, PublicFromPrivateIsConsistent) {
   std::vector<uint8_t> encoded_public_key(MLDSA65_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<MLDSA65_private_key>();
+  uint8_t seed[MLDSA_SEED_BYTES];
   EXPECT_TRUE(
-      MLDSA65_generate_key(encoded_public_key.data(), nullptr, priv.get()));
+      MLDSA65_generate_key(encoded_public_key.data(), seed, priv.get()));
 
   auto pub = std::make_unique<MLDSA65_public_key>();
   EXPECT_TRUE(MLDSA65_public_from_private(pub.get(), priv.get()));
@@ -167,8 +170,9 @@ TEST(MLDSATest, InvalidPublicKeyEncodingLength) {
   // Encode a public key with a trailing 0 at the end.
   std::vector<uint8_t> encoded_public_key(MLDSA65_PUBLIC_KEY_BYTES + 1);
   auto priv = std::make_unique<MLDSA65_private_key>();
+  uint8_t seed[MLDSA_SEED_BYTES];
   EXPECT_TRUE(
-      MLDSA65_generate_key(encoded_public_key.data(), nullptr, priv.get()));
+      MLDSA65_generate_key(encoded_public_key.data(), seed, priv.get()));
 
   // Public key is 1 byte too short.
   CBS cbs = bssl::MakeConstSpan(encoded_public_key)
@@ -188,8 +192,9 @@ TEST(MLDSATest, InvalidPublicKeyEncodingLength) {
 TEST(MLDSATest, InvalidPrivateKeyEncodingLength) {
   std::vector<uint8_t> encoded_public_key(MLDSA65_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<MLDSA65_private_key>();
+  uint8_t seed[MLDSA_SEED_BYTES];
   EXPECT_TRUE(
-      MLDSA65_generate_key(encoded_public_key.data(), nullptr, priv.get()));
+      MLDSA65_generate_key(encoded_public_key.data(), seed, priv.get()));
 
   CBB cbb;
   std::vector<uint8_t> malformed_private_key(MLDSA65_PRIVATE_KEY_BYTES + 1, 0);
