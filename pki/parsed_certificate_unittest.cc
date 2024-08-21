@@ -13,7 +13,7 @@
 
 // TODO(eroman): Add tests for parsing of policy mappings.
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -594,4 +594,4 @@ TEST(ParsedCertificateTest, AuthourityKeyIdentifierNotSequence) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

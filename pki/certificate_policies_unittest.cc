@@ -9,7 +9,7 @@
 #include "parser.h"
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 namespace {
 
 ::testing::AssertionResult LoadTestData(const std::string &name,
@@ -309,4 +309,4 @@ TEST(ParseCertificatePoliciesExtensionTest, TwoPoliciesWithQualifiers) {
 // parsed_certificate_unittest.cc
 
 }  // namespace
-}  // namespace bssl
+BSSL_NAMESPACE_END

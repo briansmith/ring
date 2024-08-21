@@ -11,7 +11,7 @@
 #include "string_util.h"
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -239,4 +239,4 @@ TEST_P(CreateOCSPGetURLTest, Basic) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

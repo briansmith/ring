@@ -10,7 +10,7 @@
 
 #include <openssl/base.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace der {
 struct GeneralizedTime;
@@ -26,6 +26,6 @@ struct GeneralizedTime;
     const der::GeneralizedTime *next_update, int64_t verify_time_epoch_seconds,
     std::optional<int64_t> max_age_seconds);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_REVOCATION_UTIL_H_

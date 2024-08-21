@@ -15,7 +15,7 @@
 #include "signature_algorithm.h"
 #include "verify_name_match.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -295,4 +295,4 @@ bool ParsedCertificate::CreateAndAddToVector(
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -9,7 +9,7 @@
 #include <gtest/gtest.h>
 #include "input.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 TEST(IPUtilTest, IsValidNetmask) {
   uint8_t kWrongSize[3] = {0xff, 0xff, 0xff};
@@ -104,4 +104,4 @@ TEST(IPUtilTest, IPAddressMatchesWithNetmask) {
   }
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -10,7 +10,8 @@
 
 #include <openssl/base.h>
 
-namespace bssl::der {
+BSSL_NAMESPACE_BEGIN
+namespace der {
 
 struct GeneralizedTime;
 
@@ -40,6 +41,7 @@ static const size_t kUTCTimeLength = 13;
 OPENSSL_EXPORT bool EncodeUTCTime(const GeneralizedTime &time,
                                   uint8_t out[kUTCTimeLength]);
 
-}  // namespace bssl::der
+}  // namespace der
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_DER_ENCODE_VALUES_H_

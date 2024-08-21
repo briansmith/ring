@@ -8,7 +8,7 @@
 #include "extended_key_usage.h"
 #include "input.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -164,4 +164,4 @@ TEST(ExtendedKeyUsageTest, EmptyExtension) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 // Loads test data from file. The filename is constructed from the parameters:
@@ -363,4 +363,4 @@ TEST(ParseNameTest, RFC2253FormatUTF8) {
   ASSERT_EQ("SN=Lu\\C4\\8Di\\C4\\87", output);
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

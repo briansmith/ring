@@ -17,7 +17,7 @@
 #include "parser.h"
 #include "string_util.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 DEFINE_CERT_ERROR_ID(kFailedParsingGeneralName, "Failed parsing GeneralName");
 
@@ -216,4 +216,4 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -19,7 +19,7 @@
 #include "trust_store.h"
 #include "verify_certificate_chain.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace der {
 
@@ -162,6 +162,6 @@ void VerifyUserConstrainedPolicySet(
     const std::set<der::Input> &actual_user_constrained_policy_set,
     const std::string &errors_file_path);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_TEST_HELPERS_H_

@@ -9,7 +9,7 @@
 #include "cert_issuer_source_sync_unittest.h"
 #include "parsed_certificate.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -72,4 +72,4 @@ TEST(CertIssuerSourceStaticTest, AddCertsGetCertsAndClear) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -9,7 +9,7 @@
 
 #include "input.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 inline constexpr size_t kIPv4AddressSize = 4;
 inline constexpr size_t kIPv6AddressSize = 16;
@@ -24,6 +24,6 @@ OPENSSL_EXPORT bool IPAddressMatchesWithNetmask(der::Input addr1,
                                                 der::Input addr2,
                                                 der::Input mask);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_IP_UTIL_H_

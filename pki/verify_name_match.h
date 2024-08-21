@@ -10,7 +10,7 @@
 
 #include <openssl/base.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 class CertErrors;
 
@@ -56,6 +56,6 @@ OPENSSL_EXPORT bool VerifyNameInSubtree(der::Input name_rdn_sequence,
     der::Input name_rdn_sequence,
     std::vector<std::string> *contained_email_addresses);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_VERIFY_NAME_MATCH_H_

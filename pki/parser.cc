@@ -4,10 +4,10 @@
 
 #include "parser.h"
 
-#include <openssl/base.h>
 #include "parse_values.h"
 
-namespace bssl::der {
+BSSL_NAMESPACE_BEGIN
+namespace der {
 
 Parser::Parser() { CBS_init(&cbs_, nullptr, 0); }
 
@@ -157,4 +157,5 @@ bool Parser::ReadGeneralizedTime(GeneralizedTime *out) {
   return ParseGeneralizedTime(value, out);
 }
 
-}  // namespace bssl::der
+}  // namespace der
+BSSL_NAMESPACE_END

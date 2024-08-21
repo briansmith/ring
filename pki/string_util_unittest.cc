@@ -5,7 +5,7 @@
 #include "string_util.h"
 #include <gtest/gtest.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -152,4 +152,4 @@ TEST(StringUtilTest, SplitString) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

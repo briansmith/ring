@@ -18,7 +18,7 @@
 #include "parser.h"
 #include "string_util.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -1013,4 +1013,4 @@ bool ParseSubjectKeyIdentifier(der::Input extension_value,
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

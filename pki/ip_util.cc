@@ -4,7 +4,7 @@
 
 #include "ip_util.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 bool IsValidNetmask(der::Input mask) {
   if (mask.size() != kIPv4AddressSize && mask.size() != kIPv6AddressSize) {
@@ -46,4 +46,4 @@ bool IPAddressMatchesWithNetmask(der::Input addr1, der::Input addr2,
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

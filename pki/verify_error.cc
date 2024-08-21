@@ -1,7 +1,7 @@
 #include <openssl/base.h>
 #include <openssl/pki/verify_error.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 VerifyError::VerifyError(StatusCode code, ptrdiff_t offset,
                          std::string diagnostic)
@@ -13,4 +13,4 @@ ptrdiff_t VerifyError::Index() const { return offset_; }
 
 VerifyError::StatusCode VerifyError::Code() const { return code_; }
 
-}  // namespacee bssl
+BSSL_NAMESPACE_END

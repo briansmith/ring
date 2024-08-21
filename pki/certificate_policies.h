@@ -12,7 +12,7 @@
 #include <optional>
 #include "input.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 class CertErrors;
 
@@ -123,6 +123,6 @@ struct ParsedPolicyMapping {
 [[nodiscard]] OPENSSL_EXPORT bool ParsePolicyMappings(
     der::Input policy_mappings_tlv, std::vector<ParsedPolicyMapping> *mappings);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_CERTIFICATE_POLICIES_H_

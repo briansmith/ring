@@ -12,7 +12,7 @@
 #include "parse_values.h"
 #include "string_util.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -231,4 +231,4 @@ bool ConvertToRFC2253(const RDNSequence &rdn_sequence, std::string *out) {
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

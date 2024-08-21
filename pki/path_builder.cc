@@ -24,7 +24,7 @@
 #include "verify_certificate_chain.h"
 #include "verify_name_match.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -1044,4 +1044,4 @@ void CertPathBuilder::AddResultPath(
   out_result_.paths.push_back(std::move(result_path));
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

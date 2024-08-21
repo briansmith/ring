@@ -13,7 +13,8 @@
 
 #include "input.h"
 
-namespace bssl::der {
+BSSL_NAMESPACE_BEGIN
+namespace der {
 
 // Reads a DER-encoded ASN.1 BOOLEAN value from |in| and puts the resulting
 // value in |out|. Returns whether the encoded value could successfully be
@@ -149,6 +150,7 @@ OPENSSL_EXPORT bool operator>=(const GeneralizedTime &lhs,
 // result in |out| as UTF-8, returning true if successful.
 [[nodiscard]] OPENSSL_EXPORT bool ParseBmpString(Input in, std::string *out);
 
-}  // namespace bssl::der
+}  // namespace der
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_DER_PARSE_VALUES_H_

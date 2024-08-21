@@ -9,7 +9,7 @@
 
 #include "ocsp_revocation_status.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // The result of OCSP verification. This always contains a ResponseStatus, which
 // describes whether or not an OCSP response was provided, and response level
@@ -71,6 +71,6 @@ struct OPENSSL_EXPORT OCSPVerifyResult {
   OCSPRevocationStatus revocation_status = OCSPRevocationStatus::UNKNOWN;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_OCSP_VERIFY_RESULT_H_

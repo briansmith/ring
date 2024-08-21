@@ -13,7 +13,7 @@
 #include "path_builder.h"
 #include "signature_algorithm.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 class CertErrors;
 
@@ -78,6 +78,6 @@ class OPENSSL_EXPORT SimplePathBuilderDelegate
   const DigestPolicy digest_policy_;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_SIMPLE_PATH_BUILDER_DELEGATE_H_

@@ -13,7 +13,7 @@
 
 #include <openssl/pki/signature_verify_cache.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // MockSignatureVerifyCache is an implementation of SignatureVerifyCache.  It is
 // intended only for testing of cache functionality.
@@ -42,6 +42,6 @@ class MockSignatureVerifyCache : public SignatureVerifyCache {
   size_t stores_ = 0;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_MOCK_PATH_BUILDER_DELEGATE_H_

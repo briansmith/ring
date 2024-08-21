@@ -9,7 +9,8 @@
 #include <gtest/gtest.h>
 #include "parse_values.h"
 
-namespace bssl::der::test {
+BSSL_NAMESPACE_BEGIN
+namespace der::test {
 
 namespace {
 
@@ -166,4 +167,5 @@ TEST(EncodeValuesTest, EncodeUTCTime) {
   EXPECT_FALSE(EncodeUTCTime(time, out));
 }
 
-}  // namespace bssl::der::test
+}  // namespace der::test
+BSSL_NAMESPACE_END

@@ -12,7 +12,7 @@
 #include "parsed_certificate.h"
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -1173,4 +1173,4 @@ TEST(ParseSubjectKeyIdentifierTest, ExtraData) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

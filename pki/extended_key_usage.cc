@@ -9,7 +9,7 @@
 #include "input.h"
 #include "parser.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 bool ParseEKUExtension(der::Input extension_value,
                        std::vector<der::Input> *eku_oids) {
@@ -42,4 +42,4 @@ bool ParseEKUExtension(der::Input extension_value,
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

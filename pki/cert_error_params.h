@@ -10,7 +10,7 @@
 
 #include <openssl/base.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace der {
 class Input;
@@ -54,6 +54,6 @@ OPENSSL_EXPORT std::unique_ptr<CertErrorParams> CreateCertErrorParams1SizeT(
 OPENSSL_EXPORT std::unique_ptr<CertErrorParams> CreateCertErrorParams2SizeT(
     const char *name1, size_t value1, const char *name2, size_t value2);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_CERT_ERROR_PARAMS_H_

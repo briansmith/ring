@@ -4,9 +4,8 @@
 
 #include "input.h"
 
-#include <openssl/base.h>
-
-namespace bssl::der {
+BSSL_NAMESPACE_BEGIN
+namespace der {
 
 std::string Input::AsString() const { return std::string(AsStringView()); }
 
@@ -42,4 +41,5 @@ void ByteReader::Advance(size_t len) {
   data_ = data_.subspan(len);
 }
 
-}  // namespace bssl::der
+}  // namespace der
+BSSL_NAMESPACE_END

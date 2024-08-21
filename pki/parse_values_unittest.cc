@@ -8,7 +8,8 @@
 
 #include <gtest/gtest.h>
 
-namespace bssl::der::test {
+BSSL_NAMESPACE_BEGIN
+namespace der::test {
 
 namespace {
 
@@ -461,4 +462,5 @@ TEST(ParseValuesTest, ParseUniversalString) {
       ParseUniversalString(der::Input(invalid_non_4_multiple_der), &s));
 }
 
-}  // namespace bssl::der::test
+}  // namespace der::test
+BSSL_NAMESPACE_END

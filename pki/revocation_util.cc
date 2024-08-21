@@ -7,7 +7,7 @@
 #include "encode_values.h"
 #include "parse_values.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -56,4 +56,4 @@ bool CheckRevocationDateValid(const der::GeneralizedTime &this_update,
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

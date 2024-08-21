@@ -14,7 +14,7 @@
 
 #include "cert_error_id.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 class CertErrors;
 
@@ -126,6 +126,6 @@ struct OPENSSL_EXPORT GeneralNames {
     GeneralNames::ParseGeneralNameIPAddressType ip_address_type,
     GeneralNames *subtrees, CertErrors *errors);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_GENERAL_NAMES_H_

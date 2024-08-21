@@ -22,7 +22,7 @@
 
 constexpr int64_t kOneYear = 60 * 60 * 24 * 365;
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -289,4 +289,4 @@ INSTANTIATE_TYPED_TEST_SUITE_P(PathBuilder,
                                PkitsTest16PrivateCertificateExtensions,
                                PathBuilderPkitsTestDelegate);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

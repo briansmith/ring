@@ -8,7 +8,7 @@
 
 #include <sstream>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -97,4 +97,4 @@ void PkitsTestInfo::SetUserConstrainedPolicySet(
   SetPolicySetFromString(policy_names, &user_constrained_policy_set);
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -21,7 +21,7 @@
 #include "string_util.h"
 #include "verify_name_match.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -707,4 +707,4 @@ bool NameConstraints::IsPermittedIP(der::Input ip) const {
   return false;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

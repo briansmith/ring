@@ -54,7 +54,7 @@
 #include "cert_error_id.h"
 #include "parsed_certificate.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 class CertErrorParams;
 class CertPathErrors;
@@ -176,6 +176,6 @@ class OPENSSL_EXPORT CertPathErrors {
   CertErrors other_errors_;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_CERT_ERRORS_H_

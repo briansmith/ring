@@ -18,7 +18,7 @@
 #include "verify_name_match.h"
 #include "verify_signed_data.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -670,4 +670,4 @@ CRLRevocationStatus CheckCRL(std::string_view raw_crl,
   return CRLRevocationStatus::UNKNOWN;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

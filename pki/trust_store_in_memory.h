@@ -12,7 +12,7 @@
 
 #include "trust_store.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // A very simple implementation of a TrustStore, which contains a set of
 // certificates and their trustedness.
@@ -96,6 +96,6 @@ class OPENSSL_EXPORT TrustStoreInMemory : public TrustStore {
   const Entry *GetEntry(const ParsedCertificate *cert) const;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_TRUST_STORE_IN_MEMORY_H_

@@ -15,7 +15,7 @@ constexpr std::string_view kPEMHeaderTail = "-----";
 
 }  // namespace
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 
 
@@ -140,4 +140,4 @@ std::string PEMEncode(std::string_view data, const std::string &type) {
   return pem_encoded;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

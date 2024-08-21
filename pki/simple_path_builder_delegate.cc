@@ -19,7 +19,7 @@
 #include "signature_algorithm.h"
 #include "verify_signed_data.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 DEFINE_CERT_ERROR_ID(SimplePathBuilderDelegate::kRsaModulusTooSmall,
                      "RSA modulus too small");
@@ -127,4 +127,4 @@ bool SimplePathBuilderDelegate::IsPublicKeyAcceptable(EVP_PKEY *public_key,
   return false;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

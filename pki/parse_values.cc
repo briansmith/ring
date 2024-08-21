@@ -12,7 +12,8 @@
 #include <openssl/bytestring.h>
 #include <openssl/mem.h>
 
-namespace bssl::der {
+BSSL_NAMESPACE_BEGIN
+namespace der {
 
 namespace {
 
@@ -470,4 +471,5 @@ bool ParseBmpString(Input in, std::string *out) {
   return true;
 }
 
-}  // namespace bssl::der
+}  // namespace der
+BSSL_NAMESPACE_END

@@ -26,7 +26,7 @@
 #include "string_util.h"
 #include "trust_store.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -483,4 +483,4 @@ void VerifyUserConstrainedPolicySet(
   }
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

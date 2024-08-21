@@ -34,7 +34,7 @@
 #include "../test/test_util.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 namespace {
 
 const decltype(&EVP_hpke_aes_128_gcm) kAllAEADs[] = {
@@ -635,5 +635,4 @@ TEST(HPKETest, InternalParseIntSafe) {
   ASSERT_FALSE(ParseIntSafe(&u16, "65536"));
 }
 
-
-}  // namespace bssl
+BSSL_NAMESPACE_END

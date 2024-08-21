@@ -13,7 +13,7 @@
 #include "parse_name.h"
 #include "parser.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 DEFINE_CERT_ERROR_ID(kFailedConvertingAttributeValue,
                      "Failed converting AttributeValue to string");
@@ -435,4 +435,4 @@ bool FindEmailAddressesInName(
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

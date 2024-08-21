@@ -12,7 +12,8 @@
 #include <openssl/base64.h>
 #include <openssl/mem.h>
 
-namespace bssl::string_util {
+BSSL_NAMESPACE_BEGIN
+namespace string_util {
 
 bool IsAscii(std::string_view str) {
   for (unsigned char c : str) {
@@ -190,4 +191,5 @@ bool Base64Decode(const std::string_view &input, std::string *output) {
   return true;
 }
 
-}  // namespace bssl::string_util
+}  // namespace string_util
+BSSL_NAMESPACE_END

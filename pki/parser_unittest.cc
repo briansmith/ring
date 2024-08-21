@@ -8,7 +8,8 @@
 #include "input.h"
 #include "parse_values.h"
 
-namespace bssl::der::test {
+BSSL_NAMESPACE_BEGIN
+namespace der::test {
 
 TEST(ParserTest, ConsumesAllBytesOfTLV) {
   const uint8_t der[] = {0x04 /* OCTET STRING */, 0x00};
@@ -362,4 +363,5 @@ TEST(ParserTest, ReadBitStringBadTag) {
   EXPECT_FALSE(bit_string.has_value());
 }
 
-}  // namespace bssl::der::test
+}  // namespace der::test
+BSSL_NAMESPACE_END

@@ -10,7 +10,7 @@
 #include "input.h"
 #include "parser.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -1448,4 +1448,4 @@ TEST(SignatureAlgorithmTest, ParseDerDsaWithSha256NoParams) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

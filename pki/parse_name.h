@@ -13,7 +13,7 @@
 #include "input.h"
 #include "parser.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // id-at-commonName: 2.5.4.3 (RFC 5280)
 inline constexpr uint8_t kTypeCommonNameOid[] = {0x55, 0x04, 0x03};
@@ -152,6 +152,6 @@ typedef std::vector<RelativeDistinguishedName> RDNSequence;
 // successful.
 [[nodiscard]] OPENSSL_EXPORT bool ConvertToRFC2253(
     const RDNSequence &rdn_sequence, std::string *out);
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_PARSE_NAME_H_

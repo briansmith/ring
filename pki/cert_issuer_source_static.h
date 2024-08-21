@@ -12,7 +12,7 @@
 
 #include "cert_issuer_source.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // Synchronously returns issuers from a pre-supplied set.
 class OPENSSL_EXPORT CertIssuerSourceStatic : public CertIssuerSource {
@@ -50,6 +50,6 @@ class OPENSSL_EXPORT CertIssuerSourceStatic : public CertIssuerSource {
       intermediates_;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_CERT_ISSUER_SOURCE_STATIC_H_

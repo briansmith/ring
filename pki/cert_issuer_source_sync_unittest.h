@@ -13,7 +13,7 @@
 #include "cert_issuer_source.h"
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -211,6 +211,6 @@ TYPED_TEST_P(CertIssuerSourceSyncNotNormalizedTest,
 REGISTER_TYPED_TEST_SUITE_P(CertIssuerSourceSyncNotNormalizedTest,
                             OneMatchWithoutNormalization);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_CERT_ISSUER_SOURCE_SYNC_UNITTEST_H_

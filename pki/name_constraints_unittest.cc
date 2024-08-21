@@ -11,7 +11,7 @@
 #include "common_cert_errors.h"
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 namespace {
 
 ::testing::AssertionResult LoadTestData(const char *token,
@@ -1901,4 +1901,4 @@ TEST_P(ParseNameConstraints, IsPermittedCertSubjectIpAddresses) {
                               nullptr /* subject_alt_names */));
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

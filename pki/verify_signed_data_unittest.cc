@@ -17,7 +17,7 @@
 #include "signature_algorithm.h"
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -238,4 +238,4 @@ TEST(VerifySignedDataTestWithCache, TestVerifyCache) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

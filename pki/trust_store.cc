@@ -8,7 +8,7 @@
 
 #include "string_util.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -174,4 +174,4 @@ void TrustStore::AsyncGetIssuersOf(const ParsedCertificate *cert,
   out_req->reset();
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -6,7 +6,7 @@
 
 #include <openssl/base.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 TrustStoreCollection::TrustStoreCollection() = default;
 TrustStoreCollection::~TrustStoreCollection() = default;
@@ -44,4 +44,4 @@ CertificateTrust TrustStoreCollection::GetTrust(const ParsedCertificate *cert) {
   return result;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

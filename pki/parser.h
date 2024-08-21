@@ -14,7 +14,8 @@
 
 #include "input.h"
 
-namespace bssl::der {
+BSSL_NAMESPACE_BEGIN
+namespace der {
 
 class BitString;
 struct GeneralizedTime;
@@ -207,6 +208,7 @@ class OPENSSL_EXPORT Parser {
   size_t advance_len_ = 0;
 };
 
-}  // namespace bssl::der
+}  // namespace der
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_DER_PARSER_H_

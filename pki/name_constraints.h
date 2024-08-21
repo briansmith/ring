@@ -11,7 +11,7 @@
 
 #include "general_names.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 class CertErrors;
 
@@ -101,6 +101,6 @@ class OPENSSL_EXPORT NameConstraints {
   int constrained_name_types_ = GENERAL_NAME_NONE;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_NAME_CONSTRAINTS_H_

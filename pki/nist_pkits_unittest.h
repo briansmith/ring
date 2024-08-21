@@ -11,7 +11,7 @@
 #include "parse_values.h"
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // Describes the inputs and outputs (other than the certificates) for
 // the PKITS tests.
@@ -144,6 +144,6 @@ class PkitsTest : public ::testing::Test {
 // Inline the generated test code:
 #include "testdata/nist-pkits/pkits_testcases-inl.h"
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_NIST_PKITS_UNITTEST_H_

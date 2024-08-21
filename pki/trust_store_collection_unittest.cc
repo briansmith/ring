@@ -8,7 +8,7 @@
 #include "test_helpers.h"
 #include "trust_store_in_memory.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -185,4 +185,4 @@ TEST_F(TrustStoreCollectionTest, DistrustTakesPriority) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

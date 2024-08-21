@@ -13,7 +13,8 @@
 #include <openssl/base.h>
 #include <openssl/span.h>
 
-namespace bssl::string_util {
+BSSL_NAMESPACE_BEGIN
+namespace string_util {
 
 // Returns true if the characters in |str| are all ASCII, false otherwise.
 OPENSSL_EXPORT bool IsAscii(std::string_view str);
@@ -70,6 +71,7 @@ OPENSSL_EXPORT bool Base64Encode(const std::string_view &input,
 OPENSSL_EXPORT bool Base64Decode(const std::string_view &input,
                                  std::string *output);
 
-}  // namespace bssl::string_util
+}  // namespace string_util
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_STRING_UTIL_H_

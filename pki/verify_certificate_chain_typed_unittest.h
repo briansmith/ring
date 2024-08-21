@@ -13,7 +13,7 @@
 #include "trust_store.h"
 #include "verify_certificate_chain.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 template <typename TestDelegate>
 class VerifyCertificateChainTest : public ::testing::Test {
@@ -343,6 +343,6 @@ REGISTER_TYPED_TEST_SUITE_P(VerifyCertificateChainSingleRootTest, Simple,
                             TrustAnchorNotSelfSigned, KeyRollover, Policies,
                             ManyNames, TargetOnly, TargetSelfSigned);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_TYPED_UNITTEST_H_

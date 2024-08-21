@@ -9,7 +9,7 @@
 
 #include "trust_store.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // TrustStoreCollection is an implementation of TrustStore which combines the
 // results from multiple TrustStores.
@@ -38,6 +38,6 @@ class OPENSSL_EXPORT TrustStoreCollection : public TrustStore {
   std::vector<TrustStore *> stores_;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_TRUST_STORE_COLLECTION_H_

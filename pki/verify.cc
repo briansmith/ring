@@ -41,7 +41,7 @@
 #include "trust_store_in_memory.h"
 #include "verify_certificate_chain.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -351,4 +351,4 @@ std::optional<std::vector<std::vector<std::string>>> CertificateVerifyAllPaths(
   return CertificateVerifyInternal(opts, nullptr, nullptr, /*all_paths=*/true);
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

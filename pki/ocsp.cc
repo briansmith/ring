@@ -17,7 +17,7 @@
 #include "verify_name_match.h"
 #include "verify_signed_data.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 OCSPCertID::OCSPCertID() = default;
 OCSPCertID::~OCSPCertID() = default;
@@ -1120,4 +1120,4 @@ std::optional<std::string> CreateOCSPGetURL(
   return std::string(ocsp_responder_url) + "/" + b64_encoded;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

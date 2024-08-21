@@ -16,7 +16,7 @@
 #include "test_helpers.h"
 #include "verify_signed_data.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -103,4 +103,4 @@ TEST_P(SimplePathBuilderDelegate2048FailTest, RsaKeySmallerThan2048) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -12,7 +12,7 @@
 #include "trust_store.h"
 #include "verify_certificate_chain_typed_unittest.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -125,4 +125,4 @@ TEST(VerifyCertificateIsSelfSigned, SelfSigned) {
   EXPECT_EQ(cache.CacheStores(), 1U);
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

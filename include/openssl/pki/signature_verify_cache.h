@@ -8,7 +8,7 @@
 #include <openssl/base.h>
 #include <string>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 class OPENSSL_EXPORT SignatureVerifyCache {
  public:
@@ -36,6 +36,6 @@ class OPENSSL_EXPORT SignatureVerifyCache {
   virtual Value Check(const std::string &key) = 0;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_ && __cplusplus

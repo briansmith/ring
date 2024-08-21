@@ -10,7 +10,7 @@
 
 #include <sstream>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -232,4 +232,4 @@ std::string CertPathErrors::ToDebugString(
   return result.str();
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

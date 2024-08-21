@@ -22,9 +22,11 @@
 
 #if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
 #include <ranges>
-namespace bssl::der {
+BSSL_NAMESPACE_BEGIN
+namespace der {
 class OPENSSL_EXPORT Input;
 }
+BSSL_NAMESPACE_END
 
 // Mark `Input` as satisfying the `view` and `borrowed_range` concepts. This
 // should be done before the definition of `Input`, so that any inlined calls to
@@ -36,7 +38,8 @@ inline constexpr bool std::ranges::enable_borrowed_range<bssl::der::Input> =
     true;
 #endif
 
-namespace bssl::der {
+BSSL_NAMESPACE_BEGIN
+namespace der {
 
 // An opaque class that represents a fixed buffer of data of a fixed length,
 // to be used as an input to other operations. An Input object does not own
@@ -188,6 +191,7 @@ class OPENSSL_EXPORT ByteReader {
   bssl::Span<const uint8_t> data_;
 };
 
-}  // namespace bssl::der
+}  // namespace der
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_DER_INPUT_H_

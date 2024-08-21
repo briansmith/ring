@@ -19,7 +19,7 @@
 #include "parser.h"
 #include "signature_algorithm.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 class ParsedCertificate;
 
@@ -310,6 +310,6 @@ OPENSSL_EXPORT std::optional<std::string> CreateOCSPGetURL(
     const ParsedCertificate *cert, const ParsedCertificate *issuer,
     std::string_view ocsp_responder_url);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_OCSP_H_

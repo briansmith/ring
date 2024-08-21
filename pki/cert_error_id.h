@@ -7,7 +7,7 @@
 
 #include <openssl/base.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // Each "class" of certificate error/warning has its own unique ID. This is
 // essentially like an error code, however the value is not stable. Under the
@@ -32,6 +32,6 @@ using CertErrorId = const void *;
 // string literal given to DEFINE_CERT_ERROR_ID(), which is human-readable.
 OPENSSL_EXPORT const char *CertErrorIdToDebugString(CertErrorId id);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_CERT_ERROR_ID_H_

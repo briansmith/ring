@@ -8,7 +8,7 @@
 #include "string_util.h"
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 namespace {
 
 // Loads test data from file. The filename is constructed from the parameters:
@@ -605,4 +605,4 @@ TEST(NameNormalizationTest, NormalizeCustom) {
   EXPECT_EQ(SequenceValueFromString(raw_der), der::Input(normalized_der));
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -4,7 +4,7 @@
 
 #include "ocsp_verify_result.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 OCSPVerifyResult::OCSPVerifyResult() = default;
 OCSPVerifyResult::OCSPVerifyResult(const OCSPVerifyResult &) = default;
@@ -22,4 +22,4 @@ bool OCSPVerifyResult::operator==(const OCSPVerifyResult &other) const {
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

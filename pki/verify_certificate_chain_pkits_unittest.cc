@@ -19,7 +19,7 @@
 
 #include "nist_pkits_unittest.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -126,4 +126,4 @@ INSTANTIATE_TYPED_TEST_SUITE_P(VerifyCertificateChain,
 // PkitsTest05VerifyingPathswithSelfIssuedCertificates,
 // PkitsTest14DistributionPoints, PkitsTest15DeltaCRLs
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

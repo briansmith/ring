@@ -17,7 +17,7 @@
 #include "parse_certificate.h"
 #include "signature_algorithm.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 struct GeneralNames;
 class NameConstraints;
@@ -323,6 +323,6 @@ class OPENSSL_EXPORT ParsedCertificate {
   ExtensionsMap extensions_;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_PARSED_CERTIFICATE_H_

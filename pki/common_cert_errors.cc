@@ -4,7 +4,8 @@
 
 #include "common_cert_errors.h"
 
-namespace bssl::cert_errors {
+BSSL_NAMESPACE_BEGIN
+namespace cert_errors {
 
 DEFINE_CERT_ERROR_ID(kInternalError, "Internal error");
 DEFINE_CERT_ERROR_ID(kValidityFailedNotAfter, "Time is after notAfter");
@@ -79,4 +80,5 @@ DEFINE_CERT_ERROR_ID(kDeadlineExceeded, "Deadline exceeded");
 DEFINE_CERT_ERROR_ID(kIterationLimitExceeded, "Iteration limit exceeded");
 DEFINE_CERT_ERROR_ID(kDepthLimitExceeded, "Depth limit exceeded");
 
-}  // namespace bssl::cert_errors
+}  // namespace cert_errors
+BSSL_NAMESPACE_END

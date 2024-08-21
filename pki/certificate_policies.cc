@@ -13,7 +13,7 @@
 #include "parse_values.h"
 #include "parser.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -388,4 +388,4 @@ bool ParsePolicyMappings(der::Input policy_mappings_tlv,
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

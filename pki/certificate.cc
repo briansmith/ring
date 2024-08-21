@@ -24,7 +24,7 @@
 #include "pem.h"
 #include "parse_values.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -114,4 +114,4 @@ bssl::Span<const uint8_t> Certificate::GetSerialNumber() const {
   return internals_->cert->tbs().serial_number;
 }
 
-}  // namespace boringssl
+BSSL_NAMESPACE_END

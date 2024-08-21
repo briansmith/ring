@@ -13,7 +13,7 @@
 
 #include <openssl/base.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // PEMTokenizer is a utility class for the parsing of data encapsulated
 // using RFC 1421, Privacy Enhancement for Internet Electronic Mail. It
@@ -81,6 +81,6 @@ class OPENSSL_EXPORT PEMTokenizer {
 OPENSSL_EXPORT std::string PEMEncode(std::string_view data,
                                      const std::string &type);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_PEM_H_

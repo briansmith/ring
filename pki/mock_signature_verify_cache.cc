@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 MockSignatureVerifyCache::MockSignatureVerifyCache() = default;
 
@@ -29,4 +29,4 @@ SignatureVerifyCache::Value MockSignatureVerifyCache::Check(
   return iter->second;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

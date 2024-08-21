@@ -10,7 +10,8 @@
 #include <openssl/pki/signature_verify_cache.h>
 #include <openssl/pki/verify_error.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
+
 class CertIssuerSourceStatic;
 class TrustStoreInMemory;
 class CertificateVerifyOptions;
@@ -165,6 +166,6 @@ OPENSSL_EXPORT std::optional<std::vector<std::string>> CertificateVerify(
 OPENSSL_EXPORT std::optional<std::vector<std::vector<std::string>>>
 CertificateVerifyAllPaths(const CertificateVerifyOptions &opts);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_VERIFY_H_

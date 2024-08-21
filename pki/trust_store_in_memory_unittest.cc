@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 namespace {
 
 class TrustStoreInMemoryTest : public testing::Test {
@@ -109,4 +109,4 @@ TEST_F(TrustStoreInMemoryTest, DistrustBySPKIOverridesTrust) {
 }
 
 }  // namespace
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 namespace {
 
 ::testing::AssertionResult LoadTestData(const char *token,
@@ -223,4 +223,4 @@ TEST(GeneralNames, RegisteredIDs) {
   EXPECT_EQ(der::Input(expected_der), general_names->registered_ids[0]);
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

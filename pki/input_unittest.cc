@@ -6,7 +6,8 @@
 
 #include <gtest/gtest.h>
 
-namespace bssl::der::test {
+BSSL_NAMESPACE_BEGIN
+namespace der::test {
 
 constexpr uint8_t kInput[] = {'t', 'e', 's', 't'};
 const uint8_t kInput2[] = {'t', 'e', 'a', 'l'};
@@ -104,4 +105,5 @@ TEST(ByteReaderTest, HasMore) {
   ASSERT_FALSE(reader.HasMore());
 }
 
-}  // namespace bssl::der::test
+}  // namespace der::test
+BSSL_NAMESPACE_END

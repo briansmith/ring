@@ -4,11 +4,11 @@
 
 #include "cert_error_id.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 const char *CertErrorIdToDebugString(CertErrorId id) {
   // The CertErrorId is simply a pointer for a C-string literal.
   return reinterpret_cast<const char *>(id);
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

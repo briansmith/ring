@@ -4,7 +4,7 @@
 
 #include "cert_issuer_source_static.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 CertIssuerSourceStatic::CertIssuerSourceStatic() = default;
 CertIssuerSourceStatic::~CertIssuerSourceStatic() = default;
@@ -42,4 +42,4 @@ void CertIssuerSourceStatic::AsyncGetIssuersOf(
   out_req->reset();
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

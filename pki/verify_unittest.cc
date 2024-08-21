@@ -25,7 +25,7 @@
 
 #include "test_helpers.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 static std::unique_ptr<VerifyTrustStore> MozillaRootStore() {
   std::string diagnostic;
@@ -137,4 +137,4 @@ TEST(VerifyTest, DepthLimit) {
       << error.DiagnosticString();
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

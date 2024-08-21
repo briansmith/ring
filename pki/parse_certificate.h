@@ -18,7 +18,7 @@
 #include "input.h"
 #include "parse_values.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace der {
 class Parser;
@@ -625,6 +625,6 @@ struct OPENSSL_EXPORT ParsedAuthorityKeyIdentifier {
 [[nodiscard]] OPENSSL_EXPORT bool ParseSubjectKeyIdentifier(
     der::Input extension_value, der::Input *subject_key_identifier);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_PARSE_CERTIFICATE_H_

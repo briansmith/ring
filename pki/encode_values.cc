@@ -8,7 +8,8 @@
 
 #include <openssl/posix_time.h>
 
-namespace bssl::der {
+BSSL_NAMESPACE_BEGIN
+namespace der {
 
 namespace {
 
@@ -104,4 +105,5 @@ bool EncodeUTCTime(const GeneralizedTime &time, uint8_t out[kUTCTimeLength]) {
   return true;
 }
 
-}  // namespace bssl::der
+}  // namespace der
+BSSL_NAMESPACE_END

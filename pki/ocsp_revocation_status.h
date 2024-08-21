@@ -5,7 +5,7 @@
 #ifndef BSSL_PKI_OCSP_REVOCATION_STATUS_H_
 #define BSSL_PKI_OCSP_REVOCATION_STATUS_H_
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // This value is histogrammed, so do not re-order or change values, and add
 // new values at the end.
@@ -16,6 +16,6 @@ enum class OCSPRevocationStatus {
   MAX_VALUE = UNKNOWN
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_OCSP_REVOCATION_STATUS_H_

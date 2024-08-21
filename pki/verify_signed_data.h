@@ -11,7 +11,7 @@
 
 #include "signature_algorithm.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace der {
 class BitString;
@@ -42,6 +42,6 @@ class Input;
 [[nodiscard]] OPENSSL_EXPORT bool ParsePublicKey(
     der::Input public_key_spki, bssl::UniquePtr<EVP_PKEY> *public_key);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_VERIFY_SIGNED_DATA_H_

@@ -19,7 +19,7 @@
 #include "trust_store.h"
 #include "verify_signed_data.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -1677,4 +1677,4 @@ bool VerifyCertificateIsSelfSigned(const ParsedCertificate &cert,
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

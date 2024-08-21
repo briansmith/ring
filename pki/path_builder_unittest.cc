@@ -22,7 +22,7 @@
 #include <gtest/gtest.h>
 #include <openssl/pool.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // TODO(crbug.com/634443): Assert the errors for each ResultPath.
 
@@ -2921,4 +2921,4 @@ TEST(PathBuilderPrioritizationTest, SelfIssuedPrioritization) {
 
 }  // namespace
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

@@ -12,7 +12,7 @@
 #include <openssl/base.h>
 #include <openssl/evp.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace der {
 class Input;
@@ -81,6 +81,6 @@ OPENSSL_EXPORT std::optional<SignatureAlgorithm> ParseSignatureAlgorithm(
 OPENSSL_EXPORT std::optional<DigestAlgorithm>
 GetTlsServerEndpointDigestAlgorithm(SignatureAlgorithm alg);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_SIGNATURE_ALGORITHM_H_

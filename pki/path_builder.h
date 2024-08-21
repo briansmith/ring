@@ -18,7 +18,7 @@
 #include "trust_store.h"
 #include "verify_certificate_chain.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace der {
 struct GeneralizedTime;
@@ -258,6 +258,6 @@ class OPENSSL_EXPORT CertPathBuilder {
   size_t valid_path_count_ = 0;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_PATH_BUILDER_H_

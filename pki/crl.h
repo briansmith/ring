@@ -14,7 +14,7 @@
 #include "parse_values.h"
 #include "parsed_certificate.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 struct ParsedCrlTbsCertList;
 struct ParsedDistributionPoint;
@@ -215,6 +215,6 @@ GetCRLStatusForCert(der::Input cert_serial, CrlVersion crl_version,
     size_t target_cert_index, const ParsedDistributionPoint &cert_dp,
     int64_t verify_time_epoch_seconds, std::optional<int64_t> max_age_seconds);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_CRL_H_

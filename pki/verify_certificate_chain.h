@@ -15,7 +15,7 @@
 #include "input.h"
 #include "parsed_certificate.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace der {
 struct GeneralizedTime;
@@ -270,6 +270,6 @@ OPENSSL_EXPORT bool VerifyCertificateIsSelfSigned(const ParsedCertificate &cert,
                                                   SignatureVerifyCache *cache,
                                                   CertErrors *errors);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_H_

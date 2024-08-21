@@ -4,7 +4,7 @@
 
 #include "trust_store_in_memory.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 TrustStoreInMemory::TrustStoreInMemory() = default;
 TrustStoreInMemory::~TrustStoreInMemory() = default;
@@ -98,4 +98,4 @@ const TrustStoreInMemory::Entry *TrustStoreInMemory::GetEntry(
   return nullptr;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

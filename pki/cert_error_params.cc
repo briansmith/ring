@@ -11,7 +11,7 @@
 #include "input.h"
 #include "string_util.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -132,4 +132,4 @@ OPENSSL_EXPORT std::unique_ptr<CertErrorParams> CreateCertErrorParams2SizeT(
   return std::make_unique<CertErrorParams2SizeT>(name1, value1, name2, value2);
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

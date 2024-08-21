@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 TEST(PEMTokenizerTest, BasicParsing) {
   const char data[] =
@@ -202,4 +202,4 @@ TEST(PEMEncodeTest, Wrapping) {
                 "WRAPPED LINE"));
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

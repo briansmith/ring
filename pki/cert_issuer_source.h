@@ -12,7 +12,7 @@
 
 #include "parsed_certificate.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // Interface for looking up issuers of a certificate during path building.
 // Provides a synchronous and asynchronous method for retrieving issuers, so the
@@ -63,6 +63,6 @@ class OPENSSL_EXPORT CertIssuerSource {
                                  std::unique_ptr<Request> *out_req) = 0;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_CERT_ISSUER_SOURCE_H_

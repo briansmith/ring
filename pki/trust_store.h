@@ -12,7 +12,7 @@
 #include "cert_issuer_source.h"
 #include "parsed_certificate.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 enum class CertificateTrustType {
   // This certificate is explicitly blocked (distrusted).
@@ -139,6 +139,6 @@ class OPENSSL_EXPORT TrustStore : public CertIssuerSource {
                          std::unique_ptr<Request> *out_req) final;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 #endif  // BSSL_PKI_TRUST_STORE_H_

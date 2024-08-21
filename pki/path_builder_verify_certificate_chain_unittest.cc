@@ -9,7 +9,7 @@
 #include "trust_store_in_memory.h"
 #include "verify_certificate_chain_typed_unittest.h"
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -53,4 +53,4 @@ INSTANTIATE_TYPED_TEST_SUITE_P(PathBuilder,
                                VerifyCertificateChainSingleRootTest,
                                PathBuilderTestDelegate);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
