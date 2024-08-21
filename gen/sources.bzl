@@ -2632,6 +2632,34 @@ pki_test_data = [
     "pki/testdata/verify_unittest/self-issued.pem",
 ]
 
+rust_bssl_crypto_sources = [
+    "rust/bssl-crypto/src/aead.rs",
+    "rust/bssl-crypto/src/aes.rs",
+    "rust/bssl-crypto/src/cipher/aes_cbc.rs",
+    "rust/bssl-crypto/src/cipher/aes_ctr.rs",
+    "rust/bssl-crypto/src/cipher/mod.rs",
+    "rust/bssl-crypto/src/digest.rs",
+    "rust/bssl-crypto/src/ec.rs",
+    "rust/bssl-crypto/src/ecdh.rs",
+    "rust/bssl-crypto/src/ecdsa.rs",
+    "rust/bssl-crypto/src/ed25519.rs",
+    "rust/bssl-crypto/src/hkdf.rs",
+    "rust/bssl-crypto/src/hmac.rs",
+    "rust/bssl-crypto/src/hpke.rs",
+    "rust/bssl-crypto/src/lib.rs",
+    "rust/bssl-crypto/src/macros.rs",
+    "rust/bssl-crypto/src/mem.rs",
+    "rust/bssl-crypto/src/rand.rs",
+    "rust/bssl-crypto/src/rsa.rs",
+    "rust/bssl-crypto/src/scoped.rs",
+    "rust/bssl-crypto/src/test_helpers.rs",
+    "rust/bssl-crypto/src/x25519.rs",
+]
+
+rust_bssl_sys_sources = [
+    "rust/bssl-sys/src/lib.rs",
+]
+
 ssl_sources = [
     "ssl/bio_ssl.cc",
     "ssl/d1_both.cc",

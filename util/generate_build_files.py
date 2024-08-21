@@ -583,21 +583,6 @@ def FindCFiles(directory, filter_func):
   return cfiles
 
 
-def FindRustFiles(directory):
-  """Recurses through directory and returns a list of paths to all the Rust source
-  files."""
-  rust_files = []
-
-  for (path, dirnames, filenames) in os.walk(directory):
-    for filename in filenames:
-      if not filename.endswith('.rs'):
-        continue
-      rust_files.append(os.path.join(path, filename))
-
-  rust_files.sort()
-  return rust_files
-
-
 def FindHeaderFiles(directory, filter_func):
   """Recurses through directory and returns a list of paths to all the header files that pass filter_func."""
   hfiles = []
@@ -625,9 +610,6 @@ def PrefixWithSrc(files):
 def main(platforms):
   with open(os.path.join('src', 'gen', 'sources.json')) as f:
     sources = json.load(f)
-
-  bssl_sys_files = FindRustFiles(os.path.join('src', 'rust', 'bssl-sys', 'src'))
-  bssl_crypto_files = FindRustFiles(os.path.join('src', 'rust', 'bssl-crypto', 'src'))
 
   # TODO(crbug.com/boringssl/542): generate_build_files.py historically reported
   # all the assembly files as part of libcrypto. Merge them for now, but we
@@ -662,8 +644,8 @@ def main(platforms):
       'pki_internal_headers': PrefixWithSrc(sources['pki']['internal_hdrs']),
       'pki_test': PrefixWithSrc(sources['pki_test']['srcs']),
       'pki_test_data': PrefixWithSrc(sources['pki_test']['data']),
-      'rust_bssl_crypto': bssl_crypto_files,
-      'rust_bssl_sys': bssl_sys_files,
+      'rust_bssl_crypto': PrefixWithSrc(sources['bssl_crypto_rust']['srcs']),
+      'rust_bssl_sys': PrefixWithSrc(sources['bssl_sys_rust']['srcs']),
       'ssl': PrefixWithSrc(sources['ssl']['srcs']),
       'ssl_headers': PrefixWithSrc(sources['ssl']['hdrs']),
       'ssl_internal_headers': PrefixWithSrc(sources['ssl']['internal_hdrs']),

@@ -17,8 +17,8 @@ package build
 // A Target is a build target for consumption by the downstream build systems.
 // All pre-generated files are baked input its source lists.
 type Target struct {
-	// Srcs is the list of C or C++ files (determined by file extension) that are
-	// built into the target.
+	// Srcs is the list of C, C++, or Rust files (determined by file extension)
+	// that are built into the target.
 	Srcs []string `json:"srcs,omitempty"`
 	// Hdrs is the list public headers that should be available to external
 	// projects using this target.
