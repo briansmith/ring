@@ -1018,5 +1018,13 @@
             "tool/internal.h",
             "tool/transport_common.h"
         ]
+    },
+    "fuzz": {
+        // TODO(crbug.com/42290554): Unlike the other targets, each source here
+        // is expected to be built separately. When we migrate from libFuzzer to
+        // FuzzTest, this will be moot.
+        "srcs": [
+            "fuzz/*.cc"
+        ]
     }
 }

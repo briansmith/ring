@@ -1085,6 +1085,43 @@ set(
 )
 
 set(
+  FUZZ_SOURCES
+
+  fuzz/arm_cpuinfo.cc
+  fuzz/bn_div.cc
+  fuzz/bn_mod_exp.cc
+  fuzz/cert.cc
+  fuzz/client.cc
+  fuzz/conf.cc
+  fuzz/crl_getcrlstatusforcert_fuzzer.cc
+  fuzz/crl_parse_crl_certificatelist_fuzzer.cc
+  fuzz/crl_parse_crl_tbscertlist_fuzzer.cc
+  fuzz/crl_parse_issuing_distribution_point_fuzzer.cc
+  fuzz/decode_client_hello_inner.cc
+  fuzz/der_roundtrip.cc
+  fuzz/dtls_client.cc
+  fuzz/dtls_server.cc
+  fuzz/ocsp_parse_ocsp_cert_id_fuzzer.cc
+  fuzz/ocsp_parse_ocsp_response_data_fuzzer.cc
+  fuzz/ocsp_parse_ocsp_response_fuzzer.cc
+  fuzz/ocsp_parse_ocsp_single_response_fuzzer.cc
+  fuzz/parse_authority_key_identifier_fuzzer.cc
+  fuzz/parse_certificate_fuzzer.cc
+  fuzz/parse_crldp_fuzzer.cc
+  fuzz/pkcs12.cc
+  fuzz/pkcs8.cc
+  fuzz/privkey.cc
+  fuzz/read_pem.cc
+  fuzz/server.cc
+  fuzz/session.cc
+  fuzz/spki.cc
+  fuzz/ssl_ctx_api.cc
+  fuzz/verify_name_match_fuzzer.cc
+  fuzz/verify_name_match_normalizename_fuzzer.cc
+  fuzz/verify_name_match_verifynameinsubtree_fuzzer.cc
+)
+
+set(
   PKI_SOURCES
 
   pki/cert_error_id.cc

@@ -629,8 +629,6 @@ def main(platforms):
   bssl_sys_files = FindRustFiles(os.path.join('src', 'rust', 'bssl-sys', 'src'))
   bssl_crypto_files = FindRustFiles(os.path.join('src', 'rust', 'bssl-crypto', 'src'))
 
-  fuzz_c_files = FindCFiles(os.path.join('src', 'fuzz'), NoTests)
-
   # TODO(crbug.com/boringssl/542): generate_build_files.py historically reported
   # all the assembly files as part of libcrypto. Merge them for now, but we
   # should split them out later.
@@ -658,7 +656,7 @@ def main(platforms):
       'crypto_test': PrefixWithSrc(sources['crypto_test']['srcs']),
       'crypto_test_data': PrefixWithSrc(sources['crypto_test']['data']),
       'fips_fragments': PrefixWithSrc(sources['bcm']['internal_hdrs']),
-      'fuzz': fuzz_c_files,
+      'fuzz': PrefixWithSrc(sources['fuzz']['srcs']),
       'pki': PrefixWithSrc(sources['pki']['srcs']),
       'pki_headers': PrefixWithSrc(sources['pki']['hdrs']),
       'pki_internal_headers': PrefixWithSrc(sources['pki']['internal_hdrs']),
