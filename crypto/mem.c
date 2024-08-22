@@ -94,7 +94,11 @@ static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 // Windows doesn't really support weak symbols as of May 2019, and Clang on
 // Windows will emit strong symbols instead. See
 // https://bugs.llvm.org/show_bug.cgi?id=37598
-#if defined(__ELF__) && defined(__GNUC__)
+//
+// EDK2 targets UEFI but builds as ELF and then translates the binary to
+// COFF(!). Thus it builds with __ELF__ defined but cannot actually cope with
+// weak symbols.
+#if !defined(__EDK2_BORINGSSL__) && defined(__ELF__) && defined(__GNUC__)
 #define WEAK_SYMBOL_FUNC(rettype, name, args) \
   rettype name args __attribute__((weak));
 #else
@@ -242,7 +246,7 @@ void *OPENSSL_malloc(size_t size) {
   __asan_poison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
   return ((uint8_t *)ptr) + OPENSSL_MALLOC_PREFIX;
 
- err:
+err:
   // This only works because ERR does not call OPENSSL_malloc.
   OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
   return NULL;
@@ -523,7 +527,7 @@ int OPENSSL_vasprintf_internal(char **str, const char *format, va_list args,
   *str = candidate;
   return ret;
 
- err:
+err:
   deallocate(candidate);
   *str = NULL;
   errno = ENOMEM;
