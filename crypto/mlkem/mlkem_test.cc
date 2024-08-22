@@ -12,13 +12,16 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <cstdint>
 #include <vector>
 
 #include <string.h>
 
 #include <gtest/gtest.h>
 
+#include <openssl/base.h>
 #include <openssl/bytestring.h>
+#include <openssl/mem.h>
 #include <openssl/mlkem.h>
 
 #include "../keccak/internal.h"

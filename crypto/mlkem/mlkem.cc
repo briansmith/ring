@@ -17,8 +17,11 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include <openssl/base.h>
 #include <openssl/bytestring.h>
+#include <openssl/mem.h>
 #include <openssl/rand.h>
 
 #include "../internal.h"

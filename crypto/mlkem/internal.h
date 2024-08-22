@@ -46,7 +46,7 @@ OPENSSL_EXPORT void MLKEM768_encap_external_entropy(
     uint8_t out_ciphertext[MLKEM768_CIPHERTEXT_BYTES],
     uint8_t out_shared_secret[MLKEM_SHARED_SECRET_BYTES],
     const struct MLKEM768_public_key *public_key,
-    const uint8_t seed[MLKEM_ENCAP_ENTROPY]);
+    const uint8_t entropy[MLKEM_ENCAP_ENTROPY]);
 
 // MLKEM768_marshal_private_key serializes |private_key| to |out| in the
 // NIST format for ML-KEM-768 private keys. It returns one on success or
