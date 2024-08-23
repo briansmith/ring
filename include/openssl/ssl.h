@@ -2548,6 +2548,7 @@ OPENSSL_EXPORT size_t SSL_CTX_get_num_tickets(const SSL_CTX *ctx);
 #define SSL_GROUP_SECP384R1 24
 #define SSL_GROUP_SECP521R1 25
 #define SSL_GROUP_X25519 29
+#define SSL_GROUP_X25519_MLKEM768 0x11ec
 #define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
 
 // SSL_CTX_set1_group_ids sets the preferred groups for |ctx| to |group_ids|.

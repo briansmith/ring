@@ -16,8 +16,10 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"slices"
 
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/kyber"
+	"filippo.io/mlkem768"
 	"golang.org/x/crypto/curve25519"
 )
 
@@ -233,6 +235,9 @@ func (ka *rsaKeyAgreement) peerSignatureAlgorithm() signatureAlgorithm {
 
 // A kemImplementation is an instance of KEM-style construction for TLS.
 type kemImplementation interface {
+	encapsulationKeySize() int
+	ciphertextSize() int
+
 	// generate generates a keypair using rand. It returns the encoded public key.
 	generate(rand io.Reader) (publicKey []byte, err error)
 
@@ -251,6 +256,15 @@ type ecdhKEM struct {
 	curve          elliptic.Curve
 	privateKey     []byte
 	sendCompressed bool
+}
+
+func (e *ecdhKEM) encapsulationKeySize() int {
+	fieldBytes := (e.curve.Params().BitSize + 7) / 8
+	return 1 + 2*fieldBytes
+}
+
+func (e *ecdhKEM) ciphertextSize() int {
+	return e.encapsulationKeySize()
 }
 
 func (e *ecdhKEM) generate(rand io.Reader) (publicKey []byte, err error) {
@@ -300,6 +314,14 @@ type x25519KEM struct {
 	setHighBit bool
 }
 
+func (e *x25519KEM) encapsulationKeySize() int {
+	return curve25519.PointSize
+}
+
+func (e *x25519KEM) ciphertextSize() int {
+	return curve25519.PointSize
+}
+
 func (e *x25519KEM) generate(rand io.Reader) (publicKey []byte, err error) {
 	_, err = io.ReadFull(rand, e.privateKey[:])
 	if err != nil {
@@ -341,53 +363,35 @@ func (e *x25519KEM) decap(ciphertext []byte) (secret []byte, err error) {
 	return out[:], nil
 }
 
-// kyberKEM implements Kyber combined with X25519.
+// kyberKEM implements Kyber-768
 type kyberKEM struct {
-	x25519PrivateKey [32]byte
-	kyberPrivateKey  *kyber.PrivateKey
+	kyberPrivateKey *kyber.PrivateKey
+}
+
+func (e *kyberKEM) encapsulationKeySize() int {
+	return kyber.PublicKeySize
+}
+
+func (e *kyberKEM) ciphertextSize() int {
+	return kyber.CiphertextSize
 }
 
 func (e *kyberKEM) generate(rand io.Reader) (publicKey []byte, err error) {
-	if _, err := io.ReadFull(rand, e.x25519PrivateKey[:]); err != nil {
-		return nil, err
-	}
-	var x25519Public [32]byte
-	curve25519.ScalarBaseMult(&x25519Public, &e.x25519PrivateKey)
-
 	var kyberEntropy [64]byte
 	if _, err := io.ReadFull(rand, kyberEntropy[:]); err != nil {
 		return nil, err
 	}
 	var kyberPublic *[kyber.PublicKeySize]byte
 	e.kyberPrivateKey, kyberPublic = kyber.NewPrivateKey(&kyberEntropy)
-
-	var ret []byte
-	ret = append(ret, x25519Public[:]...)
-	ret = append(ret, kyberPublic[:]...)
-	return ret, nil
+	return kyberPublic[:], nil
 }
 
 func (e *kyberKEM) encap(rand io.Reader, peerKey []byte) (ciphertext []byte, secret []byte, err error) {
-	if len(peerKey) != 32+kyber.PublicKeySize {
+	if len(peerKey) != kyber.PublicKeySize {
 		return nil, nil, errors.New("tls: bad length Kyber offer")
 	}
 
-	if _, err := io.ReadFull(rand, e.x25519PrivateKey[:]); err != nil {
-		return nil, nil, err
-	}
-
-	var x25519Shared, x25519PeerKey, x25519Public [32]byte
-	copy(x25519PeerKey[:], peerKey)
-	curve25519.ScalarBaseMult(&x25519Public, &e.x25519PrivateKey)
-	curve25519.ScalarMult(&x25519Shared, &e.x25519PrivateKey, &x25519PeerKey)
-
-	// Per RFC 7748, reject the all-zero value in constant time.
-	var zeros [32]byte
-	if subtle.ConstantTimeCompare(zeros[:], x25519Shared[:]) == 1 {
-		return nil, nil, errors.New("tls: X25519 value with wrong order")
-	}
-
-	kyberPublicKey, ok := kyber.UnmarshalPublicKey((*[kyber.PublicKeySize]byte)(peerKey[32:]))
+	kyberPublicKey, ok := kyber.UnmarshalPublicKey((*[kyber.PublicKeySize]byte)(peerKey))
 	if !ok {
 		return nil, nil, errors.New("tls: bad Kyber offer")
 	}
@@ -397,37 +401,105 @@ func (e *kyberKEM) encap(rand io.Reader, peerKey []byte) (ciphertext []byte, sec
 		return nil, nil, err
 	}
 	kyberCiphertext := kyberPublicKey.Encap(kyberShared[:], &kyberEntropy)
-
-	ciphertext = append(ciphertext, x25519Public[:]...)
-	ciphertext = append(ciphertext, kyberCiphertext[:]...)
-	secret = append(secret, x25519Shared[:]...)
-	secret = append(secret, kyberShared[:]...)
-
-	return ciphertext, secret, nil
+	return kyberCiphertext[:], kyberShared[:], nil
 }
 
 func (e *kyberKEM) decap(ciphertext []byte) (secret []byte, err error) {
-	if len(ciphertext) != 32+kyber.CiphertextSize {
+	if len(ciphertext) != kyber.CiphertextSize {
 		return nil, errors.New("tls: bad length Kyber reply")
 	}
 
-	var x25519Shared, x25519PeerKey [32]byte
-	copy(x25519PeerKey[:], ciphertext)
-	curve25519.ScalarMult(&x25519Shared, &e.x25519PrivateKey, &x25519PeerKey)
-
-	// Per RFC 7748, reject the all-zero value in constant time.
-	var zeros [32]byte
-	if subtle.ConstantTimeCompare(zeros[:], x25519Shared[:]) == 1 {
-		return nil, errors.New("tls: X25519 value with wrong order")
-	}
-
 	var kyberShared [32]byte
-	e.kyberPrivateKey.Decap(kyberShared[:], (*[kyber.CiphertextSize]byte)(ciphertext[32:]))
+	e.kyberPrivateKey.Decap(kyberShared[:], (*[kyber.CiphertextSize]byte)(ciphertext))
+	return kyberShared[:], nil
+}
 
-	secret = append(secret, x25519Shared[:]...)
-	secret = append(secret, kyberShared[:]...)
+// mlkem768KEM implements ML-KEM-768
+type mlkem768KEM struct {
+	decapKey *mlkem768.DecapsulationKey
+}
 
-	return secret, nil
+func (e *mlkem768KEM) encapsulationKeySize() int {
+	return mlkem768.EncapsulationKeySize
+}
+
+func (e *mlkem768KEM) ciphertextSize() int {
+	return mlkem768.CiphertextSize
+}
+
+func (m *mlkem768KEM) generate(rand io.Reader) (publicKey []byte, err error) {
+	m.decapKey, err = mlkem768.GenerateKey()
+	if err != nil {
+		return
+	}
+	return m.decapKey.EncapsulationKey(), nil
+}
+
+func (m *mlkem768KEM) encap(rand io.Reader, peerKey []byte) (ciphertext []byte, secret []byte, err error) {
+	return mlkem768.Encapsulate(peerKey)
+}
+
+func (m *mlkem768KEM) decap(ciphertext []byte) (secret []byte, err error) {
+	return mlkem768.Decapsulate(m.decapKey, ciphertext)
+}
+
+// concatKEM concatenates two kemImplementations.
+type concatKEM struct {
+	kem1, kem2 kemImplementation
+}
+
+func (c *concatKEM) encapsulationKeySize() int {
+	return c.kem1.encapsulationKeySize() + c.kem2.encapsulationKeySize()
+}
+
+func (c *concatKEM) ciphertextSize() int {
+	return c.kem1.ciphertextSize() + c.kem2.ciphertextSize()
+}
+
+func (c *concatKEM) generate(rand io.Reader) (publicKey []byte, err error) {
+	publicKey1, err := c.kem1.generate(rand)
+	if err != nil {
+		return nil, err
+	}
+	publicKey2, err := c.kem2.generate(rand)
+	if err != nil {
+		return nil, err
+	}
+	return slices.Concat(publicKey1, publicKey2), nil
+}
+
+func (c *concatKEM) encap(rand io.Reader, peerKey []byte) (ciphertext []byte, secret []byte, err error) {
+	encapKeySize1 := c.kem1.encapsulationKeySize()
+	if len(peerKey) < encapKeySize1 {
+		return nil, nil, errors.New("tls: invalid peer key")
+	}
+	peerKey1, peerKey2 := peerKey[:encapKeySize1], peerKey[encapKeySize1:]
+	ciphertext1, secret1, err := c.kem1.encap(rand, peerKey1)
+	if err != nil {
+		return nil, nil, err
+	}
+	ciphertext2, secret2, err := c.kem2.encap(rand, peerKey2)
+	if err != nil {
+		return nil, nil, err
+	}
+	return slices.Concat(ciphertext1, ciphertext2), slices.Concat(secret1, secret2), nil
+}
+
+func (c *concatKEM) decap(ciphertext []byte) (secret []byte, err error) {
+	ciphertextSize1 := c.kem1.ciphertextSize()
+	if len(ciphertext) < ciphertextSize1 {
+		return nil, errors.New("tls: invalid ciphertext")
+	}
+	ciphertext1, ciphertext2 := ciphertext[:ciphertextSize1], ciphertext[ciphertextSize1:]
+	secret1, err := c.kem1.decap(ciphertext1)
+	if err != nil {
+		return nil, err
+	}
+	secret2, err := c.kem2.decap(ciphertext2)
+	if err != nil {
+		return nil, err
+	}
+	return slices.Concat(secret1, secret2), nil
 }
 
 func kemForCurveID(id CurveID, config *Config) (kemImplementation, bool) {
@@ -443,7 +515,11 @@ func kemForCurveID(id CurveID, config *Config) (kemImplementation, bool) {
 	case CurveX25519:
 		return &x25519KEM{setHighBit: config.Bugs.SetX25519HighBit}, true
 	case CurveX25519Kyber768:
-		return &kyberKEM{}, true
+		// draft-tls-westerbaan-xyber768d00-03
+		return &concatKEM{kem1: &x25519KEM{setHighBit: config.Bugs.SetX25519HighBit}, kem2: &kyberKEM{}}, true
+	case CurveX25519MLKEM768:
+		// draft-kwiatkowski-tls-ecdhe-mlkem-01
+		return &concatKEM{kem1: &mlkem768KEM{}, kem2: &x25519KEM{setHighBit: config.Bugs.SetX25519HighBit}}, true
 	default:
 		return nil, false
 	}

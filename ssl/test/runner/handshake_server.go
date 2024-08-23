@@ -281,10 +281,10 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	if config.Bugs.FailIfKyberOffered {
+	if config.Bugs.FailIfPostQuantumOffered {
 		for _, offeredCurve := range hs.clientHello.supportedCurves {
 			if isPqGroup(offeredCurve) {
-				return errors.New("tls: X25519Kyber768 was offered")
+				return errors.New("tls: post-quantum group was offered")
 			}
 		}
 	}

@@ -158,6 +158,7 @@ const (
 	CurveP384           CurveID = 24
 	CurveP521           CurveID = 25
 	CurveX25519         CurveID = 29
+	CurveX25519MLKEM768 CurveID = 0x11ec
 	CurveX25519Kyber768 CurveID = 0x6399
 )
 
@@ -1962,9 +1963,9 @@ type ProtocolBugs struct {
 	// hello retry.
 	FailIfHelloRetryRequested bool
 
-	// FailedIfKyberOffered will cause a server to reject a ClientHello if Kyber
-	// is supported.
-	FailIfKyberOffered bool
+	// FailIfPostQuantumOffered will cause a server to reject a ClientHello if
+	// post-quantum curves are supported.
+	FailIfPostQuantumOffered bool
 
 	// ExpectKeyShares, if not nil, lists (in order) the curves that a ClientHello
 	// should have key shares for.
@@ -2067,7 +2068,7 @@ func (c *Config) maxVersion(isDTLS bool) uint16 {
 	return ret
 }
 
-var defaultCurvePreferences = []CurveID{CurveX25519Kyber768, CurveX25519, CurveP256, CurveP384, CurveP521}
+var defaultCurvePreferences = []CurveID{CurveX25519MLKEM768, CurveX25519Kyber768, CurveX25519, CurveP256, CurveP384, CurveP521}
 
 func (c *Config) curvePreferences() []CurveID {
 	if c == nil || len(c.CurvePreferences) == 0 {
