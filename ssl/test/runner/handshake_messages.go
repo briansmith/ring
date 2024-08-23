@@ -2456,66 +2456,39 @@ type certificateVerifyMsg struct {
 	signature             []byte
 }
 
-func (m *certificateVerifyMsg) marshal() (x []byte) {
+func (m *certificateVerifyMsg) marshal() []byte {
 	if m.raw != nil {
 		return m.raw
 	}
 
 	// See http://tools.ietf.org/html/rfc4346#section-7.4.8
-	siglength := len(m.signature)
-	length := 2 + siglength
-	if m.hasSignatureAlgorithm {
-		length += 2
-	}
-	x = make([]byte, 4+length)
-	x[0] = typeCertificateVerify
-	x[1] = uint8(length >> 16)
-	x[2] = uint8(length >> 8)
-	x[3] = uint8(length)
-	y := x[4:]
-	if m.hasSignatureAlgorithm {
-		y[0] = byte(m.signatureAlgorithm >> 8)
-		y[1] = byte(m.signatureAlgorithm)
-		y = y[2:]
-	}
-	y[0] = uint8(siglength >> 8)
-	y[1] = uint8(siglength)
-	copy(y[2:], m.signature)
+	msg := cryptobyte.NewBuilder(nil)
+	msg.AddUint8(typeCertificateVerify)
+	msg.AddUint24LengthPrefixed(func(body *cryptobyte.Builder) {
+		if m.hasSignatureAlgorithm {
+			body.AddUint16(uint16(m.signatureAlgorithm))
+		}
+		addUint16LengthPrefixedBytes(body, m.signature)
+	})
 
-	m.raw = x
-
-	return
+	m.raw = msg.BytesOrPanic()
+	return m.raw
 }
 
 func (m *certificateVerifyMsg) unmarshal(data []byte) bool {
 	m.raw = data
-
-	if len(data) < 6 {
-		return false
-	}
-
-	length := uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3])
-	if uint32(len(data))-4 != length {
-		return false
-	}
-
-	data = data[4:]
+	reader := cryptobyte.String(data[4:])
 	if m.hasSignatureAlgorithm {
-		m.signatureAlgorithm = signatureAlgorithm(data[0])<<8 | signatureAlgorithm(data[1])
-		data = data[2:]
+		var v uint16
+		if !reader.ReadUint16(&v) {
+			return false
+		}
+		m.signatureAlgorithm = signatureAlgorithm(v)
 	}
-
-	if len(data) < 2 {
+	if !readUint16LengthPrefixedBytes(&reader, &m.signature) ||
+		!reader.Empty() {
 		return false
 	}
-	siglength := int(data[0])<<8 + int(data[1])
-	data = data[2:]
-	if len(data) != siglength {
-		return false
-	}
-
-	m.signature = data
-
 	return true
 }
 
@@ -2589,86 +2562,51 @@ func (m *newSessionTicketMsg) unmarshal(data []byte) bool {
 		panic("unknown version")
 	}
 
-	if len(data) < 8 {
+	reader := cryptobyte.String(data[4:])
+	if !reader.ReadUint32(&m.ticketLifetime) {
 		return false
 	}
-	m.ticketLifetime = uint32(data[4])<<24 | uint32(data[5])<<16 | uint32(data[6])<<8 | uint32(data[7])
-	data = data[8:]
 
 	if version >= VersionTLS13 {
-		if len(data) < 4 {
+		if !reader.ReadUint32(&m.ticketAgeAdd) ||
+			!readUint8LengthPrefixedBytes(&reader, &m.ticketNonce) {
 			return false
 		}
-		m.ticketAgeAdd = uint32(data[0])<<24 | uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3])
-		data = data[4:]
-		nonceLen := int(data[0])
-		data = data[1:]
-		if len(data) < nonceLen {
-			return false
-		}
-		m.ticketNonce = data[:nonceLen]
-		data = data[nonceLen:]
 	}
 
-	if len(data) < 2 {
+	if !readUint16LengthPrefixedBytes(&reader, &m.ticket) ||
+		(version >= VersionTLS13 && len(m.ticket) == 0) {
 		return false
 	}
-	ticketLen := int(data[0])<<8 + int(data[1])
-	data = data[2:]
-	if len(data) < ticketLen {
-		return false
-	}
-
-	if version >= VersionTLS13 && ticketLen == 0 {
-		return false
-	}
-
-	m.ticket = data[:ticketLen]
-	data = data[ticketLen:]
 
 	if version >= VersionTLS13 {
-		if len(data) < 2 {
+		var extensions cryptobyte.String
+		if !reader.ReadUint16LengthPrefixed(&extensions) || !reader.Empty() {
 			return false
 		}
 
-		extensionsLength := int(data[0])<<8 | int(data[1])
-		data = data[2:]
-		if extensionsLength != len(data) {
-			return false
-		}
-
-		for len(data) != 0 {
-			if len(data) < 4 {
-				return false
-			}
-			extension := uint16(data[0])<<8 | uint16(data[1])
-			length := int(data[2])<<8 | int(data[3])
-			data = data[4:]
-			if len(data) < length {
+		for !extensions.Empty() {
+			var extension uint16
+			var body cryptobyte.String
+			if !extensions.ReadUint16(&extension) ||
+				!extensions.ReadUint16LengthPrefixed(&body) {
 				return false
 			}
 
 			switch extension {
 			case extensionEarlyData:
-				if length != 4 {
+				if !body.ReadUint32(&m.maxEarlyDataSize) || !body.Empty() {
 					return false
 				}
-				m.maxEarlyDataSize = uint32(data[0])<<24 | uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3])
 			default:
 				if isGREASEValue(extension) {
 					m.hasGREASEExtension = true
 				}
 			}
-
-			data = data[length:]
 		}
 	}
 
-	if len(data) > 0 {
-		return false
-	}
-
-	return true
+	return reader.Empty()
 }
 
 type helloVerifyRequestMsg struct {
