@@ -161,10 +161,6 @@ struct MLKEM1024_private_key {
 // public key.
 #define MLKEM1024_PUBLIC_KEY_BYTES 1568
 
-// MLKEM1024_SHARED_SECRET_BYTES is the number of bytes in the ML-KEM-1024
-// shared secret.
-#define MLKEM1024_SHARED_SECRET_BYTES 32
-
 // MLKEM1024_generate_key generates a random public/private key pair, writes the
 // encoded public key to |out_encoded_public_key| and sets |out_private_key| to
 // the private key. If |optional_out_seed| is not NULL then the seed used to
