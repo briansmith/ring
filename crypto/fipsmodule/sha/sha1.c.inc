@@ -54,35 +54,25 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/sha.h>
-
 #include <string.h>
 
 #include <openssl/mem.h>
 
+#include "../bcm_interface.h"
 #include "../../internal.h"
 #include "../digest/md32_common.h"
 #include "../service_indicator/internal.h"
 #include "internal.h"
 
 
-int SHA1_Init(SHA_CTX *sha) {
+bcm_infallible BCM_sha1_init(SHA_CTX *sha) {
   OPENSSL_memset(sha, 0, sizeof(SHA_CTX));
   sha->h[0] = 0x67452301UL;
   sha->h[1] = 0xefcdab89UL;
   sha->h[2] = 0x98badcfeUL;
   sha->h[3] = 0x10325476UL;
   sha->h[4] = 0xc3d2e1f0UL;
-  return 1;
-}
-
-uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
-  SHA_CTX ctx;
-  SHA1_Init(&ctx);
-  SHA1_Update(&ctx, data, len);
-  SHA1_Final(out, &ctx);
-  OPENSSL_cleanse(&ctx, sizeof(ctx));
-  return out;
+  return bcm_infallible_approved;
 }
 
 #if !defined(SHA1_ASM)
@@ -90,14 +80,15 @@ static void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
                                   size_t num);
 #endif
 
-void SHA1_Transform(SHA_CTX *c, const uint8_t data[SHA_CBLOCK]) {
+bcm_infallible BCM_sha1_transform(SHA_CTX *c, const uint8_t data[SHA_CBLOCK]) {
   sha1_block_data_order(c->h, data, 1);
+  return bcm_infallible_approved;
 }
 
-int SHA1_Update(SHA_CTX *c, const void *data, size_t len) {
+bcm_infallible BCM_sha1_update(SHA_CTX *c, const void *data, size_t len) {
   crypto_md32_update(&sha1_block_data_order, c->h, c->data, SHA_CBLOCK, &c->num,
                      &c->Nh, &c->Nl, data, len);
-  return 1;
+  return bcm_infallible_approved;
 }
 
 static void sha1_output_state(uint8_t out[SHA_DIGEST_LENGTH],
@@ -109,16 +100,16 @@ static void sha1_output_state(uint8_t out[SHA_DIGEST_LENGTH],
   CRYPTO_store_u32_be(out + 16, ctx->h[4]);
 }
 
-int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
+bcm_infallible BCM_sha1_final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
   crypto_md32_final(&sha1_block_data_order, c->h, c->data, SHA_CBLOCK, &c->num,
                     c->Nh, c->Nl, /*is_big_endian=*/1);
 
   sha1_output_state(out, c);
   FIPS_service_indicator_update_state();
-  return 1;
+  return bcm_infallible_approved;
 }
 
-void CRYPTO_fips_186_2_prf(uint8_t *out, size_t out_len,
+bcm_infallible BCM_fips_186_2_prf(uint8_t *out, size_t out_len,
                            const uint8_t xkey[SHA_DIGEST_LENGTH]) {
   // XKEY and XVAL are 160-bit values, but are internally right-padded up to
   // block size. See FIPS 186-2, Appendix 3.3. This buffer maintains both the
@@ -130,8 +121,8 @@ void CRYPTO_fips_186_2_prf(uint8_t *out, size_t out_len,
     // We always use a zero XSEED, so we can merge the inner and outer loops.
     // XVAL is also always equal to XKEY.
     SHA_CTX ctx;
-    SHA1_Init(&ctx);
-    SHA1_Transform(&ctx, block);
+    BCM_sha1_init(&ctx);
+    BCM_sha1_transform(&ctx, block);
 
     // XKEY = (1 + XKEY + w_i) mod 2^b
     uint32_t carry = 1;
@@ -152,6 +143,7 @@ void CRYPTO_fips_186_2_prf(uint8_t *out, size_t out_len,
     out += SHA_DIGEST_LENGTH;
     out_len -= SHA_DIGEST_LENGTH;
   }
+  return bcm_infallible_not_approved;
 }
 
 #define Xupdate(a, ix, ia, ib, ic, id)    \

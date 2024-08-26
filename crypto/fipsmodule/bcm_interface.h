@@ -15,6 +15,8 @@
 #ifndef OPENSSL_HEADER_CRYPTO_BCM_INTERFACE_H
 #define OPENSSL_HEADER_CRYPTO_BCM_INTERFACE_H
 
+#include <openssl/bcm_public.h>
+
 // This header will eventually become the interface between BCM and the
 // rest of libcrypto. More cleanly separating the two is still a work in
 // progress (see https://crbug.com/boringssl/722) so, at the moment, we
@@ -51,6 +53,9 @@ OPENSSL_INLINE int bcm_success(bcm_status status) {
   return status == bcm_status_approved || status == bcm_status_not_approved;
 }
 
+
+// Random number generator.
+
 #if defined(BORINGSSL_FIPS)
 
 // We overread from /dev/urandom or RDRAND by a factor of 10 and XOR to whiten.
@@ -64,7 +69,7 @@ OPENSSL_INLINE int bcm_success(bcm_status status) {
 // module. The |want_additional_input| parameter is true iff the entropy was
 // obtained from a source other than the system, e.g. directly from the CPU.
 bcm_infallible BCM_rand_load_entropy(const uint8_t *entropy, size_t entropy_len,
-                       int want_additional_input);
+                                     int want_additional_input);
 
 // BCM_rand_bytes is the same as the public |RAND_bytes| function, other
 // than returning a bcm_infallible status indicator.
@@ -80,6 +85,44 @@ bcm_status BCM_rand_bytes_hwrng(uint8_t *out, size_t len);
 // bytes from |user_additional_data| in.
 bcm_infallible BCM_rand_bytes_with_additional_data(
     uint8_t *out, size_t out_len, const uint8_t user_additional_data[32]);
+
+
+// SHA-1
+
+// BCM_SHA_DIGEST_LENGTH is the length of a SHA-1 digest.
+#define BCM_SHA_DIGEST_LENGTH 20
+
+// BCM_sha1_init initialises |sha|.
+bcm_infallible BCM_sha1_init(SHA_CTX *sha);
+
+// BCM_SHA1_transform is a low-level function that performs a single, SHA-1
+// block transformation using the state from |sha| and |SHA_CBLOCK| bytes from
+// |block|.
+bcm_infallible BCM_sha1_transform(SHA_CTX *c, const uint8_t data[BCM_SHA_CBLOCK]);
+
+// BCM_sha1_update adds |len| bytes from |data| to |sha|.
+bcm_infallible BCM_sha1_update(SHA_CTX *c, const void *data, size_t len);
+
+// BCM_sha1_final adds the final padding to |sha| and writes the resulting
+// digest to |out|, which must have at least |SHA_DIGEST_LENGTH| bytes of space.
+bcm_infallible BCM_sha1_final(uint8_t out[BCM_SHA_DIGEST_LENGTH], SHA_CTX *c);
+
+
+// BCM_fips_186_2_prf derives |out_len| bytes from |xkey| using the PRF
+// defined in FIPS 186-2, Appendix 3.1, with change notice 1 applied. The b
+// parameter is 160 and seed, XKEY, is also 160 bits. The optional XSEED user
+// input is all zeros.
+//
+// The PRF generates a sequence of 320-bit numbers. Each number is encoded as a
+// 40-byte string in big-endian and then concatenated to form |out|. If
+// |out_len| is not a multiple of 40, the result is truncated. This matches the
+// construction used in Section 7 of RFC 4186 and Section 7 of RFC 4187.
+//
+// This PRF is based on SHA-1, a weak hash function, and should not be used
+// in new protocols. It is provided for compatibility with some legacy EAP
+// methods.
+bcm_infallible BCM_fips_186_2_prf(uint8_t *out, size_t out_len,
+                                  const uint8_t xkey[BCM_SHA_DIGEST_LENGTH]);
 
 
 #if defined(__cplusplus)

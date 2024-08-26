@@ -74,20 +74,20 @@
 
 
 static void sha1_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA1_Init(ctx->md_data));
+  BCM_sha1_init(ctx->md_data);
 }
 
 static void sha1_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA1_Update(ctx->md_data, data, count));
+  BCM_sha1_update(ctx->md_data, data, count);
 }
 
 static void sha1_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA1_Final(md, ctx->md_data));
+  BCM_sha1_final(md, ctx->md_data);
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha1) {
   out->type = NID_sha1;
-  out->md_size = SHA_DIGEST_LENGTH;
+  out->md_size = BCM_SHA_DIGEST_LENGTH;
   out->flags = 0;
   out->init = sha1_init;
   out->update = sha1_update;

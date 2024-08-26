@@ -58,6 +58,7 @@
 #define OPENSSL_HEADER_SHA_H
 
 #include <openssl/base.h>
+#include <openssl/bcm_public.h> // IWYU pragma: export
 
 #if defined(__cplusplus)
 extern "C" {
@@ -111,29 +112,6 @@ OPENSSL_EXPORT void SHA1_Transform(SHA_CTX *sha,
 // methods.
 OPENSSL_EXPORT void CRYPTO_fips_186_2_prf(
     uint8_t *out, size_t out_len, const uint8_t xkey[SHA_DIGEST_LENGTH]);
-
-struct sha_state_st {
-#if defined(__cplusplus) || defined(OPENSSL_WINDOWS)
-  uint32_t h[5];
-#else
-  // wpa_supplicant accesses |h0|..|h4| so we must support those names for
-  // compatibility with it until it can be updated. Anonymous unions are only
-  // standard in C11, so disable this workaround in C++.
-  union {
-    uint32_t h[5];
-    struct {
-      uint32_t h0;
-      uint32_t h1;
-      uint32_t h2;
-      uint32_t h3;
-      uint32_t h4;
-    };
-  };
-#endif
-  uint32_t Nl, Nh;
-  uint8_t data[SHA_CBLOCK];
-  unsigned num;
-};
 
 
 // SHA-224.

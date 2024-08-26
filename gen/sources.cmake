@@ -411,6 +411,7 @@ set(
   crypto/rsa_extra/rsa_asn1.c
   crypto/rsa_extra/rsa_crypt.c
   crypto/rsa_extra/rsa_print.c
+  crypto/sha/sha1.c
   crypto/siphash/siphash.c
   crypto/spx/spx.c
   crypto/spx/spx_address.c
@@ -512,6 +513,7 @@ set(
   include/openssl/asn1t.h
   include/openssl/base.h
   include/openssl/base64.h
+  include/openssl/bcm_public.h
   include/openssl/bio.h
   include/openssl/blake2.h
   include/openssl/blowfish.h
