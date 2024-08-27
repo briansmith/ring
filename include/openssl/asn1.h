@@ -468,7 +468,8 @@ DECLARE_ASN1_ITEM(ASN1_FBOOLEAN)
 
 // An asn1_string_st (aka |ASN1_STRING|) represents a value of a string-like
 // ASN.1 type. It contains a |type| field, and a byte string |data| field with a
-// type-specific representation.
+// type-specific representation. This type-specific representation does not
+// always correspond to the DER encoding of the type.
 //
 // If |type| is one of |V_ASN1_OCTET_STRING|, |V_ASN1_UTF8STRING|,
 // |V_ASN1_NUMERICSTRING|, |V_ASN1_PRINTABLESTRING|, |V_ASN1_T61STRING|,
@@ -568,6 +569,10 @@ OPENSSL_EXPORT int ASN1_STRING_type(const ASN1_STRING *str);
 // ASN1_STRING_get0_data returns a pointer to |str|'s contents. Callers should
 // use |ASN1_STRING_length| to determine the length of the string. The string
 // may have embedded NUL bytes and may not be NUL-terminated.
+//
+// The contents of an |ASN1_STRING| encode the value in some type-specific
+// representation that does not always correspond to the DER encoding of the
+// type. See the documentation for |ASN1_STRING| for details.
 OPENSSL_EXPORT const unsigned char *ASN1_STRING_get0_data(
     const ASN1_STRING *str);
 
@@ -575,10 +580,18 @@ OPENSSL_EXPORT const unsigned char *ASN1_STRING_get0_data(
 // should use |ASN1_STRING_length| to determine the length of the string. The
 // string may have embedded NUL bytes and may not be NUL-terminated.
 //
+// The contents of an |ASN1_STRING| encode the value in some type-specific
+// representation that does not always correspond to the DER encoding of the
+// type. See the documentation for |ASN1_STRING| for details.
+//
 // Prefer |ASN1_STRING_get0_data|.
 OPENSSL_EXPORT unsigned char *ASN1_STRING_data(ASN1_STRING *str);
 
 // ASN1_STRING_length returns the length of |str|, in bytes.
+//
+// The contents of an |ASN1_STRING| encode the value in some type-specific
+// representation that does not always correspond to the DER encoding of the
+// type. See the documentation for |ASN1_STRING| for details.
 OPENSSL_EXPORT int ASN1_STRING_length(const ASN1_STRING *str);
 
 // ASN1_STRING_cmp compares |a| and |b|'s type and contents. It returns an
