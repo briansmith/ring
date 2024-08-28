@@ -17,6 +17,8 @@
 
 #include <stdlib.h>
 
+#include <openssl/aes.h>
+
 #include "../../internal.h"
 
 #if defined(__cplusplus)
