@@ -75,7 +75,6 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa.c.inc
   crypto/fipsmodule/hkdf/hkdf.c.inc
   crypto/fipsmodule/hmac/hmac.c.inc
-  crypto/fipsmodule/md5/md5.c.inc
   crypto/fipsmodule/modes/cbc.c.inc
   crypto/fipsmodule/modes/cfb.c.inc
   crypto/fipsmodule/modes/ctr.c.inc
@@ -142,10 +141,6 @@ set(
   gen/bcm/ghashv8-armv8-apple.S
   gen/bcm/ghashv8-armv8-linux.S
   gen/bcm/ghashv8-armv8-win.S
-  gen/bcm/md5-586-apple.S
-  gen/bcm/md5-586-linux.S
-  gen/bcm/md5-x86_64-apple.S
-  gen/bcm/md5-x86_64-linux.S
   gen/bcm/p256-armv8-asm-apple.S
   gen/bcm/p256-armv8-asm-linux.S
   gen/bcm/p256-armv8-asm-win.S
@@ -214,8 +209,6 @@ set(
   gen/bcm/ghash-ssse3-x86_64-win.asm
   gen/bcm/ghash-x86-win.asm
   gen/bcm/ghash-x86_64-win.asm
-  gen/bcm/md5-586-win.asm
-  gen/bcm/md5-x86_64-win.asm
   gen/bcm/p256-x86_64-asm-win.asm
   gen/bcm/p256_beeu-x86_64-asm-win.asm
   gen/bcm/rdrand-x86_64-win.asm
@@ -380,6 +373,7 @@ set(
   crypto/kyber/kyber.c
   crypto/lhash/lhash.c
   crypto/md4/md4.c
+  crypto/md5/md5.c
   crypto/mem.c
   crypto/mldsa/mldsa.c
   crypto/mlkem/mlkem.cc
@@ -632,7 +626,6 @@ set(
   crypto/fipsmodule/ec/p256-nistz.h
   crypto/fipsmodule/ec/p256_table.h
   crypto/fipsmodule/ecdsa/internal.h
-  crypto/fipsmodule/md5/internal.h
   crypto/fipsmodule/modes/internal.h
   crypto/fipsmodule/rand/internal.h
   crypto/fipsmodule/rsa/internal.h
@@ -644,6 +637,7 @@ set(
   crypto/keccak/internal.h
   crypto/kyber/internal.h
   crypto/lhash/internal.h
+  crypto/md5/internal.h
   crypto/mldsa/internal.h
   crypto/mlkem/internal.h
   crypto/obj/obj_dat.h
@@ -694,6 +688,10 @@ set(
   gen/crypto/chacha20_poly1305_armv8-win.S
   gen/crypto/chacha20_poly1305_x86_64-apple.S
   gen/crypto/chacha20_poly1305_x86_64-linux.S
+  gen/crypto/md5-586-apple.S
+  gen/crypto/md5-586-linux.S
+  gen/crypto/md5-x86_64-apple.S
+  gen/crypto/md5-x86_64-linux.S
   third_party/fiat/asm/fiat_curve25519_adx_mul.S
   third_party/fiat/asm/fiat_curve25519_adx_square.S
 )
@@ -705,6 +703,8 @@ set(
   gen/crypto/chacha-x86-win.asm
   gen/crypto/chacha-x86_64-win.asm
   gen/crypto/chacha20_poly1305_x86_64-win.asm
+  gen/crypto/md5-586-win.asm
+  gen/crypto/md5-x86_64-win.asm
 )
 
 set(
@@ -746,7 +746,6 @@ set(
   crypto/fipsmodule/ec/p256_test.cc
   crypto/fipsmodule/ecdsa/ecdsa_test.cc
   crypto/fipsmodule/hkdf/hkdf_test.cc
-  crypto/fipsmodule/md5/md5_test.cc
   crypto/fipsmodule/modes/gcm_test.cc
   crypto/fipsmodule/rand/ctrdrbg_test.cc
   crypto/fipsmodule/service_indicator/service_indicator_test.cc
@@ -758,6 +757,7 @@ set(
   crypto/keccak/keccak_test.cc
   crypto/kyber/kyber_test.cc
   crypto/lhash/lhash_test.cc
+  crypto/md5/md5_test.cc
   crypto/mldsa/mldsa_test.cc
   crypto/mlkem/mlkem_test.cc
   crypto/obj/obj_test.cc

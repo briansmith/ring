@@ -59,7 +59,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/md5.h>
 #include <openssl/nid.h>
 #include <openssl/sha.h>
 
@@ -72,30 +71,6 @@
 #else
 #define CHECK(x) assert(x)
 #endif
-
-
-static void md5_init(EVP_MD_CTX *ctx) {
-  CHECK(MD5_Init(ctx->md_data));
-}
-
-static void md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(MD5_Update(ctx->md_data, data, count));
-}
-
-static void md5_final(EVP_MD_CTX *ctx, uint8_t *out) {
-  CHECK(MD5_Final(out, ctx->md_data));
-}
-
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5) {
-  out->type = NID_md5;
-  out->md_size = MD5_DIGEST_LENGTH;
-  out->flags = 0;
-  out->init = md5_init;
-  out->update = md5_update;
-  out->final = md5_final;
-  out->block_size = 64;
-  out->ctx_size = sizeof(MD5_CTX);
-}
 
 
 static void sha1_init(EVP_MD_CTX *ctx) {
@@ -239,41 +214,6 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_256) {
   out->final = sha512_256_final;
   out->block_size = 128;
   out->ctx_size = sizeof(SHA512_CTX);
-}
-
-
-typedef struct {
-  MD5_CTX md5;
-  SHA_CTX sha1;
-} MD5_SHA1_CTX;
-
-static void md5_sha1_init(EVP_MD_CTX *md_ctx) {
-  MD5_SHA1_CTX *ctx = md_ctx->md_data;
-  CHECK(MD5_Init(&ctx->md5) && SHA1_Init(&ctx->sha1));
-}
-
-static void md5_sha1_update(EVP_MD_CTX *md_ctx, const void *data,
-                            size_t count) {
-  MD5_SHA1_CTX *ctx = md_ctx->md_data;
-  CHECK(MD5_Update(&ctx->md5, data, count) &&
-        SHA1_Update(&ctx->sha1, data, count));
-}
-
-static void md5_sha1_final(EVP_MD_CTX *md_ctx, uint8_t *out) {
-  MD5_SHA1_CTX *ctx = md_ctx->md_data;
-  CHECK(MD5_Final(out, &ctx->md5) &&
-        SHA1_Final(out + MD5_DIGEST_LENGTH, &ctx->sha1));
-}
-
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5_sha1) {
-  out->type = NID_md5_sha1;
-  out->md_size = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
-  out->flags = 0;
-  out->init = md5_sha1_init;
-  out->update = md5_sha1_update;
-  out->final = md5_sha1_final;
-  out->block_size = 64;
-  out->ctx_size = sizeof(MD5_SHA1_CTX);
 }
 
 #undef CHECK

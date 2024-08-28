@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "internal.h"
-#include "../../test/abi_test.h"
+#include "../test/abi_test.h"
 
 
 #if defined(MD5_ASM) && defined(SUPPORTS_ABI_TEST)

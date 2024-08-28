@@ -60,8 +60,8 @@
 
 #include <openssl/mem.h>
 
-#include "../../internal.h"
-#include "../digest/md32_common.h"
+#include "../internal.h"
+#include "../fipsmodule/digest/md32_common.h"
 #include "internal.h"
 
 

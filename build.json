@@ -68,7 +68,6 @@
             "crypto/fipsmodule/ecdsa/ecdsa.c.inc",
             "crypto/fipsmodule/hkdf/hkdf.c.inc",
             "crypto/fipsmodule/hmac/hmac.c.inc",
-            "crypto/fipsmodule/md5/md5.c.inc",
             "crypto/fipsmodule/modes/cbc.c.inc",
             "crypto/fipsmodule/modes/cfb.c.inc",
             "crypto/fipsmodule/modes/ctr.c.inc",
@@ -125,7 +124,6 @@
             {"src": "crypto/fipsmodule/bn/asm/co-586.pl"},
             {"src": "crypto/fipsmodule/modes/asm/ghash-ssse3-x86.pl"},
             {"src": "crypto/fipsmodule/modes/asm/ghash-x86.pl"},
-            {"src": "crypto/fipsmodule/md5/asm/md5-586.pl"},
             {"src": "crypto/fipsmodule/sha/asm/sha1-586.pl"},
             {"src": "crypto/fipsmodule/sha/asm/sha256-586.pl"},
             {"src": "crypto/fipsmodule/sha/asm/sha512-586.pl"},
@@ -137,7 +135,6 @@
             {"src": "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"},
             {"src": "crypto/fipsmodule/modes/asm/ghash-ssse3-x86_64.pl"},
             {"src": "crypto/fipsmodule/modes/asm/ghash-x86_64.pl"},
-            {"src": "crypto/fipsmodule/md5/asm/md5-x86_64.pl"},
             {"src": "crypto/fipsmodule/ec/asm/p256_beeu-x86_64-asm.pl"},
             {"src": "crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl"},
             {"src": "crypto/fipsmodule/rand/asm/rdrand-x86_64.pl"},
@@ -267,6 +264,7 @@
             "crypto/kyber/kyber.c",
             "crypto/lhash/lhash.c",
             "crypto/md4/md4.c",
+            "crypto/md5/md5.c",
             "crypto/mem.c",
             "crypto/mldsa/mldsa.c",
             "crypto/mlkem/mlkem.cc",
@@ -511,7 +509,6 @@
             "crypto/fipsmodule/ec/p256-nistz.h",
             "crypto/fipsmodule/ec/p256_table.h",
             "crypto/fipsmodule/ecdsa/internal.h",
-            "crypto/fipsmodule/md5/internal.h",
             "crypto/fipsmodule/modes/internal.h",
             "crypto/fipsmodule/rand/internal.h",
             "crypto/fipsmodule/rsa/internal.h",
@@ -524,6 +521,7 @@
             "crypto/keccak/internal.h",
             "crypto/kyber/internal.h",
             "crypto/lhash/internal.h",
+            "crypto/md5/internal.h",
             "crypto/mldsa/internal.h",
             "crypto/mlkem/internal.h",
             "crypto/obj/obj_dat.h",
@@ -570,12 +568,14 @@
             {"src": "crypto/chacha/asm/chacha-armv4.pl"}
         ],
         "perlasm_x86": [
-            {"src": "crypto/chacha/asm/chacha-x86.pl"}
+            {"src": "crypto/chacha/asm/chacha-x86.pl"},
+            {"src": "crypto/md5/asm/md5-586.pl"}
         ],
         "perlasm_x86_64": [
             {"src": "crypto/chacha/asm/chacha-x86_64.pl"},
             {"src": "crypto/cipher_extra/asm/aes128gcmsiv-x86_64.pl"},
-            {"src": "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl"}
+            {"src": "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl"},
+            {"src": "crypto/md5/asm/md5-x86_64.pl"}
         ]
     },
     "pki": {
@@ -828,7 +828,6 @@
             "crypto/fipsmodule/ec/p256_test.cc",
             "crypto/fipsmodule/ecdsa/ecdsa_test.cc",
             "crypto/fipsmodule/hkdf/hkdf_test.cc",
-            "crypto/fipsmodule/md5/md5_test.cc",
             "crypto/fipsmodule/modes/gcm_test.cc",
             "crypto/fipsmodule/rand/ctrdrbg_test.cc",
             "crypto/fipsmodule/service_indicator/service_indicator_test.cc",
@@ -840,6 +839,7 @@
             "crypto/keccak/keccak_test.cc",
             "crypto/kyber/kyber_test.cc",
             "crypto/lhash/lhash_test.cc",
+            "crypto/md5/md5_test.cc",
             "crypto/mlkem/mlkem_test.cc",
             "crypto/obj/obj_test.cc",
             "crypto/pem/pem_test.cc",
