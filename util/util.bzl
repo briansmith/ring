@@ -123,14 +123,14 @@ def handle_mixed_c_cxx(
         )
 
         # Build the remainder as a C++-only target.
-        deps += [":" + name_c]
+        deps = deps + [":" + name_c]
         srcs = [src for src in srcs if not src.endswith(".c")]
         has_c = False
 
     if has_c:
-        copts += boringssl_copts_c
+        copts = copts + boringssl_copts_c
     else:
-        copts += boringssl_copts_cxx
+        copts = copts + boringssl_copts_cxx
 
     return copts, deps, srcs
 
