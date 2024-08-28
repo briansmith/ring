@@ -44,6 +44,12 @@ load(
 )
 load(":util/util.bzl", "bssl_cc_binary", "bssl_cc_library", "bssl_cc_test")
 
+# Disable the parse_headers feature. It does not work well in C right now. See
+# https://github.com/bazelbuild/bazel/issues/23460 for details. When that is
+# fixed, if enabled, we likely also need to rename some headers to .inc per
+# https://google.github.io/styleguide/cppguide.html#Self_contained_Headers
+package(features = ["-parse_headers"])
+
 licenses(["notice"])
 
 exports_files(["LICENSE"])
