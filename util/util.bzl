@@ -107,12 +107,13 @@ def handle_mixed_c_cxx(
 
     # If a target has both C and C++, we need to split it in two.
     if has_c and has_cxx:
-        srcs_c = [src for src in srcs if src.endswith(".c") or src.endswith(".h")]
-        name_c = name + "_c"
+        # Pull the C++ files out.
+        srcs_cxx = [src for src in srcs if src.endswith(".cc") or src.endswith(".h")]
+        name_cxx = name + "_cxx"
         cc_library(
-            name = name_c,
-            srcs = srcs_c + internal_hdrs,
-            copts = copts + boringssl_copts_c,
+            name = name_cxx,
+            srcs = srcs_cxx + internal_hdrs,
+            copts = copts + boringssl_copts_cxx,
             includes = includes,
             # This target only exists to be linked into the main library, so
             # always link it statically.
@@ -122,10 +123,10 @@ def handle_mixed_c_cxx(
             testonly = testonly,
         )
 
-        # Build the remainder as a C++-only target.
-        deps = deps + [":" + name_c]
-        srcs = [src for src in srcs if not src.endswith(".c")]
-        has_c = False
+        # Build the remainder as a C-only target.
+        deps = deps + [":" + name_cxx]
+        srcs = [src for src in srcs if not src.endswith(".cc")]
+        has_cxx = False
 
     if has_c:
         copts = copts + boringssl_copts_c
