@@ -1400,7 +1400,7 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		}
 	}
 
-	if !c.config.Bugs.SkipChangeCipherSpec && !hs.hello.hasEarlyData {
+	if !c.config.Bugs.SkipChangeCipherSpec && !hs.hello.hasEarlyData && !c.isDTLS {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
