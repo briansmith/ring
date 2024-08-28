@@ -75,7 +75,6 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa.c.inc
   crypto/fipsmodule/hkdf/hkdf.c.inc
   crypto/fipsmodule/hmac/hmac.c.inc
-  crypto/fipsmodule/md4/md4.c.inc
   crypto/fipsmodule/md5/md5.c.inc
   crypto/fipsmodule/modes/cbc.c.inc
   crypto/fipsmodule/modes/cfb.c.inc
@@ -380,6 +379,7 @@ set(
   crypto/keccak/keccak.c
   crypto/kyber/kyber.c
   crypto/lhash/lhash.c
+  crypto/md4/md4.c
   crypto/mem.c
   crypto/mldsa/mldsa.c
   crypto/mlkem/mlkem.cc

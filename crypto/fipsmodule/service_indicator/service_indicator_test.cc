@@ -1900,6 +1900,8 @@ TEST(ServiceIndicatorTest, SHA) {
 
   std::vector<uint8_t> digest;
 
+  // MD4 is no longer of FIPS - this is retained for now to mimic previous
+  // behavior.
   digest.resize(MD4_DIGEST_LENGTH);
   MD4_CTX md4_ctx;
   ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(approved, MD4_Init(&md4_ctx)));

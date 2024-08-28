@@ -61,6 +61,7 @@
 #include <openssl/blake2.h>
 #include <openssl/bytestring.h>
 #include <openssl/obj.h>
+#include <openssl/md4.h>
 #include <openssl/nid.h>
 
 #include "../asn1/internal.h"
@@ -264,3 +265,29 @@ static const EVP_MD evp_md_blake2b256 = {
 };
 
 const EVP_MD *EVP_blake2b256(void) { return &evp_md_blake2b256; }
+
+
+static void md4_init(EVP_MD_CTX *ctx) {
+  BSSL_CHECK(MD4_Init(ctx->md_data));
+}
+
+static void md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+  BSSL_CHECK(MD4_Update(ctx->md_data, data, count));
+}
+
+static void md4_final(EVP_MD_CTX *ctx, uint8_t *out) {
+  BSSL_CHECK(MD4_Final(out, ctx->md_data));
+}
+
+static const EVP_MD evp_md_md4 = {
+  NID_md4,
+  MD4_DIGEST_LENGTH,
+  0,
+  md4_init,
+  md4_update,
+  md4_final,
+  64,
+  sizeof(MD4_CTX),
+};
+
+const EVP_MD *EVP_md4(void) { return &evp_md_md4; }

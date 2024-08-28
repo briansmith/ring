@@ -85,7 +85,6 @@
 #include "ec/wnaf.c.inc"
 #include "hkdf/hkdf.c.inc"
 #include "hmac/hmac.c.inc"
-#include "md4/md4.c.inc"
 #include "md5/md5.c.inc"
 #include "modes/cbc.c.inc"
 #include "modes/cfb.c.inc"
