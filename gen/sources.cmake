@@ -617,6 +617,7 @@ set(
   crypto/ec_extra/internal.h
   crypto/err/internal.h
   crypto/evp/internal.h
+  crypto/fipsmodule/aes/internal.h
   crypto/fipsmodule/bcm_interface.h
   crypto/fipsmodule/bn/internal.h
   crypto/fipsmodule/bn/rsaz_exp.h
@@ -768,7 +769,6 @@ set(
   crypto/pool/pool_test.cc
   crypto/rand_extra/fork_detect_test.cc
   crypto/rand_extra/getentropy_test.cc
-  crypto/rand_extra/rand_test.cc
   crypto/rand_extra/rand_test.cc
   crypto/refcount_test.cc
   crypto/rsa_extra/rsa_test.cc
