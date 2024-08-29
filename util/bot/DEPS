@@ -15,8 +15,12 @@
 vars = {
   'chromium_git': 'https://chromium.googlesource.com',
 
+  'checkout_bazel': False,
   'checkout_clang': False,
+  'checkout_cmake': True,
+  'checkout_go': True,
   'checkout_fuzzer': False,
+  'checkout_perl': True,
   'checkout_sde': False,
   'checkout_nasm': False,
   'checkout_libcxx': False,
@@ -26,6 +30,8 @@ vars = {
   # Run the following command to see the latest builds in CIPD:
   #  cipd describe PACKAGE_NAME -version latest
 
+  # infra/3pp/tools/bazel_bootstrap/linux-amd64
+  'bazel_version': 'version:3@7.3.1.1',
   # infra/3pp/tools/cmake/linux-amd64
   'cmake_version': 'version:3@3.30.2.chromium.8',
   # infra/3pp/tools/go/linux-amd64
@@ -66,11 +72,21 @@ deps = {
     'dep_type': 'cipd',
   },
 
+  'boringssl/util/bot/bazel': {
+    'packages': [{
+      'package': 'infra/3pp/tools/bazel_bootstrap/${{platform}}',
+      'version': Var('bazel_version'),
+    }],
+    'condition': 'checkout_bazel',
+    'dep_type': 'cipd',
+  },
+
   'boringssl/util/bot/cmake': {
     'packages': [{
       'package': 'infra/3pp/tools/cmake/${{platform}}',
       'version': Var('cmake_version'),
     }],
+    'condition': 'checkout_cmake',
     'dep_type': 'cipd',
   },
 
@@ -79,6 +95,7 @@ deps = {
       'package': 'infra/3pp/tools/go/${{platform}}',
       'version': Var('go_version'),
     }],
+    'condition': 'checkout_go',
     'dep_type': 'cipd',
   },
 
@@ -101,6 +118,7 @@ deps = {
       'package': 'infra/3pp/tools/ninja/${{platform}}',
       'version': Var('ninja_version'),
     }],
+    'condition': 'checkout_cmake',
     'dep_type': 'cipd',
   },
 
@@ -109,7 +127,7 @@ deps = {
       'package': 'infra/3pp/tools/perl/${{platform}}',
       'version': Var('perl_version'),
     }],
-    'condition': 'host_os == "win"',
+    'condition': 'host_os == "win" and checkout_perl',
     'dep_type': 'cipd',
   },
 
