@@ -312,12 +312,11 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
     const unsigned iv_len = EVP_CIPHER_iv_length(enc);
 
     if (pass == NULL) {
-      pass_len = 0;
       if (!callback) {
         callback = PEM_def_callback;
       }
       pass_len = (*callback)(buf, PEM_BUFSIZE, 1, u);
-      if (pass_len <= 0) {
+      if (pass_len < 0) {
         OPENSSL_PUT_ERROR(PEM, PEM_R_READ_KEY);
         goto err;
       }
@@ -393,7 +392,7 @@ int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data, long *plen,
     callback = PEM_def_callback;
   }
   pass_len = callback(buf, PEM_BUFSIZE, 0, u);
-  if (pass_len <= 0) {
+  if (pass_len < 0) {
     OPENSSL_PUT_ERROR(PEM, PEM_R_BAD_PASSWORD_READ);
     return 0;
   }
@@ -779,11 +778,11 @@ err:
 
 int PEM_def_callback(char *buf, int size, int rwflag, void *userdata) {
   if (!buf || !userdata || size < 0) {
-    return 0;
+    return -1;
   }
   size_t len = strlen((char *)userdata);
   if (len >= (size_t)size) {
-    return 0;
+    return -1;
   }
   OPENSSL_strlcpy(buf, userdata, (size_t)size);
   return (int)len;

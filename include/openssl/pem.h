@@ -385,10 +385,9 @@ OPENSSL_EXPORT int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp,
                                   pem_password_cb *callback, void *u);
 
 // PEM_def_callback treats |userdata| as a string and copies it into |buf|,
-// assuming its |size| is sufficient. Returns the length of the string, or 0
-// if there is not enough room. If either |buf| or |userdata| is NULL, 0 is
-// returned. Note that this is different from OpenSSL, which prompts for a
-// password.
+// assuming its |size| is sufficient. Returns the length of the string, or -1 on
+// error. Error cases the buffer being too small, or |buf| and |userdata| being
+// NULL. Note that this is different from OpenSSL, which prompts for a password.
 OPENSSL_EXPORT int PEM_def_callback(char *buf, int size, int rwflag,
                                     void *userdata);
 
