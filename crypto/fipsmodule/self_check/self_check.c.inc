@@ -32,6 +32,7 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
+#include "../../bcm_support.h"
 #include "../../internal.h"
 #include "../delocate.h"
 #include "../dh/internal.h"
@@ -53,21 +54,22 @@ int BORINGSSL_self_test(void) {
 
 #else
 
-static void hexdump(const uint8_t *in, size_t len) {
+static void hexdump(FILE *out, const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; i++) {
-    fprintf(stderr, "%02x", in[i]);
+    fprintf(out, "%02x", in[i]);
   }
 }
 
 static int check_test(const void *expected, const void *actual,
                       size_t expected_len, const char *name) {
   if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
-    fprintf(stderr, "%s failed.\nExpected:   ", name);
-    hexdump(expected, expected_len);
-    fprintf(stderr, "\nCalculated: ");
-    hexdump(actual, expected_len);
-    fprintf(stderr, "\n");
-    fflush(stderr);
+    FILE *err = CRYPTO_get_stderr();
+    fprintf(err, "%s failed.\nExpected:   ", name);
+    hexdump(err, expected, expected_len);
+    fprintf(err, "\nCalculated: ");
+    hexdump(err, actual, expected_len);
+    fprintf(err, "\n");
+    fflush(err);
     return 0;
   }
   return 1;
@@ -294,7 +296,7 @@ static int boringssl_self_test_rsa(void) {
 
   RSA *const rsa_key = self_test_rsa_key();
   if (rsa_key == NULL) {
-    fprintf(stderr, "RSA key construction failed\n");
+    fprintf(CRYPTO_get_stderr(), "RSA key construction failed\n");
     goto err;
   }
   // Disable blinding for the power-on tests because it's not needed and
@@ -338,7 +340,7 @@ static int boringssl_self_test_rsa(void) {
                              output, &sig_len, rsa_key) ||
       !check_test(kRSASignSignature, output, sizeof(kRSASignSignature),
                   "RSA-sign KAT")) {
-    fprintf(stderr, "RSA signing test failed.\n");
+    fprintf(CRYPTO_get_stderr(), "RSA signing test failed.\n");
     goto err;
   }
 
@@ -376,7 +378,7 @@ static int boringssl_self_test_rsa(void) {
   if (!rsa_verify_no_self_test(NID_sha256, kRSAVerifyDigest,
                                sizeof(kRSAVerifyDigest), kRSAVerifySignature,
                                sizeof(kRSAVerifySignature), rsa_key)) {
-    fprintf(stderr, "RSA-verify KAT failed.\n");
+    fprintf(CRYPTO_get_stderr(), "RSA-verify KAT failed.\n");
     goto err;
   }
 
@@ -397,7 +399,7 @@ static int boringssl_self_test_ecc(void) {
 
   ec_key = self_test_ecdsa_key();
   if (ec_key == NULL) {
-    fprintf(stderr, "ECDSA KeyGen failed\n");
+    fprintf(CRYPTO_get_stderr(), "ECDSA KeyGen failed\n");
     goto err;
   }
 
@@ -429,7 +431,7 @@ static int boringssl_self_test_ecc(void) {
           sizeof(ecdsa_k)) ||
       !check_test(kECDSASignSig, ecdsa_sign_output, sizeof(ecdsa_sign_output),
                   "ECDSA-sign signature")) {
-    fprintf(stderr, "ECDSA-sign KAT failed.\n");
+    fprintf(CRYPTO_get_stderr(), "ECDSA-sign KAT failed.\n");
     goto err;
   }
 
@@ -450,7 +452,7 @@ static int boringssl_self_test_ecc(void) {
   if (!ecdsa_verify_fixed_no_self_test(
           kECDSAVerifyDigest, sizeof(kECDSAVerifyDigest), kECDSAVerifySig,
           sizeof(kECDSAVerifySig), ec_key)) {
-    fprintf(stderr, "ECDSA-verify KAT failed.\n");
+    fprintf(CRYPTO_get_stderr(), "ECDSA-verify KAT failed.\n");
     goto err;
   }
 
@@ -496,7 +498,7 @@ static int boringssl_self_test_ecc(void) {
                           z_comp_result, sizeof(z_comp_result), NULL) ||
       !check_test(kP256PointResult, z_comp_result, sizeof(z_comp_result),
                   "Z Computation Result")) {
-    fprintf(stderr, "Z-computation KAT failed.\n");
+    fprintf(CRYPTO_get_stderr(), "Z-computation KAT failed.\n");
     goto err;
   }
 
@@ -575,7 +577,7 @@ static int boringssl_self_test_ffdh(void) {
       dh_compute_key_padded_no_self_test(dh_out, ffdhe2048_value, dh) !=
           sizeof(dh_out) ||
       !check_test(kDHOutput, dh_out, sizeof(dh_out), "FFC DH")) {
-    fprintf(stderr, "FFDH failed.\n");
+    fprintf(CRYPTO_get_stderr(), "FFDH failed.\n");
     goto err;
   }
 
@@ -723,7 +725,7 @@ static int boringssl_self_test_fast(void) {
   };
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
   if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
-    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    fprintf(CRYPTO_get_stderr(), "AES_set_encrypt_key failed.\n");
     goto err;
   }
   AES_cbc_encrypt(kAESCBCEncPlaintext, output, sizeof(kAESCBCEncPlaintext),
@@ -746,7 +748,7 @@ static int boringssl_self_test_fast(void) {
   };
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
   if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
-    fprintf(stderr, "AES_set_decrypt_key failed.\n");
+    fprintf(CRYPTO_get_stderr(), "AES_set_decrypt_key failed.\n");
     goto err;
   }
   AES_cbc_encrypt(kAESCBCDecCiphertext, output, sizeof(kAESCBCDecCiphertext),
@@ -761,7 +763,7 @@ static int boringssl_self_test_fast(void) {
   OPENSSL_memset(nonce, 0, sizeof(nonce));
   if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm(), kAESKey,
                          sizeof(kAESKey), 0, NULL)) {
-    fprintf(stderr, "EVP_AEAD_CTX_init for AES-128-GCM failed.\n");
+    fprintf(CRYPTO_get_stderr(), "EVP_AEAD_CTX_init for AES-128-GCM failed.\n");
     goto err;
   }
 
@@ -783,7 +785,7 @@ static int boringssl_self_test_fast(void) {
                          0) ||
       !check_test(kAESGCMCiphertext, output, sizeof(kAESGCMCiphertext),
                   "AES-GCM-encrypt KAT")) {
-    fprintf(stderr, "EVP_AEAD_CTX_seal for AES-128-GCM failed.\n");
+    fprintf(CRYPTO_get_stderr(), "EVP_AEAD_CTX_seal for AES-128-GCM failed.\n");
     goto err;
   }
 
@@ -806,7 +808,7 @@ static int boringssl_self_test_fast(void) {
                          NULL, 0) ||
       !check_test(kAESGCMDecPlaintext, output, sizeof(kAESGCMDecPlaintext),
                   "AES-GCM-decrypt KAT")) {
-    fprintf(stderr,
+    fprintf(CRYPTO_get_stderr(),
             "AES-GCM-decrypt KAT failed because EVP_AEAD_CTX_open failed.\n");
     goto err;
   }
@@ -875,7 +877,7 @@ static int boringssl_self_test_fast(void) {
                          sizeof(kDRBGAD)) ||
       !check_test(kDRBGReseedOutput, output, sizeof(kDRBGReseedOutput),
                   "DRBG-reseed KAT")) {
-    fprintf(stderr, "CTR-DRBG failed.\n");
+    fprintf(CRYPTO_get_stderr(), "CTR-DRBG failed.\n");
     goto err;
   }
   CTR_DRBG_clear(&drbg);
@@ -914,7 +916,7 @@ static int boringssl_self_test_fast(void) {
                        kTLSSeed2, sizeof(kTLSSeed2)) ||
       !check_test(kTLS10Output, tls10_output, sizeof(kTLS10Output),
                   "TLS10-KDF KAT")) {
-    fprintf(stderr, "TLS KDF failed.\n");
+    fprintf(CRYPTO_get_stderr(), "TLS KDF failed.\n");
     goto err;
   }
 
@@ -935,7 +937,7 @@ static int boringssl_self_test_fast(void) {
                        kTLSSeed2, sizeof(kTLSSeed2)) ||
       !check_test(kTLS12Output, tls12_output, sizeof(kTLS12Output),
                   "TLS12-KDF KAT")) {
-    fprintf(stderr, "TLS KDF failed.\n");
+    fprintf(CRYPTO_get_stderr(), "TLS KDF failed.\n");
     goto err;
   }
 
@@ -975,7 +977,7 @@ static int boringssl_self_test_fast(void) {
       !check_test(kTLS13ExpandLabelOutput, tls13_expand_label_output,
                   sizeof(kTLS13ExpandLabelOutput),
                   "CRYPTO_tls13_hkdf_expand_label")) {
-    fprintf(stderr, "TLS13-KDF failed.\n");
+    fprintf(CRYPTO_get_stderr(), "TLS13-KDF failed.\n");
     goto err;
   }
 
@@ -1005,7 +1007,7 @@ static int boringssl_self_test_fast(void) {
             sizeof(kHKDFSecret), kHKDFSalt, sizeof(kHKDFSalt), kHKDFInfo,
             sizeof(kHKDFInfo)) ||
       !check_test(kHKDFOutput, hkdf_output, sizeof(kHKDFOutput), "HKDF")) {
-    fprintf(stderr, "HKDF failed.\n");
+    fprintf(CRYPTO_get_stderr(), "HKDF failed.\n");
     goto err;
   }
 

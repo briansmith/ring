@@ -275,7 +275,7 @@ static void rand_get_seed(struct rand_thread_state *state,
   // rate of failure is small enough not to be a problem in practice.
   if (CRYPTO_memcmp(state->last_block, entropy, sizeof(state->last_block)) ==
       0) {
-    fprintf(stderr, "CRNGT failed.\n");
+    fprintf(CRYPTO_get_stderr(), "CRNGT failed.\n");
     BORINGSSL_FIPS_abort();
   }
 
@@ -283,7 +283,7 @@ static void rand_get_seed(struct rand_thread_state *state,
   for (size_t i = CRNGT_BLOCK_SIZE; i < entropy_len; i += CRNGT_BLOCK_SIZE) {
     if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,
                       CRNGT_BLOCK_SIZE) == 0) {
-      fprintf(stderr, "CRNGT failed.\n");
+      fprintf(CRYPTO_get_stderr(), "CRNGT failed.\n");
       BORINGSSL_FIPS_abort();
     }
   }

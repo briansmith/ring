@@ -15,6 +15,7 @@
 #include <openssl/crypto.h>
 
 #include <assert.h>
+#include <stdio.h>
 
 #include "fipsmodule/rand/internal.h"
 #include "bcm_support.h"
@@ -186,3 +187,5 @@ int OPENSSL_init_crypto(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings) {
 }
 
 void OPENSSL_cleanup(void) {}
+
+FILE *CRYPTO_get_stderr(void) { return stderr; }

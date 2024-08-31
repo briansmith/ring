@@ -29,6 +29,7 @@
 #include <openssl/sha.h>
 
 #include "bcm_interface.h"
+#include "../bcm_support.h"
 #include "../internal.h"
 
 // TODO(crbug.com/362530616): When delocate is removed, build these files as
@@ -136,7 +137,7 @@ static void assert_within(const void *start, const void *symbol,
   }
 
   fprintf(
-      stderr,
+      CRYPTO_get_stderr(),
       "FIPS module doesn't span expected symbol. Expected %p <= %p < %p\n",
       start, symbol, end);
   BORINGSSL_FIPS_abort();
@@ -224,7 +225,7 @@ int BORINGSSL_integrity_test(void) {
   HMAC_CTX_init(&hmac_ctx);
   if (!HMAC_Init_ex(&hmac_ctx, kHMACKey, sizeof(kHMACKey), kHashFunction,
                     NULL /* no ENGINE */)) {
-    fprintf(stderr, "HMAC_Init_ex failed.\n");
+    fprintf(CRYPTO_get_stderr(), "HMAC_Init_ex failed.\n");
     return 0;
   }
 
@@ -244,7 +245,7 @@ int BORINGSSL_integrity_test(void) {
 
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {
-    fprintf(stderr, "HMAC failed.\n");
+    fprintf(CRYPTO_get_stderr(), "HMAC failed.\n");
     return 0;
   }
   HMAC_CTX_cleanse(&hmac_ctx); // FIPS 140-3, AS05.10.

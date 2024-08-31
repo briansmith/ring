@@ -17,6 +17,8 @@
 
 #include <openssl/base.h>
 
+#include <stdio.h>
+
 // Provided by libcrypto, called from BCM
 
 #if defined(__cplusplus)
@@ -104,6 +106,10 @@ OPENSSL_EXPORT uint64_t CRYPTO_get_fork_generation(void);
 // used for testing purposes.
 OPENSSL_EXPORT void CRYPTO_fork_detect_force_madv_wipeonfork_for_testing(
     int on);
+
+// CRYPTO_get_stderr returns stderr. This function exists to avoid BCM needing
+// a data dependency on libc.
+FILE *CRYPTO_get_stderr(void);
 
 
 #if defined(__cplusplus)
