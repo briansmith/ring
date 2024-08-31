@@ -39,7 +39,7 @@
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
 // One converted into the Montgomery domain
-static const BN_ULONG ONE[P256_LIMBS] = {
+static const BN_ULONG ONE_MONT[P256_LIMBS] = {
     TOBN(0x00000000, 0x00000001), TOBN(0xffffffff, 0x00000000),
     TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0xfffffffe),
 };
@@ -114,6 +114,14 @@ static BN_ULONG is_not_zero(BN_ULONG in) {
   in |= (0 - in);
   in >>= BN_BITS2 - 1;
   return in;
+}
+
+// ecp_nistz256_from_mont sets |res| to |in|, converted from Montgomery domain
+// by multiplying with 1.
+static void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
+                                   const BN_ULONG in[P256_LIMBS]) {
+  static const BN_ULONG ONE[P256_LIMBS] = {1};
+  ecp_nistz256_mul_mont(res, in, ONE);
 }
 
 // ecp_nistz256_mod_inverse_sqr_mont sets |r| to (|in| * 2^-256)^-2 * 2^256 mod
@@ -328,12 +336,12 @@ static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_JACOBIAN *r,
   copy_conditional(t.Y, p.Z, wvalue & 1);
 
   // Convert |t| from affine to Jacobian coordinates. We set Z to zero if |t|
-  // is infinity and |ONE| otherwise. |t| was computed from the table, so it
-  // is infinity iff |wvalue >> 1| is zero.
+  // is infinity and |ONE_MONT| otherwise. |t| was computed from the table, so
+  // it is infinity iff |wvalue >> 1| is zero.
   OPENSSL_memcpy(p.X, t.X, sizeof(p.X));
   OPENSSL_memcpy(p.Y, t.Y, sizeof(p.Y));
   OPENSSL_memset(p.Z, 0, sizeof(p.Z));
-  copy_conditional(p.Z, ONE, is_not_zero(wvalue >> 1));
+  copy_conditional(p.Z, ONE_MONT, is_not_zero(wvalue >> 1));
 
   for (int i = 1; i < 37; i++) {
     wvalue = calc_wvalue(&index, p_str);
@@ -372,14 +380,14 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   size_t wvalue = calc_first_wvalue(&index, p_str);
 
   // Convert |p| from affine to Jacobian coordinates. We set Z to zero if |p|
-  // is infinity and |ONE| otherwise. |p| was computed from the table, so it
-  // is infinity iff |wvalue >> 1| is zero.
+  // is infinity and |ONE_MONT| otherwise. |p| was computed from the table, so
+  // it is infinity iff |wvalue >> 1| is zero.
   if ((wvalue >> 1) != 0) {
     OPENSSL_memcpy(p.X, &ecp_nistz256_precomputed[0][(wvalue >> 1) - 1].X,
                    sizeof(p.X));
     OPENSSL_memcpy(p.Y, &ecp_nistz256_precomputed[0][(wvalue >> 1) - 1].Y,
                    sizeof(p.Y));
-    OPENSSL_memcpy(p.Z, ONE, sizeof(p.Z));
+    OPENSSL_memcpy(p.Z, ONE_MONT, sizeof(p.Z));
   } else {
     OPENSSL_memset(p.X, 0, sizeof(p.X));
     OPENSSL_memset(p.Y, 0, sizeof(p.Y));

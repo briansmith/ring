@@ -362,20 +362,6 @@ static void TestMulMont(FileTest *t) {
   }
 }
 
-static void TestFromMont(FileTest *t) {
-  BN_ULONG a[P256_LIMBS], result[P256_LIMBS];
-  ASSERT_TRUE(GetFieldElement(t, a, "A"));
-  ASSERT_TRUE(GetFieldElement(t, result, "Result"));
-
-  BN_ULONG ret[P256_LIMBS];
-  ecp_nistz256_from_mont(ret, a);
-  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
-
-  OPENSSL_memcpy(ret, a, sizeof(ret));
-  ecp_nistz256_from_mont(ret, ret /* a */);
-  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
-}
-
 static void TestPointAdd(FileTest *t) {
   P256_POINT a, b;
   P256_POINT_AFFINE result;
@@ -493,8 +479,6 @@ TEST(P256_NistzTest, TestVectors) {
       TestNegate(t);
     } else if (t->GetParameter() == "MulMont") {
       TestMulMont(t);
-    } else if (t->GetParameter() == "FromMont") {
-      TestFromMont(t);
     } else if (t->GetParameter() == "PointAdd") {
       TestPointAdd(t);
     } else if (t->GetParameter() == "OrdMulMont") {
@@ -514,7 +498,6 @@ TEST(P256_NistzTest, ABI) {
   CHECK_ABI(ecp_nistz256_neg, b, a);
   CHECK_ABI(ecp_nistz256_mul_mont, c, a, b);
   CHECK_ABI(ecp_nistz256_sqr_mont, c, a);
-  CHECK_ABI(ecp_nistz256_from_mont, c, a);
   CHECK_ABI(ecp_nistz256_ord_mul_mont, c, a, b);
 
   // Check a few different loop counts.
