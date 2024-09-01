@@ -387,9 +387,9 @@ OPENSSL_EXPORT void BN_CTX_end(BN_CTX *ctx);
 // or |b|. It returns one on success and zero on allocation failure.
 OPENSSL_EXPORT int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
-// BN_uadd sets |r| = |a| + |b|, where |a| and |b| are non-negative and |r| may
-// be the same pointer as either |a| or |b|. It returns one on success and zero
-// on allocation failure.
+// BN_uadd sets |r| = |a| + |b|, considering only the absolute values of |a| and
+// |b|. |r| may be the same pointer as either |a| or |b|. It returns one on
+// success and zero on allocation failure.
 OPENSSL_EXPORT int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 // BN_add_word adds |w| to |a|. It returns one on success and zero otherwise.
@@ -399,9 +399,9 @@ OPENSSL_EXPORT int BN_add_word(BIGNUM *a, BN_ULONG w);
 // or |b|. It returns one on success and zero on allocation failure.
 OPENSSL_EXPORT int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
-// BN_usub sets |r| = |a| - |b|, where |a| and |b| are non-negative integers,
-// |b| < |a| and |r| may be the same pointer as either |a| or |b|. It returns
-// one on success and zero on allocation failure.
+// BN_usub sets |r| = |a| - |b|, considering only the absolute values of |a| and
+// |b|. The result must be non-negative, i.e. |b| <= |a|. |r| may be the same
+// pointer as either |a| or |b|. It returns one on success and zero on error.
 OPENSSL_EXPORT int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 // BN_sub_word subtracts |w| from |a|. It returns one on success and zero on
