@@ -114,8 +114,8 @@
 
 #include <openssl/err.h>
 
-#include "../../bcm_support.h"
 #include "../../internal.h"
+#include "../bcm_interface.h"
 #include "../service_indicator/internal.h"
 #include "internal.h"
 

@@ -33,6 +33,7 @@
 #include <openssl/sha.h>
 
 #include "../../internal.h"
+#include "../delocate.h"
 #include "../dh/internal.h"
 #include "../ec/internal.h"
 #include "../ecdsa/internal.h"
