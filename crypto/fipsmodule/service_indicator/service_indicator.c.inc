@@ -248,7 +248,7 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
 }
 
 void EC_KEY_keygen_verify_service_indicator(const EC_KEY *eckey) {
-  if (is_ec_fips_approved(EC_GROUP_get_curve_name(eckey->group))) {
+  if (is_ec_fips_approved(EC_GROUP_get_curve_name(EC_KEY_get0_group(eckey)))) {
     FIPS_service_indicator_update_state();
   }
 }
@@ -287,7 +287,7 @@ void EVP_DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
 }
 
 void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
-  switch (evp_md->type) {
+  switch (EVP_MD_type(evp_md)) {
     case NID_sha1:
     case NID_sha224:
     case NID_sha256:
