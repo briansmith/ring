@@ -372,8 +372,9 @@ int BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx) {
     return 1;
   }
 
-  // now -|d| < r < 0, so we have to set r := r + |d|.
-  return (d->neg ? BN_sub : BN_add)(r, r, d);
+  // now -d < r < 0, so we have to set r := r + d. Ignoring the sign bits, this
+  // is r = d - r.
+  return BN_usub(r, d, r);
 }
 
 BN_ULONG bn_reduce_once(BN_ULONG *r, const BN_ULONG *a, BN_ULONG carry,

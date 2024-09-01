@@ -236,7 +236,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
         goto end;
       }
       if (BN_ucmp(y, p) >= 0) {
-        if (!(p->neg ? BN_add : BN_sub)(y, y, p)) {
+        if (BN_usub(y, y, p)) {
           goto end;
         }
       }
