@@ -11,14 +11,9 @@ default	rel
 %ifdef BORINGSSL_PREFIX
 %include "boringssl_prefix_symbols_nasm.inc"
 %endif
-section	.text code align=64
-
-EXTERN	OPENSSL_ia32cap_P
-
-chacha20_poly1305_constants:
-
 section	.rdata rdata align=8
 ALIGN	64
+chacha20_poly1305_constants:
 $L$chacha20_consts:
 	DB	'e','x','p','a','n','d',' ','3','2','-','b','y','t','e',' ','k'
 	DB	'e','x','p','a','n','d',' ','3','2','-','b','y','t','e',' ','k'
@@ -55,7 +50,7 @@ $L$and_masks:
 	DB	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0x00,0x00
 	DB	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0x00
 	DB	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
-section	.text
+section	.text code align=64
 
 
 
@@ -225,14 +220,14 @@ $L$hash_ad_done:
 
 
 
-global	chacha20_poly1305_open
+global	chacha20_poly1305_open_nohw
 
 ALIGN	64
-chacha20_poly1305_open:
+chacha20_poly1305_open_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_chacha20_poly1305_open:
+$L$SEH_begin_chacha20_poly1305_open_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -279,11 +274,6 @@ _CET_ENDBR
 	mov	rbx,rdx
 	mov	QWORD[((0+160+32))+rbp],r8
 	mov	QWORD[((8+160+32))+rbp],rbx
-
-	mov	eax,DWORD[((OPENSSL_ia32cap_P+8))]
-	and	eax,288
-	xor	eax,288
-	jz	NEAR chacha20_poly1305_open_avx2
 
 	cmp	rbx,128
 	jbe	NEAR $L$open_sse_128
@@ -2123,7 +2113,7 @@ $L$open_sse_128_xor_hash:
 	movdqa	xmm6,xmm10
 	movdqa	xmm10,xmm14
 	jmp	NEAR $L$open_sse_128_xor_hash
-$L$SEH_end_chacha20_poly1305_open:
+$L$SEH_end_chacha20_poly1305_open_nohw:
 
 
 
@@ -2132,14 +2122,14 @@ $L$SEH_end_chacha20_poly1305_open:
 
 
 
-global	chacha20_poly1305_seal
+global	chacha20_poly1305_seal_nohw
 
 ALIGN	64
-chacha20_poly1305_seal:
+chacha20_poly1305_seal_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_chacha20_poly1305_seal:
+$L$SEH_begin_chacha20_poly1305_seal_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -2187,11 +2177,6 @@ _CET_ENDBR
 	mov	QWORD[((0+160+32))+rbp],r8
 	mov	QWORD[((8+160+32))+rbp],rbx
 	mov	rbx,rdx
-
-	mov	eax,DWORD[((OPENSSL_ia32cap_P+8))]
-	and	eax,288
-	xor	eax,288
-	jz	NEAR chacha20_poly1305_seal_avx2
 
 	cmp	rbx,128
 	jbe	NEAR $L$seal_sse_128
@@ -4150,24 +4135,64 @@ DB	102,69,15,58,15,246,4
 	mov	r8,r8
 	call	poly_hash_ad_internal
 	jmp	NEAR $L$seal_sse_128_tail_xor
-$L$SEH_end_chacha20_poly1305_seal:
+$L$SEH_end_chacha20_poly1305_seal_nohw:
 
 
 
+global	chacha20_poly1305_open_avx2
 
 ALIGN	64
 chacha20_poly1305_open_avx2:
+	mov	QWORD[8+rsp],rdi	;WIN64 prologue
+	mov	QWORD[16+rsp],rsi
+	mov	rax,rsp
+$L$SEH_begin_chacha20_poly1305_open_avx2:
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+	mov	rcx,r9
+	mov	r8,QWORD[40+rsp]
+	mov	r9,QWORD[48+rsp]
 
 
 
+_CET_ENDBR
+	push	rbp
+
+	push	rbx
+
+	push	r12
+
+	push	r13
+
+	push	r14
+
+	push	r15
 
 
 
+	push	r9
+
+	sub	rsp,288 + 160 + 32
 
 
+	lea	rbp,[32+rsp]
+	and	rbp,-32
 
+	movaps	XMMWORD[(0+0)+rbp],xmm6
+	movaps	XMMWORD[(16+0)+rbp],xmm7
+	movaps	XMMWORD[(32+0)+rbp],xmm8
+	movaps	XMMWORD[(48+0)+rbp],xmm9
+	movaps	XMMWORD[(64+0)+rbp],xmm10
+	movaps	XMMWORD[(80+0)+rbp],xmm11
+	movaps	XMMWORD[(96+0)+rbp],xmm12
+	movaps	XMMWORD[(112+0)+rbp],xmm13
+	movaps	XMMWORD[(128+0)+rbp],xmm14
+	movaps	XMMWORD[(144+0)+rbp],xmm15
 
-
+	mov	rbx,rdx
+	mov	QWORD[((0+160+32))+rbp],r8
+	mov	QWORD[((8+160+32))+rbp],rbx
 
 	vzeroupper
 	vmovdqa	ymm0,YMMWORD[$L$chacha20_consts]
@@ -6298,24 +6323,65 @@ $L$open_avx2_320_rounds:
 	vperm2i128	ymm2,ymm6,ymm2,0x13
 	vperm2i128	ymm6,ymm14,ymm10,0x13
 	jmp	NEAR $L$open_avx2_short
+$L$SEH_end_chacha20_poly1305_open_avx2:
 
 
 
-
+global	chacha20_poly1305_seal_avx2
 
 ALIGN	64
 chacha20_poly1305_seal_avx2:
+	mov	QWORD[8+rsp],rdi	;WIN64 prologue
+	mov	QWORD[16+rsp],rsi
+	mov	rax,rsp
+$L$SEH_begin_chacha20_poly1305_seal_avx2:
+	mov	rdi,rcx
+	mov	rsi,rdx
+	mov	rdx,r8
+	mov	rcx,r9
+	mov	r8,QWORD[40+rsp]
+	mov	r9,QWORD[48+rsp]
 
 
 
+_CET_ENDBR
+	push	rbp
+
+	push	rbx
+
+	push	r12
+
+	push	r13
+
+	push	r14
+
+	push	r15
 
 
 
+	push	r9
 
+	sub	rsp,288 + 160 + 32
 
+	lea	rbp,[32+rsp]
+	and	rbp,-32
 
+	movaps	XMMWORD[(0+0)+rbp],xmm6
+	movaps	XMMWORD[(16+0)+rbp],xmm7
+	movaps	XMMWORD[(32+0)+rbp],xmm8
+	movaps	XMMWORD[(48+0)+rbp],xmm9
+	movaps	XMMWORD[(64+0)+rbp],xmm10
+	movaps	XMMWORD[(80+0)+rbp],xmm11
+	movaps	XMMWORD[(96+0)+rbp],xmm12
+	movaps	XMMWORD[(112+0)+rbp],xmm13
+	movaps	XMMWORD[(128+0)+rbp],xmm14
+	movaps	XMMWORD[(144+0)+rbp],xmm15
 
-
+	mov	rbx,QWORD[56+r9]
+	add	rbx,rdx
+	mov	QWORD[((0+160+32))+rbp],r8
+	mov	QWORD[((8+160+32))+rbp],rbx
+	mov	rbx,rdx
 
 	vzeroupper
 	vmovdqa	ymm0,YMMWORD[$L$chacha20_consts]
@@ -8950,7 +9016,7 @@ $L$seal_avx2_exit:
 	vzeroupper
 	jmp	NEAR $L$seal_sse_tail_16
 
-
+$L$SEH_end_chacha20_poly1305_seal_avx2:
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

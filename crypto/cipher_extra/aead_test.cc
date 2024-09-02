@@ -825,15 +825,33 @@ TEST(ChaChaPoly1305Test, ABI) {
   for (size_t len = 0; len <= 1024; len += 5) {
     SCOPED_TRACE(len);
     union chacha20_poly1305_open_data open_ctx = {};
+#if defined(OPENSSL_X86_64)
+    CHECK_ABI(chacha20_poly1305_open_nohw, buf.get(), buf.get(), len, buf.get(),
+              len % 128, &open_ctx);
+    if (CRYPTO_is_AVX2_capable() && CRYPTO_is_BMI2_capable()) {
+      CHECK_ABI(chacha20_poly1305_open_avx2, buf.get(), buf.get(), len,
+                buf.get(), len % 128, &open_ctx);
+    }
+#else
     CHECK_ABI(chacha20_poly1305_open, buf.get(), buf.get(), len, buf.get(),
               len % 128, &open_ctx);
+#endif
   }
 
   for (size_t len = 0; len <= 1024; len += 5) {
     SCOPED_TRACE(len);
     union chacha20_poly1305_seal_data seal_ctx = {};
+#if defined(OPENSSL_X86_64)
+    CHECK_ABI(chacha20_poly1305_seal_nohw, buf.get(), buf.get(), len, buf.get(),
+              len % 128, &seal_ctx);
+    if (CRYPTO_is_AVX2_capable() && CRYPTO_is_BMI2_capable()) {
+      CHECK_ABI(chacha20_poly1305_seal_avx2, buf.get(), buf.get(), len,
+                buf.get(), len % 128, &seal_ctx);
+    }
+#else
     CHECK_ABI(chacha20_poly1305_seal, buf.get(), buf.get(), len, buf.get(),
               len % 128, &seal_ctx);
+#endif
   }
 }
 #endif  // SUPPORTS_ABI_TEST

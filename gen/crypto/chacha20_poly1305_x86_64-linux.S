@@ -4,14 +4,9 @@
 #include <openssl/asm_base.h>
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__ELF__)
-.text	
-.extern	OPENSSL_ia32cap_P
-.hidden OPENSSL_ia32cap_P
-
-chacha20_poly1305_constants:
-
 .section	.rodata
 .align	64
+chacha20_poly1305_constants:
 .Lchacha20_consts:
 .byte	'e','x','p','a','n','d',' ','3','2','-','b','y','t','e',' ','k'
 .byte	'e','x','p','a','n','d',' ','3','2','-','b','y','t','e',' ','k'
@@ -217,11 +212,11 @@ poly_hash_ad_internal:
 .cfi_endproc	
 .size	poly_hash_ad_internal, .-poly_hash_ad_internal
 
-.globl	chacha20_poly1305_open
-.hidden chacha20_poly1305_open
-.type	chacha20_poly1305_open,@function
+.globl	chacha20_poly1305_open_nohw
+.hidden chacha20_poly1305_open_nohw
+.type	chacha20_poly1305_open_nohw,@function
 .align	64
-chacha20_poly1305_open:
+chacha20_poly1305_open_nohw:
 .cfi_startproc	
 _CET_ENDBR
 	pushq	%rbp
@@ -256,11 +251,6 @@ _CET_ENDBR
 	movq	%rdx,%rbx
 	movq	%r8,0+0+32(%rbp)
 	movq	%rbx,8+0+32(%rbp)
-
-	movl	OPENSSL_ia32cap_P+8(%rip),%eax
-	andl	$288,%eax
-	xorl	$288,%eax
-	jz	chacha20_poly1305_open_avx2
 
 	cmpq	$128,%rbx
 	jbe	.Lopen_sse_128
@@ -2094,7 +2084,7 @@ _CET_ENDBR
 	movdqa	%xmm10,%xmm6
 	movdqa	%xmm14,%xmm10
 	jmp	.Lopen_sse_128_xor_hash
-.size	chacha20_poly1305_open, .-chacha20_poly1305_open
+.size	chacha20_poly1305_open_nohw, .-chacha20_poly1305_open_nohw
 .cfi_endproc	
 
 
@@ -2103,11 +2093,11 @@ _CET_ENDBR
 
 
 
-.globl	chacha20_poly1305_seal
-.hidden chacha20_poly1305_seal
-.type	chacha20_poly1305_seal,@function
+.globl	chacha20_poly1305_seal_nohw
+.hidden chacha20_poly1305_seal_nohw
+.type	chacha20_poly1305_seal_nohw,@function
 .align	64
-chacha20_poly1305_seal:
+chacha20_poly1305_seal_nohw:
 .cfi_startproc	
 _CET_ENDBR
 	pushq	%rbp
@@ -2143,11 +2133,6 @@ _CET_ENDBR
 	movq	%r8,0+0+32(%rbp)
 	movq	%rbx,8+0+32(%rbp)
 	movq	%rdx,%rbx
-
-	movl	OPENSSL_ia32cap_P+8(%rip),%eax
-	andl	$288,%eax
-	xorl	$288,%eax
-	jz	chacha20_poly1305_seal_avx2
 
 	cmpq	$128,%rbx
 	jbe	.Lseal_sse_128
@@ -4100,31 +4085,49 @@ process_extra_in_trailer:
 	movq	%r8,%r8
 	call	poly_hash_ad_internal
 	jmp	.Lseal_sse_128_tail_xor
-.size	chacha20_poly1305_seal, .-chacha20_poly1305_seal
+.size	chacha20_poly1305_seal_nohw, .-chacha20_poly1305_seal_nohw
 .cfi_endproc	
 
 
+.globl	chacha20_poly1305_open_avx2
+.hidden chacha20_poly1305_open_avx2
 .type	chacha20_poly1305_open_avx2,@function
 .align	64
 chacha20_poly1305_open_avx2:
 .cfi_startproc	
-
-
+_CET_ENDBR
+	pushq	%rbp
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%rbp,-16
+	pushq	%rbx
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%rbx,-24
+	pushq	%r12
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r12,-32
+	pushq	%r13
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r13,-40
+	pushq	%r14
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r14,-48
+	pushq	%r15
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r15,-56
+
+
+	pushq	%r9
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r9,-64
+	subq	$288 + 0 + 32,%rsp
 .cfi_adjust_cfa_offset	288 + 32
+
+	leaq	32(%rsp),%rbp
+	andq	$-32,%rbp
+
+	movq	%rdx,%rbx
+	movq	%r8,0+0+32(%rbp)
+	movq	%rbx,8+0+32(%rbp)
 
 	vzeroupper
 	vmovdqa	.Lchacha20_consts(%rip),%ymm0
@@ -6259,27 +6262,46 @@ chacha20_poly1305_open_avx2:
 .cfi_endproc	
 
 
+.globl	chacha20_poly1305_seal_avx2
+.hidden chacha20_poly1305_seal_avx2
 .type	chacha20_poly1305_seal_avx2,@function
 .align	64
 chacha20_poly1305_seal_avx2:
 .cfi_startproc	
-
-
+_CET_ENDBR
+	pushq	%rbp
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%rbp,-16
+	pushq	%rbx
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%rbx,-24
+	pushq	%r12
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r12,-32
+	pushq	%r13
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r13,-40
+	pushq	%r14
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r14,-48
+	pushq	%r15
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r15,-56
+
+
+	pushq	%r9
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r9,-64
+	subq	$288 + 0 + 32,%rsp
 .cfi_adjust_cfa_offset	288 + 32
+	leaq	32(%rsp),%rbp
+	andq	$-32,%rbp
+
+	movq	56(%r9),%rbx
+	addq	%rdx,%rbx
+	movq	%r8,0+0+32(%rbp)
+	movq	%rbx,8+0+32(%rbp)
+	movq	%rdx,%rbx
 
 	vzeroupper
 	vmovdqa	.Lchacha20_consts(%rip),%ymm0

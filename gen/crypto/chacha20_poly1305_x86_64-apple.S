@@ -4,13 +4,9 @@
 #include <openssl/asm_base.h>
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__APPLE__)
-.text	
-
-
-chacha20_poly1305_constants:
-
 .section	__DATA,__const
 .p2align	6
+chacha20_poly1305_constants:
 L$chacha20_consts:
 .byte	'e','x','p','a','n','d',' ','3','2','-','b','y','t','e',' ','k'
 .byte	'e','x','p','a','n','d',' ','3','2','-','b','y','t','e',' ','k'
@@ -216,11 +212,11 @@ L$hash_ad_done:
 
 
 
-.globl	_chacha20_poly1305_open
-.private_extern _chacha20_poly1305_open
+.globl	_chacha20_poly1305_open_nohw
+.private_extern _chacha20_poly1305_open_nohw
 
 .p2align	6
-_chacha20_poly1305_open:
+_chacha20_poly1305_open_nohw:
 
 _CET_ENDBR
 	pushq	%rbp
@@ -248,11 +244,6 @@ _CET_ENDBR
 	movq	%rdx,%rbx
 	movq	%r8,0+0+32(%rbp)
 	movq	%rbx,8+0+32(%rbp)
-
-	movl	_OPENSSL_ia32cap_P+8(%rip),%eax
-	andl	$288,%eax
-	xorl	$288,%eax
-	jz	chacha20_poly1305_open_avx2
 
 	cmpq	$128,%rbx
 	jbe	L$open_sse_128
@@ -2088,11 +2079,11 @@ L$open_sse_128_xor_hash:
 
 
 
-.globl	_chacha20_poly1305_seal
-.private_extern _chacha20_poly1305_seal
+.globl	_chacha20_poly1305_seal_nohw
+.private_extern _chacha20_poly1305_seal_nohw
 
 .p2align	6
-_chacha20_poly1305_seal:
+_chacha20_poly1305_seal_nohw:
 
 _CET_ENDBR
 	pushq	%rbp
@@ -2121,11 +2112,6 @@ _CET_ENDBR
 	movq	%r8,0+0+32(%rbp)
 	movq	%rbx,8+0+32(%rbp)
 	movq	%rdx,%rbx
-
-	movl	_OPENSSL_ia32cap_P+8(%rip),%eax
-	andl	$288,%eax
-	xorl	$288,%eax
-	jz	chacha20_poly1305_seal_avx2
 
 	cmpq	$128,%rbx
 	jbe	L$seal_sse_128
@@ -4075,20 +4061,38 @@ L$seal_sse_128_rounds:
 
 
 
+.globl	_chacha20_poly1305_open_avx2
+.private_extern _chacha20_poly1305_open_avx2
 
 .p2align	6
-chacha20_poly1305_open_avx2:
+_chacha20_poly1305_open_avx2:
+
+_CET_ENDBR
+	pushq	%rbp
+
+	pushq	%rbx
+
+	pushq	%r12
+
+	pushq	%r13
+
+	pushq	%r14
+
+	pushq	%r15
 
 
 
+	pushq	%r9
+
+	subq	$288 + 0 + 32,%rsp
 
 
+	leaq	32(%rsp),%rbp
+	andq	$-32,%rbp
 
-
-
-
-
-
+	movq	%rdx,%rbx
+	movq	%r8,0+0+32(%rbp)
+	movq	%rbx,8+0+32(%rbp)
 
 	vzeroupper
 	vmovdqa	L$chacha20_consts(%rip),%ymm0
@@ -6223,20 +6227,39 @@ L$open_avx2_320_rounds:
 
 
 
+.globl	_chacha20_poly1305_seal_avx2
+.private_extern _chacha20_poly1305_seal_avx2
 
 .p2align	6
-chacha20_poly1305_seal_avx2:
+_chacha20_poly1305_seal_avx2:
+
+_CET_ENDBR
+	pushq	%rbp
+
+	pushq	%rbx
+
+	pushq	%r12
+
+	pushq	%r13
+
+	pushq	%r14
+
+	pushq	%r15
 
 
 
+	pushq	%r9
 
+	subq	$288 + 0 + 32,%rsp
 
+	leaq	32(%rsp),%rbp
+	andq	$-32,%rbp
 
-
-
-
-
-
+	movq	56(%r9),%rbx
+	addq	%rdx,%rbx
+	movq	%r8,0+0+32(%rbp)
+	movq	%rbx,8+0+32(%rbp)
+	movq	%rdx,%rbx
 
 	vzeroupper
 	vmovdqa	L$chacha20_consts(%rip),%ymm0
