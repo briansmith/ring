@@ -812,7 +812,6 @@ func newChachaRecordNumberEncrypter(key []byte) *chachaRecordNumberEncrypter {
 	out := &chachaRecordNumberEncrypter{
 		key: key,
 	}
-	fmt.Printf("new RNE with key %x\n", key)
 	return out
 }
 
@@ -831,7 +830,6 @@ func (c *chachaRecordNumberEncrypter) generateMask(sample []byte) []byte {
 	zeroes := make([]byte, 2)
 	out := make([]byte, 2)
 	cipher.XORKeyStream(out, zeroes)
-	fmt.Printf("golang generateMask: sample: %x, key: %x, mask: %x\n", sample[:16], c.key, out)
 	return out
 }
 
