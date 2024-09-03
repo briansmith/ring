@@ -274,9 +274,9 @@ typedef __uint128_t uint128_t;
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
-#define OPENSSL_ATTR_PURE __attribute__((pure))
+#define OPENSSL_ATTR_CONST __attribute__((const))
 #else
-#define OPENSSL_ATTR_PURE
+#define OPENSSL_ATTR_CONST
 #endif
 
 #if defined(BORINGSSL_MALLOC_FAILURE_TESTING)
@@ -1404,9 +1404,9 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 extern uint32_t OPENSSL_ia32cap_P[4];
 
 // OPENSSL_get_ia32cap initializes the library if needed and returns the |idx|th
-// entry of |OPENSSL_ia32cap_P|. It is marked as a pure function so duplicate
+// entry of |OPENSSL_ia32cap_P|. It is marked as a const function so duplicate
 // calls can be merged by the compiler, at least when indices match.
-OPENSSL_ATTR_PURE uint32_t OPENSSL_get_ia32cap(int idx);
+OPENSSL_ATTR_CONST uint32_t OPENSSL_get_ia32cap(int idx);
 
 // See Intel manual, volume 2A, table 3-11.
 
@@ -1615,9 +1615,9 @@ OPENSSL_INLINE int CRYPTO_is_VPCLMULQDQ_capable(void) {
 extern uint32_t OPENSSL_armcap_P;
 
 // OPENSSL_get_armcap initializes the library if needed and returns ARM CPU
-// capabilities. It is marked as a pure function so duplicate calls can be
-// merged by the compiler, at least when indices match.
-OPENSSL_ATTR_PURE uint32_t OPENSSL_get_armcap(void);
+// capabilities. It is marked as a const function so duplicate calls can be
+// merged by the compiler.
+OPENSSL_ATTR_CONST uint32_t OPENSSL_get_armcap(void);
 
 // We do not detect any features at runtime on several 32-bit Arm platforms.
 // Apple platforms and OpenBSD require NEON and moved to 64-bit to pick up Armv8
