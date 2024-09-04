@@ -50,6 +50,7 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/siphash.h>
+#include <openssl/slhdsa.h>
 #include <openssl/trust_token.h>
 
 #if defined(OPENSSL_WINDOWS)
@@ -1390,6 +1391,57 @@ static bool SpeedSpx(const std::string &selected) {
   return true;
 }
 
+static bool SpeedSLHDSA(const std::string &selected) {
+  if (!selected.empty() && selected.find("SLH-DSA") == std::string::npos) {
+    return true;
+  }
+
+  TimeResults results;
+  if (!TimeFunctionParallel(&results, []() -> bool {
+        uint8_t public_key[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+            private_key[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES];
+        SLHDSA_SHA2_128S_generate_key(public_key, private_key);
+        return true;
+      })) {
+    return false;
+  }
+
+  results.Print("SLHDSA-SHA2-128s key generation");
+
+  uint8_t public_key[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+      private_key[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES];
+  SLHDSA_SHA2_128S_generate_key(public_key, private_key);
+  static const uint8_t kMessage[] = {0, 1, 2, 3, 4, 5};
+
+  if (!TimeFunctionParallel(&results, [&private_key]() -> bool {
+        uint8_t out[SLHDSA_SHA2_128S_SIGNATURE_BYTES];
+        SLHDSA_SHA2_128S_sign(out, private_key, kMessage, sizeof(kMessage),
+                              nullptr, 0);
+        return true;
+      })) {
+    return false;
+  }
+
+  results.Print("SLHDSA-SHA2-128s signing");
+
+  uint8_t signature[SLHDSA_SHA2_128S_SIGNATURE_BYTES];
+  SLHDSA_SHA2_128S_sign(signature, private_key, kMessage, sizeof(kMessage),
+                        nullptr, 0);
+
+  if (!TimeFunctionParallel(&results, [&public_key, &signature]() -> bool {
+        return SLHDSA_SHA2_128S_verify(signature, sizeof(signature), public_key,
+                                       kMessage, sizeof(kMessage), nullptr,
+                                       0) == 1;
+      })) {
+    fprintf(stderr, "SLHDSA-SHA2-128s verify failed.\n");
+    return false;
+  }
+
+  results.Print("SLHDSA-SHA2-128s verify");
+
+  return true;
+}
+
 static bool SpeedHashToCurve(const std::string &selected) {
   if (!selected.empty() && selected.find("hashtocurve") == std::string::npos) {
     return true;
@@ -1882,6 +1934,7 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedMLKEM(selected) ||        //
       !SpeedMLKEM1024(selected) ||    //
       !SpeedSpx(selected) ||          //
+      !SpeedSLHDSA(selected) ||       //
       !SpeedHashToCurve(selected) ||  //
       !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1,
                        selected) ||
