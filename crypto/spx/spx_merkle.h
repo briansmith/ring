@@ -19,7 +19,7 @@
 
 #include <sys/types.h>
 
-#include "./params.h"
+#include "./spx_params.h"
 
 #if defined(__cplusplus)
 extern "C" {

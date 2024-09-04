@@ -16,11 +16,11 @@
 
 #include <string.h>
 
-#include "./address.h"
-#include "./fors.h"
-#include "./params.h"
+#include "./spx_address.h"
+#include "./spx_fors.h"
+#include "./spx_params.h"
 #include "./spx_util.h"
-#include "./thash.h"
+#include "./spx_thash.h"
 
 void spx_fors_sk_gen(uint8_t *fors_sk, uint32_t idx,
                      const uint8_t sk_seed[SPX_N], const uint8_t pk_seed[SPX_N],

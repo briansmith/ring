@@ -20,9 +20,9 @@
 
 #include <openssl/sha.h>
 
-#include "./params.h"
+#include "./spx_params.h"
 #include "./spx_util.h"
-#include "./thash.h"
+#include "./spx_thash.h"
 
 static void spx_thash(uint8_t *output, const uint8_t *input,
                       size_t input_blocks, const uint8_t pk_seed[SPX_N],

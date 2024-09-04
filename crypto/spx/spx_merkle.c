@@ -16,11 +16,11 @@
 
 #include <string.h>
 
-#include "./address.h"
-#include "./merkle.h"
-#include "./params.h"
-#include "./thash.h"
-#include "./wots.h"
+#include "./spx_address.h"
+#include "./spx_merkle.h"
+#include "./spx_params.h"
+#include "./spx_thash.h"
+#include "./spx_wots.h"
 
 void spx_treehash(uint8_t out_pk[SPX_N], const uint8_t sk_seed[SPX_N],
                   uint32_t i /*target node index*/,

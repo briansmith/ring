@@ -20,12 +20,12 @@
 #include <openssl/experimental/spx.h>
 #include <openssl/rand.h>
 
-#include "./address.h"
-#include "./fors.h"
-#include "./merkle.h"
-#include "./params.h"
+#include "./spx_address.h"
+#include "./spx_fors.h"
+#include "./spx_merkle.h"
+#include "./spx_params.h"
 #include "./spx_util.h"
-#include "./thash.h"
+#include "./spx_thash.h"
 
 void SPX_generate_key(uint8_t out_public_key[SPX_PUBLIC_KEY_BYTES],
                       uint8_t out_secret_key[SPX_SECRET_KEY_BYTES]) {

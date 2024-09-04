@@ -18,11 +18,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "./address.h"
-#include "./params.h"
+#include "./spx_address.h"
+#include "./spx_params.h"
 #include "./spx_util.h"
-#include "./thash.h"
-#include "./wots.h"
+#include "./spx_thash.h"
+#include "./spx_wots.h"
 
 // Chaining function used in WOTS+.
 static void chain(uint8_t *output, const uint8_t *input, uint32_t start,

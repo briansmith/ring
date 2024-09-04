@@ -17,7 +17,7 @@
 #include <string.h>
 
 #include "../internal.h"
-#include "./address.h"
+#include "./spx_address.h"
 #include "./spx_util.h"
 
 
