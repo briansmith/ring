@@ -2181,3 +2181,10 @@ func (c *Conn) sendFakeEarlyData(len int) error {
 	_, err := c.conn.Write(payload)
 	return err
 }
+
+func (c *Conn) usesEndOfEarlyData() bool {
+	if c.isClient && c.config.Bugs.SendEndOfEarlyDataInQUICAndDTLS {
+		return true
+	}
+	return c.config.Bugs.MockQUICTransport == nil && !c.isDTLS
+}

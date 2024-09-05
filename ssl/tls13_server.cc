@@ -1011,6 +1011,12 @@ static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
   return ssl_hs_flush;
 }
 
+static bool uses_end_of_early_data(const SSL *ssl) {
+  // DTLS and QUIC omit the EndOfEarlyData message. See RFC 9001, section 8.3,
+  // and RFC 9147, section 5.6.
+  return ssl->quic_method == nullptr && !SSL_is_dtls(ssl);
+}
+
 static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (ssl->s3->early_data_accepted) {
@@ -1024,9 +1030,9 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
     hs->in_early_data = true;
   }
 
-  // QUIC doesn't use an EndOfEarlyData message (RFC 9001, section 8.3), so we
-  // switch to client_handshake_secret before the early return.
-  if (ssl->quic_method != nullptr) {
+  // If the EndOfEarlyData message is not used, switch to
+  // client_handshake_secret before the early return.
+  if (!uses_end_of_early_data(ssl)) {
     if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
                                hs->new_session.get(),
                                hs->client_handshake_secret())) {
@@ -1045,7 +1051,7 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   // In protocols that use EndOfEarlyData, we must consume the extra message and
   // switch to client_handshake_secret after the early return.
-  if (ssl->quic_method == nullptr) {
+  if (uses_end_of_early_data(ssl)) {
     // If early data was not accepted, the EndOfEarlyData will be in the
     // discarded early data.
     if (hs->ssl->s3->early_data_accepted) {

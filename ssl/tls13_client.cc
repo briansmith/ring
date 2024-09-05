@@ -795,8 +795,9 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (ssl->s3->early_data_accepted) {
-    // QUIC omits the EndOfEarlyData message. See RFC 9001, section 8.3.
-    if (ssl->quic_method == nullptr) {
+    // DTLS and QUIC omit the EndOfEarlyData message. See RFC 9001, section 8.3,
+    // and RFC 9147, section 5.6.
+    if (ssl->quic_method == nullptr && !SSL_is_dtls(ssl)) {
       ScopedCBB cbb;
       CBB body;
       if (!ssl->method->init_message(ssl, cbb.get(), &body,

@@ -15316,7 +15316,7 @@ func addTLS13HandshakeTests() {
 		},
 	})
 
-	// Test that the server errors on 0-RTT streams without end_of_early_data.
+	// Test that the server errors on 0-RTT streams without EndOfEarlyData.
 	// The subsequent records should fail to decrypt.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -15332,6 +15332,28 @@ func addTLS13HandshakeTests() {
 		shouldFail:         true,
 		expectedLocalError: "remote error: bad record MAC",
 		expectedError:      ":BAD_DECRYPT:",
+	})
+
+	// Test that EndOfEarlyData is rejected in QUIC. Since we leave application
+	// data to the QUIC implementation, we never accept any data at all in
+	// the 0-RTT epoch, so the error is that the encryption level is rejected
+	// outright.
+	//
+	// TODO(crbug.com/42290594): Test this for DTLS 1.3 as well.
+	testCases = append(testCases, testCase{
+		protocol: quic,
+		testType: serverTest,
+		name:     "EarlyData-UnexpectedEndOfEarlyData-QUIC",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendEndOfEarlyDataInQUICAndDTLS: true,
+			},
+		},
+		resumeSession: true,
+		earlyData:     true,
+		shouldFail:    true,
+		expectedError: ":WRONG_ENCRYPTION_LEVEL_RECEIVED:",
 	})
 
 	// Test that the server errors on 0-RTT streams with a stray handshake

@@ -759,6 +759,10 @@ type ProtocolBugs struct {
 	// EndOfEarlyData.
 	NonEmptyEndOfEarlyData bool
 
+	// SendEndOfEarlyDataInQUICAndDTLS causes the implementation to send
+	// EndOfEarlyData even in QUIC and DTLS, which do not use the message.
+	SendEndOfEarlyDataInQUICAndDTLS bool
+
 	// SkipCertificateVerify, if true causes peer to skip sending a
 	// CertificateVerify message after the Certificate message.
 	SkipCertificateVerify bool
