@@ -662,16 +662,13 @@ func (hs *clientHandshakeState) createClientHello(innerHello *clientHelloMsg, ec
 				if !ok {
 					continue
 				}
-				publicKey, err := kem.generate(c.config.rand())
+				publicKey, err := kem.generate(c.config)
 				if err != nil {
 					return nil, err
 				}
 
 				if c.config.Bugs.SendCurve != 0 {
 					curveID = c.config.Bugs.SendCurve
-				}
-				if c.config.Bugs.InvalidECDHPoint {
-					publicKey[0] ^= 0xff
 				}
 
 				hello.keyShares = append(hello.keyShares, keyShareEntry{
@@ -1153,7 +1150,7 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		c.curveID = hs.serverHello.keyShare.group
 
 		var err error
-		ecdheSecret, err = kem.decap(hs.serverHello.keyShare.keyExchange)
+		ecdheSecret, err = kem.decap(c.config, hs.serverHello.keyShare.keyExchange)
 		if err != nil {
 			return err
 		}
@@ -1562,7 +1559,7 @@ func (hs *clientHandshakeState) applyHelloRetryRequest(helloRetryRequest *helloR
 		if !ok {
 			return errors.New("tls: Unable to get curve requested in HelloRetryRequest")
 		}
-		publicKey, err := kem.generate(c.config.rand())
+		publicKey, err := kem.generate(c.config)
 		if err != nil {
 			return err
 		}

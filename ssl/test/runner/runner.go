@@ -438,6 +438,16 @@ const (
 	serverTest
 )
 
+func (t testType) String() string {
+	switch t {
+	case clientTest:
+		return "Client"
+	case serverTest:
+		return "Server"
+	}
+	panic(fmt.Sprintf("bad test type %d", t))
+}
+
 type protocol int
 
 const (
@@ -11765,93 +11775,182 @@ func isPqGroup(r CurveID) bool {
 	return r == CurveX25519Kyber768 || r == CurveX25519MLKEM768
 }
 
+func isECDHGroup(r CurveID) bool {
+	return r == CurveP224 || r == CurveP256 || r == CurveP384 || r == CurveP521
+}
+
+func isX25519Group(r CurveID) bool {
+	return r == CurveX25519 || r == CurveX25519Kyber768 || r == CurveX25519MLKEM768
+}
+
 func addCurveTests() {
+	// A set of cipher suites that ensures some curve-using mode is used.
+	// Without this, servers may fall back to RSA key exchange.
+	ecdheCiphers := []uint16{
+		TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+		TLS_AES_256_GCM_SHA384,
+	}
+
 	for _, curve := range testCurves {
 		for _, ver := range tlsVersions {
 			if isPqGroup(curve.id) && ver.version < VersionTLS13 {
 				continue
 			}
+			for _, testType := range []testType{clientTest, serverTest} {
+				suffix := fmt.Sprintf("%s-%s-%s", testType, curve.name, ver.name)
 
-			suffix := curve.name + "-" + ver.name
-
-			testCases = append(testCases, testCase{
-				name: "CurveTest-Client-" + suffix,
-				config: Config{
-					MaxVersion: ver.version,
-					CipherSuites: []uint16{
-						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-						TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-						TLS_AES_256_GCM_SHA384,
-					},
-					CurvePreferences: []CurveID{curve.id},
-				},
-				flags: append(
-					[]string{"-expect-curve-id", strconv.Itoa(int(curve.id))},
-					flagInts("-curves", shimConfig.AllCurves)...,
-				),
-				expectations: connectionExpectations{
-					curveID: curve.id,
-				},
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "CurveTest-Server-" + suffix,
-				config: Config{
-					MaxVersion: ver.version,
-					CipherSuites: []uint16{
-						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-						TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-						TLS_AES_256_GCM_SHA384,
-					},
-					CurvePreferences: []CurveID{curve.id},
-				},
-				flags: append(
-					[]string{"-expect-curve-id", strconv.Itoa(int(curve.id))},
-					flagInts("-curves", shimConfig.AllCurves)...,
-				),
-				expectations: connectionExpectations{
-					curveID: curve.id,
-				},
-			})
-
-			if curve.id != CurveX25519 && !isPqGroup(curve.id) {
 				testCases = append(testCases, testCase{
-					name: "CurveTest-Client-Compressed-" + suffix,
+					testType: testType,
+					name:     "CurveTest-" + suffix,
 					config: Config{
-						MaxVersion: ver.version,
-						CipherSuites: []uint16{
-							TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-							TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-							TLS_AES_256_GCM_SHA384,
-						},
+						MaxVersion:       ver.version,
+						CipherSuites:     ecdheCiphers,
+						CurvePreferences: []CurveID{curve.id},
+					},
+					flags: append(
+						[]string{"-expect-curve-id", strconv.Itoa(int(curve.id))},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
+					expectations: connectionExpectations{
+						curveID: curve.id,
+					},
+				})
+
+				badKeyShareLocalError := "remote error: error decoding message"
+				if testType == clientTest && ver.version >= VersionTLS13 {
+					// If the shim is a TLS 1.3 client and the runner sends a bad
+					// key share, the runner never reads the client's cleartext
+					// alert because the runner has already started encrypting by
+					// the time the client sees it.
+					badKeyShareLocalError = "local error: bad record MAC"
+				}
+
+				testCases = append(testCases, testCase{
+					testType: testType,
+					name:     "CurveTest-Invalid-TruncateKeyShare-" + suffix,
+					config: Config{
+						MaxVersion:       ver.version,
+						CipherSuites:     ecdheCiphers,
 						CurvePreferences: []CurveID{curve.id},
 						Bugs: ProtocolBugs{
-							SendCompressedCoordinates: true,
+							TruncateKeyShare: true,
 						},
 					},
-					flags:         flagInts("-curves", shimConfig.AllCurves),
-					shouldFail:    true,
-					expectedError: ":BAD_ECPOINT:",
+					flags:              flagInts("-curves", shimConfig.AllCurves),
+					shouldFail:         true,
+					expectedError:      ":BAD_ECPOINT:",
+					expectedLocalError: badKeyShareLocalError,
 				})
+
 				testCases = append(testCases, testCase{
-					testType: serverTest,
-					name:     "CurveTest-Server-Compressed-" + suffix,
+					testType: testType,
+					name:     "CurveTest-Invalid-PadKeyShare-" + suffix,
 					config: Config{
-						MaxVersion: ver.version,
-						CipherSuites: []uint16{
-							TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-							TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-							TLS_AES_256_GCM_SHA384,
-						},
+						MaxVersion:       ver.version,
+						CipherSuites:     ecdheCiphers,
 						CurvePreferences: []CurveID{curve.id},
 						Bugs: ProtocolBugs{
-							SendCompressedCoordinates: true,
+							PadKeyShare: true,
 						},
 					},
-					flags:         flagInts("-curves", shimConfig.AllCurves),
-					shouldFail:    true,
-					expectedError: ":BAD_ECPOINT:",
+					flags:              flagInts("-curves", shimConfig.AllCurves),
+					shouldFail:         true,
+					expectedError:      ":BAD_ECPOINT:",
+					expectedLocalError: badKeyShareLocalError,
 				})
+
+				if isECDHGroup(curve.id) {
+					testCases = append(testCases, testCase{
+						testType: testType,
+						name:     "CurveTest-Invalid-Compressed-" + suffix,
+						config: Config{
+							MaxVersion:       ver.version,
+							CipherSuites:     ecdheCiphers,
+							CurvePreferences: []CurveID{curve.id},
+							Bugs: ProtocolBugs{
+								SendCompressedCoordinates: true,
+							},
+						},
+						flags:              flagInts("-curves", shimConfig.AllCurves),
+						shouldFail:         true,
+						expectedError:      ":BAD_ECPOINT:",
+						expectedLocalError: badKeyShareLocalError,
+					})
+					testCases = append(testCases, testCase{
+						testType: testType,
+						name:     "CurveTest-Invalid-NotOnCurve-" + suffix,
+						config: Config{
+							MaxVersion:       ver.version,
+							CipherSuites:     ecdheCiphers,
+							CurvePreferences: []CurveID{curve.id},
+							Bugs: ProtocolBugs{
+								ECDHPointNotOnCurve: true,
+							},
+						},
+						flags:              flagInts("-curves", shimConfig.AllCurves),
+						shouldFail:         true,
+						expectedError:      ":BAD_ECPOINT:",
+						expectedLocalError: badKeyShareLocalError,
+					})
+				}
+
+				if isX25519Group(curve.id) {
+					// Implementations should mask off the high order bit in X25519.
+					testCases = append(testCases, testCase{
+						testType: testType,
+						name:     "CurveTest-SetX25519HighBit-" + suffix,
+						config: Config{
+							MaxVersion:       ver.version,
+							CipherSuites:     ecdheCiphers,
+							CurvePreferences: []CurveID{curve.id},
+							Bugs: ProtocolBugs{
+								SetX25519HighBit: true,
+							},
+						},
+						flags: flagInts("-curves", shimConfig.AllCurves),
+						expectations: connectionExpectations{
+							curveID: curve.id,
+						},
+					})
+
+					// Implementations should reject low order points.
+					testCases = append(testCases, testCase{
+						testType: testType,
+						name:     "CurveTest-Invalid-LowOrderX25519Point-" + suffix,
+						config: Config{
+							MaxVersion:       ver.version,
+							CipherSuites:     ecdheCiphers,
+							CurvePreferences: []CurveID{curve.id},
+							Bugs: ProtocolBugs{
+								LowOrderX25519Point: true,
+							},
+						},
+						flags:              flagInts("-curves", shimConfig.AllCurves),
+						shouldFail:         true,
+						expectedError:      ":BAD_ECPOINT:",
+						expectedLocalError: badKeyShareLocalError,
+					})
+				}
+
+				if curve.id == CurveX25519MLKEM768 && testType == serverTest {
+					testCases = append(testCases, testCase{
+						testType: testType,
+						name:     "CurveTest-Invalid-MLKEMEncapKeyNotReduced-" + suffix,
+						config: Config{
+							MaxVersion:       ver.version,
+							CipherSuites:     ecdheCiphers,
+							CurvePreferences: []CurveID{curve.id},
+							Bugs: ProtocolBugs{
+								MLKEMEncapKeyNotReduced: true,
+							},
+						},
+						flags:              flagInts("-curves", shimConfig.AllCurves),
+						shouldFail:         true,
+						expectedError:      ":BAD_ECPOINT:",
+						expectedLocalError: badKeyShareLocalError,
+					})
+				}
 			}
 		}
 	}
@@ -11977,60 +12076,6 @@ func addCurveTests() {
 		flags:         []string{"-curves", strconv.Itoa(int(CurveP384))},
 		shouldFail:    true,
 		expectedError: ":WRONG_CURVE:",
-	})
-
-	// Test invalid curve points.
-	testCases = append(testCases, testCase{
-		name: "InvalidECDHPoint-Client",
-		config: Config{
-			MaxVersion:       VersionTLS12,
-			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			CurvePreferences: []CurveID{CurveP256},
-			Bugs: ProtocolBugs{
-				InvalidECDHPoint: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":BAD_ECPOINT:",
-	})
-	testCases = append(testCases, testCase{
-		name: "InvalidECDHPoint-Client-TLS13",
-		config: Config{
-			MaxVersion:       VersionTLS13,
-			CurvePreferences: []CurveID{CurveP256},
-			Bugs: ProtocolBugs{
-				InvalidECDHPoint: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":BAD_ECPOINT:",
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "InvalidECDHPoint-Server",
-		config: Config{
-			MaxVersion:       VersionTLS12,
-			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			CurvePreferences: []CurveID{CurveP256},
-			Bugs: ProtocolBugs{
-				InvalidECDHPoint: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":BAD_ECPOINT:",
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "InvalidECDHPoint-Server-TLS13",
-		config: Config{
-			MaxVersion:       VersionTLS13,
-			CurvePreferences: []CurveID{CurveP256},
-			Bugs: ProtocolBugs{
-				InvalidECDHPoint: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":BAD_ECPOINT:",
 	})
 
 	// The previous curve ID should be reported on TLS 1.2 resumption.
@@ -12208,22 +12253,6 @@ func addCurveTests() {
 		},
 		shouldFail:    true,
 		expectedError: ":ERROR_PARSING_EXTENSION:",
-	})
-
-	// Implementations should mask off the high order bit in X25519.
-	testCases = append(testCases, testCase{
-		name: "SetX25519HighBit",
-		config: Config{
-			CipherSuites: []uint16{
-				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-				TLS_AES_128_GCM_SHA256,
-			},
-			CurvePreferences: []CurveID{CurveX25519},
-			Bugs: ProtocolBugs{
-				SetX25519HighBit: true,
-			},
-		},
 	})
 
 	// Post-quantum groups require TLS 1.3.

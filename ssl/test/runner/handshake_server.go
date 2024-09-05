@@ -978,7 +978,7 @@ ResendHelloRetryRequest:
 			// avoid crashing.
 			kem2, _ := kemForCurveID(selectedCurve, config)
 			var err error
-			peerKey, err = kem2.generate(config.rand())
+			peerKey, err = kem2.generate(config)
 			if err != nil {
 				return err
 			}
@@ -986,7 +986,7 @@ ResendHelloRetryRequest:
 			peerKey = selectedKeyShare.keyExchange
 		}
 
-		ciphertext, ecdheSecret, err := kem.encap(config.rand(), peerKey)
+		ciphertext, ecdheSecret, err := kem.encap(config, peerKey)
 		if err != nil {
 			c.sendAlert(alertHandshakeFailure)
 			return err
@@ -998,9 +998,6 @@ ResendHelloRetryRequest:
 		curveID := selectedCurve
 		if c.config.Bugs.SendCurve != 0 {
 			curveID = config.Bugs.SendCurve
-		}
-		if c.config.Bugs.InvalidECDHPoint {
-			ciphertext[0] ^= 0xff
 		}
 
 		hs.hello.keyShare = keyShareEntry{
