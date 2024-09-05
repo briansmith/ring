@@ -60,7 +60,6 @@
 #include <string.h>
 
 #include <openssl/nid.h>
-#include <openssl/sha.h>
 
 #include "internal.h"
 #include "../delocate.h"
@@ -146,20 +145,20 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha256) {
 
 
 static void sha384_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA384_Init(ctx->md_data));
+  BCM_sha384_init(ctx->md_data);
 }
 
 static void sha384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA384_Update(ctx->md_data, data, count));
+  BCM_sha384_update(ctx->md_data, data, count);
 }
 
 static void sha384_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA384_Final(md, ctx->md_data));
+  BCM_sha384_final(md, ctx->md_data);
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha384) {
   out->type = NID_sha384;
-  out->md_size = SHA384_DIGEST_LENGTH;
+  out->md_size = BCM_SHA384_DIGEST_LENGTH;
   out->flags = 0;
   out->init = sha384_init;
   out->update = sha384_update;
@@ -170,20 +169,20 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha384) {
 
 
 static void sha512_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA512_Init(ctx->md_data));
+  BCM_sha512_init(ctx->md_data);
 }
 
 static void sha512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA512_Update(ctx->md_data, data, count));
+  BCM_sha512_update(ctx->md_data, data, count);
 }
 
 static void sha512_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA512_Final(md, ctx->md_data));
+  BCM_sha512_final(md, ctx->md_data);
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512) {
   out->type = NID_sha512;
-  out->md_size = SHA512_DIGEST_LENGTH;
+  out->md_size = BCM_SHA512_DIGEST_LENGTH;
   out->flags = 0;
   out->init = sha512_init;
   out->update = sha512_update;
@@ -194,20 +193,20 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512) {
 
 
 static void sha512_256_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA512_256_Init(ctx->md_data));
+  BCM_sha512_256_init(ctx->md_data);
 }
 
 static void sha512_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA512_256_Update(ctx->md_data, data, count));
+  BCM_sha512_256_update(ctx->md_data, data, count);
 }
 
 static void sha512_256_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA512_256_Final(md, ctx->md_data));
+  BCM_sha512_256_final(md, ctx->md_data);
 }
 
 DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_256) {
   out->type = NID_sha512_256;
-  out->md_size = SHA512_256_DIGEST_LENGTH;
+  out->md_size = BCM_SHA512_256_DIGEST_LENGTH;
   out->flags = 0;
   out->init = sha512_256_init;
   out->update = sha512_256_update;

@@ -58,7 +58,6 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/sha.h>
 
 #include "../../internal.h"
 #include "../bn/internal.h"
@@ -268,17 +267,17 @@ int ecdsa_sign_fixed(const uint8_t *digest, size_t digest_len, uint8_t *sig,
 
   // Pass a SHA512 hash of the private key and digest as additional data
   // into the RBG. This is a hardening measure against entropy failure.
-  static_assert(SHA512_DIGEST_LENGTH >= 32,
+  static_assert(BCM_SHA512_DIGEST_LENGTH >= 32,
                 "additional_data is too large for SHA-512");
 
   FIPS_service_indicator_lock_state();
 
   SHA512_CTX sha;
-  uint8_t additional_data[SHA512_DIGEST_LENGTH];
-  SHA512_Init(&sha);
-  SHA512_Update(&sha, priv_key->words, order->width * sizeof(BN_ULONG));
-  SHA512_Update(&sha, digest, digest_len);
-  SHA512_Final(additional_data, &sha);
+  uint8_t additional_data[BCM_SHA512_DIGEST_LENGTH];
+  BCM_sha512_init(&sha);
+  BCM_sha512_update(&sha, priv_key->words, order->width * sizeof(BN_ULONG));
+  BCM_sha512_update(&sha, digest, digest_len);
+  BCM_sha512_final(additional_data, &sha);
 
   // Cap iterations so callers who supply invalid values as custom groups do not
   // infinite loop. This does not impact valid parameters (e.g. those covered by

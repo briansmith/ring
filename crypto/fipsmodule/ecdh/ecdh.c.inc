@@ -72,7 +72,6 @@
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/sha.h>
 
 #include "../../internal.h"
 #include "../ec/internal.h"
@@ -106,24 +105,27 @@ int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
 
   FIPS_service_indicator_lock_state();
   SHA256_CTX ctx;
+  SHA512_CTX ctx_512;
   switch (out_len) {
     case SHA224_DIGEST_LENGTH:
       BCM_sha224_init(&ctx);
       BCM_sha224_update(&ctx, buf, buflen);
       BCM_sha224_final(out, &ctx);
-      OPENSSL_cleanse(&ctx, sizeof(ctx));
       break;
     case SHA256_DIGEST_LENGTH:
       BCM_sha256_init(&ctx);
       BCM_sha256_update(&ctx, buf, buflen);
       BCM_sha256_final(out, &ctx);
-      OPENSSL_cleanse(&ctx, sizeof(ctx));
       break;
     case SHA384_DIGEST_LENGTH:
-      SHA384(buf, buflen, out);
+      BCM_sha384_init(&ctx_512);
+      BCM_sha384_update(&ctx_512, buf, buflen);
+      BCM_sha384_final(out, &ctx_512);
       break;
     case SHA512_DIGEST_LENGTH:
-      SHA512(buf, buflen, out);
+      BCM_sha512_init(&ctx_512);
+      BCM_sha512_update(&ctx_512, buf, buflen);
+      BCM_sha512_final(out, &ctx_512);
       break;
     default:
       OPENSSL_PUT_ERROR(ECDH, ECDH_R_UNKNOWN_DIGEST_LENGTH);

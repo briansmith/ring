@@ -64,6 +64,16 @@ struct sha256_state_st {
   unsigned num, md_len;
 };
 
+// BCM_SHA512_CBLOCK is the block size of SHA-512.
+#define BCM_SHA512_CBLOCK 128
+
+struct sha512_state_st {
+  uint64_t h[8];
+  uint64_t Nl, Nh;
+  uint8_t p[BCM_SHA512_CBLOCK];
+  unsigned num, md_len;
+};
+
 
 #if defined(__cplusplus)
 }  // extern C

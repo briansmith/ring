@@ -63,7 +63,6 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/sha.h>
 
 #include "internal.h"
 #include "../service_indicator/internal.h"

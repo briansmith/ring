@@ -240,14 +240,6 @@ OPENSSL_EXPORT uint8_t *SHA512(const uint8_t *data, size_t len,
 OPENSSL_EXPORT void SHA512_Transform(SHA512_CTX *sha,
                                      const uint8_t block[SHA512_CBLOCK]);
 
-struct sha512_state_st {
-  uint64_t h[8];
-  uint64_t Nl, Nh;
-  uint8_t p[128];
-  unsigned num, md_len;
-};
-
-
 // SHA-512-256
 //
 // See https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf section 5.3.6
