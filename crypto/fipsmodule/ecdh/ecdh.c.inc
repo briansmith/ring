@@ -105,12 +105,19 @@ int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
   }
 
   FIPS_service_indicator_lock_state();
+  SHA256_CTX ctx;
   switch (out_len) {
     case SHA224_DIGEST_LENGTH:
-      SHA224(buf, buflen, out);
+      BCM_sha224_init(&ctx);
+      BCM_sha224_update(&ctx, buf, buflen);
+      BCM_sha224_final(out, &ctx);
+      OPENSSL_cleanse(&ctx, sizeof(ctx));
       break;
     case SHA256_DIGEST_LENGTH:
-      SHA256(buf, buflen, out);
+      BCM_sha256_init(&ctx);
+      BCM_sha256_update(&ctx, buf, buflen);
+      BCM_sha256_final(out, &ctx);
+      OPENSSL_cleanse(&ctx, sizeof(ctx));
       break;
     case SHA384_DIGEST_LENGTH:
       SHA384(buf, buflen, out);

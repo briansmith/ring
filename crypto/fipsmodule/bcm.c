@@ -194,7 +194,7 @@ int BORINGSSL_integrity_test(void) {
   assert_within(start, RSA_sign, end);
   assert_within(start, BCM_rand_bytes, end);
   assert_within(start, EC_GROUP_cmp, end);
-  assert_within(start, SHA256_Update, end);
+  assert_within(start, BCM_sha256_update, end);
   assert_within(start, ecdsa_verify_fixed, end);
   assert_within(start, EVP_AEAD_CTX_seal, end);
 

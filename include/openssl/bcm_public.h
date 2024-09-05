@@ -53,6 +53,17 @@ struct sha_state_st {
   unsigned num;
 };
 
+// SHA256_CBLOCK is the block size of SHA-256.
+#define BCM_SHA256_CBLOCK 64
+
+// SHA256_CTX
+struct sha256_state_st {
+  uint32_t h[8];
+  uint32_t Nl, Nh;
+  uint8_t data[BCM_SHA256_CBLOCK];
+  unsigned num, md_len;
+};
+
 
 #if defined(__cplusplus)
 }  // extern C

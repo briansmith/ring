@@ -98,7 +98,8 @@ bcm_infallible BCM_sha1_init(SHA_CTX *sha);
 // BCM_SHA1_transform is a low-level function that performs a single, SHA-1
 // block transformation using the state from |sha| and |SHA_CBLOCK| bytes from
 // |block|.
-bcm_infallible BCM_sha1_transform(SHA_CTX *c, const uint8_t data[BCM_SHA_CBLOCK]);
+bcm_infallible BCM_sha1_transform(SHA_CTX *c,
+                                  const uint8_t data[BCM_SHA_CBLOCK]);
 
 // BCM_sha1_update adds |len| bytes from |data| to |sha|.
 bcm_infallible BCM_sha1_update(SHA_CTX *c, const void *data, size_t len);
@@ -123,6 +124,55 @@ bcm_infallible BCM_sha1_final(uint8_t out[BCM_SHA_DIGEST_LENGTH], SHA_CTX *c);
 // methods.
 bcm_infallible BCM_fips_186_2_prf(uint8_t *out, size_t out_len,
                                   const uint8_t xkey[BCM_SHA_DIGEST_LENGTH]);
+
+
+// SHA-224
+
+// SHA224_DIGEST_LENGTH is the length of a SHA-224 digest.
+#define BCM_SHA224_DIGEST_LENGTH 28
+
+// BCM_sha224_unit initialises |sha|.
+bcm_infallible BCM_sha224_init(SHA256_CTX *sha);
+
+// BCM_sha224_update adds |len| bytes from |data| to |sha|.
+bcm_infallible BCM_sha224_update(SHA256_CTX *sha, const void *data, size_t len);
+
+// BCM_sha224_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|, which must have at least |SHA224_DIGEST_LENGTH| bytes of
+// space. It aborts on programmer error.
+bcm_infallible BCM_sha224_final(uint8_t out[BCM_SHA224_DIGEST_LENGTH],
+                                SHA256_CTX *sha);
+
+
+// SHA-256
+
+// BCM_SHA256_DIGEST_LENGTH is the length of a SHA-256 digest.
+#define BCM_SHA256_DIGEST_LENGTH 32
+
+// BCM_sha256_init initialises |sha|.
+bcm_infallible BCM_sha256_init(SHA256_CTX *sha);
+
+// BCM_sha256_update adds |len| bytes from |data| to |sha|.
+bcm_infallible BCM_sha256_update(SHA256_CTX *sha, const void *data, size_t len);
+
+// BCM_sha256_final adds the final padding to |sha| and writes the resulting
+// digest to |out|, which must have at least |BCM_SHA256_DIGEST_LENGTH| bytes of
+// space. It aborts on programmer error.
+bcm_infallible BCM_sha256_final(uint8_t out[BCM_SHA256_DIGEST_LENGTH],
+                                SHA256_CTX *sha);
+
+// BCM_sha256_transform is a low-level function that performs a single, SHA-256
+// block transformation using the state from |sha| and |BCM_SHA256_CBLOCK| bytes
+// from |block|.
+bcm_infallible BCM_sha256_transform(SHA256_CTX *sha,
+                                    const uint8_t block[BCM_SHA256_CBLOCK]);
+
+// BCM_sha256_transform_blocks is a low-level function that takes |num_blocks| *
+// |BCM_SHA256_CBLOCK| bytes of data and performs SHA-256 transforms on it to
+// update |state|.
+bcm_infallible BCM_sha256_transform_blocks(uint32_t state[8],
+                                           const uint8_t *data,
+                                           size_t num_blocks);
 
 
 #if defined(__cplusplus)
