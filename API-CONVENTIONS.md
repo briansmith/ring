@@ -40,7 +40,15 @@ for more details.
 As with `errno`, callers must test the function's return value, not the error
 queue to determine whether an operation failed. Some codepaths may not interact
 with the error queue, and the error queue may have state from a previous failed
-operation.
+operation. After checking for failure, the caller can then inspect the error
+queue in the failure case for details.
+
+As a notable exception, some functions in the SSL/TLS library use a multi-step
+process to indicate failure: First, the return value indicates whether the
+operation failed. Then, `SSL_get_error` indicates whether the failure was due to
+an error (`SSL_ERROR_SSL`) or some recoverable condition (e.g.
+`SSL_ERROR_WANT_READ`). In the former case, the caller can use the error queue
+for more information.
 
 When ignoring a failed operation, it is recommended to call `ERR_clear_error` to
 avoid the state interacting with future operations. Failing to do so should not
@@ -50,7 +58,9 @@ operations being mixed in error logging. We hope to
 situation in the future.
 
 Where possible, avoid conditioning on specific reason codes and limit usage to
-logging. The reason codes are very specific and may change over time.
+logging. The reason codes are very fine-grained and tend to leak details of the
+library's internal structure. Changes in the library often have a side effect of
+changing the exact reason code returned.
 
 
 ## Memory allocation

@@ -478,7 +478,7 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 #define SSL_ERROR_NONE 0
 
 // SSL_ERROR_SSL indicates the operation failed within the library. The caller
-// may inspect the error queue for more information.
+// may inspect the error queue (see |ERR_get_error|) for more information.
 #define SSL_ERROR_SSL 1
 
 // SSL_ERROR_WANT_READ indicates the operation failed attempting to read from
