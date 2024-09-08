@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.16)
 
 # Defer enabling C and CXX languages.
 project(BoringSSL NONE)
@@ -767,19 +767,8 @@ else()
 endif()
 
 if(INSTALL_ENABLED)
-  # CMake versions before 3.14 do not have default destination values. Executable
-  # and library targets that use a default destination should include this
-  # variable.
-  if(CMAKE_VERSION VERSION_LESS "3.14")
-    set(INSTALL_DESTINATION_DEFAULT
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-  endif()
-
-  install(TARGETS crypto ssl
-          EXPORT OpenSSLTargets ${INSTALL_DESTINATION_DEFAULT})
-  install(TARGETS bssl DESTINATION ${INSTALL_DESTINATION_DEFAULT})
+  install(TARGETS crypto ssl EXPORT OpenSSLTargets)
+  install(TARGETS bssl)
   install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
   install(EXPORT OpenSSLTargets
           FILE OpenSSLTargets.cmake
