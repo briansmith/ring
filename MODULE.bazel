@@ -20,13 +20,17 @@ module(
     compatibility_level = 2,
 )
 
+# Periodically update the following dependencies to their latest versions
+# listed on https://registry.bazel.build/. When doing so, run
+# `bazelisk test ...` to update the hashes in MODULE.bazel.lock.
+
 # In principle, googletest is only needed for tests and could be a
 # dev_dependency. But it would then be impossible for downstream modules to run
 # BoringSSL's tests. The downstream module provides the toolchain, so we may
 # need to request they run tests when triaging issues. If
 # https://github.com/bazelbuild/bazel/issues/22187 is ever fixed, we can change
 # this.
-bazel_dep(name = "googletest", version = "1.14.0.bcr.1")
+bazel_dep(name = "googletest", version = "1.15.2")
 
-bazel_dep(name = "platforms", version = "0.0.9")
+bazel_dep(name = "platforms", version = "0.0.10")
 bazel_dep(name = "rules_cc", version = "0.0.9")
