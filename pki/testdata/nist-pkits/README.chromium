@@ -2,9 +2,10 @@ Name: NIST Public Key Interoperability Test Suite
 Short Name: NIST PKITS
 URL: http://csrc.nist.gov/groups/ST/crypto_apps_infra/pki/pkitesting.html
 Version: 1.0.1
-Date: April 14, 2011
+Date: 2011-04-14
 License: Public Domain: United States Government Work under 17 U.S.C. 105
 Shipped: no
+Security Critical: no
 
 Description:
 The Public Key Interoperability Test Suite (PKITS) is a comprehensive X.509
