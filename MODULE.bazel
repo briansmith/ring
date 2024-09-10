@@ -12,11 +12,11 @@
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-# When publishing to BCR, replace the version field below with
-# 0.0.0-YYYYMMDD-HASH, e.g. "0.0.0-20240126-22d349c".
+# When tagging a new periodic snapshot, bump the version here and then tag at
+# the revision where we bump the version.
 module(
     name = "boringssl",
-    version = "0.0.0-dev",
+    version = "0.20240913.0",
     compatibility_level = 2,
 )
 
