@@ -365,7 +365,9 @@ if(FIPS_DELOCATE OR NOT OPENSSL_NO_ASM)
     set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
   else()
     enable_language(ASM)
-    set(OPENSSL_ASM TRUE)
+    if (NOT OPENSSL_NO_ASM)
+      set(OPENSSL_ASM TRUE)
+    endif()
     # Work around https://gitlab.kitware.com/cmake/cmake/-/issues/20771 in older
     # CMake versions.
     if(APPLE AND CMAKE_VERSION VERSION_LESS 3.19)
