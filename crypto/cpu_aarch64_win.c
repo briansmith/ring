@@ -16,7 +16,7 @@
 #include "internal.h"
 
 #if defined(OPENSSL_AARCH64) && defined(OPENSSL_WINDOWS) && \
-    !defined(OPENSSL_STATIC_ARMCAP)
+    !defined(OPENSSL_STATIC_ARMCAP) && !defined(OPENSSL_NO_ASM)
 
 #include <windows.h>
 

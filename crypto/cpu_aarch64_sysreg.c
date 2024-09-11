@@ -18,7 +18,8 @@
 // expects userspace to simply read them. It traps the reads and fills in CPU
 // capabilities.
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_STATIC_ARMCAP) && \
-    (defined(ANDROID_BAREMETAL) || defined(OPENSSL_FREEBSD))
+    (defined(ANDROID_BAREMETAL) || defined(OPENSSL_FREEBSD)) &&    \
+    !defined(OPENSSL_NO_ASM)
 
 #include <openssl/arm_arch.h>
 

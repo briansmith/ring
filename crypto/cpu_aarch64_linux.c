@@ -15,7 +15,7 @@
 #include "internal.h"
 
 #if defined(OPENSSL_AARCH64) && defined(OPENSSL_LINUX) && \
-    !defined(OPENSSL_STATIC_ARMCAP)
+    !defined(OPENSSL_STATIC_ARMCAP) && !defined(OPENSSL_NO_ASM)
 
 #include <sys/auxv.h>
 
