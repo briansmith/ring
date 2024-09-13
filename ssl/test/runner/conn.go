@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"sync"
 	"time"
 
@@ -96,8 +97,8 @@ type Conn struct {
 
 	// input/output
 	in, out  halfConn     // in.Mutex < out.Mutex
-	rawInput *block       // raw input, right off the wire
-	input    *block       // application record waiting to be read
+	rawInput bytes.Buffer // raw input, right off the wire
+	input    bytes.Buffer // application record waiting to be read
 	hand     bytes.Buffer // handshake record waiting to be read
 
 	// pendingFlight, if PackHandshakeFlight is enabled, is the buffer of
@@ -188,14 +189,13 @@ type halfConn struct {
 	mac                   macFunction
 	seq                   [8]byte // 64-bit sequence number
 	outSeq                [8]byte // Mapped sequence number
-	bfree                 *block  // list of free blocks
 
 	nextCipher any         // next encryption state
 	nextMac    macFunction // next MAC algorithm
 	nextSeq    [6]byte     // next epoch's starting sequence number in DTLS
 
 	// used to save allocating a new buffer for each MAC.
-	inDigestBuf, outDigestBuf []byte
+	macBuf []byte
 
 	trafficSecret []byte
 
@@ -376,33 +376,33 @@ func (hc *halfConn) updateOutSeq() {
 	copy(hc.outSeq[:], hc.seq[:])
 }
 
-// writeRecordHeaderLen returns the length of the record header that will be
-// written. Do not use this for the length of a record header when reading, as
-// that can depend on the bytes read.
-func (hc *halfConn) writeRecordHeaderLen() int {
-	if hc.isDTLS {
-		usePlaintextHeader := hc.config.Bugs.DTLSUsePlaintextRecordHeader && hc.conn.handshakeComplete
-		if hc.version >= VersionTLS13 && hc.cipher != nil && !usePlaintextHeader {
-			// The DTLS 1.3 record header consists of a
-			// demultiplexing/type byte, some number of connection
-			// ID bytes, 1 or 2 sequence number bytes, and 0 or 2
-			// length bytes. Configuration options or protocol bugs
-			// will change these values to test all options of the
-			// DTLS 1.3 record header.
-			cidSize := 0
-			seqSize := 2
-			if hc.config.DTLSUseShortSeqNums {
-				seqSize = 1
-			}
-			lenSize := 2
-			if hc.config.DTLSRecordHeaderOmitLength {
-				lenSize = 0
-			}
-			return 1 + cidSize + seqSize + lenSize
-		}
-		return dtlsMaxRecordHeaderLen
+func (hc *halfConn) explicitIVLen() int {
+	if hc.cipher == nil {
+		return 0
 	}
-	return tlsRecordHeaderLen
+	switch c := hc.cipher.(type) {
+	case cipher.Stream:
+		return 0
+	case *tlsAead:
+		if c.explicitNonce {
+			return 8
+		}
+		return 0
+	case cbcMode:
+		if hc.version >= VersionTLS11 || hc.isDTLS {
+			return c.BlockSize()
+		}
+		return 0
+	case nullCipher:
+		return 0
+	default:
+		panic("unknown cipher type")
+	}
+}
+
+func (hc *halfConn) computeMAC(seq, header, data []byte) []byte {
+	hc.macBuf = hc.mac.MAC(hc.macBuf[:0], seq, header[:3], header[len(header)-2:], data)
+	return hc.macBuf
 }
 
 // removePadding returns an unpadded slice, in constant time, which is a prefix
@@ -453,13 +453,13 @@ type cbcMode interface {
 	SetIV([]byte)
 }
 
-// decrypt checks and strips the mac and decrypts the data in b. Returns a
-// success boolean, the number of bytes to skip from the start of the record in
-// order to get the application payload, the encrypted record type (or 0
-// if there is none), and an optional alert value.
-func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, b *block) (ok bool, prefixLen int, contentType recordType, alertValue alert) {
+// decrypt checks and strips the mac and decrypts the data in record. Returns a
+// success boolean, the application payload, the encrypted record type (or 0
+// if there is none), and an optional alert value. Decryption occurs in-place,
+// so the contents of record will be overwritten as part of this process.
+func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, record []byte) (ok bool, contentType recordType, data []byte, alertValue alert) {
 	// pull out payload
-	payload := b.data[recordHeaderLen:]
+	payload := record[recordHeaderLen:]
 
 	macSize := 0
 	if hc.mac != nil {
@@ -467,7 +467,7 @@ func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, b *block) (ok bool,
 	}
 
 	paddingGood := byte(255)
-	explicitIVLen := 0
+	explicitIVLen := hc.explicitIVLen()
 
 	// decrypt
 	if hc.cipher != nil {
@@ -476,40 +476,34 @@ func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, b *block) (ok bool,
 			c.XORKeyStream(payload, payload)
 		case *tlsAead:
 			nonce := seq
-			if c.explicitNonce {
-				explicitIVLen = 8
+			if explicitIVLen != 0 {
 				if len(payload) < explicitIVLen {
-					return false, 0, 0, alertBadRecordMAC
+					return false, 0, nil, alertBadRecordMAC
 				}
-				nonce = payload[:8]
-				payload = payload[8:]
+				nonce = payload[:explicitIVLen]
+				payload = payload[explicitIVLen:]
 			}
 
 			var additionalData []byte
 			if hc.version < VersionTLS13 {
 				additionalData = make([]byte, 13)
 				copy(additionalData, seq)
-				copy(additionalData[8:], b.data[:3])
+				copy(additionalData[8:], record[:3])
 				n := len(payload) - c.Overhead()
 				additionalData[11] = byte(n >> 8)
 				additionalData[12] = byte(n)
 			} else {
-				additionalData = b.data[:recordHeaderLen]
+				additionalData = record[:recordHeaderLen]
 			}
 			var err error
 			payload, err = c.Open(payload[:0], nonce, payload, additionalData)
 			if err != nil {
-				return false, 0, 0, alertBadRecordMAC
+				return false, 0, nil, alertBadRecordMAC
 			}
-			b.resize(recordHeaderLen + explicitIVLen + len(payload))
 		case cbcMode:
 			blockSize := c.BlockSize()
-			if hc.version >= VersionTLS11 || hc.isDTLS {
-				explicitIVLen = blockSize
-			}
-
 			if len(payload)%blockSize != 0 || len(payload) < roundUp(explicitIVLen+macSize+1, blockSize) {
-				return false, 0, 0, alertBadRecordMAC
+				return false, 0, nil, alertBadRecordMAC
 			}
 
 			if explicitIVLen > 0 {
@@ -518,7 +512,6 @@ func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, b *block) (ok bool,
 			}
 			c.CryptBlocks(payload, payload)
 			payload, paddingGood = removePadding(payload)
-			b.resize(recordHeaderLen + explicitIVLen + len(payload))
 
 			// note that we still have a timing side-channel in the
 			// MAC check, below. An attacker can align the record
@@ -543,125 +536,193 @@ func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, b *block) (ok bool,
 			}
 			payload = payload[:i]
 			if len(payload) == 0 {
-				return false, 0, 0, alertUnexpectedMessage
+				return false, 0, nil, alertUnexpectedMessage
 			}
 			contentType = recordType(payload[len(payload)-1])
 			payload = payload[:len(payload)-1]
-			b.resize(recordHeaderLen + len(payload))
 		}
 	}
 
 	// check, strip mac
 	if hc.mac != nil {
 		if len(payload) < macSize {
-			return false, 0, 0, alertBadRecordMAC
+			return false, 0, nil, alertBadRecordMAC
 		}
 
-		// strip mac off payload, b.data
+		// strip mac off payload
 		n := len(payload) - macSize
-		b.data[recordHeaderLen-2] = byte(n >> 8)
-		b.data[recordHeaderLen-1] = byte(n)
-		b.resize(recordHeaderLen + explicitIVLen + n)
 		remoteMAC := payload[n:]
-		localMAC := hc.mac.MAC(hc.inDigestBuf, seq, b.data[:3], b.data[recordHeaderLen-2:recordHeaderLen], payload[:n])
-
+		payload = payload[:n]
+		record[recordHeaderLen-2] = byte(n >> 8)
+		record[recordHeaderLen-1] = byte(n)
+		localMAC := hc.computeMAC(seq, record[:recordHeaderLen], payload)
 		if subtle.ConstantTimeCompare(localMAC, remoteMAC) != 1 || paddingGood != 255 {
-			return false, 0, 0, alertBadRecordMAC
+			return false, 0, nil, alertBadRecordMAC
 		}
-		hc.inDigestBuf = localMAC
 	}
 	hc.incSeq(false)
 
-	return true, recordHeaderLen + explicitIVLen, contentType, 0
+	return true, contentType, payload, 0
 }
 
-// padToBlockSize calculates the needed padding block, if any, for a payload.
-// On exit, prefix aliases payload and extends to the end of the last full
-// block of payload. finalBlock is a fresh slice which contains the contents of
-// any suffix of payload as well as the needed padding to make finalBlock a
-// full block.
-func padToBlockSize(payload []byte, blockSize int, config *Config) (prefix, finalBlock []byte) {
-	overrun := len(payload) % blockSize
-	prefix = payload[:len(payload)-overrun]
+// extendSlice updates *data to contain n more bytes and returns a slice
+// containing the bytes that were added.
+func extendSlice(data *[]byte, n int) []byte {
+	// Reallocate the slice if needed.
+	*data = slices.Grow(*data, n)
+	// Extend data into the capacity and return the newly added slice.
+	oldLen := len(*data)
+	newLen := oldLen + n
+	*data = (*data)[:newLen]
+	return (*data)[oldLen:newLen]
+}
 
-	paddingLen := blockSize - overrun
-	finalSize := blockSize
+// computingCBCPaddingLength returns the number of bytes of CBC padding to use
+// for a payload (plaintext + MAC) of length payloadLen.
+func computingCBCPaddingLength(payloadLen, blockSize int, config *Config) int {
+	paddingLen := blockSize - payloadLen%blockSize
 	if config.Bugs.MaxPadding {
 		for paddingLen+blockSize <= 256 {
 			paddingLen += blockSize
 		}
-		finalSize = 256
 	}
-	finalBlock = make([]byte, finalSize)
-	for i := range finalBlock {
-		finalBlock[i] = byte(paddingLen - 1)
-	}
-	if config.Bugs.PaddingFirstByteBad || config.Bugs.PaddingFirstByteBadIf255 && paddingLen == 256 {
-		finalBlock[overrun] ^= 0xff
-	}
-	copy(finalBlock, payload[len(payload)-overrun:])
-	return
+	return paddingLen
 }
 
-// encrypt encrypts and macs the data in b.
-func (hc *halfConn) encrypt(b *block, explicitIVLen int, typ recordType) (bool, alert) {
-	recordHeaderLen := hc.writeRecordHeaderLen()
+// appendCBCPadding computes paddingLen bytes of padding data, appends it to b,
+// and returns the result.
+func appendCBCPadding(b []byte, paddingLen int, config *Config) []byte {
+	padding := extendSlice(&b, paddingLen)
+	for i := range padding {
+		padding[i] = byte(paddingLen - 1)
+	}
+	if config.Bugs.PaddingFirstByteBad || config.Bugs.PaddingFirstByteBadIf255 && paddingLen == 256 {
+		padding[0] ^= 0xff
+	}
+	return b
+}
 
-	// mac
+func (hc *halfConn) maxEncryptOverhead(payloadLen int) int {
+	var macSize int
 	if hc.mac != nil {
-		mac := hc.mac.MAC(hc.outDigestBuf, hc.outSeq[0:], b.data[:3], b.data[recordHeaderLen-2:recordHeaderLen], b.data[recordHeaderLen+explicitIVLen:])
+		macSize = hc.mac.Size()
+	}
+	overhead := macSize + hc.explicitIVLen()
+	if hc.version >= VersionTLS13 {
+		overhead += 1 + hc.config.Bugs.RecordPadding // type + padding
+	}
+	if hc.cipher != nil {
+		switch c := hc.cipher.(type) {
+		case cipher.Stream, *nullCipher:
+		case *tlsAead:
+			overhead += c.Overhead()
+		case cbcMode:
+			overhead += computingCBCPaddingLength(payloadLen+macSize, c.BlockSize(), hc.config)
+		case nullCipher:
+			break
+		default:
+			panic("unknown cipher type")
+		}
+	}
+	return overhead
+}
 
-		n := len(b.data)
-		b.resize(n + len(mac))
-		copy(b.data[n:], mac)
-		hc.outDigestBuf = mac
+func (c *Conn) useDTLSPlaintextHeader() bool {
+	return c.config.Bugs.DTLSUsePlaintextRecordHeader && c.handshakeComplete
+}
+
+// encrypt encrypts and MACs the data in payload, appending it record. On
+// entry, the last headerLen bytes of record must be the header. The length
+// (which must be in the last two bytes of the header) should be computed for
+// the unencrypted, unpadded payload. It will be updated, potentially in-place,
+// with the final length.
+func (hc *halfConn) encrypt(record, payload []byte, typ recordType, headerLen int, headerHasLength bool) ([]byte, error) {
+	prefixLen := len(record)
+	header := record[prefixLen-headerLen:]
+	explicitIVLen := hc.explicitIVLen()
+
+	// Reserve some space for the explicit IV. The slice may get reallocated
+	// after this, so don't use the return value.
+	extendSlice(&record, explicitIVLen)
+
+	// Stage the plaintext, TLS 1.3 padding, and TLS 1.2 MAC in the record, to
+	// be encrypted in-place.
+	record = append(record, payload...)
+
+	if hc.version >= VersionTLS13 && hc.cipher != nil {
+		if hc.config.Bugs.OmitRecordContents {
+			record = record[:len(record)-len(payload)]
+		} else {
+			record = append(record, byte(typ))
+		}
+		padding := extendSlice(&record, hc.config.Bugs.RecordPadding)
+		for i := range padding {
+			padding[i] = 0
+		}
 	}
 
-	payload := b.data[recordHeaderLen:]
+	if hc.mac != nil {
+		record = append(record, hc.computeMAC(hc.outSeq[:], header, payload)...)
+	}
 
-	// encrypt
+	explicitIV := record[prefixLen : prefixLen+explicitIVLen]
 	if hc.cipher != nil {
 		switch c := hc.cipher.(type) {
 		case cipher.Stream:
-			c.XORKeyStream(payload, payload)
-		case *tlsAead:
-			payloadLen := len(b.data) - recordHeaderLen - explicitIVLen
-			b.resize(len(b.data) + c.Overhead())
-			nonce := hc.outSeq[:]
-			if c.explicitNonce {
-				nonce = b.data[recordHeaderLen : recordHeaderLen+explicitIVLen]
+			if explicitIVLen != 0 {
+				panic("tls: unexpected explicit IV length")
 			}
-			usePlaintextHeader := hc.config.Bugs.DTLSUsePlaintextRecordHeader && hc.conn.handshakeComplete
-			if hc.isDTLS && hc.version >= VersionTLS13 && !usePlaintextHeader {
+			c.XORKeyStream(record[prefixLen:], record[prefixLen:])
+		case *tlsAead:
+			nonce := hc.outSeq[:]
+			if hc.isDTLS && hc.version >= VersionTLS13 && !hc.conn.useDTLSPlaintextHeader() {
+				// Unlike DTLS 1.2, DTLS 1.3's nonce construction does not use
+				// the epoch number. We store the epoch and nonce numbers
+				// together, so make a copy without the epoch.
 				nonce = make([]byte, 8)
 				copy(nonce[2:], hc.outSeq[2:])
 			}
-			payload := b.data[recordHeaderLen+explicitIVLen:]
-			payload = payload[:payloadLen]
+
+			// Save the explicit IV, if not empty.
+			if len(explicitIV) != 0 {
+				if explicitIVLen != len(nonce) {
+					panic("tls: unexpected explicit IV length")
+				}
+				copy(explicitIV, nonce)
+			}
 
 			var additionalData []byte
 			if hc.version < VersionTLS13 {
+				// (D)TLS 1.2's AD is seq_num || type || version || plaintext length
 				additionalData = make([]byte, 13)
 				copy(additionalData, hc.outSeq[:])
-				copy(additionalData[8:], b.data[:3])
-				additionalData[11] = byte(payloadLen >> 8)
-				additionalData[12] = byte(payloadLen)
+				copy(additionalData[8:], header[:3])
+				additionalData[11] = byte(len(payload) >> 8)
+				additionalData[12] = byte(len(payload))
 			} else {
-				additionalData = make([]byte, recordHeaderLen)
-				copy(additionalData, b.data)
+				// (D)TLS 1.3's AD is the ciphertext record header, so update the
+				// length now.
+				if headerHasLength {
+					n := len(record) - prefixLen + c.Overhead()
+					record[prefixLen-2] = byte(n >> 8)
+					record[prefixLen-1] = byte(n)
+				}
+				additionalData = record[prefixLen-headerLen : prefixLen]
 			}
 
-			c.Seal(payload[:0], nonce, payload, additionalData)
+			record = c.Seal(record[:prefixLen+explicitIVLen], nonce, record[prefixLen+explicitIVLen:], additionalData)
 		case cbcMode:
-			blockSize := c.BlockSize()
 			if explicitIVLen > 0 {
-				c.SetIV(payload[:explicitIVLen])
-				payload = payload[explicitIVLen:]
+				if _, err := io.ReadFull(hc.config.rand(), explicitIV); err != nil {
+					return nil, err
+				}
+				c.SetIV(explicitIV)
 			}
-			prefix, finalBlock := padToBlockSize(payload, blockSize, hc.config)
-			b.resize(recordHeaderLen + explicitIVLen + len(prefix) + len(finalBlock))
-			c.CryptBlocks(b.data[recordHeaderLen+explicitIVLen:], prefix)
-			c.CryptBlocks(b.data[recordHeaderLen+explicitIVLen+len(prefix):], finalBlock)
+
+			blockSize := c.BlockSize()
+			paddingLen := computingCBCPaddingLength(len(record)-prefixLen, blockSize, hc.config)
+			record = appendCBCPadding(record, paddingLen, hc.config)
+			c.CryptBlocks(record[prefixLen:], record[prefixLen:])
 		case nullCipher:
 			break
 		default:
@@ -669,113 +730,15 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int, typ recordType) (bool, 
 		}
 	}
 
-	// update length to include MAC and any block padding needed.
-	if !hc.config.DTLSRecordHeaderOmitLength {
-		n := len(b.data) - recordHeaderLen
-		b.data[recordHeaderLen-2] = byte(n >> 8)
-		b.data[recordHeaderLen-1] = byte(n)
+	// Update the record header to include the encryption overhead.
+	if headerHasLength {
+		n := len(record) - prefixLen
+		record[prefixLen-2] = byte(n >> 8)
+		record[prefixLen-1] = byte(n)
 	}
 	hc.incSeq(true)
 
-	return true, 0
-}
-
-// A block is a simple data buffer.
-type block struct {
-	data []byte
-	off  int // index for Read
-	link *block
-}
-
-// resize resizes block to be n bytes, growing if necessary.
-func (b *block) resize(n int) {
-	if n > cap(b.data) {
-		b.reserve(n)
-	}
-	b.data = b.data[0:n]
-}
-
-// reserve makes sure that block contains a capacity of at least n bytes.
-func (b *block) reserve(n int) {
-	if cap(b.data) >= n {
-		return
-	}
-	m := cap(b.data)
-	if m == 0 {
-		m = 1024
-	}
-	for m < n {
-		m *= 2
-	}
-	data := make([]byte, len(b.data), m)
-	copy(data, b.data)
-	b.data = data
-}
-
-// readFromUntil reads from r into b until b contains at least n bytes
-// or else returns an error.
-func (b *block) readFromUntil(r io.Reader, n int) error {
-	// quick case
-	if len(b.data) >= n {
-		return nil
-	}
-
-	// read until have enough.
-	b.reserve(n)
-	for {
-		m, err := r.Read(b.data[len(b.data):cap(b.data)])
-		b.data = b.data[0 : len(b.data)+m]
-		if len(b.data) >= n {
-			// TODO(bradfitz,agl): slightly suspicious
-			// that we're throwing away r.Read's err here.
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (b *block) Read(p []byte) (n int, err error) {
-	n = copy(p, b.data[b.off:])
-	b.off += n
-	return
-}
-
-// newBlock allocates a new block, from hc's free list if possible.
-func (hc *halfConn) newBlock() *block {
-	b := hc.bfree
-	if b == nil {
-		return new(block)
-	}
-	hc.bfree = b.link
-	b.link = nil
-	b.resize(0)
-	return b
-}
-
-// freeBlock returns a block to hc's free list.
-// The protocol is such that each side only has a block or two on
-// its free list at a time, so there's no need to worry about
-// trimming the list, etc.
-func (hc *halfConn) freeBlock(b *block) {
-	b.link = hc.bfree
-	hc.bfree = b
-}
-
-// splitBlock splits a block after the first n bytes,
-// returning a block with those n bytes and a
-// block with the remainder.  the latter may be nil.
-func (hc *halfConn) splitBlock(b *block, n int) (*block, *block) {
-	if len(b.data) <= n {
-		return b, nil
-	}
-	bb := hc.newBlock()
-	bb.resize(len(b.data) - n)
-	copy(bb.data, b.data[n:])
-	b.data = b.data[0:n]
-	return b, bb
+	return record, nil
 }
 
 type recordNumberEncrypter interface {
@@ -879,7 +842,20 @@ func (c *Conn) shouldSkipEarlyData() bool {
 	return c.skipEarlyData
 }
 
-func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
+func (c *Conn) readRawInputUntil(n int) error {
+	if c.rawInput.Len() >= n {
+		return nil
+	}
+
+	n -= c.rawInput.Len()
+	c.rawInput.Grow(n)
+	buf := c.rawInput.AvailableBuffer()
+	nread, err := io.ReadAtLeast(c.conn, buf[:cap(buf)], n)
+	c.rawInput.Write(buf[:nread])
+	return err
+}
+
+func (c *Conn) doReadRecord(want recordType) (recordType, []byte, error) {
 RestartReadRecord:
 	if c.isDTLS {
 		return c.dtlsDoReadRecord(want)
@@ -887,13 +863,8 @@ RestartReadRecord:
 
 	recordHeaderLen := tlsRecordHeaderLen
 
-	if c.rawInput == nil {
-		c.rawInput = c.in.newBlock()
-	}
-	b := c.rawInput
-
 	// Read header, payload.
-	if err := b.readFromUntil(c.conn, recordHeaderLen); err != nil {
+	if err := c.readRawInputUntil(recordHeaderLen); err != nil {
 		// RFC suggests that EOF without an alertCloseNotify is
 		// an error, but popular web sites seem to do this,
 		// so we can't make it an error, outside of tests.
@@ -906,7 +877,8 @@ RestartReadRecord:
 		return 0, nil, err
 	}
 
-	typ := recordType(b.data[0])
+	header := c.rawInput.Bytes()[:recordHeaderLen]
+	typ := recordType(header[0])
 
 	// No valid TLS record has a type of 0x80, however SSLv2 handshakes
 	// start with a uint16 length where the MSB is set and the first record
@@ -917,8 +889,8 @@ RestartReadRecord:
 		return 0, nil, c.in.setErrorLocked(errors.New("tls: unsupported SSLv2 handshake received"))
 	}
 
-	vers := uint16(b.data[1])<<8 | uint16(b.data[2])
-	n := int(b.data[3])<<8 | int(b.data[4])
+	vers := uint16(header[1])<<8 | uint16(header[2])
+	n := int(header[3])<<8 | int(header[4])
 
 	// Alerts sent near version negotiation do not have a well-defined
 	// record-layer version prior to TLS 1.3. (In TLS 1.3, the record-layer
@@ -956,7 +928,7 @@ RestartReadRecord:
 			return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: first record does not look like a TLS handshake"))
 		}
 	}
-	if err := b.readFromUntil(c.conn, recordHeaderLen+n); err != nil {
+	if err := c.readRawInputUntil(recordHeaderLen + n); err != nil {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
@@ -967,25 +939,24 @@ RestartReadRecord:
 	}
 
 	// Process message.
-	b, c.rawInput = c.in.splitBlock(b, recordHeaderLen+n)
-	ok, off, encTyp, alertValue := c.in.decrypt(c.in.seq[:], recordHeaderLen, b)
-
-	// Handle skipping over early data.
-	if !ok && c.skipEarlyData {
-		goto RestartReadRecord
+	b := c.rawInput.Next(recordHeaderLen + n)
+	ok, encTyp, data, alertValue := c.in.decrypt(c.in.seq[:], recordHeaderLen, b)
+	if !ok {
+		// TLS 1.3 early data uses trial decryption.
+		if c.skipEarlyData {
+			goto RestartReadRecord
+		}
+		return 0, nil, c.in.setErrorLocked(c.sendAlert(alertValue))
 	}
 
 	// If the server is expecting a second ClientHello (in response to
 	// a HelloRetryRequest) and the client sends early data, there
-	// won't be a decryption failure but it still needs to be skipped.
+	// won't be a decryption failure (we will interpret the ciphertext
+	// as plaintext application data) but it still needs to be skipped.
 	if c.in.cipher == nil && typ == recordTypeApplicationData && c.skipEarlyData {
 		goto RestartReadRecord
 	}
 
-	if !ok {
-		return 0, nil, c.in.setErrorLocked(c.sendAlert(alertValue))
-	}
-	b.off = off
 	c.skipEarlyData = false
 
 	if c.vers >= VersionTLS13 && c.in.cipher != nil {
@@ -995,13 +966,12 @@ RestartReadRecord:
 		typ = encTyp
 	}
 
-	length := len(b.data[b.off:])
-	if c.config.Bugs.ExpectRecordSplitting && typ == recordTypeApplicationData && length != 1 && !c.seenOneByteRecord {
+	if c.config.Bugs.ExpectRecordSplitting && typ == recordTypeApplicationData && len(data) != 1 && !c.seenOneByteRecord {
 		return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: application data records were not split"))
 	}
 
-	c.seenOneByteRecord = typ == recordTypeApplicationData && length == 1
-	return typ, b, nil
+	c.seenOneByteRecord = typ == recordTypeApplicationData && len(data) == 1
+	return typ, data, nil
 }
 
 func (c *Conn) readTLS13ChangeCipherSpec() error {
@@ -1017,22 +987,15 @@ func (c *Conn) readTLS13ChangeCipherSpec() error {
 	}
 
 	// Read the ChangeCipherSpec.
-	if c.rawInput == nil {
-		c.rawInput = c.in.newBlock()
-	}
-	b := c.rawInput
-	if err := b.readFromUntil(c.conn, 1); err != nil {
+	if err := c.readRawInputUntil(6); err != nil {
 		return c.in.setErrorLocked(fmt.Errorf("tls: error reading TLS 1.3 ChangeCipherSpec: %s", err))
 	}
-	if recordType(b.data[0]) == recordTypeAlert {
+	if recordType(c.rawInput.Bytes()[0]) == recordTypeAlert {
 		// If the client is sending an alert, allow the ChangeCipherSpec
 		// to be skipped. It may be rejecting a sufficiently malformed
 		// ServerHello that it can't parse out the version.
 		c.expectTLS13ChangeCipherSpec = false
 		return nil
-	}
-	if err := b.readFromUntil(c.conn, 6); err != nil {
-		return c.in.setErrorLocked(fmt.Errorf("tls: error reading TLS 1.3 ChangeCipherSpec: %s", err))
 	}
 
 	// Check they match that we expect.
@@ -1040,13 +1003,12 @@ func (c *Conn) readTLS13ChangeCipherSpec() error {
 	if c.vers >= VersionTLS13 {
 		expected[2] = 3
 	}
-	if !bytes.Equal(b.data[:6], expected[:]) {
-		return c.in.setErrorLocked(fmt.Errorf("tls: error invalid TLS 1.3 ChangeCipherSpec: %x", b.data[:6]))
+	if data := c.rawInput.Bytes()[:6]; !bytes.Equal(data, expected[:]) {
+		return c.in.setErrorLocked(fmt.Errorf("tls: error invalid TLS 1.3 ChangeCipherSpec: %x", data))
 	}
 
 	// Discard the data.
-	b, c.rawInput = c.in.splitBlock(b, 6)
-	c.in.freeBlock(b)
+	c.rawInput.Next(6)
 
 	c.expectTLS13ChangeCipherSpec = false
 	return nil
@@ -1083,25 +1045,22 @@ Again:
 	if c.config.Bugs.MockQUICTransport != nil {
 		doReadRecord = c.config.Bugs.MockQUICTransport.readRecord
 	}
-	typ, b, err := doReadRecord(want)
+	typ, data, err := doReadRecord(want)
 	if err != nil {
 		return err
 	}
-	data := b.data[b.off:]
 	max := maxPlaintext
 	if c.config.Bugs.MaxReceivePlaintext != 0 {
 		max = c.config.Bugs.MaxReceivePlaintext
 	}
 	if len(data) > max {
 		err := c.sendAlert(alertRecordOverflow)
-		c.in.freeBlock(b)
 		return c.in.setErrorLocked(err)
 	}
 
 	if typ != recordTypeHandshake {
 		c.seenHandshakePackEnd = false
 	} else if c.seenHandshakePackEnd {
-		c.in.freeBlock(b)
 		return c.in.setErrorLocked(errors.New("tls: peer violated ExpectPackedEncryptedHandshake"))
 	}
 
@@ -1121,7 +1080,6 @@ Again:
 		switch data[0] {
 		case alertLevelWarning:
 			// drop on the floor
-			c.in.freeBlock(b)
 			goto Again
 		case alertLevelError:
 			c.in.setErrorLocked(&net.OpError{Op: "remote error", Err: alert(data[1])})
@@ -1147,8 +1105,7 @@ Again:
 			c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
 			break
 		}
-		c.input = b
-		b = nil
+		c.input.Write(data)
 
 	case recordTypeHandshake:
 		// Allow handshake data while reading application data to
@@ -1163,9 +1120,6 @@ Again:
 		}
 	}
 
-	if b != nil {
-		c.in.freeBlock(b)
-	}
 	return c.in.err
 }
 
@@ -1285,31 +1239,7 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 	return c.doWriteRecord(typ, data)
 }
 
-func (c *Conn) addTLS13Padding(b *block, recordHeaderLen, recordLen int, typ recordType) int {
-	if c.out.version < VersionTLS13 || c.out.cipher == nil {
-		return recordLen
-	}
-	paddingLen := c.config.Bugs.RecordPadding
-	if c.config.Bugs.OmitRecordContents {
-		recordLen = paddingLen
-		b.resize(recordHeaderLen + paddingLen)
-	} else {
-		recordLen += 1 + paddingLen
-		b.resize(len(b.data) + 1 + paddingLen)
-		b.data[len(b.data)-paddingLen-1] = byte(typ)
-	}
-	for i := 0; i < paddingLen; i++ {
-		b.data[len(b.data)-paddingLen+i] = 0
-	}
-	if c, ok := c.out.cipher.(*tlsAead); ok {
-		recordLen += c.Overhead()
-	}
-	return recordLen
-}
-
 func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
-	recordHeaderLen := c.out.writeRecordHeaderLen()
-	b := c.out.newBlock()
 	first := true
 	isClientHello := typ == recordTypeHandshake && len(data) > 0 && data[0] == typeClientHello
 	for len(data) > 0 || first {
@@ -1326,38 +1256,9 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 				m = 6
 			}
 		}
-		plaintextLen := m
-		explicitIVLen := 0
-		explicitIVIsSeq := false
 		first = false
 
-		var cbc cbcMode
-		if c.out.version >= VersionTLS11 {
-			var ok bool
-			if cbc, ok = c.out.cipher.(cbcMode); ok {
-				explicitIVLen = cbc.BlockSize()
-			}
-		}
-		if explicitIVLen == 0 {
-			if aead, ok := c.out.cipher.(*tlsAead); ok && aead.explicitNonce {
-				explicitIVLen = 8
-				// The AES-GCM construction in TLS has an
-				// explicit nonce so that the nonce can be
-				// random. However, the nonce is only 8 bytes
-				// which is too small for a secure, random
-				// nonce. Therefore we use the sequence number
-				// as the nonce.
-				explicitIVIsSeq = true
-			}
-		}
-		b.resize(recordHeaderLen + explicitIVLen + plaintextLen)
-		b.data[0] = byte(typ)
-		if c.vers >= VersionTLS13 && c.out.cipher != nil {
-			b.data[0] = byte(recordTypeApplicationData)
-			if outerType := c.config.Bugs.OuterRecordType; outerType != 0 {
-				b.data[0] = byte(outerType)
-			}
-		}
+		// Determine record version.
 		vers := c.vers
 		if vers == 0 {
 			// Some TLS servers fail if the record version is
@@ -1370,39 +1271,38 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 		if c.vers >= VersionTLS13 || c.out.version >= VersionTLS13 {
 			vers = VersionTLS12
 		}
-
 		if c.config.Bugs.SendRecordVersion != 0 {
 			vers = c.config.Bugs.SendRecordVersion
 		}
 		if c.vers == 0 && c.config.Bugs.SendInitialRecordVersion != 0 {
 			vers = c.config.Bugs.SendInitialRecordVersion
 		}
-		copy(b.data[recordHeaderLen+explicitIVLen:], data)
-		// Add TLS 1.3 padding.
-		recordLen := c.addTLS13Padding(b, recordHeaderLen, plaintextLen, typ)
-		b.data[1] = byte(vers >> 8)
-		b.data[2] = byte(vers)
-		b.data[3] = byte(recordLen >> 8)
-		b.data[4] = byte(recordLen)
-		if explicitIVLen > 0 {
-			explicitIV := b.data[recordHeaderLen : recordHeaderLen+explicitIVLen]
-			if explicitIVIsSeq {
-				copy(explicitIV, c.out.seq[:])
-			} else {
-				if _, err = io.ReadFull(c.config.rand(), explicitIV); err != nil {
-					break
-				}
+
+		// Assemble the record header.
+		record := make([]byte, tlsRecordHeaderLen, tlsRecordHeaderLen+m+c.out.maxEncryptOverhead(m))
+		record[0] = byte(typ)
+		if c.vers >= VersionTLS13 && c.out.cipher != nil {
+			record[0] = byte(recordTypeApplicationData)
+			if outerType := c.config.Bugs.OuterRecordType; outerType != 0 {
+				record[0] = byte(outerType)
 			}
 		}
-		c.out.encrypt(b, explicitIVLen, typ)
-		_, err = c.conn.Write(b.data)
+		record[1] = byte(vers >> 8)
+		record[2] = byte(vers)
+		record[3] = byte(m >> 8) // encrypt will update this
+		record[4] = byte(m)
+
+		record, err = c.out.encrypt(record, data[:m], typ, tlsRecordHeaderLen, true /* header has length */)
+		if err != nil {
+			return
+		}
+		_, err = c.conn.Write(record)
 		if err != nil {
 			break
 		}
-		n += plaintextLen
-		data = data[plaintextLen:]
+		n += m
+		data = data[m:]
 	}
-	c.out.freeBlock(b)
 
 	if typ == recordTypeChangeCipherSpec && c.vers < VersionTLS13 {
 		err = c.out.changeCipherSpec(c.config)
@@ -1836,7 +1736,7 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 	// CBC IV. So this loop ignores a limited number of empty records.
 	const maxConsecutiveEmptyRecords = 100
 	for emptyRecordCount := 0; emptyRecordCount <= maxConsecutiveEmptyRecords; emptyRecordCount++ {
-		for c.input == nil && c.in.err == nil {
+		for c.input.Len() == 0 && c.in.err == nil {
 			if err := c.readRecord(recordTypeApplicationData); err != nil {
 				// Soft error, like EAGAIN
 				return 0, err
@@ -1854,9 +1754,8 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 		}
 
 		n, err = c.input.Read(b)
-		if c.input.off >= len(c.input.data) || c.isDTLS {
-			c.in.freeBlock(c.input)
-			c.input = nil
+		if c.input.Len() == 0 || c.isDTLS {
+			c.input.Reset()
 		}
 
 		// If a close-notify alert is waiting, read it so that
@@ -1870,9 +1769,8 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 		// request.
 		// See https://codereview.appspot.com/76400046
 		// and http://golang.org/issue/3514
-		if ri := c.rawInput; ri != nil &&
-			n != 0 && err == nil &&
-			c.input == nil && len(ri.data) > 0 && recordType(ri.data[0]) == recordTypeAlert {
+		if ri := c.rawInput.Bytes(); !c.isDTLS && n != 0 && err == nil &&
+			c.input.Len() == 0 && len(ri) > 0 && recordType(ri[0]) == recordTypeAlert {
 			if recErr := c.readRecord(recordTypeApplicationData); recErr != nil {
 				err = recErr // will be io.EOF on closeNotify
 			}

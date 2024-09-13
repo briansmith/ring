@@ -1997,8 +1997,9 @@ type ProtocolBugs struct {
 	// session ID in the ServerHello.
 	DTLS13EchoSessionID bool
 
-	// DTLSUsePlaintextRecord header, if true, has DTLS connections never
-	// use the DTLS 1.3 record header.
+	// DTLSUsePlaintextRecord header, if true, has DTLS 1.3 connections to use
+	// the DTLS 1.2 record header once the handshake completes. The bug is not
+	// activated during the handshake so that the handshake can complete first.
 	DTLSUsePlaintextRecordHeader bool
 
 	// DTLS13RecordHeaderSetCIDBit, if true, sets the Connection ID bit in
@@ -2246,13 +2247,6 @@ func (c *Credential) signatureAlgorithms() []signatureAlgorithm {
 		return c.SignatureAlgorithms
 	}
 	return supportedSignatureAlgorithms
-}
-
-// A TLS record.
-type record struct {
-	contentType  recordType
-	major, minor uint8
-	payload      []byte
 }
 
 type handshakeMessage interface {

@@ -1371,11 +1371,10 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 			if err := c.readRecord(recordTypeApplicationData); err != nil {
 				return err
 			}
-			if !bytes.Equal(c.input.data[c.input.off:], expectedMsg) {
-				return errors.New("ExpectHalfRTTData: did not get expected message")
+			if !bytes.Equal(c.input.Bytes(), expectedMsg) {
+				return fmt.Errorf("tls: got half-RTT data record %x, wanted %x", c.input.Bytes(), expectedMsg)
 			}
-			c.in.freeBlock(c.input)
-			c.input = nil
+			c.input.Reset()
 		}
 	}
 
