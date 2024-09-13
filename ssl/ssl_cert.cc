@@ -325,6 +325,38 @@ static bool ssl_cert_skip_to_spki(const CBS *in, CBS *out_tbs_cert) {
   return true;
 }
 
+bool ssl_cert_extract_issuer(const CBS *in, CBS *out_dn) {
+  CBS buf = *in;
+
+  CBS toplevel;
+  CBS cert;
+  if (!CBS_get_asn1(&buf, &toplevel, CBS_ASN1_SEQUENCE) || //
+      CBS_len(&buf) != 0 || //
+      !CBS_get_asn1(&toplevel, &cert, CBS_ASN1_SEQUENCE) || //
+      // version
+      !CBS_get_optional_asn1(
+          &cert, NULL, NULL,
+          CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
+      // serialNumber
+      !CBS_get_asn1(&cert, NULL, CBS_ASN1_INTEGER) ||
+      // signature algorithm
+      !CBS_get_asn1(&cert, NULL, CBS_ASN1_SEQUENCE) ||
+      // issuer
+      !CBS_get_asn1_element(&cert, out_dn, CBS_ASN1_SEQUENCE)) {
+    return false;
+  }
+  return true;
+}
+
+bool ssl_cert_matches_issuer(const CBS *in, const CBS *dn) {
+  CBS issuer;
+
+  if (!ssl_cert_extract_issuer(in, &issuer)) {
+    return false;
+  }
+  return CBS_mem_equal(&issuer, CBS_data(dn), CBS_len(dn));
+}
+
 UniquePtr<EVP_PKEY> ssl_cert_parse_pubkey(const CBS *in) {
   CBS buf = *in, tbs_cert;
   if (!ssl_cert_skip_to_spki(&buf, &tbs_cert)) {

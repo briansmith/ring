@@ -213,6 +213,28 @@ void ssl_credential_st::ClearIntermediateCerts() {
   }
 }
 
+bool ssl_credential_st::ChainContainsIssuer(
+    bssl::Span<const uint8_t> dn) const {
+    if (UsesX509()) {
+    // TODO(bbe) This is used for matching a chain by CA name for the CA extension.
+    // If we require a chain to be present, we could remove any remaining parts
+    // of the chain after the found issuer, on the assumption that the peer
+    // sending the CA extension has the issuer in their trust store and does not
+    // need us to waste bytes on the wire.
+    CBS dn_cbs;
+    CBS_init(&dn_cbs, dn.data(), dn.size());
+    for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(chain.get()); i++) {
+      const CRYPTO_BUFFER *cert = sk_CRYPTO_BUFFER_value(chain.get(), i);
+      CBS cert_cbs;
+      CRYPTO_BUFFER_init_CBS(cert, &cert_cbs);
+      if (ssl_cert_matches_issuer(&cert_cbs, &dn_cbs)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 bool ssl_credential_st::AppendIntermediateCert(UniquePtr<CRYPTO_BUFFER> cert) {
   if (!UsesX509()) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);

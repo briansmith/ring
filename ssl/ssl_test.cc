@@ -1824,6 +1824,22 @@ static bssl::UniquePtr<CRYPTO_BUFFER> GetChainTestIntermediateBuffer() {
   return BufferFromPEM(kCertPEM);
 }
 
+static bssl::UniquePtr<CRYPTO_BUFFER> GetChainTestIntermediateIssuerBuffer() {
+  static const char kSubjectPEM[] =
+      "-----BEGIN SUBJECT-----\n"
+      "MBQxEjAQBgNVBAMMCUMgUm9vdCBDQQ==\n"
+      "-----END SUBJECT-----\n";
+  return BufferFromPEM(kSubjectPEM);
+}
+
+static bssl::UniquePtr<CRYPTO_BUFFER> GetChainTestUnmatchingIssuerBuffer() {
+  static const char kSubjectPEM[] =
+      "-----BEGIN SUBJECT-----\n"
+      "MBYxFDASBgNVBAMMC0RpZ2lOb3RBRm94\n"
+      "-----END SUBJECT-----\n";
+  return BufferFromPEM(kSubjectPEM);
+}
+
 static bssl::UniquePtr<X509> GetChainTestIntermediate() {
   return X509FromBuffer(GetChainTestIntermediateBuffer());
 }
@@ -5159,13 +5175,19 @@ TEST(SSLTest, OverrideChainAndKey) {
       BuffersEqual(SSL_get0_peer_certificates(client.get()), {leaf2.get()}));
 }
 
-TEST(SSLTest, OverrideCredentialChain) {
+TEST(SSLTest, CredentialChains) {
   bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
   ASSERT_TRUE(key);
   bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
   ASSERT_TRUE(leaf);
   bssl::UniquePtr<CRYPTO_BUFFER> ca = GetChainTestIntermediateBuffer();
   ASSERT_TRUE(ca);
+  bssl::UniquePtr<CRYPTO_BUFFER> ca_subject =
+      GetChainTestIntermediateIssuerBuffer();
+  ASSERT_TRUE(ca_subject);
+  bssl::UniquePtr<CRYPTO_BUFFER> bogus_subject =
+      GetChainTestUnmatchingIssuerBuffer();
+  ASSERT_TRUE(bogus_subject);
 
   std::vector<CRYPTO_BUFFER *> chain = {leaf.get(), ca.get()};
   std::vector<CRYPTO_BUFFER *> wrong_chain = {leaf.get(), leaf.get(),
@@ -5179,8 +5201,29 @@ TEST(SSLTest, OverrideCredentialChain) {
   // Configure one chain (including the leaf), then replace it with another.
   ASSERT_TRUE(SSL_CREDENTIAL_set1_cert_chain(cred.get(), wrong_chain.data(),
                                              wrong_chain.size()));
+  CBS ca_subject_cbs, ca_cbs;
+  CRYPTO_BUFFER_init_CBS(ca.get(), &ca_cbs);
+  ASSERT_TRUE(ssl_cert_extract_issuer(&ca_cbs, &ca_subject_cbs));
+  bssl::UniquePtr<CRYPTO_BUFFER> subject_buf(
+      CRYPTO_BUFFER_new_from_CBS(&ca_subject_cbs, nullptr));
+  EXPECT_EQ(Bytes(CRYPTO_BUFFER_data(ca_subject.get()),
+                  CRYPTO_BUFFER_len(ca_subject.get())),
+            Bytes(CRYPTO_BUFFER_data(subject_buf.get()),
+                  CRYPTO_BUFFER_len(subject_buf.get())));
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+  ASSERT_FALSE(cred->ChainContainsIssuer(
+      MakeConstSpan(CRYPTO_BUFFER_data(subject_buf.get()),
+                    CRYPTO_BUFFER_len(subject_buf.get()))));
+#endif
+
   ASSERT_TRUE(
       SSL_CREDENTIAL_set1_cert_chain(cred.get(), chain.data(), chain.size()));
+
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+  ASSERT_TRUE(cred->ChainContainsIssuer(
+      MakeConstSpan(CRYPTO_BUFFER_data(subject_buf.get()),
+                    CRYPTO_BUFFER_len(subject_buf.get()))));
+#endif
 
   ASSERT_TRUE(SSL_CREDENTIAL_set1_private_key(cred.get(), key.get()));
   ASSERT_TRUE(SSL_CTX_add1_credential(ctx.get(), cred.get()));
