@@ -277,12 +277,17 @@ func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret 
 	}
 }
 
-// resetCipher changes the cipher state back to no encryption to be able
+// resetCipher resets the cipher state back to no encryption to be able
 // to send an unencrypted ClientHello in response to HelloRetryRequest
 // after 0-RTT data was rejected.
 func (hc *halfConn) resetCipher() {
+	// In all cases, the cipher is set to nil so that second ClientHello
+	// will be sent with no encryption (instead of with early data keys).
 	hc.cipher = nil
-	hc.incEpoch()
+	// TODO(crbug.com/42290594): When handling 0-RTT rejections in DTLS, we
+	// need to reset the epoch to 0 and reset the sequence number to where
+	// it was prior to sending early data (this is different than resetting
+	// it to 0).
 }
 
 // incSeq increments the sequence number.

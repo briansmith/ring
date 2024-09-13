@@ -1792,6 +1792,7 @@ func (m *clientEncryptedExtensionsMsg) unmarshal(data []byte) bool {
 }
 
 type helloRetryRequestMsg struct {
+	isDTLS                bool
 	raw                   []byte
 	vers                  uint16
 	sessionID             []byte
@@ -1814,7 +1815,11 @@ func (m *helloRetryRequestMsg) marshal() []byte {
 	retryRequestMsg := cryptobyte.NewBuilder(nil)
 	retryRequestMsg.AddUint8(typeServerHello)
 	retryRequestMsg.AddUint24LengthPrefixed(func(retryRequest *cryptobyte.Builder) {
-		retryRequest.AddUint16(VersionTLS12)
+		legacyVersion := uint16(VersionTLS12)
+		if m.isDTLS {
+			legacyVersion = VersionDTLS12
+		}
+		retryRequest.AddUint16(legacyVersion)
 		retryRequest.AddBytes(tls13HelloRetryRequest)
 		addUint8LengthPrefixedBytes(retryRequest, m.sessionID)
 		retryRequest.AddUint16(m.cipherSuite)

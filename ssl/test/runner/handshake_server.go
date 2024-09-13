@@ -150,6 +150,20 @@ func (c *Conn) serverHandshake() error {
 	return nil
 }
 
+func (c *Conn) shouldSendHelloVerifyRequest() bool {
+	if !c.isDTLS {
+		return false
+	}
+	if c.config.Bugs.ForceHelloVerifyRequest {
+		return true
+	}
+	if c.config.Bugs.SkipHelloVerifyRequest {
+		return false
+	}
+	// Don't send HVR for DTLS 1.3; do send it for DTLS <= 1.2.
+	return c.vers < VersionTLS13
+}
+
 // readClientHello reads a ClientHello message from the client and determines
 // the protocol version.
 func (hs *serverHandshakeState) readClientHello() error {
@@ -233,74 +247,6 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	if c.isDTLS && !config.Bugs.SkipHelloVerifyRequest {
-		// Per RFC 6347, the version field in HelloVerifyRequest SHOULD
-		// be always DTLS 1.0
-		cookieLen := c.config.Bugs.HelloVerifyRequestCookieLength
-		if cookieLen == 0 {
-			cookieLen = 32
-		}
-		if c.config.Bugs.EmptyHelloVerifyRequestCookie {
-			cookieLen = 0
-		}
-		helloVerifyRequest := &helloVerifyRequestMsg{
-			vers:   VersionDTLS10,
-			cookie: make([]byte, cookieLen),
-		}
-		if _, err := io.ReadFull(c.config.rand(), helloVerifyRequest.cookie); err != nil {
-			c.sendAlert(alertInternalError)
-			return errors.New("dtls: short read from Rand: " + err.Error())
-		}
-		c.writeRecord(recordTypeHandshake, helloVerifyRequest.marshal())
-		c.flushHandshake()
-
-		if err := c.simulatePacketLoss(nil); err != nil {
-			return err
-		}
-		msg, err := c.readHandshake()
-		if err != nil {
-			return err
-		}
-		newClientHello, ok := msg.(*clientHelloMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(hs.clientHello, msg)
-		}
-		if !bytes.Equal(newClientHello.cookie, helloVerifyRequest.cookie) {
-			return errors.New("dtls: invalid cookie")
-		}
-		if err := checkClientHellosEqual(hs.clientHello.raw, newClientHello.raw, c.isDTLS, nil); err != nil {
-			return err
-		}
-		hs.clientHello = newClientHello
-	}
-
-	if config.Bugs.RequireSameRenegoClientVersion && c.clientVersion != 0 {
-		if c.clientVersion != hs.clientHello.vers {
-			return fmt.Errorf("tls: client offered different version on renego")
-		}
-	}
-
-	if config.Bugs.FailIfPostQuantumOffered {
-		for _, offeredCurve := range hs.clientHello.supportedCurves {
-			if isPqGroup(offeredCurve) {
-				return errors.New("tls: post-quantum group was offered")
-			}
-		}
-	}
-
-	if expected := config.Bugs.ExpectedKeyShares; expected != nil {
-		if len(expected) != len(hs.clientHello.keyShares) {
-			return fmt.Errorf("tls: expected %d key shares, but found %d", len(expected), len(hs.clientHello.keyShares))
-		}
-
-		for i, group := range expected {
-			if found := hs.clientHello.keyShares[i].group; found != group {
-				return fmt.Errorf("tls: key share #%d is for group %d, not %d", i, found, group)
-			}
-		}
-	}
-
 	c.clientVersion = hs.clientHello.vers
 
 	// Use the versions extension if supplied, otherwise use the legacy ClientHello version.
@@ -355,9 +301,91 @@ func (hs *serverHandshakeState) readClientHello() error {
 	if !ok {
 		panic("Could not map wire version")
 	}
-	c.haveVers = true
 
 	clientProtocol, ok := wireToVersion(c.clientVersion, c.isDTLS)
+
+	if c.shouldSendHelloVerifyRequest() {
+		// Per RFC 6347, the version field in HelloVerifyRequest SHOULD
+		// be always DTLS 1.0
+		cookieLen := c.config.Bugs.HelloVerifyRequestCookieLength
+		if cookieLen == 0 {
+			cookieLen = 32
+		}
+		if c.config.Bugs.EmptyHelloVerifyRequestCookie {
+			cookieLen = 0
+		}
+		helloVerifyRequest := &helloVerifyRequestMsg{
+			vers:   VersionDTLS10,
+			cookie: make([]byte, cookieLen),
+		}
+		if _, err := io.ReadFull(c.config.rand(), helloVerifyRequest.cookie); err != nil {
+			c.sendAlert(alertInternalError)
+			return errors.New("dtls: short read from Rand: " + err.Error())
+		}
+		c.writeRecord(recordTypeHandshake, helloVerifyRequest.marshal())
+		c.flushHandshake()
+
+		if err := c.simulatePacketLoss(nil); err != nil {
+			return err
+		}
+		msg, err := c.readHandshake()
+		if err != nil {
+			return err
+		}
+		newClientHello, ok := msg.(*clientHelloMsg)
+		if !ok {
+			c.sendAlert(alertUnexpectedMessage)
+			return unexpectedMessageError(hs.clientHello, msg)
+		}
+		if !bytes.Equal(newClientHello.cookie, helloVerifyRequest.cookie) {
+			return errors.New("dtls: invalid cookie")
+		}
+		if err := checkClientHellosEqual(hs.clientHello.raw, newClientHello.raw, c.isDTLS, nil); err != nil {
+			return err
+		}
+		hs.clientHello = newClientHello
+	}
+	// The version for the connection is selected before sending
+	// HelloVerifyRequest, but haveVers isn't set until after we send it and
+	// receive the second ClientHello. This is intentional because once the
+	// version for the Conn has been negotiated, we enforce that the version
+	// in the record layer matches the negotiated version.
+	//
+	// At the time the server has selected a version and decided to send a
+	// HelloVerifyRequest to the client, only the server knows the selected
+	// version. Even though there is a version field in HelloVerifyRequest,
+	// it is only used to indicate packet formatting and is not part of
+	// version negotiation. Thus, when the client sends its second
+	// ClientHello (in response to HelloVerifyRequest), it does not know the
+	// version selected for this connection. Therefore, this server can't
+	// enforce that the client used the correct version in the record layer.
+	c.haveVers = true
+
+	if config.Bugs.RequireSameRenegoClientVersion && c.clientVersion != 0 {
+		if c.clientVersion != hs.clientHello.vers {
+			return fmt.Errorf("tls: client offered different version on renego")
+		}
+	}
+
+	if config.Bugs.FailIfPostQuantumOffered {
+		for _, offeredCurve := range hs.clientHello.supportedCurves {
+			if isPqGroup(offeredCurve) {
+				return errors.New("tls: post-quantum group was offered")
+			}
+		}
+	}
+
+	if expected := config.Bugs.ExpectedKeyShares; expected != nil {
+		if len(expected) != len(hs.clientHello.keyShares) {
+			return fmt.Errorf("tls: expected %d key shares, but found %d", len(expected), len(hs.clientHello.keyShares))
+		}
+
+		for i, group := range expected {
+			if found := hs.clientHello.keyShares[i].group; found != group {
+				return fmt.Errorf("tls: key share #%d is for group %d, not %d", i, found, group)
+			}
+		}
+	}
 
 	// Reject < 1.2 ClientHellos with signature_algorithms.
 	if ok && clientProtocol < VersionTLS12 && len(hs.clientHello.signatureAlgorithms) > 0 {
@@ -700,6 +728,7 @@ ResendHelloRetryRequest:
 		cipherSuite = config.Bugs.SendHelloRetryRequestCipherSuite
 	}
 	helloRetryRequest := &helloRetryRequestMsg{
+		isDTLS:              c.isDTLS,
 		vers:                c.wireVersion,
 		sessionID:           hs.clientHello.sessionID,
 		cipherSuite:         cipherSuite,

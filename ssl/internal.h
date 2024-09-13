@@ -2014,7 +2014,8 @@ struct SSL_HANDSHAKE {
 
   // dtls_cookie is the value of the cookie in DTLS HelloVerifyRequest. If
   // empty, either none was received or HelloVerifyRequest contained an empty
-  // cookie.
+  // cookie. Check the received_hello_verify_request field to distinguish an
+  // empty cookie from no HelloVerifyRequest message being received.
   Array<uint8_t> dtls_cookie;
 
   // ech_client_outer contains the outer ECH extension to send in the
@@ -2221,6 +2222,10 @@ struct SSL_HANDSHAKE {
   // channel_id_negotiated is true if Channel ID should be used in this
   // handshake.
   bool channel_id_negotiated : 1;
+
+  // received_hello_verify_request is true if we received a HelloVerifyRequest
+  // message from the server.
+  bool received_hello_verify_request : 1;
 
   // client_version is the value sent or received in the ClientHello version.
   uint16_t client_version = 0;
@@ -3077,7 +3082,7 @@ struct DTLSEpochState {
   static constexpr bool kAllowUniquePtr = true;
 
   UniquePtr<SSLAEADContext> aead_write_ctx;
-  uint64_t write_sequence;
+  uint64_t write_sequence = 0;
 };
 
 struct DTLS1_STATE {
