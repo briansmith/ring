@@ -37,6 +37,10 @@ foo:
 	adrp x10, .Llocal_data2
 	ldr q0, [x10, :lo12:.Llocal_data2]
 
+	// Load from local symbol with offset
+	adrp x10, .Llocal_data2+16
+	ldr q0, [x10, :lo12:.Llocal_data2+16]
+
 	bl local_function
 
 	bl remote_function

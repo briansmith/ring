@@ -589,11 +589,15 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 							panic("Symbol reference outside of ldr instruction")
 						}
 
-						if skipWS(parts.next) != nil || parts.up.next != nil {
-							panic("can't handle tweak or post-increment with symbol references")
-						}
-
-						// Suppress the offset; adrp loaded the full address.
+						// Suppress the offset; adrp loaded the full address. This assumes the
+						// the compiler does not emit code like the following:
+						//
+						//   adrp x0, symbol
+						//   ldr x1, [x0, :lo12:symbol]
+						//   ldr x2, [x0, :lo12:symbol+4]
+						//
+						// Such code would only work if lo12(symbol+4) = lo12(symbol) + 4, but
+						// this is true when symbol is sufficiently aligned.
 						args = append(args, "["+baseAddrReg+"]")
 						changed = true
 						continue
@@ -610,6 +614,15 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 				// The adrp instruction will have been turned into a sequence that loads
 				// the full address, above, thus the offset is turned into zero. If that
 				// results in the instruction being a nop, then it is deleted.
+				//
+				// This assumes the compiler does not emit code like the following:
+				//
+				//   adrp x0, symbol
+				//   add x1, x0, :lo12:symbol
+				//   add x2, x0, :lo12:symbol+4
+				//
+				// Such code would only work if lo12(symbol+4) = lo12(symbol) + 4, but
+				// this is true when symbol is sufficiently aligned.
 				if instructionName != "add" {
 					panic(fmt.Sprintf("unsure how to handle %q instruction using lo12", instructionName))
 				}
