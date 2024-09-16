@@ -118,8 +118,9 @@ void SLHDSA_SHA2_128S_sign_internal(
   slhdsa_fors_pk_from_sig(pk_fors, out_signature + SLHDSA_SHA2_128S_N,
                           fors_digest, pk_seed, addr);
 
-  slhdsa_ht_sign(out_signature + SLHDSA_SHA2_128S_N + SLHDSA_SHA2_128S_FORS_BYTES,
-                 pk_fors, idx_tree, idx_leaf, sk_seed, pk_seed);
+  slhdsa_ht_sign(
+      out_signature + SLHDSA_SHA2_128S_N + SLHDSA_SHA2_128S_FORS_BYTES, pk_fors,
+      idx_tree, idx_leaf, sk_seed, pk_seed);
 }
 
 int SLHDSA_SHA2_128S_sign(
@@ -139,7 +140,7 @@ int SLHDSA_SHA2_128S_sign(
   uint8_t entropy[SLHDSA_SHA2_128S_N];
   RAND_bytes(entropy, sizeof(entropy));
   SLHDSA_SHA2_128S_sign_internal(out_signature, private_key, M_prime_header,
-                                context, context_len, msg, msg_len, entropy);
+                                 context, context_len, msg, msg_len, entropy);
   return 1;
 }
 
@@ -159,8 +160,8 @@ int SLHDSA_SHA2_128S_verify(
   M_prime_header[1] = (uint8_t)context_len;
 
   return SLHDSA_SHA2_128S_verify_internal(signature, signature_len, public_key,
-                                         M_prime_header, context, context_len,
-                                         msg, msg_len);
+                                          M_prime_header, context, context_len,
+                                          msg, msg_len);
 }
 
 int SLHDSA_SHA2_128S_verify_internal(

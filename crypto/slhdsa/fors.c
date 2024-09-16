@@ -24,8 +24,9 @@
 #include "./thash.h"
 
 // Compute the base 2^12 representation of `message` (algorithm 4, page 16).
-static void fors_base_b(uint16_t indices[SLHDSA_SHA2_128S_FORS_TREES],
-                        const uint8_t message[SLHDSA_SHA2_128S_FORS_MSG_BYTES]) {
+static void fors_base_b(
+    uint16_t indices[SLHDSA_SHA2_128S_FORS_TREES],
+    const uint8_t message[SLHDSA_SHA2_128S_FORS_MSG_BYTES]) {
   static_assert(SLHDSA_SHA2_128S_FORS_HEIGHT == 12, "");
   static_assert((SLHDSA_SHA2_128S_FORS_TREES & 1) == 0, "");
 

@@ -35,7 +35,7 @@ extern "C" {
 // Total number of FORS tree used.
 #define SLHDSA_SHA2_128S_FORS_TREES 14
 // Size of a FORS signature
-#define SLHDSA_SHA2_128S_FORS_BYTES                                  \
+#define SLHDSA_SHA2_128S_FORS_BYTES                                   \
   ((SLHDSA_SHA2_128S_FORS_HEIGHT + 1) * SLHDSA_SHA2_128S_FORS_TREES * \
    SLHDSA_SHA2_128S_N)
 // The number of bytes at the beginning of M', the augmented message, before the
@@ -58,7 +58,7 @@ extern "C" {
 
 // Size of the message digest (NOTE: This is only correct for the SHA-256 params
 // here)
-#define SLHDSA_SHA2_128S_DIGEST_SIZE                                          \
+#define SLHDSA_SHA2_128S_DIGEST_SIZE                                           \
   (((SLHDSA_SHA2_128S_FORS_TREES * SLHDSA_SHA2_128S_FORS_HEIGHT) / 8) +        \
    (((SLHDSA_SHA2_128S_FULL_HEIGHT - SLHDSA_SHA2_128S_TREE_HEIGHT) / 8) + 1) + \
    (SLHDSA_SHA2_128S_TREE_HEIGHT / 8) + 1)

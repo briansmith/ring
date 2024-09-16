@@ -60,13 +60,15 @@ void slhdsa_thash_tl(uint8_t output[SLHDSA_SHA2_128S_N],
 // produces an n-byte output. (Section 4.1, page 11)
 void slhdsa_thash_h(uint8_t output[SLHDSA_SHA2_128S_N],
                     const uint8_t input[2 * SLHDSA_SHA2_128S_N],
-                    const uint8_t pk_seed[SLHDSA_SHA2_128S_N], uint8_t addr[32]);
+                    const uint8_t pk_seed[SLHDSA_SHA2_128S_N],
+                    uint8_t addr[32]);
 
 // Implements F: a hash function that takes an n-byte message as input and
 // produces an n-byte output. (Section 4.1, page 11)
 void slhdsa_thash_f(uint8_t output[SLHDSA_SHA2_128S_N],
                     const uint8_t input[SLHDSA_SHA2_128S_N],
-                    const uint8_t pk_seed[SLHDSA_SHA2_128S_N], uint8_t addr[32]);
+                    const uint8_t pk_seed[SLHDSA_SHA2_128S_N],
+                    uint8_t addr[32]);
 
 // Implements T_k: a hash function that maps a k*n-byte message to an n-byte
 // message. Used for FORS public key compression. (Section 4.1, page 11)

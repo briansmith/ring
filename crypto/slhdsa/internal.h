@@ -45,8 +45,8 @@ OPENSSL_EXPORT void SLHDSA_SHA2_128S_sign_internal(
     size_t context_len, const uint8_t *msg, size_t msg_len,
     const uint8_t entropy[SLHDSA_SHA2_128S_N]);
 
-// SLHDSA_SHA2_128S_verify_internal acts like |SLHDSA_SHA2_128S_verify| but takes
-// the input message in three parts so that the "internal" version of the
+// SLHDSA_SHA2_128S_verify_internal acts like |SLHDSA_SHA2_128S_verify| but
+// takes the input message in three parts so that the "internal" version of the
 // verification function, from section 9.3, can be implemented. The |header|
 // argument may be NULL to omit it.
 OPENSSL_EXPORT int SLHDSA_SHA2_128S_verify_internal(

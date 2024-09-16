@@ -105,7 +105,8 @@ void slhdsa_thash_hmsg(uint8_t output[SLHDSA_SHA2_128S_DIGEST_SIZE],
   // index
   uint8_t input_buffer[2 * SLHDSA_SHA2_128S_N + 32 + 4] = {0};
   OPENSSL_memcpy(input_buffer, r, SLHDSA_SHA2_128S_N);
-  OPENSSL_memcpy(input_buffer + SLHDSA_SHA2_128S_N, pk_seed, SLHDSA_SHA2_128S_N);
+  OPENSSL_memcpy(input_buffer + SLHDSA_SHA2_128S_N, pk_seed,
+                 SLHDSA_SHA2_128S_N);
 
   // Inner hash
   SHA256_CTX sha_ctx;

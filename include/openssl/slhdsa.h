@@ -50,9 +50,9 @@ OPENSSL_EXPORT void SLHDSA_SHA2_128S_public_from_private(
 // using |private_key| and writes it to |out_signature|. The |context| argument
 // is also signed over and can be used to include implicit contextual
 // information that isn't included in |msg|. The same value of |context| must be
-// presented to |SLHDSA_SHA2_128S_verify| in order for the generated signature to
-// be considered valid. |context| and |context_len| may be |NULL| and 0 to use
-// an empty context (this is common). It returns 1 on success and 0 if
+// presented to |SLHDSA_SHA2_128S_verify| in order for the generated signature
+// to be considered valid. |context| and |context_len| may be |NULL| and 0 to
+// use an empty context (this is common). It returns 1 on success and 0 if
 // |context_len| is larger than 255.
 OPENSSL_EXPORT int SLHDSA_SHA2_128S_sign(
     uint8_t out_signature[SLHDSA_SHA2_128S_SIGNATURE_BYTES],
@@ -60,10 +60,11 @@ OPENSSL_EXPORT int SLHDSA_SHA2_128S_sign(
     const uint8_t *msg, size_t msg_len, const uint8_t *context,
     size_t context_len);
 
-// SLHDSA_SHA2_128S_verify verifies that |signature| is a valid SLH-DSA-SHA2-128s
-// signature of |msg| by |public_key|. The value of |context| must equal the
-// value that was passed to |SLHDSA_SHA2_128S_sign| when the signature was
-// generated. It returns 1 if the signature is valid and 0 otherwise.
+// SLHDSA_SHA2_128S_verify verifies that |signature| is a valid
+// SLH-DSA-SHA2-128s signature of |msg| by |public_key|. The value of |context|
+// must equal the value that was passed to |SLHDSA_SHA2_128S_sign| when the
+// signature was generated. It returns 1 if the signature is valid and 0
+// otherwise.
 OPENSSL_EXPORT int SLHDSA_SHA2_128S_verify(
     const uint8_t *signature, size_t signature_len,
     const uint8_t public_key[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
