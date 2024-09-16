@@ -112,13 +112,13 @@ static bool dtls1_set_write_state(SSL *ssl, ssl_encryption_level_t level,
                                   Span<const uint8_t> secret_for_quic) {
   assert(secret_for_quic.empty());  // QUIC does not use DTLS.
   ssl->d1->w_epoch++;
-  ssl->d1->last_write_sequence = ssl->s3->write_sequence;
   ssl->s3->write_sequence = 0;
 
   if (ssl_protocol_version(ssl) > TLS1_2_VERSION) {
     ssl->d1->w_epoch = level;
   }
-  ssl->d1->last_aead_write_ctx = std::move(ssl->s3->aead_write_ctx);
+  ssl->d1->last_epoch_state.aead_write_ctx = std::move(ssl->s3->aead_write_ctx);
+  ssl->d1->last_epoch_state.write_sequence = ssl->s3->write_sequence;
   ssl->s3->aead_write_ctx = std::move(aead_ctx);
   ssl->s3->write_level = level;
   return true;

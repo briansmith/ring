@@ -3072,6 +3072,14 @@ struct OPENSSL_timeval {
   uint32_t tv_usec;
 };
 
+// A DTLSEpochState object contains state about a DTLS epoch.
+struct DTLSEpochState {
+  static constexpr bool kAllowUniquePtr = true;
+
+  UniquePtr<SSLAEADContext> aead_write_ctx;
+  uint64_t write_sequence;
+};
+
 struct DTLS1_STATE {
   static constexpr bool kAllowUniquePtr = true;
 
@@ -3103,14 +3111,12 @@ struct DTLS1_STATE {
   uint16_t handshake_write_seq = 0;
   uint16_t handshake_read_seq = 0;
 
-  // save last sequence number for retransmissions
-  uint64_t last_write_sequence = 0;
-  UniquePtr<SSLAEADContext> last_aead_write_ctx;
-
+  // state from the last epoch
+  DTLSEpochState last_epoch_state;
 
   // In DTLS 1.3, this contains the write AEAD for the initial encryption level.
   // TODO(crbug.com/boringssl/715): Drop this when it is no longer needed.
-  UniquePtr<SSLAEADContext> initial_aead_write_ctx;
+  UniquePtr<DTLSEpochState> initial_epoch_state;
 
   // incoming_messages is a ring buffer of incoming handshake messages that have
   // yet to be processed. The front of the ring buffer is message number

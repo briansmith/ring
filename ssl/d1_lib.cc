@@ -95,8 +95,14 @@ bool dtls1_new(SSL *ssl) {
     return false;
   }
 
-  d1->initial_aead_write_ctx = SSLAEADContext::CreateNullCipher(true);
-  if (!d1->initial_aead_write_ctx) {
+  d1->initial_epoch_state = MakeUnique<DTLSEpochState>();
+  if (!d1->initial_epoch_state) {
+    tls_free(ssl);
+    return false;
+  }
+  d1->initial_epoch_state->aead_write_ctx =
+      SSLAEADContext::CreateNullCipher(true);
+  if (!d1->initial_epoch_state->aead_write_ctx) {
     tls_free(ssl);
     return false;
   }
