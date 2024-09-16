@@ -19,7 +19,6 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <openssl/bytestring.h>
 #include <openssl/slhdsa.h>
 
 #include "../test/file_test.h"

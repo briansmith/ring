@@ -50,10 +50,11 @@ void SLHDSA_SHA2_128S_generate_key_from_seed(
 
 void SLHDSA_SHA2_128S_generate_key(
     uint8_t out_public_key[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
-    uint8_t out_secret_key[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES]) {
+    uint8_t out_private_key[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES]) {
   uint8_t seed[3 * SLHDSA_SHA2_128S_N];
   RAND_bytes(seed, 3 * SLHDSA_SHA2_128S_N);
-  SLHDSA_SHA2_128S_generate_key_from_seed(out_public_key, out_secret_key, seed);
+  SLHDSA_SHA2_128S_generate_key_from_seed(out_public_key, out_private_key,
+                                          seed);
 }
 
 OPENSSL_EXPORT void SLHDSA_SHA2_128S_public_from_private(
