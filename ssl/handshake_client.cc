@@ -1301,7 +1301,7 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names =
-      ssl_parse_client_CA_list(ssl, &alert, &body);
+      SSL_parse_CA_list(ssl, &alert, &body);
   if (!ca_names) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;

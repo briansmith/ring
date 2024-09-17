@@ -469,9 +469,9 @@ bool ssl_cert_check_key_usage(const CBS *in, enum ssl_key_usage_t bit) {
   return true;
 }
 
-UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
-                                                            uint8_t *out_alert,
-                                                            CBS *cbs) {
+UniquePtr<STACK_OF(CRYPTO_BUFFER)> SSL_parse_CA_list(SSL *ssl,
+                                                     uint8_t *out_alert,
+                                                     CBS *cbs) {
   CRYPTO_BUFFER_POOL *const pool = ssl->ctx->pool;
 
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ret(sk_CRYPTO_BUFFER_new_null());
@@ -504,7 +504,7 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
     }
   }
 
-  if (!ssl->ctx->x509_method->check_client_CA_list(ret.get())) {
+  if (!ssl->ctx->x509_method->check_CA_list(ret.get())) {
     *out_alert = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return nullptr;

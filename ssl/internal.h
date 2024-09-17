@@ -1620,13 +1620,14 @@ bool ssl_cert_matches_issuer(const CBS *in, const CBS *dn);
 // nullptr and pushes to the error queue.
 UniquePtr<EVP_PKEY> ssl_cert_parse_pubkey(const CBS *in);
 
-// ssl_parse_client_CA_list parses a CA list from |cbs| in the format used by a
-// TLS CertificateRequest message. On success, it returns a newly-allocated
-// |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns nullptr and
-// sets |*out_alert| to an alert to send to the peer.
-UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
-                                                            uint8_t *out_alert,
-                                                            CBS *cbs);
+// SSL_parse_CA_list parses a CA list from |cbs| in the format used by a TLS
+// CertificateRequest message and Certificate Authorities extension. On success,
+// it returns a newly-allocated |CRYPTO_BUFFER| list and advances
+// |cbs|. Otherwise, it returns nullptr and sets |*out_alert| to an alert to
+// send to the peer.
+UniquePtr<STACK_OF(CRYPTO_BUFFER)> SSL_parse_CA_list(SSL *ssl,
+                                                     uint8_t *out_alert,
+                                                     CBS *cbs);
 
 // ssl_has_client_CAs returns there are configured CAs.
 bool ssl_has_client_CAs(const SSL_CONFIG *cfg);
@@ -2851,10 +2852,10 @@ ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
                                     Span<uint8_t> in);
 
 struct SSL_X509_METHOD {
-  // check_client_CA_list returns one if |names| is a good list of X.509
-  // distinguished names and zero otherwise. This is used to ensure that we can
-  // reject unparsable values at handshake time when using crypto/x509.
-  bool (*check_client_CA_list)(STACK_OF(CRYPTO_BUFFER) *names);
+  // check_CA_list returns one if |names| is a good list of X.509 distinguished
+  // names and zero otherwise. This is used to ensure that we can reject
+  // unparsable values at handshake time when using crypto/x509.
+  bool (*check_CA_list)(STACK_OF(CRYPTO_BUFFER) *names);
 
   // cert_clear frees and NULLs all X509 certificate-related state.
   void (*cert_clear)(CERT *cert);
@@ -3378,6 +3379,13 @@ struct SSL_CONFIG {
   // |client_CA|.
   STACK_OF(X509_NAME) *cached_x509_client_CA = nullptr;
 
+  // For client side, keep the list of CA distinguished names we can use
+  // for the Certificate Authorities extension.
+  // TODO(bbe) having this separate from the client side (above) is mildly
+  // silly, but OpenSSL has *_client_CA API's for this exposed, and for the
+  // moment we are not crossing those streams.
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> CA_names;
+
   Array<uint16_t> supported_group_list;  // our list
 
   // channel_id_private is the client's Channel ID private key, or null if
@@ -3887,6 +3895,8 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   // |client_CA|.
   STACK_OF(X509_NAME) *cached_x509_client_CA = nullptr;
 
+  // What we put in client hello in the CA extension.
+  bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> CA_names;
 
   // Default values to use in SSL structures follow (these are copied by
   // SSL_new)

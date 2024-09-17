@@ -672,7 +672,7 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
   }
 
   if (ca.present) {
-    hs->ca_names = ssl_parse_client_CA_list(ssl, &alert, &ca.data);
+    hs->ca_names = SSL_parse_CA_list(ssl, &alert, &ca.data);
     if (!hs->ca_names) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
