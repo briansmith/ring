@@ -411,7 +411,7 @@ func (c *Conn) dtlsFlushHandshake() error {
 
 // appendDTLS13RecordHeader appends to b the record header for a record of length
 // recordLen.
-func (c *Conn) appendDTLS13RecordHeader(b []byte, recordLen int) []byte {
+func (c *Conn) appendDTLS13RecordHeader(b, seq []byte, recordLen int) []byte {
 	// Set the top 3 bits on the type byte to indicate the DTLS 1.3 record
 	// header format.
 	typ := byte(0x20)
@@ -428,12 +428,12 @@ func (c *Conn) appendDTLS13RecordHeader(b []byte, recordLen int) []byte {
 		typ |= 0x04
 	}
 	// Set the epoch bits
-	typ |= c.out.outSeq[1] & 0x3
+	typ |= seq[1] & 0x3
 	b = append(b, typ)
 	if c.config.DTLSUseShortSeqNums {
-		b = append(b, c.out.outSeq[7])
+		b = append(b, seq[7])
 	} else {
-		b = append(b, c.out.outSeq[6], c.out.outSeq[7])
+		b = append(b, seq[6], seq[7])
 	}
 	if !c.config.DTLSRecordHeaderOmitLength {
 		b = append(b, byte(recordLen>>8), byte(recordLen))
@@ -467,21 +467,22 @@ func (c *Conn) dtlsPackRecord(typ recordType, data []byte, mustPack bool) (n int
 	useDTLS13RecordHeader := c.out.version >= VersionTLS13 && c.out.cipher != nil && !c.useDTLSPlaintextHeader()
 	headerHasLength := true
 	record := make([]byte, 0, dtlsMaxRecordHeaderLen+len(data)+c.out.maxEncryptOverhead(len(data)))
+	seq := c.out.sequenceNumberForOutput()
 	if useDTLS13RecordHeader {
-		record = c.appendDTLS13RecordHeader(record, len(data))
+		record = c.appendDTLS13RecordHeader(record, seq, len(data))
 		headerHasLength = !c.config.DTLSRecordHeaderOmitLength
 	} else {
 		record = append(record, byte(typ))
 		record = append(record, byte(vers>>8))
 		record = append(record, byte(vers))
 		// DTLS records include an explicit sequence number.
-		record = append(record, c.out.outSeq[:]...)
+		record = append(record, seq...)
 		record = append(record, byte(len(data)>>8))
 		record = append(record, byte(len(data)))
 	}
 
 	recordHeaderLen := len(record)
-	record, err = c.out.encrypt(record, data, typ, recordHeaderLen, headerHasLength)
+	record, err = c.out.encrypt(record, data, typ, recordHeaderLen, headerHasLength, seq)
 	if err != nil {
 		return
 	}
