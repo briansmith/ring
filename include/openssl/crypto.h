@@ -145,6 +145,8 @@ OPENSSL_EXPORT int ENGINE_register_all_complete(void);
 // OPENSSL_load_builtin_modules does nothing.
 OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 
+// OPENSSL_INIT_* are options in OpenSSL to configure the library. In BoringSSL,
+// they do nothing.
 #define OPENSSL_INIT_NO_LOAD_CRYPTO_STRINGS 0
 #define OPENSSL_INIT_LOAD_CRYPTO_STRINGS 0
 #define OPENSSL_INIT_ADD_ALL_CIPHERS 0
@@ -154,6 +156,15 @@ OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 #define OPENSSL_INIT_LOAD_CONFIG 0
 #define OPENSSL_INIT_NO_LOAD_CONFIG 0
 #define OPENSSL_INIT_NO_ATEXIT 0
+#define OPENSSL_INIT_ATFORK 0
+#define OPENSSL_INIT_ENGINE_RDRAND 0
+#define OPENSSL_INIT_ENGINE_DYNAMIC 0
+#define OPENSSL_INIT_ENGINE_OPENSSL 0
+#define OPENSSL_INIT_ENGINE_CRYPTODEV 0
+#define OPENSSL_INIT_ENGINE_CAPI 0
+#define OPENSSL_INIT_ENGINE_PADLOCK 0
+#define OPENSSL_INIT_ENGINE_AFALG 0
+#define OPENSSL_INIT_ENGINE_ALL_BUILTIN 0
 
 // OPENSSL_init_crypto returns one.
 OPENSSL_EXPORT int OPENSSL_init_crypto(uint64_t opts,
