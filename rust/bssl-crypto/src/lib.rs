@@ -28,7 +28,7 @@
 extern crate alloc;
 extern crate core;
 
-use alloc::vec::Vec;
+use alloc::{boxed::Box, vec::Vec};
 use core::ffi::c_void;
 
 #[macro_use]
@@ -48,6 +48,8 @@ pub mod ed25519;
 pub mod hkdf;
 pub mod hmac;
 pub mod hpke;
+pub mod mldsa;
+pub mod mlkem;
 pub mod rsa;
 pub mod x25519;
 
@@ -240,6 +242,37 @@ where
     }
 }
 
+/// Returns a boxed BoringSSL structure that is initialized by some function.
+/// Requires that the given function completely initializes the value.
+///
+/// Safety: the argument must fully initialize the pointed-to `T`.
+unsafe fn initialized_boxed_struct<T, F>(init: F) -> Box<T>
+where
+    F: FnOnce(*mut T),
+{
+    let mut out_uninit = Box::new(core::mem::MaybeUninit::<T>::uninit());
+    init(out_uninit.as_mut_ptr());
+    unsafe { out_uninit.assume_init() }
+}
+
+/// Returns a boxed BoringSSL structure that is initialized by some function.
+/// Requires that the given function completely initializes the value or else
+/// returns false.
+///
+/// Safety: the argument must fully initialize the pointed-to `T` if it returns
+/// true. If it returns false then there are no safety requirements.
+unsafe fn initialized_boxed_struct_fallible<T, F>(init: F) -> Option<Box<T>>
+where
+    F: FnOnce(*mut T) -> bool,
+{
+    let mut out_uninit = Box::new(core::mem::MaybeUninit::<T>::uninit());
+    if init(out_uninit.as_mut_ptr()) {
+        Some(unsafe { out_uninit.assume_init() })
+    } else {
+        None
+    }
+}
+
 /// Wrap a closure that initializes an output buffer and return that buffer as
 /// an array. Requires that the closure fully initialize the given buffer.
 ///
@@ -364,6 +397,13 @@ impl Drop for Buffer {
     }
 }
 
+fn as_cbs(buf: &[u8]) -> bssl_sys::CBS {
+    bssl_sys::CBS {
+        data: buf.as_ffi_ptr(),
+        len: buf.len(),
+    }
+}
+
 /// Calls `parse_func` with a `CBS` structure pointing at `data`.
 /// If that returns a null pointer then it returns [None].
 /// Otherwise, if there's still data left in CBS, it calls `free_func` on the
@@ -412,6 +452,31 @@ fn cbb_to_buffer<F: FnOnce(*mut bssl_sys::CBB)>(initial_capacity: usize, func: F
     // Safety: `ptr` is on the BoringSSL heap and ownership is returned by
     // `CBB_finish`.
     unsafe { Buffer::new(ptr, len) }
+}
+
+/// Calls `func` with a `CBB` pointer that has been initialized to a vector
+/// of `len` bytes. That function must write exactly `len` bytes to the
+/// `CBB`. Those bytes are then returned as a vector.
+#[allow(clippy::unwrap_used)]
+fn cbb_to_vec<F: FnOnce(*mut bssl_sys::CBB)>(len: usize, func: F) -> Vec<u8> {
+    let mut boxed = Box::new_uninit_slice(len);
+    // Safety: type checking ensures that `cbb` is the correct size.
+    let mut cbb = unsafe {
+        initialized_struct_fallible(|cbb| {
+            bssl_sys::CBB_init_fixed(cbb, boxed.as_mut_ptr() as *mut u8, len) == 1
+        })
+    }
+    // `CBB_init` only fails if out of memory, which isn't something that this
+    // crate handles.
+    .unwrap();
+
+    func(&mut cbb);
+
+    unsafe {
+        assert_eq!(bssl_sys::CBB_len(&cbb), len);
+        // `boxed` has been fully written, as checked on the previous line.
+        boxed.assume_init().into()
+    }
 }
 
 /// Used to prevent external implementations of internal traits.
