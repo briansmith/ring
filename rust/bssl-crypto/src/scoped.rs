@@ -132,7 +132,7 @@ impl Bignum {
         ret
     }
 
-    pub unsafe fn as_ffi_ptr(&self) -> *const bssl_sys::BIGNUM {
+    pub fn as_ffi_ptr(&self) -> *const bssl_sys::BIGNUM {
         &self.0
     }
 }

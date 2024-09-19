@@ -102,6 +102,8 @@ impl Point {
 
     /// Construct a point by multipling the curve's base point by the given
     /// scalar.
+    ///
+    /// Safety: `scalar` must be a valid pointer.
     unsafe fn from_scalar(group: Group, scalar: *const bssl_sys::BIGNUM) -> Option<Self> {
         let point = Self::new(group);
         // Safety: the members of `point` are valid by construction. `scalar`
@@ -334,9 +336,11 @@ impl Key {
         let mut ptr: *mut u8 = null_mut();
         // Safety: `self.0` is valid by construction. If this returns non-zero
         // then ptr holds ownership of a buffer.
-        let len = unsafe { bssl_sys::EC_KEY_priv2buf(self.0, &mut ptr) };
-        assert!(len != 0);
-        Buffer { ptr, len }
+        unsafe {
+            let len = bssl_sys::EC_KEY_priv2buf(self.0, &mut ptr);
+            assert!(len != 0);
+            Buffer::new(ptr, len)
+        }
     }
 
     /// Parses an ECPrivateKey structure (from RFC 5915).

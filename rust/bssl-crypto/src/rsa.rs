@@ -309,7 +309,6 @@ impl Drop for PrivateKey {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::digest;
 
     #[test]
     fn sign_and_verify() {

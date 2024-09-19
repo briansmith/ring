@@ -286,6 +286,9 @@ where
 
 /// Wrap a closure that writes at most `max_output` bytes to fill a vector.
 /// It must return the number of bytes written.
+///
+/// Safety: `F` must not write more than `max_output` bytes and must return
+/// the number of bytes written.
 #[allow(clippy::unwrap_used)]
 unsafe fn with_output_vec<F>(max_output: usize, func: F) -> Vec<u8>
 where
@@ -301,6 +304,9 @@ where
 
 /// Wrap a closure that writes at most `max_output` bytes to fill a vector.
 /// If successful, it must return the number of bytes written.
+///
+/// Safety: `F` must not write more than `max_output` bytes and must return
+/// the number of bytes written or else return `None` to indicate failure.
 unsafe fn with_output_vec_fallible<F>(max_output: usize, func: F) -> Option<Vec<u8>>
 where
     F: FnOnce(*mut u8) -> Option<usize>,
@@ -327,8 +333,15 @@ where
 pub struct Buffer {
     // This pointer is always allocated by BoringSSL and must be freed using
     // `OPENSSL_free`.
-    pub(crate) ptr: *mut u8,
-    pub(crate) len: usize,
+    ptr: *mut u8,
+    len: usize,
+}
+
+impl Buffer {
+    /// Safety: `ptr` must point to `len` bytes, allocated by BoringSSL.
+    unsafe fn new(ptr: *mut u8, len: usize) -> Buffer {
+        Buffer { ptr, len }
+    }
 }
 
 impl AsRef<[u8]> for Buffer {
@@ -398,7 +411,7 @@ fn cbb_to_buffer<F: FnOnce(*mut bssl_sys::CBB)>(initial_capacity: usize, func: F
 
     // Safety: `ptr` is on the BoringSSL heap and ownership is returned by
     // `CBB_finish`.
-    Buffer { ptr, len }
+    unsafe { Buffer::new(ptr, len) }
 }
 
 /// Used to prevent external implementations of internal traits.
