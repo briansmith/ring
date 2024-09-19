@@ -66,6 +66,7 @@
 #include <openssl/safestack.h>
 #include <openssl/sha.h>
 #include <openssl/siphash.h>
+#include <openssl/slhdsa.h>
 #include <openssl/span.h>
 #include <openssl/srtp.h>
 #include <openssl/ssl.h>

@@ -51,6 +51,7 @@ pub mod hpke;
 pub mod mldsa;
 pub mod mlkem;
 pub mod rsa;
+pub mod slhdsa;
 pub mod x25519;
 
 mod scoped;

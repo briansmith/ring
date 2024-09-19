@@ -2724,6 +2724,7 @@ set(
   rust/bssl-crypto/src/rand.rs
   rust/bssl-crypto/src/rsa.rs
   rust/bssl-crypto/src/scoped.rs
+  rust/bssl-crypto/src/slhdsa.rs
   rust/bssl-crypto/src/test_helpers.rs
   rust/bssl-crypto/src/x25519.rs
 )
