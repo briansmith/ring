@@ -1629,13 +1629,21 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> SSL_parse_CA_list(SSL *ssl,
                                                      uint8_t *out_alert,
                                                      CBS *cbs);
 
-// ssl_has_client_CAs returns there are configured CAs.
+// ssl_has_client_CAs returns whether there are configured CAs.
 bool ssl_has_client_CAs(const SSL_CONFIG *cfg);
 
 // ssl_add_client_CA_list adds the configured CA list to |cbb| in the format
 // used by a TLS CertificateRequest message. It returns true on success and
 // false on error.
-bool ssl_add_client_CA_list(SSL_HANDSHAKE *hs, CBB *cbb);
+bool ssl_add_client_CA_list(const SSL_HANDSHAKE *hs, CBB *cbb);
+
+// ssl_has_CA_names returns whether there are configured CA names.
+bool ssl_has_CA_names(const SSL_CONFIG *cfg);
+
+// ssl_add_CA_names adds the configured CA_names list to |cbb| in the format
+// used by a TLS Certificate Authorities extension. It returns true on success
+// and false on error.
+bool ssl_add_CA_names(const SSL_HANDSHAKE *hs, CBB *cbb);
 
 // ssl_check_leaf_certificate returns one if |pkey| and |leaf| are suitable as
 // a server's leaf certificate for |hs|. Otherwise, it returns zero and pushes
