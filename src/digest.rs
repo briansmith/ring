@@ -24,8 +24,6 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use alloc::boxed::Box;
-
 use crate::{c, cpu, debug, polyfill};
 use core::num::Wrapping;
 
