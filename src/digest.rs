@@ -246,16 +246,16 @@ impl Digest {
         self.algorithm
     }
 
-    pub fn pre_digested(digest: &[u8], algorithm: &'static Algorithm) -> Digest{
+    pub fn pre_digested(digest: &[u8], algorithm: &'static Algorithm) -> Digest {
         let mut array_digest = [0u8; MAX_OUTPUT_LEN];
         let len = digest.len().min(MAX_OUTPUT_LEN);
         array_digest[..len].copy_from_slice(digest);
 
         let output: Output = Output(array_digest);
 
-        Digest{
+        Digest {
             value: output,
-            algorithm
+            algorithm,
         }
     }
 }

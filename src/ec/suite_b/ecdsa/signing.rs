@@ -14,7 +14,6 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-
 use super::digest_scalar::{digest_scalar, digest_scalar_};
 
 use crate::{
