@@ -179,7 +179,6 @@ enum ssl_client_hs_state_t {
   state_start_connect = 0,
   state_enter_early_data,
   state_early_reverify_server_certificate,
-  state_read_hello_verify_request,
   state_read_server_hello,
   state_tls13,
   state_read_server_certificate,
@@ -571,12 +570,6 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-
-  if (SSL_is_dtls(ssl)) {
-    hs->state = state_read_hello_verify_request;
-    return ssl_hs_ok;
-  }
-
   if (!hs->early_data_offered) {
     hs->state = state_read_server_hello;
     return ssl_hs_ok;
@@ -633,20 +626,12 @@ static enum ssl_hs_wait_t do_early_reverify_server_certificate(SSL_HANDSHAKE *hs
   return ssl_hs_early_return;
 }
 
-static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
+static bool handle_hello_verify_request(SSL_HANDSHAKE *hs,
+                                        const SSLMessage &msg) {
   SSL *const ssl = hs->ssl;
-
   assert(SSL_is_dtls(ssl));
-
-  SSLMessage msg;
-  if (!ssl->method->get_message(ssl, &msg)) {
-    return ssl_hs_read_message;
-  }
-
-  if (msg.type != DTLS1_MT_HELLO_VERIFY_REQUEST) {
-    hs->state = state_read_server_hello;
-    return ssl_hs_ok;
-  }
+  assert(msg.type == DTLS1_MT_HELLO_VERIFY_REQUEST);
+  assert(!hs->received_hello_verify_request);
 
   CBS hello_verify_request = msg.body, cookie;
   uint16_t server_version;
@@ -655,12 +640,12 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
       CBS_len(&hello_verify_request) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return ssl_hs_error;
+    return false;
   }
 
   if (!hs->dtls_cookie.CopyFrom(cookie)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    return ssl_hs_error;
+    return false;
   }
   hs->received_hello_verify_request = true;
 
@@ -668,15 +653,10 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
 
   // DTLS resets the handshake buffer after HelloVerifyRequest.
   if (!hs->transcript.Init()) {
-    return ssl_hs_error;
+    return false;
   }
 
-  if (!ssl_add_client_hello(hs)) {
-    return ssl_hs_error;
-  }
-
-  hs->state = state_read_server_hello;
-  return ssl_hs_flush;
+  return ssl_add_client_hello(hs);
 }
 
 bool ssl_parse_server_hello(ParsedServerHello *out, uint8_t *out_alert,
@@ -716,6 +696,16 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_server_hello;
+  }
+
+  if (SSL_is_dtls(ssl) && !hs->received_hello_verify_request &&
+      msg.type == DTLS1_MT_HELLO_VERIFY_REQUEST) {
+    if (!handle_hello_verify_request(hs, msg)) {
+      return ssl_hs_error;
+    }
+    hs->received_hello_verify_request = true;
+    hs->state = state_read_server_hello;
+    return ssl_hs_flush;
   }
 
   ParsedServerHello server_hello;
@@ -1949,9 +1939,6 @@ enum ssl_hs_wait_t ssl_client_handshake(SSL_HANDSHAKE *hs) {
       case state_early_reverify_server_certificate:
         ret = do_early_reverify_server_certificate(hs);
         break;
-      case state_read_hello_verify_request:
-        ret = do_read_hello_verify_request(hs);
-        break;
       case state_read_server_hello:
         ret = do_read_server_hello(hs);
         break;
@@ -2034,8 +2021,6 @@ const char *ssl_client_handshake_state(SSL_HANDSHAKE *hs) {
       return "TLS client enter_early_data";
     case state_early_reverify_server_certificate:
       return "TLS client early_reverify_server_certificate";
-    case state_read_hello_verify_request:
-      return "TLS client read_hello_verify_request";
     case state_read_server_hello:
       return "TLS client read_server_hello";
     case state_tls13:
