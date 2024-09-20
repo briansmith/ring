@@ -495,18 +495,18 @@ enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs) {
   }
 
   // Copy the Finished so we can use it for renegotiation checks.
-  if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
-      finished_len > sizeof(ssl->s3->previous_server_finished)) {
+  if (finished_len > ssl->s3->previous_client_finished.capacity() ||
+      finished_len > ssl->s3->previous_server_finished.capacity()) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
   if (ssl->server) {
-    OPENSSL_memcpy(ssl->s3->previous_client_finished, finished, finished_len);
-    ssl->s3->previous_client_finished_len = finished_len;
+    ssl->s3->previous_client_finished.CopyFrom(
+        MakeConstSpan(finished, finished_len));
   } else {
-    OPENSSL_memcpy(ssl->s3->previous_server_finished, finished, finished_len);
-    ssl->s3->previous_server_finished_len = finished_len;
+    ssl->s3->previous_server_finished.CopyFrom(
+        MakeConstSpan(finished, finished_len));
   }
 
   // The Finished message should be the end of a flight.
@@ -524,38 +524,32 @@ bool ssl_send_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   const SSL_SESSION *session = ssl_handshake_session(hs);
 
-  uint8_t finished[EVP_MAX_MD_SIZE];
+  uint8_t finished_buf[EVP_MAX_MD_SIZE];
   size_t finished_len;
-  if (!hs->transcript.GetFinishedMAC(finished, &finished_len, session,
+  if (!hs->transcript.GetFinishedMAC(finished_buf, &finished_len, session,
                                      ssl->server)) {
     return false;
   }
+  auto finished = MakeConstSpan(finished_buf, finished_len);
 
   // Log the master secret, if logging is enabled.
-  if (!ssl_log_secret(ssl, "CLIENT_RANDOM",
-                      MakeConstSpan(session->secret, session->secret_length))) {
+  if (!ssl_log_secret(ssl, "CLIENT_RANDOM", session->secret)) {
     return false;
   }
 
   // Copy the Finished so we can use it for renegotiation checks.
-  if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
-      finished_len > sizeof(ssl->s3->previous_server_finished)) {
+  bool ok = ssl->server
+                ? ssl->s3->previous_server_finished.TryCopyFrom(finished)
+                : ssl->s3->previous_client_finished.TryCopyFrom(finished);
+  if (!ok) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
-  }
-
-  if (ssl->server) {
-    OPENSSL_memcpy(ssl->s3->previous_server_finished, finished, finished_len);
-    ssl->s3->previous_server_finished_len = finished_len;
-  } else {
-    OPENSSL_memcpy(ssl->s3->previous_client_finished, finished, finished_len);
-    ssl->s3->previous_client_finished_len = finished_len;
+    return ssl_hs_error;
   }
 
   ScopedCBB cbb;
   CBB body;
   if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_FINISHED) ||
-      !CBB_add_bytes(&body, finished, finished_len) ||
+      !CBB_add_bytes(&body, finished.data(), finished.size()) ||
       !ssl_add_message_cbb(ssl, cbb.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;

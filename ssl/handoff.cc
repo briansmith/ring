@@ -433,8 +433,8 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
                                    hs->server_handshake_secret().size()) ||
         !CBB_add_asn1_octet_string(&seq, hs->secret().data(),
                                    hs->secret().size()) ||
-        !CBB_add_asn1_octet_string(&seq, s3->exporter_secret,
-                                   s3->exporter_secret_len) ||
+        !CBB_add_asn1_octet_string(&seq, s3->exporter_secret.data(),
+                                   s3->exporter_secret.size()) ||
         !CBB_add_asn1_bool(&seq, s3->used_hello_retry_request) ||
         !CBB_add_asn1_bool(&seq, hs->accept_psk_mode) ||
         !CBB_add_asn1_int64(&seq, s3->ticket_age_skew) ||
@@ -704,11 +704,9 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
         !CopyExact(hs->client_handshake_secret(), &client_handshake_secret) ||
         !CopyExact(hs->server_handshake_secret(), &server_handshake_secret) ||
         !CopyExact(hs->secret(), &secret) ||
-        !CopyExact({s3->exporter_secret, hs->transcript.DigestLen()},
-                   &exporter_secret)) {
+        !s3->exporter_secret.TryCopyFrom(exporter_secret)) {
       return false;
     }
-    s3->exporter_secret_len = CBS_len(&exporter_secret);
 
     if (s3->early_data_accepted &&
         !CopyExact(hs->early_traffic_secret(), &early_traffic_secret)) {

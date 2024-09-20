@@ -249,9 +249,8 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   // 'legacy_session_id' value from the client" (RFC 9147, section 5) as it
   // would in a TLS 1.3 handshake.
   if (!SSL_is_dtls(ssl)) {
-    OPENSSL_memcpy(hs->session_id, client_hello.session_id,
-                   client_hello.session_id_len);
-    hs->session_id_len = client_hello.session_id_len;
+    hs->session_id.CopyFrom(
+        MakeConstSpan(client_hello.session_id, client_hello.session_id_len));
   }
 
   Array<SSL_CREDENTIAL *> creds;
@@ -561,11 +560,9 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       ssl_get_handshake_digest(ssl_protocol_version(ssl), hs->new_cipher));
 
   // Set up the key schedule and incorporate the PSK into the running secret.
-  if (!tls13_init_key_schedule(
-          hs, ssl->s3->session_reused
-                  ? MakeConstSpan(hs->new_session->secret,
-                                  hs->new_session->secret_length)
-                  : MakeConstSpan(kZeroes, hash_len)) ||
+  if (!tls13_init_key_schedule(hs, ssl->s3->session_reused
+                                       ? MakeConstSpan(hs->new_session->secret)
+                                       : MakeConstSpan(kZeroes, hash_len)) ||
       !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
@@ -609,7 +606,8 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
       !CBB_add_u16(&body, TLS1_2_VERSION) ||
       !CBB_add_bytes(&body, kHelloRetryRequest, SSL3_RANDOM_SIZE) ||
       !CBB_add_u8_length_prefixed(&body, &session_id) ||
-      !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
+      !CBB_add_bytes(&session_id, hs->session_id.data(),
+                     hs->session_id.size()) ||
       !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
       !CBB_add_u8(&body, 0 /* no compression */) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
@@ -810,7 +808,8 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_bytes(&body, ssl->s3->server_random,
                      sizeof(ssl->s3->server_random)) ||
       !CBB_add_u8_length_prefixed(&body, &session_id) ||
-      !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
+      !CBB_add_bytes(&session_id, hs->session_id.data(),
+                     hs->session_id.size()) ||
       !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
       !CBB_add_u8(&body, 0) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||

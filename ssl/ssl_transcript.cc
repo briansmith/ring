@@ -259,8 +259,7 @@ bool SSLTranscript::GetFinishedMAC(uint8_t *out, size_t *out_len,
   }
 
   static const size_t kFinishedLen = 12;
-  if (!tls1_prf(Digest(), MakeSpan(out, kFinishedLen),
-                MakeConstSpan(session->secret, session->secret_length), label,
+  if (!tls1_prf(Digest(), MakeSpan(out, kFinishedLen), session->secret, label,
                 MakeConstSpan(digest, digest_len), {})) {
     return false;
   }

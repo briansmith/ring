@@ -709,14 +709,14 @@ static bool ext_ri_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
   }
 
   assert(ssl->s3->initial_handshake_complete ==
-         (ssl->s3->previous_client_finished_len != 0));
+         !ssl->s3->previous_client_finished.empty());
 
   CBB contents, prev_finished;
   if (!CBB_add_u16(out, TLSEXT_TYPE_renegotiate) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u8_length_prefixed(&contents, &prev_finished) ||
-      !CBB_add_bytes(&prev_finished, ssl->s3->previous_client_finished,
-                     ssl->s3->previous_client_finished_len) ||
+      !CBB_add_bytes(&prev_finished, ssl->s3->previous_client_finished.data(),
+                     ssl->s3->previous_client_finished.size()) ||
       !CBB_flush(out)) {
     return false;
   }
@@ -752,16 +752,11 @@ static bool ext_ri_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return true;
   }
 
-  const size_t expected_len = ssl->s3->previous_client_finished_len +
-                              ssl->s3->previous_server_finished_len;
-
-  // Check for logic errors
-  assert(!expected_len || ssl->s3->previous_client_finished_len);
-  assert(!expected_len || ssl->s3->previous_server_finished_len);
+  // Check for logic errors.
+  assert(ssl->s3->previous_client_finished.size() ==
+         ssl->s3->previous_server_finished.size());
   assert(ssl->s3->initial_handshake_complete ==
-         (ssl->s3->previous_client_finished_len != 0));
-  assert(ssl->s3->initial_handshake_complete ==
-         (ssl->s3->previous_server_finished_len != 0));
+         !ssl->s3->previous_client_finished.empty());
 
   // Parse out the extension contents.
   CBS renegotiated_connection;
@@ -773,15 +768,22 @@ static bool ext_ri_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   // Check that the extension matches.
-  if (CBS_len(&renegotiated_connection) != expected_len) {
+  CBS client_verify, server_verify;
+  if (!CBS_get_bytes(&renegotiated_connection, &client_verify,
+                     ssl->s3->previous_client_finished.size()) ||
+      !CBS_get_bytes(&renegotiated_connection, &server_verify,
+                     ssl->s3->previous_server_finished.size()) ||
+      CBS_len(&renegotiated_connection) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
     *out_alert = SSL_AD_HANDSHAKE_FAILURE;
     return false;
   }
 
-  const uint8_t *d = CBS_data(&renegotiated_connection);
-  bool ok = CRYPTO_memcmp(d, ssl->s3->previous_client_finished,
-                          ssl->s3->previous_client_finished_len) == 0;
+  bool ok =
+      CBS_mem_equal(&client_verify, ssl->s3->previous_client_finished.data(),
+                    ssl->s3->previous_client_finished.size()) &&
+      CBS_mem_equal(&server_verify, ssl->s3->previous_server_finished.data(),
+                    ssl->s3->previous_server_finished.size());
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   ok = true;
 #endif
@@ -790,20 +792,8 @@ static bool ext_ri_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     *out_alert = SSL_AD_HANDSHAKE_FAILURE;
     return false;
   }
-  d += ssl->s3->previous_client_finished_len;
 
-  ok = CRYPTO_memcmp(d, ssl->s3->previous_server_finished,
-                     ssl->s3->previous_server_finished_len) == 0;
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  ok = true;
-#endif
-  if (!ok) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
-    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
-    return false;
-  }
   ssl->s3->send_connection_binding = true;
-
   return true;
 }
 
@@ -4079,9 +4069,8 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
   // Envoy's tests expect the session to have a session ID that matches the
   // placeholder used by the client. It's unclear whether this is a good idea,
   // but we maintain it for now.
-  SHA256(ticket.data(), ticket.size(), session->session_id);
-  // Other consumers may expect a non-empty session ID to indicate resumption.
-  session->session_id_length = SHA256_DIGEST_LENGTH;
+  session->session_id.ResizeMaybeUninit(SHA256_DIGEST_LENGTH);
+  SHA256(ticket.data(), ticket.size(), session->session_id.data());
 
   *out_session = std::move(session);
   return ssl_ticket_aead_success;
@@ -4292,12 +4281,12 @@ bool tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len) {
   if (ssl->session != NULL) {
     static const char kResumptionMagic[] = "Resumption";
     SHA256_Update(&ctx, kResumptionMagic, sizeof(kResumptionMagic));
-    if (ssl->session->original_handshake_hash_len == 0) {
+    if (ssl->session->original_handshake_hash.empty()) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
-    SHA256_Update(&ctx, ssl->session->original_handshake_hash,
-                  ssl->session->original_handshake_hash_len);
+    SHA256_Update(&ctx, ssl->session->original_handshake_hash.data(),
+                  ssl->session->original_handshake_hash.size());
   }
 
   uint8_t hs_hash[EVP_MAX_MD_SIZE];
@@ -4320,20 +4309,14 @@ bool tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
     return false;
   }
 
-  static_assert(
-      sizeof(hs->new_session->original_handshake_hash) == EVP_MAX_MD_SIZE,
-      "original_handshake_hash is too small");
-
   size_t digest_len;
-  if (!hs->transcript.GetHash(hs->new_session->original_handshake_hash,
+  hs->new_session->original_handshake_hash.ResizeMaybeUninit(
+      hs->transcript.DigestLen());
+  if (!hs->transcript.GetHash(hs->new_session->original_handshake_hash.data(),
                               &digest_len)) {
     return false;
   }
-
-  static_assert(EVP_MAX_MD_SIZE <= 0xff,
-                "EVP_MAX_MD_SIZE does not fit in uint8_t");
-  hs->new_session->original_handshake_hash_len = (uint8_t)digest_len;
-
+  assert(digest_len == hs->new_session->original_handshake_hash.size());
   return true;
 }
 

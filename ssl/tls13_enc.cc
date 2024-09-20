@@ -83,9 +83,7 @@ bool tls13_init_early_key_schedule(SSL_HANDSHAKE *hs,
   return init_key_schedule(hs, transcript,
                            ssl_session_protocol_version(session),
                            session->cipher) &&
-         hkdf_extract_to_secret(
-             hs, *transcript,
-             MakeConstSpan(session->secret, session->secret_length));
+         hkdf_extract_to_secret(hs, *transcript, session->secret);
 }
 
 static Span<const char> label_to_span(const char *label) {
@@ -249,17 +247,13 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
                                      secret_for_quic)) {
       return false;
     }
-    OPENSSL_memmove(ssl->s3->read_traffic_secret, traffic_secret.data(),
-                    traffic_secret.size());
-    ssl->s3->read_traffic_secret_len = traffic_secret.size();
+    ssl->s3->read_traffic_secret.CopyFrom(traffic_secret);
   } else {
     if (!ssl->method->set_write_state(ssl, level, std::move(traffic_aead),
                                       secret_for_quic)) {
       return false;
     }
-    OPENSSL_memmove(ssl->s3->write_traffic_secret, traffic_secret.data(),
-                    traffic_secret.size());
-    ssl->s3->write_traffic_secret_len = traffic_secret.size();
+    ssl->s3->write_traffic_secret.CopyFrom(traffic_secret);
   }
 
   return true;
@@ -309,7 +303,6 @@ bool tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs) {
 
 bool tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  ssl->s3->exporter_secret_len = hs->transcript.DigestLen();
   if (!derive_secret(hs, hs->client_traffic_secret_0(),
                      label_to_span(kTLS13LabelClientApplicationTraffic)) ||
       !ssl_log_secret(ssl, "CLIENT_TRAFFIC_SECRET_0",
@@ -317,13 +310,13 @@ bool tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
       !derive_secret(hs, hs->server_traffic_secret_0(),
                      label_to_span(kTLS13LabelServerApplicationTraffic)) ||
       !ssl_log_secret(ssl, "SERVER_TRAFFIC_SECRET_0",
-                      hs->server_traffic_secret_0()) ||
-      !derive_secret(
-          hs, MakeSpan(ssl->s3->exporter_secret, ssl->s3->exporter_secret_len),
-          label_to_span(kTLS13LabelExporter)) ||
-      !ssl_log_secret(ssl, "EXPORTER_SECRET",
-                      MakeConstSpan(ssl->s3->exporter_secret,
-                                    ssl->s3->exporter_secret_len))) {
+                      hs->server_traffic_secret_0())) {
+    return false;
+  }
+  ssl->s3->exporter_secret.ResizeMaybeUninit(hs->transcript.DigestLen());
+  if (!derive_secret(hs, MakeSpan(ssl->s3->exporter_secret),
+                     label_to_span(kTLS13LabelExporter)) ||
+      !ssl_log_secret(ssl, "EXPORTER_SECRET", ssl->s3->exporter_secret)) {
     return false;
   }
 
@@ -333,14 +326,9 @@ bool tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
 static const char kTLS13LabelApplicationTraffic[] = "traffic upd";
 
 bool tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
-  Span<uint8_t> secret;
-  if (direction == evp_aead_open) {
-    secret = MakeSpan(ssl->s3->read_traffic_secret,
-                      ssl->s3->read_traffic_secret_len);
-  } else {
-    secret = MakeSpan(ssl->s3->write_traffic_secret,
-                      ssl->s3->write_traffic_secret_len);
-  }
+  Span<uint8_t> secret = direction == evp_aead_open
+                             ? MakeSpan(ssl->s3->read_traffic_secret)
+                             : MakeSpan(ssl->s3->write_traffic_secret);
 
   const SSL_SESSION *session = SSL_get_session(ssl);
   const EVP_MD *digest = ssl_session_get_digest(session);
@@ -354,14 +342,9 @@ bool tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
 static const char kTLS13LabelResumption[] = "res master";
 
 bool tls13_derive_resumption_secret(SSL_HANDSHAKE *hs) {
-  if (hs->transcript.DigestLen() > SSL_MAX_MASTER_KEY_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
-  }
-  hs->new_session->secret_length = hs->transcript.DigestLen();
-  return derive_secret(
-      hs, MakeSpan(hs->new_session->secret, hs->new_session->secret_length),
-      label_to_span(kTLS13LabelResumption));
+  hs->new_session->secret.ResizeMaybeUninit(hs->transcript.DigestLen());
+  return derive_secret(hs, MakeSpan(hs->new_session->secret),
+                       label_to_span(kTLS13LabelResumption));
 }
 
 static const char kTLS13LabelFinished[] = "finished";
@@ -410,8 +393,8 @@ bool tls13_derive_session_psk(SSL_SESSION *session, Span<const uint8_t> nonce,
   const EVP_MD *digest = ssl_session_get_digest(session);
   // The session initially stores the resumption_master_secret, which we
   // override with the PSK.
-  auto session_secret = MakeSpan(session->secret, session->secret_length);
-  return hkdf_expand_label(session_secret, digest, session_secret,
+  assert(session->secret.size() == EVP_MD_size(digest));
+  return hkdf_expand_label(MakeSpan(session->secret), digest, session->secret,
                            label_to_span(kTLS13LabelResumptionPSK), nonce,
                            is_dtls);
 }
@@ -473,8 +456,9 @@ static bool tls13_psk_binder(uint8_t *out, size_t *out_len,
   auto binder_key = MakeSpan(binder_key_buf, EVP_MD_size(digest));
   if (!EVP_Digest(nullptr, 0, binder_context, &binder_context_len, digest,
                   nullptr) ||
-      !HKDF_extract(early_secret, &early_secret_len, digest, session->secret,
-                    session->secret_length, nullptr, 0) ||
+      !HKDF_extract(early_secret, &early_secret_len, digest,
+                    session->secret.data(), session->secret.size(), nullptr,
+                    0) ||
       !hkdf_expand_label(
           binder_key, digest, MakeConstSpan(early_secret, early_secret_len),
           label_to_span(kTLS13LabelPSKBinder),

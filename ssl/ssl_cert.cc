@@ -165,9 +165,7 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
 
   ret->x509_method->cert_dup(ret.get(), cert);
 
-  ret->sid_ctx_length = cert->sid_ctx_length;
-  OPENSSL_memcpy(ret->sid_ctx, cert->sid_ctx, sizeof(ret->sid_ctx));
-
+  ret->sid_ctx = cert->sid_ctx;
   return ret;
 }
 

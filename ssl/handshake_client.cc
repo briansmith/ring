@@ -328,7 +328,7 @@ bool ssl_write_client_hello_without_extensions(const SSL_HANDSHAKE *hs,
   // Do not send a session ID on renegotiation.
   if (!ssl->s3->initial_handshake_complete &&
       !empty_session_id &&
-      !CBB_add_bytes(&child, hs->session_id, hs->session_id_len)) {
+      !CBB_add_bytes(&child, hs->session_id.data(), hs->session_id.size())) {
     return false;
   }
 
@@ -526,7 +526,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   }
 
   const bool has_id_session = ssl->session != nullptr &&
-                              ssl->session->session_id_length > 0 &&
+                              !ssl->session->session_id.empty() &&
                               ssl->session->ticket.empty();
   const bool has_ticket_session =
       ssl->session != nullptr && !ssl->session->ticket.empty();
@@ -540,12 +540,10 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
                                          ssl->quic_method == nullptr &&
                                          !SSL_is_dtls(hs->ssl);
   if (has_id_session) {
-    hs->session_id_len = ssl->session->session_id_length;
-    OPENSSL_memcpy(hs->session_id, ssl->session->session_id,
-                   hs->session_id_len);
+    hs->session_id = ssl->session->session_id;
   } else if (ticket_session_requires_random_id || enable_compatibility_mode) {
-    hs->session_id_len = sizeof(hs->session_id);
-    if (!RAND_bytes(hs->session_id, hs->session_id_len)) {
+    hs->session_id.ResizeMaybeUninit(SSL_MAX_SSL_SESSION_ID_LENGTH);
+    if (!RAND_bytes(hs->session_id.data(), hs->session_id.size())) {
       return ssl_hs_error;
     }
   }
@@ -830,9 +828,8 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   hs->new_cipher = cipher;
 
-  if (hs->session_id_len != 0 &&
-      CBS_mem_equal(&server_hello.session_id, hs->session_id,
-                    hs->session_id_len)) {
+  if (!hs->session_id.empty() &&
+      Span<const uint8_t>(server_hello.session_id) == hs->session_id) {
     // Echoing the ClientHello session ID in TLS 1.2, whether from the session
     // or a synthetic one, indicates resumption. If there was no session (or if
     // the session was only offered in ECH ClientHelloInner), this was the
@@ -874,16 +871,9 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     }
 
     // Save the session ID from the server. This may be empty if the session
-    // isn't resumable, or if we'll receive a session ticket later.
-    assert(CBS_len(&server_hello.session_id) <= SSL3_SESSION_ID_SIZE);
-    static_assert(SSL3_SESSION_ID_SIZE <= UINT8_MAX,
-                  "max session ID is too large");
-    hs->new_session->session_id_length =
-        static_cast<uint8_t>(CBS_len(&server_hello.session_id));
-    OPENSSL_memcpy(hs->new_session->session_id,
-                   CBS_data(&server_hello.session_id),
-                   CBS_len(&server_hello.session_id));
-
+    // isn't resumable, or if we'll receive a session ticket later. The
+    // ServerHello parser ensures |server_hello.session_id| is within bounds.
+    hs->new_session->session_id.CopyFrom(server_hello.session_id);
     hs->new_session->cipher = hs->new_cipher;
   }
 
@@ -1619,13 +1609,13 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->new_session->secret_length =
-      tls1_generate_master_secret(hs, hs->new_session->secret, pms);
-  if (hs->new_session->secret_length == 0) {
+  hs->new_session->secret.ResizeMaybeUninit(SSL3_MASTER_SECRET_SIZE);
+  if (!tls1_generate_master_secret(hs, MakeSpan(hs->new_session->secret),
+                                   pms)) {
     return ssl_hs_error;
   }
-  hs->new_session->extended_master_secret = hs->extended_master_secret;
 
+  hs->new_session->extended_master_secret = hs->extended_master_secret;
   hs->state = state_send_client_certificate_verify;
   return ssl_hs_ok;
 }
@@ -1860,8 +1850,9 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
 
   // Historically, OpenSSL filled in fake session IDs for ticket-based sessions.
   // TODO(davidben): Are external callers relying on this? Try removing this.
-  SHA256(CBS_data(&ticket), CBS_len(&ticket), hs->new_session->session_id);
-  hs->new_session->session_id_length = SHA256_DIGEST_LENGTH;
+  hs->new_session->session_id.ResizeMaybeUninit(SHA256_DIGEST_LENGTH);
+  SHA256(CBS_data(&ticket), CBS_len(&ticket),
+         hs->new_session->session_id.data());
 
   ssl->method->next_message(ssl);
   hs->state = state_process_change_cipher_spec;

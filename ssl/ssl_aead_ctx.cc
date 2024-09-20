@@ -80,9 +80,7 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
   aead_ctx->variable_nonce_len_ = (uint8_t)EVP_AEAD_nonce_length(aead);
   if (mac_key.empty()) {
     // This is an actual AEAD.
-    assert(fixed_iv.size() <= sizeof(aead_ctx->fixed_nonce_));
-    OPENSSL_memcpy(aead_ctx->fixed_nonce_, fixed_iv.data(), fixed_iv.size());
-    aead_ctx->fixed_nonce_len_ = fixed_iv.size();
+    aead_ctx->fixed_nonce_.CopyFrom(fixed_iv);
 
     if (protocol_version >= TLS1_3_VERSION ||
         cipher->algorithm_enc & SSL_CHACHA20POLY1305) {
@@ -246,11 +244,11 @@ bool SSLAEADContext::Open(Span<uint8_t> *out, uint8_t type,
 
   // Prepend the fixed nonce, or left-pad with zeros if XORing.
   if (xor_fixed_nonce_) {
-    nonce_len = fixed_nonce_len_ - variable_nonce_len_;
+    nonce_len = fixed_nonce_.size() - variable_nonce_len_;
     OPENSSL_memset(nonce, 0, nonce_len);
   } else {
-    OPENSSL_memcpy(nonce, fixed_nonce_, fixed_nonce_len_);
-    nonce_len += fixed_nonce_len_;
+    OPENSSL_memcpy(nonce, fixed_nonce_.data(), fixed_nonce_.size());
+    nonce_len += fixed_nonce_.size();
   }
 
   // Add the variable nonce.
@@ -270,8 +268,8 @@ bool SSLAEADContext::Open(Span<uint8_t> *out, uint8_t type,
 
   // XOR the fixed nonce, if necessary.
   if (xor_fixed_nonce_) {
-    assert(nonce_len == fixed_nonce_len_);
-    for (size_t i = 0; i < fixed_nonce_len_; i++) {
+    assert(nonce_len == fixed_nonce_.size());
+    for (size_t i = 0; i < fixed_nonce_.size(); i++) {
       nonce[i] ^= fixed_nonce_[i];
     }
   }
@@ -323,11 +321,11 @@ bool SSLAEADContext::SealScatter(uint8_t *out_prefix, uint8_t *out,
 
   // Prepend the fixed nonce, or left-pad with zeros if XORing.
   if (xor_fixed_nonce_) {
-    nonce_len = fixed_nonce_len_ - variable_nonce_len_;
+    nonce_len = fixed_nonce_.size() - variable_nonce_len_;
     OPENSSL_memset(nonce, 0, nonce_len);
   } else {
-    OPENSSL_memcpy(nonce, fixed_nonce_, fixed_nonce_len_);
-    nonce_len += fixed_nonce_len_;
+    OPENSSL_memcpy(nonce, fixed_nonce_.data(), fixed_nonce_.size());
+    nonce_len += fixed_nonce_.size();
   }
 
   // Select the variable nonce.
@@ -351,14 +349,14 @@ bool SSLAEADContext::SealScatter(uint8_t *out_prefix, uint8_t *out,
       OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
       return false;
     }
-    OPENSSL_memcpy(out_prefix, nonce + fixed_nonce_len_,
+    OPENSSL_memcpy(out_prefix, nonce + fixed_nonce_.size(),
                    variable_nonce_len_);
   }
 
   // XOR the fixed nonce, if necessary.
   if (xor_fixed_nonce_) {
-    assert(nonce_len == fixed_nonce_len_);
-    for (size_t i = 0; i < fixed_nonce_len_; i++) {
+    assert(nonce_len == fixed_nonce_.size());
+    for (size_t i = 0; i < fixed_nonce_.size(); i++) {
       nonce[i] ^= fixed_nonce_[i];
     }
   }

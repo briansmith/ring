@@ -489,11 +489,8 @@ bool SSL_get_traffic_secrets(const SSL *ssl,
     return false;
   }
 
-  *out_read_traffic_secret = Span<const uint8_t>(
-      ssl->s3->read_traffic_secret, ssl->s3->read_traffic_secret_len);
-  *out_write_traffic_secret = Span<const uint8_t>(
-      ssl->s3->write_traffic_secret, ssl->s3->write_traffic_secret_len);
-
+  *out_read_traffic_secret = ssl->s3->read_traffic_secret;
+  *out_write_traffic_secret = ssl->s3->write_traffic_secret;
   return true;
 }
 
@@ -519,16 +516,11 @@ int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings) {
 }
 
 static uint32_t ssl_session_hash(const SSL_SESSION *sess) {
-  return ssl_hash_session_id(
-      MakeConstSpan(sess->session_id, sess->session_id_length));
+  return ssl_hash_session_id(sess->session_id);
 }
 
 static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b) {
-  if (a->session_id_length != b->session_id_length) {
-    return 1;
-  }
-
-  return OPENSSL_memcmp(a->session_id, b->session_id, a->session_id_length);
+  return MakeConstSpan(a->session_id) == b->session_id ? 0 : 1;
 }
 
 ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
@@ -1522,36 +1514,31 @@ int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
   // The tls-unique value is the first Finished message in the handshake, which
   // is the client's in a full handshake and the server's for a resumption. See
   // https://tools.ietf.org/html/rfc5929#section-3.1.
-  const uint8_t *finished = ssl->s3->previous_client_finished;
-  size_t finished_len = ssl->s3->previous_client_finished_len;
+  Span<const uint8_t> finished = ssl->s3->previous_client_finished;
   if (ssl->session != NULL) {
     // tls-unique is broken for resumed sessions unless EMS is used.
     if (!ssl->session->extended_master_secret) {
       return 0;
     }
     finished = ssl->s3->previous_server_finished;
-    finished_len = ssl->s3->previous_server_finished_len;
   }
 
-  *out_len = finished_len;
-  if (finished_len > max_out) {
+  *out_len = finished.size();
+  if (finished.size() > max_out) {
     *out_len = max_out;
   }
 
-  OPENSSL_memcpy(out, finished, *out_len);
+  OPENSSL_memcpy(out, finished.data(), *out_len);
   return 1;
 }
 
 static int set_session_id_context(CERT *cert, const uint8_t *sid_ctx,
-                                   size_t sid_ctx_len) {
-  if (sid_ctx_len > sizeof(cert->sid_ctx)) {
+                                  size_t sid_ctx_len) {
+  if (!cert->sid_ctx.TryCopyFrom(MakeConstSpan(sid_ctx, sid_ctx_len))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
     return 0;
   }
 
-  static_assert(sizeof(cert->sid_ctx) < 256, "sid_ctx too large");
-  cert->sid_ctx_length = (uint8_t)sid_ctx_len;
-  OPENSSL_memcpy(cert->sid_ctx, sid_ctx, sid_ctx_len);
   return 1;
 }
 
@@ -1574,8 +1561,8 @@ const uint8_t *SSL_get0_session_id_context(const SSL *ssl, size_t *out_len) {
     *out_len = 0;
     return NULL;
   }
-  *out_len = ssl->config->cert->sid_ctx_length;
-  return ssl->config->cert->sid_ctx;
+  *out_len = ssl->config->cert->sid_ctx.size();
+  return ssl->config->cert->sid_ctx.data();
 }
 
 int SSL_get_fd(const SSL *ssl) { return SSL_get_rfd(ssl); }
@@ -1650,13 +1637,12 @@ int SSL_set_rfd(SSL *ssl, int fd) {
 }
 #endif  // !OPENSSL_NO_SOCK
 
-static size_t copy_finished(void *out, size_t out_len, const uint8_t *in,
-                            size_t in_len) {
-  if (out_len > in_len) {
-    out_len = in_len;
+static size_t copy_finished(void *out, size_t out_len, Span<const uint8_t> in) {
+  if (out_len > in.size()) {
+    out_len = in.size();
   }
-  OPENSSL_memcpy(out, in, out_len);
-  return in_len;
+  OPENSSL_memcpy(out, in.data(), out_len);
+  return in.size();
 }
 
 size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
@@ -1666,12 +1652,10 @@ size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
   }
 
   if (ssl->server) {
-    return copy_finished(buf, count, ssl->s3->previous_server_finished,
-                         ssl->s3->previous_server_finished_len);
+    return copy_finished(buf, count, ssl->s3->previous_server_finished);
   }
 
-  return copy_finished(buf, count, ssl->s3->previous_client_finished,
-                       ssl->s3->previous_client_finished_len);
+  return copy_finished(buf, count, ssl->s3->previous_client_finished);
 }
 
 size_t SSL_get_peer_finished(const SSL *ssl, void *buf, size_t count) {
@@ -1681,12 +1665,10 @@ size_t SSL_get_peer_finished(const SSL *ssl, void *buf, size_t count) {
   }
 
   if (ssl->server) {
-    return copy_finished(buf, count, ssl->s3->previous_client_finished,
-                         ssl->s3->previous_client_finished_len);
+    return copy_finished(buf, count, ssl->s3->previous_client_finished);
   }
 
-  return copy_finished(buf, count, ssl->s3->previous_server_finished,
-                       ssl->s3->previous_server_finished_len);
+  return copy_finished(buf, count, ssl->s3->previous_server_finished);
 }
 
 int SSL_get_verify_mode(const SSL *ssl) {

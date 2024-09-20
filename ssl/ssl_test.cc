@@ -679,6 +679,140 @@ TEST(VectorDeathTest, BoundsChecks) {
   EXPECT_DEATH_IF_SUPPORTED(vec[10000], "");
 }
 
+TEST(InplaceVector, Basic) {
+  InplaceVector<int, 4> vec;
+  EXPECT_TRUE(vec.empty());
+  EXPECT_EQ(0u, vec.size());
+  EXPECT_EQ(vec.begin(), vec.end());
+
+  int data3[] = {1, 2, 3};
+  ASSERT_TRUE(vec.TryCopyFrom(data3));
+  EXPECT_FALSE(vec.empty());
+  EXPECT_EQ(3u, vec.size());
+  auto iter = vec.begin();
+  EXPECT_EQ(1, vec[0]);
+  EXPECT_EQ(1, *iter);
+  iter++;
+  EXPECT_EQ(2, vec[1]);
+  EXPECT_EQ(2, *iter);
+  iter++;
+  EXPECT_EQ(3, vec[2]);
+  EXPECT_EQ(3, *iter);
+  iter++;
+  EXPECT_EQ(iter, vec.end());
+  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(data3));
+
+  InplaceVector<int, 4> vec2 = vec;
+  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(vec2));
+
+  InplaceVector<int, 4> vec3;
+  vec3 = vec;
+  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(vec2));
+
+  int data4[] = {1, 2, 3, 4};
+  ASSERT_TRUE(vec.TryCopyFrom(data4));
+  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(data4));
+
+  int data5[] = {1, 2, 3, 4, 5};
+  EXPECT_FALSE(vec.TryCopyFrom(data5));
+  EXPECT_FALSE(vec.TryResize(5));
+
+  // Shrink the vector.
+  ASSERT_TRUE(vec.TryResize(3));
+  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(data3));
+
+  // Enlarge it again. The new value should have been value-initialized.
+  ASSERT_TRUE(vec.TryResize(4));
+  EXPECT_EQ(vec[3], 0);
+
+  // Self-assignment should not break the vector. Indirect through a pointer to
+  // avoid tripping a compiler warning.
+  vec.CopyFrom(data4);
+  const auto *ptr = &vec;
+  vec = *ptr;
+  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(data4));
+}
+
+TEST(InplaceVectorTest, ComplexType) {
+  InplaceVector<std::vector<int>, 4> vec_of_vecs;
+  const std::vector<int> data[] = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+  vec_of_vecs.CopyFrom(data);
+  EXPECT_EQ(MakeConstSpan(vec_of_vecs), MakeConstSpan(data));
+
+  vec_of_vecs.Resize(2);
+  EXPECT_EQ(MakeConstSpan(vec_of_vecs), MakeConstSpan(data, 2));
+
+  vec_of_vecs.Resize(4);
+  EXPECT_EQ(4u, vec_of_vecs.size());
+  EXPECT_EQ(vec_of_vecs[0], data[0]);
+  EXPECT_EQ(vec_of_vecs[1], data[1]);
+  EXPECT_TRUE(vec_of_vecs[2].empty());
+  EXPECT_TRUE(vec_of_vecs[3].empty());
+
+  // Copy-construction.
+  InplaceVector<std::vector<int>, 4> vec_of_vecs2 = vec_of_vecs;
+  EXPECT_EQ(4u, vec_of_vecs2.size());
+  EXPECT_EQ(vec_of_vecs2[0], data[0]);
+  EXPECT_EQ(vec_of_vecs2[1], data[1]);
+  EXPECT_TRUE(vec_of_vecs2[2].empty());
+  EXPECT_TRUE(vec_of_vecs2[3].empty());
+
+  // Copy-assignment.
+  InplaceVector<std::vector<int>, 4> vec_of_vecs3;
+  vec_of_vecs3 = vec_of_vecs;
+  EXPECT_EQ(4u, vec_of_vecs3.size());
+  EXPECT_EQ(vec_of_vecs3[0], data[0]);
+  EXPECT_EQ(vec_of_vecs3[1], data[1]);
+  EXPECT_TRUE(vec_of_vecs3[2].empty());
+  EXPECT_TRUE(vec_of_vecs3[3].empty());
+
+  // Move-construction.
+  InplaceVector<std::vector<int>, 4> vec_of_vecs4 = std::move(vec_of_vecs);
+  EXPECT_EQ(4u, vec_of_vecs4.size());
+  EXPECT_EQ(vec_of_vecs4[0], data[0]);
+  EXPECT_EQ(vec_of_vecs4[1], data[1]);
+  EXPECT_TRUE(vec_of_vecs4[2].empty());
+  EXPECT_TRUE(vec_of_vecs4[3].empty());
+
+  // The elements of the original vector should have been moved-from.
+  EXPECT_EQ(4u, vec_of_vecs.size());
+  for (const auto &vec : vec_of_vecs) {
+    EXPECT_TRUE(vec.empty());
+  }
+
+  // Move-assignment.
+  InplaceVector<std::vector<int>, 4> vec_of_vecs5;
+  vec_of_vecs5 = std::move(vec_of_vecs4);
+  EXPECT_EQ(4u, vec_of_vecs5.size());
+  EXPECT_EQ(vec_of_vecs5[0], data[0]);
+  EXPECT_EQ(vec_of_vecs5[1], data[1]);
+  EXPECT_TRUE(vec_of_vecs5[2].empty());
+  EXPECT_TRUE(vec_of_vecs5[3].empty());
+
+  // The elements of the original vector should have been moved-from.
+  EXPECT_EQ(4u, vec_of_vecs4.size());
+  for (const auto &vec : vec_of_vecs4) {
+    EXPECT_TRUE(vec.empty());
+  }
+}
+
+TEST(InplaceVectorDeathTest, BoundsChecks) {
+  InplaceVector<int, 4> vec;
+  // The vector is currently empty.
+  EXPECT_DEATH_IF_SUPPORTED(vec[0], "");
+  int data[] = {1, 2, 3};
+  vec.CopyFrom(data);
+  // Some more out-of-bounds elements.
+  EXPECT_DEATH_IF_SUPPORTED(vec[3], "");
+  EXPECT_DEATH_IF_SUPPORTED(vec[4], "");
+  EXPECT_DEATH_IF_SUPPORTED(vec[1000], "");
+  // The vector cannot be resized past the capacity.
+  EXPECT_DEATH_IF_SUPPORTED(vec.Resize(5), "");
+  EXPECT_DEATH_IF_SUPPORTED(vec.ResizeMaybeUninit(5), "");
+  int too_much_data[] = {1, 2, 3, 4, 5};
+  EXPECT_DEATH_IF_SUPPORTED(vec.CopyFrom(too_much_data), "");
+}
+
 TEST(ReconstructSeqnumTest, Increment) {
   // Test simple cases from the beginning of an epoch with both 8- and 16-bit
   // wire sequence numbers.
