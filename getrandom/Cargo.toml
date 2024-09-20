@@ -9,4 +9,5 @@ edition = "2021"
 mc-sgx-types = { git = "https://github.com/mobilecoinfoundation/mobilecoin.git", tag = "v6.0.2" }
 
 [features]
+custom = []
 js = []
