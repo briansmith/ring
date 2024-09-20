@@ -9693,5 +9693,49 @@ TEST_P(SSLVersionTest, KeyLog) {
   EXPECT_EQ(client_log, server_log);
 }
 
+TEST_P(SSLVersionTest, GetIVs) {
+  std::vector<const char *> ciphers;
+  if (version() == TLS1_2_VERSION || version() == DTLS1_2_VERSION) {
+    // Try both CBC and AEAD ciphers.
+    ciphers = {"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+               "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"};
+  } else {
+    // The defaults are fine to test. In 1.0 and 1.1, all remaining supported
+    // ciphers are CBC. In 1.3, all ciphers are AEADs.
+    ciphers = {"ALL"};
+  }
+
+  for (const char *cipher : ciphers) {
+    SCOPED_TRACE(cipher);
+
+    ASSERT_NO_FATAL_FAILURE(ResetContexts());
+    ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(client_ctx_.get(), cipher));
+    ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(server_ctx_.get(), cipher));
+    ASSERT_TRUE(Connect());
+
+    const uint8_t *client_read_iv, *client_write_iv, *server_read_iv,
+        *server_write_iv;
+    size_t client_iv_len, server_iv_len;
+    bool client_ivs_ok = SSL_get_ivs(client_.get(), &client_read_iv,
+                                     &client_write_iv, &client_iv_len);
+    bool server_ivs_ok = SSL_get_ivs(server_.get(), &server_read_iv,
+                                     &server_write_iv, &server_iv_len);
+
+    // Only TLS 1.0 should support |SSL_get_ivs|. Other cases should cleanly
+    // fail this operation.
+    if (version() == TLS1_VERSION) {
+      ASSERT_TRUE(client_ivs_ok);
+      ASSERT_TRUE(server_ivs_ok);
+      EXPECT_EQ(Bytes(client_write_iv, client_iv_len),
+                Bytes(server_read_iv, server_iv_len));
+      EXPECT_EQ(Bytes(client_read_iv, client_iv_len),
+                Bytes(server_write_iv, server_iv_len));
+    } else {
+      EXPECT_FALSE(client_ivs_ok);
+      EXPECT_FALSE(server_ivs_ok);
+    }
+  }
+}
+
 }  // namespace
 BSSL_NAMESPACE_END
