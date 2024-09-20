@@ -336,22 +336,21 @@ class Array {
   size_t size_ = 0;
 };
 
-// GrowableArray<T> is an array that owns elements of |T|, backed by an
-// Array<T>. When necessary, pushing will automatically trigger a resize.
+// Vector<T> is a resizable array of elements of |T|.
 //
 // Note, for simplicity, this class currently differs from |std::vector| in that
 // |T| must be efficiently default-constructible. Allocated elements beyond the
 // end of the array are constructed and destructed.
 template <typename T>
-class GrowableArray {
+class Vector {
  public:
-  GrowableArray() = default;
-  GrowableArray(const GrowableArray &) = delete;
-  GrowableArray(GrowableArray &&other) { *this = std::move(other); }
-  ~GrowableArray() {}
+  Vector() = default;
+  Vector(const Vector &) = delete;
+  Vector(Vector &&other) { *this = std::move(other); }
+  ~Vector() {}
 
-  GrowableArray &operator=(const GrowableArray &) = delete;
-  GrowableArray &operator=(GrowableArray &&other) {
+  Vector &operator=(const Vector &) = delete;
+  Vector &operator=(Vector &&other) {
     size_ = other.size_;
     other.size_ = 0;
     array_ = std::move(other.array_);
@@ -425,10 +424,10 @@ class GrowableArray {
     return true;
   }
 
-  // |size_| is the number of elements stored in this GrowableArray.
+  // |size_| is the number of elements stored in this Vector.
   size_t size_ = 0;
   // |array_| is the backing array. Note that |array_.size()| is this
-  // GrowableArray's current capacity and that |size_ <= array_.size()|.
+  // Vector's current capacity and that |size_ <= array_.size()|.
   Array<T> array_;
   // |kDefaultSize| is the default initial size of the backing array.
   static constexpr size_t kDefaultSize = 16;
@@ -2533,7 +2532,7 @@ struct CERT {
 
   // credentials is the list of credentials to select between. Elements of this
   // array immutable.
-  GrowableArray<UniquePtr<SSL_CREDENTIAL>> credentials;
+  Vector<UniquePtr<SSL_CREDENTIAL>> credentials;
 
   // legacy_credential is the credential configured by the legacy
   // non-credential-based APIs. If IsComplete() returns true, it is appended to
@@ -3213,7 +3212,7 @@ struct SSL_CONFIG {
 
   // alps_configs contains the list of supported protocols to use with ALPS,
   // along with their corresponding ALPS values.
-  GrowableArray<ALPSConfig> alps_configs;
+  Vector<ALPSConfig> alps_configs;
 
   // Contains the QUIC transport params that this endpoint will send.
   Array<uint8_t> quic_transport_params;
@@ -3816,7 +3815,7 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   bssl::UniquePtr<STACK_OF(SRTP_PROTECTION_PROFILE)> srtp_profiles;
 
   // Defined compression algorithms for certificates.
-  bssl::GrowableArray<bssl::CertCompressionAlg> cert_compression_algs;
+  bssl::Vector<bssl::CertCompressionAlg> cert_compression_algs;
 
   // Supported group values inherited by SSL structure
   bssl::Array<uint16_t> supported_group_list;
@@ -4157,7 +4156,7 @@ struct ssl_session_st : public bssl::RefCounted<ssl_session_st> {
 struct ssl_ech_keys_st : public bssl::RefCounted<ssl_ech_keys_st> {
   ssl_ech_keys_st() : RefCounted(CheckSubClass()) {}
 
-  bssl::GrowableArray<bssl::UniquePtr<bssl::ECHServerConfig>> configs;
+  bssl::Vector<bssl::UniquePtr<bssl::ECHServerConfig>> configs;
 
  private:
   friend RefCounted;
