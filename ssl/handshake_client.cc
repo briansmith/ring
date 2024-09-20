@@ -575,28 +575,20 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
-  ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->session->ssl_version);
-  if (!ssl->method->add_change_cipher_spec(ssl)) {
-    return ssl_hs_error;
-  }
-
-  if (!tls13_init_early_key_schedule(hs, ssl->session.get()) ||
-      !tls13_derive_early_secret(hs)) {
-    return ssl_hs_error;
-  }
-
-  // Stash the early data session, so connection properties may be queried out
-  // of it.
+  // Stash the early data session. This must happen before
+  // |do_early_reverify_server_certificate|, so early connection properties are
+  // available to the callback.
   hs->early_session = UpRef(ssl->session);
   hs->state = state_early_reverify_server_certificate;
   return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_early_reverify_server_certificate(SSL_HANDSHAKE *hs) {
-  if (hs->ssl->ctx->reverify_on_resume) {
-    // Don't send an alert on error. The alert be in early data, which the
-    // server may not accept anyway. It would also be a mismatch between QUIC
-    // and TCP because the QUIC early keys are deferred below.
+  SSL *const ssl = hs->ssl;
+  if (ssl->ctx->reverify_on_resume) {
+    // Don't send an alert on error. The alert would be in the clear, which the
+    // server is not expecting anyway. Alerts in between ClientHello and
+    // ServerHello cannot usefully be delivered in TLS 1.3.
     //
     // TODO(davidben): The client behavior should be to verify the certificate
     // before deciding whether to offer the session and, if invalid, decline to
@@ -612,9 +604,17 @@ static enum ssl_hs_wait_t do_early_reverify_server_certificate(SSL_HANDSHAKE *hs
     }
   }
 
+  ssl->s3->aead_write_ctx->SetVersionIfNullCipher(
+      hs->early_session->ssl_version);
+  if (!ssl->method->add_change_cipher_spec(ssl)) {
+    return ssl_hs_error;
+  }
+
   // Defer releasing the 0-RTT key to after certificate reverification, so the
   // QUIC implementation does not accidentally write data too early.
-  if (!tls13_set_traffic_key(hs->ssl, ssl_encryption_early_data, evp_aead_seal,
+  if (!tls13_init_early_key_schedule(hs, hs->early_session.get()) ||
+      !tls13_derive_early_secret(hs) ||
+      !tls13_set_traffic_key(hs->ssl, ssl_encryption_early_data, evp_aead_seal,
                              hs->early_session.get(),
                              hs->early_traffic_secret())) {
     return ssl_hs_error;
