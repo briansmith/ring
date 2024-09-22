@@ -250,7 +250,11 @@ bool ssl_get_version_range(const SSL_HANDSHAKE *hs, uint16_t *out_min_version,
 }
 
 static uint16_t ssl_version(const SSL *ssl) {
-  // In early data, we report the predicted version.
+  // In early data, we report the predicted version. Note it is possible that we
+  // have a predicted version and a *different* true version. This means 0-RTT
+  // has been rejected, but until the reject has reported to the application and
+  // applied with |SSL_reset_early_data_reject|, we continue reporting a
+  // self-consistent connection.
   if (SSL_in_early_data(ssl) && !ssl->server) {
     return ssl->s3->hs->early_session->ssl_version;
   }
