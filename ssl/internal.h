@@ -2854,6 +2854,11 @@ struct SSL3_STATE {
   enum ssl_encryption_level_t read_level = ssl_encryption_initial;
   enum ssl_encryption_level_t write_level = ssl_encryption_initial;
 
+  // version is the protocol version, or zero if the version has not yet been
+  // set.
+  // TODO(davidben): This is redundant with |have_version|.
+  uint16_t version = 0;
+
   // early_data_skipped is the amount of early data that has been skipped by the
   // record layer.
   uint16_t early_data_skipped = 0;
@@ -3949,9 +3954,6 @@ struct ssl_st {
   // handshake completes.  (If you have the |SSL_HANDSHAKE| object at hand, use
   // that instead, and skip the null check.)
   bssl::UniquePtr<bssl::SSL_CONFIG> config;
-
-  // version is the protocol version.
-  uint16_t version = 0;
 
   uint16_t max_send_fragment = 0;
 

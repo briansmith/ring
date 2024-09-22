@@ -86,7 +86,7 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
                                         /*secret_for_quic=*/{})) {
         return false;
       }
-      ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
+      ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->s3->version);
     } else {
       assert(level == ssl_encryption_handshake);
       if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
@@ -437,7 +437,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   if (!supported_versions.present ||
       !CBS_get_u16(&supported_versions.data, &version) ||
       CBS_len(&supported_versions.data) != 0 ||
-      version != ssl->version) {
+      version != ssl->s3->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SECOND_SERVERHELLO_VERSION_MISMATCH);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
@@ -451,7 +451,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    if (ssl->session->ssl_version != ssl->version) {
+    if (ssl->session->ssl_version != ssl->s3->version) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_VERSION_NOT_RETURNED);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;

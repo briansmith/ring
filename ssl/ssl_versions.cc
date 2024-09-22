@@ -254,14 +254,19 @@ static uint16_t ssl_version(const SSL *ssl) {
   if (SSL_in_early_data(ssl) && !ssl->server) {
     return ssl->s3->hs->early_session->ssl_version;
   }
-  return ssl->version;
+  if (ssl->s3->have_version) {
+    return ssl->s3->version;
+  }
+  // The TLS versions has not yet been negotiated. Historically, we would return
+  // (D)TLS 1.2, so preserve that behavior.
+  return SSL_is_dtls(ssl) ? DTLS1_2_VERSION : TLS1_2_VERSION;
 }
 
 uint16_t ssl_protocol_version(const SSL *ssl) {
   assert(ssl->s3->have_version);
   uint16_t version;
-  if (!ssl_protocol_version_from_wire(&version, ssl->version)) {
-    // |ssl->version| will always be set to a valid version.
+  if (!ssl_protocol_version_from_wire(&version, ssl->s3->version)) {
+    // |ssl->s3->version| will always be set to a valid version.
     assert(0);
     return 0;
   }

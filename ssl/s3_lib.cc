@@ -196,13 +196,6 @@ bool tls_new(SSL *ssl) {
   }
 
   ssl->s3 = s3.release();
-
-  // Set the version to the highest supported version.
-  //
-  // TODO(davidben): Move this field into |s3|, have it store the normalized
-  // protocol version, and implement this pre-negotiation quirk in |SSL_version|
-  // at the API boundary rather than in internal state.
-  ssl->version = TLS1_2_VERSION;
   return true;
 }
 

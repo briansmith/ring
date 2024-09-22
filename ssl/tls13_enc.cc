@@ -404,7 +404,7 @@ bool tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len,
   size_t context_hash_len;
   if (!hs->transcript.GetHash(context_hash, &context_hash_len) ||
       !tls13_verify_data(out, out_len, hs->transcript.Digest(),
-                         hs->ssl->version, traffic_secret,
+                         hs->ssl->s3->version, traffic_secret,
                          MakeConstSpan(context_hash, context_hash_len),
                          SSL_is_dtls(hs->ssl))) {
     return false;

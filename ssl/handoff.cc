@@ -329,7 +329,7 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
   const uint8_t *write_iv = nullptr;
   if ((type == handback_after_session_resumption ||
        type == handback_after_handshake) &&
-      ssl->version == TLS1_VERSION &&
+      ssl->s3->version == TLS1_VERSION &&
       SSL_CIPHER_is_block_cipher(s3->aead_write_ctx->cipher()) &&
       !s3->aead_write_ctx->GetIV(&write_iv, &write_iv_len)) {
     return false;
@@ -337,7 +337,7 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
   size_t read_iv_len = 0;
   const uint8_t *read_iv = nullptr;
   if (type == handback_after_handshake &&
-      ssl->version == TLS1_VERSION &&
+      ssl->s3->version == TLS1_VERSION &&
       SSL_CIPHER_is_block_cipher(s3->aead_read_ctx->cipher()) &&
       !s3->aead_read_ctx->GetIV(&read_iv, &read_iv_len)) {
       return false;
@@ -637,9 +637,9 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
     s3->early_data_reason = ssl_early_data_protocol_version;
   }
 
-  ssl->version = session->ssl_version;
+  ssl->s3->version = session->ssl_version;
   s3->have_version = true;
-  if (!ssl_method_supports_version(ssl->method, ssl->version) ||
+  if (!ssl_method_supports_version(ssl->method, ssl->s3->version) ||
       session->cipher != hs->new_cipher ||
       ssl_protocol_version(ssl) < SSL_CIPHER_get_min_version(session->cipher) ||
       SSL_CIPHER_get_max_version(session->cipher) < ssl_protocol_version(ssl)) {
@@ -690,7 +690,7 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   hs->wait = ssl_hs_flush;
   hs->extended_master_secret = extended_master_secret;
   hs->ticket_expected = ticket_expected;
-  s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
+  s3->aead_write_ctx->SetVersionIfNullCipher(ssl->s3->version);
   hs->cert_request = cert_request;
 
   if (type != handback_after_handshake &&

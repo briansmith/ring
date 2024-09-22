@@ -101,7 +101,7 @@ static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
   CBB contents;
   if (!CBB_add_u16(out, TLSEXT_TYPE_supported_versions) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u16(&contents, hs->ssl->version) ||
+      !CBB_add_u16(&contents, hs->ssl->s3->version) ||
       !CBB_flush(out)) {
     return 0;
   }
@@ -615,7 +615,7 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
       !CBB_add_u16(&extensions, TLSEXT_TYPE_supported_versions) ||
       !CBB_add_u16(&extensions, 2 /* length */) ||
-      !CBB_add_u16(&extensions, ssl->version) ||
+      !CBB_add_u16(&extensions, ssl->s3->version) ||
       !CBB_add_u16(&extensions, TLSEXT_TYPE_key_share) ||
       !CBB_add_u16(&extensions, 2 /* length */) ||
       !CBB_add_u16(&extensions, hs->new_session->group_id)) {

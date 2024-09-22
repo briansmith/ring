@@ -244,7 +244,7 @@ bool tls1_configure_aead(SSL *ssl, evp_aead_direction_t direction,
   }
 
   UniquePtr<SSLAEADContext> aead_ctx =
-      SSLAEADContext::Create(direction, ssl->version, SSL_is_dtls(ssl),
+      SSLAEADContext::Create(direction, ssl->s3->version, SSL_is_dtls(ssl),
                              session->cipher, key, mac_secret, iv);
   if (!aead_ctx) {
     return false;

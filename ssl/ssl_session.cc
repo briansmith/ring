@@ -362,7 +362,7 @@ bool ssl_get_new_session(SSL_HANDSHAKE *hs) {
   }
 
   session->is_server = ssl->server;
-  session->ssl_version = ssl->version;
+  session->ssl_version = ssl->s3->version;
   session->is_quic = ssl->quic_method != nullptr;
 
   // Fill in the time from the |SSL_CTX|'s clock.
@@ -616,7 +616,7 @@ bool ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
          ssl_session_is_time_valid(ssl, session) &&
          // Only resume if the session's version matches the negotiated
          // version.
-         ssl->version == session->ssl_version &&
+         ssl->s3->version == session->ssl_version &&
          // Only resume if the session's cipher matches the negotiated one. This
          // is stricter than necessary for TLS 1.3, which allows cross-cipher
          // resumption if the PRF hashes match. We require an exact match for
