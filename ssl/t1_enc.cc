@@ -334,7 +334,7 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
                                const uint8_t *context, size_t context_len,
                                int use_context) {
   // In TLS 1.3, the exporter may be used whenever the secret has been derived.
-  if (ssl->s3->have_version && ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl->s3->version != 0 && ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     if (ssl->s3->exporter_secret_len == 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_NOT_COMPLETE);
       return 0;

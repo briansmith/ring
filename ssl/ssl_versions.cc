@@ -258,7 +258,7 @@ static uint16_t ssl_version(const SSL *ssl) {
   if (SSL_in_early_data(ssl) && !ssl->server) {
     return ssl->s3->hs->early_session->ssl_version;
   }
-  if (ssl->s3->have_version) {
+  if (ssl->s3->version != 0) {
     return ssl->s3->version;
   }
   // The TLS versions has not yet been negotiated. Historically, we would return
@@ -267,7 +267,7 @@ static uint16_t ssl_version(const SSL *ssl) {
 }
 
 uint16_t ssl_protocol_version(const SSL *ssl) {
-  assert(ssl->s3->have_version);
+  assert(ssl->s3->version != 0);
   uint16_t version;
   if (!ssl_protocol_version_from_wire(&version, ssl->s3->version)) {
     // |ssl->s3->version| will always be set to a valid version.

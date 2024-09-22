@@ -196,7 +196,7 @@ bool ssl_client_cipher_list_contains_cipher(
 static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                               const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
-  assert(!ssl->s3->have_version);
+  assert(ssl->s3->version == 0);
   CBS supported_versions, versions;
   if (ssl_client_hello_get_extension(client_hello, &supported_versions,
                                      TLSEXT_TYPE_supported_versions)) {
@@ -247,7 +247,6 @@ static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
   // At this point, the connection's version is known and |ssl->s3->version| is
   // fixed. Begin enforcing the record-layer version.
-  ssl->s3->have_version = true;
   ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->s3->version);
 
   // Handle FALLBACK_SCSV.

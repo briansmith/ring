@@ -232,7 +232,7 @@ ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
 
   *out_consumed = in.size() - CBS_len(&cbs);
 
-  if (ssl->s3->have_version &&
+  if (ssl->s3->version != 0 &&
       ssl_protocol_version(ssl) >= TLS1_3_VERSION &&
       SSL_in_init(ssl) &&
       type == SSL3_RT_CHANGE_CIPHER_SPEC &&
@@ -551,7 +551,7 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
     // without specifying how to handle it. JDK11 misuses it to signal
     // full-duplex connection close after the handshake. As a workaround, skip
     // user_canceled as in TLS 1.2. This matches NSS and OpenSSL.
-    if (ssl->s3->have_version &&
+    if (ssl->s3->version != 0 &&
         ssl_protocol_version(ssl) >= TLS1_3_VERSION &&
         alert_descr != SSL_AD_USER_CANCELLED) {
       *out_alert = SSL_AD_DECODE_ERROR;

@@ -638,7 +638,6 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   }
 
   ssl->s3->version = session->ssl_version;
-  s3->have_version = true;
   if (!ssl_method_supports_version(ssl->method, ssl->s3->version) ||
       session->cipher != hs->new_cipher ||
       ssl_protocol_version(ssl) < SSL_CIPHER_get_min_version(session->cipher) ||

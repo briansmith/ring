@@ -432,7 +432,7 @@ static SSLAEADContext *get_write_aead(const SSL *ssl, uint16_t epoch) {
 static bool use_dtls13_record_header(const SSL *ssl, uint16_t epoch) {
   // Plaintext records in DTLS 1.3 also use the DTLSPlaintext structure for
   // backwards compatibility.
-  return ssl->s3->have_version && ssl_protocol_version(ssl) > TLS1_2_VERSION &&
+  return ssl->s3->version != 0 && ssl_protocol_version(ssl) > TLS1_2_VERSION &&
          epoch > 0;
 }
 

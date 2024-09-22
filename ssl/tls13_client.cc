@@ -183,7 +183,7 @@ static bool check_ech_confirmation(const SSL_HANDSHAKE *hs, bool *out_accepted,
 
 static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  assert(ssl->s3->have_version);
+  assert(ssl->s3->version != 0);
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;

@@ -723,12 +723,11 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  assert(ssl->s3->have_version == ssl->s3->initial_handshake_complete);
-  if (!ssl->s3->have_version) {
+  assert((ssl->s3->version != 0) == ssl->s3->initial_handshake_complete);
+  if (ssl->s3->version == 0) {
     ssl->s3->version = server_version;
     // At this point, the connection's version is known and ssl->s3->version is
     // fixed. Begin enforcing the record-layer version.
-    ssl->s3->have_version = true;
     ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->s3->version);
   } else if (server_version != ssl->s3->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);

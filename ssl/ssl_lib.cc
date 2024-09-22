@@ -425,7 +425,7 @@ static bool ssl_can_renegotiate(const SSL *ssl) {
     return false;
   }
 
-  if (ssl->s3->have_version &&
+  if (ssl->s3->version != 0 &&
       ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return false;
   }
@@ -1693,7 +1693,7 @@ int SSL_get_verify_mode(const SSL *ssl) {
 int SSL_get_extms_support(const SSL *ssl) {
   // TLS 1.3 does not require extended master secret and always reports as
   // supporting it.
-  if (!ssl->s3->have_version) {
+  if (ssl->s3->version == 0) {
     return 0;
   }
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
@@ -1868,7 +1868,7 @@ int SSL_set_mtu(SSL *ssl, unsigned mtu) {
 }
 
 int SSL_get_secure_renegotiation_support(const SSL *ssl) {
-  if (!ssl->s3->have_version) {
+  if (ssl->s3->version == 0) {
     return 0;
   }
   return ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
