@@ -91,7 +91,8 @@ def handle_mixed_c_cxx(
         includes,
         linkopts,
         srcs,
-        testonly):
+        testonly,
+        alwayslink):
     """
     Works around https://github.com/bazelbuild/bazel/issues/22041. Determines
     whether a target contains C, C++, or both. If the target is multi-language,
@@ -121,6 +122,7 @@ def handle_mixed_c_cxx(
             linkopts = linkopts,
             deps = deps,
             testonly = testonly,
+            alwayslink = alwayslink,
         )
 
         # Build the remainder as a C-only target.
@@ -188,6 +190,7 @@ def bssl_cc_library(
         linkstatic = None,
         srcs = [],
         testonly = False,
+        alwayslink = False,
         visibility = []):
     copts, deps, srcs = handle_mixed_c_cxx(
         name = name,
@@ -198,6 +201,7 @@ def bssl_cc_library(
         linkopts = linkopts,
         srcs = srcs,
         testonly = testonly,
+        alwayslink = alwayslink,
     )
 
     # BoringSSL's notion of internal headers are slightly different from
@@ -217,6 +221,7 @@ def bssl_cc_library(
         linkopts = linkopts,
         deps = deps,
         testonly = testonly,
+        alwayslink = alwayslink,
         **linkstatic_kwargs(linkstatic)
     )
 
@@ -248,6 +253,9 @@ def bssl_cc_binary(
         linkopts = linkopts,
         srcs = srcs,
         testonly = testonly,
+        # TODO(davidben): Should this be alwayslink = True? How does Bazel treat
+        # the real cc_binary.srcs?
+        alwayslink = False,
     )
 
     cc_binary(
@@ -268,7 +276,6 @@ def bssl_cc_test(
         asm_srcs = [],
         data = [],
         size = "medium",
-        internal_hdrs = [],
         copts = [],
         includes = [],
         linkopts = [],
@@ -284,6 +291,9 @@ def bssl_cc_test(
         linkopts = linkopts,
         srcs = srcs,
         testonly = True,
+        # If any sources get extracted, they must always be linked, otherwise
+        # tests will be dropped.
+        alwayslink = True,
     )
 
     cc_test(
