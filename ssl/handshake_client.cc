@@ -575,10 +575,12 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
-  // Stash the early data session. This must happen before
-  // |do_early_reverify_server_certificate|, so early connection properties are
-  // available to the callback.
+  // Stash the early data session and activate the early version. This must
+  // happen before |do_early_reverify_server_certificate|, so early connection
+  // properties are available to the callback. Note the early version may be
+  // overwritten later by the final version.
   hs->early_session = UpRef(ssl->session);
+  ssl->s3->version = hs->early_session->ssl_version;
   hs->state = state_early_reverify_server_certificate;
   return ssl_hs_ok;
 }
@@ -604,8 +606,6 @@ static enum ssl_hs_wait_t do_early_reverify_server_certificate(SSL_HANDSHAKE *hs
     }
   }
 
-  ssl->s3->aead_write_ctx->SetVersionIfNullCipher(
-      hs->early_session->ssl_version);
   if (!ssl->method->add_change_cipher_spec(ssl)) {
     return ssl_hs_error;
   }
@@ -723,12 +723,13 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  assert((ssl->s3->version != 0) == ssl->s3->initial_handshake_complete);
-  if (ssl->s3->version == 0) {
+  if (!ssl->s3->initial_handshake_complete) {
+    // |ssl->s3->version| may be set due to 0-RTT. If it was to a different
+    // value, the check below will fire.
+    assert(ssl->s3->version == 0 ||
+           (hs->early_data_offered &&
+            ssl->s3->version == hs->early_session->ssl_version));
     ssl->s3->version = server_version;
-    // At this point, the connection's version is known and ssl->s3->version is
-    // fixed. Begin enforcing the record-layer version.
-    ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->s3->version);
   } else if (server_version != ssl->s3->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);

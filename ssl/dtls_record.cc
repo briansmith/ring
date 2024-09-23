@@ -159,6 +159,18 @@ static void dtls1_bitmap_record(DTLS1_BITMAP *bitmap, uint64_t seq_num) {
   }
 }
 
+static uint16_t dtls_record_version(const SSL *ssl) {
+  if (ssl->s3->version == 0) {
+    // Before the version is determined, outgoing records use dTLS 1.0 for
+    // historical compatibility requirements.
+    return DTLS1_VERSION;
+  }
+  // DTLS 1.3 freezes the record version at DTLS 1.2. Previous ones use the
+  // version itself.
+  return ssl_protocol_version(ssl) >= TLS1_3_VERSION ? DTLS1_2_VERSION
+                                                     : ssl->s3->version;
+}
+
 // reconstruct_epoch finds the largest epoch that ends with the epoch bits from
 // |wire_epoch| that is less than or equal to |current_epoch|, to match the
 // epoch reconstruction algorithm described in RFC 9147 section 4.2.2.
@@ -283,7 +295,7 @@ static bool parse_dtls_plaintext_record_header(
     // version negotiation failure alerts.
     version_ok = (*out_version >> 8) == DTLS1_VERSION_MAJOR;
   } else {
-    version_ok = *out_version == aead->RecordVersion();
+    version_ok = *out_version == dtls_record_version(ssl);
   }
 
   if (!version_ok) {
@@ -295,7 +307,7 @@ static bool parse_dtls_plaintext_record_header(
 
   // Discard the packet if we're expecting an encrypted DTLS 1.3 record but we
   // get the old record header format.
-  if (!aead->is_null_cipher() && aead->ProtocolVersion() >= TLS1_3_VERSION) {
+  if (!aead->is_null_cipher() && ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return false;
   }
   return true;
@@ -334,7 +346,7 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
   // used for encrypted records with DTLS 1.3. Plaintext records or DTLS 1.2
   // records use the old record header format.
   if ((type & 0xe0) == 0x20 && !aead->is_null_cipher() &&
-      aead->ProtocolVersion() >= TLS1_3_VERSION) {
+      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     valid_record_header = parse_dtls13_record_header(
         ssl, &cbs, in, type, &body, &sequence, &epoch, &record_header_len);
   } else {
@@ -379,7 +391,7 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
 
   // DTLS 1.3 hides the record type inside the encrypted data.
   bool has_padding =
-      !aead->is_null_cipher() && aead->ProtocolVersion() >= TLS1_3_VERSION;
+      !aead->is_null_cipher() && ssl_protocol_version(ssl) >= TLS1_3_VERSION;
   // Check the plaintext length.
   size_t plaintext_limit = SSL3_RT_MAX_PLAIN_LENGTH + (has_padding ? 1 : 0);
   if (out->size() > plaintext_limit) {
@@ -492,7 +504,7 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     return false;
   }
 
-  uint16_t record_version = ssl->s3->aead_write_ctx->RecordVersion();
+  uint16_t record_version = dtls_record_version(ssl);
   uint64_t seq_with_epoch = (uint64_t{epoch} << 48) | *seq;
 
   bool dtls13_header = use_dtls13_record_header(ssl, epoch);

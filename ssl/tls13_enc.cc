@@ -191,8 +191,7 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
   if (ssl->quic_method != nullptr) {
     // Install a placeholder SSLAEADContext so that SSL accessors work. The
     // encryption itself will be handled by the SSL_QUIC_METHOD.
-    traffic_aead =
-        SSLAEADContext::CreatePlaceholderForQUIC(version, session->cipher);
+    traffic_aead = SSLAEADContext::CreatePlaceholderForQUIC(session->cipher);
     secret_for_quic = traffic_secret;
   } else {
     // Look up cipher suite properties.

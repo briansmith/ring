@@ -100,8 +100,7 @@ bool dtls1_new(SSL *ssl) {
     tls_free(ssl);
     return false;
   }
-  d1->initial_epoch_state->aead_write_ctx =
-      SSLAEADContext::CreateNullCipher(true);
+  d1->initial_epoch_state->aead_write_ctx = SSLAEADContext::CreateNullCipher();
   if (!d1->initial_epoch_state->aead_write_ctx) {
     tls_free(ssl);
     return false;

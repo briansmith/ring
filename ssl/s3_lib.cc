@@ -187,8 +187,8 @@ bool tls_new(SSL *ssl) {
     return false;
   }
 
-  s3->aead_read_ctx = SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
-  s3->aead_write_ctx = SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
+  s3->aead_read_ctx = SSLAEADContext::CreateNullCipher();
+  s3->aead_write_ctx = SSLAEADContext::CreateNullCipher();
   s3->hs = ssl_handshake_new(ssl);
   if (!s3->aead_read_ctx || !s3->aead_write_ctx || !s3->hs) {
     return false;

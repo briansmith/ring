@@ -34,25 +34,20 @@
 
 BSSL_NAMESPACE_BEGIN
 
-SSLAEADContext::SSLAEADContext(uint16_t version_arg, bool is_dtls_arg,
-                               const SSL_CIPHER *cipher_arg)
+SSLAEADContext::SSLAEADContext(const SSL_CIPHER *cipher_arg)
     : cipher_(cipher_arg),
-      version_(version_arg),
-      is_dtls_(is_dtls_arg),
       variable_nonce_included_in_record_(false),
       random_variable_nonce_(false),
       xor_fixed_nonce_(false),
       omit_length_in_ad_(false),
       ad_is_header_(false) {
-  OPENSSL_memset(fixed_nonce_, 0, sizeof(fixed_nonce_));
   CreateRecordNumberEncrypter();
 }
 
 SSLAEADContext::~SSLAEADContext() {}
 
-UniquePtr<SSLAEADContext> SSLAEADContext::CreateNullCipher(bool is_dtls) {
-  return MakeUnique<SSLAEADContext>(0 /* version */, is_dtls,
-                                    nullptr /* cipher */);
+UniquePtr<SSLAEADContext> SSLAEADContext::CreateNullCipher() {
+  return MakeUnique<SSLAEADContext>(/*cipher=*/nullptr);
 }
 
 UniquePtr<SSLAEADContext> SSLAEADContext::Create(
@@ -90,13 +85,10 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
                             enc_key.size() + mac_key.size() + fixed_iv.size());
   }
 
-  UniquePtr<SSLAEADContext> aead_ctx =
-      MakeUnique<SSLAEADContext>(version, is_dtls, cipher);
+  UniquePtr<SSLAEADContext> aead_ctx = MakeUnique<SSLAEADContext>(cipher);
   if (!aead_ctx) {
     return nullptr;
   }
-
-  assert(aead_ctx->ProtocolVersion() == protocol_version);
 
   if (!EVP_AEAD_CTX_init_with_direction(
           aead_ctx->ctx_.get(), aead, enc_key.data(), enc_key.size(),
@@ -165,36 +157,8 @@ void SSLAEADContext::CreateRecordNumberEncrypter() {
 }
 
 UniquePtr<SSLAEADContext> SSLAEADContext::CreatePlaceholderForQUIC(
-    uint16_t version, const SSL_CIPHER *cipher) {
-  return MakeUnique<SSLAEADContext>(version, false, cipher);
-}
-
-void SSLAEADContext::SetVersionIfNullCipher(uint16_t version) {
-  if (is_null_cipher()) {
-    version_ = version;
-  }
-}
-
-uint16_t SSLAEADContext::ProtocolVersion() const {
-  uint16_t protocol_version;
-  if(!ssl_protocol_version_from_wire(&protocol_version, version_)) {
-    assert(false);
-    return 0;
-  }
-  return protocol_version;
-}
-
-uint16_t SSLAEADContext::RecordVersion() const {
-  if (version_ == 0) {
-    assert(is_null_cipher());
-    return is_dtls_ ? DTLS1_VERSION : TLS1_VERSION;
-  }
-
-  if (ProtocolVersion() <= TLS1_2_VERSION) {
-    return version_;
-  }
-
-  return is_dtls_ ? DTLS1_2_VERSION : TLS1_2_VERSION;
+    const SSL_CIPHER *cipher) {
+  return MakeUnique<SSLAEADContext>(cipher);
 }
 
 size_t SSLAEADContext::ExplicitNonceLen() const {

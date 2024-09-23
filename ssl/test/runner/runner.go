@@ -15440,6 +15440,10 @@ func addTLS13HandshakeTests() {
 		earlyData:     true,
 		flags: []string{
 			"-expect-version", strconv.Itoa(VersionTLS13),
+			// EMS and RI are always reported as supported when we report
+			// TLS 1.3.
+			"-expect-extended-master-secret",
+			"-expect-secure-renegotiation",
 		},
 	})
 

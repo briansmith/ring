@@ -689,7 +689,6 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   hs->wait = ssl_hs_flush;
   hs->extended_master_secret = extended_master_secret;
   hs->ticket_expected = ticket_expected;
-  s3->aead_write_ctx->SetVersionIfNullCipher(ssl->s3->version);
   hs->cert_request = cert_request;
 
   if (type != handback_after_handshake &&

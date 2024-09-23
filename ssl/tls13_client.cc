@@ -73,20 +73,22 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
   // write state. The two ClientHello sequence numbers must align, and handshake
   // write keys must be installed early to ACK the EncryptedExtensions.
   //
-  // We do not currently implement DTLS 1.3 and, in QUIC, the caller handles
-  // 0-RTT data, so we can skip installing 0-RTT keys and act as if there is one
-  // write level. If we implement DTLS 1.3, we'll need to model this better.
+  // TODO(crbug.com/42290594): We do not currently implement DTLS 1.3 and, in
+  // QUIC, the caller handles 0-RTT data, so we can skip installing 0-RTT keys
+  // and act as if there is one write level. Now that we're implementing
+  // DTLS 1.3, switch the abstraction to the DTLS/QUIC model where handshake
+  // keys write keys are installed immediately, but the TLS record layer
+  // internally waits to activate that epoch until the 0-RTT channel is closed.
   if (ssl->quic_method == nullptr) {
     if (level == ssl_encryption_initial) {
       bssl::UniquePtr<SSLAEADContext> null_ctx =
-          SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
+          SSLAEADContext::CreateNullCipher();
       if (!null_ctx ||
           !ssl->method->set_write_state(ssl, ssl_encryption_initial,
                                         std::move(null_ctx),
                                         /*secret_for_quic=*/{})) {
         return false;
       }
-      ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->s3->version);
     } else {
       assert(level == ssl_encryption_handshake);
       if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
