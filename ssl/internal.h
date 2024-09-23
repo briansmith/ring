@@ -2254,8 +2254,8 @@ struct SSL_HANDSHAKE {
   // server when using a TLS 1.2 PSK key exchange.
   UniquePtr<char> peer_psk_identity_hint;
 
-  // ca_names, on the client, contains the list of CAs received in a
-  // CertificateRequest message.
+  // ca_names contains the list of CAs received via the Certificate Authorities
+  // extension in our peer's CertificateRequest or ClientHello message
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names;
 
   // cached_x509_ca_names contains a cache of parsed versions of the elements of

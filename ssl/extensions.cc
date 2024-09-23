@@ -2560,6 +2560,45 @@ static bool ext_supported_groups_parse_clienthello(SSL_HANDSHAKE *hs,
 }
 
 
+// Certificate Authorities.
+//
+// https://tools.ietf.org/html/rfc8446#section-4.2.4
+
+static bool ext_certificate_authorities_add_clienthello(
+    const SSL_HANDSHAKE *hs, CBB *out, CBB *out_compressible,
+    ssl_client_hello_type_t type) {
+  if (ssl_has_CA_names(hs->config)) {
+    CBB ca_contents;
+    if (!CBB_add_u16(out, TLSEXT_TYPE_certificate_authorities) || //
+        !CBB_add_u16_length_prefixed(out, &ca_contents) || //
+        !ssl_add_CA_names(hs, &ca_contents) || //
+        !CBB_flush(out)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool ext_certificate_authorities_parse_clienthello(SSL_HANDSHAKE *hs,
+                                                          uint8_t *out_alert,
+                                                          CBS *contents) {
+  if (contents == NULL) {
+    return true;
+  }
+
+  if (CBS_len(contents) == 0) {
+    return false;
+  }
+
+  hs->ca_names = SSL_parse_CA_list(hs->ssl, out_alert, contents);
+  if (!hs->ca_names) {
+    return false;
+  }
+
+  return true;
+}
+
+
 // QUIC Transport Parameters
 
 static bool ext_quic_transport_params_add_clienthello_impl(
@@ -3284,6 +3323,13 @@ static const struct tls_extension kExtensions[] = {
     // ALPS is negotiated late in |ssl_negotiate_alpn|.
     ignore_parse_clienthello,
     ext_alps_add_serverhello_old,
+  },
+  {
+    TLSEXT_TYPE_certificate_authorities,
+    ext_certificate_authorities_add_clienthello,
+    forbid_parse_serverhello,
+    ext_certificate_authorities_parse_clienthello,
+    dont_add_serverhello,
   },
 };
 
