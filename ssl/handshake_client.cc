@@ -735,14 +735,45 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (hs->received_hello_verify_request &&
-      ssl_protocol_version(ssl) > TLS1_2_VERSION) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_MESSAGE);
+  // If the version did not match, stop sending 0-RTT data.
+  if (hs->early_data_offered &&
+      ssl->s3->version != hs->early_session->ssl_version) {
+    // This is currently only possible by reading a TLS 1.2 (or earlier)
+    // ServerHello in response to TLS 1.3. If there is ever a TLS 1.4, or
+    // another variant of TLS 1.3, the fatal error below will need to be a clean
+    // 0-RTT reject.
+    assert(ssl_protocol_version(ssl) < TLS1_3_VERSION);
+    assert(ssl_session_protocol_version(hs->early_session.get()) >=
+           TLS1_3_VERSION);
+
+    // A TLS 1.2 server would not know to skip the early data we offered, so
+    // there is no point in continuing the handshake. Report an error code as
+    // soon as we detect this. The caller may use this error code to implement
+    // the fallback described in RFC 8446 appendix D.3.
+    //
+    // Disconnect early writes. This ensures subsequent |SSL_write| calls query
+    // the handshake which, in turn, will replay the error code rather than fail
+    // at the |write_shutdown| check. See https://crbug.com/1078515.
+    // TODO(davidben): Should all handshake errors do this? What about record
+    // decryption failures?
+    //
+    // TODO(crbug.com/42290594): Although missing from the spec, a DTLS 1.2
+    // server will already naturally skip 0-RTT data. If we implement DTLS 1.3
+    // 0-RTT, we may want a clean reject.
+    assert(!SSL_is_dtls(ssl));
+    hs->can_early_write = false;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_ON_EARLY_DATA);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
     return ssl_hs_error;
   }
 
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+    if (hs->received_hello_verify_request) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_MESSAGE);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
+      return ssl_hs_error;
+    }
+
     hs->state = state_tls13;
     return ssl_hs_ok;
   }
@@ -751,21 +782,6 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   hs->key_shares[0].reset();
   hs->key_shares[1].reset();
   ssl_done_writing_client_hello(hs);
-
-  // A TLS 1.2 server would not know to skip the early data we offered. Report
-  // an error code sooner. The caller may use this error code to implement the
-  // fallback described in RFC 8446 appendix D.3.
-  if (hs->early_data_offered) {
-    // Disconnect early writes. This ensures subsequent |SSL_write| calls query
-    // the handshake which, in turn, will replay the error code rather than fail
-    // at the |write_shutdown| check. See https://crbug.com/1078515.
-    // TODO(davidben): Should all handshake errors do this? What about record
-    // decryption failures?
-    hs->can_early_write = false;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_ON_EARLY_DATA);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
-    return ssl_hs_error;
-  }
 
   // TLS 1.2 handshakes cannot accept ECH.
   if (hs->selected_ech_config) {
