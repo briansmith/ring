@@ -83,6 +83,16 @@ boringssl_copts_c = boringssl_copts_common + select({
     "//conditions:default": ["-std=c11"] + gcc_copts_c,
 })
 
+def linkstatic_kwargs(linkstatic):
+    # Although Bazel's documentation says linkstatic defaults to True or False
+    # for the various target types, this is not true. The defaults differ by
+    # platform non-Windows and True on Windows. There is now way to request the
+    # default except to omit the parameter, so we must use kwargs.
+    kwargs = {}
+    if linkstatic != None:
+        kwargs["linkstatic"] = linkstatic
+    return kwargs
+
 def handle_mixed_c_cxx(
         name,
         copts,
@@ -90,6 +100,7 @@ def handle_mixed_c_cxx(
         internal_hdrs,
         includes,
         linkopts,
+        linkstatic,
         srcs,
         testonly,
         alwayslink):
@@ -116,13 +127,11 @@ def handle_mixed_c_cxx(
             srcs = srcs_cxx + internal_hdrs,
             copts = copts + boringssl_copts_cxx,
             includes = includes,
-            # This target only exists to be linked into the main library, so
-            # always link it statically.
-            linkstatic = True,
             linkopts = linkopts,
             deps = deps,
             testonly = testonly,
             alwayslink = alwayslink,
+            **linkstatic_kwargs(linkstatic),
         )
 
         # Build the remainder as a C-only target.
@@ -168,16 +177,6 @@ def handle_asm_srcs(asm_srcs):
         "//conditions:default": asm_srcs,
     })
 
-def linkstatic_kwargs(linkstatic):
-    # Although Bazel's documentation says linkstatic defaults to True or False
-    # for the various target types, this is not true. The defaults differ by
-    # platform non-Windows and True on Windows. There is now way to request the
-    # default except to omit the parameter, so we must use kwargs.
-    kwargs = {}
-    if linkstatic != None:
-        kwargs["linkstatic"] = linkstatic
-    return kwargs
-
 def bssl_cc_library(
         name,
         asm_srcs = [],
@@ -199,6 +198,14 @@ def bssl_cc_library(
         internal_hdrs = hdrs + internal_hdrs,
         includes = includes,
         linkopts = linkopts,
+        # Ideally we would set linkstatic = True to statically link the helper
+        # library into main cc_library. But Bazel interprets linkstatic such
+        # that, if A(test, linkshared) -> B(library) -> C(library, linkstatic),
+        # C will be statically linked into A, not B. This is probably to avoid
+        # diamond dependency problems but means linkstatic does not help us make
+        # this function transparent. Instead, just pass along the linkstatic
+        # nature of the main library.
+        linkstatic = linkstatic,
         srcs = srcs,
         testonly = testonly,
         alwayslink = alwayslink,
@@ -250,6 +257,10 @@ def bssl_cc_binary(
         deps = deps,
         internal_hdrs = [],
         includes = includes,
+        # If it weren't for https://github.com/bazelbuild/bazel/issues/22041,
+        # the split library be part of `srcs` and linked statically. Set
+        # linkstatic to match.
+        linkstatic = True,
         linkopts = linkopts,
         srcs = srcs,
         testonly = testonly,
@@ -288,6 +299,10 @@ def bssl_cc_test(
         deps = deps,
         internal_hdrs = [],
         includes = includes,
+        # If it weren't for https://github.com/bazelbuild/bazel/issues/22041,
+        # the split library be part of `srcs` and linked statically. Set
+        # linkstatic to match.
+        linkstatic = True,
         linkopts = linkopts,
         srcs = srcs,
         testonly = True,
