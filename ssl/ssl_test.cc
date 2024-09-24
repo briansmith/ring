@@ -7098,6 +7098,13 @@ TEST_F(QUICMethodTest, Basic) {
   EXPECT_FALSE(SSL_session_reused(client_.get()));
   EXPECT_FALSE(SSL_session_reused(server_.get()));
 
+  // SSL_get_traffic_secrets is not defined for QUIC.
+  Span<const uint8_t> read_secret, write_secret;
+  EXPECT_FALSE(
+      SSL_get_traffic_secrets(client_.get(), &read_secret, &write_secret));
+  EXPECT_FALSE(
+      SSL_get_traffic_secrets(server_.get(), &read_secret, &write_secret));
+
   // The server sent NewSessionTicket messages in the handshake.
   EXPECT_FALSE(g_last_session);
   ASSERT_TRUE(ProvideHandshakeData(client_.get()));
@@ -9682,14 +9689,20 @@ TEST_P(SSLVersionTest, KeyLog) {
                                         Key("SERVER_HANDSHAKE_TRAFFIC_SECRET"),
                                         Key("SERVER_TRAFFIC_SECRET_0")));
 
-    // Ideally we'd check the other values, but those are harder to check
-    // without actually decrypting the records.
-    Span<const uint8_t> read_secret, write_secret;
-    ASSERT_TRUE(bssl::SSL_get_traffic_secrets(client_.get(), &read_secret,
-                                              &write_secret));
-    EXPECT_EQ(Bytes(read_secret), Bytes(client_log["SERVER_TRAFFIC_SECRET_0"]));
-    EXPECT_EQ(Bytes(write_secret),
-              Bytes(client_log["CLIENT_TRAFFIC_SECRET_0"]));
+    if (!is_dtls()) {
+      // Ideally we'd check the other values, but those are harder to check
+      // without actually decrypting the records.
+      //
+      // TODO(crbug.com/42290608): Check the secrets in DTLS, once we have an
+      // API for them.
+      Span<const uint8_t> read_secret, write_secret;
+      ASSERT_TRUE(
+          SSL_get_traffic_secrets(client_.get(), &read_secret, &write_secret));
+      EXPECT_EQ(Bytes(read_secret),
+                Bytes(client_log["SERVER_TRAFFIC_SECRET_0"]));
+      EXPECT_EQ(Bytes(write_secret),
+                Bytes(client_log["CLIENT_TRAFFIC_SECRET_0"]));
+    }
   } else {
     EXPECT_THAT(client_log, ElementsAre(Key("CLIENT_RANDOM")));
 
@@ -9704,6 +9717,25 @@ TEST_P(SSLVersionTest, KeyLog) {
 
   // The server should have logged the same secrets as the client.
   EXPECT_EQ(client_log, server_log);
+}
+
+TEST_P(SSLVersionTest, GetTrafficSecrets) {
+  ASSERT_TRUE(Connect());
+
+  Span<const uint8_t> client_read, client_write, server_read, server_write;
+  bool client_ok =
+      SSL_get_traffic_secrets(client_.get(), &client_read, &client_write);
+  bool server_ok =
+      SSL_get_traffic_secrets(server_.get(), &server_read, &server_write);
+  if (!is_dtls() && version() >= TLS1_3_VERSION) {
+    ASSERT_TRUE(client_ok);
+    ASSERT_TRUE(server_ok);
+    EXPECT_EQ(Bytes(client_read), Bytes(server_write));
+    EXPECT_EQ(Bytes(server_read), Bytes(client_write));
+  } else {
+    EXPECT_FALSE(client_ok);
+    EXPECT_FALSE(server_ok);
+  }
 }
 
 TEST_P(SSLVersionTest, GetIVs) {

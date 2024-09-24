@@ -5894,9 +5894,12 @@ OPENSSL_EXPORT bool SSL_serialize_handback(const SSL *ssl, CBB *out);
 OPENSSL_EXPORT bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback);
 
 // SSL_get_traffic_secrets sets |*out_read_traffic_secret| and
-// |*out_write_traffic_secret| to reference the TLS 1.3 traffic secrets for
-// |ssl|. This function is only valid on TLS 1.3 connections that have
-// completed the handshake. It returns true on success and false on error.
+// |*out_write_traffic_secret| to reference the current TLS 1.3 traffic secrets
+// for |ssl|. It returns true on success and false on error.
+//
+// This function is only valid on TLS 1.3 connections that have completed the
+// handshake. It is not valid for QUIC or DTLS, where multiple traffic secrets
+// may be active at a time.
 OPENSSL_EXPORT bool SSL_get_traffic_secrets(
     const SSL *ssl, Span<const uint8_t> *out_read_traffic_secret,
     Span<const uint8_t> *out_write_traffic_secret);

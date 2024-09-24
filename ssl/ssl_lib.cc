@@ -472,13 +472,20 @@ void SSL_set_handoff_mode(SSL *ssl, bool on) {
 bool SSL_get_traffic_secrets(const SSL *ssl,
                              Span<const uint8_t> *out_read_traffic_secret,
                              Span<const uint8_t> *out_write_traffic_secret) {
-  if (SSL_version(ssl) < TLS1_3_VERSION) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
+  // This API is not well-defined for DTLS 1.3 (see https://crbug.com/42290608)
+  // or QUIC, where multiple epochs may be alive at once.
+  if (SSL_is_dtls(ssl) || ssl->quic_method != nullptr) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return false;
   }
 
   if (!ssl->s3->initial_handshake_complete) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_NOT_COMPLETE);
+    return false;
+  }
+
+  if (SSL_version(ssl) < TLS1_3_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
     return false;
   }
 
