@@ -198,7 +198,7 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
     const EVP_AEAD *aead;
     size_t discard;
     if (!ssl_cipher_get_evp_aead(&aead, &discard, &discard, session->cipher,
-                                 version, is_dtls)) {
+                                 version)) {
       return false;
     }
 
@@ -213,8 +213,8 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
       return false;
     }
 
-    traffic_aead = SSLAEADContext::Create(
-        direction, session->ssl_version, is_dtls, session->cipher, key, {}, iv);
+    traffic_aead = SSLAEADContext::Create(direction, session->ssl_version,
+                                          session->cipher, key, {}, iv);
   }
 
   if (!traffic_aead) {

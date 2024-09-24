@@ -672,7 +672,7 @@ Span<const SSL_CIPHER> AllCiphers();
 bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
                              size_t *out_mac_secret_len,
                              size_t *out_fixed_iv_len, const SSL_CIPHER *cipher,
-                             uint16_t version, bool is_dtls);
+                             uint16_t version);
 
 // ssl_get_handshake_digest returns the |EVP_MD| corresponding to |version| and
 // |cipher|.
@@ -839,10 +839,9 @@ class SSLAEADContext {
 
   // Create creates an |SSLAEADContext| using the supplied key material. It
   // returns nullptr on error. Only one of |Open| or |Seal| may be used with the
-  // resulting object, depending on |direction|. |version| is the normalized
-  // protocol version, so DTLS 1.0 is represented as 0x0301, not 0xffef.
+  // resulting object, depending on |direction|. |version| is the wire version.
   static UniquePtr<SSLAEADContext> Create(enum evp_aead_direction_t direction,
-                                          uint16_t version, bool is_dtls,
+                                          uint16_t version,
                                           const SSL_CIPHER *cipher,
                                           Span<const uint8_t> enc_key,
                                           Span<const uint8_t> mac_key,

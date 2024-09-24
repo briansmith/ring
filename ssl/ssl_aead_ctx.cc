@@ -51,7 +51,7 @@ UniquePtr<SSLAEADContext> SSLAEADContext::CreateNullCipher() {
 }
 
 UniquePtr<SSLAEADContext> SSLAEADContext::Create(
-    enum evp_aead_direction_t direction, uint16_t version, bool is_dtls,
+    enum evp_aead_direction_t direction, uint16_t version,
     const SSL_CIPHER *cipher, Span<const uint8_t> enc_key,
     Span<const uint8_t> mac_key, Span<const uint8_t> fixed_iv) {
   const EVP_AEAD *aead;
@@ -59,8 +59,8 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
   size_t expected_mac_key_len, expected_fixed_iv_len;
   if (!ssl_protocol_version_from_wire(&protocol_version, version) ||
       !ssl_cipher_get_evp_aead(&aead, &expected_mac_key_len,
-                               &expected_fixed_iv_len, cipher, protocol_version,
-                               is_dtls) ||
+                               &expected_fixed_iv_len, cipher,
+                               protocol_version) ||
       // Ensure the caller returned correct key sizes.
       expected_fixed_iv_len != fixed_iv.size() ||
       expected_mac_key_len != mac_key.size()) {
