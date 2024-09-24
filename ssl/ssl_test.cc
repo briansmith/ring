@@ -1709,6 +1709,25 @@ static bssl::UniquePtr<X509> GetTestCertificate() {
       "-----END CERTIFICATE-----\n";
   return CertFromPEM(kCertPEM);
 }
+static bssl::UniquePtr<CRYPTO_BUFFER> GetTestCertificateBuffer() {
+  static const char kCertPEM[] =
+      "-----BEGIN CERTIFICATE-----\n"
+      "MIICWDCCAcGgAwIBAgIJAPuwTC6rEJsMMA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNV\n"
+      "BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX\n"
+      "aWRnaXRzIFB0eSBMdGQwHhcNMTQwNDIzMjA1MDQwWhcNMTcwNDIyMjA1MDQwWjBF\n"
+      "MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50\n"
+      "ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKB\n"
+      "gQDYK8imMuRi/03z0K1Zi0WnvfFHvwlYeyK9Na6XJYaUoIDAtB92kWdGMdAQhLci\n"
+      "HnAjkXLI6W15OoV3gA/ElRZ1xUpxTMhjP6PyY5wqT5r6y8FxbiiFKKAnHmUcrgfV\n"
+      "W28tQ+0rkLGMryRtrukXOgXBv7gcrmU7G1jC2a7WqmeI8QIDAQABo1AwTjAdBgNV\n"
+      "HQ4EFgQUi3XVrMsIvg4fZbf6Vr5sp3Xaha8wHwYDVR0jBBgwFoAUi3XVrMsIvg4f\n"
+      "Zbf6Vr5sp3Xaha8wDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQUFAAOBgQA76Hht\n"
+      "ldY9avcTGSwbwoiuIqv0jTL1fHFnzy3RHMLDh+Lpvolc5DSrSJHCP5WuK0eeJXhr\n"
+      "T5oQpHL9z/cCDLAKCKRa4uV0fhEdOWBqyR9p8y5jJtye72t6CuFUV5iqcpF4BH4f\n"
+      "j2VNHwsSrJwkD4QUGlUtH7vwnQmyCFxZMmWAJg==\n"
+      "-----END CERTIFICATE-----\n";
+  return BufferFromPEM(kCertPEM);
+}
 
 static bssl::UniquePtr<EVP_PKEY> GetTestKey() {
   static const char kKeyPEM[] =
@@ -1832,7 +1851,16 @@ static bssl::UniquePtr<CRYPTO_BUFFER> GetChainTestIntermediateIssuerBuffer() {
   return BufferFromPEM(kSubjectPEM);
 }
 
-static bssl::UniquePtr<CRYPTO_BUFFER> GetChainTestUnmatchingIssuerBuffer() {
+static bssl::UniquePtr<CRYPTO_BUFFER> GetTestCertIssuerBuffer() {
+  static const char kSubjectPEM[] =
+      "-----BEGIN SUBJECT-----\n"
+      "MEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJ\n"
+      "bnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQ=\n"
+      "-----END SUBJECT-----\n";
+  return BufferFromPEM(kSubjectPEM);
+}
+
+static bssl::UniquePtr<CRYPTO_BUFFER> GetBogusIssuerBuffer() {
   static const char kSubjectPEM[] =
       "-----BEGIN SUBJECT-----\n"
       "MBYxFDASBgNVBAMMC0RpZ2lOb3RBRm94\n"
@@ -1967,6 +1995,7 @@ static bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
 
 struct ClientConfig {
   SSL_SESSION *session = nullptr;
+  STACK_OF(CRYPTO_BUFFER) *ca_names = nullptr;
   std::string servername;
   std::string verify_hostname;
   unsigned hostflags = 0;
@@ -1997,6 +2026,10 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
       return false;
     }
     SSL_set_hostflags(client.get(), config.hostflags);
+  }
+
+  if (config.ca_names) {
+    SSL_set0_CA_names(client.get(), config.ca_names);
   }
 
   SSL_set_shed_handshake_config(client.get(), shed_handshake_config);
@@ -5185,10 +5218,13 @@ TEST(SSLTest, CredentialChains) {
   bssl::UniquePtr<CRYPTO_BUFFER> ca_subject =
       GetChainTestIntermediateIssuerBuffer();
   ASSERT_TRUE(ca_subject);
-  bssl::UniquePtr<CRYPTO_BUFFER> bogus_subject =
-      GetChainTestUnmatchingIssuerBuffer();
-  ASSERT_TRUE(bogus_subject);
 
+  bssl::UniquePtr<CRYPTO_BUFFER> testcert = GetTestCertificateBuffer();
+  ASSERT_TRUE(testcert);
+  bssl::UniquePtr<EVP_PKEY> testkey = GetTestKey();
+  ASSERT_TRUE(testkey);
+
+  std::vector<CRYPTO_BUFFER *> test_chain = {testcert.get()};
   std::vector<CRYPTO_BUFFER *> chain = {leaf.get(), ca.get()};
   std::vector<CRYPTO_BUFFER *> wrong_chain = {leaf.get(), leaf.get(),
                                               leaf.get()};
@@ -5197,6 +5233,8 @@ TEST(SSLTest, CredentialChains) {
   ASSERT_TRUE(ctx);
   bssl::UniquePtr<SSL_CREDENTIAL> cred(SSL_CREDENTIAL_new_x509());
   ASSERT_TRUE(cred);
+  bssl::UniquePtr<SSL_CREDENTIAL> cred2(SSL_CREDENTIAL_new_x509());
+  ASSERT_TRUE(cred2);
 
   // Configure one chain (including the leaf), then replace it with another.
   ASSERT_TRUE(SSL_CREDENTIAL_set1_cert_chain(cred.get(), wrong_chain.data(),
@@ -5225,13 +5263,88 @@ TEST(SSLTest, CredentialChains) {
                     CRYPTO_BUFFER_len(subject_buf.get()))));
 #endif
 
+  ASSERT_TRUE(SSL_CREDENTIAL_set1_cert_chain(cred2.get(), test_chain.data(),
+                                             test_chain.size()));
+
   ASSERT_TRUE(SSL_CREDENTIAL_set1_private_key(cred.get(), key.get()));
+  ASSERT_TRUE(SSL_CREDENTIAL_set1_private_key(cred2.get(), testkey.get()));
+  SSL_CREDENTIAL_set_must_match_issuer(cred.get());
+  SSL_CREDENTIAL_set_must_match_issuer(cred2.get());
   ASSERT_TRUE(SSL_CTX_add1_credential(ctx.get(), cred.get()));
+  ASSERT_TRUE(SSL_CTX_add1_credential(ctx.get(), cred2.get()));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, ctx.get(), ctx.get()));
-  EXPECT_TRUE(BuffersEqual(SSL_get0_peer_certificates(client.get()),
+
+  // With no CA requested by client, we should fail with only cred1 and cred2
+  ASSERT_FALSE(ConnectClientAndServer(&client, &server, ctx.get(), ctx.get()));
+
+  //EXPECT_TRUE(BuffersEqual(SSL_get0_peer_certificates(client.get()),
+  //                           {leaf.get(), ca.get()}));
+
+  // Have the client request a bogus name that will not match
+  bssl::UniquePtr<CRYPTO_BUFFER> bogus_subject = GetBogusIssuerBuffer();
+  ASSERT_TRUE(bogus_subject);
+  bssl::UniquePtr<SSL> client2, server2;
+  ClientConfig bogus_subject_config;
+  bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> bogus_subjects(
+      sk_CRYPTO_BUFFER_new_null());
+  ASSERT_TRUE(bogus_subjects);
+  ASSERT_TRUE(PushToStack(bogus_subjects.get(), std::move(bogus_subject)));
+  bogus_subject_config.ca_names = bogus_subjects.get();
+  bogus_subjects.release();
+  // A bogus issuer that does not match should fail
+  ASSERT_FALSE(ConnectClientAndServer(&client2, &server2, ctx.get(), ctx.get(),
+                                      bogus_subject_config));
+
+  // Have the client request the name of the chain ca.
+  bssl::UniquePtr<CRYPTO_BUFFER> chain_subject =
+      GetChainTestIntermediateIssuerBuffer();
+  ASSERT_TRUE(chain_subject);
+  bssl::UniquePtr<SSL> client3, server3;
+  ClientConfig chain_subject_config;
+  bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain_subjects(
+      sk_CRYPTO_BUFFER_new_null());
+  ASSERT_TRUE(chain_subjects);
+  ASSERT_TRUE(PushToStack(chain_subjects.get(), std::move(chain_subject)));
+  chain_subject_config.ca_names = chain_subjects.get();
+  chain_subjects.release();
+  // If we ask for the chain ca subject, we should get it
+  ASSERT_TRUE(ConnectClientAndServer(&client3, &server3, ctx.get(), ctx.get(),
+                                     chain_subject_config));
+  EXPECT_TRUE(BuffersEqual(SSL_get0_peer_certificates(client3.get()),
                            {leaf.get(), ca.get()}));
+
+  // Have the client request the name of the test ca.
+  bssl::UniquePtr<CRYPTO_BUFFER> test_subject = GetTestCertIssuerBuffer();
+  ASSERT_TRUE(test_subject);
+  bssl::UniquePtr<SSL> client4, server4;
+  ClientConfig test_subject_config;
+  bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> test_subjects(
+      sk_CRYPTO_BUFFER_new_null());
+  ASSERT_TRUE(test_subjects);
+  ASSERT_TRUE(PushToStack(test_subjects.get(), std::move(test_subject)));
+  test_subject_config.ca_names = test_subjects.get();
+  test_subjects.release();
+  // If we ask for the test ca subject, we should get it
+  ASSERT_TRUE(ConnectClientAndServer(&client4, &server4, ctx.get(), ctx.get(),
+                                     test_subject_config));
+  EXPECT_TRUE(BuffersEqual(SSL_get0_peer_certificates(client4.get()),
+                           {testcert.get()}));
+
+  // Add cred3 to the CTX so we have an ubiquitous credential
+  bssl::UniquePtr<SSL_CREDENTIAL> cred3(SSL_CREDENTIAL_new_x509());
+  ASSERT_TRUE(cred3);
+  ASSERT_TRUE(
+      SSL_CREDENTIAL_set1_cert_chain(cred3.get(), chain.data(), chain.size()));
+  ASSERT_TRUE(SSL_CREDENTIAL_set1_private_key(cred3.get(), key.get()));
+  ASSERT_TRUE(SSL_CTX_add1_credential(ctx.get(), cred3.get()));
+
+  // With no CA sent, we should now succeed.
+  bssl::UniquePtr<SSL> client5, server5;
+  ASSERT_TRUE(ConnectClientAndServer(&client5, &server5, ctx.get(), ctx.get()));
+  EXPECT_TRUE(BuffersEqual(SSL_get0_peer_certificates(client5.get()),
+                           {leaf.get(), ca.get()}));
+
 }
 
 TEST(SSLTest, SetChainAndKeyCtx) {

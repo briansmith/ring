@@ -571,10 +571,12 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   ret->cert = MakeUnique<CERT>(method->x509_method);
   ret->sessions = lh_SSL_SESSION_new(ssl_session_hash, ssl_session_cmp);
   ret->client_CA.reset(sk_CRYPTO_BUFFER_new_null());
+  ret->CA_names.reset(sk_CRYPTO_BUFFER_new_null());
   if (ret->cert == nullptr ||       //
       !ret->cert->is_valid() ||     //
       ret->sessions == nullptr ||   //
       ret->client_CA == nullptr ||  //
+      ret->CA_names == nullptr ||   //
       !ret->x509_method->ssl_ctx_new(ret.get())) {
     return nullptr;
   }

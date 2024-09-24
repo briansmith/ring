@@ -1505,6 +1505,25 @@ OPENSSL_EXPORT void SSL_CTX_set_private_key_method(
 OPENSSL_EXPORT int SSL_CREDENTIAL_set_private_key_method(
     SSL_CREDENTIAL *cred, const SSL_PRIVATE_KEY_METHOD *key_method);
 
+// SSL_CREDENTIAL_set_must_match_issuer sets the flag that this credential
+// should be considered only when it matches a peer request for a particular
+// issuer via a negotiation mechanism (such as the certificate_authorities
+// extension).
+OPENSSL_EXPORT void SSL_CREDENTIAL_set_must_match_issuer(SSL_CREDENTIAL *cred);
+
+// SSL_CREDENTIAL_clear_must_match_issuer clears the flag requiring issuer
+// matching, indicating this credential should be considered regardless of peer
+// issuer matching requests. (This is the default).
+OPENSSL_EXPORT void SSL_CREDENTIAL_clear_must_match_issuer(
+    SSL_CREDENTIAL *cred);
+
+// SSL_CREDENTIAL_must_match_issuer returns the value of the flag indicating
+// that this credential should be considered only when it matches a peer request
+// for a particular issuer via a negotiation mechanism (such as the
+// certificate_authorities extension).
+OPENSSL_EXPORT int SSL_CREDENTIAL_must_match_issuer(
+    const SSL_CREDENTIAL *cred);
+
 // SSL_can_release_private_key returns one if |ssl| will no longer call into the
 // private key and zero otherwise. If the function returns one, the caller can
 // release state associated with the private key.
@@ -2979,6 +2998,12 @@ OPENSSL_EXPORT void SSL_CTX_set_client_CA_list(SSL_CTX *ctx,
 // which should contain DER-encoded distinguished names (RFC 5280). It takes
 // ownership of |name_list|.
 OPENSSL_EXPORT void SSL_set0_client_CAs(SSL *ssl,
+                                        STACK_OF(CRYPTO_BUFFER) *name_list);
+
+// SSL_set0_CA_names sets |ssl|'s CA name list for the certificate authorities
+// extension to |name_list|, which should contain DER-encoded distinguished names
+// (RFC 5280). It takes ownership of |name_list|.
+OPENSSL_EXPORT void SSL_set0_CA_names(SSL *ssl,
                                         STACK_OF(CRYPTO_BUFFER) *name_list);
 
 // SSL_CTX_set0_client_CAs sets |ctx|'s client certificate CA list to

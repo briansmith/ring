@@ -468,3 +468,15 @@ int SSL_CREDENTIAL_set_ex_data(SSL_CREDENTIAL *cred, int idx, void *arg) {
 void *SSL_CREDENTIAL_get_ex_data(const SSL_CREDENTIAL *cred, int idx) {
   return CRYPTO_get_ex_data(&cred->ex_data, idx);
 }
+
+void SSL_CREDENTIAL_set_must_match_issuer(SSL_CREDENTIAL *cred) {
+  cred->must_match_issuer = true;
+}
+
+void SSL_CREDENTIAL_clear_must_match_issuer(SSL_CREDENTIAL *cred) {
+  cred->must_match_issuer = false;
+}
+
+int SSL_CREDENTIAL_must_match_issuer(const SSL_CREDENTIAL *cred) {
+  return cred->must_match_issuer ? 1 : 0;
+}

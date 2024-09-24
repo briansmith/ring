@@ -736,3 +736,10 @@ void SSL_set0_client_CAs(SSL *ssl, STACK_OF(CRYPTO_BUFFER) *name_list) {
   ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl->config.get());
   ssl->config->client_CA.reset(name_list);
 }
+
+void SSL_set0_CA_names(SSL *ssl, STACK_OF(CRYPTO_BUFFER) *name_list) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->CA_names.reset(name_list);
+}
