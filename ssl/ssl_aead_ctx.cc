@@ -483,20 +483,17 @@ bool ChaChaRecordNumberEncrypter::SetKey(Span<const uint8_t> key) {
 
 bool ChaChaRecordNumberEncrypter::GenerateMask(Span<uint8_t> out,
                                                Span<const uint8_t> sample) {
-  Array<uint8_t> zeroes;
-  if (!zeroes.Init(out.size())) {
-    return false;
-  }
-  OPENSSL_memset(zeroes.data(), 0, zeroes.size());
   // RFC 9147 section 4.2.3 uses the first 4 bytes of the sample as the counter
   // and the next 12 bytes as the nonce. If we have less than 4+12=16 bytes in
-  // the sample, then we'll read past the end of the |sample| buffer.
+  // the sample, then we'll read past the end of the |sample| buffer. The
+  // counter is interpreted as little-endian per RFC 8439.
   if (sample.size() < 16) {
     return false;
   }
-  uint32_t counter = CRYPTO_load_u32_be(sample.data());
+  uint32_t counter = CRYPTO_load_u32_le(sample.data());
   Span<const uint8_t> nonce = sample.subspan(4);
-  CRYPTO_chacha_20(out.data(), zeroes.data(), zeroes.size(), key_, nonce.data(),
+  OPENSSL_memset(out.data(), 0, out.size());
+  CRYPTO_chacha_20(out.data(), out.data(), out.size(), key_, nonce.data(),
                    counter);
   return true;
 }

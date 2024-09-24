@@ -776,20 +776,18 @@ func newChachaRecordNumberEncrypter(key []byte) *chachaRecordNumberEncrypter {
 }
 
 func (c *chachaRecordNumberEncrypter) generateMask(sample []byte) []byte {
-	var counter uint32
-	nonce := make([]byte, 12)
+	var counter, nonce []byte
 	sampleReader := cryptobyte.String(sample)
-	if !sampleReader.ReadUint32(&counter) || !sampleReader.CopyBytes(nonce) {
+	if !sampleReader.ReadBytes(&counter, 4) || !sampleReader.ReadBytes(&nonce, 12) {
 		panic("chachaRecordNumberEncrypter.GenerateMask called with wrong size sample")
 	}
 	cipher, err := chacha20.NewUnauthenticatedCipher(c.key, nonce)
 	if err != nil {
 		panic("Failed to create chacha20 cipher for record number encryption")
 	}
-	cipher.SetCounter(counter)
-	zeroes := make([]byte, 2)
+	cipher.SetCounter(binary.LittleEndian.Uint32(counter))
 	out := make([]byte, 2)
-	cipher.XORKeyStream(out, zeroes)
+	cipher.XORKeyStream(out, out)
 	return out
 }
 

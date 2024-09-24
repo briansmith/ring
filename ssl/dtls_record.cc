@@ -528,8 +528,13 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     // |0|0|1|0|1|1|E E|
     // +-+-+-+-+-+-+-+-+
     out[0] = 0x2c | (epoch & 0x3);
+    // We always use a two-byte sequence number. A one-byte sequence number
+    // would require coordinating with the application on ACK feedback to know
+    // that the peer is not too far behind.
     out[1] = *seq >> 8;
     out[2] = *seq & 0xff;
+    // TODO(crbug.com/42290594): When we know the record is last in the packet,
+    // omit the length.
     out[3] = ciphertext_len >> 8;
     out[4] = ciphertext_len & 0xff;
     // DTLS 1.3 uses the sequence number without the epoch for the AEAD.
