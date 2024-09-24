@@ -851,7 +851,12 @@ static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred,
   }
 
   // All currently supported credentials require a signature.
-  return tls1_choose_signature_algorithm(hs, cred, out_sigalg);
+  if (!tls1_choose_signature_algorithm(hs, cred, out_sigalg)) {
+    return false;
+  }
+  // Use this credential if it either matches a requested issuer,
+  // or does not require issuer matching.
+  return ssl_credential_matches_requested_issuers(hs, cred);
 }
 
 static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {

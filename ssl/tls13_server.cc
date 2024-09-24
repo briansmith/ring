@@ -226,7 +226,12 @@ static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred,
   // All currently supported credentials require a signature. If |cred| is a
   // delegated credential, this also checks that the peer supports delegated
   // credentials and matched |dc_cert_verify_algorithm|.
-  return tls1_choose_signature_algorithm(hs, cred, out_sigalg);
+  if (!tls1_choose_signature_algorithm(hs, cred, out_sigalg)) {
+    return false;
+  }
+  // Use this credential if it either matches a requested issuer,
+  // or does not require issuer matching.
+  return ssl_credential_matches_requested_issuers(hs, cred);
 }
 
 static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {

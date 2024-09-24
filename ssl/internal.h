@@ -1974,6 +1974,11 @@ struct ssl_credential_st : public bssl::RefCounted<ssl_credential_st> {
 
   CRYPTO_EX_DATA ex_data;
 
+  // must_match_issuer is a flag indicating that this credential should be
+  // considered only when it matches a peer request for a particular issuer via
+  // a negotiation mechanism (such as the certificate_authorities extension).
+  bool must_match_issuer = false;
+
  private:
   friend RefCounted;
   ~ssl_credential_st();
@@ -1989,6 +1994,10 @@ BSSL_NAMESPACE_BEGIN
 // The pointers in the result are only valid until |hs| is next mutated.
 bool ssl_get_credential_list(SSL_HANDSHAKE *hs, Array<SSL_CREDENTIAL *> *out);
 
+// ssl_credential_matches_requested_issuers returns true if |cred| is a
+// usable match for any requested issuers in |hs|.
+bool ssl_credential_matches_requested_issuers(SSL_HANDSHAKE *hs,
+                                              const SSL_CREDENTIAL *cred);
 
 // Handshake functions.
 
