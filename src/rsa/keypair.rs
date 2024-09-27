@@ -192,13 +192,13 @@ impl KeyPair {
     ///   performance reasons and to avoid any side channels that such tests
     ///   would provide.
     /// * Section 6.4.1.2.1, Step 6, and 6.4.1.4.3, Step 7:
-    ///     * *ring* has a slightly looser lower bound for the values of `p`
+    ///   * *ring* has a slightly looser lower bound for the values of `p`
     ///     and `q` than what the NIST document specifies. This looser lower
     ///     bound matches what most other crypto libraries do. The check might
     ///     be tightened to meet NIST's requirements in the future. Similarly,
     ///     the check that `p` and `q` are not too close together is skipped
     ///     currently, but may be added in the future.
-    ///     - The validity of the mathematical relationship of `dP`, `dQ`, `e`
+    ///   * The validity of the mathematical relationship of `dP`, `dQ`, `e`
     ///     and `n` is verified only during signing. Some size checks of `d`,
     ///     `dP` and `dQ` are performed at construction, but some NIST checks
     ///     are skipped because they would be expensive and/or they would leak
@@ -207,7 +207,7 @@ impl KeyPair {
     ///     necessary, that can be done by signing any message with the key
     ///     pair.
     ///
-    ///     * `d` is not fully validated, neither at construction nor during
+    ///   * `d` is not fully validated, neither at construction nor during
     ///     signing. This is OK as far as *ring*'s usage of the key is
     ///     concerned because *ring* never uses the value of `d` (*ring* always
     ///     uses `p`, `q`, `dP` and `dQ` via the Chinese Remainder Theorem,
