@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::test;
-use core::marker::PhantomData;
+use core::{marker::PhantomData, mem::size_of};
 
 /// A ZST that can be added to any type to make the type `!Send`.
 #[derive(Clone, Copy)]
@@ -25,4 +25,4 @@ impl NotSend {
 
 const _: () = test::compile_time_assert_clone::<NotSend>();
 const _: () = test::compile_time_assert_copy::<NotSend>();
-const _: () = assert!(core::mem::size_of::<NotSend>() == 0);
+const _: () = assert!(size_of::<NotSend>() == 0);

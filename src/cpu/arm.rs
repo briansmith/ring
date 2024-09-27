@@ -13,6 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 mod abi_assumptions {
+    use core::mem::size_of;
+
     // TODO: Support ARM64_32; see
     // https://github.com/briansmith/ring/issues/1832#issuecomment-1892928147. This also requires
     // replacing all `cfg(target_pointer_width)` logic for non-pointer/reference things
@@ -21,9 +23,8 @@ mod abi_assumptions {
     const _ASSUMED_POINTER_SIZE: usize = 8;
     #[cfg(target_arch = "arm")]
     const _ASSUMED_POINTER_SIZE: usize = 4;
-    const _ASSUMED_USIZE_SIZE: () = assert!(core::mem::size_of::<usize>() == _ASSUMED_POINTER_SIZE);
-    const _ASSUMED_REF_SIZE: () =
-        assert!(core::mem::size_of::<&'static u8>() == _ASSUMED_POINTER_SIZE);
+    const _ASSUMED_USIZE_SIZE: () = assert!(size_of::<usize>() == _ASSUMED_POINTER_SIZE);
+    const _ASSUMED_REF_SIZE: () = assert!(size_of::<&'static u8>() == _ASSUMED_POINTER_SIZE);
 
     // To support big-endian, we'd need to make several changes as described in
     // https://github.com/briansmith/ring/issues/1832.

@@ -22,6 +22,8 @@
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+use core::mem::size_of;
+
 // TODO(MSRV feature(slice_as_chunks)): Use `slice::as_chunks` instead.
 // This is copied from the libcore implementation of `slice::as_chunks`.
 #[inline(always)]
@@ -56,7 +58,7 @@ pub fn as_chunks_mut<T, const N: usize>(slice: &mut [T]) -> (&mut [[T; N]], &mut
 // TODO(MSRV feature(slice_flatten)): Use `slice::flatten` instead.
 // This is derived from the libcore implementation, using only stable APIs.
 pub fn flatten<T, const N: usize>(slice: &[[T; N]]) -> &[T] {
-    let len = if core::mem::size_of::<T>() == 0 {
+    let len = if size_of::<T>() == 0 {
         slice.len().checked_mul(N).expect("slice len overflow")
     } else {
         // SAFETY: `slice.len() * N` cannot overflow because `slice` is
@@ -70,7 +72,7 @@ pub fn flatten<T, const N: usize>(slice: &[[T; N]]) -> &[T] {
 // TODO(MSRV feature(slice_flatten)): Use `slice::flatten_mut` instead.
 // This is derived from the libcore implementation, using only stable APIs.
 pub fn flatten_mut<T, const N: usize>(slice: &mut [[T; N]]) -> &mut [T] {
-    let len = if core::mem::size_of::<T>() == 0 {
+    let len = if size_of::<T>() == 0 {
         slice.len().checked_mul(N).expect("slice len overflow")
     } else {
         // SAFETY: `slice.len() * N` cannot overflow because `slice` is
