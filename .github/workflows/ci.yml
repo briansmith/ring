@@ -50,9 +50,9 @@ jobs:
             ~/.cargo/bin/cargo-audit
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-v2-cargo-audit-locked-0.18.3
+          key: ${{ runner.os }}-v2-cargo-audit-locked-0.20.1
 
-      - run: cargo install cargo-audit  --locked --vers "0.18.3"
+      - run: cargo install cargo-audit  --locked --vers "0.20.1"
 
       - uses: briansmith/actions-checkout@v4
         with:
