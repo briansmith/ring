@@ -39,7 +39,7 @@ qemu_x86_64="qemu-x86_64"
 # be needed to compile the build script, or to compile for other targets.
 if [ -n "${ANDROID_HOME-}" ]; then
   # Keep the next line in sync with the corresponding line in install-build-tools.sh.
-  ndk_version=25.2.9519653
+  ndk_version=27.1.12297006
   ANDROID_NDK_ROOT=${ANDROID_NDK_ROOT:-${ANDROID_HOME}/ndk/$ndk_version}
 fi
 if [ -n "${ANDROID_NDK_ROOT-}" ]; then
@@ -67,7 +67,7 @@ case $target in
    aarch64-linux-android)
     export CC_aarch64_linux_android=$android_tools/aarch64-linux-android21-clang
     export AR_aarch64_linux_android=$android_tools/llvm-ar
-    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$android_tools/aarch64-linux-android21-clang
+    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$CC_aarch64_linux_android
     ;;
   aarch64-unknown-linux-gnu)
     use_clang=1
@@ -94,9 +94,13 @@ case $target in
     export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="$qemu_arm_gnueabihf"
     ;;
   armv7-linux-androideabi)
-    export CC_armv7_linux_androideabi=$android_tools/armv7a-linux-androideabi19-clang
+    # https://github.com/android/ndk/wiki/Changelog-r26#announcements says API
+    # level 21 is the minimum supported as of NDK 26, even though we'd like to
+    # support API level 19. Rust 1.82 is doing the same; see
+    # https://github.com/rust-lang/rust/commit/6ef11b81c2c02c3c4b7556d1991a98572fe9af87.
+    export CC_armv7_linux_androideabi=$android_tools/armv7a-linux-androideabi21-clang
     export AR_armv7_linux_androideabi=$android_tools/llvm-ar
-    export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$android_tools/armv7a-linux-androideabi19-clang
+    export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$CC_armv7_linux_androideabi
     ;;
   armv7-unknown-linux-gnueabihf)
     export CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
