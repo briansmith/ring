@@ -37,16 +37,13 @@ impl From<Result> for core::result::Result<(), error::Unspecified> {
 mod tests {
     mod result {
         use crate::{bssl, c};
-        use core::mem;
+        use core::mem::{align_of, size_of};
 
         #[test]
         fn size_and_alignment() {
             type Underlying = c::int;
-            assert_eq!(mem::size_of::<bssl::Result>(), mem::size_of::<Underlying>());
-            assert_eq!(
-                mem::align_of::<bssl::Result>(),
-                mem::align_of::<Underlying>()
-            );
+            assert_eq!(size_of::<bssl::Result>(), size_of::<Underlying>());
+            assert_eq!(align_of::<bssl::Result>(), align_of::<Underlying>());
         }
 
         #[test]

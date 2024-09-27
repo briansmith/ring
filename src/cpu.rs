@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub(crate) use self::features::Features;
+use core::mem::size_of;
 
 macro_rules! impl_get_feature {
     { $feature:path => $T:ident } => {
@@ -96,7 +97,7 @@ mod features {
     }
 }
 
-const _: () = assert!(core::mem::size_of::<Features>() == 0);
+const _: () = assert!(size_of::<Features>() == 0);
 
 cfg_if::cfg_if! {
     if #[cfg(any(target_arch = "aarch64", target_arch = "arm"))] {

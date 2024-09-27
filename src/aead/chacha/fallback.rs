@@ -16,7 +16,7 @@
 // Adapted from the BoringSSL crypto/chacha/chacha.c.
 
 use super::{Counter, Key, BLOCK_LEN};
-use core::ops::RangeFrom;
+use core::{mem::size_of, ops::RangeFrom};
 
 pub(super) fn ChaCha20_ctr32(
     key: &Key,
@@ -82,7 +82,7 @@ fn chacha_core(output: &mut [u8; BLOCK_LEN], input: &State) {
     }
 
     output
-        .chunks_exact_mut(core::mem::size_of::<u32>())
+        .chunks_exact_mut(size_of::<u32>())
         .zip(x.iter())
         .for_each(|(output, &x)| output.copy_from_slice(&x.to_le_bytes()));
 }

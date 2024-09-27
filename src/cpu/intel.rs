@@ -15,6 +15,8 @@
 use cfg_if::cfg_if;
 
 mod abi_assumptions {
+    use core::mem::size_of;
+
     // TOOD: Support targets that do not have SSE and SSE2 enabled, such as
     // x86_64-unknown-linux-none. See
     // https://github.com/briansmith/ring/issues/1793#issuecomment-1793243725,
@@ -27,9 +29,8 @@ mod abi_assumptions {
     const _ASSUMED_POINTER_SIZE: usize = 8;
     #[cfg(target_arch = "x86")]
     const _ASSUMED_POINTER_SIZE: usize = 4;
-    const _ASSUMED_USIZE_SIZE: () = assert!(core::mem::size_of::<usize>() == _ASSUMED_POINTER_SIZE);
-    const _ASSUMED_REF_SIZE: () =
-        assert!(core::mem::size_of::<&'static u8>() == _ASSUMED_POINTER_SIZE);
+    const _ASSUMED_USIZE_SIZE: () = assert!(size_of::<usize>() == _ASSUMED_POINTER_SIZE);
+    const _ASSUMED_REF_SIZE: () = assert!(size_of::<&'static u8>() == _ASSUMED_POINTER_SIZE);
 
     const _ASSUMED_ENDIANNESS: () = assert!(cfg!(target_endian = "little"));
 }

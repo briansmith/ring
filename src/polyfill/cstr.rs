@@ -28,6 +28,8 @@
 
 #![cfg(all(target_arch = "aarch64", target_vendor = "apple"))]
 
+use core::mem::{align_of, size_of};
+
 // TODO(MSRV 1.64): Use `core::ffi::c_char`.
 use libc::c_char;
 
@@ -37,10 +39,8 @@ pub struct Ref(&'static [u8]);
 impl Ref {
     #[inline(always)]
     pub fn as_ptr(&self) -> *const c_char {
-        const _SAME_ALIGNMENT: () =
-            assert!(core::mem::align_of::<u8>() == core::mem::align_of::<c_char>());
-        const _SAME_SIZE: () =
-            assert!(core::mem::size_of::<u8>() == core::mem::size_of::<c_char>());
+        const _SAME_ALIGNMENT: () = assert!(align_of::<u8>() == align_of::<c_char>());
+        const _SAME_SIZE: () = assert!(size_of::<u8>() == size_of::<c_char>());
 
         // It is safe to cast a `*const u8` to a `const c_char` as they are the
         // same size and alignment.

@@ -59,6 +59,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::mem::size_of;
 
     #[test]
     fn test_array_flat_map() {
@@ -109,7 +110,7 @@ mod tests {
         }
         impl ExactSizeIterator for DownwardCounter {}
 
-        const MAX: usize = usize::MAX / core::mem::size_of::<usize>();
+        const MAX: usize = usize::MAX / size_of::<usize>();
 
         static TEST_CASES: &[(usize, bool)] = &[(MAX, true), (MAX + 1, false)];
         TEST_CASES.iter().copied().for_each(|(input_len, is_some)| {
@@ -119,7 +120,7 @@ mod tests {
             let mapped = ArrayFlatMap::new(inner, usize::to_be_bytes);
             assert_eq!(mapped.is_some(), is_some);
             if let Some(mapped) = mapped {
-                assert_eq!(mapped.len(), input_len * core::mem::size_of::<usize>());
+                assert_eq!(mapped.len(), input_len * size_of::<usize>());
             }
         });
     }

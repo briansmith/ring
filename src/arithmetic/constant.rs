@@ -1,4 +1,5 @@
 use crate::limb::Limb;
+use core::mem::size_of;
 
 const fn parse_digit(d: u8) -> u8 {
     match d.to_ascii_lowercase() {
@@ -12,7 +13,7 @@ const fn parse_digit(d: u8) -> u8 {
 pub const fn limbs_from_hex<const LIMBS: usize>(hex: &str) -> [Limb; LIMBS] {
     let hex = hex.as_bytes();
     let mut limbs = [0; LIMBS];
-    let limb_nibbles = core::mem::size_of::<Limb>() * 2;
+    let limb_nibbles = size_of::<Limb>() * 2;
     let mut i = 0;
 
     while i < hex.len() {

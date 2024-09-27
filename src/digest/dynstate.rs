@@ -14,6 +14,7 @@
 
 use super::{format_output, sha1, sha2, Output};
 use crate::{cpu, polyfill::slice};
+use core::mem::size_of;
 
 // Invariant: When constructed with `new32` (resp. `new64`), `As32` (resp.
 // `As64`) is the active variant.
@@ -92,7 +93,7 @@ pub(super) fn sha256_format_output(state: DynState) -> Output {
             unreachable!();
         }
     };
-    format_output::<_, _, { core::mem::size_of::<u32>() }>(state, u32::to_be_bytes)
+    format_output::<_, _, { size_of::<u32>() }>(state, u32::to_be_bytes)
 }
 
 pub(super) fn sha512_format_output(state: DynState) -> Output {
@@ -102,5 +103,5 @@ pub(super) fn sha512_format_output(state: DynState) -> Output {
             unreachable!();
         }
     };
-    format_output::<_, _, { core::mem::size_of::<u64>() }>(state, u64::to_be_bytes)
+    format_output::<_, _, { size_of::<u64>() }>(state, u64::to_be_bytes)
 }
