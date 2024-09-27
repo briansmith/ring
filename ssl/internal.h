@@ -816,6 +816,7 @@ class RecordNumberEncrypter {
  public:
   virtual ~RecordNumberEncrypter() = default;
   static constexpr bool kAllowUniquePtr = true;
+  static constexpr size_t kMaxKeySize = 32;
 
   virtual size_t KeySize() = 0;
   virtual bool SetKey(Span<const uint8_t> key) = 0;

@@ -234,6 +234,11 @@ constexpr auto MakeSpan(C &c) -> decltype(MakeSpan(c.data(), c.size())) {
   return MakeSpan(c.data(), c.size());
 }
 
+template <typename T, size_t N>
+constexpr Span<T> MakeSpan(T (&array)[N]) {
+  return Span<T>(array, N);
+}
+
 template <typename T>
 constexpr Span<const T> MakeConstSpan(T *ptr, size_t size) {
   return Span<const T>(ptr, size);

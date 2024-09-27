@@ -203,27 +203,19 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
       return false;
     }
 
-    // Derive the key.
-    size_t key_len = EVP_AEAD_key_length(aead);
-    uint8_t key_buf[EVP_AEAD_MAX_KEY_LENGTH];
-    auto key = MakeSpan(key_buf, key_len);
+    // Derive the key and IV.
+    uint8_t key_buf[EVP_AEAD_MAX_KEY_LENGTH], iv_buf[EVP_AEAD_MAX_NONCE_LENGTH];
+    auto key = MakeSpan(key_buf).first(EVP_AEAD_key_length(aead));
+    auto iv = MakeSpan(iv_buf).first(EVP_AEAD_nonce_length(aead));
     if (!hkdf_expand_label(key, digest, traffic_secret, label_to_span("key"),
-                           {}, is_dtls)) {
-      return false;
-    }
-
-    // Derive the IV.
-    size_t iv_len = EVP_AEAD_nonce_length(aead);
-    uint8_t iv_buf[EVP_AEAD_MAX_NONCE_LENGTH];
-    auto iv = MakeSpan(iv_buf, iv_len);
-    if (!hkdf_expand_label(iv, digest, traffic_secret, label_to_span("iv"), {},
+                           {}, is_dtls) ||
+        !hkdf_expand_label(iv, digest, traffic_secret, label_to_span("iv"), {},
                            is_dtls)) {
       return false;
     }
 
-    traffic_aead =
-        SSLAEADContext::Create(direction, session->ssl_version, is_dtls,
-                               session->cipher, key, Span<const uint8_t>(), iv);
+    traffic_aead = SSLAEADContext::Create(
+        direction, session->ssl_version, is_dtls, session->cipher, key, {}, iv);
   }
 
   if (!traffic_aead) {
@@ -236,11 +228,11 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
     if (!rn_encrypter) {
       return false;
     }
-    Array<uint8_t> rne_key;
-    if (!rne_key.Init(rn_encrypter->KeySize()) ||
-        !hkdf_expand_label(MakeSpan(rne_key), digest, traffic_secret,
-                           label_to_span("sn"), {}, is_dtls) ||
-        !rn_encrypter->SetKey(MakeSpan(rne_key))) {
+    uint8_t rne_key_buf[RecordNumberEncrypter::kMaxKeySize];
+    auto rne_key = MakeSpan(rne_key_buf).first(rn_encrypter->KeySize());
+    if (!hkdf_expand_label(rne_key, digest, traffic_secret, label_to_span("sn"),
+                           {}, is_dtls) ||
+        !rn_encrypter->SetKey(rne_key)) {
       return false;
     }
   }
