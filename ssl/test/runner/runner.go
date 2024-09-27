@@ -11868,7 +11868,7 @@ func addCurveTests() {
 					},
 				})
 
-				badKeyShareLocalError := "remote error: error decoding message"
+				badKeyShareLocalError := "remote error: illegal parameter"
 				if testType == clientTest && ver.version >= VersionTLS13 {
 					// If the shim is a TLS 1.3 client and the runner sends a bad
 					// key share, the runner never reads the client's cleartext

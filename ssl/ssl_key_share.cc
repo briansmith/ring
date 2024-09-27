@@ -94,7 +94,7 @@ class ECKeyShare : public SSLKeyShare {
         !EC_POINT_oct2point(group_, peer_point.get(), ciphertext.data(),
                             ciphertext.size(), /*ctx=*/nullptr)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       return false;
     }
 
@@ -168,7 +168,7 @@ class X25519KeyShare : public SSLKeyShare {
 
     if (ciphertext.size() != 32 ||  //
         !X25519(secret.data(), private_key_, ciphertext.data())) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       return false;
     }
@@ -236,7 +236,7 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
         !X25519(secret.data(), x25519_private_key_,
                 CBS_data(&peer_x25519_cbs)) ||
         !KYBER_parse_public_key(&peer_kyber_pub, &peer_kyber_cbs)) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       return false;
     }
@@ -266,7 +266,7 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
 
     if (ciphertext.size() != 32 + KYBER_CIPHERTEXT_BYTES ||
         !X25519(secret.data(), x25519_private_key_, ciphertext.data())) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       return false;
     }
@@ -325,7 +325,7 @@ class X25519MLKEM768KeyShare : public SSLKeyShare {
         CBS_len(&peer_key_cbs) != 0 ||
         !X25519(secret.data() + MLKEM_SHARED_SECRET_BYTES, x25519_private_key_,
                 CBS_data(&peer_x25519_cbs))) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       return false;
     }
@@ -359,7 +359,7 @@ class X25519MLKEM768KeyShare : public SSLKeyShare {
                         MLKEM768_CIPHERTEXT_BYTES, &mlkem_private_key_) ||
         !X25519(secret.data() + MLKEM_SHARED_SECRET_BYTES, x25519_private_key_,
                 ciphertext.data() + MLKEM768_CIPHERTEXT_BYTES)) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       return false;
     }
