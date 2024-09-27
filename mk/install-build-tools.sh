@@ -41,17 +41,18 @@ case ${target-} in
   # https://blog.rust-lang.org/2023/01/09/android-ndk-update-r25.html says
   # "Going forward the Android platform will target the most recent LTS NDK,
   # allowing Rust developers to access platform features sooner. These updates
-  # should occur yearly and will be announced in release notes." Assume that
-  # means that we should always prefer to be using the latest 25.x.y version of
-  # the NDK until the Rust project announces that we should use a higher major
-  # version number.
+  # should occur yearly and will be announced in release notes."
   #
-  # TODO: This should probably be implemented as a map of Rust toolchain version
-  # to NDK version; e.g. our MSRV might (only) support an older NDK than the
-  # latest stable Rust toolchain.
+  # https://github.com/actions/runner-images/issues/10614 indicates that GitHub
+  # actions doesn't intend to keep unsupported versions around, so in general
+  # we'll end up only supporting the latest NDK even for MSRV builds.
+  #
+  # https://developer.android.com/ndk/guides/other_build_systems explains how
+  # to set the API level.
   #
   # Keep the following line in sync with the corresponding line in cargo.sh.
-  ndk_version=25.2.9519653
+  #
+  ndk_version=27.1.12297006
 
   mkdir -p "${ANDROID_HOME}/licenses"
   android_license_file="${ANDROID_HOME}/licenses/android-sdk-license"
