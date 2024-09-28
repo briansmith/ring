@@ -117,6 +117,30 @@ impl EcdsaKeyPair {
         Self::new(alg, key_pair, rng)
     }
 
+    /// Constructs an ECDSA key pair by parsing an unencrypted Sec1 v1
+    /// id-ecPublicKey `ECPrivateKey` key.
+    ///
+    /// The input must be in Sec1 v1 format. It must contain the public key in
+    /// the `ECPrivateKey` structure; `from_der()` will verify that the public
+    /// key and the private key are consistent with each other. The algorithm
+    /// identifier must identify the curve by name; it must not use an
+    /// "explicit" encoding of the curve. The `parameters` field of the
+    /// `ECPrivateKey`, if present, must be the same named curve that is in the
+    /// `alg`.
+    pub fn from_der(
+        alg: &'static EcdsaSigningAlgorithm,
+        der: &[u8],
+    ) -> Result<Self, error::KeyRejected> {
+        let key_pair = ec::suite_b::key_pair_from_der(
+            alg.curve,
+            alg.pkcs8_template,
+            untrusted::Input::from(der),
+            cpu::features(),
+        )?;
+        let rng = rand::SystemRandom::new(); // TODO: make this a parameter.
+        Self::new(alg, key_pair, &rng)
+    }
+
     /// Constructs an ECDSA key pair from the private key and public key bytes
     ///
     /// The private key must encoded as a big-endian fixed-length integer. For
