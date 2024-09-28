@@ -19,11 +19,11 @@
 
 #include "../../limbs/limbs.inl"
 
-#define BITS 384
+#define BITS 521
 
-#define P384_LIMBS (384u / LIMB_BITS)
+#define P521_LIMBS ((521 + LIMB_BITS - 1) / LIMB_BITS)
 
-#define FE_LIMBS P384_LIMBS
+#define FE_LIMBS P521_LIMBS
 
 typedef Limb Elem[FE_LIMBS];
 typedef Limb ScalarMont[FE_LIMBS];
@@ -31,48 +31,50 @@ typedef Limb Scalar[FE_LIMBS];
 
 static const Elem Q = {
 #if defined(OPENSSL_64_BIT)
-  0xffffffff, 0xffffffff00000000, 0xfffffffffffffffe, 0xffffffffffffffff,
-  0xffffffffffffffff, 0xffffffffffffffff
+  0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
+  0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
+  0x1ff
 #else
-  0xffffffff, 0, 0, 0xffffffff, 0xfffffffe, 0xffffffff, 0xffffffff, 0xffffffff,
-  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
+  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x1ff
 #endif
 };
 
 static const Elem N = {
 #if defined(OPENSSL_64_BIT)
-  0xecec196accc52973, 0x581a0db248b0a77a, 0xc7634d81f4372ddf, 0xffffffffffffffff,
-  0xffffffffffffffff, 0xffffffffffffffff
+  0xbb6fb71e91386409, 0x3bb5c9b8899c47ae, 0x7fcc0148f709a5d0, 0x51868783bf2f966b,
+  0xfffffffffffffffa, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
+  0x1ff
 #else
-  0xccc52973, 0xecec196a, 0x48b0a77a, 0x581a0db2, 0xf4372ddf, 0xc7634d81,
-  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
+  0x91386409, 0xbb6fb71e, 0x899c47ae, 0x3bb5c9b8, 0xf709a5d0, 0x7fcc0148,
+  0xbf2f966b, 0x51868783, 0xfffffffa, 0xffffffff, 0xffffffff, 0xffffffff,
+  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x1ff
 #endif
 };
 
 static const Elem ONE = {
 #if defined(OPENSSL_64_BIT)
-  0xffffffff00000001, 0xffffffff, 1, 0, 0
+  0x80000000000000, 0, 0, 0, 0, 0, 0, 0, 0
 #else
-  1, 0xffffffff, 0xffffffff, 0, 1, 0, 0, 0, 0, 0
+  0x800000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 #endif
 };
 
 static const Elem Q_PLUS_1_SHR_1 = {
 #if defined(OPENSSL_64_BIT)
-  0x80000000, 0x7fffffff80000000, 0xffffffffffffffff, 0xffffffffffffffff,
-  0xffffffffffffffff, 0x7fffffffffffffff
+  0, 0, 0, 0, 0, 0, 0, 0, 0x100
 #else
-  0x80000000, 0, 0x80000000, 0x7fffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x7fffffff
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x100
 #endif
 };
 
 static const BN_ULONG Q_N0[] = {
-  BN_MONT_CTX_N0(1, 1)
+  BN_MONT_CTX_N0(0, 1)
 };
 
 static const BN_ULONG N_N0[] = {
-  BN_MONT_CTX_N0(0x6ed46089, 0xe88fdc45)
+  BN_MONT_CTX_N0(0x1d2f5ccd, 0x79a995c7)
 };
 
 /* XXX: MSVC for x86 warns when it fails to inline these functions it should
@@ -85,7 +87,7 @@ static const BN_ULONG N_N0[] = {
 
 /* Window values that are Ok for P384 (look at `ecp_nistz.h`): 2, 5, 6, 7 */
 /* Window values that are Ok for P521 (look at `ecp_nistz.h`): 4 */
-#define W_BITS 5
+#define W_BITS 4
 
 #include "ecp_nistz.inl"
 
