@@ -14,7 +14,8 @@ release, do the following:
    The "Annotation" field must be non-empty. (Just using the name of the tag
    again is fine.)
 
-4. Create a corresponding GitHub [release](https://github.com/google/boringssl/releases/new).
+4. Wait for the tag to be mirrored to GitHub, and create a corresponding
+   GitHub [release](https://github.com/google/boringssl/releases/new).
 
 5. Download the "Source code (tar.gz)" archive from the new release and
    re-attach it to the release. (The next step will check that the archive is
