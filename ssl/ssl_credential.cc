@@ -37,14 +37,14 @@ static UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_leafless_chain(void) {
 
 bool ssl_get_credential_list(SSL_HANDSHAKE *hs, Array<SSL_CREDENTIAL *> *out) {
   CERT *cert = hs->config->cert.get();
-  // Finish filling in the default credential if needed.
+  // Finish filling in the legacy credential if needed.
   if (!cert->x509_method->ssl_auto_chain_if_needed(hs)) {
     return false;
   }
 
   size_t num_creds = cert->credentials.size();
-  bool include_default = cert->default_credential->IsComplete();
-  if (include_default) {
+  bool include_legacy = cert->legacy_credential->IsComplete();
+  if (include_legacy) {
     num_creds++;
   }
 
@@ -55,8 +55,8 @@ bool ssl_get_credential_list(SSL_HANDSHAKE *hs, Array<SSL_CREDENTIAL *> *out) {
   for (size_t i = 0; i < cert->credentials.size(); i++) {
     (*out)[i] = cert->credentials[i].get();
   }
-  if (include_default) {
-    (*out)[num_creds - 1] = cert->default_credential.get();
+  if (include_legacy) {
+    (*out)[num_creds - 1] = cert->legacy_credential.get();
   }
   return true;
 }

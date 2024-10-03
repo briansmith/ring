@@ -1755,7 +1755,7 @@ static bool has_cert_and_key(const SSL_CREDENTIAL *cred) {
 int SSL_CTX_check_private_key(const SSL_CTX *ctx) {
   // There is no need to actually check consistency because inconsistent values
   // can never be configured.
-  return has_cert_and_key(ctx->cert->default_credential.get());
+  return has_cert_and_key(ctx->cert->legacy_credential.get());
 }
 
 int SSL_check_private_key(const SSL *ssl) {
@@ -1765,7 +1765,7 @@ int SSL_check_private_key(const SSL *ssl) {
 
   // There is no need to actually check consistency because inconsistent values
   // can never be configured.
-  return has_cert_and_key(ssl->config->cert->default_credential.get());
+  return has_cert_and_key(ssl->config->cert->legacy_credential.get());
 }
 
 long SSL_get_default_timeout(const SSL *ssl) {
@@ -2557,11 +2557,11 @@ EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {
     assert(ssl->config);
     return nullptr;
   }
-  return ssl->config->cert->default_credential->privkey.get();
+  return ssl->config->cert->legacy_credential->privkey.get();
 }
 
 EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
-  return ctx->cert->default_credential->privkey.get();
+  return ctx->cert->legacy_credential->privkey.get();
 }
 
 const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {

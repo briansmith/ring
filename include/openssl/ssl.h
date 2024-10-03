@@ -864,8 +864,9 @@ OPENSSL_EXPORT void SSL_CTX_set0_buffer_pool(SSL_CTX *ctx,
 // |SSL_CTX| and |SSL| objects maintain lists of credentials in preference
 // order. During the handshake, BoringSSL will select the first usable
 // credential from the list. Non-credential APIs, such as
-// |SSL_CTX_use_certificate|, configure a "default credential", which is
-// appended to this list if configured.
+// |SSL_CTX_use_certificate|, configure a "legacy credential", which is
+// appended to this list if configured. Using the legacy credential is the same
+// as configuring an equivalent credential with the |SSL_CREDENTIAL| API.
 //
 // When selecting credentials, BoringSSL considers the credential's type, its
 // cryptographic capabilities, and capabilities advertised by the peer. This
@@ -969,7 +970,7 @@ OPENSSL_EXPORT int SSL_CTX_add1_credential(SSL_CTX *ctx, SSL_CREDENTIAL *cred);
 OPENSSL_EXPORT int SSL_add1_credential(SSL *ssl, SSL_CREDENTIAL *cred);
 
 // SSL_certs_clear removes all credentials configured on |ssl|. It also removes
-// the certificate chain and private key on the default credential.
+// the certificate chain and private key on the legacy credential.
 OPENSSL_EXPORT void SSL_certs_clear(SSL *ssl);
 
 // SSL_get0_selected_credential returns the credential in use in the current
@@ -1000,8 +1001,9 @@ OPENSSL_EXPORT const SSL_CREDENTIAL *SSL_get0_selected_credential(
 // than return an error. Additionally, overwriting a previously-configured
 // certificate and key pair only works if the certificate is configured first.
 //
-// Each of these functions configures the default credential. To select between
-// multiple certificates, see |SSL_CREDENTIAL_new_x509| and related APIs.
+// Each of these functions configures the single "legacy credential" on the
+// |SSL_CTX| or |SSL|. To select between multiple certificates, use
+// |SSL_CREDENTIAL_new_x509| and other APIs to configure a list of credentials.
 
 // SSL_CTX_use_certificate sets |ctx|'s leaf certificate to |x509|. It returns
 // one on success and zero on failure. If |ctx| has a private key which is

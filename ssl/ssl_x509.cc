@@ -198,11 +198,11 @@ static void ssl_crypto_x509_cert_flush_cached_chain(CERT *cert) {
 // which case no change to |cert->chain| is made. It preverses the existing
 // leaf from |cert->chain|, if any.
 static bool ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
-  cert->default_credential->ClearIntermediateCerts();
+  cert->legacy_credential->ClearIntermediateCerts();
   for (X509 *x509 : chain) {
     UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
     if (!buffer ||
-        !cert->default_credential->AppendIntermediateCert(std::move(buffer))) {
+        !cert->legacy_credential->AppendIntermediateCert(std::move(buffer))) {
       return false;
     }
   }
@@ -412,10 +412,10 @@ static void ssl_crypto_x509_ssl_config_free(SSL_CONFIG *cfg) {
 }
 
 static bool ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
-  // Only build a chain if the feature isn't disabled, the default credential
+  // Only build a chain if the feature isn't disabled, the legacy credential
   // exists but has no intermediates configured.
   SSL *ssl = hs->ssl;
-  SSL_CREDENTIAL *cred = hs->config->cert->default_credential.get();
+  SSL_CREDENTIAL *cred = hs->config->cert->legacy_credential.get();
   if ((ssl->mode & SSL_MODE_NO_AUTO_CHAIN) || !cred->IsComplete() ||
       sk_CRYPTO_BUFFER_num(cred->chain.get()) != 1) {
     return true;
@@ -720,9 +720,8 @@ int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
 static int ssl_cert_cache_leaf_cert(CERT *cert) {
   assert(cert->x509_method);
 
-  const SSL_CREDENTIAL *cred = cert->default_credential.get();
-  if (cert->x509_leaf != NULL ||
-      cred->chain == NULL) {
+  const SSL_CREDENTIAL *cred = cert->legacy_credential.get();
+  if (cert->x509_leaf != NULL || cred->chain == NULL) {
     return 1;
   }
 
@@ -764,7 +763,7 @@ static int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509) {
 
   UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
   if (!buffer ||
-      !cert->default_credential->AppendIntermediateCert(std::move(buffer))) {
+      !cert->legacy_credential->AppendIntermediateCert(std::move(buffer))) {
     return 0;
   }
 
@@ -867,9 +866,8 @@ int SSL_clear_chain_certs(SSL *ssl) {
 static int ssl_cert_cache_chain_certs(CERT *cert) {
   assert(cert->x509_method);
 
-  const SSL_CREDENTIAL *cred = cert->default_credential.get();
-  if (cert->x509_chain != nullptr ||
-      cred->chain == nullptr ||
+  const SSL_CREDENTIAL *cred = cert->legacy_credential.get();
+  if (cert->x509_chain != nullptr || cred->chain == nullptr ||
       sk_CRYPTO_BUFFER_num(cred->chain.get()) < 2) {
     return 1;
   }
@@ -1155,7 +1153,7 @@ static int do_client_cert_cb(SSL *ssl, void *arg) {
   // Should only be called during handshake, but check to be sure.
   BSSL_CHECK(ssl->config);
 
-  if (ssl->config->cert->default_credential->IsComplete() ||
+  if (ssl->config->cert->legacy_credential->IsComplete() ||
       ssl->ctx->client_cert_cb == nullptr) {
     return 1;
   }

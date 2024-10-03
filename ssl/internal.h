@@ -1659,7 +1659,7 @@ struct ssl_credential_st : public bssl::RefCounted<ssl_credential_st> {
   ssl_credential_st &operator=(const ssl_credential_st &) = delete;
 
   // Dup returns a copy of the credential, or nullptr on error. The |ex_data|
-  // values are not copied. This is only used on the default credential, whose
+  // values are not copied. This is only used on the legacy credential, whose
   // |ex_data| is inaccessible.
   bssl::UniquePtr<SSL_CREDENTIAL> Dup() const;
 
@@ -2529,32 +2529,32 @@ struct CERT {
   explicit CERT(const SSL_X509_METHOD *x509_method);
   ~CERT();
 
-  bool is_valid() const { return default_credential != nullptr; }
+  bool is_valid() const { return legacy_credential != nullptr; }
 
   // credentials is the list of credentials to select between. Elements of this
   // array immutable.
   GrowableArray<UniquePtr<SSL_CREDENTIAL>> credentials;
 
-  // default_credential is the credential configured by the legacy,
+  // legacy_credential is the credential configured by the legacy
   // non-credential-based APIs. If IsComplete() returns true, it is appended to
   // the list of credentials.
-  UniquePtr<SSL_CREDENTIAL> default_credential;
+  UniquePtr<SSL_CREDENTIAL> legacy_credential;
 
   // x509_method contains pointers to functions that might deal with |X509|
   // compatibility, or might be a no-op, depending on the application.
   const SSL_X509_METHOD *x509_method = nullptr;
 
-  // x509_chain may contain a parsed copy of |chain[1..]| from the default
+  // x509_chain may contain a parsed copy of |chain[1..]| from the legacy
   // credential. This is only used as a cache in order to implement “get0”
   // functions that return a non-owning pointer to the certificate chain.
   STACK_OF(X509) *x509_chain = nullptr;
 
   // x509_leaf may contain a parsed copy of the first element of |chain| from
-  // the default credential. This is only used as a cache in order to implement
+  // the legacy credential. This is only used as a cache in order to implement
   // “get0” functions that return a non-owning pointer to the certificate chain.
   X509 *x509_leaf = nullptr;
 
-  // x509_stash contains the last |X509| object append to the default
+  // x509_stash contains the last |X509| object append to the legacy
   // credential's chain. This is a workaround for some third-party code that
   // continue to use an |X509| object even after passing ownership with an
   // “add0” function.

@@ -6068,7 +6068,7 @@ TEST(SSLTest, SigAlgs) {
       continue;
     }
 
-    ExpectSigAlgsEqual(test.expected, ctx->cert->default_credential->sigalgs);
+    ExpectSigAlgsEqual(test.expected, ctx->cert->legacy_credential->sigalgs);
   }
 }
 
@@ -6126,7 +6126,7 @@ TEST(SSLTest, SigAlgsList) {
       continue;
     }
 
-    ExpectSigAlgsEqual(test.expected, ctx->cert->default_credential->sigalgs);
+    ExpectSigAlgsEqual(test.expected, ctx->cert->legacy_credential->sigalgs);
   }
 }
 

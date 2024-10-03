@@ -397,7 +397,7 @@ int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey) {
   }
 
   return SSL_CREDENTIAL_set1_private_key(
-      ssl->config->cert->default_credential.get(), pkey);
+      ssl->config->cert->legacy_credential.get(), pkey);
 }
 
 int SSL_use_PrivateKey_ASN1(int type, SSL *ssl, const uint8_t *der,
@@ -450,7 +450,7 @@ int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
-  return SSL_CREDENTIAL_set1_private_key(ctx->cert->default_credential.get(),
+  return SSL_CREDENTIAL_set1_private_key(ctx->cert->legacy_credential.get(),
                                          pkey);
 }
 
@@ -477,13 +477,13 @@ void SSL_set_private_key_method(SSL *ssl,
     return;
   }
   BSSL_CHECK(SSL_CREDENTIAL_set_private_key_method(
-      ssl->config->cert->default_credential.get(), key_method));
+      ssl->config->cert->legacy_credential.get(), key_method));
 }
 
 void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
                                     const SSL_PRIVATE_KEY_METHOD *key_method) {
   BSSL_CHECK(SSL_CREDENTIAL_set_private_key_method(
-      ctx->cert->default_credential.get(), key_method));
+      ctx->cert->legacy_credential.get(), key_method));
 }
 
 static constexpr size_t kMaxSignatureAlgorithmNameLen = 24;
@@ -657,7 +657,7 @@ int SSL_CREDENTIAL_set1_signing_algorithm_prefs(SSL_CREDENTIAL *cred,
 int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
                                         size_t num_prefs) {
   return SSL_CREDENTIAL_set1_signing_algorithm_prefs(
-      ctx->cert->default_credential.get(), prefs, num_prefs);
+      ctx->cert->legacy_credential.get(), prefs, num_prefs);
 }
 
 int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
@@ -666,7 +666,7 @@ int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
     return 0;
   }
   return SSL_CREDENTIAL_set1_signing_algorithm_prefs(
-      ssl->config->cert->default_credential.get(), prefs, num_prefs);
+      ssl->config->cert->legacy_credential.get(), prefs, num_prefs);
 }
 
 static constexpr struct {

@@ -486,7 +486,7 @@ const Flag<TestConfig> *FindFlag(const char *name) {
                 &TestConfig::expect_selected_credential),
         // Credential flags are stateful. First, use one of the
         // -new-*-credential flags to introduce a new credential. Then the flags
-        // below switch from acting on the default credential to the newly-added
+        // below switch from acting on the legacy credential to the newly-added
         // one. Repeat this process to continue adding them.
         NewCredentialFlag("-new-x509-credential", CredentialConfigType::kX509),
         NewCredentialFlag("-new-delegated-credential",

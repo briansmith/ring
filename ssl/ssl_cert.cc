@@ -135,7 +135,7 @@
 BSSL_NAMESPACE_BEGIN
 
 CERT::CERT(const SSL_X509_METHOD *x509_method_arg)
-    : default_credential(MakeUnique<SSL_CREDENTIAL>(SSLCredentialType::kX509)),
+    : legacy_credential(MakeUnique<SSL_CREDENTIAL>(SSLCredentialType::kX509)),
       x509_method(x509_method_arg) {}
 
 CERT::~CERT() { x509_method->cert_free(this); }
@@ -153,10 +153,10 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
     }
   }
 
-  // |default_credential| is mutable, so it must be copied. We cannot simply
+  // |legacy_credential| is mutable, so it must be copied. We cannot simply
   // bump the reference count.
-  ret->default_credential = cert->default_credential->Dup();
-  if (ret->default_credential == nullptr) {
+  ret->legacy_credential = cert->legacy_credential->Dup();
+  if (ret->legacy_credential == nullptr) {
     return nullptr;
   }
 
@@ -191,8 +191,8 @@ static int cert_set_chain_and_key(
     return 0;
   }
 
-  cert->default_credential->ClearCertAndKey();
-  if (!SSL_CREDENTIAL_set1_cert_chain(cert->default_credential.get(), certs,
+  cert->legacy_credential->ClearCertAndKey();
+  if (!SSL_CREDENTIAL_set1_cert_chain(cert->legacy_credential.get(), certs,
                                       num_certs)) {
     return 0;
   }
@@ -201,18 +201,18 @@ static int cert_set_chain_and_key(
   cert->x509_method->cert_flush_cached_chain(cert);
 
   return privkey != nullptr
-             ? SSL_CREDENTIAL_set1_private_key(cert->default_credential.get(),
+             ? SSL_CREDENTIAL_set1_private_key(cert->legacy_credential.get(),
                                                privkey)
              : SSL_CREDENTIAL_set_private_key_method(
-                   cert->default_credential.get(), privkey_method);
+                   cert->legacy_credential.get(), privkey_method);
 }
 
 bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
   // Don't fail for a cert/key mismatch, just free the current private key.
   // (When switching to a different keypair, the caller should switch the
   // certificate, then the key.)
-  if (!cert->default_credential->SetLeafCert(
-          std::move(buffer), /*discard_key_on_mismatch=*/true)) {
+  if (!cert->legacy_credential->SetLeafCert(std::move(buffer),
+                                            /*discard_key_on_mismatch=*/true)) {
     return false;
   }
 
@@ -578,18 +578,18 @@ void SSL_certs_clear(SSL *ssl) {
   CERT *cert = ssl->config->cert.get();
   cert->x509_method->cert_clear(cert);
   cert->credentials.clear();
-  cert->default_credential->ClearCertAndKey();
+  cert->legacy_credential->ClearCertAndKey();
 }
 
 const STACK_OF(CRYPTO_BUFFER) *SSL_CTX_get0_chain(const SSL_CTX *ctx) {
-  return ctx->cert->default_credential->chain.get();
+  return ctx->cert->legacy_credential->chain.get();
 }
 
 const STACK_OF(CRYPTO_BUFFER) *SSL_get0_chain(const SSL *ssl) {
   if (!ssl->config) {
     return nullptr;
   }
-  return ssl->config->cert->default_credential->chain.get();
+  return ssl->config->cert->legacy_credential->chain.get();
 }
 
 int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
@@ -643,7 +643,7 @@ int SSL_CTX_set_signed_cert_timestamp_list(SSL_CTX *ctx, const uint8_t *list,
                                            size_t list_len) {
   UniquePtr<CRYPTO_BUFFER> buf(CRYPTO_BUFFER_new(list, list_len, nullptr));
   return buf != nullptr && SSL_CREDENTIAL_set1_signed_cert_timestamp_list(
-                               ctx->cert->default_credential.get(), buf.get());
+                               ctx->cert->legacy_credential.get(), buf.get());
 }
 
 int SSL_set_signed_cert_timestamp_list(SSL *ssl, const uint8_t *list,
@@ -654,7 +654,7 @@ int SSL_set_signed_cert_timestamp_list(SSL *ssl, const uint8_t *list,
   UniquePtr<CRYPTO_BUFFER> buf(CRYPTO_BUFFER_new(list, list_len, nullptr));
   return buf != nullptr &&
          SSL_CREDENTIAL_set1_signed_cert_timestamp_list(
-             ssl->config->cert->default_credential.get(), buf.get());
+             ssl->config->cert->legacy_credential.get(), buf.get());
 }
 
 int SSL_CTX_set_ocsp_response(SSL_CTX *ctx, const uint8_t *response,
@@ -662,7 +662,7 @@ int SSL_CTX_set_ocsp_response(SSL_CTX *ctx, const uint8_t *response,
   UniquePtr<CRYPTO_BUFFER> buf(
       CRYPTO_BUFFER_new(response, response_len, nullptr));
   return buf != nullptr && SSL_CREDENTIAL_set1_ocsp_response(
-                               ctx->cert->default_credential.get(), buf.get());
+                               ctx->cert->legacy_credential.get(), buf.get());
 }
 
 int SSL_set_ocsp_response(SSL *ssl, const uint8_t *response,
@@ -674,7 +674,7 @@ int SSL_set_ocsp_response(SSL *ssl, const uint8_t *response,
       CRYPTO_BUFFER_new(response, response_len, nullptr));
   return buf != nullptr &&
          SSL_CREDENTIAL_set1_ocsp_response(
-             ssl->config->cert->default_credential.get(), buf.get());
+             ssl->config->cert->legacy_credential.get(), buf.get());
 }
 
 void SSL_CTX_set0_client_CAs(SSL_CTX *ctx, STACK_OF(CRYPTO_BUFFER) *name_list) {
