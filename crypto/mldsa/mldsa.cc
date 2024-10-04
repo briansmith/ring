@@ -1280,14 +1280,17 @@ int MLDSA65_private_key_from_seed(struct MLDSA65_private_key *out_private_key,
                                                seed);
 }
 
+template <typename T>
+struct DeleterFree {
+  void operator()(T *ptr) { OPENSSL_free(ptr); }
+};
+
 // FIPS 204, Algorithm 6 (`ML-DSA.KeyGen_internal`). Returns 1 on success and 0
 // on failure.
 int MLDSA65_generate_key_external_entropy(
     uint8_t out_encoded_public_key[MLDSA65_PUBLIC_KEY_BYTES],
     struct MLDSA65_private_key *out_private_key,
     const uint8_t entropy[MLDSA_SEED_BYTES]) {
-  int ret = 0;
-
   // Intermediate values, allocated on the heap to allow use when there is a
   // limited amount of stack.
   struct values_st {
@@ -1296,9 +1299,10 @@ int MLDSA65_generate_key_external_entropy(
     vectorl s1_ntt;
     vectork t;
   };
-  struct values_st *values = OPENSSL_malloc(sizeof(*values));
+  std::unique_ptr<values_st, DeleterFree<values_st>> values(
+      reinterpret_cast<struct values_st *>(OPENSSL_malloc(sizeof(values_st))));
   if (values == NULL) {
-    goto err;
+    return 0;
   }
 
   struct private_key *priv = private_key_from_external(out_private_key);
@@ -1337,7 +1341,7 @@ int MLDSA65_generate_key_external_entropy(
   CBB cbb;
   CBB_init_fixed(&cbb, out_encoded_public_key, MLDSA65_PUBLIC_KEY_BYTES);
   if (!mldsa_marshal_public_key(&cbb, &values->pub)) {
-    goto err;
+    return 0;
   }
   assert(CBB_len(&cbb) == MLDSA65_PUBLIC_KEY_BYTES);
 
@@ -1345,16 +1349,11 @@ int MLDSA65_generate_key_external_entropy(
                    out_encoded_public_key, MLDSA65_PUBLIC_KEY_BYTES,
                    boringssl_shake256);
 
-  ret = 1;
-err:
-  OPENSSL_free(values);
-  return ret;
+  return 1;
 }
 
 int MLDSA65_public_from_private(struct MLDSA65_public_key *out_public_key,
                                 const struct MLDSA65_private_key *private_key) {
-  int ret = 0;
-
   // Intermediate values, allocated on the heap to allow use when there is a
   // limited amount of stack.
   struct values_st {
@@ -1363,9 +1362,10 @@ int MLDSA65_public_from_private(struct MLDSA65_public_key *out_public_key,
     vectork t;
     vectork t0;
   };
-  struct values_st *values = OPENSSL_malloc(sizeof(*values));
+  std::unique_ptr<values_st, DeleterFree<values_st>> values(
+      reinterpret_cast<struct values_st *>(OPENSSL_malloc(sizeof(values_st))));
   if (values == NULL) {
-    goto err;
+    return 0;
   }
 
   const struct private_key *priv = private_key_from_external(private_key);
@@ -1385,11 +1385,7 @@ int MLDSA65_public_from_private(struct MLDSA65_public_key *out_public_key,
   vectork_add(&values->t, &values->t, &priv->s2);
 
   vectork_power2_round(&pub->t1, &values->t0, &values->t);
-
-  ret = 1;
-err:
-  OPENSSL_free(values);
-  return ret;
+  return 1;
 }
 
 // FIPS 204, Algorithm 7 (`ML-DSA.Sign_internal`). Returns 1 on success and 0 on
@@ -1400,7 +1396,6 @@ int MLDSA65_sign_internal(
     size_t msg_len, const uint8_t *context_prefix, size_t context_prefix_len,
     const uint8_t *context, size_t context_len,
     const uint8_t randomizer[MLDSA_SIGNATURE_RANDOMIZER_BYTES]) {
-  int ret = 0;
   const struct private_key *priv = private_key_from_external(private_key);
 
   uint8_t mu[MU_BYTES];
@@ -1435,9 +1430,10 @@ int MLDSA65_sign_internal(
     vectorl cs1;
     vectork cs2;
   };
-  struct values_st *values = OPENSSL_malloc(sizeof(*values));
+  std::unique_ptr<values_st, DeleterFree<values_st>> values(
+      reinterpret_cast<struct values_st *>(OPENSSL_malloc(sizeof(values_st))));
   if (values == NULL) {
-    goto err;
+    return 0;
   }
   OPENSSL_memcpy(&values->s1_ntt, &priv->s1, sizeof(values->s1_ntt));
   vectorl_ntt(&values->s1_ntt);
@@ -1526,17 +1522,12 @@ int MLDSA65_sign_internal(
     CBB cbb;
     CBB_init_fixed(&cbb, out_encoded_signature, MLDSA65_SIGNATURE_BYTES);
     if (!mldsa_marshal_signature(&cbb, &values->sign)) {
-      goto err;
+      return 0;
     }
 
     BSSL_CHECK(CBB_len(&cbb) == MLDSA65_SIGNATURE_BYTES);
-    ret = 1;
-    break;
+    return 1;
   }
-
-err:
-  OPENSSL_free(values);
-  return ret;
 }
 
 // mldsa signature in randomized mode, filling the random bytes with
@@ -1552,7 +1543,7 @@ int MLDSA65_sign(uint8_t out_encoded_signature[MLDSA65_SIGNATURE_BYTES],
   uint8_t randomizer[MLDSA_SIGNATURE_RANDOMIZER_BYTES];
   RAND_bytes(randomizer, sizeof(randomizer));
 
-  const uint8_t context_prefix[2] = {0, context_len};
+  const uint8_t context_prefix[2] = {0, static_cast<uint8_t>(context_len)};
   return MLDSA65_sign_internal(out_encoded_signature, private_key, msg, msg_len,
                                context_prefix, sizeof(context_prefix), context,
                                context_len, randomizer);
@@ -1567,7 +1558,7 @@ int MLDSA65_verify(const struct MLDSA65_public_key *public_key,
     return 0;
   }
 
-  const uint8_t context_prefix[2] = {0, context_len};
+  const uint8_t context_prefix[2] = {0, static_cast<uint8_t>(context_len)};
   return MLDSA65_verify_internal(public_key, signature, msg, msg_len,
                                  context_prefix, sizeof(context_prefix),
                                  context, context_len);
@@ -1579,8 +1570,6 @@ int MLDSA65_verify_internal(
     const uint8_t encoded_signature[MLDSA65_SIGNATURE_BYTES],
     const uint8_t *msg, size_t msg_len, const uint8_t *context_prefix,
     size_t context_prefix_len, const uint8_t *context, size_t context_len) {
-  int ret = 0;
-
   // Intermediate values, allocated on the heap to allow use when there is a
   // limited amount of stack.
   struct values_st {
@@ -1590,9 +1579,10 @@ int MLDSA65_verify_internal(
     vectork az_ntt;
     vectork ct1_ntt;
   };
-  struct values_st *values = OPENSSL_malloc(sizeof(*values));
+  std::unique_ptr<values_st, DeleterFree<values_st>> values(
+      reinterpret_cast<struct values_st *>(OPENSSL_malloc(sizeof(values_st))));
   if (values == NULL) {
-    goto err;
+    return 0;
   }
 
   const struct public_key *pub = public_key_from_external(public_key);
@@ -1600,7 +1590,7 @@ int MLDSA65_verify_internal(
   CBS cbs;
   CBS_init(&cbs, encoded_signature, MLDSA65_SIGNATURE_BYTES);
   if (!mldsa_parse_signature(&values->sign, &cbs)) {
-    goto err;
+    return 0;
   }
 
   matrix_expand(&values->a_ntt, pub->rho);
@@ -1645,14 +1635,8 @@ int MLDSA65_verify_internal(
   BORINGSSL_keccak_squeeze(&keccak_ctx, c_tilde, 2 * LAMBDA_BYTES);
 
   uint32_t z_max = vectorl_max(&values->sign.z);
-  if (z_max < kGamma1 - BETA &&
-      OPENSSL_memcmp(c_tilde, values->sign.c_tilde, 2 * LAMBDA_BYTES) == 0) {
-    ret = 1;
-  }
-
-err:
-  OPENSSL_free(values);
-  return ret;
+  return z_max < kGamma1 - BETA &&
+         OPENSSL_memcmp(c_tilde, values->sign.c_tilde, 2 * LAMBDA_BYTES) == 0;
 }
 
 /* Serialization of keys. */

@@ -266,7 +266,7 @@
             "crypto/md4/md4.c",
             "crypto/md5/md5.c",
             "crypto/mem.c",
-            "crypto/mldsa/mldsa.c",
+            "crypto/mldsa/mldsa.cc",
             "crypto/mlkem/mlkem.cc",
             "crypto/obj/obj.c",
             "crypto/obj/obj_xref.c",
