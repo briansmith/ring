@@ -264,6 +264,11 @@ TEST(MLDSATest, KeyGenTests) {
   FileTestGTest("crypto/mldsa/mldsa_nist_keygen_tests.txt", MLDSAKeyGenTest);
 }
 
+template <typename PrivateKey, int (*ParsePrivateKey)(PrivateKey *, CBS *),
+          size_t SignatureBytes,
+          int (*SignInternal)(uint8_t *, const PrivateKey *, const uint8_t *,
+                              size_t, const uint8_t *, size_t, const uint8_t *,
+                              size_t, const uint8_t *)>
 static void MLDSAWycheproofSignTest(FileTest *t) {
   std::vector<uint8_t> private_key_bytes, msg, expected_signature, context;
   ASSERT_TRUE(t->GetInstructionBytes(&private_key_bytes, "privateKey"));
@@ -278,8 +283,8 @@ static void MLDSAWycheproofSignTest(FileTest *t) {
 
   CBS cbs;
   CBS_init(&cbs, private_key_bytes.data(), private_key_bytes.size());
-  auto priv = std::make_unique<MLDSA65_private_key>();
-  const int priv_ok = MLDSA65_parse_private_key(priv.get(), &cbs);
+  auto priv = std::make_unique<PrivateKey>();
+  const int priv_ok = ParsePrivateKey(priv.get(), &cbs);
 
   if (!priv_ok) {
     ASSERT_TRUE(result != "valid");
@@ -295,21 +300,25 @@ static void MLDSAWycheproofSignTest(FileTest *t) {
   }
 
   const uint8_t zero_randomizer[MLDSA_SIGNATURE_RANDOMIZER_BYTES] = {0};
-  std::vector<uint8_t> signature(MLDSA65_SIGNATURE_BYTES);
+  std::vector<uint8_t> signature(SignatureBytes);
   const uint8_t context_prefix[2] = {0, static_cast<uint8_t>(context.size())};
-  EXPECT_TRUE(MLDSA65_sign_internal(
-      signature.data(), priv.get(), msg.data(), msg.size(), context_prefix,
-      sizeof(context_prefix), context.data(), context.size(), zero_randomizer));
+  EXPECT_TRUE(SignInternal(signature.data(), priv.get(), msg.data(), msg.size(),
+                           context_prefix, sizeof(context_prefix),
+                           context.data(), context.size(), zero_randomizer));
 
   EXPECT_EQ(Bytes(signature), Bytes(expected_signature));
 }
 
-TEST(MLDSATest, WycheproofSignTests) {
+TEST(MLDSATest, WycheproofSignTests65) {
   FileTestGTest(
       "third_party/wycheproof_testvectors/mldsa_65_standard_sign_test.txt",
-      MLDSAWycheproofSignTest);
+      MLDSAWycheproofSignTest<MLDSA65_private_key, MLDSA65_parse_private_key,
+                              MLDSA65_SIGNATURE_BYTES, MLDSA65_sign_internal>);
 }
 
+template <typename PublicKey, int (*ParsePublicKey)(PublicKey *, CBS *),
+          int (*Verify)(const PublicKey *, const uint8_t *, size_t,
+                        const uint8_t *, size_t, const uint8_t *, size_t)>
 static void MLDSAWycheproofVerifyTest(FileTest *t) {
   std::vector<uint8_t> public_key_bytes, msg, signature, context;
   ASSERT_TRUE(t->GetInstructionBytes(&public_key_bytes, "publicKey"));
@@ -324,8 +333,8 @@ static void MLDSAWycheproofVerifyTest(FileTest *t) {
 
   CBS cbs;
   CBS_init(&cbs, public_key_bytes.data(), public_key_bytes.size());
-  auto pub = std::make_unique<MLDSA65_public_key>();
-  const int pub_ok = MLDSA65_parse_public_key(pub.get(), &cbs);
+  auto pub = std::make_unique<PublicKey>();
+  const int pub_ok = ParsePublicKey(pub.get(), &cbs);
 
   if (!pub_ok) {
     EXPECT_EQ(flags, "IncorrectPublicKeyLength");
@@ -333,8 +342,8 @@ static void MLDSAWycheproofVerifyTest(FileTest *t) {
   }
 
   const int sig_ok =
-      MLDSA65_verify(pub.get(), signature.data(), signature.size(), msg.data(),
-                     msg.size(), context.data(), context.size());
+      Verify(pub.get(), signature.data(), signature.size(), msg.data(),
+             msg.size(), context.data(), context.size());
   if (!sig_ok) {
     EXPECT_EQ(result, "invalid");
   } else {
@@ -342,10 +351,12 @@ static void MLDSAWycheproofVerifyTest(FileTest *t) {
   }
 }
 
-TEST(MLDSATest, WycheproofVerifyTests) {
+
+TEST(MLDSATest, WycheproofVerifyTests65) {
   FileTestGTest(
       "third_party/wycheproof_testvectors/mldsa_65_standard_verify_test.txt",
-      MLDSAWycheproofVerifyTest);
+      MLDSAWycheproofVerifyTest<MLDSA65_public_key, MLDSA65_parse_public_key,
+                                MLDSA65_verify>);
 }
 
 }  // namespace

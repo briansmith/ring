@@ -27,6 +27,9 @@ extern "C" {
 // random entropy necessary to generate a signature in randomized mode.
 #define MLDSA_SIGNATURE_RANDOMIZER_BYTES 32
 
+
+// ML-DSA-65
+
 // MLDSA65_generate_key_external_entropy generates a public/private key pair
 // using the given seed, writes the encoded public key to
 // |out_encoded_public_key| and sets |out_private_key| to the private key.
