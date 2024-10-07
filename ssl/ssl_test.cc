@@ -802,6 +802,81 @@ TEST(InplaceVectorTest, ComplexType) {
   EXPECT_FALSE(vec_of_vecs5.TryPushBack(v));
 }
 
+TEST(InplaceVectorTest, EraseIf) {
+  // Test that EraseIf never causes a self-move, and also correctly works with
+  // a move-only type that cannot be default-constructed.
+  class NoSelfMove {
+   public:
+    explicit NoSelfMove(int v) : v_(std::make_unique<int>(v)) {}
+    NoSelfMove(NoSelfMove &&other) { *this = std::move(other); }
+    NoSelfMove &operator=(NoSelfMove &&other) {
+      BSSL_CHECK(this != &other);
+      v_ = std::move(other.v_);
+      return *this;
+    }
+
+    int value() const { return *v_; }
+
+   private:
+    std::unique_ptr<int> v_;
+  };
+
+  InplaceVector<NoSelfMove, 8> vec;
+  auto reset = [&] {
+    vec.clear();
+    for (int i = 0; i < 8; i++) {
+      vec.PushBack(NoSelfMove(i));
+    }
+  };
+  auto expect = [&](const std::vector<int> &expected) {
+    ASSERT_EQ(vec.size(), expected.size());
+    for (size_t i = 0; i < vec.size(); i++) {
+      SCOPED_TRACE(i);
+      EXPECT_EQ(vec[i].value(), expected[i]);
+    }
+  };
+
+  reset();
+  vec.EraseIf([](const auto &) { return false; });
+  expect({0, 1, 2, 3, 4, 5, 6, 7});
+
+  reset();
+  vec.EraseIf([](const auto &) { return true; });
+  expect({});
+
+  reset();
+  vec.EraseIf([](const auto &v) { return v.value() < 4; });
+  expect({4, 5, 6, 7});
+
+  reset();
+  vec.EraseIf([](const auto &v) { return v.value() >= 4; });
+  expect({0, 1, 2, 3});
+
+  reset();
+  vec.EraseIf([](const auto &v) { return v.value() % 2 == 0; });
+  expect({1, 3, 5, 7});
+
+  reset();
+  vec.EraseIf([](const auto &v) { return v.value() % 2 == 1; });
+  expect({0, 2, 4, 6});
+
+  reset();
+  vec.EraseIf([](const auto &v) { return 2 <= v.value() && v.value() <= 5; });
+  expect({0, 1, 6, 7});
+
+  reset();
+  vec.EraseIf([](const auto &v) { return v.value() == 0; });
+  expect({1, 2, 3, 4, 5, 6, 7});
+
+  reset();
+  vec.EraseIf([](const auto &v) { return v.value() == 4; });
+  expect({0, 1, 2, 3, 5, 6, 7});
+
+  reset();
+  vec.EraseIf([](const auto &v) { return v.value() == 7; });
+  expect({0, 1, 2, 3, 4, 5, 6});
+}
+
 TEST(InplaceVectorDeathTest, BoundsChecks) {
   InplaceVector<int, 4> vec;
   // The vector is currently empty.

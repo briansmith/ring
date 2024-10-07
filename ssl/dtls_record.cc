@@ -123,39 +123,33 @@
 
 BSSL_NAMESPACE_BEGIN
 
-// dtls1_bitmap_should_discard returns one if |seq_num| has been seen in
-// |bitmap| or is stale. Otherwise it returns zero.
-static bool dtls1_bitmap_should_discard(DTLS1_BITMAP *bitmap,
-                                        uint64_t seq_num) {
-  const size_t kWindowSize = bitmap->map.size();
+bool DTLSReplayBitmap::ShouldDiscard(uint64_t seq_num) const {
+  const size_t kWindowSize = map_.size();
 
-  if (seq_num > bitmap->max_seq_num) {
+  if (seq_num > max_seq_num_) {
     return false;
   }
-  uint64_t idx = bitmap->max_seq_num - seq_num;
-  return idx >= kWindowSize || bitmap->map[idx];
+  uint64_t idx = max_seq_num_ - seq_num;
+  return idx >= kWindowSize || map_[idx];
 }
 
-// dtls1_bitmap_record updates |bitmap| to record receipt of sequence number
-// |seq_num|. It slides the window forward if needed. It is an error to call
-// this function on a stale sequence number.
-static void dtls1_bitmap_record(DTLS1_BITMAP *bitmap, uint64_t seq_num) {
-  const size_t kWindowSize = bitmap->map.size();
+void DTLSReplayBitmap::Record(uint64_t seq_num) {
+  const size_t kWindowSize = map_.size();
 
   // Shift the window if necessary.
-  if (seq_num > bitmap->max_seq_num) {
-    uint64_t shift = seq_num - bitmap->max_seq_num;
+  if (seq_num > max_seq_num_) {
+    uint64_t shift = seq_num - max_seq_num_;
     if (shift >= kWindowSize) {
-      bitmap->map.reset();
+      map_.reset();
     } else {
-      bitmap->map <<= shift;
+      map_ <<= shift;
     }
-    bitmap->max_seq_num = seq_num;
+    max_seq_num_ = seq_num;
   }
 
-  uint64_t idx = bitmap->max_seq_num - seq_num;
+  uint64_t idx = max_seq_num_ - seq_num;
   if (idx < kWindowSize) {
-    bitmap->map[idx] = true;
+    map_[idx] = true;
   }
 }
 
@@ -207,109 +201,138 @@ uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
   return seqnum;
 }
 
-static bool parse_dtls13_record_header(SSL *ssl, CBS *in, Span<uint8_t> packet,
-                                       uint8_t type, CBS *out_body,
-                                       uint64_t *out_sequence,
-                                       uint16_t *out_epoch,
-                                       size_t *out_header_len) {
-  // TODO(crbug.com/boringssl/715): Decrypt the sequence number before
-  // decoding it.
-  if ((type & 0x10) == 0x10) {
+static Span<uint8_t> cbs_to_writable_bytes(CBS cbs) {
+  return MakeSpan(const_cast<uint8_t *>(CBS_data(&cbs)), CBS_len(&cbs));
+}
+
+struct ParsedDTLSRecord {
+  // read_epoch will be null if the record is for an unrecognized epoch. In that
+  // case, sequence may be zero if we are unable to decrypt the sequence number.
+  DTLSReadEpoch *read_epoch = nullptr;
+  // sequence includes the epoch for DTLS 1.2 records and does not include it
+  // for DTLS 1.3.
+  uint64_t sequence = 0;
+  CBS header, body;
+  uint8_t type = 0;
+  uint16_t version = 0;
+};
+
+static bool use_dtls13_record_header(const SSL *ssl, uint16_t epoch) {
+  // Plaintext records in DTLS 1.3 also use the DTLSPlaintext structure for
+  // backwards compatibility.
+  return ssl->s3->version != 0 && ssl_protocol_version(ssl) > TLS1_2_VERSION &&
+         epoch > 0;
+}
+
+static bool parse_dtls13_record(SSL *ssl, CBS *in, ParsedDTLSRecord *out) {
+  if (out->type & 0x10) {
     // Connection ID bit set, which we didn't negotiate.
     return false;
   }
 
-  // TODO(crbug.com/boringssl/715): Add a runner test that performs many
-  // key updates to verify epoch reconstruction works for epochs larger than
-  // 3.
-  *out_epoch = reconstruct_epoch(type, ssl->d1->r_epoch);
-  size_t seqlen = 1;
-  if ((type & 0x08) == 0x08) {
-    // If this bit is set, the sequence number is 16 bits long, otherwise it is
-    // 8 bits. The seqlen variable tracks the length of the sequence number in
-    // bytes.
-    seqlen = 2;
-  }
-  if (!CBS_skip(in, seqlen)) {
-    // The record header was incomplete or malformed.
+  // TODO(crbug.com/42290594): Add a runner test that performs many
+  // key updates to verify epoch reconstruction works for epochs larger than 3.
+  uint16_t epoch = reconstruct_epoch(out->type, ssl->d1->read_epoch.epoch);
+  size_t seq_len = (out->type & 0x08) ? 2 : 1;
+  CBS seq_bytes;
+  if (!CBS_get_bytes(in, &seq_bytes, seq_len)) {
     return false;
   }
-  *out_header_len = packet.size() - CBS_len(in);
-  if ((type & 0x04) == 0x04) {
-    *out_header_len += 2;
+  if (out->type & 0x04) {
     // 16-bit length present
-    if (!CBS_get_u16_length_prefixed(in, out_body)) {
-      // The record header was incomplete or malformed.
+    if (!CBS_get_u16_length_prefixed(in, &out->body)) {
       return false;
     }
   } else {
     // No length present - the remaining contents are the whole packet.
     // CBS_get_bytes is used here to advance |in| to the end so that future
     // code that computes the number of consumed bytes functions correctly.
-    if (!CBS_get_bytes(in, out_body, CBS_len(in))) {
-      return false;
-    }
+    BSSL_CHECK(CBS_get_bytes(in, &out->body, CBS_len(in)));
   }
 
-  // Decrypt and reconstruct the sequence number:
-  uint8_t mask[AES_BLOCK_SIZE];
-  SSLAEADContext *aead = ssl->s3->aead_read_ctx.get();
-  if (!aead->GenerateRecordNumberMask(mask, *out_body)) {
-    // GenerateRecordNumberMask most likely failed because the record body was
-    // not long enough.
-    return false;
+  // Look up the corresponding epoch. This header form only matches encrypted
+  // DTLS 1.3 epochs.
+  // TODO(crbug.com/42290594): DTLS 1.3 will require that we track multiple
+  // epochs.
+  if (epoch == ssl->d1->read_epoch.epoch &&
+      use_dtls13_record_header(ssl, epoch)) {
+    out->read_epoch = &ssl->d1->read_epoch;
+
+    // Decrypt and reconstruct the sequence number:
+    uint8_t mask[AES_BLOCK_SIZE];
+    if (!out->read_epoch->aead->GenerateRecordNumberMask(mask, out->body)) {
+      // GenerateRecordNumberMask most likely failed because the record body was
+      // not long enough.
+      return false;
+    }
+    // Apply the mask to the sequence number in-place. The header (with the
+    // decrypted sequence number bytes) is used as the additional data for the
+    // AEAD function.
+    auto writable_seq = cbs_to_writable_bytes(seq_bytes);
+    uint64_t seq = 0;
+    for (size_t i = 0; i < writable_seq.size(); i++) {
+      writable_seq[i] ^= mask[i];
+      seq = (seq << 8) | writable_seq[i];
+    }
+    out->sequence = reconstruct_seqnum(seq, (1 << (seq_len * 8)) - 1,
+                                       out->read_epoch->bitmap.max_seq_num());
   }
-  // Apply the mask to the sequence number as it exists in the header. The
-  // header (with the decrypted sequence number bytes) is used as the
-  // additional data for the AEAD function. Since we don't support Connection
-  // ID, the sequence number starts immediately after the type byte.
-  uint64_t seq = 0;
-  for (size_t i = 0; i < seqlen; i++) {
-    packet[i + 1] ^= mask[i];
-    seq = (seq << 8) | packet[i + 1];
-  }
-  *out_sequence = reconstruct_seqnum(seq, (1 << (seqlen * 8)) - 1,
-                                     ssl->d1->bitmap.max_seq_num);
+
   return true;
 }
 
-static bool parse_dtls_plaintext_record_header(
-    SSL *ssl, CBS *in, size_t packet_size, uint8_t type, CBS *out_body,
-    uint64_t *out_sequence, uint16_t *out_epoch, size_t *out_header_len,
-    uint16_t *out_version) {
-  SSLAEADContext *aead = ssl->s3->aead_read_ctx.get();
-  uint8_t sequence_bytes[8];
-  if (!CBS_get_u16(in, out_version) ||
-      !CBS_copy_bytes(in, sequence_bytes, sizeof(sequence_bytes))) {
-    return false;
-  }
-  *out_header_len = packet_size - CBS_len(in) + 2;
-  if (!CBS_get_u16_length_prefixed(in, out_body) ||
-      CBS_len(out_body) > SSL3_RT_MAX_ENCRYPTED_LENGTH) {
+static bool parse_dtls12_record(SSL *ssl, CBS *in, ParsedDTLSRecord *out) {
+  if (!CBS_get_u16(in, &out->version) ||  //
+      !CBS_get_u64(in, &out->sequence) ||
+      !CBS_get_u16_length_prefixed(in, &out->body)) {
     return false;
   }
 
+  uint16_t epoch = static_cast<uint16_t>(out->sequence >> 48);
   bool version_ok;
-  if (aead->is_null_cipher()) {
+  if (epoch == 0) {
     // Only check the first byte. Enforcing beyond that can prevent decoding
     // version negotiation failure alerts.
-    version_ok = (*out_version >> 8) == DTLS1_VERSION_MAJOR;
+    version_ok = (out->version >> 8) == DTLS1_VERSION_MAJOR;
   } else {
-    version_ok = *out_version == dtls_record_version(ssl);
+    version_ok = out->version == dtls_record_version(ssl);
   }
-
   if (!version_ok) {
     return false;
   }
 
-  *out_sequence = CRYPTO_load_u64_be(sequence_bytes);
-  *out_epoch = static_cast<uint16_t>(*out_sequence >> 48);
+  // Look up the corresponding epoch. In DTLS 1.2, we only need to consider one
+  // epoch.
+  if (epoch == ssl->d1->read_epoch.epoch &&
+      !use_dtls13_record_header(ssl, epoch)) {
+    out->read_epoch = &ssl->d1->read_epoch;
+  }
 
-  // Discard the packet if we're expecting an encrypted DTLS 1.3 record but we
-  // get the old record header format.
-  if (!aead->is_null_cipher() && ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  return true;
+}
+
+static bool parse_dtls_record(SSL *ssl, CBS *cbs, ParsedDTLSRecord *out) {
+  CBS copy = *cbs;
+  if (!CBS_get_u8(cbs, &out->type)) {
     return false;
   }
+
+  bool ok;
+  if ((out->type & 0xe0) == 0x20) {
+    ok = parse_dtls13_record(ssl, cbs, out);
+  } else {
+    ok = parse_dtls12_record(ssl, cbs, out);
+  }
+  if (!ok) {
+    return false;
+  }
+
+  if (CBS_len(&out->body) > SSL3_RT_MAX_ENCRYPTED_LENGTH) {
+    return false;
+  }
+
+  size_t header_len = CBS_data(&out->body) - CBS_data(&copy);
+  BSSL_CHECK(CBS_get_bytes(&copy, &out->header, header_len));
   return true;
 }
 
@@ -326,47 +349,20 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
     return ssl_open_record_partial;
   }
 
-  CBS cbs = CBS(in);
-
-  uint8_t type;
-  size_t record_header_len;
-  if (!CBS_get_u8(&cbs, &type)) {
-    // The record header was incomplete or malformed. Drop the entire packet.
-    *out_consumed = in.size();
-    return ssl_open_record_discard;
-  }
-  SSLAEADContext *aead = ssl->s3->aead_read_ctx.get();
-  uint64_t sequence;
-  uint16_t epoch;
-  uint16_t version = 0;
-  CBS body;
-  bool valid_record_header;
-  // Decode the record header. If the 3 high bits of the type are 001, then the
-  // record header is the DTLS 1.3 format. The DTLS 1.3 format should only be
-  // used for encrypted records with DTLS 1.3. Plaintext records or DTLS 1.2
-  // records use the old record header format.
-  if ((type & 0xe0) == 0x20 && !aead->is_null_cipher() &&
-      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
-    valid_record_header = parse_dtls13_record_header(
-        ssl, &cbs, in, type, &body, &sequence, &epoch, &record_header_len);
-  } else {
-    valid_record_header = parse_dtls_plaintext_record_header(
-        ssl, &cbs, in.size(), type, &body, &sequence, &epoch,
-        &record_header_len, &version);
-  }
-  if (!valid_record_header) {
+  CBS cbs(in);
+  ParsedDTLSRecord record;
+  if (!parse_dtls_record(ssl, &cbs, &record)) {
     // The record header was incomplete or malformed. Drop the entire packet.
     *out_consumed = in.size();
     return ssl_open_record_discard;
   }
 
-  Span<const uint8_t> header = in.subspan(0, record_header_len);
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER, header);
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER, record.header);
 
-  if (epoch != ssl->d1->r_epoch ||
-      dtls1_bitmap_should_discard(&ssl->d1->bitmap, sequence)) {
-    // Drop this record. It's from the wrong epoch or is a replay. Note that if
-    // |epoch| is the next epoch, the record could be buffered for later. For
+  if (record.read_epoch == nullptr ||
+      record.read_epoch->bitmap.ShouldDiscard(record.sequence)) {
+    // Drop this record. It's from an unknown epoch or is a replay. Note that if
+    // the record is from next epoch, it could be buffered for later. For
     // simplicity, drop it and expect retransmit to handle it later; DTLS must
     // handle packet loss anyway.
     *out_consumed = in.size() - CBS_len(&cbs);
@@ -374,9 +370,9 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
   }
 
   // discard the body in-place.
-  if (!aead->Open(
-          out, type, version, sequence, header,
-          MakeSpan(const_cast<uint8_t *>(CBS_data(&body)), CBS_len(&body)))) {
+  if (!record.read_epoch->aead->Open(out, record.type, record.version,
+                                     record.sequence, record.header,
+                                     cbs_to_writable_bytes(record.body))) {
     // Bad packets are silently dropped in DTLS. See section 4.2.1 of RFC 6347.
     // Clear the error queue of any errors decryption may have added. Drop the
     // entire packet as it must not have come from the peer.
@@ -390,8 +386,8 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
   *out_consumed = in.size() - CBS_len(&cbs);
 
   // DTLS 1.3 hides the record type inside the encrypted data.
-  bool has_padding =
-      !aead->is_null_cipher() && ssl_protocol_version(ssl) >= TLS1_3_VERSION;
+  bool has_padding = !record.read_epoch->aead->is_null_cipher() &&
+                     ssl_protocol_version(ssl) >= TLS1_3_VERSION;
   // Check the plaintext length.
   size_t plaintext_limit = SSL3_RT_MAX_PLAIN_LENGTH + (has_padding ? 1 : 0);
   if (out->size() > plaintext_limit) {
@@ -407,45 +403,36 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
         *out_alert = SSL_AD_DECRYPT_ERROR;
         return ssl_open_record_error;
       }
-      type = out->back();
+      record.type = out->back();
       *out = out->subspan(0, out->size() - 1);
-    } while (type == 0);
+    } while (record.type == 0);
   }
 
-  dtls1_bitmap_record(&ssl->d1->bitmap, sequence);
+  record.read_epoch->bitmap.Record(record.sequence);
 
   // TODO(davidben): Limit the number of empty records as in TLS? This is only
   // useful if we also limit discarded packets.
 
-  if (type == SSL3_RT_ALERT) {
+  if (record.type == SSL3_RT_ALERT) {
     return ssl_process_alert(ssl, out_alert, *out);
   }
 
   ssl->s3->warning_alert_count = 0;
 
-  *out_type = type;
+  *out_type = record.type;
   return ssl_open_record_success;
 }
 
-static SSLAEADContext *get_write_aead(const SSL *ssl, uint16_t epoch) {
-  if (epoch == 0) {
-    return ssl->d1->initial_epoch_state->aead_write_ctx.get();
+static DTLSWriteEpoch *get_write_epoch(const SSL *ssl, uint16_t epoch) {
+  if (ssl->d1->write_epoch.epoch == epoch) {
+    return &ssl->d1->write_epoch;
   }
-
-  if (epoch < ssl->d1->w_epoch) {
-    BSSL_CHECK(epoch + 1 == ssl->d1->w_epoch);
-    return ssl->d1->last_epoch_state.aead_write_ctx.get();
+  for (const auto &e : ssl->d1->extra_write_epochs) {
+    if (e->epoch == epoch) {
+      return e.get();
+    }
   }
-
-  BSSL_CHECK(epoch == ssl->d1->w_epoch);
-  return ssl->s3->aead_write_ctx.get();
-}
-
-static bool use_dtls13_record_header(const SSL *ssl, uint16_t epoch) {
-  // Plaintext records in DTLS 1.3 also use the DTLSPlaintext structure for
-  // backwards compatibility.
-  return ssl->s3->version != 0 && ssl_protocol_version(ssl) > TLS1_2_VERSION &&
-         epoch > 0;
+  return nullptr;
 }
 
 size_t dtls_record_header_write_len(const SSL *ssl, uint16_t epoch) {
@@ -462,8 +449,12 @@ size_t dtls_record_header_write_len(const SSL *ssl, uint16_t epoch) {
 
 size_t dtls_max_seal_overhead(const SSL *ssl,
                               uint16_t epoch) {
+  DTLSWriteEpoch *write_epoch = get_write_epoch(ssl, epoch);
+  if (write_epoch == nullptr) {
+    return 0;
+  }
   size_t ret = dtls_record_header_write_len(ssl, epoch) +
-               get_write_aead(ssl, epoch)->MaxOverhead();
+               write_epoch->aead->MaxOverhead();
   if (use_dtls13_record_header(ssl, epoch)) {
     // Add 1 byte for the encrypted record type.
     ret++;
@@ -472,8 +463,12 @@ size_t dtls_max_seal_overhead(const SSL *ssl,
 }
 
 size_t dtls_seal_prefix_len(const SSL *ssl, uint16_t epoch) {
+  DTLSWriteEpoch *write_epoch = get_write_epoch(ssl, epoch);
+  if (write_epoch == nullptr) {
+    return 0;
+  }
   return dtls_record_header_write_len(ssl, epoch) +
-         get_write_aead(ssl, epoch)->ExplicitNonceLen();
+         write_epoch->aead->ExplicitNonceLen();
 }
 
 bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
@@ -487,25 +482,20 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   }
 
   // Determine the parameters for the current epoch.
-  SSLAEADContext *aead = get_write_aead(ssl, epoch);
-  uint64_t *seq = &ssl->s3->write_sequence;
-  if (epoch == 0) {
-    seq = &ssl->d1->initial_epoch_state->write_sequence;
-  } else if (epoch < ssl->d1->w_epoch) {
-    seq = &ssl->d1->last_epoch_state.write_sequence;
+  DTLSWriteEpoch *write_epoch = get_write_epoch(ssl, epoch);
+  if (write_epoch == nullptr) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
   }
 
   const size_t record_header_len = dtls_record_header_write_len(ssl, epoch);
 
   // Ensure the sequence number update does not overflow.
   const uint64_t kMaxSequenceNumber = (uint64_t{1} << 48) - 1;
-  if (*seq + 1 > kMaxSequenceNumber) {
+  if (write_epoch->next_seq + 1 > kMaxSequenceNumber) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
     return false;
   }
-
-  uint16_t record_version = dtls_record_version(ssl);
-  uint64_t seq_with_epoch = (uint64_t{epoch} << 48) | *seq;
 
   bool dtls13_header = use_dtls13_record_header(ssl, epoch);
   uint8_t *extra_in = NULL;
@@ -516,7 +506,8 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   }
 
   size_t ciphertext_len;
-  if (!aead->CiphertextLen(&ciphertext_len, in_len, extra_in_len)) {
+  if (!write_epoch->aead->CiphertextLen(&ciphertext_len, in_len,
+                                        extra_in_len)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
     return false;
   }
@@ -525,6 +516,8 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     return false;
   }
 
+  uint16_t record_version = dtls_record_version(ssl);
+  uint64_t aead_seq;
   if (dtls13_header) {
     // The first byte of the DTLS 1.3 record header has the following format:
     // 0 1 2 3 4 5 6 7
@@ -543,29 +536,31 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     // We always use a two-byte sequence number. A one-byte sequence number
     // would require coordinating with the application on ACK feedback to know
     // that the peer is not too far behind.
-    out[1] = *seq >> 8;
-    out[2] = *seq & 0xff;
+    out[1] = write_epoch->next_seq >> 8;
+    out[2] = write_epoch->next_seq & 0xff;
     // TODO(crbug.com/42290594): When we know the record is last in the packet,
     // omit the length.
     out[3] = ciphertext_len >> 8;
     out[4] = ciphertext_len & 0xff;
     // DTLS 1.3 uses the sequence number without the epoch for the AEAD.
-    seq_with_epoch = *seq;
+    aead_seq = write_epoch->next_seq;
   } else {
     out[0] = type;
     out[1] = record_version >> 8;
     out[2] = record_version & 0xff;
-    CRYPTO_store_u64_be(&out[3], seq_with_epoch);
+    // DTLS 1.2 uses the sequence number with the epoch for the AEAD.
+    aead_seq = (uint64_t{epoch} << 48) | write_epoch->next_seq;
+    CRYPTO_store_u64_be(&out[3], aead_seq);
     out[11] = ciphertext_len >> 8;
     out[12] = ciphertext_len & 0xff;
   }
   Span<const uint8_t> header = MakeConstSpan(out, record_header_len);
 
 
-  if (!aead->SealScatter(out + record_header_len, out + prefix,
-                         out + prefix + in_len, type, record_version,
-                         seq_with_epoch, header, in, in_len, extra_in,
-                         extra_in_len)) {
+  if (!write_epoch->aead->SealScatter(out + record_header_len, out + prefix,
+                                      out + prefix + in_len, type,
+                                      record_version, aead_seq, header, in,
+                                      in_len, extra_in, extra_in_len)) {
     return false;
   }
 
@@ -581,14 +576,14 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     // cipher suites have no requirements on the mask size. We only need the
     // first two bytes from the mask.
     uint8_t mask[AES_BLOCK_SIZE];
-    if (!aead->GenerateRecordNumberMask(mask, sample)) {
+    if (!write_epoch->aead->GenerateRecordNumberMask(mask, sample)) {
       return false;
     }
     out[1] ^= mask[0];
     out[2] ^= mask[1];
   }
 
-  (*seq)++;
+  write_epoch->next_seq++;
   *out_len = record_header_len + ciphertext_len;
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER, header);
   return true;

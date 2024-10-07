@@ -79,8 +79,7 @@ static void dtls1_on_handshake_complete(SSL *ssl) {
 
 static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
                                  UniquePtr<SSLAEADContext> aead_ctx,
-                                 Span<const uint8_t> secret_for_quic) {
-  assert(secret_for_quic.empty());  // QUIC does not use DTLS.
+                                 Span<const uint8_t> traffic_secret) {
   // Cipher changes are forbidden if the current epoch has leftover data.
   if (dtls_has_unprocessed_handshake_data(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESS_HANDSHAKE_DATA);
@@ -88,20 +87,21 @@ static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
     return false;
   }
 
+  DTLSReadEpoch new_epoch;
   if (ssl_protocol_version(ssl) > TLS1_2_VERSION) {
     // TODO(crbug.com/boringssl/715): Handle the additional epochs used for key
     // update.
     // TODO(crbug.com/boringssl/715): If we want to gracefully handle packet
     // reordering around KeyUpdate (i.e. accept records from both epochs), we'll
     // need a separate bitmap for each epoch.
-    ssl->d1->r_epoch = level;
+    new_epoch.epoch = level;
   } else {
-    ssl->d1->r_epoch++;
+    new_epoch.epoch = ssl->d1->read_epoch.epoch + 1;
   }
-  ssl->d1->bitmap = DTLS1_BITMAP();
-  ssl->s3->read_sequence = 0;
+  new_epoch.bitmap = DTLSReplayBitmap();
+  new_epoch.aead = std::move(aead_ctx);
 
-  ssl->s3->aead_read_ctx = std::move(aead_ctx);
+  ssl->d1->read_epoch = std::move(new_epoch);
   ssl->s3->read_level = level;
   ssl->d1->has_change_cipher_spec = false;
   return true;
@@ -109,18 +109,25 @@ static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
 
 static bool dtls1_set_write_state(SSL *ssl, ssl_encryption_level_t level,
                                   UniquePtr<SSLAEADContext> aead_ctx,
-                                  Span<const uint8_t> secret_for_quic) {
-  assert(secret_for_quic.empty());  // QUIC does not use DTLS.
-  ssl->d1->w_epoch++;
-  ssl->s3->write_sequence = 0;
-
+                                  Span<const uint8_t> traffic_secret) {
+  DTLSWriteEpoch new_epoch;
   if (ssl_protocol_version(ssl) > TLS1_2_VERSION) {
-    ssl->d1->w_epoch = level;
+    // TODO(crbug.com/boringssl/715): See above.
+    new_epoch.epoch = level;
+  } else {
+    new_epoch.epoch = ssl->d1->write_epoch.epoch + 1;
   }
-  ssl->d1->last_epoch_state.aead_write_ctx = std::move(ssl->s3->aead_write_ctx);
-  ssl->d1->last_epoch_state.write_sequence = ssl->s3->write_sequence;
-  ssl->s3->aead_write_ctx = std::move(aead_ctx);
+  new_epoch.aead = std::move(aead_ctx);
+
+  auto current = MakeUnique<DTLSWriteEpoch>(std::move(ssl->d1->write_epoch));
+  if (current == nullptr) {
+    return false;
+  }
+
+  ssl->d1->write_epoch = std::move(new_epoch);
+  ssl->d1->extra_write_epochs.PushBack(std::move(current));
   ssl->s3->write_level = level;
+  dtls_clear_unused_write_epochs(ssl);
   return true;
 }
 

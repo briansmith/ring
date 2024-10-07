@@ -186,12 +186,10 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
   const EVP_MD *digest = ssl_session_get_digest(session);
   bool is_dtls = SSL_is_dtls(ssl);
   UniquePtr<SSLAEADContext> traffic_aead;
-  Span<const uint8_t> secret_for_quic;
   if (ssl->quic_method != nullptr) {
     // Install a placeholder SSLAEADContext so that SSL accessors work. The
     // encryption itself will be handled by the SSL_QUIC_METHOD.
     traffic_aead = SSLAEADContext::CreatePlaceholderForQUIC(session->cipher);
-    secret_for_quic = traffic_secret;
   } else {
     // Look up cipher suite properties.
     const EVP_AEAD *aead;
@@ -237,13 +235,13 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
 
   if (direction == evp_aead_open) {
     if (!ssl->method->set_read_state(ssl, level, std::move(traffic_aead),
-                                     secret_for_quic)) {
+                                     traffic_secret)) {
       return false;
     }
     ssl->s3->read_traffic_secret.CopyFrom(traffic_secret);
   } else {
     if (!ssl->method->set_write_state(ssl, level, std::move(traffic_aead),
-                                      secret_for_quic)) {
+                                      traffic_secret)) {
       return false;
     }
     ssl->s3->write_traffic_secret.CopyFrom(traffic_secret);

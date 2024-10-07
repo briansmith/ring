@@ -85,23 +85,23 @@ DTLS1_STATE::DTLS1_STATE()
 
 DTLS1_STATE::~DTLS1_STATE() {}
 
+bool DTLS1_STATE::Init() {
+  // Set up the initial epochs.
+  read_epoch.aead = SSLAEADContext::CreateNullCipher();
+  write_epoch.aead = SSLAEADContext::CreateNullCipher();
+  if (read_epoch.aead == nullptr || write_epoch.aead == nullptr) {
+    return false;
+  }
+
+  return true;
+}
+
 bool dtls1_new(SSL *ssl) {
   if (!tls_new(ssl)) {
     return false;
   }
   UniquePtr<DTLS1_STATE> d1 = MakeUnique<DTLS1_STATE>();
-  if (!d1) {
-    tls_free(ssl);
-    return false;
-  }
-
-  d1->initial_epoch_state = MakeUnique<DTLSEpochState>();
-  if (!d1->initial_epoch_state) {
-    tls_free(ssl);
-    return false;
-  }
-  d1->initial_epoch_state->aead_write_ctx = SSLAEADContext::CreateNullCipher();
-  if (!d1->initial_epoch_state->aead_write_ctx) {
+  if (!d1 || !d1->Init()) {
     tls_free(ssl);
     return false;
   }

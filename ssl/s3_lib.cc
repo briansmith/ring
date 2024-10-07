@@ -187,10 +187,20 @@ bool tls_new(SSL *ssl) {
     return false;
   }
 
-  s3->aead_read_ctx = SSLAEADContext::CreateNullCipher();
-  s3->aead_write_ctx = SSLAEADContext::CreateNullCipher();
+  // TODO(crbug.com/368805255): Fields that aren't used in DTLS should not be
+  // allocated at all.
+  // TODO(crbug.com/371998381): Don't create these in QUIC either, once the
+  // placeholder QUIC ones for subsequent epochs are removed.
+  if (!SSL_is_dtls(ssl)) {
+    s3->aead_read_ctx = SSLAEADContext::CreateNullCipher();
+    s3->aead_write_ctx = SSLAEADContext::CreateNullCipher();
+    if (!s3->aead_read_ctx || !s3->aead_write_ctx) {
+      return false;
+    }
+  }
+
   s3->hs = ssl_handshake_new(ssl);
-  if (!s3->aead_read_ctx || !s3->aead_write_ctx || !s3->hs) {
+  if (!s3->hs) {
     return false;
   }
 

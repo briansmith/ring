@@ -86,7 +86,7 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
       if (!null_ctx ||
           !ssl->method->set_write_state(ssl, ssl_encryption_initial,
                                         std::move(null_ctx),
-                                        /*secret_for_quic=*/{})) {
+                                        /*traffic_secret=*/{})) {
         return false;
       }
     } else {

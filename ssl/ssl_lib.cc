@@ -2933,6 +2933,13 @@ void SSL_set_renegotiate_mode(SSL *ssl, enum ssl_renegotiate_mode_t mode) {
 
 int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
                 const uint8_t **out_write_iv, size_t *out_iv_len) {
+  // No cipher suites maintain stateful internal IVs in DTLS. It would not be
+  // compatible with reordering.
+  if (SSL_is_dtls(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
   size_t write_iv_len;
   if (!ssl->s3->aead_read_ctx->GetIV(out_read_iv, out_iv_len) ||
       !ssl->s3->aead_write_ctx->GetIV(out_write_iv, &write_iv_len) ||
@@ -2956,19 +2963,25 @@ uint64_t SSL_get_read_sequence(const SSL *ssl) {
     // max_seq_num already includes the epoch. However, the current epoch may
     // be one ahead of the highest record received, immediately after a key
     // change.
-    assert(ssl->d1->r_epoch >= ssl->d1->bitmap.max_seq_num >> 48);
-    return ssl->d1->bitmap.max_seq_num;
+    const DTLSReadEpoch *read_epoch = &ssl->d1->read_epoch;
+    assert(read_epoch->epoch >= read_epoch->bitmap.max_seq_num() >> 48);
+    return read_epoch->bitmap.max_seq_num();
   }
   return ssl->s3->read_sequence;
 }
 
 uint64_t SSL_get_write_sequence(const SSL *ssl) {
-  uint64_t ret = ssl->s3->write_sequence;
   if (SSL_is_dtls(ssl)) {
-    assert((ret >> 48) == 0);
-    ret |= uint64_t{ssl->d1->w_epoch} << 48;
+    const DTLSWriteEpoch *write_epoch = &ssl->d1->write_epoch;
+    uint64_t ret = write_epoch->next_seq;
+    if (SSL_is_dtls(ssl)) {
+      assert((ret >> 48) == 0);
+      ret |= uint64_t{write_epoch->epoch} << 48;
+    }
+    return ret;
   }
-  return ret;
+
+  return ssl->s3->write_sequence;
 }
 
 uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl) {

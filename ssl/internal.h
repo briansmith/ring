@@ -559,23 +559,29 @@ class InplaceVector {
   T *end() { return data() + size_; }
   const T *end() const { return data() + size_; }
 
-  void clear() {
-    cxx17_destroy_n(data(), size_);
-    size_ = 0;
+  void clear() { Shrink(0); }
+
+  // Shrink resizes the vector to |new_size|, which must not be larger than the
+  // current size. Unlike |Resize|, this can be called when |T| is not
+  // default-constructible.
+  void Shrink(size_t new_size) {
+    BSSL_CHECK(new_size <= size_);
+    cxx17_destroy_n(data() + new_size, size_ - new_size);
+    size_ = static_cast<PackedSize<N>>(new_size);
   }
 
   // TryResize resizes the vector to |new_size| and returns true, or returns
   // false if |new_size| is too large. Any newly-added elements are
   // value-initialized.
   bool TryResize(size_t new_size) {
+    if (new_size <= size_) {
+      Shrink(new_size);
+      return true;
+    }
     if (new_size > capacity()) {
       return false;
     }
-    if (new_size < size_) {
-      cxx17_destroy_n(data() + new_size, size_ - new_size);
-    } else {
-      cxx17_uninitialized_value_construct_n(data() + size_, new_size - size_);
-    }
+    cxx17_uninitialized_value_construct_n(data() + size_, new_size - size_);
     size_ = static_cast<PackedSize<N>>(new_size);
     return true;
   }
@@ -584,14 +590,14 @@ class InplaceVector {
   // default-initialized, so POD types may contain uninitialized values that the
   // caller is responsible for filling in.
   bool TryResizeMaybeUninit(size_t new_size) {
+    if (new_size <= size_) {
+      Shrink(new_size);
+      return true;
+    }
     if (new_size > capacity()) {
       return false;
     }
-    if (new_size < size_) {
-      cxx17_destroy_n(data() + new_size, size_ - new_size);
-    } else {
-      cxx17_uninitialized_default_construct_n(data() + size_, new_size - size_);
-    }
+    cxx17_uninitialized_default_construct_n(data() + size_, new_size - size_);
     size_ = static_cast<PackedSize<N>>(new_size);
     return true;
   }
@@ -631,6 +637,27 @@ class InplaceVector {
     T *ret = TryPushBack(std::move(val));
     BSSL_CHECK(ret != nullptr);
     return *ret;
+  }
+
+  template <typename Pred>
+  void EraseIf(Pred pred) {
+    // See if anything needs to be erased at all. This avoids a self-move.
+    auto iter = std::find_if(begin(), end(), pred);
+    if (iter == end()) {
+      return;
+    }
+
+    // Elements before the first to be erased may be left as-is.
+    size_t new_size = iter - begin();
+    // Swap all subsequent elements in if they are to be kept.
+    for (size_t i = new_size + 1; i < size(); i++) {
+      if (!pred((*this)[i])) {
+        (*this)[new_size] = std::move((*this)[i]);
+        new_size++;
+      }
+    }
+
+    Shrink(new_size);
   }
 
  private:
@@ -1157,6 +1184,7 @@ class SSLAEADContext {
   // records.
   InplaceVector<uint8_t, 12> fixed_nonce_;
   uint8_t variable_nonce_len_ = 0;
+  // TODO(crbug.com/42290594): Move this into DTLSReadEpoch and DTLSWriteEpoch.
   UniquePtr<RecordNumberEncrypter> rn_encrypter_;
   // variable_nonce_included_in_record_ is true if the variable nonce
   // for a record is included as a prefix before the ciphertext.
@@ -1217,15 +1245,28 @@ class NullRecordNumberEncrypter : public RecordNumberEncrypter {
 
 // DTLS replay bitmap.
 
-// DTLS1_BITMAP maintains a sliding window of 64 sequence numbers to detect
-// replayed packets. It should be initialized by zeroing every field.
-struct DTLS1_BITMAP {
+// DTLSReplayBitmap maintains a sliding window of sequence numbers to detect
+// replayed packets.
+class DTLSReplayBitmap {
+ public:
+  // ShouldDiscard returns true if |seq_num| has been seen in
+  // |bitmap| or is stale. Otherwise it returns false.
+  bool ShouldDiscard(uint64_t seqnum) const;
+
+  // Record updates the bitmap to record receipt of sequence number
+  // |seq_num|. It slides the window forward if needed. It is an error to call
+  // this function on a stale sequence number.
+  void Record(uint64_t seqnum);
+
+  uint64_t max_seq_num() const { return max_seq_num_; }
+
+ private:
   // map is a bitset of sequence numbers that have been seen. Bit i corresponds
-  // to |max_seq_num - i|.
-  std::bitset<256> map;
-  // max_seq_num is the largest sequence number seen so far as a 64-bit
+  // to |max_seq_num_ - i|.
+  std::bitset<256> map_;
+  // max_seq_num_ is the largest sequence number seen so far as a 64-bit
   // integer.
-  uint64_t max_seq_num = 0;
+  uint64_t max_seq_num_ = 0;
 };
 
 // reconstruct_seqnum takes the low order bits of a record sequence number from
@@ -1240,7 +1281,24 @@ struct DTLS1_BITMAP {
 OPENSSL_EXPORT uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
                                            uint64_t max_valid_seqnum);
 
+
 // Record layer.
+
+struct DTLSReadEpoch {
+  static constexpr bool kAllowUniquePtr = true;
+
+  uint16_t epoch = 0;
+  UniquePtr<SSLAEADContext> aead;
+  DTLSReplayBitmap bitmap;
+};
+
+struct DTLSWriteEpoch {
+  static constexpr bool kAllowUniquePtr = true;
+
+  uint16_t epoch = 0;
+  UniquePtr<SSLAEADContext> aead;
+  uint64_t next_seq = 0;
+};
 
 // ssl_record_prefix_len returns the length of the prefix before the ciphertext
 // of a record for |ssl|.
@@ -1495,6 +1553,10 @@ struct DTLS_OUTGOING_MESSAGE {
 
 // dtls_clear_outgoing_messages releases all buffered outgoing messages.
 void dtls_clear_outgoing_messages(SSL *ssl);
+
+// dtls_clear_unused_write_epochs releases any write epochs that are no longer
+// needed.
+void dtls_clear_unused_write_epochs(SSL *ssl);
 
 
 // Callbacks.
@@ -2844,19 +2906,25 @@ struct SSL_PROTOCOL_METHOD {
   // on_handshake_complete is called when the handshake is complete.
   void (*on_handshake_complete)(SSL *ssl);
   // set_read_state sets |ssl|'s read cipher state and level to |aead_ctx| and
-  // |level|. In QUIC, |aead_ctx| is a placeholder object and |secret_for_quic|
-  // is the original secret. This function returns true on success and false on
-  // error.
+  // |level|. In QUIC, |aead_ctx| is a placeholder object. In TLS 1.3,
+  // |traffic_secret| is the original traffic secret. This function returns true
+  // on success and false on error.
+  //
+  // TODO(crbug.com/371998381): Take the traffic secrets as input and let the
+  // function create the SSLAEADContext.
   bool (*set_read_state)(SSL *ssl, ssl_encryption_level_t level,
                          UniquePtr<SSLAEADContext> aead_ctx,
-                         Span<const uint8_t> secret_for_quic);
+                         Span<const uint8_t> traffic_secret);
   // set_write_state sets |ssl|'s write cipher state and level to |aead_ctx| and
-  // |level|. In QUIC, |aead_ctx| is a placeholder object and |secret_for_quic|
-  // is the original secret. This function returns true on success and false on
-  // error.
+  // |level|. In QUIC, |aead_ctx| is a placeholder object In TLS 1.3,
+  // |traffic_secret| is the original traffic secret. This function returns true
+  // on success and false on error.
+  //
+  // TODO(crbug.com/371998381): Take the traffic secrets as input and let the
+  // function create the SSLAEADContext.
   bool (*set_write_state)(SSL *ssl, ssl_encryption_level_t level,
                           UniquePtr<SSLAEADContext> aead_ctx,
-                          Span<const uint8_t> secret_for_quic);
+                          Span<const uint8_t> traffic_secret);
 };
 
 // The following wrappers call |open_*| but handle |read_shutdown| correctly.
@@ -3268,19 +3336,25 @@ struct OPENSSL_timeval {
   uint32_t tv_usec;
 };
 
-// A DTLSEpochState object contains state about a DTLS epoch.
-struct DTLSEpochState {
-  static constexpr bool kAllowUniquePtr = true;
-
-  UniquePtr<SSLAEADContext> aead_write_ctx;
-  uint64_t write_sequence = 0;
-};
+// DTLS_MAX_EXTRA_WRITE_EPOCHS is the maximum number of additional write epochs
+// that DTLS may need to retain.
+//
+// The maximum is, as a DTLS 1.3 server, immediately after sending Finished. At
+// this point, the current epoch is the application write keys (epoch 3), but we
+// may have ServerHello (epoch 0) and EncryptedExtensions (epoch 1) to
+// retransmit. KeyUpdate does not increase this count. If the server were to
+// initiate KeyUpdate from this state, it would not apply the new epoch until
+// the client's ACKs have caught up. At that point, epochs 0 and 1 can be
+// discarded.
+#define DTLS_MAX_EXTRA_WRITE_EPOCHS 2
 
 struct DTLS1_STATE {
   static constexpr bool kAllowUniquePtr = true;
 
   DTLS1_STATE();
   ~DTLS1_STATE();
+
+  bool Init();
 
   // has_change_cipher_spec is true if we have received a ChangeCipherSpec from
   // the peer in this epoch.
@@ -3296,23 +3370,22 @@ struct DTLS1_STATE {
   // peer sent the final flight.
   bool flight_has_reply : 1;
 
-  // The current data and handshake epoch.  This is initially undefined, and
-  // starts at zero once the initial handshake is completed.
-  uint16_t r_epoch = 0;
-  uint16_t w_epoch = 0;
-
-  // records being received in the current epoch
-  DTLS1_BITMAP bitmap;
-
   uint16_t handshake_write_seq = 0;
   uint16_t handshake_read_seq = 0;
 
-  // state from the last epoch
-  DTLSEpochState last_epoch_state;
+  // read_epoch is the current DTLS read epoch.
+  // TODO(crbug.com/42290594): DTLS 1.3 will require that we also store the next
+  // epoch, and switch over on the first record from the new epoch.
+  DTLSReadEpoch read_epoch;
 
-  // In DTLS 1.3, this contains the write AEAD for the initial encryption level.
-  // TODO(crbug.com/boringssl/715): Drop this when it is no longer needed.
-  UniquePtr<DTLSEpochState> initial_epoch_state;
+  // write_epoch is the current DTLS write epoch. Non-retransmit records will
+  // generally use this epoch.
+  // TODO(crbug.com/42290594): 0-RTT will be the exception, when implemented.
+  DTLSWriteEpoch write_epoch;
+
+  // extra_write_epochs is the collection available write epochs.
+  InplaceVector<UniquePtr<DTLSWriteEpoch>, DTLS_MAX_EXTRA_WRITE_EPOCHS>
+      extra_write_epochs;
 
   // incoming_messages is a ring buffer of incoming handshake messages that have
   // yet to be processed. The front of the ring buffer is message number

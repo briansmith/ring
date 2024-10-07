@@ -315,7 +315,14 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
     }
 
     // The encrypted epoch in DTLS has only one handshake message.
-    if (ssl->d1->r_epoch == 1 && msg_hdr.seq != ssl->d1->handshake_read_seq) {
+    //
+    // TODO(crbug.com/42290594): This check doesn't make any sense in DTLS 1.3,
+    // but is currently a no-op because epoch 1 is 0-RTT. Revisit this and
+    // figure out if we need to change anything. See
+    // https://boringssl-review.googlesource.com/c/boringssl/+/8988 for when
+    // this check was added.
+    if (ssl->d1->read_epoch.epoch == 1 &&
+        msg_hdr.seq != ssl->d1->handshake_read_seq) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
       *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
       return false;
@@ -361,7 +368,11 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
   switch (type) {
     case SSL3_RT_APPLICATION_DATA:
       // Unencrypted application data records are always illegal.
-      if (ssl->s3->aead_read_ctx->is_null_cipher()) {
+      //
+      // TODO(crbug.com/42290594): Revisit both of these checks for DTLS 1.3.
+      // Many more epochs cannot have application data, and there is a key
+      // change immediately before the first application data record.
+      if (ssl->d1->read_epoch.epoch == 0) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
         *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
         return ssl_open_record_error;
@@ -374,7 +385,7 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
     case SSL3_RT_CHANGE_CIPHER_SPEC:
       // We do not support renegotiation, so encrypted ChangeCipherSpec records
       // are illegal.
-      if (!ssl->s3->aead_read_ctx->is_null_cipher()) {
+      if (ssl->d1->read_epoch.epoch != 0) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
         *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
         return ssl_open_record_error;
@@ -387,6 +398,7 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
       }
 
       // Flag the ChangeCipherSpec for later.
+      // TODO(crbug.com/42290594): Should we reject this in DTLS 1.3?
       ssl->d1->has_change_cipher_spec = true;
       ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_CHANGE_CIPHER_SPEC,
                           record);
@@ -497,6 +509,26 @@ void dtls_clear_outgoing_messages(SSL *ssl) {
   ssl->d1->outgoing_offset = 0;
   ssl->d1->outgoing_messages_complete = false;
   ssl->d1->flight_has_reply = false;
+  dtls_clear_unused_write_epochs(ssl);
+}
+
+void dtls_clear_unused_write_epochs(SSL *ssl) {
+  ssl->d1->extra_write_epochs.EraseIf(
+      [ssl](const UniquePtr<DTLSWriteEpoch> &write_epoch) -> bool {
+        // Non-current epochs may be discarded once there are no outgoing
+        // messages that reference them.
+        //
+        // TODO(crbug.com/42290594): If |msg| has been fully ACKed, its epoch
+        // may be discarded.
+        // TODO(crbug.com/42290594): Epoch 1 (0-RTT) should be retained until
+        // epoch 3 (app data) is available.
+        for (const auto &msg : ssl->d1->outgoing_messages) {
+          if (msg.epoch == write_epoch->epoch) {
+            return false;
+          }
+        }
+        return true;
+      });
 }
 
 bool dtls1_init_message(const SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
@@ -550,7 +582,7 @@ static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
 
   DTLS_OUTGOING_MESSAGE msg;
   msg.data = std::move(data);
-  msg.epoch = ssl->d1->w_epoch;
+  msg.epoch = ssl->d1->write_epoch.epoch;
   msg.is_ccs = is_ccs;
   if (!ssl->d1->outgoing_messages.TryPushBack(std::move(msg))) {
     assert(false);
