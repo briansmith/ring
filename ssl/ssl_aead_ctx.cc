@@ -68,72 +68,66 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
     return nullptr;
   }
 
+  UniquePtr<SSLAEADContext> aead_ctx = MakeUnique<SSLAEADContext>(cipher);
+  if (!aead_ctx) {
+    return nullptr;
+  }
+
   uint8_t merged_key[EVP_AEAD_MAX_KEY_LENGTH];
-  if (!mac_key.empty()) {
-    // This is a "stateful" AEAD (for compatibility with pre-AEAD cipher
-    // suites).
-    if (mac_key.size() + enc_key.size() + fixed_iv.size() >
-        sizeof(merged_key)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return nullptr;
+  assert(EVP_AEAD_nonce_length(aead) <= EVP_AEAD_MAX_NONCE_LENGTH);
+  static_assert(EVP_AEAD_MAX_NONCE_LENGTH < 256,
+                "variable_nonce_len doesn't fit in uint8_t");
+  aead_ctx->variable_nonce_len_ = (uint8_t)EVP_AEAD_nonce_length(aead);
+  if (mac_key.empty()) {
+    // This is an actual AEAD.
+    assert(fixed_iv.size() <= sizeof(aead_ctx->fixed_nonce_));
+    OPENSSL_memcpy(aead_ctx->fixed_nonce_, fixed_iv.data(), fixed_iv.size());
+    aead_ctx->fixed_nonce_len_ = fixed_iv.size();
+
+    if (protocol_version >= TLS1_3_VERSION ||
+        cipher->algorithm_enc & SSL_CHACHA20POLY1305) {
+      // TLS 1.3, and TLS 1.2 ChaCha20-Poly1305, XOR the fixed IV with the
+      // sequence number to form the nonce.
+      aead_ctx->xor_fixed_nonce_ = true;
+      aead_ctx->variable_nonce_len_ = 8;
+      assert(fixed_iv.size() >= aead_ctx->variable_nonce_len_);
+    } else {
+      // TLS 1.2 AES-GCM prepends the fixed IV to an explicit nonce.
+      assert(fixed_iv.size() <= aead_ctx->variable_nonce_len_);
+      assert(cipher->algorithm_enc & (SSL_AES128GCM | SSL_AES256GCM));
+      aead_ctx->variable_nonce_len_ -= fixed_iv.size();
+      aead_ctx->variable_nonce_included_in_record_ = true;
     }
+
+    // Starting TLS 1.3, the AAD is the whole record header.
+    if (protocol_version >= TLS1_3_VERSION) {
+      aead_ctx->ad_is_header_ = true;
+    }
+  } else {
+    // This is a CBC cipher suite that implements the |EVP_AEAD| interface. The
+    // |EVP_AEAD| takes the MAC key, encryption key, and fixed IV concatenated
+    // as its input key.
+    assert(protocol_version < TLS1_3_VERSION);
+    BSSL_CHECK(mac_key.size() + enc_key.size() + fixed_iv.size() <=
+               sizeof(merged_key));
     OPENSSL_memcpy(merged_key, mac_key.data(), mac_key.size());
     OPENSSL_memcpy(merged_key + mac_key.size(), enc_key.data(), enc_key.size());
     OPENSSL_memcpy(merged_key + mac_key.size() + enc_key.size(),
                    fixed_iv.data(), fixed_iv.size());
     enc_key = MakeConstSpan(merged_key,
                             enc_key.size() + mac_key.size() + fixed_iv.size());
-  }
 
-  UniquePtr<SSLAEADContext> aead_ctx = MakeUnique<SSLAEADContext>(cipher);
-  if (!aead_ctx) {
-    return nullptr;
+    // The |EVP_AEAD|'s per-encryption nonce, if any, is actually the CBC IV. It
+    // must be generated randomly and prepended to the record.
+    aead_ctx->variable_nonce_included_in_record_ = true;
+    aead_ctx->random_variable_nonce_ = true;
+    aead_ctx->omit_length_in_ad_ = true;
   }
 
   if (!EVP_AEAD_CTX_init_with_direction(
           aead_ctx->ctx_.get(), aead, enc_key.data(), enc_key.size(),
           EVP_AEAD_DEFAULT_TAG_LENGTH, direction)) {
     return nullptr;
-  }
-
-  assert(EVP_AEAD_nonce_length(aead) <= EVP_AEAD_MAX_NONCE_LENGTH);
-  static_assert(EVP_AEAD_MAX_NONCE_LENGTH < 256,
-                "variable_nonce_len doesn't fit in uint8_t");
-  aead_ctx->variable_nonce_len_ = (uint8_t)EVP_AEAD_nonce_length(aead);
-  if (mac_key.empty()) {
-    assert(fixed_iv.size() <= sizeof(aead_ctx->fixed_nonce_));
-    OPENSSL_memcpy(aead_ctx->fixed_nonce_, fixed_iv.data(), fixed_iv.size());
-    aead_ctx->fixed_nonce_len_ = fixed_iv.size();
-
-    if (cipher->algorithm_enc & SSL_CHACHA20POLY1305) {
-      // The fixed nonce into the actual nonce (the sequence number).
-      aead_ctx->xor_fixed_nonce_ = true;
-      aead_ctx->variable_nonce_len_ = 8;
-    } else {
-      // The fixed IV is prepended to the nonce.
-      assert(fixed_iv.size() <= aead_ctx->variable_nonce_len_);
-      aead_ctx->variable_nonce_len_ -= fixed_iv.size();
-    }
-
-    // AES-GCM uses an explicit nonce.
-    if (cipher->algorithm_enc & (SSL_AES128GCM | SSL_AES256GCM)) {
-      aead_ctx->variable_nonce_included_in_record_ = true;
-    }
-
-    // The TLS 1.3 construction XORs the fixed nonce into the sequence number
-    // and omits the additional data.
-    if (protocol_version >= TLS1_3_VERSION) {
-      aead_ctx->xor_fixed_nonce_ = true;
-      aead_ctx->variable_nonce_len_ = 8;
-      aead_ctx->variable_nonce_included_in_record_ = false;
-      aead_ctx->ad_is_header_ = true;
-      assert(fixed_iv.size() >= aead_ctx->variable_nonce_len_);
-    }
-  } else {
-    assert(protocol_version < TLS1_3_VERSION);
-    aead_ctx->variable_nonce_included_in_record_ = true;
-    aead_ctx->random_variable_nonce_ = true;
-    aead_ctx->omit_length_in_ad_ = true;
   }
 
   return aead_ctx;
