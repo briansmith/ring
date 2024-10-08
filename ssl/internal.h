@@ -189,6 +189,32 @@ struct SSL_X509_METHOD;
 
 // C++ utilities.
 
+// Fill-ins for various functions in C++17.
+// TODO(crbug.com/42290600): Replace these with the standard ones when we
+// require C++17.
+
+template <typename ForwardIt>
+ForwardIt cxx17_uninitialized_default_construct_n(ForwardIt first, size_t n) {
+  using T = typename std::iterator_traits<ForwardIt>::value_type;
+  while (n > 0) {
+    new (std::addressof(*first)) T;
+    first++;
+    n--;
+  }
+  return first;
+}
+
+template <typename ForwardIt>
+ForwardIt cxx17_destroy_n(ForwardIt first, size_t n) {
+  using T = typename std::iterator_traits<ForwardIt>::value_type;
+  while (n > 0) {
+    first->~T();
+    first++;
+    n--;
+  }
+  return first;
+}
+
 // New behaves like |new| but uses |OPENSSL_malloc| for memory allocation. It
 // returns nullptr on allocation error. It only implements single-object
 // allocation and not new T[n].
@@ -266,9 +292,7 @@ class Array {
   // Reset releases the current contents of the array and takes ownership of the
   // raw pointer supplied by the caller.
   void Reset(T *new_data, size_t new_size) {
-    for (size_t i = 0; i < size_; i++) {
-      data_[i].~T();
-    }
+    cxx17_destroy_n(data_, size_);
     OPENSSL_free(data_);
     data_ = new_data;
     size_ = new_size;
@@ -289,6 +313,38 @@ class Array {
   //
   // Note that if |T| is a primitive type like |uint8_t|, it is uninitialized.
   bool Init(size_t new_size) {
+    if (!InitUninitialized(new_size)) {
+      return false;
+    }
+    cxx17_uninitialized_default_construct_n(data_, size_);
+    return true;
+  }
+
+  // CopyFrom replaces the array with a newly-allocated copy of |in|. It returns
+  // true on success and false on error.
+  bool CopyFrom(Span<const T> in) {
+    if (!InitUninitialized(in.size())) {
+      return false;
+    }
+    std::uninitialized_copy(in.begin(), in.end(), data_);
+    return true;
+  }
+
+  // Shrink shrinks the stored size of the array to |new_size|. It crashes if
+  // the new size is larger. Note this does not shrink the allocation itself.
+  void Shrink(size_t new_size) {
+    if (new_size > size_) {
+      abort();
+    }
+    cxx17_destroy_n(data_ + new_size, size_ - new_size);
+    size_ = new_size;
+  }
+
+ private:
+  // InitUninitialized replaces the array with a newly-allocated array of
+  // |new_size| elements, but whose constructor has not yet run. On success, the
+  // elements must be constructed before returning control to the caller.
+  bool InitUninitialized(size_t new_size) {
     Reset();
     if (new_size == 0) {
       return true;
@@ -303,35 +359,9 @@ class Array {
       return false;
     }
     size_ = new_size;
-    for (size_t i = 0; i < size_; i++) {
-      new (&data_[i]) T;
-    }
     return true;
   }
 
-  // CopyFrom replaces the array with a newly-allocated copy of |in|. It returns
-  // true on success and false on error.
-  bool CopyFrom(Span<const T> in) {
-    if (!Init(in.size())) {
-      return false;
-    }
-    std::copy(in.begin(), in.end(), data_);
-    return true;
-  }
-
-  // Shrink shrinks the stored size of the array to |new_size|. It crashes if
-  // the new size is larger. Note this does not shrink the allocation itself.
-  void Shrink(size_t new_size) {
-    if (new_size > size_) {
-      abort();
-    }
-    for (size_t i = new_size; i < size_; i++) {
-      data_[i].~T();
-    }
-    size_ = new_size;
-  }
-
- private:
   T *data_ = nullptr;
   size_t size_ = 0;
 };
