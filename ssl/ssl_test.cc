@@ -587,6 +587,16 @@ TEST(VectorTest, Resize) {
   for (size_t i = 0; i < vec.size(); i++) {
     EXPECT_EQ(vec[i], i == 0 ? 42 : i);
   }
+
+  // Clearing the vector should give an empty one.
+  vec.clear();
+  ASSERT_TRUE(vec.empty());
+  EXPECT_EQ(vec.size(), 0u);
+
+  ASSERT_TRUE(vec.Push(42));
+  ASSERT_TRUE(!vec.empty());
+  EXPECT_EQ(vec.size(), 1u);
+  EXPECT_EQ(vec[0], 42u);
 }
 
 TEST(VectorTest, MoveConstructor) {
@@ -633,6 +643,24 @@ TEST(VectorTest, VectorContainingVectors) {
     }
     count++;
   }
+}
+
+TEST(VectorTest, NotDefaultConstructible) {
+  struct NotDefaultConstructible {
+    explicit NotDefaultConstructible(size_t n) { array.Init(n); }
+    Array<int> array;
+  };
+
+  Vector<NotDefaultConstructible> vec;
+  vec.Push(NotDefaultConstructible(0));
+  vec.Push(NotDefaultConstructible(1));
+  vec.Push(NotDefaultConstructible(2));
+  vec.Push(NotDefaultConstructible(3));
+  EXPECT_EQ(vec.size(), 4u);
+  EXPECT_EQ(0u, vec[0].array.size());
+  EXPECT_EQ(1u, vec[1].array.size());
+  EXPECT_EQ(2u, vec[2].array.size());
+  EXPECT_EQ(3u, vec[3].array.size());
 }
 
 TEST(ReconstructSeqnumTest, Increment) {

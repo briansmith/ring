@@ -204,6 +204,16 @@ ForwardIt cxx17_uninitialized_default_construct_n(ForwardIt first, size_t n) {
   return first;
 }
 
+template <typename InputIt, typename OutputIt>
+InputIt cxx17_uninitialized_move(InputIt first, InputIt last, OutputIt out) {
+  using OutputT = typename std::iterator_traits<OutputIt>::value_type;
+  for (; first != last; ++first) {
+    new (std::addressof(*out)) OutputT(std::move(*first));
+    ++out;
+  }
+  return out;
+}
+
 template <typename ForwardIt>
 ForwardIt cxx17_destroy_n(ForwardIt first, size_t n) {
   using T = typename std::iterator_traits<ForwardIt>::value_type;
@@ -367,42 +377,42 @@ class Array {
 };
 
 // Vector<T> is a resizable array of elements of |T|.
-//
-// Note, for simplicity, this class currently differs from |std::vector| in that
-// |T| must be efficiently default-constructible. Allocated elements beyond the
-// end of the array are constructed and destructed.
 template <typename T>
 class Vector {
  public:
   Vector() = default;
   Vector(const Vector &) = delete;
   Vector(Vector &&other) { *this = std::move(other); }
-  ~Vector() {}
+  ~Vector() { clear(); }
 
   Vector &operator=(const Vector &) = delete;
   Vector &operator=(Vector &&other) {
-    size_ = other.size_;
-    other.size_ = 0;
-    array_ = std::move(other.array_);
+    clear();
+    std::swap(data_, other.data_);
+    std::swap(size_, other.size_);
+    std::swap(capacity_, other.capacity_);
     return *this;
   }
 
-  const T *data() const { return array_.data(); }
-  T *data() { return array_.data(); }
+  const T *data() const { return data_; }
+  T *data() { return data_; }
   size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
 
-  const T &operator[](size_t i) const { return array_[i]; }
-  T &operator[](size_t i) { return array_[i]; }
+  const T &operator[](size_t i) const { return data_[i]; }
+  T &operator[](size_t i) { return data_[i]; }
 
-  T *begin() { return array_.data(); }
-  const T *begin() const { return array_.data(); }
-  T *end() { return array_.data() + size_; }
-  const T *end() const { return array_.data() + size_; }
+  T *begin() { return data_; }
+  const T *begin() const { return data_; }
+  T *end() { return data_ + size_; }
+  const T *end() const { return data_ + size_; }
 
   void clear() {
+    cxx17_destroy_n(data_, size_);
+    OPENSSL_free(data_);
+    data_ = nullptr;
     size_ = 0;
-    array_.Reset();
+    capacity_ = 0;
   }
 
   // Push adds |elem| at the end of the internal array, growing if necessary. It
@@ -411,7 +421,7 @@ class Vector {
     if (!MaybeGrow()) {
       return false;
     }
-    array_[size_] = std::move(elem);
+    new (&data_[size_]) T(std::move(elem));
     size_++;
     return true;
   }
@@ -419,10 +429,14 @@ class Vector {
   // CopyFrom replaces the contents of the array with a copy of |in|. It returns
   // true on success and false on allocation error.
   bool CopyFrom(Span<const T> in) {
-    if (!array_.CopyFrom(in)) {
+    Array<T> copy;
+    if (!copy.CopyFrom(in)) {
       return false;
     }
-    size_ = in.size();
+
+    clear();
+    copy.Release(&data_, &size_);
+    capacity_ = size_;
     return true;
   }
 
@@ -430,35 +444,44 @@ class Vector {
   // If there is no room for one more element, creates a new backing array with
   // double the size of the old one and copies elements over.
   bool MaybeGrow() {
-    if (array_.size() == 0) {
-      return array_.Init(kDefaultSize);
-    }
     // No need to grow if we have room for one more T.
-    if (size_ < array_.size()) {
+    if (size_ < capacity_) {
       return true;
     }
-    // Double the array's size if it's safe to do so.
-    if (array_.size() > std::numeric_limits<size_t>::max() / 2) {
+    size_t new_capacity = kDefaultSize;
+    if (capacity_ > 0) {
+      // Double the array's size if it's safe to do so.
+      if (capacity_ > std::numeric_limits<size_t>::max() / 2) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+        return false;
+      }
+      new_capacity = capacity_ * 2;
+    }
+    if (new_capacity > std::numeric_limits<size_t>::max() / sizeof(T)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
       return false;
     }
-    Array<T> new_array;
-    if (!new_array.Init(array_.size() * 2)) {
+    T *new_data =
+        reinterpret_cast<T *>(OPENSSL_malloc(new_capacity * sizeof(T)));
+    if (new_data == nullptr) {
       return false;
     }
-    for (size_t i = 0; i < array_.size(); i++) {
-      new_array[i] = std::move(array_[i]);
-    }
-    array_ = std::move(new_array);
-
+    size_t new_size = size_;
+    cxx17_uninitialized_move(begin(), end(), new_data);
+    clear();
+    data_ = new_data;
+    size_ = new_size;
+    capacity_ = new_capacity;
     return true;
   }
 
+  // data_ is a pointer to |capacity_| objects of size |T|, the first |size_| of
+  // which are constructed.
+  T *data_ = nullptr;
   // |size_| is the number of elements stored in this Vector.
   size_t size_ = 0;
-  // |array_| is the backing array. Note that |array_.size()| is this
-  // Vector's current capacity and that |size_ <= array_.size()|.
-  Array<T> array_;
+  // |capacity_| is the number of elements allocated in this Vector.
+  size_t capacity_ = 0;
   // |kDefaultSize| is the default initial size of the backing array.
   static constexpr size_t kDefaultSize = 16;
 };
