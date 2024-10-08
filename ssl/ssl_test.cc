@@ -567,6 +567,13 @@ static bool CipherListsEqual(SSL_CTX *ctx,
   return true;
 }
 
+TEST(ArrayDeathTest, BoundsChecks) {
+  Array<int> array;
+  const int v[] = {1, 2, 3, 4};
+  ASSERT_TRUE(array.CopyFrom(v));
+  EXPECT_DEATH_IF_SUPPORTED(array[4], "");
+}
+
 TEST(VectorTest, Resize) {
   Vector<size_t> vec;
   ASSERT_TRUE(vec.empty());
@@ -661,6 +668,15 @@ TEST(VectorTest, NotDefaultConstructible) {
   EXPECT_EQ(1u, vec[1].array.size());
   EXPECT_EQ(2u, vec[2].array.size());
   EXPECT_EQ(3u, vec[3].array.size());
+}
+
+TEST(VectorDeathTest, BoundsChecks) {
+  Vector<int> vec;
+  ASSERT_TRUE(vec.Push(1));
+  // Within bounds of the capacity, but not the vector.
+  EXPECT_DEATH_IF_SUPPORTED(vec[1], "");
+  // Not within bounds of the capacity either.
+  EXPECT_DEATH_IF_SUPPORTED(vec[10000], "");
 }
 
 TEST(ReconstructSeqnumTest, Increment) {

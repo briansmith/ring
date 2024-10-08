@@ -98,5 +98,22 @@ TEST(SpanTest, ConstExpr) {
   static_assert(span2[0] == 1, "wrong value");
 }
 
+TEST(SpanDeathTest, BoundsChecks) {
+  // Make an array that's larger than we need, so that a failure to bounds check
+  // won't crash.
+  const int v[] = {1, 2, 3, 4};
+  Span<const int> span(v, 3);
+  // Out of bounds access.
+  EXPECT_DEATH_IF_SUPPORTED(span[3], "");
+  EXPECT_DEATH_IF_SUPPORTED(span.subspan(4), "");
+  EXPECT_DEATH_IF_SUPPORTED(span.first(4), "");
+  EXPECT_DEATH_IF_SUPPORTED(span.last(4), "");
+  // Accessing an empty span.
+  Span<const int> empty(v, 0);
+  EXPECT_DEATH_IF_SUPPORTED(empty[0], "");
+  EXPECT_DEATH_IF_SUPPORTED(empty.front(), "");
+  EXPECT_DEATH_IF_SUPPORTED(empty.back(), "");
+}
+
 }  // namespace
 BSSL_NAMESPACE_END

@@ -289,8 +289,14 @@ class Array {
   size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
 
-  const T &operator[](size_t i) const { return data_[i]; }
-  T &operator[](size_t i) { return data_[i]; }
+  const T &operator[](size_t i) const {
+    BSSL_CHECK(i < size_);
+    return data_[i];
+  }
+  T &operator[](size_t i) {
+    BSSL_CHECK(i < size_);
+    return data_[i];
+  }
 
   T *begin() { return data_; }
   const T *begin() const { return data_; }
@@ -399,8 +405,14 @@ class Vector {
   size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
 
-  const T &operator[](size_t i) const { return data_[i]; }
-  T &operator[](size_t i) { return data_[i]; }
+  const T &operator[](size_t i) const {
+    BSSL_CHECK(i < size_);
+    return data_[i];
+  }
+  T &operator[](size_t i) {
+    BSSL_CHECK(i < size_);
+    return data_[i];
+  }
 
   T *begin() { return data_; }
   const T *begin() const { return data_; }
