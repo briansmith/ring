@@ -608,6 +608,18 @@ class InplaceVector {
     return true;
   }
 
+  // TryPushBack appends |val| to the vector and returns a pointer to the
+  // newly-inserted value, or nullptr if the vector is at capacity.
+  T *TryPushBack(T val) {
+    if (size() >= capacity()) {
+      return nullptr;
+    }
+    T *ret = &data()[size_];
+    new (ret) T(std::move(val));
+    size_++;
+    return ret;
+  }
+
   // The following methods behave like their |Try*| counterparts, but abort the
   // program on failure.
   void Resize(size_t size) { BSSL_CHECK(TryResize(size)); }
@@ -615,6 +627,11 @@ class InplaceVector {
     BSSL_CHECK(TryResizeMaybeUninit(size));
   }
   void CopyFrom(Span<const T> in) { BSSL_CHECK(TryCopyFrom(in)); }
+  T &PushBack(T val) {
+    T *ret = TryPushBack(std::move(val));
+    BSSL_CHECK(ret != nullptr);
+    return *ret;
+  }
 
  private:
   alignas(T) char storage_[sizeof(T[N])];
@@ -1458,12 +1475,6 @@ bool dtls_has_unprocessed_handshake_data(const SSL *ssl);
 bool tls_flush_pending_hs_data(SSL *ssl);
 
 struct DTLS_OUTGOING_MESSAGE {
-  DTLS_OUTGOING_MESSAGE() {}
-  DTLS_OUTGOING_MESSAGE(const DTLS_OUTGOING_MESSAGE &) = delete;
-  DTLS_OUTGOING_MESSAGE &operator=(const DTLS_OUTGOING_MESSAGE &) = delete;
-
-  void Clear();
-
   Array<uint8_t> data;
   uint16_t epoch = 0;
   bool is_ccs = false;
@@ -3294,8 +3305,8 @@ struct DTLS1_STATE {
 
   // outgoing_messages is the queue of outgoing messages from the last handshake
   // flight.
-  DTLS_OUTGOING_MESSAGE outgoing_messages[SSL_MAX_HANDSHAKE_FLIGHT];
-  uint8_t outgoing_messages_len = 0;
+  InplaceVector<DTLS_OUTGOING_MESSAGE, SSL_MAX_HANDSHAKE_FLIGHT>
+      outgoing_messages;
 
   // outgoing_written is the number of outgoing messages that have been
   // written.

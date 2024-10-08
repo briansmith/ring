@@ -794,6 +794,12 @@ TEST(InplaceVectorTest, ComplexType) {
   for (const auto &vec : vec_of_vecs4) {
     EXPECT_TRUE(vec.empty());
   }
+
+  std::vector<int> v = {42};
+  vec_of_vecs5.Resize(3);
+  EXPECT_TRUE(vec_of_vecs5.TryPushBack(v));
+  EXPECT_EQ(v, vec_of_vecs5[3]);
+  EXPECT_FALSE(vec_of_vecs5.TryPushBack(v));
 }
 
 TEST(InplaceVectorDeathTest, BoundsChecks) {
@@ -811,6 +817,8 @@ TEST(InplaceVectorDeathTest, BoundsChecks) {
   EXPECT_DEATH_IF_SUPPORTED(vec.ResizeMaybeUninit(5), "");
   int too_much_data[] = {1, 2, 3, 4, 5};
   EXPECT_DEATH_IF_SUPPORTED(vec.CopyFrom(too_much_data), "");
+  vec.Resize(4);
+  EXPECT_DEATH_IF_SUPPORTED(vec.PushBack(42), "");
 }
 
 TEST(ReconstructSeqnumTest, Increment) {

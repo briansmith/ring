@@ -483,13 +483,8 @@ ssl_open_record_t dtls1_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
 
 // Sending handshake messages.
 
-void DTLS_OUTGOING_MESSAGE::Clear() { data.Reset(); }
-
 void dtls_clear_outgoing_messages(SSL *ssl) {
-  for (size_t i = 0; i < ssl->d1->outgoing_messages_len; i++) {
-    ssl->d1->outgoing_messages[i].Clear();
-  }
-  ssl->d1->outgoing_messages_len = 0;
+  ssl->d1->outgoing_messages.clear();
   ssl->d1->outgoing_written = 0;
   ssl->d1->outgoing_offset = 0;
   ssl->d1->outgoing_messages_complete = false;
@@ -524,20 +519,6 @@ bool dtls1_finish_message(const SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg) {
   return true;
 }
 
-// ssl_size_t_greater_than_32_bits returns whether |v| exceeds the bounds of a
-// 32-bit value. The obvious thing doesn't work because, in some 32-bit build
-// configurations, the compiler warns that the test is always false and breaks
-// the build.
-static bool ssl_size_t_greater_than_32_bits(size_t v) {
-#if defined(OPENSSL_64_BIT)
-  return v > 0xffffffff;
-#elif defined(OPENSSL_32_BIT)
-  return false;
-#else
-#error "Building for neither 32- nor 64-bits."
-#endif
-}
-
 // add_outgoing adds a new handshake message or ChangeCipherSpec to the current
 // outgoing flight. It returns true on success and false on error.
 static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
@@ -546,16 +527,6 @@ static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
     // the timer and the our flight.
     dtls1_stop_timer(ssl);
     dtls_clear_outgoing_messages(ssl);
-  }
-
-  static_assert(SSL_MAX_HANDSHAKE_FLIGHT <
-                    (1 << 8 * sizeof(ssl->d1->outgoing_messages_len)),
-                "outgoing_messages_len is too small");
-  if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT ||
-      ssl_size_t_greater_than_32_bits(data.size())) {
-    assert(false);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
   }
 
   if (!is_ccs) {
@@ -569,13 +540,16 @@ static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
     ssl->d1->handshake_write_seq++;
   }
 
-  DTLS_OUTGOING_MESSAGE *msg =
-      &ssl->d1->outgoing_messages[ssl->d1->outgoing_messages_len];
-  msg->data = std::move(data);
-  msg->epoch = ssl->d1->w_epoch;
-  msg->is_ccs = is_ccs;
+  DTLS_OUTGOING_MESSAGE msg;
+  msg.data = std::move(data);
+  msg.epoch = ssl->d1->w_epoch;
+  msg.is_ccs = is_ccs;
+  if (!ssl->d1->outgoing_messages.TryPushBack(std::move(msg))) {
+    assert(false);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
 
-  ssl->d1->outgoing_messages_len++;
   return true;
 }
 
@@ -626,7 +600,7 @@ enum seal_result_t {
 static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
                                             size_t *out_len, size_t max_out,
                                             const DTLS_OUTGOING_MESSAGE *msg) {
-  assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages_len);
+  assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size());
   assert(msg == &ssl->d1->outgoing_messages[ssl->d1->outgoing_written]);
 
   size_t overhead = dtls_max_seal_overhead(ssl, msg->epoch);
@@ -715,8 +689,8 @@ static bool seal_next_packet(SSL *ssl, uint8_t *out, size_t *out_len,
                              size_t max_out) {
   bool made_progress = false;
   size_t total = 0;
-  assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages_len);
-  for (; ssl->d1->outgoing_written < ssl->d1->outgoing_messages_len;
+  assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size());
+  for (; ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size();
        ssl->d1->outgoing_written++) {
     const DTLS_OUTGOING_MESSAGE *msg =
         &ssl->d1->outgoing_messages[ssl->d1->outgoing_written];
@@ -772,7 +746,7 @@ static int send_flight(SSL *ssl) {
     return -1;
   }
 
-  while (ssl->d1->outgoing_written < ssl->d1->outgoing_messages_len) {
+  while (ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size()) {
     uint8_t old_written = ssl->d1->outgoing_written;
     uint32_t old_offset = ssl->d1->outgoing_offset;
 
