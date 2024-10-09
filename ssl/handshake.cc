@@ -164,13 +164,6 @@ SSL_HANDSHAKE::~SSL_HANDSHAKE() {
   ssl->ctx->x509_method->hs_flush_cached_ca_names(this);
 }
 
-void SSL_HANDSHAKE::ResizeSecrets(size_t hash_len) {
-  if (hash_len > SSL_MAX_MD_SIZE) {
-    abort();
-  }
-  hash_len_ = hash_len;
-}
-
 bool SSL_HANDSHAKE::GetClientHello(SSLMessage *out_msg,
                                    SSL_CLIENT_HELLO *out_client_hello) {
   if (!ech_client_hello_buf.empty()) {

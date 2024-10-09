@@ -93,7 +93,7 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
       assert(level == ssl_encryption_handshake);
       if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
                                  hs->new_session.get(),
-                                 hs->client_handshake_secret())) {
+                                 hs->client_handshake_secret)) {
         return false;
       }
     }
@@ -529,14 +529,14 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   if (!hs->in_early_data || ssl->quic_method != nullptr) {
     if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
                                hs->new_session.get(),
-                               hs->client_handshake_secret())) {
+                               hs->client_handshake_secret)) {
       return ssl_hs_error;
     }
   }
 
   if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
                              hs->new_session.get(),
-                             hs->server_handshake_secret())) {
+                             hs->server_handshake_secret)) {
     return ssl_hs_error;
   }
 
@@ -959,10 +959,10 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
   // Derive the final keys and enable them.
   if (!tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
                              hs->new_session.get(),
-                             hs->client_traffic_secret_0()) ||
+                             hs->client_traffic_secret_0) ||
       !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_open,
                              hs->new_session.get(),
-                             hs->server_traffic_secret_0()) ||
+                             hs->server_traffic_secret_0) ||
       !tls13_derive_resumption_secret(hs)) {
     return ssl_hs_error;
   }

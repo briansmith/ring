@@ -852,7 +852,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   if (!tls13_derive_handshake_secrets(hs) ||
       !tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
                              hs->new_session.get(),
-                             hs->server_handshake_secret())) {
+                             hs->server_handshake_secret)) {
     return ssl_hs_error;
   }
 
@@ -953,7 +953,7 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
       !tls13_derive_application_secrets(hs) ||
       !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
                              hs->new_session.get(),
-                             hs->server_traffic_secret_0())) {
+                             hs->server_traffic_secret_0)) {
     return ssl_hs_error;
   }
 
@@ -978,28 +978,27 @@ static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
     }
 
     size_t finished_len;
-    if (!tls13_finished_mac(hs, hs->expected_client_finished().data(),
+    hs->expected_client_finished.Resize(hs->transcript.DigestLen());
+    if (!tls13_finished_mac(hs, hs->expected_client_finished.data(),
                             &finished_len, false /* client */)) {
       return ssl_hs_error;
     }
 
-    if (finished_len != hs->expected_client_finished().size()) {
+    if (finished_len != hs->expected_client_finished.size()) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return ssl_hs_error;
     }
 
     // Feed the predicted Finished into the transcript. This allows us to derive
     // the resumption secret early and send half-RTT tickets.
-    //
-    // TODO(davidben): This will need to be updated for DTLS 1.3.
     assert(!SSL_is_dtls(hs->ssl));
-    assert(hs->expected_client_finished().size() <= 0xff);
+    assert(hs->expected_client_finished.size() <= 0xff);
     uint8_t header[4] = {
         SSL3_MT_FINISHED, 0, 0,
-        static_cast<uint8_t>(hs->expected_client_finished().size())};
+        static_cast<uint8_t>(hs->expected_client_finished.size())};
     bool unused_sent_tickets;
     if (!hs->transcript.Update(header) ||
-        !hs->transcript.Update(hs->expected_client_finished()) ||
+        !hs->transcript.Update(hs->expected_client_finished) ||
         !tls13_derive_resumption_secret(hs) ||
         !add_new_session_tickets(hs, &unused_sent_tickets)) {
       return ssl_hs_error;
@@ -1021,7 +1020,7 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
   if (ssl->s3->early_data_accepted) {
     if (!tls13_set_traffic_key(ssl, ssl_encryption_early_data, evp_aead_open,
                                hs->new_session.get(),
-                               hs->early_traffic_secret())) {
+                               hs->early_traffic_secret)) {
       return ssl_hs_error;
     }
     hs->can_early_write = true;
@@ -1034,7 +1033,7 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
   if (!uses_end_of_early_data(ssl)) {
     if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
                                hs->new_session.get(),
-                               hs->client_handshake_secret())) {
+                               hs->client_handshake_secret)) {
       return ssl_hs_error;
     }
     hs->tls13_state = state13_process_end_of_early_data;
@@ -1070,7 +1069,7 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
     }
     if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
                                hs->new_session.get(),
-                               hs->client_handshake_secret())) {
+                               hs->client_handshake_secret)) {
       return ssl_hs_error;
     }
   }
@@ -1238,7 +1237,7 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
       // evp_aead_seal keys have already been switched.
       !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_open,
                              hs->new_session.get(),
-                             hs->client_traffic_secret_0())) {
+                             hs->client_traffic_secret_0)) {
     return ssl_hs_error;
   }
 

@@ -41,9 +41,8 @@ static bool init_key_schedule(SSL_HANDSHAKE *hs, SSLTranscript *transcript,
   }
 
   // Initialize the secret to the zero key.
-  hs->ResizeSecrets(transcript->DigestLen());
-  OPENSSL_memset(hs->secret().data(), 0, hs->secret().size());
-
+  hs->secret.clear();
+  hs->secret.Resize(transcript->DigestLen());
   return true;
 }
 
@@ -51,11 +50,11 @@ static bool hkdf_extract_to_secret(SSL_HANDSHAKE *hs,
                                    const SSLTranscript &transcript,
                                    Span<const uint8_t> in) {
   size_t len;
-  if (!HKDF_extract(hs->secret().data(), &len, transcript.Digest(), in.data(),
-                    in.size(), hs->secret().data(), hs->secret().size())) {
+  if (!HKDF_extract(hs->secret.data(), &len, transcript.Digest(), in.data(),
+                    in.size(), hs->secret.data(), hs->secret.size())) {
     return false;
   }
-  assert(len == hs->secret().size());
+  assert(len == hs->secret.size());
   return true;
 }
 
@@ -147,32 +146,34 @@ bool tls13_advance_key_schedule(SSL_HANDSHAKE *hs, Span<const uint8_t> in) {
   unsigned derive_context_len;
   return EVP_Digest(nullptr, 0, derive_context, &derive_context_len,
                     hs->transcript.Digest(), nullptr) &&
-         hkdf_expand_label(hs->secret(), hs->transcript.Digest(), hs->secret(),
-                           label_to_span(kTLS13LabelDerived),
+         hkdf_expand_label(MakeSpan(hs->secret), hs->transcript.Digest(),
+                           hs->secret, label_to_span(kTLS13LabelDerived),
                            MakeConstSpan(derive_context, derive_context_len),
                            SSL_is_dtls(hs->ssl)) &&
          hkdf_extract_to_secret(hs, hs->transcript, in);
 }
 
-// derive_secret_with_transcript derives a secret of length |out.size()| and
-// writes the result in |out| with the given label, the current base secret, and
-// the state of |transcript|. It returns true on success and false on error.
-static bool derive_secret_with_transcript(const SSL_HANDSHAKE *hs,
-                                          Span<uint8_t> out,
-                                          const SSLTranscript &transcript,
-                                          Span<const char> label) {
+// derive_secret_with_transcript derives a secret of length
+// |transcript.DigestLen()| and writes the result in |out| with the given label,
+// the current base secret, and the state of |transcript|. It returns true on
+// success and false on error.
+static bool derive_secret_with_transcript(
+    const SSL_HANDSHAKE *hs, InplaceVector<uint8_t, SSL_MAX_MD_SIZE> *out,
+    const SSLTranscript &transcript, Span<const char> label) {
   uint8_t context_hash[EVP_MAX_MD_SIZE];
   size_t context_hash_len;
   if (!transcript.GetHash(context_hash, &context_hash_len)) {
     return false;
   }
 
-  return hkdf_expand_label(out, transcript.Digest(), hs->secret(), label,
-                           MakeConstSpan(context_hash, context_hash_len),
+  out->ResizeMaybeUninit(transcript.DigestLen());
+  return hkdf_expand_label(MakeSpan(*out), transcript.Digest(), hs->secret,
+                           label, MakeConstSpan(context_hash, context_hash_len),
                            SSL_is_dtls(hs->ssl));
 }
 
-static bool derive_secret(SSL_HANDSHAKE *hs, Span<uint8_t> out,
+static bool derive_secret(SSL_HANDSHAKE *hs,
+                          InplaceVector<uint8_t, SSL_MAX_MD_SIZE> *out,
                           Span<const char> label) {
   return derive_secret_with_transcript(hs, out, hs->transcript, label);
 }
@@ -276,10 +277,10 @@ bool tls13_derive_early_secret(SSL_HANDSHAKE *hs) {
                                         ? hs->inner_transcript
                                         : hs->transcript;
   if (!derive_secret_with_transcript(
-          hs, hs->early_traffic_secret(), transcript,
+          hs, &hs->early_traffic_secret, transcript,
           label_to_span(kTLS13LabelClientEarlyTraffic)) ||
       !ssl_log_secret(ssl, "CLIENT_EARLY_TRAFFIC_SECRET",
-                      hs->early_traffic_secret())) {
+                      hs->early_traffic_secret)) {
     return false;
   }
   return true;
@@ -287,14 +288,14 @@ bool tls13_derive_early_secret(SSL_HANDSHAKE *hs) {
 
 bool tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!derive_secret(hs, hs->client_handshake_secret(),
+  if (!derive_secret(hs, &hs->client_handshake_secret,
                      label_to_span(kTLS13LabelClientHandshakeTraffic)) ||
       !ssl_log_secret(ssl, "CLIENT_HANDSHAKE_TRAFFIC_SECRET",
-                      hs->client_handshake_secret()) ||
-      !derive_secret(hs, hs->server_handshake_secret(),
+                      hs->client_handshake_secret) ||
+      !derive_secret(hs, &hs->server_handshake_secret,
                      label_to_span(kTLS13LabelServerHandshakeTraffic)) ||
       !ssl_log_secret(ssl, "SERVER_HANDSHAKE_TRAFFIC_SECRET",
-                      hs->server_handshake_secret())) {
+                      hs->server_handshake_secret)) {
     return false;
   }
 
@@ -303,18 +304,15 @@ bool tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs) {
 
 bool tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!derive_secret(hs, hs->client_traffic_secret_0(),
+  if (!derive_secret(hs, &hs->client_traffic_secret_0,
                      label_to_span(kTLS13LabelClientApplicationTraffic)) ||
       !ssl_log_secret(ssl, "CLIENT_TRAFFIC_SECRET_0",
-                      hs->client_traffic_secret_0()) ||
-      !derive_secret(hs, hs->server_traffic_secret_0(),
+                      hs->client_traffic_secret_0) ||
+      !derive_secret(hs, &hs->server_traffic_secret_0,
                      label_to_span(kTLS13LabelServerApplicationTraffic)) ||
       !ssl_log_secret(ssl, "SERVER_TRAFFIC_SECRET_0",
-                      hs->server_traffic_secret_0())) {
-    return false;
-  }
-  ssl->s3->exporter_secret.ResizeMaybeUninit(hs->transcript.DigestLen());
-  if (!derive_secret(hs, MakeSpan(ssl->s3->exporter_secret),
+                      hs->server_traffic_secret_0) ||
+      !derive_secret(hs, &ssl->s3->exporter_secret,
                      label_to_span(kTLS13LabelExporter)) ||
       !ssl_log_secret(ssl, "EXPORTER_SECRET", ssl->s3->exporter_secret)) {
     return false;
@@ -342,8 +340,7 @@ bool tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
 static const char kTLS13LabelResumption[] = "res master";
 
 bool tls13_derive_resumption_secret(SSL_HANDSHAKE *hs) {
-  hs->new_session->secret.ResizeMaybeUninit(hs->transcript.DigestLen());
-  return derive_secret(hs, MakeSpan(hs->new_session->secret),
+  return derive_secret(hs, &hs->new_session->secret,
                        label_to_span(kTLS13LabelResumption));
 }
 
@@ -372,7 +369,7 @@ static bool tls13_verify_data(uint8_t *out, size_t *out_len,
 bool tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len,
                         bool is_server) {
   Span<const uint8_t> traffic_secret =
-      is_server ? hs->server_handshake_secret() : hs->client_handshake_secret();
+      is_server ? hs->server_handshake_secret : hs->client_handshake_secret;
 
   uint8_t context_hash[EVP_MAX_MD_SIZE];
   size_t context_hash_len;

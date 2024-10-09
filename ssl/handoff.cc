@@ -423,16 +423,16 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
     } else {
       return false;
     }
-    if (!CBB_add_asn1_octet_string(&seq, hs->client_traffic_secret_0().data(),
-                                   hs->client_traffic_secret_0().size()) ||
-        !CBB_add_asn1_octet_string(&seq, hs->server_traffic_secret_0().data(),
-                                   hs->server_traffic_secret_0().size()) ||
-        !CBB_add_asn1_octet_string(&seq, hs->client_handshake_secret().data(),
-                                   hs->client_handshake_secret().size()) ||
-        !CBB_add_asn1_octet_string(&seq, hs->server_handshake_secret().data(),
-                                   hs->server_handshake_secret().size()) ||
-        !CBB_add_asn1_octet_string(&seq, hs->secret().data(),
-                                   hs->secret().size()) ||
+    if (!CBB_add_asn1_octet_string(&seq, hs->client_traffic_secret_0.data(),
+                                   hs->client_traffic_secret_0.size()) ||
+        !CBB_add_asn1_octet_string(&seq, hs->server_traffic_secret_0.data(),
+                                   hs->server_traffic_secret_0.size()) ||
+        !CBB_add_asn1_octet_string(&seq, hs->client_handshake_secret.data(),
+                                   hs->client_handshake_secret.size()) ||
+        !CBB_add_asn1_octet_string(&seq, hs->server_handshake_secret.data(),
+                                   hs->server_handshake_secret.size()) ||
+        !CBB_add_asn1_octet_string(&seq, hs->secret.data(),
+                                   hs->secret.size()) ||
         !CBB_add_asn1_octet_string(&seq, s3->exporter_secret.data(),
                                    s3->exporter_secret.size()) ||
         !CBB_add_asn1_bool(&seq, s3->used_hello_retry_request) ||
@@ -443,8 +443,8 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
       return false;
     }
     if (early_data == early_data_accepted &&
-        !CBB_add_asn1_octet_string(&seq, hs->early_traffic_secret().data(),
-                                   hs->early_traffic_secret().size())) {
+        !CBB_add_asn1_octet_string(&seq, hs->early_traffic_secret.data(),
+                                   hs->early_traffic_secret.size())) {
       return false;
     }
 
@@ -698,18 +698,17 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
     return false;
   }
   if (type == handback_tls13) {
-    hs->ResizeSecrets(hs->transcript.DigestLen());
-    if (!CopyExact(hs->client_traffic_secret_0(), &client_traffic_secret_0) ||
-        !CopyExact(hs->server_traffic_secret_0(), &server_traffic_secret_0) ||
-        !CopyExact(hs->client_handshake_secret(), &client_handshake_secret) ||
-        !CopyExact(hs->server_handshake_secret(), &server_handshake_secret) ||
-        !CopyExact(hs->secret(), &secret) ||
+    if (!hs->client_traffic_secret_0.TryCopyFrom(client_traffic_secret_0) ||
+        !hs->server_traffic_secret_0.TryCopyFrom(server_traffic_secret_0) ||
+        !hs->client_handshake_secret.TryCopyFrom(client_handshake_secret) ||
+        !hs->server_handshake_secret.TryCopyFrom(server_handshake_secret) ||
+        !hs->secret.TryCopyFrom(secret) ||
         !s3->exporter_secret.TryCopyFrom(exporter_secret)) {
       return false;
     }
 
     if (s3->early_data_accepted &&
-        !CopyExact(hs->early_traffic_secret(), &early_traffic_secret)) {
+        !hs->early_traffic_secret.TryCopyFrom(early_traffic_secret)) {
       return false;
     }
   }
@@ -741,7 +740,7 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
       // immediately after processing handback.
       if (!tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
                                  hs->new_session.get(),
-                                 hs->server_traffic_secret_0())) {
+                                 hs->server_traffic_secret_0)) {
         return false;
       }
       break;

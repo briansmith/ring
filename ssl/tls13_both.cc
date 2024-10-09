@@ -367,7 +367,7 @@ bool tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
   Span<const uint8_t> verify_data;
   if (use_saved_value) {
     assert(ssl->server);
-    verify_data = hs->expected_client_finished();
+    verify_data = hs->expected_client_finished;
   } else {
     size_t len;
     if (!tls13_finished_mac(hs, verify_data_buf, &len, !ssl->server)) {

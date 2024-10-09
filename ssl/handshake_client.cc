@@ -614,7 +614,7 @@ static enum ssl_hs_wait_t do_early_reverify_server_certificate(SSL_HANDSHAKE *hs
       !tls13_derive_early_secret(hs) ||
       !tls13_set_traffic_key(hs->ssl, ssl_encryption_early_data, evp_aead_seal,
                              hs->early_session.get(),
-                             hs->early_traffic_secret())) {
+                             hs->early_traffic_secret)) {
     return ssl_hs_error;
   }
 
