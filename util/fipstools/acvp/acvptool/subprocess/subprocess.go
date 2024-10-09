@@ -102,6 +102,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"SHA2-256":          &hashPrimitive{"SHA2-256", 32},
 		"SHA2-384":          &hashPrimitive{"SHA2-384", 48},
 		"SHA2-512":          &hashPrimitive{"SHA2-512", 64},
+		"SHA2-512/224":      &hashPrimitive{"SHA2-512/224", 28},
 		"SHA2-512/256":      &hashPrimitive{"SHA2-512/256", 32},
 		"SHA3-224":          &hashPrimitive{"SHA3-224", 28},
 		"SHA3-256":          &hashPrimitive{"SHA3-256", 32},
@@ -124,6 +125,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"HMAC-SHA2-256":     &hmacPrimitive{"HMAC-SHA2-256", 32},
 		"HMAC-SHA2-384":     &hmacPrimitive{"HMAC-SHA2-384", 48},
 		"HMAC-SHA2-512":     &hmacPrimitive{"HMAC-SHA2-512", 64},
+		"HMAC-SHA2-512/224": &hmacPrimitive{"HMAC-SHA2-512/224", 28},
 		"HMAC-SHA2-512/256": &hmacPrimitive{"HMAC-SHA2-512/256", 32},
 		"HMAC-SHA3-224":     &hmacPrimitive{"HMAC-SHA3-224", 28},
 		"HMAC-SHA3-256":     &hmacPrimitive{"HMAC-SHA3-256", 32},
@@ -141,7 +143,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"KAS-FFC-SSC":       &kasDH{},
 	}
 	m.primitives["ECDSA"] = &ecdsa{"ECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m.primitives}
-        m.primitives["EDDSA"] = &ecdsa{"ECDSA", map[string]bool{"ED-25519": true}, nil}
+	m.primitives["EDDSA"] = &ecdsa{"ECDSA", map[string]bool{"ED-25519": true}, nil}
 
 	go m.readerRoutine()
 	return m
