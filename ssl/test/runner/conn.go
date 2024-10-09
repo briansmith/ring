@@ -337,13 +337,9 @@ func (hc *halfConn) incEpoch() {
 			}
 		}
 		copy(hc.seq[2:], hc.nextSeq[:])
-		for i := range hc.nextSeq {
-			hc.nextSeq[i] = 0
-		}
+		clear(hc.nextSeq[:])
 	} else {
-		for i := range hc.seq {
-			hc.seq[i] = 0
-		}
+		clear(hc.seq[:])
 	}
 }
 
@@ -354,9 +350,7 @@ func (hc *halfConn) setEpoch(epoch uint16) {
 	hc.seq[0] = byte(epoch >> 8)
 	hc.seq[1] = byte(epoch)
 	copy(hc.seq[2:], hc.nextSeq[:])
-	for i := range hc.nextSeq {
-		hc.nextSeq[i] = 0
-	}
+	clear(hc.nextSeq[:])
 }
 
 func (hc *halfConn) sequenceNumberForOutput() []byte {
@@ -653,9 +647,7 @@ func (hc *halfConn) encrypt(record, payload []byte, typ recordType, headerLen in
 			record = append(record, byte(typ))
 		}
 		padding := extendSlice(&record, hc.config.Bugs.RecordPadding)
-		for i := range padding {
-			padding[i] = 0
-		}
+		clear(padding)
 	}
 
 	if hc.mac != nil {
@@ -1430,7 +1422,7 @@ func (c *Conn) readHandshake() (any, error) {
 	// The handshake message unmarshallers
 	// expect to be able to keep references to data,
 	// so pass in a fresh copy that won't be overwritten.
-	data = append([]byte(nil), data...)
+	data = slices.Clone(data)
 
 	if data[0] == typeServerHello && len(data) >= 38 {
 		vers := uint16(data[4])<<8 | uint16(data[5])

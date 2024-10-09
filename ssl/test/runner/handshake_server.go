@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"slices"
 	"time"
 
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
@@ -302,7 +303,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 		panic("Could not map wire version")
 	}
 
-	clientProtocol, ok := wireToVersion(c.clientVersion, c.isDTLS)
+	clientProtocol, clientProtocolOK := wireToVersion(c.clientVersion, c.isDTLS)
 
 	if c.shouldSendHelloVerifyRequest() {
 		// Per RFC 6347, the version field in HelloVerifyRequest SHOULD
@@ -367,12 +368,8 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	if config.Bugs.FailIfPostQuantumOffered {
-		for _, offeredCurve := range hs.clientHello.supportedCurves {
-			if isPqGroup(offeredCurve) {
-				return errors.New("tls: post-quantum group was offered")
-			}
-		}
+	if config.Bugs.FailIfPostQuantumOffered && slices.ContainsFunc(hs.clientHello.supportedCurves, isPqGroup) {
+		return errors.New("tls: post-quantum group was offered")
 	}
 
 	if expected := config.Bugs.ExpectedKeyShares; expected != nil {
@@ -388,17 +385,13 @@ func (hs *serverHandshakeState) readClientHello() error {
 	}
 
 	// Reject < 1.2 ClientHellos with signature_algorithms.
-	if ok && clientProtocol < VersionTLS12 && len(hs.clientHello.signatureAlgorithms) > 0 {
+	if clientProtocolOK && clientProtocol < VersionTLS12 && len(hs.clientHello.signatureAlgorithms) > 0 {
 		return fmt.Errorf("tls: client included signature_algorithms before TLS 1.2")
 	}
 
 	// Check the client cipher list is consistent with the version.
-	if ok && clientProtocol < VersionTLS12 {
-		for _, id := range hs.clientHello.cipherSuites {
-			if isTLS12Cipher(id) {
-				return fmt.Errorf("tls: client offered TLS 1.2 cipher before TLS 1.2")
-			}
-		}
+	if clientProtocolOK && clientProtocol < VersionTLS12 && slices.ContainsFunc(hs.clientHello.cipherSuites, isTLS12Cipher) {
+		return fmt.Errorf("tls: client offered TLS 1.2 cipher before TLS 1.2")
 	}
 
 	if config.Bugs.MockQUICTransport != nil && len(hs.clientHello.sessionID) > 0 {
@@ -422,14 +415,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 		return fmt.Errorf("tls: client offered unexpected PSK identities")
 	}
 
-	var scsvFound bool
-	for _, cipherSuite := range hs.clientHello.cipherSuites {
-		if cipherSuite == fallbackSCSV {
-			scsvFound = true
-			break
-		}
-	}
-
+	scsvFound := slices.Contains(hs.clientHello.cipherSuites, fallbackSCSV)
 	if !scsvFound && config.Bugs.FailIfNotFallbackSCSV {
 		return errors.New("tls: no fallback SCSV found when expected")
 	} else if scsvFound && !config.Bugs.FailIfNotFallbackSCSV {
@@ -617,14 +603,11 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 	supportedCurve := false
 	var selectedCurve CurveID
 	preferredCurves := config.curvePreferences()
-Curves:
 	for _, curve := range hs.clientHello.supportedCurves {
-		for _, supported := range preferredCurves {
-			if supported == curve {
-				supportedCurve = true
-				selectedCurve = curve
-				break Curves
-			}
+		if slices.Contains(preferredCurves, curve) {
+			supportedCurve = true
+			selectedCurve = curve
+			break
 		}
 	}
 
@@ -1047,9 +1030,7 @@ ResendHelloRetryRequest:
 	// Emit the ECH confirmation signal when requested.
 	if hs.clientHello.echInner && !config.Bugs.OmitServerHelloECHConfirmation {
 		randomSuffix := hs.hello.random[len(hs.hello.random)-echAcceptConfirmationLength:]
-		for i := range randomSuffix {
-			randomSuffix[i] = 0
-		}
+		clear(randomSuffix)
 		copy(randomSuffix, hs.finishedHash.echAcceptConfirmation(hs.clientHello.random, echAcceptConfirmationLabel, hs.hello.marshal()))
 		hs.hello.raw = nil
 	}
@@ -1148,38 +1129,35 @@ ResendHelloRetryRequest:
 		certMsgBytes := certMsg.marshal()
 		sentCompressedCertMsg := false
 
-	FindCertCompressionAlg:
-		for candidate, alg := range c.config.CertCompressionAlgs {
-			for _, id := range hs.clientHello.compressedCertAlgs {
-				if id == candidate {
-					if expected := config.Bugs.ExpectedCompressedCert; expected != 0 && expected != id {
-						return fmt.Errorf("tls: expected to send compressed cert with alg %d, but picked %d", expected, id)
-					}
-					if config.Bugs.ExpectUncompressedCert {
-						return errors.New("tls: expected to send uncompressed cert")
-					}
-
-					if override := config.Bugs.SendCertCompressionAlgID; override != 0 {
-						id = override
-					}
-
-					uncompressed := certMsgBytes[4:]
-					uncompressedLen := uint32(len(uncompressed))
-					if override := config.Bugs.SendCertUncompressedLength; override != 0 {
-						uncompressedLen = override
-					}
-
-					compressedCertMsgBytes := (&compressedCertificateMsg{
-						algID:              id,
-						uncompressedLength: uncompressedLen,
-						compressed:         alg.Compress(uncompressed),
-					}).marshal()
-
-					hs.writeServerHash(compressedCertMsgBytes)
-					c.writeRecord(recordTypeHandshake, compressedCertMsgBytes)
-					sentCompressedCertMsg = true
-					break FindCertCompressionAlg
+		for id, alg := range c.config.CertCompressionAlgs {
+			if slices.Contains(hs.clientHello.compressedCertAlgs, id) {
+				if expected := config.Bugs.ExpectedCompressedCert; expected != 0 && expected != id {
+					return fmt.Errorf("tls: expected to send compressed cert with alg %d, but picked %d", expected, id)
 				}
+				if config.Bugs.ExpectUncompressedCert {
+					return errors.New("tls: expected to send uncompressed cert")
+				}
+
+				if override := config.Bugs.SendCertCompressionAlgID; override != 0 {
+					id = override
+				}
+
+				uncompressed := certMsgBytes[4:]
+				uncompressedLen := uint32(len(uncompressed))
+				if override := config.Bugs.SendCertUncompressedLength; override != 0 {
+					uncompressedLen = override
+				}
+
+				compressedCertMsgBytes := (&compressedCertificateMsg{
+					algID:              id,
+					uncompressedLength: uncompressedLen,
+					compressed:         alg.Compress(uncompressed),
+				}).marshal()
+
+				hs.writeServerHash(compressedCertMsgBytes)
+				c.writeRecord(recordTypeHandshake, compressedCertMsgBytes)
+				sentCompressedCertMsg = true
+				break
 			}
 		}
 
@@ -1497,16 +1475,8 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeJDK11)
 	}
 
-	foundCompression := false
 	// We only support null compression, so check that the client offered it.
-	for _, compression := range hs.clientHello.compressionMethods {
-		if compression == compressionNone {
-			foundCompression = true
-			break
-		}
-	}
-
-	if !foundCompression {
+	if !slices.Contains(hs.clientHello.compressionMethods, compressionNone) {
 		c.sendAlert(alertHandshakeFailure)
 		return false, errors.New("tls: client does not support uncompressed connections")
 	}
@@ -1517,28 +1487,19 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 
 	supportedCurve := false
 	preferredCurves := config.curvePreferences()
-Curves:
 	for _, curve := range hs.clientHello.supportedCurves {
 		if isPqGroup(curve) && c.vers < VersionTLS13 {
 			// Post-quantum is TLS 1.3 only.
 			continue
 		}
 
-		for _, supported := range preferredCurves {
-			if supported == curve {
-				supportedCurve = true
-				break Curves
-			}
-		}
-	}
-
-	supportedPointFormat := false
-	for _, pointFormat := range hs.clientHello.supportedPoints {
-		if pointFormat == pointFormatUncompressed {
-			supportedPointFormat = true
+		if slices.Contains(preferredCurves, curve) {
+			supportedCurve = true
 			break
 		}
 	}
+
+	supportedPointFormat := slices.Contains(hs.clientHello.supportedPoints, pointFormatUncompressed)
 	hs.ellipticOk = supportedCurve && supportedPointFormat
 
 	_, hs.ecdsaOk = hs.cert.PrivateKey.(*ecdsa.PrivateKey)
@@ -1646,18 +1607,8 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 
 		var alpsAllowed, alpsAllowedOld bool
 		if c.vers >= VersionTLS13 {
-			for _, proto := range hs.clientHello.alpsProtocols {
-				if proto == c.clientProtocol {
-					alpsAllowed = true
-					break
-				}
-			}
-			for _, proto := range hs.clientHello.alpsProtocolsOld {
-				if proto == c.clientProtocol {
-					alpsAllowedOld = true
-					break
-				}
-			}
+			alpsAllowed = slices.Contains(hs.clientHello.alpsProtocols, c.clientProtocol)
+			alpsAllowedOld = slices.Contains(hs.clientHello.alpsProtocolsOld, c.clientProtocol)
 		}
 
 		if c.config.Bugs.AlwaysNegotiateApplicationSettingsBoth {
@@ -1727,14 +1678,11 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 	}
 
 	if hs.clientHello.srtpProtectionProfiles != nil {
-	SRTPLoop:
-		for _, p1 := range c.config.SRTPProtectionProfiles {
-			for _, p2 := range hs.clientHello.srtpProtectionProfiles {
-				if p1 == p2 {
-					serverExtensions.srtpProtectionProfile = p1
-					c.srtpProtectionProfile = p1
-					break SRTPLoop
-				}
+		for _, p := range c.config.SRTPProtectionProfiles {
+			if slices.Contains(hs.clientHello.srtpProtectionProfiles, p) {
+				serverExtensions.srtpProtectionProfile = p
+				c.srtpProtectionProfile = p
+				break
 			}
 		}
 	}
@@ -2422,53 +2370,34 @@ func (hs *serverHandshakeState) writeClientHash(msg []byte) {
 // tryCipherSuite returns a cipherSuite with the given id if that cipher suite
 // is acceptable to use.
 func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version uint16, ellipticOk, ecdsaOk bool) *cipherSuite {
-	for _, supported := range supportedCipherSuites {
-		if id == supported {
-			var candidate *cipherSuite
-
-			for _, s := range cipherSuites {
-				if s.id == id {
-					candidate = s
-					break
-				}
-			}
-			if candidate == nil {
-				continue
-			}
-
-			// Don't select a ciphersuite which we can't
-			// support for this client.
-			if version >= VersionTLS13 || candidate.flags&suiteTLS13 != 0 {
-				if version < VersionTLS13 || candidate.flags&suiteTLS13 == 0 {
-					continue
-				}
-				return candidate
-			}
-			if (candidate.flags&suiteECDHE != 0) && !ellipticOk {
-				continue
-			}
-			if (candidate.flags&suiteECDSA != 0) != ecdsaOk {
-				continue
-			}
-			if version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
-				continue
-			}
-			return candidate
-		}
+	candidate := mutualCipherSuite(supportedCipherSuites, id)
+	if candidate == nil {
+		return nil
 	}
 
-	return nil
+	// Don't select a ciphersuite which we can't
+	// support for this client.
+	if version >= VersionTLS13 || candidate.flags&suiteTLS13 != 0 {
+		if version < VersionTLS13 || candidate.flags&suiteTLS13 == 0 {
+			return nil
+		}
+		return candidate
+	}
+	if (candidate.flags&suiteECDHE != 0) && !ellipticOk {
+		return nil
+	}
+	if (candidate.flags&suiteECDSA != 0) != ecdsaOk {
+		return nil
+	}
+	if version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
+		return nil
+	}
+	return candidate
 }
 
 func isTLS12Cipher(id uint16) bool {
-	for _, cipher := range cipherSuites {
-		if cipher.id != id {
-			continue
-		}
-		return cipher.flags&suiteTLS12 != 0
-	}
-	// Unknown cipher.
-	return false
+	cipher := cipherSuiteFromID(id)
+	return cipher != nil && cipher.flags&suiteTLS12 != 0
 }
 
 func isGREASEValue(val uint16) bool {

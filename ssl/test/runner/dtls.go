@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"slices"
 )
 
 func (c *Conn) readDTLS13RecordHeader(b []byte) (headerLen int, recordLen int, recTyp recordType, seq []byte, err error) {
@@ -383,7 +384,7 @@ func (c *Conn) dtlsPackHandshake() error {
 			records[i] = append(records[i], fragment...)
 		} else {
 			// The fragment will be appended to, so copy it.
-			records = append(records, append([]byte{}, fragment...))
+			records = append(records, slices.Clone(fragment))
 		}
 	}
 
@@ -577,7 +578,7 @@ func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 			}
 			// Start with the TLS handshake header,
 			// without the DTLS bits.
-			c.handMsg = append([]byte{}, header[:4]...)
+			c.handMsg = slices.Clone(header[:4])
 		} else if fragN != c.handMsgLen {
 			return nil, errors.New("dtls: bad handshake length")
 		}

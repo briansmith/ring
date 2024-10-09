@@ -16,6 +16,7 @@ import (
 	"crypto/sha512"
 	"crypto/x509"
 	"hash"
+	"slices"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )
@@ -338,11 +339,9 @@ func ecdhePSKKA(version uint16) keyAgreement {
 
 // mutualCipherSuite returns a cipherSuite given a list of supported
 // ciphersuites and the id requested by the peer.
-func mutualCipherSuite(have []uint16, want uint16) *cipherSuite {
-	for _, id := range have {
-		if id == want {
-			return cipherSuiteFromID(id)
-		}
+func mutualCipherSuite(have []uint16, id uint16) *cipherSuite {
+	if slices.Contains(have, id) {
+		return cipherSuiteFromID(id)
 	}
 	return nil
 }

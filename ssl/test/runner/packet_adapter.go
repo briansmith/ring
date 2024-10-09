@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"time"
 )
 
@@ -172,7 +173,7 @@ func (d *damageAdaptor) setDamage(damage bool) {
 
 func (d *damageAdaptor) Write(b []byte) (int, error) {
 	if d.damage && len(b) > 0 {
-		b = append([]byte{}, b...)
+		b = slices.Clone(b)
 		b[len(b)-1]++
 	}
 	return d.Conn.Write(b)

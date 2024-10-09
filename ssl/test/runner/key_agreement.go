@@ -728,19 +728,15 @@ type ecdheKeyAgreement struct {
 func (ka *ecdheKeyAgreement) generateServerKeyExchange(config *Config, cert *Credential, clientHello *clientHelloMsg, hello *serverHelloMsg, version uint16) (*serverKeyExchangeMsg, error) {
 	var curveID CurveID
 	preferredCurves := config.curvePreferences()
-
-NextCandidate:
 	for _, candidate := range preferredCurves {
 		if isPqGroup(candidate) && version < VersionTLS13 {
 			// Post-quantum "groups" require TLS 1.3.
 			continue
 		}
 
-		for _, c := range clientHello.supportedCurves {
-			if candidate == c {
-				curveID = c
-				break NextCandidate
-			}
+		if slices.Contains(clientHello.supportedCurves, candidate) {
+			curveID = candidate
+			break
 		}
 	}
 
