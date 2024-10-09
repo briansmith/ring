@@ -126,6 +126,8 @@ BSSL_NAMESPACE_BEGIN
 
 SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
+      transcript(SSL_is_dtls(ssl_arg)),
+      inner_transcript(SSL_is_dtls(ssl_arg)),
       ech_is_inner(false),
       ech_authenticated_reject(false),
       scts_requested(false),

@@ -937,7 +937,7 @@ OPENSSL_EXPORT bool ssl_cipher_is_deprecated(const SSL_CIPHER *cipher);
 // buffer and running hash.
 class SSLTranscript {
  public:
-  SSLTranscript();
+  explicit SSLTranscript(bool is_dtls);
   ~SSLTranscript();
 
   SSLTranscript(SSLTranscript &&other) = default;
@@ -1000,10 +1000,23 @@ class SSLTranscript {
                       bool from_server) const;
 
  private:
+  // HashBuffer initializes |ctx| to use |digest| and writes the contents of
+  // |buffer_| to |ctx|. If this SSLTranscript is for DTLS 1.3, the appropriate
+  // bytes in |buffer_| will be skipped when hashing the buffer.
+  bool HashBuffer(EVP_MD_CTX *ctx, const EVP_MD *digest) const;
+
+  // AddToBufferOrHash directly adds the contents of |in| to |buffer_| and/or
+  // |hash_|.
+  bool AddToBufferOrHash(Span<const uint8_t> in);
+
   // buffer_, if non-null, contains the handshake transcript.
   UniquePtr<BUF_MEM> buffer_;
   // hash, if initialized with an |EVP_MD|, maintains the handshake hash.
   ScopedEVP_MD_CTX hash_;
+  // is_dtls_ indicates whether this is a transcript for a DTLS connection.
+  bool is_dtls_ : 1;
+  // version_ contains the version for the connection (if known).
+  uint16_t version_ = 0;
 };
 
 // tls1_prf computes the PRF function for |ssl|. It fills |out|, using |secret|
