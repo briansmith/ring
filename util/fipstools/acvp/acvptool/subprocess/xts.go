@@ -21,7 +21,7 @@ import (
 	"fmt"
 )
 
-// The following structures reflect the JSON of ACVP hash tests. See
+// The following structures reflect the JSON of ACVP XTS tests. See
 // https://pages.nist.gov/ACVP/draft-celi-acvp-symmetric.html
 
 type xtsTestVectorSet struct {

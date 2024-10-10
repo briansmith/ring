@@ -21,7 +21,7 @@ import (
 	"fmt"
 )
 
-// The following structures reflect the JSON of ACVP hash tests. See
+// The following structures reflect the JSON of ACVP ECDSA tests. See
 // https://pages.nist.gov/ACVP/draft-fussell-acvp-ecdsa.html#name-test-vectors
 
 type ecdsaTestVectorSet struct {
