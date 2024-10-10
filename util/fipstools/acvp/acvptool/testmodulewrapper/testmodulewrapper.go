@@ -25,13 +25,17 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 
 	"golang.org/x/crypto/hkdf"
+	"golang.org/x/crypto/pbkdf2"
+	"golang.org/x/crypto/sha3"
 	"golang.org/x/crypto/xts"
 )
 
@@ -51,6 +55,7 @@ var handlers = map[string]func([][]byte) error{
 	"hmacDRBG-pr/SHA2-256":     hmacDRBGPredictionResistance,
 	"AES-CBC-CS3/encrypt":      ctsEncrypt,
 	"AES-CBC-CS3/decrypt":      ctsDecrypt,
+	"PBKDF":                    pbkdf,
 }
 
 func flush(args [][]byte) error {
@@ -167,6 +172,43 @@ func getConfig(args [][]byte) error {
 		  128,
 		  256
 		]
+	}, {
+		"algorithm": "PBKDF",
+		"revision":"1.0",
+		"capabilities": [{
+			"iterationCount":[{
+				"min":1,
+				"max":10000,
+				"increment":1
+			}],
+			"keyLen": [{
+				"min":112,
+				"max":4096,
+				"increment":8
+			}],
+			"passwordLen":[{
+				"min":8,
+				"max":64,
+				"increment":1
+			}],
+			"saltLen":[{
+				"min":128,
+				"max":512,
+				"increment":8
+			}],
+			"hmacAlg":[
+				"SHA2-224",
+				"SHA2-256",
+				"SHA2-384",
+				"SHA2-512",
+				"SHA2-512/224",
+				"SHA2-512/256",
+				"SHA3-224",
+				"SHA3-256",
+				"SHA3-384",
+				"SHA3-512"
+			]
+		}]
 	}
 ]`)); err != nil {
 		return err
@@ -470,6 +512,46 @@ func ctsDecrypt(args [][]byte) error {
 	}
 
 	return reply(doCTSDecrypt(key, ciphertext, iv))
+}
+
+func pbkdf(args [][]byte) error {
+	if len(args) != 5 {
+		return fmt.Errorf("pbkdf received %d args, wanted 5", len(args))
+	}
+
+	hmacName := args[0]
+	var h func() hash.Hash
+	switch string(hmacName) {
+	case "SHA2-224":
+		h = sha256.New224
+	case "SHA2-256":
+		h = sha256.New
+	case "SHA2-384":
+		h = sha512.New384
+	case "SHA2-512":
+		h = sha512.New
+	case "SHA2-512/224":
+		h = sha512.New512_224
+	case "SHA2-512/256":
+		h = sha512.New512_256
+	case "SHA3-224":
+		h = sha3.New224
+	case "SHA3-256":
+		h = sha3.New256
+	case "SHA3-384":
+		h = sha3.New384
+	case "SHA3-512":
+		h = sha3.New512
+	default:
+		return fmt.Errorf("pbkdf unknown HMAC algorithm: %q", hmacName)
+	}
+	keyLen := binary.LittleEndian.Uint32(args[1]) / 8
+	salt, password := args[2], args[3]
+	iterationCount := binary.LittleEndian.Uint32(args[4])
+
+	derivedKey := pbkdf2.Key(password, salt, int(iterationCount), int(keyLen), h)
+
+	return reply(derivedKey)
 }
 
 const (
