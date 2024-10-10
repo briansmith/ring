@@ -289,6 +289,66 @@ static hm_fragment *dtls1_get_incoming_message(
   return ssl->d1->incoming_messages[idx].get();
 }
 
+bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
+                                       Span<uint8_t> record) {
+  CBS cbs;
+  CBS_init(&cbs, record.data(), record.size());
+  while (CBS_len(&cbs) > 0) {
+    // Read a handshake fragment.
+    struct hm_header_st msg_hdr;
+    CBS body;
+    if (!dtls1_parse_fragment(&cbs, &msg_hdr, &body)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_RECORD);
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return false;
+    }
+
+    const size_t frag_off = msg_hdr.frag_off;
+    const size_t frag_len = msg_hdr.frag_len;
+    const size_t msg_len = msg_hdr.msg_len;
+    if (frag_off > msg_len || frag_off + frag_len < frag_off ||
+        frag_off + frag_len > msg_len ||
+        msg_len > ssl_max_handshake_message_len(ssl)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+      return false;
+    }
+
+    // The encrypted epoch in DTLS has only one handshake message.
+    if (ssl->d1->r_epoch == 1 && msg_hdr.seq != ssl->d1->handshake_read_seq) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+      *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+      return false;
+    }
+
+    if (msg_hdr.seq < ssl->d1->handshake_read_seq ||
+        msg_hdr.seq >
+            (unsigned)ssl->d1->handshake_read_seq + SSL_MAX_HANDSHAKE_FLIGHT) {
+      // Ignore fragments from the past, or ones too far in the future.
+      continue;
+    }
+
+    hm_fragment *frag = dtls1_get_incoming_message(ssl, out_alert, &msg_hdr);
+    if (frag == NULL) {
+      return false;
+    }
+    assert(frag->msg_len == msg_len);
+
+    if (frag->reassembly == NULL) {
+      // The message is already assembled.
+      continue;
+    }
+    assert(msg_len > 0);
+
+    // Copy the body into the fragment.
+    OPENSSL_memcpy(frag->data + DTLS1_HM_HEADER_LENGTH + frag_off,
+                   CBS_data(&body), CBS_len(&body));
+    dtls1_hm_fragment_mark(frag, frag_off, frag_off + frag_len);
+  }
+
+  return true;
+}
+
 ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
                                        uint8_t *out_alert, Span<uint8_t> in) {
   uint8_t type;
@@ -342,61 +402,9 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
       return ssl_open_record_error;
   }
 
-  CBS cbs;
-  CBS_init(&cbs, record.data(), record.size());
-  while (CBS_len(&cbs) > 0) {
-    // Read a handshake fragment.
-    struct hm_header_st msg_hdr;
-    CBS body;
-    if (!dtls1_parse_fragment(&cbs, &msg_hdr, &body)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_RECORD);
-      *out_alert = SSL_AD_DECODE_ERROR;
-      return ssl_open_record_error;
-    }
-
-    const size_t frag_off = msg_hdr.frag_off;
-    const size_t frag_len = msg_hdr.frag_len;
-    const size_t msg_len = msg_hdr.msg_len;
-    if (frag_off > msg_len || frag_off + frag_len < frag_off ||
-        frag_off + frag_len > msg_len ||
-        msg_len > ssl_max_handshake_message_len(ssl)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
-      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-      return ssl_open_record_error;
-    }
-
-    // The encrypted epoch in DTLS has only one handshake message.
-    if (ssl->d1->r_epoch == 1 && msg_hdr.seq != ssl->d1->handshake_read_seq) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-      *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
-      return ssl_open_record_error;
-    }
-
-    if (msg_hdr.seq < ssl->d1->handshake_read_seq ||
-        msg_hdr.seq >
-            (unsigned)ssl->d1->handshake_read_seq + SSL_MAX_HANDSHAKE_FLIGHT) {
-      // Ignore fragments from the past, or ones too far in the future.
-      continue;
-    }
-
-    hm_fragment *frag = dtls1_get_incoming_message(ssl, out_alert, &msg_hdr);
-    if (frag == NULL) {
-      return ssl_open_record_error;
-    }
-    assert(frag->msg_len == msg_len);
-
-    if (frag->reassembly == NULL) {
-      // The message is already assembled.
-      continue;
-    }
-    assert(msg_len > 0);
-
-    // Copy the body into the fragment.
-    OPENSSL_memcpy(frag->data + DTLS1_HM_HEADER_LENGTH + frag_off,
-                   CBS_data(&body), CBS_len(&body));
-    dtls1_hm_fragment_mark(frag, frag_off, frag_off + frag_len);
+  if (!dtls1_process_handshake_fragments(ssl, out_alert, record)) {
+    return ssl_open_record_error;
   }
-
   return ssl_open_record_success;
 }
 

@@ -664,6 +664,10 @@ static bool tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
 }
 
 bool tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
+  if (SSL_is_dtls(ssl)) {
+    // TODO(crbug.com/42290594): Process post-handshake messages in DTLS 1.3.
+    return true;
+  }
   if (msg.type == SSL3_MT_KEY_UPDATE) {
     ssl->s3->key_update_count++;
     if (ssl->quic_method != nullptr ||

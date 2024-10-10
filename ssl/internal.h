@@ -3691,6 +3691,8 @@ unsigned int dtls1_min_mtu(void);
 bool dtls1_new(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
+bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
+                                       Span<uint8_t> record);
 bool dtls1_get_message(const SSL *ssl, SSLMessage *out);
 ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
                                        uint8_t *out_alert, Span<uint8_t> in);

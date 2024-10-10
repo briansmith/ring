@@ -140,6 +140,14 @@ ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
   }
 
   if (type == SSL3_RT_HANDSHAKE) {
+    // Process handshake fragments for DTLS 1.3 post-handshake messages.
+    if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+      if (!dtls1_process_handshake_fragments(ssl, out_alert, record)) {
+        return ssl_open_record_error;
+      }
+      return ssl_open_record_discard;
+    }
+
     // Parse the first fragment header to determine if this is a pre-CCS or
     // post-CCS handshake record. DTLS resets handshake message numbers on each
     // handshake, so renegotiations and retransmissions are ambiguous.

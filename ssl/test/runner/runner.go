@@ -3322,6 +3322,25 @@ read alert 1 0
 			keyUpdateRequest: keyUpdateNotRequested,
 		},
 		{
+			protocol: dtls,
+			name:     "KeyUpdate-ToClient-DTLS",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			sendKeyUpdates:   1,
+			keyUpdateRequest: keyUpdateNotRequested,
+		},
+		{
+			protocol: dtls,
+			testType: serverTest,
+			name:     "KeyUpdate-ToServerDTLS",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			sendKeyUpdates:   1,
+			keyUpdateRequest: keyUpdateNotRequested,
+		},
+		{
 			name: "KeyUpdate-FromClient",
 			config: Config{
 				MaxVersion: VersionTLS13,

@@ -2050,7 +2050,12 @@ func (c *Conn) sendKeyUpdateLocked(keyUpdateRequest byte) error {
 	if err := c.flushHandshake(); err != nil {
 		return err
 	}
-	c.useOutTrafficSecret(encryptionApplication, c.out.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.out.trafficSecret, c.isDTLS))
+	if !c.isDTLS {
+		// TODO(crbug.com/42290594): Properly implement KeyUpdate. Right
+		// now we only support sending KeyUpdate to test that we drop
+		// post-HS messages on the floor (instead of erroring).
+		c.useOutTrafficSecret(encryptionApplication, c.out.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.out.trafficSecret, c.isDTLS))
+	}
 	return nil
 }
 
