@@ -558,11 +558,29 @@ static bool tls13_psk_binder(uint8_t *out, size_t *out_len,
   uint8_t context[EVP_MAX_MD_SIZE];
   unsigned context_len;
   ScopedEVP_MD_CTX ctx;
-  if (!transcript.CopyToHashContext(ctx.get(), digest) ||
-      !EVP_DigestUpdate(ctx.get(), truncated.data(),
-                        truncated.size()) ||
-      !EVP_DigestFinal_ex(ctx.get(), context, &context_len)) {
-    return false;
+  if (!is_dtls) {
+    if (!transcript.CopyToHashContext(ctx.get(), digest) ||
+        !EVP_DigestUpdate(ctx.get(), truncated.data(), truncated.size()) ||
+        !EVP_DigestFinal_ex(ctx.get(), context, &context_len)) {
+      return false;
+    }
+  } else {
+    // In DTLS 1.3, the transcript hash is computed over only the TLS 1.3
+    // handshake messages (i.e. only type and length in the header), not the
+    // full DTLSHandshake messages that are in |truncated|. This code pulls
+    // the header and body out of the truncated ClientHello and writes those
+    // to the hash context so the correct binder value is computed.
+    if (truncated.size() < DTLS1_HM_HEADER_LENGTH) {
+      return false;
+    }
+    auto header = truncated.subspan(0, 4);
+    auto body = truncated.subspan(12);
+    if (!transcript.CopyToHashContext(ctx.get(), digest) ||
+        !EVP_DigestUpdate(ctx.get(), header.data(), header.size()) ||
+        !EVP_DigestUpdate(ctx.get(), body.data(), body.size()) ||
+        !EVP_DigestFinal_ex(ctx.get(), context, &context_len)) {
+      return false;
+    }
   }
 
   if (!tls13_verify_data(out, out_len, digest, session->ssl_version, binder_key,

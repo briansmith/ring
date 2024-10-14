@@ -665,7 +665,7 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 
 			if !replacedPSKIdentities {
 				binderToVerify := hs.clientHello.pskBinders[i]
-				if err := verifyPSKBinder(c.wireVersion, hs.clientHello, sessionState, binderToVerify, []byte{}, []byte{}); err != nil {
+				if err := verifyPSKBinder(c.wireVersion, c.isDTLS, hs.clientHello, sessionState, binderToVerify, []byte{}, []byte{}); err != nil {
 					return err
 				}
 			}
@@ -893,7 +893,7 @@ ResendHelloRetryRequest:
 			}
 			if found {
 				binderToVerify := newClientHello.pskBinders[pskIndex]
-				if err := verifyPSKBinder(c.wireVersion, newClientHello, hs.sessionState, binderToVerify, hs.clientHello.marshal(), helloRetryRequest.marshal()); err != nil {
+				if err := verifyPSKBinder(c.wireVersion, c.isDTLS, newClientHello, hs.sessionState, binderToVerify, hs.clientHello.marshal(), helloRetryRequest.marshal()); err != nil {
 					return err
 				}
 			} else if !config.Bugs.AcceptAnySession {
@@ -1425,8 +1425,7 @@ ResendHelloRetryRequest:
 
 	// TODO(davidben): Allow configuring the number of tickets sent for
 	// testing.
-	// TODO(nharper): Add support for post-handshake messages in DTLS 1.3.
-	if !c.config.SessionTicketsDisabled && foundKEMode && !c.isDTLS {
+	if !c.config.SessionTicketsDisabled && foundKEMode {
 		ticketCount := 2
 		for i := 0; i < ticketCount; i++ {
 			c.SendNewSessionTicket([]byte{byte(i)})
@@ -2404,7 +2403,7 @@ func isGREASEValue(val uint16) bool {
 	return val&0x0f0f == 0x0a0a && val&0xff == val>>8
 }
 
-func verifyPSKBinder(version uint16, clientHello *clientHelloMsg, sessionState *sessionState, binderToVerify, firstClientHello, helloRetryRequest []byte) error {
+func verifyPSKBinder(version uint16, isDTLS bool, clientHello *clientHelloMsg, sessionState *sessionState, binderToVerify, firstClientHello, helloRetryRequest []byte) error {
 	binderLen := 2
 	for _, binder := range clientHello.pskBinders {
 		binderLen += 1 + len(binder)
@@ -2417,7 +2416,7 @@ func verifyPSKBinder(version uint16, clientHello *clientHelloMsg, sessionState *
 		return errors.New("tls: Unknown cipher suite for PSK in session")
 	}
 
-	binder := computePSKBinder(sessionState.secret, version, resumptionPSKBinderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
+	binder := computePSKBinder(sessionState.secret, version, isDTLS, resumptionPSKBinderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
 	if !bytes.Equal(binder, binderToVerify) {
 		return errors.New("tls: PSK binder does not verify")
 	}

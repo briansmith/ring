@@ -856,8 +856,11 @@ func (hs *clientHandshakeState) createClientHello(innerHello *clientHelloMsg, ec
 		// We may have a pre-1.3 session if SendBothTickets is set.
 		if session.vers < VersionTLS13 {
 			version = VersionTLS13
+			if c.isDTLS {
+				version = VersionDTLS125Experimental
+			}
 		}
-		generatePSKBinders(version, hello, session, nil, nil, c.config)
+		generatePSKBinders(version, c.isDTLS, hello, session, nil, nil, c.config)
 	}
 
 	if c.config.Bugs.SendClientHelloWithFixes != nil {
@@ -1573,7 +1576,7 @@ func (hs *clientHandshakeState) applyHelloRetryRequest(helloRetryRequest *helloR
 	hello.raw = nil
 
 	if len(hello.pskIdentities) > 0 {
-		generatePSKBinders(c.wireVersion, hello, hs.session, firstHelloBytes, helloRetryRequest.marshal(), c.config)
+		generatePSKBinders(c.wireVersion, c.isDTLS, hello, hs.session, firstHelloBytes, helloRetryRequest.marshal(), c.config)
 	}
 
 	if outerHello != nil {
@@ -2406,7 +2409,7 @@ func writeIntPadded(b []byte, x *big.Int) {
 	copy(b[len(b)-len(xb):], xb)
 }
 
-func generatePSKBinders(version uint16, hello *clientHelloMsg, session *ClientSessionState, firstClientHello, helloRetryRequest []byte, config *Config) {
+func generatePSKBinders(version uint16, isDTLS bool, hello *clientHelloMsg, session *ClientSessionState, firstClientHello, helloRetryRequest []byte, config *Config) {
 	maybeCorruptBinder := !config.Bugs.OnlyCorruptSecondPSKBinder || len(firstClientHello) > 0
 	binderLen := session.cipherSuite.hash().Size()
 	numBinders := 1
@@ -2438,7 +2441,7 @@ func generatePSKBinders(version uint16, hello *clientHelloMsg, session *ClientSe
 	helloBytes := hello.marshal()
 	binderSize := len(hello.pskBinders)*(binderLen+1) + 2
 	truncatedHello := helloBytes[:len(helloBytes)-binderSize]
-	binder := computePSKBinder(session.secret, version, resumptionPSKBinderLabel, session.cipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
+	binder := computePSKBinder(session.secret, version, isDTLS, resumptionPSKBinderLabel, session.cipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
 	if maybeCorruptBinder {
 		if config.Bugs.SendShortPSKBinder {
 			binder = binder[:binderLen]

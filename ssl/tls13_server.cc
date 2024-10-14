@@ -1275,7 +1275,8 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
   // the case of a small server write buffer. Consumers which don't write data
   // to the client will need to do a zero-byte write if they wish to flush the
   // tickets.
-  if (hs->ssl->quic_method != nullptr && sent_tickets) {
+  if ((hs->ssl->quic_method != nullptr || SSL_is_dtls(hs->ssl)) &&
+      sent_tickets) {
     return ssl_hs_flush;
   }
   return ssl_hs_ok;

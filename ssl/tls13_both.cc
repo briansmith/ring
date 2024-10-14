@@ -664,11 +664,15 @@ static bool tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
 }
 
 bool tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
-  if (SSL_is_dtls(ssl)) {
-    // TODO(crbug.com/42290594): Process post-handshake messages in DTLS 1.3.
-    return true;
+  if (msg.type == SSL3_MT_NEW_SESSION_TICKET && !ssl->server) {
+    return tls13_process_new_session_ticket(ssl, msg);
   }
+
   if (msg.type == SSL3_MT_KEY_UPDATE) {
+    if (SSL_is_dtls(ssl)) {
+      // TODO(crbug.com/42290594): Process post-handshake messages in DTLS 1.3.
+      return true;
+    }
     ssl->s3->key_update_count++;
     if (ssl->quic_method != nullptr ||
         ssl->s3->key_update_count > kMaxKeyUpdates) {
@@ -681,10 +685,6 @@ bool tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
   }
 
   ssl->s3->key_update_count = 0;
-
-  if (msg.type == SSL3_MT_NEW_SESSION_TICKET && !ssl->server) {
-    return tls13_process_new_session_ticket(ssl, msg);
-  }
 
   ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
   OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
