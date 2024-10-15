@@ -70,6 +70,7 @@ const (
 	recordTypeHandshake          recordType = 22
 	recordTypeApplicationData    recordType = 23
 	recordTypePlaintextHandshake recordType = 24
+	recordTypeACK                recordType = 26
 )
 
 // TLS handshake message types.
@@ -2010,6 +2011,10 @@ type ProtocolBugs struct {
 	// DTLS13RecordHeaderSetCIDBit, if true, sets the Connection ID bit in
 	// the DTLS 1.3 record header.
 	DTLS13RecordHeaderSetCIDBit bool
+
+	// ACKEveryRecord sends an ACK record immediately on response to each
+	// handshake record received.
+	ACKEveryRecord bool
 
 	// EncryptSessionTicketKey, if non-nil, is the ticket key to use when
 	// encrypting tickets.

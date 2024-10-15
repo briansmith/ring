@@ -127,6 +127,22 @@
 
 BSSL_NAMESPACE_BEGIN
 
+ssl_open_record_t dtls1_process_ack(SSL *ssl, uint8_t *out_alert) {
+  // ACKs are only allowed in DTLS 1.3. Reject them if we've negotiated a
+  // version and it's not 1.3. (It's theoretically possible to receive an ACK
+  // before version negotiation, e.g. due to packet loss or a server ACKing a
+  // ClientHello prior to sending the ServerHello, so if we don't have a version
+  // we'll accept the ACK.)
+  if (ssl->s3->version != 0 && ssl_protocol_version(ssl) < TLS1_3_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+    return ssl_open_record_error;
+  }
+  // TODO(crbug.com/42290594): Implement proper support for ACKs. Currently,
+  // this just drops the ACK on the floor.
+  return ssl_open_record_discard;
+}
+
 ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
                                       size_t *out_consumed, uint8_t *out_alert,
                                       Span<uint8_t> in) {
@@ -178,6 +194,10 @@ ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
 
     // Otherwise, this is a pre-CCS handshake message from an unsupported
     // renegotiation attempt. Fall through to the error path.
+  }
+
+  if (type == SSL3_RT_ACK) {
+    return dtls1_process_ack(ssl, out_alert);
   }
 
   if (type != SSL3_RT_APPLICATION_DATA) {

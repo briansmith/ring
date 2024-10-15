@@ -404,6 +404,9 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
                           record);
       return ssl_open_record_success;
 
+    case SSL3_RT_ACK:
+      return dtls1_process_ack(ssl, out_alert);
+
     case SSL3_RT_HANDSHAKE:
       // Break out to main processing.
       break;

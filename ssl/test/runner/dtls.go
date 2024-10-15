@@ -22,6 +22,8 @@ import (
 	"math/rand"
 	"net"
 	"slices"
+
+	"golang.org/x/crypto/cryptobyte"
 )
 
 func (c *Conn) readDTLS13RecordHeader(b []byte) (headerLen int, recordLen int, recTyp recordType, seq []byte, err error) {
@@ -147,6 +149,18 @@ func (c *Conn) readDTLSRecordHeader(b []byte) (headerLen int, recordLen int, typ
 	return recordHeaderLen, recordLen, typ, b[3:11], nil
 }
 
+func (c *Conn) writeACKs(seqnums []uint64) {
+	recordNumbers := new(cryptobyte.Builder)
+	epoch := binary.BigEndian.Uint16(c.in.seq[:2])
+	recordNumbers.AddUint16LengthPrefixed(func(b *cryptobyte.Builder) {
+		for _, seq := range seqnums {
+			b.AddUint64(uint64(epoch))
+			b.AddUint64(seq)
+		}
+	})
+	c.writeRecord(recordTypeACK, recordNumbers.BytesOrPanic())
+}
+
 func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
 	// Read a new packet only if the current one is empty.
 	var newPacket bool
@@ -183,6 +197,9 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
 		// but we want to notice errors from the implementation under
 		// test.
 		return 0, nil, c.in.setErrorLocked(c.sendAlert(alertValue))
+	}
+	if c.config.Bugs.ACKEveryRecord {
+		c.writeACKs([]uint64{binary.BigEndian.Uint64(seq)})
 	}
 
 	if typ == 0 {

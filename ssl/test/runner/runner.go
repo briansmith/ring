@@ -11515,6 +11515,30 @@ func addDTLSRetransmitTests() {
 		},
 		resumeSession: true,
 	})
+
+	// DTLS 1.3 ACK/retransmit tests
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "DTLS13-ImmediateACKs",
+		config: Config{
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				ACKEveryRecord: true,
+			},
+		},
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "DTLS12-RejectACKs",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				ACKEveryRecord: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_RECORD:",
+	})
 }
 
 func addExportKeyingMaterialTests() {
