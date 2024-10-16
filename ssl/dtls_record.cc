@@ -259,10 +259,10 @@ static bool parse_dtls13_record(SSL *ssl, CBS *in, ParsedDTLSRecord *out) {
     out->read_epoch = &ssl->d1->read_epoch;
 
     // Decrypt and reconstruct the sequence number:
-    uint8_t mask[AES_BLOCK_SIZE];
-    if (!out->read_epoch->aead->GenerateRecordNumberMask(mask, out->body)) {
-      // GenerateRecordNumberMask most likely failed because the record body was
-      // not long enough.
+    uint8_t mask[2];
+    if (!out->read_epoch->rn_encrypter->GenerateMask(mask, out->body)) {
+      // GenerateMask most likely failed because the record body was not long
+      // enough.
       return false;
     }
     // Apply the mask to the sequence number in-place. The header (with the
@@ -572,11 +572,8 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     // it needs (and error if |sample| is too short).
     Span<const uint8_t> sample =
         MakeConstSpan(out + record_header_len, ciphertext_len);
-    // AES cipher suites require the mask be exactly AES_BLOCK_SIZE; ChaCha20
-    // cipher suites have no requirements on the mask size. We only need the
-    // first two bytes from the mask.
-    uint8_t mask[AES_BLOCK_SIZE];
-    if (!write_epoch->aead->GenerateRecordNumberMask(mask, sample)) {
+    uint8_t mask[2];
+    if (!write_epoch->rn_encrypter->GenerateMask(mask, sample)) {
       return false;
     }
     out[1] ^= mask[0];

@@ -18,7 +18,6 @@
 #include <string.h>
 
 #include <openssl/aead.h>
-#include <openssl/chacha.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
@@ -40,9 +39,7 @@ SSLAEADContext::SSLAEADContext(const SSL_CIPHER *cipher_arg)
       random_variable_nonce_(false),
       xor_fixed_nonce_(false),
       omit_length_in_ad_(false),
-      ad_is_header_(false) {
-  CreateRecordNumberEncrypter();
-}
+      ad_is_header_(false) {}
 
 SSLAEADContext::~SSLAEADContext() {}
 
@@ -129,23 +126,6 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
   }
 
   return aead_ctx;
-}
-
-void SSLAEADContext::CreateRecordNumberEncrypter() {
-  if (!cipher_) {
-    return;
-  }
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  rn_encrypter_ = MakeUnique<NullRecordNumberEncrypter>();
-#else
-  if (cipher_->algorithm_enc == SSL_AES128GCM) {
-    rn_encrypter_ = MakeUnique<AES128RecordNumberEncrypter>();
-  } else if (cipher_->algorithm_enc == SSL_AES256GCM) {
-    rn_encrypter_ = MakeUnique<AES256RecordNumberEncrypter>();
-  } else if (cipher_->algorithm_enc == SSL_CHACHA20POLY1305) {
-    rn_encrypter_ = MakeUnique<ChaChaRecordNumberEncrypter>();
-  }
-#endif  // BORINGSSL_UNSAFE_FUZZER_MODE
 }
 
 UniquePtr<SSLAEADContext> SSLAEADContext::CreatePlaceholderForQUIC(
@@ -401,68 +381,5 @@ bool SSLAEADContext::GetIV(const uint8_t **out_iv, size_t *out_iv_len) const {
   return !is_null_cipher() &&
          EVP_AEAD_CTX_get_iv(ctx_.get(), out_iv, out_iv_len);
 }
-
-bool SSLAEADContext::GenerateRecordNumberMask(Span<uint8_t> out,
-                                              Span<const uint8_t> sample) {
-  if (!rn_encrypter_) {
-    return false;
-  }
-  return rn_encrypter_->GenerateMask(out, sample);
-}
-
-size_t AES128RecordNumberEncrypter::KeySize() { return 16; }
-
-size_t AES256RecordNumberEncrypter::KeySize() { return 32; }
-
-bool AESRecordNumberEncrypter::SetKey(Span<const uint8_t> key) {
-  return AES_set_encrypt_key(key.data(), key.size() * 8, &key_) == 0;
-}
-
-bool AESRecordNumberEncrypter::GenerateMask(Span<uint8_t> out,
-                                            Span<const uint8_t> sample) {
-  if (sample.size() < AES_BLOCK_SIZE || out.size() != AES_BLOCK_SIZE) {
-    return false;
-  }
-  AES_encrypt(sample.data(), out.data(), &key_);
-  return true;
-}
-
-size_t ChaChaRecordNumberEncrypter::KeySize() { return kKeySize; }
-
-bool ChaChaRecordNumberEncrypter::SetKey(Span<const uint8_t> key) {
-  if (key.size() != kKeySize) {
-    return false;
-  }
-  OPENSSL_memcpy(key_, key.data(), key.size());
-  return true;
-}
-
-bool ChaChaRecordNumberEncrypter::GenerateMask(Span<uint8_t> out,
-                                               Span<const uint8_t> sample) {
-  // RFC 9147 section 4.2.3 uses the first 4 bytes of the sample as the counter
-  // and the next 12 bytes as the nonce. If we have less than 4+12=16 bytes in
-  // the sample, then we'll read past the end of the |sample| buffer. The
-  // counter is interpreted as little-endian per RFC 8439.
-  if (sample.size() < 16) {
-    return false;
-  }
-  uint32_t counter = CRYPTO_load_u32_le(sample.data());
-  Span<const uint8_t> nonce = sample.subspan(4);
-  OPENSSL_memset(out.data(), 0, out.size());
-  CRYPTO_chacha_20(out.data(), out.data(), out.size(), key_, nonce.data(),
-                   counter);
-  return true;
-}
-
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-size_t NullRecordNumberEncrypter::KeySize() { return 0; }
-bool NullRecordNumberEncrypter::SetKey(Span<const uint8_t> key) { return true; }
-
-bool NullRecordNumberEncrypter::GenerateMask(Span<uint8_t> out,
-                                             Span<const uint8_t> sample) {
-  OPENSSL_memset(out.data(), 0, out.size());
-  return true;
-}
-#endif  // BORINGSSL_UNSAFE_FUZZER_MODE
 
 BSSL_NAMESPACE_END

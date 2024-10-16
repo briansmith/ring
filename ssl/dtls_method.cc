@@ -95,6 +95,11 @@ static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
     // reordering around KeyUpdate (i.e. accept records from both epochs), we'll
     // need a separate bitmap for each epoch.
     new_epoch.epoch = level;
+    new_epoch.rn_encrypter =
+        RecordNumberEncrypter::Create(aead_ctx->cipher(), traffic_secret);
+    if (new_epoch.rn_encrypter == nullptr) {
+      return false;
+    }
   } else {
     new_epoch.epoch = ssl->d1->read_epoch.epoch + 1;
   }
@@ -114,6 +119,11 @@ static bool dtls1_set_write_state(SSL *ssl, ssl_encryption_level_t level,
   if (ssl_protocol_version(ssl) > TLS1_2_VERSION) {
     // TODO(crbug.com/boringssl/715): See above.
     new_epoch.epoch = level;
+    new_epoch.rn_encrypter =
+        RecordNumberEncrypter::Create(aead_ctx->cipher(), traffic_secret);
+    if (new_epoch.rn_encrypter == nullptr) {
+      return false;
+    }
   } else {
     new_epoch.epoch = ssl->d1->write_epoch.epoch + 1;
   }

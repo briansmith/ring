@@ -155,7 +155,6 @@
 #include <utility>
 
 #include <openssl/aead.h>
-#include <openssl/aes.h>
 #include <openssl/curve25519.h>
 #include <openssl/err.h>
 #include <openssl/hpke.h>
@@ -1056,17 +1055,6 @@ bool tls1_prf(const EVP_MD *digest, Span<uint8_t> out,
 
 // Encryption layer.
 
-class RecordNumberEncrypter {
- public:
-  virtual ~RecordNumberEncrypter() = default;
-  static constexpr bool kAllowUniquePtr = true;
-  static constexpr size_t kMaxKeySize = 32;
-
-  virtual size_t KeySize() = 0;
-  virtual bool SetKey(Span<const uint8_t> key) = 0;
-  virtual bool GenerateMask(Span<uint8_t> out, Span<const uint8_t> sample) = 0;
-};
-
 // SSLAEADContext contains information about an AEAD that is being used to
 // encrypt an SSL connection.
 class SSLAEADContext {
@@ -1157,17 +1145,6 @@ class SSLAEADContext {
 
   bool GetIV(const uint8_t **out_iv, size_t *out_iv_len) const;
 
-  RecordNumberEncrypter *GetRecordNumberEncrypter() {
-    return rn_encrypter_.get();
-  }
-
-  // GenerateRecordNumberMask computes the mask used for DTLS 1.3 record number
-  // encryption (RFC 9147 section 4.2.3), writing it to |out|. The |out| buffer
-  // must be sized to AES_BLOCK_SIZE. The |sample| buffer must be at least 16
-  // bytes, as required by the AES and ChaCha20 cipher suites in RFC 9147. Extra
-  // bytes in |sample| will be ignored.
-  bool GenerateRecordNumberMask(Span<uint8_t> out, Span<const uint8_t> sample);
-
  private:
   // GetAdditionalData returns the additional data, writing into |storage| if
   // necessary.
@@ -1176,16 +1153,12 @@ class SSLAEADContext {
                                         uint64_t seqnum, size_t plaintext_len,
                                         Span<const uint8_t> header);
 
-  void CreateRecordNumberEncrypter();
-
   const SSL_CIPHER *cipher_;
   ScopedEVP_AEAD_CTX ctx_;
   // fixed_nonce_ contains any bytes of the nonce that are fixed for all
   // records.
   InplaceVector<uint8_t, 12> fixed_nonce_;
   uint8_t variable_nonce_len_ = 0;
-  // TODO(crbug.com/42290594): Move this into DTLSReadEpoch and DTLSWriteEpoch.
-  UniquePtr<RecordNumberEncrypter> rn_encrypter_;
   // variable_nonce_included_in_record_ is true if the variable nonce
   // for a record is included as a prefix before the ciphertext.
   bool variable_nonce_included_in_record_ : 1;
@@ -1202,45 +1175,6 @@ class SSLAEADContext {
   // ad_is_header_ is true if the AEAD's ad parameter is the record header.
   bool ad_is_header_ : 1;
 };
-
-class AESRecordNumberEncrypter : public RecordNumberEncrypter {
- public:
-  bool SetKey(Span<const uint8_t> key) override;
-  bool GenerateMask(Span<uint8_t> out, Span<const uint8_t> sample) override;
-
- private:
-  AES_KEY key_;
-};
-
-class AES128RecordNumberEncrypter : public AESRecordNumberEncrypter {
- public:
-  size_t KeySize() override;
-};
-
-class AES256RecordNumberEncrypter : public AESRecordNumberEncrypter {
- public:
-  size_t KeySize() override;
-};
-
-class ChaChaRecordNumberEncrypter : public RecordNumberEncrypter {
- public:
-  size_t KeySize() override;
-  bool SetKey(Span<const uint8_t> key) override;
-  bool GenerateMask(Span<uint8_t> out, Span<const uint8_t> sample) override;
-
- private:
-  static const size_t kKeySize = 32;
-  uint8_t key_[kKeySize];
-};
-
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-class NullRecordNumberEncrypter : public RecordNumberEncrypter {
- public:
-  size_t KeySize() override;
-  bool SetKey(Span<const uint8_t> key) override;
-  bool GenerateMask(Span<uint8_t> out, Span<const uint8_t> sample) override;
-};
-#endif  // BORINGSSL_UNSAFE_FUZZER_MODE
 
 
 // DTLS replay bitmap.
@@ -1284,11 +1218,28 @@ OPENSSL_EXPORT uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
 
 // Record layer.
 
+class RecordNumberEncrypter {
+ public:
+  static constexpr bool kAllowUniquePtr = true;
+  static constexpr size_t kMaxKeySize = 32;
+
+  // Create returns a DTLS 1.3 record number encrypter for |traffic_secret|, or
+  // nullptr on error.
+  static UniquePtr<RecordNumberEncrypter> Create(
+      const SSL_CIPHER *cipher, Span<const uint8_t> traffic_secret);
+
+  virtual ~RecordNumberEncrypter() = default;
+  virtual size_t KeySize() = 0;
+  virtual bool SetKey(Span<const uint8_t> key) = 0;
+  virtual bool GenerateMask(Span<uint8_t> out, Span<const uint8_t> sample) = 0;
+};
+
 struct DTLSReadEpoch {
   static constexpr bool kAllowUniquePtr = true;
 
   uint16_t epoch = 0;
   UniquePtr<SSLAEADContext> aead;
+  UniquePtr<RecordNumberEncrypter> rn_encrypter;
   DTLSReplayBitmap bitmap;
 };
 
@@ -1297,6 +1248,7 @@ struct DTLSWriteEpoch {
 
   uint16_t epoch = 0;
   UniquePtr<SSLAEADContext> aead;
+  UniquePtr<RecordNumberEncrypter> rn_encrypter;
   uint64_t next_seq = 0;
 };
 
