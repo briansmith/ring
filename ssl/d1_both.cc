@@ -117,6 +117,8 @@
 #include <limits.h>
 #include <string.h>
 
+#include <algorithm>
+
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
@@ -140,13 +142,127 @@ static const unsigned int kMinMTU = 256 - 28;
 // the underlying BIO supplies one.
 static const unsigned int kDefaultMTU = 1500 - 28;
 
+// BitRange returns a |uint8_t| with bits |start|, inclusive, to |end|,
+// exclusive, set.
+static uint8_t BitRange(size_t start, size_t end) {
+  assert(start <= end && end <= 8);
+  return static_cast<uint8_t>(~((1u << start) - 1) & ((1u << end) - 1));
+}
+
+// FirstUnmarkedRangeInByte returns the first unmarked range in bits |b|.
+static DTLSMessageBitmap::Range FirstUnmarkedRangeInByte(uint8_t b) {
+  size_t start, end;
+  for (start = 0; start < 8; start++) {
+    if ((b & (1u << start)) == 0) {
+      break;
+    }
+  }
+  for (end = start; end < 8; end++) {
+    if ((b & (1u << end)) != 0) {
+      break;
+    }
+  }
+  return DTLSMessageBitmap::Range{start, end};
+}
+
+bool DTLSMessageBitmap::Init(size_t num_bits) {
+  if (num_bits + 7 < num_bits) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+    return false;
+  }
+  size_t num_bytes = (num_bits + 7) / 8;
+  size_t bits_rounded = num_bytes * 8;
+  if (!bytes_.Init(num_bytes)) {
+    return false;
+  }
+  MarkRange(num_bits, bits_rounded);
+  return true;
+}
+
+void DTLSMessageBitmap::MarkRange(size_t start, size_t end) {
+  // Clamp everything within range.
+  start = std::min(start, bytes_.size() << 3);
+  end = std::min(end, bytes_.size() << 3);
+  assert(start <= end);
+  if (start >= end) {
+    return;
+  }
+
+  if ((start >> 3) == (end >> 3)) {
+    bytes_[start >> 3] |= BitRange(start & 7, end & 7);
+  } else {
+    bytes_[start >> 3] |= BitRange(start & 7, 8);
+    for (size_t i = (start >> 3) + 1; i < (end >> 3); i++) {
+      bytes_[i] = 0xff;
+    }
+    if ((end & 7) != 0) {
+      bytes_[end >> 3] |= BitRange(0, end & 7);
+    }
+  }
+
+  // Release the buffer if we've marked everything.
+  auto iter = std::find_if(bytes_.begin(), bytes_.end(),
+                           [](uint8_t b) { return b != 0xff; });
+  if (iter == bytes_.end()) {
+    assert(NextUnmarkedRange(0).empty());
+    bytes_.Reset();
+  }
+}
+
+DTLSMessageBitmap::Range DTLSMessageBitmap::NextUnmarkedRange(
+    size_t start) const {
+  size_t idx = start >> 3;
+  if (idx >= bytes_.size()) {
+    return Range{0, 0};
+  }
+
+  // Look at the bits from |start| up to a byte boundary.
+  uint8_t byte = bytes_[idx] | BitRange(0, start & 7);
+  if (byte == 0xff) {
+    // Nothing unmarked at this byte. Keep searching for an unmarked bit.
+    for (idx = idx + 1; idx < bytes_.size(); idx++) {
+      if (bytes_[idx] != 0xff) {
+        byte = bytes_[idx];
+        break;
+      }
+    }
+    if (idx >= bytes_.size()) {
+      return Range{0, 0};
+    }
+  }
+
+  Range range = FirstUnmarkedRangeInByte(byte);
+  assert(!range.empty());
+  bool should_extend = range.end == 8;
+  range.start += idx << 3;
+  range.end += idx << 3;
+  if (!should_extend) {
+    // The range did not end at a byte boundary. We're done.
+    return range;
+  }
+
+  // Collect all fully unmarked bytes.
+  for (idx = idx + 1; idx < bytes_.size(); idx++) {
+    if (bytes_[idx] != 0) {
+      break;
+    }
+  }
+  range.end = idx << 3;
+
+  // Add any bits from the remaining byte, if any.
+  if (idx < bytes_.size()) {
+    Range extra = FirstUnmarkedRangeInByte(bytes_[idx]);
+    if (extra.start == 0) {
+      range.end += extra.end;
+    }
+  }
+
+  return range;
+}
 
 // Receiving handshake messages.
 
-hm_fragment::~hm_fragment() {
-  OPENSSL_free(data);
-  OPENSSL_free(reassembly);
-}
+hm_fragment::~hm_fragment() { OPENSSL_free(data); }
 
 static UniquePtr<hm_fragment> dtls1_hm_fragment_new(
     const struct hm_header_st *msg_hdr) {
@@ -176,73 +292,11 @@ static UniquePtr<hm_fragment> dtls1_hm_fragment_new(
     return nullptr;
   }
 
-  // If the handshake message is empty, |frag->reassembly| is NULL.
-  if (msg_hdr->msg_len > 0) {
-    // Initialize reassembly bitmask.
-    if (msg_hdr->msg_len + 7 < msg_hdr->msg_len) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-      return nullptr;
-    }
-    size_t bitmask_len = (msg_hdr->msg_len + 7) / 8;
-    frag->reassembly = (uint8_t *)OPENSSL_zalloc(bitmask_len);
-    if (frag->reassembly == NULL) {
-      return nullptr;
-    }
+  if (!frag->reassembly.Init(msg_hdr->msg_len)) {
+    return nullptr;
   }
 
   return frag;
-}
-
-// bit_range returns a |uint8_t| with bits |start|, inclusive, to |end|,
-// exclusive, set.
-static uint8_t bit_range(size_t start, size_t end) {
-  return (uint8_t)(~((1u << start) - 1) & ((1u << end) - 1));
-}
-
-// dtls1_hm_fragment_mark marks bytes |start|, inclusive, to |end|, exclusive,
-// as received in |frag|. If |frag| becomes complete, it clears
-// |frag->reassembly|. The range must be within the bounds of |frag|'s message
-// and |frag->reassembly| must not be NULL.
-static void dtls1_hm_fragment_mark(hm_fragment *frag, size_t start,
-                                   size_t end) {
-  size_t msg_len = frag->msg_len;
-
-  if (frag->reassembly == NULL || start > end || end > msg_len) {
-    assert(0);
-    return;
-  }
-  // A zero-length message will never have a pending reassembly.
-  assert(msg_len > 0);
-
-  if (start == end) {
-    return;
-  }
-
-  if ((start >> 3) == (end >> 3)) {
-    frag->reassembly[start >> 3] |= bit_range(start & 7, end & 7);
-  } else {
-    frag->reassembly[start >> 3] |= bit_range(start & 7, 8);
-    for (size_t i = (start >> 3) + 1; i < (end >> 3); i++) {
-      frag->reassembly[i] = 0xff;
-    }
-    if ((end & 7) != 0) {
-      frag->reassembly[end >> 3] |= bit_range(0, end & 7);
-    }
-  }
-
-  // Check if the fragment is complete.
-  for (size_t i = 0; i < (msg_len >> 3); i++) {
-    if (frag->reassembly[i] != 0xff) {
-      return;
-    }
-  }
-  if ((msg_len & 7) != 0 &&
-      frag->reassembly[msg_len >> 3] != bit_range(0, msg_len & 7)) {
-    return;
-  }
-
-  OPENSSL_free(frag->reassembly);
-  frag->reassembly = NULL;
 }
 
 // dtls1_is_current_message_complete returns whether the current handshake
@@ -250,7 +304,7 @@ static void dtls1_hm_fragment_mark(hm_fragment *frag, size_t start,
 static bool dtls1_is_current_message_complete(const SSL *ssl) {
   size_t idx = ssl->d1->handshake_read_seq % SSL_MAX_HANDSHAKE_FLIGHT;
   hm_fragment *frag = ssl->d1->incoming_messages[idx].get();
-  return frag != NULL && frag->reassembly == NULL;
+  return frag != nullptr && frag->reassembly.IsComplete();
 }
 
 // dtls1_get_incoming_message returns the incoming message corresponding to
@@ -306,8 +360,7 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
     const size_t frag_off = msg_hdr.frag_off;
     const size_t frag_len = msg_hdr.frag_len;
     const size_t msg_len = msg_hdr.msg_len;
-    if (frag_off > msg_len || frag_off + frag_len < frag_off ||
-        frag_off + frag_len > msg_len ||
+    if (frag_off > msg_len || frag_len > msg_len - frag_off ||
         msg_len > ssl_max_handshake_message_len(ssl)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
       *out_alert = SSL_AD_ILLEGAL_PARAMETER;
@@ -336,12 +389,12 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
     }
 
     hm_fragment *frag = dtls1_get_incoming_message(ssl, out_alert, &msg_hdr);
-    if (frag == NULL) {
+    if (frag == nullptr) {
       return false;
     }
     assert(frag->msg_len == msg_len);
 
-    if (frag->reassembly == NULL) {
+    if (frag->reassembly.IsComplete()) {
       // The message is already assembled.
       continue;
     }
@@ -350,7 +403,7 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
     // Copy the body into the fragment.
     OPENSSL_memcpy(frag->data + DTLS1_HM_HEADER_LENGTH + frag_off,
                    CBS_data(&body), CBS_len(&body));
-    dtls1_hm_fragment_mark(frag, frag_off, frag_off + frag_len);
+    frag->reassembly.MarkRange(frag_off, frag_off + frag_len);
   }
 
   return true;

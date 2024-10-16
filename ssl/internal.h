@@ -3257,9 +3257,43 @@ static_assert(DTLS1_RT_MAX_HEADER_LENGTH >= DTLS1_3_RECORD_HEADER_WRITE_LENGTH,
 
 #define DTLS1_HM_HEADER_LENGTH 12
 
-#define DTLS1_CCS_HEADER_LENGTH 1
+// A DTLSMessageBitmap maintains a list of bits which may be marked to indicate
+// a portion of a message was received or ACKed.
+class DTLSMessageBitmap {
+ public:
+  // A Range represents a range of bits from |start|, inclusive, to |end|,
+  // exclusive.
+  struct Range {
+    size_t start = 0;
+    size_t end = 0;
 
-#define DTLS1_AL_HEADER_LENGTH 2
+    bool empty() const { return start == end; }
+    bool operator==(const Range &r) const {
+      return start == r.start && end == r.end;
+    }
+    bool operator!=(const Range &r) const { return !(*this == r); }
+  };
+
+  // Init initializes the structure with |num_bits| unmarked bits, from zero
+  // to |num_bits - 1|.
+  bool Init(size_t num_bits);
+
+  // MarkRange marks the bits from |start|, inclusive, to |end|, exclusive.
+  void MarkRange(size_t start, size_t end);
+
+  // NextUnmarkedRange returns the next range of unmarked bits, starting from
+  // |start|, inclusive. If all bits after |start| are marked, it returns an
+  // empty range.
+  Range NextUnmarkedRange(size_t start) const;
+
+  // IsComplete returns whether every bit in the bitmask has been marked.
+  bool IsComplete() const { return bytes_.empty(); }
+
+ private:
+  // bytes_ contains the unmarked bits. We maintain an invariant: if |bytes_| is
+  // not empty, some bit is unset.
+  Array<uint8_t> bytes_;
+};
 
 struct hm_header_st {
   uint8_t type;
@@ -3288,9 +3322,8 @@ struct hm_fragment {
   // data is a pointer to the message, including message header. It has length
   // |DTLS1_HM_HEADER_LENGTH| + |msg_len|.
   uint8_t *data = nullptr;
-  // reassembly is a bitmask of |msg_len| bits corresponding to which parts of
-  // the message have been received. It is NULL if the message is complete.
-  uint8_t *reassembly = nullptr;
+  // reassembly tracks which parts of the message have been received.
+  DTLSMessageBitmap reassembly;
 };
 
 struct OPENSSL_timeval {

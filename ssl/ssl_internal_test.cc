@@ -482,6 +482,127 @@ TEST(ReconstructSeqnumTest, Halfway) {
   EXPECT_EQ(reconstruct_seqnum(0x8002, 0xffff, 0x10000), 0x8002u);
 }
 
+TEST(DTLSMessageBitmapTest, Basic) {
+  // expect_bitmap checks that |b|'s unmarked bits are those listed in |ranges|.
+  // Each element of |ranges| must be non-empty and non-overlapping, and
+  // |ranges| must be sorted.
+  auto expect_bitmap = [](const DTLSMessageBitmap &b,
+                          const std::vector<DTLSMessageBitmap::Range> &ranges) {
+    EXPECT_EQ(ranges.empty(), b.IsComplete());
+    size_t start = 0;
+    for (const auto &r : ranges) {
+      for (; start < r.start; start++) {
+        SCOPED_TRACE(start);
+        EXPECT_EQ(b.NextUnmarkedRange(start), r);
+      }
+      for (; start < r.end; start++) {
+        SCOPED_TRACE(start);
+        EXPECT_EQ(b.NextUnmarkedRange(start),
+                  (DTLSMessageBitmap::Range{start, r.end}));
+      }
+    }
+    EXPECT_TRUE(b.NextUnmarkedRange(start).empty());
+    EXPECT_TRUE(b.NextUnmarkedRange(start + 1).empty());
+    EXPECT_TRUE(b.NextUnmarkedRange(start + 42).empty());
+
+    // This is implied from the previous checks, but NextUnmarkedRange should
+    // work as an iterator to reconstruct the ranges.
+    std::vector<DTLSMessageBitmap::Range> got_ranges;
+    for (auto r = b.NextUnmarkedRange(0); !r.empty();
+         r = b.NextUnmarkedRange(r.end)) {
+      got_ranges.push_back(r);
+    }
+    EXPECT_EQ(ranges, got_ranges);
+  };
+
+  // Initially, the bitmap is empty (fully marked).
+  DTLSMessageBitmap bitmap;
+  expect_bitmap(bitmap, {});
+
+  // It can also be initialized to the empty message and marked.
+  ASSERT_TRUE(bitmap.Init(0));
+  expect_bitmap(bitmap, {});
+  bitmap.MarkRange(0, 0);
+  expect_bitmap(bitmap, {});
+
+  // Track 100 bits and mark byte by byte.
+  ASSERT_TRUE(bitmap.Init(100));
+  expect_bitmap(bitmap, {{0, 100}});
+  for (size_t i = 0; i < 100; i++) {
+    SCOPED_TRACE(i);
+    bitmap.MarkRange(i, i + 1);
+    if (i < 99) {
+      expect_bitmap(bitmap, {{i + 1, 100}});
+    } else {
+      expect_bitmap(bitmap, {});
+    }
+  }
+
+  // Do the same but in reverse.
+  ASSERT_TRUE(bitmap.Init(100));
+  expect_bitmap(bitmap, {{0, 100}});
+  for (size_t i = 100; i > 0; i--) {
+    SCOPED_TRACE(i);
+    bitmap.MarkRange(i - 1, i);
+    if (i > 1) {
+      expect_bitmap(bitmap, {{0, i - 1}});
+    } else {
+      expect_bitmap(bitmap, {});
+    }
+  }
+
+  // Overlapping ranges are fine.
+  ASSERT_TRUE(bitmap.Init(100));
+  expect_bitmap(bitmap, {{0, 100}});
+  for (size_t i = 0; i < 100; i++) {
+    SCOPED_TRACE(i);
+    bitmap.MarkRange(i / 2, i + 1);
+    if (i < 99) {
+      expect_bitmap(bitmap, {{i + 1, 100}});
+    } else {
+      expect_bitmap(bitmap, {});
+    }
+  }
+
+  // Mark the middle chunk of every power of 3.
+  ASSERT_TRUE(bitmap.Init(100));
+  bitmap.MarkRange(1, 2);
+  bitmap.MarkRange(3, 6);
+  bitmap.MarkRange(9, 18);
+  bitmap.MarkRange(27, 54);
+  bitmap.MarkRange(81, 162);
+  expect_bitmap(bitmap, {{0, 1}, {2, 3}, {6, 9}, {18, 27}, {54, 81}});
+
+  // Mark most of the chunk shifted down a bit, so it both overlaps the previous
+  // and also leaves some of the right chunks unmarked.
+  bitmap.MarkRange(6 - 2, 9 - 2);
+  bitmap.MarkRange(18 - 4, 27 - 4);
+  bitmap.MarkRange(54 - 8, 81 - 8);
+  expect_bitmap(bitmap,
+                {{0, 1}, {2, 3}, {9 - 2, 9}, {27 - 4, 27}, {81 - 8, 81}});
+
+  // Re-mark things that have already been marked.
+  bitmap.MarkRange(1, 2);
+  bitmap.MarkRange(3, 6);
+  bitmap.MarkRange(9, 18);
+  bitmap.MarkRange(27, 54);
+  bitmap.MarkRange(81, 162);
+  expect_bitmap(bitmap,
+                {{0, 1}, {2, 3}, {9 - 2, 9}, {27 - 4, 27}, {81 - 8, 81}});
+
+  // Moves should work.
+  DTLSMessageBitmap bitmap2 = std::move(bitmap);
+  expect_bitmap(bitmap, {});
+  expect_bitmap(bitmap2,
+                {{0, 1}, {2, 3}, {9 - 2, 9}, {27 - 4, 27}, {81 - 8, 81}});
+
+  // Mark everything in two large ranges.
+  bitmap2.MarkRange(27 - 2, 100);
+  expect_bitmap(bitmap2, {{0, 1}, {2, 3}, {9 - 2, 9}, {27 - 4, 27 - 2}});
+  bitmap2.MarkRange(0, 50);
+  expect_bitmap(bitmap2, {});
+}
+
 }  // namespace
 BSSL_NAMESPACE_END
 #endif  // !BORINGSSL_SHARED_LIBRARY
