@@ -235,14 +235,6 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
     }
   }
 
-  if (traffic_secret.size() >
-          OPENSSL_ARRAY_SIZE(ssl->s3->read_traffic_secret) ||
-      traffic_secret.size() >
-          OPENSSL_ARRAY_SIZE(ssl->s3->write_traffic_secret)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
-  }
-
   if (direction == evp_aead_open) {
     if (!ssl->method->set_read_state(ssl, level, std::move(traffic_aead),
                                      secret_for_quic)) {
