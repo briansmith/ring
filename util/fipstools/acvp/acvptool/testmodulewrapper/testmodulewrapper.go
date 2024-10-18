@@ -20,8 +20,10 @@ package main
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -32,6 +34,8 @@ import (
 	"hash"
 	"io"
 	"os"
+
+	"filippo.io/edwards25519"
 
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/pbkdf2"
@@ -56,6 +60,10 @@ var handlers = map[string]func([][]byte) error{
 	"AES-CBC-CS3/encrypt":      ctsEncrypt,
 	"AES-CBC-CS3/decrypt":      ctsDecrypt,
 	"PBKDF":                    pbkdf,
+	"EDDSA/keyGen":             eddsaKeyGen,
+	"EDDSA/keyVer":             eddsaKeyVer,
+	"EDDSA/sigGen":             eddsaSigGen,
+	"EDDSA/sigVer":             eddsaSigVer,
 }
 
 func flush(args [][]byte) error {
@@ -209,6 +217,18 @@ func getConfig(args [][]byte) error {
 				"SHA3-512"
 			]
 		}]
+	}, {
+		"algorithm": "EDDSA",
+		"mode": "keyVer",
+		"revision": "1.0",
+		"curve": ["ED-25519"]
+    }, {
+		"algorithm": "EDDSA",
+		"mode": "sigVer",
+		"revision": "1.0",
+		"pure": true,
+		"preHash": true,
+		"curve": ["ED-25519"]}
 	}
 ]`)); err != nil {
 		return err
@@ -552,6 +572,103 @@ func pbkdf(args [][]byte) error {
 	derivedKey := pbkdf2.Key(password, salt, int(iterationCount), int(keyLen), h)
 
 	return reply(derivedKey)
+}
+
+func eddsaKeyGen(args [][]byte) error {
+	if string(args[0]) != "ED-25519" {
+		return fmt.Errorf("unsupported EDDSA curve: %q", args[0])
+	}
+
+	pk, sk, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		return fmt.Errorf("generating EDDSA keypair: %w", err)
+	}
+
+	// EDDSA/keyGen/AFT responses are d & q, described[0] as:
+	//   d	The encoded private key point
+	//   q	The encoded public key point
+	//
+	// Contrary to the description of a "point", d is the private key
+	// seed bytes per FIPS.186-5[1] A.2.3.
+	//
+	// [0]: https://pages.nist.gov/ACVP/draft-celi-acvp-eddsa.html#section-9.1
+	// [1]: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf
+	return reply(sk.Seed(), pk)
+}
+
+func eddsaKeyVer(args [][]byte) error {
+	if string(args[0]) != "ED-25519" {
+		return fmt.Errorf("unsupported EDDSA curve: %q", args[0])
+	}
+
+	if len(args[1]) != ed25519.PublicKeySize {
+		return reply([]byte{0})
+	}
+
+	// Verify the point is on the curve. The higher-level ed25519 API does
+	// this at signature verification time so we have to use the lower-level
+	// edwards25519 package to do it here in absence of a signature to verify.
+	if _, err := new(edwards25519.Point).SetBytes(args[1]); err != nil {
+		return reply([]byte{0})
+	}
+
+	return reply([]byte{1})
+}
+
+func eddsaSigGen(args [][]byte) error {
+	if string(args[0]) != "ED-25519" {
+		return fmt.Errorf("unsupported EDDSA curve: %q", args[0])
+	}
+
+	sk := ed25519.NewKeyFromSeed(args[1])
+	msg := args[2]
+	prehash := args[3]
+	context := string(args[4])
+
+	var opts ed25519.Options
+	if prehash[0] == 1 {
+		opts.Hash = crypto.SHA512
+		h := sha512.New()
+		h.Write(msg)
+		msg = h.Sum(nil)
+		// With ed25519 the context is only specified for sigGen tests when using prehashing.
+		// See https://pages.nist.gov/ACVP/draft-celi-acvp-eddsa.html#section-8.6
+		opts.Context = context
+	}
+
+	sig, err := sk.Sign(nil, msg, &opts)
+	if err != nil {
+		return fmt.Errorf("error signing message: %w", err)
+	}
+
+	return reply(sig)
+}
+
+func eddsaSigVer(args [][]byte) error {
+	if string(args[0]) != "ED-25519" {
+		return fmt.Errorf("unsupported EDDSA curve: %q", args[0])
+	}
+
+	msg := args[1]
+	pk := ed25519.PublicKey(args[2])
+	sig := args[3]
+	prehash := args[4]
+
+	var opts ed25519.Options
+	if prehash[0] == 1 {
+		opts.Hash = crypto.SHA512
+		h := sha512.New()
+		h.Write(msg)
+		msg = h.Sum(nil)
+		// Context is only specified for sigGen, not sigVer.
+		// See https://pages.nist.gov/ACVP/draft-celi-acvp-eddsa.html#section-8.6
+	}
+
+	if err := ed25519.VerifyWithOptions(pk, msg, sig, &opts); err != nil {
+		return reply([]byte{0})
+	}
+
+	return reply([]byte{1})
 }
 
 const (

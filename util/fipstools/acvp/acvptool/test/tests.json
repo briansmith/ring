@@ -33,5 +33,6 @@
 {"Wrapper": "modulewrapper", "In": "vectors/SHA2-512.bz2", "Out": "expected/SHA2-512.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/TLS12.bz2", "Out": "expected/TLS12.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/TLS13.bz2", "Out": "expected/TLS13.bz2"},
-{"Wrapper": "testmodulewrapper", "In": "vectors/PBKDF.bz2", "Out": "expected/PBKDF.bz2"}
+{"Wrapper": "testmodulewrapper", "In": "vectors/PBKDF.bz2", "Out": "expected/PBKDF.bz2"},
+{"Wrapper": "testmodulewrapper", "In": "vectors/EDDSA.bz2", "Out": "expected/EDDSA.bz2"}
 ]
