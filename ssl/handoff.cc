@@ -176,7 +176,7 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
     return false;
   }
   Array<uint16_t> supported_groups;
-  if (!supported_groups.Init(CBS_len(&groups) / 2)) {
+  if (!supported_groups.InitForOverwrite(CBS_len(&groups) / 2)) {
     return false;
   }
   size_t idx = 0;
@@ -190,7 +190,7 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
   Span<const uint16_t> configured_groups =
       tls1_get_grouplist(ssl->s3->hs.get());
   Array<uint16_t> new_configured_groups;
-  if (!new_configured_groups.Init(configured_groups.size())) {
+  if (!new_configured_groups.InitForOverwrite(configured_groups.size())) {
     return false;
   }
   idx = 0;

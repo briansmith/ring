@@ -1166,7 +1166,7 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
 
   // Historically, OpenSSL filled in fake session IDs for ticket-based sessions.
   // Envoy's tests depend on this, although perhaps they shouldn't.
-  session->session_id.ResizeMaybeUninit(SHA256_DIGEST_LENGTH);
+  session->session_id.ResizeForOverwrite(SHA256_DIGEST_LENGTH);
   SHA256(CBS_data(&ticket), CBS_len(&ticket), session->session_id.data());
 
   session->ticket_age_add_valid = true;

@@ -542,7 +542,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   if (has_id_session) {
     hs->session_id = ssl->session->session_id;
   } else if (ticket_session_requires_random_id || enable_compatibility_mode) {
-    hs->session_id.ResizeMaybeUninit(SSL_MAX_SSL_SESSION_ID_LENGTH);
+    hs->session_id.ResizeForOverwrite(SSL_MAX_SSL_SESSION_ID_LENGTH);
     if (!RAND_bytes(hs->session_id.data(), hs->session_id.size())) {
       return ssl_hs_error;
     }
@@ -1528,16 +1528,15 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
 
   // Depending on the key exchange method, compute |pms|.
   if (alg_k & SSL_kRSA) {
-    if (!pms.Init(SSL_MAX_MASTER_KEY_LENGTH)) {
-      return ssl_hs_error;
-    }
-
     RSA *rsa = EVP_PKEY_get0_RSA(hs->peer_pubkey.get());
     if (rsa == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return ssl_hs_error;
     }
 
+    if (!pms.InitForOverwrite(SSL_MAX_MASTER_KEY_LENGTH)) {
+      return ssl_hs_error;
+    }
     pms[0] = hs->client_version >> 8;
     pms[1] = hs->client_version & 0xff;
     if (!RAND_bytes(&pms[2], SSL_MAX_MASTER_KEY_LENGTH - 2)) {
@@ -1581,7 +1580,6 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     if (!pms.Init(psk_len)) {
       return ssl_hs_error;
     }
-    OPENSSL_memset(pms.data(), 0, pms.size());
   } else {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1609,7 +1607,7 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->new_session->secret.ResizeMaybeUninit(SSL3_MASTER_SECRET_SIZE);
+  hs->new_session->secret.ResizeForOverwrite(SSL3_MASTER_SECRET_SIZE);
   if (!tls1_generate_master_secret(hs, MakeSpan(hs->new_session->secret),
                                    pms)) {
     return ssl_hs_error;
@@ -1850,7 +1848,7 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
 
   // Historically, OpenSSL filled in fake session IDs for ticket-based sessions.
   // TODO(davidben): Are external callers relying on this? Try removing this.
-  hs->new_session->session_id.ResizeMaybeUninit(SHA256_DIGEST_LENGTH);
+  hs->new_session->session_id.ResizeForOverwrite(SHA256_DIGEST_LENGTH);
   SHA256(CBS_data(&ticket), CBS_len(&ticket),
          hs->new_session->session_id.data());
 

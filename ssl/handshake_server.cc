@@ -941,7 +941,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     // Assign a session ID if not using session tickets.
     if (!hs->ticket_expected &&
         (ssl->ctx->session_cache_mode & SSL_SESS_CACHE_SERVER)) {
-      hs->new_session->session_id.ResizeMaybeUninit(SSL3_SSL_SESSION_ID_LENGTH);
+      hs->new_session->session_id.ResizeForOverwrite(SSL3_SSL_SESSION_ID_LENGTH);
       RAND_bytes(hs->new_session->session_id.data(),
                  hs->new_session->session_id.size());
     }
@@ -1464,7 +1464,8 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     // Allocate a buffer large enough for an RSA decryption.
     Array<uint8_t> decrypt_buf;
-    if (!decrypt_buf.Init(EVP_PKEY_size(hs->credential->pubkey.get()))) {
+    if (!decrypt_buf.InitForOverwrite(
+            EVP_PKEY_size(hs->credential->pubkey.get()))) {
       return ssl_hs_error;
     }
 
@@ -1492,7 +1493,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     // Prepare a random premaster, to be used on invalid padding. See RFC 5246,
     // section 7.4.7.1.
-    if (!premaster_secret.Init(SSL_MAX_MASTER_KEY_LENGTH) ||
+    if (!premaster_secret.InitForOverwrite(SSL_MAX_MASTER_KEY_LENGTH) ||
         !RAND_bytes(premaster_secret.data(), premaster_secret.size())) {
       return ssl_hs_error;
     }
@@ -1583,7 +1584,6 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       if (!premaster_secret.Init(psk_len)) {
         return ssl_hs_error;
       }
-      OPENSSL_memset(premaster_secret.data(), 0, premaster_secret.size());
     }
 
     ScopedCBB new_premaster;
@@ -1605,7 +1605,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
   }
 
   // Compute the master secret.
-  hs->new_session->secret.ResizeMaybeUninit(SSL3_MASTER_SECRET_SIZE);
+  hs->new_session->secret.ResizeForOverwrite(SSL3_MASTER_SECRET_SIZE);
   if (!tls1_generate_master_secret(hs, MakeSpan(hs->new_session->secret),
                                    premaster_secret)) {
     return ssl_hs_error;

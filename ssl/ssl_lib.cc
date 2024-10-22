@@ -1976,7 +1976,7 @@ int SSL_set1_group_ids(SSL *ssl, const uint16_t *group_ids,
 static bool ssl_nids_to_group_ids(Array<uint16_t> *out_group_ids,
                                   Span<const int> nids) {
   Array<uint16_t> group_ids;
-  if (!group_ids.Init(nids.size())) {
+  if (!group_ids.InitForOverwrite(nids.size())) {
     return false;
   }
 
@@ -2018,7 +2018,7 @@ static bool ssl_str_to_group_ids(Array<uint16_t> *out_group_ids,
   } while (col);
 
   Array<uint16_t> group_ids;
-  if (!group_ids.Init(count)) {
+  if (!group_ids.InitForOverwrite(count)) {
     return false;
   }
 

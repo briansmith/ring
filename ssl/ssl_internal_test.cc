@@ -23,6 +23,15 @@
 BSSL_NAMESPACE_BEGIN
 namespace {
 
+TEST(ArrayTest, InitValueConstructs) {
+  Array<uint8_t> array;
+  ASSERT_TRUE(array.Init(10));
+  EXPECT_EQ(array.size(), 10u);
+  for (size_t i = 0; i < 10u; i++) {
+    EXPECT_EQ(0u, array[i]);
+  }
+}
+
 TEST(ArrayDeathTest, BoundsChecks) {
   Array<int> array;
   const int v[] = {1, 2, 3, 4};
@@ -345,7 +354,7 @@ TEST(InplaceVectorDeathTest, BoundsChecks) {
   EXPECT_DEATH_IF_SUPPORTED(vec[1000], "");
   // The vector cannot be resized past the capacity.
   EXPECT_DEATH_IF_SUPPORTED(vec.Resize(5), "");
-  EXPECT_DEATH_IF_SUPPORTED(vec.ResizeMaybeUninit(5), "");
+  EXPECT_DEATH_IF_SUPPORTED(vec.ResizeForOverwrite(5), "");
   int too_much_data[] = {1, 2, 3, 4, 5};
   EXPECT_DEATH_IF_SUPPORTED(vec.CopyFrom(too_much_data), "");
   vec.Resize(4);

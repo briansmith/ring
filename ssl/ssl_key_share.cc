@@ -108,7 +108,7 @@ class ECKeyShare : public SSLKeyShare {
 
     // Encode the x-coordinate left-padded with zeros.
     Array<uint8_t> secret;
-    if (!secret.Init((EC_GROUP_get_degree(group_) + 7) / 8) ||
+    if (!secret.InitForOverwrite((EC_GROUP_get_degree(group_) + 7) / 8) ||
         !BN_bn2bin_padded(secret.data(), secret.size(), x.get())) {
       return false;
     }
@@ -162,7 +162,7 @@ class X25519KeyShare : public SSLKeyShare {
     *out_alert = SSL_AD_INTERNAL_ERROR;
 
     Array<uint8_t> secret;
-    if (!secret.Init(32)) {
+    if (!secret.InitForOverwrite(32)) {
       return false;
     }
 
@@ -220,7 +220,7 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
   bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
              uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     Array<uint8_t> secret;
-    if (!secret.Init(32 + KYBER_SHARED_SECRET_BYTES)) {
+    if (!secret.InitForOverwrite(32 + KYBER_SHARED_SECRET_BYTES)) {
       return false;
     }
 
@@ -260,7 +260,7 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
     *out_alert = SSL_AD_INTERNAL_ERROR;
 
     Array<uint8_t> secret;
-    if (!secret.Init(32 + KYBER_SHARED_SECRET_BYTES)) {
+    if (!secret.InitForOverwrite(32 + KYBER_SHARED_SECRET_BYTES)) {
       return false;
     }
 
@@ -308,7 +308,8 @@ class X25519MLKEM768KeyShare : public SSLKeyShare {
   bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
              uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     Array<uint8_t> secret;
-    if (!secret.Init(MLKEM_SHARED_SECRET_BYTES + X25519_SHARED_KEY_LEN)) {
+    if (!secret.InitForOverwrite(MLKEM_SHARED_SECRET_BYTES +
+                                 X25519_SHARED_KEY_LEN)) {
       return false;
     }
 
@@ -349,7 +350,8 @@ class X25519MLKEM768KeyShare : public SSLKeyShare {
     *out_alert = SSL_AD_INTERNAL_ERROR;
 
     Array<uint8_t> secret;
-    if (!secret.Init(MLKEM_SHARED_SECRET_BYTES + X25519_SHARED_KEY_LEN)) {
+    if (!secret.InitForOverwrite(MLKEM_SHARED_SECRET_BYTES +
+                                 X25519_SHARED_KEY_LEN)) {
       return false;
     }
 

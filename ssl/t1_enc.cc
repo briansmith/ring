@@ -214,7 +214,7 @@ bool tls1_configure_aead(SSL *ssl, evp_aead_direction_t direction,
   // Ensure that |key_block_cache| is set up.
   const size_t key_block_size = 2 * (mac_secret_len + key_len + iv_len);
   if (key_block_cache->empty()) {
-    if (!key_block_cache->Init(key_block_size) ||
+    if (!key_block_cache->InitForOverwrite(key_block_size) ||
         !generate_key_block(ssl, MakeSpan(*key_block_cache), session)) {
       return false;
     }
@@ -362,7 +362,7 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
     seed_len += 2 + context_len;
   }
   Array<uint8_t> seed;
-  if (!seed.Init(seed_len)) {
+  if (!seed.InitForOverwrite(seed_len)) {
     return 0;
   }
 

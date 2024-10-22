@@ -785,7 +785,7 @@ static int send_flight(SSL *ssl) {
   dtls1_update_mtu(ssl);
 
   Array<uint8_t> packet;
-  if (!packet.Init(ssl->d1->mtu)) {
+  if (!packet.InitForOverwrite(ssl->d1->mtu)) {
     return -1;
   }
 

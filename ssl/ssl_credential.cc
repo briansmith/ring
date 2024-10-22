@@ -48,7 +48,7 @@ bool ssl_get_credential_list(SSL_HANDSHAKE *hs, Array<SSL_CREDENTIAL *> *out) {
     num_creds++;
   }
 
-  if (!out->Init(num_creds)) {
+  if (!out->InitForOverwrite(num_creds)) {
     return false;
   }
 

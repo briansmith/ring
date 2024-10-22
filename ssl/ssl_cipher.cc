@@ -919,7 +919,6 @@ static bool ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
   if (!number_uses.Init(max_strength_bits + 1)) {
     return false;
   }
-  OPENSSL_memset(number_uses.data(), 0, (max_strength_bits + 1) * sizeof(int));
 
   // Now find the strength_bits values actually used.
   curr = *head_p;
@@ -1231,7 +1230,7 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   UniquePtr<STACK_OF(SSL_CIPHER)> cipherstack(sk_SSL_CIPHER_new_null());
   Array<bool> in_group_flags;
   if (cipherstack == nullptr ||
-      !in_group_flags.Init(OPENSSL_ARRAY_SIZE(kCiphers))) {
+      !in_group_flags.InitForOverwrite(OPENSSL_ARRAY_SIZE(kCiphers))) {
     return false;
   }
 
@@ -1246,13 +1245,11 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
       in_group_flags[num_in_group_flags++] = curr->in_group;
     }
   }
+  in_group_flags.Shrink(num_in_group_flags);
 
   UniquePtr<SSLCipherPreferenceList> pref_list =
       MakeUnique<SSLCipherPreferenceList>();
-  if (!pref_list ||
-      !pref_list->Init(
-          std::move(cipherstack),
-          MakeConstSpan(in_group_flags).subspan(0, num_in_group_flags))) {
+  if (!pref_list || !pref_list->Init(std::move(cipherstack), in_group_flags)) {
     return false;
   }
 

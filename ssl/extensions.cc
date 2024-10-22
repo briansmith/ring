@@ -175,7 +175,7 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
   }
 
   Array<uint16_t> extension_types;
-  if (!extension_types.Init(num_extensions)) {
+  if (!extension_types.InitForOverwrite(num_extensions)) {
     return false;
   }
 
@@ -2526,7 +2526,7 @@ static bool parse_u16_array(const CBS *cbs, Array<uint16_t> *out) {
   }
 
   Array<uint16_t> ret;
-  if (!ret.Init(CBS_len(&copy) / 2)) {
+  if (!ret.InitForOverwrite(CBS_len(&copy) / 2)) {
     return false;
   }
   for (size_t i = 0; i < ret.size(); i++) {
@@ -2878,7 +2878,7 @@ static bool cert_compression_parse_clienthello(SSL_HANDSHAKE *hs,
 
   const size_t num_given_alg_ids = CBS_len(&alg_ids) / 2;
   Array<uint16_t> given_alg_ids;
-  if (!given_alg_ids.Init(num_given_alg_ids)) {
+  if (!given_alg_ids.InitForOverwrite(num_given_alg_ids)) {
     return false;
   }
 
@@ -3352,7 +3352,7 @@ bool ssl_setup_extension_permutation(SSL_HANDSHAKE *hs) {
   uint32_t seeds[kNumExtensions - 1];
   Array<uint8_t> permutation;
   if (!RAND_bytes(reinterpret_cast<uint8_t *>(seeds), sizeof(seeds)) ||
-      !permutation.Init(kNumExtensions)) {
+      !permutation.InitForOverwrite(kNumExtensions)) {
     return false;
   }
   for (size_t i = 0; i < kNumExtensions; i++) {
@@ -3918,7 +3918,7 @@ static enum ssl_ticket_aead_result_t decrypt_ticket_with_cipher_ctx(
   if (ciphertext.size() >= INT_MAX) {
     return ssl_ticket_aead_ignore_ticket;
   }
-  if (!plaintext.Init(ciphertext.size())) {
+  if (!plaintext.InitForOverwrite(ciphertext.size())) {
     return ssl_ticket_aead_error;
   }
   int len1, len2;
@@ -4006,7 +4006,7 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_method(
     SSL_HANDSHAKE *hs, Array<uint8_t> *out, bool *out_renew_ticket,
     Span<const uint8_t> ticket) {
   Array<uint8_t> plaintext;
-  if (!plaintext.Init(ticket.size())) {
+  if (!plaintext.InitForOverwrite(ticket.size())) {
     return ssl_ticket_aead_error;
   }
 
@@ -4115,7 +4115,7 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
   // Envoy's tests expect the session to have a session ID that matches the
   // placeholder used by the client. It's unclear whether this is a good idea,
   // but we maintain it for now.
-  session->session_id.ResizeMaybeUninit(SHA256_DIGEST_LENGTH);
+  session->session_id.ResizeForOverwrite(SHA256_DIGEST_LENGTH);
   SHA256(ticket.data(), ticket.size(), session->session_id.data());
 
   *out_session = std::move(session);
@@ -4356,7 +4356,7 @@ bool tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
   }
 
   size_t digest_len;
-  hs->new_session->original_handshake_hash.ResizeMaybeUninit(
+  hs->new_session->original_handshake_hash.ResizeForOverwrite(
       hs->transcript.DigestLen());
   if (!hs->transcript.GetHash(hs->new_session->original_handshake_hash.data(),
                               &digest_len)) {

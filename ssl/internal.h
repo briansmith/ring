@@ -334,11 +334,21 @@ class Array {
   }
 
   // Init replaces the array with a newly-allocated array of |new_size|
-  // default-constructed copies of |T|. It returns true on success and false on
-  // error.
-  //
-  // Note that if |T| is a primitive type like |uint8_t|, it is uninitialized.
+  // value-constructed copies of |T|. It returns true on success and false on
+  // error. If |T| is a primitive type like |uint8_t|, value-construction means
+  // it will be zero-initialized.
   bool Init(size_t new_size) {
+    if (!InitUninitialized(new_size)) {
+      return false;
+    }
+    cxx17_uninitialized_value_construct_n(data_, size_);
+    return true;
+  }
+
+  // InitForOverwrite behaves like |Init| but it default-constructs each element
+  // instead. This means that, if |T| is a primitive type, the array will be
+  // uninitialized and thus must be filled in by the caller.
+  bool InitForOverwrite(size_t new_size) {
     if (!InitUninitialized(new_size)) {
       return false;
     }
@@ -585,10 +595,10 @@ class InplaceVector {
     return true;
   }
 
-  // TryResizeMaybeUninit behaves like |TryResize|, but newly-added elements are
-  // default-initialized, so POD types may contain uninitialized values that the
-  // caller is responsible for filling in.
-  bool TryResizeMaybeUninit(size_t new_size) {
+  // TryResizeForOverwrite behaves like |TryResize|, but newly-added elements
+  // are default-initialized, so POD types may contain uninitialized values that
+  // the caller is responsible for filling in.
+  bool TryResizeForOverwrite(size_t new_size) {
     if (new_size <= size_) {
       Shrink(new_size);
       return true;
@@ -628,8 +638,8 @@ class InplaceVector {
   // The following methods behave like their |Try*| counterparts, but abort the
   // program on failure.
   void Resize(size_t size) { BSSL_CHECK(TryResize(size)); }
-  void ResizeMaybeUninit(size_t size) {
-    BSSL_CHECK(TryResizeMaybeUninit(size));
+  void ResizeForOverwrite(size_t size) {
+    BSSL_CHECK(TryResizeForOverwrite(size));
   }
   void CopyFrom(Span<const T> in) { BSSL_CHECK(TryCopyFrom(in)); }
   T &PushBack(T val) {

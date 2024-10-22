@@ -303,7 +303,7 @@ bool ssl_client_hello_decrypt(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return false;
   }
 #else
-  if (!encoded.Init(payload.size())) {
+  if (!encoded.InitForOverwrite(payload.size())) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }

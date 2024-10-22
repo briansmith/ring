@@ -603,7 +603,7 @@ static bool set_sigalg_prefs(Array<uint16_t> *out, Span<const uint16_t> prefs) {
 
   // Check for invalid algorithms, and filter out |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
   Array<uint16_t> filtered;
-  if (!filtered.Init(prefs.size())) {
+  if (!filtered.InitForOverwrite(prefs.size())) {
     return false;
   }
   size_t added = 0;
@@ -695,7 +695,7 @@ static bool parse_sigalg_pairs(Array<uint16_t> *out, const int *values,
   }
 
   const size_t num_pairs = num_values / 2;
-  if (!out->Init(num_pairs)) {
+  if (!out->InitForOverwrite(num_pairs)) {
     return false;
   }
 
@@ -771,7 +771,7 @@ static bool parse_sigalgs_list(Array<uint16_t> *out, const char *str) {
     }
   }
 
-  if (!out->Init(num_elements)) {
+  if (!out->InitForOverwrite(num_elements)) {
     return false;
   }
   size_t out_i = 0;

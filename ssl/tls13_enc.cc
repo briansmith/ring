@@ -168,7 +168,7 @@ static bool derive_secret_with_transcript(
     return false;
   }
 
-  out->ResizeMaybeUninit(transcript.DigestLen());
+  out->ResizeForOverwrite(transcript.DigestLen());
   return hkdf_expand_label(MakeSpan(*out), transcript.Digest(), hs->secret,
                            label, MakeConstSpan(context_hash, context_hash_len),
                            SSL_is_dtls(hs->ssl));
