@@ -262,27 +262,22 @@ DTLSMessageBitmap::Range DTLSMessageBitmap::NextUnmarkedRange(
 
 // Receiving handshake messages.
 
-hm_fragment::~hm_fragment() { OPENSSL_free(data); }
-
-static UniquePtr<hm_fragment> dtls1_hm_fragment_new(
+static UniquePtr<DTLSIncomingMessage> dtls_new_incoming_message(
     const struct hm_header_st *msg_hdr) {
   ScopedCBB cbb;
-  UniquePtr<hm_fragment> frag = MakeUnique<hm_fragment>();
+  UniquePtr<DTLSIncomingMessage> frag = MakeUnique<DTLSIncomingMessage>();
   if (!frag) {
     return nullptr;
   }
   frag->type = msg_hdr->type;
   frag->seq = msg_hdr->seq;
-  frag->msg_len = msg_hdr->msg_len;
 
   // Allocate space for the reassembled message and fill in the header.
-  frag->data =
-      (uint8_t *)OPENSSL_malloc(DTLS1_HM_HEADER_LENGTH + msg_hdr->msg_len);
-  if (frag->data == NULL) {
+  if (!frag->data.InitForOverwrite(DTLS1_HM_HEADER_LENGTH + msg_hdr->msg_len)) {
     return nullptr;
   }
 
-  if (!CBB_init_fixed(cbb.get(), frag->data, DTLS1_HM_HEADER_LENGTH) ||
+  if (!CBB_init_fixed(cbb.get(), frag->data.data(), DTLS1_HM_HEADER_LENGTH) ||
       !CBB_add_u8(cbb.get(), msg_hdr->type) ||
       !CBB_add_u24(cbb.get(), msg_hdr->msg_len) ||
       !CBB_add_u16(cbb.get(), msg_hdr->seq) ||
@@ -303,7 +298,7 @@ static UniquePtr<hm_fragment> dtls1_hm_fragment_new(
 // message is complete.
 static bool dtls1_is_current_message_complete(const SSL *ssl) {
   size_t idx = ssl->d1->handshake_read_seq % SSL_MAX_HANDSHAKE_FLIGHT;
-  hm_fragment *frag = ssl->d1->incoming_messages[idx].get();
+  DTLSIncomingMessage *frag = ssl->d1->incoming_messages[idx].get();
   return frag != nullptr && frag->reassembly.IsComplete();
 }
 
@@ -311,7 +306,7 @@ static bool dtls1_is_current_message_complete(const SSL *ssl) {
 // |msg_hdr|. If none exists, it creates a new one and inserts it in the
 // queue. Otherwise, it checks |msg_hdr| is consistent with the existing one. It
 // returns NULL on failure. The caller does not take ownership of the result.
-static hm_fragment *dtls1_get_incoming_message(
+static DTLSIncomingMessage *dtls1_get_incoming_message(
     SSL *ssl, uint8_t *out_alert, const struct hm_header_st *msg_hdr) {
   if (msg_hdr->seq < ssl->d1->handshake_read_seq ||
       msg_hdr->seq - ssl->d1->handshake_read_seq >= SSL_MAX_HANDSHAKE_FLIGHT) {
@@ -320,13 +315,13 @@ static hm_fragment *dtls1_get_incoming_message(
   }
 
   size_t idx = msg_hdr->seq % SSL_MAX_HANDSHAKE_FLIGHT;
-  hm_fragment *frag = ssl->d1->incoming_messages[idx].get();
+  DTLSIncomingMessage *frag = ssl->d1->incoming_messages[idx].get();
   if (frag != NULL) {
     assert(frag->seq == msg_hdr->seq);
     // The new fragment must be compatible with the previous fragments from this
     // message.
     if (frag->type != msg_hdr->type ||
-        frag->msg_len != msg_hdr->msg_len) {
+        frag->msg_len() != msg_hdr->msg_len) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_FRAGMENT_MISMATCH);
       *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       return NULL;
@@ -335,7 +330,7 @@ static hm_fragment *dtls1_get_incoming_message(
   }
 
   // This is the first fragment from this message.
-  ssl->d1->incoming_messages[idx] = dtls1_hm_fragment_new(msg_hdr);
+  ssl->d1->incoming_messages[idx] = dtls_new_incoming_message(msg_hdr);
   if (!ssl->d1->incoming_messages[idx]) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return NULL;
@@ -388,11 +383,12 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
       continue;
     }
 
-    hm_fragment *frag = dtls1_get_incoming_message(ssl, out_alert, &msg_hdr);
+    DTLSIncomingMessage *frag =
+        dtls1_get_incoming_message(ssl, out_alert, &msg_hdr);
     if (frag == nullptr) {
       return false;
     }
-    assert(frag->msg_len == msg_len);
+    assert(frag->msg_len() == msg_len);
 
     if (frag->reassembly.IsComplete()) {
       // The message is already assembled.
@@ -401,8 +397,8 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
     assert(msg_len > 0);
 
     // Copy the body into the fragment.
-    OPENSSL_memcpy(frag->data + DTLS1_HM_HEADER_LENGTH + frag_off,
-                   CBS_data(&body), CBS_len(&body));
+    Span<uint8_t> dest = frag->msg().subspan(frag_off, CBS_len(&body));
+    OPENSSL_memcpy(dest.data(), CBS_data(&body), CBS_len(&body));
     frag->reassembly.MarkRange(frag_off, frag_off + frag_len);
   }
 
@@ -484,10 +480,10 @@ bool dtls1_get_message(const SSL *ssl, SSLMessage *out) {
   }
 
   size_t idx = ssl->d1->handshake_read_seq % SSL_MAX_HANDSHAKE_FLIGHT;
-  hm_fragment *frag = ssl->d1->incoming_messages[idx].get();
+  const DTLSIncomingMessage *frag = ssl->d1->incoming_messages[idx].get();
   out->type = frag->type;
-  CBS_init(&out->body, frag->data + DTLS1_HM_HEADER_LENGTH, frag->msg_len);
-  CBS_init(&out->raw, frag->data, DTLS1_HM_HEADER_LENGTH + frag->msg_len);
+  out->raw = CBS(frag->data);
+  out->body = CBS(frag->msg());
   out->is_v2_hello = false;
   if (!ssl->s3->has_message) {
     ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, out->raw);
@@ -638,7 +634,7 @@ static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
     ssl->d1->handshake_write_seq++;
   }
 
-  DTLS_OUTGOING_MESSAGE msg;
+  DTLSOutgoingMessage msg;
   msg.data = std::move(data);
   msg.epoch = ssl->d1->write_epoch.epoch();
   msg.is_ccs = is_ccs;
@@ -697,7 +693,7 @@ enum seal_result_t {
 // |*out_len| to the number of bytes written.
 static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
                                             size_t *out_len, size_t max_out,
-                                            const DTLS_OUTGOING_MESSAGE *msg) {
+                                            const DTLSOutgoingMessage *msg) {
   assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size());
   assert(msg == &ssl->d1->outgoing_messages[ssl->d1->outgoing_written]);
 
@@ -793,7 +789,7 @@ static bool seal_next_packet(SSL *ssl, uint8_t *out, size_t *out_len,
   assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size());
   for (; ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size();
        ssl->d1->outgoing_written++) {
-    const DTLS_OUTGOING_MESSAGE *msg =
+    const DTLSOutgoingMessage *msg =
         &ssl->d1->outgoing_messages[ssl->d1->outgoing_written];
     size_t len;
     enum seal_result_t ret = seal_next_message(ssl, out, &len, max_out, msg);
