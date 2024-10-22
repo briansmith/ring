@@ -176,14 +176,17 @@ bool DTLSMessageBitmap::Init(size_t num_bits) {
     return false;
   }
   MarkRange(num_bits, bits_rounded);
+  first_unmarked_byte_ = 0;
   return true;
 }
 
 void DTLSMessageBitmap::MarkRange(size_t start, size_t end) {
+  assert(start <= end);
+  // Don't bother touching bytes that have already been marked.
+  start = std::max(start, first_unmarked_byte_ << 3);
   // Clamp everything within range.
   start = std::min(start, bytes_.size() << 3);
   end = std::min(end, bytes_.size() << 3);
-  assert(start <= end);
   if (start >= end) {
     return;
   }
@@ -200,17 +203,25 @@ void DTLSMessageBitmap::MarkRange(size_t start, size_t end) {
     }
   }
 
-  // Release the buffer if we've marked everything.
-  auto iter = std::find_if(bytes_.begin(), bytes_.end(),
-                           [](uint8_t b) { return b != 0xff; });
-  if (iter == bytes_.end()) {
-    assert(NextUnmarkedRange(0).empty());
+  // Maintain the |first_unmarked_byte_| invariant. This work is amortized
+  // across all |MarkRange| calls.
+  while (first_unmarked_byte_ < bytes_.size() &&
+         bytes_[first_unmarked_byte_] == 0xff) {
+    first_unmarked_byte_++;
+  }
+  // If the whole message is marked, we no longer need to spend memory on the
+  // bitmap.
+  if (first_unmarked_byte_ >= bytes_.size()) {
     bytes_.Reset();
+    first_unmarked_byte_ = 0;
   }
 }
 
 DTLSMessageBitmap::Range DTLSMessageBitmap::NextUnmarkedRange(
     size_t start) const {
+  // Don't bother looking at bytes that are known to be fully marked.
+  start = std::max(start, first_unmarked_byte_ << 3);
+
   size_t idx = start >> 3;
   if (idx >= bytes_.size()) {
     return Range{0, 0};

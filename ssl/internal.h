@@ -3333,6 +3333,9 @@ class DTLSMessageBitmap {
   // bytes_ contains the unmarked bits. We maintain an invariant: if |bytes_| is
   // not empty, some bit is unset.
   Array<uint8_t> bytes_;
+  // first_unmarked_byte_ is the index of first byte in |bytes_| that is not
+  // 0xff. This is maintained to amortize checking if the message is complete.
+  size_t first_unmarked_byte_ = 0;
 };
 
 struct hm_header_st {
