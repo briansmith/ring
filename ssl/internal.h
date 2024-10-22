@@ -1222,6 +1222,9 @@ class DTLSReplayBitmap {
 // successfully deprotected in this epoch. This function returns the sequence
 // number that is numerically closest to one plus |max_valid_seqnum| that when
 // bitwise and-ed with |seq_mask| equals |wire_seq|.
+//
+// |max_valid_seqnum| must be most 2^48-1, in which case the output will also be
+// at most 2^48-1.
 OPENSSL_EXPORT uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
                                            uint64_t max_valid_seqnum);
 

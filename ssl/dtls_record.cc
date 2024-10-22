@@ -123,6 +123,8 @@
 
 BSSL_NAMESPACE_BEGIN
 
+static constexpr uint64_t kMaxSequenceNumber = (uint64_t{1} << 48) - 1;
+
 bool DTLSReplayBitmap::ShouldDiscard(uint64_t seq_num) const {
   const size_t kWindowSize = map_.size();
 
@@ -179,25 +181,31 @@ static uint16_t reconstruct_epoch(uint8_t wire_epoch, uint16_t current_epoch) {
 
 uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
                             uint64_t max_valid_seqnum) {
+  // Although DTLS 1.3 can support sequence numbers up to 2^64-1, we continue to
+  // enforce the DTLS 1.2 2^48-1 limit. With a minimal DTLS 1.3 record header (2
+  // bytes), no payload, and 16 byte AEAD overhead, sending 2^48 records would
+  // require 5 petabytes. This allows us to continue to pack a DTLS record
+  // number into an 8-byte structure.
+  assert(max_valid_seqnum <= kMaxSequenceNumber);
+  assert(seq_mask == 0xff || seq_mask == 0xffff);
+
   uint64_t max_seqnum_plus_one = max_valid_seqnum + 1;
   uint64_t diff = (wire_seq - max_seqnum_plus_one) & seq_mask;
   uint64_t step = seq_mask + 1;
+  // This addition cannot overflow. It is at most 2^48 + seq_mask. It, however,
+  // may exceed 2^48-1.
   uint64_t seqnum = max_seqnum_plus_one + diff;
-  // seqnum is computed as the addition of 3 non-negative values
-  // (max_valid_seqnum, 1, and diff). The values 1 and diff are small (relative
-  // to the size of a uint64_t), while max_valid_seqnum can span the range of
-  // all uint64_t values. If seqnum is less than max_valid_seqnum, then the
-  // addition overflowed.
-  bool overflowed = seqnum < max_valid_seqnum;
+  bool too_large = seqnum > kMaxSequenceNumber;
   // If the diff is larger than half the step size, then the closest seqnum
   // to max_seqnum_plus_one (in Z_{2^64}) is seqnum minus step instead of
   // seqnum.
   bool closer_is_less = diff > step / 2;
   // Subtracting step from seqnum will cause underflow if seqnum is too small.
   bool would_underflow = seqnum < step;
-  if (overflowed || (closer_is_less && !would_underflow)) {
+  if (too_large || (closer_is_less && !would_underflow)) {
     seqnum -= step;
   }
+  assert(seqnum <= kMaxSequenceNumber);
   return seqnum;
 }
 
@@ -491,7 +499,6 @@ bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   const size_t record_header_len = dtls_record_header_write_len(ssl, epoch);
 
   // Ensure the sequence number update does not overflow.
-  const uint64_t kMaxSequenceNumber = (uint64_t{1} << 48) - 1;
   if (write_epoch->next_seq + 1 > kMaxSequenceNumber) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
     return false;

@@ -399,16 +399,13 @@ TEST(ReconstructSeqnumTest, Increment) {
   EXPECT_EQ(reconstruct_seqnum(0xffff, 0xffff, 0x2f000), 0x2ffffu);
   EXPECT_EQ(reconstruct_seqnum(0xfffe, 0xffff, 0x2f000), 0x2fffeu);
 
-  // Test that reconstruct_seqnum can return
-  // std::numeric_limits<uint64_t>::max().
-  EXPECT_EQ(reconstruct_seqnum(0xff, 0xff, 0xffffffffffffffff),
-            std::numeric_limits<uint64_t>::max());
-  EXPECT_EQ(reconstruct_seqnum(0xff, 0xff, 0xfffffffffffffffe),
-            std::numeric_limits<uint64_t>::max());
-  EXPECT_EQ(reconstruct_seqnum(0xffff, 0xffff, 0xffffffffffffffff),
-            std::numeric_limits<uint64_t>::max());
-  EXPECT_EQ(reconstruct_seqnum(0xffff, 0xffff, 0xfffffffffffffffe),
-            std::numeric_limits<uint64_t>::max());
+  // Test that reconstruct_seqnum can return the maximum sequence number,
+  // 2^48-1.
+  constexpr uint64_t kMaxSequence = (uint64_t{1} << 48) - 1;
+  EXPECT_EQ(reconstruct_seqnum(0xff, 0xff, kMaxSequence), kMaxSequence);
+  EXPECT_EQ(reconstruct_seqnum(0xff, 0xff, kMaxSequence - 1), kMaxSequence);
+  EXPECT_EQ(reconstruct_seqnum(0xffff, 0xffff, kMaxSequence), kMaxSequence);
+  EXPECT_EQ(reconstruct_seqnum(0xffff, 0xffff, kMaxSequence - 1), kMaxSequence);
 }
 
 TEST(ReconstructSeqnumTest, Decrement) {
@@ -431,35 +428,35 @@ TEST(ReconstructSeqnumTest, Decrement) {
   EXPECT_EQ(reconstruct_seqnum(0xffff, 0xffff, 0x20000), 0x1ffffu);
   EXPECT_EQ(reconstruct_seqnum(0xfffe, 0xffff, 0x20000), 0x1fffeu);
 
-  // Test when the max seen sequence number is close to the uint64_t max value.
-  // In some cases, the closest numerical value in the integers will overflow
-  // a uint64_t. Instead of returning the closest value in Z_{2^64},
-  // reconstruct_seqnum should return the closest integer less than 2^64, even
-  // if there is a closer value greater than 2^64.
-  EXPECT_EQ(reconstruct_seqnum(0, 0xff, 0xffffffffffffffff),
-            0xffffffffffffff00u);
-  EXPECT_EQ(reconstruct_seqnum(0, 0xff, 0xfffffffffffffffe),
-            0xffffffffffffff00u);
-  EXPECT_EQ(reconstruct_seqnum(1, 0xff, 0xffffffffffffffff),
-            0xffffffffffffff01u);
-  EXPECT_EQ(reconstruct_seqnum(1, 0xff, 0xfffffffffffffffe),
-            0xffffffffffffff01u);
-  EXPECT_EQ(reconstruct_seqnum(0xfe, 0xff, 0xffffffffffffffff),
-            0xfffffffffffffffeu);
-  EXPECT_EQ(reconstruct_seqnum(0xfd, 0xff, 0xfffffffffffffffe),
-            0xfffffffffffffffdu);
-  EXPECT_EQ(reconstruct_seqnum(0, 0xffff, 0xffffffffffffffff),
-            0xffffffffffff0000u);
-  EXPECT_EQ(reconstruct_seqnum(0, 0xffff, 0xfffffffffffffffe),
-            0xffffffffffff0000u);
-  EXPECT_EQ(reconstruct_seqnum(1, 0xffff, 0xffffffffffffffff),
-            0xffffffffffff0001u);
-  EXPECT_EQ(reconstruct_seqnum(1, 0xffff, 0xfffffffffffffffe),
-            0xffffffffffff0001u);
-  EXPECT_EQ(reconstruct_seqnum(0xfffe, 0xffff, 0xffffffffffffffff),
-            0xfffffffffffffffeu);
-  EXPECT_EQ(reconstruct_seqnum(0xfffd, 0xffff, 0xfffffffffffffffe),
-            0xfffffffffffffffdu);
+  constexpr uint64_t kMaxSequence = (uint64_t{1} << 48) - 1;
+  // kMaxSequence00 is kMaxSequence with the last byte replaced with 0x00.
+  constexpr uint64_t kMaxSequence00 = kMaxSequence - 0xff;
+  // kMaxSequence0000 is kMaxSequence with the last byte replaced with 0x0000.
+  constexpr uint64_t kMaxSequence0000 = kMaxSequence - 0xffff;
+
+  // Test when the max seen sequence number is close to the 2^48-1 max value.
+  // In some cases, the closest numerical value in the integers will exceed the
+  // limit. In this case, reconstruct_seqnum should return the closest integer
+  // within range.
+  EXPECT_EQ(reconstruct_seqnum(0, 0xff, kMaxSequence), kMaxSequence00);
+  EXPECT_EQ(reconstruct_seqnum(0, 0xff, kMaxSequence - 1), kMaxSequence00);
+  EXPECT_EQ(reconstruct_seqnum(1, 0xff, kMaxSequence), kMaxSequence00 + 0x01);
+  EXPECT_EQ(reconstruct_seqnum(1, 0xff, kMaxSequence - 1),
+            kMaxSequence00 + 0x01);
+  EXPECT_EQ(reconstruct_seqnum(0xfe, 0xff, kMaxSequence),
+            kMaxSequence00 + 0xfe);
+  EXPECT_EQ(reconstruct_seqnum(0xfd, 0xff, kMaxSequence - 1),
+            kMaxSequence00 + 0xfd);
+  EXPECT_EQ(reconstruct_seqnum(0, 0xffff, kMaxSequence), kMaxSequence0000);
+  EXPECT_EQ(reconstruct_seqnum(0, 0xffff, kMaxSequence - 1), kMaxSequence0000);
+  EXPECT_EQ(reconstruct_seqnum(1, 0xffff, kMaxSequence),
+            kMaxSequence0000 + 0x0001);
+  EXPECT_EQ(reconstruct_seqnum(1, 0xffff, kMaxSequence - 1),
+            kMaxSequence0000 + 0x0001);
+  EXPECT_EQ(reconstruct_seqnum(0xfffe, 0xffff, kMaxSequence),
+            kMaxSequence0000 + 0xfffe);
+  EXPECT_EQ(reconstruct_seqnum(0xfffd, 0xffff, kMaxSequence - 1),
+            kMaxSequence0000 + 0xfffd);
 }
 
 TEST(ReconstructSeqnumTest, Halfway) {
