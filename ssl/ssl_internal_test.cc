@@ -600,6 +600,69 @@ TEST(DTLSMessageBitmapTest, Basic) {
   expect_bitmap(bitmap2, {});
 }
 
+TEST(MRUQueueTest, Basic) {
+  // Use a complex type to confirm the queue handles them correctly.
+  MRUQueue<std::unique_ptr<int>, 8> queue;
+  auto expect_queue = [&](const std::vector<int> &expected) {
+    EXPECT_EQ(queue.size(), expected.size());
+    EXPECT_EQ(queue.empty(), expected.empty());
+    std::vector<int> queue_values;
+    for (size_t i = 0; i < queue.size(); i++) {
+      queue_values.push_back(*queue[i]);
+    }
+    EXPECT_EQ(queue_values, expected);
+  };
+
+  expect_queue({});
+  queue.PushBack(std::make_unique<int>(1));
+  expect_queue({1});
+  queue.PushBack(std::make_unique<int>(2));
+  expect_queue({1, 2});
+  queue.PushBack(std::make_unique<int>(3));
+  expect_queue({1, 2, 3});
+  queue.PushBack(std::make_unique<int>(4));
+  expect_queue({1, 2, 3, 4});
+  queue.PushBack(std::make_unique<int>(5));
+  expect_queue({1, 2, 3, 4, 5});
+  queue.PushBack(std::make_unique<int>(6));
+  expect_queue({1, 2, 3, 4, 5, 6});
+  queue.PushBack(std::make_unique<int>(7));
+  expect_queue({1, 2, 3, 4, 5, 6, 7});
+  queue.PushBack(std::make_unique<int>(8));
+  expect_queue({1, 2, 3, 4, 5, 6, 7, 8});
+
+  // We are at capacity, so later additions will drop the start. Do more than 8
+  // insertions to test that the start index can wrap around.
+  queue.PushBack(std::make_unique<int>(9));
+  expect_queue({2, 3, 4, 5, 6, 7, 8, 9});
+  queue.PushBack(std::make_unique<int>(10));
+  expect_queue({3, 4, 5, 6, 7, 8, 9, 10});
+  queue.PushBack(std::make_unique<int>(11));
+  expect_queue({4, 5, 6, 7, 8, 9, 10, 11});
+  queue.PushBack(std::make_unique<int>(12));
+  expect_queue({5, 6, 7, 8, 9, 10, 11, 12});
+  queue.PushBack(std::make_unique<int>(13));
+  expect_queue({6, 7, 8, 9, 10, 11, 12, 13});
+  queue.PushBack(std::make_unique<int>(14));
+  expect_queue({7, 8, 9, 10, 11, 12, 13, 14});
+  queue.PushBack(std::make_unique<int>(15));
+  expect_queue({8, 9, 10, 11, 12, 13, 14, 15});
+  queue.PushBack(std::make_unique<int>(16));
+  expect_queue({9, 10, 11, 12, 13, 14, 15, 16});
+  queue.PushBack(std::make_unique<int>(17));
+  expect_queue({10, 11, 12, 13, 14, 15, 16, 17});
+
+  // Clearing the queue should not leave the start index in a bad place.
+  queue.Clear();
+  expect_queue({});
+  queue.PushBack(std::make_unique<int>(1));
+  expect_queue({1});
+  queue.PushBack(std::make_unique<int>(2));
+  expect_queue({1, 2});
+  queue.PushBack(std::make_unique<int>(3));
+  expect_queue({1, 2, 3});
+}
+
 }  // namespace
 BSSL_NAMESPACE_END
 #endif  // !BORINGSSL_SHARED_LIBRARY
