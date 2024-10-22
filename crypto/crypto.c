@@ -17,8 +17,8 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "fipsmodule/rand/internal.h"
 #include "bcm_support.h"
+#include "fipsmodule/rand/internal.h"
 #include "internal.h"
 
 
@@ -129,14 +129,6 @@ int CRYPTO_is_confidential_build(void) {
   return 1;
 #else
   return 0;
-#endif
-}
-
-int CRYPTO_has_asm(void) {
-#if defined(OPENSSL_NO_ASM)
-  return 0;
-#else
-  return 1;
 #endif
 }
 

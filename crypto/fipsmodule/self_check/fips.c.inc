@@ -30,6 +30,14 @@ int FIPS_mode_set(int on) { return on == FIPS_mode(); }
 
 const char *FIPS_module_name(void) { return "BoringCrypto"; }
 
+int CRYPTO_has_asm(void) {
+#if defined(OPENSSL_NO_ASM)
+  return 0;
+#else
+  return 1;
+#endif
+}
+
 uint32_t FIPS_version(void) {
   return 0;
 }
