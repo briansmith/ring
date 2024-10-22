@@ -999,6 +999,9 @@ static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
 
     // Feed the predicted Finished into the transcript. This allows us to derive
     // the resumption secret early and send half-RTT tickets.
+    //
+    // TODO(crbug.com/42290594): Queuing up half-RTT tickets with DTLS will also
+    // make implicit ACKing more subtle.
     assert(!SSL_is_dtls(hs->ssl));
     assert(hs->expected_client_finished.size() <= 0xff);
     uint8_t header[4] = {

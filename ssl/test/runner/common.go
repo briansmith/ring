@@ -1293,12 +1293,12 @@ type ProtocolBugs struct {
 
 	// WriteFlightDTLS, if not nil, overrides the default behavior for writing
 	// the flight in DTLS. See DTLSController for details.
-	WriteFlightDTLS func(c *DTLSController, prev, received, next []DTLSMessage)
+	WriteFlightDTLS func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo)
 
 	// ACKFlightDTLS, if not nil, overrides the default behavior for
 	// acknowledging the final flight (of either the handshake or a
 	// post-handshake transaction) in DTLS. See DTLSController for details.
-	ACKFlightDTLS func(c *DTLSController, prev, received []DTLSMessage)
+	ACKFlightDTLS func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo)
 
 	// MockQUICTransport is the mockQUICTransport used when testing
 	// QUIC interfaces.
@@ -2022,10 +2022,6 @@ type ProtocolBugs struct {
 	// DTLS13RecordHeaderSetCIDBit, if true, sets the Connection ID bit in
 	// the DTLS 1.3 record header.
 	DTLS13RecordHeaderSetCIDBit bool
-
-	// ACKEveryRecord sends an ACK record immediately on response to each
-	// handshake record received.
-	ACKEveryRecord bool
 
 	// EncryptSessionTicketKey, if non-nil, is the ticket key to use when
 	// encrypting tickets.

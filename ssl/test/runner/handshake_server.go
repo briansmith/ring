@@ -1044,9 +1044,6 @@ ResendHelloRetryRequest:
 	} else {
 		c.writeRecord(recordTypeHandshake, helloBytes)
 	}
-	if err := c.flushHandshake(); err != nil {
-		return err
-	}
 
 	if !c.config.Bugs.SkipChangeCipherSpec && !sendHelloRetryRequest && !c.isDTLS {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})

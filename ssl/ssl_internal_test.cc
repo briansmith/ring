@@ -599,6 +599,15 @@ TEST(DTLSMessageBitmapTest, Basic) {
   expect_bitmap(bitmap2, {{0, 1}, {2, 3}, {9 - 2, 9}, {27 - 4, 27 - 2}});
   bitmap2.MarkRange(0, 50);
   expect_bitmap(bitmap2, {});
+
+  // MarkRange inputs may be "out of bounds". The bitmap has conceptually
+  // infinitely many marked bits past where it was initialized.
+  ASSERT_TRUE(bitmap.Init(10));
+  expect_bitmap(bitmap, {{0, 10}});
+  bitmap.MarkRange(5, SIZE_MAX);
+  expect_bitmap(bitmap, {{0, 5}});
+  bitmap.MarkRange(0, SIZE_MAX);
+  expect_bitmap(bitmap, {});
 }
 
 TEST(MRUQueueTest, Basic) {

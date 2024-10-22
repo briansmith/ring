@@ -1294,6 +1294,11 @@ class DTLSRecordNumber {
     return DTLSRecordNumber(combined);
   }
 
+  bool operator==(DTLSRecordNumber r) const {
+    return combined() == r.combined();
+  };
+  bool operator!=(DTLSRecordNumber r) const { return !((*this) == r); }
+
   uint64_t combined() const { return combined_; }
   uint16_t epoch() const { return combined_ >> 48; }
   uint64_t sequence() const { return combined_ & kMaxSequence; }
@@ -1599,12 +1604,6 @@ bool dtls_has_unprocessed_handshake_data(const SSL *ssl);
 
 // tls_flush_pending_hs_data flushes any handshake plaintext data.
 bool tls_flush_pending_hs_data(SSL *ssl);
-
-struct DTLSOutgoingMessage {
-  Array<uint8_t> data;
-  uint16_t epoch = 0;
-  bool is_ccs = false;
-};
 
 // dtls_clear_outgoing_messages releases all buffered outgoing messages.
 void dtls_clear_outgoing_messages(SSL *ssl);
@@ -3361,6 +3360,7 @@ class DTLSMessageBitmap {
     size_t end = 0;
 
     bool empty() const { return start == end; }
+    size_t size() const { return end - start; }
     bool operator==(const Range &r) const {
       return start == r.start && end == r.end;
     }
@@ -3421,6 +3421,27 @@ struct DTLSIncomingMessage {
   DTLSMessageBitmap reassembly;
 };
 
+struct DTLSOutgoingMessage {
+  size_t msg_len() const {
+    assert(!is_ccs);
+    assert(data.size() >= DTLS1_HM_HEADER_LENGTH);
+    return data.size() - DTLS1_HM_HEADER_LENGTH;
+  }
+
+  bool IsFullyAcked() const {
+    // ACKs only exist in DTLS 1.3, which does not send ChangeCipherSpec.
+    return !is_ccs && acked.IsComplete();
+  }
+
+  Array<uint8_t> data;
+  uint16_t epoch = 0;
+  bool is_ccs = false;
+  // acked tracks which bits of the message have been ACKed by the peer. If
+  // |msg_len| is zero, it tracks one bit for whether the header has been
+  // received.
+  DTLSMessageBitmap acked;
+};
+
 struct OPENSSL_timeval {
   uint64_t tv_sec;
   uint32_t tv_usec;
@@ -3437,6 +3458,29 @@ struct OPENSSL_timeval {
 // the client's ACKs have caught up. At that point, epochs 0 and 1 can be
 // discarded.
 #define DTLS_MAX_EXTRA_WRITE_EPOCHS 2
+
+// DTLS_MAX_ACK_BUFFER is the maximum number of records worth of data we'll keep
+// track of with DTLS 1.3 ACKs. When we exceed this value, information about
+// stale records will be dropped. This will not break the connection but may
+// cause ACKs to perform worse and retransmit unnecessary information.
+#define DTLS_MAX_ACK_BUFFER 32
+
+// A DTLSSentRecord records information about a record we sent. Each record
+// covers all bytes from |first_msg_start| (inclusive) of |first_msg| to
+// |last_msg_end| (exclusive) of |last_msg|. Messages are referenced by index
+// into |outgoing_messages|. |last_msg_end| may be |outgoing_messages.size()| if
+// |last_msg_end| is zero.
+//
+// When the message is empty, |first_msg_start| and |last_msg_end| are
+// maintained as if there is a single bit in the message representing the
+// header. See |acked| in DTLSOutgoingMessage.
+struct DTLSSentRecord {
+  DTLSRecordNumber number;
+  PackedSize<SSL_MAX_HANDSHAKE_FLIGHT> first_msg = 0;
+  PackedSize<SSL_MAX_HANDSHAKE_FLIGHT> last_msg = 0;
+  uint32_t first_msg_start = 0;
+  uint32_t last_msg_end = 0;
+};
 
 struct DTLS1_STATE {
   static constexpr bool kAllowUniquePtr = true;
@@ -3489,6 +3533,11 @@ struct DTLS1_STATE {
   // flight.
   InplaceVector<DTLSOutgoingMessage, SSL_MAX_HANDSHAKE_FLIGHT>
       outgoing_messages;
+
+  // sent_records is a queue of records we sent, for processing ACKs. To save
+  // memory in the steady state, the structure is stored on the heap and dropped
+  // when empty.
+  UniquePtr<MRUQueue<DTLSSentRecord, DTLS_MAX_ACK_BUFFER>> sent_records;
 
   // outgoing_written is the number of outgoing messages that have been
   // written.
@@ -3828,7 +3877,9 @@ bool ssl_add_message_cbb(SSL *ssl, CBB *cbb);
 // on success and false on allocation failure.
 bool ssl_hash_message(SSL_HANDSHAKE *hs, const SSLMessage &msg);
 
-ssl_open_record_t dtls1_process_ack(SSL *ssl, uint8_t *out_alert);
+ssl_open_record_t dtls1_process_ack(SSL *ssl, uint8_t *out_alert,
+                                    DTLSRecordNumber ack_record_number,
+                                    Span<const uint8_t> data);
 ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
                                       size_t *out_consumed, uint8_t *out_alert,
                                       Span<uint8_t> in);

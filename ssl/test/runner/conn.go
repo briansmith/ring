@@ -121,9 +121,10 @@ type Conn struct {
 	pendingPacket    []byte // pending outgoing packet.
 	maxPacketLen     int
 
-	previousFlight []DTLSMessage
-	receivedFlight []DTLSMessage
-	nextFlight     []DTLSMessage
+	previousFlight        []DTLSMessage
+	receivedFlight        []DTLSMessage
+	receivedFlightRecords []DTLSRecordNumberInfo
+	nextFlight            []DTLSMessage
 
 	keyUpdateSeen      bool
 	keyUpdateRequested bool
@@ -829,6 +830,11 @@ func (c *Conn) useInTrafficSecret(epoch uint16, version uint16, suite *cipherSui
 }
 
 func (c *Conn) useOutTrafficSecret(epoch uint16, version uint16, suite *cipherSuite, secret []byte) {
+	if !c.isDTLS {
+		// The TLS logic relies on flushHandshake to write out packed handshake
+		// data on key changes. The DTLS logic handles key changes directly.
+		c.flushHandshake()
+	}
 	side := serverWrite
 	if c.isClient {
 		side = clientWrite

@@ -114,6 +114,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include <algorithm>
+
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
 #include <openssl/mem.h>
@@ -127,19 +129,113 @@
 
 BSSL_NAMESPACE_BEGIN
 
-ssl_open_record_t dtls1_process_ack(SSL *ssl, uint8_t *out_alert) {
+ssl_open_record_t dtls1_process_ack(SSL *ssl, uint8_t *out_alert,
+                                    DTLSRecordNumber ack_record_number,
+                                    Span<const uint8_t> data) {
+  // As a DTLS-1.3-capable client, it is possible to receive an ACK before we
+  // receive ServerHello and learned the server picked DTLS 1.3. Thus, tolerate
+  // but ignore ACKs before the version is set.
+  if (ssl->s3->version == 0) {
+    return ssl_open_record_discard;
+  }
+
   // ACKs are only allowed in DTLS 1.3. Reject them if we've negotiated a
-  // version and it's not 1.3. (It's theoretically possible to receive an ACK
-  // before version negotiation, e.g. due to packet loss or a server ACKing a
-  // ClientHello prior to sending the ServerHello, so if we don't have a version
-  // we'll accept the ACK.)
-  if (ssl->s3->version != 0 && ssl_protocol_version(ssl) < TLS1_3_VERSION) {
+  // version and it's not 1.3.
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
     *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
     return ssl_open_record_error;
   }
-  // TODO(crbug.com/42290594): Implement proper support for ACKs. Currently,
-  // this just drops the ACK on the floor.
+
+  // TODO(crbug.com/42290594): If we implement DTLS 1.3 0-RTT, we may switch to
+  // DTLS 1.3, but then rewind to DTLS 1.2. In the intervening time, we may have
+  // received an ACK and updated state, and then expose the DTLS 1.2 logic to
+  // it. If we haven't received ServerHello, we probably need to continue
+  // dropping ACKs.
+
+  CBS cbs = data, record_numbers;
+  if (!CBS_get_u16_length_prefixed(&cbs, &record_numbers) ||
+      CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return ssl_open_record_error;
+  }
+
+  while (CBS_len(&record_numbers) != 0) {
+    uint64_t epoch, seq;
+    if (!CBS_get_u64(&record_numbers, &epoch) ||
+        !CBS_get_u64(&record_numbers, &seq)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return ssl_open_record_error;
+    }
+
+    // During the handshake, records must be ACKed at the same or higher epoch.
+    // See https://www.rfc-editor.org/errata/eid8108. Additionally, if the
+    // record does not fit in DTLSRecordNumber, it is definitely not a record
+    // number that we sent.
+    if ((ack_record_number.epoch() < ssl_encryption_application &&
+         epoch > ack_record_number.epoch()) ||
+        epoch > UINT16_MAX || seq > DTLSRecordNumber::kMaxSequence) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+      return ssl_open_record_error;
+    }
+
+    // Find the sent record that matches this ACK.
+    DTLSRecordNumber number(static_cast<uint16_t>(epoch), seq);
+    DTLSSentRecord *sent_record = nullptr;
+    if (ssl->d1->sent_records != nullptr) {
+      for (size_t i = 0; i < ssl->d1->sent_records->size(); i++) {
+        if ((*ssl->d1->sent_records)[i].number == number) {
+          sent_record = &(*ssl->d1->sent_records)[i];
+          break;
+        }
+      }
+    }
+    if (sent_record == nullptr) {
+      // We may have sent this record and forgotten it, so this is not an error.
+      continue;
+    }
+
+    // Mark each message as ACKed.
+    if (sent_record->first_msg == sent_record->last_msg) {
+      ssl->d1->outgoing_messages[sent_record->first_msg].acked.MarkRange(
+          sent_record->first_msg_start, sent_record->last_msg_end);
+    } else {
+      ssl->d1->outgoing_messages[sent_record->first_msg].acked.MarkRange(
+          sent_record->first_msg_start, SIZE_MAX);
+      for (size_t i = size_t{sent_record->first_msg} + 1;
+           i < sent_record->last_msg; i++) {
+        ssl->d1->outgoing_messages[i].acked.MarkRange(0, SIZE_MAX);
+      }
+      if (sent_record->last_msg_end != 0) {
+        ssl->d1->outgoing_messages[sent_record->last_msg].acked.MarkRange(
+            0, sent_record->last_msg_end);
+      }
+    }
+
+    // Clear the state so we don't bother re-marking the messages next time.
+    sent_record->first_msg = 0;
+    sent_record->first_msg_start = 0;
+    sent_record->last_msg = 0;
+    sent_record->last_msg_end = 0;
+  }
+
+  // If the outgoing flight is now fully ACKed, we are done retransmitting.
+  if (std::all_of(ssl->d1->outgoing_messages.begin(),
+                  ssl->d1->outgoing_messages.end(),
+                  [](const auto &msg) { return msg.IsFullyAcked(); })) {
+    dtls1_stop_timer(ssl);
+    dtls_clear_outgoing_messages(ssl);
+  } else {
+    // We may still be able to drop unused write epochs.
+    dtls_clear_unused_write_epochs(ssl);
+
+    // TODO(crbug.com/42290594): Schedule a retransmit. The peer will have
+    // waited before sending the ACK, so a partial ACK suggests packet loss.
+  }
+
   return ssl_open_record_discard;
 }
 
@@ -199,7 +295,7 @@ ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
   }
 
   if (type == SSL3_RT_ACK) {
-    return dtls1_process_ack(ssl, out_alert);
+    return dtls1_process_ack(ssl, out_alert, record_number, record);
   }
 
   if (type != SSL3_RT_APPLICATION_DATA) {
