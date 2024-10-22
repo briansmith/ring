@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/aead.h>
 #include <openssl/ssl.h>
 
 #include "internal.h"
@@ -662,6 +663,218 @@ TEST(MRUQueueTest, Basic) {
   queue.PushBack(std::make_unique<int>(3));
   expect_queue({1, 2, 3});
 }
+
+#if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+TEST(SSLAEADContextTest, Lengths) {
+  struct LengthTest {
+    // All plaintext lengths from |min_plaintext_len| to |max_plaintext_len|
+    // should return in |cipertext_len|.
+    size_t min_plaintext_len;
+    size_t max_plaintext_len;
+    size_t ciphertext_len;
+  };
+
+  struct CipherLengthTest {
+    // |SSL3_CK_*| and |TLS1_CK_*| constants include an extra byte at the front,
+    // so these constants must be masked with 0xffff.
+    uint16_t cipher;
+    uint16_t version;
+    size_t enc_key_len, mac_key_len, fixed_iv_len;
+    size_t block_size;
+    std::vector<LengthTest> length_tests;
+  };
+
+  const CipherLengthTest kTests[] = {
+      // 20-byte MAC, 8-byte CBC blocks with padding
+      {
+          /*cipher=*/SSL3_CK_RSA_DES_192_CBC3_SHA & 0xffff,
+          /*version=*/TLS1_2_VERSION,
+          /*enc_key_len=*/24,
+          /*mac_key_len=*/20,
+          /*fixed_iv_len=*/0,
+          /*block_size=*/8,
+          {
+              {/*min_plaintext_len=*/0,
+               /*max_plaintext_len=*/3,
+               /*ciphertext_len=*/32},
+              {/*min_plaintext_len=*/4,
+               /*max_plaintext_len=*/11,
+               /*ciphertext_len=*/40},
+              {/*min_plaintext_len=*/12,
+               /*max_plaintext_len=*/19,
+               /*ciphertext_len=*/48},
+          },
+      },
+      // 20-byte MAC, 16-byte CBC blocks with padding
+      {
+          /*cipher=*/TLS1_CK_RSA_WITH_AES_128_SHA & 0xffff,
+          /*version=*/TLS1_2_VERSION,
+          /*enc_key_len=*/16,
+          /*mac_key_len=*/20,
+          /*fixed_iv_len=*/0,
+          /*block_size=*/16,
+          {
+              {/*min_plaintext_len=*/0,
+               /*max_plaintext_len=*/11,
+               /*ciphertext_len=*/48},
+              {/*min_plaintext_len=*/12,
+               /*max_plaintext_len=*/27,
+               /*ciphertext_len=*/64},
+              {/*min_plaintext_len=*/38,
+               /*max_plaintext_len=*/43,
+               /*ciphertext_len=*/80},
+          },
+      },
+      // 32-byte MAC, 16-byte CBC blocks with padding
+      {
+          /*cipher=*/TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA256 & 0xffff,
+          /*version=*/TLS1_2_VERSION,
+          /*enc_key_len=*/16,
+          /*mac_key_len=*/32,
+          /*fixed_iv_len=*/0,
+          /*block_size=*/16,
+          {
+              {/*min_plaintext_len=*/0,
+               /*max_plaintext_len=*/15,
+               /*ciphertext_len=*/64},
+              {/*min_plaintext_len=*/16,
+               /*max_plaintext_len=*/31,
+               /*ciphertext_len=*/80},
+              {/*min_plaintext_len=*/32,
+               /*max_plaintext_len=*/47,
+               /*ciphertext_len=*/96},
+          },
+      },
+      // 8-byte explicit IV, 16-byte tag
+      {
+          /*cipher=*/TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256 & 0xffff,
+          /*version=*/TLS1_2_VERSION,
+          /*enc_key_len=*/16,
+          /*mac_key_len=*/0,
+          /*fixed_iv_len=*/4,
+          /*block_size=*/1,
+          {
+              {/*min_plaintext_len=*/0,
+               /*max_plaintext_len=*/0,
+               /*ciphertext_len=*/24},
+              {/*min_plaintext_len=*/1,
+               /*max_plaintext_len=*/1,
+               /*ciphertext_len=*/25},
+              {/*min_plaintext_len=*/2,
+               /*max_plaintext_len=*/2,
+               /*ciphertext_len=*/26},
+              {/*min_plaintext_len=*/42,
+               /*max_plaintext_len=*/42,
+               /*ciphertext_len=*/66},
+          },
+      },
+      // No explicit IV, 16-byte tag. TLS 1.3's padding and record type overhead
+      // is added at another layer.
+      {
+          /*cipher=*/TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 & 0xffff,
+          /*version=*/TLS1_2_VERSION,
+          /*enc_key_len=*/32,
+          /*mac_key_len=*/0,
+          /*fixed_iv_len=*/12,
+          /*block_size=*/1,
+          {
+              {/*min_plaintext_len=*/0,
+               /*max_plaintext_len=*/0,
+               /*ciphertext_len=*/16},
+              {/*min_plaintext_len=*/1,
+               /*max_plaintext_len=*/1,
+               /*ciphertext_len=*/17},
+              {/*min_plaintext_len=*/2,
+               /*max_plaintext_len=*/2,
+               /*ciphertext_len=*/18},
+              {/*min_plaintext_len=*/42,
+               /*max_plaintext_len=*/42,
+               /*ciphertext_len=*/58},
+          },
+      },
+      {
+          /*cipher=*/TLS1_CK_AES_128_GCM_SHA256 & 0xffff,
+          /*version=*/TLS1_3_VERSION,
+          /*enc_key_len=*/16,
+          /*mac_key_len=*/0,
+          /*fixed_iv_len=*/12,
+          /*block_size=*/1,
+          {
+              {/*min_plaintext_len=*/0,
+               /*max_plaintext_len=*/0,
+               /*ciphertext_len=*/16},
+              {/*min_plaintext_len=*/1,
+               /*max_plaintext_len=*/1,
+               /*ciphertext_len=*/17},
+              {/*min_plaintext_len=*/2,
+               /*max_plaintext_len=*/2,
+               /*ciphertext_len=*/18},
+              {/*min_plaintext_len=*/42,
+               /*max_plaintext_len=*/42,
+               /*ciphertext_len=*/58},
+          },
+      },
+      {
+          /*cipher=*/TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff,
+          /*version=*/TLS1_3_VERSION,
+          /*enc_key_len=*/32,
+          /*mac_key_len=*/0,
+          /*fixed_iv_len=*/12,
+          /*block_size=*/1,
+          {
+              {/*min_plaintext_len=*/0,
+               /*max_plaintext_len=*/0,
+               /*ciphertext_len=*/16},
+              {/*min_plaintext_len=*/1,
+               /*max_plaintext_len=*/1,
+               /*ciphertext_len=*/17},
+              {/*min_plaintext_len=*/2,
+               /*max_plaintext_len=*/2,
+               /*ciphertext_len=*/18},
+              {/*min_plaintext_len=*/42,
+               /*max_plaintext_len=*/42,
+               /*ciphertext_len=*/58},
+          },
+      },
+  };
+
+  for (const auto &cipher_test : kTests) {
+    const SSL_CIPHER *cipher =
+        SSL_get_cipher_by_value(static_cast<uint16_t>(cipher_test.cipher));
+    ASSERT_TRUE(cipher) << "Could not find cipher " << cipher_test.cipher;
+    SCOPED_TRACE(SSL_CIPHER_standard_name(cipher));
+
+    const uint8_t kZeros[EVP_AEAD_MAX_KEY_LENGTH] = {0};
+    UniquePtr<SSLAEADContext> aead = SSLAEADContext::Create(
+        evp_aead_seal, cipher_test.version, cipher,
+        MakeConstSpan(kZeros).first(cipher_test.enc_key_len),
+        MakeConstSpan(kZeros).first(cipher_test.mac_key_len),
+        MakeConstSpan(kZeros).first(cipher_test.fixed_iv_len));
+    ASSERT_TRUE(aead);
+
+    for (const auto &t : cipher_test.length_tests) {
+      SCOPED_TRACE(t.ciphertext_len);
+
+      for (size_t plaintext_len = t.min_plaintext_len;
+           plaintext_len <= t.max_plaintext_len; plaintext_len++) {
+        SCOPED_TRACE(plaintext_len);
+        size_t out_len;
+        ASSERT_TRUE(aead->CiphertextLen(&out_len, plaintext_len, 0));
+        EXPECT_EQ(out_len, t.ciphertext_len);
+      }
+
+      EXPECT_EQ(aead->MaxSealInputLen(t.ciphertext_len), t.max_plaintext_len);
+      for (size_t extra = 0; extra < cipher_test.block_size; extra++) {
+        // Adding up to block_size - 1 bytes of space should not change how much
+        // room we have.
+        SCOPED_TRACE(extra);
+        EXPECT_EQ(aead->MaxSealInputLen(t.ciphertext_len + extra),
+                  t.max_plaintext_len);
+      }
+    }
+  }
+}
+#endif  // !BORINGSSL_UNSAFE_FUZZER_MODE
 
 }  // namespace
 BSSL_NAMESPACE_END

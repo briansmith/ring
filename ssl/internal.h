@@ -1151,6 +1151,10 @@ class SSLAEADContext {
   // MaxOverhead returns the maximum overhead of calling |Seal|.
   size_t MaxOverhead() const;
 
+  // MaxSealInputLen returns the maximum length for |Seal| that can fit in
+  // |max_out| output bytes, or zero if no input may fit.
+  size_t MaxSealInputLen(size_t max_out) const;
+
   // SuffixLen calculates the suffix length written by |SealScatter| and writes
   // it to |*out_suffix_len|. It returns true on success and false on error.
   // |in_len| and |extra_in_len| should equal the argument of the same names
@@ -1425,6 +1429,10 @@ size_t dtls_max_seal_overhead(const SSL *ssl, uint16_t epoch);
 // dtls_seal_prefix_len returns the number of bytes of prefix to reserve in
 // front of the plaintext when sealing a record in-place.
 size_t dtls_seal_prefix_len(const SSL *ssl, uint16_t epoch);
+
+// dtls_seal_max_input_len returns the maximum number of input bytes that can
+// fit in a record of up to |max_out| bytes, or zero if none may fit.
+size_t dtls_seal_max_input_len(const SSL *ssl, uint16_t epoch, size_t max_out);
 
 // dtls_seal_record implements |tls_seal_record| for DTLS. |epoch| selects which
 // epoch's cipher state to use. Unlike |tls_seal_record|, |in| and |out| may

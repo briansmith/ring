@@ -2377,8 +2377,10 @@ read alert 1 0
 		{
 			protocol: dtls,
 			testType: serverTest,
-			name:     "MTU",
+			name:     "MTU-DTLS12-AEAD",
 			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				Bugs: ProtocolBugs{
 					MaxPacketLength: 256,
 				},
@@ -2388,15 +2390,40 @@ read alert 1 0
 		{
 			protocol: dtls,
 			testType: serverTest,
-			name:     "MTUExceeded",
+			name:     "MTU-DTLS12-AES-CBC",
 			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256},
 				Bugs: ProtocolBugs{
-					MaxPacketLength: 255,
+					MaxPacketLength: 256,
 				},
 			},
-			flags:              []string{"-mtu", "256"},
-			shouldFail:         true,
-			expectedLocalError: "dtls: exceeded maximum packet length",
+			flags: []string{"-mtu", "256"},
+		},
+		{
+			protocol: dtls,
+			testType: serverTest,
+			name:     "MTU-DTLS12-3DES-CBC",
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
+				Bugs: ProtocolBugs{
+					MaxPacketLength: 256,
+				},
+			},
+			flags: []string{"-mtu", "256", "-cipher", "TLS_RSA_WITH_3DES_EDE_CBC_SHA"},
+		},
+		{
+			protocol: dtls,
+			testType: serverTest,
+			name:     "MTU-DTLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					MaxPacketLength: 256,
+				},
+			},
+			flags: []string{"-mtu", "256"},
 		},
 		{
 			name: "EmptyCertificateList",

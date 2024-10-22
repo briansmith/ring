@@ -1259,7 +1259,8 @@ type ProtocolBugs struct {
 	SendInitialRecordVersion uint16
 
 	// MaxPacketLength, if non-zero, is the maximum acceptable size for a
-	// packet.
+	// packet. The shim will also be expected to maximally fill packets in the
+	// handshake up to this limit.
 	MaxPacketLength int
 
 	// SendCipherSuite, if non-zero, is the cipher suite value that the
@@ -1862,8 +1863,10 @@ type ProtocolBugs struct {
 	MaxReceivePlaintext int
 
 	// ExpectPackedEncryptedHandshake, if non-zero, requires that the peer maximally
-	// pack their encrypted handshake messages, fitting at most the
-	// specified number of plaintext bytes per record.
+	// pack their encrypted handshake messages, fitting at most the specified number
+	// of bytes per record. In TLS, the limit counts plaintext bytes. In DTLS, it
+	// counts packet size and checks both that fragments are packed into records and
+	// records are packed into packets.
 	ExpectPackedEncryptedHandshake int
 
 	// SendTicketLifetime, if non-zero, is the ticket lifetime to send in

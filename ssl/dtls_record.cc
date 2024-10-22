@@ -490,6 +490,24 @@ size_t dtls_seal_prefix_len(const SSL *ssl, uint16_t epoch) {
          write_epoch->aead->ExplicitNonceLen();
 }
 
+size_t dtls_seal_max_input_len(const SSL *ssl, uint16_t epoch, size_t max_out) {
+  DTLSWriteEpoch *write_epoch = get_write_epoch(ssl, epoch);
+  if (write_epoch == nullptr) {
+    return 0;
+  }
+  size_t header_len = dtls_record_header_write_len(ssl, epoch);
+  if (max_out <= header_len) {
+    return 0;
+  }
+  max_out -= header_len;
+  max_out = write_epoch->aead->MaxSealInputLen(max_out);
+  if (max_out > 0 && use_dtls13_record_header(ssl, epoch)) {
+    // Remove 1 byte for the encrypted record type.
+    max_out--;
+  }
+  return max_out;
+}
+
 bool dtls_seal_record(SSL *ssl, DTLSRecordNumber *out_number, uint8_t *out,
                       size_t *out_len, size_t max_out, uint8_t type,
                       const uint8_t *in, size_t in_len, uint16_t epoch) {

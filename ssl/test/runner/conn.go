@@ -26,6 +26,14 @@ import (
 	"golang.org/x/crypto/cryptobyte"
 )
 
+type dtlsRecordInfo struct {
+	typ   recordType
+	epoch uint16
+	// bytesAvailable is the number of additional bytes of plaintext that could
+	// have been added to this record without exceeding the packet limit.
+	bytesAvailable int
+}
+
 // A Conn represents a secured connection.
 // It implements the net.Conn interface.
 type Conn struct {
@@ -123,6 +131,16 @@ type Conn struct {
 	// not full for ExpectPackedEncryptedHandshake. If true, no more
 	// handshake data may be received until the next flight or epoch change.
 	seenHandshakePackEnd bool
+
+	// lastRecordInFlight contains information about the previous handshake or
+	// ChangeCipherSpec record from the current flight, or nil if we are not in
+	// the middle of reading a flight from the peer.
+	lastRecordInFlight *dtlsRecordInfo
+
+	// bytesAvailableInPacket is the number of bytes that were still available
+	// in the current DTLS packet, up to a budget of
+	// config.Bugs.MaxPacketLength.
+	bytesAvailableInPacket int
 
 	// echAccepted indicates whether ECH was accepted for this connection.
 	echAccepted bool
@@ -1176,6 +1194,7 @@ func (c *Conn) writeV2Record(data []byte) (n int, err error) {
 // c.out.Mutex <= L.
 func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 	c.seenHandshakePackEnd = false
+	c.lastRecordInFlight = nil
 	if typ == recordTypeHandshake {
 		msgType := data[0]
 		if c.config.Bugs.SendWrongMessageType != 0 && msgType == c.config.Bugs.SendWrongMessageType {
@@ -1507,6 +1526,7 @@ func (c *Conn) simulatePacketLoss(resendFunc func()) error {
 		return errors.New("tls: TimeoutSchedule set without PacketAdapter")
 	}
 	for _, timeout := range c.config.Bugs.TimeoutSchedule {
+		c.lastRecordInFlight = nil
 		// Simulate a timeout.
 		packets, err := c.config.Bugs.PacketAdaptor.SendReadTimeout(timeout)
 		if err != nil {

@@ -164,6 +164,7 @@ func (c *Conn) writeACKs(seqnums []uint64) {
 func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
 	// Read a new packet only if the current one is empty.
 	var newPacket bool
+	bytesAvailableInLastPacket := c.bytesAvailableInPacket
 	if c.rawInput.Len() == 0 {
 		// Pick some absurdly large buffer size.
 		c.rawInput.Grow(maxCiphertext + dtlsMaxRecordHeaderLen)
@@ -172,8 +173,13 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
 		if err != nil {
 			return 0, nil, err
 		}
-		if c.config.Bugs.MaxPacketLength != 0 && n > c.config.Bugs.MaxPacketLength {
-			return 0, nil, fmt.Errorf("dtls: exceeded maximum packet length")
+		if maxPacket := c.config.Bugs.MaxPacketLength; maxPacket != 0 {
+			if n > maxPacket {
+				return 0, nil, fmt.Errorf("dtls: exceeded maximum packet length")
+			}
+			c.bytesAvailableInPacket = maxPacket - n
+		} else {
+			c.bytesAvailableInPacket = 0
 		}
 		c.rawInput.Write(buf[:n])
 		newPacket = true
@@ -212,12 +218,43 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
 		typ = encTyp
 	}
 
-	// Require that ChangeCipherSpec always share a packet with either the
-	// previous or next handshake message.
-	if newPacket && typ == recordTypeChangeCipherSpec && c.rawInput.Len() == 0 {
-		return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: ChangeCipherSpec not packed together with Finished"))
-	}
+	if typ == recordTypeChangeCipherSpec || typ == recordTypeHandshake {
+		// If this is not the first record in the flight, check if it was packed
+		// efficiently.
+		if c.lastRecordInFlight != nil {
+			// 12-byte header + 1-byte fragment is the minimum to make progress.
+			const handshakeBytesNeeded = 13
+			if typ == recordTypeHandshake && c.lastRecordInFlight.typ == recordTypeHandshake && epoch.epoch == c.lastRecordInFlight.epoch {
+				// The previous record was compatible with this one. The shim
+				// should have fit more in this record before making a new one.
+				if c.lastRecordInFlight.bytesAvailable > handshakeBytesNeeded {
+					return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: previous handshake record had %d bytes available, but shim did not fit another fragment in it", c.lastRecordInFlight.bytesAvailable))
+				}
+			} else if newPacket {
+				// The shim had to make a new record, but it did not need to
+				// make a new packet if this record fit in the previous.
+				bytesNeeded := 1
+				if typ == recordTypeHandshake {
+					bytesNeeded = handshakeBytesNeeded
+				}
+				bytesNeeded += recordHeaderLen + c.in.maxEncryptOverhead(epoch, bytesNeeded)
+				if bytesNeeded < bytesAvailableInLastPacket {
+					return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: previous packet had %d bytes available, but shim did not fit record of type %d into it", bytesAvailableInLastPacket, typ))
+				}
+			}
+		}
 
+		// Save information about the current record, including how many more
+		// bytes the shim could have added.
+		recordBytesAvailable := c.bytesAvailableInPacket + c.rawInput.Len()
+		if cbc, ok := epoch.cipher.(cbcMode); ok {
+			// It is possible that adding a byte would have added another block.
+			recordBytesAvailable = max(0, recordBytesAvailable-cbc.BlockSize())
+		}
+		c.lastRecordInFlight = &dtlsRecordInfo{typ: typ, epoch: epoch.epoch, bytesAvailable: recordBytesAvailable}
+	} else {
+		c.lastRecordInFlight = nil
+	}
 	return typ, data, nil
 }
 
@@ -619,6 +656,16 @@ func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 		}
 		if fragOff+fragLen > c.handMsgLen {
 			return nil, errors.New("dtls: bad fragment length")
+		}
+		// If the message isn't complete, check that the peer could not have
+		// fit more into the record.
+		if fragOff+fragLen < c.handMsgLen {
+			if c.hand.Len() != 0 {
+				return nil, errors.New("dtls: truncated handshake fragment was not last in the record")
+			}
+			if c.lastRecordInFlight.bytesAvailable > 0 {
+				return nil, fmt.Errorf("dtls: handshake fragment was truncated, but record could have fit %d more bytes", c.lastRecordInFlight.bytesAvailable)
+			}
 		}
 		c.handMsg = append(c.handMsg, fragment...)
 	}

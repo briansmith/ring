@@ -173,6 +173,43 @@ size_t SSLAEADContext::MaxOverhead() const {
               : EVP_AEAD_max_overhead(EVP_AEAD_CTX_aead(ctx_.get())));
 }
 
+size_t SSLAEADContext::MaxSealInputLen(size_t max_out) const {
+  size_t explicit_nonce_len = ExplicitNonceLen();
+  if (max_out <= explicit_nonce_len) {
+    return 0;
+  }
+  max_out -= explicit_nonce_len;
+  if (is_null_cipher() || FUZZER_MODE) {
+    return max_out;
+  }
+  // TODO(crbug.com/42290602): This should be part of |EVP_AEAD_CTX|.
+  size_t overhead = EVP_AEAD_max_overhead(EVP_AEAD_CTX_aead(ctx_.get()));
+  if (SSL_CIPHER_is_block_cipher(cipher())) {
+    size_t block_size;
+    switch (cipher()->algorithm_enc) {
+      case SSL_AES128:
+      case SSL_AES256:
+        block_size = 16;
+        break;
+      case SSL_3DES:
+        block_size = 8;
+        break;
+      default:
+        abort();
+    }
+
+    // The output for a CBC cipher is always a whole number of blocks. Round the
+    // remaining capacity down.
+    max_out &= ~(block_size - 1);
+    // The maximum overhead is a full block of padding and the MAC, but the
+    // minimum overhead is one byte of padding, once we know the output is
+    // rounded down.
+    assert(overhead > block_size);
+    overhead -= block_size - 1;
+  }
+  return max_out <= overhead ? 0 : max_out - overhead;
+}
+
 Span<const uint8_t> SSLAEADContext::GetAdditionalData(
     uint8_t storage[13], uint8_t type, uint16_t record_version, uint64_t seqnum,
     size_t plaintext_len, Span<const uint8_t> header) {

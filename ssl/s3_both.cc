@@ -192,7 +192,7 @@ bool tls_add_message(SSL *ssl, Array<uint8_t> msg) {
   // cipher. The benefit is smaller and there is a risk of breaking buggy
   // implementations.
   //
-  // TODO(davidben): See if we can do this uniformly.
+  // TODO(crbug.com/374991962): See if we can do this uniformly.
   Span<const uint8_t> rest = msg;
   if (ssl->quic_method == nullptr &&
       ssl->s3->aead_write_ctx->is_null_cipher()) {

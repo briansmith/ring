@@ -680,138 +680,159 @@ static void dtls1_update_mtu(SSL *ssl) {
 
 enum seal_result_t {
   seal_error,
-  seal_no_progress,
-  seal_partial,
-  seal_success,
+  seal_continue,
+  seal_flush,
 };
 
-// seal_next_message seals |msg|, which must be the next message, to |out|. If
-// progress was made, it returns |seal_partial| or |seal_success| and sets
+// seal_next_record seals one record's worth of messages to |out| and advances
+// |ssl|'s internal state past the data that was sealed. If progress was made,
+// it returns |seal_flush| or |seal_continue| and sets
 // |*out_len| to the number of bytes written.
-static enum seal_result_t seal_next_message(SSL *ssl, Span<uint8_t> out,
-                                            size_t *out_len,
-                                            const DTLSOutgoingMessage *msg) {
+//
+// If the function stopped because the next message could not be combined into
+// this record, it returns |seal_continue| and the caller should loop again.
+// Otherwise, it returns |seal_flush| and the packet is complete.
+static seal_result_t seal_next_record(SSL *ssl, Span<uint8_t> out,
+                                      size_t *out_len) {
   assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size());
-  assert(msg == &ssl->d1->outgoing_messages[ssl->d1->outgoing_written]);
+  const auto &first_msg = ssl->d1->outgoing_messages[ssl->d1->outgoing_written];
+  size_t prefix_len = dtls_seal_prefix_len(ssl, first_msg.epoch);
+  size_t max_in_len = dtls_seal_max_input_len(ssl, first_msg.epoch, out.size());
+  *out_len = 0;
 
-  size_t overhead = dtls_max_seal_overhead(ssl, msg->epoch);
-  size_t prefix = dtls_seal_prefix_len(ssl, msg->epoch);
+  if (max_in_len == 0) {
+    // There is no room for a single record.
+    return seal_flush;
+  }
 
-  if (msg->is_ccs) {
-    // Check there is room for the ChangeCipherSpec.
+  if (first_msg.is_ccs) {
     static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
-    if (out.size() < sizeof(kChangeCipherSpec) + overhead) {
-      return seal_no_progress;
-    }
-
     DTLSRecordNumber record_number;
     if (!dtls_seal_record(ssl, &record_number, out.data(), out_len, out.size(),
                           SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
-                          sizeof(kChangeCipherSpec), msg->epoch)) {
+                          sizeof(kChangeCipherSpec), first_msg.epoch)) {
       return seal_error;
     }
 
-    ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_CHANGE_CIPHER_SPEC,
+    ssl_do_msg_callback(ssl, /*is_write=*/1, SSL3_RT_CHANGE_CIPHER_SPEC,
                         kChangeCipherSpec);
-    return seal_success;
+    ssl->d1->outgoing_offset = 0;
+    ssl->d1->outgoing_written++;
+    return seal_continue;
   }
 
-  // DTLS messages are serialized as a single fragment in |msg|.
-  CBS cbs(msg->data), body;
-  struct hm_header_st hdr;
-  if (!dtls1_parse_fragment(&cbs, &hdr, &body) ||  //
-      hdr.frag_off != 0 ||                         //
-      hdr.frag_len != CBS_len(&body) ||            //
-      hdr.msg_len != CBS_len(&body) ||
-      !CBS_skip(&body, ssl->d1->outgoing_offset) ||  //
-      CBS_len(&cbs) != 0) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return seal_error;
+  // Pack as many handshake fragments into one record as we can. We stage the
+  // fragments in the output buffer, to be sealed in-place.
+  bool should_continue = false;
+  Span<uint8_t> fragments = out.subspan(prefix_len, max_in_len);
+  CBB cbb;
+  CBB_init_fixed(&cbb, fragments.data(), fragments.size());
+  while (ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size()) {
+    const auto &msg = ssl->d1->outgoing_messages[ssl->d1->outgoing_written];
+    if (msg.epoch != first_msg.epoch || msg.is_ccs) {
+      // We can only pack messages if the epoch matches. There may be more room
+      // in the packet, so tell the caller to keep going.
+      should_continue = true;
+      break;
+    }
+
+    // Decode |msg|'s header.
+    CBS cbs(msg.data), body;
+    struct hm_header_st hdr;
+    if (!dtls1_parse_fragment(&cbs, &hdr, &body) ||  //
+        hdr.frag_off != 0 ||                         //
+        hdr.frag_len != CBS_len(&body) ||            //
+        hdr.msg_len != CBS_len(&body) ||
+        !CBS_skip(&body, ssl->d1->outgoing_offset) ||  //
+        CBS_len(&cbs) != 0) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return seal_error;
+    }
+
+    // Determine how much progress can be made.
+    size_t capacity = fragments.size() - CBB_len(&cbb);
+    if (capacity < DTLS1_HM_HEADER_LENGTH + 1) {
+      // We could not fit even 1 byte.
+      break;
+    }
+    size_t todo = std::min(CBS_len(&body), capacity - DTLS1_HM_HEADER_LENGTH);
+
+    // Assemble the fragment.
+    size_t frag_start = CBB_len(&cbb);
+    CBB child;
+    if (!CBB_add_u8(&cbb, hdr.type) ||      //
+        !CBB_add_u24(&cbb, hdr.msg_len) ||  //
+        !CBB_add_u16(&cbb, hdr.seq) ||
+        !CBB_add_u24(&cbb, ssl->d1->outgoing_offset) ||
+        !CBB_add_u24_length_prefixed(&cbb, &child) ||
+        !CBB_add_bytes(&child, CBS_data(&body), todo) ||  //
+        !CBB_flush(&cbb)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return seal_error;
+    }
+    size_t frag_end = CBB_len(&cbb);
+
+    // TODO(davidben): It is odd that, on output, we inform the caller of
+    // retransmits and individual fragments, but on input we only inform the
+    // caller of complete messages.
+    ssl_do_msg_callback(ssl, /*is_write=*/1, SSL3_RT_HANDSHAKE,
+                        fragments.subspan(frag_start, frag_end - frag_start));
+
+    if (todo < CBS_len(&body)) {
+      // The packet was the limiting factor. Save the offset for the next packet
+      // and stop.
+      ssl->d1->outgoing_offset += todo;
+      break;
+    }
+
+    // There is still room. Continue to the next message.
+    ssl->d1->outgoing_offset = 0;
+    ssl->d1->outgoing_written++;
   }
 
-  // Determine how much progress can be made.
-  if (out.size() < DTLS1_HM_HEADER_LENGTH + 1 + overhead ||
-      out.size() < prefix) {
-    return seal_no_progress;
+  // We could not fit anything. Don't try to make a record.
+  if (CBB_len(&cbb) == 0) {
+    assert(!should_continue);
+    return seal_flush;
   }
-  size_t todo = CBS_len(&body);
-  if (todo > out.size() - DTLS1_HM_HEADER_LENGTH - overhead) {
-    todo = out.size() - DTLS1_HM_HEADER_LENGTH - overhead;
-  }
-
-  // Assemble a fragment, to be sealed in-place.
-  ScopedCBB cbb;
-  CBB child;
-  Span<uint8_t> frag = out.subspan(prefix);
-  size_t frag_len;
-  if (!CBB_init_fixed(cbb.get(), frag.data(), frag.size()) ||
-      !CBB_add_u8(cbb.get(), hdr.type) ||
-      !CBB_add_u24(cbb.get(), hdr.msg_len) ||
-      !CBB_add_u16(cbb.get(), hdr.seq) ||
-      !CBB_add_u24(cbb.get(), ssl->d1->outgoing_offset) ||
-      !CBB_add_u24_length_prefixed(cbb.get(), &child) ||
-      !CBB_add_bytes(&child, CBS_data(&body), todo) ||
-      !CBB_finish(cbb.get(), NULL, &frag_len)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return seal_error;
-  }
-
-  frag = frag.first(frag_len);
-  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, frag);
 
   DTLSRecordNumber record_number;
   if (!dtls_seal_record(ssl, &record_number, out.data(), out_len, out.size(),
-                        SSL3_RT_HANDSHAKE, frag.data(), frag.size(),
-                        msg->epoch)) {
+                        SSL3_RT_HANDSHAKE, CBB_data(&cbb), CBB_len(&cbb),
+                        first_msg.epoch)) {
     return seal_error;
   }
 
-  if (todo == CBS_len(&body)) {
-    // The next message is complete.
-    ssl->d1->outgoing_offset = 0;
-    return seal_success;
-  }
-
-  ssl->d1->outgoing_offset += todo;
-  return seal_partial;
+  return should_continue ? seal_continue : seal_flush;
 }
 
 // seal_next_packet writes as much of the next flight as possible to |out| and
 // advances |ssl->d1->outgoing_written| and |ssl->d1->outgoing_offset| as
 // appropriate.
 static bool seal_next_packet(SSL *ssl, Span<uint8_t> out, size_t *out_len) {
-  bool made_progress = false;
   size_t total = 0;
   assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size());
-  for (; ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size();
-       ssl->d1->outgoing_written++) {
-    const DTLSOutgoingMessage *msg =
-        &ssl->d1->outgoing_messages[ssl->d1->outgoing_written];
+  while (ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size()) {
     size_t len;
-    enum seal_result_t ret = seal_next_message(ssl, out, &len, msg);
+    seal_result_t ret = seal_next_record(ssl, out, &len);
     switch (ret) {
       case seal_error:
         return false;
 
-      case seal_no_progress:
-        goto packet_full;
-
-      case seal_partial:
-      case seal_success:
+      case seal_flush:
+      case seal_continue:
         out = out.subspan(len);
         total += len;
-        made_progress = true;
-
-        if (ret == seal_partial) {
-          goto packet_full;
-        }
         break;
+    }
+
+    if (ret == seal_flush) {
+      break;
     }
   }
 
-packet_full:
   // The MTU was too small to make any progress.
-  if (!made_progress) {
+  if (total == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_MTU_TOO_SMALL);
     return false;
   }
