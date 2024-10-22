@@ -2800,6 +2800,7 @@ set(
   crypto/test/gtest_main.cc
   ssl/span_test.cc
   ssl/ssl_c_test.c
+  ssl/ssl_internal_test.cc
   ssl/ssl_test.cc
 )
 
