@@ -412,8 +412,10 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
 ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
                                        uint8_t *out_alert, Span<uint8_t> in) {
   uint8_t type;
+  DTLSRecordNumber record_number;
   Span<uint8_t> record;
-  auto ret = dtls_open_record(ssl, &type, &record, out_consumed, out_alert, in);
+  auto ret = dtls_open_record(ssl, &type, &record_number, &record, out_consumed,
+                              out_alert, in);
   if (ret != ssl_open_record_success) {
     return ret;
   }
@@ -709,7 +711,8 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
       return seal_no_progress;
     }
 
-    if (!dtls_seal_record(ssl, out, out_len, max_out,
+    DTLSRecordNumber record_number;
+    if (!dtls_seal_record(ssl, &record_number, out, out_len, max_out,
                           SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
                           sizeof(kChangeCipherSpec), msg->epoch)) {
       return seal_error;
@@ -763,8 +766,10 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE,
                       MakeSpan(frag, frag_len));
 
-  if (!dtls_seal_record(ssl, out, out_len, max_out, SSL3_RT_HANDSHAKE,
-                        out + prefix, frag_len, msg->epoch)) {
+  DTLSRecordNumber record_number;
+  if (!dtls_seal_record(ssl, &record_number, out, out_len, max_out,
+                        SSL3_RT_HANDSHAKE, out + prefix, frag_len,
+                        msg->epoch)) {
     return seal_error;
   }
 

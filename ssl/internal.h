@@ -1231,6 +1231,31 @@ OPENSSL_EXPORT uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
 
 // Record layer.
 
+// TODO(davidben): Use this type more extensively in the epoch state.
+class DTLSRecordNumber {
+ public:
+  static constexpr uint64_t kMaxSequence = (uint64_t{1} << 48) - 1;
+
+  DTLSRecordNumber() = default;
+  DTLSRecordNumber(uint16_t epoch, uint64_t sequence) {
+    BSSL_CHECK(sequence <= kMaxSequence);
+    combined_ = (uint64_t{epoch} << 48) | sequence;
+  }
+
+  static DTLSRecordNumber FromCombined(uint64_t combined) {
+    return DTLSRecordNumber(combined);
+  }
+
+  uint64_t combined() const { return combined_; }
+  uint16_t epoch() const { return combined_ >> 48; }
+  uint64_t sequence() const { return combined_ & kMaxSequence; }
+
+ private:
+  explicit DTLSRecordNumber(uint64_t combined) : combined_(combined) {}
+
+  uint64_t combined_ = 0;
+};
+
 class RecordNumberEncrypter {
  public:
   static constexpr bool kAllowUniquePtr = true;
@@ -1309,8 +1334,10 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
 
 // dtls_open_record implements |tls_open_record| for DTLS. It only returns
 // |ssl_open_record_partial| if |in| was empty and sets |*out_consumed| to
-// zero. The caller should read one packet and try again.
+// zero. The caller should read one packet and try again. On success,
+// |*out_number| is set to the record number of the record.
 enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
+                                        DTLSRecordNumber *out_number,
                                         Span<uint8_t> *out,
                                         size_t *out_consumed,
                                         uint8_t *out_alert, Span<uint8_t> in);
@@ -1348,10 +1375,11 @@ size_t dtls_seal_prefix_len(const SSL *ssl, uint16_t epoch);
 // dtls_seal_record implements |tls_seal_record| for DTLS. |epoch| selects which
 // epoch's cipher state to use. Unlike |tls_seal_record|, |in| and |out| may
 // alias but, if they do, |in| must be exactly |dtls_seal_prefix_len| bytes
-// ahead of |out|.
-bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
-                      uint8_t type, const uint8_t *in, size_t in_len,
-                      uint16_t epoch);
+// ahead of |out|. On success, |*out_number| is set to the record number of the
+// record.
+bool dtls_seal_record(SSL *ssl, DTLSRecordNumber *out_number, uint8_t *out,
+                      size_t *out_len, size_t max_out, uint8_t type,
+                      const uint8_t *in, size_t in_len, uint16_t epoch);
 
 // ssl_process_alert processes |in| as an alert and updates |ssl|'s shutdown
 // state. It returns one of |ssl_open_record_discard|, |ssl_open_record_error|,

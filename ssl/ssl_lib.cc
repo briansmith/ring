@@ -2952,20 +2952,24 @@ int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
 
 uint64_t SSL_get_read_sequence(const SSL *ssl) {
   if (SSL_is_dtls(ssl)) {
-    // TODO(crbug.com/42290608): The API for read sequences in DTLS 1.3 needs to
-    // reworked. In DTLS 1.3, the read epoch is updated once new keys are
-    // derived (before we receive a message encrypted with those keys), which
-    // results in the read epoch being ahead of the highest record received.
-    // Additionally, when we process a KeyUpdate, we will install new read keys
-    // for the new epoch, but we may receive messages from the old epoch for
-    // some time if the ACK gets lost or there is reordering.
-
-    // max_seq_num already includes the epoch. However, the current epoch may
-    // be one ahead of the highest record received, immediately after a key
-    // change.
+    // TODO(crbug.com/42290608): This API needs to reworked. Right at an epoch
+    // transition, it is possible that |read_epoch| has not received any
+    // records. We will then return that sequence 0 is the highest received, but
+    // this is not quite right.
+    //
+    // This is mostly moot in DTLS 1.2 because, after the handshake, we will
+    // never be in this state. In DTLS 1.3, there is a key transition
+    // immediately after the handshake, and in the steady state with KeyUpdate.
+    // While not yet implemented, DTLS 1.3 will handle key changes by having two
+    // epochs live at once (current and optional next), only cycling forward
+    // when we receive a record at the new epoch.
+    //
+    // When we implement this, this sequence 0 edge case will be gone, but
+    // replaced with a different issue: our record layer APIs have no way to
+    // report transition state. We'll likely need a new API for DTLS offload.
     const DTLSReadEpoch *read_epoch = &ssl->d1->read_epoch;
-    assert(read_epoch->epoch >= read_epoch->bitmap.max_seq_num() >> 48);
-    return read_epoch->bitmap.max_seq_num();
+    return DTLSRecordNumber(read_epoch->epoch, read_epoch->bitmap.max_seq_num())
+        .combined();
   }
   return ssl->s3->read_sequence;
 }
@@ -2973,12 +2977,8 @@ uint64_t SSL_get_read_sequence(const SSL *ssl) {
 uint64_t SSL_get_write_sequence(const SSL *ssl) {
   if (SSL_is_dtls(ssl)) {
     const DTLSWriteEpoch *write_epoch = &ssl->d1->write_epoch;
-    uint64_t ret = write_epoch->next_seq;
-    if (SSL_is_dtls(ssl)) {
-      assert((ret >> 48) == 0);
-      ret |= uint64_t{write_epoch->epoch} << 48;
-    }
-    return ret;
+    return DTLSRecordNumber(write_epoch->epoch, write_epoch->next_seq)
+        .combined();
   }
 
   return ssl->s3->write_sequence;

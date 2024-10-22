@@ -149,8 +149,10 @@ ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
   assert(!SSL_in_init(ssl));
 
   uint8_t type;
+  DTLSRecordNumber record_number;
   Span<uint8_t> record;
-  auto ret = dtls_open_record(ssl, &type, &record, out_consumed, out_alert, in);
+  auto ret = dtls_open_record(ssl, &type, &record_number, &record, out_consumed,
+                              out_alert, in);
   if (ret != ssl_open_record_success) {
     return ret;
   }
@@ -259,12 +261,13 @@ int dtls1_write_record(SSL *ssl, int type, Span<const uint8_t> in,
     return -1;
   }
 
+  DTLSRecordNumber record_number;
   size_t ciphertext_len;
   if (!buf->EnsureCap(dtls_seal_prefix_len(ssl, epoch),
                       in.size() + SSL_max_seal_overhead(ssl)) ||
-      !dtls_seal_record(ssl, buf->remaining().data(), &ciphertext_len,
-                        buf->remaining().size(), type, in.data(), in.size(),
-                        epoch)) {
+      !dtls_seal_record(ssl, &record_number, buf->remaining().data(),
+                        &ciphertext_len, buf->remaining().size(), type,
+                        in.data(), in.size(), epoch)) {
     buf->Clear();
     return -1;
   }

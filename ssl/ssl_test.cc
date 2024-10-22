@@ -2809,22 +2809,28 @@ TEST_P(SSLVersionTest, SequenceNumber) {
 
   if (is_dtls()) {
     if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-      // Client and server write epochs should be at 3 (application data).
+      // Both client and server must be at epoch 3 (application data).
+      EXPECT_EQ(EpochFromSequence(client_read_seq), 3);
       EXPECT_EQ(EpochFromSequence(client_write_seq), 3);
+      EXPECT_EQ(EpochFromSequence(server_read_seq), 3);
       EXPECT_EQ(EpochFromSequence(server_write_seq), 3);
-      // TODO(crbug.com/42290608): The read sequences aren't checked because the
-      // SSL_get_read_sequence API needs to be reworked for DTLS 1.3.
+
+      // TODO(crbug.com/42290608): The next record to be written should exceed
+      // the largest received, but they'll actually be equal because the
+      // |SSL_get_read_sequence| API cannot represent DTLS key transitions.
+      EXPECT_GE(client_write_seq, server_read_seq);
+      EXPECT_GE(server_write_seq, client_read_seq);
     } else {
       // Both client and server must be at epoch 1.
       EXPECT_EQ(EpochFromSequence(client_read_seq), 1);
       EXPECT_EQ(EpochFromSequence(client_write_seq), 1);
       EXPECT_EQ(EpochFromSequence(server_read_seq), 1);
       EXPECT_EQ(EpochFromSequence(server_write_seq), 1);
-    }
 
-    // The next record to be written should exceed the largest received.
-    EXPECT_GT(client_write_seq, server_read_seq);
-    EXPECT_GT(server_write_seq, client_read_seq);
+      // The next record to be written should exceed the largest received.
+      EXPECT_GT(client_write_seq, server_read_seq);
+      EXPECT_GT(server_write_seq, client_read_seq);
+    }
   } else {
     // The next record to be written should equal the next to be received.
     EXPECT_EQ(client_write_seq, server_read_seq);
