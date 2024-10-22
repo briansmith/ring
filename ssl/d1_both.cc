@@ -581,7 +581,7 @@ void dtls_clear_unused_write_epochs(SSL *ssl) {
         // TODO(crbug.com/42290594): Epoch 1 (0-RTT) should be retained until
         // epoch 3 (app data) is available.
         for (const auto &msg : ssl->d1->outgoing_messages) {
-          if (msg.epoch == write_epoch->epoch) {
+          if (msg.epoch == write_epoch->epoch()) {
             return false;
           }
         }
@@ -640,7 +640,7 @@ static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
 
   DTLS_OUTGOING_MESSAGE msg;
   msg.data = std::move(data);
-  msg.epoch = ssl->d1->write_epoch.epoch;
+  msg.epoch = ssl->d1->write_epoch.epoch();
   msg.is_ccs = is_ccs;
   if (!ssl->d1->outgoing_messages.TryPushBack(std::move(msg))) {
     assert(false);

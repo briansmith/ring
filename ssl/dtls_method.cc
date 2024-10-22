@@ -118,14 +118,15 @@ static bool dtls1_set_write_state(SSL *ssl, ssl_encryption_level_t level,
   DTLSWriteEpoch new_epoch;
   if (ssl_protocol_version(ssl) > TLS1_2_VERSION) {
     // TODO(crbug.com/42290594): See above.
-    new_epoch.epoch = level;
+    new_epoch.next_record = DTLSRecordNumber(level, 0);
     new_epoch.rn_encrypter =
         RecordNumberEncrypter::Create(aead_ctx->cipher(), traffic_secret);
     if (new_epoch.rn_encrypter == nullptr) {
       return false;
     }
   } else {
-    new_epoch.epoch = ssl->d1->write_epoch.epoch + 1;
+    new_epoch.next_record =
+        DTLSRecordNumber(ssl->d1->write_epoch.epoch() + 1, 0);
   }
   new_epoch.aead = std::move(aead_ctx);
 

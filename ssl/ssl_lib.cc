@@ -2976,9 +2976,7 @@ uint64_t SSL_get_read_sequence(const SSL *ssl) {
 
 uint64_t SSL_get_write_sequence(const SSL *ssl) {
   if (SSL_is_dtls(ssl)) {
-    const DTLSWriteEpoch *write_epoch = &ssl->d1->write_epoch;
-    return DTLSRecordNumber(write_epoch->epoch, write_epoch->next_seq)
-        .combined();
+    return ssl->d1->write_epoch.next_record.combined();
   }
 
   return ssl->s3->write_sequence;

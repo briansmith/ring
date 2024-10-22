@@ -443,11 +443,11 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
 }
 
 static DTLSWriteEpoch *get_write_epoch(const SSL *ssl, uint16_t epoch) {
-  if (ssl->d1->write_epoch.epoch == epoch) {
+  if (ssl->d1->write_epoch.epoch() == epoch) {
     return &ssl->d1->write_epoch;
   }
   for (const auto &e : ssl->d1->extra_write_epochs) {
-    if (e->epoch == epoch) {
+    if (e->epoch() == epoch) {
       return e.get();
     }
   }
@@ -510,7 +510,8 @@ bool dtls_seal_record(SSL *ssl, DTLSRecordNumber *out_number, uint8_t *out,
   const size_t record_header_len = dtls_record_header_write_len(ssl, epoch);
 
   // Ensure the sequence number update does not overflow.
-  if (write_epoch->next_seq + 1 > DTLSRecordNumber::kMaxSequence) {
+  DTLSRecordNumber record_number = write_epoch->next_record;
+  if (!record_number.HasNext()) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
     return false;
   }
@@ -535,7 +536,6 @@ bool dtls_seal_record(SSL *ssl, DTLSRecordNumber *out_number, uint8_t *out,
   }
 
   uint16_t record_version = dtls_record_version(ssl);
-  DTLSRecordNumber record_number(epoch, write_epoch->next_seq);
   if (dtls13_header) {
     // The first byte of the DTLS 1.3 record header has the following format:
     // 0 1 2 3 4 5 6 7
@@ -554,19 +554,15 @@ bool dtls_seal_record(SSL *ssl, DTLSRecordNumber *out_number, uint8_t *out,
     // We always use a two-byte sequence number. A one-byte sequence number
     // would require coordinating with the application on ACK feedback to know
     // that the peer is not too far behind.
-    out[1] = write_epoch->next_seq >> 8;
-    out[2] = write_epoch->next_seq & 0xff;
+    CRYPTO_store_u16_be(out + 1, write_epoch->next_record.sequence());
     // TODO(crbug.com/42290594): When we know the record is last in the packet,
     // omit the length.
-    out[3] = ciphertext_len >> 8;
-    out[4] = ciphertext_len & 0xff;
+    CRYPTO_store_u16_be(out + 3, ciphertext_len);
   } else {
     out[0] = type;
-    out[1] = record_version >> 8;
-    out[2] = record_version & 0xff;
-    CRYPTO_store_u64_be(&out[3], record_number.combined());
-    out[11] = ciphertext_len >> 8;
-    out[12] = ciphertext_len & 0xff;
+    CRYPTO_store_u16_be(out + 1, record_version);
+    CRYPTO_store_u64_be(out + 3, record_number.combined());
+    CRYPTO_store_u16_be(out + 11, ciphertext_len);
   }
   Span<const uint8_t> header = MakeConstSpan(out, record_header_len);
 
@@ -595,7 +591,7 @@ bool dtls_seal_record(SSL *ssl, DTLSRecordNumber *out_number, uint8_t *out,
   }
 
   *out_number = record_number;
-  write_epoch->next_seq++;
+  write_epoch->next_record = record_number.Next();
   *out_len = record_header_len + ciphertext_len;
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER, header);
   return true;

@@ -1231,7 +1231,6 @@ OPENSSL_EXPORT uint64_t reconstruct_seqnum(uint16_t wire_seq, uint64_t seq_mask,
 
 // Record layer.
 
-// TODO(davidben): Use this type more extensively in the epoch state.
 class DTLSRecordNumber {
  public:
   static constexpr uint64_t kMaxSequence = (uint64_t{1} << 48) - 1;
@@ -1249,6 +1248,13 @@ class DTLSRecordNumber {
   uint64_t combined() const { return combined_; }
   uint16_t epoch() const { return combined_ >> 48; }
   uint64_t sequence() const { return combined_ & kMaxSequence; }
+
+  bool HasNext() const { return sequence() < kMaxSequence; }
+  DTLSRecordNumber Next() const {
+    BSSL_CHECK(HasNext());
+    // This will not overflow into the epoch.
+    return DTLSRecordNumber::FromCombined(combined_ + 1);
+  }
 
  private:
   explicit DTLSRecordNumber(uint64_t combined) : combined_(combined) {}
@@ -1275,6 +1281,8 @@ class RecordNumberEncrypter {
 struct DTLSReadEpoch {
   static constexpr bool kAllowUniquePtr = true;
 
+  // TODO(davidben): This could be made slightly more compact if |bitmap| stored
+  // a DTLSRecordNumber.
   uint16_t epoch = 0;
   UniquePtr<SSLAEADContext> aead;
   UniquePtr<RecordNumberEncrypter> rn_encrypter;
@@ -1284,10 +1292,11 @@ struct DTLSReadEpoch {
 struct DTLSWriteEpoch {
   static constexpr bool kAllowUniquePtr = true;
 
-  uint16_t epoch = 0;
+  uint16_t epoch() const { return next_record.epoch(); }
+
+  DTLSRecordNumber next_record;
   UniquePtr<SSLAEADContext> aead;
   UniquePtr<RecordNumberEncrypter> rn_encrypter;
-  uint64_t next_seq = 0;
 };
 
 // ssl_record_prefix_len returns the length of the prefix before the ciphertext
