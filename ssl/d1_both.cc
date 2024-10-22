@@ -702,8 +702,8 @@ enum seal_result_t {
 // seal_next_message seals |msg|, which must be the next message, to |out|. If
 // progress was made, it returns |seal_partial| or |seal_success| and sets
 // |*out_len| to the number of bytes written.
-static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
-                                            size_t *out_len, size_t max_out,
+static enum seal_result_t seal_next_message(SSL *ssl, Span<uint8_t> out,
+                                            size_t *out_len,
                                             const DTLSOutgoingMessage *msg) {
   assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size());
   assert(msg == &ssl->d1->outgoing_messages[ssl->d1->outgoing_written]);
@@ -714,12 +714,12 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
   if (msg->is_ccs) {
     // Check there is room for the ChangeCipherSpec.
     static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
-    if (max_out < sizeof(kChangeCipherSpec) + overhead) {
+    if (out.size() < sizeof(kChangeCipherSpec) + overhead) {
       return seal_no_progress;
     }
 
     DTLSRecordNumber record_number;
-    if (!dtls_seal_record(ssl, &record_number, out, out_len, max_out,
+    if (!dtls_seal_record(ssl, &record_number, out.data(), out_len, out.size(),
                           SSL3_RT_CHANGE_CIPHER_SPEC, kChangeCipherSpec,
                           sizeof(kChangeCipherSpec), msg->epoch)) {
       return seal_error;
@@ -731,34 +731,34 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
   }
 
   // DTLS messages are serialized as a single fragment in |msg|.
-  CBS cbs, body;
+  CBS cbs(msg->data), body;
   struct hm_header_st hdr;
-  CBS_init(&cbs, msg->data.data(), msg->data.size());
-  if (!dtls1_parse_fragment(&cbs, &hdr, &body) ||
-      hdr.frag_off != 0 ||
-      hdr.frag_len != CBS_len(&body) ||
+  if (!dtls1_parse_fragment(&cbs, &hdr, &body) ||  //
+      hdr.frag_off != 0 ||                         //
+      hdr.frag_len != CBS_len(&body) ||            //
       hdr.msg_len != CBS_len(&body) ||
-      !CBS_skip(&body, ssl->d1->outgoing_offset) ||
+      !CBS_skip(&body, ssl->d1->outgoing_offset) ||  //
       CBS_len(&cbs) != 0) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return seal_error;
   }
 
   // Determine how much progress can be made.
-  if (max_out < DTLS1_HM_HEADER_LENGTH + 1 + overhead || max_out < prefix) {
+  if (out.size() < DTLS1_HM_HEADER_LENGTH + 1 + overhead ||
+      out.size() < prefix) {
     return seal_no_progress;
   }
   size_t todo = CBS_len(&body);
-  if (todo > max_out - DTLS1_HM_HEADER_LENGTH - overhead) {
-    todo = max_out - DTLS1_HM_HEADER_LENGTH - overhead;
+  if (todo > out.size() - DTLS1_HM_HEADER_LENGTH - overhead) {
+    todo = out.size() - DTLS1_HM_HEADER_LENGTH - overhead;
   }
 
   // Assemble a fragment, to be sealed in-place.
   ScopedCBB cbb;
   CBB child;
-  uint8_t *frag = out + prefix;
-  size_t max_frag = max_out - prefix, frag_len;
-  if (!CBB_init_fixed(cbb.get(), frag, max_frag) ||
+  Span<uint8_t> frag = out.subspan(prefix);
+  size_t frag_len;
+  if (!CBB_init_fixed(cbb.get(), frag.data(), frag.size()) ||
       !CBB_add_u8(cbb.get(), hdr.type) ||
       !CBB_add_u24(cbb.get(), hdr.msg_len) ||
       !CBB_add_u16(cbb.get(), hdr.seq) ||
@@ -770,12 +770,12 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
     return seal_error;
   }
 
-  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE,
-                      MakeSpan(frag, frag_len));
+  frag = frag.first(frag_len);
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, frag);
 
   DTLSRecordNumber record_number;
-  if (!dtls_seal_record(ssl, &record_number, out, out_len, max_out,
-                        SSL3_RT_HANDSHAKE, out + prefix, frag_len,
+  if (!dtls_seal_record(ssl, &record_number, out.data(), out_len, out.size(),
+                        SSL3_RT_HANDSHAKE, frag.data(), frag.size(),
                         msg->epoch)) {
     return seal_error;
   }
@@ -793,8 +793,7 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
 // seal_next_packet writes as much of the next flight as possible to |out| and
 // advances |ssl->d1->outgoing_written| and |ssl->d1->outgoing_offset| as
 // appropriate.
-static bool seal_next_packet(SSL *ssl, uint8_t *out, size_t *out_len,
-                             size_t max_out) {
+static bool seal_next_packet(SSL *ssl, Span<uint8_t> out, size_t *out_len) {
   bool made_progress = false;
   size_t total = 0;
   assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages.size());
@@ -803,7 +802,7 @@ static bool seal_next_packet(SSL *ssl, uint8_t *out, size_t *out_len,
     const DTLSOutgoingMessage *msg =
         &ssl->d1->outgoing_messages[ssl->d1->outgoing_written];
     size_t len;
-    enum seal_result_t ret = seal_next_message(ssl, out, &len, max_out, msg);
+    enum seal_result_t ret = seal_next_message(ssl, out, &len, msg);
     switch (ret) {
       case seal_error:
         return false;
@@ -813,8 +812,7 @@ static bool seal_next_packet(SSL *ssl, uint8_t *out, size_t *out_len,
 
       case seal_partial:
       case seal_success:
-        out += len;
-        max_out -= len;
+        out = out.subspan(len);
         total += len;
         made_progress = true;
 
@@ -859,7 +857,7 @@ static int send_flight(SSL *ssl) {
     uint32_t old_offset = ssl->d1->outgoing_offset;
 
     size_t packet_len;
-    if (!seal_next_packet(ssl, packet.data(), &packet_len, packet.size())) {
+    if (!seal_next_packet(ssl, MakeSpan(packet), &packet_len)) {
       return -1;
     }
 
