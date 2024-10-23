@@ -251,7 +251,8 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
 
   // The ECH extension, if present, was already parsed by
   // |check_ech_confirmation|.
-  SSLExtension cookie(TLSEXT_TYPE_cookie), key_share(TLSEXT_TYPE_key_share),
+  SSLExtension cookie(TLSEXT_TYPE_cookie),
+      key_share(TLSEXT_TYPE_key_share, !hs->key_share_bytes.empty()),
       supported_versions(TLSEXT_TYPE_supported_versions),
       ech_unused(TLSEXT_TYPE_encrypted_client_hello,
                  hs->selected_ech_config || hs->config->ech_grease_enabled);
@@ -284,6 +285,10 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   }
 
   if (key_share.present) {
+    // If offering PAKE, we won't send key_share extensions, in which case we
+    // would have rejected key_share from the peer.
+    assert(!hs->pake_prover);
+
     uint16_t group_id;
     if (!CBS_get_u16(&key_share.data, &group_id) ||
         CBS_len(&key_share.data) != 0) {
@@ -421,12 +426,14 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       ssl_session_get_type(ssl->session.get()) ==
           SSLSessionType::kPreSharedKey &&
       ssl->s3->ech_status != ssl_ech_rejected;
-  SSLExtension key_share(TLSEXT_TYPE_key_share),
+  SSLExtension key_share(TLSEXT_TYPE_key_share, hs->key_shares[0] != nullptr),
+      pake_share(TLSEXT_TYPE_pake, hs->pake_prover != nullptr),
       pre_shared_key(TLSEXT_TYPE_pre_shared_key, pre_shared_key_allowed),
       supported_versions(TLSEXT_TYPE_supported_versions);
-  if (!ssl_parse_extensions(&server_hello.extensions, &alert,
-                            {&key_share, &pre_shared_key, &supported_versions},
-                            /*ignore_unknown=*/false)) {
+  if (!ssl_parse_extensions(
+          &server_hello.extensions, &alert,
+          {&key_share, &pre_shared_key, &supported_versions, &pake_share},
+          /*ignore_unknown=*/false)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
@@ -441,6 +448,39 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
+
+  // The combination of ServerHello extensions determines the kind of handshake
+  // that the server selected. Check for invalid combinations.
+
+  // pake replaces key_share and may not be used with pre_shared_key.
+  if (pake_share.present && (key_share.present || pre_shared_key.present)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
+    return ssl_hs_error;
+  }
+  // In PAKE mode, we require a PAKE handshake and do not support resumption.
+  if (hs->pake_prover != nullptr && !pake_share.present) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_EXTENSION);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
+    return ssl_hs_error;
+  }
+  // In non-PAKE modes, we require per-connection forward secrecy and do not
+  // support psk_ke.
+  if (hs->pake_prover == nullptr && !key_share.present) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
+    return ssl_hs_error;
+  }
+  // The above imples only one of three handshake forms will be allowed. The
+  // checks for unsolicited extensions ensure the server did not select
+  // something we cannot respond to.
+  assert(
+      // Full handshake
+      (key_share.present && !pake_share.present && !pre_shared_key.present) ||
+      // PSK/resumption handshake
+      (key_share.present && !pake_share.present && pre_shared_key.present) ||
+      // PAKE handshake
+      (!key_share.present && pake_share.present && !pre_shared_key.present));
 
   alert = SSL_AD_DECODE_ERROR;
   if (pre_shared_key.present) {
@@ -500,24 +540,29 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!key_share.present) {
-    // We do not support psk_ke and thus always require a key share.
-    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
-    return ssl_hs_error;
-  }
-
-  // Resolve ECDHE and incorporate it into the secret.
-  Array<uint8_t> dhe_secret;
+  // Resolve ECDHE or PAKE and incorporate it into the secret.
+  Array<uint8_t> shared_secret;
   alert = SSL_AD_DECODE_ERROR;
-  if (!ssl_ext_key_share_parse_serverhello(hs, &dhe_secret, &alert,
-                                           &key_share.data)) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+  if (key_share.present) {
+    if (!ssl_ext_key_share_parse_serverhello(hs, &shared_secret, &alert,
+                                             &key_share.data)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+      return ssl_hs_error;
+    }
+  } else if (pake_share.present) {
+    if (!ssl_ext_pake_parse_serverhello(hs, &shared_secret, &alert,
+                                        &pake_share.data)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+      return ssl_hs_error;
+    }
+  } else {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
-  if (!tls13_advance_key_schedule(hs, dhe_secret) ||  //
-      !ssl_hash_message(hs, msg) ||                   //
+  if (!tls13_advance_key_schedule(hs, shared_secret) ||  //
+      !ssl_hash_message(hs, msg) ||                      //
       !tls13_derive_handshake_secrets(hs)) {
     return ssl_hs_error;
   }
@@ -638,6 +683,11 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
+  if (hs->pake_prover) {
+    hs->tls13_state = state_read_server_finished;
+    return ssl_hs_ok;
+  }
+
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;
@@ -648,7 +698,6 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
     hs->tls13_state = state_read_server_certificate;
     return ssl_hs_ok;
   }
-
 
   SSLExtension sigalgs(TLSEXT_TYPE_signature_algorithms),
       ca(TLSEXT_TYPE_certificate_authorities);

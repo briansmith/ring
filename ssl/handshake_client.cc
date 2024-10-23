@@ -332,6 +332,7 @@ void ssl_done_writing_client_hello(SSL_HANDSHAKE *hs) {
   hs->ech_client_outer.Reset();
   hs->cookie.Reset();
   hs->key_share_bytes.Reset();
+  hs->pake_share_bytes.Reset();
 }
 
 static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
@@ -363,6 +364,10 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
         hs->max_version >= TLS1_2_VERSION ? TLS1_2_VERSION : hs->max_version;
   }
 
+  if (!ssl_setup_pake_shares(hs)) {
+    return ssl_hs_error;
+  }
+
   // If the configured session has expired or is not usable, drop it. We also do
   // not offer sessions on renegotiation.
   SSLSessionType session_type = SSLSessionType::kNotResumable;
@@ -379,6 +384,10 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
         // Don't offer TLS 1.2 tickets if disabled.
         (session_type == SSLSessionType::kTicket &&
          (SSL_get_options(ssl) & SSL_OP_NO_TICKET)) ||
+        // Don't offer sessions and PAKEs at the same time. We do not currently
+        // support resumption with PAKEs. (Offering both together would need
+        // more logic to conditionally send the key_share extension.)
+        hs->pake_prover != nullptr ||
         !ssl_session_is_time_valid(ssl, ssl->session.get()) ||
         SSL_is_quic(ssl) != int{ssl->session->is_quic} ||
         ssl->s3->initial_handshake_complete) {
@@ -640,6 +649,14 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
     hs->state = state_tls13;
     return ssl_hs_ok;
+  }
+
+  // If this client is configured to use a PAKE, then the server must support
+  // TLS 1.3.
+  if (hs->pake_prover) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
+    return ssl_hs_error;
   }
 
   // Clear some TLS 1.3 state that no longer needs to be retained.

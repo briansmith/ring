@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/spake2plus"
 	"golang.org/x/crypto/cryptobyte"
 )
 
@@ -40,6 +41,7 @@ type clientHandshakeState struct {
 	session        *ClientSessionState
 	finishedBytes  []byte
 	peerPublicKey  crypto.PublicKey
+	pakeContext    *spake2plus.Context
 }
 
 func mapClientHelloVersion(vers uint16, isDTLS bool) uint16 {
@@ -673,6 +675,41 @@ func (hs *clientHandshakeState) createClientHello(innerHello *clientHelloMsg, ec
 		}
 	}
 
+	for _, id := range c.config.Bugs.OfferExtraPAKEs {
+		hello.pakeClientID = c.config.Bugs.OfferExtraPAKEClientID
+		hello.pakeServerID = c.config.Bugs.OfferExtraPAKEServerID
+		hello.pakeShares = append(hello.pakeShares, pakeShare{id: id, msg: []byte{1}})
+	}
+	if cred := c.config.Credential; cred != nil && cred.Type == CredentialTypeSPAKE2PlusV1 {
+		if maxVersion < VersionTLS13 {
+			panic("The PAKE extension is only supported in TLS 1.3")
+		}
+		w0, w1, _, err := spake2plus.Register(cred.PAKEPassword, cred.PAKEClientID, cred.PAKEServerID)
+		if err != nil {
+			return nil, err
+		}
+		hs.pakeContext, err = spake2plus.NewProver(cred.PAKEContext, cred.PAKEClientID, cred.PAKEServerID, w0, w1)
+		if err != nil {
+			return nil, err
+		}
+		share, err := hs.pakeContext.GenerateProverShare()
+		if err != nil {
+			return nil, err
+		}
+		if c.config.Bugs.TruncatePAKEMessage {
+			share = share[:len(share)-1]
+		}
+		hello.pakeClientID = cred.PAKEClientID
+		hello.pakeServerID = cred.PAKEServerID
+		id := spakeID
+		if cred.OverridePAKECodepoint != 0 {
+			id = cred.OverridePAKECodepoint
+		}
+		hello.pakeShares = append(hello.pakeShares, pakeShare{id: id, msg: share})
+		hello.hasKeyShares = false
+		hello.keyShares = nil
+	}
+
 	possibleCipherSuites := c.config.cipherSuites()
 	hello.cipherSuites = make([]uint16, 0, len(possibleCipherSuites))
 
@@ -1086,8 +1123,9 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		return fmt.Errorf("tls: server sent non-matching cipher suite %04x vs %04x", hs.suite.id, hs.serverHello.cipherSuite)
 	}
 
+	// ServerHello must be consistent with HelloRetryRequest, if any.
 	if haveHelloRetryRequest {
-		if helloRetryRequest.hasSelectedGroup && helloRetryRequest.selectedGroup != hs.serverHello.keyShare.group {
+		if helloRetryRequest.hasSelectedGroup && (!hs.serverHello.hasKeyShare || helloRetryRequest.selectedGroup != hs.serverHello.keyShare.group) {
 			c.sendAlert(alertHandshakeFailure)
 			return errors.New("tls: ServerHello parameters did not match HelloRetryRequest")
 		}
@@ -1123,29 +1161,55 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 	}
 	hs.finishedHash.addEntropy(pskSecret)
 
-	if !hs.serverHello.hasKeyShare {
-		c.sendAlert(alertUnsupportedExtension)
-		return errors.New("tls: server omitted KeyShare on resumption.")
-	}
-
-	// Resolve ECDHE and compute the handshake secret.
-	ecdheSecret := zeroSecret
-	if !c.config.Bugs.MissingKeyShare && !c.config.Bugs.SecondClientHelloMissingKeyShare {
-		kem, ok := hs.keyShares[hs.serverHello.keyShare.group]
-		if !ok {
-			c.sendAlert(alertHandshakeFailure)
-			return errors.New("tls: server selected an unsupported group")
+	sharedSecret := zeroSecret
+	if len(hs.serverHello.pakeMessage) != 0 {
+		if c.didResume {
+			return errors.New("server resumed and returned a PAKE extension")
 		}
-		c.curveID = hs.serverHello.keyShare.group
+		if hs.pakeContext == nil {
+			return errors.New("server selected a PAKE unexpectedly")
+		}
+		if hs.serverHello.pakeID != spakeID {
+			return errors.New("server selected an unknown PAKE")
+		}
+		if expected := 65 + 32; len(hs.serverHello.pakeMessage) != expected {
+			return fmt.Errorf("wrong length SPAKE2+ message, got %d, want %d", len(hs.serverHello.pakeMessage), expected)
+		}
+		if hs.serverHello.hasKeyShare || hs.serverHello.hasPSKIdentity {
+			return errors.New("server included invalid extension with PAKE extension")
+		}
 
 		var err error
-		ecdheSecret, err = kem.decap(c.config, hs.serverHello.keyShare.keyExchange)
-		if err != nil {
-			return err
+		if _, sharedSecret, err = hs.pakeContext.ComputeProverConfirmation(hs.serverHello.pakeMessage[:65], hs.serverHello.pakeMessage[65:]); err != nil {
+			return fmt.Errorf("while computing SPAKE2+ confirmation: %w", err)
+		}
+	} else if hs.pakeContext != nil {
+		return errors.New("server didn't respond with PAKE message")
+	} else {
+		if !hs.serverHello.hasKeyShare {
+			c.sendAlert(alertUnsupportedExtension)
+			return errors.New("tls: server omitted KeyShare on resumption.")
+		}
+
+		// Resolve ECDHE and compute the handshake secret.
+		if !c.config.Bugs.MissingKeyShare && !c.config.Bugs.SecondClientHelloMissingKeyShare {
+			kem, ok := hs.keyShares[hs.serverHello.keyShare.group]
+			if !ok {
+				c.sendAlert(alertHandshakeFailure)
+				return errors.New("tls: server selected an unsupported group")
+			}
+			c.curveID = hs.serverHello.keyShare.group
+
+			var err error
+			sharedSecret, err = kem.decap(c.config, hs.serverHello.keyShare.keyExchange)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 	hs.finishedHash.nextSecret()
-	hs.finishedHash.addEntropy(ecdheSecret)
+	hs.finishedHash.addEntropy(sharedSecret)
 	hs.writeServerHash(hs.serverHello.marshal())
 
 	// Derive handshake traffic keys and switch read key to handshake
@@ -1178,6 +1242,8 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		c.peerCertificates = hs.session.serverCertificates
 		c.sctList = hs.session.sctList
 		c.ocspResponse = hs.session.ocspResponse
+	} else if hs.pakeContext != nil {
+		// The PAKE authenticates the connection.
 	} else {
 		msg, err := c.readHandshake()
 		if err != nil {
@@ -1867,8 +1933,7 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 func (hs *clientHandshakeState) establishKeys() error {
 	c := hs.c
 
-	clientMAC, serverMAC, clientKey, serverKey, clientIV, serverIV :=
-		keysFromMasterSecret(c.vers, hs.suite, hs.masterSecret, hs.hello.random, hs.serverHello.random, hs.suite.macLen, hs.suite.keyLen, hs.suite.ivLen(c.vers))
+	clientMAC, serverMAC, clientKey, serverKey, clientIV, serverIV := keysFromMasterSecret(c.vers, hs.suite, hs.masterSecret, hs.hello.random, hs.serverHello.random, hs.suite.macLen, hs.suite.keyLen, hs.suite.ivLen(c.vers))
 	var clientCipher, serverCipher any
 	var clientHash, serverHash macFunction
 	if hs.suite.cipher != nil {

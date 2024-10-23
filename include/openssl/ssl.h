@@ -3492,6 +3492,120 @@ OPENSSL_EXPORT int SSL_CREDENTIAL_set1_delegated_credential(
     SSL_CREDENTIAL *cred, CRYPTO_BUFFER *dc);
 
 
+// Password Authenticated Key Exchange (PAKE).
+//
+// Password Authenticated Key Exchange protocols allow client and server to
+// mutually authenticate one another using knowledge of a password or other
+// low-entropy secret. While the TLS 1.3 pre-shared key (PSK) mechanism can
+// authenticate a high-entropy secret, it cannot be used with low-entropy
+// secrets as the PSK binder values can be used to mount a dictionary attack on
+// a low-entropy PSK. Using TLS 1.3 with a PAKE limits an attacker to confirming
+// one password guess per handshake attempt.
+//
+// WARNING: The PAKE mode in TLS is not a general-purpose authentication scheme.
+// As the underlying secret is still low-entropy, callers must limit brute force
+// attacks across multiple connections, especially in multi-connection protocols
+// such as HTTP. The |error_limit| and |rate_limit| parameters in the functions
+// below may be used to implement this, provided the same |SSL_CREDENTIAL|
+// object is used across connections. Applications using multiple connections
+// should use the PAKE credential only once to authenticate a high-entropy
+// secret, e.g. exporting a PSK from |SSL_export_keying_material|, and use the
+// high-entropy secret for subsequent connections.
+//
+// TODO(crbug.com/369963041): Implement RFC 9258 so one can actually do that.
+//
+// WARNING: PAKE support in TLS is still experimental and may change as the
+// standard evolves. See
+// https://chris-wood.github.io/draft-bmw-tls-pake13/draft-bmw-tls-pake13.html
+//
+// Currently, only the SPAKE2PLUS_V1 named PAKE algorithm is implemented; see
+// https://chris-wood.github.io/draft-bmw-tls-pake13/draft-bmw-tls-pake13.html#section-8.1.
+
+// SSL_PAKE_SPAKE2PLUSV1 is the codepoint for SPAKE2PLUS_V1. See
+// https://chris-wood.github.io/draft-bmw-tls-pake13/draft-bmw-tls-pake13.html#name-named-pake-registry.
+#define SSL_PAKE_SPAKE2PLUSV1 0x7d96
+
+// SSL_spake2plusv1_register computes the values that the client (w0,
+// w1) and server (w0, registration_record) require to run SPAKE2+. These values
+// can be used when calling |SSL_CREDENTIAL_new_spake2plusv1_client| and
+// |SSL_CREDENTIAL_new_spake2plusv1_server|. The client and server identities
+// must match the values passed to those functions.
+//
+// Returns one on success and zero on error.
+OPENSSL_EXPORT int SSL_spake2plusv1_register(
+    uint8_t out_w0[32], uint8_t out_w1[32], uint8_t out_registration_record[65],
+    const uint8_t *password, size_t password_len,
+    const uint8_t *client_identity, size_t client_identity_len,
+    const uint8_t *server_identity, size_t server_identity_len);
+
+// SSL_CREDENTIAL_new_spake2plusv1_client creates a new |SSL_CREDENTIAL| that
+// authenticates using SPAKE2+. It is to be used with a TLS client.
+//
+// The |context|, |client_identity|, and |server_identity| fields serve to
+// identity the SPAKE2+ settings and both sides of a connection must agree on
+// these values. If |context| is |NULL|, a default value will be used.
+//
+// |error_limit| is the number of failed handshakes allowed on the credential.
+// After the limit is reached, using the credential will fail. Ideally this
+// value is set to 1. Setting it to a higher value allows an attacker to have
+// that many attempts at guessing the password using this |SSL_CREDENTIAL|.
+// (Assuming that multiple TLS connections are allowed.)
+//
+// |w0| and |w1| come from calling |SSL_spake2plusv1_register|.
+//
+// Unlike most |SSL_CREDENTIAL|s, PAKE client credentials must be the only
+// credential configured on the connection. BoringSSL does not currently support
+// configuring multiple PAKE credentials as a client, or configuring a mix of
+// PAKE and non-PAKE credentials. Once a PAKE credential is configured, the
+// connection will require the server to authenticate with the same secret, so a
+// successful connection then implies that the server supported the PAKE and
+// knew the password.
+OPENSSL_EXPORT SSL_CREDENTIAL *SSL_CREDENTIAL_new_spake2plusv1_client(
+    const uint8_t *context, size_t context_len, const uint8_t *client_identity,
+    size_t client_identity_len, const uint8_t *server_identity,
+    size_t server_identity_len, uint32_t error_limit, const uint8_t *w0,
+    size_t w0_len, const uint8_t *w1, size_t w1_len);
+
+// SSL_CREDENTIAL_new_spake2plusv1_server creates a new |SSL_CREDENTIAL| that
+// authenticates using SPAKE2+. It is to be used with a TLS server.
+//
+// The |context|, |client_identity|, and |server_identity| fields serve to
+// identity the SPAKE2+ settings and both sides of a connection must agree on
+// these values. If |context| is |NULL|, a default value will be used.
+//
+// |rate_limit| is the number of failed or unfinished handshakes allowed on the
+// credential. After the limit is reached, using the credential will fail.
+// Ideally this value is set to 1. Setting it to a higher value allows an
+// attacker to have that many attempts at guessing the password using this
+// |SSL_CREDENTIAL|. (Assuming that multiple TLS connections are allowed.)
+//
+// WARNING: |rate_limit| differs from the client's |error_limit| parameter.
+// Server PAKE credentials must temporarily deduct incomplete handshakes from
+// the limit, until the peer completes the handshake correctly. Thus
+// applications use that multiple connections in parallel may need a higher
+// limit, and thus higher attacker exposure, to avoid failures. Such
+// applications should instead use one PAKE-based connection to established a
+// high-entropy secret (e.g. with |SSL_export_keying_material|) instead of
+// repeating the PAKE exchange for each connection.
+//
+// |w0| and |registration_record| come from calling |SSL_spake2plusv1_register|,
+// which may be computed externally so that the server does not know the
+// password, or a password-equivalent secret.
+//
+// A server wishing to support a PAKE should install one of these credentials.
+// It is also possible to install certificate-based credentials, in which case
+// both PAKE and non-PAKE clients can be supported. However, if only a PAKE
+// credential is installed then the server knows that any successfully-connected
+// clients also knows the password. Otherwise, the server must be careful to
+// inspect the credential used for a connection before assuming that.
+OPENSSL_EXPORT SSL_CREDENTIAL *SSL_CREDENTIAL_new_spake2plusv1_server(
+    const uint8_t *context, size_t context_len, const uint8_t *client_identity,
+    size_t client_identity_len, const uint8_t *server_identity,
+    size_t server_identity_len, uint32_t rate_limit, const uint8_t *w0,
+    size_t w0_len, const uint8_t *registration_record,
+    size_t registration_record_len);
+
+
 // QUIC integration.
 //
 // QUIC acts as an underlying transport for the TLS 1.3 handshake. The following
@@ -5545,7 +5659,7 @@ enum ssl_compliance_policy_t BORINGSSL_ENUM_INT {
   // other than by the supported signature algorithms. But WPA3's "192-bit"
   // mode requires at least P-384 or 3072-bit along the chain. The caller must
   // enforce this themselves on the verified chain using functions such as
-  // `X509_STORE_CTX_get0_chain`.
+  // |X509_STORE_CTX_get0_chain|.
   //
   // Note that this setting is less secure than the default. The
   // implementation risks of using a more obscure primitive like P-384
@@ -6068,6 +6182,10 @@ BSSL_NAMESPACE_END
 #define SSL_R_INCONSISTENT_ECH_NEGOTIATION 321
 #define SSL_R_INVALID_ALPS_CODEPOINT 322
 #define SSL_R_NO_MATCHING_ISSUER 323
+#define SSL_R_INVALID_SPAKE2PLUSV1_VALUE 324
+#define SSL_R_PAKE_EXHAUSTED 325
+#define SSL_R_PEER_PAKE_MISMATCH 326
+#define SSL_R_UNSUPPORTED_CREDENTIAL_LIST 327
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
@@ -6102,5 +6220,6 @@ BSSL_NAMESPACE_END
 #define SSL_R_TLSV1_ALERT_CERTIFICATE_REQUIRED 1116
 #define SSL_R_TLSV1_ALERT_NO_APPLICATION_PROTOCOL 1120
 #define SSL_R_TLSV1_ALERT_ECH_REQUIRED 1121
+#define SSL_R_PAKE_AND_KEY_SHARE_NOT_ALLOWED 1122
 
 #endif  // OPENSSL_HEADER_SSL_H

@@ -25,7 +25,11 @@
 
 #include "test_state.h"
 
-enum class CredentialConfigType { kX509, kDelegated };
+enum class CredentialConfigType {
+  kX509,
+  kDelegated,
+  kSPAKE2PlusV1,
+};
 
 struct CredentialConfig {
   CredentialConfigType type;
@@ -35,6 +39,11 @@ struct CredentialConfig {
   std::vector<uint8_t> delegated_credential;
   std::vector<uint8_t> ocsp_response;
   std::vector<uint8_t> signed_cert_timestamps;
+  std::vector<uint8_t> pake_context;
+  std::vector<uint8_t> pake_client_id;
+  std::vector<uint8_t> pake_server_id;
+  std::vector<uint8_t> pake_password;
+  bool wrong_pake_role = false;
 };
 
 struct TestConfig {
@@ -225,7 +234,7 @@ struct TestConfig {
   std::vector<CredentialConfig> credentials;
   int private_key_delay_ms = 0;
 
-  std::vector<const char*> handshaker_args;
+  std::vector<const char *> handshaker_args;
 
   bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx) const;
 

@@ -509,6 +509,8 @@ const Flag<TestConfig> *FindFlag(const char *name) {
         NewCredentialFlag("-new-x509-credential", CredentialConfigType::kX509),
         NewCredentialFlag("-new-delegated-credential",
                           CredentialConfigType::kDelegated),
+        NewCredentialFlag("-new-spake2plusv1-credential",
+                          CredentialConfigType::kSPAKE2PlusV1),
         CredentialFlagWithDefault(
             StringFlag("-cert-file", &TestConfig::cert_file),
             StringFlag("-cert-file", &CredentialConfig::cert_file)),
@@ -528,6 +530,16 @@ const Flag<TestConfig> *FindFlag(const char *name) {
                        &TestConfig::signed_cert_timestamps),
             Base64Flag("-signed-cert-timestamps",
                        &CredentialConfig::signed_cert_timestamps)),
+        CredentialFlag(
+            Base64Flag("-pake-context", &CredentialConfig::pake_context)),
+        CredentialFlag(
+            Base64Flag("-pake-client-id", &CredentialConfig::pake_client_id)),
+        CredentialFlag(
+            Base64Flag("-pake-server-id", &CredentialConfig::pake_server_id)),
+        CredentialFlag(
+            Base64Flag("-pake-password", &CredentialConfig::pake_password)),
+        CredentialFlag(
+            BoolFlag("-wrong-pake-role", &CredentialConfig::wrong_pake_role)),
         IntFlag("-private-key-delay-ms", &TestConfig::private_key_delay_ms),
     };
     std::sort(ret.begin(), ret.end(), FlagNameComparator{});
@@ -555,10 +567,8 @@ bool RemovePrefix(const char **str, const char *prefix) {
 
 }  // namespace
 
-bool ParseConfig(int argc, char **argv, bool is_shim,
-                 TestConfig *out_initial,
-                 TestConfig *out_resume,
-                 TestConfig *out_retry) {
+bool ParseConfig(int argc, char **argv, bool is_shim, TestConfig *out_initial,
+                 TestConfig *out_resume, TestConfig *out_retry) {
   for (int i = 0; i < argc; i++) {
     bool skip = false;
     const char *arg = argv[i];
@@ -672,7 +682,7 @@ struct CredentialInfo {
 static void CredentialInfoExDataFree(void *parent, void *ptr,
                                      CRYPTO_EX_DATA *ad, int index, long argl,
                                      void *argp) {
-  delete static_cast<CredentialInfo*>(ptr);
+  delete static_cast<CredentialInfo *>(ptr);
 }
 
 static int CredentialInfoExDataIndex() {
@@ -1336,6 +1346,43 @@ static bssl::UniquePtr<SSL_CREDENTIAL> CredentialFromConfig(
     case CredentialConfigType::kDelegated:
       cred.reset(SSL_CREDENTIAL_new_delegated());
       break;
+    case CredentialConfigType::kSPAKE2PlusV1: {
+      uint8_t pw_verifier_w0[32];
+      uint8_t pw_verifier_w1[32];
+      uint8_t registration_record[65];
+      if (!SSL_spake2plusv1_register(pw_verifier_w0, pw_verifier_w1,
+                                     registration_record,
+                                     cred_config.pake_password.data(),
+                                     cred_config.pake_password.size(),
+                                     cred_config.pake_client_id.data(),
+                                     cred_config.pake_client_id.size(),
+                                     cred_config.pake_server_id.data(),
+                                     cred_config.pake_server_id.size())) {
+        return nullptr;
+      }
+      bool is_server =
+          cred_config.wrong_pake_role ? !config.is_server : config.is_server;
+      if (is_server) {
+        cred.reset(SSL_CREDENTIAL_new_spake2plusv1_server(
+            cred_config.pake_context.data(), cred_config.pake_context.size(),
+            cred_config.pake_client_id.data(),
+            cred_config.pake_client_id.size(),
+            cred_config.pake_server_id.data(),
+            cred_config.pake_server_id.size(),
+            /*attempts=*/1, pw_verifier_w0, sizeof(pw_verifier_w0),
+            registration_record, sizeof(registration_record)));
+      } else {
+        cred.reset(SSL_CREDENTIAL_new_spake2plusv1_client(
+            cred_config.pake_context.data(), cred_config.pake_context.size(),
+            cred_config.pake_client_id.data(),
+            cred_config.pake_client_id.size(),
+            cred_config.pake_server_id.data(),
+            cred_config.pake_server_id.size(),
+            /*attempts=*/1, pw_verifier_w0, sizeof(pw_verifier_w0),
+            pw_verifier_w1, sizeof(pw_verifier_w1)));
+      }
+      break;
+    }
   }
   if (cred == nullptr) {
     return nullptr;
@@ -1700,16 +1747,13 @@ static enum ssl_select_cert_result_t SelectCertificateCallback(
   // Invoke the rewind before we sanity check SNI because we will
   // end up calling the select_cert_cb twice with two different SNIs.
   if (SSL_ech_accepted(ssl) && config->fail_early_callback_ech_rewind) {
-      return ssl_select_cert_disable_ech;
+    return ssl_select_cert_disable_ech;
   }
 
-  const char *server_name =
-      SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+  const char *server_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
 
   if (config->expect_no_server_name && server_name != nullptr) {
-    fprintf(stderr,
-            "Expected no server name but got %s.\n",
-            server_name);
+    fprintf(stderr, "Expected no server name but got %s.\n", server_name);
     return ssl_select_cert_error;
   }
 
@@ -1797,11 +1841,8 @@ static int SendQuicAlert(SSL *ssl, enum ssl_encryption_level_t level,
 }
 
 static const SSL_QUIC_METHOD g_quic_method = {
-    SetQuicReadSecret,
-    SetQuicWriteSecret,
-    AddQuicHandshakeData,
-    FlushQuicFlight,
-    SendQuicAlert,
+    SetQuicReadSecret, SetQuicWriteSecret, AddQuicHandshakeData,
+    FlushQuicFlight,   SendQuicAlert,
 };
 
 static bool MaybeInstallCertCompressionAlg(
@@ -2219,7 +2260,7 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     return nullptr;
   }
   if (wpa_202304 && !SSL_set_compliance_policy(
-                         ssl.get(), ssl_compliance_policy_wpa3_192_202304)) {
+                        ssl.get(), ssl_compliance_policy_wpa3_192_202304)) {
     fprintf(stderr, "SSL_set_compliance_policy failed\n");
     return nullptr;
   }
@@ -2314,8 +2355,7 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
           ssl.get(), SSL_is_dtls(ssl.get()) ? DTLS1_VERSION : TLS1_VERSION)) {
     return nullptr;
   }
-  if (min_version != 0 &&
-      !SSL_set_min_proto_version(ssl.get(), min_version)) {
+  if (min_version != 0 && !SSL_set_min_proto_version(ssl.get(), min_version)) {
     return nullptr;
   }
   // TODO(crbug.com/42290594): Remove this once DTLS 1.3 is enabled by default.
@@ -2323,8 +2363,7 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       !SSL_set_max_proto_version(ssl.get(), DTLS1_3_VERSION)) {
     return nullptr;
   }
-  if (max_version != 0 &&
-      !SSL_set_max_proto_version(ssl.get(), max_version)) {
+  if (max_version != 0 && !SSL_set_max_proto_version(ssl.get(), max_version)) {
     return nullptr;
   }
   if (mtu != 0) {

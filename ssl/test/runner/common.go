@@ -133,6 +133,7 @@ const (
 	extensionRenegotiationInfo          uint16 = 0xff01
 	extensionQUICTransportParamsLegacy  uint16 = 0xffa5 // draft-ietf-quic-tls-32 and earlier
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
+	extensionPAKE                       uint16 = 35387  // not IANA assigned
 	extensionDuplicate                  uint16 = 0xffff // not IANA assigned
 	extensionEncryptedClientHello       uint16 = 0xfe0d // not IANA assigned
 	extensionECHOuterExtensions         uint16 = 0xfd00 // not IANA assigned
@@ -263,6 +264,9 @@ const (
 
 // draft-ietf-tls-esni-13, sections 7.2 and 7.2.1.
 const echAcceptConfirmationLength = 8
+
+// Temporary value; pre RFC.
+const spakeID uint16 = 0x7d96
 
 // ConnectionState records basic TLS details about the connection.
 type ConnectionState struct {
@@ -1711,7 +1715,8 @@ type ProtocolBugs struct {
 	SecondHelloRetryRequest bool
 
 	// SendHelloRetryRequestCurve, if non-zero, causes the server to send
-	// the specified curve in a HelloRetryRequest.
+	// the specified curve in a HelloRetryRequest, even if the client did
+	// not offer key shares at all.
 	SendHelloRetryRequestCurve CurveID
 
 	// SendHelloRetryRequestCipherSuite, if non-zero, causes the server to send
@@ -1777,6 +1782,12 @@ type ProtocolBugs struct {
 	// AlwaysSendCertificate, if true, causes the server to send Certificate in
 	// TLS 1.3, even in handshakes where it is not allowed, such as resumption.
 	AlwaysSendCertificate bool
+
+	// UseCertificateCredential, if not nil, is the credential to use as a
+	// server for TLS 1.3 Certificate and CertificateVerify messages. This may
+	// be used with AlwaysSendCertificate to authenticate with a certificate
+	// alongside some non-certificate credential.
+	UseCertificateCredential *Credential
 
 	// SendSNIWarningAlert, if true, causes the server to send an
 	// unrecognized_name alert before the ServerHello.
@@ -2023,6 +2034,32 @@ type ProtocolBugs struct {
 
 	// AllowEpochOverflow allows DTLS epoch numbers to wrap around.
 	AllowEpochOverflow bool
+
+	// SendPAKEInHelloRetryRequest causes the server to send a HelloRetryRequest
+	// message containing a PAKE extension.
+	SendPAKEInHelloRetryRequest bool
+
+	// UnsolicitedPAKE, if non-zero, causes a ServerHello to contain a PAKE
+	// response of the specified algorithm, even if the client didn't request it.
+	UnsolicitedPAKE uint16
+
+	// OfferExtraPAKEs, if not empty, is a list of additional PAKE algorithms to
+	// offer as a client. They cannot be negotiated and should be used in tests
+	// where the server is expected to ignore them.
+	OfferExtraPAKEs []uint16
+
+	// OfferExtraPAKEClientID and OfferExtraPAKEServerID are the PAKE client and
+	// server IDs to send with OfferExtraPAKEs. These may be left unset if
+	// configured with a real PAKE credential.
+	OfferExtraPAKEClientID []byte
+	OfferExtraPAKEServerID []byte
+
+	// TruncatePAKEMessage, if true, causes PAKE messages to be truncated.
+	TruncatePAKEMessage bool
+
+	// CheckClientHello is called on the initial ClientHello received from the
+	// peer, to implement extra checks.
+	CheckClientHello func(*clientHelloMsg) error
 }
 
 func (c *Config) serverInit() {
@@ -2194,6 +2231,7 @@ type CredentialType int
 const (
 	CredentialTypeX509 CredentialType = iota
 	CredentialTypeDelegated
+	CredentialTypeSPAKE2PlusV1
 )
 
 // A Credential is a certificate chain and private key that a TLS endpoint may
@@ -2233,6 +2271,19 @@ type Credential struct {
 	// SignSignatureAlgorithms, if not nil, overrides the default set of
 	// supported signature algorithms to sign with.
 	SignSignatureAlgorithms []signatureAlgorithm
+	// The following fields are used for PAKE credentials. For simplicity,
+	// we specify the password directly and expect the shim and runner to
+	// compute the client- and server-specific halves as needed.
+	PAKEContext  []byte
+	PAKEClientID []byte
+	PAKEServerID []byte
+	PAKEPassword []byte
+	// WrongPAKERole, if set, causes the shim to be configured with a
+	// credential of the wrong role.
+	WrongPAKERole bool
+	// OverridePAKECodepoint, if non-zero, causes the runner to send the
+	// specified value instead of the actual PAKE codepoint.
+	OverridePAKECodepoint uint16
 }
 
 func (c *Credential) WithSignatureAlgorithms(sigAlgs ...signatureAlgorithm) *Credential {

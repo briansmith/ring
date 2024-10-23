@@ -17,6 +17,7 @@
 #include <stdlib.h>
 
 #include <algorithm>
+#include <atomic>
 #include <bitset>
 #include <initializer_list>
 #include <limits>
@@ -38,6 +39,7 @@
 #include "../crypto/err/internal.h"
 #include "../crypto/internal.h"
 #include "../crypto/lhash/internal.h"
+#include "../crypto/spake2plus/internal.h"
 
 
 #if defined(OPENSSL_WINDOWS)
@@ -1818,6 +1820,8 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc);
 enum class SSLCredentialType {
   kX509,
   kDelegated,
+  kSPAKE2PlusV1Client,
+  kSPAKE2PlusV1Server,
 };
 
 BSSL_NAMESPACE_END
@@ -1911,6 +1915,27 @@ struct ssl_credential_st : public bssl::RefCounted<ssl_credential_st> {
 
   // OCSP response to be sent to the client, if requested.
   bssl::UniquePtr<CRYPTO_BUFFER> ocsp_response;
+
+  // SPAKE2+-specific information.
+  bssl::Array<uint8_t> pake_context;
+  bssl::Array<uint8_t> client_identity;
+  bssl::Array<uint8_t> server_identity;
+  bssl::Array<uint8_t> password_verifier_w0;
+  bssl::Array<uint8_t> password_verifier_w1;  // server-only
+  bssl::Array<uint8_t> registration_record;   // client-only
+  mutable std::atomic<uint32_t> pake_limit;
+
+  // Checks whether there are still permitted PAKE attempts remaining, without
+  // changing the counter.
+  bool HasPAKEAttempts() const;
+
+  // Atomically decrement |pake_limit|. Return true if successful and false if
+  // |pake_limit| is already zero.
+  bool ClaimPAKEAttempt() const;
+
+  // Atomically increment |pake_limit|. This must be paired with a
+  // |ClaimPAKEAttempt| call.
+  void RestorePAKEAttempt() const;
 
   CRYPTO_EX_DATA ex_data;
 
@@ -2060,6 +2085,14 @@ struct SSL_HANDSHAKE_HINTS {
   Array<uint8_t> decrypted_ticket;
   bool renew_ticket = false;
   bool ignore_ticket = false;
+};
+
+struct SSLPAKEShare {
+  static constexpr bool kAllowUniquePtr = true;
+  uint16_t named_pake;
+  Array<uint8_t> client_identity;
+  Array<uint8_t> server_identity;
+  Array<uint8_t> pake_message;
 };
 
 struct SSL_HANDSHAKE {
@@ -2392,6 +2425,18 @@ struct SSL_HANDSHAKE {
 
   // grease_seed is the entropy for GREASE values.
   uint8_t grease_seed[ssl_grease_last_index + 1] = {0};
+
+  // pake_share is the PAKE message received over the wire, if any.
+  UniquePtr<SSLPAKEShare> pake_share;
+
+  // pake_share_bytes are the bytes of the PAKEShare to send, if any.
+  Array<uint8_t> pake_share_bytes;
+
+  // pake_prover is the PAKE context for a client.
+  UniquePtr<spake2plus::Prover> pake_prover;
+
+  // pake_verifier is the PAKE context for a server.
+  UniquePtr<spake2plus::Verifier> pake_verifier;
 };
 
 // kMaxTickets is the maximum number of tickets to send immediately after the
@@ -2464,6 +2509,10 @@ bool ssl_setup_extension_permutation(SSL_HANDSHAKE *hs);
 // a single key share of the specified group.
 bool ssl_setup_key_shares(SSL_HANDSHAKE *hs, uint16_t override_group_id);
 
+// ssl_setup_pake_shares computes the client PAKE shares and saves them in |hs|.
+// It returns true on success and false on failure.
+bool ssl_setup_pake_shares(SSL_HANDSHAKE *hs);
+
 bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
                                          Array<uint8_t> *out_secret,
                                          uint8_t *out_alert, CBS *contents);
@@ -2471,7 +2520,12 @@ bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
                                          Span<const uint8_t> *out_peer_key,
                                          uint8_t *out_alert,
                                          const SSL_CLIENT_HELLO *client_hello);
+bool ssl_ext_pake_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
+
+bool ssl_ext_pake_parse_serverhello(SSL_HANDSHAKE *hs,
+                                    Array<uint8_t> *out_secret,
+                                    uint8_t *out_alert, CBS *contents);
 
 bool ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
                                               uint8_t *out_alert,

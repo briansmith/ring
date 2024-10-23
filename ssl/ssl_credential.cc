@@ -19,6 +19,7 @@
 #include <openssl/span.h>
 
 #include "../crypto/internal.h"
+#include "../crypto/spake2plus/internal.h"
 #include "internal.h"
 
 
@@ -141,15 +142,27 @@ void ssl_credential_st::ClearCertAndKey() {
 }
 
 bool ssl_credential_st::UsesX509() const {
-  // Currently, all credential types use X.509. However, we may add other
-  // certificate types in the future. Add the checks in the setters now, so we
-  // don't forget.
-  return true;
+  switch (type) {
+    case SSLCredentialType::kX509:
+    case SSLCredentialType::kDelegated:
+      return true;
+    case SSLCredentialType::kSPAKE2PlusV1Client:
+    case SSLCredentialType::kSPAKE2PlusV1Server:
+      return false;
+  }
+  abort();
 }
 
 bool ssl_credential_st::UsesPrivateKey() const {
-  // Currently, all credential types use private keys. However, we may add PSK
-  return true;
+  switch (type) {
+    case SSLCredentialType::kX509:
+    case SSLCredentialType::kDelegated:
+      return true;
+    case SSLCredentialType::kSPAKE2PlusV1Client:
+    case SSLCredentialType::kSPAKE2PlusV1Server:
+      return false;
+  }
+  abort();
 }
 
 bool ssl_credential_st::IsComplete() const {
@@ -256,6 +269,30 @@ bool ssl_credential_st::ChainContainsIssuer(
     }
   }
   return false;
+}
+
+bool ssl_credential_st::HasPAKEAttempts() const {
+  return pake_limit.load() != 0;
+}
+
+bool ssl_credential_st::ClaimPAKEAttempt() const {
+  uint32_t current = pake_limit.load(std::memory_order_relaxed);
+  for (;;) {
+    if (current == 0) {
+      return false;
+    }
+    if (pake_limit.compare_exchange_weak(current, current - 1)) {
+      break;
+    }
+  }
+
+  return true;
+}
+
+void ssl_credential_st::RestorePAKEAttempt() const {
+  // This should not overflow because it will only be paired with
+  // ClaimPAKEAttempt.
+  pake_limit.fetch_add(1);
 }
 
 bool ssl_credential_st::AppendIntermediateCert(UniquePtr<CRYPTO_BUFFER> cert) {
@@ -423,6 +460,97 @@ int SSL_CREDENTIAL_set1_signed_cert_timestamp_list(SSL_CREDENTIAL *cred,
 
   cred->signed_cert_timestamp_list = UpRef(sct_list);
   return 1;
+}
+
+int SSL_spake2plusv1_register(uint8_t out_w0[32], uint8_t out_w1[32],
+                              uint8_t out_registration_record[65],
+                              const uint8_t *password, size_t password_len,
+                              const uint8_t *client_identity,
+                              size_t client_identity_len,
+                              const uint8_t *server_identity,
+                              size_t server_identity_len) {
+  return spake2plus::Register(
+      Span(out_w0, 32), Span(out_w1, 32), Span(out_registration_record, 65),
+      Span(password, password_len), Span(client_identity, client_identity_len),
+      Span(server_identity, server_identity_len));
+}
+
+static UniquePtr<SSL_CREDENTIAL> ssl_credential_new_spake2plusv1(
+    SSLCredentialType type, Span<const uint8_t> context,
+    Span<const uint8_t> client_identity, Span<const uint8_t> server_identity,
+    uint32_t limit) {
+  assert(type == SSLCredentialType::kSPAKE2PlusV1Client ||
+         type == SSLCredentialType::kSPAKE2PlusV1Server);
+  auto cred = MakeUnique<SSL_CREDENTIAL>(type);
+  if (cred == nullptr) {
+    return nullptr;
+  }
+
+  if (!cred->pake_context.CopyFrom(context) ||
+      !cred->client_identity.CopyFrom(client_identity) ||
+      !cred->server_identity.CopyFrom(server_identity)) {
+    return nullptr;
+  }
+
+  cred->pake_limit.store(limit);
+  return cred;
+}
+
+SSL_CREDENTIAL *SSL_CREDENTIAL_new_spake2plusv1_client(
+    const uint8_t *context, size_t context_len, const uint8_t *client_identity,
+    size_t client_identity_len, const uint8_t *server_identity,
+    size_t server_identity_len, uint32_t error_limit, const uint8_t *w0,
+    size_t w0_len, const uint8_t *w1, size_t w1_len) {
+  if (w0_len != spake2plus::kVerifierSize ||
+      w1_len != spake2plus::kVerifierSize ||
+      (context == nullptr && context_len != 0)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SPAKE2PLUSV1_VALUE);
+    return nullptr;
+  }
+
+  UniquePtr<SSL_CREDENTIAL> cred = ssl_credential_new_spake2plusv1(
+      SSLCredentialType::kSPAKE2PlusV1Client, Span(context, context_len),
+      Span(client_identity, client_identity_len),
+      Span(server_identity, server_identity_len), error_limit);
+  if (!cred) {
+    return nullptr;
+  }
+
+  if (!cred->password_verifier_w0.CopyFrom(Span(w0, w0_len)) ||
+      !cred->password_verifier_w1.CopyFrom(Span(w1, w1_len))) {
+    return nullptr;
+  }
+
+  return cred.release();
+}
+
+SSL_CREDENTIAL *SSL_CREDENTIAL_new_spake2plusv1_server(
+    const uint8_t *context, size_t context_len, const uint8_t *client_identity,
+    size_t client_identity_len, const uint8_t *server_identity,
+    size_t server_identity_len, uint32_t rate_limit, const uint8_t *w0,
+    size_t w0_len, const uint8_t *registration_record,
+    size_t registration_record_len) {
+  if (w0_len != spake2plus::kVerifierSize ||
+      registration_record_len != spake2plus::kRegistrationRecordSize ||
+      (context == nullptr && context_len != 0)) {
+    return nullptr;
+  }
+
+  UniquePtr<SSL_CREDENTIAL> cred = ssl_credential_new_spake2plusv1(
+      SSLCredentialType::kSPAKE2PlusV1Server, Span(context, context_len),
+      Span(client_identity, client_identity_len),
+      Span(server_identity, server_identity_len), rate_limit);
+  if (!cred) {
+    return nullptr;
+  }
+
+  if (!cred->password_verifier_w0.CopyFrom(Span(w0, w0_len)) ||
+      !cred->registration_record.CopyFrom(
+          Span(registration_record, registration_record_len))) {
+    return nullptr;
+  }
+
+  return cred.release();
 }
 
 int SSL_CTX_add1_credential(SSL_CTX *ctx, SSL_CREDENTIAL *cred) {

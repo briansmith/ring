@@ -425,6 +425,12 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
   return true;
 }
 
+static bool IsPAKE(const SSL *ssl) {
+  int idx = GetTestState(ssl)->selected_credential;
+  return idx >= 0 && GetTestConfig(ssl)->credentials[idx].type ==
+                         CredentialConfigType::kSPAKE2PlusV1;
+}
+
 // CheckHandshakeProperties checks, immediately after |ssl| completes its
 // initial handshake (or False Starts), whether all the properties are
 // consistent with the test configuration and invariants.
@@ -658,6 +664,11 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   if (!config->psk.empty()) {
     if (SSL_get_peer_cert_chain(ssl) != nullptr) {
       fprintf(stderr, "Received peer certificate on a PSK cipher.\n");
+      return false;
+    }
+  } else if (IsPAKE(ssl)) {
+    if (SSL_get_peer_cert_chain(ssl) != nullptr) {
+      fprintf(stderr, "Received peer certificate on a PAKE handshake.\n");
       return false;
     }
   } else if (!config->is_server || config->require_any_client_certificate) {
@@ -1257,7 +1268,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
 
   if (GetProtocolVersion(ssl) >= TLS1_3_VERSION && !config->is_server) {
     bool expect_new_session =
-        !config->expect_no_session && !config->shim_shuts_down;
+        !config->expect_no_session && !config->shim_shuts_down && !IsPAKE(ssl);
     if (expect_new_session != test_state->got_new_session) {
       fprintf(stderr,
               "new session was%s cached, but we expected the opposite\n",
