@@ -16,6 +16,8 @@
 
 #include <string.h>
 
+#include <openssl/bytestring.h>
+#include <openssl/obj.h>
 #include <openssl/rand.h>
 
 #include "../internal.h"
@@ -26,6 +28,14 @@
 #include "params.h"
 #include "thash.h"
 
+
+// The OBJECT IDENTIFIER header is also included in these values, per the spec.
+static const uint8_t kSHA256OID[] = {0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
+                                     0x65, 0x03, 0x04, 0x02, 0x01};
+static const uint8_t kSHA512OID[] = {0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
+                                     0x65, 0x03, 0x04, 0x02, 0x03};
+#define MAX_OID_LENGTH 11
+#define MAX_CONTEXT_LENGTH 255
 
 void SLHDSA_SHA2_128S_generate_key_from_seed(
     uint8_t out_public_key[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
@@ -129,7 +139,7 @@ int SLHDSA_SHA2_128S_sign(
     const uint8_t private_key[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES],
     const uint8_t *msg, size_t msg_len, const uint8_t *context,
     size_t context_len) {
-  if (context_len > 255) {
+  if (context_len > MAX_CONTEXT_LENGTH) {
     return 0;
   }
 
@@ -145,13 +155,89 @@ int SLHDSA_SHA2_128S_sign(
   return 1;
 }
 
+static int slhdsa_get_context_and_oid(uint8_t *out_context_and_oid,
+                                      size_t *out_context_and_oid_len,
+                                      size_t max_out_context_and_oid,
+                                      const uint8_t *context,
+                                      size_t context_len, int hash_nid,
+                                      size_t hashed_msg_len) {
+  const uint8_t *oid;
+  size_t oid_len;
+  size_t expected_hash_len;
+  switch (hash_nid) {
+    // The SLH-DSA spec only lists SHA-256 and SHA-512.
+    case NID_sha256: {
+      oid = kSHA256OID;
+      oid_len = sizeof(kSHA256OID);
+      static_assert(sizeof(kSHA256OID) <= MAX_OID_LENGTH, "");
+      expected_hash_len = 32;
+      break;
+    }
+    case NID_sha512: {
+      oid = kSHA512OID;
+      oid_len = sizeof(kSHA512OID);
+      static_assert(sizeof(kSHA512OID) <= MAX_OID_LENGTH, "");
+      expected_hash_len = 64;
+      break;
+    }
+    // If adding a hash function with a larger `oid_len`, update the size of
+    // `context_and_oid` in the callers.
+    default:
+      return 0;
+  }
+
+  if (hashed_msg_len != expected_hash_len) {
+    return 0;
+  }
+
+  *out_context_and_oid_len = context_len + oid_len;
+  if (*out_context_and_oid_len > max_out_context_and_oid) {
+    return 0;
+  }
+
+  OPENSSL_memcpy(out_context_and_oid, context, context_len);
+  OPENSSL_memcpy(out_context_and_oid + context_len, oid, oid_len);
+
+  return 1;
+}
+
+
+int SLHDSA_SHA2_128S_prehash_sign(
+    uint8_t out_signature[SLHDSA_SHA2_128S_SIGNATURE_BYTES],
+    const uint8_t private_key[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES],
+    const uint8_t *hashed_msg, size_t hashed_msg_len, int hash_nid,
+    const uint8_t *context, size_t context_len) {
+  if (context_len > MAX_CONTEXT_LENGTH) {
+    return 0;
+  }
+
+  uint8_t M_prime_header[2];
+  M_prime_header[0] = 1;  // domain separator for prehashed signing
+  M_prime_header[1] = (uint8_t)context_len;
+
+  uint8_t context_and_oid[MAX_CONTEXT_LENGTH + MAX_OID_LENGTH];
+  size_t context_and_oid_len;
+  if (!slhdsa_get_context_and_oid(context_and_oid, &context_and_oid_len,
+                                  sizeof(context_and_oid), context, context_len,
+                                  hash_nid, hashed_msg_len)) {
+    return 0;
+  }
+
+  uint8_t entropy[SLHDSA_SHA2_128S_N];
+  RAND_bytes(entropy, sizeof(entropy));
+  SLHDSA_SHA2_128S_sign_internal(out_signature, private_key, M_prime_header,
+                                 context_and_oid, context_and_oid_len,
+                                 hashed_msg, hashed_msg_len, entropy);
+  return 1;
+}
+
 // Implements Algorithm 24: slh_verify function (Section 10.3, page 41)
 int SLHDSA_SHA2_128S_verify(
     const uint8_t *signature, size_t signature_len,
     const uint8_t public_key[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
     const uint8_t *msg, size_t msg_len, const uint8_t *context,
     size_t context_len) {
-  if (context_len > 255) {
+  if (context_len > MAX_CONTEXT_LENGTH) {
     return 0;
   }
 
@@ -163,6 +249,32 @@ int SLHDSA_SHA2_128S_verify(
   return SLHDSA_SHA2_128S_verify_internal(signature, signature_len, public_key,
                                           M_prime_header, context, context_len,
                                           msg, msg_len);
+}
+
+int SLHDSA_SHA2_128S_prehash_verify(
+    const uint8_t *signature, size_t signature_len,
+    const uint8_t public_key[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+    const uint8_t *hashed_msg, size_t hashed_msg_len, int hash_nid,
+    const uint8_t *context, size_t context_len) {
+  if (context_len > MAX_CONTEXT_LENGTH) {
+    return 0;
+  }
+
+  uint8_t M_prime_header[2];
+  M_prime_header[0] = 1;  // domain separator for prehashed verification
+  M_prime_header[1] = (uint8_t)context_len;
+
+  uint8_t context_and_oid[MAX_CONTEXT_LENGTH + MAX_OID_LENGTH];
+  size_t context_and_oid_len;
+  if (!slhdsa_get_context_and_oid(context_and_oid, &context_and_oid_len,
+                                  sizeof(context_and_oid), context, context_len,
+                                  hash_nid, hashed_msg_len)) {
+    return 0;
+  }
+
+  return SLHDSA_SHA2_128S_verify_internal(
+      signature, signature_len, public_key, M_prime_header, context_and_oid,
+      context_and_oid_len, hashed_msg, hashed_msg_len);
 }
 
 int SLHDSA_SHA2_128S_verify_internal(

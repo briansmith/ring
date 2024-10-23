@@ -900,6 +900,7 @@ set(
   crypto/poly1305/poly1305_tests.txt
   crypto/siphash/siphash_tests.txt
   crypto/slhdsa/slhdsa_keygen.txt
+  crypto/slhdsa/slhdsa_prehash.txt
   crypto/slhdsa/slhdsa_siggen.txt
   crypto/slhdsa/slhdsa_sigver.txt
   crypto/spx/spx_tests.txt

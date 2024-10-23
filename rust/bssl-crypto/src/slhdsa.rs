@@ -46,7 +46,9 @@
 //! assert!(public_key.verify_with_context(message, &signature2, context).is_ok());
 //! ```
 
-use crate::{with_output_vec_fallible, FfiSlice, InvalidSignatureError};
+use crate::{
+    digest, sealed, with_output_vec_fallible, FfiSlice, ForeignTypeRef, InvalidSignatureError,
+};
 use alloc::vec::Vec;
 
 /// The number of bytes in an SLH-DSA-SHA2-128s public key.
@@ -109,9 +111,9 @@ impl PrivateKey {
     ///
     /// This function returns None if `context` is longer than 255 bytes.
     pub fn sign_with_context(&self, msg: &[u8], context: &[u8]) -> Option<Vec<u8>> {
-	// Safety: the FFI function always writes exactly `SIGNATURE_BYTES` to
-	// the first argument if it suceeds. The size of the array passed as
-	// the second argument is correct.
+        // Safety: the FFI function always writes exactly `SIGNATURE_BYTES` to
+        // the first argument if it succeeds. The size of the array passed as
+        // the second argument is correct.
         unsafe {
             with_output_vec_fallible(SIGNATURE_BYTES, |signature| {
                 if bssl_sys::SLHDSA_SHA2_128S_sign(
@@ -119,6 +121,48 @@ impl PrivateKey {
                     self.0.as_ptr(),
                     msg.as_ffi_ptr(),
                     msg.len(),
+                    context.as_ffi_ptr(),
+                    context.len(),
+                ) == 1
+                {
+                    Some(SIGNATURE_BYTES)
+                } else {
+                    None
+                }
+            })
+        }
+    }
+
+    /// Signs a prehashed message using this private key.
+    ///
+    /// This function returns None if `context` is longer than 255 bytes, if
+    /// the hash function is not supported, or if `hashed_msg` is the wrong length.
+    ///
+    /// This function generally should not be used. The general functions are
+    /// perfectly capable of signing a hash if you wish. These functions should
+    /// only be used when:
+    ///
+    /// 1. Compatibility with an external system that uses prehashed messages is
+    /// required. (The general signature of a hash is not compatible with a
+    /// "prehash" signature of the same hash.)
+    /// 2. A single private key is used to sign both prehashed and raw messages,
+    /// and there's no other way to prevent ambiguity.
+    pub fn prehash_sign<Hash: digest::Algorithm>(
+        &self,
+        hashed_msg: &[u8],
+        context: &[u8],
+    ) -> Option<Vec<u8>> {
+        unsafe {
+            with_output_vec_fallible(SIGNATURE_BYTES, |signature| {
+                let hash_nid = bssl_sys::EVP_MD_nid(Hash::get_md(sealed::Sealed).as_ptr());
+                // Safety: the FFI function always writes exactly `SIGNATURE_BYTES` to
+                // the first argument if it succeeds. Otherwise, all buffers are valid.
+                if bssl_sys::SLHDSA_SHA2_128S_prehash_sign(
+                    signature,
+                    self.0.as_ptr(),
+                    hashed_msg.as_ffi_ptr(),
+                    hashed_msg.len(),
+                    hash_nid,
                     context.as_ffi_ptr(),
                     context.len(),
                 ) == 1
@@ -177,6 +221,40 @@ impl PublicKey {
             Err(InvalidSignatureError)
         }
     }
+
+    /// Verifies a signature for a prehashed message using this public key and
+    /// the given context.
+    ///
+    /// This function returns `InvalidSignatureError` if `context` is longer
+    /// than 255 bytes, if the hash function is not supported, or if
+    /// `hashed_msg` is the wrong length.
+    pub fn prehash_verify<Hash: digest::Algorithm>(
+        &self,
+        hashed_msg: &[u8],
+        signature: &[u8],
+        context: &[u8],
+    ) -> Result<(), InvalidSignatureError> {
+        let ok = unsafe {
+            let hash_nid = bssl_sys::EVP_MD_nid(Hash::get_md(sealed::Sealed).as_ptr());
+            // Safety: all buffers are valid
+            bssl_sys::SLHDSA_SHA2_128S_prehash_verify(
+                signature.as_ffi_ptr(),
+                signature.len(),
+                self.0.as_ptr(),
+                hashed_msg.as_ffi_ptr(),
+                hashed_msg.len(),
+                hash_nid,
+                context.as_ffi_ptr(),
+                context.len(),
+            )
+        };
+
+        if ok == 1 {
+            Ok(())
+        } else {
+            Err(InvalidSignatureError)
+        }
+    }
 }
 
 impl AsRef<[u8]> for PublicKey {
@@ -219,6 +297,38 @@ mod tests {
         assert!(public_key.verify_with_context(msg, &sig, context).is_ok());
         assert!(public_key
             .verify_with_context(msg, &sig, b"wrong context")
+            .is_err());
+    }
+
+    #[test]
+    fn test_sign_and_verify_prehashed() {
+        let (public_key, private_key) = PrivateKey::generate();
+        let digest = [42u8; 32];
+        let context = b"test context";
+
+        let sig = private_key
+            .prehash_sign::<digest::Sha256>(&digest, context)
+            .unwrap();
+        assert!(public_key
+            .prehash_verify::<digest::Sha256>(&digest, &sig, context)
+            .is_ok());
+
+        let mut incorrect_digest = digest;
+        incorrect_digest[0] ^= 1;
+        assert!(public_key
+            .prehash_verify::<digest::Sha256>(&incorrect_digest, &sig, context)
+            .is_err());
+
+        assert!(public_key
+            .prehash_verify::<digest::Sha256>(&digest, &sig, b"wrong context")
+            .is_err());
+
+        let incorrect_length_digest = [42u8; 16];
+        assert!(private_key
+            .prehash_sign::<digest::Sha256>(&incorrect_length_digest, context)
+            .is_none());
+        assert!(public_key
+            .prehash_verify::<digest::Sha256>(&incorrect_length_digest, &sig, context)
             .is_err());
     }
 
