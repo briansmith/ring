@@ -3231,7 +3231,7 @@ read alert 1 0
 			},
 			resumeSession: true,
 		},
-		// TODO(crbug.com/boringssl/715): This test and the next shouldn't be
+		// TODO(crbug.com/42290594): This test and the next shouldn't be
 		// restricted to a max version of TLS 1.2, but they're broken in DTLS 1.3.
 		{
 			protocol: dtls,
@@ -5054,7 +5054,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		flags:         []string{"-expect-hrr"},
 	})
 
-	// TODO(crbug.com/boringssl/715): The -NoResume tests here are copies
+	// TODO(crbug.com/42290594): The -NoResume tests here are copies
 	// of the above tests, but without resumeSession set. These exist to
 	// test HRR in DTLS 1.3, because tests DTLS 1.3 tests with resumption
 	// enabled are skipped due to lack of support for resumption. Once we
@@ -5091,7 +5091,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 	// These tests are disabled for QUIC as well because they test features
 	// that do not apply to QUIC's use of TLS 1.3.
 	//
-	// TODO(crbug.com/boringssl/715): Enable these tests for DTLS once we
+	// TODO(crbug.com/42290594): Enable these tests for DTLS once we
 	// support early data in DTLS 1.3.
 	if config.protocol != dtls && config.protocol != quic {
 		tests = append(tests, testCase{

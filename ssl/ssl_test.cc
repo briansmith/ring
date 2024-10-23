@@ -3494,7 +3494,7 @@ static int SwitchSessionIDContextSNI(SSL *ssl, int *out_alert, void *arg) {
 
 TEST_P(SSLVersionTest, SessionIDContext) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -3635,7 +3635,7 @@ static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
 
 TEST_P(SSLVersionTest, SessionTimeout) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -3776,7 +3776,7 @@ TEST_P(SSLVersionTest, DefaultTicketKeyInitialization) {
 
 TEST_P(SSLVersionTest, DefaultTicketKeyRotation) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -4484,7 +4484,7 @@ TEST_P(SSLVersionTest, GetServerName) {
       CreateClientSession(client_ctx_.get(), server_ctx_.get(), config);
 
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -4501,7 +4501,7 @@ TEST_P(SSLVersionTest, GetServerName) {
 // Test that session cache mode bits are honored in the client session callback.
 TEST_P(SSLVersionTest, ClientSessionCacheMode) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -5572,7 +5572,7 @@ TEST(SSLTest, NoCiphersAvailable) {
 
 TEST_P(SSLVersionTest, SessionVersion) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -6229,7 +6229,7 @@ TEST_P(SSLVersionTest, VerifyBeforeCertRequest) {
 // Test that ticket-based sessions on the client get fake session IDs.
 TEST_P(SSLVersionTest, FakeIDsForTickets) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -6365,7 +6365,7 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
 
 TEST_P(SSLVersionTest, SessionTicketThreads) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -8042,7 +8042,7 @@ TEST_P(SSLVersionTest, DoubleSSLError) {
 
 TEST_P(SSLVersionTest, SameKeyResume) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -8084,7 +8084,7 @@ TEST_P(SSLVersionTest, SameKeyResume) {
 
 TEST_P(SSLVersionTest, DifferentKeyNoResume) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -8127,7 +8127,7 @@ TEST_P(SSLVersionTest, DifferentKeyNoResume) {
 
 TEST_P(SSLVersionTest, UnrelatedServerNoResume) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
@@ -8169,7 +8169,7 @@ Span<const uint8_t> SessionIDOf(const SSL* ssl) {
 
 TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
   if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/boringssl/715): Enable the rest of this test for DTLS 1.3
+    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
     // once it supports NewSessionTickets.
     return;
   }
