@@ -265,15 +265,19 @@ static bool parse_dtls13_record(SSL *ssl, CBS *in, ParsedDTLSRecord *out) {
 
   // Look up the corresponding epoch. This header form only matches encrypted
   // DTLS 1.3 epochs.
-  // TODO(crbug.com/42290594): DTLS 1.3 will require that we track multiple
-  // epochs.
-  if (epoch == ssl->d1->read_epoch.epoch &&
-      use_dtls13_record_header(ssl, epoch)) {
-    out->read_epoch = &ssl->d1->read_epoch;
+  DTLSReadEpoch *read_epoch = nullptr;
+  if (epoch == ssl->d1->read_epoch.epoch) {
+    read_epoch = &ssl->d1->read_epoch;
+  } else if (ssl->d1->next_read_epoch != nullptr &&
+             epoch == ssl->d1->next_read_epoch->epoch) {
+    read_epoch = ssl->d1->next_read_epoch.get();
+  }
+  if (read_epoch != nullptr && use_dtls13_record_header(ssl, epoch)) {
+    out->read_epoch = read_epoch;
 
     // Decrypt and reconstruct the sequence number:
     uint8_t mask[2];
-    if (!out->read_epoch->rn_encrypter->GenerateMask(mask, out->body)) {
+    if (!read_epoch->rn_encrypter->GenerateMask(mask, out->body)) {
       // GenerateMask most likely failed because the record body was not long
       // enough.
       return false;
@@ -287,8 +291,8 @@ static bool parse_dtls13_record(SSL *ssl, CBS *in, ParsedDTLSRecord *out) {
       writable_seq[i] ^= mask[i];
       seq = (seq << 8) | writable_seq[i];
     }
-    uint64_t full_seq = reconstruct_seqnum(
-        seq, (1 << (seq_len * 8)) - 1, out->read_epoch->bitmap.max_seq_num());
+    uint64_t full_seq = reconstruct_seqnum(seq, (1 << (seq_len * 8)) - 1,
+                                           read_epoch->bitmap.max_seq_num());
     out->number = DTLSRecordNumber(epoch, full_seq);
   }
 
@@ -428,11 +432,46 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
 
   record.read_epoch->bitmap.Record(record.number.sequence());
 
+  // Once we receive a record from the next epoch, it becomes the current epoch.
+  if (record.read_epoch == ssl->d1->next_read_epoch.get()) {
+    ssl->d1->read_epoch = std::move(*ssl->d1->next_read_epoch);
+    ssl->d1->next_read_epoch = nullptr;
+  }
+
+  // We do not retain previous epochs, so it is guaranteed records come in at
+  // the "current" epoch. (But the current epoch may be one behind the
+  // handshake.)
+  //
+  // TODO(crbug.com/374890768): In DTLS 1.3, where rekeys may occur
+  // mid-connection, retaining previous epochs would make us more robust to
+  // packet reordering. If we do this, we'll need to take care to not
+  // accidentally accept data at the wrong epoch.
+  assert(record.number.epoch() == ssl->d1->read_epoch.epoch);
+
   // TODO(davidben): Limit the number of empty records as in TLS? This is only
   // useful if we also limit discarded packets.
 
   if (record.type == SSL3_RT_ALERT) {
     return ssl_process_alert(ssl, out_alert, *out);
+  }
+
+  // Reject application data in epochs that do not allow it.
+  if (record.type == SSL3_RT_APPLICATION_DATA) {
+    bool app_data_allowed;
+    if (ssl->s3->version != 0 && ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+      // Application data is allowed in 0-RTT (epoch 1) and after the handshake
+      // (3 and up).
+      app_data_allowed =
+          record.number.epoch() == 1 || record.number.epoch() >= 3;
+    } else {
+      // Application data is allowed starting epoch 1.
+      app_data_allowed = record.number.epoch() >= 1;
+    }
+    if (!app_data_allowed) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+      *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+      return ssl_open_record_error;
+    }
   }
 
   ssl->s3->warning_alert_count = 0;

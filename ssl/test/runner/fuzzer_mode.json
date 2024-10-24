@@ -50,6 +50,9 @@
     "*EarlyDataRejected*": "Trial decryption does not work with the NULL cipher.",
     "ALPS-EarlyData-Mismatch-*": "Trial decryption does not work with the NULL cipher.",
 
+    "UnencryptedEncryptedExtensions": "The NULL cipher will not notice that the peer didn't change keys.",
+    "AppDataBeforeTLS13KeyChange*": "The NULL cipher will not notice that the peer didn't change keys.",
+
     "Renegotiate-Client-BadExt*": "Fuzzer mode does not check renegotiation_info.",
 
     "CBCRecordSplitting*": "Fuzzer mode does not implement record-splitting.",

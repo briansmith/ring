@@ -252,7 +252,7 @@ bool tls_flush_pending_hs_data(SSL *ssl) {
                     pending_hs_data->length);
   if (ssl->quic_method) {
     if ((ssl->s3->hs == nullptr || !ssl->s3->hs->hints_requested) &&
-        !ssl->quic_method->add_handshake_data(ssl, ssl->s3->write_level,
+        !ssl->quic_method->add_handshake_data(ssl, ssl->s3->quic_write_level,
                                               data.data(), data.size())) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
       return false;

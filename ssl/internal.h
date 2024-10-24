@@ -3169,8 +3169,8 @@ struct SSL3_STATE {
   // needs re-doing when in SSL_accept or SSL_connect
   int rwstate = SSL_ERROR_NONE;
 
-  enum ssl_encryption_level_t read_level = ssl_encryption_initial;
-  enum ssl_encryption_level_t write_level = ssl_encryption_initial;
+  enum ssl_encryption_level_t quic_read_level = ssl_encryption_initial;
+  enum ssl_encryption_level_t quic_write_level = ssl_encryption_initial;
 
   // version is the protocol version, or zero if the version has not yet been
   // set. In clients offering 0-RTT, this version will initially be set to the
@@ -3464,9 +3464,11 @@ struct DTLS1_STATE {
   uint16_t handshake_read_seq = 0;
 
   // read_epoch is the current DTLS read epoch.
-  // TODO(crbug.com/42290594): DTLS 1.3 will require that we also store the next
-  // epoch, and switch over on the first record from the new epoch.
   DTLSReadEpoch read_epoch;
+
+  // next_read_epoch is the next DTLS read epoch in DTLS 1.3. It will become
+  // current once a record is received from it.
+  UniquePtr<DTLSReadEpoch> next_read_epoch;
 
   // write_epoch is the current DTLS write epoch. Non-retransmit records will
   // generally use this epoch.
@@ -3856,7 +3858,7 @@ bool dtls1_new(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
 bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
-                                       Span<uint8_t> record);
+                                       Span<const uint8_t> record);
 bool dtls1_get_message(const SSL *ssl, SSLMessage *out);
 ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
                                        uint8_t *out_alert, Span<uint8_t> in);

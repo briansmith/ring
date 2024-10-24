@@ -350,9 +350,8 @@ static DTLSIncomingMessage *dtls1_get_incoming_message(
 }
 
 bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
-                                       Span<uint8_t> record) {
-  CBS cbs;
-  CBS_init(&cbs, record.data(), record.size());
+                                       Span<const uint8_t> record) {
+  CBS cbs = record;
   while (CBS_len(&cbs) > 0) {
     // Read a handshake fragment.
     struct hm_header_st msg_hdr;
@@ -373,10 +372,28 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
       return false;
     }
 
-    if (msg_hdr.seq < ssl->d1->handshake_read_seq ||
-        msg_hdr.seq >
-            (unsigned)ssl->d1->handshake_read_seq + SSL_MAX_HANDSHAKE_FLIGHT) {
-      // Ignore fragments from the past, or ones too far in the future.
+    if (msg_hdr.seq < ssl->d1->handshake_read_seq) {
+      // Ignore fragments from the past. This is a retransmit of data we already
+      // received.
+      //
+      // TODO(crbug.com/42290594): Use this to drive retransmits.
+      continue;
+    }
+
+    if (ssl->d1->next_read_epoch != nullptr) {
+      // Any any time, we only expect new messages in one epoch. If
+      // |next_read_epoch| is set, we've started a new epoch but haven't
+      // received records in it yet. (Once a record is received in the new
+      // epoch, |next_read_epoch| becomes the current read epoch.) This new
+      // fragment is in the old epoch, but we expect handshake messages to be in
+      // the next epoch, so this is an error.
+      OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESS_HANDSHAKE_DATA);
+      *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+      return false;
+    }
+
+    if (msg_hdr.seq - ssl->d1->handshake_read_seq > SSL_MAX_HANDSHAKE_FLIGHT) {
+      // Ignore fragments too far in the future.
       continue;
     }
 
@@ -415,19 +432,8 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
 
   switch (type) {
     case SSL3_RT_APPLICATION_DATA:
-      // Unencrypted application data records are always illegal.
-      //
-      // TODO(crbug.com/42290594): Revisit both of these checks for DTLS 1.3.
-      // Many more epochs cannot have application data, and there is a key
-      // change immediately before the first application data record.
-      if (ssl->d1->read_epoch.epoch == 0) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-        *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
-        return ssl_open_record_error;
-      }
-
-      // Out-of-order application data may be received between ChangeCipherSpec
-      // and finished. Discard it.
+      // In DTLS 1.2, out-of-order application data may be received between
+      // ChangeCipherSpec and Finished. Discard it.
       return ssl_open_record_discard;
 
     case SSL3_RT_CHANGE_CIPHER_SPEC:

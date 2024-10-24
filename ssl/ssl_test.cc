@@ -2810,16 +2810,13 @@ TEST_P(SSLVersionTest, SequenceNumber) {
   if (is_dtls()) {
     if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
       // Both client and server must be at epoch 3 (application data).
-      EXPECT_EQ(EpochFromSequence(client_read_seq), 3);
       EXPECT_EQ(EpochFromSequence(client_write_seq), 3);
-      EXPECT_EQ(EpochFromSequence(server_read_seq), 3);
       EXPECT_EQ(EpochFromSequence(server_write_seq), 3);
 
-      // TODO(crbug.com/42290608): The next record to be written should exceed
-      // the largest received, but they'll actually be equal because the
-      // |SSL_get_read_sequence| API cannot represent DTLS key transitions.
-      EXPECT_GE(client_write_seq, server_read_seq);
-      EXPECT_GE(server_write_seq, client_read_seq);
+      // TODO(crbug.com/42290608): Ideally we would check the read sequence
+      // numbers and compare them against each other, but
+      // |SSL_get_read_sequence| is ill-defined right after DTLS 1.3's key
+      // change. See that function for details.
     } else {
       // Both client and server must be at epoch 1.
       EXPECT_EQ(EpochFromSequence(client_read_seq), 1);

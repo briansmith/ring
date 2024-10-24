@@ -820,11 +820,13 @@ size_t SSL_quic_max_handshake_flight_len(const SSL *ssl,
 }
 
 enum ssl_encryption_level_t SSL_quic_read_level(const SSL *ssl) {
-  return ssl->s3->read_level;
+  assert(ssl->quic_method != nullptr);
+  return ssl->s3->quic_read_level;
 }
 
 enum ssl_encryption_level_t SSL_quic_write_level(const SSL *ssl) {
-  return ssl->s3->write_level;
+  assert(ssl->quic_method != nullptr);
+  return ssl->s3->quic_write_level;
 }
 
 int SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
@@ -834,7 +836,7 @@ int SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
     return 0;
   }
 
-  if (level != ssl->s3->read_level) {
+  if (level != ssl->s3->quic_read_level) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_ENCRYPTION_LEVEL_RECEIVED);
     return 0;
   }
@@ -2952,21 +2954,17 @@ int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
 
 uint64_t SSL_get_read_sequence(const SSL *ssl) {
   if (SSL_is_dtls(ssl)) {
-    // TODO(crbug.com/42290608): This API needs to reworked. Right at an epoch
-    // transition, it is possible that |read_epoch| has not received any
-    // records. We will then return that sequence 0 is the highest received, but
-    // this is not quite right.
+    // TODO(crbug.com/42290608): This API needs to reworked.
     //
-    // This is mostly moot in DTLS 1.2 because, after the handshake, we will
-    // never be in this state. In DTLS 1.3, there is a key transition
-    // immediately after the handshake, and in the steady state with KeyUpdate.
-    // While not yet implemented, DTLS 1.3 will handle key changes by having two
-    // epochs live at once (current and optional next), only cycling forward
-    // when we receive a record at the new epoch.
+    // In DTLS 1.2, right at an epoch transition, |read_epoch| may not have
+    // received any records. We will then return that sequence 0 is the highest
+    // received, but it's really -1, which is not representable. This is mostly
+    // moot because, after the handshake, we will never be in the state.
     //
-    // When we implement this, this sequence 0 edge case will be gone, but
-    // replaced with a different issue: our record layer APIs have no way to
-    // report transition state. We'll likely need a new API for DTLS offload.
+    // In DTLS 1.3, epochs do not transition until the first record comes in.
+    // This avoids the DTLS 1.2 problem but introduces a different problem:
+    // during a KeyUpdate (which may occur in the steady state), both epochs are
+    // live. We'll likely need a new API for DTLS offload.
     const DTLSReadEpoch *read_epoch = &ssl->d1->read_epoch;
     return DTLSRecordNumber(read_epoch->epoch, read_epoch->bitmap.max_seq_num())
         .combined();

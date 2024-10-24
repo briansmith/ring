@@ -456,7 +456,7 @@ int ssl_send_alert_impl(SSL *ssl, int level, int desc) {
 
 int tls_dispatch_alert(SSL *ssl) {
   if (ssl->quic_method) {
-    if (!ssl->quic_method->send_alert(ssl, ssl->s3->write_level,
+    if (!ssl->quic_method->send_alert(ssl, ssl->s3->quic_write_level,
                                       ssl->s3->send_alert[1])) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
       return 0;

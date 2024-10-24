@@ -106,11 +106,11 @@ static bool tls_set_read_state(SSL *ssl, ssl_encryption_level_t level,
     if (level == ssl_encryption_early_data) {
       return true;
     }
+    ssl->s3->quic_read_level = level;
   }
 
   ssl->s3->read_sequence = 0;
   ssl->s3->aead_read_ctx = std::move(aead_ctx);
-  ssl->s3->read_level = level;
   return true;
 }
 
@@ -135,11 +135,11 @@ static bool tls_set_write_state(SSL *ssl, ssl_encryption_level_t level,
     if (level == ssl_encryption_early_data) {
       return true;
     }
+    ssl->s3->quic_write_level = level;
   }
 
   ssl->s3->write_sequence = 0;
   ssl->s3->aead_write_ctx = std::move(aead_ctx);
-  ssl->s3->write_level = level;
   return true;
 }
 

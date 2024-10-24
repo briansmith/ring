@@ -97,9 +97,10 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
         return false;
       }
     }
+  } else {
+    assert(ssl->s3->quic_write_level == level);
   }
 
-  assert(ssl->s3->write_level == level);
   return true;
 }
 
@@ -347,9 +348,6 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
-  // Any 0-RTT keys must have been discarded.
-  assert(hs->ssl->s3->write_level == ssl_encryption_initial);
-
   // Build the second ClientHelloInner, if applicable. The second ClientHello
   // uses an empty string for |enc|.
   if (hs->ssl->s3->ech_status == ssl_ech_accepted &&

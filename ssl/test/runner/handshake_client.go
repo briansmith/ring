@@ -1507,6 +1507,10 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 	}
 	c.flushHandshake()
 
+	if data := c.config.Bugs.AppDataBeforeTLS13KeyChange; data != nil {
+		c.writeRecord(recordTypeApplicationData, data)
+	}
+
 	// Switch to application data keys.
 	c.useOutTrafficSecret(uint16(encryptionApplication), c.wireVersion, hs.suite, clientTrafficSecret)
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)

@@ -88,27 +88,30 @@ static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
   }
 
   DTLSReadEpoch new_epoch;
+  new_epoch.aead = std::move(aead_ctx);
   if (ssl_protocol_version(ssl) > TLS1_2_VERSION) {
     // TODO(crbug.com/42290594): Handle the additional epochs used for key
     // update.
-    // TODO(crbug.com/42290594): If we want to gracefully handle packet
-    // reordering around KeyUpdate (i.e. accept records from both epochs), we'll
-    // need a separate bitmap for each epoch.
     new_epoch.epoch = level;
     new_epoch.rn_encrypter =
-        RecordNumberEncrypter::Create(aead_ctx->cipher(), traffic_secret);
+        RecordNumberEncrypter::Create(new_epoch.aead->cipher(), traffic_secret);
     if (new_epoch.rn_encrypter == nullptr) {
+      return false;
+    }
+
+    // In DTLS 1.3, new read epochs are not applied immediately. In principle,
+    // we could do the same in DTLS 1.2, but we would ignore every record from
+    // the previous epoch anyway.
+    assert(ssl->d1->next_read_epoch == nullptr);
+    ssl->d1->next_read_epoch = MakeUnique<DTLSReadEpoch>(std::move(new_epoch));
+    if (ssl->d1->next_read_epoch == nullptr) {
       return false;
     }
   } else {
     new_epoch.epoch = ssl->d1->read_epoch.epoch + 1;
+    ssl->d1->read_epoch = std::move(new_epoch);
+    ssl->d1->has_change_cipher_spec = false;
   }
-  new_epoch.bitmap = DTLSReplayBitmap();
-  new_epoch.aead = std::move(aead_ctx);
-
-  ssl->d1->read_epoch = std::move(new_epoch);
-  ssl->s3->read_level = level;
-  ssl->d1->has_change_cipher_spec = false;
   return true;
 }
 
@@ -137,7 +140,6 @@ static bool dtls1_set_write_state(SSL *ssl, ssl_encryption_level_t level,
 
   ssl->d1->write_epoch = std::move(new_epoch);
   ssl->d1->extra_write_epochs.PushBack(std::move(current));
-  ssl->s3->write_level = level;
   dtls_clear_unused_write_epochs(ssl);
   return true;
 }
