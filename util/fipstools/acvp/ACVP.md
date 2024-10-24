@@ -106,6 +106,16 @@ The other commands are as follows. (Note that you only need to implement the com
 | SHA2-512             | Value to hash             | Digest  |
 | SHA2-512/224         | Value to hash             | Digest  |
 | SHA2-512/256         | Value to hash             | Digest  |
+| SHA3-224             | Value to hash             | Digest  |
+| SHA3-256             | Value to hash             | Digest  |
+| SHA3-384             | Value to hash             | Digest  |
+| SHA3-512             | Value to hash             | Digest  |
+| SHAKE-128            | Value to hash, output length bytes | Digest |
+| SHAKE-128/VOT        | Value to hash, output length bytes | Digest |
+| SHAKE-128/MCT        | Initial seed¹, min output bytes, max output bytes, output length bytes | Digest, output length bytes |
+| SHAKE-256            | Value to hash, output length bytes | Digest |
+| SHAKE-256/VOT        | Value to hash, output length bytes | Digest |
+| SHAKE-256/MCT        | Initial seed¹, min output bytes, max output bytes, output length bytes | Digest, output length bytes |
 | SHA-1/MCT            | Initial seed¹             | Digest  |
 | SHA2-224/MCT         | Initial seed¹             | Digest  |
 | SHA2-256/MCT         | Initial seed¹             | Digest  |
@@ -113,6 +123,10 @@ The other commands are as follows. (Note that you only need to implement the com
 | SHA2-512/MCT         | Initial seed¹             | Digest  |
 | SHA2-512/224/MCT     | Initial seed¹             | Digest  |
 | SHA2-512/256/MCT     | Initial seed¹             | Digest  |
+| SHA3-224/MCT         | Initial seed¹             | Digest  |
+| SHA3-256/MCT         | Initial seed¹             | Digest  |
+| SHA3-384/MCT         | Initial seed¹             | Digest  |
+| SHA3-512/MCT         | Initial seed¹             | Digest  |
 | TLSKDF/1.2/&lt;HASH&gt; | Number output bytes, secret, label, seed1, seed2 | Output |
 | PBKDF                | HMAC name, key length (bits), salt, password, iteration count | Derived key |
 

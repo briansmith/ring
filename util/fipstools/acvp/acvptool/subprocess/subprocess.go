@@ -108,6 +108,8 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"SHA3-256":          &hashPrimitive{"SHA3-256", 32},
 		"SHA3-384":          &hashPrimitive{"SHA3-384", 48},
 		"SHA3-512":          &hashPrimitive{"SHA3-512", 64},
+		"SHAKE-128":         &shake{"SHAKE-128", 16},
+		"SHAKE-256":         &shake{"SHAKE-256", 32},
 		"ACVP-AES-ECB":      &blockCipher{"AES", 16, 2, true, false, iterateAES},
 		"ACVP-AES-CBC":      &blockCipher{"AES-CBC", 16, 2, true, true, iterateAESCBC},
 		"ACVP-AES-CBC-CS3":  &blockCipher{"AES-CBC-CS3", 16, 1, false, true, iterateAESCBC},
