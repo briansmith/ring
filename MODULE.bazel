@@ -16,7 +16,7 @@
 # the revision where we bump the version.
 module(
     name = "boringssl",
-    version = "0.20240930.0",
+    version = "0.20241024.0",
     compatibility_level = 2,
 )
 
