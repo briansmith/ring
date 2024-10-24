@@ -373,20 +373,6 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
       return false;
     }
 
-    // The encrypted epoch in DTLS has only one handshake message.
-    //
-    // TODO(crbug.com/42290594): This check doesn't make any sense in DTLS 1.3,
-    // but is currently a no-op because epoch 1 is 0-RTT. Revisit this and
-    // figure out if we need to change anything. See
-    // https://boringssl-review.googlesource.com/c/boringssl/+/8988 for when
-    // this check was added.
-    if (ssl->d1->read_epoch.epoch == 1 &&
-        msg_hdr.seq != ssl->d1->handshake_read_seq) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-      *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
-      return false;
-    }
-
     if (msg_hdr.seq < ssl->d1->handshake_read_seq ||
         msg_hdr.seq >
             (unsigned)ssl->d1->handshake_read_seq + SSL_MAX_HANDSHAKE_FLIGHT) {

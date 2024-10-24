@@ -3231,23 +3231,22 @@ read alert 1 0
 			},
 			resumeSession: true,
 		},
-		// TODO(crbug.com/42290594): This test and the next shouldn't be
-		// restricted to a max version of TLS 1.2, but they're broken in DTLS 1.3.
 		{
 			protocol: dtls,
-			name:     "DTLS-SendExtraFinished",
+			name:     "DTLS12-SendExtraFinished",
 			config: Config{
 				MaxVersion: VersionTLS12,
 				Bugs: ProtocolBugs{
 					SendExtraFinished: true,
 				},
 			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_RECORD:",
+			expectedLocalError: "remote error: unexpected message",
 		},
 		{
 			protocol: dtls,
-			name:     "DTLS-SendExtraFinished-Reordered",
+			name:     "DTLS12-SendExtraFinished-Reordered",
 			config: Config{
 				MaxVersion: VersionTLS12,
 				Bugs: ProtocolBugs{
@@ -3256,8 +3255,69 @@ read alert 1 0
 					SendExtraFinished:         true,
 				},
 			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
+			shouldFail:         true,
+			expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+			expectedLocalError: "remote error: unexpected message",
+		},
+		{
+			protocol: dtls,
+			name:     "DTLS12-SendExtraFinished-Packed",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendExtraFinished:      true,
+					PackHandshakeFragments: 1000,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+			expectedLocalError: "remote error: unexpected message",
+		},
+		{
+			protocol: dtls,
+			name:     "DTLS13-SendExtraFinished",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					SendExtraFinished: true,
+				},
+			},
+			// TODO(crbug.com/42290594): When not reordered or packed, the extra
+			// Finished in epoch 2 does not arrive until after we've switched to
+			// epoch 3, so the record is simply dropped right now. When we defer
+			// epoch changes to the first record, this will change and we'll
+			// notice this, if no epoch 3 records arrive in the meantime. In
+			// general, a DTLS implementation may or may not notice invalid
+			// messages across key changes.
+		},
+		{
+			protocol: dtls,
+			name:     "DTLS13-SendExtraFinished-Reordered",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength:  2,
+					ReorderHandshakeFragments: true,
+					SendExtraFinished:         true,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+			expectedLocalError: "remote error: unexpected message",
+		},
+		{
+			protocol: dtls,
+			name:     "DTLS13-SendExtraFinished-Packed",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					SendExtraFinished:      true,
+					PackHandshakeFragments: 1000,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+			expectedLocalError: "remote error: unexpected message",
 		},
 		{
 			testType: serverTest,
