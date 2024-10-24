@@ -229,6 +229,13 @@ func (c *Conn) makeFragment(header, data []byte, fragOffset, fragLen int) []byte
 }
 
 func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
+	// Don't send ChangeCipherSpec in DTLS 1.3.
+	// TODO(crbug.com/42290594): Add an option to send them anyway and test
+	// what our implementation does with unexpected ones.
+	if typ == recordTypeChangeCipherSpec && c.vers >= VersionTLS13 {
+		return
+	}
+
 	// Only handshake messages are fragmented.
 	if typ != recordTypeHandshake {
 		reorder := typ == recordTypeChangeCipherSpec && c.config.Bugs.ReorderChangeCipherSpec

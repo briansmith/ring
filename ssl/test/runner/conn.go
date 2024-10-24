@@ -802,6 +802,11 @@ func (c *Conn) useInTrafficSecret(level encryptionLevel, version uint16, suite *
 }
 
 func (c *Conn) useOutTrafficSecret(level encryptionLevel, version uint16, suite *cipherSuite, secret []byte) {
+	if c.isDTLS {
+		// We buffer fragments in DTLS to pack them. Flush the buffer
+		// before the key change.
+		c.dtlsPackHandshake()
+	}
 	side := serverWrite
 	if c.isClient {
 		side = clientWrite
