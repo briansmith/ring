@@ -66,6 +66,10 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include "test_config.h"
 #include "test_state.h"
 
+#if defined(OPENSSL_LINUX)
+#include <sys/prctl.h>
+#endif
+
 
 #if !defined(OPENSSL_WINDOWS)
 using Socket = int;
@@ -1395,6 +1399,9 @@ int main(int argc, char **argv) {
     fprintf(stderr, "-wait-for-debugger is not supported on Windows.\n");
     return 1;
 #else
+#if defined(OPENSSL_LINUX)
+    prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
+#endif
     // The debugger will resume the process.
     raise(SIGSTOP);
 #endif
