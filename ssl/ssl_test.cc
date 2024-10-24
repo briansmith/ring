@@ -2773,6 +2773,11 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
 
   uint16_t version() const { return GetParam().version; }
 
+  bool is_tls13() const {
+    return version() == TLS1_3_VERSION ||
+           version() == DTLS1_3_EXPERIMENTAL_VERSION;
+  }
+
   bool is_dtls() const {
     return GetParam().ssl_method == VersionParam::is_dtls;
   }
@@ -3493,11 +3498,6 @@ static int SwitchSessionIDContextSNI(SSL *ssl, int *out_alert, void *arg) {
 }
 
 TEST_P(SSLVersionTest, SessionIDContext) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   static const uint8_t kContext1[] = {1};
   static const uint8_t kContext2[] = {2};
 
@@ -3634,11 +3634,6 @@ static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
 }
 
 TEST_P(SSLVersionTest, SessionTimeout) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   for (bool server_test : {false, true}) {
     SCOPED_TRACE(server_test);
 
@@ -3651,9 +3646,8 @@ TEST_P(SSLVersionTest, SessionTimeout) {
 
     // We are willing to use a longer lifetime for TLS 1.3 sessions as
     // resumptions still perform ECDHE.
-    const time_t timeout = version() == TLS1_3_VERSION
-                               ? SSL_DEFAULT_SESSION_PSK_DHE_TIMEOUT
-                               : SSL_DEFAULT_SESSION_TIMEOUT;
+    const time_t timeout = is_tls13() ? SSL_DEFAULT_SESSION_PSK_DHE_TIMEOUT
+                                      : SSL_DEFAULT_SESSION_TIMEOUT;
 
     // Both client and server must enforce session timeouts. We configure the
     // other side with a frozen clock so it never expires tickets.
@@ -3713,7 +3707,7 @@ TEST_P(SSLVersionTest, SessionTimeout) {
 
     ASSERT_EQ(session_time, g_current_time.tv_sec);
 
-    if (version() == TLS1_3_VERSION) {
+    if (is_tls13()) {
       // Renewal incorporates fresh key material in TLS 1.3, so we extend the
       // lifetime TLS 1.3.
       g_current_time.tv_sec = new_start_time + timeout - 1;
@@ -3775,11 +3769,6 @@ TEST_P(SSLVersionTest, DefaultTicketKeyInitialization) {
 }
 
 TEST_P(SSLVersionTest, DefaultTicketKeyRotation) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   static const time_t kStartTime = 1001;
   g_current_time.tv_sec = kStartTime;
 
@@ -4077,8 +4066,7 @@ TEST_P(SSLVersionTest, ALPNCipherAvailable) {
 TEST_P(SSLVersionTest, SSLClearSessionResumption) {
   // Skip this for TLS 1.3. TLS 1.3's ticket mechanism is incompatible with this
   // API pattern.
-  if (version() == TLS1_3_VERSION ||
-      version() == DTLS1_3_EXPERIMENTAL_VERSION) {
+  if (is_tls13()) {
     return;
   }
 
@@ -4483,11 +4471,6 @@ TEST_P(SSLVersionTest, GetServerName) {
   bssl::UniquePtr<SSL_SESSION> session =
       CreateClientSession(client_ctx_.get(), server_ctx_.get(), config);
 
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   // If the client resumes a session with a different name, |SSL_get_servername|
   // must return the new name.
   ASSERT_TRUE(session);
@@ -4500,11 +4483,6 @@ TEST_P(SSLVersionTest, GetServerName) {
 
 // Test that session cache mode bits are honored in the client session callback.
 TEST_P(SSLVersionTest, ClientSessionCacheMode) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_OFF);
   EXPECT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
 
@@ -5571,11 +5549,6 @@ TEST(SSLTest, NoCiphersAvailable) {
 }
 
 TEST_P(SSLVersionTest, SessionVersion) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
 
@@ -5585,8 +5558,7 @@ TEST_P(SSLVersionTest, SessionVersion) {
   EXPECT_EQ(version(), SSL_SESSION_get_protocol_version(session.get()));
 
   // Sessions in TLS 1.3 and later should be single-use.
-  EXPECT_EQ(version() == TLS1_3_VERSION,
-            !!SSL_SESSION_should_be_single_use(session.get()));
+  EXPECT_EQ(is_tls13(), !!SSL_SESSION_should_be_single_use(session.get()));
 
   // Making fake sessions for testing works.
   session.reset(SSL_SESSION_new(client_ctx_.get()));
@@ -6228,11 +6200,6 @@ TEST_P(SSLVersionTest, VerifyBeforeCertRequest) {
 
 // Test that ticket-based sessions on the client get fake session IDs.
 TEST_P(SSLVersionTest, FakeIDsForTickets) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
 
@@ -6254,8 +6221,7 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
 
-  if (version() == TLS1_3_VERSION ||
-      version() == DTLS1_3_EXPERIMENTAL_VERSION) {
+  if (is_tls13()) {
     // Our TLS 1.3 implementation does not support stateful resumption.
     ASSERT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
     return;
@@ -6364,11 +6330,6 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
 }
 
 TEST_P(SSLVersionTest, SessionTicketThreads) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   for (bool renew_ticket : {false, true}) {
     SCOPED_TRACE(renew_ticket);
     ASSERT_NO_FATAL_FAILURE(ResetContexts());
@@ -6438,8 +6399,7 @@ TEST(SSLTest, GetCertificateThreads) {
 // performing stateful resumption will share an underlying SSL_SESSION object,
 // potentially across threads.
 TEST_P(SSLVersionTest, SessionPropertiesThreads) {
-  if (version() == TLS1_3_VERSION ||
-      version() == DTLS1_3_EXPERIMENTAL_VERSION) {
+  if (is_tls13()) {
     // Our TLS 1.3 implementation does not support stateful resumption.
     ASSERT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
     return;
@@ -8041,11 +8001,6 @@ TEST_P(SSLVersionTest, DoubleSSLError) {
 }
 
 TEST_P(SSLVersionTest, SameKeyResume) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   uint8_t key[48];
   RAND_bytes(key, sizeof(key));
 
@@ -8083,11 +8038,6 @@ TEST_P(SSLVersionTest, SameKeyResume) {
 }
 
 TEST_P(SSLVersionTest, DifferentKeyNoResume) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   uint8_t key1[48], key2[48];
   RAND_bytes(key1, sizeof(key1));
   RAND_bytes(key2, sizeof(key2));
@@ -8126,11 +8076,6 @@ TEST_P(SSLVersionTest, DifferentKeyNoResume) {
 }
 
 TEST_P(SSLVersionTest, UnrelatedServerNoResume) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   bssl::UniquePtr<SSL_CTX> server_ctx2 = CreateContext();
   ASSERT_TRUE(server_ctx2);
   ASSERT_TRUE(UseCertAndKey(server_ctx2.get()));
@@ -8168,11 +8113,6 @@ Span<const uint8_t> SessionIDOf(const SSL* ssl) {
 }
 
 TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
-    // TODO(crbug.com/42290594): Enable the rest of this test for DTLS 1.3
-    // once it supports NewSessionTickets.
-    return;
-  }
   // This checks that the session IDs at client and server match after a ticket
   // resumption. It's unclear whether this should be true, but Envoy depends
   // on it in their tests so this will give an early signal if we break it.
@@ -9648,8 +9588,7 @@ TEST_P(SSLVersionTest, KeyLog) {
   ASSERT_TRUE(Connect());
 
   // Check that we logged the secrets we expected to log.
-  if (version() == TLS1_3_VERSION ||
-      version() == DTLS1_3_EXPERIMENTAL_VERSION) {
+  if (is_tls13()) {
     EXPECT_THAT(client_log, ElementsAre(Key("CLIENT_HANDSHAKE_TRAFFIC_SECRET"),
                                         Key("CLIENT_TRAFFIC_SECRET_0"),
                                         Key("EXPORTER_SECRET"),
