@@ -88,6 +88,7 @@ luci.cq(
     # TODO(davidben): Can this be removed? It is marked as optional and
     # deprecated. It was included as part of porting over from commit-queue.cfg.
     status_host = "chromium-cq-status.appspot.com",
+    honor_gerrit_linked_accounts = True,
 )
 
 cq_group = luci.cq_group(
