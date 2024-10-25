@@ -270,7 +270,8 @@ func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret 
 		hc.cipher = nullCipher{}
 	}
 	hc.trafficSecret = secret
-	if hc.isDTLS && protocolVersion == VersionTLS13 {
+	if hc.isDTLS {
+		// TODO(crbug.com/42290594): This will need to handle KeyUpdate.
 		hc.setEpoch(uint16(level))
 	} else {
 		hc.incEpoch()
