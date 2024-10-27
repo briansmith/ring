@@ -193,7 +193,7 @@ fn aes_gcm_seal(
         KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
     };
-    aes_gcm::seal(key, nonce, aad, in_out)
+    aes_gcm::seal(key, nonce, aad, in_out).map_err(|_: aes_gcm::SealError| error::Unspecified)
 }
 
 pub(super) fn aes_gcm_open(
@@ -208,7 +208,7 @@ pub(super) fn aes_gcm_open(
         KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
     };
-    aes_gcm::open(key, nonce, aad, in_out, src)
+    aes_gcm::open(key, nonce, aad, in_out, src).map_err(|_: aes_gcm::OpenError| error::Unspecified)
 }
 
 /// ChaCha20-Poly1305 as described in [RFC 8439].
