@@ -448,7 +448,7 @@ type cbcMode interface {
 // success boolean, the application payload, the encrypted record type (or 0
 // if there is none), and an optional alert value. Decryption occurs in-place,
 // so the contents of record will be overwritten as part of this process.
-func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, record []byte) (ok bool, contentType recordType, data []byte, alertValue alert) {
+func (hc *halfConn) decrypt(recordHeaderLen int, record []byte) (ok bool, contentType recordType, data []byte, alertValue alert) {
 	// pull out payload
 	payload := record[recordHeaderLen:]
 
@@ -466,7 +466,15 @@ func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, record []byte) (ok 
 		case cipher.Stream:
 			c.XORKeyStream(payload, payload)
 		case *tlsAead:
-			nonce := seq
+			nonce := hc.seq[:]
+			if hc.isDTLS && hc.version >= VersionTLS13 && !hc.conn.useDTLSPlaintextHeader() {
+				// Unlike DTLS 1.2, DTLS 1.3's nonce construction does not use
+				// the epoch number. We store the epoch and nonce numbers
+				// together, so make a copy without the epoch.
+				nonce = make([]byte, 8)
+				copy(nonce[2:], hc.seq[2:])
+			}
+
 			if explicitIVLen != 0 {
 				if len(payload) < explicitIVLen {
 					return false, 0, nil, alertBadRecordMAC
@@ -478,7 +486,7 @@ func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, record []byte) (ok 
 			var additionalData []byte
 			if hc.version < VersionTLS13 {
 				additionalData = make([]byte, 13)
-				copy(additionalData, seq)
+				copy(additionalData, hc.seq[:])
 				copy(additionalData[8:], record[:3])
 				n := len(payload) - c.Overhead()
 				additionalData[11] = byte(n >> 8)
@@ -546,7 +554,7 @@ func (hc *halfConn) decrypt(seq []byte, recordHeaderLen int, record []byte) (ok 
 		payload = payload[:n]
 		record[recordHeaderLen-2] = byte(n >> 8)
 		record[recordHeaderLen-1] = byte(n)
-		localMAC := hc.computeMAC(seq, record[:recordHeaderLen], payload)
+		localMAC := hc.computeMAC(hc.seq[:], record[:recordHeaderLen], payload)
 		if subtle.ConstantTimeCompare(localMAC, remoteMAC) != 1 || paddingGood != 255 {
 			return false, 0, nil, alertBadRecordMAC
 		}
@@ -627,7 +635,8 @@ func (c *Conn) useDTLSPlaintextHeader() bool {
 // (which must be in the last two bytes of the header) should be computed for
 // the unencrypted, unpadded payload. It will be updated, potentially in-place,
 // with the final length.
-func (hc *halfConn) encrypt(record, payload []byte, typ recordType, headerLen int, headerHasLength bool, seq []byte) ([]byte, error) {
+func (hc *halfConn) encrypt(record, payload []byte, typ recordType, headerLen int, headerHasLength bool) ([]byte, error) {
+	seq := hc.sequenceNumberForOutput()
 	prefixLen := len(record)
 	header := record[prefixLen-headerLen:]
 	explicitIVLen := hc.explicitIVLen()
@@ -932,7 +941,7 @@ RestartReadRecord:
 
 	// Process message.
 	b := c.rawInput.Next(recordHeaderLen + n)
-	ok, encTyp, data, alertValue := c.in.decrypt(c.in.seq[:], recordHeaderLen, b)
+	ok, encTyp, data, alertValue := c.in.decrypt(recordHeaderLen, b)
 	if !ok {
 		// TLS 1.3 early data uses trial decryption.
 		if c.skipEarlyData {
@@ -1284,7 +1293,7 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 		record[3] = byte(m >> 8) // encrypt will update this
 		record[4] = byte(m)
 
-		record, err = c.out.encrypt(record, data[:m], typ, tlsRecordHeaderLen, true /* header has length */, c.out.seq[:])
+		record, err = c.out.encrypt(record, data[:m], typ, tlsRecordHeaderLen, true /* header has length */)
 		if err != nil {
 			return
 		}

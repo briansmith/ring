@@ -26,7 +26,7 @@ import (
 	"golang.org/x/crypto/cryptobyte"
 )
 
-func (c *Conn) readDTLS13RecordHeader(b []byte) (headerLen int, recordLen int, recTyp recordType, seq []byte, err error) {
+func (c *Conn) readDTLS13RecordHeader(b []byte) (headerLen int, recordLen int, recTyp recordType, err error) {
 	// The DTLS 1.3 record header starts with the type byte containing
 	// 0b001CSLEE, where C, S, L, and EE are bits with the following
 	// meanings:
@@ -44,18 +44,18 @@ func (c *Conn) readDTLS13RecordHeader(b []byte) (headerLen int, recordLen int, r
 	// 0b001011EE, or 0x2c-0x2f.
 	recordHeaderLen := 5
 	if len(b) < recordHeaderLen {
-		return 0, 0, 0, nil, errors.New("dtls: failed to read record header")
+		return 0, 0, 0, errors.New("dtls: failed to read record header")
 	}
 	typ := b[0]
 	if typ&0xfc != 0x2c {
-		return 0, 0, 0, nil, errors.New("dtls: DTLS 1.3 record header has bad type byte")
+		return 0, 0, 0, errors.New("dtls: DTLS 1.3 record header has bad type byte")
 	}
 	// For test purposes, require the epoch received be the same as the
 	// epoch we expect to receive.
 	epoch := typ & 0x03
 	if epoch != c.in.seq[1]&0x03 {
 		c.sendAlert(alertIllegalParameter)
-		return 0, 0, 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad epoch"))
+		return 0, 0, 0, c.in.setErrorLocked(fmt.Errorf("dtls: bad epoch"))
 	}
 	wireSeq := b[1:3]
 	if !c.config.Bugs.NullAllCiphers {
@@ -80,20 +80,20 @@ func (c *Conn) readDTLS13RecordHeader(b []byte) (headerLen int, recordLen int, r
 		newSeq += 0x10000
 	}
 
-	seq = make([]byte, 8)
+	seq := make([]byte, 8)
 	binary.BigEndian.PutUint64(seq, newSeq)
 	copy(c.in.seq[2:], seq[2:])
 
 	recordLen = int(b[3])<<8 | int(b[4])
-	return recordHeaderLen, recordLen, 0, seq, nil
+	return recordHeaderLen, recordLen, 0, nil
 }
 
 // readDTLSRecordHeader reads the record header from the input. Based on the
 // header it reads, it checks the header's validity and sets appropriate state
-// as needed. This function returns the record header, the record type indicated
-// in the header (if it contains the type), and the sequence number to use for
-// record decryption.
-func (c *Conn) readDTLSRecordHeader(b []byte) (headerLen int, recordLen int, typ recordType, seq []byte, err error) {
+// as needed. This function returns the record header and the record type
+// indicated in the header (if it contains the type). The connection's internal
+// sequence number is updated to the value from the header.
+func (c *Conn) readDTLSRecordHeader(b []byte) (headerLen int, recordLen int, typ recordType, err error) {
 	if c.in.cipher != nil && c.in.version >= VersionTLS13 {
 		return c.readDTLS13RecordHeader(b)
 	}
@@ -105,7 +105,7 @@ func (c *Conn) readDTLSRecordHeader(b []byte) (headerLen int, recordLen int, typ
 	// but this is test code. We should not be tolerant of our
 	// peer sending garbage.
 	if len(b) < recordHeaderLen {
-		return 0, 0, 0, nil, errors.New("dtls: failed to read record header")
+		return 0, 0, 0, errors.New("dtls: failed to read record header")
 	}
 	typ = recordType(b[0])
 	vers := uint16(b[1])<<8 | uint16(b[2])
@@ -120,33 +120,33 @@ func (c *Conn) readDTLSRecordHeader(b []byte) (headerLen int, recordLen int, typ
 			}
 			if vers != wireVersion {
 				c.sendAlert(alertProtocolVersion)
-				return 0, 0, 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, c.wireVersion))
+				return 0, 0, 0, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, c.wireVersion))
 			}
 		} else {
 			// Pre-version-negotiation alerts may be sent with any version.
 			if expect := c.config.Bugs.ExpectInitialRecordVersion; expect != 0 && vers != expect {
 				c.sendAlert(alertProtocolVersion)
-				return 0, 0, 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, expect))
+				return 0, 0, 0, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, expect))
 			}
 		}
 	}
 	epoch := b[3:5]
-	seq = b[5:11]
+	seq := b[5:11]
 	// For test purposes, require the sequence number be monotonically
 	// increasing, so c.in includes the minimum next sequence number. Gaps
 	// may occur if packets failed to be sent out. A real implementation
 	// would maintain a replay window and such.
 	if !bytes.Equal(epoch, c.in.seq[:2]) {
 		c.sendAlert(alertIllegalParameter)
-		return 0, 0, 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad epoch"))
+		return 0, 0, 0, c.in.setErrorLocked(fmt.Errorf("dtls: bad epoch"))
 	}
 	if bytes.Compare(seq, c.in.seq[2:]) < 0 {
 		c.sendAlert(alertIllegalParameter)
-		return 0, 0, 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad sequence number"))
+		return 0, 0, 0, c.in.setErrorLocked(fmt.Errorf("dtls: bad sequence number"))
 	}
 	copy(c.in.seq[2:], seq)
 	recordLen = int(b[11])<<8 | int(b[12])
-	return recordHeaderLen, recordLen, typ, b[3:11], nil
+	return recordHeaderLen, recordLen, typ, nil
 }
 
 func (c *Conn) writeACKs(seqnums []uint64) {
@@ -180,7 +180,7 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
 	}
 
 	// Consume the next record from the buffer.
-	recordHeaderLen, n, typ, seq, err := c.readDTLSRecordHeader(c.rawInput.Bytes())
+	recordHeaderLen, n, typ, err := c.readDTLSRecordHeader(c.rawInput.Bytes())
 	if err != nil {
 		return 0, nil, err
 	}
@@ -191,7 +191,8 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
 	b := c.rawInput.Next(recordHeaderLen + n)
 
 	// Process message.
-	ok, encTyp, data, alertValue := c.in.decrypt(seq, recordHeaderLen, b)
+	seq := slices.Clone(c.in.seq[:])
+	ok, encTyp, data, alertValue := c.in.decrypt(recordHeaderLen, b)
 	if !ok {
 		// A real DTLS implementation would silently ignore bad records,
 		// but we want to notice errors from the implementation under
@@ -507,7 +508,7 @@ func (c *Conn) dtlsPackRecord(typ recordType, data []byte, mustPack bool) (n int
 	}
 
 	recordHeaderLen := len(record)
-	record, err = c.out.encrypt(record, data, typ, recordHeaderLen, headerHasLength, seq)
+	record, err = c.out.encrypt(record, data, typ, recordHeaderLen, headerHasLength)
 	if err != nil {
 		return
 	}
