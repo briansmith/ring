@@ -99,10 +99,18 @@ fn main() {
     let bssl_build_dir = get_bssl_build_dir();
     let bssl_sys_build_dir = bssl_build_dir.join("rust/bssl-sys");
     let target = env::var("TARGET").unwrap();
+    let out_dir = env::var("OUT_DIR").unwrap();
+    let bindgen_out_file = Path::new(&out_dir).join("bindgen.rs");
 
-    // Find the bindgen generated target platform bindings file and set BINDGEN_RS_FILE
-    let bindgen_file = bssl_sys_build_dir.join(format!("wrapper_{}.rs", target));
-    println!("cargo:rustc-env=BINDGEN_RS_FILE={}", bindgen_file.display());
+    // Find the bindgen generated target platform bindings file and put it into
+    // OUT_DIR/bindgen.rs.
+    let bindgen_source_file = bssl_sys_build_dir.join(format!("wrapper_{}.rs", target));
+    std::fs::copy(&bindgen_source_file, &bindgen_out_file).expect(&format!(
+        "Could not copy bindings from '{}' to '{}'",
+        bindgen_source_file.display(),
+        bindgen_out_file.display()
+    ));
+    println!("cargo:rerun-if-changed={}", bindgen_source_file.display());
 
     // Statically link libraries.
     println!(
