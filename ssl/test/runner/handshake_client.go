@@ -228,11 +228,10 @@ func (c *Conn) clientHandshake() error {
 			c.writeRecord(recordTypeHandshake, helloBytes)
 		}
 	}
-	c.flushHandshake()
-
-	if err := c.simulatePacketLoss(nil); err != nil {
+	if err := c.flushHandshake(); err != nil {
 		return err
 	}
+
 	if c.config.Bugs.SendEarlyAlert {
 		c.sendAlert(alertHandshakeFailure)
 	}
@@ -283,11 +282,10 @@ func (c *Conn) clientHandshake() error {
 			hs.hello.raw = nil
 			hs.hello.cookie = helloVerifyRequest.cookie
 			c.writeRecord(recordTypeHandshake, hs.hello.marshal())
-			c.flushHandshake()
-
-			if err := c.simulatePacketLoss(nil); err != nil {
+			if err := c.flushHandshake(); err != nil {
 				return err
 			}
+
 			msg, err = c.readHandshake()
 			if err != nil {
 				return err
@@ -405,20 +403,13 @@ func (c *Conn) clientHandshake() error {
 			if err := hs.sendFinished(c.firstFinished[:], isResume); err != nil {
 				return err
 			}
-			// Most retransmits are triggered by a timeout, but the final
-			// leg of the handshake is retransmited upon re-receiving a
-			// Finished.
-			if err := c.simulatePacketLoss(func() {
-				c.sendHandshakeSeq--
-				c.writeRecord(recordTypeHandshake, hs.finishedBytes)
-				c.flushHandshake()
-			}); err != nil {
-				return err
-			}
 			if err := hs.readSessionTicket(); err != nil {
 				return err
 			}
 			if err := hs.readFinished(nil); err != nil {
+				return err
+			}
+			if err := c.ackHandshake(); err != nil {
 				return err
 			}
 		}
@@ -1047,7 +1038,9 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		} else {
 			c.writeRecord(recordTypeHandshake, toWrite)
 		}
-		c.flushHandshake()
+		if err := c.flushHandshake(); err != nil {
+			return err
+		}
 
 		if c.config.Bugs.SendEarlyDataOnSecondClientHello {
 			c.sendFakeEarlyData(4)
@@ -1505,7 +1498,9 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 	if c.config.Bugs.SendExtraFinished {
 		c.writeRecord(recordTypeHandshake, finished.marshal())
 	}
-	c.flushHandshake()
+	if err := c.flushHandshake(); err != nil {
+		return err
+	}
 
 	if data := c.config.Bugs.AppDataBeforeTLS13KeyChange; data != nil {
 		c.writeRecord(recordTypeApplicationData, data)
@@ -2342,7 +2337,7 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 	}
 
 	if !isResume || !c.config.Bugs.PackAppDataWithHandshake {
-		c.flushHandshake()
+		return c.flushHandshake()
 	}
 	return nil
 }

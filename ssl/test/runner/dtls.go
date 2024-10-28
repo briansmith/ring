@@ -22,9 +22,70 @@ import (
 	"math/rand"
 	"net"
 	"slices"
+	"time"
 
 	"golang.org/x/crypto/cryptobyte"
 )
+
+// A DTLSMessage is a DTLS handshake message or ChangeCipherSpec, along with the
+// epoch that it is to be sent under.
+type DTLSMessage struct {
+	Epoch              uint16
+	IsChangeCipherSpec bool
+	// The following fields are only used if IsChangeCipherSpec is false.
+	Type     uint8
+	Sequence uint16
+	Data     []byte
+}
+
+// Fragment returns a DTLSFragment for the message with the specified offset and
+// length.
+func (m *DTLSMessage) Fragment(offset, length int) DTLSFragment {
+	if m.IsChangeCipherSpec {
+		// Ignore the offset. ChangeCipherSpec cannot be fragmented.
+		return DTLSFragment{
+			Epoch:              m.Epoch,
+			IsChangeCipherSpec: m.IsChangeCipherSpec,
+			Data:               m.Data,
+		}
+	}
+
+	return DTLSFragment{
+		Epoch:       m.Epoch,
+		Sequence:    m.Sequence,
+		Type:        m.Type,
+		Data:        m.Data[offset : offset+length],
+		Offset:      offset,
+		TotalLength: len(m.Data),
+	}
+}
+
+// A DTLSFragment is a DTLS handshake fragment or ChangeCipherSpec, along with
+// the epoch that it is to be sent under.
+type DTLSFragment struct {
+	Epoch              uint16
+	IsChangeCipherSpec bool
+	// The following fields are only used if IsChangeCipherSpec is false.
+	Type        uint8
+	TotalLength int
+	Sequence    uint16
+	Offset      int
+	Data        []byte
+}
+
+func (f *DTLSFragment) Bytes() []byte {
+	if f.IsChangeCipherSpec {
+		return f.Data
+	}
+
+	bb := cryptobyte.NewBuilder(make([]byte, 0, 12+len(f.Data)))
+	bb.AddUint8(f.Type)
+	bb.AddUint24(uint32(f.TotalLength))
+	bb.AddUint16(f.Sequence)
+	bb.AddUint24(uint32(f.Offset))
+	addUint24LengthPrefixedBytes(bb, f.Data)
+	return bb.BytesOrPanic()
+}
 
 func (c *Conn) readDTLS13RecordHeader(epoch *epochState, b []byte) (headerLen int, recordLen int, recTyp recordType, err error) {
 	// The DTLS 1.3 record header starts with the type byte containing
@@ -111,8 +172,9 @@ func (c *Conn) readDTLSRecordHeader(epoch *epochState, b []byte) (headerLen int,
 	vers := uint16(b[1])<<8 | uint16(b[2])
 	// Alerts sent near version negotiation do not have a well-defined
 	// record-layer version prior to TLS 1.3. (In TLS 1.3, the record-layer
-	// version is irrelevant.)
-	if typ != recordTypeAlert {
+	// version is irrelevant.) Additionally, if we're reading a retransmission,
+	// the peer may not know the version yet.
+	if typ != recordTypeAlert && !c.skipRecordVersionCheck {
 		if c.haveVers {
 			wireVersion := c.wireVersion
 			if c.vers >= VersionTLS13 {
@@ -123,7 +185,6 @@ func (c *Conn) readDTLSRecordHeader(epoch *epochState, b []byte) (headerLen int,
 				return 0, 0, 0, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, c.wireVersion))
 			}
 		} else {
-			// Pre-version-negotiation alerts may be sent with any version.
 			if expect := c.config.Bugs.ExpectInitialRecordVersion; expect != 0 && vers != expect {
 				c.sendAlert(alertProtocolVersion)
 				return 0, 0, 0, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, expect))
@@ -161,7 +222,7 @@ func (c *Conn) writeACKs(seqnums []uint64) {
 	c.writeRecord(recordTypeACK, recordNumbers.BytesOrPanic())
 }
 
-func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
+func (c *Conn) dtlsDoReadRecord(epoch *epochState, want recordType) (recordType, []byte, error) {
 	// Read a new packet only if the current one is empty.
 	var newPacket bool
 	bytesAvailableInLastPacket := c.bytesAvailableInPacket
@@ -184,8 +245,6 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
 		c.rawInput.Write(buf[:n])
 		newPacket = true
 	}
-
-	epoch := &c.in.epoch
 
 	// Consume the next record from the buffer.
 	recordHeaderLen, n, typ, err := c.readDTLSRecordHeader(epoch, c.rawInput.Bytes())
@@ -255,222 +314,146 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
 	} else {
 		c.lastRecordInFlight = nil
 	}
+
 	return typ, data, nil
 }
 
-func (c *Conn) makeFragment(header, data []byte, fragOffset, fragLen int) []byte {
-	fragment := make([]byte, 0, 12+fragLen)
-	fragment = append(fragment, header...)
-	fragment = append(fragment, byte(c.sendHandshakeSeq>>8), byte(c.sendHandshakeSeq))
-	fragment = append(fragment, byte(fragOffset>>16), byte(fragOffset>>8), byte(fragOffset))
-	fragment = append(fragment, byte(fragLen>>16), byte(fragLen>>8), byte(fragLen))
-	fragment = append(fragment, data[fragOffset:fragOffset+fragLen]...)
-	return fragment
-}
-
 func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
-	// Don't send ChangeCipherSpec in DTLS 1.3.
-	// TODO(crbug.com/42290594): Add an option to send them anyway and test
-	// what our implementation does with unexpected ones.
-	if typ == recordTypeChangeCipherSpec && c.vers >= VersionTLS13 {
-		return
-	}
-
 	epoch := &c.out.epoch
 
-	// Only handshake messages are fragmented.
-	if typ != recordTypeHandshake {
-		reorder := typ == recordTypeChangeCipherSpec && c.config.Bugs.ReorderChangeCipherSpec
+	// Outgoing DTLS records are buffered in several stages, to test the various
+	// layers that data may be combined in.
+	//
+	// First, handshake and ChangeCipherSpec records are buffered in
+	// c.nextFlight, to be flushed by dtlsWriteFlight.
+	//
+	// dtlsWriteFlight, with the aid of a test-supplied callback, will divide
+	// them into handshake records containing fragments, possibly with some
+	// rounds of shim retransmit tests. Those records and any other
+	// non-handshake application data records are encrypted by dtlsPackRecord
+	// into c.pendingPacket, which may combine multiple records into one packet.
+	//
+	// Finally, dtlsFlushPacket writes the packet to the shim.
 
-		// Flush pending handshake messages before encrypting a new record.
-		if !reorder {
-			err = c.dtlsPackHandshake()
-			if err != nil {
-				return
-			}
+	if typ == recordTypeChangeCipherSpec {
+		// Don't send ChangeCipherSpec in DTLS 1.3.
+		// TODO(crbug.com/42290594): Add an option to send them anyway and test
+		// what our implementation does with unexpected ones.
+		if c.vers >= VersionTLS13 {
+			return
 		}
+		c.nextFlight = append(c.nextFlight, DTLSMessage{
+			Epoch:              epoch.epoch,
+			IsChangeCipherSpec: true,
+			Data:               slices.Clone(data),
+		})
+		err = c.out.changeCipherSpec()
+		if err != nil {
+			return n, c.sendAlertLocked(alertLevelError, err.(alert))
+		}
+		return len(data), nil
+	}
+	if typ == recordTypeHandshake {
+		// Handshake messages have to be modified to include fragment
+		// offset and length and with the header replicated. Save the
+		// TLS header here.
+		header := data[:4]
+		body := data[4:]
 
-		if typ == recordTypeApplicationData && len(data) > 1 && c.config.Bugs.SplitAndPackAppData {
-			_, err = c.dtlsPackRecord(epoch, typ, data[:len(data)/2], false)
-			if err != nil {
-				return
-			}
-			_, err = c.dtlsPackRecord(epoch, typ, data[len(data)/2:], true)
-			if err != nil {
-				return
-			}
-			n = len(data)
-		} else {
-			n, err = c.dtlsPackRecord(epoch, typ, data, false)
-			if err != nil {
-				return
-			}
-		}
+		c.nextFlight = append(c.nextFlight, DTLSMessage{
+			Epoch:    epoch.epoch,
+			Sequence: c.sendHandshakeSeq,
+			Type:     header[0],
+			Data:     slices.Clone(body),
+		})
+		c.sendHandshakeSeq++
+		return len(data), nil
+	}
 
-		if reorder {
-			err = c.dtlsPackHandshake()
-			if err != nil {
-				return
-			}
-		}
-
-		if typ == recordTypeChangeCipherSpec && c.vers < VersionTLS13 {
-			err = c.out.changeCipherSpec()
-			if err != nil {
-				return n, c.sendAlertLocked(alertLevelError, err.(alert))
-			}
-		} else {
-			// ChangeCipherSpec is part of the handshake and not
-			// flushed until dtlsFlushPacket.
-			err = c.dtlsFlushPacket()
-			if err != nil {
-				return
-			}
-		}
+	// Flush any packets buffered from the handshake.
+	err = c.dtlsWriteFlight()
+	if err != nil {
 		return
 	}
 
-	if c.out.epoch.cipher == nil && c.config.Bugs.StrayChangeCipherSpec {
-		_, err = c.dtlsPackRecord(epoch, recordTypeChangeCipherSpec, []byte{1}, false)
+	if typ == recordTypeApplicationData && len(data) > 1 && c.config.Bugs.SplitAndPackAppData {
+		_, err = c.dtlsPackRecord(epoch, typ, data[:len(data)/2], false)
+		if err != nil {
+			return
+		}
+		_, err = c.dtlsPackRecord(epoch, typ, data[len(data)/2:], true)
+		if err != nil {
+			return
+		}
+		n = len(data)
+	} else {
+		n, err = c.dtlsPackRecord(epoch, typ, data, false)
 		if err != nil {
 			return
 		}
 	}
 
-	maxLen := c.config.Bugs.MaxHandshakeRecordLength
-	if maxLen <= 0 {
-		maxLen = 1024
-	}
-
-	// Handshake messages have to be modified to include fragment
-	// offset and length and with the header replicated. Save the
-	// TLS header here.
-	//
-	// TODO(davidben): This assumes that data contains exactly one
-	// handshake message. This is incompatible with
-	// FragmentAcrossChangeCipherSpec. (Which is unfortunate
-	// because OpenSSL's DTLS implementation will probably accept
-	// such fragmentation and could do with a fix + tests.)
-	header := data[:4]
-	data = data[4:]
-
-	isFinished := header[0] == typeFinished
-
-	if c.config.Bugs.SendEmptyFragments {
-		c.pendingFragments = append(c.pendingFragments, c.makeFragment(header, data, 0, 0))
-		c.pendingFragments = append(c.pendingFragments, c.makeFragment(header, data, len(data), 0))
-	}
-
-	firstRun := true
-	fragOffset := 0
-	for firstRun || fragOffset < len(data) {
-		firstRun = false
-		fragLen := len(data) - fragOffset
-		if fragLen > maxLen {
-			fragLen = maxLen
-		}
-
-		fragment := c.makeFragment(header, data, fragOffset, fragLen)
-		if c.config.Bugs.FragmentMessageTypeMismatch && fragOffset > 0 {
-			fragment[0]++
-		}
-		if c.config.Bugs.FragmentMessageLengthMismatch && fragOffset > 0 {
-			fragment[3]++
-		}
-
-		// Buffer the fragment for later. They will be sent (and
-		// reordered) on flush.
-		c.pendingFragments = append(c.pendingFragments, fragment)
-		if c.config.Bugs.ReorderHandshakeFragments {
-			// Don't duplicate Finished to avoid the peer
-			// interpreting it as a retransmit request.
-			if !isFinished {
-				c.pendingFragments = append(c.pendingFragments, fragment)
-			}
-
-			if fragLen > (maxLen+1)/2 {
-				// Overlap each fragment by half.
-				fragLen = (maxLen + 1) / 2
-			}
-		}
-		fragOffset += fragLen
-		n += fragLen
-	}
-	shouldSendTwice := c.config.Bugs.MixCompleteMessageWithFragments
-	if isFinished {
-		shouldSendTwice = c.config.Bugs.RetransmitFinished
-	}
-	if shouldSendTwice {
-		fragment := c.makeFragment(header, data, 0, len(data))
-		c.pendingFragments = append(c.pendingFragments, fragment)
-	}
-
-	// Increment the handshake sequence number for the next
-	// handshake message.
-	c.sendHandshakeSeq++
+	err = c.dtlsFlushPacket()
 	return
 }
 
-// dtlsPackHandshake packs the pending handshake flight into the pending
-// record. Callers should follow up with dtlsFlushPacket to write the packets.
-func (c *Conn) dtlsPackHandshake() error {
-	// This is a test-only DTLS implementation, so there is no need to
-	// retain |c.pendingFragments| for a future retransmit.
-	var fragments [][]byte
-	fragments, c.pendingFragments = c.pendingFragments, fragments
-
-	if c.config.Bugs.ReorderHandshakeFragments {
-		perm := rand.New(rand.NewSource(0)).Perm(len(fragments))
-		tmp := make([][]byte, len(fragments))
-		for i := range tmp {
-			tmp[i] = fragments[perm[i]]
-		}
-		fragments = tmp
-	} else if c.config.Bugs.ReverseHandshakeFragments {
-		tmp := make([][]byte, len(fragments))
-		for i := range tmp {
-			tmp[i] = fragments[len(fragments)-i-1]
-		}
-		fragments = tmp
+// dtlsWriteFlight packs the pending handshake flight into the pending record.
+// Callers should follow up with dtlsFlushPacket to write the packets.
+func (c *Conn) dtlsWriteFlight() error {
+	if len(c.nextFlight) == 0 {
+		return nil
 	}
 
-	maxRecordLen := c.config.Bugs.PackHandshakeFragments
+	// Avoid re-entrancy issues by updating the state immediately. The callback
+	// may try to write records.
+	prev, received, next := c.previousFlight, c.receivedFlight, c.nextFlight
+	c.previousFlight, c.receivedFlight, c.nextFlight = next, nil, nil
 
-	// Pack handshake fragments into records.
-	var records [][]byte
-	for _, fragment := range fragments {
-		if n := c.config.Bugs.SplitFragments; n > 0 {
-			if len(fragment) > n {
-				records = append(records, fragment[:n])
-				records = append(records, fragment[n:])
-			} else {
-				records = append(records, fragment)
-			}
-		} else if i := len(records) - 1; len(records) > 0 && len(records[i])+len(fragment) <= maxRecordLen {
-			records[i] = append(records[i], fragment...)
-		} else {
-			// The fragment will be appended to, so copy it.
-			records = append(records, slices.Clone(fragment))
-		}
+	controller := DTLSController{conn: c, received: received}
+	if c.config.Bugs.WriteFlightDTLS != nil {
+		c.config.Bugs.WriteFlightDTLS(&controller, prev, received, next)
+	} else {
+		controller.WriteFlight(next)
 	}
-
-	// Send the records.
-	epoch := &c.out.epoch
-	for _, record := range records {
-		_, err := c.dtlsPackRecord(epoch, recordTypeHandshake, record, false)
-		if err != nil {
-			return err
-		}
+	if err := controller.Err(); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 func (c *Conn) dtlsFlushHandshake() error {
-	if err := c.dtlsPackHandshake(); err != nil {
+	if err := c.dtlsWriteFlight(); err != nil {
 		return err
 	}
 	if err := c.dtlsFlushPacket(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Conn) dtlsACKHandshake() error {
+	if len(c.receivedFlight) == 0 {
+		return nil
+	}
+
+	if len(c.nextFlight) != 0 {
+		panic("tls: not a final flight; more messages were queued up")
+	}
+
+	// Avoid re-entrancy issues by updating the state immediately. The callback
+	// may try to write records.
+	prev, received := c.previousFlight, c.receivedFlight
+	c.previousFlight, c.receivedFlight = nil, nil
+
+	controller := DTLSController{conn: c, received: received}
+	if c.config.Bugs.ACKFlightDTLS != nil {
+		c.config.Bugs.ACKFlightDTLS(&controller, prev, received)
+	} else {
+		// TODO(crbug.com/42290594): In DTLS 1.3, send an ACK by default.
+	}
+	if err := controller.Err(); err != nil {
 		return err
 	}
 
@@ -591,12 +574,36 @@ func (c *Conn) dtlsPackRecord(epoch *epochState, typ recordType, data []byte, mu
 }
 
 func (c *Conn) dtlsFlushPacket() error {
+	c.lastRecordInFlight = nil
 	if len(c.pendingPacket) == 0 {
 		return nil
 	}
 	_, err := c.conn.Write(c.pendingPacket)
 	c.pendingPacket = nil
 	return err
+}
+
+func readDTLSFragment(s *cryptobyte.String) (DTLSFragment, error) {
+	var f DTLSFragment
+	var totLen, fragOffset uint32
+	if !s.ReadUint8(&f.Type) ||
+		!s.ReadUint24(&totLen) ||
+		!s.ReadUint16(&f.Sequence) ||
+		!s.ReadUint24(&fragOffset) ||
+		!readUint24LengthPrefixedBytes(s, &f.Data) {
+		return DTLSFragment{}, errors.New("dtls: bad handshake record")
+	}
+	f.TotalLength = int(totLen)
+	f.Offset = int(fragOffset)
+	if f.Offset > f.TotalLength || len(f.Data) > f.TotalLength-f.Offset {
+		return DTLSFragment{}, errors.New("dtls: bad fragment offset")
+	}
+	// Although syntactically valid, the shim should never send empty fragments
+	// of non-empty messages.
+	if len(f.Data) == 0 && f.TotalLength != 0 {
+		return DTLSFragment{}, errors.New("dtls: fragment makes no progress")
+	}
+	return f, nil
 }
 
 func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
@@ -618,48 +625,39 @@ func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 
 		// Read the next fragment. It must fit entirely within
 		// the record.
-		if c.hand.Len() < 12 {
-			return nil, errors.New("dtls: bad handshake record")
+		s := cryptobyte.String(c.hand.Bytes())
+		f, err := readDTLSFragment(&s)
+		if err != nil {
+			return nil, err
 		}
-		header := c.hand.Next(12)
-		fragN := int(header[1])<<16 | int(header[2])<<8 | int(header[3])
-		fragSeq := uint16(header[4])<<8 | uint16(header[5])
-		fragOff := int(header[6])<<16 | int(header[7])<<8 | int(header[8])
-		fragLen := int(header[9])<<16 | int(header[10])<<8 | int(header[11])
-
-		if c.hand.Len() < fragLen {
-			return nil, errors.New("dtls: fragment length too long")
-		}
-		fragment := c.hand.Next(fragLen)
+		c.hand.Next(c.hand.Len() - len(s))
 
 		// Check it's a fragment for the right message.
-		if fragSeq != c.recvHandshakeSeq {
+		if f.Sequence != c.recvHandshakeSeq {
 			return nil, errors.New("dtls: bad handshake sequence number")
 		}
 
 		// Check that the length is consistent.
 		if c.handMsg == nil {
-			c.handMsgLen = fragN
+			c.handMsgLen = f.TotalLength
 			if c.handMsgLen > maxHandshake {
 				return nil, c.in.setErrorLocked(c.sendAlert(alertInternalError))
 			}
 			// Start with the TLS handshake header,
 			// without the DTLS bits.
-			c.handMsg = slices.Clone(header[:4])
-		} else if fragN != c.handMsgLen {
+			c.handMsg = []byte{f.Type, byte(f.TotalLength >> 16), byte(f.TotalLength >> 8), byte(f.TotalLength)}
+		} else if f.TotalLength != c.handMsgLen {
 			return nil, errors.New("dtls: bad handshake length")
 		}
 
 		// Add the fragment to the pending message.
-		if 4+fragOff != len(c.handMsg) {
+		if 4+f.Offset != len(c.handMsg) {
 			return nil, errors.New("dtls: bad fragment offset")
-		}
-		if fragOff+fragLen > c.handMsgLen {
-			return nil, errors.New("dtls: bad fragment length")
 		}
 		// If the message isn't complete, check that the peer could not have
 		// fit more into the record.
-		if fragOff+fragLen < c.handMsgLen {
+		c.handMsg = append(c.handMsg, f.Data...)
+		if len(c.handMsg) < 4+c.handMsgLen {
 			if c.hand.Len() != 0 {
 				return nil, errors.New("dtls: truncated handshake fragment was not last in the record")
 			}
@@ -667,11 +665,16 @@ func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 				return nil, fmt.Errorf("dtls: handshake fragment was truncated, but record could have fit %d more bytes", c.lastRecordInFlight.bytesAvailable)
 			}
 		}
-		c.handMsg = append(c.handMsg, fragment...)
 	}
 	c.recvHandshakeSeq++
 	ret := c.handMsg
 	c.handMsg, c.handMsgLen = nil, 0
+	c.receivedFlight = append(c.receivedFlight, DTLSMessage{
+		Epoch:    c.in.epoch.epoch,
+		Type:     ret[0],
+		Sequence: c.recvHandshakeSeq - 1,
+		Data:     ret[4:],
+	})
 	return ret, nil
 }
 
@@ -693,4 +696,379 @@ func DTLSClient(conn net.Conn, config *Config) *Conn {
 	c := &Conn{config: config, isClient: true, isDTLS: true, conn: conn}
 	c.init()
 	return c
+}
+
+// A DTLSController is passed to a test callback and allows the callback to
+// customize how an individual flight is sent. This is used to test DTLS's
+// retransmission logic.
+//
+// Although DTLS runs over a lossy, reordered channel, runner assumes a
+// reliable, ordered channel. When simulating packet loss, runner processes the
+// shim's "lost" flight as usual. But, instead of responding, it calls a
+// test-provided function of the form:
+//
+//	func WriteFlight(c *DTLSController, prev, received, next []DTLSMessage)
+//
+// WriteFlight will be called next as the flight for the runner to send. prev is
+// the previous flight sent by the runner, and received is the most recent
+// flight received by the shim. prev and received may be nil if those flights do
+// not exist.
+//
+// WriteFlight should send next to the shim, by calling methods on the
+// DTLSController, and then return. The shim will then be expected to progress
+// the connection. However, WriteFlight, may send fragments arbitrarily
+// reordered or duplicated. It may also simulate packet loss with timeouts or
+// retransmitted past fragments, and then test that the shim retransmits.
+//
+// WriteFlight must return as soon as the shim is expected to progress the
+// connection. If WriteFlight expects the shim to send an alert, it must also
+// return, at which point the logic to progress the connection will consume the
+// alert and report it as a connection failure, to be captured in the test
+// expectation.
+//
+// If unspecified, the default implementation of WriteFlight is:
+//
+//	func WriteFlight(c *DTLSController, prev, received, next []DTLSMessage) {
+//		c.WriteFlight(next)
+//	}
+//
+// When the shim speaks last in a handshake or post-handshake transaction, there
+// is no reply to implicitly acknowledge the flight. The runner will instead
+// call a second callback of the form:
+//
+//	func ACKFlight(c *DTLSController, prev, received []DTLSMessage)
+//
+// Like WriteFlight, ACKFlight may simulate packet loss with the DTLSController.
+// It returns when it is ready to proceed.
+//
+// This test design implicitly assumes the shim will never start a
+// post-handshake transaction before the previous one is complete. Otherwise the
+// retransmissions will get mixed up with the second transaction.
+//
+// For convenience, the DTLSController internally tracks whether it has
+// encountered an error (e.g. an I/O error with the shim) and, if so, silently
+// makes all methods do nothing. The Err method may be used to query if it is in
+// this state, if it would otherwise cause an infinite loop.
+//
+// TODO(crbug.com/42290594): Add a way to change the MTU and test that the shim
+// re-packs packets accordingly.
+//
+// TODO(crbug.com/42290594): Add a way to send and expect application data, to
+// test that final flight retransmissions and post-handshake messages can
+// interleave with application data.
+//
+// TODO(crbug.com/42290594): ExpectRetransmit should return a sequence of record
+// numbers, which the test callback can use to send ACKs. Track outgoing ACKs in
+// the test framework, so calls to ExpectRetransmit implicitly check that the
+// shim only retransmits unACKed data. Have some way to account for the shim
+// forgetting packet numbers when its buffer is full, and the point before the
+// shim learns it's speaking DTLS 1.3.
+//
+// TODO(crbug.com/42290594): When we implement ACK-sending on the shim, add a
+// way for the test to specify which ACKs are expected, unless we can derive
+// that automatically?
+//
+// TODO(crbug.com/42290594): The default behavior for ACKFlight should be to
+// send an ACK. The callback also needs to take, as input, the list of record
+// numbers matching the initial flight.
+type DTLSController struct {
+	conn     *Conn
+	err      error
+	received []DTLSMessage
+}
+
+// Err returns whether the controller has stopped due to an error, or nil
+// otherwise. If it returns non-nil, other methods will silently do nothing.
+func (c *DTLSController) Err() error { return c.err }
+
+// AdvanceClock advances the shim's clock by duration. It is a test failure if
+// the shim sends anything before picking up the command.
+func (c *DTLSController) AdvanceClock(duration time.Duration) {
+	if c.err != nil {
+		return
+	}
+
+	c.err = c.conn.dtlsFlushPacket()
+	if c.err != nil {
+		return
+	}
+
+	adaptor := c.conn.config.Bugs.PacketAdaptor
+	if adaptor == nil {
+		panic("tls: no PacketAdapter set")
+	}
+
+	received, err := adaptor.SendReadTimeout(duration)
+	if err != nil {
+		c.err = err
+	} else if len(received) != 0 {
+		c.err = fmt.Errorf("tls: received %d unexpected packets while simulating a timeout", len(received))
+	}
+}
+
+// WriteFlight writes msgs to the shim, using the default fragmenting logic.
+// This may be used when the test is not concerned with fragmentation.
+func (c *DTLSController) WriteFlight(msgs []DTLSMessage) {
+	config := c.conn.config
+	if c.err != nil {
+		return
+	}
+
+	// Buffer up fragments to reorder them.
+	var fragments []DTLSFragment
+
+	// TODO(davidben): All this could also have been implemented in the custom
+	// fallbacks. These options date to before we had the callback. Should some
+	// of them be moved out?
+	for _, msg := range msgs {
+		if msg.IsChangeCipherSpec {
+			fragments = append(fragments, msg.Fragment(0, len(msg.Data)))
+			continue
+		}
+
+		if msg.Epoch == 0 && config.Bugs.StrayChangeCipherSpec {
+			fragments = append(fragments, DTLSFragment{Epoch: msg.Epoch, IsChangeCipherSpec: true, Data: []byte{1}})
+		}
+
+		maxLen := config.Bugs.MaxHandshakeRecordLength
+		if maxLen <= 0 {
+			maxLen = 1024
+		}
+
+		if config.Bugs.SendEmptyFragments {
+			fragments = append(fragments, msg.Fragment(0, 0))
+			fragments = append(fragments, msg.Fragment(len(msg.Data), 0))
+		}
+
+		firstRun := true
+		fragOffset := 0
+		for firstRun || fragOffset < len(msg.Data) {
+			firstRun = false
+			fragLen := min(len(msg.Data)-fragOffset, maxLen)
+
+			fragment := msg.Fragment(fragOffset, fragLen)
+			if config.Bugs.FragmentMessageTypeMismatch && fragOffset > 0 {
+				fragment.Type++
+			}
+			if config.Bugs.FragmentMessageLengthMismatch && fragOffset > 0 {
+				fragment.TotalLength++
+			}
+
+			fragments = append(fragments, fragment)
+			if config.Bugs.ReorderHandshakeFragments {
+				// Don't duplicate Finished to avoid the peer
+				// interpreting it as a retransmit request.
+				if msg.Type != typeFinished {
+					fragments = append(fragments, fragment)
+				}
+
+				if fragLen > (maxLen+1)/2 {
+					// Overlap each fragment by half.
+					fragLen = (maxLen + 1) / 2
+				}
+			}
+			fragOffset += fragLen
+		}
+		shouldSendTwice := config.Bugs.MixCompleteMessageWithFragments
+		if msg.Type == typeFinished {
+			shouldSendTwice = config.Bugs.RetransmitFinished
+		}
+		if shouldSendTwice {
+			fragments = append(fragments, msg.Fragment(0, len(msg.Data)))
+		}
+	}
+
+	// Reorder the fragments, but only within an epoch.
+	for start := 0; start < len(fragments); {
+		end := start + 1
+		for end < len(fragments) && fragments[start].Epoch == fragments[end].Epoch {
+			end++
+		}
+		chunk := fragments[start:end]
+		if config.Bugs.ReorderHandshakeFragments {
+			rand.Shuffle(len(chunk), func(i, j int) { chunk[i], chunk[j] = chunk[j], chunk[i] })
+		} else if config.Bugs.ReverseHandshakeFragments {
+			slices.Reverse(chunk)
+		}
+		start = end
+	}
+
+	c.WriteFragments(fragments)
+}
+
+// WriteFragments writes the specified handshake fragments to the shim.
+func (c *DTLSController) WriteFragments(fragments []DTLSFragment) {
+	config := c.conn.config
+	if c.err != nil {
+		return
+	}
+
+	maxRecordLen := config.Bugs.PackHandshakeFragments
+
+	// Pack handshake fragments into records.
+	var record []byte
+	var epoch *epochState
+	flush := func() error {
+		if len(record) > 0 {
+			_, err := c.conn.dtlsPackRecord(epoch, recordTypeHandshake, record, false)
+			if err != nil {
+				return err
+			}
+		}
+		record = nil
+		return nil
+	}
+
+	for i := range fragments {
+		f := &fragments[i]
+		if epoch != nil && (f.Epoch != epoch.epoch || f.IsChangeCipherSpec) {
+			c.err = flush()
+			if c.err != nil {
+				return
+			}
+			epoch = nil
+		}
+
+		if epoch == nil {
+			var ok bool
+			epoch, ok = c.conn.out.getEpoch(f.Epoch)
+			if !ok {
+				panic(fmt.Sprintf("tls: could not find epoch %d", f.Epoch))
+			}
+		}
+
+		if f.IsChangeCipherSpec {
+			_, c.err = c.conn.dtlsPackRecord(epoch, recordTypeChangeCipherSpec, f.Bytes(), false)
+			if c.err != nil {
+				return
+			}
+			continue
+		}
+
+		fBytes := f.Bytes()
+		if n := config.Bugs.SplitFragments; n > 0 {
+			if len(fBytes) > n {
+				_, c.err = c.conn.dtlsPackRecord(epoch, recordTypeHandshake, fBytes[:n], false)
+				if c.err != nil {
+					return
+				}
+				_, c.err = c.conn.dtlsPackRecord(epoch, recordTypeHandshake, fBytes[n:], false)
+				if c.err != nil {
+					return
+				}
+			} else {
+				_, c.err = c.conn.dtlsPackRecord(epoch, recordTypeHandshake, fBytes, false)
+				if c.err != nil {
+					return
+				}
+			}
+		} else {
+			if len(record)+len(fBytes) > maxRecordLen {
+				c.err = flush()
+				if c.err != nil {
+					return
+				}
+			}
+			record = append(record, fBytes...)
+		}
+	}
+
+	c.err = flush()
+}
+
+// ReadRetransmit indicates the shim is expected to retransmit its current
+// flight and consumes the retransmission.
+func (c *DTLSController) ReadRetransmit() {
+	if c.err != nil {
+		return
+	}
+
+	c.err = c.doReadRetransmit()
+}
+
+func (c *DTLSController) doReadRetransmit() error {
+	if err := c.conn.dtlsFlushPacket(); err != nil {
+		return err
+	}
+
+	// Determine what the shim should have retransmited. For now, we expect
+	// whole messages, but later some fragments will already have been ACKed in
+	// DTLS 1.3.
+	var expected []DTLSFragment
+	for i := range c.received {
+		msg := &c.received[i]
+		expected = append(expected, msg.Fragment(0, len(msg.Data)))
+	}
+
+	for len(expected) > 0 {
+		// Read a record from the expected epoch. The peer should retransmit in
+		// order.
+		wantTyp := recordTypeHandshake
+		if expected[0].IsChangeCipherSpec {
+			wantTyp = recordTypeChangeCipherSpec
+		}
+		epoch, ok := c.conn.in.getEpoch(expected[0].Epoch)
+		if !ok {
+			panic(fmt.Sprintf("tls: could not find epoch %d", expected[0].Epoch))
+		}
+		// Retransmitted ClientHellos predate the shim learning the version.
+		// Ideally we would enforce the initial record-layer version, but
+		// post-HelloVerifyRequest ClientHellos and post-HelloRetryRequest
+		// ClientHellos look the same, but have different expectations.
+		c.conn.skipRecordVersionCheck = !expected[0].IsChangeCipherSpec && expected[0].Type == typeClientHello
+		typ, data, err := c.conn.dtlsDoReadRecord(epoch, wantTyp)
+		c.conn.skipRecordVersionCheck = false
+		if err != nil {
+			return err
+		}
+		if typ != wantTyp {
+			return fmt.Errorf("tls: got record of type %d in retransmit, but expected %d", typ, wantTyp)
+		}
+		if typ == recordTypeChangeCipherSpec {
+			if len(data) != 1 || data[0] != 1 {
+				return errors.New("tls: got invalid ChangeCipherSpec")
+			}
+			expected = expected[1:]
+			continue
+		}
+
+		// Consume all the handshake fragments and match them to what we expect.
+		s := cryptobyte.String(data)
+		if s.Empty() {
+			return fmt.Errorf("tls: got empty record in retransmit")
+		}
+		for !s.Empty() {
+			if len(expected) == 0 || expected[0].Epoch != epoch.epoch || expected[0].IsChangeCipherSpec {
+				return fmt.Errorf("tls: got excess data at epoch %d in retransmit", epoch.epoch)
+			}
+
+			exp := &expected[0]
+			var f DTLSFragment
+			f, err = readDTLSFragment(&s)
+			if f.Type != exp.Type || f.TotalLength != exp.TotalLength || f.Sequence != exp.Sequence || f.Offset != exp.Offset {
+				return fmt.Errorf("tls: got offset %d of message %d (type %d, length %d), expected offset %d of message %d (type %d, length %d)", f.Offset, f.Sequence, f.Type, f.TotalLength, exp.Offset, exp.Sequence, exp.Type, exp.TotalLength)
+			}
+			if len(f.Data) > len(exp.Data) {
+				return fmt.Errorf("tls: got %d bytes at offset %d of message %d but only %d bytes were missing", len(f.Data), f.Offset, f.Sequence, len(exp.Data))
+			}
+			if !bytes.Equal(f.Data, exp.Data[:len(f.Data)]) {
+				return fmt.Errorf("tls: got %d bytes at offset %d of message %d but did not match original", len(f.Data), f.Offset, f.Sequence)
+			}
+			if len(f.Data) == len(exp.Data) {
+				expected = expected[1:]
+			} else {
+				// We only got part of the fragment we wanted.
+				exp.Offset += len(f.Data)
+				exp.Data = exp.Data[len(f.Data):]
+				// Check that the peer could not have fit more into the record.
+				if !s.Empty() {
+					return errors.New("dtls: truncated handshake fragment was not last in the record")
+				}
+				if c.conn.lastRecordInFlight.bytesAvailable > 0 {
+					return fmt.Errorf("dtls: handshake fragment was truncated, but record could have fit %d more bytes", c.conn.lastRecordInFlight.bytesAvailable)
+				}
+			}
+		}
+	}
+	return nil
 }

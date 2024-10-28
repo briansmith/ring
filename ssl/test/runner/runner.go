@@ -40,6 +40,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -5294,13 +5295,13 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		tests = append(tests, testCase{
 			testType: clientTest,
 			protocol: dtls,
-			name: "DTLS13-EarlyData",
+			name:     "DTLS13-EarlyData",
 			config: Config{
 				MaxVersion: VersionTLS13,
 				MinVersion: VersionTLS13,
 			},
 			resumeSession: true,
-			earlyData: true,
+			earlyData:     true,
 		})
 	}
 
@@ -11480,60 +11481,78 @@ var shortTimeouts = []time.Duration{
 }
 
 func addDTLSRetransmitTests() {
-	// These tests work by coordinating some behavior on both the shim and
-	// the runner.
-	//
-	// TimeoutSchedule configures the runner to send a series of timeout
-	// opcodes to the shim (see packetAdaptor) immediately before reading
-	// each peer handshake flight N. The timeout opcode both simulates a
-	// timeout in the shim and acts as a synchronization point to help the
-	// runner bracket each handshake flight.
-	//
-	// We assume the shim does not read from the channel eagerly. It must
-	// first wait until it has sent flight N and is ready to receive
-	// handshake flight N+1. At this point, it will process the timeout
-	// opcode. It must then immediately respond with a timeout ACK and act
-	// as if the shim was idle for the specified amount of time.
-	//
-	// The runner then drops all packets received before the ACK and
-	// continues waiting for flight N. This ordering results in one attempt
-	// at sending flight N to be dropped. For the test to complete, the
-	// shim must send flight N again, testing that the shim implements DTLS
-	// retransmit on a timeout.
-
-	// TODO(davidben): Add DTLS 1.3 versions of these tests. There will
-	// likely be more epochs to cross and the final message's retransmit may
-	// be more complex.
-
 	// Test that this is indeed the timeout schedule. Stress all
 	// four patterns of handshake.
-	for i := 1; i < len(timeouts); i++ {
-		number := strconv.Itoa(i)
-		testCases = append(testCases, testCase{
-			protocol: dtls,
-			name:     "DTLS-Retransmit-Client-" + number,
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					TimeoutSchedule: timeouts[:i],
+	//
+	// TODO(crbug.com/42290594): Add DTLS 1.3 versions of these tests.
+	for _, shortTimeout := range []bool{false, true} {
+		for _, partialProgress := range []bool{false, true} {
+			var suffix string
+			var flags []string
+			useTimeouts := timeouts
+			if shortTimeout {
+				suffix = "-Short"
+				flags = []string{"-initial-timeout-duration-ms", "250"}
+				useTimeouts = shortTimeouts
+			}
+			if partialProgress {
+				suffix += "-PartialProgress"
+			}
+
+			writeFlight := func(c *DTLSController, prev, received, next []DTLSMessage) {
+				if len(received) > 0 {
+					// Exercise every timeout but the last one (which would fail the
+					// connection).
+					for _, t := range useTimeouts[:len(useTimeouts)-1] {
+						c.AdvanceClock(t)
+						c.ReadRetransmit()
+						// Release part of the first message to the shim.
+						if partialProgress {
+							tot := len(next[0].Data)
+							c.WriteFragments([]DTLSFragment{next[0].Fragment(tot/3, 2*tot/3)})
+						}
+					}
+				}
+				// Finally release the whole flight to the shim.
+				c.WriteFlight(next)
+			}
+			ackFlight := func(c *DTLSController, prev, received []DTLSMessage) {
+				// The final flight is retransmitted on receipt of the previous
+				// flight. Test the peer is willing to retransmit it several times.
+				for i := 0; i < 5; i++ {
+					c.WriteFlight(prev)
+					c.ReadRetransmit()
+				}
+			}
+
+			testCases = append(testCases, testCase{
+				protocol: dtls,
+				name:     "DTLS-Retransmit-Client-TLS12" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS12,
+					Bugs: ProtocolBugs{
+						WriteFlightDTLS: writeFlight,
+						ACKFlightDTLS:   ackFlight,
+					},
 				},
-			},
-			resumeSession: true,
-			flags:         []string{"-async"},
-		})
-		testCases = append(testCases, testCase{
-			protocol: dtls,
-			testType: serverTest,
-			name:     "DTLS-Retransmit-Server-" + number,
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					TimeoutSchedule: timeouts[:i],
+				resumeSession: true,
+				flags:         slices.Concat(flags, []string{"-async"}),
+			})
+			testCases = append(testCases, testCase{
+				protocol: dtls,
+				testType: serverTest,
+				name:     "DTLS-Retransmit-Server-TLS12" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS12,
+					Bugs: ProtocolBugs{
+						WriteFlightDTLS: writeFlight,
+						ACKFlightDTLS:   ackFlight,
+					},
 				},
-			},
-			resumeSession: true,
-			flags:         []string{"-async"},
-		})
+				resumeSession: true,
+				flags:         slices.Concat(flags, []string{"-async"}),
+			})
+		}
 	}
 
 	// Test that exceeding the timeout schedule hits a read
@@ -11544,7 +11563,14 @@ func addDTLSRetransmitTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
-				TimeoutSchedule: timeouts,
+				WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage) {
+					for _, t := range timeouts[:len(timeouts)-1] {
+						c.AdvanceClock(t)
+						c.ReadRetransmit()
+					}
+					c.AdvanceClock(timeouts[len(timeouts)-1])
+					// The shim should give up at this point.
+				},
 			},
 		},
 		resumeSession: true,
@@ -11561,8 +11587,10 @@ func addDTLSRetransmitTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
-				TimeoutSchedule: []time.Duration{
-					timeouts[0] - 10*time.Millisecond,
+				WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage) {
+					c.AdvanceClock(timeouts[0] - 10*time.Millisecond)
+					c.ReadRetransmit()
+					c.WriteFlight(next)
 				},
 			},
 		},
@@ -11579,44 +11607,14 @@ func addDTLSRetransmitTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
-				TimeoutSchedule:          []time.Duration{timeouts[0]},
 				MaxHandshakeRecordLength: 2,
+				ACKFlightDTLS: func(c *DTLSController, prev, received []DTLSMessage) {
+					c.WriteFlight(prev)
+					c.ReadRetransmit()
+				},
 			},
 		},
 		flags: []string{"-async"},
-	})
-
-	// Test the timeout schedule when a shorter initial timeout duration is set.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		name:     "DTLS-Retransmit-Short-Client",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				TimeoutSchedule: shortTimeouts[:len(shortTimeouts)-1],
-			},
-		},
-		resumeSession: true,
-		flags: []string{
-			"-async",
-			"-initial-timeout-duration-ms", "250",
-		},
-	})
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		testType: serverTest,
-		name:     "DTLS-Retransmit-Short-Server",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				TimeoutSchedule: shortTimeouts[:len(shortTimeouts)-1],
-			},
-		},
-		resumeSession: true,
-		flags: []string{
-			"-async",
-			"-initial-timeout-duration-ms", "250",
-		},
 	})
 
 	// If the shim sends the last Finished (server full or client resume
@@ -13454,31 +13452,6 @@ func addChangeCipherSpecTests() {
 				StrayChangeCipherSpec: true,
 			},
 		},
-	})
-
-	// Test that reordered ChangeCipherSpecs are tolerated.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		name:     "ReorderChangeCipherSpec-DTLS-Client",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				ReorderChangeCipherSpec: true,
-			},
-		},
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		protocol: dtls,
-		name:     "ReorderChangeCipherSpec-DTLS-Server",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				ReorderChangeCipherSpec: true,
-			},
-		},
-		resumeSession: true,
 	})
 
 	// Test that the contents of ChangeCipherSpec are checked.

@@ -116,10 +116,13 @@ type Conn struct {
 	// DTLS state
 	sendHandshakeSeq uint16
 	recvHandshakeSeq uint16
-	handMsg          []byte   // pending assembled handshake message
-	handMsgLen       int      // handshake message length, not including the header
-	pendingFragments [][]byte // pending outgoing handshake fragments.
-	pendingPacket    []byte   // pending outgoing packet.
+	handMsg          []byte // pending assembled handshake message
+	handMsgLen       int    // handshake message length, not including the header
+	pendingPacket    []byte // pending outgoing packet.
+
+	previousFlight []DTLSMessage
+	receivedFlight []DTLSMessage
+	nextFlight     []DTLSMessage
 
 	keyUpdateSeen      bool
 	keyUpdateRequested bool
@@ -141,6 +144,11 @@ type Conn struct {
 	// in the current DTLS packet, up to a budget of
 	// config.Bugs.MaxPacketLength.
 	bytesAvailableInPacket int
+
+	// skipRecordVersionCheck, if true, causes the DTLS record layer to skip the
+	// record version check, even if the version is known. This is used when
+	// simulating retransmits.
+	skipRecordVersionCheck bool
 
 	// echAccepted indicates whether ECH was accepted for this connection.
 	echAccepted bool
@@ -820,11 +828,6 @@ func (c *Conn) useInTrafficSecret(epoch uint16, version uint16, suite *cipherSui
 }
 
 func (c *Conn) useOutTrafficSecret(epoch uint16, version uint16, suite *cipherSuite, secret []byte) {
-	if c.isDTLS {
-		// We buffer fragments in DTLS to pack them. Flush the buffer
-		// before the key change.
-		c.dtlsPackHandshake()
-	}
 	side := serverWrite
 	if c.isClient {
 		side = clientWrite
@@ -871,7 +874,7 @@ func (c *Conn) readRawInputUntil(n int) error {
 func (c *Conn) doReadRecord(want recordType) (recordType, []byte, error) {
 RestartReadRecord:
 	if c.isDTLS {
-		return c.dtlsDoReadRecord(want)
+		return c.dtlsDoReadRecord(&c.in.epoch, want)
 	}
 
 	recordHeaderLen := tlsRecordHeaderLen
@@ -1110,6 +1113,14 @@ Again:
 			c.in.setErrorLocked(errors.New("tls: buffered handshake messages on cipher change"))
 			break
 		}
+		if c.isDTLS {
+			// Track the ChangeCipherSpec record in the current flight.
+			c.receivedFlight = append(c.receivedFlight, DTLSMessage{
+				Epoch:              c.in.epoch.epoch,
+				IsChangeCipherSpec: true,
+				Data:               slices.Clone(data),
+			})
+		}
 		if err := c.in.changeCipherSpec(); err != nil {
 			c.in.setErrorLocked(c.sendAlert(err.(alert)))
 		}
@@ -1346,6 +1357,13 @@ func (c *Conn) flushHandshake() error {
 	return nil
 }
 
+func (c *Conn) ackHandshake() error {
+	if c.isDTLS {
+		return c.dtlsACKHandshake()
+	}
+	return nil
+}
+
 func (c *Conn) doReadHandshake() ([]byte, error) {
 	if c.isDTLS {
 		return c.dtlsDoReadHandshake()
@@ -1504,40 +1522,6 @@ func (c *Conn) skipPacket(packet []byte) error {
 	return nil
 }
 
-// simulatePacketLoss simulates the loss of a handshake leg from the
-// peer based on the schedule in c.config.Bugs. If resendFunc is
-// non-nil, it is called after each simulated timeout to retransmit
-// handshake messages from the local end. This is used in cases where
-// the peer retransmits on a stale Finished rather than a timeout.
-func (c *Conn) simulatePacketLoss(resendFunc func()) error {
-	if len(c.config.Bugs.TimeoutSchedule) == 0 {
-		return nil
-	}
-	if !c.isDTLS {
-		return errors.New("tls: TimeoutSchedule may only be set in DTLS")
-	}
-	if c.config.Bugs.PacketAdaptor == nil {
-		return errors.New("tls: TimeoutSchedule set without PacketAdapter")
-	}
-	for _, timeout := range c.config.Bugs.TimeoutSchedule {
-		c.lastRecordInFlight = nil
-		// Simulate a timeout.
-		packets, err := c.config.Bugs.PacketAdaptor.SendReadTimeout(timeout)
-		if err != nil {
-			return err
-		}
-		for _, packet := range packets {
-			if err := c.skipPacket(packet); err != nil {
-				return err
-			}
-		}
-		if resendFunc != nil {
-			resendFunc()
-		}
-	}
-	return nil
-}
-
 func (c *Conn) SendHalfHelloRequest() error {
 	if err := c.Handshake(); err != nil {
 		return err
@@ -1653,7 +1637,8 @@ func (c *Conn) processTLS13NewSessionTicket(newSessionTicket *newSessionTicketMs
 	if !ok || !c.config.Bugs.UseFirstSessionTicket {
 		c.config.ClientSessionCache.Put(cacheKey, session)
 	}
-	return nil
+
+	return c.ackHandshake()
 }
 
 func (c *Conn) handlePostHandshakeMessage() error {
@@ -1700,7 +1685,7 @@ func (c *Conn) handlePostHandshakeMessage() error {
 		if keyUpdate.keyUpdateRequest == keyUpdateRequested {
 			c.keyUpdateRequested = true
 		}
-		return nil
+		return c.ackHandshake()
 	}
 
 	c.sendAlert(alertUnexpectedMessage)

@@ -784,11 +784,6 @@ type ProtocolBugs struct {
 	// may be used to test DTLS's handling of reordered ChangeCipherSpec.
 	StrayChangeCipherSpec bool
 
-	// ReorderChangeCipherSpec causes the ChangeCipherSpec message to be
-	// sent at start of each flight in DTLS. Unlike EarlyChangeCipherSpec,
-	// the cipher change happens at the usual time.
-	ReorderChangeCipherSpec bool
-
 	// FragmentAcrossChangeCipherSpec causes the implementation to fragment
 	// the Finished (or NextProto) message around the ChangeCipherSpec
 	// messages.
@@ -1293,12 +1288,17 @@ type ProtocolBugs struct {
 	// EncryptedExtensions unencrypted, delaying the first key change.
 	UnencryptedEncryptedExtensions bool
 
-	// TimeoutSchedule is the schedule of packet drops and simulated
-	// timeouts for before each handshake leg from the peer.
-	TimeoutSchedule []time.Duration
-
 	// PacketAdaptor is the packetAdaptor to use to simulate timeouts.
 	PacketAdaptor *packetAdaptor
+
+	// WriteFlightDTLS, if not nil, overrides the default behavior for writing
+	// the flight in DTLS. See DTLSController for details.
+	WriteFlightDTLS func(c *DTLSController, prev, received, next []DTLSMessage)
+
+	// ACKFlightDTLS, if not nil, overrides the default behavior for
+	// acknowledging the final flight (of either the handshake or a
+	// post-handshake transaction) in DTLS. See DTLSController for details.
+	ACKFlightDTLS func(c *DTLSController, prev, received []DTLSMessage)
 
 	// MockQUICTransport is the mockQUICTransport used when testing
 	// QUIC interfaces.
