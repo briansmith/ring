@@ -1,7 +1,6 @@
 [package]
 name = "bssl-sys"
 version = "0.1.0"
-authors = ["Benjamin Brittain <bwb@google.com>"]
 edition = "2018"
 publish = false
 license = "ISC"
@@ -11,4 +10,4 @@ license = "ISC"
 links = "bssl"
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(unsupported_inline_wrappers)', 'cfg(soong)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(unsupported_inline_wrappers)', 'cfg(bindgen_rs_file)'] }
