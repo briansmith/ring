@@ -273,7 +273,7 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 		}
 
 		if typ == recordTypeChangeCipherSpec && c.vers < VersionTLS13 {
-			err = c.out.changeCipherSpec(c.config)
+			err = c.out.changeCipherSpec()
 			if err != nil {
 				return n, c.sendAlertLocked(alertLevelError, err.(alert))
 			}

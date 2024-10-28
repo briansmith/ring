@@ -228,7 +228,7 @@ func (hc *halfConn) prepareCipherSpec(version uint16, cipher any, mac macFunctio
 
 // changeCipherSpec changes the encryption and MAC states
 // to the ones previously passed to prepareCipherSpec.
-func (hc *halfConn) changeCipherSpec(config *Config) error {
+func (hc *halfConn) changeCipherSpec() error {
 	if hc.nextCipher == nil {
 		return alertInternalError
 	}
@@ -236,10 +236,9 @@ func (hc *halfConn) changeCipherSpec(config *Config) error {
 	hc.mac = hc.nextMac
 	hc.nextCipher = nil
 	hc.nextMac = nil
-	hc.config = config
 	hc.incEpoch()
 
-	if config.Bugs.NullAllCiphers {
+	if hc.config.Bugs.NullAllCiphers {
 		hc.cipher = nullCipher{}
 		hc.mac = nil
 	}
@@ -1089,7 +1088,7 @@ Again:
 			c.in.setErrorLocked(errors.New("tls: buffered handshake messages on cipher change"))
 			break
 		}
-		if err := c.in.changeCipherSpec(c.config); err != nil {
+		if err := c.in.changeCipherSpec(); err != nil {
 			c.in.setErrorLocked(c.sendAlert(err.(alert)))
 		}
 
@@ -1298,7 +1297,7 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 	}
 
 	if typ == recordTypeChangeCipherSpec && c.vers < VersionTLS13 {
-		err = c.out.changeCipherSpec(c.config)
+		err = c.out.changeCipherSpec()
 		if err != nil {
 			return n, c.sendAlertLocked(alertLevelError, err.(alert))
 		}
