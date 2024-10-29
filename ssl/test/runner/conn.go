@@ -173,6 +173,11 @@ func (c *Conn) SetWriteDeadline(t time.Time) error {
 	return c.conn.SetWriteDeadline(t)
 }
 
+// Arbitrarily cap the number of past epochs to 4. This is far more than is
+// necessary. We set a limit only so tests can freely trigger unboundedly many
+// KeyUpdates.
+const maxEpochs = 4
+
 type epochState struct {
 	epoch                 uint16
 	cipher                any // cipher algorithm
@@ -191,6 +196,7 @@ type halfConn struct {
 	wireVersion uint16 // wire version
 	isDTLS      bool
 	epoch       epochState
+	pastEpochs  []epochState
 
 	nextEpoch epochState
 
@@ -214,6 +220,30 @@ func (hc *halfConn) error() error {
 	// in any case during testing.
 	err := hc.err
 	return err
+}
+
+func (hc *halfConn) getEpoch(epochValue uint16) (*epochState, bool) {
+	if hc.epoch.epoch == epochValue {
+		return &hc.epoch, true
+	}
+	for i := range hc.pastEpochs {
+		if hc.pastEpochs[i].epoch == epochValue {
+			return &hc.pastEpochs[i], true
+		}
+	}
+	return nil, false
+}
+
+func (hc *halfConn) changeEpoch(epoch epochState) {
+	if len(hc.pastEpochs) < maxEpochs {
+		hc.pastEpochs = append(hc.pastEpochs, hc.epoch)
+	} else {
+		for i := 1; i < len(hc.pastEpochs); i++ {
+			hc.pastEpochs[i-1] = hc.pastEpochs[i]
+		}
+		hc.pastEpochs[len(hc.pastEpochs)-1] = hc.epoch
+	}
+	hc.epoch = epoch
 }
 
 func (hc *halfConn) newEpochState(epoch uint16, cipher any, mac macFunction) epochState {
@@ -246,7 +276,8 @@ func (hc *halfConn) changeCipherSpec() error {
 	if hc.nextEpoch.cipher == nil {
 		return alertInternalError
 	}
-	hc.epoch, hc.nextEpoch = hc.nextEpoch, epochState{}
+	hc.changeEpoch(hc.nextEpoch)
+	hc.nextEpoch = epochState{}
 
 	if hc.config.Bugs.NullAllCiphers {
 		hc.epoch.cipher = nullCipher{}
@@ -279,18 +310,19 @@ func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret 
 		newEpoch.cipher = nullCipher{}
 	}
 	hc.trafficSecret = secret
-	hc.epoch = newEpoch
+	hc.changeEpoch(newEpoch)
 }
 
 // resetCipher resets the cipher state back to no encryption to be able
 // to send an unencrypted ClientHello in response to HelloRetryRequest
 // after 0-RTT data was rejected.
 func (hc *halfConn) resetCipher() {
-	// In all cases, the cipher is set to nil so that second ClientHello
-	// will be sent with no encryption (instead of with early data keys).
-	hc.epoch.cipher = nil
-	// TODO(crbug.com/42290594): Instead, retain both the initial and 0-RTT
-	// epoch states as separate epochs and discard the 0-RTT one.
+	initialEpoch, ok := hc.getEpoch(0)
+	if !ok {
+		panic("tls: could not find initial epoch")
+	}
+	hc.epoch = *initialEpoch
+	hc.pastEpochs = nil
 }
 
 // incSeq increments the sequence number.
