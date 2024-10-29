@@ -152,9 +152,12 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
       return false;
     }
     session->ticket_age_add_valid = true;
+    // TODO(crbug.com/42290594): Remove the SSL_is_dtls check once we support
+    // 0-RTT for DTLS 1.3.
     bool enable_early_data =
         ssl->enable_early_data &&
-        (!ssl->quic_method || !ssl->config->quic_early_data_context.empty());
+        (!ssl->quic_method || !ssl->config->quic_early_data_context.empty()) &&
+        !SSL_is_dtls(ssl);
     if (enable_early_data) {
       // QUIC does not use the max_early_data_size parameter and always sets it
       // to a fixed value. See RFC 9001, section 4.6.1.

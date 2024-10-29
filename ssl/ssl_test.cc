@@ -1376,7 +1376,7 @@ static bssl::UniquePtr<EVP_PKEY> GetTestKey() {
 
 static bssl::UniquePtr<SSL_CTX> CreateContextWithTestCertificate(
     const SSL_METHOD *method) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(method));
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   if (!ctx || !cert || !key ||
@@ -9752,6 +9752,33 @@ TEST(SSLTest, EarlyDataVersionMismatch) {
   // could already infer based on the version that early data will be rejected.
   EXPECT_EQ(SSL_version(client.get()), TLS1_3_VERSION);
   EXPECT_NE(SSL_get0_peer_certificates(client.get()), nullptr);
+}
+
+TEST(SSLTest, EarlyDataDisabledInDTLS13) {
+  // Set up some 0-RTT-enabled contexts.
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(DTLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(DTLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  SSL_CTX_set_early_data_enabled(client_ctx.get(), true);
+  SSL_CTX_set_early_data_enabled(server_ctx.get(), true);
+  SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(),
+                                            DTLS1_3_EXPERIMENTAL_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(),
+                                            DTLS1_3_EXPERIMENTAL_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(),
+                                            DTLS1_3_EXPERIMENTAL_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(),
+                                            DTLS1_3_EXPERIMENTAL_VERSION));
+
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx.get(), server_ctx.get());
+  ASSERT_TRUE(session);
+  EXPECT_FALSE(SSL_SESSION_early_data_capable(session.get()));
 }
 
 }  // namespace
