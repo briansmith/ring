@@ -228,13 +228,13 @@ func getConfig(args [][]byte) error {
 		"mode": "keyVer",
 		"revision": "1.0",
 		"curve": ["ED-25519"]
-    }, {
+	}, {
 		"algorithm": "EDDSA",
 		"mode": "sigVer",
 		"revision": "1.0",
 		"pure": true,
 		"preHash": true,
-		"curve": ["ED-25519"]}
+		"curve": ["ED-25519"]
 	}, {
 		"algorithm": "SHAKE-128",
 		"inBit": false,
