@@ -2669,41 +2669,6 @@ read alert 1 0
 			expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
 		},
 		{
-			protocol: dtls,
-			name:     "ReorderHandshakeFragments-Small-DTLS",
-			config: Config{
-				Bugs: ProtocolBugs{
-					ReorderHandshakeFragments: true,
-					// Small enough that every handshake message is
-					// fragmented.
-					MaxHandshakeRecordLength: 2,
-				},
-			},
-		},
-		{
-			protocol: dtls,
-			name:     "ReorderHandshakeFragments-Large-DTLS",
-			config: Config{
-				Bugs: ProtocolBugs{
-					ReorderHandshakeFragments: true,
-					// Large enough that no handshake message is
-					// fragmented.
-					MaxHandshakeRecordLength: 2048,
-				},
-			},
-		},
-		{
-			protocol: dtls,
-			name:     "MixCompleteMessageWithFragments-DTLS",
-			config: Config{
-				Bugs: ProtocolBugs{
-					ReorderHandshakeFragments:       true,
-					MixCompleteMessageWithFragments: true,
-					MaxHandshakeRecordLength:        2,
-				},
-			},
-		},
-		{
 			name: "SendInvalidRecordType",
 			config: Config{
 				Bugs: ProtocolBugs{
@@ -10347,48 +10312,55 @@ func addRenegotiationTests() {
 }
 
 func addDTLSReplayTests() {
-	// Test that sequence number replays are detected.
-	testCases = append(testCases, testCase{
-		protocol:     dtls,
-		name:         "DTLS-Replay",
-		messageCount: 200,
-		replayWrites: true,
-	})
+	for _, vers := range allVersions(dtls) {
+		// Test that sequence number replays are detected.
+		testCases = append(testCases, testCase{
+			protocol: dtls,
+			name:     "DTLS-Replay-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+			},
+			messageCount: 200,
+			replayWrites: true,
+		})
 
-	// Test the incoming sequence number skipping by values larger
-	// than the retransmit window.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		name:     "DTLS-Replay-LargeGaps",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SequenceNumberMapping: func(in uint64) uint64 {
-					return in * 1023
+		// Test the incoming sequence number skipping by values larger
+		// than the retransmit window.
+		testCases = append(testCases, testCase{
+			protocol: dtls,
+			name:     "DTLS-Replay-LargeGaps-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+				Bugs: ProtocolBugs{
+					SequenceNumberMapping: func(in uint64) uint64 {
+						return in * 1023
+					},
 				},
 			},
-		},
-		messageCount: 200,
-		replayWrites: true,
-	})
+			messageCount: 200,
+			replayWrites: true,
+		})
 
-	// Test the incoming sequence number changing non-monotonically.
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		name:     "DTLS-Replay-NonMonotonic",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SequenceNumberMapping: func(in uint64) uint64 {
-					// This mapping has numbers counting backwards in groups
-					// of 256, and then jumping forwards 511 numbers.
-					return in ^ 255
+		// Test the incoming sequence number changing non-monotonically.
+		testCases = append(testCases, testCase{
+			protocol: dtls,
+			name:     "DTLS-Replay-NonMonotonic-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+				Bugs: ProtocolBugs{
+					SequenceNumberMapping: func(in uint64) uint64 {
+						// This mapping has numbers counting backwards in groups
+						// of 256, and then jumping forwards 511 numbers.
+						return in ^ 255
+					},
 				},
 			},
-		},
-		// This messageCount is large enough to make sure that the SequenceNumberMapping
-		// will reach the point where it jumps forwards after stepping backwards.
-		messageCount: 500,
-		replayWrites: true,
-	})
+			// This messageCount is large enough to make sure that the SequenceNumberMapping
+			// will reach the point where it jumps forwards after stepping backwards.
+			messageCount: 500,
+			replayWrites: true,
+		})
+	}
 }
 
 var testSignatureAlgorithms = []struct {
@@ -11735,6 +11707,49 @@ func addDTLSRetransmitTests() {
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_RECORD:",
 	})
+}
+
+func addDTLSReorderTests() {
+	for _, vers := range allVersions(dtls) {
+		testCases = append(testCases, testCase{
+			protocol: dtls,
+			name:     "ReorderHandshakeFragments-Small-DTLS-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+				Bugs: ProtocolBugs{
+					ReorderHandshakeFragments: true,
+					// Small enough that every handshake message is
+					// fragmented.
+					MaxHandshakeRecordLength: 2,
+				},
+			},
+		})
+		testCases = append(testCases, testCase{
+			protocol: dtls,
+			name:     "ReorderHandshakeFragments-Large-DTLS-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+				Bugs: ProtocolBugs{
+					ReorderHandshakeFragments: true,
+					// Large enough that no handshake message is
+					// fragmented.
+					MaxHandshakeRecordLength: 2048,
+				},
+			},
+		})
+		testCases = append(testCases, testCase{
+			protocol: dtls,
+			name:     "MixCompleteMessageWithFragments-DTLS-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+				Bugs: ProtocolBugs{
+					ReorderHandshakeFragments:       true,
+					MixCompleteMessageWithFragments: true,
+					MaxHandshakeRecordLength:        2,
+				},
+			},
+		})
+	}
 }
 
 func addExportKeyingMaterialTests() {
@@ -21231,6 +21246,7 @@ func main() {
 	addDTLSReplayTests()
 	addSignatureAlgorithmTests()
 	addDTLSRetransmitTests()
+	addDTLSReorderTests()
 	addExportKeyingMaterialTests()
 	addExportTrafficSecretsTests()
 	addTLSUniqueTests()
