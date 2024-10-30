@@ -5200,39 +5200,6 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		flags:         []string{"-expect-hrr"},
 	})
 
-	// TODO(crbug.com/42290594): The -NoResume tests here are copies
-	// of the above tests, but without resumeSession set. These exist to
-	// test HRR in DTLS 1.3, because tests DTLS 1.3 tests with resumption
-	// enabled are skipped due to lack of support for resumption. Once we
-	// support resumption in DTLS 1.3, these can be deleted.
-	if config.protocol == dtls {
-		tests = append(tests, testCase{
-			name: "TLS13-HelloRetryRequest-Client-NoResume",
-			config: Config{
-				MaxVersion: VersionTLS13,
-				MinVersion: VersionTLS13,
-				// P-384 requires a HelloRetryRequest against BoringSSL's default
-				// configuration. Assert this with ExpectMissingKeyShare.
-				CurvePreferences: []CurveID{CurveP384},
-				Bugs: ProtocolBugs{
-					ExpectMissingKeyShare: true,
-				},
-			},
-			flags: []string{"-expect-hrr"},
-		})
-		tests = append(tests, testCase{
-			testType: serverTest,
-			name:     "TLS13-HelloRetryRequest-Server-NoResume",
-			config: Config{
-				MaxVersion: VersionTLS13,
-				MinVersion: VersionTLS13,
-				// Require a HelloRetryRequest for every curve.
-				DefaultCurves: []CurveID{},
-			},
-			flags: []string{"-expect-hrr"},
-		})
-	}
-
 	// TLS 1.3 early data tests. DTLS 1.3 doesn't support early data yet.
 	// These tests are disabled for QUIC as well because they test features
 	// that do not apply to QUIC's use of TLS 1.3.
