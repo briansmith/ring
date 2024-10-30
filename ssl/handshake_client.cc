@@ -426,9 +426,11 @@ static ssl_early_data_reason_t should_offer_early_data(
     return ssl_early_data_disabled;
   }
 
-  if (hs->max_version < TLS1_3_VERSION) {
+  if (hs->max_version < TLS1_3_VERSION || SSL_is_dtls(ssl)) {
     // We discard inapplicable sessions, so this is redundant with the session
     // checks below, but reporting that TLS 1.3 was disabled is more useful.
+    //
+    // TODO(crbug.com/42290594): Support early data in DTLS 1.3.
     return ssl_early_data_protocol_version;
   }
 

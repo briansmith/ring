@@ -694,6 +694,10 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 		hs.finishedHash.addEntropy(hs.finishedHash.zeroSecret())
 	}
 
+	if hs.clientHello.hasEarlyData && c.isDTLS {
+		return errors.New("tls: early data extension received in DTLS")
+	}
+
 	hs.hello.hasKeyShare = true
 	if hs.sessionState != nil && config.Bugs.NegotiatePSKResumption {
 		hs.hello.hasKeyShare = false

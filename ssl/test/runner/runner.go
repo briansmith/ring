@@ -1559,10 +1559,15 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 				resumeConfig.MaxEarlyDataSize = 16384
 			}
 
-			// Configure the shim to send some data in early data.
-			flags = append(flags, "-on-resume-shim-writes-first")
-			if resumeConfig.Bugs.ExpectEarlyData == nil {
-				resumeConfig.Bugs.ExpectEarlyData = [][]byte{[]byte(shimInitialWrite)}
+			// In DTLS 1.3, we're setting flags to configure the client to attempt
+			// sending early data, but we expect it to realize that it's incapable
+			// of supporting early data and not send any.
+			if test.protocol != dtls {
+				// Configure the shim to send some data in early data.
+				flags = append(flags, "-on-resume-shim-writes-first")
+				if resumeConfig.Bugs.ExpectEarlyData == nil {
+					resumeConfig.Bugs.ExpectEarlyData = [][]byte{[]byte(shimInitialWrite)}
+				}
 			}
 		} else {
 			// By default, send some early data and expect half-RTT data response.
@@ -5233,6 +5238,21 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			earlyData:     true,
 			shouldFail:    true,
 			expectedError: ":TOO_MUCH_READ_EARLY_DATA:",
+		})
+	}
+
+	// Test that early data is disabled for DTLS 1.3.
+	if config.protocol == dtls {
+		tests = append(tests, testCase{
+			testType: clientTest,
+			protocol: dtls,
+			name: "DTLS13-EarlyData",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
+			},
+			resumeSession: true,
+			earlyData: true,
 		})
 	}
 
