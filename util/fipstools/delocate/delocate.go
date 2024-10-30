@@ -195,7 +195,7 @@ func (d *delocation) processDirective(statement, directive *node32) (*node32, er
 		if len(args) < 1 {
 			return nil, errors.New("comm directive has no arguments")
 		}
-		d.bssAccessorsNeeded[args[0]] = args[0]
+		d.bssAccessorsNeeded[demangle(args[0])] = args[0]
 		d.writeNode(statement)
 
 	case "data":
@@ -1303,7 +1303,7 @@ func (d *delocation) handleBSS(statement *node32) (*node32, error) {
 				localSymbol := localTargetName(symbol)
 				d.output.WriteString(fmt.Sprintf("\n%s:\n", localSymbol))
 
-				d.bssAccessorsNeeded[symbol] = localSymbol
+				d.bssAccessorsNeeded[demangle(symbol)] = localSymbol
 			}
 
 		case ruleLabelContainingDirective:
@@ -1811,6 +1811,42 @@ func isSynthesized(symbol string) bool {
 
 func redirectorName(symbol string) string {
 	return "bcm_redirector_" + symbol
+}
+
+// Optionally demangle C++ local variable names.
+func demangle(symbol string) string {
+	if !strings.HasPrefix(symbol, "_Z") {
+		return symbol
+	}
+
+	// The names must have the form "_ZL", followed by the length of the name
+	// in base 10, followed by the name.
+	if !strings.HasPrefix(symbol, "_ZL") {
+		panic("malformed symbol: starts with _Z but not _ZL")
+	}
+
+	if len(symbol) < 4 {
+		panic("malformed symbol: too short")
+	}
+
+	pos := 3
+	for pos < len(symbol) && '0' <= symbol[pos] && symbol[pos] <= '9' {
+		pos++
+	}
+	if pos == 3 {
+		panic("malformed symbol: no length digits")
+	}
+
+	length, err := strconv.Atoi(symbol[3:pos])
+	if err != nil {
+		panic("malformed symbol: invalid length")
+	}
+
+	if len(symbol[pos:]) != length {
+		panic("malformed symbol: length mismatch")
+	}
+
+	return symbol[pos:]
 }
 
 // sectionType returns the type of a section. I.e. a section called “.text.foo”

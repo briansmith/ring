@@ -32,7 +32,7 @@ import (
 // patterns as in filepath.Glob.
 type InputTarget struct {
 	build.Target
-	// ErrData contains a list of errordata files to combine into err_data.c.
+	// ErrData contains a list of errordata files to combine into err_data.cc.
 	ErrData []string `json:"err_data,omitempty"`
 	// The following fields define perlasm sources for the corresponding
 	// architecture.

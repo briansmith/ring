@@ -21,9 +21,7 @@
 
 #include "../../internal.h"
 
-#if defined(__cplusplus)
 extern "C" {
-#endif
 
 
 #if !defined(OPENSSL_NO_ASM)
@@ -247,8 +245,6 @@ void aes_nohw_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                           const AES_KEY *key, uint8_t *ivec, int enc);
 
 
-#if defined(__cplusplus)
 }  // extern C
-#endif
 
 #endif  // OPENSSL_HEADER_AES_INTERNAL_H

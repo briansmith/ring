@@ -22,19 +22,23 @@
 
 #if !defined(BORINGSSL_SHARED_LIBRARY) && defined(BORINGSSL_FIPS) && \
     !defined(OPENSSL_ASAN) && !defined(OPENSSL_MSAN)
-#define DEFINE_BSS_GET(type, name)        \
-  static type name __attribute__((used)); \
-  type *name##_bss_get(void) __attribute__((const));
+#define DEFINE_BSS_GET(type, name, init_value)         \
+  static type name __attribute__((used)) = init_value; \
+  extern "C" {                                         \
+  type *name##_bss_get(void) __attribute__((const));   \
+  }
 // For FIPS builds we require that CRYPTO_ONCE_INIT be zero.
-#define DEFINE_STATIC_ONCE(name) DEFINE_BSS_GET(CRYPTO_once_t, name)
+#define DEFINE_STATIC_ONCE(name) \
+  DEFINE_BSS_GET(CRYPTO_once_t, name, CRYPTO_ONCE_INIT)
 // For FIPS builds we require that CRYPTO_MUTEX_INIT be zero.
-#define DEFINE_STATIC_MUTEX(name) DEFINE_BSS_GET(CRYPTO_MUTEX, name)
+#define DEFINE_STATIC_MUTEX(name) \
+  DEFINE_BSS_GET(CRYPTO_MUTEX, name, CRYPTO_MUTEX_INIT)
 // For FIPS builds we require that CRYPTO_EX_DATA_CLASS_INIT be zero.
 #define DEFINE_STATIC_EX_DATA_CLASS(name) \
-  DEFINE_BSS_GET(CRYPTO_EX_DATA_CLASS, name)
+  DEFINE_BSS_GET(CRYPTO_EX_DATA_CLASS, name, CRYPTO_EX_DATA_CLASS_INIT)
 #else
-#define DEFINE_BSS_GET(type, name) \
-  static type name;                \
+#define DEFINE_BSS_GET(type, name, init_value) \
+  static type name = init_value;               \
   static type *name##_bss_get(void) { return &name; }
 #define DEFINE_STATIC_ONCE(name)                \
   static CRYPTO_once_t name = CRYPTO_ONCE_INIT; \
@@ -48,7 +52,7 @@
 #endif
 
 #define DEFINE_DATA(type, name, accessor_decorations)                         \
-  DEFINE_BSS_GET(type, name##_storage)                                        \
+  DEFINE_BSS_GET(type, name##_storage, {})                                    \
   DEFINE_STATIC_ONCE(name##_once)                                             \
   static void name##_do_init(type *out);                                      \
   static void name##_init(void) { name##_do_init(name##_storage_bss_get()); } \

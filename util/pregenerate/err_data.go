@@ -125,14 +125,17 @@ type stringWriter interface {
 func (st *stringList) WriteTo(out stringWriter, name string) {
 	list := st.buildList()
 	values := "kOpenSSL" + name + "Values"
+	out.WriteString("extern const uint32_t " + values + "[];\n")
 	out.WriteString("const uint32_t " + values + "[] = {\n")
 	for _, v := range list {
 		fmt.Fprintf(out, "    0x%x,\n", v)
 	}
 	out.WriteString("};\n\n")
+	out.WriteString("extern const size_t " + values + "Len;\n")
 	out.WriteString("const size_t " + values + "Len = sizeof(" + values + ") / sizeof(" + values + "[0]);\n\n")
 
 	stringData := "kOpenSSL" + name + "StringData"
+	out.WriteString("extern const char " + stringData + "[];\n")
 	out.WriteString("const char " + stringData + "[] =\n    \"")
 	for i, c := range st.stringData {
 		if c == 0 {
@@ -204,7 +207,7 @@ type ErrDataTask struct {
 }
 
 func (t *ErrDataTask) Destination() string {
-	return path.Join("gen", t.TargetName, "err_data.c")
+	return path.Join("gen", t.TargetName, "err_data.cc")
 }
 
 func (t *ErrDataTask) Run() ([]byte, error) {
