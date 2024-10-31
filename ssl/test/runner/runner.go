@@ -11617,6 +11617,29 @@ func addDTLSRetransmitTests() {
 		flags: []string{"-async"},
 	})
 
+	// Test that the shim can retransmit at different MTUs.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "DTLS-Retransmit-ChangeMTU",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			// Request a client certificate, so the shim has more to send.
+			ClientAuth: RequireAnyClientCert,
+			Bugs: ProtocolBugs{
+				WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage) {
+					for i, mtu := range []int{300, 301, 302, 303, 299, 298, 297} {
+						c.SetMTU(mtu)
+						c.AdvanceClock(timeouts[i])
+						c.ReadRetransmit()
+					}
+					c.WriteFlight(next)
+				},
+			},
+		},
+		shimCertificate: &rsaChainCertificate,
+		flags:           []string{"-async"},
+	})
+
 	// If the shim sends the last Finished (server full or client resume
 	// handshakes), it must retransmit that Finished when it sees a
 	// post-handshake penultimate Finished from the runner. The above tests

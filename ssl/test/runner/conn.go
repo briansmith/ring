@@ -119,6 +119,7 @@ type Conn struct {
 	handMsg          []byte // pending assembled handshake message
 	handMsgLen       int    // handshake message length, not including the header
 	pendingPacket    []byte // pending outgoing packet.
+	maxPacketLen     int
 
 	previousFlight []DTLSMessage
 	receivedFlight []DTLSMessage
@@ -141,8 +142,7 @@ type Conn struct {
 	lastRecordInFlight *dtlsRecordInfo
 
 	// bytesAvailableInPacket is the number of bytes that were still available
-	// in the current DTLS packet, up to a budget of
-	// config.Bugs.MaxPacketLength.
+	// in the current DTLS packet, up to a budget of maxPacketLen.
 	bytesAvailableInPacket int
 
 	// skipRecordVersionCheck, if true, causes the DTLS record layer to skip the
@@ -163,6 +163,7 @@ func (c *Conn) init() {
 	c.out.config = c.config
 	c.in.conn = c
 	c.out.conn = c
+	c.maxPacketLen = c.config.Bugs.MaxPacketLength
 }
 
 // Access to net.Conn methods.

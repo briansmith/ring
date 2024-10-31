@@ -844,7 +844,10 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
 
   if (config->is_dtls) {
-    bssl::UniquePtr<BIO> packeted = PacketedBioCreate(GetClock());
+    bssl::UniquePtr<BIO> packeted = PacketedBioCreate(
+        GetClock(), [ssl_raw = ssl.get()](uint32_t mtu) -> bool {
+          return SSL_set_mtu(ssl_raw, mtu);
+        });
     if (!packeted) {
       return false;
     }

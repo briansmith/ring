@@ -234,11 +234,11 @@ func (c *Conn) dtlsDoReadRecord(epoch *epochState, want recordType) (recordType,
 		if err != nil {
 			return 0, nil, err
 		}
-		if maxPacket := c.config.Bugs.MaxPacketLength; maxPacket != 0 {
-			if n > maxPacket {
+		if c.maxPacketLen != 0 {
+			if n > c.maxPacketLen {
 				return 0, nil, fmt.Errorf("dtls: exceeded maximum packet length")
 			}
-			c.bytesAvailableInPacket = maxPacket - n
+			c.bytesAvailableInPacket = c.maxPacketLen - n
 		} else {
 			c.bytesAvailableInPacket = 0
 		}
@@ -750,9 +750,6 @@ func DTLSClient(conn net.Conn, config *Config) *Conn {
 // makes all methods do nothing. The Err method may be used to query if it is in
 // this state, if it would otherwise cause an infinite loop.
 //
-// TODO(crbug.com/42290594): Add a way to change the MTU and test that the shim
-// re-packs packets accordingly.
-//
 // TODO(crbug.com/42290594): Add a way to send and expect application data, to
 // test that final flight retransmissions and post-handshake messages can
 // interleave with application data.
@@ -804,6 +801,21 @@ func (c *DTLSController) AdvanceClock(duration time.Duration) {
 	} else if len(received) != 0 {
 		c.err = fmt.Errorf("tls: received %d unexpected packets while simulating a timeout", len(received))
 	}
+}
+
+// SetMTU updates the shim's MTU to mtu.
+func (c *DTLSController) SetMTU(mtu int) {
+	if c.err != nil {
+		return
+	}
+
+	adaptor := c.conn.config.Bugs.PacketAdaptor
+	if adaptor == nil {
+		panic("tls: no PacketAdapter set")
+	}
+
+	c.conn.maxPacketLen = mtu
+	c.err = adaptor.SetPeerMTU(mtu)
 }
 
 // WriteFlight writes msgs to the shim, using the default fragmenting logic.

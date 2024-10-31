@@ -27,6 +27,9 @@ const opcodeTimeout = byte('T')
 // at the timeout, to bracket one flight of messages from C.
 const opcodeTimeoutAck = byte('t')
 
+// opcodeMTU updates the shim's MTU, encoded as a 32-bit number of bytes.
+const opcodeMTU = byte('M')
+
 type packetAdaptor struct {
 	net.Conn
 	debug *recordingConn
@@ -129,6 +132,17 @@ func (p *packetAdaptor) SendReadTimeout(d time.Duration) ([][]byte, error) {
 			return nil, fmt.Errorf("unexpected opcode '%d'", opcode)
 		}
 	}
+}
+
+// SetPeerMTU instructs the peer to set the MTU to the specified value.
+func (p *packetAdaptor) SetPeerMTU(mtu int) error {
+	p.log(fmt.Sprintf("Setting MTU to %d", mtu), nil)
+
+	payload := make([]byte, 1+4)
+	payload[0] = opcodeMTU
+	binary.BigEndian.PutUint32(payload[1:], uint32(mtu))
+	_, err := p.Conn.Write(payload)
+	return err
 }
 
 type replayAdaptor struct {
