@@ -11548,12 +11548,9 @@ func addDTLSRetransmitTests() {
 				flags:         flags,
 			})
 
-			// In DTLS 1.2, receiving a part of the next flight should not stop
-			// the retransmission timer.
-			//
-			// TODO(crbug.com/42290594): In DTLS 1.3, it should stop the timer
-			// because we can use ACKs to request a retransmit. Test this.
 			if vers.version <= VersionTLS12 {
+				// In DTLS 1.2, receiving a part of the next flight should not stop
+				// the retransmission timer.
 				testCases = append(testCases, testCase{
 					protocol: dtls,
 					name:     "DTLS-Retransmit-PartialProgress" + suffix,
@@ -11574,6 +11571,98 @@ func addDTLSRetransmitTests() {
 								// the portion that was already sent.
 								rest := []DTLSFragment{msg.Fragment(split, len(msg.Data)-split)}
 								for _, m := range next[1:] {
+									rest = append(rest, m.Fragment(0, len(m.Data)))
+								}
+								c.WriteFragments(rest)
+							},
+						},
+					},
+					flags: flags,
+				})
+			} else {
+				// In DTLS 1.3, receiving a part of the next flight implicitly ACKs
+				// the previous flight.
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					protocol: dtls,
+					name:     "DTLS-Retransmit-PartialProgress-Server" + suffix,
+					config: Config{
+						MaxVersion:    vers.version,
+						DefaultCurves: []CurveID{}, // Force HelloRetryRequest.
+						Bugs: ProtocolBugs{
+							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+								// Send a portion of the first message. The rest was lost.
+								msg := next[0]
+								split := len(msg.Data) / 2
+								c.WriteFragments([]DTLSFragment{msg.Fragment(0, split)})
+								// This is enough to ACK the previous flight. The shim
+								// should stop retransmitting and even stop the timer.
+								//
+								// TODO(crbug.com/42290594): The shim should send a partial
+								// ACK to request that we retransmit.
+								for _, t := range useTimeouts {
+									c.AdvanceClock(t)
+								}
+								// "Retransmit" the rest of the flight. The shim should remember
+								// the portion that was already sent.
+								rest := []DTLSFragment{msg.Fragment(split, len(msg.Data)-split)}
+								for _, m := range next[1:] {
+									rest = append(rest, m.Fragment(0, len(m.Data)))
+								}
+								c.WriteFragments(rest)
+							},
+						},
+					},
+					flags: flags,
+				})
+
+				// When the shim is a client, receiving fragments before the version is
+				// known does not trigger this behavior.
+				testCases = append(testCases, testCase{
+					protocol: dtls,
+					name:     "DTLS-Retransmit-PartialProgress-Client" + suffix,
+					config: Config{
+						MaxVersion: vers.version,
+						Bugs: ProtocolBugs{
+							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+								// Send a portion of the ServerHello. The rest was lost.
+								msg := next[0]
+								split := len(msg.Data) / 2
+								c.WriteFragments([]DTLSFragment{msg.Fragment(0, split)})
+
+								// The shim did not know this was DTLS 1.3, so it still
+								// retransmits ClientHello.
+								c.AdvanceClock(useTimeouts[0])
+								c.ReadRetransmit()
+
+								// Finish the ServerHello. The version is still not known,
+								// at the time the ServerHello fragment is processed, This
+								// is not as efficient as we could be; we could go back and
+								// implicitly ACK once the version is known. But the last
+								// byte of ServerHello will almost certainly be in the same
+								// packet as EncryptedExtensions, which will trigger the case
+								// below.
+								c.WriteFragments([]DTLSFragment{msg.Fragment(split, len(msg.Data)-split)})
+								c.AdvanceClock(useTimeouts[1])
+								c.ReadRetransmit()
+
+								// Send EncryptedExtensions. The shim now knows the version
+								// and implicitly ACKs everything.
+								c.WriteFragments([]DTLSFragment{next[1].Fragment(0, len(next[1].Data))})
+
+								// This is enough to ACK the previous flight. The shim
+								// should stop retransmitting and even stop the timer.
+								//
+								// TODO(crbug.com/42290594): The shim should send a partial
+								// ACK to request that we retransmit.
+								for _, t := range useTimeouts[2:] {
+									c.AdvanceClock(t)
+								}
+
+								// "Retransmit" the rest of the flight. The shim should remember
+								// the portion that was already sent.
+								var rest []DTLSFragment
+								for _, m := range next[2:] {
 									rest = append(rest, m.Fragment(0, len(m.Data)))
 								}
 								c.WriteFragments(rest)

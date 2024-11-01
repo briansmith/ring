@@ -351,6 +351,7 @@ static DTLSIncomingMessage *dtls1_get_incoming_message(
 
 bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
                                        Span<const uint8_t> record) {
+  bool implicit_ack = false;
   CBS cbs = record;
   while (CBS_len(&cbs) > 0) {
     // Read a handshake fragment.
@@ -392,6 +393,27 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
       return false;
     }
 
+    if (SSL_in_init(ssl) && ssl->s3->version != 0 &&
+        ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+      // During the handshake, if we receive any portion of the next flight, the
+      // peer must have received our most recent flight. In DTLS 1.3, this is an
+      // implicit ACK. See RFC 9147, Section 7.1.
+      //
+      // This only applies during the handshake. After the handshake, the next
+      // message may be part of a post-handshake transaction. It also does not
+      // apply immediately after the handshake. As a client, receiving a
+      // KeyUpdate or NewSessionTicket does not imply the server has received
+      // our Finished. The server may have sent those messages in half-RTT.
+      //
+      // TODO(crbug.com/42290594): If we're offering 0-RTT, the final version
+      // is not yet known to be DTLS 1.3 and we should not do this. Track early
+      // and final versions more accurately.
+      //
+      // TODO(crbug.com/42290594): Once post-handshake messages are working,
+      // write a test for the half-RTT KeyUpdate case.
+      implicit_ack = true;
+    }
+
     if (msg_hdr.seq - ssl->d1->handshake_read_seq > SSL_MAX_HANDSHAKE_FLIGHT) {
       // Ignore fragments too far in the future.
       continue;
@@ -414,6 +436,11 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
     Span<uint8_t> dest = frag->msg().subspan(frag_off, CBS_len(&body));
     OPENSSL_memcpy(dest.data(), CBS_data(&body), CBS_len(&body));
     frag->reassembly.MarkRange(frag_off, frag_off + frag_len);
+  }
+
+  if (implicit_ack) {
+    dtls1_stop_timer(ssl);
+    dtls_clear_outgoing_messages(ssl);
   }
 
   return true;
