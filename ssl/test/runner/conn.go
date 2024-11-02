@@ -1206,7 +1206,9 @@ func (c *Conn) writeV2Record(data []byte) (n int, err error) {
 // c.out.Mutex <= L.
 func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 	c.seenHandshakePackEnd = false
-	c.lastRecordInFlight = nil
+	if c.hand.Len() == 0 {
+		c.lastRecordInFlight = nil
+	}
 	if typ == recordTypeHandshake {
 		msgType := data[0]
 		if c.config.Bugs.SendWrongMessageType != 0 && msgType == c.config.Bugs.SendWrongMessageType {

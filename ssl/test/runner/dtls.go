@@ -466,7 +466,9 @@ func (c *Conn) dtlsACKHandshake() error {
 	if c.config.Bugs.ACKFlightDTLS != nil {
 		c.config.Bugs.ACKFlightDTLS(&controller, prev, received, records)
 	} else {
-		// TODO(crbug.com/42290594): In DTLS 1.3, send an ACK by default.
+		if c.vers >= VersionTLS13 {
+			controller.WriteACK(controller.OutEpoch(), records)
+		}
 	}
 	if err := controller.Err(); err != nil {
 		return err
@@ -589,7 +591,9 @@ func (c *Conn) dtlsPackRecord(epoch *epochState, typ recordType, data []byte, mu
 }
 
 func (c *Conn) dtlsFlushPacket() error {
-	c.lastRecordInFlight = nil
+	if c.hand.Len() == 0 {
+		c.lastRecordInFlight = nil
+	}
 	if len(c.pendingPacket) == 0 {
 		return nil
 	}
@@ -791,7 +795,8 @@ func DTLSClient(conn net.Conn, config *Config) *Conn {
 //	func ACKFlight(c *DTLSController, prev, received []DTLSMessage)
 //
 // Like WriteFlight, ACKFlight may simulate packet loss with the DTLSController.
-// It returns when it is ready to proceed.
+// It returns when it is ready to proceed. If not specified, it does nothing in
+// DTLS 1.2 and ACKs the final flight in DTLS 1.3.
 //
 // This test design implicitly assumes the shim will never start a
 // post-handshake transaction before the previous one is complete. Otherwise the
@@ -809,9 +814,6 @@ func DTLSClient(conn net.Conn, config *Config) *Conn {
 // TODO(crbug.com/42290594): When we implement ACK-sending on the shim, add a
 // way for the test to specify which ACKs are expected, unless we can derive
 // that automatically?
-//
-// TODO(crbug.com/42290594): The default behavior for ACKFlight should be to
-// send an ACK.
 type DTLSController struct {
 	conn *Conn
 	err  error
