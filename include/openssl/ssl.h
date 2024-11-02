@@ -329,11 +329,19 @@ OPENSSL_EXPORT int SSL_set_wfd(SSL *ssl, int fd);
 // returns <= 0. The caller should pass the value into |SSL_get_error| to
 // determine how to proceed.
 //
-// In DTLS, the caller must drive retransmissions. Whenever |SSL_get_error|
-// signals |SSL_ERROR_WANT_READ|, use |DTLSv1_get_timeout| to determine the
-// current timeout. If it expires before the next retry, call
-// |DTLSv1_handle_timeout|. Note that DTLS handshake retransmissions use fresh
-// sequence numbers, so it is not sufficient to replay packets at the transport.
+// In DTLS, the caller must drive retransmissions and timeouts. After calling
+// this function, the caller must use |DTLSv1_get_timeout| to determine the
+// current timeout, if any. If it expires before the application next calls into
+// |ssl|, call |DTLSv1_handle_timeout|. Note that DTLS handshake retransmissions
+// use fresh sequence numbers, so it is not sufficient to replay packets at the
+// transport.
+//
+// After the DTLS handshake, some retransmissions may remain. If |ssl| wrote
+// last in the handshake, it may need to retransmit the final flight in case of
+// packet loss. Additionally, in DTLS 1.3, it may need to retransmit
+// post-handshake messages. To handle these, the caller must always be prepared
+// to receive packets and process them with |SSL_read|, even when the
+// application protocol would otherwise not read from the connection.
 //
 // TODO(davidben): Ensure 0 is only returned on transport EOF.
 // https://crbug.com/466303.
@@ -351,6 +359,12 @@ OPENSSL_EXPORT int SSL_accept(SSL *ssl);
 // any pending handshakes, including renegotiations when enabled. On success, it
 // returns the number of bytes read. Otherwise, it returns <= 0. The caller
 // should pass the value into |SSL_get_error| to determine how to proceed.
+//
+// In DTLS 1.3, the caller must also drive timeouts from retransmitting the
+// final flight of the handshake, as well as post-handshake messages. After
+// calling this function, the caller must use |DTLSv1_get_timeout| to determine
+// the current timeout, if any. If it expires before the application next calls
+// into |ssl|, call |DTLSv1_handle_timeout|.
 //
 // TODO(davidben): Ensure 0 is only returned on transport EOF.
 // https://crbug.com/466303.
@@ -484,10 +498,6 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 // SSL_ERROR_WANT_READ indicates the operation failed attempting to read from
 // the transport. The caller may retry the operation when the transport is ready
 // for reading.
-//
-// If signaled by a DTLS handshake, the caller must also call
-// |DTLSv1_get_timeout| and |DTLSv1_handle_timeout| as appropriate. See
-// |SSL_do_handshake|.
 #define SSL_ERROR_WANT_READ 2
 
 // SSL_ERROR_WANT_WRITE indicates the operation failed attempting to write to
@@ -607,21 +617,21 @@ OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
 OPENSSL_EXPORT void DTLSv1_set_initial_timeout_duration(SSL *ssl,
                                                         unsigned duration_ms);
 
-// DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
-// timeout in progress, it sets |*out| to the time remaining and returns one.
-// Otherwise, it returns zero.
+// DTLSv1_get_timeout queries the running DTLS timers. If there are any in
+// progress, it sets |*out| to the time remaining until the first timer expires
+// and returns one. Otherwise, it returns zero.
 //
 // When the timeout expires, call |DTLSv1_handle_timeout| to handle the
 // retransmit behavior.
 //
-// NOTE: This function must be queried again whenever the handshake state
-// machine changes, including when |DTLSv1_handle_timeout| is called.
+// NOTE: This function must be queried again whenever the state machine changes,
+// including when |DTLSv1_handle_timeout| is called.
 OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out);
 
-// DTLSv1_handle_timeout is called when a DTLS handshake timeout expires. If no
-// timeout had expired, it returns 0. Otherwise, it retransmits the previous
-// flight of handshake messages and returns 1. If too many timeouts had expired
-// without progress or an error occurs, it returns -1.
+// DTLSv1_handle_timeout is called when a DTLS timeout expires. If no timeout
+// had expired, it returns 0. Otherwise, it retransmits the previous flight of
+// handshake messages, or post-handshake messages, and returns 1. If too many
+// timeouts had expired without progress or an error occurs, it returns -1.
 //
 // The caller's external timer should be compatible with the one |ssl| queries
 // within some fudge factor. Otherwise, the call will be a no-op, but
