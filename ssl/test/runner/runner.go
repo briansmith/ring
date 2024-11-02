@@ -722,6 +722,14 @@ func (t *timeoutConn) Write(b []byte) (int, error) {
 	return t.Conn.Write(b)
 }
 
+func expectedReply(b []byte) []byte {
+	ret := make([]byte, len(b))
+	for i, v := range b {
+		ret[i] = v ^ 0xff
+	}
+	return ret
+}
+
 func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, transcripts *[][]byte, num int) error {
 	if !test.noSessionCache {
 		if config.ClientSessionCache == nil {
@@ -1173,10 +1181,8 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 			}
 		}
 
-		for i, v := range buf {
-			if v != testMessage[i]^0xff {
-				return fmt.Errorf("bad reply contents at byte %d; got %q and wanted %q", i, buf, testMessage)
-			}
+		if expected := expectedReply(testMessage); !bytes.Equal(buf, expected) {
+			return fmt.Errorf("bad reply contents; got %x and wanted %x", buf, expected)
 		}
 
 		if seen := tlsConn.keyUpdateSeen; seen != test.expectUnsolicitedKeyUpdate {
@@ -12075,12 +12081,17 @@ func addDTLSRetransmitTests() {
 				// version is not yet known. The second ClientHello, in response
 				// to HelloRetryRequest, however, is ACKed.
 				//
-				// TODO(crbug.com/42290594): Test ACKs for the Finished flight.
+				// The shim must additionally process ACKs and retransmit its
+				// Finished flight, possibly interleaved with application data.
+				// (The server may send half-RTT data without Finished.)
 				testCases = append(testCases, testCase{
 					protocol: dtls,
 					name:     "DTLS-Retransmit-Client" + suffix,
 					config: Config{
 						MaxVersion: vers.version,
+						// Require a client certificate, so the Finished flight
+						// is large.
+						ClientAuth: RequireAnyClientCert,
 						Bugs: ProtocolBugs{
 							SendHelloRetryRequestCookie: []byte("cookie"), // Send HelloRetryRequest
 							MaxPacketLength:             512,
@@ -12108,9 +12119,58 @@ func addDTLSRetransmitTests() {
 								c.ReadRetransmit()
 								c.WriteFlight(next)
 							},
+							ACKFlightDTLS: func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+								// The shim will process application data without an ACK.
+								msg := []byte("hello")
+								c.WriteAppData(c.OutEpoch(), msg)
+								c.ReadAppData(c.InEpoch(), expectedReply(msg))
+
+								// After a timeout, the shim will retransmit Finished.
+								c.AdvanceClock(useTimeouts[0])
+								c.ReadRetransmit()
+
+								// Application data still flows.
+								c.WriteAppData(c.OutEpoch(), msg)
+								c.ReadAppData(c.InEpoch(), expectedReply(msg))
+
+								// ACK part of the flight and check that retransmits
+								// are updated.
+								c.WriteACK(c.OutEpoch(), records[len(records)/3:2*len(records)/3])
+								c.AdvanceClock(useTimeouts[1])
+								records = c.ReadRetransmit()
+
+								// ACK the rest. Retransmits should stop.
+								c.WriteACK(c.OutEpoch(), records)
+								for _, t := range useTimeouts[2:] {
+									c.AdvanceClock(t)
+								}
+							},
 						},
 					},
-					flags: slices.Concat(flags, []string{"-mtu", "512", "-curves", strconv.Itoa(int(CurveX25519MLKEM768))}),
+					shimCertificate: &rsaChainCertificate,
+					flags:           slices.Concat(flags, []string{"-mtu", "512", "-curves", strconv.Itoa(int(CurveX25519MLKEM768))}),
+				})
+
+				// If the client never receives an ACK for the Finished flight, it
+				// is eventually fatal.
+				testCases = append(testCases, testCase{
+					protocol: dtls,
+					name:     "DTLS-Retransmit-Client-FinishedTimeout" + suffix,
+					config: Config{
+						MaxVersion: vers.version,
+						Bugs: ProtocolBugs{
+							ACKFlightDTLS: func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+								for _, t := range useTimeouts[:len(useTimeouts)-1] {
+									c.AdvanceClock(t)
+									c.ReadRetransmit()
+								}
+								c.AdvanceClock(useTimeouts[len(useTimeouts)-1])
+							},
+						},
+					},
+					flags:         flags,
+					shouldFail:    true,
+					expectedError: ":READ_TIMEOUT_EXPIRED:",
 				})
 			}
 		}

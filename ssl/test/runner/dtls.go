@@ -809,10 +809,6 @@ func DTLSClient(conn net.Conn, config *Config) *Conn {
 // makes all methods do nothing. The Err method may be used to query if it is in
 // this state, if it would otherwise cause an infinite loop.
 //
-// TODO(crbug.com/42290594): Add a way to send and expect application data, to
-// test that final flight retransmissions and post-handshake messages can
-// interleave with application data.
-//
 // TODO(crbug.com/42290594): When we implement ACK-sending on the shim, add a
 // way for the test to specify which ACKs are expected, unless we can derive
 // that automatically?
@@ -857,6 +853,11 @@ func (c *DTLSController) Err() error { return c.err }
 // OutEpoch returns the current outgoing epoch.
 func (c *DTLSController) OutEpoch() uint16 {
 	return c.conn.out.epoch.epoch
+}
+
+// InEpoch returns the current incoming epoch.
+func (c *DTLSController) InEpoch() uint16 {
+	return c.conn.in.epoch.epoch
 }
 
 // AdvanceClock advances the shim's clock by duration. It is a test failure if
@@ -1229,4 +1230,42 @@ func (c *DTLSController) doReadRetransmit() ([]DTLSRecordNumberInfo, error) {
 		records = append(records, record)
 	}
 	return records, nil
+}
+
+// WriteAppData writes an application data record to the shim. This may be used
+// to test that post-handshake retransmits may interleave with application data.
+func (c *DTLSController) WriteAppData(epoch uint16, data []byte) {
+	if c.err != nil {
+		return
+	}
+
+	_, c.err = c.conn.dtlsPackRecord(c.getOutEpochOrPanic(epoch), recordTypeApplicationData, data, false)
+}
+
+// ReadAppData indicates the shim is expected to send the specified application
+// data record. This may be used to test that post-handshake retransmits may
+// interleave with application data.
+func (c *DTLSController) ReadAppData(epoch uint16, expected []byte) {
+	if c.err != nil {
+		return
+	}
+
+	if err := c.conn.dtlsFlushPacket(); err != nil {
+		c.err = err
+		return
+	}
+
+	typ, data, err := c.conn.dtlsDoReadRecord(c.getInEpochOrPanic(epoch), recordTypeApplicationData)
+	if err != nil {
+		c.err = err
+		return
+	}
+	if typ != recordTypeApplicationData {
+		c.err = fmt.Errorf("tls: got record of type %d, but expected application data", typ)
+		return
+	}
+	if !bytes.Equal(data, expected) {
+		c.err = fmt.Errorf("tls: got app data record containing %x, but expected %x", data, expected)
+		return
+	}
 }

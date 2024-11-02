@@ -68,12 +68,17 @@
 using namespace bssl;
 
 static void dtls1_on_handshake_complete(SSL *ssl) {
-  // Stop the reply timer left by the last flight we sent.
-  dtls1_stop_timer(ssl);
-  // If the final flight had a reply, we know the peer has received it. If not,
-  // we must leave the flight around for post-handshake retransmission.
-  if (ssl->d1->flight_has_reply) {
-    dtls_clear_outgoing_messages(ssl);
+  if (ssl_protocol_version(ssl) <= TLS1_2_VERSION) {
+    // Stop the reply timer left by the last flight we sent. In DTLS 1.2, the
+    // retransmission timer ends when the handshake completes. If we sent the
+    // final flight, we may still need to retransmit it, but that is driven by
+    // messages from the peer.
+    dtls1_stop_timer(ssl);
+    // If the final flight had a reply, we know the peer has received it. If
+    // not, we must leave the flight around for post-handshake retransmission.
+    if (ssl->d1->flight_has_reply) {
+      dtls_clear_outgoing_messages(ssl);
+    }
   }
 }
 
