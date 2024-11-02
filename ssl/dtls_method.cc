@@ -166,6 +166,7 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_add_message,
     dtls1_add_change_cipher_spec,
     dtls1_flush_flight,
+    dtls1_send_ack,
     dtls1_on_handshake_complete,
     dtls1_set_read_state,
     dtls1_set_write_state,

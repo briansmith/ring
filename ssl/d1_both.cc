@@ -350,8 +350,10 @@ static DTLSIncomingMessage *dtls1_get_incoming_message(
 }
 
 bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
+                                       DTLSRecordNumber record_number,
                                        Span<const uint8_t> record) {
   bool implicit_ack = false;
+  bool skipped_fragments = false;
   CBS cbs = record;
   while (CBS_len(&cbs) > 0) {
     // Read a handshake fragment.
@@ -381,6 +383,7 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
       continue;
     }
 
+    assert(record_number.epoch() == ssl->d1->read_epoch.epoch);
     if (ssl->d1->next_read_epoch != nullptr) {
       // Any any time, we only expect new messages in one epoch. If
       // |next_read_epoch| is set, we've started a new epoch but haven't
@@ -416,6 +419,7 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
 
     if (msg_hdr.seq - ssl->d1->handshake_read_seq > SSL_MAX_HANDSHAKE_FLIGHT) {
       // Ignore fragments too far in the future.
+      skipped_fragments = true;
       continue;
     }
 
@@ -441,6 +445,10 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
   if (implicit_ack) {
     dtls1_stop_timer(ssl);
     dtls_clear_outgoing_messages(ssl);
+  }
+
+  if (!skipped_fragments) {
+    ssl->d1->records_to_ack.PushBack(record_number);
   }
 
   return true;
@@ -498,7 +506,8 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
       return ssl_open_record_error;
   }
 
-  if (!dtls1_process_handshake_fragments(ssl, out_alert, record)) {
+  if (!dtls1_process_handshake_fragments(ssl, out_alert, record_number,
+                                         record)) {
     return ssl_open_record_error;
   }
   return ssl_open_record_success;
@@ -986,11 +995,81 @@ static int send_flight(SSL *ssl) {
   return 1;
 }
 
-int dtls1_flush_flight(SSL *ssl) {
+int dtls1_flush_flight(SSL *ssl, bool post_handshake) {
   ssl->d1->outgoing_messages_complete = true;
+  if (!post_handshake) {
+    // Our new flight implicitly ACKs the previous flight, so there is no need
+    // to ACK previous records. This clears the ACK buffer slightly earlier than
+    // the specification suggests. See the discussion in
+    // https://mailarchive.ietf.org/arch/msg/tls/kjJnquJOVaWxu5hUCmNzB35eqY0/
+    //
+    // TODO(crbug.com/42290594): When we introduce the ACK timer, this should
+    // also stop the ACK timer.
+    ssl->d1->records_to_ack.Clear();
+  }
   // Start the retransmission timer for the next flight (if any).
   dtls1_start_timer(ssl);
   return send_flight(ssl);
+}
+
+int dtls1_send_ack(SSL *ssl) {
+  assert(ssl_protocol_version(ssl) >= TLS1_3_VERSION);
+  if (ssl->d1->records_to_ack.empty()) {
+    return 1;
+  }
+
+  // Ensure we don't send so many ACKs that we overflow the MTU. There is a
+  // 2-byte length prefix and each ACK is 16 bytes.
+  dtls1_update_mtu(ssl);
+  size_t max_plaintext =
+      dtls_seal_max_input_len(ssl, ssl->d1->write_epoch.epoch(), ssl->d1->mtu);
+  if (max_plaintext < 2 + 16) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_MTU_TOO_SMALL);  // No room for even one ACK.
+    return -1;
+  }
+  size_t num_acks =
+      std::min((max_plaintext - 2) / 16, ssl->d1->records_to_ack.size());
+
+  // Assemble the ACK. RFC 9147 says to sort ACKs numerically. It is unclear if
+  // other implementations do this, but go ahead and sort for now. See
+  // https://mailarchive.ietf.org/arch/msg/tls/kjJnquJOVaWxu5hUCmNzB35eqY0/.
+  // Remove this if rfc9147bis removes this requirement.
+  InplaceVector<DTLSRecordNumber, DTLS_MAX_ACK_BUFFER> sorted;
+  for (size_t i = ssl->d1->records_to_ack.size() - num_acks;
+       i < ssl->d1->records_to_ack.size(); i++) {
+    sorted.PushBack(ssl->d1->records_to_ack[i]);
+  }
+  std::sort(sorted.begin(), sorted.end());
+
+  uint8_t buf[2 + 16 * DTLS_MAX_ACK_BUFFER];
+  CBB cbb, child;
+  CBB_init_fixed(&cbb, buf, sizeof(buf));
+  BSSL_CHECK(CBB_add_u16_length_prefixed(&cbb, &child));
+  for (const auto &number : sorted) {
+    BSSL_CHECK(CBB_add_u64(&child, number.epoch()));
+    BSSL_CHECK(CBB_add_u64(&child, number.sequence()));
+  }
+  BSSL_CHECK(CBB_flush(&cbb));
+
+  // Encrypt it.
+  uint8_t record[DTLS1_3_RECORD_HEADER_WRITE_LENGTH + sizeof(buf) +
+                 1 /* record type */ + EVP_AEAD_MAX_OVERHEAD];
+  size_t record_len;
+  DTLSRecordNumber record_number;
+  if (!dtls_seal_record(ssl, &record_number, record, &record_len,
+                        sizeof(record), SSL3_RT_ACK, CBB_data(&cbb),
+                        CBB_len(&cbb), ssl->d1->write_epoch.epoch())) {
+    return -1;
+  }
+
+  int bio_ret =
+      BIO_write(ssl->wbio.get(), record, static_cast<int>(record_len));
+  if (bio_ret <= 0) {
+    ssl->s3->rwstate = SSL_ERROR_WANT_WRITE;
+    return bio_ret;
+  }
+
+  return 1;
 }
 
 int dtls1_retransmit_outgoing_messages(SSL *ssl) {

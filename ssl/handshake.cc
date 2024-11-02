@@ -598,8 +598,10 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         ERR_restore_state(hs->error.get());
         return -1;
 
+      case ssl_hs_flush_post_handshake:
       case ssl_hs_flush: {
-        int ret = ssl->method->flush_flight(ssl);
+        bool post_handshake = hs->wait == ssl_hs_flush_post_handshake;
+        int ret = ssl->method->flush_flight(ssl, post_handshake);
         if (ret <= 0) {
           return ret;
         }
@@ -677,7 +679,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         return -1;
 
       case ssl_hs_handback: {
-        int ret = ssl->method->flush_flight(ssl);
+        int ret = ssl->method->flush_flight(ssl, /*post_handshake=*/false);
         if (ret <= 0) {
           return ret;
         }
@@ -729,6 +731,15 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
       case ssl_hs_hints_ready:
         ssl->s3->rwstate = SSL_ERROR_HANDSHAKE_HINTS_READY;
         return -1;
+
+      case ssl_hs_ack:
+        if (ssl->method->send_ack != nullptr) {
+          int ret = ssl->method->send_ack(ssl);
+          if (ret <= 0) {
+            return ret;
+          }
+        }
+        break;
 
       case ssl_hs_ok:
         break;

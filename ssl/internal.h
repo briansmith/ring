@@ -1298,6 +1298,7 @@ class DTLSRecordNumber {
     return combined() == r.combined();
   }
   bool operator!=(DTLSRecordNumber r) const { return !((*this) == r); }
+  bool operator<(DTLSRecordNumber r) const { return combined() < r.combined(); }
 
   uint64_t combined() const { return combined_; }
   uint16_t epoch() const { return combined_ >> 48; }
@@ -2122,6 +2123,7 @@ enum ssl_hs_wait_t {
   ssl_hs_read_server_hello,
   ssl_hs_read_message,
   ssl_hs_flush,
+  ssl_hs_flush_post_handshake,
   ssl_hs_certificate_selection_pending,
   ssl_hs_handoff,
   ssl_hs_handback,
@@ -2135,6 +2137,7 @@ enum ssl_hs_wait_t {
   ssl_hs_read_change_cipher_spec,
   ssl_hs_certificate_verify,
   ssl_hs_hints_ready,
+  ssl_hs_ack,
 };
 
 enum ssl_grease_index_t {
@@ -2954,8 +2957,12 @@ struct SSL_PROTOCOL_METHOD {
   // flight. It returns true on success and false on error.
   bool (*add_change_cipher_spec)(SSL *ssl);
   // flush_flight flushes the pending flight to the transport. It returns one on
-  // success and <= 0 on error.
-  int (*flush_flight)(SSL *ssl);
+  // success and <= 0 on error. If |post_handshake| is true, the flight is a
+  // post-handshake flight.
+  int (*flush_flight)(SSL *ssl, bool post_handshake);
+  // send_ack, if not NULL, sends a DTLS ACK record to the peer. It returns one
+  // on success and <= 0 on error.
+  int (*send_ack)(SSL *ssl);
   // on_handshake_complete is called when the handshake is complete.
   void (*on_handshake_complete)(SSL *ssl);
   // set_read_state sets |ssl|'s read cipher state and level to |aead_ctx| and
@@ -3538,6 +3545,12 @@ struct DTLS1_STATE {
   // when empty.
   UniquePtr<MRUQueue<DTLSSentRecord, DTLS_MAX_ACK_BUFFER>> sent_records;
 
+  // records_to_ack is a queue of received records that we should ACK. This is
+  // not stored on the heap because, in the steady state, DTLS 1.3 does not
+  // necessarily empty this list. (We probably could drop records from here once
+  // they are sufficiently old.)
+  MRUQueue<DTLSRecordNumber, DTLS_MAX_ACK_BUFFER> records_to_ack;
+
   // outgoing_written is the number of outgoing messages that have been
   // written.
   uint8_t outgoing_written = 0;
@@ -3879,13 +3892,14 @@ bool tls_init_message(const SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
 bool tls_finish_message(const SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
 bool tls_add_message(SSL *ssl, Array<uint8_t> msg);
 bool tls_add_change_cipher_spec(SSL *ssl);
-int tls_flush_flight(SSL *ssl);
+int tls_flush_flight(SSL *ssl, bool post_handshake);
 
 bool dtls1_init_message(const SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
 bool dtls1_finish_message(const SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
 bool dtls1_add_message(SSL *ssl, Array<uint8_t> msg);
 bool dtls1_add_change_cipher_spec(SSL *ssl);
-int dtls1_flush_flight(SSL *ssl);
+int dtls1_flush_flight(SSL *ssl, bool post_handshake);
+int dtls1_send_ack(SSL *ssl);
 
 // ssl_add_message_cbb finishes the handshake message in |cbb| and adds it to
 // the pending flight. It returns true on success and false on error.
@@ -3927,6 +3941,7 @@ bool dtls1_new(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
 bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
+                                       DTLSRecordNumber record_number,
                                        Span<const uint8_t> record);
 bool dtls1_get_message(const SSL *ssl, SSLMessage *out);
 ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,

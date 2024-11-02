@@ -104,11 +104,16 @@ type ShimConfiguration struct {
 	// This is currently used to control tests that enable all curves but may
 	// automatically disable tests in the future.
 	AllCurves []int
+
+	// MaxACKBuffer is the maximum number of received records the shim is
+	// expected to retain when ACKing.
+	MaxACKBuffer int
 }
 
 // Setup shimConfig defaults aligning with BoringSSL.
 var shimConfig ShimConfiguration = ShimConfiguration{
 	HalfRTTTickets: 2,
+	MaxACKBuffer:   32,
 }
 
 //go:embed rsa_2048_key.pem
@@ -11791,10 +11796,13 @@ func addDTLSRetransmitTests() {
 					name:     "DTLS-Retransmit-Server-ACKEverything" + suffix,
 					config: Config{
 						MaxVersion:       vers.version,
+						Credential:       &rsaChainCertificate,
 						CurvePreferences: []CurveID{CurveX25519MLKEM768},
 						DefaultCurves:    []CurveID{}, // Force HelloRetryRequest.
 						Bugs: ProtocolBugs{
-							MaxPacketLength: 512,
+							// Send smaller packets to exercise more ACK cases.
+							MaxPacketLength:          512,
+							MaxHandshakeRecordLength: 512,
 							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
 								if len(received) > 0 {
 									c.WriteACK(c.OutEpoch(), records)
@@ -11806,10 +11814,20 @@ func addDTLSRetransmitTests() {
 								}
 								c.WriteFlight(next)
 							},
+							SequenceNumberMapping: func(in uint64) uint64 {
+								// Perturb sequence numbers to test that ACKs are sorted.
+								return in ^ 63
+							},
 						},
 					},
 					shimCertificate: &rsaChainCertificate,
-					flags:           slices.Concat(flags, []string{"-mtu", "512", "-curves", strconv.Itoa(int(CurveX25519MLKEM768))}),
+					flags: slices.Concat(flags, []string{
+						"-mtu", "512",
+						"-curves", strconv.Itoa(int(CurveX25519MLKEM768)),
+						// Request a client certificate so the client final flight is
+						// larger.
+						"-require-any-client-certificate",
+					}),
 				})
 
 				// ACK packets one by one, in reverse.
@@ -12061,7 +12079,7 @@ func addDTLSRetransmitTests() {
 									// ACK the first record the shim ever sent. It will have
 									// fallen off the queue by now, so it is expected to not
 									// impact the shim's retransmissions.
-									c.WriteACK(c.OutEpoch(), []DTLSRecordNumberInfo{{Epoch: records[0].Epoch, Sequence: records[0].Sequence}})
+									c.WriteACK(c.OutEpoch(), []DTLSRecordNumberInfo{{DTLSRecordNumber: records[0].DTLSRecordNumber}})
 									c.AdvanceClock(useTimeouts[len(useTimeouts)-2])
 									c.ReadRetransmit()
 								}
@@ -12088,11 +12106,46 @@ func addDTLSRetransmitTests() {
 									// to the shim's ServerHello. ACK the shim's first
 									// record, which would have been part of
 									// HelloRetryRequest. This should not impact retransmit.
-									c.WriteACK(c.OutEpoch(), []DTLSRecordNumberInfo{{Epoch: 0, Sequence: 0}})
+									c.WriteACK(c.OutEpoch(), []DTLSRecordNumberInfo{{DTLSRecordNumber: DTLSRecordNumber{Epoch: 0, Sequence: 0}}})
 									c.AdvanceClock(useTimeouts[0])
 									c.ReadRetransmit()
 								}
 								c.WriteFlight(next)
+							},
+						},
+					},
+					flags: flags,
+				})
+
+				// Records that contain a mix of discarded and processed fragments should
+				// not be ACKed.
+				testCases = append(testCases, testCase{
+					protocol: dtls,
+					testType: serverTest,
+					name:     "DTLS-Retransmit-Server-DoNotACKDiscardedFragments" + suffix,
+					config: Config{
+						MaxVersion:    vers.version,
+						DefaultCurves: []CurveID{}, // Force a HelloRetryRequest.
+						Bugs: ProtocolBugs{
+							PackHandshakeFragments: 4096,
+							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+								// Send the flight, but combine every fragment with a far future
+								// fragment, which the shim will discard. During the handshake,
+								// the shim has enough information to reject this entirely, but
+								// that would require coordinating with the handshake state
+								// machine. Instead, BoringSSL discards the fragment and skips
+								// ACKing the packet.
+								//
+								// runner implicitly tests that the shim ACKs the Finished flight
+								// (or, in case, that it is does not), so this exercises the final
+								// ACK.
+								//
+								// TODO(crbug.com/42290594): Once we send partial ACKs, exercise
+								// those here.
+								for _, msg := range next {
+									shouldDiscard := DTLSFragment{Epoch: msg.Epoch, Sequence: 1000, ShouldDiscard: true}
+									c.WriteFragments([]DTLSFragment{shouldDiscard, msg.Fragment(0, len(msg.Data))})
+								}
 							},
 						},
 					},

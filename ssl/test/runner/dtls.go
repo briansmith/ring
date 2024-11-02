@@ -72,6 +72,9 @@ type DTLSFragment struct {
 	Sequence    uint16
 	Offset      int
 	Data        []byte
+	// ShouldDiscard, if true, indicates the shim is expected to discard this
+	// fragment. A record with such a fragment must not be ACKed by the shim.
+	ShouldDiscard bool
 }
 
 func (f *DTLSFragment) Bytes() []byte {
@@ -96,13 +99,17 @@ func comparePair[T1 cmp.Ordered, T2 cmp.Ordered](a1 T1, a2 T2, b1 T1, b2 T2) int
 	return cmp.Compare(a2, b2)
 }
 
-// A DTLSRecordNumberInfo contains information about a record received from the
-// shim, which we may attempt to ACK.
-type DTLSRecordNumberInfo struct {
+type DTLSRecordNumber struct {
 	// Store the Epoch as a uint64, so that tests can send ACKs for epochs that
 	// the shim would never use.
 	Epoch    uint64
 	Sequence uint64
+}
+
+// A DTLSRecordNumberInfo contains information about a record received from the
+// shim, which we may attempt to ACK.
+type DTLSRecordNumberInfo struct {
+	DTLSRecordNumber
 	// The first byte covered by this record, inclusive. We only need to store
 	// one range because we require that the shim arrange fragments in order.
 	// Any gaps will have been previously-ACKed data, so there is no harm in
@@ -394,17 +401,17 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 	}
 
 	if typ == recordTypeApplicationData && len(data) > 1 && c.config.Bugs.SplitAndPackAppData {
-		_, err = c.dtlsPackRecord(epoch, typ, data[:len(data)/2], false)
+		_, _, err = c.dtlsPackRecord(epoch, typ, data[:len(data)/2], false)
 		if err != nil {
 			return
 		}
-		_, err = c.dtlsPackRecord(epoch, typ, data[len(data)/2:], true)
+		_, _, err = c.dtlsPackRecord(epoch, typ, data[len(data)/2:], true)
 		if err != nil {
 			return
 		}
 		n = len(data)
 	} else {
-		n, err = c.dtlsPackRecord(epoch, typ, data, false)
+		n, _, err = c.dtlsPackRecord(epoch, typ, data, false)
 		if err != nil {
 			return
 		}
@@ -514,7 +521,7 @@ func (c *Conn) appendDTLS13RecordHeader(b, seq []byte, recordLen int) []byte {
 // dtlsPackRecord packs a single record to the pending packet, flushing it
 // if necessary. The caller should call dtlsFlushPacket to flush the current
 // pending packet afterwards.
-func (c *Conn) dtlsPackRecord(epoch *epochState, typ recordType, data []byte, mustPack bool) (n int, err error) {
+func (c *Conn) dtlsPackRecord(epoch *epochState, typ recordType, data []byte, mustPack bool) (n int, num DTLSRecordNumber, err error) {
 	maxLen := c.config.Bugs.MaxHandshakeRecordLength
 	if maxLen <= 0 {
 		maxLen = 1024
@@ -556,6 +563,7 @@ func (c *Conn) dtlsPackRecord(epoch *epochState, typ recordType, data []byte, mu
 	if err != nil {
 		return
 	}
+	num = c.out.lastRecordNumber(epoch, true /* isOut */)
 
 	// Encrypt the sequence number.
 	if useDTLS13RecordHeader && !c.config.Bugs.NullAllCiphers {
@@ -627,16 +635,8 @@ func readDTLSFragment(s *cryptobyte.String) (DTLSFragment, error) {
 	return f, nil
 }
 
-func makeDTLSRecordNumberInfo(epoch *epochState, data []byte) (DTLSRecordNumberInfo, error) {
-	info := DTLSRecordNumberInfo{
-		Epoch: uint64(epoch.epoch),
-		// Remove the embedded epoch number. The sequence number has also since
-		// been incremented, so adjust it back down.
-		//
-		// TODO(crbug.com/376641666): The record abstractions should reliably
-		// return the sequence number.
-		Sequence: (binary.BigEndian.Uint64(epoch.seq[:]) & (1<<48 - 1)) - 1,
-	}
+func (c *Conn) makeDTLSRecordNumberInfo(epoch *epochState, data []byte) (DTLSRecordNumberInfo, error) {
+	info := DTLSRecordNumberInfo{DTLSRecordNumber: c.in.lastRecordNumber(epoch, false /* isOut */)}
 
 	s := cryptobyte.String(data)
 	first := true
@@ -674,7 +674,7 @@ func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 			if err := c.readRecord(recordTypeHandshake); err != nil {
 				return nil, err
 			}
-			record, err := makeDTLSRecordNumberInfo(&c.in.epoch, c.hand.Bytes())
+			record, err := c.makeDTLSRecordNumberInfo(&c.in.epoch, c.hand.Bytes())
 			if err != nil {
 				return nil, err
 			}
@@ -723,6 +723,10 @@ func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 				return nil, fmt.Errorf("dtls: handshake fragment was truncated, but record could have fit %d more bytes", c.lastRecordInFlight.bytesAvailable)
 			}
 		}
+
+		// Sending part of the next flight implicitly ACKs the previous flight.
+		// Having triggered this, the shim is expected to clear its ACK buffer.
+		c.expectedACK = nil
 	}
 	c.recvHandshakeSeq++
 	ret := c.handMsg
@@ -734,6 +738,52 @@ func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 		Data:     ret[4:],
 	})
 	return ret, nil
+}
+
+func (c *Conn) checkACK(data []byte) error {
+	s := cryptobyte.String(data)
+	var child cryptobyte.String
+	if !s.ReadUint16LengthPrefixed(&child) || !s.Empty() {
+		return fmt.Errorf("tls: could not parse ACK record")
+	}
+
+	var acks []DTLSRecordNumber
+	for !child.Empty() {
+		var num DTLSRecordNumber
+		if !child.ReadUint64(&num.Epoch) || !child.ReadUint64(&num.Sequence) {
+			return fmt.Errorf("tls: could not parse ACK record")
+		}
+		acks = append(acks, num)
+	}
+
+	// Determine the expected ACKs, if any.
+	expected := c.expectedACK
+	if len(expected) > shimConfig.MaxACKBuffer {
+		expected = expected[len(expected)-shimConfig.MaxACKBuffer:]
+	}
+
+	// If we've configured a tighter MTU, the shim might have needed to truncate
+	// the list. Tolerate this as long as the shim sent the more recent records
+	// and still sent a plausible minimum number of ACKs.
+	if c.maxPacketLen != 0 && len(acks) > 10 && len(acks) < len(expected) {
+		expected = expected[len(expected)-len(acks):]
+	}
+
+	// The shim is expected to sort the record numbers in the ACK.
+	expected = slices.Clone(expected)
+	slices.SortFunc(expected, func(a, b DTLSRecordNumber) int {
+		cmp1 := cmp.Compare(a.Epoch, b.Epoch)
+		if cmp1 != 0 {
+			return cmp1
+		}
+		return cmp.Compare(a.Sequence, b.Sequence)
+	})
+
+	if !slices.Equal(acks, expected) {
+		return fmt.Errorf("tls: got ACKs %+v, but expected %+v", acks, expected)
+	}
+
+	return nil
 }
 
 // DTLSServer returns a new DTLS server side connection
@@ -998,18 +1048,29 @@ func (c *DTLSController) WriteFragments(fragments []DTLSFragment) {
 	}
 
 	maxRecordLen := config.Bugs.PackHandshakeFragments
+	packRecord := func(epoch *epochState, typ recordType, data []byte, anyDiscard bool) error {
+		_, num, err := c.conn.dtlsPackRecord(epoch, typ, data, false)
+		if err != nil {
+			return err
+		}
+		if !anyDiscard && typ == recordTypeHandshake {
+			c.conn.expectedACK = append(c.conn.expectedACK, num)
+		}
+		return nil
+	}
 
 	// Pack handshake fragments into records.
 	var record []byte
 	var epoch *epochState
+	var anyDiscard bool
 	flush := func() error {
 		if len(record) > 0 {
-			_, err := c.conn.dtlsPackRecord(epoch, recordTypeHandshake, record, false)
-			if err != nil {
+			if err := packRecord(epoch, recordTypeHandshake, record, anyDiscard); err != nil {
 				return err
 			}
 		}
 		record = nil
+		anyDiscard = false
 		return nil
 	}
 
@@ -1028,26 +1089,30 @@ func (c *DTLSController) WriteFragments(fragments []DTLSFragment) {
 		}
 
 		if f.IsChangeCipherSpec {
-			_, c.err = c.conn.dtlsPackRecord(epoch, recordTypeChangeCipherSpec, f.Bytes(), false)
+			c.err = packRecord(epoch, recordTypeChangeCipherSpec, f.Bytes(), false)
 			if c.err != nil {
 				return
 			}
 			continue
 		}
 
+		if f.ShouldDiscard {
+			anyDiscard = true
+		}
+
 		fBytes := f.Bytes()
 		if n := config.Bugs.SplitFragments; n > 0 {
 			if len(fBytes) > n {
-				_, c.err = c.conn.dtlsPackRecord(epoch, recordTypeHandshake, fBytes[:n], false)
+				c.err = packRecord(epoch, recordTypeHandshake, fBytes[:n], f.ShouldDiscard)
 				if c.err != nil {
 					return
 				}
-				_, c.err = c.conn.dtlsPackRecord(epoch, recordTypeHandshake, fBytes[n:], false)
+				c.err = packRecord(epoch, recordTypeHandshake, fBytes[n:], f.ShouldDiscard)
 				if c.err != nil {
 					return
 				}
 			} else {
-				_, c.err = c.conn.dtlsPackRecord(epoch, recordTypeHandshake, fBytes, false)
+				c.err = packRecord(epoch, recordTypeHandshake, fBytes, f.ShouldDiscard)
 				if c.err != nil {
 					return
 				}
@@ -1078,13 +1143,13 @@ func (c *DTLSController) WriteACK(epoch uint16, records []DTLSRecordNumberInfo) 
 
 	// Send the ACK.
 	ack := cryptobyte.NewBuilder(make([]byte, 0, 2+8*len(records)))
-	ack.AddUint16LengthPrefixed(func(child *cryptobyte.Builder) {
+	ack.AddUint16LengthPrefixed(func(recordNumbers *cryptobyte.Builder) {
 		for _, r := range records {
-			child.AddUint64(r.Epoch)
-			child.AddUint64(r.Sequence)
+			recordNumbers.AddUint64(r.Epoch)
+			recordNumbers.AddUint64(r.Sequence)
 		}
 	})
-	_, c.err = c.conn.dtlsPackRecord(c.getOutEpochOrPanic(epoch), recordTypeACK, ack.BytesOrPanic(), false)
+	_, _, c.err = c.conn.dtlsPackRecord(c.getOutEpochOrPanic(epoch), recordTypeACK, ack.BytesOrPanic(), false)
 	if c.err != nil {
 		return
 	}
@@ -1223,13 +1288,39 @@ func (c *DTLSController) doReadRetransmit() ([]DTLSRecordNumberInfo, error) {
 			}
 		}
 
-		record, err := makeDTLSRecordNumberInfo(epoch, data)
+		record, err := c.conn.makeDTLSRecordNumberInfo(epoch, data)
 		if err != nil {
 			return nil, err
 		}
 		records = append(records, record)
 	}
 	return records, nil
+}
+
+// ReadACK indicates the shim is expected to send an ACK at the specified epoch.
+// The contents of the ACK are checked against the connection's internal
+// simulation of the shim's expected behavior.
+func (c *DTLSController) ReadACK(epoch uint16) {
+	if c.err != nil {
+		return
+	}
+
+	c.err = c.conn.dtlsFlushPacket()
+	if c.err != nil {
+		return
+	}
+
+	typ, data, err := c.conn.dtlsDoReadRecord(c.getInEpochOrPanic(epoch), recordTypeACK)
+	if err != nil {
+		c.err = err
+		return
+	}
+	if typ != recordTypeACK {
+		c.err = fmt.Errorf("tls: got record of type %d, but expected ACK", typ)
+		return
+	}
+
+	c.err = c.conn.checkACK(data)
 }
 
 // WriteAppData writes an application data record to the shim. This may be used
@@ -1239,7 +1330,7 @@ func (c *DTLSController) WriteAppData(epoch uint16, data []byte) {
 		return
 	}
 
-	_, c.err = c.conn.dtlsPackRecord(c.getOutEpochOrPanic(epoch), recordTypeApplicationData, data, false)
+	_, _, c.err = c.conn.dtlsPackRecord(c.getOutEpochOrPanic(epoch), recordTypeApplicationData, data, false)
 }
 
 // ReadAppData indicates the shim is expected to send the specified application

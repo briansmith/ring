@@ -125,6 +125,7 @@ type Conn struct {
 	receivedFlight        []DTLSMessage
 	receivedFlightRecords []DTLSRecordNumberInfo
 	nextFlight            []DTLSMessage
+	expectedACK           []DTLSRecordNumber
 
 	keyUpdateSeen      bool
 	keyUpdateRequested bool
@@ -373,6 +374,29 @@ func (hc *halfConn) incSeq(epoch *epochState) {
 	if increment != 0 {
 		panic("TLS: sequence number wraparound")
 	}
+}
+
+// lastRecordNumber returns the most recent record number decrypted or encrypted
+// on a halfConn.
+//
+// TODO(crbug.com/376641666): This function is a bit hacky. It needs to rewind
+// the state back to what the last call actually used. Fix the TLS/DTLS
+// abstractions so we can return this value out directly.
+func (hc *halfConn) lastRecordNumber(epoch *epochState, isOut bool) DTLSRecordNumber {
+	seq := binary.BigEndian.Uint64(epoch.seq[:])
+	// We maintain the next record number, so undo the increment.
+	if seq&(1<<48-1) == 0 {
+		panic("tls: epoch has never been used")
+	}
+	seq--
+	if hc.isDTLS {
+		if isOut && hc.config.Bugs.SequenceNumberMapping != nil {
+			seq = hc.config.Bugs.SequenceNumberMapping(seq)
+		}
+		// Remove the embedded epoch number.
+		seq &= 1<<48 - 1
+	}
+	return DTLSRecordNumber{Epoch: uint64(epoch.epoch), Sequence: seq}
 }
 
 func (hc *halfConn) sequenceNumberForOutput(epoch *epochState) []byte {
@@ -1054,7 +1078,7 @@ func (c *Conn) readRecord(want recordType) error {
 			c.sendAlert(alertInternalError)
 			return c.in.setErrorLocked(errors.New("tls: ChangeCipherSpec requested after handshake complete"))
 		}
-	case recordTypeApplicationData, recordTypeAlert, recordTypeHandshake:
+	case recordTypeApplicationData, recordTypeAlert, recordTypeHandshake, recordTypeACK:
 		break
 	}
 
@@ -1149,6 +1173,17 @@ Again:
 		c.hand.Write(data)
 		if pack := c.config.Bugs.ExpectPackedEncryptedHandshake; pack > 0 && len(data) < pack && c.out.epoch.cipher != nil {
 			c.seenHandshakePackEnd = true
+		}
+
+	case recordTypeACK:
+		if typ != want || !c.isDTLS {
+			c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
+			break
+		}
+
+		if err := c.checkACK(data); err != nil {
+			c.in.setErrorLocked(err)
+			break
 		}
 	}
 

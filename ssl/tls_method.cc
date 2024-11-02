@@ -160,6 +160,7 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     tls_add_message,
     tls_add_change_cipher_spec,
     tls_flush_flight,
+    /*send_ack=*/nullptr,
     tls_on_handshake_complete,
     tls_set_read_state,
     tls_set_write_state,

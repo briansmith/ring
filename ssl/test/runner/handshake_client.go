@@ -1515,6 +1515,12 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		}
 	}
 
+	if c.isDTLS && len(c.expectedACK) != 0 {
+		if err := c.readRecord(recordTypeACK); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
