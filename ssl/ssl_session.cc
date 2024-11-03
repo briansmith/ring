@@ -276,8 +276,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
 }
 
 void ssl_session_rebase_time(SSL *ssl, SSL_SESSION *session) {
-  struct OPENSSL_timeval now;
-  ssl_get_current_time(ssl, &now);
+  OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
 
   // To avoid overflows and underflows, if we've gone back in time, update the
   // time, but mark the session expired.
@@ -354,8 +353,7 @@ bool ssl_get_new_session(SSL_HANDSHAKE *hs) {
   session->is_quic = ssl->quic_method != nullptr;
 
   // Fill in the time from the |SSL_CTX|'s clock.
-  struct OPENSSL_timeval now;
-  ssl_get_current_time(ssl, &now);
+  OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
   session->time = now.tv_sec;
 
   uint16_t version = ssl_protocol_version(ssl);
@@ -386,8 +384,7 @@ bool ssl_get_new_session(SSL_HANDSHAKE *hs) {
 }
 
 bool ssl_ctx_rotate_ticket_encryption_key(SSL_CTX *ctx) {
-  OPENSSL_timeval now;
-  ssl_ctx_get_current_time(ctx, &now);
+  OPENSSL_timeval now = ssl_ctx_get_current_time(ctx);
   {
     // Avoid acquiring a write lock in the common case (i.e. a non-default key
     // is used or the default keys have not expired yet).
@@ -593,8 +590,7 @@ bool ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session) {
     return false;
   }
 
-  struct OPENSSL_timeval now;
-  ssl_get_current_time(ssl, &now);
+  OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
 
   // Reject tickets from the future to avoid underflow.
   if (now.tv_sec < session->time) {
@@ -912,8 +908,7 @@ void ssl_update_cache(SSL *ssl) {
       // |SSL_CTX_flush_sessions| takes the lock we just released. We could
       // merge the critical sections, but we'd then call user code under a
       // lock, or compute |now| earlier, even when not flushing.
-      OPENSSL_timeval now;
-      ssl_get_current_time(ssl, &now);
+      OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
       SSL_CTX_flush_sessions(ctx, now.tv_sec);
     }
   }

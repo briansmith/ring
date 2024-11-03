@@ -385,8 +385,7 @@ static enum ssl_ticket_aead_result_t select_session(
   client_ticket_age -= session->ticket_age_add;
   client_ticket_age /= 1000;
 
-  struct OPENSSL_timeval now;
-  ssl_get_current_time(ssl, &now);
+  OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
 
   // Compute the server ticket age in seconds.
   assert(now.tv_sec >= session->time);

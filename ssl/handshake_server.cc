@@ -1044,8 +1044,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     OPENSSL_memcpy(ssl->s3->server_random, hints->server_random_tls12.data(),
                    SSL3_RANDOM_SIZE);
   } else {
-    struct OPENSSL_timeval now;
-    ssl_get_current_time(ssl, &now);
+    OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
     CRYPTO_store_u32_be(ssl->s3->server_random,
                         static_cast<uint32_t>(now.tv_sec));
     if (!RAND_bytes(ssl->s3->server_random + 4, SSL3_RANDOM_SIZE - 4)) {

@@ -4054,9 +4054,7 @@ bool ssl_can_write(const SSL *ssl);
 // ssl_can_read returns wheter |ssl| is allowed to read.
 bool ssl_can_read(const SSL *ssl);
 
-void ssl_get_current_time(const SSL *ssl, struct OPENSSL_timeval *out_clock);
-void ssl_ctx_get_current_time(const SSL_CTX *ctx,
-                              struct OPENSSL_timeval *out_clock);
+OPENSSL_timeval ssl_ctx_get_current_time(const SSL_CTX *ctx);
 
 // ssl_reset_error_state resets state for |SSL_get_error|.
 void ssl_reset_error_state(SSL *ssl);

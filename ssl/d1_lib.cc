@@ -128,7 +128,7 @@ void dtls1_start_timer(SSL *ssl) {
   }
 
   // Set timeout to current time
-  ssl_get_current_time(ssl, &ssl->d1->next_timeout);
+  ssl->d1->next_timeout = ssl_ctx_get_current_time(ssl->ctx.get());
 
   // Add duration to current time
   ssl->d1->next_timeout.tv_sec += ssl->d1->timeout_duration_ms / 1000;
@@ -165,7 +165,7 @@ static void dtls1_double_timeout(SSL *ssl) {
 
 void dtls1_stop_timer(SSL *ssl) {
   ssl->d1->num_timeouts = 0;
-  OPENSSL_memset(&ssl->d1->next_timeout, 0, sizeof(ssl->d1->next_timeout));
+  ssl->d1->next_timeout = {0, 0};
   ssl->d1->timeout_duration_ms = ssl->initial_timeout_duration_ms;
 }
 
@@ -209,8 +209,7 @@ int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
     return 0;
   }
 
-  struct OPENSSL_timeval timenow;
-  ssl_get_current_time(ssl, &timenow);
+  OPENSSL_timeval timenow = ssl_ctx_get_current_time(ssl->ctx.get());
 
   // If timer already expired, set remaining time to 0.
   if (ssl->d1->next_timeout.tv_sec < timenow.tv_sec ||
@@ -221,8 +220,7 @@ int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
   }
 
   // Calculate time left until timer expires.
-  struct OPENSSL_timeval ret;
-  OPENSSL_memcpy(&ret, &ssl->d1->next_timeout, sizeof(ret));
+  OPENSSL_timeval ret = ssl->d1->next_timeout;
   ret.tv_sec -= timenow.tv_sec;
   if (ret.tv_usec >= timenow.tv_usec) {
     ret.tv_usec -= timenow.tv_usec;
@@ -234,7 +232,7 @@ int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
   // If remaining time is less than 15 ms, set it to 0 to prevent issues
   // because of small divergences with socket timeouts.
   if (ret.tv_sec == 0 && ret.tv_usec < 15000) {
-    OPENSSL_memset(&ret, 0, sizeof(ret));
+    ret = {0, 0};
   }
 
   // Clamp the result in case of overflow.
