@@ -613,7 +613,7 @@ OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
 // This duration overrides the default of 400 milliseconds, which is
 // recommendation of RFC 9147 for real-time protocols.
 OPENSSL_EXPORT void DTLSv1_set_initial_timeout_duration(SSL *ssl,
-                                                        unsigned duration_ms);
+                                                        uint32_t duration_ms);
 
 // DTLSv1_get_timeout queries the running DTLS timers. If there are any in
 // progress, it sets |*out| to the time remaining until the first timer expires
