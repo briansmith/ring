@@ -610,10 +610,8 @@ OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
 // DTLSv1_set_initial_timeout_duration sets the initial duration for a DTLS
 // handshake timeout.
 //
-// This duration overrides the default of 1 second, which is the strong
-// recommendation of RFC 6347 (see section 4.2.4.1). However, there may exist
-// situations where a shorter timeout would be beneficial, such as for
-// time-sensitive applications.
+// This duration overrides the default of 400 milliseconds, which is
+// recommendation of RFC 9147 for real-time protocols.
 OPENSSL_EXPORT void DTLSv1_set_initial_timeout_duration(SSL *ssl,
                                                         unsigned duration_ms);
 

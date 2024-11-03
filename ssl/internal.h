@@ -4430,11 +4430,9 @@ struct ssl_st {
   // session info
 
   // initial_timeout_duration_ms is the default DTLS timeout duration in
-  // milliseconds. It's used to initialize the timer any time it's restarted.
-  //
-  // RFC 6347 states that implementations SHOULD use an initial timer value of 1
-  // second.
-  unsigned initial_timeout_duration_ms = 1000;
+  // milliseconds. It's used to initialize the timer any time it's restarted. We
+  // default to RFC 9147's recommendation for real-time applications, 400ms.
+  unsigned initial_timeout_duration_ms = 400;
 
   // session is the configured session to be offered by the client. This session
   // is immutable.

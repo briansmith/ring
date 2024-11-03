@@ -122,7 +122,7 @@ void dtls1_free(SSL *ssl) {
 }
 
 void dtls1_start_timer(SSL *ssl) {
-  // If timer is not set, initialize duration (by default, 1 second)
+  // If timer is not set, initialize duration.
   if (ssl->d1->next_timeout.tv_sec == 0 && ssl->d1->next_timeout.tv_usec == 0) {
     ssl->d1->timeout_duration_ms = ssl->initial_timeout_duration_ms;
   }

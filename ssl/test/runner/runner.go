@@ -11485,17 +11485,17 @@ func addSignatureAlgorithmTests() {
 	})
 }
 
-// timeouts is the retransmit schedule for BoringSSL. It doubles and
+// timeouts is the default retransmit schedule for BoringSSL. It doubles and
 // caps at 60 seconds. On the 13th timeout, it gives up.
 var timeouts = []time.Duration{
-	1 * time.Second,
-	2 * time.Second,
-	4 * time.Second,
-	8 * time.Second,
-	16 * time.Second,
-	32 * time.Second,
-	60 * time.Second,
-	60 * time.Second,
+	400 * time.Millisecond,
+	800 * time.Millisecond,
+	1600 * time.Millisecond,
+	3200 * time.Millisecond,
+	6400 * time.Millisecond,
+	12800 * time.Millisecond,
+	25600 * time.Millisecond,
+	51200 * time.Millisecond,
 	60 * time.Second,
 	60 * time.Second,
 	60 * time.Second,
