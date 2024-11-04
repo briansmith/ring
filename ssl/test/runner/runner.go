@@ -11686,15 +11686,24 @@ func addDTLSRetransmitTests() {
 						DefaultCurves: []CurveID{}, // Force HelloRetryRequest.
 						Bugs: ProtocolBugs{
 							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+								if len(received) == 0 && next[0].Type == typeClientHello {
+									// Send the initial ClientHello as-is.
+									c.WriteFlight(next)
+									return
+								}
+
 								// Send a portion of the first message. The rest was lost.
 								msg := next[0]
 								split := len(msg.Data) / 2
 								c.WriteFragments([]DTLSFragment{msg.Fragment(0, split)})
-								// This is enough to ACK the previous flight. The shim
-								// should stop retransmitting and even stop the timer.
-								//
-								// TODO(crbug.com/42290594): The shim should send a partial
-								// ACK to request that we retransmit.
+								// After waiting the current timeout, the shim should ACK
+								// the partial flight.
+								c.ExpectNextTimeout(useTimeouts[0] / 4)
+								c.AdvanceClock(useTimeouts[0] / 4)
+								c.ReadACK(c.InEpoch())
+								// The partial flight is enough to ACK the previous flight.
+								// The shim should stop retransmitting and even stop the
+								// retransmit timer.
 								c.ExpectNoNextTimeout()
 								for _, t := range useTimeouts {
 									c.AdvanceClock(t)
@@ -11723,7 +11732,9 @@ func addDTLSRetransmitTests() {
 							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
 								msg := next[0]
 								if msg.Type != typeServerHello {
-									// Leave the NewSessionTicket flight alone.
+									// TODO(crbug.com/42290594): Do not manipulate NewSessionTicket
+									// flights for now. The shim actually does now ACK those on a
+									// timer, but we'll need to test those more explicitly.
 									c.WriteFlight(next)
 									return
 								}
@@ -11749,15 +11760,16 @@ func addDTLSRetransmitTests() {
 								c.AdvanceClock(useTimeouts[1])
 								c.ReadRetransmit()
 
-								// Send EncryptedExtensions. The shim now knows the version
-								// and implicitly ACKs everything.
+								// Send EncryptedExtensions. The shim now knows the version.
 								c.WriteFragments([]DTLSFragment{next[1].Fragment(0, len(next[1].Data))})
+
+								// The shim should ACK the partial flight. The shim hasn't
+								// gotten to epoch 3 yet, so the ACK will come in epoch 2.
+								c.AdvanceClock(useTimeouts[2] / 4)
+								c.ReadACK(uint16(encryptionHandshake))
 
 								// This is enough to ACK the previous flight. The shim
 								// should stop retransmitting and even stop the timer.
-								//
-								// TODO(crbug.com/42290594): The shim should send a partial
-								// ACK to request that we retransmit.
 								c.ExpectNoNextTimeout()
 								for _, t := range useTimeouts[2:] {
 									c.AdvanceClock(t)
@@ -12317,6 +12329,97 @@ func addDTLSRetransmitTests() {
 					flags:         flags,
 					shouldFail:    true,
 					expectedError: ":READ_TIMEOUT_EXPIRED:",
+				})
+
+				// If generating the reply to a flight takes time (generating a
+				// CertificateVerify for a client certificate), the shim should
+				// send an ACK.
+				testCases = append(testCases, testCase{
+					protocol: dtls,
+					name:     "DTLS-Retransmit-SlowReplyGeneration" + suffix,
+					config: Config{
+						MaxVersion: vers.version,
+						ClientAuth: RequireAnyClientCert,
+						Bugs: ProtocolBugs{
+							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+								c.WriteFlight(next)
+								if next[0].Type == typeServerHello {
+									// The shim will reply with Certificate..Finished, but
+									// take time to do so. In that time, it should schedule
+									// an ACK so the runner knows not to retransmit.
+									c.ReadACK(c.InEpoch())
+								}
+							},
+						},
+					},
+					shimCertificate: &rsaCertificate,
+					// Simulate it taking time to generate the reply.
+					flags: slices.Concat(flags, []string{"-private-key-delay-ms", strconv.Itoa(int(useTimeouts[0].Milliseconds()))}),
+				})
+
+				// BoringSSL's ACK policy may schedule both retransmit and ACK
+				// timers in parallel.
+				//
+				// TODO(crbug.com/42290594): This is only possible during the
+				// handshake because we're willing to ACK old flights without
+				// trying to distinguish these cases. However, post-handshake
+				// messages will exercise this, so that may be a better version
+				// of this test. In-handshake, it's kind of a waste to ACK this,
+				// so maybe we should stop.
+				testCases = append(testCases, testCase{
+					protocol: dtls,
+					name:     "DTLS-Retransmit-BothTimers" + suffix,
+					config: Config{
+						MaxVersion: vers.version,
+						Bugs: ProtocolBugs{
+							// Arrange for there to be two server flights.
+							SendHelloRetryRequestCookie: []byte("cookie"),
+							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+								if next[0].Sequence == 0 || next[0].Type != typeServerHello {
+									// Send the first flight (HelloRetryRequest) as-is,
+									// as well as any post-handshake flights.
+									c.WriteFlight(next)
+									return
+								}
+
+								// The shim just send the ClientHello2 and is
+								// waiting for ServerHello..Finished. If it hears
+								// nothing, it will retransmit ClientHello2 on the
+								// assumption the packet was lost.
+								c.ExpectNextTimeout(useTimeouts[0])
+
+								// Retransmit a portion of HelloRetryRequest.
+								c.WriteFragments([]DTLSFragment{prev[0].Fragment(0, 1)})
+
+								// The shim does not actually need to ACK this,
+								// but BoringSSL does. Now both timers are active.
+								// Fire the first...
+								c.ExpectNextTimeout(useTimeouts[0] / 4)
+								c.AdvanceClock(useTimeouts[0] / 4)
+								c.ReadACK(0)
+
+								// ...followed by the second.
+								c.ExpectNextTimeout(3 * useTimeouts[0] / 4)
+								c.AdvanceClock(3 * useTimeouts[0] / 4)
+								c.ReadRetransmit()
+
+								// The shim is now set for the next retransmit.
+								c.ExpectNextTimeout(useTimeouts[1])
+
+								// Start the ACK timer again.
+								c.WriteFragments([]DTLSFragment{prev[0].Fragment(0, 1)})
+								c.ExpectNextTimeout(useTimeouts[1] / 4)
+
+								// Expire both timers at once.
+								c.AdvanceClock(useTimeouts[1])
+								c.ReadACK(0)
+								c.ReadRetransmit()
+
+								c.WriteFlight(next)
+							},
+						},
+					},
+					flags: flags,
 				})
 			}
 		}

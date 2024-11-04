@@ -514,6 +514,7 @@ const Flag<TestConfig> *FindFlag(const char *name) {
                        &TestConfig::signed_cert_timestamps),
             Base64Flag("-signed-cert-timestamps",
                        &CredentialConfig::signed_cert_timestamps)),
+        IntFlag("-private-key-delay-ms", &TestConfig::private_key_delay_ms),
     };
     std::sort(ret.begin(), ret.end(), FlagNameComparator{});
     return ret;

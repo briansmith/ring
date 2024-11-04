@@ -96,6 +96,29 @@ bool RetryAsync(SSL *ssl, int ret) {
       test_state->early_callback_ready = true;
       return true;
     case SSL_ERROR_WANT_PRIVATE_KEY_OPERATION:
+      if (config->private_key_delay_ms != 0 &&
+          test_state->private_key_retries == 0) {
+        // The first time around, simulate the private key operation taking a
+        // long time to run.
+        if (test_state->packeted_bio == nullptr) {
+          fprintf(stderr, "-private-key-delay-ms requires DTLS.\n");
+          return false;
+        }
+        timeval *clock = PacketedBioGetClock(test_state->packeted_bio);
+        clock->tv_sec += config->private_key_delay_ms / 1000;
+        clock->tv_usec += config->private_key_delay_ms * 1000;
+        if (clock->tv_usec >= 1000000) {
+          clock->tv_usec -= 1000000;
+          clock->tv_sec++;
+        }
+        AsyncBioEnforceWriteQuota(test_state->async_bio, false);
+        int timeout_ret = DTLSv1_handle_timeout(ssl);
+        AsyncBioEnforceWriteQuota(test_state->async_bio, true);
+        if (timeout_ret < 0) {
+          fprintf(stderr, "Error retransmitting.\n");
+          return false;
+        }
+      }
       test_state->private_key_retries++;
       return true;
     case SSL_ERROR_WANT_CERTIFICATE_VERIFY:

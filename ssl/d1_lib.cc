@@ -247,6 +247,8 @@ int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
   OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
   uint64_t remaining_usec =
       ssl->d1->retransmit_timer.MicrosecondsRemaining(now);
+  remaining_usec =
+      std::min(remaining_usec, ssl->d1->ack_timer.MicrosecondsRemaining(now));
   if (remaining_usec == DTLSTimer::kNever) {
     return 0;  // No timeout is set.
   }
@@ -274,17 +276,34 @@ int DTLSv1_handle_timeout(SSL *ssl) {
     return -1;
   }
 
-  // If no timer is expired, don't do anything.
-  OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
-  if (!ssl->d1->retransmit_timer.IsExpired(now)) {
+  if (!ssl->d1->ack_timer.IsSet() && !ssl->d1->retransmit_timer.IsSet()) {
+    // No timers are running. Don't bother querying the clock.
     return 0;
   }
 
-  if (!dtls1_check_timeout_num(ssl)) {
-    return -1;
+  OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
+  bool any_timer_expired = false;
+  if (ssl->d1->ack_timer.IsExpired(now)) {
+    any_timer_expired = true;
+    int ret = dtls1_send_ack(ssl);
+    if (ret <= 0) {
+      return ret;
+    }
   }
 
-  dtls1_double_timeout(ssl);
-  dtls1_start_timer(ssl);
-  return dtls1_retransmit_outgoing_messages(ssl);
+  if (ssl->d1->retransmit_timer.IsExpired(now)) {
+    any_timer_expired = true;
+    if (!dtls1_check_timeout_num(ssl)) {
+      return -1;
+    }
+
+    dtls1_double_timeout(ssl);
+    dtls1_start_timer(ssl);
+    int ret = dtls1_retransmit_outgoing_messages(ssl);
+    if (ret <= 0) {
+      return ret;
+    }
+  }
+
+  return any_timer_expired ? 1 : 0;
 }

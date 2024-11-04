@@ -47,5 +47,8 @@ bssl::UniquePtr<BIO> PacketedBioCreate(
 // pending timeout. Otherwise, it returns false.
 bool PacketedBioAdvanceClock(BIO *bio);
 
+// PacketedBioAdvanceClock return's |bio|'s clock.
+timeval *PacketedBioGetClock(BIO *bio);
+
 
 #endif  // HEADER_PACKETED_BIO

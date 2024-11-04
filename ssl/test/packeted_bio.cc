@@ -328,3 +328,11 @@ bool PacketedBioAdvanceClock(BIO *bio) {
   OPENSSL_memset(&data->timeout, 0, sizeof(data->timeout));
   return true;
 }
+
+timeval *PacketedBioGetClock(BIO *bio) {
+  PacketedBio *data = GetData(bio);
+  if (data == nullptr) {
+    return nullptr;
+  }
+  return data->clock;
+}

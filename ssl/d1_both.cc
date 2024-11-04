@@ -445,6 +445,22 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
 
   if (!skipped_fragments) {
     ssl->d1->records_to_ack.PushBack(record_number);
+
+    if (ssl_has_final_version(ssl) &&
+        ssl_protocol_version(ssl) >= TLS1_3_VERSION &&
+        !ssl->d1->ack_timer.IsSet()) {
+      // Schedule sending an ACK. The delay serves several purposes:
+      // - If there are more records to come, we send only one ACK.
+      // - If there are more records to come and the flight is now complete, we
+      //   will send the reply (which implicitly ACKs the previous flight) and
+      //   cancel the timer.
+      // - If there are more records to come, the flight is now complete, but
+      //   generating the response is delayed (e.g. a slow, async private key),
+      //   the timer will fire and we send an ACK anyway.
+      OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
+      ssl->d1->ack_timer.StartMicroseconds(
+          now, uint64_t{ssl->d1->timeout_duration_ms} * 1000 / 4);
+    }
   }
 
   return true;
@@ -998,10 +1014,8 @@ int dtls1_flush_flight(SSL *ssl, bool post_handshake) {
     // to ACK previous records. This clears the ACK buffer slightly earlier than
     // the specification suggests. See the discussion in
     // https://mailarchive.ietf.org/arch/msg/tls/kjJnquJOVaWxu5hUCmNzB35eqY0/
-    //
-    // TODO(crbug.com/42290594): When we introduce the ACK timer, this should
-    // also stop the ACK timer.
     ssl->d1->records_to_ack.Clear();
+    ssl->d1->ack_timer.Stop();
   }
   // Start the retransmission timer for the next flight (if any).
   dtls1_start_timer(ssl);
@@ -1010,6 +1024,7 @@ int dtls1_flush_flight(SSL *ssl, bool post_handshake) {
 
 int dtls1_send_ack(SSL *ssl) {
   assert(ssl_protocol_version(ssl) >= TLS1_3_VERSION);
+  ssl->d1->ack_timer.Stop();
   if (ssl->d1->records_to_ack.empty()) {
     return 1;
   }

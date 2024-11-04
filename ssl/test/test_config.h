@@ -221,6 +221,7 @@ struct TestConfig {
   bool no_check_ecdsa_curve = false;
   int expect_selected_credential = -1;
   std::vector<CredentialConfig> credentials;
+  int private_key_delay_ms = 0;
 
   std::vector<const char*> handshaker_args;
 

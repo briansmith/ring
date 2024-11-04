@@ -3613,6 +3613,9 @@ struct DTLS1_STATE {
   // not hear from the peer.
   DTLSTimer retransmit_timer;
 
+  // ack_timer tracks when to send an ACK.
+  DTLSTimer ack_timer;
+
   // timeout_duration_ms is the timeout duration in milliseconds.
   uint32_t timeout_duration_ms = 0;
 };

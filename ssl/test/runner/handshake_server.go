@@ -1223,11 +1223,14 @@ ResendHelloRetryRequest:
 	// from the client certificate are sent over these keys.
 	c.useOutTrafficSecret(uint16(encryptionApplication), c.wireVersion, hs.suite, serverTrafficSecret)
 
-	if err := c.flushHandshake(); err != nil {
-		return err
-	}
-
-	if encryptedExtensions.extensions.hasEarlyData {
+	// In TLS, we need to consume EndOfEarlyData, and also test early data that
+	// was only partially written while reading the ServerHello. Both of these
+	// require flushing ServerHello first. Neither of these apply to DTLS, where
+	// we need to flush after installing handshake keys.
+	if encryptedExtensions.extensions.hasEarlyData && !c.isDTLS {
+		if err := c.flushHandshake(); err != nil {
+			return err
+		}
 		for _, expectedMsg := range config.Bugs.ExpectLateEarlyData {
 			if err := c.readRecord(recordTypeApplicationData); err != nil {
 				return err
@@ -1248,6 +1251,12 @@ ResendHelloRetryRequest:
 
 	// Switch input stream to handshake traffic keys.
 	if err := c.useInTrafficSecret(uint16(encryptionHandshake), c.wireVersion, hs.suite, clientHandshakeTrafficSecret); err != nil {
+		return err
+	}
+
+	// DTLS testing requires this flush occur after installing handshake keys,
+	// so that we can process ACKs.
+	if err := c.flushHandshake(); err != nil {
 		return err
 	}
 
