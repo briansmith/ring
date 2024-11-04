@@ -1219,21 +1219,6 @@ ResendHelloRetryRequest:
 	if c.config.Bugs.SendExtraFinished {
 		c.writeRecord(recordTypeHandshake, finished.marshal())
 	}
-	if err := c.flushHandshake(); err != nil {
-		return err
-	}
-
-	if encryptedExtensions.extensions.hasEarlyData && !c.shouldSkipEarlyData() {
-		for _, expectedMsg := range config.Bugs.ExpectLateEarlyData {
-			if err := c.readRecord(recordTypeApplicationData); err != nil {
-				return err
-			}
-			if !bytes.Equal(c.input.Bytes(), expectedMsg) {
-				return fmt.Errorf("tls: got late early data record %x, wanted %x", c.input.Bytes(), expectedMsg)
-			}
-			c.input.Reset()
-		}
-	}
 
 	// The various secrets do not incorporate the client's final leg, so
 	// derive them now before updating the handshake context.
@@ -1252,19 +1237,32 @@ ResendHelloRetryRequest:
 	// from the client certificate are sent over these keys.
 	c.useOutTrafficSecret(uint16(encryptionApplication), c.wireVersion, hs.suite, serverTrafficSecret)
 
-	// Read end_of_early_data.
-	if encryptedExtensions.extensions.hasEarlyData && c.usesEndOfEarlyData() {
-		msg, err := c.readHandshake()
-		if err != nil {
-			return err
-		}
+	if err := c.flushHandshake(); err != nil {
+		return err
+	}
 
-		endOfEarlyData, ok := msg.(*endOfEarlyDataMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(endOfEarlyData, msg)
+	if encryptedExtensions.extensions.hasEarlyData {
+		for _, expectedMsg := range config.Bugs.ExpectLateEarlyData {
+			if err := c.readRecord(recordTypeApplicationData); err != nil {
+				return err
+			}
+			if !bytes.Equal(c.input.Bytes(), expectedMsg) {
+				return fmt.Errorf("tls: got late early data record %x, wanted %x", c.input.Bytes(), expectedMsg)
+			}
+			c.input.Reset()
 		}
-		hs.writeClientHash(endOfEarlyData.marshal())
+		if c.usesEndOfEarlyData() {
+			msg, err := c.readHandshake()
+			if err != nil {
+				return err
+			}
+			endOfEarlyData, ok := msg.(*endOfEarlyDataMsg)
+			if !ok {
+				c.sendAlert(alertUnexpectedMessage)
+				return unexpectedMessageError(endOfEarlyData, msg)
+			}
+			hs.writeClientHash(endOfEarlyData.marshal())
+		}
 	}
 
 	// Switch input stream to handshake traffic keys.
