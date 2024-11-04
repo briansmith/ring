@@ -396,7 +396,7 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
       return false;
     }
 
-    if (SSL_in_init(ssl) && ssl->s3->version != 0 &&
+    if (SSL_in_init(ssl) && ssl_has_final_version(ssl) &&
         ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
       // During the handshake, if we receive any portion of the next flight, the
       // peer must have received our most recent flight. In DTLS 1.3, this is an
@@ -407,10 +407,6 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
       // apply immediately after the handshake. As a client, receiving a
       // KeyUpdate or NewSessionTicket does not imply the server has received
       // our Finished. The server may have sent those messages in half-RTT.
-      //
-      // TODO(crbug.com/42290594): If we're offering 0-RTT, the final version
-      // is not yet known to be DTLS 1.3 and we should not do this. Track early
-      // and final versions more accurately.
       //
       // TODO(crbug.com/42290594): Once post-handshake messages are working,
       // write a test for the half-RTT KeyUpdate case.

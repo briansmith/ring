@@ -264,6 +264,11 @@ static uint16_t ssl_version(const SSL *ssl) {
   return SSL_is_dtls(ssl) ? DTLS1_2_VERSION : TLS1_2_VERSION;
 }
 
+bool ssl_has_final_version(const SSL *ssl) {
+  return ssl->s3->version != 0 &&
+         (ssl->s3->hs == nullptr || !ssl->s3->hs->is_early_version);
+}
+
 uint16_t ssl_protocol_version(const SSL *ssl) {
   assert(ssl->s3->version != 0);
   uint16_t version;

@@ -135,7 +135,7 @@ ssl_open_record_t dtls1_process_ack(SSL *ssl, uint8_t *out_alert,
   // As a DTLS-1.3-capable client, it is possible to receive an ACK before we
   // receive ServerHello and learned the server picked DTLS 1.3. Thus, tolerate
   // but ignore ACKs before the version is set.
-  if (ssl->s3->version == 0) {
+  if (!ssl_has_final_version(ssl)) {
     return ssl_open_record_discard;
   }
 
@@ -146,12 +146,6 @@ ssl_open_record_t dtls1_process_ack(SSL *ssl, uint8_t *out_alert,
     *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
     return ssl_open_record_error;
   }
-
-  // TODO(crbug.com/42290594): If we implement DTLS 1.3 0-RTT, we may switch to
-  // DTLS 1.3, but then rewind to DTLS 1.2. In the intervening time, we may have
-  // received an ACK and updated state, and then expose the DTLS 1.2 logic to
-  // it. If we haven't received ServerHello, we probably need to continue
-  // dropping ACKs.
 
   CBS cbs = data, record_numbers;
   if (!CBS_get_u16_length_prefixed(&cbs, &record_numbers) ||

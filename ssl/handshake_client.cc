@@ -580,6 +580,7 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
   // overwritten later by the final version.
   hs->early_session = UpRef(ssl->session);
   ssl->s3->version = hs->early_session->ssl_version;
+  hs->is_early_version = true;
   hs->state = state_early_reverify_server_certificate;
   return ssl_hs_ok;
 }
@@ -727,9 +728,10 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     // |ssl->s3->version| may be set due to 0-RTT. If it was to a different
     // value, the check below will fire.
     assert(ssl->s3->version == 0 ||
-           (hs->early_data_offered &&
+           (hs->is_early_version &&
             ssl->s3->version == hs->early_session->ssl_version));
     ssl->s3->version = server_version;
+    hs->is_early_version = false;
   } else if (server_version != ssl->s3->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);

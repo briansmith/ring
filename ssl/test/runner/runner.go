@@ -15817,6 +15817,27 @@ func addTLS13HandshakeTests() {
 		expectedError: ":WRONG_VERSION_ON_EARLY_DATA:",
 	})
 
+	// Same as above, but the server also sends a warning alert before the
+	// ServerHello. Although the shim predicts TLS 1.3 for 0-RTT, it should
+	// still interpret data before ServerHello in a TLS-1.2-compatible way.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "EarlyDataVersionDowngrade-Client-TLS13-WarningAlert",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		resumeConfig: &Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendSNIWarningAlert: true,
+			},
+		},
+		resumeSession: true,
+		earlyData:     true,
+		shouldFail:    true,
+		expectedError: ":WRONG_VERSION_ON_EARLY_DATA:",
+	})
+
 	// Test that the client rejects an (unsolicited) early_data extension if
 	// the server sent an HRR.
 	testCases = append(testCases, testCase{

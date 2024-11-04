@@ -833,6 +833,11 @@ bool ssl_add_supported_versions(const SSL_HANDSHAKE *hs, CBB *cbb,
 bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                            uint16_t *out_version, const CBS *peer_versions);
 
+// ssl_has_final_version returns whether |ssl| has determined the final version.
+// This may be used to distinguish the predictive 0-RTT version from the final
+// one.
+bool ssl_has_final_version(const SSL *ssl);
+
 // ssl_protocol_version returns |ssl|'s protocol version. It is an error to
 // call this function before the version is determined.
 uint16_t ssl_protocol_version(const SSL *ssl);
@@ -2497,6 +2502,10 @@ struct SSL_HANDSHAKE {
   // the handshake.
   bool can_early_write : 1;
 
+  // is_early_version is true if the protocol version configured is not
+  // necessarily the final version and is just the predicted 0-RTT version.
+  bool is_early_version : 1;
+
   // next_proto_neg_seen is one of NPN was negotiated.
   bool next_proto_neg_seen : 1;
 
@@ -3179,7 +3188,8 @@ struct SSL3_STATE {
 
   // version is the protocol version, or zero if the version has not yet been
   // set. In clients offering 0-RTT, this version will initially be set to the
-  // early version, then switched to the final version.
+  // early version, then switched to the final version. To distinguish these
+  // cases, use |ssl_has_final_version|.
   uint16_t version = 0;
 
   // early_data_skipped is the amount of early data that has been skipped by the
