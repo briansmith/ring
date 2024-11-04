@@ -1252,13 +1252,6 @@ ResendHelloRetryRequest:
 	// from the client certificate are sent over these keys.
 	c.useOutTrafficSecret(uint16(encryptionApplication), c.wireVersion, hs.suite, serverTrafficSecret)
 
-	// Send 0.5-RTT messages.
-	for _, halfRTTMsg := range config.Bugs.SendHalfRTTData {
-		if _, err := c.writeRecord(recordTypeApplicationData, halfRTTMsg); err != nil {
-			return err
-		}
-	}
-
 	// Read end_of_early_data.
 	if encryptedExtensions.extensions.hasEarlyData && c.usesEndOfEarlyData() {
 		msg, err := c.readHandshake()

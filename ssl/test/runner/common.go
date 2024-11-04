@@ -1711,11 +1711,6 @@ type ProtocolBugs struct {
 	// the number of records or their content do not match.
 	ExpectLateEarlyData [][]byte
 
-	// SendHalfRTTData causes a TLS 1.3 server to send the provided
-	// data in application data records before reading the client's
-	// Finished message.
-	SendHalfRTTData [][]byte
-
 	// ExpectHalfRTTData causes a TLS 1.3 client, if 0-RTT was accepted, to
 	// read application data after reading the server's Finished message and
 	// before sending any subsequent handshake messages. It checks that the
