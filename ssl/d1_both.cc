@@ -1058,6 +1058,9 @@ int dtls1_send_ack(SSL *ssl) {
     return -1;
   }
 
+  ssl_do_msg_callback(ssl, /*is_write=*/1, SSL3_RT_ACK,
+                      MakeConstSpan(CBB_data(&cbb), CBB_len(&cbb)));
+
   int bio_ret =
       BIO_write(ssl->wbio.get(), record, static_cast<int>(record_len));
   if (bio_ret <= 0) {

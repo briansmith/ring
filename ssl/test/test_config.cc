@@ -837,6 +837,10 @@ static void MessageCallback(int is_write, int version, int content_type,
       state->msg_callback_text += text;
       return;
 
+    case SSL3_RT_ACK:
+      state->msg_callback_text += "ack\n";
+      return;
+
     default:
       fprintf(stderr, "Invalid content_type: %d.\n", content_type);
       state->msg_callback_ok = false;

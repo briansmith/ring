@@ -3977,6 +3977,57 @@ read alert 1 0
 		},
 		expectMessageDropped: true,
 	})
+
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "DTLS13-MessageCallback-Client",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			MinVersion: VersionTLS13,
+		},
+		flags: []string{
+			"-expect-msg-callback",
+			`write hs 1
+read hs 2
+read hs 8
+read hs 11
+read hs 15
+read hs 20
+write hs 20
+read ack
+read hs 4
+read hs 4
+read alert 1 0
+`,
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		protocol: dtls,
+		name:     "DTLS13-MessageCallback-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			MinVersion: VersionTLS13,
+		},
+		flags: []string{
+			"-expect-msg-callback",
+			`read hs 1
+write hs 2
+write hs 8
+write hs 11
+write hs 15
+write hs 20
+read hs 20
+write ack
+write hs 4
+write hs 4
+read ack
+read ack
+read alert 1 0
+`,
+		},
+	})
 }
 
 func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol protocol) {

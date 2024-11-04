@@ -230,6 +230,7 @@ ssl_open_record_t dtls1_process_ack(SSL *ssl, uint8_t *out_alert,
     // waited before sending the ACK, so a partial ACK suggests packet loss.
   }
 
+  ssl_do_msg_callback(ssl, /*is_write=*/0, SSL3_RT_ACK, data);
   return ssl_open_record_discard;
 }
 

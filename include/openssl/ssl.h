@@ -4430,18 +4430,18 @@ OPENSSL_EXPORT int SSL_set_handshake_hints(SSL *ssl, const uint8_t *hints,
 
 // SSL_CTX_set_msg_callback installs |cb| as the message callback for |ctx|.
 // This callback will be called when sending or receiving low-level record
-// headers, complete handshake messages, ChangeCipherSpec, and alerts.
-// |write_p| is one for outgoing messages and zero for incoming messages.
+// headers, complete handshake messages, ChangeCipherSpec, alerts, and DTLS
+// ACKs. |write_p| is one for outgoing messages and zero for incoming messages.
 //
 // For each record header, |cb| is called with |version| = 0 and |content_type|
 // = |SSL3_RT_HEADER|. The |len| bytes from |buf| contain the header. Note that
 // this does not include the record body. If the record is sealed, the length
 // in the header is the length of the ciphertext.
 //
-// For each handshake message, ChangeCipherSpec, and alert, |version| is the
-// protocol version and |content_type| is the corresponding record type. The
-// |len| bytes from |buf| contain the handshake message, one-byte
-// ChangeCipherSpec body, and two-byte alert, respectively.
+// For each handshake message, ChangeCipherSpec, alert, and DTLS ACK, |version|
+// is the protocol version and |content_type| is the corresponding record type.
+// The |len| bytes from |buf| contain the handshake message, one-byte
+// ChangeCipherSpec body, two-byte alert, and ACK respectively.
 //
 // In connections that enable ECH, |cb| is additionally called with
 // |content_type| = |SSL3_RT_CLIENT_HELLO_INNER| for each ClientHelloInner that
