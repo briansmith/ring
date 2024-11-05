@@ -391,7 +391,7 @@ func (hc *halfConn) explicitIVLen(epoch *epochState) int {
 			return 8
 		}
 		return 0
-	case cbcMode:
+	case *cbcMode:
 		if hc.version >= VersionTLS11 || hc.isDTLS {
 			return c.BlockSize()
 		}
@@ -450,12 +450,6 @@ func roundUp(a, b int) int {
 	return a + (b-a%b)%b
 }
 
-// cbcMode is an interface for block ciphers using cipher block chaining.
-type cbcMode interface {
-	cipher.BlockMode
-	SetIV([]byte)
-}
-
 // decrypt checks and strips the mac and decrypts the data in record. Returns a
 // success boolean, the application payload, the encrypted record type (or 0
 // if there is none), and an optional alert value. Decryption occurs in-place,
@@ -511,7 +505,7 @@ func (hc *halfConn) decrypt(epoch *epochState, recordHeaderLen int, record []byt
 			if err != nil {
 				return false, 0, nil, alertBadRecordMAC
 			}
-		case cbcMode:
+		case *cbcMode:
 			blockSize := c.BlockSize()
 			if len(payload)%blockSize != 0 || len(payload) < roundUp(explicitIVLen+macSize+1, blockSize) {
 				return false, 0, nil, alertBadRecordMAC
@@ -627,7 +621,7 @@ func (hc *halfConn) maxEncryptOverhead(epoch *epochState, payloadLen int) int {
 		case cipher.Stream, *nullCipher:
 		case *tlsAead:
 			overhead += c.Overhead()
-		case cbcMode:
+		case *cbcMode:
 			overhead += computingCBCPaddingLength(payloadLen+macSize, c.BlockSize(), hc.config)
 		case nullCipher:
 			break
@@ -721,7 +715,7 @@ func (hc *halfConn) encrypt(epoch *epochState, record, payload []byte, typ recor
 			}
 
 			record = c.Seal(record[:prefixLen+explicitIVLen], nonce, record[prefixLen+explicitIVLen:], additionalData)
-		case cbcMode:
+		case *cbcMode:
 			if explicitIVLen > 0 {
 				if _, err := io.ReadFull(hc.config.rand(), explicitIV); err != nil {
 					return nil, err
@@ -1602,7 +1596,7 @@ func (c *Conn) Write(b []byte) (int, error) {
 
 	var m int
 	if len(b) > 1 && c.vers <= VersionTLS10 && !c.isDTLS {
-		if _, ok := c.out.epoch.cipher.(cipher.BlockMode); ok {
+		if _, ok := c.out.epoch.cipher.(*cbcMode); ok {
 			n, err := c.writeRecord(recordTypeApplicationData, b[:1])
 			if err != nil {
 				return n, c.out.setErrorLocked(err)

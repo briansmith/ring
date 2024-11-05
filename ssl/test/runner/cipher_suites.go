@@ -155,20 +155,37 @@ func cipherNull(key, iv []byte, isRead bool) any {
 	return nullCipher{}
 }
 
+type cbcMode struct {
+	cipher.BlockMode
+	new func(iv []byte) cipher.BlockMode
+}
+
+func (c *cbcMode) SetIV(iv []byte) {
+	c.BlockMode = c.new(iv)
+}
+
 func cipher3DES(key, iv []byte, isRead bool) any {
+	c := &cbcMode{}
 	block, _ := des.NewTripleDESCipher(key)
 	if isRead {
-		return cipher.NewCBCDecrypter(block, iv)
+		c.new = func(iv []byte) cipher.BlockMode { return cipher.NewCBCDecrypter(block, iv) }
+	} else {
+		c.new = func(iv []byte) cipher.BlockMode { return cipher.NewCBCEncrypter(block, iv) }
 	}
-	return cipher.NewCBCEncrypter(block, iv)
+	c.SetIV(iv)
+	return c
 }
 
 func cipherAES(key, iv []byte, isRead bool) any {
+	c := &cbcMode{}
 	block, _ := aes.NewCipher(key)
 	if isRead {
-		return cipher.NewCBCDecrypter(block, iv)
+		c.new = func(iv []byte) cipher.BlockMode { return cipher.NewCBCDecrypter(block, iv) }
+	} else {
+		c.new = func(iv []byte) cipher.BlockMode { return cipher.NewCBCEncrypter(block, iv) }
 	}
-	return cipher.NewCBCEncrypter(block, iv)
+	c.SetIV(iv)
+	return c
 }
 
 // macSHA1 returns a macFunction for the given protocol version.

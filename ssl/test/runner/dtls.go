@@ -247,7 +247,7 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, []byte, error) {
 		// Save information about the current record, including how many more
 		// bytes the shim could have added.
 		recordBytesAvailable := c.bytesAvailableInPacket + c.rawInput.Len()
-		if cbc, ok := epoch.cipher.(cbcMode); ok {
+		if cbc, ok := epoch.cipher.(*cbcMode); ok {
 			// It is possible that adding a byte would have added another block.
 			recordBytesAvailable = max(0, recordBytesAvailable-cbc.BlockSize())
 		}
