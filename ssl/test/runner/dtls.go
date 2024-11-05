@@ -1360,3 +1360,27 @@ func (c *DTLSController) ReadAppData(epoch uint16, expected []byte) {
 		return
 	}
 }
+
+// ExpectNextTimeout indicates the shim's next timeout should be d from now.
+func (c *DTLSController) ExpectNextTimeout(d time.Duration) {
+	if c.err != nil {
+		return
+	}
+	if err := c.conn.dtlsFlushPacket(); err != nil {
+		c.err = err
+		return
+	}
+	c.err = c.conn.config.Bugs.PacketAdaptor.ExpectNextTimeout(d)
+}
+
+// ExpectNoNext indicates the shim should not have a next timeout.
+func (c *DTLSController) ExpectNoNextTimeout() {
+	if c.err != nil {
+		return
+	}
+	if err := c.conn.dtlsFlushPacket(); err != nil {
+		c.err = err
+		return
+	}
+	c.err = c.conn.config.Bugs.PacketAdaptor.ExpectNoNextTimeout()
+}

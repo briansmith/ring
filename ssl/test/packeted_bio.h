@@ -31,13 +31,17 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 // PacketedBioCreate creates a filter BIO which implements a reliable in-order
 // blocking datagram socket. It uses the value of |*clock| as the clock.
-// |set_mtu| will be called when the runner asks to change the MTU.
+// |get_timeout| should output what the |SSL| object believes is the next
+// timeout, or return false if there is none. It will be compared against
+// assertions from the runner. |set_mtu| will be called when the runner asks to
+// change the MTU.
 //
 // During a |BIO_read|, the peer may signal the filter BIO to simulate a
 // timeout. The operation will fail immediately. The caller must then call
 // |PacketedBioAdvanceClock| before retrying |BIO_read|.
-bssl::UniquePtr<BIO> PacketedBioCreate(timeval *clock,
-                                       std::function<bool(uint32_t)> set_mtu);
+bssl::UniquePtr<BIO> PacketedBioCreate(
+    timeval *clock, std::function<bool(timeval *)> get_timeout,
+    std::function<bool(uint32_t)> set_mtu);
 
 // PacketedBioAdvanceClock advances |bio|'s clock and returns true if there is a
 // pending timeout. Otherwise, it returns false.

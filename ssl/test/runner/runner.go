@@ -11591,9 +11591,11 @@ func addDTLSRetransmitTests() {
 					// Exercise every timeout but the last one (which would fail the
 					// connection).
 					for _, t := range useTimeouts[:len(useTimeouts)-1] {
+						c.ExpectNextTimeout(t)
 						c.AdvanceClock(t)
 						c.ReadRetransmit()
 					}
+					c.ExpectNextTimeout(useTimeouts[len(useTimeouts)-1])
 				}
 				// Finally release the whole flight to the shim.
 				c.WriteFlight(next)
@@ -11692,6 +11694,7 @@ func addDTLSRetransmitTests() {
 								//
 								// TODO(crbug.com/42290594): The shim should send a partial
 								// ACK to request that we retransmit.
+								c.ExpectNoNextTimeout()
 								for _, t := range useTimeouts {
 									c.AdvanceClock(t)
 								}
@@ -11717,13 +11720,19 @@ func addDTLSRetransmitTests() {
 						MaxVersion: vers.version,
 						Bugs: ProtocolBugs{
 							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
-								// Send a portion of the ServerHello. The rest was lost.
 								msg := next[0]
+								if msg.Type != typeServerHello {
+									// Leave the NewSessionTicket flight alone.
+									c.WriteFlight(next)
+									return
+								}
+								// Send a portion of the ServerHello. The rest was lost.
 								split := len(msg.Data) / 2
 								c.WriteFragments([]DTLSFragment{msg.Fragment(0, split)})
 
 								// The shim did not know this was DTLS 1.3, so it still
 								// retransmits ClientHello.
+								c.ExpectNextTimeout(useTimeouts[0])
 								c.AdvanceClock(useTimeouts[0])
 								c.ReadRetransmit()
 
@@ -11735,6 +11744,7 @@ func addDTLSRetransmitTests() {
 								// packet as EncryptedExtensions, which will trigger the case
 								// below.
 								c.WriteFragments([]DTLSFragment{msg.Fragment(split, len(msg.Data)-split)})
+								c.ExpectNextTimeout(useTimeouts[1])
 								c.AdvanceClock(useTimeouts[1])
 								c.ReadRetransmit()
 
@@ -11747,6 +11757,7 @@ func addDTLSRetransmitTests() {
 								//
 								// TODO(crbug.com/42290594): The shim should send a partial
 								// ACK to request that we retransmit.
+								c.ExpectNoNextTimeout()
 								for _, t := range useTimeouts[2:] {
 									c.AdvanceClock(t)
 								}
@@ -11775,9 +11786,11 @@ func addDTLSRetransmitTests() {
 					Bugs: ProtocolBugs{
 						WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
 							for _, t := range useTimeouts[:len(useTimeouts)-1] {
+								c.ExpectNextTimeout(t)
 								c.AdvanceClock(t)
 								c.ReadRetransmit()
 							}
+							c.ExpectNextTimeout(useTimeouts[len(useTimeouts)-1])
 							c.AdvanceClock(useTimeouts[len(useTimeouts)-1])
 							// The shim should give up at this point.
 						},
@@ -11798,8 +11811,11 @@ func addDTLSRetransmitTests() {
 					MaxVersion: vers.version,
 					Bugs: ProtocolBugs{
 						WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
-							c.AdvanceClock(useTimeouts[0] - 10*time.Millisecond)
-							c.ReadRetransmit()
+							if len(received) > 0 {
+								c.ExpectNextTimeout(useTimeouts[0])
+								c.AdvanceClock(useTimeouts[0] - 10*time.Millisecond)
+								c.ReadRetransmit()
+							}
 							c.WriteFlight(next)
 						},
 					},
@@ -11856,9 +11872,11 @@ func addDTLSRetransmitTests() {
 							MaxHandshakeRecordLength: 512,
 							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
 								if len(received) > 0 {
+									c.ExpectNextTimeout(useTimeouts[0])
 									c.WriteACK(c.OutEpoch(), records)
 									// After ACKing everything, the shim should stop the timer
 									// and wait for the next flight.
+									c.ExpectNoNextTimeout()
 									for _, t := range useTimeouts {
 										c.AdvanceClock(t)
 									}
