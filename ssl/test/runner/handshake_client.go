@@ -1152,15 +1152,9 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		return err
 	}
 
-	msg, err := c.readHandshake()
+	encryptedExtensions, err := readHandshakeType[encryptedExtensionsMsg](c)
 	if err != nil {
 		return err
-	}
-
-	encryptedExtensions, ok := msg.(*encryptedExtensionsMsg)
-	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
-		return unexpectedMessageError(encryptedExtensions, msg)
 	}
 	hs.writeServerHash(encryptedExtensions.marshal())
 
@@ -1277,14 +1271,9 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		c.ocspResponse = certMsg.certificates[0].ocspResponse
 		c.sctList = certMsg.certificates[0].sctList
 
-		msg, err = c.readHandshake()
+		certVerifyMsg, err := readHandshakeType[certificateVerifyMsg](c)
 		if err != nil {
 			return err
-		}
-		certVerifyMsg, ok := msg.(*certificateVerifyMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(certVerifyMsg, msg)
 		}
 
 		c.peerSignatureAlgorithm = certVerifyMsg.signatureAlgorithm
@@ -1301,16 +1290,10 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		hs.writeServerHash(certVerifyMsg.marshal())
 	}
 
-	msg, err = c.readHandshake()
+	serverFinished, err := readHandshakeType[finishedMsg](c)
 	if err != nil {
 		return err
 	}
-	serverFinished, ok := msg.(*finishedMsg)
-	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
-		return unexpectedMessageError(serverFinished, msg)
-	}
-
 	verify := hs.finishedHash.serverSum(serverHandshakeTrafficSecret)
 	if len(verify) != len(serverFinished.verifyData) ||
 		subtle.ConstantTimeCompare(verify, serverFinished.verifyData) != 1 {
@@ -1341,13 +1324,9 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		// BoringSSL will always send two tickets half-RTT when
 		// negotiating 0-RTT.
 		for i := 0; i < shimConfig.HalfRTTTickets; i++ {
-			msg, err := c.readHandshake()
+			newSessionTicket, err := readHandshakeType[newSessionTicketMsg](c)
 			if err != nil {
 				return fmt.Errorf("tls: error reading half-RTT ticket: %s", err)
-			}
-			newSessionTicket, ok := msg.(*newSessionTicketMsg)
-			if !ok {
-				return errors.New("tls: expected half-RTT ticket")
 			}
 			// Defer processing until the resumption secret is computed.
 			deferredTickets = append(deferredTickets, newSessionTicket)
@@ -1622,15 +1601,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 
 	var leaf *x509.Certificate
 	if hs.suite.flags&suitePSK == 0 {
-		msg, err := c.readHandshake()
+		certMsg, err := readHandshakeType[certificateMsg](c)
 		if err != nil {
 			return err
-		}
-
-		certMsg, ok := msg.(*certificateMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(certMsg, msg)
 		}
 		hs.writeServerHash(certMsg.marshal())
 
@@ -1641,14 +1614,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	}
 
 	if hs.serverHello.extensions.ocspStapling {
-		msg, err := c.readHandshake()
+		cs, err := readHandshakeType[certificateStatusMsg](c)
 		if err != nil {
 			return err
-		}
-		cs, ok := msg.(*certificateStatusMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(cs, msg)
 		}
 		hs.writeServerHash(cs.marshal())
 
@@ -2176,14 +2144,9 @@ func (hs *clientHandshakeState) readFinished(out []byte) error {
 		return err
 	}
 
-	msg, err := c.readHandshake()
+	serverFinished, err := readHandshakeType[finishedMsg](c)
 	if err != nil {
 		return err
-	}
-	serverFinished, ok := msg.(*finishedMsg)
-	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
-		return unexpectedMessageError(serverFinished, msg)
 	}
 
 	if c.config.Bugs.EarlyChangeCipherSpec == 0 {
@@ -2233,14 +2196,9 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		return errors.New("tls: received unexpected NewSessionTicket")
 	}
 
-	msg, err := c.readHandshake()
+	sessionTicketMsg, err := readHandshakeType[newSessionTicketMsg](c)
 	if err != nil {
 		return err
-	}
-	sessionTicketMsg, ok := msg.(*newSessionTicketMsg)
-	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
-		return unexpectedMessageError(sessionTicketMsg, msg)
 	}
 
 	if c.config.Bugs.ExpectNoNonEmptyNewSessionTicket && len(sessionTicketMsg.ticket) != 0 {

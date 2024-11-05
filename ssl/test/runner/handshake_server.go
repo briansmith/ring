@@ -166,15 +166,10 @@ func (hs *serverHandshakeState) readClientHello() error {
 	config := hs.c.config
 	c := hs.c
 
-	msg, err := c.readHandshake()
+	var err error
+	hs.clientHello, err = readHandshakeType[clientHelloMsg](c)
 	if err != nil {
 		return err
-	}
-	var ok bool
-	hs.clientHello, ok = msg.(*clientHelloMsg)
-	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
-		return unexpectedMessageError(hs.clientHello, msg)
 	}
 	if size := config.Bugs.RequireClientHelloSize; size != 0 && len(hs.clientHello.raw) != size {
 		return fmt.Errorf("tls: ClientHello record size is %d, but expected %d", len(hs.clientHello.raw), size)
@@ -290,6 +285,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 		c.wireVersion = config.Bugs.NegotiateVersionOnRenego
 	}
 
+	var ok bool
 	c.vers, ok = wireToVersion(c.wireVersion, c.isDTLS)
 	if !ok {
 		panic("Could not map wire version")
@@ -320,14 +316,9 @@ func (hs *serverHandshakeState) readClientHello() error {
 			return err
 		}
 
-		msg, err := c.readHandshake()
+		newClientHello, err := readHandshakeType[clientHelloMsg](c)
 		if err != nil {
 			return err
-		}
-		newClientHello, ok := msg.(*clientHelloMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(hs.clientHello, msg)
 		}
 		if !bytes.Equal(newClientHello.cookie, helloVerifyRequest.cookie) {
 			return errors.New("dtls: invalid cookie")
@@ -799,14 +790,9 @@ ResendHelloRetryRequest:
 		}
 
 		// Read new ClientHello.
-		newMsg, err := c.readHandshake()
+		newClientHello, err := readHandshakeType[clientHelloMsg](c)
 		if err != nil {
 			return err
-		}
-		newClientHello, ok := newMsg.(*clientHelloMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(newClientHello, newMsg)
 		}
 
 		if expected := config.Bugs.ExpectOuterServerName; len(expected) != 0 && expected != newClientHello.serverName {
@@ -1252,14 +1238,9 @@ ResendHelloRetryRequest:
 			c.input.Reset()
 		}
 		if c.usesEndOfEarlyData() {
-			msg, err := c.readHandshake()
+			endOfEarlyData, err := readHandshakeType[endOfEarlyDataMsg](c)
 			if err != nil {
 				return err
-			}
-			endOfEarlyData, ok := msg.(*endOfEarlyDataMsg)
-			if !ok {
-				c.sendAlert(alertUnexpectedMessage)
-				return unexpectedMessageError(endOfEarlyData, msg)
 			}
 			hs.writeClientHash(endOfEarlyData.marshal())
 		}
@@ -1272,14 +1253,9 @@ ResendHelloRetryRequest:
 
 	// If we sent an ALPS extension, the client must respond with a single EncryptedExtensions.
 	if encryptedExtensions.extensions.hasApplicationSettings || encryptedExtensions.extensions.hasApplicationSettingsOld {
-		msg, err := c.readHandshake()
+		clientEncryptedExtensions, err := readHandshakeType[clientEncryptedExtensionsMsg](c)
 		if err != nil {
 			return err
-		}
-		clientEncryptedExtensions, ok := msg.(*clientEncryptedExtensionsMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(clientEncryptedExtensions, msg)
 		}
 		hs.writeClientHash(clientEncryptedExtensions.marshal())
 
@@ -1317,15 +1293,9 @@ ResendHelloRetryRequest:
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
 	if config.ClientAuth >= RequestClientCert {
-		msg, err := c.readHandshake()
+		certMsg, err := readHandshakeType[certificateMsg](c)
 		if err != nil {
 			return err
-		}
-
-		certMsg, ok := msg.(*certificateMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(certMsg, msg)
 		}
 		hs.writeClientHash(certMsg.marshal())
 
@@ -1354,17 +1324,10 @@ ResendHelloRetryRequest:
 		}
 
 		if len(c.peerCertificates) > 0 {
-			msg, err = c.readHandshake()
+			certVerify, err := readHandshakeType[certificateVerifyMsg](c)
 			if err != nil {
 				return err
 			}
-
-			certVerify, ok := msg.(*certificateVerifyMsg)
-			if !ok {
-				c.sendAlert(alertUnexpectedMessage)
-				return unexpectedMessageError(certVerify, msg)
-			}
-
 			c.peerSignatureAlgorithm = certVerify.signatureAlgorithm
 			input := hs.finishedHash.certificateVerifyInput(clientCertificateVerifyContextTLS13)
 			if err := verifyMessage(c.isClient, c.vers, pub, config, certVerify.signatureAlgorithm, input, certVerify.signature); err != nil {
@@ -1376,14 +1339,9 @@ ResendHelloRetryRequest:
 	}
 
 	if encryptedExtensions.extensions.channelIDRequested {
-		msg, err := c.readHandshake()
+		channelIDMsg, err := readHandshakeType[channelIDMsg](c)
 		if err != nil {
 			return err
-		}
-		channelIDMsg, ok := msg.(*channelIDMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(channelIDMsg, msg)
 		}
 		channelIDHash := crypto.SHA256.New()
 		channelIDHash.Write(hs.finishedHash.certificateVerifyInput(channelIDContextTLS13))
@@ -1397,16 +1355,10 @@ ResendHelloRetryRequest:
 	}
 
 	// Read the client Finished message.
-	msg, err := c.readHandshake()
+	clientFinished, err := readHandshakeType[finishedMsg](c)
 	if err != nil {
 		return err
 	}
-	clientFinished, ok := msg.(*finishedMsg)
-	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
-		return unexpectedMessageError(clientFinished, msg)
-	}
-
 	verify := hs.finishedHash.clientSum(clientHandshakeTrafficSecret)
 	if len(verify) != len(clientFinished.verifyData) ||
 		subtle.ConstantTimeCompare(verify, clientFinished.verifyData) != 1 {
@@ -1985,18 +1937,12 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 
 	var pub crypto.PublicKey // public key for client auth, if any
 
-	msg, err := c.readHandshake()
-	if err != nil {
-		return err
-	}
-
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
 	if config.ClientAuth >= RequestClientCert {
-		certMsg, ok := msg.(*certificateMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(certMsg, msg)
+		certMsg, err := readHandshakeType[certificateMsg](c)
+		if err != nil {
+			return err
 		}
 		hs.writeClientHash(certMsg.marshal())
 
@@ -2018,18 +1964,12 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		if err != nil {
 			return err
 		}
-
-		msg, err = c.readHandshake()
-		if err != nil {
-			return err
-		}
 	}
 
 	// Get client key exchange
-	ckx, ok := msg.(*clientKeyExchangeMsg)
-	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
-		return unexpectedMessageError(ckx, msg)
+	ckx, err := readHandshakeType[clientKeyExchangeMsg](c)
+	if err != nil {
+		return err
 	}
 	hs.writeClientHash(ckx.marshal())
 
@@ -2054,14 +1994,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	// to the client's certificate. This allows us to verify that the client is in
 	// possession of the private key of the certificate.
 	if len(c.peerCertificates) > 0 {
-		msg, err = c.readHandshake()
+		certVerify, err := readHandshakeType[certificateVerifyMsg](c)
 		if err != nil {
 			return err
-		}
-		certVerify, ok := msg.(*certificateVerifyMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(certVerify, msg)
 		}
 
 		// Determine the signature type.
@@ -2118,28 +2053,18 @@ func (hs *serverHandshakeState) readFinished(out []byte, isResume bool) error {
 	}
 
 	if hs.hello.extensions.nextProtoNeg {
-		msg, err := c.readHandshake()
+		nextProto, err := readHandshakeType[nextProtoMsg](c)
 		if err != nil {
 			return err
-		}
-		nextProto, ok := msg.(*nextProtoMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(nextProto, msg)
 		}
 		hs.writeClientHash(nextProto.marshal())
 		c.clientProtocol = nextProto.proto
 	}
 
 	if hs.hello.extensions.channelIDRequested {
-		msg, err := c.readHandshake()
+		channelIDMsg, err := readHandshakeType[channelIDMsg](c)
 		if err != nil {
 			return err
-		}
-		channelIDMsg, ok := msg.(*channelIDMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(channelIDMsg, msg)
 		}
 		var resumeHash []byte
 		if isResume {
@@ -2154,14 +2079,9 @@ func (hs *serverHandshakeState) readFinished(out []byte, isResume bool) error {
 		hs.writeClientHash(channelIDMsg.marshal())
 	}
 
-	msg, err := c.readHandshake()
+	clientFinished, err := readHandshakeType[finishedMsg](c)
 	if err != nil {
 		return err
-	}
-	clientFinished, ok := msg.(*finishedMsg)
-	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
-		return unexpectedMessageError(clientFinished, msg)
 	}
 
 	verify := hs.finishedHash.clientSum(hs.masterSecret)

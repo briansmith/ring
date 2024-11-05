@@ -1528,6 +1528,19 @@ func (c *Conn) readHandshake() (any, error) {
 	return m, nil
 }
 
+func readHandshakeType[T any](c *Conn) (*T, error) {
+	m, err := c.readHandshake()
+	if err != nil {
+		return nil, err
+	}
+	mType, ok := m.(*T)
+	if !ok {
+		c.sendAlert(alertUnexpectedMessage)
+		return nil, unexpectedMessageError(mType, m)
+	}
+	return mType, nil
+}
+
 // skipPacket processes all the DTLS records in packet. It updates
 // sequence number expectations but otherwise ignores them.
 func (c *Conn) skipPacket(packet []byte) error {
