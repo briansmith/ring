@@ -30,10 +30,8 @@
 
 
 // The OBJECT IDENTIFIER header is also included in these values, per the spec.
-static const uint8_t kSHA256OID[] = {0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
-                                     0x65, 0x03, 0x04, 0x02, 0x01};
-static const uint8_t kSHA512OID[] = {0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
-                                     0x65, 0x03, 0x04, 0x02, 0x03};
+static const uint8_t kSHA384OID[] = {0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
+                                     0x65, 0x03, 0x04, 0x02, 0x02};
 #define MAX_OID_LENGTH 11
 #define MAX_CONTEXT_LENGTH 255
 
@@ -155,31 +153,22 @@ int SLHDSA_SHA2_128S_sign(
   return 1;
 }
 
-static int slhdsa_get_context_and_oid(uint8_t *out_context_and_oid,
-                                      size_t *out_context_and_oid_len,
-                                      size_t max_out_context_and_oid,
-                                      const uint8_t *context,
-                                      size_t context_len, int hash_nid,
-                                      size_t hashed_msg_len) {
+static int slhdsa_get_nonstandard_context_and_oid(
+    uint8_t *out_context_and_oid, size_t *out_context_and_oid_len,
+    size_t max_out_context_and_oid, const uint8_t *context, size_t context_len,
+    int hash_nid, size_t hashed_msg_len) {
   const uint8_t *oid;
   size_t oid_len;
   size_t expected_hash_len;
   switch (hash_nid) {
-    // The SLH-DSA spec only lists SHA-256 and SHA-512.
-    case NID_sha256: {
-      oid = kSHA256OID;
-      oid_len = sizeof(kSHA256OID);
-      static_assert(sizeof(kSHA256OID) <= MAX_OID_LENGTH, "");
-      expected_hash_len = 32;
+    // The SLH-DSA spec only lists SHA-256 and SHA-512. This function supports
+    // SHA-384, which is non-standard.
+    case NID_sha384:
+      oid = kSHA384OID;
+      oid_len = sizeof(kSHA384OID);
+      static_assert(sizeof(kSHA384OID) <= MAX_OID_LENGTH, "");
+      expected_hash_len = 48;
       break;
-    }
-    case NID_sha512: {
-      oid = kSHA512OID;
-      oid_len = sizeof(kSHA512OID);
-      static_assert(sizeof(kSHA512OID) <= MAX_OID_LENGTH, "");
-      expected_hash_len = 64;
-      break;
-    }
     // If adding a hash function with a larger `oid_len`, update the size of
     // `context_and_oid` in the callers.
     default:
@@ -202,7 +191,7 @@ static int slhdsa_get_context_and_oid(uint8_t *out_context_and_oid,
 }
 
 
-int SLHDSA_SHA2_128S_prehash_sign(
+int SLHDSA_SHA2_128S_prehash_warning_nonstandard_sign(
     uint8_t out_signature[SLHDSA_SHA2_128S_SIGNATURE_BYTES],
     const uint8_t private_key[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES],
     const uint8_t *hashed_msg, size_t hashed_msg_len, int hash_nid,
@@ -217,9 +206,9 @@ int SLHDSA_SHA2_128S_prehash_sign(
 
   uint8_t context_and_oid[MAX_CONTEXT_LENGTH + MAX_OID_LENGTH];
   size_t context_and_oid_len;
-  if (!slhdsa_get_context_and_oid(context_and_oid, &context_and_oid_len,
-                                  sizeof(context_and_oid), context, context_len,
-                                  hash_nid, hashed_msg_len)) {
+  if (!slhdsa_get_nonstandard_context_and_oid(
+          context_and_oid, &context_and_oid_len, sizeof(context_and_oid),
+          context, context_len, hash_nid, hashed_msg_len)) {
     return 0;
   }
 
@@ -251,7 +240,7 @@ int SLHDSA_SHA2_128S_verify(
                                           msg, msg_len);
 }
 
-int SLHDSA_SHA2_128S_prehash_verify(
+int SLHDSA_SHA2_128S_prehash_warning_nonstandard_verify(
     const uint8_t *signature, size_t signature_len,
     const uint8_t public_key[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
     const uint8_t *hashed_msg, size_t hashed_msg_len, int hash_nid,
@@ -266,9 +255,9 @@ int SLHDSA_SHA2_128S_prehash_verify(
 
   uint8_t context_and_oid[MAX_CONTEXT_LENGTH + MAX_OID_LENGTH];
   size_t context_and_oid_len;
-  if (!slhdsa_get_context_and_oid(context_and_oid, &context_and_oid_len,
-                                  sizeof(context_and_oid), context, context_len,
-                                  hash_nid, hashed_msg_len)) {
+  if (!slhdsa_get_nonstandard_context_and_oid(
+          context_and_oid, &context_and_oid_len, sizeof(context_and_oid),
+          context, context_len, hash_nid, hashed_msg_len)) {
     return 0;
   }
 

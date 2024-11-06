@@ -83,43 +83,43 @@ TEST(SLHDSATest, BasicSignVerify) {
             1);
 }
 
-TEST(SLHDSATest, BasicPrehashSignVerify) {
+TEST(SLHDSATest, BasicNonstandardPrehashSignVerify) {
   uint8_t pub[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES];
   uint8_t priv[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES];
   SLHDSA_SHA2_128S_generate_key(pub, priv);
 
-  // Use a constant 32-byte value as the prehashed message
-  uint8_t kHashedMessage[32] = {0x42};
+  // Use a constant 48-byte value as the prehashed message
+  uint8_t kHashedMessage[48] = {0x42};
   uint8_t kContext[256] = {0};
   uint8_t signature[SLHDSA_SHA2_128S_SIGNATURE_BYTES];
-  ASSERT_TRUE(SLHDSA_SHA2_128S_prehash_sign(signature, priv, kHashedMessage,
-                                            sizeof(kHashedMessage), NID_sha256,
-                                            nullptr, 0));
-  EXPECT_EQ(SLHDSA_SHA2_128S_prehash_verify(
+  ASSERT_TRUE(SLHDSA_SHA2_128S_prehash_warning_nonstandard_sign(
+      signature, priv, kHashedMessage, sizeof(kHashedMessage), NID_sha384,
+      nullptr, 0));
+  EXPECT_EQ(SLHDSA_SHA2_128S_prehash_warning_nonstandard_verify(
                 signature, sizeof(signature), pub, kHashedMessage,
-                sizeof(kHashedMessage), NID_sha256, nullptr, 0),
+                sizeof(kHashedMessage), NID_sha384, nullptr, 0),
             1);
-  EXPECT_EQ(SLHDSA_SHA2_128S_prehash_verify(
+  EXPECT_EQ(SLHDSA_SHA2_128S_prehash_warning_nonstandard_verify(
                 signature, sizeof(signature), pub, kHashedMessage,
-                sizeof(kHashedMessage), NID_sha256, kContext, 1),
+                sizeof(kHashedMessage), NID_sha384, kContext, 1),
             0);
-  EXPECT_EQ(SLHDSA_SHA2_128S_prehash_verify(
+  EXPECT_EQ(SLHDSA_SHA2_128S_prehash_warning_nonstandard_verify(
                 signature, sizeof(signature), pub, kHashedMessage,
-                sizeof(kHashedMessage), NID_sha256, kContext, 256),
+                sizeof(kHashedMessage), NID_sha384, kContext, 256),
             0);
 
-  ASSERT_TRUE(SLHDSA_SHA2_128S_prehash_sign(signature, priv, kHashedMessage,
-                                            sizeof(kHashedMessage), NID_sha256,
-                                            kContext, 1));
-  EXPECT_EQ(SLHDSA_SHA2_128S_prehash_verify(
+  ASSERT_TRUE(SLHDSA_SHA2_128S_prehash_warning_nonstandard_sign(
+      signature, priv, kHashedMessage, sizeof(kHashedMessage), NID_sha384,
+      kContext, 1));
+  EXPECT_EQ(SLHDSA_SHA2_128S_prehash_warning_nonstandard_verify(
                 signature, sizeof(signature), pub, kHashedMessage,
-                sizeof(kHashedMessage), NID_sha256, kContext, 1),
+                sizeof(kHashedMessage), NID_sha384, kContext, 1),
             1);
 
   uint8_t kWrongLengthHash[16] = {0x42};
-  EXPECT_FALSE(SLHDSA_SHA2_128S_prehash_sign(signature, priv, kWrongLengthHash,
-                                             sizeof(kWrongLengthHash),
-                                             NID_sha256, nullptr, 0));
+  EXPECT_FALSE(SLHDSA_SHA2_128S_prehash_warning_nonstandard_sign(
+      signature, priv, kWrongLengthHash, sizeof(kWrongLengthHash), NID_sha384,
+      nullptr, 0));
 }
 
 
@@ -197,19 +197,17 @@ static void NISTPrehashSignatureGenerationFileTest(FileTest *t) {
   std::string hash_func;
   ASSERT_TRUE(t->GetAttribute(&hash_func, "hash"));
   int nid = 0;
-  if (hash_func == "SHA-256") {
-    nid = NID_sha256;
-  } else if (hash_func == "SHA-512") {
-    nid = NID_sha512;
+  if (hash_func == "SHA-384") {
+    nid = NID_sha384;
   } else {
     abort();
   }
 
   uint8_t pub[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES];
   SLHDSA_SHA2_128S_public_from_private(pub, priv.data());
-  EXPECT_TRUE(SLHDSA_SHA2_128S_prehash_verify(sig.data(), sig.size(), pub,
-                                              msg.data(), msg.size(), nid,
-                                              context.data(), context.size()));
+  EXPECT_TRUE(SLHDSA_SHA2_128S_prehash_warning_nonstandard_verify(
+      sig.data(), sig.size(), pub, msg.data(), msg.size(), nid, context.data(),
+      context.size()));
 }
 
 
