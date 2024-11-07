@@ -14,6 +14,8 @@
 
 #include <openssl/mldsa.h>
 
+#include <memory>
+
 #include <assert.h>
 #include <stdlib.h>
 
