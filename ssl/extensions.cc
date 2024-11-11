@@ -943,17 +943,14 @@ static bool ext_ticket_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
     return true;
   }
 
-  Span<const uint8_t> ticket;
-
   // Renegotiation does not participate in session resumption. However, still
   // advertise the extension to avoid potentially breaking servers which carry
   // over the state from the previous handshake, such as OpenSSL servers
   // without upstream's 3c3f0259238594d77264a78944d409f2127642c4.
-  if (!ssl->s3->initial_handshake_complete &&
+  Span<const uint8_t> ticket;
+  if (!ssl->s3->initial_handshake_complete &&  //
       ssl->session != nullptr &&
-      !ssl->session->ticket.empty() &&
-      // Don't send TLS 1.3 session tickets in the ticket extension.
-      ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION) {
+      ssl_session_get_type(ssl->session.get()) == SSLSessionType::kTicket) {
     ticket = ssl->session->ticket;
   }
 
@@ -1892,7 +1889,8 @@ static bool should_offer_psk(const SSL_HANDSHAKE *hs,
                              ssl_client_hello_type_t type) {
   const SSL *const ssl = hs->ssl;
   if (hs->max_version < TLS1_3_VERSION || ssl->session == nullptr ||
-      ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION ||
+      ssl_session_get_type(ssl->session.get()) !=
+          SSLSessionType::kPreSharedKey ||
       // TODO(https://crbug.com/boringssl/275): Should we synthesize a
       // placeholder PSK, at least when we offer early data? Otherwise
       // ClientHelloOuter will contain an early_data extension without a

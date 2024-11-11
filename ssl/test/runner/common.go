@@ -1149,10 +1149,15 @@ type ProtocolBugs struct {
 	ExpectNoSessionID bool
 
 	// ExpectNoTLS12Session, if true, causes the server to fail the
-	// connection if the server offered a TLS 1.2 session. TLS 1.3 clients
+	// connection if the client offered a TLS 1.2 session. TLS 1.3 clients
 	// always offer session IDs for compatibility, so the session ID check
 	// checks for sessions the server issued.
 	ExpectNoTLS12Session bool
+
+	// ExpectNoTLS12TicketSupport, if true, causes the server to fail the
+	// connection if the client signaled TLS 1.2 session ticket support.
+	// (This implicitly enforces that the client does not send a ticket.)
+	ExpectNoTLS12TicketSupport bool
 
 	// ExpectNoTLS13PSK, if true, causes the server to fail the connection
 	// if a TLS 1.3 PSK is offered.

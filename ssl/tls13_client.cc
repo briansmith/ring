@@ -418,7 +418,10 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   // When offering ECH, |ssl->session| is only offered in ClientHelloInner.
   const bool pre_shared_key_allowed =
-      ssl->session != nullptr && ssl->s3->ech_status != ssl_ech_rejected;
+      ssl->session != nullptr &&
+      ssl_session_get_type(ssl->session.get()) ==
+          SSLSessionType::kPreSharedKey &&
+      ssl->s3->ech_status != ssl_ech_rejected;
   SSLExtension key_share(TLSEXT_TYPE_key_share),
       pre_shared_key(TLSEXT_TYPE_pre_shared_key, pre_shared_key_allowed),
       supported_versions(TLSEXT_TYPE_supported_versions);

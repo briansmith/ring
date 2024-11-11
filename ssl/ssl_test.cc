@@ -9778,5 +9778,23 @@ TEST(SSLTest, EarlyDataDisabledInDTLS13) {
   EXPECT_FALSE(SSL_SESSION_early_data_capable(session.get()));
 }
 
+// ID-only TLS 1.3 sessions are impossible and should not be resumable.
+TEST(SSLTest, IDOnlyTLS13Session) {
+  bssl::UniquePtr<SSL_CTX> ctx = CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(ctx);
+  SSL_CTX_set_session_cache_mode(ctx.get(),
+                                 SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_SERVER);
+
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_VERSION));
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(ctx.get(), ctx.get());
+  ASSERT_TRUE(session);
+  EXPECT_TRUE(SSL_SESSION_is_resumable(session.get()));
+
+  session->ticket.Reset();
+  session->session_id.Resize(32);
+  EXPECT_FALSE(SSL_SESSION_is_resumable(session.get()));
+}
+
 }  // namespace
 BSSL_NAMESPACE_END

@@ -565,6 +565,23 @@ bool ssl_encrypt_ticket(SSL_HANDSHAKE *hs, CBB *out,
   }
 }
 
+SSLSessionType ssl_session_get_type(const SSL_SESSION *session) {
+  if (session->not_resumable) {
+    return SSLSessionType::kNotResumable;
+  }
+  if (ssl_session_protocol_version(session) >= TLS1_3_VERSION) {
+    return session->ticket.empty() ? SSLSessionType::kNotResumable
+                                   : SSLSessionType::kPreSharedKey;
+  }
+  if (!session->ticket.empty()) {
+    return SSLSessionType::kTicket;
+  }
+  if (!session->session_id.empty()) {
+    return SSLSessionType::kID;
+  }
+  return SSLSessionType::kNotResumable;
+}
+
 bool ssl_session_is_context_valid(const SSL_HANDSHAKE *hs,
                                   const SSL_SESSION *session) {
   return session != nullptr &&
@@ -1064,8 +1081,7 @@ int SSL_SESSION_should_be_single_use(const SSL_SESSION *session) {
 }
 
 int SSL_SESSION_is_resumable(const SSL_SESSION *session) {
-  return !session->not_resumable &&
-         (!session->session_id.empty() || !session->ticket.empty());
+  return ssl_session_get_type(session) != SSLSessionType::kNotResumable;
 }
 
 int SSL_SESSION_has_ticket(const SSL_SESSION *session) {

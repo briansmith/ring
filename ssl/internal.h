@@ -3777,6 +3777,20 @@ OPENSSL_EXPORT UniquePtr<SSL_SESSION> SSL_SESSION_parse(
 // error.
 OPENSSL_EXPORT bool ssl_session_serialize(const SSL_SESSION *in, CBB *cbb);
 
+enum class SSLSessionType {
+  // The session is not resumable.
+  kNotResumable,
+  // The session uses a TLS 1.2 session ID.
+  kID,
+  // The session uses a TLS 1.2 ticket.
+  kTicket,
+  // The session uses a TLS 1.3 pre-shared key.
+  kPreSharedKey,
+};
+
+// ssl_session_get_type returns the type of |session|.
+SSLSessionType ssl_session_get_type(const SSL_SESSION *session);
+
 // ssl_session_is_context_valid returns whether |session|'s session ID context
 // matches the one set on |hs|.
 bool ssl_session_is_context_valid(const SSL_HANDSHAKE *hs,

@@ -9253,6 +9253,13 @@ func addResumptionVersionTests() {
 						},
 					})
 				} else if !isBadDTLSResumption {
+					expectedError := ":OLD_SESSION_VERSION_NOT_RETURNED:"
+					if sessionVers.version < VersionTLS13 && resumeVers.version >= VersionTLS13 {
+						// The server will "resume" the session by sending pre_shared_key,
+						// but the shim will not have sent pre_shared_key at all. The shim
+						// should reject this because the extension was not allowed at all.
+						expectedError = ":UNEXPECTED_EXTENSION:"
+					}
 					testCases = append(testCases, testCase{
 						protocol:      protocol,
 						name:          "Resume-Client-Mismatch" + suffix,
@@ -9273,7 +9280,7 @@ func addResumptionVersionTests() {
 							version: resumeVers.version,
 						},
 						shouldFail:    true,
-						expectedError: ":OLD_SESSION_VERSION_NOT_RETURNED:",
+						expectedError: expectedError,
 					})
 				}
 
@@ -13667,6 +13674,43 @@ func addSessionTicketTests() {
 			// has established tickets.
 			flags: []string{"-on-resume-no-ticket"},
 		})
+
+		// SSL_OP_NO_TICKET implies the client must not offer ticket-based
+		// sessions. The client not only should not send the session ticket
+		// extension, but if the server echos the session ID, the client should
+		// reject this.
+		if ver.version < VersionTLS13 {
+			testCases = append(testCases, testCase{
+				name: ver.name + "-NoTicket-NoOffer",
+				config: Config{
+					MinVersion: ver.version,
+					MaxVersion: ver.version,
+				},
+				resumeConfig: &Config{
+					MinVersion: ver.version,
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						ExpectNoTLS12TicketSupport: true,
+						// Pretend to accept the session, even though the client
+						// did not offer it. The client should reject this as
+						// invalid. A buggy client will still fail because it
+						// expects resumption, but with a different error.
+						// Ideally, we would test this by actually resuming the
+						// previous session, even though the client did not
+						// provide a ticket.
+						EchoSessionIDInFullHandshake: true,
+					},
+				},
+				resumeSession:        true,
+				expectResumeRejected: true,
+				// Set SSL_OP_NO_TICKET on the second connection, after the first
+				// has established tickets.
+				flags:              []string{"-on-resume-no-ticket"},
+				shouldFail:         true,
+				expectedError:      ":SERVER_ECHOED_INVALID_SESSION_ID:",
+				expectedLocalError: "remote error: illegal parameter",
+			})
+		}
 	}
 }
 

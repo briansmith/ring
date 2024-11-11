@@ -401,6 +401,9 @@ func (hs *serverHandshakeState) readClientHello() error {
 			return fmt.Errorf("tls: client offered an unexpected session ticket")
 		}
 	}
+	if config.Bugs.ExpectNoTLS12TicketSupport && hs.clientHello.ticketSupported {
+		return fmt.Errorf("tls: client sent unexpected session ticket extension")
+	}
 
 	if config.Bugs.ExpectNoTLS13PSK && len(hs.clientHello.pskIdentities) > 0 {
 		return fmt.Errorf("tls: client offered unexpected PSK identities")
