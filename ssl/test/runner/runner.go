@@ -13316,7 +13316,7 @@ func addSessionTicketTests() {
 	testCases = append(testCases, testCase{
 		// In TLS 1.2 and below, empty NewSessionTicket messages
 		// mean the server changed its mind on sending a ticket.
-		name: "SendEmptySessionTicket",
+		name: "SendEmptySessionTicket-TLS12",
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
@@ -13324,6 +13324,21 @@ func addSessionTicketTests() {
 			},
 		},
 		flags: []string{"-expect-no-session"},
+	})
+
+	testCases = append(testCases, testCase{
+		// In TLS 1.3, empty NewSessionTicket messages are not
+		// allowed.
+		name: "SendEmptySessionTicket-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendEmptySessionTicket: true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":DECODE_ERROR:",
+		expectedLocalError: "remote error: error decoding message",
 	})
 
 	// Test that the server ignores unknown PSK modes.

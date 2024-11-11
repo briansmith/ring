@@ -1117,8 +1117,9 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
       !CBS_get_u32(body, &session->ticket_age_add) ||
       !CBS_get_u8_length_prefixed(body, &ticket_nonce) ||
       !CBS_get_u16_length_prefixed(body, &ticket) ||
+      CBS_len(&ticket) == 0 ||  //
       !session->ticket.CopyFrom(ticket) ||
-      !CBS_get_u16_length_prefixed(body, &extensions) ||
+      !CBS_get_u16_length_prefixed(body, &extensions) ||  //
       CBS_len(body) != 0) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
