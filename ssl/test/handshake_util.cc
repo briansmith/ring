@@ -101,6 +101,9 @@ bool RetryAsync(SSL *ssl, int ret) {
     case SSL_ERROR_WANT_CERTIFICATE_VERIFY:
       test_state->custom_verify_ready = true;
       return true;
+    case SSL_ERROR_PENDING_TICKET:
+      test_state->async_ticket_decrypt_ready = true;
+      return true;
     default:
       return false;
   }

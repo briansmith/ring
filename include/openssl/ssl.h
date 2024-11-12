@@ -2469,9 +2469,9 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_keys(SSL_CTX *ctx, const void *in,
 // When decrypting a ticket, |encrypt| will be zero. |key_name| will point to a
 // 16-byte key name and |iv| points to an IV. The length of the IV consumed must
 // match |EVP_CIPHER_CTX_iv_length| of the cipher selected. In this mode,
-// |callback| returns -1 to abort the handshake, 0 if decrypting the ticket
-// failed, and 1 or 2 on success. If it returns 2, the ticket will be renewed.
-// This may be used to re-key the ticket.
+// |callback| returns -1 to abort the handshake, 0 if the ticket key was
+// unrecognized, and 1 or 2 on success. If it returns 2, the ticket will be
+// renewed. This may be used to re-key the ticket.
 //
 // WARNING: |callback| wildly breaks the usual return value convention and is
 // called in two different modes.

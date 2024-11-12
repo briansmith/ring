@@ -8574,54 +8574,65 @@ func addExtensionTests() {
 				resumeSession:        true,
 				expectResumeRejected: true,
 			})
-			// Test the ticket callback, with and without renewal.
-			testCases = append(testCases, testCase{
-				protocol: protocol,
-				testType: serverTest,
-				name:     "TicketCallback-" + suffix,
-				config: Config{
-					MaxVersion: ver.version,
-				},
-				resumeSession: true,
-				flags:         []string{"-use-ticket-callback"},
-			})
-			testCases = append(testCases, testCase{
-				protocol: protocol,
-				testType: serverTest,
-				name:     "TicketCallback-Renew-" + suffix,
-				config: Config{
-					MaxVersion: ver.version,
-					Bugs: ProtocolBugs{
-						ExpectNewTicket: true,
+			// Test the ticket callbacks.
+			for _, aeadCallback := range []bool{false, true} {
+				flag := "-use-ticket-callback"
+				callbackSuffix := suffix
+				if aeadCallback {
+					flag = "-use-ticket-aead-callback"
+					callbackSuffix += "-AEAD"
+				}
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TicketCallback-" + callbackSuffix,
+					config: Config{
+						MaxVersion: ver.version,
 					},
-				},
-				flags:         []string{"-use-ticket-callback", "-renew-ticket"},
-				resumeSession: true,
-			})
+					resumeSession: true,
+					flags:         []string{flag},
+				})
+				// Only the old callback supports renewal.
+				if !aeadCallback {
+					testCases = append(testCases, testCase{
+						protocol: protocol,
+						testType: serverTest,
+						name:     "TicketCallback-Renew-" + callbackSuffix,
+						config: Config{
+							MaxVersion: ver.version,
+							Bugs: ProtocolBugs{
+								ExpectNewTicket: true,
+							},
+						},
+						flags:         []string{flag, "-renew-ticket"},
+						resumeSession: true,
+					})
+				}
 
-			// Test that the ticket callback is only called once when everything before
-			// it in the ClientHello is asynchronous. This corrupts the ticket so
-			// certificate selection callbacks run.
-			testCases = append(testCases, testCase{
-				protocol: protocol,
-				testType: serverTest,
-				name:     "TicketCallback-SingleCall-" + suffix,
-				config: Config{
-					MaxVersion: ver.version,
-					Bugs: ProtocolBugs{
-						FilterTicket: func(in []byte) ([]byte, error) {
-							in[len(in)-1] ^= 1
-							return in, nil
+				// Test that the ticket callback is only called once when everything before
+				// it in the ClientHello is asynchronous. This corrupts the ticket so
+				// certificate selection callbacks run.
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TicketCallback-SingleCall-" + callbackSuffix,
+					config: Config{
+						MaxVersion: ver.version,
+						Bugs: ProtocolBugs{
+							FilterTicket: func(in []byte) ([]byte, error) {
+								in[len(in)-1] ^= 1
+								return in, nil
+							},
 						},
 					},
-				},
-				resumeSession:        true,
-				expectResumeRejected: true,
-				flags: []string{
-					"-use-ticket-callback",
-					"-async",
-				},
-			})
+					resumeSession:        true,
+					expectResumeRejected: true,
+					flags: []string{
+						flag,
+						"-async",
+					},
+				})
+			}
 
 			// Resume with various lengths of ticket session id.
 			if ver.version < VersionTLS13 {

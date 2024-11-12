@@ -56,6 +56,7 @@ struct TestState {
   unsigned private_key_retries = 0;
   bool got_new_session = false;
   bssl::UniquePtr<SSL_SESSION> new_session;
+  bool async_ticket_decrypt_ready = false;
   bool ticket_decrypt_done = false;
   bool alpn_select_done = false;
   bool early_callback_ready = false;
