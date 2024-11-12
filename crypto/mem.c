@@ -102,18 +102,23 @@ static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 #define WEAK_SYMBOL_FUNC(rettype, name, args) \
   rettype name args __attribute__((weak));
 #else
-#define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
+#define WEAK_SYMBOL_FUNC(rettype, name, args) \
+  static rettype(*const name) args = NULL;
 #endif
 
+#if defined(BORINGSSL_DETECT_SDALLOCX)
 // sdallocx is a sized |free| function. By passing the size (which we happen to
 // always know in BoringSSL), the malloc implementation can save work. We cannot
 // depend on |sdallocx| being available, however, so it's a weak symbol.
 //
-// This will always be safe, but will only be overridden if the malloc
-// implementation is statically linked with BoringSSL. So, if |sdallocx| is
-// provided in, say, libc.so, we still won't use it because that's dynamically
-// linked. This isn't an ideal result, but its helps in some cases.
+// This mechanism is kept opt-in because it assumes that, when |sdallocx| is
+// defined, it is part of the same allocator as |malloc|. This is usually true
+// but may break if |malloc| does not implement |sdallocx|, but some other
+// allocator with |sdallocx| is imported which does.
 WEAK_SYMBOL_FUNC(void, sdallocx, (void *ptr, size_t size, int flags));
+#else
+static void (*const sdallocx)(void *ptr, size_t size, int flags) = NULL;
+#endif
 
 // The following three functions can be defined to override default heap
 // allocation and freeing. If defined, it is the responsibility of
