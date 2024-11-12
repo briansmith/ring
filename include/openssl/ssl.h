@@ -2464,7 +2464,8 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_keys(SSL_CTX *ctx, const void *in,
 // When encrypting a new ticket, |encrypt| will be one. It writes a public
 // 16-byte key name to |key_name| and a fresh IV to |iv|. The output IV length
 // must match |EVP_CIPHER_CTX_iv_length| of the cipher selected. In this mode,
-// |callback| returns 1 on success and -1 on error.
+// |callback| returns 1 on success, 0 to decline sending a ticket, and -1 on
+// error.
 //
 // When decrypting a ticket, |encrypt| will be zero. |key_name| will point to a
 // 16-byte key name and |iv| points to an IV. The length of the IV consumed must
@@ -2508,7 +2509,8 @@ struct ssl_ticket_aead_method_st {
   // seal encrypts and authenticates |in_len| bytes from |in|, writes, at most,
   // |max_out_len| bytes to |out|, and puts the number of bytes written in
   // |*out_len|. The |in| and |out| buffers may be equal but will not otherwise
-  // alias. It returns one on success or zero on error.
+  // alias. It returns one on success or zero on error. If the function returns
+  // but |*out_len| is zero, BoringSSL will skip sending a ticket.
   int (*seal)(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out_len,
               const uint8_t *in, size_t in_len);
 

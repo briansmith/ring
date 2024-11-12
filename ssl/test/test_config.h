@@ -139,6 +139,7 @@ struct TestConfig {
   bool use_ticket_callback = false;
   bool use_ticket_aead_callback = false;
   bool renew_ticket = false;
+  bool skip_ticket = false;
   bool enable_early_data = false;
   std::string ocsp_response;
   bool check_close_notify = false;

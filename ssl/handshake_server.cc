@@ -1835,6 +1835,9 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
         !CBB_add_u32(&body, session->timeout) ||
         !CBB_add_u16_length_prefixed(&body, &ticket) ||
         !ssl_encrypt_ticket(hs, &ticket, session) ||
+        // |ticket| may be empty to skip sending a ticket. In TLS 1.2, servers
+        // skip sending tickets by sending empty NewSessionTicket, so no special
+        // handling is needed.
         !ssl_add_message_cbb(ssl, cbb.get())) {
       return ssl_hs_error;
     }

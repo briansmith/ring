@@ -8608,6 +8608,18 @@ func addExtensionTests() {
 						resumeSession: true,
 					})
 				}
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TicketCallback-Skip-" + callbackSuffix,
+					config: Config{
+						MaxVersion: ver.version,
+						Bugs: ProtocolBugs{
+							ExpectNoNonEmptyNewSessionTicket: true,
+						},
+					},
+					flags: []string{flag, "-skip-ticket"},
+				})
 
 				// Test that the ticket callback is only called once when everything before
 				// it in the ClientHello is asynchronous. This corrupts the ticket so

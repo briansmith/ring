@@ -2237,6 +2237,10 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		return unexpectedMessageError(sessionTicketMsg, msg)
 	}
 
+	if c.config.Bugs.ExpectNoNonEmptyNewSessionTicket && len(sessionTicketMsg.ticket) != 0 {
+		return errors.New("tls: received unexpected non-empty NewSessionTicket")
+	}
+
 	session.sessionTicket = sessionTicketMsg.ticket
 	hs.session = session
 

@@ -1480,9 +1480,16 @@ type ProtocolBugs struct {
 	// modes to send. If a non-nil empty slice, no extension will be sent.
 	SendPSKKeyExchangeModes []byte
 
-	// ExpectNoNewSessionTicket, if present, means that the client will fail upon
+	// ExpectNoNewSessionTicket, if true, means that the client will fail upon
 	// receipt of a NewSessionTicket message.
 	ExpectNoNewSessionTicket bool
+
+	// ExpectNoNonEmptyNewSessionTicket, if true, means that the client will
+	// fail upon receipt of a NewSessionTicket message that was non-empty. In
+	// TLS 1.3, this is the same as ExpectNoNewSessionTicket. In TLS 1.2, this
+	// allows the server to commit to sending NewSessionTicket, but then decline
+	// to send one.
+	ExpectNoNonEmptyNewSessionTicket bool
 
 	// DuplicateTicketEarlyData causes an extra empty extension of early_data to
 	// be sent in NewSessionTicket.

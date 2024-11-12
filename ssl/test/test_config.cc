@@ -382,6 +382,7 @@ const Flag<TestConfig> *FindFlag(const char *name) {
         BoolFlag("-use-ticket-aead-callback",
                  &TestConfig::use_ticket_aead_callback),
         BoolFlag("-renew-ticket", &TestConfig::renew_ticket),
+        BoolFlag("-skip-ticket", &TestConfig::skip_ticket),
         BoolFlag("-enable-early-data", &TestConfig::enable_early_data),
         Base64Flag("-expect-ocsp-response", &TestConfig::expect_ocsp_response),
         BoolFlag("-check-close-notify", &TestConfig::check_close_notify),
@@ -858,6 +859,9 @@ static int TicketKeyCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
   static const uint8_t kZeros[16] = {0};
 
   if (encrypt) {
+    if (GetTestConfig(ssl)->skip_ticket) {
+      return 0;
+    }
     OPENSSL_memcpy(key_name, kZeros, sizeof(kZeros));
     RAND_bytes(iv, 16);
   } else if (OPENSSL_memcmp(key_name, kZeros, 16) != 0) {
@@ -1225,6 +1229,11 @@ static size_t AsyncTicketMaxOverhead(SSL *ssl) {
 static int AsyncTicketSeal(SSL *ssl, uint8_t *out, size_t *out_len,
                            size_t max_out_len, const uint8_t *in,
                            size_t in_len) {
+  if (GetTestConfig(ssl)->skip_ticket) {
+    *out_len = 0;
+    return 1;
+  }
+
   auto out_span = bssl::MakeSpan(out, max_out_len);
   // Encrypt the ticket with the all zero key and a random nonce.
   static const uint8_t kKey[16] = {0};

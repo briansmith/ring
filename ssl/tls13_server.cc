@@ -141,6 +141,7 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
   ssl_session_rebase_time(ssl, hs->new_session.get());
 
   assert(ssl->session_ctx->num_tickets <= kMaxTickets);
+  bool sent_tickets = false;
   for (size_t i = 0; i < ssl->session_ctx->num_tickets; i++) {
     UniquePtr<SSL_SESSION> session(
         SSL_SESSION_dup(hs->new_session.get(), SSL_SESSION_INCLUDE_NONAUTH));
@@ -177,10 +178,18 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
         !CBB_add_u32(&body, session->ticket_age_add) ||
         !CBB_add_u8_length_prefixed(&body, &nonce_cbb) ||
         !CBB_add_bytes(&nonce_cbb, nonce, sizeof(nonce)) ||
-        !CBB_add_u16_length_prefixed(&body, &ticket) ||
         !tls13_derive_session_psk(session.get(), nonce, SSL_is_dtls(ssl)) ||
-        !ssl_encrypt_ticket(hs, &ticket, session.get()) ||
-        !CBB_add_u16_length_prefixed(&body, &extensions)) {
+        !CBB_add_u16_length_prefixed(&body, &ticket) ||
+        !ssl_encrypt_ticket(hs, &ticket, session.get())) {
+      return false;
+    }
+
+    if (CBB_len(&ticket) == 0) {
+      // The caller decided not to encrypt a ticket. Skip the message.
+      continue;
+    }
+
+    if (!CBB_add_u16_length_prefixed(&body, &extensions)) {
       return false;
     }
 
@@ -204,9 +213,10 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
     if (!ssl_add_message_cbb(ssl, cbb.get())) {
       return false;
     }
+    sent_tickets = true;
   }
 
-  *out_sent_tickets = true;
+  *out_sent_tickets = sent_tickets;
   return true;
 }
 

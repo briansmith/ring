@@ -1611,7 +1611,7 @@ func (c *Conn) processTLS13NewSessionTicket(newSessionTicket *newSessionTicketMs
 		return errors.New("tls: no early_data ticket extension found")
 	}
 
-	if c.config.Bugs.ExpectNoNewSessionTicket {
+	if c.config.Bugs.ExpectNoNewSessionTicket || c.config.Bugs.ExpectNoNonEmptyNewSessionTicket {
 		return errors.New("tls: received unexpected NewSessionTicket")
 	}
 

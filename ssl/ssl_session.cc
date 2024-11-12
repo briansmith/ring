@@ -443,14 +443,11 @@ static int ssl_encrypt_ticket_with_cipher_ctx(SSL_HANDSHAKE *hs, CBB *out,
   ScopedEVP_CIPHER_CTX ctx;
   ScopedHMAC_CTX hctx;
 
-  // If the session is too long, emit a dummy value rather than abort the
-  // connection.
+  // If the session is too long, decline to send a ticket.
   static const size_t kMaxTicketOverhead =
       16 + EVP_MAX_IV_LENGTH + EVP_MAX_BLOCK_LENGTH + EVP_MAX_MD_SIZE;
   if (session_len > 0xffff - kMaxTicketOverhead) {
-    static const char kTicketPlaceholder[] = "TICKET TOO LARGE";
-    return CBB_add_bytes(out, (const uint8_t *)kTicketPlaceholder,
-                         strlen(kTicketPlaceholder));
+    return 1;
   }
 
   // Initialize HMAC and cipher contexts. If callback present it does all the
@@ -459,9 +456,14 @@ static int ssl_encrypt_ticket_with_cipher_ctx(SSL_HANDSHAKE *hs, CBB *out,
   uint8_t iv[EVP_MAX_IV_LENGTH];
   uint8_t key_name[16];
   if (tctx->ticket_key_cb != NULL) {
-    if (tctx->ticket_key_cb(hs->ssl, key_name, iv, ctx.get(), hctx.get(),
-                            1 /* encrypt */) < 0) {
+    int ret = tctx->ticket_key_cb(hs->ssl, key_name, iv, ctx.get(), hctx.get(),
+                                  1 /* encrypt */);
+    if (ret < 0) {
       return 0;
+    }
+    if (ret == 0) {
+      // The caller requested to send no ticket, so write nothing to |out|.
+      return 1;
     }
   } else {
     // Rotate ticket key if necessary.

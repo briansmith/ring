@@ -3755,8 +3755,13 @@ bool ssl_is_key_type_supported(int key_type);
 bool ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
                                        const EVP_PKEY *privkey);
 bool ssl_get_new_session(SSL_HANDSHAKE *hs);
+
+// ssl_encrypt_ticket encrypt a ticket for |session| and writes the result to
+// |out|. It returns true on success and false on error. If, on success, nothing
+// was written to |out|, the caller should skip sending a ticket.
 bool ssl_encrypt_ticket(SSL_HANDSHAKE *hs, CBB *out,
                         const SSL_SESSION *session);
+
 bool ssl_ctx_rotate_ticket_encryption_key(SSL_CTX *ctx);
 
 // ssl_session_new returns a newly-allocated blank |SSL_SESSION| or nullptr on
