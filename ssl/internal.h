@@ -1296,7 +1296,7 @@ class DTLSRecordNumber {
 
   bool operator==(DTLSRecordNumber r) const {
     return combined() == r.combined();
-  };
+  }
   bool operator!=(DTLSRecordNumber r) const { return !((*this) == r); }
 
   uint64_t combined() const { return combined_; }
