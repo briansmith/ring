@@ -778,6 +778,11 @@ static seal_result_t seal_next_record(SSL *ssl, Span<uint8_t> out,
     return seal_continue;
   }
 
+  // TODO(crbug.com/374991962): For now, only send one message per record in
+  // epoch 0. Sending multiple is allowed and more efficient, but breaks
+  // b/378742138.
+  const bool allow_multiple_messages = first_msg.epoch != 0;
+
   // Pack as many handshake fragments into one record as we can. We stage the
   // fragments in the output buffer, to be sealed in-place.
   bool should_continue = false;
@@ -859,6 +864,11 @@ static seal_result_t seal_next_record(SSL *ssl, Span<uint8_t> out,
         // The packet was the limiting factor.
         goto packet_full;
       }
+    }
+
+    if (!allow_multiple_messages) {
+      should_continue = true;
+      break;
     }
   }
 

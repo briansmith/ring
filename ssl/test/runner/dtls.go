@@ -301,7 +301,9 @@ func (c *Conn) dtlsDoReadRecord(epoch *epochState, want recordType) (recordType,
 			if typ == recordTypeHandshake && c.lastRecordInFlight.typ == recordTypeHandshake && epoch.epoch == c.lastRecordInFlight.epoch {
 				// The previous record was compatible with this one. The shim
 				// should have fit more in this record before making a new one.
-				if c.lastRecordInFlight.bytesAvailable > handshakeBytesNeeded {
+				// TODO(crbug.com/374991962): Enforce this for plaintext records
+				// too.
+				if c.lastRecordInFlight.bytesAvailable > handshakeBytesNeeded && epoch.epoch > 0 {
 					return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: previous handshake record had %d bytes available, but shim did not fit another fragment in it", c.lastRecordInFlight.bytesAvailable))
 				}
 			} else if newPacket {
