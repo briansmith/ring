@@ -1395,6 +1395,9 @@ ResendHelloRetryRequest:
 		for i := 0; i < ticketCount; i++ {
 			c.SendNewSessionTicket([]byte{byte(i)})
 		}
+		if err := c.flushHandshake(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
