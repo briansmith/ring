@@ -61,6 +61,15 @@ func (m *DTLSMessage) Fragment(offset, length int) DTLSFragment {
 	}
 }
 
+// Split returns two fragments for the message.
+func (m *DTLSMessage) Split(offset int) (DTLSFragment, DTLSFragment) {
+	if m.IsChangeCipherSpec {
+		panic("tls: cannot split ChangeCipherSpec")
+	}
+
+	return m.Fragment(0, offset), m.Fragment(offset, len(m.Data)-offset)
+}
+
 // A DTLSFragment is a DTLS handshake fragment or ChangeCipherSpec, along with
 // the epoch that it is to be sent under.
 type DTLSFragment struct {
