@@ -920,7 +920,7 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
 int SSL_process_quic_post_handshake(SSL *ssl) {
   ssl_reset_error_state(ssl);
 
-  if (SSL_in_init(ssl)) {
+  if (ssl->quic_method == nullptr || SSL_in_init(ssl)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
