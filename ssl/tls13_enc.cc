@@ -136,9 +136,9 @@ static bool hkdf_expand_label(Span<uint8_t> out, const EVP_MD *digest,
         label, hash);
   }
   return CRYPTO_tls13_hkdf_expand_label(
-      out.data(), out.size(), digest, secret.data(), secret.size(),
-      reinterpret_cast<const uint8_t *>(label.data()), label.size(),
-      hash.data(), hash.size()) == 1;
+             out.data(), out.size(), digest, secret.data(), secret.size(),
+             reinterpret_cast<const uint8_t *>(label.data()), label.size(),
+             hash.data(), hash.size()) == 1;
 }
 
 static const char kTLS13LabelDerived[] = "derived";

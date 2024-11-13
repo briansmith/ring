@@ -12,9 +12,7 @@
 #include <openssl/bio.h>
 
 
-static SSL *get_ssl(BIO *bio) {
-  return reinterpret_cast<SSL *>(bio->ptr);
-}
+static SSL *get_ssl(BIO *bio) { return reinterpret_cast<SSL *>(bio->ptr); }
 
 static int ssl_read(BIO *bio, char *out, int outl) {
   SSL *ssl = get_ssl(bio);
@@ -146,9 +144,7 @@ static long ssl_ctrl(BIO *bio, int cmd, long num, void *ptr) {
   }
 }
 
-static int ssl_new(BIO *bio) {
-  return 1;
-}
+static int ssl_new(BIO *bio) { return 1; }
 
 static int ssl_free(BIO *bio) {
   SSL *ssl = get_ssl(bio);

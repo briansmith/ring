@@ -18,8 +18,8 @@
 
 #include <openssl/span.h>
 
-#include "internal.h"
 #include "../crypto/internal.h"
+#include "internal.h"
 
 
 BSSL_NAMESPACE_BEGIN
@@ -27,8 +27,7 @@ BSSL_NAMESPACE_BEGIN
 // new_leafless_chain returns a fresh stack of buffers set to {nullptr}.
 static UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_leafless_chain(void) {
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain(sk_CRYPTO_BUFFER_new_null());
-  if (!chain ||
-      !sk_CRYPTO_BUFFER_push(chain.get(), nullptr)) {
+  if (!chain || !sk_CRYPTO_BUFFER_push(chain.get(), nullptr)) {
     return nullptr;
   }
 
@@ -240,12 +239,12 @@ void ssl_credential_st::ClearIntermediateCerts() {
 
 bool ssl_credential_st::ChainContainsIssuer(
     bssl::Span<const uint8_t> dn) const {
-    if (UsesX509()) {
-    // TODO(bbe) This is used for matching a chain by CA name for the CA extension.
-    // If we require a chain to be present, we could remove any remaining parts
-    // of the chain after the found issuer, on the assumption that the peer
-    // sending the CA extension has the issuer in their trust store and does not
-    // need us to waste bytes on the wire.
+  if (UsesX509()) {
+    // TODO(bbe) This is used for matching a chain by CA name for the CA
+    // extension. If we require a chain to be present, we could remove any
+    // remaining parts of the chain after the found issuer, on the assumption
+    // that the peer sending the CA extension has the issuer in their trust
+    // store and does not need us to waste bytes on the wire.
     CBS dn_cbs;
     CBS_init(&dn_cbs, dn.data(), dn.size());
     for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(chain.get()); i++) {
@@ -344,8 +343,8 @@ int SSL_CREDENTIAL_set1_cert_chain(SSL_CREDENTIAL *cred,
   return 1;
 }
 
-int SSL_CREDENTIAL_set1_delegated_credential(
-    SSL_CREDENTIAL *cred, CRYPTO_BUFFER *dc) {
+int SSL_CREDENTIAL_set1_delegated_credential(SSL_CREDENTIAL *cred,
+                                             CRYPTO_BUFFER *dc) {
   if (cred->type != SSLCredentialType::kDelegated) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;

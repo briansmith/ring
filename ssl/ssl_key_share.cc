@@ -33,8 +33,8 @@
 #include <openssl/rand.h>
 #include <openssl/span.h>
 
-#include "internal.h"
 #include "../crypto/internal.h"
+#include "internal.h"
 
 BSSL_NAMESPACE_BEGIN
 
@@ -423,9 +423,10 @@ bool ssl_nid_to_group_id(uint16_t *out_group_id, int nid) {
   return false;
 }
 
-bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len) {
+bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name,
+                          size_t len) {
   for (const auto &group : kNamedGroups) {
-    if (len == strlen(group.name) &&
+    if (len == strlen(group.name) &&  //
         !strncmp(group.name, name, len)) {
       *out_group_id = group.group_id;
       return true;
@@ -452,7 +453,7 @@ BSSL_NAMESPACE_END
 
 using namespace bssl;
 
-const char* SSL_get_group_name(uint16_t group_id) {
+const char *SSL_get_group_name(uint16_t group_id) {
   for (const auto &group : kNamedGroups) {
     if (group.group_id == group_id) {
       return group.name;

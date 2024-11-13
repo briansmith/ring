@@ -428,7 +428,7 @@ static bool parse_ech_config(CBS *cbs, ECHConfig *out, bool *out_supported,
 
   CBS ech_config(out->raw);
   CBS public_name, public_key, cipher_suites, extensions;
-  if (!CBS_skip(&ech_config, 2) || // version
+  if (!CBS_skip(&ech_config, 2) ||  // version
       !CBS_get_u16_length_prefixed(&ech_config, &contents) ||
       !CBS_get_u8(&contents, &out->config_id) ||
       !CBS_get_u16(&contents, &out->kem_id) ||
@@ -576,9 +576,10 @@ bool ECHServerConfig::SetupContext(EVP_HPKE_CTX *ctx, uint16_t kdf_id,
 
   assert(kdf_id == EVP_HPKE_HKDF_SHA256);
   assert(get_ech_aead(aead_id) != NULL);
-  return EVP_HPKE_CTX_setup_recipient(
-      ctx, key_.get(), EVP_hpke_hkdf_sha256(), get_ech_aead(aead_id), enc.data(),
-      enc.size(), CBB_data(info_cbb.get()), CBB_len(info_cbb.get()));
+  return EVP_HPKE_CTX_setup_recipient(ctx, key_.get(), EVP_hpke_hkdf_sha256(),
+                                      get_ech_aead(aead_id), enc.data(),
+                                      enc.size(), CBB_data(info_cbb.get()),
+                                      CBB_len(info_cbb.get()));
 }
 
 bool ssl_is_valid_ech_config_list(Span<const uint8_t> ech_config_list) {
@@ -750,8 +751,7 @@ static bool setup_ech_grease(SSL_HANDSHAKE *hs) {
   bssl::ScopedCBB cbb;
   CBB enc_cbb, payload_cbb;
   uint8_t *payload;
-  if (!CBB_init(cbb.get(), 256) ||
-      !CBB_add_u16(cbb.get(), kdf_id) ||
+  if (!CBB_init(cbb.get(), 256) || !CBB_add_u16(cbb.get(), kdf_id) ||
       !CBB_add_u16(cbb.get(), EVP_HPKE_AEAD_id(aead)) ||
       !CBB_add_u8(cbb.get(), config_id) ||
       !CBB_add_u16_length_prefixed(cbb.get(), &enc_cbb) ||
@@ -889,7 +889,7 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
       payload_len != payload_span.size()) {
     return false;
   }
-#endif // BORINGSSL_UNSAFE_FUZZER_MODE
+#endif  // BORINGSSL_UNSAFE_FUZZER_MODE
 
   return true;
 }
@@ -938,9 +938,9 @@ void SSL_get0_ech_name_override(const SSL *ssl, const char **out_name,
   }
 }
 
-void SSL_get0_ech_retry_configs(
-    const SSL *ssl, const uint8_t **out_retry_configs,
-    size_t *out_retry_configs_len) {
+void SSL_get0_ech_retry_configs(const SSL *ssl,
+                                const uint8_t **out_retry_configs,
+                                size_t *out_retry_configs_len) {
   const SSL_HANDSHAKE *hs = ssl->s3->hs.get();
   if (!hs || !hs->ech_authenticated_reject) {
     // It is an error to call this function except in response to

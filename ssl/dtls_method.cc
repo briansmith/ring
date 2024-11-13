@@ -211,26 +211,14 @@ const SSL_METHOD *DTLSv1_method(void) {
 
 // Legacy side-specific methods.
 
-const SSL_METHOD *DTLSv1_2_server_method(void) {
-  return DTLSv1_2_method();
-}
+const SSL_METHOD *DTLSv1_2_server_method(void) { return DTLSv1_2_method(); }
 
-const SSL_METHOD *DTLSv1_server_method(void) {
-  return DTLSv1_method();
-}
+const SSL_METHOD *DTLSv1_server_method(void) { return DTLSv1_method(); }
 
-const SSL_METHOD *DTLSv1_2_client_method(void) {
-  return DTLSv1_2_method();
-}
+const SSL_METHOD *DTLSv1_2_client_method(void) { return DTLSv1_2_method(); }
 
-const SSL_METHOD *DTLSv1_client_method(void) {
-  return DTLSv1_method();
-}
+const SSL_METHOD *DTLSv1_client_method(void) { return DTLSv1_method(); }
 
-const SSL_METHOD *DTLS_server_method(void) {
-  return DTLS_method();
-}
+const SSL_METHOD *DTLS_server_method(void) { return DTLS_method(); }
 
-const SSL_METHOD *DTLS_client_method(void) {
-  return DTLS_method();
-}
+const SSL_METHOD *DTLS_client_method(void) { return DTLS_method(); }

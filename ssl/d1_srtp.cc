@@ -127,18 +127,10 @@
 using namespace bssl;
 
 static const SRTP_PROTECTION_PROFILE kSRTPProfiles[] = {
-    {
-        "SRTP_AES128_CM_SHA1_80", SRTP_AES128_CM_SHA1_80,
-    },
-    {
-        "SRTP_AES128_CM_SHA1_32", SRTP_AES128_CM_SHA1_32,
-    },
-    {
-        "SRTP_AEAD_AES_128_GCM", SRTP_AEAD_AES_128_GCM,
-    },
-    {
-        "SRTP_AEAD_AES_256_GCM", SRTP_AEAD_AES_256_GCM,
-    },
+    {"SRTP_AES128_CM_SHA1_80", SRTP_AES128_CM_SHA1_80},
+    {"SRTP_AES128_CM_SHA1_32", SRTP_AES128_CM_SHA1_32},
+    {"SRTP_AEAD_AES_128_GCM", SRTP_AEAD_AES_128_GCM},
+    {"SRTP_AEAD_AES_256_GCM", SRTP_AEAD_AES_256_GCM},
     {0, 0},
 };
 

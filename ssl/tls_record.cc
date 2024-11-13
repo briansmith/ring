@@ -115,8 +115,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../crypto/internal.h"
+#include "internal.h"
 
 
 BSSL_NAMESPACE_BEGIN
@@ -204,8 +204,8 @@ ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
   // Decode the record header.
   uint8_t type;
   uint16_t version, ciphertext_len;
-  if (!CBS_get_u8(&cbs, &type) ||
-      !CBS_get_u16(&cbs, &version) ||
+  if (!CBS_get_u8(&cbs, &type) ||      //
+      !CBS_get_u16(&cbs, &version) ||  //
       !CBS_get_u16(&cbs, &ciphertext_len)) {
     *out_consumed = SSL3_RT_HEADER_LENGTH;
     return ssl_open_record_partial;
@@ -260,8 +260,8 @@ ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
 
   // Skip early data received when expecting a second ClientHello if we rejected
   // 0RTT.
-  if (ssl->s3->skip_early_data &&
-      ssl->s3->aead_read_ctx->is_null_cipher() &&
+  if (ssl->s3->skip_early_data &&                  //
+      ssl->s3->aead_read_ctx->is_null_cipher() &&  //
       type == SSL3_RT_APPLICATION_DATA) {
     return skip_early_data(ssl, out_alert, *out_consumed);
   }
@@ -342,7 +342,7 @@ ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
   }
 
   // Handshake messages may not interleave with any other record type.
-  if (type != SSL3_RT_HANDSHAKE &&
+  if (type != SSL3_RT_HANDSHAKE &&  //
       tls_has_unprocessed_handshake_data(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
     *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
@@ -442,7 +442,8 @@ static bool tls_seal_scatter_suffix_len(const SSL *ssl, size_t *out_suffix_len,
     in_len -= 1;
   }
   // clang-format on
-  return ssl->s3->aead_write_ctx->SuffixLen(out_suffix_len, in_len, extra_in_len);
+  return ssl->s3->aead_write_ctx->SuffixLen(out_suffix_len, in_len,
+                                            extra_in_len);
 }
 
 // tls_seal_scatter_record seals a new record of type |type| and body |in| and

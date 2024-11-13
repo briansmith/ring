@@ -228,13 +228,9 @@ bool SSLTranscript::HashBuffer(EVP_MD_CTX *ctx, const EVP_MD *digest) const {
   return true;
 }
 
-void SSLTranscript::FreeBuffer() {
-  buffer_.reset();
-}
+void SSLTranscript::FreeBuffer() { buffer_.reset(); }
 
-size_t SSLTranscript::DigestLen() const {
-  return EVP_MD_size(Digest());
-}
+size_t SSLTranscript::DigestLen() const { return EVP_MD_size(Digest()); }
 
 const EVP_MD *SSLTranscript::Digest() const {
   return EVP_MD_CTX_md(hash_.get());
@@ -300,7 +296,7 @@ bool SSLTranscript::Update(Span<const uint8_t> in) {
 bool SSLTranscript::AddToBufferOrHash(Span<const uint8_t> in) {
   // Depending on the state of the handshake, either the handshake buffer may be
   // active, the rolling hash, or both.
-  if (buffer_ &&
+  if (buffer_ &&  //
       !BUF_MEM_append(buffer_.get(), in.data(), in.size())) {
     return false;
   }

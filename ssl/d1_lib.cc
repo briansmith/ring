@@ -72,11 +72,11 @@ BSSL_NAMESPACE_BEGIN
 
 // DTLS1_MTU_TIMEOUTS is the maximum number of timeouts to expire
 // before starting to decrease the MTU.
-#define DTLS1_MTU_TIMEOUTS                     2
+#define DTLS1_MTU_TIMEOUTS 2
 
 // DTLS1_MAX_TIMEOUTS is the maximum number of timeouts to expire
 // before failing the DTLS handshake.
-#define DTLS1_MAX_TIMEOUTS                     12
+#define DTLS1_MAX_TIMEOUTS 12
 
 DTLS1_STATE::DTLS1_STATE()
     : has_change_cipher_spec(false),

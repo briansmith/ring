@@ -372,7 +372,8 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
   if (use_context) {
     seed[2 * SSL3_RANDOM_SIZE] = static_cast<uint8_t>(context_len >> 8);
     seed[2 * SSL3_RANDOM_SIZE + 1] = static_cast<uint8_t>(context_len);
-    OPENSSL_memcpy(seed.data() + 2 * SSL3_RANDOM_SIZE + 2, context, context_len);
+    OPENSSL_memcpy(seed.data() + 2 * SSL3_RANDOM_SIZE + 2, context,
+                   context_len);
   }
 
   const SSL_SESSION *session = SSL_get_session(ssl);

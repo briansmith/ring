@@ -83,7 +83,7 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
     if (level == ssl_encryption_initial) {
       bssl::UniquePtr<SSLAEADContext> null_ctx =
           SSLAEADContext::CreateNullCipher();
-      if (!null_ctx ||
+      if (!null_ctx ||  //
           !ssl->method->set_write_state(ssl, ssl_encryption_initial,
                                         std::move(null_ctx),
                                         /*traffic_secret=*/{})) {
@@ -192,7 +192,7 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   // Queue up a ChangeCipherSpec for whenever we next send something. This
   // will be before the second ClientHello. If we offered early data, this was
   // already done.
-  if (!hs->early_data_offered &&
+  if (!hs->early_data_offered &&  //
       !ssl->method->add_change_cipher_spec(ssl)) {
     return ssl_hs_error;
   }
@@ -271,8 +271,8 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   }
   if (cookie.present) {
     CBS cookie_value;
-    if (!CBS_get_u16_length_prefixed(&cookie.data, &cookie_value) ||
-        CBS_len(&cookie_value) == 0 ||
+    if (!CBS_get_u16_length_prefixed(&cookie.data, &cookie_value) ||  //
+        CBS_len(&cookie_value) == 0 ||                                //
         CBS_len(&cookie.data) != 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
@@ -434,9 +434,9 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   // Recheck supported_versions, in case this is after HelloRetryRequest.
   uint16_t version;
-  if (!supported_versions.present ||
-      !CBS_get_u16(&supported_versions.data, &version) ||
-      CBS_len(&supported_versions.data) != 0 ||
+  if (!supported_versions.present ||                       //
+      !CBS_get_u16(&supported_versions.data, &version) ||  //
+      CBS_len(&supported_versions.data) != 0 ||            //
       version != ssl->s3->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SECOND_SERVERHELLO_VERSION_MISMATCH);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
@@ -517,8 +517,8 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!tls13_advance_key_schedule(hs, dhe_secret) ||
-      !ssl_hash_message(hs, msg) ||
+  if (!tls13_advance_key_schedule(hs, dhe_secret) ||  //
+      !ssl_hash_message(hs, msg) ||                   //
       !tls13_derive_handshake_secrets(hs)) {
     return ssl_hs_error;
   }
@@ -557,7 +557,7 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
   }
 
   CBS body = msg.body, extensions;
-  if (!CBS_get_u16_length_prefixed(&body, &extensions) ||
+  if (!CBS_get_u16_length_prefixed(&body, &extensions) ||  //
       CBS_len(&body) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);

@@ -99,9 +99,9 @@ static bool resolve_ecdhe_secret(SSL_HANDSHAKE *hs,
 static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
                                                       CBB *out) {
   CBB contents;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_supported_versions) ||
-      !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u16(&contents, hs->ssl->s3->version) ||
+  if (!CBB_add_u16(out, TLSEXT_TYPE_supported_versions) ||  //
+      !CBB_add_u16_length_prefixed(out, &contents) ||       //
+      !CBB_add_u16(&contents, hs->ssl->s3->version) ||      //
       !CBB_flush(out)) {
     return 0;
   }
@@ -126,8 +126,8 @@ static const SSL_CIPHER *choose_tls13_cipher(
 
 static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
   SSL *const ssl = hs->ssl;
-  if (// If the client doesn't accept resumption with PSK_DHE_KE, don't send a
-      // session ticket.
+  if (  // If the client doesn't accept resumption with PSK_DHE_KE, don't send a
+        // session ticket.
       !hs->accept_psk_mode ||
       // We only implement stateless resumption in TLS 1.3, so skip sending
       // tickets if disabled.
@@ -987,8 +987,8 @@ static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
     // the wire sooner and also avoids triggering a write on |SSL_read| when
     // processing the client Finished. This requires computing the client
     // Finished early. See RFC 8446, section 4.6.1.
-    static const uint8_t kEndOfEarlyData[4] = {SSL3_MT_END_OF_EARLY_DATA, 0,
-                                               0, 0};
+    static const uint8_t kEndOfEarlyData[4] = {SSL3_MT_END_OF_EARLY_DATA, 0, 0,
+                                               0};
     if (ssl->quic_method == nullptr &&
         !hs->transcript.Update(kEndOfEarlyData)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1234,8 +1234,8 @@ static enum ssl_hs_wait_t do_read_channel_id(SSL_HANDSHAKE *hs) {
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;
   }
-  if (!ssl_check_message_type(ssl, msg, SSL3_MT_CHANNEL_ID) ||
-      !tls1_verify_channel_id(hs, msg) ||
+  if (!ssl_check_message_type(ssl, msg, SSL3_MT_CHANNEL_ID) ||  //
+      !tls1_verify_channel_id(hs, msg) ||                       //
       !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
@@ -1263,7 +1263,7 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl->s3->early_data_accepted) {
-    if (!ssl_hash_message(hs, msg) ||
+    if (!ssl_hash_message(hs, msg) ||  //
         !tls13_derive_resumption_secret(hs)) {
       return ssl_hs_error;
     }

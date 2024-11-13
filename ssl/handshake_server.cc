@@ -167,8 +167,8 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
-#include "internal.h"
 #include "../crypto/internal.h"
+#include "internal.h"
 
 
 BSSL_NAMESPACE_BEGIN
@@ -200,8 +200,8 @@ static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   CBS supported_versions, versions;
   if (ssl_client_hello_get_extension(client_hello, &supported_versions,
                                      TLSEXT_TYPE_supported_versions)) {
-    if (!CBS_get_u8_length_prefixed(&supported_versions, &versions) ||
-        CBS_len(&supported_versions) != 0 ||
+    if (!CBS_get_u8_length_prefixed(&supported_versions, &versions) ||  //
+        CBS_len(&supported_versions) != 0 ||                            //
         CBS_len(&versions) == 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       *out_alert = SSL_AD_DECODE_ERROR;
@@ -316,12 +316,12 @@ static const SSL_CIPHER *choose_cipher(SSL_HANDSHAKE *hs,
     const SSL_CIPHER *c = sk_SSL_CIPHER_value(prio, i);
 
     size_t cipher_index;
-    if (// Check if the cipher is supported for the current version.
-        SSL_CIPHER_get_min_version(c) <= ssl_protocol_version(ssl) &&
-        ssl_protocol_version(ssl) <= SSL_CIPHER_get_max_version(c) &&
+    if (  // Check if the cipher is supported for the current version.
+        SSL_CIPHER_get_min_version(c) <= ssl_protocol_version(ssl) &&  //
+        ssl_protocol_version(ssl) <= SSL_CIPHER_get_max_version(c) &&  //
         // Check the cipher is supported for the server configuration.
-        (c->algorithm_mkey & mask_k) &&
-        (c->algorithm_auth & mask_a) &&
+        (c->algorithm_mkey & mask_k) &&  //
+        (c->algorithm_auth & mask_a) &&  //
         // Check the cipher is in the |allow| list.
         sk_SSL_CIPHER_find(allow, &cipher_index, c)) {
       if (in_group_flags != NULL && in_group_flags[i]) {
@@ -503,15 +503,16 @@ static bool is_probably_jdk11_with_tls13(const SSL_CLIENT_HELLO *client_hello) {
   // clients implement X25519.
   while (CBS_len(&supported_groups) > 0) {
     uint16_t group;
-    if (!CBS_get_u16(&supported_groups, &group) ||
+    if (!CBS_get_u16(&supported_groups, &group) ||  //
         group == SSL_GROUP_X25519) {
       return false;
     }
   }
 
-  if (// JDK 11 always sends the same contents in signature_algorithms and
-      // signature_algorithms_cert. This is unusual: signature_algorithms_cert,
-      // if omitted, is treated as if it were signature_algorithms.
+  if (  // JDK 11 always sends the same contents in signature_algorithms and
+        // signature_algorithms_cert. This is unusual:
+        // signature_algorithms_cert, if omitted, is treated as if it were
+        // signature_algorithms.
       sigalgs != sigalgs_cert ||
       // When TLS 1.2 or below is enabled, JDK 11 sends status_request_v2 iff it
       // sends status_request. This is unusual: status_request_v2 is not widely
@@ -616,8 +617,8 @@ static bool extract_sni(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
   CBS server_name_list, host_name;
   uint8_t name_type;
-  if (!CBS_get_u16_length_prefixed(&sni, &server_name_list) ||
-      !CBS_get_u8(&server_name_list, &name_type) ||
+  if (!CBS_get_u16_length_prefixed(&sni, &server_name_list) ||  //
+      !CBS_get_u8(&server_name_list, &name_type) ||             //
       // Although the server_name extension was intended to be extensible to
       // new name types and multiple names, OpenSSL 1.0.x had a bug which meant
       // different name types will cause an error. Further, RFC 4366 originally
@@ -625,16 +626,16 @@ static bool extract_sni(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       // adding new name types is no longer feasible.
       //
       // Act as if the extensibility does not exist to simplify parsing.
-      !CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
-      CBS_len(&server_name_list) != 0 ||
+      !CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||  //
+      CBS_len(&server_name_list) != 0 ||                              //
       CBS_len(&sni) != 0) {
     *out_alert = SSL_AD_DECODE_ERROR;
     return false;
   }
 
-  if (name_type != TLSEXT_NAMETYPE_host_name ||
-      CBS_len(&host_name) == 0 ||
-      CBS_len(&host_name) > TLSEXT_MAXLEN_host_name ||
+  if (name_type != TLSEXT_NAMETYPE_host_name ||         //
+      CBS_len(&host_name) == 0 ||                       //
+      CBS_len(&host_name) > TLSEXT_MAXLEN_host_name ||  //
       CBS_contains_zero_byte(&host_name)) {
     *out_alert = SSL_AD_UNRECOGNIZED_NAME;
     return false;
@@ -735,7 +736,7 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
         return ssl_hs_error;
 
       default:
-        /* fallthrough */;
+          /* fallthrough */;
     }
   }
 
@@ -941,7 +942,8 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     // Assign a session ID if not using session tickets.
     if (!hs->ticket_expected &&
         (ssl->ctx->session_cache_mode & SSL_SESS_CACHE_SERVER)) {
-      hs->new_session->session_id.ResizeForOverwrite(SSL3_SSL_SESSION_ID_LENGTH);
+      hs->new_session->session_id.ResizeForOverwrite(
+          SSL3_SSL_SESSION_ID_LENGTH);
       RAND_bytes(hs->new_session->session_id.data(),
                  hs->new_session->session_id.size());
     }
@@ -1165,9 +1167,9 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
     if (alg_k & SSL_kECDHE) {
       assert(hs->new_session->group_id != 0);
       hs->key_shares[0] = SSLKeyShare::Create(hs->new_session->group_id);
-      if (!hs->key_shares[0] ||
-          !CBB_add_u8(cbb.get(), NAMED_CURVE_TYPE) ||
-          !CBB_add_u16(cbb.get(), hs->new_session->group_id) ||
+      if (!hs->key_shares[0] ||                                  //
+          !CBB_add_u8(cbb.get(), NAMED_CURVE_TYPE) ||            //
+          !CBB_add_u16(cbb.get(), hs->new_session->group_id) ||  //
           !CBB_add_u8_length_prefixed(cbb.get(), &child)) {
         return ssl_hs_error;
       }
@@ -1771,7 +1773,7 @@ static enum ssl_hs_wait_t do_read_channel_id(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl_check_message_type(ssl, msg, SSL3_MT_CHANNEL_ID) ||
-      !tls1_verify_channel_id(hs, msg) ||
+      !tls1_verify_channel_id(hs, msg) ||  //
       !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
@@ -1843,8 +1845,8 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl->method->add_change_cipher_spec(ssl) ||
-      !tls1_change_cipher_state(hs, evp_aead_seal) ||
+  if (!ssl->method->add_change_cipher_spec(ssl) ||     //
+      !tls1_change_cipher_state(hs, evp_aead_seal) ||  //
       !ssl_send_finished(hs)) {
     return ssl_hs_error;
   }

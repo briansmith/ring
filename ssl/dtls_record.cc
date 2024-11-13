@@ -117,8 +117,8 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 
-#include "internal.h"
 #include "../crypto/internal.h"
+#include "internal.h"
 
 
 BSSL_NAMESPACE_BEGIN
@@ -505,8 +505,7 @@ size_t dtls_record_header_write_len(const SSL *ssl, uint16_t epoch) {
   return DTLS1_3_RECORD_HEADER_WRITE_LENGTH;
 }
 
-size_t dtls_max_seal_overhead(const SSL *ssl,
-                              uint16_t epoch) {
+size_t dtls_max_seal_overhead(const SSL *ssl, uint16_t epoch) {
   DTLSWriteEpoch *write_epoch = get_write_epoch(ssl, epoch);
   if (write_epoch == nullptr) {
     return 0;

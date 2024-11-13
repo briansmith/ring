@@ -97,9 +97,7 @@ const char *SSL_state_string_long(const SSL *ssl) {
                      : ssl_client_handshake_state(ssl->s3->hs.get());
 }
 
-const char *SSL_state_string(const SSL *ssl) {
-  return "!!!!!!";
-}
+const char *SSL_state_string(const SSL *ssl) { return "!!!!!!"; }
 
 const char *SSL_alert_type_string_long(int value) {
   value >>= 8;
@@ -112,13 +110,9 @@ const char *SSL_alert_type_string_long(int value) {
   return "unknown";
 }
 
-const char *SSL_alert_type_string(int value) {
-  return "!";
-}
+const char *SSL_alert_type_string(int value) { return "!"; }
 
-const char *SSL_alert_desc_string(int value) {
-  return "!!";
-}
+const char *SSL_alert_desc_string(int value) { return "!!"; }
 
 const char *SSL_alert_desc_string_long(int value) {
   switch (value & 0xff) {

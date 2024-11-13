@@ -178,7 +178,7 @@ static void ssl_cert_set_cert_cb(CERT *cert, int (*cb)(SSL *ssl, void *arg),
 static int cert_set_chain_and_key(
     CERT *cert, CRYPTO_BUFFER *const *certs, size_t num_certs,
     EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method) {
-  if (num_certs == 0 ||
+  if (num_certs == 0 ||  //
       (privkey == NULL && privkey_method == NULL)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -268,7 +268,7 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
 
     UniquePtr<CRYPTO_BUFFER> buf(
         CRYPTO_BUFFER_new_from_CBS(&certificate, pool));
-    if (!buf ||
+    if (!buf ||  //
         !PushToStack(chain.get(), std::move(buf))) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return false;
@@ -302,13 +302,14 @@ static bool ssl_cert_skip_to_spki(const CBS *in, CBS *out_tbs_cert) {
   CBS buf = *in;
 
   CBS toplevel;
-  if (!CBS_get_asn1(&buf, &toplevel, CBS_ASN1_SEQUENCE) ||
-      CBS_len(&buf) != 0 ||
-      !CBS_get_asn1(&toplevel, out_tbs_cert, CBS_ASN1_SEQUENCE) ||
+  if (!CBS_get_asn1(&buf, &toplevel, CBS_ASN1_SEQUENCE) ||          //
+      CBS_len(&buf) != 0 ||                                         //
+      !CBS_get_asn1(&toplevel, out_tbs_cert, CBS_ASN1_SEQUENCE) ||  //
       // version
       !CBS_get_optional_asn1(
           out_tbs_cert, NULL, NULL,
-          CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
+          CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||  //
+
       // serialNumber
       !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_INTEGER) ||
       // signature algorithm
@@ -330,17 +331,17 @@ bool ssl_cert_extract_issuer(const CBS *in, CBS *out_dn) {
 
   CBS toplevel;
   CBS cert;
-  if (!CBS_get_asn1(&buf, &toplevel, CBS_ASN1_SEQUENCE) || //
-      CBS_len(&buf) != 0 || //
-      !CBS_get_asn1(&toplevel, &cert, CBS_ASN1_SEQUENCE) || //
+  if (!CBS_get_asn1(&buf, &toplevel, CBS_ASN1_SEQUENCE) ||   //
+      CBS_len(&buf) != 0 ||                                  //
+      !CBS_get_asn1(&toplevel, &cert, CBS_ASN1_SEQUENCE) ||  //
       // version
       !CBS_get_optional_asn1(
           &cert, NULL, NULL,
-          CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
+          CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||  //
       // serialNumber
-      !CBS_get_asn1(&cert, NULL, CBS_ASN1_INTEGER) ||
+      !CBS_get_asn1(&cert, NULL, CBS_ASN1_INTEGER) ||  //
       // signature algorithm
-      !CBS_get_asn1(&cert, NULL, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&cert, NULL, CBS_ASN1_SEQUENCE) ||  //
       // issuer
       !CBS_get_asn1_element(&cert, out_dn, CBS_ASN1_SEQUENCE)) {
     return false;
@@ -497,7 +498,7 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> SSL_parse_CA_list(SSL *ssl,
 
     UniquePtr<CRYPTO_BUFFER> buffer(
         CRYPTO_BUFFER_new_from_CBS(&distinguished_name, pool));
-    if (!buffer ||
+    if (!buffer ||  //
         !PushToStack(ret.get(), std::move(buffer))) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return nullptr;
@@ -528,7 +529,8 @@ static bool CA_names_non_empty(const STACK_OF(CRYPTO_BUFFER) *config_names,
 static bool marshal_CA_names(const STACK_OF(CRYPTO_BUFFER) *config_names,
                              const STACK_OF(CRYPTO_BUFFER) *ctx_names,
                              CBB *cbb) {
-  const STACK_OF(CRYPTO_BUFFER) *names = config_names == nullptr ? ctx_names : config_names;
+  const STACK_OF(CRYPTO_BUFFER) *names =
+      config_names == nullptr ? ctx_names : config_names;
   CBB child, name_cbb;
 
   if (!CBB_add_u16_length_prefixed(cbb, &child)) {
@@ -551,7 +553,8 @@ static bool marshal_CA_names(const STACK_OF(CRYPTO_BUFFER) *config_names,
 }
 
 bool ssl_has_client_CAs(const SSL_CONFIG *cfg) {
-  return CA_names_non_empty(cfg->client_CA.get(), cfg->ssl->ctx->client_CA.get());
+  return CA_names_non_empty(cfg->client_CA.get(),
+                            cfg->ssl->ctx->client_CA.get());
 }
 
 bool ssl_has_CA_names(const SSL_CONFIG *cfg) {
@@ -559,11 +562,13 @@ bool ssl_has_CA_names(const SSL_CONFIG *cfg) {
 }
 
 bool ssl_add_client_CA_list(const SSL_HANDSHAKE *hs, CBB *cbb) {
-  return marshal_CA_names(hs->config->client_CA.get(), hs->ssl->ctx->client_CA.get(), cbb);
+  return marshal_CA_names(hs->config->client_CA.get(),
+                          hs->ssl->ctx->client_CA.get(), cbb);
 }
 
 bool ssl_add_CA_names(const SSL_HANDSHAKE *hs, CBB *cbb) {
-  return marshal_CA_names(hs->config->CA_names.get(), hs->ssl->ctx->CA_names.get(), cbb);
+  return marshal_CA_names(hs->config->CA_names.get(),
+                          hs->ssl->ctx->CA_names.get(), cbb);
 }
 
 bool ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,

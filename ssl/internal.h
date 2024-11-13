@@ -241,7 +241,7 @@ ForwardIt cxx17_destroy_n(ForwardIt first, size_t n) {
 //
 // Note: unlike |new|, this does not support non-public constructors.
 template <typename T, typename... Args>
-T *New(Args &&... args) {
+T *New(Args &&...args) {
   void *t = OPENSSL_malloc(sizeof(T));
   if (t == nullptr) {
     return nullptr;
@@ -272,7 +272,7 @@ struct DeleterImpl<T, std::enable_if_t<T::kAllowUniquePtr>> {
 // MakeUnique behaves like |std::make_unique| but returns nullptr on allocation
 // error.
 template <typename T, typename... Args>
-UniquePtr<T> MakeUnique(Args &&... args) {
+UniquePtr<T> MakeUnique(Args &&...args) {
   return UniquePtr<T>(New<T>(std::forward<Args>(args)...));
 }
 
@@ -686,7 +686,7 @@ class MRUQueue {
   // If we ever need to make this type movable, we could. (The defaults almost
   // work except we need |start_| to be reset when moved-from.)
   MRUQueue(const MRUQueue &other) = delete;
-  MRUQueue &operator=(const MRUQueue &other)  = delete;
+  MRUQueue &operator=(const MRUQueue &other) = delete;
 
   bool empty() const { return size() == 0; }
   size_t size() const { return storage_.size(); }
@@ -1518,8 +1518,7 @@ class SSLKeyShare {
   // |out_ciphertext|, and sets |*out_secret| to the shared secret. On failure,
   // it returns false and sets |*out_alert| to an alert to send to the peer.
   virtual bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
-                     uint8_t *out_alert,
-                     Span<const uint8_t> peer_key) = 0;
+                     uint8_t *out_alert, Span<const uint8_t> peer_key) = 0;
 
   // Decap decapsulates the symmetric secret in |ciphertext|. On success, it
   // returns true and sets |*out_secret| to the shared secret. On failure, it
@@ -1778,7 +1777,7 @@ bool ssl_add_CA_names(const SSL_HANDSHAKE *hs, CBB *cbb);
 // a server's leaf certificate for |hs|. Otherwise, it returns zero and pushes
 // an error on the error queue.
 bool ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
-                               const CRYPTO_BUFFER *leaf);
+                                const CRYPTO_BUFFER *leaf);
 
 
 // TLS 1.3 key derivation.
@@ -3753,7 +3752,7 @@ bool ssl_is_key_type_supported(int key_type);
 // counterpart to |privkey|. Otherwise it returns false and pushes a helpful
 // message on the error queue.
 bool ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
-                                       const EVP_PKEY *privkey);
+                                        const EVP_PKEY *privkey);
 bool ssl_get_new_session(SSL_HANDSHAKE *hs);
 
 // ssl_encrypt_ticket encrypt a ticket for |session| and writes the result to

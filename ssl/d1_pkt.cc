@@ -118,9 +118,9 @@
 
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
-#include <openssl/mem.h>
-#include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/mem.h>
 #include <openssl/rand.h>
 
 #include "../crypto/internal.h"

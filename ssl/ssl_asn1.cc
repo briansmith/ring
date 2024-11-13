@@ -318,16 +318,16 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     }
   }
 
-  if (in->group_id > 0 &&
-      (!CBB_add_asn1(&session, &child, kGroupIDTag) ||
+  if (in->group_id > 0 &&                               //
+      (!CBB_add_asn1(&session, &child, kGroupIDTag) ||  //
        !CBB_add_asn1_uint64(&child, in->group_id))) {
     return 0;
   }
 
   // The certificate chain is only serialized if the leaf's SHA-256 isn't
   // serialized instead.
-  if (in->certs != NULL &&
-      !in->peer_sha256_valid &&
+  if (in->certs != NULL &&       //
+      !in->peer_sha256_valid &&  //
       sk_CRYPTO_BUFFER_num(in->certs.get()) >= 2) {
     if (!CBB_add_asn1(&session, &child, kCertChainTag)) {
       return 0;
@@ -525,15 +525,15 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
   CBS session;
   uint64_t version, ssl_version;
   uint16_t unused;
-  if (!CBS_get_asn1(cbs, &session, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&session, &version) ||
-      version != kVersion ||
-      !CBS_get_asn1_uint64(&session, &ssl_version) ||
+  if (!CBS_get_asn1(cbs, &session, CBS_ASN1_SEQUENCE) ||  //
+      !CBS_get_asn1_uint64(&session, &version) ||         //
+      version != kVersion ||                              //
+      !CBS_get_asn1_uint64(&session, &ssl_version) ||     //
       // Require sessions have versions valid in either TLS or DTLS. The session
       // will not be used by the handshake if not applicable, but, for
       // simplicity, never parse a session that does not pass
       // |ssl_protocol_version_from_wire|.
-      ssl_version > UINT16_MAX ||
+      ssl_version > UINT16_MAX ||  //
       !ssl_protocol_version_from_wire(&unused, ssl_version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return nullptr;
@@ -542,8 +542,8 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
 
   CBS cipher;
   uint16_t cipher_value;
-  if (!CBS_get_asn1(&session, &cipher, CBS_ASN1_OCTETSTRING) ||
-      !CBS_get_u16(&cipher, &cipher_value) ||
+  if (!CBS_get_asn1(&session, &cipher, CBS_ASN1_OCTETSTRING) ||  //
+      !CBS_get_u16(&cipher, &cipher_value) ||                    //
       CBS_len(&cipher) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return nullptr;
@@ -669,7 +669,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
 
     if (has_peer) {
       UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new_from_CBS(&peer, pool));
-      if (!buffer ||
+      if (!buffer ||  //
           !PushToStack(ret->certs.get(), std::move(buffer))) {
         return nullptr;
       }
@@ -695,8 +695,8 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
   int age_add_present;
   if (!CBS_get_optional_asn1_octet_string(&session, &age_add, &age_add_present,
                                           kTicketAgeAddTag) ||
-      (age_add_present &&
-       !CBS_get_u32(&age_add, &ret->ticket_age_add)) ||
+      (age_add_present &&                                //
+       !CBS_get_u32(&age_add, &ret->ticket_age_add)) ||  //
       CBS_len(&age_add) != 0) {
     return nullptr;
   }
