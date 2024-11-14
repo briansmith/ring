@@ -113,6 +113,15 @@ i686-unknown-linux-musl|x86_64-unknown-linux-musl)
   ;;
 loongarch64-unknown-linux-gnu)
   use_clang=1
+  install_packages \
+    gcc-14-loongarch64-linux-gnu \
+    libc6-dev-loong64-cross \
+    qemu-user
+  ;;
+loongarch64-unknown-linux-musl)
+  use_clang=1
+  install_packages \
+    qemu-user
   ;;
 mips-unknown-linux-gnu)
   install_packages \
