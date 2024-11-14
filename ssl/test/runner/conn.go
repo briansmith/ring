@@ -1174,6 +1174,13 @@ Again:
 		if pack := c.config.Bugs.ExpectPackedEncryptedHandshake; pack > 0 && len(data) < pack && c.out.epoch.cipher != nil {
 			c.seenHandshakePackEnd = true
 		}
+		if c.isDTLS {
+			record, err := c.makeDTLSRecordNumberInfo(&c.in.epoch, c.hand.Bytes())
+			if err != nil {
+				return err
+			}
+			c.receivedFlightRecords = append(c.receivedFlightRecords, record)
+		}
 
 	case recordTypeACK:
 		if typ != want || !c.isDTLS {

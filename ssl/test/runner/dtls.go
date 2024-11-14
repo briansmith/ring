@@ -674,11 +674,6 @@ func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 			if err := c.readRecord(recordTypeHandshake); err != nil {
 				return nil, err
 			}
-			record, err := c.makeDTLSRecordNumberInfo(&c.in.epoch, c.hand.Bytes())
-			if err != nil {
-				return nil, err
-			}
-			c.receivedFlightRecords = append(c.receivedFlightRecords, record)
 		}
 
 		// Read the next fragment. It must fit entirely within
