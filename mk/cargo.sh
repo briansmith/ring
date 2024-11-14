@@ -21,6 +21,7 @@ rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
 qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 qemu_arm_gnueabi="qemu-arm -L /usr/arm-linux-gnueabi"
 qemu_arm_gnueabihf="qemu-arm -L /usr/arm-linux-gnueabihf"
+qemu_loongarch64="qemu-loongarch64 -L /usr/loongarch64-linux-gnu"
 qemu_mips="qemu-mips -L /usr/mips-linux-gnu"
 qemu_mips64="qemu-mips64 -L /usr/mips64-linux-gnuabi64"
 qemu_mips64el="qemu-mips64el -L /usr/mips64el-linux-gnuabi64"
@@ -201,7 +202,16 @@ case $target in
     ;;
   loongarch64-unknown-linux-gnu)
     use_clang=1
-    export CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNU_LINKER=clang-$llvm_version
+    export CC_loongarch64_unknown_linux_gnu=loongarch64-linux-gnu-gcc-14
+    export AR_loongarch64_unknown_linux_gnu=loongarch64-linux-gnu-gcc-ar
+    export CFLAGS_loongarch64_unknown_linux_gnu="--sysroot=/usr/loongarch64-linux-gnu"
+    export CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNU_LINKER=loongarch64-linux-gnu-gcc-14
+    export CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_loongarch64"
+    ;;
+  loongarch64-unknown-linux-musl)
+    use_clang=1
+    export CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="-Ctarget-feature=+crt-static $rustflags_self_contained"
+    export CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_MUSL_RUNNER="$qemu_loongarch64"
     ;;
   wasm32-unknown-unknown)
     # The first two are only needed for when the "wasm_c" feature is enabled.
