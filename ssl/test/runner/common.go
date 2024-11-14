@@ -1293,12 +1293,12 @@ type ProtocolBugs struct {
 
 	// WriteFlightDTLS, if not nil, overrides the default behavior for writing
 	// the flight in DTLS. See DTLSController for details.
-	WriteFlightDTLS func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo)
+	WriteFlightDTLS WriteFlightFunc
 
 	// ACKFlightDTLS, if not nil, overrides the default behavior for
 	// acknowledging the final flight (of either the handshake or a
 	// post-handshake transaction) in DTLS. See DTLSController for details.
-	ACKFlightDTLS func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo)
+	ACKFlightDTLS ACKFlightFunc
 
 	// MockQUICTransport is the mockQUICTransport used when testing
 	// QUIC interfaces.

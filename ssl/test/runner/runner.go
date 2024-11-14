@@ -727,6 +727,14 @@ func (t *timeoutConn) Write(b []byte) (int, error) {
 	return t.Conn.Write(b)
 }
 
+func makeTestMessage(msgIdx int, messageLen int) []byte {
+	testMessage := make([]byte, messageLen)
+	for i := range testMessage {
+		testMessage[i] = 0x42 ^ byte(msgIdx)
+	}
+	return testMessage
+}
+
 func expectedReply(b []byte) []byte {
 	ret := make([]byte, len(b))
 	for i, v := range b {
@@ -1129,10 +1137,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 			tlsConn.SendAlert(0x42, alertUnexpectedMessage)
 		}
 
-		testMessage := make([]byte, messageLen)
-		for i := range testMessage {
-			testMessage[i] = 0x42 ^ byte(j)
-		}
+		testMessage := makeTestMessage(j, messageLen)
 		tlsConn.Write(testMessage)
 
 		// Consume the shim prefix if needed.
@@ -11585,6 +11590,38 @@ func addDTLSRetransmitTests() {
 				useTimeouts = shortTimeouts
 			}
 
+			// Testing NewSessionTicket is tricky. First, BoringSSL sends two
+			// tickets in a row. These are conceptually separate flights, but we
+			// test them as one flight. Second, these tickets are sent
+			// concurrently with the runner's first test message. The shim's
+			// reply will come in before any retransmit challenges.
+			// handleNewSessionTicket corrects for both effects.
+			handleNewSessionTicket := func(f ACKFlightFunc) ACKFlightFunc {
+				if vers.version < VersionTLS13 {
+					return f
+				}
+				return func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+					// BoringSSL sends two NewSessionTickets in a row.
+					if received[0].Type == typeNewSessionTicket && len(received) < 2 {
+						c.MergeIntoNextFlight()
+						return
+					}
+					// NewSessionTicket is sent in parallel with the runner's
+					// first application data. Consume the shim's reply.
+					testMessage := makeTestMessage(0, 32)
+					if received[0].Type == typeNewSessionTicket {
+						c.ReadAppData(c.InEpoch(), expectedReply(testMessage))
+					}
+					// Run the test, without any stray messages in the way.
+					f(c, prev, received, records)
+					// The test loop is expecting a reply to the first message.
+					// Prime the shim to send it again.
+					if received[0].Type == typeNewSessionTicket {
+						c.WriteAppData(c.OutEpoch(), testMessage)
+					}
+				}
+			}
+
 			// In all versions, the sender will retransmit the whole flight if
 			// it times out and hears nothing.
 			writeFlightBasic := func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
@@ -11601,10 +11638,19 @@ func addDTLSRetransmitTests() {
 				// Finally release the whole flight to the shim.
 				c.WriteFlight(next)
 			}
-			ackFlightBasic := func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+			ackFlightBasic := handleNewSessionTicket(func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
 				if vers.version >= VersionTLS13 {
-					// TODO(crbug.com/42290594): Implement retransmitting the
-					// final flight in DTLS 1.3.
+					// In DTLS 1.3, final flights (either handshake or post-handshake)
+					// are retransmited until ACKed. Exercise every timeout but
+					// the last one (which would fail the connection).
+					for _, t := range useTimeouts[:len(useTimeouts)-1] {
+						c.ExpectNextTimeout(t)
+						c.AdvanceClock(t)
+						c.ReadRetransmit()
+					}
+					c.ExpectNextTimeout(useTimeouts[len(useTimeouts)-1])
+					// Finally ACK the flight.
+					c.WriteACK(c.OutEpoch(), records)
 					return
 				}
 				// In DTLS 1.2, the final flight is retransmitted on receipt of
@@ -11614,7 +11660,7 @@ func addDTLSRetransmitTests() {
 					c.WriteFlight(prev)
 					c.ReadRetransmit()
 				}
-			}
+			})
 			testCases = append(testCases, testCase{
 				protocol: dtls,
 				name:     "DTLS-Retransmit-Client-Basic" + suffix,
@@ -11887,7 +11933,7 @@ func addDTLSRetransmitTests() {
 								if len(received) > 0 {
 									c.ExpectNextTimeout(useTimeouts[0])
 									c.WriteACK(c.OutEpoch(), records)
-									// After ACKing everything, the shim should stop the timer
+									// After everything is ACKed, the shim should stop the timer
 									// and wait for the next flight.
 									c.ExpectNoNextTimeout()
 									for _, t := range useTimeouts {
@@ -11896,6 +11942,15 @@ func addDTLSRetransmitTests() {
 								}
 								c.WriteFlight(next)
 							},
+							ACKFlightDTLS: handleNewSessionTicket(func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+								c.ExpectNextTimeout(useTimeouts[0])
+								c.WriteACK(c.OutEpoch(), records)
+								// After everything is ACKed, the shim should stop the timer.
+								c.ExpectNoNextTimeout()
+								for _, t := range useTimeouts {
+									c.AdvanceClock(t)
+								}
+							}),
 							SequenceNumberMapping: func(in uint64) uint64 {
 								// Perturb sequence numbers to test that ACKs are sorted.
 								return in ^ 63
@@ -11935,6 +11990,15 @@ func addDTLSRetransmitTests() {
 								}
 								c.WriteFlight(next)
 							},
+							ACKFlightDTLS: handleNewSessionTicket(func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+								for _, t := range useTimeouts[:len(useTimeouts)-1] {
+									if len(records) > 0 {
+										c.WriteACK(c.OutEpoch(), []DTLSRecordNumberInfo{records[len(records)-1]})
+									}
+									c.AdvanceClock(t)
+									records = c.ReadRetransmit()
+								}
+							}),
 						},
 					},
 					shimCertificate: &rsaChainCertificate,
@@ -11964,6 +12028,15 @@ func addDTLSRetransmitTests() {
 								}
 								c.WriteFlight(next)
 							},
+							ACKFlightDTLS: handleNewSessionTicket(func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+								for _, t := range useTimeouts[:len(useTimeouts)-1] {
+									if len(records) > 0 {
+										c.WriteACK(c.OutEpoch(), []DTLSRecordNumberInfo{records[0]})
+									}
+									c.AdvanceClock(t)
+									records = c.ReadRetransmit()
+								}
+							}),
 						},
 					},
 					shimCertificate: &rsaChainCertificate,
@@ -12000,6 +12073,15 @@ func addDTLSRetransmitTests() {
 								}
 								c.WriteFlight(next)
 							},
+							ACKFlightDTLS: handleNewSessionTicket(func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+								for _, t := range useTimeouts[:len(useTimeouts)-1] {
+									if len(records) > 0 {
+										c.WriteACK(c.OutEpoch(), []DTLSRecordNumberInfo{records[0]})
+									}
+									c.AdvanceClock(t)
+									records = c.ReadRetransmit()
+								}
+							}),
 						},
 					},
 					shimCertificate: &rsaChainCertificate,
@@ -12027,6 +12109,17 @@ func addDTLSRetransmitTests() {
 								}
 								c.WriteFlight(next)
 							},
+							ACKFlightDTLS: handleNewSessionTicket(func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+								// Keep ACKing the same record over and over.
+								c.WriteACK(c.OutEpoch(), records[:1])
+								c.AdvanceClock(useTimeouts[0])
+								c.ReadRetransmit()
+								c.WriteACK(c.OutEpoch(), records[:1])
+								c.AdvanceClock(useTimeouts[1])
+								c.ReadRetransmit()
+								// ACK everything to clear the timer.
+								c.WriteACK(c.OutEpoch(), records)
+							}),
 						},
 					},
 					flags: flags,
@@ -12034,7 +12127,7 @@ func addDTLSRetransmitTests() {
 
 				// When ACKing ServerHello..Finished, the ServerHello might be
 				// ACKed at epoch 0 or epoch 2, depending on how far the client
-				// received. Test tha epoch 0 is allowed by ACKing each packet
+				// received. Test that epoch 0 is allowed by ACKing each packet
 				// at the record it was received.
 				testCases = append(testCases, testCase{
 					protocol: dtls,
@@ -12060,8 +12153,8 @@ func addDTLSRetransmitTests() {
 					flags: flags,
 				})
 
-				// However, records may not be ACKed at lower epoch than they
-				// were received.
+				// However, records in the handshake may not be ACKed at lower
+				// epoch than they were received.
 				testCases = append(testCases, testCase{
 					protocol: dtls,
 					testType: serverTest,
@@ -12324,6 +12417,34 @@ func addDTLSRetransmitTests() {
 								}
 								c.AdvanceClock(useTimeouts[len(useTimeouts)-1])
 							},
+						},
+					},
+					flags:         flags,
+					shouldFail:    true,
+					expectedError: ":READ_TIMEOUT_EXPIRED:",
+				})
+
+				// If the server never receives an ACK for NewSessionTicket, it
+				// is eventually fatal.
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					protocol: dtls,
+					name:     "DTLS-Retransmit-Server-NewSessionTicketTimeout" + suffix,
+					config: Config{
+						MaxVersion: vers.version,
+						Bugs: ProtocolBugs{
+							ACKFlightDTLS: handleNewSessionTicket(func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+								if received[0].Type != typeNewSessionTicket {
+									c.WriteACK(c.OutEpoch(), records)
+									return
+								}
+								// Time the peer out.
+								for _, t := range useTimeouts[:len(useTimeouts)-1] {
+									c.AdvanceClock(t)
+									c.ReadRetransmit()
+								}
+								c.AdvanceClock(useTimeouts[len(useTimeouts)-1])
+							}),
 						},
 					},
 					flags:         flags,

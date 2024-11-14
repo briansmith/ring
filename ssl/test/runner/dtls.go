@@ -443,7 +443,15 @@ func (c *Conn) dtlsWriteFlight() error {
 		return err
 	}
 
-	return nil
+	if c.receivedFlight != nil || c.receivedFlightRecords != nil || c.nextFlight != nil {
+		panic("tls: flight state changed while writing flight")
+	}
+	if controller.mergeIntoNextFlight {
+		c.previousFlight, c.receivedFlight, c.nextFlight, c.receivedFlightRecords = prev, received, next, records
+	}
+
+	// Flush any ACKs, etc., we may have written.
+	return c.dtlsFlushPacket()
 }
 
 func (c *Conn) dtlsFlushHandshake() error {
@@ -483,7 +491,15 @@ func (c *Conn) dtlsACKHandshake() error {
 		return err
 	}
 
-	return nil
+	if c.previousFlight != nil || c.receivedFlight != nil || c.receivedFlightRecords != nil {
+		panic("tls: flight state changed while ACKing flight")
+	}
+	if controller.mergeIntoNextFlight {
+		c.previousFlight, c.receivedFlight, c.receivedFlightRecords = prev, received, records
+	}
+
+	// Flush any ACKs, etc., we may have written.
+	return c.dtlsFlushPacket()
 }
 
 // appendDTLS13RecordHeader appends to b the record header for a record of length
@@ -801,6 +817,9 @@ func DTLSClient(conn net.Conn, config *Config) *Conn {
 	return c
 }
 
+type WriteFlightFunc = func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo)
+type ACKFlightFunc = func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo)
+
 // A DTLSController is passed to a test callback and allows the callback to
 // customize how an individual flight is sent. This is used to test DTLS's
 // retransmission logic.
@@ -808,9 +827,7 @@ func DTLSClient(conn net.Conn, config *Config) *Conn {
 // Although DTLS runs over a lossy, reordered channel, runner assumes a
 // reliable, ordered channel. When simulating packet loss, runner processes the
 // shim's "lost" flight as usual. But, instead of responding, it calls a
-// test-provided function of the form:
-//
-//	func WriteFlight(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo)
+// test-provided function type WriteFlightFunc.
 //
 // WriteFlight will be called next as the flight for the runner to send. prev is
 // the previous flight sent by the runner, and received is the most recent
@@ -837,9 +854,7 @@ func DTLSClient(conn net.Conn, config *Config) *Conn {
 //
 // When the shim speaks last in a handshake or post-handshake transaction, there
 // is no reply to implicitly acknowledge the flight. The runner will instead
-// call a second callback of the form:
-//
-//	func ACKFlight(c *DTLSController, prev, received []DTLSMessage)
+// call a second callback type ACKFlightFunc.
 //
 // Like WriteFlight, ACKFlight may simulate packet loss with the DTLSController.
 // It returns when it is ready to proceed. If not specified, it does nothing in
@@ -858,7 +873,8 @@ type DTLSController struct {
 	err  error
 	// retransmitNeeded contains the list of fragments which the shim must
 	// retransmit.
-	retransmitNeeded []DTLSFragment
+	retransmitNeeded    []DTLSFragment
+	mergeIntoNextFlight bool
 }
 
 func newDTLSController(conn *Conn, received []DTLSMessage) DTLSController {
@@ -1374,4 +1390,11 @@ func (c *DTLSController) ExpectNoNextTimeout() {
 		return
 	}
 	c.err = c.conn.config.Bugs.PacketAdaptor.ExpectNoNextTimeout()
+}
+
+// MergeIntoNextFlight indicates the state from this flight should be merged
+// into the next WriteFlight or ACKFlight call. This allows the test to control
+// two independent post-handshake messages as a single unit.
+func (c *DTLSController) MergeIntoNextFlight() {
+	c.mergeIntoNextFlight = true
 }
