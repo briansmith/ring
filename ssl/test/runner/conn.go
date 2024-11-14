@@ -1534,44 +1534,6 @@ func readHandshakeType[T any](c *Conn) (*T, error) {
 	return mType, nil
 }
 
-// skipPacket processes all the DTLS records in packet. It updates
-// sequence number expectations but otherwise ignores them.
-func (c *Conn) skipPacket(packet []byte) error {
-	for len(packet) > 0 {
-		if len(packet) < 13 {
-			return errors.New("tls: bad packet")
-		}
-		// Dropped packets are completely ignored save to update
-		// expected sequence numbers for this and the next epoch. (We
-		// don't assert on the contents of the packets both for
-		// simplicity and because a previous test with one shorter
-		// timeout schedule would have done so.)
-		epoch := packet[3:5]
-		seq := packet[5:11]
-		length := uint16(packet[11])<<8 | uint16(packet[12])
-		if curEpoch := &c.in.epoch; bytes.Equal(curEpoch.seq[:2], epoch) {
-			if bytes.Compare(seq, curEpoch.seq[2:]) < 0 {
-				return fmt.Errorf("tls: sequence mismatch (got %x, must be at least %x)", seq, curEpoch.seq[2:])
-			}
-			copy(curEpoch.seq[2:], seq)
-			c.in.incSeq(curEpoch)
-		} else if nextEpoch := &c.in.nextEpoch; nextEpoch.cipher != nil && bytes.Equal(nextEpoch.seq[:2], epoch) {
-			if bytes.Compare(seq, nextEpoch.seq[2:]) < 0 {
-				return fmt.Errorf("tls: sequence mismatch (got %x, must be at least %x)", seq, nextEpoch.seq[2:])
-			}
-			copy(nextEpoch.seq[2:], seq)
-			c.in.incSeq(nextEpoch)
-		}
-		// The epoch may be unknown, if we haven't gotten far enough to
-		// prepare the epoch yet.
-		if len(packet) < 13+int(length) {
-			return errors.New("tls: bad packet")
-		}
-		packet = packet[13+length:]
-	}
-	return nil
-}
-
 func (c *Conn) SendHalfHelloRequest() error {
 	if err := c.Handshake(); err != nil {
 		return err
