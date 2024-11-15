@@ -867,15 +867,10 @@ type ProtocolBugs struct {
 
 	// MaxHandshakeRecordLength, if non-zero, is the maximum size of a
 	// handshake record. Handshake messages will be split into multiple
-	// records at the specified size, except that the client_version will
-	// never be fragmented. For DTLS, it is the maximum handshake fragment
-	// size, not record size; DTLS allows multiple handshake fragments in a
-	// single handshake record. See |PackHandshakeFragments|.
+	// records at the specified size. For DTLS, it is the maximum handshake
+	// fragment size, not record size; DTLS allows multiple handshake fragments
+	// in a single handshake record. See |PackHandshakeFragments|.
 	MaxHandshakeRecordLength int
-
-	// FragmentClientVersion will allow MaxHandshakeRecordLength to apply to
-	// the first 6 bytes of the ClientHello.
-	FragmentClientVersion bool
 
 	// FragmentAlert will cause all alerts to be fragmented across
 	// two records.

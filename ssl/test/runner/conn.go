@@ -1311,7 +1311,6 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 
 func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 	first := true
-	isClientHello := typ == recordTypeHandshake && len(data) > 0 && data[0] == typeClientHello
 	for len(data) > 0 || first {
 		m := len(data)
 		if m > maxPlaintext && !c.config.Bugs.SendLargeRecords {
@@ -1319,12 +1318,6 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 		}
 		if typ == recordTypeHandshake && c.config.Bugs.MaxHandshakeRecordLength > 0 && m > c.config.Bugs.MaxHandshakeRecordLength {
 			m = c.config.Bugs.MaxHandshakeRecordLength
-			// By default, do not fragment the client_version or
-			// server_version, which are located in the first 6
-			// bytes.
-			if first && isClientHello && !c.config.Bugs.FragmentClientVersion && m < 6 {
-				m = 6
-			}
 		}
 		first = false
 

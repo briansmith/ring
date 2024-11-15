@@ -2306,13 +2306,14 @@ read alert 1 0
 			},
 			flags: []string{"-max-version", strconv.Itoa(VersionTLS12)},
 		},
+		// Regression test for CVE-2014-3511. Even when the ClientHello is
+		// maximally fragmented, version negotiation works correctly.
 		{
 			testType: serverTest,
 			name:     "FragmentedClientVersion",
 			config: Config{
 				Bugs: ProtocolBugs{
 					MaxHandshakeRecordLength: 1,
-					FragmentClientVersion:    true,
 				},
 			},
 			expectations: connectionExpectations{
