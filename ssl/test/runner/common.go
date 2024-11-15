@@ -779,11 +779,6 @@ type ProtocolBugs struct {
 	// 1.0.1 and 0.9.8 modes, respectively.
 	EarlyChangeCipherSpec int
 
-	// StrayChangeCipherSpec causes every pre-ChangeCipherSpec handshake
-	// message in DTLS to be prefaced by stray ChangeCipherSpec record. This
-	// may be used to test DTLS's handling of reordered ChangeCipherSpec.
-	StrayChangeCipherSpec bool
-
 	// FragmentAcrossChangeCipherSpec causes the implementation to fragment
 	// the Finished (or NextProto) message around the ChangeCipherSpec
 	// messages.
@@ -796,10 +791,6 @@ type ProtocolBugs struct {
 	// SendPostHandshakeChangeCipherSpec causes the implementation to send
 	// a ChangeCipherSpec record before every application data record.
 	SendPostHandshakeChangeCipherSpec bool
-
-	// SendUnencryptedFinished, if true, causes the Finished message to be
-	// send unencrypted before ChangeCipherSpec rather than after it.
-	SendUnencryptedFinished bool
 
 	// PartialEncryptedExtensionsWithServerHello, if true, causes the TLS
 	// 1.3 server to send part of EncryptedExtensions unencrypted
@@ -1310,18 +1301,10 @@ type ProtocolBugs struct {
 	// Finished and will trigger a spurious retransmit.)
 	ReorderHandshakeFragments bool
 
-	// ReverseHandshakeFragments, if true, causes handshake fragments in
-	// DTLS to be reversed within a flight.
-	ReverseHandshakeFragments bool
-
 	// MixCompleteMessageWithFragments, if true, causes handshake
 	// messages in DTLS to redundantly both fragment the message
 	// and include a copy of the full one.
 	MixCompleteMessageWithFragments bool
-
-	// RetransmitFinished, if true, causes the DTLS Finished message to be
-	// sent twice.
-	RetransmitFinished bool
 
 	// SendInvalidRecordType, if true, causes a record with an invalid
 	// content type to be sent immediately following the handshake.
@@ -1334,14 +1317,6 @@ type ProtocolBugs struct {
 	// SendTrailingMessageData, if non-zero, causes messages of the
 	// specified type to be sent with trailing data.
 	SendTrailingMessageData byte
-
-	// FragmentMessageTypeMismatch, if true, causes all non-initial
-	// handshake fragments in DTLS to have the wrong message type.
-	FragmentMessageTypeMismatch bool
-
-	// FragmentMessageLengthMismatch, if true, causes all non-initial
-	// handshake fragments in DTLS to have the wrong message length.
-	FragmentMessageLengthMismatch bool
 
 	// SplitFragments, if non-zero, causes the handshake fragments in DTLS
 	// to be split across two records. The value of |SplitFragments| is the

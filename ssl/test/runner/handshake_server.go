@@ -2173,9 +2173,6 @@ func (hs *serverHandshakeState) sendFinished(out []byte, isResume bool) error {
 	if c.config.Bugs.FragmentAcrossChangeCipherSpec {
 		c.writeRecord(recordTypeHandshake, postCCSBytes[:5])
 		postCCSBytes = postCCSBytes[5:]
-	} else if c.config.Bugs.SendUnencryptedFinished {
-		c.writeRecord(recordTypeHandshake, postCCSBytes)
-		postCCSBytes = nil
 	}
 
 	if !c.config.Bugs.SkipChangeCipherSpec {

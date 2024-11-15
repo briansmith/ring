@@ -2808,8 +2808,12 @@ read alert 1 0
 			name:     "FragmentMessageTypeMismatch-DTLS",
 			config: Config{
 				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength:    2,
-					FragmentMessageTypeMismatch: true,
+					WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+						f1 := next[0].Fragment(0, 1)
+						f2 := next[0].Fragment(1, 1)
+						f2.Type++
+						c.WriteFragments([]DTLSFragment{f1, f2})
+					},
 				},
 			},
 			shouldFail:    true,
@@ -2820,8 +2824,12 @@ read alert 1 0
 			name:     "FragmentMessageLengthMismatch-DTLS",
 			config: Config{
 				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength:      2,
-					FragmentMessageLengthMismatch: true,
+					WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+						f1 := next[0].Fragment(0, 1)
+						f2 := next[0].Fragment(1, 1)
+						f2.TotalLength++
+						c.WriteFragments([]DTLSFragment{f1, f2})
+					},
 				},
 			},
 			shouldFail:    true,
@@ -12577,7 +12585,14 @@ func addDTLSRetransmitTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
-				RetransmitFinished: true,
+				WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+					c.WriteFlight(next)
+					for _, msg := range next {
+						if msg.Type == typeFinished {
+							c.WriteFlight([]DTLSMessage{msg})
+						}
+					}
+				},
 			},
 		},
 	})
@@ -12591,7 +12606,14 @@ func addDTLSRetransmitTests() {
 		resumeConfig: &Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
-				RetransmitFinished: true,
+				WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+					c.WriteFlight(next)
+					for _, msg := range next {
+						if msg.Type == typeFinished {
+							c.WriteFlight([]DTLSMessage{msg})
+						}
+					}
+				},
 			},
 		},
 		resumeSession: true,
@@ -14315,19 +14337,24 @@ func addChangeCipherSpecTests() {
 		expectedLocalError: "remote error: unexpected message",
 	})
 
-	// Test that, in DTLS, ChangeCipherSpec is not allowed when there are
-	// messages in the handshake queue. Do this by testing the server
-	// reading the client Finished, reversing the flight so Finished comes
-	// first.
+	// Test that, in DTLS 1.2, key changes are not allowed when there are
+	// buffered messages. Do this sending all messages in reverse, so that later
+	// ones are buffered, and leaving Finished unencrypted.
 	testCases = append(testCases, testCase{
 		protocol: dtls,
 		testType: serverTest,
-		name:     "SendUnencryptedFinished-DTLS",
+		name:     "KeyChangeWithBufferedMessages-DTLS",
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
-				SendUnencryptedFinished:   true,
-				ReverseHandshakeFragments: true,
+				WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+					next = slices.Clone(next)
+					slices.Reverse(next)
+					for i := range next {
+						next[i].Epoch = 0
+					}
+					c.WriteFlight(next)
+				},
 			},
 		},
 		shouldFail:    true,
@@ -14425,7 +14452,10 @@ func addChangeCipherSpecTests() {
 			// rejected.
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
-				StrayChangeCipherSpec: true,
+				WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+					c.WriteFragments([]DTLSFragment{{IsChangeCipherSpec: true, Data: []byte{1}}})
+					c.WriteFlight(next)
+				},
 			},
 		},
 	})

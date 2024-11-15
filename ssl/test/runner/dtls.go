@@ -977,10 +977,6 @@ func (c *DTLSController) WriteFlight(msgs []DTLSMessage) {
 			continue
 		}
 
-		if msg.Epoch == 0 && config.Bugs.StrayChangeCipherSpec {
-			fragments = append(fragments, DTLSFragment{Epoch: msg.Epoch, IsChangeCipherSpec: true, Data: []byte{1}})
-		}
-
 		maxLen := config.Bugs.MaxHandshakeRecordLength
 		if maxLen <= 0 {
 			maxLen = 1024
@@ -998,13 +994,6 @@ func (c *DTLSController) WriteFlight(msgs []DTLSMessage) {
 			fragLen := min(len(msg.Data)-fragOffset, maxLen)
 
 			fragment := msg.Fragment(fragOffset, fragLen)
-			if config.Bugs.FragmentMessageTypeMismatch && fragOffset > 0 {
-				fragment.Type++
-			}
-			if config.Bugs.FragmentMessageLengthMismatch && fragOffset > 0 {
-				fragment.TotalLength++
-			}
-
 			fragments = append(fragments, fragment)
 			if config.Bugs.ReorderHandshakeFragments {
 				// Don't duplicate Finished to avoid the peer
@@ -1020,11 +1009,7 @@ func (c *DTLSController) WriteFlight(msgs []DTLSMessage) {
 			}
 			fragOffset += fragLen
 		}
-		shouldSendTwice := config.Bugs.MixCompleteMessageWithFragments
-		if msg.Type == typeFinished {
-			shouldSendTwice = config.Bugs.RetransmitFinished
-		}
-		if shouldSendTwice {
+		if config.Bugs.MixCompleteMessageWithFragments {
 			fragments = append(fragments, msg.Fragment(0, len(msg.Data)))
 		}
 	}
@@ -1038,8 +1023,6 @@ func (c *DTLSController) WriteFlight(msgs []DTLSMessage) {
 		chunk := fragments[start:end]
 		if config.Bugs.ReorderHandshakeFragments {
 			rand.Shuffle(len(chunk), func(i, j int) { chunk[i], chunk[j] = chunk[j], chunk[i] })
-		} else if config.Bugs.ReverseHandshakeFragments {
-			slices.Reverse(chunk)
 		}
 		start = end
 	}
