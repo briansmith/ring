@@ -259,12 +259,43 @@ const APPLE_ABI: &[&str] = &["ios", "macos", "tvos", "visionos", "watchos"];
 
 const WINDOWS: &str = "windows";
 
+fn get_target(is_git: bool) -> Target {
+    let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+    let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+    let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+
+    // Published builds are always built in release mode.
+    let is_debug = is_git && env::var("DEBUG").unwrap() != "false";
+
+    // During local development, force warnings in non-Rust code to be treated
+    // as errors. Since warnings are highly compiler-dependent and compilers
+    // don't maintain backward compatibility w.r.t. which warnings they issue,
+    // don't do this for packaged builds.
+    let force_warnings_into_errors = is_git;
+
+    Target {
+        arch,
+        os,
+        env,
+        is_debug,
+        force_warnings_into_errors,
+    }
+}
+
+fn find_asm_target(target: &Target) -> Option<&'static AsmTarget> {
+    ASM_TARGETS.iter().find(|asm_target| {
+        asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
+    })
+}
+
 fn main() {
     // Avoid assuming the working directory is the same is the $CARGO_MANIFEST_DIR so that toolchains
     // which may assume other working directories can still build this code.
     let c_root_dir = PathBuf::from(
         env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should always be set"),
     );
+
+    let is_git = std::fs::metadata(c_root_dir.join(".git")).is_ok();
 
     // Keep in sync with `core_name_and_version!` in prefixed.rs.
     let core_name_and_version = [
@@ -282,48 +313,33 @@ fn main() {
         &core_name_and_version
     );
 
+    println!("cargo:rustc-check-cfg=cfg(perlasm)");
+    println!("cargo:rustc-check-cfg=cfg(no_perlasm)");
+
+    match find_asm_target(&get_target(is_git)) {
+        Some(_) => println!("cargo:rustc-cfg=perlasm"),
+        None => println!("cargo:rustc-cfg=no_perlasm"),
+    }
+
     const RING_PREGENERATE_ASM: &str = "RING_PREGENERATE_ASM";
     match env::var_os(RING_PREGENERATE_ASM).as_deref() {
         Some(s) if s == "1" => {
             pregenerate_asm_main(&c_root_dir, &core_name_and_version);
         }
-        None => ring_build_rs_main(&c_root_dir, &core_name_and_version),
+        None => ring_build_rs_main(&c_root_dir, &core_name_and_version, is_git),
         _ => {
             panic!("${} has an invalid value", RING_PREGENERATE_ASM);
         }
     }
 }
 
-fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
+fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str, is_git: bool) {
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let out_dir = PathBuf::from(out_dir);
 
-    let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-    let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+    let target = get_target(is_git);
 
-    let is_git = fs::metadata(c_root_dir.join(".git")).is_ok();
-
-    // Published builds are always built in release mode.
-    let is_debug = is_git && env::var("DEBUG").unwrap() != "false";
-
-    // During local development, force warnings in non-Rust code to be treated
-    // as errors. Since warnings are highly compiler-dependent and compilers
-    // don't maintain backward compatibility w.r.t. which warnings they issue,
-    // don't do this for packaged builds.
-    let force_warnings_into_errors = is_git;
-
-    let target = Target {
-        arch,
-        os,
-        env,
-        is_debug,
-        force_warnings_into_errors,
-    };
-
-    let asm_target = ASM_TARGETS.iter().find(|asm_target| {
-        asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
-    });
+    let asm_target = find_asm_target(&target);
 
     // If `.git` exists then assume this is the "local hacking" case where
     // we want to make it easy to build *ring* using `cargo build`/`cargo test`
@@ -585,6 +601,10 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
 
     if target.force_warnings_into_errors {
         c.warnings_into_errors(true);
+    }
+
+    if find_asm_target(target).is_none() {
+        let _ = c.define("OPENSSL_NO_ASM", "1");
     }
 }
 

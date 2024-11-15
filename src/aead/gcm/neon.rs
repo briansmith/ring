@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+#![cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "arm")))]
 
 use super::{Gmult, HTable, KeyValue, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::cpu;

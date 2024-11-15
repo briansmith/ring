@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
+#![cfg(all(
+    perlasm,
+    any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64")
+))]
 
 use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, AES_KEY};
 use crate::{cpu, error};

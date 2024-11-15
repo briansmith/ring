@@ -104,7 +104,7 @@ fn from_montgomery_amm<M>(limbs: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, Unenc
     }
 }
 
-#[cfg(any(test, not(target_arch = "x86_64")))]
+#[cfg(any(test, not(all(perlasm, target_arch = "x86_64"))))]
 impl<M> Elem<M, R> {
     #[inline]
     pub fn into_unencoded(self, m: &Modulus<M>) -> Elem<M, Unencoded> {
@@ -399,7 +399,7 @@ pub(crate) fn elem_exp_vartime<M>(
     acc
 }
 
-#[cfg(not(target_arch = "x86_64"))]
+#[cfg(not(all(perlasm, target_arch = "x86_64")))]
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
@@ -485,7 +485,7 @@ pub fn elem_exp_consttime<M>(
     Ok(acc.into_unencoded(m))
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(perlasm, target_arch = "x86_64"))]
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
