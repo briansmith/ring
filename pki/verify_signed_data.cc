@@ -67,7 +67,7 @@ std::string SignatureVerifyCacheKey(std::string_view algorithm_name,
 // leaving things in the error queue.
 class OpenSSLErrStackTracer {
  public:
-  ~OpenSSLErrStackTracer() { ERR_clear_error(); };
+  ~OpenSSLErrStackTracer() { ERR_clear_error(); }
 };
 
 }  // namespace

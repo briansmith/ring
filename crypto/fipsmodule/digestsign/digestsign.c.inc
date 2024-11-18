@@ -71,7 +71,7 @@ enum evp_sign_verify_t {
 DEFINE_LOCAL_DATA(struct evp_md_pctx_ops, md_pctx_ops) {
   out->free = EVP_PKEY_CTX_free;
   out->dup = EVP_PKEY_CTX_dup;
-};
+}
 
 static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
   return (op == evp_sign) ? (ctx->pctx->pmeth->sign != NULL)

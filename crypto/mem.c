@@ -100,10 +100,10 @@ static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 // weak symbols.
 #if !defined(__EDK2_BORINGSSL__) && defined(__ELF__) && defined(__GNUC__)
 #define WEAK_SYMBOL_FUNC(rettype, name, args) \
-  rettype name args __attribute__((weak));
+  rettype name args __attribute__((weak))
 #else
 #define WEAK_SYMBOL_FUNC(rettype, name, args) \
-  static rettype(*const name) args = NULL;
+  static rettype(*const name) args = NULL
 #endif
 
 #if defined(BORINGSSL_DETECT_SDALLOCX)

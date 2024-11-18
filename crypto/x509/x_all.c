@@ -185,8 +185,8 @@ int i2d_X509_REQ_bio(BIO *bp, X509_REQ *req) {
     return ret;                                \
   }
 
-IMPLEMENT_D2I_FP(X509, d2i_X509_fp, d2i_X509_bio);
-IMPLEMENT_I2D_FP(X509, i2d_X509_fp, i2d_X509_bio);
+IMPLEMENT_D2I_FP(X509, d2i_X509_fp, d2i_X509_bio)
+IMPLEMENT_I2D_FP(X509, i2d_X509_fp, i2d_X509_bio)
 
 IMPLEMENT_D2I_FP(RSA, d2i_RSAPrivateKey_fp, d2i_RSAPrivateKey_bio)
 IMPLEMENT_I2D_FP(RSA, i2d_RSAPrivateKey_fp, i2d_RSAPrivateKey_bio)

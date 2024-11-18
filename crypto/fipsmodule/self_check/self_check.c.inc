@@ -600,7 +600,7 @@ static void run_self_test_rsa(void) {
   FIPS_service_indicator_unlock_state();
 }
 
-DEFINE_STATIC_ONCE(g_self_test_once_rsa);
+DEFINE_STATIC_ONCE(g_self_test_once_rsa)
 
 void boringssl_ensure_rsa_self_test(void) {
   CRYPTO_once(g_self_test_once_rsa_bss_get(), run_self_test_rsa);
@@ -614,7 +614,7 @@ static void run_self_test_ecc(void) {
   FIPS_service_indicator_unlock_state();
 }
 
-DEFINE_STATIC_ONCE(g_self_test_once_ecc);
+DEFINE_STATIC_ONCE(g_self_test_once_ecc)
 
 void boringssl_ensure_ecc_self_test(void) {
   CRYPTO_once(g_self_test_once_ecc_bss_get(), run_self_test_ecc);
@@ -628,7 +628,7 @@ static void run_self_test_ffdh(void) {
   FIPS_service_indicator_unlock_state();
 }
 
-DEFINE_STATIC_ONCE(g_self_test_once_ffdh);
+DEFINE_STATIC_ONCE(g_self_test_once_ffdh)
 
 void boringssl_ensure_ffdh_self_test(void) {
   CRYPTO_once(g_self_test_once_ffdh_bss_get(), run_self_test_ffdh);
