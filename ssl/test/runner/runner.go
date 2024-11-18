@@ -12351,6 +12351,76 @@ func addDTLSRetransmitTests() {
 					expectedError: ":READ_TIMEOUT_EXPIRED:",
 				})
 
+				// Neither post-handshake messages nor application data implicitly
+				// ACK the Finished flight. The server may have sent either in
+				// half-RTT data. Test that the client continues to retransmit
+				// despite this.
+				testCases = append(testCases, testCase{
+					protocol: dtls,
+					name:     "DTLS-Retransmit-Client-NoImplictACKFinished" + suffix,
+					config: Config{
+						MaxVersion: vers.version,
+						Bugs: ProtocolBugs{
+							ACKFlightDTLS: func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+								// Merge the Finished flight into the NewSessionTicket.
+								c.MergeIntoNextFlight()
+							},
+							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+								if next[0].Type != typeNewSessionTicket {
+									c.WriteFlight(next)
+									return
+								}
+								if len(received) == 0 || received[0].Type != typeFinished {
+									panic("Finished should be merged with NewSessionTicket")
+								}
+								// Merge NewSessionTicket into the KeyUpdate.
+								if next[len(next)-1].Type != typeKeyUpdate {
+									c.MergeIntoNextFlight()
+									return
+								}
+
+								// Write NewSessionTicket and the KeyUpdate and
+								// read the ACK.
+								c.WriteFlight(next)
+								ackTimeout := useTimeouts[0] / 4
+								c.AdvanceClock(ackTimeout)
+								c.ReadACK(c.InEpoch())
+
+								// The retransmit timer is still running.
+								c.AdvanceClock(useTimeouts[0] - ackTimeout)
+								c.ReadRetransmit()
+
+								// Application data can flow at the old epoch.
+								msg := []byte("test")
+								c.WriteAppData(c.OutEpoch()-1, msg)
+								c.ReadAppData(c.InEpoch(), expectedReply(msg))
+
+								// The retransmit timer is still running.
+								c.AdvanceClock(useTimeouts[1])
+								c.ReadRetransmit()
+
+								// Advance the shim to the next epoch.
+								c.WriteAppData(c.OutEpoch(), msg)
+								c.ReadAppData(c.InEpoch(), expectedReply(msg))
+
+								// The retransmit timer is still running. The shim
+								// actually could implicitly ACK at this point, but
+								// RFC 9147 does not list this as an implicit ACK.
+								c.AdvanceClock(useTimeouts[2])
+								c.ReadRetransmit()
+
+								// Finally ACK the final flight. Now the shim will
+								// stop the timer.
+								c.WriteACK(c.OutEpoch(), records)
+								c.ExpectNoNextTimeout()
+							},
+						},
+					},
+					sendKeyUpdates:   1,
+					keyUpdateRequest: keyUpdateNotRequested,
+					flags:            flags,
+				})
+
 				// If the server never receives an ACK for NewSessionTicket, it
 				// is eventually fatal.
 				testCases = append(testCases, testCase{

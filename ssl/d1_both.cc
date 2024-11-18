@@ -408,9 +408,6 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
       // apply immediately after the handshake. As a client, receiving a
       // KeyUpdate or NewSessionTicket does not imply the server has received
       // our Finished. The server may have sent those messages in half-RTT.
-      //
-      // TODO(crbug.com/42290594): Once post-handshake messages are working,
-      // write a test for the half-RTT KeyUpdate case.
       implicit_ack = true;
     }
 
