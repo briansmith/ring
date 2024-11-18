@@ -1093,7 +1093,9 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 
 	if test.damageFirstWrite {
 		connDamage.setDamage(true)
-		tlsConn.Write([]byte("DAMAGED WRITE"))
+		if _, err := tlsConn.Write([]byte("DAMAGED WRITE")); err != nil {
+			return err
+		}
 		connDamage.setDamage(false)
 	}
 
@@ -1118,27 +1120,39 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 
 	for j := 0; j < messageCount; j++ {
 		for i := 0; i < test.sendKeyUpdates; i++ {
-			tlsConn.SendKeyUpdate(test.keyUpdateRequest)
+			if err := tlsConn.SendKeyUpdate(test.keyUpdateRequest); err != nil {
+				return err
+			}
 		}
 
 		for i := 0; i < test.sendEmptyRecords; i++ {
-			tlsConn.Write(nil)
+			if _, err := tlsConn.Write(nil); err != nil {
+				return err
+			}
 		}
 
 		for i := 0; i < test.sendWarningAlerts; i++ {
-			tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
+			if err := tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage); err != nil {
+				return err
+			}
 		}
 
 		for i := 0; i < test.sendUserCanceledAlerts; i++ {
-			tlsConn.SendAlert(alertLevelWarning, alertUserCanceled)
+			if err := tlsConn.SendAlert(alertLevelWarning, alertUserCanceled); err != nil {
+				return err
+			}
 		}
 
 		if test.sendBogusAlertType {
-			tlsConn.SendAlert(0x42, alertUnexpectedMessage)
+			if err := tlsConn.SendAlert(0x42, alertUnexpectedMessage); err != nil {
+				return err
+			}
 		}
 
 		testMessage := makeTestMessage(j, messageLen)
-		tlsConn.Write(testMessage)
+		if _, err := tlsConn.Write(testMessage); err != nil {
+			return err
+		}
 
 		// Consume the shim prefix if needed.
 		if shimPrefix != "" {
@@ -3475,101 +3489,6 @@ read alert 1 0
 			// A no-op warning alert may not be sent before V2ClientHello.
 			shouldFail:    true,
 			expectedError: ":WRONG_VERSION_NUMBER:",
-		},
-		{
-			name: "KeyUpdate-ToClient",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-			sendKeyUpdates:   1,
-			keyUpdateRequest: keyUpdateNotRequested,
-		},
-		{
-			testType: serverTest,
-			name:     "KeyUpdate-ToServer",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-			sendKeyUpdates:   1,
-			keyUpdateRequest: keyUpdateNotRequested,
-		},
-		{
-			protocol: dtls,
-			name:     "KeyUpdate-ToClient-DTLS",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-			sendKeyUpdates:   1,
-			keyUpdateRequest: keyUpdateNotRequested,
-		},
-		{
-			protocol: dtls,
-			testType: serverTest,
-			name:     "KeyUpdate-ToServerDTLS",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-			sendKeyUpdates:   1,
-			keyUpdateRequest: keyUpdateNotRequested,
-		},
-		{
-			name: "KeyUpdate-FromClient",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-			expectUnsolicitedKeyUpdate: true,
-			flags:                      []string{"-key-update"},
-		},
-		{
-			testType: serverTest,
-			name:     "KeyUpdate-FromServer",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-			expectUnsolicitedKeyUpdate: true,
-			flags:                      []string{"-key-update"},
-		},
-		{
-			name: "KeyUpdate-InvalidRequestMode",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-			sendKeyUpdates:   1,
-			keyUpdateRequest: 42,
-			shouldFail:       true,
-			expectedError:    ":DECODE_ERROR:",
-		},
-		{
-			// Test that shim responds to KeyUpdate requests.
-			name: "KeyUpdate-Requested",
-			config: Config{
-				MaxVersion: VersionTLS13,
-				Bugs: ProtocolBugs{
-					RejectUnsolicitedKeyUpdate: true,
-				},
-			},
-			// Test the shim receiving many KeyUpdates in a row.
-			sendKeyUpdates:   5,
-			messageCount:     5,
-			keyUpdateRequest: keyUpdateRequested,
-		},
-		{
-			// Test that shim responds to KeyUpdate requests if
-			// peer's KeyUpdate is discovered while a write is
-			// pending.
-			name: "KeyUpdate-Requested-UnfinishedWrite",
-			config: Config{
-				MaxVersion: VersionTLS13,
-				Bugs: ProtocolBugs{
-					RejectUnsolicitedKeyUpdate: true,
-				},
-			},
-			// Test the shim receiving many KeyUpdates in a row.
-			sendKeyUpdates:          5,
-			messageCount:            5,
-			keyUpdateRequest:        keyUpdateRequested,
-			readWithUnfinishedWrite: true,
-			flags:                   []string{"-async"},
 		},
 		{
 			name: "SendSNIWarningAlert",
@@ -22087,6 +22006,329 @@ func addCertificateSelectionTests() {
 	}
 }
 
+func addKeyUpdateTests() {
+	// TLS tests.
+	testCases = append(testCases, testCase{
+		name: "KeyUpdate-ToClient",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		sendKeyUpdates:   10,
+		keyUpdateRequest: keyUpdateNotRequested,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "KeyUpdate-ToServer",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		sendKeyUpdates:   10,
+		keyUpdateRequest: keyUpdateNotRequested,
+	})
+	testCases = append(testCases, testCase{
+		name: "KeyUpdate-FromClient",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		expectUnsolicitedKeyUpdate: true,
+		flags:                      []string{"-key-update"},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "KeyUpdate-FromServer",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		expectUnsolicitedKeyUpdate: true,
+		flags:                      []string{"-key-update"},
+	})
+	testCases = append(testCases, testCase{
+		name: "KeyUpdate-InvalidRequestMode",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		sendKeyUpdates:   1,
+		keyUpdateRequest: 42,
+		shouldFail:       true,
+		expectedError:    ":DECODE_ERROR:",
+	})
+	testCases = append(testCases, testCase{
+		// Test that shim responds to KeyUpdate requests.
+		name: "KeyUpdate-Requested",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				RejectUnsolicitedKeyUpdate: true,
+			},
+		},
+		// Test the shim receiving many KeyUpdates in a row.
+		sendKeyUpdates:   5,
+		messageCount:     5,
+		keyUpdateRequest: keyUpdateRequested,
+	})
+	testCases = append(testCases, testCase{
+		// Test that shim responds to KeyUpdate requests if peer's KeyUpdate is
+		// discovered while a write is pending.
+		name: "KeyUpdate-Requested-UnfinishedWrite",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				RejectUnsolicitedKeyUpdate: true,
+			},
+		},
+		// Test the shim receiving many KeyUpdates in a row.
+		sendKeyUpdates:          5,
+		messageCount:            5,
+		keyUpdateRequest:        keyUpdateRequested,
+		readWithUnfinishedWrite: true,
+		flags:                   []string{"-async"},
+	})
+
+	// DTLS tests.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-ToClient-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		// Send many KeyUpdates to make sure record reassembly can handle it.
+		sendKeyUpdates:   10,
+		keyUpdateRequest: keyUpdateNotRequested,
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "KeyUpdate-ToServer-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		sendKeyUpdates:   10,
+		keyUpdateRequest: keyUpdateNotRequested,
+	})
+
+	// Test that the shim accounts for packet loss when processing KeyUpdate.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-ToClient-PacketLoss-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+					if next[0].Type != typeKeyUpdate {
+						c.WriteFlight(next)
+						return
+					}
+
+					// Send the KeyUpdate. The shim should ACK it.
+					c.WriteFlight(next)
+					ackTimeout := timeouts[0] / 4
+					c.AdvanceClock(ackTimeout)
+					c.ReadACK(c.InEpoch())
+
+					// The shim should continue reading data at the old epoch.
+					// The ACK may not have come through.
+					msg := []byte("test")
+					c.WriteAppData(c.OutEpoch()-1, msg)
+					c.ReadAppData(c.InEpoch(), expectedReply(msg))
+
+					// Re-send KeyUpdate. The shim should ACK it again. The ACK
+					// may not have come through.
+					c.WriteFlight(next)
+					c.AdvanceClock(ackTimeout)
+					c.ReadACK(c.InEpoch())
+
+					// The shim should be able to read data at the new epoch.
+					c.WriteAppData(c.OutEpoch(), msg)
+					c.ReadAppData(c.InEpoch(), expectedReply(msg))
+
+					// Having received something at the new epoch, the shim
+					// should discard the old epoch. The following writes should
+					// be ignored.
+					f := next[0].Fragment(0, len(next[0].Data))
+					f.ShouldDiscard = true
+					c.WriteFragments([]DTLSFragment{f})
+					c.WriteAppData(c.OutEpoch()-1, msg)
+				},
+			},
+		},
+		sendKeyUpdates:   10,
+		keyUpdateRequest: keyUpdateNotRequested,
+		flags:            []string{"-async"},
+	})
+
+	mergeNewSessionTicketAndKeyUpdate := func(f WriteFlightFunc) WriteFlightFunc {
+		return func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+			// Send NewSessionTicket and the first KeyUpdate all together.
+			if next[0].Type == typeKeyUpdate {
+				panic("key update should have been merged into NewSessionTicket")
+			}
+			if next[0].Type != typeNewSessionTicket {
+				c.WriteFlight(next)
+				return
+			}
+			if next[0].Type == typeNewSessionTicket && next[len(next)-1].Type != typeKeyUpdate {
+				c.MergeIntoNextFlight()
+				return
+			}
+
+			f(c, prev, received, next, records)
+		}
+	}
+
+	// Test that the shim does not process KeyUpdate until it has processed all
+	// preceding messages.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-ProcessInOrder-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				WriteFlightDTLS: mergeNewSessionTicketAndKeyUpdate(func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+					// Write the KeyUpdate. The shim should buffer and ACK it.
+					keyUpdate := next[len(next)-1]
+					c.WriteFlight([]DTLSMessage{keyUpdate})
+					ackTimeout := timeouts[0] / 4
+					c.AdvanceClock(ackTimeout)
+					c.ReadACK(c.InEpoch())
+
+					// The shim should not process KeyUpdate yet. It should not
+					// read from the new epoch.
+					msg1, msg2 := []byte("aaaa"), []byte("bbbb")
+					c.WriteAppData(c.OutEpoch(), msg1)
+					c.AdvanceClock(0) // Check there are no messages.
+
+					// It can read from the old epoch, however.
+					c.WriteAppData(c.OutEpoch()-1, msg2)
+					c.ReadAppData(c.InEpoch(), expectedReply(msg2))
+
+					// Write the rest of the flight.
+					c.WriteFlight(next[:len(next)-1])
+					c.AdvanceClock(ackTimeout)
+					c.ReadACK(c.InEpoch())
+
+					// Now the new epoch is functional.
+					c.WriteAppData(c.OutEpoch(), msg1)
+					c.ReadAppData(c.InEpoch(), expectedReply(msg1))
+				}),
+			},
+		},
+		sendKeyUpdates:   1,
+		keyUpdateRequest: keyUpdateNotRequested,
+		flags:            []string{"-async"},
+	})
+
+	// Messages after a KeyUpdate are not allowed.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-ExtraMessage-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				WriteFlightDTLS: mergeNewSessionTicketAndKeyUpdate(func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+					extra := next[0]
+					extra.Sequence = next[len(next)-1].Sequence + 1
+					next = append(slices.Clip(next), extra)
+					c.WriteFlight(next)
+				}),
+			},
+		},
+		sendKeyUpdates:     1,
+		keyUpdateRequest:   keyUpdateNotRequested,
+		shouldFail:         true,
+		expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-ExtraMessageBuffered-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				WriteFlightDTLS: mergeNewSessionTicketAndKeyUpdate(func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+					// Send the extra message first. The shim should accept and
+					// buffer it.
+					extra := next[0]
+					extra.Sequence = next[len(next)-1].Sequence + 1
+					c.WriteFlight([]DTLSMessage{extra})
+
+					// Now send the flight, including a KeyUpdate. The shim
+					// should now notice the extra message and reject.
+					c.WriteFlight(next)
+				}),
+			},
+		},
+		sendKeyUpdates:     1,
+		keyUpdateRequest:   keyUpdateNotRequested,
+		shouldFail:         true,
+		expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+
+	// Test KeyUpdate overflow conditions. Both the epoch number and the message
+	// number may overflow, in either the read or write direction.
+	//
+	// TODO(crbug.com/42290594): Test the message read number overflowing, once
+	// we fix the lack of checking for it.
+	//
+	// TODO(crbug.com/42290594): Test the epoch write number overflowing, once
+	// we implement sending KeyUpdates.
+	//
+	// TODO(crbug.com/42290594): Test the message write number overflowing, once
+	// we implement sending KeyUpdates.
+	writeFlightKeyUpdate := func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+		if next[0].Type == typeKeyUpdate {
+			// Exchange some data to avoid tripping KeyUpdate DoS limits.
+			msg := []byte("test")
+			c.WriteAppData(c.OutEpoch()-1, msg)
+			c.ReadAppData(c.InEpoch(), expectedReply(msg))
+		}
+		c.WriteFlight(next)
+	}
+
+	// When the runner is the client, the first KeyUpdate is message 2 at epoch
+	// 3, so the epoch number overflows first. Test that the shim, as a server,
+	// rejects KeyUpdates at epoch 0xffff. RFC 9147 does not prescribe this
+	// limit, but we enforce it. See https://mailarchive.ietf.org/arch/msg/tls/6y8wTv8Q_IPM-PCcbCAmDOYg6bM/
+	// and https://www.rfc-editor.org/errata/eid8050
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		protocol: dtls,
+		name:     "KeyUpdate-MaxReadEpoch-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				AllowEpochOverflow: true,
+				WriteFlightDTLS:    writeFlightKeyUpdate,
+			},
+		},
+		// Avoid the NewSessionTicket messages interfering with the callback.
+		flags: []string{"-no-ticket"},
+		// Application data starts at epoch 3. Epoch 0xffff is the limit.
+		sendKeyUpdates:   0xffff - 3,
+		keyUpdateRequest: keyUpdateNotRequested,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		protocol: dtls,
+		name:     "KeyUpdate-ReadEpochOverflow-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				AllowEpochOverflow: true,
+				WriteFlightDTLS:    writeFlightKeyUpdate,
+			},
+		},
+		// Avoid the NewSessionTicket messages interfering with the callback.
+		flags: []string{"-no-ticket"},
+		// Application data starts at epoch 3. Epoch 0xffff is the limit.
+		sendKeyUpdates:     0xffff - 3 + 1,
+		keyUpdateRequest:   keyUpdateNotRequested,
+		shouldFail:         true,
+		expectedError:      ":TOO_MANY_KEY_UPDATES:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+}
+
 func worker(dispatcher *shimDispatcher, statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -22338,6 +22580,7 @@ func main() {
 	addHintMismatchTests()
 	addCompliancePolicyTests()
 	addCertificateSelectionTests()
+	addKeyUpdateTests()
 
 	toAppend, err := convertToSplitHandshakeTests(testCases)
 	if err != nil {

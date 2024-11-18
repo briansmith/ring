@@ -2006,6 +2006,11 @@ type ProtocolBugs struct {
 
 	// OmitPublicName omits the server name extension from ClientHelloOuter.
 	OmitPublicName bool
+
+	// AllowEpochOverflow allows the DTLS write epoch to wrap around. The DTLS
+	// read epoch is never allowed to wrap around because that would be a bug in
+	// the shim.
+	AllowEpochOverflow bool
 }
 
 func (c *Config) serverInit() {

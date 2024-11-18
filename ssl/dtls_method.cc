@@ -82,6 +82,34 @@ static void dtls1_on_handshake_complete(SSL *ssl) {
   }
 }
 
+static bool next_epoch(const SSL *ssl, uint16_t *out,
+                       ssl_encryption_level_t level, uint16_t prev) {
+  switch (level) {
+    case ssl_encryption_initial:
+    case ssl_encryption_early_data:
+    case ssl_encryption_handshake:
+      *out = static_cast<uint16_t>(level);
+      return true;
+
+    case ssl_encryption_application:
+      if (prev < ssl_encryption_application &&
+          ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+        *out = static_cast<uint16_t>(level);
+        return true;
+      }
+
+      if (prev == 0xffff) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_KEY_UPDATES);
+        return false;
+      }
+      *out = prev + 1;
+      return true;
+  }
+
+  assert(0);
+  return false;
+}
+
 static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
                                  UniquePtr<SSLAEADContext> aead_ctx,
                                  Span<const uint8_t> traffic_secret) {
@@ -94,10 +122,12 @@ static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
 
   DTLSReadEpoch new_epoch;
   new_epoch.aead = std::move(aead_ctx);
+  if (!next_epoch(ssl, &new_epoch.epoch, level, ssl->d1->read_epoch.epoch)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    return false;
+  }
+
   if (ssl_protocol_version(ssl) > TLS1_2_VERSION) {
-    // TODO(crbug.com/42290594): Handle the additional epochs used for key
-    // update.
-    new_epoch.epoch = level;
     new_epoch.rn_encrypter =
         RecordNumberEncrypter::Create(new_epoch.aead->cipher(), traffic_secret);
     if (new_epoch.rn_encrypter == nullptr) {
@@ -113,7 +143,6 @@ static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
       return false;
     }
   } else {
-    new_epoch.epoch = ssl->d1->read_epoch.epoch + 1;
     ssl->d1->read_epoch = std::move(new_epoch);
     ssl->d1->has_change_cipher_spec = false;
   }
@@ -123,20 +152,21 @@ static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
 static bool dtls1_set_write_state(SSL *ssl, ssl_encryption_level_t level,
                                   UniquePtr<SSLAEADContext> aead_ctx,
                                   Span<const uint8_t> traffic_secret) {
+  uint16_t epoch;
+  if (!next_epoch(ssl, &epoch, level, ssl->d1->write_epoch.epoch())) {
+    return false;
+  }
+
   DTLSWriteEpoch new_epoch;
+  new_epoch.aead = std::move(aead_ctx);
+  new_epoch.next_record = DTLSRecordNumber(epoch, 0);
   if (ssl_protocol_version(ssl) > TLS1_2_VERSION) {
-    // TODO(crbug.com/42290594): See above.
-    new_epoch.next_record = DTLSRecordNumber(level, 0);
     new_epoch.rn_encrypter =
-        RecordNumberEncrypter::Create(aead_ctx->cipher(), traffic_secret);
+        RecordNumberEncrypter::Create(new_epoch.aead->cipher(), traffic_secret);
     if (new_epoch.rn_encrypter == nullptr) {
       return false;
     }
-  } else {
-    new_epoch.next_record =
-        DTLSRecordNumber(ssl->d1->write_epoch.epoch() + 1, 0);
   }
-  new_epoch.aead = std::move(aead_ctx);
 
   auto current = MakeUnique<DTLSWriteEpoch>(std::move(ssl->d1->write_epoch));
   if (current == nullptr) {

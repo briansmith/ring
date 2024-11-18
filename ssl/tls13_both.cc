@@ -654,7 +654,9 @@ static bool tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
   }
 
   // Acknowledge the KeyUpdate
-  if (key_update_request == SSL_KEY_UPDATE_REQUESTED &&
+  // TODO(crbug.com/42290594): Support sending KeyUpdate in DTLS 1.3.
+  if (!SSL_is_dtls(ssl) &&  //
+      key_update_request == SSL_KEY_UPDATE_REQUESTED &&
       !ssl->s3->key_update_pending &&
       !tls13_add_key_update(ssl, SSL_KEY_UPDATE_NOT_REQUESTED)) {
     return false;
@@ -669,10 +671,6 @@ bool tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
   }
 
   if (msg.type == SSL3_MT_KEY_UPDATE) {
-    if (SSL_is_dtls(ssl)) {
-      // TODO(crbug.com/42290594): Process post-handshake messages in DTLS 1.3.
-      return true;
-    }
     ssl->s3->key_update_count++;
     if (ssl->quic_method != nullptr ||
         ssl->s3->key_update_count > kMaxKeyUpdates) {

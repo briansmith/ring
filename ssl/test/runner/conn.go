@@ -2086,7 +2086,7 @@ func (c *Conn) sendKeyUpdateLocked(keyUpdateRequest byte) error {
 		return errors.New("tls: attempted to send KeyUpdate before TLS 1.3")
 	}
 	epoch := c.out.epoch.epoch + 1
-	if epoch == 0 {
+	if epoch == 0 && !c.config.Bugs.AllowEpochOverflow {
 		return errors.New("tls: too many KeyUpdates")
 	}
 
@@ -2096,16 +2096,12 @@ func (c *Conn) sendKeyUpdateLocked(keyUpdateRequest byte) error {
 	if _, err := c.writeRecord(recordTypeHandshake, m.marshal()); err != nil {
 		return err
 	}
-	if err := c.flushHandshake(); err != nil {
-		return err
-	}
-	if !c.isDTLS {
-		// TODO(crbug.com/42290594): Properly implement KeyUpdate. Right
-		// now we only support sending KeyUpdate to test that we drop
-		// post-HS messages on the floor (instead of erroring).
-		c.useOutTrafficSecret(epoch, c.out.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.out.trafficSecret, c.isDTLS))
-	}
-	return nil
+	// In DTLS 1.3, a real implementation would not install the new epoch until
+	// receiving an ACK. Our test transport is ordered and reliable, so this is
+	// not necessary. ACK effects will be simulated in tests by the WriteFlight
+	// callback.
+	c.useOutTrafficSecret(epoch, c.out.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.out.trafficSecret, c.isDTLS))
+	return c.flushHandshake()
 }
 
 func (c *Conn) sendFakeEarlyData(len int) error {

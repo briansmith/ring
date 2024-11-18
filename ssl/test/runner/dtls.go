@@ -1095,10 +1095,6 @@ func (c *DTLSController) WriteFragments(fragments []DTLSFragment) {
 			continue
 		}
 
-		if f.ShouldDiscard {
-			anyDiscard = true
-		}
-
 		fBytes := f.Bytes()
 		if n := config.Bugs.SplitFragments; n > 0 {
 			if len(fBytes) > n {
@@ -1122,6 +1118,9 @@ func (c *DTLSController) WriteFragments(fragments []DTLSFragment) {
 				if c.err != nil {
 					return
 				}
+			}
+			if f.ShouldDiscard {
+				anyDiscard = true
 			}
 			record = append(record, fBytes...)
 		}

@@ -243,9 +243,11 @@ static bool parse_dtls13_record(SSL *ssl, CBS *in, ParsedDTLSRecord *out) {
     return false;
   }
 
-  // TODO(crbug.com/42290594): Add a runner test that performs many
-  // key updates to verify epoch reconstruction works for epochs larger than 3.
-  uint16_t epoch = reconstruct_epoch(out->type, ssl->d1->read_epoch.epoch);
+  uint16_t max_epoch = ssl->d1->read_epoch.epoch;
+  if (ssl->d1->next_read_epoch != nullptr) {
+    max_epoch = std::max(max_epoch, ssl->d1->next_read_epoch->epoch);
+  }
+  uint16_t epoch = reconstruct_epoch(out->type, max_epoch);
   size_t seq_len = (out->type & 0x08) ? 2 : 1;
   CBS seq_bytes;
   if (!CBS_get_bytes(in, &seq_bytes, seq_len)) {
