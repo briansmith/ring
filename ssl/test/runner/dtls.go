@@ -858,10 +858,6 @@ func DTLSClient(conn net.Conn, config *Config) *Conn {
 // encountered an error (e.g. an I/O error with the shim) and, if so, silently
 // makes all methods do nothing. The Err method may be used to query if it is in
 // this state, if it would otherwise cause an infinite loop.
-//
-// TODO(crbug.com/42290594): When we implement ACK-sending on the shim, add a
-// way for the test to specify which ACKs are expected, unless we can derive
-// that automatically?
 type DTLSController struct {
 	conn *Conn
 	err  error
