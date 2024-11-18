@@ -1158,10 +1158,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 			continue
 		}
 
-		// Process the KeyUpdate ACK. However many KeyUpdates the runner
+		// Process the KeyUpdate reply. However many KeyUpdates the runner
 		// sends, the shim should respond only once.
 		if test.sendKeyUpdates > 0 && test.keyUpdateRequest == keyUpdateRequested {
-			if err := tlsConn.ReadKeyUpdateACK(); err != nil {
+			if err := tlsConn.ReadKeyUpdate(); err != nil {
 				return err
 			}
 		}
@@ -3540,8 +3540,8 @@ read alert 1 0
 			expectedError:    ":DECODE_ERROR:",
 		},
 		{
-			// Test that KeyUpdates are acknowledged properly.
-			name: "KeyUpdate-RequestACK",
+			// Test that shim responds to KeyUpdate requests.
+			name: "KeyUpdate-Requested",
 			config: Config{
 				MaxVersion: VersionTLS13,
 				Bugs: ProtocolBugs{
@@ -3554,10 +3554,10 @@ read alert 1 0
 			keyUpdateRequest: keyUpdateRequested,
 		},
 		{
-			// Test that KeyUpdates are acknowledged properly if the
+			// Test that shim responds to KeyUpdate requests if
 			// peer's KeyUpdate is discovered while a write is
 			// pending.
-			name: "KeyUpdate-RequestACK-UnfinishedWrite",
+			name: "KeyUpdate-Requested-UnfinishedWrite",
 			config: Config{
 				MaxVersion: VersionTLS13,
 				Bugs: ProtocolBugs{

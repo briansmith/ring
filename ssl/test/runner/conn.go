@@ -1711,9 +1711,9 @@ func (c *Conn) handlePostHandshakeMessage() error {
 	return errors.New("tls: unexpected post-handshake message")
 }
 
-// Reads a KeyUpdate acknowledgment from the peer. There may not be any
-// application data records before the message.
-func (c *Conn) ReadKeyUpdateACK() error {
+// Reads a KeyUpdate from the peer, with type key_update_not_requested. There
+// may not be any application data records before the message.
+func (c *Conn) ReadKeyUpdate() error {
 	c.in.Lock()
 	defer c.in.Unlock()
 
