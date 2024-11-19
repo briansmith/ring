@@ -94,11 +94,6 @@ impl<M> BoxedLimbs<M> {
         Ok(r)
     }
 
-    #[inline]
-    pub(super) fn is_zero(&self) -> bool {
-        limb::limbs_are_zero_constant_time(&self.limbs) == LimbMask::True
-    }
-
     pub(super) fn zero(len: usize) -> Self {
         Self {
             limbs: vec![0; len].into_boxed_slice(),
