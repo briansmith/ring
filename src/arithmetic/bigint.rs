@@ -83,7 +83,7 @@ impl<M, E> Clone for Elem<M, E> {
 impl<M, E> Elem<M, E> {
     #[inline]
     pub fn is_zero(&self) -> bool {
-        self.limbs.is_zero()
+        limb::limbs_are_zero_constant_time(&self.limbs) == LimbMask::True
     }
 }
 
