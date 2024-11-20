@@ -1091,6 +1091,11 @@ int dtls1_send_ack(SSL *ssl) {
     return bio_ret;
   }
 
+  if (BIO_flush(ssl->wbio.get()) <= 0) {
+    ssl->s3->rwstate = SSL_ERROR_WANT_WRITE;
+    return -1;
+  }
+
   return 1;
 }
 
