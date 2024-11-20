@@ -194,8 +194,7 @@ bool tls_add_message(SSL *ssl, Array<uint8_t> msg) {
   //
   // TODO(crbug.com/374991962): See if we can do this uniformly.
   Span<const uint8_t> rest = msg;
-  if (ssl->quic_method == nullptr &&
-      ssl->s3->aead_write_ctx->is_null_cipher()) {
+  if (!SSL_is_quic(ssl) && ssl->s3->aead_write_ctx->is_null_cipher()) {
     while (!rest.empty()) {
       Span<const uint8_t> chunk = rest.subspan(0, ssl->max_send_fragment);
       rest = rest.subspan(chunk.size());
@@ -250,7 +249,7 @@ bool tls_flush_pending_hs_data(SSL *ssl) {
   auto data =
       MakeConstSpan(reinterpret_cast<const uint8_t *>(pending_hs_data->data),
                     pending_hs_data->length);
-  if (ssl->quic_method) {
+  if (SSL_is_quic(ssl)) {
     if ((ssl->s3->hs == nullptr || !ssl->s3->hs->hints_requested) &&
         !ssl->quic_method->add_handshake_data(ssl, ssl->s3->quic_write_level,
                                               data.data(), data.size())) {
@@ -270,7 +269,7 @@ bool tls_add_change_cipher_spec(SSL *ssl) {
     return false;
   }
 
-  if (!ssl->quic_method &&
+  if (!SSL_is_quic(ssl) &&
       !add_record_to_flight(ssl, SSL3_RT_CHANGE_CIPHER_SPEC,
                             kChangeCipherSpec)) {
     return false;
@@ -286,7 +285,7 @@ int tls_flush_flight(SSL *ssl, bool post_handshake) {
     return -1;
   }
 
-  if (ssl->quic_method) {
+  if (SSL_is_quic(ssl)) {
     if (ssl->s3->write_shutdown != ssl_shutdown_none) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
       return -1;

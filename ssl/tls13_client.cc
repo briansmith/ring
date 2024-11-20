@@ -79,7 +79,7 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
   // DTLS 1.3, switch the abstraction to the DTLS/QUIC model where handshake
   // keys write keys are installed immediately, but the TLS record layer
   // internally waits to activate that epoch until the 0-RTT channel is closed.
-  if (ssl->quic_method == nullptr) {
+  if (!SSL_is_quic(ssl)) {
     if (level == ssl_encryption_initial) {
       bssl::UniquePtr<SSLAEADContext> null_ctx =
           SSLAEADContext::CreateNullCipher();
@@ -527,7 +527,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   // traffic keys to when the early data stream is closed. See
   // |close_early_data|. Note if the server has already rejected 0-RTT via
   // HelloRetryRequest, |in_early_data| is already false.
-  if (!hs->in_early_data || ssl->quic_method != nullptr) {
+  if (!hs->in_early_data || SSL_is_quic(ssl)) {
     if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
                                hs->new_session.get(),
                                hs->client_handshake_secret)) {
@@ -795,7 +795,7 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   if (ssl->s3->early_data_accepted) {
     // DTLS and QUIC omit the EndOfEarlyData message. See RFC 9001, section 8.3,
     // and RFC 9147, section 5.6.
-    if (ssl->quic_method == nullptr && !SSL_is_dtls(ssl)) {
+    if (!SSL_is_quic(ssl) && !SSL_is_dtls(ssl)) {
       ScopedCBB cbb;
       CBB body;
       if (!ssl->method->init_message(ssl, cbb.get(), &body,
@@ -1158,8 +1158,7 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
 
     // QUIC does not use the max_early_data_size parameter and always sets it to
     // a fixed value. See RFC 9001, section 4.6.1.
-    if (ssl->quic_method != nullptr &&
-        session->ticket_max_early_data != 0xffffffff) {
+    if (SSL_is_quic(ssl) && session->ticket_max_early_data != 0xffffffff) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return nullptr;

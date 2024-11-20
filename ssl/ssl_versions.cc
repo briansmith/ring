@@ -196,7 +196,7 @@ bool ssl_get_version_range(const SSL_HANDSHAKE *hs, uint16_t *out_min_version,
   }
 
   // QUIC requires TLS 1.3.
-  if (hs->ssl->quic_method && min_version < TLS1_3_VERSION) {
+  if (SSL_is_quic(hs->ssl) && min_version < TLS1_3_VERSION) {
     min_version = TLS1_3_VERSION;
   }
 

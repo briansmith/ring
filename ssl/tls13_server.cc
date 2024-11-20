@@ -157,13 +157,13 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
     // 0-RTT for DTLS 1.3.
     bool enable_early_data =
         ssl->enable_early_data &&
-        (!ssl->quic_method || !ssl->config->quic_early_data_context.empty()) &&
+        (!SSL_is_quic(ssl) || !ssl->config->quic_early_data_context.empty()) &&
         !SSL_is_dtls(ssl);
     if (enable_early_data) {
       // QUIC does not use the max_early_data_size parameter and always sets it
       // to a fixed value. See RFC 9001, section 4.6.1.
       session->ticket_max_early_data =
-          ssl->quic_method != nullptr ? 0xffffffff : kMaxEarlyDataAccepted;
+          SSL_is_quic(ssl) ? 0xffffffff : kMaxEarlyDataAccepted;
     }
 
     static_assert(kMaxTickets < 256, "Too many tickets");
@@ -257,7 +257,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (ssl->quic_method != nullptr && client_hello.session_id_len > 0) {
+  if (SSL_is_quic(ssl) && client_hello.session_id_len > 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_COMPATIBILITY_MODE);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
@@ -557,7 +557,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   }
 
   // Copy the QUIC early data context to the session.
-  if (ssl->enable_early_data && ssl->quic_method) {
+  if (ssl->enable_early_data && SSL_is_quic(ssl)) {
     if (!hs->new_session->quic_early_data_context.CopyFrom(
             hs->config->quic_early_data_context)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
@@ -988,8 +988,7 @@ static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
     // Finished early. See RFC 8446, section 4.6.1.
     static const uint8_t kEndOfEarlyData[4] = {SSL3_MT_END_OF_EARLY_DATA, 0, 0,
                                                0};
-    if (ssl->quic_method == nullptr &&
-        !hs->transcript.Update(kEndOfEarlyData)) {
+    if (!SSL_is_quic(ssl) && !hs->transcript.Update(kEndOfEarlyData)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return ssl_hs_error;
     }
@@ -1032,7 +1031,7 @@ static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
 static bool uses_end_of_early_data(const SSL *ssl) {
   // DTLS and QUIC omit the EndOfEarlyData message. See RFC 9001, section 8.3,
   // and RFC 9147, section 5.6.
-  return ssl->quic_method == nullptr && !SSL_is_dtls(ssl);
+  return !SSL_is_quic(ssl) && !SSL_is_dtls(ssl);
 }
 
 static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {

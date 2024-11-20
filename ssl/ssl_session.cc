@@ -350,7 +350,7 @@ bool ssl_get_new_session(SSL_HANDSHAKE *hs) {
 
   session->is_server = ssl->server;
   session->ssl_version = ssl->s3->version;
-  session->is_quic = ssl->quic_method != nullptr;
+  session->is_quic = SSL_is_quic(ssl);
 
   // Fill in the time from the |SSL_CTX|'s clock.
   OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
@@ -627,7 +627,7 @@ bool ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
               hs->config->retain_only_sha256_of_client_certs) &&
          // Only resume if the underlying transport protocol hasn't changed.
          // This is to prevent cross-protocol resumption between QUIC and TCP.
-         (hs->ssl->quic_method != nullptr) == session->is_quic;
+         SSL_is_quic(ssl) == int{session->is_quic};
 }
 
 // ssl_lookup_session looks up |session_id| in the session cache and sets

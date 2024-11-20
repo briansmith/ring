@@ -460,7 +460,7 @@ bool SSL_get_traffic_secrets(const SSL *ssl,
                              Span<const uint8_t> *out_write_traffic_secret) {
   // This API is not well-defined for DTLS 1.3 (see https://crbug.com/42290608)
   // or QUIC, where multiple epochs may be alive at once.
-  if (SSL_is_dtls(ssl) || ssl->quic_method != nullptr) {
+  if (SSL_is_dtls(ssl) || SSL_is_quic(ssl)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return false;
   }
@@ -800,18 +800,18 @@ size_t SSL_quic_max_handshake_flight_len(const SSL *ssl,
 }
 
 enum ssl_encryption_level_t SSL_quic_read_level(const SSL *ssl) {
-  assert(ssl->quic_method != nullptr);
+  assert(SSL_is_quic(ssl));
   return ssl->s3->quic_read_level;
 }
 
 enum ssl_encryption_level_t SSL_quic_write_level(const SSL *ssl) {
-  assert(ssl->quic_method != nullptr);
+  assert(SSL_is_quic(ssl));
   return ssl->s3->quic_write_level;
 }
 
 int SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
                           const uint8_t *data, size_t len) {
-  if (ssl->quic_method == nullptr) {
+  if (!SSL_is_quic(ssl)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -920,7 +920,7 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
 int SSL_process_quic_post_handshake(SSL *ssl) {
   ssl_reset_error_state(ssl);
 
-  if (ssl->quic_method == nullptr || SSL_in_init(ssl)) {
+  if (!SSL_is_quic(ssl) || SSL_in_init(ssl)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -1030,7 +1030,7 @@ int SSL_read(SSL *ssl, void *buf, int num) {
 }
 
 int SSL_peek(SSL *ssl, void *buf, int num) {
-  if (ssl->quic_method != nullptr) {
+  if (SSL_is_quic(ssl)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return -1;
   }
@@ -1051,7 +1051,7 @@ int SSL_peek(SSL *ssl, void *buf, int num) {
 int SSL_write(SSL *ssl, const void *buf, int num) {
   ssl_reset_error_state(ssl);
 
-  if (ssl->quic_method != nullptr) {
+  if (SSL_is_quic(ssl)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return -1;
   }
@@ -1097,7 +1097,7 @@ int SSL_key_update(SSL *ssl, int request_type) {
     return 0;
   }
 
-  if (ssl->ctx->quic_method != nullptr) {
+  if (SSL_is_quic(ssl)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -1343,7 +1343,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
       return ssl->s3->rwstate;
 
     case SSL_ERROR_WANT_READ: {
-      if (ssl->quic_method) {
+      if (SSL_is_quic(ssl)) {
         return SSL_ERROR_WANT_READ;
       }
       BIO *bio = SSL_get_rbio(ssl);
@@ -2869,6 +2869,8 @@ int SSL_cutthrough_complete(const SSL *ssl) { return SSL_in_false_start(ssl); }
 int SSL_is_server(const SSL *ssl) { return ssl->server; }
 
 int SSL_is_dtls(const SSL *ssl) { return ssl->method->is_dtls; }
+
+int SSL_is_quic(const SSL *ssl) { return ssl->quic_method != nullptr; }
 
 void SSL_CTX_set_select_certificate_cb(
     SSL_CTX *ctx,

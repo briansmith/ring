@@ -188,7 +188,7 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
   const EVP_MD *digest = ssl_session_get_digest(session);
   bool is_dtls = SSL_is_dtls(ssl);
   UniquePtr<SSLAEADContext> traffic_aead;
-  if (ssl->quic_method != nullptr) {
+  if (SSL_is_quic(ssl)) {
     // Install a placeholder SSLAEADContext so that SSL accessors work. The
     // encryption itself will be handled by the SSL_QUIC_METHOD.
     traffic_aead = SSLAEADContext::CreatePlaceholderForQUIC(session->cipher);

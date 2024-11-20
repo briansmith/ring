@@ -242,6 +242,9 @@ OPENSSL_EXPORT int SSL_is_server(const SSL *ssl);
 // SSL_is_dtls returns one if |ssl| is a DTLS connection and zero otherwise.
 OPENSSL_EXPORT int SSL_is_dtls(const SSL *ssl);
 
+// SSL_is_quic returns one if |ssl| is a QUIC connection and zero otherwise.
+OPENSSL_EXPORT int SSL_is_quic(const SSL *ssl);
+
 // SSL_set_bio configures |ssl| to read from |rbio| and write to |wbio|. |ssl|
 // takes ownership of the two |BIO|s. If |rbio| and |wbio| are the same, |ssl|
 // only takes ownership of one reference. See |SSL_set0_rbio| and

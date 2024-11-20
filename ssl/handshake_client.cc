@@ -518,7 +518,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
         (session_type == SSLSessionType::kTicket &&
          (SSL_get_options(ssl) & SSL_OP_NO_TICKET)) ||
         !ssl_session_is_time_valid(ssl, ssl->session.get()) ||
-        (ssl->quic_method != nullptr) != ssl->session->is_quic ||
+        SSL_is_quic(ssl) != int{ssl->session->is_quic} ||
         ssl->s3->initial_handshake_complete) {
       ssl_set_session(ssl, nullptr);
       session_type = SSLSessionType::kNotResumable;
@@ -536,8 +536,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   // Compatibility mode sends a random session ID. Compatibility mode is
   // enabled for TLS 1.3, but not when it's run over QUIC or DTLS.
   const bool enable_compatibility_mode = hs->max_version >= TLS1_3_VERSION &&
-                                         ssl->quic_method == nullptr &&
-                                         !SSL_is_dtls(hs->ssl);
+                                         !SSL_is_quic(ssl) && !SSL_is_dtls(ssl);
   if (session_type == SSLSessionType::kID) {
     hs->session_id = ssl->session->session_id;
   } else if (session_type == SSLSessionType::kTicket ||

@@ -1361,7 +1361,7 @@ static bool ext_alpn_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
                                      CBB *out_compressible,
                                      ssl_client_hello_type_t type) {
   const SSL *const ssl = hs->ssl;
-  if (hs->config->alpn_client_proto_list.empty() && ssl->quic_method) {
+  if (hs->config->alpn_client_proto_list.empty() && SSL_is_quic(ssl)) {
     // ALPN MUST be used with QUIC.
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_APPLICATION_PROTOCOL);
     return false;
@@ -1390,7 +1390,7 @@ static bool ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                        CBS *contents) {
   SSL *const ssl = hs->ssl;
   if (contents == NULL) {
-    if (ssl->quic_method) {
+    if (SSL_is_quic(ssl)) {
       // ALPN is required when QUIC is used.
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_APPLICATION_PROTOCOL);
       *out_alert = SSL_AD_NO_APPLICATION_PROTOCOL;
@@ -1490,7 +1490,7 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       !ssl_client_hello_get_extension(
           client_hello, &contents,
           TLSEXT_TYPE_application_layer_protocol_negotiation)) {
-    if (ssl->quic_method) {
+    if (SSL_is_quic(ssl)) {
       // ALPN is required when QUIC is used.
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_APPLICATION_PROTOCOL);
       *out_alert = SSL_AD_NO_APPLICATION_PROTOCOL;
@@ -1521,7 +1521,7 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       static_cast<unsigned>(CBS_len(&protocol_name_list)),
       ssl->ctx->alpn_select_cb_arg);
   // ALPN is required when QUIC is used.
-  if (ssl->quic_method &&
+  if (SSL_is_quic(ssl) &&
       (ret == SSL_TLSEXT_ERR_NOACK || ret == SSL_TLSEXT_ERR_ALERT_WARNING)) {
     ret = SSL_TLSEXT_ERR_ALERT_FATAL;
   }
@@ -2595,10 +2595,10 @@ static bool ext_certificate_authorities_parse_clienthello(SSL_HANDSHAKE *hs,
 
 static bool ext_quic_transport_params_add_clienthello_impl(
     const SSL_HANDSHAKE *hs, CBB *out, bool use_legacy_codepoint) {
-  if (hs->config->quic_transport_params.empty() && !hs->ssl->quic_method) {
+  if (hs->config->quic_transport_params.empty() && !SSL_is_quic(hs->ssl)) {
     return true;
   }
-  if (hs->config->quic_transport_params.empty() || !hs->ssl->quic_method) {
+  if (hs->config->quic_transport_params.empty() || !SSL_is_quic(hs->ssl)) {
     // QUIC Transport Parameters must be sent over QUIC, and they must not be
     // sent over non-QUIC transports. If transport params are set, then
     // SSL(_CTX)_set_quic_method must also be called.
@@ -2650,7 +2650,7 @@ static bool ext_quic_transport_params_parse_serverhello_impl(
       // Silently ignore because we expect the other QUIC codepoint.
       return true;
     }
-    if (!ssl->quic_method) {
+    if (!SSL_is_quic(ssl)) {
       return true;
     }
     *out_alert = SSL_AD_MISSING_EXTENSION;
@@ -2658,7 +2658,7 @@ static bool ext_quic_transport_params_parse_serverhello_impl(
   }
   // The extensions parser will check for unsolicited extensions before
   // calling the callback.
-  assert(ssl->quic_method != nullptr);
+  assert(SSL_is_quic(ssl));
   assert(ssl_protocol_version(ssl) == TLS1_3_VERSION);
   assert(used_legacy_codepoint == hs->config->quic_use_legacy_codepoint);
   return ssl->s3->peer_quic_transport_params.CopyFrom(*contents);
@@ -2682,7 +2682,7 @@ static bool ext_quic_transport_params_parse_clienthello_impl(
     bool used_legacy_codepoint) {
   SSL *const ssl = hs->ssl;
   if (!contents) {
-    if (!ssl->quic_method) {
+    if (!SSL_is_quic(ssl)) {
       if (hs->config->quic_transport_params.empty()) {
         return true;
       }
@@ -2699,7 +2699,7 @@ static bool ext_quic_transport_params_parse_clienthello_impl(
     *out_alert = SSL_AD_MISSING_EXTENSION;
     return false;
   }
-  if (!ssl->quic_method) {
+  if (!SSL_is_quic(ssl)) {
     if (used_legacy_codepoint) {
       // Ignore the legacy private-use codepoint because that could be sent
       // to mean something else than QUIC transport parameters.
@@ -2733,12 +2733,12 @@ static bool ext_quic_transport_params_parse_clienthello_legacy(
 
 static bool ext_quic_transport_params_add_serverhello_impl(
     SSL_HANDSHAKE *hs, CBB *out, bool use_legacy_codepoint) {
-  if (hs->ssl->quic_method == nullptr && use_legacy_codepoint) {
+  if (!SSL_is_quic(hs->ssl) && use_legacy_codepoint) {
     // Ignore the legacy private-use codepoint because that could be sent
     // to mean something else than QUIC transport parameters.
     return true;
   }
-  assert(hs->ssl->quic_method != nullptr);
+  assert(SSL_is_quic(hs->ssl));
   if (hs->config->quic_transport_params.empty()) {
     // Transport parameters must be set when using QUIC.
     OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_TRANSPORT_PARAMETERS_MISCONFIGURED);
@@ -3552,7 +3552,7 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, CBB *out_encoded,
   // bugs. We also apply this padding to ClientHelloOuter, to keep the wire
   // images aligned.
   size_t psk_extension_len = ext_pre_shared_key_clienthello_length(hs, type);
-  if (!SSL_is_dtls(ssl) && !ssl->quic_method &&
+  if (!SSL_is_dtls(ssl) && !SSL_is_quic(ssl) &&
       !ssl->s3->used_hello_retry_request) {
     header_len +=
         SSL3_HM_HEADER_LENGTH + 2 + CBB_len(&extensions) + psk_extension_len;
