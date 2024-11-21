@@ -51,6 +51,10 @@ OPENSSL_INLINE int bcm_success(bcm_status status) {
   return status == bcm_status::approved || status == bcm_status::not_approved;
 }
 
+OPENSSL_INLINE bcm_status_t bcm_as_approved_status(int result) {
+  return result ? bcm_status::approved : bcm_status::failure;
+}
+
 
 // Random number generator.
 
@@ -233,6 +237,111 @@ bcm_infallible BCM_sha512_256_update(SHA512_CTX *sha, const void *data,
 // bytes of space. It may abort on programmer error.
 bcm_infallible BCM_sha512_256_final(uint8_t out[BCM_SHA512_256_DIGEST_LENGTH],
                                     SHA512_CTX *sha);
+
+
+// ML-DSA
+//
+// Where not commented, these functions have the same signature as the
+// corresponding public function.
+
+// BCM_MLDSA_SIGNATURE_RANDOMIZER_BYTES is the number of bytes of uniformly
+// random entropy necessary to generate a signature in randomized mode.
+#define BCM_MLDSA_SIGNATURE_RANDOMIZER_BYTES 32
+
+// BCM_MLDSA_SEED_BYTES is the number of bytes in an ML-DSA seed value.
+#define BCM_MLDSA_SEED_BYTES 32
+
+// BCM_MLDSA65_PRIVATE_KEY_BYTES is the number of bytes in an encoded ML-DSA-65
+// private key.
+#define BCM_MLDSA65_PRIVATE_KEY_BYTES 4032
+
+// BCM_MLDSA65_PUBLIC_KEY_BYTES is the number of bytes in an encoded ML-DSA-65
+// public key.
+#define BCM_MLDSA65_PUBLIC_KEY_BYTES 1952
+
+// BCM_MLDSA65_SIGNATURE_BYTES is the number of bytes in an encoded ML-DSA-65
+// signature.
+#define BCM_MLDSA65_SIGNATURE_BYTES 3309
+
+struct BCM_mldsa65_private_key {
+  union {
+    uint8_t bytes[32 + 32 + 64 + 256 * 4 * (5 + 6 + 6)];
+    uint32_t alignment;
+  } opaque;
+};
+
+struct BCM_mldsa65_public_key {
+  union {
+    uint8_t bytes[32 + 64 + 256 * 4 * 6];
+    uint32_t alignment;
+  } opaque;
+};
+
+OPENSSL_EXPORT bcm_status BCM_mldsa65_generate_key(
+    uint8_t out_encoded_public_key[BCM_MLDSA65_PUBLIC_KEY_BYTES],
+    uint8_t out_seed[BCM_MLDSA_SEED_BYTES],
+    struct BCM_mldsa65_private_key *out_private_key);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa65_private_key_from_seed(
+    struct BCM_mldsa65_private_key *out_private_key,
+    const uint8_t seed[BCM_MLDSA_SEED_BYTES]);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa65_public_from_private(
+    struct BCM_mldsa65_public_key *out_public_key,
+    const struct BCM_mldsa65_private_key *private_key);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa65_sign(
+    uint8_t out_encoded_signature[BCM_MLDSA65_SIGNATURE_BYTES],
+    const struct BCM_mldsa65_private_key *private_key, const uint8_t *msg,
+    size_t msg_len, const uint8_t *context, size_t context_len);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa65_verify(
+    const struct BCM_mldsa65_public_key *public_key,
+    const uint8_t signature[BCM_MLDSA65_SIGNATURE_BYTES], const uint8_t *msg,
+    size_t msg_len, const uint8_t *context, size_t context_len);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa65_marshal_public_key(
+    CBB *out, const struct BCM_mldsa65_public_key *public_key);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa65_parse_public_key(
+    struct BCM_mldsa65_public_key *public_key, CBS *in);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa65_parse_private_key(
+    struct BCM_mldsa65_private_key *private_key, CBS *in);
+
+// BCM_mldsa65_generate_key_external_entropy generates a public/private key pair
+// using the given seed, writes the encoded public key to
+// |out_encoded_public_key| and sets |out_private_key| to the private key.
+OPENSSL_EXPORT bcm_status BCM_mldsa65_generate_key_external_entropy(
+    uint8_t out_encoded_public_key[BCM_MLDSA65_PUBLIC_KEY_BYTES],
+    struct BCM_mldsa65_private_key *out_private_key,
+    const uint8_t entropy[BCM_MLDSA_SEED_BYTES]);
+
+// BCM_mldsa5_sign_internal signs |msg| using |private_key| and writes the
+// signature to |out_encoded_signature|. The |context_prefix| and |context| are
+// prefixed to the message, in that order, before signing. The |randomizer|
+// value can be set to zero bytes in order to make a deterministic signature, or
+// else filled with entropy for the usual |MLDSA_sign| behavior.
+OPENSSL_EXPORT bcm_status BCM_mldsa65_sign_internal(
+    uint8_t out_encoded_signature[BCM_MLDSA65_SIGNATURE_BYTES],
+    const struct BCM_mldsa65_private_key *private_key, const uint8_t *msg,
+    size_t msg_len, const uint8_t *context_prefix, size_t context_prefix_len,
+    const uint8_t *context, size_t context_len,
+    const uint8_t randomizer[BCM_MLDSA_SIGNATURE_RANDOMIZER_BYTES]);
+
+// BCM_mldsa5_verify_internal verifies that |encoded_signature| is a valid
+// signature of |msg| by |public_key|. The |context_prefix| and |context| are
+// prefixed to the message before verification, in that order.
+OPENSSL_EXPORT bcm_status BCM_mldsa65_verify_internal(
+    const struct BCM_mldsa65_public_key *public_key,
+    const uint8_t encoded_signature[BCM_MLDSA65_SIGNATURE_BYTES],
+    const uint8_t *msg, size_t msg_len, const uint8_t *context_prefix,
+    size_t context_prefix_len, const uint8_t *context, size_t context_len);
+
+// BCM_mldsa65_marshal_private_key serializes |private_key| to |out| in the
+// NIST format for ML-DSA-65 private keys.
+OPENSSL_EXPORT bcm_status BCM_mldsa65_marshal_private_key(
+    CBB *out, const struct BCM_mldsa65_private_key *private_key);
 
 
 #if defined(__cplusplus)

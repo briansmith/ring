@@ -23,21 +23,21 @@
 #include <openssl/mem.h>
 #include <openssl/span.h>
 
+#include "../fipsmodule/bcm_interface.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
-#include "./internal.h"
 
 
 namespace {
 
 template <typename T>
-std::vector<uint8_t> Marshal(int (*marshal_func)(CBB *, const T *),
+std::vector<uint8_t> Marshal(bcm_status_t (*marshal_func)(CBB *, const T *),
                              const T *t) {
   bssl::ScopedCBB cbb;
   uint8_t *encoded;
   size_t encoded_len;
-  if (!CBB_init(cbb.get(), 1) ||      //
-      !marshal_func(cbb.get(), t) ||  //
+  if (!CBB_init(cbb.get(), 1) ||                             //
+      marshal_func(cbb.get(), t) != bcm_status::approved ||  //
       !CBB_finish(cbb.get(), &encoded, &encoded_len)) {
     abort();
   }
@@ -110,8 +110,11 @@ TEST(MLDSATest, Basic) {
   auto priv2 = std::make_unique<MLDSA65_private_key>();
   EXPECT_TRUE(MLDSA65_private_key_from_seed(priv2.get(), seed, sizeof(seed)));
 
-  EXPECT_EQ(Bytes(Marshal(MLDSA65_marshal_private_key, priv.get())),
-            Bytes(Marshal(MLDSA65_marshal_private_key, priv2.get())));
+  EXPECT_EQ(
+      Bytes(Marshal(BCM_mldsa65_marshal_private_key,
+                    reinterpret_cast<BCM_mldsa65_private_key *>(priv.get()))),
+      Bytes(Marshal(BCM_mldsa65_marshal_private_key,
+                    reinterpret_cast<BCM_mldsa65_private_key *>(priv2.get()))));
 }
 
 TEST(MLDSATest, SignatureIsRandomized) {
@@ -199,7 +202,8 @@ TEST(MLDSATest, InvalidPrivateKeyEncodingLength) {
   CBB cbb;
   std::vector<uint8_t> malformed_private_key(MLDSA65_PRIVATE_KEY_BYTES + 1, 0);
   CBB_init_fixed(&cbb, malformed_private_key.data(), MLDSA65_PRIVATE_KEY_BYTES);
-  ASSERT_TRUE(MLDSA65_marshal_private_key(&cbb, priv.get()));
+  ASSERT_TRUE(bcm_success(BCM_mldsa65_marshal_private_key(
+      &cbb, reinterpret_cast<BCM_mldsa65_private_key *>(priv.get()))));
 
   CBS cbs;
   auto parsed_priv = std::make_unique<MLDSA65_private_key>();
@@ -228,18 +232,19 @@ static void MLDSASigGenTest(FileTest *t) {
   CBS_init(&cbs, private_key_bytes.data(), private_key_bytes.size());
   EXPECT_TRUE(MLDSA65_parse_private_key(priv.get(), &cbs));
 
-  const uint8_t zero_randomizer[MLDSA_SIGNATURE_RANDOMIZER_BYTES] = {0};
+  const uint8_t zero_randomizer[BCM_MLDSA_SIGNATURE_RANDOMIZER_BYTES] = {0};
   std::vector<uint8_t> signature(MLDSA65_SIGNATURE_BYTES);
-  EXPECT_TRUE(MLDSA65_sign_internal(signature.data(), priv.get(), msg.data(),
-                                    msg.size(), nullptr, 0, nullptr, 0,
-                                    zero_randomizer));
+  EXPECT_TRUE(bcm_success(BCM_mldsa65_sign_internal(
+      signature.data(), reinterpret_cast<BCM_mldsa65_private_key *>(priv.get()),
+      msg.data(), msg.size(), nullptr, 0, nullptr, 0, zero_randomizer)));
 
   EXPECT_EQ(Bytes(signature), Bytes(expected_signature));
 
   auto pub = std::make_unique<MLDSA65_public_key>();
   ASSERT_TRUE(MLDSA65_public_from_private(pub.get(), priv.get()));
-  EXPECT_TRUE(MLDSA65_verify_internal(pub.get(), signature.data(), msg.data(),
-                                      msg.size(), nullptr, 0, nullptr, 0));
+  EXPECT_TRUE(bcm_success(BCM_mldsa65_verify_internal(
+      reinterpret_cast<BCM_mldsa65_public_key *>(pub.get()), signature.data(),
+      msg.data(), msg.size(), nullptr, 0, nullptr, 0)));
 }
 
 TEST(MLDSATest, SigGenTests) {
@@ -254,8 +259,9 @@ static void MLDSAKeyGenTest(FileTest *t) {
 
   std::vector<uint8_t> encoded_public_key(MLDSA65_PUBLIC_KEY_BYTES);
   auto priv = std::make_unique<MLDSA65_private_key>();
-  ASSERT_TRUE(MLDSA65_generate_key_external_entropy(encoded_public_key.data(),
-                                                    priv.get(), seed.data()));
+  ASSERT_TRUE(bcm_success(BCM_mldsa65_generate_key_external_entropy(
+      encoded_public_key.data(),
+      reinterpret_cast<BCM_mldsa65_private_key *>(priv.get()), seed.data())));
 
   EXPECT_EQ(Bytes(encoded_public_key), Bytes(expected_public_key));
 }
@@ -265,10 +271,11 @@ TEST(MLDSATest, KeyGenTests) {
 }
 
 template <typename PrivateKey, int (*ParsePrivateKey)(PrivateKey *, CBS *),
-          size_t SignatureBytes,
-          int (*SignInternal)(uint8_t *, const PrivateKey *, const uint8_t *,
-                              size_t, const uint8_t *, size_t, const uint8_t *,
-                              size_t, const uint8_t *)>
+          size_t SignatureBytes, typename BcmPrivateKey,
+          bcm_status_t (*SignInternal)(uint8_t *, const BcmPrivateKey *,
+                                       const uint8_t *, size_t, const uint8_t *,
+                                       size_t, const uint8_t *, size_t,
+                                       const uint8_t *)>
 static void MLDSAWycheproofSignTest(FileTest *t) {
   std::vector<uint8_t> private_key_bytes, msg, expected_signature, context;
   ASSERT_TRUE(t->GetInstructionBytes(&private_key_bytes, "privateKey"));
@@ -299,12 +306,13 @@ static void MLDSAWycheproofSignTest(FileTest *t) {
     return;
   }
 
-  const uint8_t zero_randomizer[MLDSA_SIGNATURE_RANDOMIZER_BYTES] = {0};
+  const uint8_t zero_randomizer[BCM_MLDSA_SIGNATURE_RANDOMIZER_BYTES] = {0};
   std::vector<uint8_t> signature(SignatureBytes);
   const uint8_t context_prefix[2] = {0, static_cast<uint8_t>(context.size())};
-  EXPECT_TRUE(SignInternal(signature.data(), priv.get(), msg.data(), msg.size(),
-                           context_prefix, sizeof(context_prefix),
-                           context.data(), context.size(), zero_randomizer));
+  EXPECT_TRUE(bcm_success(SignInternal(
+      signature.data(), reinterpret_cast<BcmPrivateKey *>(priv.get()),
+      msg.data(), msg.size(), context_prefix, sizeof(context_prefix),
+      context.data(), context.size(), zero_randomizer)));
 
   EXPECT_EQ(Bytes(signature), Bytes(expected_signature));
 }
@@ -313,7 +321,8 @@ TEST(MLDSATest, WycheproofSignTests65) {
   FileTestGTest(
       "third_party/wycheproof_testvectors/mldsa_65_standard_sign_test.txt",
       MLDSAWycheproofSignTest<MLDSA65_private_key, MLDSA65_parse_private_key,
-                              MLDSA65_SIGNATURE_BYTES, MLDSA65_sign_internal>);
+                              MLDSA65_SIGNATURE_BYTES, BCM_mldsa65_private_key,
+                              BCM_mldsa65_sign_internal>);
 }
 
 template <typename PublicKey, int (*ParsePublicKey)(PublicKey *, CBS *),

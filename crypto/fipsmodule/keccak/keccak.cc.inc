@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 #include "./internal.h"
 
 

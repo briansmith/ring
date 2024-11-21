@@ -24,7 +24,7 @@
 #include <openssl/mem.h>
 #include <openssl/mlkem.h>
 
-#include "../keccak/internal.h"
+#include "../fipsmodule/keccak/internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "./internal.h"

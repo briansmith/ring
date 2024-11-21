@@ -24,8 +24,8 @@
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 
+#include "../fipsmodule/keccak/internal.h"
 #include "../internal.h"
-#include "../keccak/internal.h"
 #include "./internal.h"
 
 

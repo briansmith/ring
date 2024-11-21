@@ -23,9 +23,9 @@
 #define OPENSSL_UNSTABLE_EXPERIMENTAL_KYBER
 #include <openssl/experimental/kyber.h>
 
+#include "../fipsmodule/keccak/internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
-#include "../keccak/internal.h"
 #include "./internal.h"
 
 

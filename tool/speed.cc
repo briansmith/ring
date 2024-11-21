@@ -70,7 +70,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "../crypto/ec_extra/internal.h"
 #include "../crypto/fipsmodule/ec/internal.h"
 #include "../crypto/internal.h"
-#include "../crypto/mldsa/internal.h"
 #include "../crypto/trust_token/internal.h"
 #include "internal.h"
 
@@ -1154,27 +1153,6 @@ static bool SpeedMLDSA(const std::string &selected) {
   }
 
   results.Print("MLDSA key generation");
-
-  auto encoded_private_key =
-      std::make_unique<uint8_t[]>(MLDSA65_PRIVATE_KEY_BYTES);
-  CBB cbb;
-  CBB_init_fixed(&cbb, encoded_private_key.get(), MLDSA65_PRIVATE_KEY_BYTES);
-  MLDSA65_marshal_private_key(&cbb, priv.get());
-
-  if (!TimeFunctionParallel(&results, [&]() -> bool {
-        CBS cbs;
-        CBS_init(&cbs, encoded_private_key.get(), MLDSA65_PRIVATE_KEY_BYTES);
-        if (!MLDSA65_parse_private_key(priv.get(), &cbs)) {
-          fprintf(stderr, "Failure in MLDSA65_parse_private_key.\n");
-          return false;
-        }
-        return true;
-      })) {
-    fprintf(stderr, "Failed to time MLDSA65_parse_private_key.\n");
-    return false;
-  }
-
-  results.Print("MLDSA parse (valid) private key");
 
   const char *message = "Hello world";
   size_t message_len = strlen(message);

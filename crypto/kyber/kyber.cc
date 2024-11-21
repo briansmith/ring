@@ -21,8 +21,8 @@
 #include <openssl/bytestring.h>
 #include <openssl/rand.h>
 
+#include "../fipsmodule/keccak/internal.h"
 #include "../internal.h"
-#include "../keccak/internal.h"
 #include "./internal.h"
 
 
