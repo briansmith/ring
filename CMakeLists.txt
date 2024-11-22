@@ -504,21 +504,25 @@ if(FIPS_DELOCATE AND FIPS_SHARED)
   message(FATAL_ERROR "Can't set both delocate and shared mode for FIPS build")
 endif()
 
+# OSS-Fuzz relies on BORINGSSL_ALLOW_CXX_RUNTIME because -fno-rtti and
+# -fsanitize=vptr are incompatible.
+set(NO_CXX_RUNTIME_FLAGS)
+if(NOT MSVC AND NOT BORINGSSL_ALLOW_CXX_RUNTIME)
+  # Without -fno-exceptions, use of std::unique_ptr emits a call to
+  # std::terminate.
+  set(NO_CXX_RUNTIME_FLAGS -fno-exceptions -fno-rtti)
+endif()
+
 if(FIPS_DELOCATE)
   add_library(bcm_c_generated_asm STATIC ${BCM_SOURCES})
-  if(NOT MSVC)
-    # The C++ code in libcrypto shouldn't depend on libstdc++. This requires
-    # -fno-exceptions otherwise use of std::unique_ptr emits a call to
-    # std::terminate.
-    target_compile_options(bcm_c_generated_asm PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions -fno-rtti>)
-  endif()
+  # The C++ code in libcrypto shouldn't depend on libstdc++.
+  target_compile_options(bcm_c_generated_asm PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${NO_CXX_RUNTIME_FLAGS}> "-S")
   add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
   target_include_directories(bcm_c_generated_asm PRIVATE ${PROJECT_SOURCE_DIR}/include)
-  set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
   if(CLANG)
     # Clang warns when passing both -c (from CMake) and -S.
-    set_property(TARGET bcm_c_generated_asm APPEND PROPERTY COMPILE_OPTIONS "-Wno-unused-command-line-argument")
+    target_compile_options(bcm_c_generated_asm PRIVATE "-Wno-unused-command-line-argument")
   endif()
 
   set(TARGET_FLAG "")
@@ -562,12 +566,8 @@ elseif(FIPS_SHARED)
   endif()
 
   add_library(bcm_library STATIC ${BCM_SOURCES} ${BCM_SOURCES_ASM_USED})
-  if(NOT MSVC)
-    # The C++ code in libcrypto shouldn't depend on libstdc++. This requires
-    # -fno-exceptions otherwise use of std::unique_ptr emits a call to
-    # std::terminate.
-    target_compile_options(bcm_library PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions -fno-rtti>)
-  endif()
+  # The C++ code in libcrypto shouldn't depend on libstdc++.
+  target_compile_options(bcm_library PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${NO_CXX_RUNTIME_FLAGS}>)
   add_dependencies(bcm_library boringssl_prefix_symbols)
   target_include_directories(bcm_library PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
@@ -580,24 +580,16 @@ elseif(FIPS_SHARED)
   set(CRYPTO_FIPS_OBJECTS bcm.o)
 else()
   add_library(fipsmodule OBJECT ${BCM_SOURCES} ${BCM_SOURCES_ASM_USED})
-  if(NOT MSVC)
-    # The C++ code in libcrypto shouldn't depend on libstdc++. This requires
-    # -fno-exceptions otherwise use of std::unique_ptr emits a call to
-    # std::terminate.
-    target_compile_options(fipsmodule PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions -fno-rtti>)
-  endif()
+  # The C++ code in libcrypto shouldn't depend on libstdc++.
+  target_compile_options(fipsmodule PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${NO_CXX_RUNTIME_FLAGS}>)
   add_dependencies(fipsmodule boringssl_prefix_symbols)
   target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set(CRYPTO_FIPS_OBJECTS $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
 add_library(crypto ${CRYPTO_SOURCES} ${CRYPTO_FIPS_OBJECTS} ${CRYPTO_SOURCES_ASM_USED})
-if(NOT MSVC)
-    # The C++ code in libcrypto shouldn't depend on libstdc++. This requires
-    # -fno-exceptions otherwise use of std::unique_ptr emits a call to
-    # std::terminate.
-  target_compile_options(crypto PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions -fno-rtti>)
-endif()
+  # The C++ code in libcrypto shouldn't depend on libstdc++.
+target_compile_options(crypto PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${NO_CXX_RUNTIME_FLAGS}>)
 target_include_directories(crypto PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
