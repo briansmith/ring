@@ -70,20 +70,14 @@
 
 BSSL_NAMESPACE_BEGIN
 
-// DTLS1_MTU_TIMEOUTS is the maximum number of timeouts to expire
-// before starting to decrease the MTU.
-#define DTLS1_MTU_TIMEOUTS 2
-
-// DTLS1_MAX_TIMEOUTS is the maximum number of timeouts to expire
-// before failing the DTLS handshake.
-#define DTLS1_MAX_TIMEOUTS 12
-
 DTLS1_STATE::DTLS1_STATE()
     : has_change_cipher_spec(false),
       outgoing_messages_complete(false),
       flight_has_reply(false),
       handshake_write_overflow(false),
-      handshake_read_overflow(false) {}
+      handshake_read_overflow(false),
+      sending_flight(false),
+      sending_ack(false) {}
 
 DTLS1_STATE::~DTLS1_STATE() {}
 
@@ -187,50 +181,10 @@ uint64_t DTLSTimer::MicrosecondsRemaining(OPENSSL_timeval now) const {
   return sec + usec;
 }
 
-void dtls1_start_timer(SSL *ssl) {
-  // If timer is not set, initialize duration.
-  if (!ssl->d1->retransmit_timer.IsSet()) {
-    ssl->d1->timeout_duration_ms = ssl->initial_timeout_duration_ms;
-  }
-
-  OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
-  ssl->d1->retransmit_timer.StartMicroseconds(
-      now, uint64_t{ssl->d1->timeout_duration_ms} * 1000);
-}
-
-static void dtls1_double_timeout(SSL *ssl) {
-  ssl->d1->timeout_duration_ms *= 2;
-  if (ssl->d1->timeout_duration_ms > 60000) {
-    ssl->d1->timeout_duration_ms = 60000;
-  }
-}
-
 void dtls1_stop_timer(SSL *ssl) {
   ssl->d1->num_timeouts = 0;
   ssl->d1->retransmit_timer.Stop();
   ssl->d1->timeout_duration_ms = ssl->initial_timeout_duration_ms;
-}
-
-bool dtls1_check_timeout_num(SSL *ssl) {
-  ssl->d1->num_timeouts++;
-
-  // Reduce MTU after 2 unsuccessful retransmissions
-  if (ssl->d1->num_timeouts > DTLS1_MTU_TIMEOUTS &&
-      !(SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
-    long mtu =
-        BIO_ctrl(ssl->wbio.get(), BIO_CTRL_DGRAM_GET_FALLBACK_MTU, 0, nullptr);
-    if (mtu >= 0 && mtu <= (1 << 30) && (unsigned)mtu >= dtls1_min_mtu()) {
-      ssl->d1->mtu = (unsigned)mtu;
-    }
-  }
-
-  if (ssl->d1->num_timeouts > DTLS1_MAX_TIMEOUTS) {
-    // fail the connection, enough alerts have been sent
-    OPENSSL_PUT_ERROR(SSL, SSL_R_READ_TIMEOUT_EXPIRED);
-    return false;
-  }
-
-  return true;
 }
 
 BSSL_NAMESPACE_END
@@ -287,25 +241,30 @@ int DTLSv1_handle_timeout(SSL *ssl) {
   bool any_timer_expired = false;
   if (ssl->d1->ack_timer.IsExpired(now)) {
     any_timer_expired = true;
-    int ret = dtls1_send_ack(ssl);
-    if (ret <= 0) {
-      return ret;
-    }
+    ssl->d1->sending_ack = true;
+    ssl->d1->ack_timer.Stop();
   }
 
   if (ssl->d1->retransmit_timer.IsExpired(now)) {
     any_timer_expired = true;
-    if (!dtls1_check_timeout_num(ssl)) {
-      return -1;
-    }
+    ssl->d1->sending_flight = true;
+    ssl->d1->retransmit_timer.Stop();
 
-    dtls1_double_timeout(ssl);
-    dtls1_start_timer(ssl);
-    int ret = dtls1_retransmit_outgoing_messages(ssl);
-    if (ret <= 0) {
-      return ret;
+    ssl->d1->num_timeouts++;
+    // Reduce MTU after 2 unsuccessful retransmissions.
+    if (ssl->d1->num_timeouts > DTLS1_MTU_TIMEOUTS &&
+        !(SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
+      long mtu = BIO_ctrl(ssl->wbio.get(), BIO_CTRL_DGRAM_GET_FALLBACK_MTU, 0,
+                          nullptr);
+      if (mtu >= 0 && mtu <= (1 << 30) && (unsigned)mtu >= dtls1_min_mtu()) {
+        ssl->d1->mtu = (unsigned)mtu;
+      }
     }
   }
 
-  return any_timer_expired ? 1 : 0;
+  if (!any_timer_expired) {
+    return 0;
+  }
+
+  return dtls1_flush(ssl);
 }

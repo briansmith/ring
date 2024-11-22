@@ -589,6 +589,16 @@ const SSL_SESSION *ssl_handshake_session(const SSL_HANDSHAKE *hs) {
 int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
   SSL *const ssl = hs->ssl;
   for (;;) {
+    // If a timeout during the handshake triggered a DTLS ACK or retransmit, we
+    // resolve that first. E.g., if |ssl_hs_private_key_operation| is slow, the
+    // ACK timer may fire.
+    if (hs->wait != ssl_hs_error && SSL_is_dtls(ssl)) {
+      int ret = ssl->method->flush(ssl);
+      if (ret <= 0) {
+        return ret;
+      }
+    }
+
     // Resolve the operation the handshake was waiting on. Each condition may
     // halt the handshake by returning, or continue executing if the handshake
     // may immediately proceed. Cases which halt the handshake can clear
@@ -599,10 +609,8 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         ERR_restore_state(hs->error.get());
         return -1;
 
-      case ssl_hs_flush_post_handshake:
       case ssl_hs_flush: {
-        bool post_handshake = hs->wait == ssl_hs_flush_post_handshake;
-        int ret = ssl->method->flush_flight(ssl, post_handshake);
+        int ret = ssl->method->flush(ssl);
         if (ret <= 0) {
           return ret;
         }
@@ -680,7 +688,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         return -1;
 
       case ssl_hs_handback: {
-        int ret = ssl->method->flush_flight(ssl, /*post_handshake=*/false);
+        int ret = ssl->method->flush(ssl);
         if (ret <= 0) {
           return ret;
         }
@@ -733,15 +741,6 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         ssl->s3->rwstate = SSL_ERROR_HANDSHAKE_HINTS_READY;
         return -1;
 
-      case ssl_hs_ack:
-        if (ssl->method->send_ack != nullptr) {
-          int ret = ssl->method->send_ack(ssl);
-          if (ret <= 0) {
-            return ret;
-          }
-        }
-        break;
-
       case ssl_hs_ok:
         break;
     }
@@ -761,9 +760,14 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
       *out_early_return = false;
       return 1;
     }
+    // If the handshake returns |ssl_hs_flush|, implicitly finish the flight.
+    // This is a convenience so we do not need to manually insert this
+    // throughout the handshake.
+    if (hs->wait == ssl_hs_flush) {
+      ssl->method->finish_flight(ssl);
+    }
 
-    // Otherwise, loop to the beginning and resolve what was blocking the
-    // handshake.
+    // Loop to the beginning and resolve what was blocking the handshake.
   }
 }
 

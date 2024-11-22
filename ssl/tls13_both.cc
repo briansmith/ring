@@ -633,7 +633,7 @@ bool tls13_add_key_update(SSL *ssl, int update_requested) {
   // wire. This prevents us from accumulating write obligations when read and
   // write progress at different rates. See RFC 8446, section 4.6.3.
   ssl->s3->key_update_pending = true;
-
+  ssl->method->finish_flight(ssl);
   return true;
 }
 

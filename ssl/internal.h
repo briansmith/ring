@@ -2128,7 +2128,6 @@ enum ssl_hs_wait_t {
   ssl_hs_read_server_hello,
   ssl_hs_read_message,
   ssl_hs_flush,
-  ssl_hs_flush_post_handshake,
   ssl_hs_certificate_selection_pending,
   ssl_hs_handoff,
   ssl_hs_handback,
@@ -2142,7 +2141,6 @@ enum ssl_hs_wait_t {
   ssl_hs_read_change_cipher_spec,
   ssl_hs_certificate_verify,
   ssl_hs_hints_ready,
-  ssl_hs_ack,
 };
 
 enum ssl_grease_index_t {
@@ -2965,13 +2963,15 @@ struct SSL_PROTOCOL_METHOD {
   // add_change_cipher_spec adds a ChangeCipherSpec record to the pending
   // flight. It returns true on success and false on error.
   bool (*add_change_cipher_spec)(SSL *ssl);
-  // flush_flight flushes the pending flight to the transport. It returns one on
-  // success and <= 0 on error. If |post_handshake| is true, the flight is a
-  // post-handshake flight.
-  int (*flush_flight)(SSL *ssl, bool post_handshake);
-  // send_ack, if not NULL, sends a DTLS ACK record to the peer. It returns one
-  // on success and <= 0 on error.
-  int (*send_ack)(SSL *ssl);
+  // finish_flight marks the pending flight as finished and ready to send.
+  // |flush| must be called to write it.
+  void (*finish_flight)(SSL *ssl);
+  // schedule_ack schedules a DTLS 1.3 ACK to be sent, without an ACK delay.
+  // |flush| must be called to write it.
+  void (*schedule_ack)(SSL *ssl);
+  // flush writes any scheduled data to the transport. It returns one on success
+  // and <= 0 on error.
+  int (*flush)(SSL *ssl);
   // on_handshake_complete is called when the handshake is complete.
   void (*on_handshake_complete)(SSL *ssl);
   // set_read_state sets |ssl|'s read cipher state and level to |aead_ctx| and
@@ -3560,6 +3560,11 @@ struct DTLS1_STATE {
   bool handshake_write_overflow : 1;
   bool handshake_read_overflow : 1;
 
+  // sending_flight and sending_ack are true if we are in the process of sending
+  // a handshake flight and ACK, respectively.
+  bool sending_flight : 1;
+  bool sending_ack : 1;
+
   uint16_t handshake_write_seq = 0;
   uint16_t handshake_read_seq = 0;
 
@@ -3945,14 +3950,15 @@ bool tls_init_message(const SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
 bool tls_finish_message(const SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
 bool tls_add_message(SSL *ssl, Array<uint8_t> msg);
 bool tls_add_change_cipher_spec(SSL *ssl);
-int tls_flush_flight(SSL *ssl, bool post_handshake);
+int tls_flush(SSL *ssl);
 
 bool dtls1_init_message(const SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
 bool dtls1_finish_message(const SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
 bool dtls1_add_message(SSL *ssl, Array<uint8_t> msg);
 bool dtls1_add_change_cipher_spec(SSL *ssl);
-int dtls1_flush_flight(SSL *ssl, bool post_handshake);
-int dtls1_send_ack(SSL *ssl);
+void dtls1_finish_flight(SSL *ssl);
+void dtls1_schedule_ack(SSL *ssl);
+int dtls1_flush(SSL *ssl);
 
 // ssl_add_message_cbb finishes the handshake message in |cbb| and adds it to
 // the pending flight. It returns true on success and false on error.
@@ -3980,13 +3986,19 @@ int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
 int dtls1_write_record(SSL *ssl, int type, Span<const uint8_t> in,
                        uint16_t epoch);
 
-int dtls1_retransmit_outgoing_messages(SSL *ssl);
 bool dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
                           CBS *out_body);
-bool dtls1_check_timeout_num(SSL *ssl);
 
-void dtls1_start_timer(SSL *ssl);
+// DTLS1_MTU_TIMEOUTS is the maximum number of retransmit timeouts to expire
+// before starting to decrease the MTU.
+#define DTLS1_MTU_TIMEOUTS 2
+
+// DTLS1_MAX_TIMEOUTS is the maximum number of retransmit timeouts to expire
+// before failing the DTLS handshake.
+#define DTLS1_MAX_TIMEOUTS 12
+
 void dtls1_stop_timer(SSL *ssl);
+
 unsigned int dtls1_min_mtu(void);
 
 bool dtls1_new(SSL *ssl);

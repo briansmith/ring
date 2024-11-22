@@ -623,7 +623,8 @@ OPENSSL_EXPORT void DTLSv1_set_initial_timeout_duration(SSL *ssl,
 
 // DTLSv1_get_timeout queries the running DTLS timers. If there are any in
 // progress, it sets |*out| to the time remaining until the first timer expires
-// and returns one. Otherwise, it returns zero.
+// and returns one. Otherwise, it returns zero. Timers may be scheduled both
+// during and after the handshake.
 //
 // When the timeout expires, call |DTLSv1_handle_timeout| to handle the
 // retransmit behavior.
@@ -633,9 +634,11 @@ OPENSSL_EXPORT void DTLSv1_set_initial_timeout_duration(SSL *ssl,
 OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out);
 
 // DTLSv1_handle_timeout is called when a DTLS timeout expires. If no timeout
-// had expired, it returns 0. Otherwise, it retransmits the previous flight of
-// handshake messages, or post-handshake messages, and returns 1. If too many
-// timeouts had expired without progress or an error occurs, it returns -1.
+// had expired, it returns 0. Otherwise, it handles the timeout and returns 1 on
+// success or -1 on error.
+//
+// This function may write to the transport (e.g. to retransmit messages) or
+// update |ssl|'s internal state and schedule an updated timer.
 //
 // The caller's external timer should be compatible with the one |ssl| queries
 // within some fudge factor. Otherwise, the call will be a no-op, but
@@ -643,12 +646,16 @@ OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out);
 //
 // If the function returns -1, checking if |SSL_get_error| returns
 // |SSL_ERROR_WANT_WRITE| may be used to determine if the retransmit failed due
-// to a non-fatal error at the write |BIO|. However, the operation may not be
-// retried until the next timeout fires.
+// to a non-fatal error at the write |BIO|. In this case, when the |BIO| is
+// writable, the operation may be retried by calling the original function,
+// |SSL_do_handshake| or |SSL_read|.
 //
 // WARNING: This function breaks the usual return value convention.
 //
-// TODO(davidben): This |SSL_ERROR_WANT_WRITE| behavior is kind of bizarre.
+// TODO(davidben): We can make this function entirely optional by just checking
+// the timers in |SSL_do_handshake| or |SSL_read|. Then timers behave like any
+// other retry condition: rerun the operation and the library will make what
+// progress it can.
 OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
 

@@ -280,7 +280,7 @@ bool tls_add_change_cipher_spec(SSL *ssl) {
   return true;
 }
 
-int tls_flush_flight(SSL *ssl, bool post_handshake) {
+int tls_flush(SSL *ssl) {
   if (!tls_flush_pending_hs_data(ssl)) {
     return -1;
   }
@@ -298,15 +298,6 @@ int tls_flush_flight(SSL *ssl, bool post_handshake) {
   }
 
   if (ssl->s3->pending_flight == nullptr) {
-    return 1;
-  }
-
-  if (post_handshake) {
-    // Don't flush post-handshake messages like NewSessionTicket until the
-    // server performs a write, to prevent a non-reading client from causing the
-    // server to hang in the case of a small server write buffer. Consumers
-    // which don't write data to the client will need to do a zero-byte write if
-    // they wish to flush the tickets.
     return 1;
   }
 

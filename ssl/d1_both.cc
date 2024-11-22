@@ -446,7 +446,7 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
 
     if (ssl_has_final_version(ssl) &&
         ssl_protocol_version(ssl) >= TLS1_3_VERSION &&
-        !ssl->d1->ack_timer.IsSet()) {
+        !ssl->d1->ack_timer.IsSet() && !ssl->d1->sending_ack) {
       // Schedule sending an ACK. The delay serves several purposes:
       // - If there are more records to come, we send only one ACK.
       // - If there are more records to come and the flight is now complete, we
@@ -616,6 +616,7 @@ void dtls_clear_outgoing_messages(SSL *ssl) {
   ssl->d1->outgoing_offset = 0;
   ssl->d1->outgoing_messages_complete = false;
   ssl->d1->flight_has_reply = false;
+  ssl->d1->sending_flight = false;
   dtls_clear_unused_write_epochs(ssl);
 }
 
@@ -971,6 +972,11 @@ static int send_flight(SSL *ssl) {
     return -1;
   }
 
+  if (ssl->d1->num_timeouts > DTLS1_MAX_TIMEOUTS) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_READ_TIMEOUT_EXPIRED);
+    return -1;
+  }
+
   dtls1_update_mtu(ssl);
 
   Array<uint8_t> packet;
@@ -1015,27 +1021,38 @@ static int send_flight(SSL *ssl) {
   return 1;
 }
 
-int dtls1_flush_flight(SSL *ssl, bool post_handshake) {
-  ssl->d1->outgoing_messages_complete = true;
-  if (!post_handshake) {
-    // Our new flight implicitly ACKs the previous flight, so there is no need
-    // to ACK previous records. This clears the ACK buffer slightly earlier than
-    // the specification suggests. See the discussion in
+void dtls1_finish_flight(SSL *ssl) {
+  if (ssl->d1->outgoing_messages.empty() ||
+      ssl->d1->outgoing_messages_complete) {
+    return;  // Nothing to do.
+  }
+
+  if (ssl->d1->outgoing_messages[0].epoch <= 2) {
+    // DTLS 1.3 handshake messages (epoch 2 and below) implicitly ACK the
+    // previous flight, so there is no need to ACK previous records. This
+    // clears the ACK buffer slightly earlier than the specification suggests.
+    // See the discussion in
     // https://mailarchive.ietf.org/arch/msg/tls/kjJnquJOVaWxu5hUCmNzB35eqY0/
     ssl->d1->records_to_ack.Clear();
     ssl->d1->ack_timer.Stop();
+    ssl->d1->sending_ack = false;
   }
-  // Start the retransmission timer for the next flight (if any).
-  dtls1_start_timer(ssl);
-  return send_flight(ssl);
+
+  ssl->d1->outgoing_messages_complete = true;
+  ssl->d1->sending_flight = true;
+  // Stop retransmitting the previous flight. In DTLS 1.3, we'll have stopped
+  // the timer already, but DTLS 1.2 keeps it running until the next flight is
+  // ready.
+  dtls1_stop_timer(ssl);
 }
 
-int dtls1_send_ack(SSL *ssl) {
-  assert(ssl_protocol_version(ssl) >= TLS1_3_VERSION);
+void dtls1_schedule_ack(SSL *ssl) {
   ssl->d1->ack_timer.Stop();
-  if (ssl->d1->records_to_ack.empty()) {
-    return 1;
-  }
+  ssl->d1->sending_ack = !ssl->d1->records_to_ack.empty();
+}
+
+static int send_ack(SSL *ssl) {
+  assert(ssl_protocol_version(ssl) >= TLS1_3_VERSION);
 
   // Ensure we don't send so many ACKs that we overflow the MTU. There is a
   // 2-byte length prefix and each ACK is 16 bytes.
@@ -1099,15 +1116,46 @@ int dtls1_send_ack(SSL *ssl) {
   return 1;
 }
 
-int dtls1_retransmit_outgoing_messages(SSL *ssl) {
-  // Rewind to the start of the flight and write it again.
-  //
-  // TODO(davidben): This does not allow retransmits to be resumed on
-  // non-blocking write.
-  ssl->d1->outgoing_written = 0;
-  ssl->d1->outgoing_offset = 0;
+int dtls1_flush(SSL *ssl) {
+  // Send the pending ACK, if any.
+  if (ssl->d1->sending_ack) {
+    int ret = send_ack(ssl);
+    if (ret <= 0) {
+      return ret;
+    }
+    ssl->d1->sending_ack = false;
+  }
 
-  return send_flight(ssl);
+  // Send the pending flight, if any.
+  if (ssl->d1->sending_flight) {
+    int ret = send_flight(ssl);
+    if (ret <= 0) {
+      return ret;
+    }
+
+    // Reset state for the next send.
+    ssl->d1->outgoing_written = 0;
+    ssl->d1->outgoing_offset = 0;
+    ssl->d1->sending_flight = false;
+
+    // Schedule the next retransmit timer. In DTLS 1.3, we retransmit all
+    // flights until ACKed. In DTLS 1.2, the final Finished flight is never
+    // ACKed, so we do not keep the timer running after the handshake.
+    if (SSL_in_init(ssl) || ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+      if (ssl->d1->num_timeouts == 0) {
+        ssl->d1->timeout_duration_ms = ssl->initial_timeout_duration_ms;
+      } else {
+        ssl->d1->timeout_duration_ms =
+            std::min(ssl->d1->timeout_duration_ms * 2, uint32_t{60000});
+      }
+
+      OPENSSL_timeval now = ssl_ctx_get_current_time(ssl->ctx.get());
+      ssl->d1->retransmit_timer.StartMicroseconds(
+          now, uint64_t{ssl->d1->timeout_duration_ms} * 1000);
+    }
+  }
+
+  return 1;
 }
 
 unsigned int dtls1_min_mtu(void) { return kMinMTU; }

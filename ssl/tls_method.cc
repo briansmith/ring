@@ -143,6 +143,15 @@ static bool tls_set_write_state(SSL *ssl, ssl_encryption_level_t level,
   return true;
 }
 
+static void tls_finish_flight(SSL *ssl) {
+  // We don't track whether a flight is complete in TLS and instead always flush
+  // every queued message in |tls_flush|, whether the flight is complete or not.
+}
+
+static void tls_schedule_ack(SSL *ssl) {
+  // TLS does not use ACKs.
+}
+
 static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     false /* is_dtls */,
     tls_new,
@@ -159,8 +168,9 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     tls_finish_message,
     tls_add_message,
     tls_add_change_cipher_spec,
-    tls_flush_flight,
-    /*send_ack=*/nullptr,
+    tls_finish_flight,
+    tls_schedule_ack,
+    tls_flush,
     tls_on_handshake_complete,
     tls_set_read_state,
     tls_set_write_state,

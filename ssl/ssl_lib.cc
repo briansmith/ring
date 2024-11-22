@@ -963,6 +963,15 @@ static int ssl_read_impl(SSL *ssl) {
       return -1;
     }
 
+    // If a read triggered a DTLS ACK or retransmit, resolve that before reading
+    // more.
+    if (SSL_is_dtls(ssl)) {
+      int ret = ssl->method->flush(ssl);
+      if (ret <= 0) {
+        return ret;
+      }
+    }
+
     // Complete the current handshake, if any. False Start will cause
     // |SSL_do_handshake| to return mid-handshake, so this may require multiple
     // iterations.

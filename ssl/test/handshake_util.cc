@@ -64,17 +64,11 @@ bool RetryAsync(SSL *ssl, int ret) {
 
   if (test_state->packeted_bio != nullptr &&
       PacketedBioAdvanceClock(test_state->packeted_bio)) {
-    // The DTLS retransmit logic silently ignores write failures. So the test
-    // may progress, allow writes through synchronously.
-    AsyncBioEnforceWriteQuota(test_state->async_bio, false);
     int timeout_ret = DTLSv1_handle_timeout(ssl);
-    AsyncBioEnforceWriteQuota(test_state->async_bio, true);
-
-    if (timeout_ret < 0) {
-      fprintf(stderr, "Error retransmitting.\n");
-      return false;
+    if (timeout_ret >= 0) {
+      return true;
     }
-    return true;
+    ssl_err = SSL_get_error(ssl, timeout_ret);
   }
 
   // See if we needed to read or write more. If so, allow one byte through on
@@ -96,8 +90,9 @@ bool RetryAsync(SSL *ssl, int ret) {
       test_state->early_callback_ready = true;
       return true;
     case SSL_ERROR_WANT_PRIVATE_KEY_OPERATION:
+      test_state->private_key_retries++;
       if (config->private_key_delay_ms != 0 &&
-          test_state->private_key_retries == 0) {
+          test_state->private_key_retries == 1) {
         // The first time around, simulate the private key operation taking a
         // long time to run.
         if (test_state->packeted_bio == nullptr) {
@@ -111,15 +106,15 @@ bool RetryAsync(SSL *ssl, int ret) {
           clock->tv_usec -= 1000000;
           clock->tv_sec++;
         }
-        AsyncBioEnforceWriteQuota(test_state->async_bio, false);
         int timeout_ret = DTLSv1_handle_timeout(ssl);
-        AsyncBioEnforceWriteQuota(test_state->async_bio, true);
         if (timeout_ret < 0) {
-          fprintf(stderr, "Error retransmitting.\n");
+          if (SSL_get_error(ssl, timeout_ret) == SSL_ERROR_WANT_WRITE) {
+            AsyncBioAllowWrite(test_state->async_bio, 1);
+            return true;
+          }
           return false;
         }
       }
-      test_state->private_key_retries++;
       return true;
     case SSL_ERROR_WANT_CERTIFICATE_VERIFY:
       test_state->custom_verify_ready = true;

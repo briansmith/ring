@@ -9782,5 +9782,71 @@ TEST(SSLTest, IDOnlyTLS13Session) {
   EXPECT_FALSE(SSL_SESSION_is_resumable(session.get()));
 }
 
+TEST(SSLTest, DTLSReadTimeoutExpired) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(DTLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Mock the clock.
+  g_current_time.tv_sec = 1000;
+  SSL_CTX_set_current_time_cb(ctx.get(), CurrentTimeCallback);
+  auto advance = [](timeval delta) {
+    g_current_time.tv_sec += delta.tv_sec;
+    g_current_time.tv_usec += delta.tv_usec;
+    if (g_current_time.tv_usec >= 1000000) {
+      g_current_time.tv_usec -= 1000000;
+      g_current_time.tv_sec++;
+    }
+  };
+
+  // Create a client and don't connect it to anything.
+  bssl::UniquePtr<SSL> client(SSL_new(ctx.get()));
+  ASSERT_TRUE(client);
+  SSL_set_connect_state(client.get());
+  bssl::UniquePtr<BIO> rbio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(rbio);
+  SSL_set0_rbio(client.get(), rbio.release());
+  bssl::UniquePtr<BIO> wbio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(wbio);
+  SSL_set0_wbio(client.get(), wbio.release());
+
+  // Write the ClientHello and wait for a ServerHello.
+  EXPECT_EQ(SSL_do_handshake(client.get()), -1);
+  EXPECT_EQ(SSL_get_error(client.get(), -1), SSL_ERROR_WANT_READ);
+
+  for (;;) {
+    // There should be a retransmit timer.
+    timeval timeout;
+    ASSERT_TRUE(DTLSv1_get_timeout(client.get(), &timeout));
+    EXPECT_TRUE(timeout.tv_sec != 0 || timeout.tv_usec != 0);
+
+    // Retransmit. At some point, the client will give up and fail.
+    advance(timeout);
+    int ret = DTLSv1_handle_timeout(client.get());
+    if (ret < 0) {
+      break;
+    }
+    ASSERT_EQ(ret, 1);
+  }
+
+  // The retransmit should have failed with |SSL_R_READ_TIMEOUT_EXPIRED|.
+  EXPECT_EQ(SSL_get_error(client.get(), -1), SSL_ERROR_SSL);
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_READ_TIMEOUT_EXPIRED));
+
+  // There should not continue to be a timeout. Otherwise, a caller that forgets
+  // to check |DTLSv1_handle_timeout|'s error will infinite loop. See
+  // https://crbug.com/42224241.
+  timeval timeout;
+  EXPECT_FALSE(DTLSv1_get_timeout(client.get(), &timeout));
+
+  // The error should also be returned from |SSL_do_handshake|. This ensures
+  // that, if the caller missed the return from |DTLSv1_handle_timeout|, it will
+  // be picked up from a more normal codepath.
+  EXPECT_EQ(SSL_do_handshake(client.get()), -1);
+  EXPECT_EQ(SSL_get_error(client.get(), -1), SSL_ERROR_SSL);
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_READ_TIMEOUT_EXPIRED));
+}
+
 }  // namespace
 BSSL_NAMESPACE_END

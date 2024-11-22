@@ -1274,17 +1274,29 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
   }
 
   ssl->method->next_message(ssl);
-  return ssl_hs_ack;
+  if (SSL_is_dtls(ssl)) {
+    ssl->method->schedule_ack(ssl);
+    return ssl_hs_flush;
+  }
+  return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   bool sent_tickets;
   if (!add_new_session_tickets(hs, &sent_tickets)) {
     return ssl_hs_error;
   }
 
   hs->tls13_state = state13_done;
-  return sent_tickets ? ssl_hs_flush_post_handshake : ssl_hs_ok;
+  // In QUIC and DTLS, we can flush the ticket to the transport immediately. In
+  // TLS over TCP-like transports, we defer until the server performs a write.
+  // This prevents a non-reading client from causing the server to hang in the
+  // case of a small server write buffer. Consumers which don't write data to
+  // the client will need to do a zero-byte write if they wish to flush the
+  // tickets.
+  bool should_flush = sent_tickets && (SSL_is_dtls(ssl) || SSL_is_quic(ssl));
+  return should_flush ? ssl_hs_flush : ssl_hs_ok;
 }
 
 enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
