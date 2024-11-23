@@ -1196,6 +1196,12 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     }
     if (!config->shim_shuts_down) {
       for (;;) {
+        if (config->key_update_before_read &&
+            !SSL_key_update(ssl, SSL_KEY_UPDATE_NOT_REQUESTED)) {
+          fprintf(stderr, "SSL_key_update failed.\n");
+          return false;
+        }
+
         // Read only 512 bytes at a time in TLS to ensure records may be
         // returned in multiple reads.
         size_t read_size = config->is_dtls ? 16384 : 512;

@@ -471,6 +471,8 @@ const Flag<TestConfig> *FindFlag(const char *name) {
         BoolFlag("-export-traffic-secrets",
                  &TestConfig::export_traffic_secrets),
         BoolFlag("-key-update", &TestConfig::key_update),
+        BoolFlag("-key-update-before-read",
+                 &TestConfig::key_update_before_read),
         StringFlag("-expect-early-data-reason",
                    &TestConfig::expect_early_data_reason),
         BoolFlag("-expect-hrr", &TestConfig::expect_hrr),

@@ -627,6 +627,9 @@ type testCase struct {
 	sendKeyUpdates int
 	// keyUpdateRequest is the KeyUpdateRequest value to send in KeyUpdate messages.
 	keyUpdateRequest byte
+	// shimSendsKeyUpdateBeforeRead indicates the shim should send a KeyUpdate
+	// message before each read.
+	shimSendsKeyUpdateBeforeRead bool
 	// expectUnsolicitedKeyUpdate makes the test expect a one or more KeyUpdate
 	// messages while reading data from the shim. Don't use this in combination
 	// with any of the fields that send a KeyUpdate otherwise any received
@@ -1149,6 +1152,12 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 			}
 		}
 
+		if test.shimSendsKeyUpdateBeforeRead {
+			if err := tlsConn.ReadKeyUpdate(); err != nil {
+				return err
+			}
+		}
+
 		testMessage := makeTestMessage(j, messageLen)
 		if _, err := tlsConn.Write(testMessage); err != nil {
 			return err
@@ -1211,6 +1220,14 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 
 		if seen := tlsConn.keyUpdateSeen; seen != test.expectUnsolicitedKeyUpdate {
 			return fmt.Errorf("keyUpdateSeen (%t) != expectUnsolicitedKeyUpdate", seen)
+		}
+	}
+
+	// The shim will end attempting to read, sending one last KeyUpdate. Consume
+	// the KeyUpdate before closing the connection.
+	if test.shimSendsKeyUpdateBeforeRead {
+		if err := tlsConn.ReadKeyUpdate(); err != nil {
+			return err
 		}
 	}
 
@@ -1657,6 +1674,10 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 
 	if test.testTLSUnique {
 		flags = append(flags, "-tls-unique")
+	}
+
+	if test.shimSendsKeyUpdateBeforeRead {
+		flags = append(flags, "-key-update-before-read")
 	}
 
 	if *waitForDebugger {
@@ -22248,6 +22269,159 @@ func addKeyUpdateTests() {
 		flags:            []string{"-async"},
 	})
 
+	// In DTLS, we KeyUpdate before read, rather than write, because the
+	// KeyUpdate will not be applied before the shim reads the ACK.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-FromClient-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		shimSendsKeyUpdateBeforeRead: true,
+		// Perform several message exchanges to update keys several times.
+		messageCount: 10,
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "KeyUpdate-FromServer-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		shimSendsKeyUpdateBeforeRead: true,
+		// Perform several message exchanges to update keys several times.
+		messageCount: 10,
+		// Avoid NewSessionTicket messages getting in the way of ReadKeyUpdate.
+		flags: []string{"-no-ticket"},
+	})
+
+	// If the shim has a pending unACKed flight, it defers sending KeyUpdate.
+	// BoringSSL does not support multiple outgoing flights at once.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-DeferredSend-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// Request a client certificate, so the shim has more to send.
+			ClientAuth: RequireAnyClientCert,
+			Bugs: ProtocolBugs{
+				MaxPacketLength: 512,
+				ACKFlightDTLS: func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+					if received[len(received)-1].Type != typeFinished {
+						c.WriteACK(c.OutEpoch(), records)
+						return
+					}
+
+					// This test relies on the Finished flight being multiple
+					// records.
+					if len(records) <= 1 {
+						panic("shim sent Finished flight in one record")
+					}
+
+					// Before ACKing Finished, do some rounds of exchanging
+					// application data. Although the shim has already scheduled
+					// KeyUpdate, it should not send the KeyUpdate until it gets
+					// an ACK. (If it sent KeyUpdate, ReadAppData would report
+					// an unexpected record.)
+					msg := []byte("test")
+					for i := 0; i < 10; i++ {
+						c.WriteAppData(c.OutEpoch(), msg)
+						c.ReadAppData(c.InEpoch(), expectedReply(msg))
+					}
+
+					// ACK some of the Finished flight, but not all of it.
+					c.WriteACK(c.OutEpoch(), records[:1])
+
+					// The shim continues to defer KeyUpdate.
+					for i := 0; i < 10; i++ {
+						c.WriteAppData(c.OutEpoch(), msg)
+						c.ReadAppData(c.InEpoch(), expectedReply(msg))
+					}
+
+					// ACK the remainder.
+					c.WriteACK(c.OutEpoch(), records[1:])
+
+					// The shim should now send KeyUpdate. Return to the test
+					// harness, which will look for it.
+				},
+			},
+		},
+		shimCertificate:              &rsaChainCertificate,
+		shimSendsKeyUpdateBeforeRead: true,
+		flags:                        []string{"-mtu", "512"},
+	})
+
+	// The shim should not switch keys until it receives an ACK.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-WaitForACK-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				MaxPacketLength: 512,
+				ACKFlightDTLS: func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+					if received[0].Type != typeKeyUpdate {
+						c.WriteACK(c.OutEpoch(), records)
+						return
+					}
+
+					// Make the shim send application data. We have not yet
+					// ACKed KeyUpdate, so the shim should send at the previous
+					// epoch. Through each of these rounds, the shim will also
+					// try to KeyUpdate again. These calls will be suppressed
+					// because there is still an outstanding KeyUpdate.
+					msg := []byte("test")
+					for i := 0; i < 10; i++ {
+						c.WriteAppData(c.OutEpoch(), msg)
+						c.ReadAppData(c.InEpoch()-1, expectedReply(msg))
+					}
+
+					// ACK the KeyUpdate. Ideally we'd test a partial ACK, but
+					// BoringSSL's minimum MTU is such that KeyUpdate always
+					// fits in one record.
+					c.WriteACK(c.OutEpoch(), records)
+
+					// The shim should now send at the new epoch. Return to the
+					// test harness, which will enforce this.
+				},
+			},
+		},
+		shimSendsKeyUpdateBeforeRead: true,
+	})
+
+	// Test that shim responds to KeyUpdate requests.
+	fixKeyUpdateReply := func(c *DTLSController, prev, received []DTLSMessage, records []DTLSRecordNumberInfo) {
+		c.WriteACK(c.OutEpoch(), records)
+		if received[0].Type != typeKeyUpdate {
+			return
+		}
+		// This works around an awkward testing mismatch. The test
+		// harness expects the shim to immediately change keys, but
+		// the shim writes app data before seeing the ACK. The app
+		// data will be sent at the previous epoch. Consume this and
+		// prime the shim to resend its reply at the new epoch.
+		msg := makeTestMessage(int(received[0].Sequence)-2, 32)
+		c.ReadAppData(c.InEpoch()-1, expectedReply(msg))
+		c.WriteAppData(c.OutEpoch(), msg)
+	}
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-Requested-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				RejectUnsolicitedKeyUpdate: true,
+				ACKFlightDTLS:              fixKeyUpdateReply,
+			},
+		},
+		// Test the shim receiving many KeyUpdates in a row. They will be
+		// combined into one reply KeyUpdate.
+		sendKeyUpdates:   5,
+		messageLen:       32,
+		messageCount:     5,
+		keyUpdateRequest: keyUpdateRequested,
+	})
+
 	mergeNewSessionTicketAndKeyUpdate := func(f WriteFlightFunc) WriteFlightFunc {
 		return func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
 			// Send NewSessionTicket and the first KeyUpdate all together.
@@ -22358,12 +22532,15 @@ func addKeyUpdateTests() {
 
 	// Test KeyUpdate overflow conditions. Both the epoch number and the message
 	// number may overflow, in either the read or write direction.
-	//
-	// TODO(crbug.com/42290594): Test the epoch write number overflowing, once
-	// we implement sending KeyUpdates.
-	//
-	// TODO(crbug.com/42290594): Test the message write number overflowing, once
-	// we implement sending KeyUpdates.
+
+	// When the sender is the client, the first KeyUpdate is message 2 at epoch
+	// 3, so the epoch number overflows first.
+	const maxClientKeyUpdates = 0xffff - 3
+
+	// Test that the shim, as a server, rejects KeyUpdates at epoch 0xffff. RFC
+	// 9147 does not prescribe this limit, but we enforce it. See
+	// https://mailarchive.ietf.org/arch/msg/tls/6y8wTv8Q_IPM-PCcbCAmDOYg6bM/
+	// and https://www.rfc-editor.org/errata/eid8050
 	writeFlightKeyUpdate := func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
 		if next[0].Type == typeKeyUpdate {
 			// Exchange some data to avoid tripping KeyUpdate DoS limits.
@@ -22373,12 +22550,6 @@ func addKeyUpdateTests() {
 		}
 		c.WriteFlight(next)
 	}
-
-	// When the runner is the client, the first KeyUpdate is message 2 at epoch
-	// 3, so the epoch number overflows first. Test that the shim, as a server,
-	// rejects KeyUpdates at epoch 0xffff. RFC 9147 does not prescribe this
-	// limit, but we enforce it. See https://mailarchive.ietf.org/arch/msg/tls/6y8wTv8Q_IPM-PCcbCAmDOYg6bM/
-	// and https://www.rfc-editor.org/errata/eid8050
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		protocol: dtls,
@@ -22391,9 +22562,8 @@ func addKeyUpdateTests() {
 			},
 		},
 		// Avoid the NewSessionTicket messages interfering with the callback.
-		flags: []string{"-no-ticket"},
-		// Application data starts at epoch 3. Epoch 0xffff is the limit.
-		sendKeyUpdates:   0xffff - 3,
+		flags:            []string{"-no-ticket"},
+		sendKeyUpdates:   maxClientKeyUpdates,
 		keyUpdateRequest: keyUpdateNotRequested,
 	})
 	testCases = append(testCases, testCase{
@@ -22408,23 +22578,56 @@ func addKeyUpdateTests() {
 			},
 		},
 		// Avoid the NewSessionTicket messages interfering with the callback.
-		flags: []string{"-no-ticket"},
-		// Application data starts at epoch 3. Epoch 0xffff is the limit.
-		sendKeyUpdates:     0xffff - 3 + 1,
+		flags:              []string{"-no-ticket"},
+		sendKeyUpdates:     maxClientKeyUpdates + 1,
 		keyUpdateRequest:   keyUpdateNotRequested,
 		shouldFail:         true,
 		expectedError:      ":TOO_MANY_KEY_UPDATES:",
 		expectedLocalError: "remote error: unexpected message",
 	})
 
-	// When the runner is a server, the first KeyUpdate is message 7 (SH, EE, C,
-	// CV, Fin, NST, NST) at epoch 3, so the message number overflows first.
+	// Test that the shim, as a client, notices its epoch overflow condition
+	// when asked to send too many KeyUpdates. The shim sends KeyUpdate before
+	// every read, including reading connection close, so the number of
+	// KeyUpdates is one more than the message count.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-MaxWriteEpoch-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		shimSendsKeyUpdateBeforeRead: true,
+		messageCount:                 maxClientKeyUpdates - 1,
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-WriteEpochOverflow-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				// The shim does not notice the overflow until immediately after
+				// sending KeyUpdate, so tolerate the overflow on the runner.
+				AllowEpochOverflow: true,
+			},
+		},
+		shimSendsKeyUpdateBeforeRead: true,
+		messageCount:                 maxClientKeyUpdates,
+		shouldFail:                   true,
+		expectedError:                ":TOO_MANY_KEY_UPDATES:",
+	})
+
+	// When the sender is a server that doesn't send tickets, the first
+	// KeyUpdate is message 5 (SH, EE, C, CV, Fin) at epoch 3, so the message
+	// number overflows first.
+	const maxServerKeyUpdates = 0xffff - 5
+
 	// Test that the shim, as a client, does not allow the value to wraparound.
 	testCases = append(testCases, testCase{
 		protocol: dtls,
 		name:     "KeyUpdate-ReadMessageOverflow-DTLS",
 		config: Config{
-			MaxVersion: VersionTLS13,
+			MaxVersion:             VersionTLS13,
+			SessionTicketsDisabled: true,
 			Bugs: ProtocolBugs{
 				AllowEpochOverflow: true,
 				WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
@@ -22450,9 +22653,38 @@ func addKeyUpdateTests() {
 				},
 			},
 		},
-		sendKeyUpdates:   0xffff - 7 + 1,
+		sendKeyUpdates:   maxServerKeyUpdates + 1,
 		keyUpdateRequest: keyUpdateNotRequested,
-		flags:            []string{"-async"},
+		flags:            []string{"-async", "-expect-no-session"},
+	})
+
+	// Test that the shim, as a server, notices its message overflow condition,
+	// when asked to send too many KeyUpdates.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "KeyUpdate-MaxWriteMessage-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		shimSendsKeyUpdateBeforeRead: true,
+		messageCount:                 maxServerKeyUpdates,
+		// Avoid NewSessionTicket messages getting in the way of ReadKeyUpdate.
+		flags: []string{"-no-ticket"},
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "KeyUpdate-WriteMessageOverflow-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		shimSendsKeyUpdateBeforeRead: true,
+		messageCount:                 maxServerKeyUpdates + 1,
+		shouldFail:                   true,
+		expectedError:                ":overflow:",
+		// Avoid NewSessionTicket messages getting in the way of ReadKeyUpdate.
+		flags: []string{"-no-ticket"},
 	})
 }
 

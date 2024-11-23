@@ -1660,6 +1660,20 @@ func (c *Conn) processTLS13NewSessionTicket(newSessionTicket *newSessionTicketMs
 	return c.ackHandshake()
 }
 
+func (c *Conn) processKeyUpdate(keyUpdate *keyUpdateMsg) error {
+	epoch := c.in.epoch.epoch + 1
+	if epoch == 0 && !c.config.Bugs.AllowEpochOverflow {
+		return errors.New("tls: too many KeyUpdates")
+	}
+	if err := c.useInTrafficSecret(epoch, c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret, c.isDTLS)); err != nil {
+		return err
+	}
+	if keyUpdate.keyUpdateRequest == keyUpdateRequested {
+		c.keyUpdateRequested = true
+	}
+	return c.ackHandshake()
+}
+
 func (c *Conn) handlePostHandshakeMessage() error {
 	msg, err := c.readHandshake()
 	if err != nil {
@@ -1690,21 +1704,10 @@ func (c *Conn) handlePostHandshakeMessage() error {
 
 	if keyUpdate, ok := msg.(*keyUpdateMsg); ok {
 		c.keyUpdateSeen = true
-
 		if c.config.Bugs.RejectUnsolicitedKeyUpdate {
 			return errors.New("tls: unexpected KeyUpdate message")
 		}
-		epoch := c.in.epoch.epoch + 1
-		if epoch == 0 {
-			return errors.New("tls: too many KeyUpdates")
-		}
-		if err := c.useInTrafficSecret(epoch, c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret, c.isDTLS)); err != nil {
-			return err
-		}
-		if keyUpdate.keyUpdateRequest == keyUpdateRequested {
-			c.keyUpdateRequested = true
-		}
-		return c.ackHandshake()
+		return c.processKeyUpdate(keyUpdate)
 	}
 
 	c.sendAlert(alertUnexpectedMessage)
@@ -1717,27 +1720,16 @@ func (c *Conn) ReadKeyUpdate() error {
 	c.in.Lock()
 	defer c.in.Unlock()
 
-	msg, err := c.readHandshake()
+	keyUpdate, err := readHandshakeType[keyUpdateMsg](c)
 	if err != nil {
 		return err
-	}
-
-	keyUpdate, ok := msg.(*keyUpdateMsg)
-	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
-		return fmt.Errorf("tls: unexpected message (%T) when reading KeyUpdate", msg)
 	}
 
 	if keyUpdate.keyUpdateRequest != keyUpdateNotRequested {
 		return errors.New("tls: received invalid KeyUpdate message")
 	}
 
-	epoch := c.in.epoch.epoch + 1
-	if epoch == 0 {
-		return errors.New("tls: too many KeyUpdates")
-	}
-
-	return c.useInTrafficSecret(epoch, c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret, c.isDTLS))
+	return c.processKeyUpdate(keyUpdate)
 }
 
 func (c *Conn) Renegotiate() error {

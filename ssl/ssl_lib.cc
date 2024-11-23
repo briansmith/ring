@@ -1121,12 +1121,7 @@ int SSL_key_update(SSL *ssl, int request_type) {
     return 0;
   }
 
-  if (!ssl->s3->key_update_pending &&
-      !tls13_add_key_update(ssl, request_type)) {
-    return 0;
-  }
-
-  return 1;
+  return tls13_add_key_update(ssl, request_type);
 }
 
 int SSL_shutdown(SSL *ssl) {

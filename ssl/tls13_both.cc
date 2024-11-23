@@ -618,13 +618,31 @@ bool tls13_add_finished(SSL_HANDSHAKE *hs) {
   return true;
 }
 
-bool tls13_add_key_update(SSL *ssl, int update_requested) {
+bool tls13_add_key_update(SSL *ssl, int request_type) {
+  if (ssl->s3->key_update_pending) {
+    return true;
+  }
+
+  // We do not support multiple parallel outgoing flights. If there is an
+  // outgoing flight pending, queue the KeyUpdate for later.
+  if (SSL_is_dtls(ssl) && !ssl->d1->outgoing_messages.empty()) {
+    ssl->d1->queued_key_update = request_type == SSL_KEY_UPDATE_REQUESTED
+                                     ? QueuedKeyUpdate::kUpdateRequested
+                                     : QueuedKeyUpdate::kUpdateNotRequested;
+    return true;
+  }
+
   ScopedCBB cbb;
   CBB body_cbb;
   if (!ssl->method->init_message(ssl, cbb.get(), &body_cbb,
                                  SSL3_MT_KEY_UPDATE) ||
-      !CBB_add_u8(&body_cbb, update_requested) ||
-      !ssl_add_message_cbb(ssl, cbb.get()) ||
+      !CBB_add_u8(&body_cbb, request_type) ||
+      !ssl_add_message_cbb(ssl, cbb.get())) {
+    return false;
+  }
+
+  // In DTLS, the actual key update is deferred until KeyUpdate is ACKed.
+  if (!SSL_is_dtls(ssl) &&
       !tls13_rotate_traffic_key(ssl, evp_aead_seal)) {
     return false;
   }
@@ -654,10 +672,7 @@ static bool tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
   }
 
   // Acknowledge the KeyUpdate
-  // TODO(crbug.com/42290594): Support sending KeyUpdate in DTLS 1.3.
-  if (!SSL_is_dtls(ssl) &&  //
-      key_update_request == SSL_KEY_UPDATE_REQUESTED &&
-      !ssl->s3->key_update_pending &&
+  if (key_update_request == SSL_KEY_UPDATE_REQUESTED &&
       !tls13_add_key_update(ssl, SSL_KEY_UPDATE_NOT_REQUESTED)) {
     return false;
   }

@@ -222,6 +222,26 @@ ssl_open_record_t dtls1_process_ack(SSL *ssl, uint8_t *out_alert,
                   [](const auto &msg) { return msg.IsFullyAcked(); })) {
     dtls1_stop_timer(ssl);
     dtls_clear_outgoing_messages(ssl);
+
+    // DTLS 1.3 defers the key update to when the message is ACKed.
+    if (ssl->s3->key_update_pending) {
+      if (!tls13_rotate_traffic_key(ssl, evp_aead_seal)) {
+        return ssl_open_record_error;
+      }
+      ssl->s3->key_update_pending = false;
+    }
+
+    // Check for deferred messages.
+    if (ssl->d1->queued_key_update != QueuedKeyUpdate::kNone) {
+      int request_type =
+          ssl->d1->queued_key_update == QueuedKeyUpdate::kUpdateRequested
+              ? SSL_KEY_UPDATE_REQUESTED
+              : SSL_KEY_UPDATE_NOT_REQUESTED;
+      ssl->d1->queued_key_update = QueuedKeyUpdate::kNone;
+      if (!tls13_add_key_update(ssl, request_type)) {
+        return ssl_open_record_error;
+      }
+    }
   } else {
     // We may still be able to drop unused write epochs.
     dtls_clear_unused_write_epochs(ssl);

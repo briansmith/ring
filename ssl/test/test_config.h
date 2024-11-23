@@ -208,6 +208,7 @@ struct TestConfig {
   bool server_preference = false;
   bool export_traffic_secrets = false;
   bool key_update = false;
+  bool key_update_before_read = false;
   std::string expect_early_data_reason;
   bool expect_hrr = false;
   bool expect_no_hrr = false;

@@ -77,7 +77,8 @@ DTLS1_STATE::DTLS1_STATE()
       handshake_write_overflow(false),
       handshake_read_overflow(false),
       sending_flight(false),
-      sending_ack(false) {}
+      sending_ack(false),
+      queued_key_update(QueuedKeyUpdate::kNone) {}
 
 DTLS1_STATE::~DTLS1_STATE() {}
 
