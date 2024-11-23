@@ -79,8 +79,8 @@ typedef uint32_t CRYPTO_refcount_t;
 // Deprecated functions.
 //
 // Historically, OpenSSL required callers to provide locking callbacks.
-// BoringSSL is thread-safe by default, but some old code calls these functions
-// and so no-op implementations are provided.
+// BoringSSL does not use external callbacks for locking, but some old code
+// calls these functions and so no-op implementations are provided.
 
 // These defines do nothing but are provided to make old code easier to
 // compile.
