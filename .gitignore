@@ -24,6 +24,7 @@
 /util/bot/libcxx
 /util/bot/libcxxabi
 /util/bot/llvm-build
+/util/bot/llvm-libc
 /util/bot/nasm-win32.exe
 /util/bot/ninja
 /util/bot/perl-win32

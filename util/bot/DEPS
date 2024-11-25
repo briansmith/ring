@@ -31,20 +31,23 @@ vars = {
   #  cipd describe PACKAGE_NAME -version latest
 
   # infra/3pp/tools/bazel_bootstrap/linux-amd64
-  'bazel_version': 'version:3@7.3.1.1',
+  # Keep this in sync with .bazelversion. The CIPD versions have an extra .1 at
+  # the end which must be removed. See https://crbug.com/380903148.
+  'bazel_version': 'version:3@7.4.1.1',
   # infra/3pp/tools/cmake/linux-amd64
-  'cmake_version': 'version:3@3.30.2.chromium.8',
+  'cmake_version': 'version:3@3.31.1.chromium.8',
   # infra/3pp/tools/go/linux-amd64
-  'go_version': 'version:3@1.22.6',
+  'go_version': 'version:3@1.23.3',
   # infra/3pp/tools/perl/windows-amd64
   'perl_version': 'version:2@5.32.1.1',
 
   # Update the following from
   # https://chromium.googlesource.com/chromium/src/+/main/DEPS
   'android_sdk_platform-tools_version': 'WihaseZR6cojZbkzIqwGhpTp92ztaGfqq8njBU8eTXYC',
-  'libfuzzer_revision': '758bd21f103a501b362b1ca46fa8fcb692eaa303',
-  'libcxx_revision': 'de70eaccdf8b5e1c3b574f6849db6294626a3a13',
-  'libcxxabi_revision': 'eb6567388e89d9730c76dee71d68ac82e4a1abf6',
+  'libfuzzer_revision': 'a7128317fe7935a43d6c9f39df54f21113951941',
+  'libcxx_revision': '76cb1e3b4a69ccc6407c9a3aaab3aaba2432f868',
+  'libcxxabi_revision': '6c4fa00e4becc30085cbc8b44c2764ef307daae2',
+  'llvm_libc_revision': '17e581644f9a71be3eb30f468722ce866058f93a',
   'ninja_version': 'version:2@1.12.1.chromium.4',
 
   # The Android NDK cannot be updated until https://crbug.com/boringssl/454 is fixed.
@@ -110,6 +113,10 @@ deps = {
   },
   'boringssl/util/bot/libcxxabi': {
     'url': Var('chromium_git') + '/external/github.com/llvm/llvm-project/libcxxabi.git' + '@' + Var('libcxxabi_revision'),
+    'condition': 'checkout_libcxx',
+  },
+  'boringssl/util/bot/llvm-libc': {
+    'url': Var('chromium_git') + '/external/github.com/llvm/llvm-project/libc.git' + '@' + Var('llvm_libc_revision'),
     'condition': 'checkout_libcxx',
   },
 

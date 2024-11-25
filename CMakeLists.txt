@@ -449,7 +449,10 @@ if(USE_CUSTOM_LIBCXX)
     libcxx PRIVATE
     -D_LIBCPP_BUILDING_LIBRARY
     -DLIBCXX_BUILDING_LIBCXXABI
+    -DLIBC_NAMESPACE=bssl_llvm_libc
   )
+  # LLVM libc++ depends on some shared headers from LLVM libc.
+  target_include_directories(libcxx PRIVATE util/bot/llvm-libc)
   set_target_properties(
     libcxx libcxxabi PROPERTIES
     COMPILE_FLAGS "-Wno-missing-prototypes -Wno-implicit-fallthrough"
@@ -686,7 +689,8 @@ add_executable(pki_test ${PKI_TEST_SOURCES})
 target_link_libraries(pki_test test_support_lib boringssl_gtest pki crypto)
 add_dependencies(all_tests pki_test)
 
-# The PKI library requires C++17.
+# The PKI library requires C++17, but we haven't required this everywhere yet.
+# TODO(crbug.com/42290600): Remove the C++17 bits.
 set_target_properties(
   pki pki_test
   PROPERTIES
@@ -711,7 +715,14 @@ if(FUZZ)
     add_library(Fuzzer STATIC ${LIBFUZZER_SOURCES})
     # libFuzzer does not pass our aggressive warnings. It also must be built
     # without -fsanitize-coverage options or clang crashes.
-    set_target_properties(Fuzzer PROPERTIES COMPILE_FLAGS "-Wno-shadow -Wno-format-nonliteral -Wno-missing-prototypes -fsanitize-coverage=0")
+    set_target_properties(
+      Fuzzer PROPERTIES
+      COMPILE_FLAGS "-Wno-shadow -Wno-format-nonliteral -Wno-missing-prototypes -fsanitize-coverage=0"
+      # libFuzzer requires C++17, but we haven't required this everywhere yet.
+      # TODO(crbug.com/42290600): Remove this.
+      CXX_STANDARD 17
+      CXX_STANDARD_REQUIRED TRUE
+    )
   endif()
 
   add_subdirectory(fuzz)
