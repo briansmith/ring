@@ -14,8 +14,8 @@
 
 #include "internal.h"
 
-#if defined(OPENSSL_ARM) && defined(OPENSSL_FREEBSD) && \
-    !defined(OPENSSL_STATIC_ARMCAP)
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM) && \
+    defined(OPENSSL_FREEBSD) && !defined(OPENSSL_STATIC_ARMCAP)
 #include <sys/auxv.h>
 #include <sys/types.h>
 
