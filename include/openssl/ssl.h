@@ -244,10 +244,8 @@ OPENSSL_EXPORT int SSL_is_dtls(const SSL *ssl);
 
 // SSL_set_bio configures |ssl| to read from |rbio| and write to |wbio|. |ssl|
 // takes ownership of the two |BIO|s. If |rbio| and |wbio| are the same, |ssl|
-// only takes ownership of one reference.
-//
-// In DTLS, |rbio| must be non-blocking to properly handle timeouts and
-// retransmits.
+// only takes ownership of one reference. See |SSL_set0_rbio| and
+// |SSL_set0_wbio| for requirements on |rbio| and |wbio|, respectively.
 //
 // If |rbio| is the same as the currently configured |BIO| for reading, that
 // side is left untouched and is not freed.
@@ -263,14 +261,19 @@ OPENSSL_EXPORT int SSL_is_dtls(const SSL *ssl);
 OPENSSL_EXPORT void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio);
 
 // SSL_set0_rbio configures |ssl| to read from |rbio|. It takes ownership of
-// |rbio|.
+// |rbio|. |rbio| may be a custom |BIO|, in which case it must implement
+// |BIO_read| with |BIO_meth_set_read|. In DTLS, |rbio| must be non-blocking to
+// properly handle timeouts and retransmits.
 //
 // Note that, although this function and |SSL_set0_wbio| may be called on the
 // same |BIO|, each call takes a reference. Use |BIO_up_ref| to balance this.
 OPENSSL_EXPORT void SSL_set0_rbio(SSL *ssl, BIO *rbio);
 
 // SSL_set0_wbio configures |ssl| to write to |wbio|. It takes ownership of
-// |wbio|.
+// |wbio|. |wbio| may be a custom |BIO|, in which case it must implement
+// |BIO_write| with |BIO_meth_set_write|. It must additionally implement
+// |BIO_flush| with |BIO_meth_set_ctrl| and |BIO_CTRL_FLUSH|. If flushing is
+// unnecessary with |wbio|, |BIO_flush| should return one and do nothing.
 //
 // Note that, although this function and |SSL_set0_rbio| may be called on the
 // same |BIO|, each call takes a reference. Use |BIO_up_ref| to balance this.
