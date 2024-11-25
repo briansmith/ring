@@ -22267,9 +22267,6 @@ func addKeyUpdateTests() {
 	// Test KeyUpdate overflow conditions. Both the epoch number and the message
 	// number may overflow, in either the read or write direction.
 	//
-	// TODO(crbug.com/42290594): Test the message read number overflowing, once
-	// we fix the lack of checking for it.
-	//
 	// TODO(crbug.com/42290594): Test the epoch write number overflowing, once
 	// we implement sending KeyUpdates.
 	//
@@ -22326,6 +22323,44 @@ func addKeyUpdateTests() {
 		shouldFail:         true,
 		expectedError:      ":TOO_MANY_KEY_UPDATES:",
 		expectedLocalError: "remote error: unexpected message",
+	})
+
+	// When the runner is a server, the first KeyUpdate is message 7 (SH, EE, C,
+	// CV, Fin, NST, NST) at epoch 3, so the message number overflows first.
+	// Test that the shim, as a client, does not allow the value to wraparound.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "KeyUpdate-ReadMessageOverflow-DTLS",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				AllowEpochOverflow: true,
+				WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
+					writeFlightKeyUpdate(c, prev, received, next, records)
+					if next[0].Type == typeKeyUpdate && next[0].Sequence == 0xffff {
+						// At this point, the shim has accepted message 0xffff.
+						// Check the shim does not now accept message 0 as the
+						// current message. Test this by sending a garbage
+						// message 0. A shim that overflows and processes the
+						// message will notice the syntax error. A shim that
+						// correctly interprets this as an old message will drop
+						// the record and simply ACK it.
+						//
+						// We do this rather than send a valid KeyUpdate because
+						// the shim will keep the old epoch active and drop
+						// decryption failures. Looking for the lack of an error
+						// is more straightforward.
+						c.WriteFlight([]DTLSMessage{{Epoch: c.OutEpoch(), Sequence: 0, Type: typeKeyUpdate, Data: []byte("INVALID")}})
+						c.ExpectNextTimeout(timeouts[0] / 4)
+						c.AdvanceClock(timeouts[0] / 4)
+						c.ReadACK(c.InEpoch())
+					}
+				},
+			},
+		},
+		sendKeyUpdates:   0xffff - 7 + 1,
+		keyUpdateRequest: keyUpdateNotRequested,
+		flags:            []string{"-async"},
 	})
 }
 

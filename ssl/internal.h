@@ -3555,6 +3555,11 @@ struct DTLS1_STATE {
   // peer sent the final flight.
   bool flight_has_reply : 1;
 
+  // handshake_write_overflow and handshake_read_overflow are true if
+  // handshake_write_seq and handshake_read_seq, respectively have overflowed.
+  bool handshake_write_overflow : 1;
+  bool handshake_read_overflow : 1;
+
   uint16_t handshake_write_seq = 0;
   uint16_t handshake_read_seq = 0;
 

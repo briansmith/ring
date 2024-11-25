@@ -81,7 +81,9 @@ BSSL_NAMESPACE_BEGIN
 DTLS1_STATE::DTLS1_STATE()
     : has_change_cipher_spec(false),
       outgoing_messages_complete(false),
-      flight_has_reply(false) {}
+      flight_has_reply(false),
+      handshake_write_overflow(false),
+      handshake_read_overflow(false) {}
 
 DTLS1_STATE::~DTLS1_STATE() {}
 
