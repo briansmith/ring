@@ -84,17 +84,17 @@ TEST(MLDSATest, DISABLED_BitFlips) {
   }
 }
 
-template <typename PrivateKey, typename PublicKey, size_t PublicKeyBytes,
-          size_t SignatureBytes,
-          int (*Generate)(uint8_t *, uint8_t *, PrivateKey *),
-          int (*Sign)(uint8_t *, const PrivateKey *, const uint8_t *, size_t,
-                      const uint8_t *, size_t),
-          int (*ParsePublicKey)(PublicKey *, CBS *),
-          int (*Verify)(const PublicKey *, const uint8_t *, size_t,
-                        const uint8_t *, size_t, const uint8_t *, size_t),
-          int (*PrivateKeyFromSeed)(PrivateKey *, const uint8_t *, size_t),
-          int (*ParsePrivate)(PrivateKey *, CBS *), typename BCMPrivateKey,
-          bcm_status (*MarshalPrivate)(CBB *, const BCMPrivateKey *)>
+template <
+    typename PrivateKey, typename PublicKey, size_t PublicKeyBytes,
+    size_t SignatureBytes, int (*Generate)(uint8_t *, uint8_t *, PrivateKey *),
+    int (*Sign)(uint8_t *, const PrivateKey *, const uint8_t *, size_t,
+                const uint8_t *, size_t),
+    int (*ParsePublicKey)(PublicKey *, CBS *),
+    int (*Verify)(const PublicKey *, const uint8_t *, size_t, const uint8_t *,
+                  size_t, const uint8_t *, size_t),
+    int (*PrivateKeyFromSeed)(PrivateKey *, const uint8_t *, size_t),
+    typename BCMPrivateKey, bcm_status (*ParsePrivate)(BCMPrivateKey *, CBS *),
+    bcm_status (*MarshalPrivate)(CBB *, const BCMPrivateKey *)>
 static void MLDSABasicTest() {
   std::vector<uint8_t> encoded_public_key(PublicKeyBytes);
   auto priv = std::make_unique<PrivateKey>();
@@ -104,7 +104,8 @@ static void MLDSABasicTest() {
   const std::vector<uint8_t> encoded_private_key =
       Marshal(MarshalPrivate, reinterpret_cast<BCMPrivateKey *>(priv.get()));
   CBS cbs = bssl::MakeConstSpan(encoded_private_key);
-  EXPECT_TRUE(ParsePrivate(priv.get(), &cbs));
+  EXPECT_TRUE(bcm_success(
+      ParsePrivate(reinterpret_cast<BCMPrivateKey *>(priv.get()), &cbs)));
 
   std::vector<uint8_t> encoded_signature(SignatureBytes);
   static const uint8_t kMessage[] = {'H', 'e', 'l', 'l', 'o', ' ',
@@ -136,7 +137,7 @@ TEST(MLDSATest, Basic65) {
                  MLDSA65_PUBLIC_KEY_BYTES, MLDSA65_SIGNATURE_BYTES,
                  MLDSA65_generate_key, MLDSA65_sign, MLDSA65_parse_public_key,
                  MLDSA65_verify, MLDSA65_private_key_from_seed,
-                 MLDSA65_parse_private_key, BCM_mldsa65_private_key,
+                 BCM_mldsa65_private_key, BCM_mldsa65_parse_private_key,
                  BCM_mldsa65_marshal_private_key>();
 }
 
@@ -200,18 +201,12 @@ static int MLDSA87_parse_public_key(struct MLDSA87_public_key *public_key,
       reinterpret_cast<BCM_mldsa87_public_key *>(public_key), in));
 }
 
-static int MLDSA87_parse_private_key(struct MLDSA87_private_key *private_key,
-                                     CBS *in) {
-  return bcm_success(BCM_mldsa87_parse_private_key(
-      reinterpret_cast<BCM_mldsa87_private_key *>(private_key), in));
-}
-
 TEST(MLDSATest, Basic87) {
   MLDSABasicTest<MLDSA87_private_key, MLDSA87_public_key,
                  BCM_MLDSA87_PUBLIC_KEY_BYTES, BCM_MLDSA87_SIGNATURE_BYTES,
                  MLDSA87_generate_key, MLDSA87_sign, MLDSA87_parse_public_key,
                  MLDSA87_verify, MLDSA87_private_key_from_seed,
-                 MLDSA87_parse_private_key, BCM_mldsa87_private_key,
+                 BCM_mldsa87_private_key, BCM_mldsa87_parse_private_key,
                  BCM_mldsa87_marshal_private_key>();
 }
 
@@ -292,10 +287,10 @@ TEST(MLDSATest, InvalidPublicKeyEncodingLength) {
 
 TEST(MLDSATest, InvalidPrivateKeyEncodingLength) {
   std::vector<uint8_t> encoded_public_key(MLDSA65_PUBLIC_KEY_BYTES);
-  auto priv = std::make_unique<MLDSA65_private_key>();
+  auto priv = std::make_unique<BCM_mldsa65_private_key>();
   uint8_t seed[MLDSA_SEED_BYTES];
-  EXPECT_TRUE(
-      MLDSA65_generate_key(encoded_public_key.data(), seed, priv.get()));
+  EXPECT_TRUE(bcm_success(
+      BCM_mldsa65_generate_key(encoded_public_key.data(), seed, priv.get())));
 
   CBB cbb;
   std::vector<uint8_t> malformed_private_key(MLDSA65_PRIVATE_KEY_BYTES + 1, 0);
@@ -304,19 +299,22 @@ TEST(MLDSATest, InvalidPrivateKeyEncodingLength) {
       &cbb, reinterpret_cast<BCM_mldsa65_private_key *>(priv.get()))));
 
   CBS cbs;
-  auto parsed_priv = std::make_unique<MLDSA65_private_key>();
+  auto parsed_priv = std::make_unique<BCM_mldsa65_private_key>();
 
   // Private key is 1 byte too short.
   CBS_init(&cbs, malformed_private_key.data(), MLDSA65_PRIVATE_KEY_BYTES - 1);
-  EXPECT_FALSE(MLDSA65_parse_private_key(parsed_priv.get(), &cbs));
+  EXPECT_FALSE(
+      bcm_success(BCM_mldsa65_parse_private_key(parsed_priv.get(), &cbs)));
 
   // Private key has the correct length.
   CBS_init(&cbs, malformed_private_key.data(), MLDSA65_PRIVATE_KEY_BYTES);
-  EXPECT_TRUE(MLDSA65_parse_private_key(parsed_priv.get(), &cbs));
+  EXPECT_TRUE(
+      bcm_success(BCM_mldsa65_parse_private_key(parsed_priv.get(), &cbs)));
 
   // Private key is 1 byte too long.
   CBS_init(&cbs, malformed_private_key.data(), MLDSA65_PRIVATE_KEY_BYTES + 1);
-  EXPECT_FALSE(MLDSA65_parse_private_key(parsed_priv.get(), &cbs));
+  EXPECT_FALSE(
+      bcm_success(BCM_mldsa65_parse_private_key(parsed_priv.get(), &cbs)));
 }
 
 template <typename PrivateKey, typename PublicKey, size_t SignatureBytes,

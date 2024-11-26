@@ -122,12 +122,6 @@ OPENSSL_EXPORT int MLDSA65_marshal_public_key(
 OPENSSL_EXPORT int MLDSA65_parse_public_key(
     struct MLDSA65_public_key *public_key, CBS *in);
 
-// MLDSA65_parse_private_key parses a private key, in the NIST format, from |in|
-// and writes the result to |out_private_key|. It returns 1 on success or 0 on
-// parse error or if there are trailing bytes in |in|.
-OPENSSL_EXPORT int MLDSA65_parse_private_key(
-    struct MLDSA65_private_key *private_key, CBS *in);
-
 
 #if defined(__cplusplus)
 }  // extern C

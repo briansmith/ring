@@ -88,9 +88,3 @@ int MLDSA65_parse_public_key(struct MLDSA65_public_key *public_key, CBS *in) {
   return bcm_success(BCM_mldsa65_parse_public_key(
       reinterpret_cast<BCM_mldsa65_public_key *>(public_key), in));
 }
-
-int MLDSA65_parse_private_key(struct MLDSA65_private_key *private_key,
-                              CBS *in) {
-  return bcm_success(BCM_mldsa65_parse_private_key(
-      reinterpret_cast<BCM_mldsa65_private_key *>(private_key), in));
-}
