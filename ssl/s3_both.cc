@@ -385,7 +385,7 @@ static ssl_open_record_t read_v2_client_hello(SSL *ssl, size_t *out_consumed,
     return ssl_open_record_partial;
   }
 
-  CBS v2_client_hello = CBS(ssl->s3->read_buffer.span().subspan(2, msg_length));
+  CBS v2_client_hello = CBS(in.subspan(2, msg_length));
   // The V2ClientHello without the length is incorporated into the handshake
   // hash. This is only ever called at the start of the handshake, so hs is
   // guaranteed to be non-NULL.
