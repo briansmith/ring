@@ -619,17 +619,6 @@ ssl_open_record_t tls_open_handshake(SSL *ssl, size_t *out_consumed,
     return ret;
   }
 
-  // WatchGuard's TLS 1.3 interference bug is very distinctive: they drop the
-  // ServerHello and send the remaining encrypted application data records
-  // as-is. This manifests as an application data record when we expect
-  // handshake. Report a dedicated error code for this case.
-  if (!ssl->server && type == SSL3_RT_APPLICATION_DATA &&
-      ssl->s3->aead_read_ctx->is_null_cipher()) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_APPLICATION_DATA_INSTEAD_OF_HANDSHAKE);
-    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
-    return ssl_open_record_error;
-  }
-
   if (type != SSL3_RT_HANDSHAKE) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
     *out_alert = SSL_AD_UNEXPECTED_MESSAGE;

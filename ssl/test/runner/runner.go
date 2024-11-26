@@ -2490,7 +2490,7 @@ read alert 1 0
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":APPLICATION_DATA_INSTEAD_OF_HANDSHAKE:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			name: "AppDataBeforeHandshake-Empty",
@@ -2500,7 +2500,7 @@ read alert 1 0
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":APPLICATION_DATA_INSTEAD_OF_HANDSHAKE:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			protocol: dtls,
@@ -2728,7 +2728,7 @@ read alert 1 0
 			},
 			shimWritesFirst: true,
 			shouldFail:      true,
-			expectedError:   ":APPLICATION_DATA_INSTEAD_OF_HANDSHAKE:",
+			expectedError:   ":UNEXPECTED_RECORD:",
 		},
 		{
 			name: "FalseStart-SkipServerSecondLeg-Implicit",
@@ -2749,7 +2749,7 @@ read alert 1 0
 				"-advertise-alpn", "\x03foo",
 			},
 			shouldFail:    true,
-			expectedError: ":APPLICATION_DATA_INSTEAD_OF_HANDSHAKE:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			testType:           serverTest,
