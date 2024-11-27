@@ -98,7 +98,7 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
 
   // Default behavior: look up the OID for the algorithm/hash pair and encode
   // that.
-  const EVP_MD *digest = EVP_MD_CTX_md(ctx);
+  const EVP_MD *digest = EVP_MD_CTX_get0_md(ctx);
   if (digest == NULL) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_CONTEXT_NOT_INITIALISED);
     return 0;

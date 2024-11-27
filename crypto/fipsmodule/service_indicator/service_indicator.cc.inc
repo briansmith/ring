@@ -186,7 +186,7 @@ static int is_md_fips_approved_for_verifying(int md_type) {
 
 static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
                                                 int (*md_ok)(int md_type)) {
-  if (EVP_MD_CTX_md(ctx) == NULL) {
+  if (EVP_MD_CTX_get0_md(ctx) == NULL) {
     // Signature schemes without a prehash are currently never FIPS approved.
     return;
   }

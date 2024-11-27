@@ -226,8 +226,13 @@ OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
 
 // Digest operation accessors.
 
+// EVP_MD_CTX_get0_md returns the underlying digest function, or NULL if one has
+// not been set.
+OPENSSL_EXPORT const EVP_MD *EVP_MD_CTX_get0_md(const EVP_MD_CTX *ctx);
+
 // EVP_MD_CTX_md returns the underlying digest function, or NULL if one has not
-// been set.
+// been set. (This is the same as |EVP_MD_CTX_get0_md| but OpenSSL has
+// deprecated this spelling.)
 OPENSSL_EXPORT const EVP_MD *EVP_MD_CTX_md(const EVP_MD_CTX *ctx);
 
 // EVP_MD_CTX_size returns the digest size of |ctx|, in bytes. It

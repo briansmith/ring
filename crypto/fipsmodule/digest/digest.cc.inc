@@ -266,24 +266,27 @@ int EVP_Digest(const void *data, size_t count, uint8_t *out_md,
   return ret;
 }
 
-
-const EVP_MD *EVP_MD_CTX_md(const EVP_MD_CTX *ctx) {
+const EVP_MD *EVP_MD_CTX_get0_md(const EVP_MD_CTX *ctx) {
   if (ctx == NULL) {
     return NULL;
   }
   return ctx->digest;
 }
 
+const EVP_MD *EVP_MD_CTX_md(const EVP_MD_CTX *ctx) {
+  return EVP_MD_CTX_get0_md(ctx);
+}
+
 size_t EVP_MD_CTX_size(const EVP_MD_CTX *ctx) {
-  return EVP_MD_size(EVP_MD_CTX_md(ctx));
+  return EVP_MD_size(EVP_MD_CTX_get0_md(ctx));
 }
 
 size_t EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx) {
-  return EVP_MD_block_size(EVP_MD_CTX_md(ctx));
+  return EVP_MD_block_size(EVP_MD_CTX_get0_md(ctx));
 }
 
 int EVP_MD_CTX_type(const EVP_MD_CTX *ctx) {
-  return EVP_MD_type(EVP_MD_CTX_md(ctx));
+  return EVP_MD_type(EVP_MD_CTX_get0_md(ctx));
 }
 
 int EVP_add_digest(const EVP_MD *digest) { return 1; }

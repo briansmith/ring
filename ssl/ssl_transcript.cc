@@ -233,7 +233,7 @@ void SSLTranscript::FreeBuffer() { buffer_.reset(); }
 size_t SSLTranscript::DigestLen() const { return EVP_MD_size(Digest()); }
 
 const EVP_MD *SSLTranscript::Digest() const {
-  return EVP_MD_CTX_md(hash_.get());
+  return EVP_MD_CTX_get0_md(hash_.get());
 }
 
 bool SSLTranscript::UpdateForHelloRetryRequest() {
