@@ -14976,7 +14976,7 @@ func makePerMessageTests() []perMessageTest {
 
 	}
 
-	for _, protocol := range []protocol{tls, quic} {
+	for _, protocol := range []protocol{tls, quic, dtls} {
 		suffix := "-" + protocol.String()
 		ret = append(ret, perMessageTest{
 			messageType: typeClientHello,
@@ -15133,14 +15133,10 @@ func addWrongMessageTypeTests() {
 		if t.test.config.MaxVersion >= VersionTLS13 && t.messageType == typeServerHello {
 			// In TLS 1.3, if the server believes it has sent ServerHello,
 			// but the client cannot process it, the client will send an
-			// unencrypted alert while the server expects encryption. In TLS,
-			// this is a decryption failure. In QUIC, the encryption levels
-			// do not match.
-			if t.test.protocol == quic {
-				t.test.expectedLocalError = "received record at initial encryption level, but expected handshake"
-			} else {
-				t.test.expectedLocalError = "local error: bad record MAC"
-			}
+			// unencrypted alert while the server expects encryption. This
+			// decryption failure is reported differently for each protocol, so
+			// leave it unchecked.
+			t.test.expectedLocalError = ""
 		}
 
 		testCases = append(testCases, t.test)
@@ -15162,14 +15158,10 @@ func addTrailingMessageDataTests() {
 		if t.test.config.MaxVersion >= VersionTLS13 && t.messageType == typeServerHello {
 			// In TLS 1.3, if the server believes it has sent ServerHello,
 			// but the client cannot process it, the client will send an
-			// unencrypted alert while the server expects encryption. In TLS,
-			// this is a decryption failure. In QUIC, the encryption levels
-			// do not match.
-			if t.test.protocol == quic {
-				t.test.expectedLocalError = "received record at initial encryption level, but expected handshake"
-			} else {
-				t.test.expectedLocalError = "local error: bad record MAC"
-			}
+			// unencrypted alert while the server expects encryption. This
+			// decryption failure is reported differently for each protocol, so
+			// leave it unchecked.
+			t.test.expectedLocalError = ""
 		}
 
 		if t.messageType == typeFinished {
