@@ -982,6 +982,28 @@ static bool GetConfig(const Span<const uint8_t> args[],
           "ML-DSA-65",
           "ML-DSA-87"
         ]
+      },
+      {
+        "algorithm": "ML-KEM",
+        "mode": "keyGen",
+        "revision": "FIPS203",
+        "parameterSets": [
+          "ML-KEM-768",
+          "ML-KEM-1024"
+        ]
+      },
+      {
+        "algorithm": "ML-KEM",
+        "mode": "encapDecap",
+        "revision": "FIPS203",
+        "parameterSets": [
+          "ML-KEM-768",
+          "ML-KEM-1024"
+        ],
+        "functions": [
+          "encapsulation",
+          "decapsulation"
+        ]
       }
     ])";
   return write_reply({Span<const uint8_t>(
@@ -2259,6 +2281,85 @@ static bool MLDSASigVer(const Span<const uint8_t> args[],
   return write_reply({Span<const uint8_t>(&ok, sizeof(ok))});
 }
 
+template <typename PrivateKey, size_t PublicKeyBytes,
+          bcm_infallible (*KeyGen)(uint8_t *, PrivateKey *, const uint8_t *),
+          bcm_status (*MarshalPrivate)(CBB *, const PrivateKey *)>
+static bool MLKEMKeyGen(const Span<const uint8_t> args[],
+                        ReplyCallback write_reply) {
+  const Span<const uint8_t> seed = args[0];
+  if (seed.size() != BCM_MLKEM_SEED_BYTES) {
+    LOG_ERROR("Bad seed size.\n");
+    return false;
+  }
+
+  auto priv = std::make_unique<PrivateKey>();
+  uint8_t pub_key_bytes[PublicKeyBytes];
+  KeyGen(pub_key_bytes, priv.get(), seed.data());
+
+  ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), BCM_MLKEM768_PRIVATE_KEY_BYTES) ||
+      !bcm_success(MarshalPrivate(cbb.get(), priv.get()))) {
+    LOG_ERROR("Failed to serialize private key.\n");
+    return false;
+  }
+
+  return write_reply(
+      {pub_key_bytes, MakeConstSpan(CBB_data(cbb.get()), CBB_len(cbb.get()))});
+}
+
+template <typename PublicKey, bcm_status (*ParsePublic)(PublicKey *, CBS *),
+          size_t CiphertextBytes,
+          bcm_infallible (*Encap)(uint8_t *, uint8_t *, const PublicKey *,
+                                  const uint8_t *)>
+static bool MLKEMEncap(const Span<const uint8_t> args[],
+                       ReplyCallback write_reply) {
+  const Span<const uint8_t> pub_key_bytes = args[0];
+  const Span<const uint8_t> entropy = args[1];
+
+  if (entropy.size() != BCM_MLKEM_ENCAP_ENTROPY) {
+    LOG_ERROR("Bad entropy size.\n");
+    return false;
+  }
+
+  auto pub = std::make_unique<PublicKey>();
+  CBS cbs = bssl::MakeConstSpan(pub_key_bytes);
+  if (!bcm_success(ParsePublic(pub.get(), &cbs)) || CBS_len(&cbs) != 0) {
+    LOG_ERROR("Failed to parse public key.\n");
+    return false;
+  }
+
+  uint8_t ciphertext[CiphertextBytes];
+  uint8_t shared_secret[BCM_MLKEM_SHARED_SECRET_BYTES];
+  Encap(ciphertext, shared_secret, pub.get(), entropy.data());
+
+  return write_reply({ciphertext, shared_secret});
+}
+
+template <typename PrivateKey, bcm_status (*ParsePrivate)(PrivateKey *, CBS *),
+          bcm_status (*Decap)(uint8_t *, const uint8_t *, size_t,
+                              const PrivateKey *)>
+static bool MLKEMDecap(const Span<const uint8_t> args[],
+                       ReplyCallback write_reply) {
+  const Span<const uint8_t> priv_key_bytes = args[0];
+  const Span<const uint8_t> ciphertext = args[1];
+
+  auto priv = std::make_unique<PrivateKey>();
+  CBS cbs = bssl::MakeConstSpan(priv_key_bytes);
+  if (!bcm_success(ParsePrivate(priv.get(), &cbs))) {
+    LOG_ERROR("Failed to parse private key.\n");
+    return false;
+  }
+
+  uint8_t shared_secret[BCM_MLKEM_SHARED_SECRET_BYTES];
+  if (!bcm_success(Decap(shared_secret, ciphertext.data(), ciphertext.size(),
+                         priv.get()))) {
+    LOG_ERROR("ML-KEM decapsulation failed.\n");
+    return false;
+  }
+
+  return write_reply({shared_secret});
+}
+
 static constexpr struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -2372,6 +2473,28 @@ static constexpr struct {
     {"ML-DSA-87/sigVer", 3,
      MLDSASigVer<BCM_mldsa87_public_key, BCM_MLDSA87_SIGNATURE_BYTES,
                  BCM_mldsa87_parse_public_key, BCM_mldsa87_verify_internal>},
+    {"ML-KEM-768/keyGen", 1,
+     MLKEMKeyGen<BCM_mlkem768_private_key, BCM_MLKEM768_PUBLIC_KEY_BYTES,
+                 BCM_mlkem768_generate_key_external_seed,
+                 BCM_mlkem768_marshal_private_key>},
+    {"ML-KEM-1024/keyGen", 1,
+     MLKEMKeyGen<BCM_mlkem1024_private_key, BCM_MLKEM1024_PUBLIC_KEY_BYTES,
+                 BCM_mlkem1024_generate_key_external_seed,
+                 BCM_mlkem1024_marshal_private_key>},
+    {"ML-KEM-768/encap", 2,
+     MLKEMEncap<BCM_mlkem768_public_key, BCM_mlkem768_parse_public_key,
+                BCM_MLKEM768_CIPHERTEXT_BYTES,
+                BCM_mlkem768_encap_external_entropy>},
+    {"ML-KEM-1024/encap", 2,
+     MLKEMEncap<BCM_mlkem1024_public_key, BCM_mlkem1024_parse_public_key,
+                BCM_MLKEM1024_CIPHERTEXT_BYTES,
+                BCM_mlkem1024_encap_external_entropy>},
+    {"ML-KEM-768/decap", 2,
+     MLKEMDecap<BCM_mlkem768_private_key, BCM_mlkem768_parse_private_key,
+                BCM_mlkem768_decap>},
+    {"ML-KEM-1024/decap", 2,
+     MLKEMDecap<BCM_mlkem1024_private_key, BCM_mlkem1024_parse_private_key,
+                BCM_mlkem1024_decap>},
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
