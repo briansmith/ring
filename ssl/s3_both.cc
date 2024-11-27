@@ -263,13 +263,12 @@ bool tls_flush_pending_hs_data(SSL *ssl) {
 }
 
 bool tls_add_change_cipher_spec(SSL *ssl) {
-  static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
-
-  if (!tls_flush_pending_hs_data(ssl)) {
-    return false;
+  if (SSL_is_quic(ssl)) {
+    return true;
   }
 
-  if (!SSL_is_quic(ssl) &&
+  static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
+  if (!tls_flush_pending_hs_data(ssl) ||
       !add_record_to_flight(ssl, SSL3_RT_CHANGE_CIPHER_SPEC,
                             kChangeCipherSpec)) {
     return false;

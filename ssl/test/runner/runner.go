@@ -18875,7 +18875,10 @@ func addEncryptedClientHelloTests() {
 
 			// Test the message callback is correctly reported with ECH.
 			clientAndServerHello := "read hs 1\nread clienthelloinner\nwrite hs 2\n"
-			expectMsgCallback := clientAndServerHello + "write ccs\n"
+			expectMsgCallback := clientAndServerHello
+			if protocol == tls {
+				expectMsgCallback += "write ccs\n"
+			}
 			if hrr {
 				expectMsgCallback += clientAndServerHello
 			}
@@ -20744,6 +20747,10 @@ write hs 4
 		// Test the message callback is correctly reported, with and without
 		// HelloRetryRequest.
 		clientAndServerHello := "write clienthelloinner\nwrite hs 1\nread hs 2\n"
+		clientAndServerHelloInitial := clientAndServerHello
+		if protocol == tls {
+			clientAndServerHelloInitial += "write ccs\n"
+		}
 		// EncryptedExtensions onwards.
 		finishHandshake := `read hs 8
 read hs 11
@@ -20768,7 +20775,7 @@ read hs 4
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-expect-ech-accept",
-				"-expect-msg-callback", clientAndServerHello + "write ccs\n" + finishHandshake,
+				"-expect-msg-callback", clientAndServerHelloInitial + finishHandshake,
 			},
 			expectations: connectionExpectations{echAccepted: true},
 		})
@@ -20790,7 +20797,7 @@ read hs 4
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-expect-ech-accept",
 				"-expect-hrr", // Check we triggered HRR.
-				"-expect-msg-callback", clientAndServerHello + "write ccs\n" + clientAndServerHello + finishHandshake,
+				"-expect-msg-callback", clientAndServerHelloInitial + clientAndServerHello + finishHandshake,
 			},
 			expectations: connectionExpectations{echAccepted: true},
 		})
