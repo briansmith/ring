@@ -73,7 +73,7 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
   // write state. The two ClientHello sequence numbers must align, and handshake
   // write keys must be installed early to ACK the EncryptedExtensions.
   //
-  // TODO(crbug.com/42290594): We do not support 0-RTT in DTLS 1.3 and, in
+  // TODO(crbug.com/381113363): We do not support 0-RTT in DTLS 1.3 and, in
   // QUIC, the caller handles 0-RTT data, so we can skip installing 0-RTT keys
   // and act as if there is one write level. Now that we're implementing
   // DTLS 1.3, switch the abstraction to the DTLS/QUIC model where handshake

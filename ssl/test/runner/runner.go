@@ -5221,7 +5221,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 	// These tests are disabled for QUIC as well because they test features
 	// that do not apply to QUIC's use of TLS 1.3.
 	//
-	// TODO(crbug.com/42290594): Enable these tests for DTLS once we
+	// TODO(crbug.com/381113363): Enable these tests for DTLS once we
 	// support early data in DTLS 1.3.
 	if config.protocol != dtls && config.protocol != quic {
 		tests = append(tests, testCase{
@@ -5789,7 +5789,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 						}, flags...),
 						resumeSession: true,
 					})
-					// TODO(crbug.com/42290594): Support 0-RTT in DTLS 1.3.
+					// TODO(crbug.com/381113363): Support 0-RTT in DTLS 1.3.
 					if vers.version >= VersionTLS13 && config.protocol != dtls {
 						tests = append(tests, testCase{
 							testType: testType,
@@ -8047,7 +8047,7 @@ func addExtensionTests() {
 					})
 
 					// Test that ALPS is carried over on 0-RTT.
-					// TODO(crbug.com/42290594): Support 0-RTT in DTLS 1.3.
+					// TODO(crbug.com/381113363): Support 0-RTT in DTLS 1.3.
 					if protocol != dtls {
 						for _, empty := range []bool{false, true} {
 							maybeEmpty := ""
@@ -16754,7 +16754,7 @@ func addTLS13HandshakeTests() {
 	// the 0-RTT epoch, so the error is that the encryption level is rejected
 	// outright.
 	//
-	// TODO(crbug.com/42290594): Test this for DTLS 1.3 as well.
+	// TODO(crbug.com/381113363): Test this for DTLS 1.3 as well.
 	testCases = append(testCases, testCase{
 		protocol: quic,
 		testType: serverTest,

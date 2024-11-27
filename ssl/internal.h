@@ -3588,7 +3588,7 @@ struct DTLS1_STATE {
 
   // write_epoch is the current DTLS write epoch. Non-retransmit records will
   // generally use this epoch.
-  // TODO(crbug.com/42290594): 0-RTT will be the exception, when implemented.
+  // TODO(crbug.com/381113363): 0-RTT will be the exception, when implemented.
   DTLSWriteEpoch write_epoch;
 
   // extra_write_epochs is the collection available write epochs.

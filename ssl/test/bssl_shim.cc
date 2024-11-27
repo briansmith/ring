@@ -671,7 +671,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   }
 
   if (SSL_is_dtls(ssl) && SSL_in_early_data(ssl)) {
-    // TODO(crbug.com/42290594): Support early data for DTLS 1.3.
+    // TODO(crbug.com/381113363): Support early data for DTLS 1.3.
     fprintf(stderr, "DTLS unexpectedly in early data\n");
     return false;
   }

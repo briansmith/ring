@@ -352,7 +352,7 @@ int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
     return 1;
   }
 
-  // TODO(crbug.com/42290594): Use the 0-RTT epoch if writing 0-RTT.
+  // TODO(crbug.com/381113363): Use the 0-RTT epoch if writing 0-RTT.
   int ret = dtls1_write_record(ssl, SSL3_RT_APPLICATION_DATA, in,
                                ssl->d1->write_epoch.epoch());
   if (ret <= 0) {
