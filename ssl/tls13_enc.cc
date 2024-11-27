@@ -672,12 +672,19 @@ bool ssl_ech_accept_confirmation(const SSL_HANDSHAKE *hs, Span<uint8_t> out,
     return false;
   }
 
-  auto before_zeros = msg.subspan(0, offset);
+  // We represent DTLS messages with the longer DTLS 1.2 header, but DTLS 1.3
+  // removes the extra fields from the transcript.
+  auto header = msg.subspan(0, SSL3_HM_HEADER_LENGTH);
+  size_t full_header_len =
+      SSL_is_dtls(hs->ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
+  auto before_zeros = msg.subspan(full_header_len, offset - full_header_len);
   auto after_zeros = msg.subspan(offset + ECH_CONFIRMATION_SIGNAL_LEN);
+
   uint8_t context[EVP_MAX_MD_SIZE];
   unsigned context_len;
   ScopedEVP_MD_CTX ctx;
   if (!transcript.CopyToHashContext(ctx.get(), transcript.Digest()) ||
+      !EVP_DigestUpdate(ctx.get(), header.data(), header.size()) ||
       !EVP_DigestUpdate(ctx.get(), before_zeros.data(), before_zeros.size()) ||
       !EVP_DigestUpdate(ctx.get(), kZeros, ECH_CONFIRMATION_SIGNAL_LEN) ||
       !EVP_DigestUpdate(ctx.get(), after_zeros.data(), after_zeros.size()) ||

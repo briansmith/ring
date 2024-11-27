@@ -871,11 +871,15 @@ func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHell
 
 	if c.config.Bugs.MinimalClientHelloOuter {
 		*hello = clientHelloMsg{
+			isDTLS:             c.isDTLS,
 			vers:               VersionTLS12,
 			random:             hello.random,
 			sessionID:          hello.sessionID,
 			cipherSuites:       []uint16{0x0a0a},
 			compressionMethods: hello.compressionMethods,
+		}
+		if c.isDTLS {
+			hello.vers = VersionDTLS12
 		}
 	}
 

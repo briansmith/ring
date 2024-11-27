@@ -8993,10 +8993,6 @@ func addExtensionTests() {
 				if ech && ver.version < VersionTLS13 {
 					continue
 				}
-				// TODO(crbug.com/42290594): This test is broken when run with DTLS 1.3 and ECH.
-				if protocol == dtls && ver.version >= VersionTLS13 && ech {
-					continue
-				}
 
 				test := testCase{
 					protocol:           protocol,
@@ -18642,7 +18638,7 @@ func addEncryptedClientHelloTests() {
 		BasicConstraintsValid: true,
 	}, &ecdsaP256Key)
 
-	for _, protocol := range []protocol{tls, quic} {
+	for _, protocol := range []protocol{tls, quic, dtls} {
 		prefix := protocol.String() + "-"
 
 		// There are two ClientHellos, so many of our tests have
@@ -19004,9 +19000,16 @@ write hs 11
 write hs 15
 write hs 20
 read hs 20
+write ack
 write hs 4
 write hs 4
+read ack
+read ack
 `
+			if protocol != dtls {
+				expectMsgCallback = strings.ReplaceAll(expectMsgCallback, "write ack\n", "")
+				expectMsgCallback = strings.ReplaceAll(expectMsgCallback, "read ack\n", "")
+			}
 			testCases = append(testCases, testCase{
 				testType: serverTest,
 				protocol: protocol,
@@ -19355,51 +19358,55 @@ write hs 4
 		})
 
 		// Test early data works with ECH, in both accept and reject cases.
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			protocol: protocol,
-			name:     prefix + "ECH-Server-EarlyData",
-			config: Config{
-				ServerName:      "secret.example",
-				ClientECHConfig: echConfig.ECHConfig,
-			},
-			resumeSession: true,
-			earlyData:     true,
-			flags: []string{
-				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64FlagValue(echConfig.Key),
-				"-ech-is-retry-config", "1",
-				"-expect-ech-accept",
-			},
-			expectations: connectionExpectations{
-				echAccepted: true,
-			},
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			protocol: protocol,
-			name:     prefix + "ECH-Server-EarlyDataRejected",
-			config: Config{
-				ServerName:      "secret.example",
-				ClientECHConfig: echConfig.ECHConfig,
-				Bugs: ProtocolBugs{
-					// Cause the server to reject 0-RTT with a bad ticket age.
-					SendTicketAge: 1 * time.Hour,
+		// TODO(crbug.com/381113363): Enable these tests for DTLS once we
+		// support early data in DTLS 1.3.
+		if protocol != dtls {
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-EarlyData",
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: echConfig.ECHConfig,
 				},
-			},
-			resumeSession:           true,
-			earlyData:               true,
-			expectEarlyDataRejected: true,
-			flags: []string{
-				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64FlagValue(echConfig.Key),
-				"-ech-is-retry-config", "1",
-				"-expect-ech-accept",
-			},
-			expectations: connectionExpectations{
-				echAccepted: true,
-			},
-		})
+				resumeSession: true,
+				earlyData:     true,
+				flags: []string{
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
+					"-ech-is-retry-config", "1",
+					"-expect-ech-accept",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-EarlyDataRejected",
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: echConfig.ECHConfig,
+					Bugs: ProtocolBugs{
+						// Cause the server to reject 0-RTT with a bad ticket age.
+						SendTicketAge: 1 * time.Hour,
+					},
+				},
+				resumeSession:           true,
+				earlyData:               true,
+				expectEarlyDataRejected: true,
+				flags: []string{
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
+					"-ech-is-retry-config", "1",
+					"-expect-ech-accept",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+		}
 
 		// Test servers with ECH disabled correctly ignore the extension and
 		// handshake with the ClientHelloOuter.
@@ -19831,52 +19838,56 @@ write hs 4
 		})
 
 		// Test the client can negotiate ECH with early data.
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			protocol: protocol,
-			name:     prefix + "ECH-Client-EarlyData",
-			config: Config{
-				MinVersion:       VersionTLS13,
-				MaxVersion:       VersionTLS13,
-				ServerECHConfigs: []ServerECHConfig{echConfig},
-				Bugs: ProtocolBugs{
-					ExpectServerName: "secret.example",
+		// TODO(crbug.com/381113363): Enable these tests for DTLS once we
+		// support early data in DTLS 1.3.
+		if protocol != dtls {
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-EarlyData",
+				config: Config{
+					MinVersion:       VersionTLS13,
+					MaxVersion:       VersionTLS13,
+					ServerECHConfigs: []ServerECHConfig{echConfig},
+					Bugs: ProtocolBugs{
+						ExpectServerName: "secret.example",
+					},
+					Credential: &echSecretCertificate,
 				},
-				Credential: &echSecretCertificate,
-			},
-			flags: []string{
-				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
-				"-host-name", "secret.example",
-				"-expect-ech-accept",
-			},
-			resumeSession: true,
-			earlyData:     true,
-			expectations:  connectionExpectations{echAccepted: true},
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			protocol: protocol,
-			name:     prefix + "ECH-Client-EarlyDataRejected",
-			config: Config{
-				MinVersion:       VersionTLS13,
-				MaxVersion:       VersionTLS13,
-				ServerECHConfigs: []ServerECHConfig{echConfig},
-				Bugs: ProtocolBugs{
-					ExpectServerName:      "secret.example",
-					AlwaysRejectEarlyData: true,
+				flags: []string{
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-host-name", "secret.example",
+					"-expect-ech-accept",
 				},
-				Credential: &echSecretCertificate,
-			},
-			flags: []string{
-				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
-				"-host-name", "secret.example",
-				"-expect-ech-accept",
-			},
-			resumeSession:           true,
-			earlyData:               true,
-			expectEarlyDataRejected: true,
-			expectations:            connectionExpectations{echAccepted: true},
-		})
+				resumeSession: true,
+				earlyData:     true,
+				expectations:  connectionExpectations{echAccepted: true},
+			})
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-EarlyDataRejected",
+				config: Config{
+					MinVersion:       VersionTLS13,
+					MaxVersion:       VersionTLS13,
+					ServerECHConfigs: []ServerECHConfig{echConfig},
+					Bugs: ProtocolBugs{
+						ExpectServerName:      "secret.example",
+						AlwaysRejectEarlyData: true,
+					},
+					Credential: &echSecretCertificate,
+				},
+				flags: []string{
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-host-name", "secret.example",
+					"-expect-ech-accept",
+				},
+				resumeSession:           true,
+				earlyData:               true,
+				expectEarlyDataRejected: true,
+				expectations:            connectionExpectations{echAccepted: true},
+			})
+		}
 
 		if protocol != quic {
 			// Test that an ECH client does not offer a TLS 1.2 session.
@@ -20181,6 +20192,10 @@ write hs 4
 
 		// If the ClientHelloOuter disables TLS 1.3, e.g. in QUIC, the client
 		// should also compress supported_versions.
+		tls13Vers := VersionTLS13
+		if protocol == dtls {
+			tls13Vers = VersionDTLS13
+		}
 		testCases = append(testCases, testCase{
 			testType: clientTest,
 			protocol: protocol,
@@ -20198,7 +20213,7 @@ write hs 4
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-host-name", "secret.example",
 				"-expect-ech-accept",
-				"-min-version", strconv.Itoa(int(VersionTLS13)),
+				"-min-version", strconv.Itoa(int(tls13Vers)),
 			},
 			expectations: connectionExpectations{echAccepted: true},
 		})
@@ -20309,7 +20324,8 @@ write hs 4
 
 			// Test that the client disables False Start when ECH is rejected.
 			testCases = append(testCases, testCase{
-				name: prefix + "ECH-Client-Reject-TLS12-NoFalseStart",
+				protocol: protocol,
+				name:     prefix + "ECH-Client-Reject-TLS12-NoFalseStart",
 				config: Config{
 					MaxVersion:   VersionTLS12,
 					CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
@@ -20402,7 +20418,13 @@ write hs 4
 			expectations:       connectionExpectations{echAccepted: true},
 			resumeExpectations: &connectionExpectations{echAccepted: false},
 		})
-		if protocol != quic {
+		if protocol == tls {
+			// This is only syntactically possible with TLS. In DTLS, we don't
+			// have middlebox compatibility mode, so the session ID will only
+			// filled in if we are offering a DTLS 1.2 session. But a DTLS 1.2
+			// would never be offered in ClientHelloInner. Without a session ID,
+			// the server syntactically cannot express a resumption at DTLS 1.2.
+			// In QUIC, the above is true, and 1.2 does not exist anyway.
 			testCases = append(testCases, testCase{
 				testType: clientTest,
 				protocol: protocol,
@@ -20485,7 +20507,9 @@ write hs 4
 			expectedLocalError:      "remote error: ECH required",
 			expectedError:           ":ECH_REJECTED:",
 		})
-		if protocol != quic {
+		// TODO(crbug.com/381113363): Enable this test for DTLS once we
+		// support early data in DTLS 1.3.
+		if protocol != quic && protocol != dtls {
 			testCases = append(testCases, testCase{
 				testType: clientTest,
 				protocol: protocol,
@@ -20637,56 +20661,37 @@ write hs 4
 			}
 		}
 
-		// Test that ECH and Channel ID can be used together.
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			protocol: protocol,
-			name:     prefix + "ECH-Client-ChannelID",
-			config: Config{
-				ServerECHConfigs: []ServerECHConfig{echConfig},
-				RequestChannelID: true,
-			},
-			flags: []string{
-				"-send-channel-id", channelIDKeyPath,
-				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
-				"-expect-ech-accept",
-			},
-			resumeSession: true,
-			expectations: connectionExpectations{
-				channelID:   true,
-				echAccepted: true,
-			},
-		})
-
-		// Handshakes where ECH is rejected do not offer or accept Channel ID.
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			protocol: protocol,
-			name:     prefix + "ECH-Client-Reject-NoChannelID-TLS13",
-			config: Config{
-				MinVersion: VersionTLS13,
-				MaxVersion: VersionTLS13,
-				Bugs: ProtocolBugs{
-					AlwaysNegotiateChannelID: true,
-				},
-				Credential: &echPublicCertificate,
-			},
-			flags: []string{
-				"-send-channel-id", channelIDKeyPath,
-				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
-			},
-			shouldFail:         true,
-			expectedLocalError: "remote error: unsupported extension",
-			expectedError:      ":UNEXPECTED_EXTENSION:",
-		})
-		if protocol != quic {
+		// Test that ECH and Channel ID can be used together. Channel ID does
+		// not exist in DTLS.
+		if protocol != dtls {
 			testCases = append(testCases, testCase{
 				testType: clientTest,
 				protocol: protocol,
-				name:     prefix + "ECH-Client-Reject-NoChannelID-TLS12",
+				name:     prefix + "ECH-Client-ChannelID",
 				config: Config{
-					MinVersion: VersionTLS12,
-					MaxVersion: VersionTLS12,
+					ServerECHConfigs: []ServerECHConfig{echConfig},
+					RequestChannelID: true,
+				},
+				flags: []string{
+					"-send-channel-id", channelIDKeyPath,
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-expect-ech-accept",
+				},
+				resumeSession: true,
+				expectations: connectionExpectations{
+					channelID:   true,
+					echAccepted: true,
+				},
+			})
+
+			// Handshakes where ECH is rejected do not offer or accept Channel ID.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-Reject-NoChannelID-TLS13",
+				config: Config{
+					MinVersion: VersionTLS13,
+					MaxVersion: VersionTLS13,
 					Bugs: ProtocolBugs{
 						AlwaysNegotiateChannelID: true,
 					},
@@ -20700,6 +20705,28 @@ write hs 4
 				expectedLocalError: "remote error: unsupported extension",
 				expectedError:      ":UNEXPECTED_EXTENSION:",
 			})
+			if protocol != quic {
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					protocol: protocol,
+					name:     prefix + "ECH-Client-Reject-NoChannelID-TLS12",
+					config: Config{
+						MinVersion: VersionTLS12,
+						MaxVersion: VersionTLS12,
+						Bugs: ProtocolBugs{
+							AlwaysNegotiateChannelID: true,
+						},
+						Credential: &echPublicCertificate,
+					},
+					flags: []string{
+						"-send-channel-id", channelIDKeyPath,
+						"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					},
+					shouldFail:         true,
+					expectedLocalError: "remote error: unsupported extension",
+					expectedError:      ":UNEXPECTED_EXTENSION:",
+				})
+			}
 		}
 
 		// Test that ECH correctly overrides the host name for certificate
@@ -20796,44 +20823,48 @@ write hs 4
 			resumeSession: true,
 			expectations:  connectionExpectations{echAccepted: true},
 		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			protocol: protocol,
-			name:     prefix + "ECH-Client-Reject-EarlyDataRejected-OverrideNameOnRetry",
-			config: Config{
-				ServerECHConfigs: []ServerECHConfig{echConfig},
-				Credential:       &echPublicCertificate,
-			},
-			resumeConfig: &Config{
-				Credential: &echPublicCertificate,
-			},
-			flags: []string{
-				"-verify-peer",
-				"-use-custom-verify-callback",
-				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
-				// Although the resumption connection does not accept ECH, the
-				// API will report ECH was accepted at the 0-RTT point.
-				"-expect-ech-accept",
-				// The resumption connection verifies certificates twice. First,
-				// if reverification is enabled, we verify the 0-RTT certificate
-				// as if ECH as accepted. There should be no name override.
-				// Next, on the post-0-RTT-rejection retry, we verify the new
-				// server certificate. This picks up the ECH reject, so it
-				// should use public.example.
-				"-reverify-on-resume",
-				"-on-resume-expect-no-ech-name-override",
-				"-on-retry-expect-ech-name-override", "public.example",
-			},
-			resumeSession:           true,
-			expectResumeRejected:    true,
-			earlyData:               true,
-			expectEarlyDataRejected: true,
-			expectations:            connectionExpectations{echAccepted: true},
-			resumeExpectations:      &connectionExpectations{echAccepted: false},
-			shouldFail:              true,
-			expectedError:           ":ECH_REJECTED:",
-			expectedLocalError:      "remote error: ECH required",
-		})
+		// TODO(crbug.com/381113363): Enable this test for DTLS once we
+		// support early data in DTLS 1.3.
+		if protocol != dtls {
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-Reject-EarlyDataRejected-OverrideNameOnRetry",
+				config: Config{
+					ServerECHConfigs: []ServerECHConfig{echConfig},
+					Credential:       &echPublicCertificate,
+				},
+				resumeConfig: &Config{
+					Credential: &echPublicCertificate,
+				},
+				flags: []string{
+					"-verify-peer",
+					"-use-custom-verify-callback",
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					// Although the resumption connection does not accept ECH, the
+					// API will report ECH was accepted at the 0-RTT point.
+					"-expect-ech-accept",
+					// The resumption connection verifies certificates twice. First,
+					// if reverification is enabled, we verify the 0-RTT certificate
+					// as if ECH as accepted. There should be no name override.
+					// Next, on the post-0-RTT-rejection retry, we verify the new
+					// server certificate. This picks up the ECH reject, so it
+					// should use public.example.
+					"-reverify-on-resume",
+					"-on-resume-expect-no-ech-name-override",
+					"-on-retry-expect-ech-name-override", "public.example",
+				},
+				resumeSession:           true,
+				expectResumeRejected:    true,
+				earlyData:               true,
+				expectEarlyDataRejected: true,
+				expectations:            connectionExpectations{echAccepted: true},
+				resumeExpectations:      &connectionExpectations{echAccepted: false},
+				shouldFail:              true,
+				expectedError:           ":ECH_REJECTED:",
+				expectedLocalError:      "remote error: ECH required",
+			})
+		}
 
 		// Test that the client checks both HelloRetryRequest and ServerHello
 		// for a confirmation signal.
@@ -20873,9 +20904,13 @@ read hs 11
 read hs 15
 read hs 20
 write hs 20
+read ack
 read hs 4
 read hs 4
 `
+		if protocol != dtls {
+			finishHandshake = strings.ReplaceAll(finishHandshake, "read ack\n", "")
+		}
 		testCases = append(testCases, testCase{
 			testType: clientTest,
 			protocol: protocol,

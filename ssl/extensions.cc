@@ -243,12 +243,16 @@ bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
   out->session_id = CBS_data(&session_id);
   out->session_id_len = CBS_len(&session_id);
 
-  // Skip past DTLS cookie
   if (SSL_is_dtls(out->ssl)) {
     CBS cookie;
     if (!CBS_get_u8_length_prefixed(cbs, &cookie)) {
       return false;
     }
+    out->dtls_cookie = CBS_data(&cookie);
+    out->dtls_cookie_len = CBS_len(&cookie);
+  } else {
+    out->dtls_cookie = nullptr;
+    out->dtls_cookie_len = 0;
   }
 
   CBS cipher_suites, compression_methods;

@@ -65,8 +65,17 @@ static bool ssl_client_hello_write_without_extensions(
       !CBB_add_bytes(out, client_hello->random, client_hello->random_len) ||
       !CBB_add_u8_length_prefixed(out, &cbb) ||
       !CBB_add_bytes(&cbb, client_hello->session_id,
-                     client_hello->session_id_len) ||
-      !CBB_add_u16_length_prefixed(out, &cbb) ||
+                     client_hello->session_id_len)) {
+    return false;
+  }
+  if (SSL_is_dtls(client_hello->ssl)) {
+    if (!CBB_add_u8_length_prefixed(out, &cbb) ||
+        !CBB_add_bytes(&cbb, client_hello->dtls_cookie,
+                       client_hello->dtls_cookie_len)) {
+      return false;
+    }
+  }
+  if (!CBB_add_u16_length_prefixed(out, &cbb) ||
       !CBB_add_bytes(&cbb, client_hello->cipher_suites,
                      client_hello->cipher_suites_len) ||
       !CBB_add_u8_length_prefixed(out, &cbb) ||

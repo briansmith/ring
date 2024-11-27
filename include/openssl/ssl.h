@@ -4647,6 +4647,8 @@ struct ssl_early_callback_ctx {
   size_t random_len;
   const uint8_t *session_id;
   size_t session_id_len;
+  const uint8_t *dtls_cookie;
+  size_t dtls_cookie_len;
   const uint8_t *cipher_suites;
   size_t cipher_suites_len;
   const uint8_t *compression_methods;

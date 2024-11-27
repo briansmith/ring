@@ -174,7 +174,9 @@ bool SSL_HANDSHAKE::GetClientHello(SSLMessage *out_msg,
     out_msg->is_v2_hello = false;
     out_msg->type = SSL3_MT_CLIENT_HELLO;
     out_msg->raw = CBS(ech_client_hello_buf);
-    out_msg->body = MakeConstSpan(ech_client_hello_buf).subspan(4);
+    size_t header_len =
+        SSL_is_dtls(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
+    out_msg->body = MakeConstSpan(ech_client_hello_buf).subspan(header_len);
   } else if (!ssl->method->get_message(ssl, out_msg)) {
     // The message has already been read, so this cannot fail.
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);

@@ -410,8 +410,8 @@ func (h *finishedHash) deriveSecret(label []byte) []byte {
 	return hkdfExpandLabel(h.suite.hash(), h.secret, label, h.appendContextHashes(nil), h.hash.Size(), h.isDTLS)
 }
 
-// echConfirmation computes the ECH accept confirmation signal, as defined in
-// sections 7.2 and 7.2.1 of draft-ietf-tls-esni-13. The transcript hash is
+// echAcceptConfirmation computes the ECH accept confirmation signal, as defined
+// in sections 7.2 and 7.2.1 of draft-ietf-tls-esni-13. The transcript hash is
 // computed by concatenating |h| with |extraMessages|.
 func (h *finishedHash) echAcceptConfirmation(clientRandom, label, extraMessages []byte) []byte {
 	secret := hkdf.Extract(h.suite.hash().New, clientRandom, h.zeroSecret())
