@@ -960,6 +960,9 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     int ssl_err = SSL_get_error(ssl.get(), -1);
     if (ssl_err != SSL_ERROR_NONE) {
       fprintf(stderr, "SSL error: %s\n", SSL_error_description(ssl_err));
+      if (ssl_err == SSL_ERROR_SYSCALL) {
+        PrintSocketError("OS error");
+      }
     }
     return false;
   }
