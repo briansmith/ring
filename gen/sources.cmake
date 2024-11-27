@@ -77,6 +77,7 @@ set(
   crypto/fipsmodule/hmac/hmac.cc.inc
   crypto/fipsmodule/keccak/keccak.cc.inc
   crypto/fipsmodule/mldsa/mldsa.cc.inc
+  crypto/fipsmodule/mlkem/mlkem.cc.inc
   crypto/fipsmodule/modes/cbc.cc.inc
   crypto/fipsmodule/modes/cfb.cc.inc
   crypto/fipsmodule/modes/ctr.cc.inc
@@ -642,7 +643,6 @@ set(
   crypto/kyber/internal.h
   crypto/lhash/internal.h
   crypto/md5/internal.h
-  crypto/mlkem/internal.h
   crypto/obj/obj_dat.h
   crypto/pkcs7/internal.h
   crypto/pkcs8/internal.h

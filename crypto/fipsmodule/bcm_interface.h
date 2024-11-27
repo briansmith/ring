@@ -437,6 +437,196 @@ OPENSSL_EXPORT bcm_status BCM_mldsa87_marshal_private_key(
     CBB *out, const struct BCM_mldsa87_private_key *private_key);
 
 
+// ML-KEM
+//
+// Where not commented, these functions have the same signature as the
+// corresponding public function.
+
+// BCM_MLKEM_ENCAP_ENTROPY is the number of bytes of uniformly random entropy
+// necessary to encapsulate a secret. The entropy will be leaked to the
+// decapsulating party.
+#define BCM_MLKEM_ENCAP_ENTROPY 32
+
+// BCM_MLKEM768_PUBLIC_KEY_BYTES is the number of bytes in an encoded ML-KEM-768
+// public key.
+#define BCM_MLKEM768_PUBLIC_KEY_BYTES 1184
+
+// BCM_MLKEM1024_PUBLIC_KEY_BYTES is the number of bytes in an encoded
+// ML-KEM-1024 public key.
+#define BCM_MLKEM1024_PUBLIC_KEY_BYTES 1568
+
+// BCM_MLKEM768_CIPHERTEXT_BYTES is number of bytes in the ML-KEM-768
+// ciphertext.
+#define BCM_MLKEM768_CIPHERTEXT_BYTES 1088
+
+// BCM_MLKEM1024_CIPHERTEXT_BYTES is number of bytes in the ML-KEM-1024
+// ciphertext.
+#define BCM_MLKEM1024_CIPHERTEXT_BYTES 1568
+
+// BCM_MLKEM768_PRIVATE_KEY_BYTES is the length of the data produced by
+// |BCM_mlkem768_marshal_private_key|.
+#define BCM_MLKEM768_PRIVATE_KEY_BYTES 2400
+
+// BCM_MLKEM1024_PRIVATE_KEY_BYTES is the length of the data produced by
+// |BCM_mlkem1024_marshal_private_key|.
+#define BCM_MLKEM1024_PRIVATE_KEY_BYTES 3168
+
+// BCM_MLKEM_SEED_BYTES is the number of bytes in an ML-KEM seed.
+#define BCM_MLKEM_SEED_BYTES 64
+
+// BCM_mlkem_SHARED_SECRET_BYTES is the number of bytes in an ML-KEM shared
+// secret.
+#define BCM_MLKEM_SHARED_SECRET_BYTES 32
+
+struct BCM_mlkem768_public_key {
+  union {
+    uint8_t bytes[512 * (3 + 9) + 32 + 32];
+    uint16_t alignment;
+  } opaque;
+};
+
+struct BCM_mlkem768_private_key {
+  union {
+    uint8_t bytes[512 * (3 + 3 + 9) + 32 + 32 + 32];
+    uint16_t alignment;
+  } opaque;
+};
+
+OPENSSL_EXPORT bcm_infallible BCM_mlkem768_generate_key(
+    uint8_t out_encoded_public_key[BCM_MLKEM768_PUBLIC_KEY_BYTES],
+    uint8_t optional_out_seed[BCM_MLKEM_SEED_BYTES],
+    struct BCM_mlkem768_private_key *out_private_key);
+
+OPENSSL_EXPORT bcm_status BCM_mlkem768_private_key_from_seed(
+    struct BCM_mlkem768_private_key *out_private_key, const uint8_t *seed,
+    size_t seed_len);
+
+OPENSSL_EXPORT bcm_infallible BCM_mlkem768_public_from_private(
+    struct BCM_mlkem768_public_key *out_public_key,
+    const struct BCM_mlkem768_private_key *private_key);
+
+OPENSSL_EXPORT bcm_infallible
+BCM_mlkem768_encap(uint8_t out_ciphertext[BCM_MLKEM768_CIPHERTEXT_BYTES],
+                   uint8_t out_shared_secret[BCM_MLKEM_SHARED_SECRET_BYTES],
+                   const struct BCM_mlkem768_public_key *public_key);
+
+OPENSSL_EXPORT bcm_status
+BCM_mlkem768_decap(uint8_t out_shared_secret[BCM_MLKEM_SHARED_SECRET_BYTES],
+                   const uint8_t *ciphertext, size_t ciphertext_len,
+                   const struct BCM_mlkem768_private_key *private_key);
+
+OPENSSL_EXPORT bcm_status BCM_mlkem768_marshal_public_key(
+    CBB *out, const struct BCM_mlkem768_public_key *public_key);
+
+OPENSSL_EXPORT bcm_status BCM_mlkem768_parse_public_key(
+    struct BCM_mlkem768_public_key *out_public_key, CBS *in);
+
+OPENSSL_EXPORT bcm_status BCM_mlkem768_parse_private_key(
+    struct BCM_mlkem768_private_key *out_private_key, CBS *in);
+
+// BCM_mlkem768_generate_key_external_seed is a deterministic function to create
+// a pair of ML-KEM-768 keys, using the supplied seed. The seed needs to be
+// uniformly random. This function should only be used for tests; regular
+// callers should use the non-deterministic |BCM_mlkem768_generate_key|
+// directly.
+OPENSSL_EXPORT bcm_infallible BCM_mlkem768_generate_key_external_seed(
+    uint8_t out_encoded_public_key[BCM_MLKEM768_PUBLIC_KEY_BYTES],
+    struct BCM_mlkem768_private_key *out_private_key,
+    const uint8_t seed[BCM_MLKEM_SEED_BYTES]);
+
+// BCM_mlkem768_encap_external_entropy behaves like |MLKEM768_encap|, but uses
+// |MLKEM_ENCAP_ENTROPY| bytes of |entropy| for randomization. The decapsulating
+// side will be able to recover |entropy| in full. This function should only be
+// used for tests, regular callers should use the non-deterministic
+// |BCM_mlkem768_encap| directly.
+OPENSSL_EXPORT bcm_infallible BCM_mlkem768_encap_external_entropy(
+    uint8_t out_ciphertext[BCM_MLKEM768_CIPHERTEXT_BYTES],
+    uint8_t out_shared_secret[BCM_MLKEM_SHARED_SECRET_BYTES],
+    const struct BCM_mlkem768_public_key *public_key,
+    const uint8_t entropy[BCM_MLKEM_ENCAP_ENTROPY]);
+
+// BCM_mlkem768_marshal_private_key serializes |private_key| to |out| in the
+// NIST format for ML-KEM-768 private keys. (Note that one can also save just
+// the seed value produced by |BCM_mlkem768_generate_key|, which is
+// significantly smaller.)
+OPENSSL_EXPORT bcm_status BCM_mlkem768_marshal_private_key(
+    CBB *out, const struct BCM_mlkem768_private_key *private_key);
+
+struct BCM_mlkem1024_public_key {
+  union {
+    uint8_t bytes[512 * (4 + 16) + 32 + 32];
+    uint16_t alignment;
+  } opaque;
+};
+
+struct BCM_mlkem1024_private_key {
+  union {
+    uint8_t bytes[512 * (4 + 4 + 16) + 32 + 32 + 32];
+    uint16_t alignment;
+  } opaque;
+};
+
+OPENSSL_EXPORT bcm_infallible BCM_mlkem1024_generate_key(
+    uint8_t out_encoded_public_key[BCM_MLKEM1024_PUBLIC_KEY_BYTES],
+    uint8_t optional_out_seed[BCM_MLKEM_SEED_BYTES],
+    struct BCM_mlkem1024_private_key *out_private_key);
+
+OPENSSL_EXPORT bcm_status BCM_mlkem1024_private_key_from_seed(
+    struct BCM_mlkem1024_private_key *out_private_key, const uint8_t *seed,
+    size_t seed_len);
+
+OPENSSL_EXPORT bcm_infallible BCM_mlkem1024_public_from_private(
+    struct BCM_mlkem1024_public_key *out_public_key,
+    const struct BCM_mlkem1024_private_key *private_key);
+
+OPENSSL_EXPORT bcm_infallible
+BCM_mlkem1024_encap(uint8_t out_ciphertext[BCM_MLKEM1024_CIPHERTEXT_BYTES],
+                    uint8_t out_shared_secret[BCM_MLKEM_SHARED_SECRET_BYTES],
+                    const struct BCM_mlkem1024_public_key *public_key);
+
+OPENSSL_EXPORT bcm_status
+BCM_mlkem1024_decap(uint8_t out_shared_secret[BCM_MLKEM_SHARED_SECRET_BYTES],
+                    const uint8_t *ciphertext, size_t ciphertext_len,
+                    const struct BCM_mlkem1024_private_key *private_key);
+
+OPENSSL_EXPORT bcm_status BCM_mlkem1024_marshal_public_key(
+    CBB *out, const struct BCM_mlkem1024_public_key *public_key);
+
+OPENSSL_EXPORT bcm_status BCM_mlkem1024_parse_public_key(
+    struct BCM_mlkem1024_public_key *out_public_key, CBS *in);
+
+OPENSSL_EXPORT bcm_status BCM_mlkem1024_parse_private_key(
+    struct BCM_mlkem1024_private_key *out_private_key, CBS *in);
+
+// BCM_mlkem1024_generate_key_external_seed is a deterministic function to
+// create a pair of ML-KEM-1024 keys, using the supplied seed. The seed needs to
+// be uniformly random. This function should only be used for tests, regular
+// callers should use the non-deterministic |BCM_mlkem1024_generate_key|
+// directly.
+OPENSSL_EXPORT bcm_infallible BCM_mlkem1024_generate_key_external_seed(
+    uint8_t out_encoded_public_key[BCM_MLKEM1024_PUBLIC_KEY_BYTES],
+    struct BCM_mlkem1024_private_key *out_private_key,
+    const uint8_t seed[BCM_MLKEM_SEED_BYTES]);
+
+// BCM_mlkem1024_encap_external_entropy behaves like |MLKEM1024_encap|, but uses
+// |MLKEM_ENCAP_ENTROPY| bytes of |entropy| for randomization. The
+// decapsulating side will be able to recover |entropy| in full. This function
+// should only be used for tests, regular callers should use the
+// non-deterministic |BCM_mlkem1024_encap| directly.
+OPENSSL_EXPORT bcm_infallible BCM_mlkem1024_encap_external_entropy(
+    uint8_t out_ciphertext[BCM_MLKEM1024_CIPHERTEXT_BYTES],
+    uint8_t out_shared_secret[BCM_MLKEM_SHARED_SECRET_BYTES],
+    const struct BCM_mlkem1024_public_key *public_key,
+    const uint8_t entropy[BCM_MLKEM_ENCAP_ENTROPY]);
+
+// BCM_mlkem1024_marshal_private_key serializes |private_key| to |out| in the
+// NIST format for ML-KEM-1024 private keys. (Note that one can also save just
+// the seed value produced by |BCM_mlkem1024_generate_key|, which is
+// significantly smaller.)
+OPENSSL_EXPORT bcm_status BCM_mlkem1024_marshal_private_key(
+    CBB *out, const struct BCM_mlkem1024_private_key *private_key);
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

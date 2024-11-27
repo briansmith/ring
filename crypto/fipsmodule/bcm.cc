@@ -88,6 +88,7 @@
 #include "hmac/hmac.cc.inc"
 #include "keccak/keccak.cc.inc"
 #include "mldsa/mldsa.cc.inc"
+#include "mlkem/mlkem.cc.inc"
 #include "modes/cbc.cc.inc"
 #include "modes/cfb.cc.inc"
 #include "modes/ctr.cc.inc"
