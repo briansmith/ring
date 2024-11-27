@@ -1057,7 +1057,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   // Implement the TLS 1.3 anti-downgrade feature.
-  if (ssl_supports_version(hs, TLS1_3_VERSION)) {
+  if (hs->max_version >= TLS1_3_VERSION) {
     if (ssl_protocol_version(ssl) == TLS1_2_VERSION) {
       if (hs->apply_jdk11_workaround) {
         // JDK 11 implements the TLS 1.3 downgrade signal, so we cannot send it

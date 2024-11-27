@@ -6891,8 +6891,9 @@ func addVersionNegotiationTests() {
 		name:     "MinorVersionTolerance-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion:     0xfe00,
-				OmitSupportedVersions: true,
+				SendClientVersion:          0xfe00,
+				OmitSupportedVersions:      true,
+				IgnoreTLS13DowngradeRandom: true,
 			},
 		},
 		expectations: connectionExpectations{
@@ -6905,8 +6906,9 @@ func addVersionNegotiationTests() {
 		name:     "MajorVersionTolerance-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendClientVersion:     0xfdff,
-				OmitSupportedVersions: true,
+				SendClientVersion:          0xfdff,
+				OmitSupportedVersions:      true,
+				IgnoreTLS13DowngradeRandom: true,
 			},
 		},
 		expectations: connectionExpectations{
@@ -6953,49 +6955,50 @@ func addVersionNegotiationTests() {
 	})
 
 	// Test TLS 1.3's downgrade signal.
-	var downgradeTests = []struct {
-		name            string
-		version         uint16
-		clientShimError string
-	}{
-		{"TLS12", VersionTLS12, "tls: downgrade from TLS 1.3 detected"},
-		{"TLS11", VersionTLS11, "tls: downgrade from TLS 1.2 detected"},
-		// TLS 1.0 does not have a dedicated value.
-		{"TLS10", VersionTLS10, "tls: downgrade from TLS 1.2 detected"},
-	}
-
-	for _, test := range downgradeTests {
-		// The client should enforce the downgrade sentinel.
-		testCases = append(testCases, testCase{
-			name: "Downgrade-" + test.name + "-Client",
-			config: Config{
-				Bugs: ProtocolBugs{
-					NegotiateVersion: test.version,
+	for _, protocol := range []protocol{tls, dtls} {
+		for _, vers := range allVersions(protocol) {
+			if vers.version >= VersionTLS13 {
+				continue
+			}
+			clientShimError := "tls: downgrade from TLS 1.3 detected"
+			if vers.version < VersionTLS12 {
+				clientShimError = "tls: downgrade from TLS 1.2 detected"
+			}
+			// for _, test := range downgradeTests {
+			// The client should enforce the downgrade sentinel.
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				name:     "Downgrade-" + vers.name + "-Client-" + protocol.String(),
+				config: Config{
+					Bugs: ProtocolBugs{
+						NegotiateVersion: vers.wire(protocol),
+					},
 				},
-			},
-			expectations: connectionExpectations{
-				version: test.version,
-			},
-			shouldFail:         true,
-			expectedError:      ":TLS13_DOWNGRADE:",
-			expectedLocalError: "remote error: illegal parameter",
-		})
-
-		// The server should emit the downgrade signal.
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "Downgrade-" + test.name + "-Server",
-			config: Config{
-				Bugs: ProtocolBugs{
-					SendSupportedVersions: []uint16{test.version},
+				expectations: connectionExpectations{
+					version: vers.version,
 				},
-			},
-			expectations: connectionExpectations{
-				version: test.version,
-			},
-			shouldFail:         true,
-			expectedLocalError: test.clientShimError,
-		})
+				shouldFail:         true,
+				expectedError:      ":TLS13_DOWNGRADE:",
+				expectedLocalError: "remote error: illegal parameter",
+			})
+
+			// The server should emit the downgrade signal.
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				testType: serverTest,
+				name:     "Downgrade-" + vers.name + "-Server-" + protocol.String(),
+				config: Config{
+					Bugs: ProtocolBugs{
+						SendSupportedVersions: []uint16{vers.wire(protocol)},
+					},
+				},
+				expectations: connectionExpectations{
+					version: vers.version,
+				},
+				shouldFail:         true,
+				expectedLocalError: clientShimError,
+			})
+		}
 	}
 
 	// SSL 3.0 support has been removed. Test that the shim does not

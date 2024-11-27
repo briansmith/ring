@@ -796,7 +796,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   // Enforce the TLS 1.3 anti-downgrade feature.
   if (!ssl->s3->initial_handshake_complete &&
-      ssl_supports_version(hs, TLS1_3_VERSION)) {
+      hs->max_version >= TLS1_3_VERSION) {
     static_assert(
         sizeof(kTLS12DowngradeRandom) == sizeof(kTLS13DowngradeRandom),
         "downgrade signals have different size");
