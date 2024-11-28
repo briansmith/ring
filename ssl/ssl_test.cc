@@ -92,7 +92,7 @@ static const VersionParam kAllVersions[] = {
     {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3"},
     {DTLS1_VERSION, VersionParam::is_dtls, "DTLS1"},
     {DTLS1_2_VERSION, VersionParam::is_dtls, "DTLS1_2"},
-    {DTLS1_3_EXPERIMENTAL_VERSION, VersionParam::is_dtls, "DTLS1_3"},
+    {DTLS1_3_VERSION, VersionParam::is_dtls, "DTLS1_3"},
 };
 
 struct ExpectedCipher {
@@ -2765,8 +2765,7 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
   uint16_t version() const { return GetParam().version; }
 
   bool is_tls13() const {
-    return version() == TLS1_3_VERSION ||
-           version() == DTLS1_3_EXPERIMENTAL_VERSION;
+    return version() == TLS1_3_VERSION || version() == DTLS1_3_VERSION;
   }
 
   bool is_dtls() const {
@@ -2799,7 +2798,7 @@ TEST_P(SSLVersionTest, SequenceNumber) {
   uint64_t server_write_seq = SSL_get_write_sequence(server_.get());
 
   if (is_dtls()) {
-    if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
+    if (version() == DTLS1_3_VERSION) {
       // Both client and server must be at epoch 3 (application data).
       EXPECT_EQ(EpochFromSequence(client_write_seq), 3);
       EXPECT_EQ(EpochFromSequence(server_write_seq), 3);
@@ -2830,7 +2829,7 @@ TEST_P(SSLVersionTest, SequenceNumber) {
   EXPECT_EQ(SSL_write(client_.get(), &byte, 1), 1);
   EXPECT_EQ(SSL_read(server_.get(), &byte, 1), 1);
 
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
+  if (version() == DTLS1_3_VERSION) {
     // TODO(crbug.com/42290608): Write an appropriate test for incrementing both
     // sequence number and epoch in the following test. The server read seq was
     // in epoch 2, but after the write it's in epoch 3, so adding 1 doesn't work
@@ -3985,7 +3984,7 @@ static const char *GetVersionName(uint16_t version) {
       return "DTLSv1";
     case DTLS1_2_VERSION:
       return "DTLSv1.2";
-    case DTLS1_3_EXPERIMENTAL_VERSION:
+    case DTLS1_3_VERSION:
       return "DTLSv1.3";
     default:
       return "???";
@@ -4376,7 +4375,7 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
 }
 
 TEST_P(SSLVersionTest, RecordCallback) {
-  if (version() == DTLS1_3_EXPERIMENTAL_VERSION) {
+  if (version() == DTLS1_3_VERSION) {
     // The DTLS 1.3 record header is vastly different than the TLS or DTLS < 1.3
     // header format. Instead of checking that the record header is formatted as
     // expected here, the runner implementation in dtls.go is strict about what
@@ -9749,14 +9748,10 @@ TEST(SSLTest, EarlyDataDisabledInDTLS13) {
   SSL_CTX_set_early_data_enabled(server_ctx.get(), true);
   SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
-  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(),
-                                            DTLS1_3_EXPERIMENTAL_VERSION));
-  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(),
-                                            DTLS1_3_EXPERIMENTAL_VERSION));
-  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(),
-                                            DTLS1_3_EXPERIMENTAL_VERSION));
-  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(),
-                                            DTLS1_3_EXPERIMENTAL_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), DTLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), DTLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), DTLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), DTLS1_3_VERSION));
 
   bssl::UniquePtr<SSL_SESSION> session =
       CreateClientSession(client_ctx.get(), server_ctx.get());

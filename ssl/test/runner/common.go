@@ -31,9 +31,9 @@ const (
 )
 
 const (
-	VersionDTLS10              = 0xfeff
-	VersionDTLS12              = 0xfefd
-	VersionDTLS125Experimental = 0xfc25
+	VersionDTLS10 = 0xfeff
+	VersionDTLS12 = 0xfefd
+	VersionDTLS13 = 0xfefc
 )
 
 var allTLSWireVersions = []uint16{
@@ -45,7 +45,7 @@ var allTLSWireVersions = []uint16{
 }
 
 var allDTLSWireVersions = []uint16{
-	VersionDTLS125Experimental,
+	VersionDTLS13,
 	VersionDTLS12,
 	VersionDTLS10,
 }
@@ -2126,7 +2126,7 @@ func (c *Config) echCipherSuitePreferences() []HPKECipherSuite {
 func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 	if isDTLS {
 		switch vers {
-		case VersionDTLS125Experimental:
+		case VersionDTLS13:
 			return VersionTLS13, true
 		case VersionDTLS12:
 			return VersionTLS12, true

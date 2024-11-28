@@ -848,7 +848,7 @@ func (hs *clientHandshakeState) createClientHello(innerHello *clientHelloMsg, ec
 		if session.vers < VersionTLS13 {
 			version = VersionTLS13
 			if c.isDTLS {
-				version = VersionDTLS125Experimental
+				version = VersionDTLS13
 			}
 		}
 		generatePSKBinders(version, c.isDTLS, hello, session, nil, nil, c.config)

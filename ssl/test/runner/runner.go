@@ -1903,7 +1903,7 @@ var tlsVersions = []tlsVersion{
 		excludeFlag: "-no-tls13",
 		hasQUIC:     true,
 		hasDTLS:     true,
-		versionDTLS: VersionDTLS125Experimental,
+		versionDTLS: VersionDTLS13,
 		versionWire: VersionTLS13,
 	},
 }

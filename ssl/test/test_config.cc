@@ -2316,8 +2316,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       !SSL_set_min_proto_version(ssl.get(), min_version)) {
     return nullptr;
   }
+  // TODO(crbug.com/42290594): Remove this once DTLS 1.3 is enabled by default.
   if (is_dtls && max_version == 0 &&
-      !SSL_set_max_proto_version(ssl.get(), DTLS1_3_EXPERIMENTAL_VERSION)) {
+      !SSL_set_max_proto_version(ssl.get(), DTLS1_3_VERSION)) {
     return nullptr;
   }
   if (max_version != 0 &&
