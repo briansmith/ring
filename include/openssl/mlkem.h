@@ -121,18 +121,6 @@ OPENSSL_EXPORT int MLKEM768_marshal_public_key(
 OPENSSL_EXPORT int MLKEM768_parse_public_key(
     struct MLKEM768_public_key *out_public_key, CBS *in);
 
-// MLKEM768_PRIVATE_KEY_BYTES is the length of the data produced by
-// |MLKEM768_marshal_private_key|.
-#define MLKEM768_PRIVATE_KEY_BYTES 2400
-
-// MLKEM768_parse_private_key parses a private key, in NIST's format for
-// private keys, from |in| and writes the result to |out_private_key|. It
-// returns one on success or zero on parse error or if there are trailing bytes
-// in |in|. This format is verbose and should be avoided. Private keys should be
-// stored as seeds and parsed using |MLKEM768_private_key_from_seed|.
-OPENSSL_EXPORT int MLKEM768_parse_private_key(
-    struct MLKEM768_private_key *out_private_key, CBS *in);
-
 
 // ML-KEM-1024
 //
@@ -225,18 +213,6 @@ OPENSSL_EXPORT int MLKEM1024_marshal_public_key(
 // there are trailing bytes in |in|.
 OPENSSL_EXPORT int MLKEM1024_parse_public_key(
     struct MLKEM1024_public_key *out_public_key, CBS *in);
-
-// MLKEM1024_PRIVATE_KEY_BYTES is the length of the data produced by
-// |MLKEM1024_marshal_private_key|.
-#define MLKEM1024_PRIVATE_KEY_BYTES 3168
-
-// MLKEM1024_parse_private_key parses a private key, in NIST's format for
-// private keys, from |in| and writes the result to |out_private_key|. It
-// returns one on success or zero on parse error or if there are trailing bytes
-// in |in|. This format is verbose and should be avoided. Private keys should be
-// stored as seeds and parsed using |MLKEM1024_private_key_from_seed|.
-OPENSSL_EXPORT int MLKEM1024_parse_private_key(
-    struct MLKEM1024_private_key *out_private_key, CBS *in);
 
 
 #if defined(__cplusplus)

@@ -521,6 +521,11 @@ OPENSSL_EXPORT bcm_status BCM_mlkem768_marshal_public_key(
 OPENSSL_EXPORT bcm_status BCM_mlkem768_parse_public_key(
     struct BCM_mlkem768_public_key *out_public_key, CBS *in);
 
+// BCM_mlkem768_parse_private_key parses a private key, in NIST's format for
+// private keys, from |in| and writes the result to |out_private_key|. It
+// returns one on success or zero on parse error or if there are trailing bytes
+// in |in|. This format is verbose and should be avoided. Private keys should be
+// stored as seeds and parsed using |BCM_mlkem768_private_key_from_seed|.
 OPENSSL_EXPORT bcm_status BCM_mlkem768_parse_private_key(
     struct BCM_mlkem768_private_key *out_private_key, CBS *in);
 
@@ -595,6 +600,11 @@ OPENSSL_EXPORT bcm_status BCM_mlkem1024_marshal_public_key(
 OPENSSL_EXPORT bcm_status BCM_mlkem1024_parse_public_key(
     struct BCM_mlkem1024_public_key *out_public_key, CBS *in);
 
+// BCM_mlkem1024_parse_private_key parses a private key, in NIST's format for
+// private keys, from |in| and writes the result to |out_private_key|. It
+// returns one on success or zero on parse error or if there are trailing bytes
+// in |in|. This format is verbose and should be avoided. Private keys should be
+// stored as seeds and parsed using |BCM_mlkem1024_private_key_from_seed|.
 OPENSSL_EXPORT bcm_status BCM_mlkem1024_parse_private_key(
     struct BCM_mlkem1024_private_key *out_private_key, CBS *in);
 

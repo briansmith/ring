@@ -30,11 +30,8 @@ static_assert(MLKEM768_PUBLIC_KEY_BYTES == BCM_MLKEM768_PUBLIC_KEY_BYTES, "");
 static_assert(MLKEM_SEED_BYTES == BCM_MLKEM_SEED_BYTES, "");
 static_assert(MLKEM768_CIPHERTEXT_BYTES == BCM_MLKEM768_CIPHERTEXT_BYTES, "");
 static_assert(MLKEM_SHARED_SECRET_BYTES == BCM_MLKEM_SHARED_SECRET_BYTES, "");
-static_assert(MLKEM768_PRIVATE_KEY_BYTES == BCM_MLKEM768_PRIVATE_KEY_BYTES, "");
 static_assert(MLKEM1024_PUBLIC_KEY_BYTES == BCM_MLKEM1024_PUBLIC_KEY_BYTES, "");
 static_assert(MLKEM1024_CIPHERTEXT_BYTES == BCM_MLKEM1024_CIPHERTEXT_BYTES, "");
-static_assert(MLKEM1024_PRIVATE_KEY_BYTES == BCM_MLKEM1024_PRIVATE_KEY_BYTES,
-              "");
 
 void MLKEM768_generate_key(
     uint8_t out_encoded_public_key[MLKEM768_PUBLIC_KEY_BYTES],
@@ -88,11 +85,6 @@ int MLKEM768_parse_public_key(struct MLKEM768_public_key *out_public_key,
       reinterpret_cast<BCM_mlkem768_public_key *>(out_public_key), in));
 }
 
-int MLKEM768_parse_private_key(struct MLKEM768_private_key *out_private_key,
-                               CBS *in) {
-  return bcm_success(BCM_mlkem768_parse_private_key(
-      reinterpret_cast<BCM_mlkem768_private_key *>(out_private_key), in));
-}
 
 static_assert(sizeof(BCM_mlkem1024_private_key) <=
                   sizeof(MLKEM1024_private_key),
@@ -157,10 +149,4 @@ int MLKEM1024_parse_public_key(struct MLKEM1024_public_key *out_public_key,
                                CBS *in) {
   return bcm_success(BCM_mlkem1024_parse_public_key(
       reinterpret_cast<BCM_mlkem1024_public_key *>(out_public_key), in));
-}
-
-int MLKEM1024_parse_private_key(struct MLKEM1024_private_key *out_private_key,
-                                CBS *in) {
-  return bcm_success(BCM_mlkem1024_parse_private_key(
-      reinterpret_cast<BCM_mlkem1024_private_key *>(out_private_key), in));
 }

@@ -104,6 +104,18 @@ void wrapper_1024_encap_external_entropy(
       reinterpret_cast<const BCM_mlkem1024_public_key *>(public_key), entropy);
 }
 
+int wrapper_768_parse_private_key(struct MLKEM768_private_key *out_private_key,
+                                  CBS *in) {
+  return bcm_success(BCM_mlkem768_parse_private_key(
+      reinterpret_cast<BCM_mlkem768_private_key *>(out_private_key), in));
+}
+
+int wrapper_1024_parse_private_key(
+    struct MLKEM1024_private_key *out_private_key, CBS *in) {
+  return bcm_success(BCM_mlkem1024_parse_private_key(
+      reinterpret_cast<BCM_mlkem1024_private_key *>(out_private_key), in));
+}
+
 template <typename PUBLIC_KEY, size_t PUBLIC_KEY_BYTES, typename PRIVATE_KEY,
           size_t PRIVATE_KEY_BYTES,
           void (*GENERATE)(uint8_t *, uint8_t *, PRIVATE_KEY *),
@@ -192,20 +204,20 @@ void BasicTest() {
 
 TEST(MLKEMTest, Basic768) {
   BasicTest<MLKEM768_public_key, MLKEM768_PUBLIC_KEY_BYTES,
-            MLKEM768_private_key, MLKEM768_PRIVATE_KEY_BYTES,
+            MLKEM768_private_key, BCM_MLKEM768_PRIVATE_KEY_BYTES,
             MLKEM768_generate_key, MLKEM768_private_key_from_seed,
             MLKEM768_public_from_private, MLKEM768_parse_public_key,
-            MLKEM768_marshal_public_key, MLKEM768_parse_private_key,
+            MLKEM768_marshal_public_key, wrapper_768_parse_private_key,
             wrapper_768_marshal_private_key, MLKEM768_CIPHERTEXT_BYTES,
             MLKEM768_encap, MLKEM768_decap>();
 }
 
 TEST(MLKEMTest, Basic1024) {
   BasicTest<MLKEM1024_public_key, MLKEM1024_PUBLIC_KEY_BYTES,
-            MLKEM1024_private_key, MLKEM1024_PRIVATE_KEY_BYTES,
+            MLKEM1024_private_key, BCM_MLKEM1024_PRIVATE_KEY_BYTES,
             MLKEM1024_generate_key, MLKEM1024_private_key_from_seed,
             MLKEM1024_public_from_private, MLKEM1024_parse_public_key,
-            MLKEM1024_marshal_public_key, MLKEM1024_parse_private_key,
+            MLKEM1024_marshal_public_key, wrapper_1024_parse_private_key,
             wrapper_1024_marshal_private_key, MLKEM1024_CIPHERTEXT_BYTES,
             MLKEM1024_encap, MLKEM1024_decap>();
 }
@@ -376,16 +388,16 @@ void MLKEMDecapFileTest(FileTest *t) {
 TEST(MLKEMTest, Decap768TestVectors) {
   FileTestGTest(
       "crypto/mlkem/mlkem768_decap_tests.txt",
-      MLKEMDecapFileTest<MLKEM768_private_key, MLKEM768_PRIVATE_KEY_BYTES,
-                         MLKEM768_parse_private_key, MLKEM768_CIPHERTEXT_BYTES,
-                         MLKEM768_decap>);
+      MLKEMDecapFileTest<MLKEM768_private_key, BCM_MLKEM768_PRIVATE_KEY_BYTES,
+                         wrapper_768_parse_private_key,
+                         MLKEM768_CIPHERTEXT_BYTES, MLKEM768_decap>);
 }
 
 TEST(MLKEMTest, Decap1024TestVectors) {
   FileTestGTest(
       "crypto/mlkem/mlkem1024_decap_tests.txt",
-      MLKEMDecapFileTest<MLKEM1024_private_key, MLKEM1024_PRIVATE_KEY_BYTES,
-                         MLKEM1024_parse_private_key,
+      MLKEMDecapFileTest<MLKEM1024_private_key, BCM_MLKEM1024_PRIVATE_KEY_BYTES,
+                         wrapper_1024_parse_private_key,
                          MLKEM1024_CIPHERTEXT_BYTES, MLKEM1024_decap>);
 }
 
@@ -413,15 +425,15 @@ void MLKEMNistDecapFileTest(FileTest *t) {
 TEST(MLKEMTest, NistDecap768TestVectors) {
   FileTestGTest(
       "crypto/mlkem/mlkem768_nist_decap_tests.txt",
-      MLKEMNistDecapFileTest<MLKEM768_private_key, MLKEM768_parse_private_key,
-                             MLKEM768_decap>);
+      MLKEMNistDecapFileTest<MLKEM768_private_key,
+                             wrapper_768_parse_private_key, MLKEM768_decap>);
 }
 
 TEST(MLKEMTest, NistDecap1024TestVectors) {
   FileTestGTest(
       "crypto/mlkem/mlkem1024_nist_decap_tests.txt",
-      MLKEMNistDecapFileTest<MLKEM1024_private_key, MLKEM1024_parse_private_key,
-                             MLKEM1024_decap>);
+      MLKEMNistDecapFileTest<MLKEM1024_private_key,
+                             wrapper_1024_parse_private_key, MLKEM1024_decap>);
 }
 
 template <
@@ -482,7 +494,7 @@ TEST(MLKEMTest, Iterate768) {
   // ML-KEM.
   uint8_t result[32];
   IteratedTest<MLKEM768_public_key, MLKEM768_PUBLIC_KEY_BYTES,
-               MLKEM768_private_key, MLKEM768_PRIVATE_KEY_BYTES,
+               MLKEM768_private_key, BCM_MLKEM768_PRIVATE_KEY_BYTES,
                wrapper_768_generate_key_external_seed,
                MLKEM768_public_from_private, wrapper_768_marshal_private_key,
                MLKEM768_CIPHERTEXT_BYTES, wrapper_768_encap_external_entropy,
@@ -503,7 +515,7 @@ TEST(MLKEMTest, Iterate1024) {
   // ML-KEM.
   uint8_t result[32];
   IteratedTest<MLKEM1024_public_key, MLKEM1024_PUBLIC_KEY_BYTES,
-               MLKEM1024_private_key, MLKEM1024_PRIVATE_KEY_BYTES,
+               MLKEM1024_private_key, BCM_MLKEM1024_PRIVATE_KEY_BYTES,
                wrapper_1024_generate_key_external_seed,
                MLKEM1024_public_from_private, wrapper_1024_marshal_private_key,
                MLKEM1024_CIPHERTEXT_BYTES, wrapper_1024_encap_external_entropy,
