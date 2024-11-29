@@ -1558,49 +1558,33 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 // bit. |carry| must be zero or one.
 #if OPENSSL_HAS_BUILTIN(__builtin_addc)
 
-template <typename T>
-struct CRYPTO_addc_impl {
-  static_assert(sizeof(T) == 0, "Unsupported type for addc operation");
-};
+inline unsigned int CRYPTO_addc_impl(unsigned int x, unsigned int y,
+                                     unsigned int carry,
+                                     unsigned int *out_carry) {
+  return __builtin_addc(x, y, carry, out_carry);
+}
 
-template <>
-struct CRYPTO_addc_impl<unsigned int> {
-  static unsigned int add(unsigned int x, unsigned int y, unsigned int carry,
-                          unsigned int *out_carry) {
-    return __builtin_addc(x, y, carry, out_carry);
-  }
-};
+inline unsigned long CRYPTO_addc_impl(unsigned long x, unsigned long y,
+                                      unsigned long carry,
+                                      unsigned long *out_carry) {
+  return __builtin_addcl(x, y, carry, out_carry);
+}
 
-template <>
-struct CRYPTO_addc_impl<unsigned long> {
-  static unsigned long add(unsigned long x, unsigned long y,
-                           unsigned long carry, unsigned long *out_carry) {
-    return __builtin_addcl(x, y, carry, out_carry);
-  }
-};
-
-template <>
-struct CRYPTO_addc_impl<unsigned long long> {
-  static unsigned long long add(unsigned long long x, unsigned long long y,
-                                unsigned long long carry,
-                                unsigned long long *out_carry) {
-    return __builtin_addcll(x, y, carry, out_carry);
-  }
-};
-
-template <typename T>
-inline T CRYPTO_addc(T x, T y, T carry, T *out_carry) {
-  return CRYPTO_addc_impl<T>::add(x, y, carry, out_carry);
+inline unsigned long long CRYPTO_addc_impl(unsigned long long x,
+                                           unsigned long long y,
+                                           unsigned long long carry,
+                                           unsigned long long *out_carry) {
+  return __builtin_addcll(x, y, carry, out_carry);
 }
 
 inline uint32_t CRYPTO_addc_u32(uint32_t x, uint32_t y, uint32_t carry,
                                 uint32_t *out_carry) {
-  return CRYPTO_addc(x, y, carry, out_carry);
+  return CRYPTO_addc_impl(x, y, carry, out_carry);
 }
 
 inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
                                 uint64_t *out_carry) {
-  return CRYPTO_addc(x, y, carry, out_carry);
+  return CRYPTO_addc_impl(x, y, carry, out_carry);
 }
 
 #else
@@ -1638,49 +1622,33 @@ static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
 // bit. |borrow| must be zero or one.
 #if OPENSSL_HAS_BUILTIN(__builtin_subc)
 
-template <typename T>
-struct CRYPTO_subc_impl {
-  static_assert(sizeof(T) == 0, "Unsupported type for subc operation");
-};
+inline unsigned int CRYPTO_subc_impl(unsigned int x, unsigned int y,
+                                     unsigned int borrow,
+                                     unsigned int *out_borrow) {
+  return __builtin_subc(x, y, borrow, out_borrow);
+}
 
-template <>
-struct CRYPTO_subc_impl<unsigned int> {
-  static unsigned int sub(unsigned int x, unsigned int y, unsigned int borrow,
-                          unsigned int *out_borrow) {
-    return __builtin_subc(x, y, borrow, out_borrow);
-  }
-};
+inline unsigned long CRYPTO_subc_impl(unsigned long x, unsigned long y,
+                                      unsigned long borrow,
+                                      unsigned long *out_borrow) {
+  return __builtin_subcl(x, y, borrow, out_borrow);
+}
 
-template <>
-struct CRYPTO_subc_impl<unsigned long> {
-  static unsigned long sub(unsigned long x, unsigned long y,
-                           unsigned long borrow, unsigned long *out_borrow) {
-    return __builtin_subcl(x, y, borrow, out_borrow);
-  }
-};
-
-template <>
-struct CRYPTO_subc_impl<unsigned long long> {
-  static unsigned long long sub(unsigned long long x, unsigned long long y,
-                                unsigned long long borrow,
-                                unsigned long long *out_borrow) {
-    return __builtin_subcll(x, y, borrow, out_borrow);
-  }
-};
-
-template <typename T>
-inline T CRYPTO_subc(T x, T y, T borrow, T *out_borrow) {
-  return CRYPTO_subc_impl<T>::sub(x, y, borrow, out_borrow);
+inline unsigned long long CRYPTO_subc_impl(unsigned long long x,
+                                           unsigned long long y,
+                                           unsigned long long borrow,
+                                           unsigned long long *out_borrow) {
+  return __builtin_subcll(x, y, borrow, out_borrow);
 }
 
 inline uint32_t CRYPTO_subc_u32(uint32_t x, uint32_t y, uint32_t borrow,
                                 uint32_t *out_borrow) {
-  return CRYPTO_subc(x, y, borrow, out_borrow);
+  return CRYPTO_subc_impl(x, y, borrow, out_borrow);
 }
 
 inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
                                 uint64_t *out_borrow) {
-  return CRYPTO_subc(x, y, borrow, out_borrow);
+  return CRYPTO_subc_impl(x, y, borrow, out_borrow);
 }
 
 #else
