@@ -75,11 +75,11 @@ static const int kDV768 = 4;
 static const int kDU1024 = 11;
 static const int kDV1024 = 5;
 
-constexpr size_t encoded_vector_size(int rank) {
+static constexpr size_t encoded_vector_size(int rank) {
   return (kLog2Prime * DEGREE / 8) * static_cast<size_t>(rank);
 }
 
-constexpr size_t encoded_public_key_size(int rank) {
+static constexpr size_t encoded_public_key_size(int rank) {
   return encoded_vector_size(rank) + /*sizeof(rho)=*/32;
 }
 
@@ -88,13 +88,13 @@ static_assert(encoded_public_key_size(RANK768) == MLKEM768_PUBLIC_KEY_BYTES,
 static_assert(encoded_public_key_size(RANK1024) == MLKEM1024_PUBLIC_KEY_BYTES,
               "");
 
-constexpr size_t compressed_vector_size(int rank) {
+static constexpr size_t compressed_vector_size(int rank) {
   // `if constexpr` isn't available in C++17.
   return (rank == RANK768 ? kDU768 : kDU1024) * static_cast<size_t>(rank) *
          DEGREE / 8;
 }
 
-constexpr size_t ciphertext_size(int rank) {
+static constexpr size_t ciphertext_size(int rank) {
   return compressed_vector_size(rank) +
          (rank == RANK768 ? kDV768 : kDV1024) * DEGREE / 8;
 }
@@ -743,9 +743,9 @@ static int mlkem_marshal_public_key(CBB *out,
 }
 
 template <int RANK>
-void mlkem_generate_key_external_seed(uint8_t *out_encoded_public_key,
-                                      private_key<RANK> *priv,
-                                      const uint8_t seed[MLKEM_SEED_BYTES]) {
+static void mlkem_generate_key_external_seed(
+    uint8_t *out_encoded_public_key, private_key<RANK> *priv,
+    const uint8_t seed[MLKEM_SEED_BYTES]) {
   uint8_t augmented_seed[33];
   OPENSSL_memcpy(augmented_seed, seed, 32);
   augmented_seed[32] = RANK;

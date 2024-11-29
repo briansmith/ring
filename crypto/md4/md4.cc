@@ -83,7 +83,8 @@ int MD4_Init(MD4_CTX *md4) {
   return 1;
 }
 
-void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
+static void md4_block_data_order(uint32_t *state, const uint8_t *data,
+                                 size_t num);
 
 void MD4_Transform(MD4_CTX *c, const uint8_t data[MD4_CBLOCK]) {
   md4_block_data_order(c->h, data, 1);
@@ -132,7 +133,8 @@ int MD4_Final(uint8_t out[MD4_DIGEST_LENGTH], MD4_CTX *c) {
     (a) = CRYPTO_rotl_u32(a, s);           \
   } while (0)
 
-void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
+static void md4_block_data_order(uint32_t *state, const uint8_t *data,
+                                 size_t num) {
   uint32_t A, B, C, D;
   uint32_t X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15;
 
