@@ -11748,9 +11748,7 @@ func addDTLSRetransmitTests() {
 							WriteFlightDTLS: func(c *DTLSController, prev, received, next []DTLSMessage, records []DTLSRecordNumberInfo) {
 								msg := next[0]
 								if msg.Type != typeServerHello {
-									// TODO(crbug.com/42290594): Do not manipulate NewSessionTicket
-									// flights for now. The shim actually does now ACK those on a
-									// timer, but we'll need to test those more explicitly.
+									// Post-handshake is tested separately.
 									c.WriteFlight(next)
 									return
 								}
@@ -12284,12 +12282,12 @@ func addDTLSRetransmitTests() {
 								// runner implicitly tests that the shim ACKs the Finished flight
 								// (or, in case, that it is does not), so this exercises the final
 								// ACK.
-								//
-								// TODO(crbug.com/42290594): Once we send partial ACKs, exercise
-								// those here.
 								for _, msg := range next {
 									shouldDiscard := DTLSFragment{Epoch: msg.Epoch, Sequence: 1000, ShouldDiscard: true}
 									c.WriteFragments([]DTLSFragment{shouldDiscard, msg.Fragment(0, len(msg.Data))})
+									// The shim has nothing to ACK and thus no ACK timer (which
+									// would be 1/4 of this value).
+									c.ExpectNextTimeout(useTimeouts[0])
 								}
 							},
 						},
