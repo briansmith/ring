@@ -323,7 +323,12 @@ func (hs *serverHandshakeState) readClientHello() error {
 		if !bytes.Equal(newClientHello.cookie, helloVerifyRequest.cookie) {
 			return errors.New("dtls: invalid cookie")
 		}
-		if err := checkClientHellosEqual(hs.clientHello.raw, newClientHello.raw, c.isDTLS, nil); err != nil {
+		// Allow the client to recompute the pre_shared_key extension. It is
+		// possible we'll want to remove this and instead require the client
+		// keep it unchanged. (Either by remembering it or hashing the
+		// ClientHello funny.) See discussion at
+		// https://mailarchive.ietf.org/arch/msg/tls/HSTgV2voS9tn03oasGmBAdwazWA/
+		if err := checkClientHellosEqual(hs.clientHello.raw, newClientHello.raw, c.isDTLS, []uint16{extensionPreSharedKey}); err != nil {
 			return err
 		}
 		hs.clientHello = newClientHello

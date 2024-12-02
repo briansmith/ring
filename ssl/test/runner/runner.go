@@ -9245,13 +9245,6 @@ func addResumptionVersionTests() {
 				suffix := "-" + sessionVers.name + "-" + resumeVers.name
 				suffix += "-" + protocol.String()
 
-				// TODO(crbug.com/42290594): Attempting to resume a DTLS 1.3 session
-				// when the new connection is an older version is currently broken.
-				// The current implementation recomputes the PSK binder value for the
-				// second ClientHello (sent in response to HelloVerifyRequest), but
-				// the runner expects all extension values to stay byte-for-byte the
-				// same (a possible interpretation of RFC 6347 section 4.2.1).
-				isBadDTLSResumption := protocol == dtls && sessionVers.version == VersionTLS13 && resumeVers.version < VersionTLS13
 				if sessionVers.version == resumeVers.version {
 					testCases = append(testCases, testCase{
 						protocol:      protocol,
@@ -9270,7 +9263,37 @@ func addResumptionVersionTests() {
 							version: resumeVers.version,
 						},
 					})
-				} else if !isBadDTLSResumption {
+				} else if protocol != tls && sessionVers.version >= VersionTLS13 && resumeVers.version < VersionTLS13 {
+					// In TLS 1.2 and below, the server indicates resumption by echoing
+					// the client's session ID, which is impossible if the client did
+					// not send a session ID. If the client offers a TLS 1.3 session, it
+					// only fills in session ID in TLS (not DTLS or QUIC) for middlebox
+					// compatibility mode. So, instead, test that the session ID was
+					// empty and it was indeed impossible to hit this path
+					testCases = append(testCases, testCase{
+						protocol:      protocol,
+						name:          "Resume-Client-Impossible" + suffix,
+						resumeSession: true,
+						config: Config{
+							MaxVersion: sessionVers.version,
+						},
+						expectations: connectionExpectations{
+							version: sessionVers.version,
+						},
+						resumeConfig: &Config{
+							MaxVersion: resumeVers.version,
+							Bugs: ProtocolBugs{
+								ExpectNoSessionID: true,
+							},
+						},
+						resumeExpectations: &connectionExpectations{
+							version: resumeVers.version,
+						},
+						expectResumeRejected: true,
+					})
+				} else {
+					// Test that the client rejects ServerHellos which resume
+					// sessions at inconsistent versions.
 					expectedError := ":OLD_SESSION_VERSION_NOT_RETURNED:"
 					if sessionVers.version < VersionTLS13 && resumeVers.version >= VersionTLS13 {
 						// The server will "resume" the session by sending pre_shared_key,
@@ -9278,6 +9301,7 @@ func addResumptionVersionTests() {
 						// should reject this because the extension was not allowed at all.
 						expectedError = ":UNEXPECTED_EXTENSION:"
 					}
+
 					testCases = append(testCases, testCase{
 						protocol:      protocol,
 						name:          "Resume-Client-Mismatch" + suffix,
@@ -9302,27 +9326,25 @@ func addResumptionVersionTests() {
 					})
 				}
 
-				if !isBadDTLSResumption {
-					testCases = append(testCases, testCase{
-						protocol:      protocol,
-						name:          "Resume-Client-NoResume" + suffix,
-						resumeSession: true,
-						config: Config{
-							MaxVersion: sessionVers.version,
-						},
-						expectations: connectionExpectations{
-							version: sessionVers.version,
-						},
-						resumeConfig: &Config{
-							MaxVersion: resumeVers.version,
-						},
-						newSessionsOnResume:  true,
-						expectResumeRejected: true,
-						resumeExpectations: &connectionExpectations{
-							version: resumeVers.version,
-						},
-					})
-				}
+				testCases = append(testCases, testCase{
+					protocol:      protocol,
+					name:          "Resume-Client-NoResume" + suffix,
+					resumeSession: true,
+					config: Config{
+						MaxVersion: sessionVers.version,
+					},
+					expectations: connectionExpectations{
+						version: sessionVers.version,
+					},
+					resumeConfig: &Config{
+						MaxVersion: resumeVers.version,
+					},
+					newSessionsOnResume:  true,
+					expectResumeRejected: true,
+					resumeExpectations: &connectionExpectations{
+						version: resumeVers.version,
+					},
+				})
 
 				testCases = append(testCases, testCase{
 					protocol:      protocol,
