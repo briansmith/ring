@@ -190,64 +190,56 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
 
 // CRYPTO_gcm128_init_key initialises |gcm_key| to use |block| (typically AES)
 // with the given key. |block_is_hwaes| is one if |block| is |aes_hw_encrypt|.
-OPENSSL_EXPORT void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key,
-                                           const AES_KEY *key, block128_f block,
-                                           int block_is_hwaes);
+void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *key,
+                            block128_f block, int block_is_hwaes);
 
 // CRYPTO_gcm128_setiv sets the IV (nonce) for |ctx|. The |key| must be the
 // same key that was passed to |CRYPTO_gcm128_init|.
-OPENSSL_EXPORT void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                                        const uint8_t *iv, size_t iv_len);
+void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
+                         const uint8_t *iv, size_t iv_len);
 
 // CRYPTO_gcm128_aad sets the authenticated data for an instance of GCM.
 // This must be called before and data is encrypted. It returns one on success
 // and zero otherwise.
-OPENSSL_EXPORT int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad,
-                                     size_t len);
+int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len);
 
 // CRYPTO_gcm128_encrypt encrypts |len| bytes from |in| to |out|. The |key|
 // must be the same key that was passed to |CRYPTO_gcm128_init|. It returns one
 // on success and zero otherwise.
-OPENSSL_EXPORT int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx,
-                                         const AES_KEY *key, const uint8_t *in,
-                                         uint8_t *out, size_t len);
+int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
+                          const uint8_t *in, uint8_t *out, size_t len);
 
 // CRYPTO_gcm128_decrypt decrypts |len| bytes from |in| to |out|. The |key|
 // must be the same key that was passed to |CRYPTO_gcm128_init|. It returns one
 // on success and zero otherwise.
-OPENSSL_EXPORT int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx,
-                                         const AES_KEY *key, const uint8_t *in,
-                                         uint8_t *out, size_t len);
+int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
+                          const uint8_t *in, uint8_t *out, size_t len);
 
 // CRYPTO_gcm128_encrypt_ctr32 encrypts |len| bytes from |in| to |out| using
 // a CTR function that only handles the bottom 32 bits of the nonce, like
 // |CRYPTO_ctr128_encrypt_ctr32|. The |key| must be the same key that was
 // passed to |CRYPTO_gcm128_init|. It returns one on success and zero
 // otherwise.
-OPENSSL_EXPORT int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
-                                               const AES_KEY *key,
-                                               const uint8_t *in, uint8_t *out,
-                                               size_t len, ctr128_f stream);
+int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
+                                const uint8_t *in, uint8_t *out, size_t len,
+                                ctr128_f stream);
 
 // CRYPTO_gcm128_decrypt_ctr32 decrypts |len| bytes from |in| to |out| using
 // a CTR function that only handles the bottom 32 bits of the nonce, like
 // |CRYPTO_ctr128_encrypt_ctr32|. The |key| must be the same key that was
 // passed to |CRYPTO_gcm128_init|. It returns one on success and zero
 // otherwise.
-OPENSSL_EXPORT int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx,
-                                               const AES_KEY *key,
-                                               const uint8_t *in, uint8_t *out,
-                                               size_t len, ctr128_f stream);
+int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
+                                const uint8_t *in, uint8_t *out, size_t len,
+                                ctr128_f stream);
 
 // CRYPTO_gcm128_finish calculates the authenticator and compares it against
 // |len| bytes of |tag|. It returns one on success and zero otherwise.
-OPENSSL_EXPORT int CRYPTO_gcm128_finish(GCM128_CONTEXT *ctx, const uint8_t *tag,
-                                        size_t len);
+int CRYPTO_gcm128_finish(GCM128_CONTEXT *ctx, const uint8_t *tag, size_t len);
 
 // CRYPTO_gcm128_tag calculates the authenticator and copies it into |tag|.
 // The minimum of |len| and 16 bytes are copied into |tag|.
-OPENSSL_EXPORT void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag,
-                                      size_t len);
+void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag, size_t len);
 
 
 // GCM assembly.
