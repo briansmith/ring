@@ -59,6 +59,22 @@ impl Ed25519KeyPair {
         ))
     }
 
+    /// Like generate_pkcs8, except that it generates the key pair
+    /// from a given seed.
+    ///
+    /// This is useful for example to derive keys from passwords,
+    /// so that the key need not be stored at all.
+    pub fn seed_to_pkcs8(
+        seed: &Seed,
+    ) -> Result<pkcs8::Document, error::KeyRejected> {
+        let key_pair = Self::from_seed_(seed);
+        Ok(pkcs8::wrap_key(
+            &PKCS8_TEMPLATE,
+            &seed[..],
+            key_pair.public_key().as_ref(),
+        ))
+    }
+
     /// Constructs an Ed25519 key pair by parsing an unencrypted PKCS#8 v2
     /// Ed25519 private key.
     ///
