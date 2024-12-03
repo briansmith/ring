@@ -108,6 +108,11 @@
 #include "sha/sha1.cc.inc"
 #include "sha/sha256.cc.inc"
 #include "sha/sha512.cc.inc"
+#include "slhdsa/fors.cc.inc"
+#include "slhdsa/merkle.cc.inc"
+#include "slhdsa/slhdsa.cc.inc"
+#include "slhdsa/thash.cc.inc"
+#include "slhdsa/wots.cc.inc"
 #include "tls/kdf.cc.inc"
 
 

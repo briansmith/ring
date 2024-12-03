@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 #include "./address.h"
 #include "./fors.h"
 #include "./params.h"
@@ -40,9 +40,9 @@ static void fors_base_b(
 }
 
 // Implements Algorithm 14: fors_skGen function (page 29)
-void slhdsa_fors_sk_gen(uint8_t fors_sk[SLHDSA_SHA2_128S_N], uint32_t idx,
-                        const uint8_t sk_seed[SLHDSA_SHA2_128S_N],
-                        const uint8_t pk_seed[SLHDSA_SHA2_128S_N],
+void slhdsa_fors_sk_gen(uint8_t fors_sk[BCM_SLHDSA_SHA2_128S_N], uint32_t idx,
+                        const uint8_t sk_seed[BCM_SLHDSA_SHA2_128S_N],
+                        const uint8_t pk_seed[BCM_SLHDSA_SHA2_128S_N],
                         uint8_t addr[32]) {
   uint8_t sk_addr[32];
   OPENSSL_memcpy(sk_addr, addr, sizeof(sk_addr));
@@ -54,27 +54,27 @@ void slhdsa_fors_sk_gen(uint8_t fors_sk[SLHDSA_SHA2_128S_N], uint32_t idx,
 }
 
 // Implements Algorithm 15: fors_node function (page 30)
-void slhdsa_fors_treehash(uint8_t root_node[SLHDSA_SHA2_128S_N],
-                          const uint8_t sk_seed[SLHDSA_SHA2_128S_N],
+void slhdsa_fors_treehash(uint8_t root_node[BCM_SLHDSA_SHA2_128S_N],
+                          const uint8_t sk_seed[BCM_SLHDSA_SHA2_128S_N],
                           uint32_t i /*target node index*/,
                           uint32_t z /*target node height*/,
-                          const uint8_t pk_seed[SLHDSA_SHA2_128S_N],
+                          const uint8_t pk_seed[BCM_SLHDSA_SHA2_128S_N],
                           uint8_t addr[32]) {
   BSSL_CHECK(z <= SLHDSA_SHA2_128S_FORS_HEIGHT);
   BSSL_CHECK(i < (uint32_t)(SLHDSA_SHA2_128S_FORS_TREES *
                             (1 << (SLHDSA_SHA2_128S_FORS_HEIGHT - z))));
 
   if (z == 0) {
-    uint8_t sk[SLHDSA_SHA2_128S_N];
+    uint8_t sk[BCM_SLHDSA_SHA2_128S_N];
     slhdsa_set_tree_height(addr, 0);
     slhdsa_set_tree_index(addr, i);
     slhdsa_fors_sk_gen(sk, i, sk_seed, pk_seed, addr);
     slhdsa_thash_f(root_node, sk, pk_seed, addr);
   } else {
     // Stores left node and right node.
-    uint8_t nodes[2 * SLHDSA_SHA2_128S_N];
+    uint8_t nodes[2 * BCM_SLHDSA_SHA2_128S_N];
     slhdsa_fors_treehash(nodes, sk_seed, 2 * i, z - 1, pk_seed, addr);
-    slhdsa_fors_treehash(nodes + SLHDSA_SHA2_128S_N, sk_seed, 2 * i + 1, z - 1,
+    slhdsa_fors_treehash(nodes + BCM_SLHDSA_SHA2_128S_N, sk_seed, 2 * i + 1, z - 1,
                          pk_seed, addr);
     slhdsa_set_tree_height(addr, z);
     slhdsa_set_tree_index(addr, i);
@@ -85,8 +85,8 @@ void slhdsa_fors_treehash(uint8_t root_node[SLHDSA_SHA2_128S_N],
 // Implements Algorithm 16: fors_sign function (page 31)
 void slhdsa_fors_sign(uint8_t fors_sig[SLHDSA_SHA2_128S_FORS_BYTES],
                       const uint8_t message[SLHDSA_SHA2_128S_FORS_MSG_BYTES],
-                      const uint8_t sk_seed[SLHDSA_SHA2_128S_N],
-                      const uint8_t pk_seed[SLHDSA_SHA2_128S_N],
+                      const uint8_t sk_seed[BCM_SLHDSA_SHA2_128S_N],
+                      const uint8_t pk_seed[BCM_SLHDSA_SHA2_128S_N],
                       uint8_t addr[32]) {
   uint16_t indices[SLHDSA_SHA2_128S_FORS_TREES];
 
@@ -97,14 +97,14 @@ void slhdsa_fors_sign(uint8_t fors_sig[SLHDSA_SHA2_128S_FORS_BYTES],
     slhdsa_set_tree_height(addr, 0);
     // Write the FORS secret key element to the correct position.
     slhdsa_fors_sk_gen(
-        fors_sig + i * SLHDSA_SHA2_128S_N * (SLHDSA_SHA2_128S_FORS_HEIGHT + 1),
+        fors_sig + i * BCM_SLHDSA_SHA2_128S_N * (SLHDSA_SHA2_128S_FORS_HEIGHT + 1),
         i * (1 << SLHDSA_SHA2_128S_FORS_HEIGHT) + indices[i], sk_seed, pk_seed,
         addr);
     for (size_t j = 0; j < SLHDSA_SHA2_128S_FORS_HEIGHT; ++j) {
       size_t s = (indices[i] / (1 << j)) ^ 1;
       // Write the FORS auth path element to the correct position.
       slhdsa_fors_treehash(
-          fors_sig + SLHDSA_SHA2_128S_N *
+          fors_sig + BCM_SLHDSA_SHA2_128S_N *
                          (i * (SLHDSA_SHA2_128S_FORS_HEIGHT + 1) + j + 1),
           sk_seed, i * (1ULL << (SLHDSA_SHA2_128S_FORS_HEIGHT - j)) + s, j,
           pk_seed, addr);
@@ -114,13 +114,13 @@ void slhdsa_fors_sign(uint8_t fors_sig[SLHDSA_SHA2_128S_FORS_BYTES],
 
 // Implements Algorithm 17: fors_pkFromSig function (page 32)
 void slhdsa_fors_pk_from_sig(
-    uint8_t fors_pk[SLHDSA_SHA2_128S_N],
+    uint8_t fors_pk[BCM_SLHDSA_SHA2_128S_N],
     const uint8_t fors_sig[SLHDSA_SHA2_128S_FORS_BYTES],
     const uint8_t message[SLHDSA_SHA2_128S_FORS_MSG_BYTES],
-    const uint8_t pk_seed[SLHDSA_SHA2_128S_N], uint8_t addr[32]) {
+    const uint8_t pk_seed[BCM_SLHDSA_SHA2_128S_N], uint8_t addr[32]) {
   uint16_t indices[SLHDSA_SHA2_128S_FORS_TREES];
-  uint8_t tmp[2 * SLHDSA_SHA2_128S_N];
-  uint8_t roots[SLHDSA_SHA2_128S_FORS_TREES * SLHDSA_SHA2_128S_N];
+  uint8_t tmp[2 * BCM_SLHDSA_SHA2_128S_N];
+  uint8_t roots[SLHDSA_SHA2_128S_FORS_TREES * BCM_SLHDSA_SHA2_128S_N];
 
   // Derive FORS indices compatible with the NIST changes.
   fors_base_b(indices, message);
@@ -128,11 +128,11 @@ void slhdsa_fors_pk_from_sig(
   for (size_t i = 0; i < SLHDSA_SHA2_128S_FORS_TREES; ++i) {
     // Pointer to current sk and authentication path
     const uint8_t *sk =
-        fors_sig + i * SLHDSA_SHA2_128S_N * (SLHDSA_SHA2_128S_FORS_HEIGHT + 1);
+        fors_sig + i * BCM_SLHDSA_SHA2_128S_N * (SLHDSA_SHA2_128S_FORS_HEIGHT + 1);
     const uint8_t *auth =
-        fors_sig + i * SLHDSA_SHA2_128S_N * (SLHDSA_SHA2_128S_FORS_HEIGHT + 1) +
-        SLHDSA_SHA2_128S_N;
-    uint8_t nodes[2 * SLHDSA_SHA2_128S_N];
+        fors_sig + i * BCM_SLHDSA_SHA2_128S_N * (SLHDSA_SHA2_128S_FORS_HEIGHT + 1) +
+        BCM_SLHDSA_SHA2_128S_N;
+    uint8_t nodes[2 * BCM_SLHDSA_SHA2_128S_N];
 
     slhdsa_set_tree_height(addr, 0);
     slhdsa_set_tree_index(
@@ -146,19 +146,19 @@ void slhdsa_fors_pk_from_sig(
       // Even node
       if (((indices[i] / (1 << j)) % 2) == 0) {
         slhdsa_set_tree_index(addr, slhdsa_get_tree_index(addr) / 2);
-        OPENSSL_memcpy(tmp, nodes, SLHDSA_SHA2_128S_N);
-        OPENSSL_memcpy(tmp + SLHDSA_SHA2_128S_N, auth + j * SLHDSA_SHA2_128S_N,
-                       SLHDSA_SHA2_128S_N);
-        slhdsa_thash_h(nodes + SLHDSA_SHA2_128S_N, tmp, pk_seed, addr);
+        OPENSSL_memcpy(tmp, nodes, BCM_SLHDSA_SHA2_128S_N);
+        OPENSSL_memcpy(tmp + BCM_SLHDSA_SHA2_128S_N, auth + j * BCM_SLHDSA_SHA2_128S_N,
+                       BCM_SLHDSA_SHA2_128S_N);
+        slhdsa_thash_h(nodes + BCM_SLHDSA_SHA2_128S_N, tmp, pk_seed, addr);
       } else {
         slhdsa_set_tree_index(addr, (slhdsa_get_tree_index(addr) - 1) / 2);
-        OPENSSL_memcpy(tmp, auth + j * SLHDSA_SHA2_128S_N, SLHDSA_SHA2_128S_N);
-        OPENSSL_memcpy(tmp + SLHDSA_SHA2_128S_N, nodes, SLHDSA_SHA2_128S_N);
-        slhdsa_thash_h(nodes + SLHDSA_SHA2_128S_N, tmp, pk_seed, addr);
+        OPENSSL_memcpy(tmp, auth + j * BCM_SLHDSA_SHA2_128S_N, BCM_SLHDSA_SHA2_128S_N);
+        OPENSSL_memcpy(tmp + BCM_SLHDSA_SHA2_128S_N, nodes, BCM_SLHDSA_SHA2_128S_N);
+        slhdsa_thash_h(nodes + BCM_SLHDSA_SHA2_128S_N, tmp, pk_seed, addr);
       }
-      OPENSSL_memcpy(nodes, nodes + SLHDSA_SHA2_128S_N, SLHDSA_SHA2_128S_N);
+      OPENSSL_memcpy(nodes, nodes + BCM_SLHDSA_SHA2_128S_N, BCM_SLHDSA_SHA2_128S_N);
     }
-    OPENSSL_memcpy(roots + i * SLHDSA_SHA2_128S_N, nodes, SLHDSA_SHA2_128S_N);
+    OPENSSL_memcpy(roots + i * BCM_SLHDSA_SHA2_128S_N, nodes, BCM_SLHDSA_SHA2_128S_N);
   }
 
   uint8_t forspk_addr[32];

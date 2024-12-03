@@ -12,8 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#ifndef OPENSSL_HEADER_CRYPTO_SLHDSA_WOTS_H
-#define OPENSSL_HEADER_CRYPTO_SLHDSA_WOTS_H
+#ifndef OPENSSL_HEADER_CRYPTO_FIPSMODULE_SLHDSA_WOTS_H
+#define OPENSSL_HEADER_CRYPTO_FIPSMODULE_SLHDSA_WOTS_H
 
 #include "./params.h"
 
@@ -23,23 +23,23 @@ extern "C" {
 
 
 // Implements Algorithm 6: wots_pkGen function, page 18
-void slhdsa_wots_pk_gen(uint8_t pk[SLHDSA_SHA2_128S_N],
-                        const uint8_t sk_seed[SLHDSA_SHA2_128S_N],
-                        const uint8_t pub_seed[SLHDSA_SHA2_128S_N],
+void slhdsa_wots_pk_gen(uint8_t pk[BCM_SLHDSA_SHA2_128S_N],
+                        const uint8_t sk_seed[BCM_SLHDSA_SHA2_128S_N],
+                        const uint8_t pub_seed[BCM_SLHDSA_SHA2_128S_N],
                         uint8_t addr[32]);
 
 // Implements Algorithm 7: wots_sign function, page 20
 void slhdsa_wots_sign(uint8_t sig[SLHDSA_SHA2_128S_WOTS_BYTES],
-                      const uint8_t msg[SLHDSA_SHA2_128S_N],
-                      const uint8_t sk_seed[SLHDSA_SHA2_128S_N],
-                      const uint8_t pub_seed[SLHDSA_SHA2_128S_N],
+                      const uint8_t msg[BCM_SLHDSA_SHA2_128S_N],
+                      const uint8_t sk_seed[BCM_SLHDSA_SHA2_128S_N],
+                      const uint8_t pub_seed[BCM_SLHDSA_SHA2_128S_N],
                       uint8_t addr[32]);
 
 // Implements Algorithm 8: wots_pkFromSig function, page 21
-void slhdsa_wots_pk_from_sig(uint8_t pk[SLHDSA_SHA2_128S_N],
+void slhdsa_wots_pk_from_sig(uint8_t pk[BCM_SLHDSA_SHA2_128S_N],
                              const uint8_t sig[SLHDSA_SHA2_128S_WOTS_BYTES],
-                             const uint8_t msg[SLHDSA_SHA2_128S_N],
-                             const uint8_t pub_seed[SLHDSA_SHA2_128S_N],
+                             const uint8_t msg[BCM_SLHDSA_SHA2_128S_N],
+                             const uint8_t pub_seed[BCM_SLHDSA_SHA2_128S_N],
                              uint8_t addr[32]);
 
 
@@ -47,4 +47,4 @@ void slhdsa_wots_pk_from_sig(uint8_t pk[SLHDSA_SHA2_128S_N],
 }  // extern C
 #endif
 
-#endif  // OPENSSL_HEADER_CRYPTO_SLHDSA_WOTS_H
+#endif  // OPENSSL_HEADER_CRYPTO_FIPSMODULE_SLHDSA_WOTS_H

@@ -12,18 +12,16 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#ifndef OPENSSL_HEADER_CRYPTO_SLHDSA_PARAMS_H
-#define OPENSSL_HEADER_CRYPTO_SLHDSA_PARAMS_H
+#ifndef OPENSSL_HEADER_CRYPTO_FIPSMODULE_SLHDSA_PARAMS_H
+#define OPENSSL_HEADER_CRYPTO_FIPSMODULE_SLHDSA_PARAMS_H
 
 #include <openssl/base.h>
+#include "../bcm_interface.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-
-// Output length of the hash function.
-#define SLHDSA_SHA2_128S_N 16
 // Total height of the tree structure.
 #define SLHDSA_SHA2_128S_FULL_HEIGHT 63
 // Number of subtree layers.
@@ -37,10 +35,7 @@ extern "C" {
 // Size of a FORS signature
 #define SLHDSA_SHA2_128S_FORS_BYTES                                   \
   ((SLHDSA_SHA2_128S_FORS_HEIGHT + 1) * SLHDSA_SHA2_128S_FORS_TREES * \
-   SLHDSA_SHA2_128S_N)
-// The number of bytes at the beginning of M', the augmented message, before the
-// context.
-#define SLHDSA_M_PRIME_HEADER_LEN 2
+   BCM_SLHDSA_SHA2_128S_N)
 
 // Winternitz parameter and derived values
 #define SLHDSA_SHA2_128S_WOTS_W 16
@@ -49,12 +44,12 @@ extern "C" {
 #define SLHDSA_SHA2_128S_WOTS_LEN2 3
 #define SLHDSA_SHA2_128S_WOTS_LEN 35
 #define SLHDSA_SHA2_128S_WOTS_BYTES \
-  (SLHDSA_SHA2_128S_N * SLHDSA_SHA2_128S_WOTS_LEN)
+  (BCM_SLHDSA_SHA2_128S_N * SLHDSA_SHA2_128S_WOTS_LEN)
 
 // XMSS sizes
 #define SLHDSA_SHA2_128S_XMSS_BYTES \
   (SLHDSA_SHA2_128S_WOTS_BYTES +    \
-   (SLHDSA_SHA2_128S_N * SLHDSA_SHA2_128S_TREE_HEIGHT))
+   (BCM_SLHDSA_SHA2_128S_N * SLHDSA_SHA2_128S_TREE_HEIGHT))
 
 // Size of the message digest (NOTE: This is only correct for the SHA-256 params
 // here)
@@ -80,4 +75,4 @@ extern "C" {
 }  // extern C
 #endif
 
-#endif  // OPENSSL_HEADER_CRYPTO_SLHDSA_PARAMS_H
+#endif  // OPENSSL_HEADER_CRYPTO_FIPSMODULE_SLHDSA_PARAMS_H

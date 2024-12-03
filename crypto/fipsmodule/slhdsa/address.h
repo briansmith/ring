@@ -12,12 +12,12 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#ifndef OPENSSL_HEADER_CRYPTO_SLHDSA_ADDRESS_H
-#define OPENSSL_HEADER_CRYPTO_SLHDSA_ADDRESS_H
+#ifndef OPENSSL_HEADER_CRYPTO_FIPSMODULE_SLHDSA_ADDRESS_H
+#define OPENSSL_HEADER_CRYPTO_FIPSMODULE_SLHDSA_ADDRESS_H
 
 #include <openssl/mem.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -116,4 +116,4 @@ inline uint32_t slhdsa_get_tree_index(uint8_t addr[32]) {
 }  // extern C
 #endif
 
-#endif  // OPENSSL_HEADER_CRYPTO_SLHDSA_ADDRESS_H
+#endif  // OPENSSL_HEADER_CRYPTO_FIPSMODULE_SLHDSA_ADDRESS_H

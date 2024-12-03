@@ -22,15 +22,14 @@
 #include <openssl/obj.h>
 #include <openssl/slhdsa.h>
 
+#include "../fipsmodule/slhdsa/params.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
-#include "internal.h"
-#include "params.h"
 
 namespace {
 
 TEST(SLHDSATest, KeyGeneration) {
-  const uint8_t seed[3 * SLHDSA_SHA2_128S_N] = {0};
+  const uint8_t seed[3 * BCM_SLHDSA_SHA2_128S_N] = {0};
   const uint8_t expected_pub[] = {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0xbe, 0x6b, 0xd7, 0xe8, 0xe1, 0x98,
@@ -47,7 +46,7 @@ TEST(SLHDSATest, KeyGeneration) {
 
   uint8_t pub[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES];
   uint8_t priv[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES];
-  SLHDSA_SHA2_128S_generate_key_from_seed(pub, priv, seed);
+  BCM_slhdsa_sha2_128s_generate_key_from_seed(pub, priv, seed);
   EXPECT_EQ(Bytes(pub), Bytes(expected_pub));
   EXPECT_EQ(Bytes(priv), Bytes(expected_priv));
 
@@ -132,7 +131,7 @@ static void NISTKeyGenerationFileTest(FileTest *t) {
 
   uint8_t pub[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES];
   uint8_t priv[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES];
-  SLHDSA_SHA2_128S_generate_key_from_seed(pub, priv, seed.data());
+  BCM_slhdsa_sha2_128s_generate_key_from_seed(pub, priv, seed.data());
 
   EXPECT_EQ(Bytes(pub), Bytes(expected_pub));
   EXPECT_EQ(Bytes(priv), Bytes(expected_priv));
@@ -148,13 +147,13 @@ static void NISTSignatureGenerationFileTest(FileTest *t) {
   ASSERT_EQ(priv.size(),
             static_cast<size_t>(SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES));
   ASSERT_TRUE(t->GetBytes(&entropy, "entropy"));
-  ASSERT_EQ(entropy.size(), static_cast<size_t>(SLHDSA_SHA2_128S_N));
+  ASSERT_EQ(entropy.size(), static_cast<size_t>(BCM_SLHDSA_SHA2_128S_N));
   ASSERT_TRUE(t->GetBytes(&msg, "msg"));
   ASSERT_TRUE(t->GetBytes(&expected_sig, "sig"));
 
   uint8_t sig[SLHDSA_SHA2_128S_SIGNATURE_BYTES];
-  SLHDSA_SHA2_128S_sign_internal(sig, priv.data(), nullptr, nullptr, 0,
-                                 msg.data(), msg.size(), entropy.data());
+  BCM_slhdsa_sha2_128s_sign_internal(sig, priv.data(), nullptr, nullptr, 0,
+                                     msg.data(), msg.size(), entropy.data());
 
   EXPECT_EQ(Bytes(sig), Bytes(expected_sig));
 }
@@ -173,9 +172,9 @@ static void NISTSignatureVerificationFileTest(FileTest *t) {
   ASSERT_TRUE(t->GetBytes(&sig, "sig"));
   ASSERT_TRUE(t->GetAttribute(&valid, "valid"));
 
-  int ok = SLHDSA_SHA2_128S_verify_internal(sig.data(), sig.size(), pub.data(),
-                                            nullptr, nullptr, 0, msg.data(),
-                                            msg.size());
+  int ok = bcm_success(BCM_slhdsa_sha2_128s_verify_internal(
+      sig.data(), sig.size(), pub.data(), nullptr, nullptr, 0, msg.data(),
+      msg.size()));
   EXPECT_EQ(ok, valid == "true");
 }
 

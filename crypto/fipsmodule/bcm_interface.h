@@ -637,6 +637,91 @@ OPENSSL_EXPORT bcm_status BCM_mlkem1024_marshal_private_key(
     CBB *out, const struct BCM_mlkem1024_private_key *private_key);
 
 
+// SLH-DSA
+
+// Output length of the hash function.
+#define BCM_SLHDSA_SHA2_128S_N 16
+
+// The number of bytes at the beginning of M', the augmented message, before the
+// context.
+#define BCM_SLHDSA_M_PRIME_HEADER_LEN 2
+
+// SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES is the number of bytes in an
+// SLH-DSA-SHA2-128s public key.
+#define BCM_SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES 32
+
+// BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES is the number of bytes in an
+// SLH-DSA-SHA2-128s private key.
+#define BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES 64
+
+// BCM_SLHDSA_SHA2_128S_SIGNATURE_BYTES is the number of bytes in an
+// SLH-DSA-SHA2-128s signature.
+#define BCM_SLHDSA_SHA2_128S_SIGNATURE_BYTES 7856
+
+// SLHDSA_SHA2_128S_generate_key_from_seed generates an SLH-DSA-SHA2-128s key
+// pair from a 48-byte seed and writes the result to |out_public_key| and
+// |out_secret_key|.
+OPENSSL_EXPORT bcm_infallible BCM_slhdsa_sha2_128s_generate_key_from_seed(
+    uint8_t out_public_key[BCM_SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+    uint8_t out_secret_key[BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES],
+    const uint8_t seed[3 * BCM_SLHDSA_SHA2_128S_N]);
+
+// BCM_slhdsa_sha2_128s_sign_internal acts like |SLHDSA_SHA2_128S_sign| but
+// accepts an explicit entropy input, which can be PK.seed (bytes 32..48 of
+// the private key) to generate deterministic signatures. It also takes the
+// input message in three parts so that the "internal" version of the signing
+// function, from section 9.2, can be implemented. The |header| argument may be
+// NULL to omit it.
+OPENSSL_EXPORT bcm_infallible BCM_slhdsa_sha2_128s_sign_internal(
+    uint8_t out_signature[BCM_SLHDSA_SHA2_128S_SIGNATURE_BYTES],
+    const uint8_t secret_key[BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES],
+    const uint8_t header[BCM_SLHDSA_M_PRIME_HEADER_LEN], const uint8_t *context,
+    size_t context_len, const uint8_t *msg, size_t msg_len,
+    const uint8_t entropy[BCM_SLHDSA_SHA2_128S_N]);
+
+// BCM_slhdsa_sha2_128s_verify_internal acts like |SLHDSA_SHA2_128S_verify| but
+// takes the input message in three parts so that the "internal" version of the
+// verification function, from section 9.3, can be implemented. The |header|
+// argument may be NULL to omit it.
+OPENSSL_EXPORT bcm_status BCM_slhdsa_sha2_128s_verify_internal(
+    const uint8_t *signature, size_t signature_len,
+    const uint8_t public_key[BCM_SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+    const uint8_t header[BCM_SLHDSA_M_PRIME_HEADER_LEN], const uint8_t *context,
+    size_t context_len, const uint8_t *msg, size_t msg_len);
+
+OPENSSL_EXPORT bcm_infallible BCM_slhdsa_sha2_128s_generate_key(
+    uint8_t out_public_key[BCM_SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+    uint8_t out_private_key[BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES]);
+
+OPENSSL_EXPORT bcm_infallible BCM_slhdsa_sha2_128s_public_from_private(
+    uint8_t out_public_key[BCM_SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+    const uint8_t private_key[BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES]);
+
+OPENSSL_EXPORT bcm_status BCM_slhdsa_sha2_128s_sign(
+    uint8_t out_signature[BCM_SLHDSA_SHA2_128S_SIGNATURE_BYTES],
+    const uint8_t private_key[BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES],
+    const uint8_t *msg, size_t msg_len, const uint8_t *context,
+    size_t context_len);
+
+OPENSSL_EXPORT bcm_status BCM_slhdsa_sha2_128s_verify(
+    const uint8_t *signature, size_t signature_len,
+    const uint8_t public_key[BCM_SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+    const uint8_t *msg, size_t msg_len, const uint8_t *context,
+    size_t context_len);
+
+OPENSSL_EXPORT bcm_status BCM_slhdsa_sha2_128s_prehash_sign(
+    uint8_t out_signature[BCM_SLHDSA_SHA2_128S_SIGNATURE_BYTES],
+    const uint8_t private_key[BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES],
+    const uint8_t *hashed_msg, size_t hashed_msg_len, int hash_nid,
+    const uint8_t *context, size_t context_len);
+
+OPENSSL_EXPORT bcm_status BCM_slhdsa_sha2_128s_prehash_verify(
+    const uint8_t *signature, size_t signature_len,
+    const uint8_t public_key[BCM_SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+    const uint8_t *hashed_msg, size_t hashed_msg_len, int hash_nid,
+    const uint8_t *context, size_t context_len);
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
