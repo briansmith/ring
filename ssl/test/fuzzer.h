@@ -414,7 +414,12 @@ class TLSFuzzer {
     SSL_CTX_enable_ocsp_stapling(ctx_.get());
 
     // Enable versions and ciphers that are off by default.
-    if (!SSL_CTX_set_strict_cipher_list(ctx_.get(), "ALL:3DES")) {
+    uint16_t min_version = protocol_ == kDTLS ? DTLS1_VERSION : TLS1_VERSION;
+    uint16_t max_version =
+        protocol_ == kDTLS ? DTLS1_3_VERSION : TLS1_3_VERSION;
+    if (!SSL_CTX_set_min_proto_version(ctx_.get(), min_version) ||
+        !SSL_CTX_set_max_proto_version(ctx_.get(), max_version) ||
+        !SSL_CTX_set_strict_cipher_list(ctx_.get(), "ALL:3DES")) {
       return false;
     }
 
