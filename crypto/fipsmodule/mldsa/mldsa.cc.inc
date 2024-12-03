@@ -51,126 +51,85 @@ constexpr uint32_t kInverseDegreeMontgomery = 41978;
 // Constants that vary depending on ML-DSA size.
 //
 // These are implemented as templates which take the K parameter to distinguish
-// the ML-DSA sizes. (At the time of writing, `if constexpr` was not available.)
-//
-// TODO(crbug.com/42290600): Switch this to `if constexpr` when C++17 is
-// available.
+// the ML-DSA sizes.
 
 template <int K>
-constexpr size_t public_key_bytes();
-
-template <>
-constexpr size_t public_key_bytes<6>() {
-  return BCM_MLDSA65_PUBLIC_KEY_BYTES;
-}
-
-template <>
-constexpr size_t public_key_bytes<8>() {
-  return BCM_MLDSA87_PUBLIC_KEY_BYTES;
+constexpr size_t public_key_bytes() {
+  if constexpr (K == 6) {
+    return BCM_MLDSA65_PUBLIC_KEY_BYTES;
+  } else if constexpr (K == 8) {
+    return BCM_MLDSA87_PUBLIC_KEY_BYTES;
+  }
 }
 
 template <int K>
-constexpr size_t signature_bytes();
-
-template <>
-constexpr size_t signature_bytes<6>() {
-  return BCM_MLDSA65_SIGNATURE_BYTES;
-}
-
-template <>
-constexpr size_t signature_bytes<8>() {
-  return BCM_MLDSA87_SIGNATURE_BYTES;
+constexpr size_t signature_bytes() {
+  if constexpr (K == 6) {
+    return BCM_MLDSA65_SIGNATURE_BYTES;
+  } else if constexpr (K == 8) {
+    return BCM_MLDSA87_SIGNATURE_BYTES;
+  }
 }
 
 template <int K>
-constexpr int tau();
-
-template <>
-constexpr int tau<6>() {
-  return 49;
-}
-
-template <>
-constexpr int tau<8>() {
-  return 60;
+constexpr int tau() {
+  if constexpr (K == 6) {
+    return 49;
+  } else if constexpr (K == 8) {
+    return 60;
+  }
 }
 
 template <int K>
-constexpr int lambda_bytes();
-
-template <>
-constexpr int lambda_bytes<6>() {
-  return 192 / 8;
-}
-
-template <>
-constexpr int lambda_bytes<8>() {
-  return 256 / 8;
+constexpr int lambda_bytes() {
+  if constexpr (K == 6) {
+    return 192 / 8;
+  } else if constexpr (K == 8) {
+    return 256 / 8;
+  }
 }
 
 template <int K>
-constexpr int gamma1();
-
-template <>
-constexpr int gamma1<6>() {
-  return 1 << 19;
-}
-
-template <>
-constexpr int gamma1<8>() {
-  return 1 << 19;
+constexpr int gamma1() {
+  if constexpr (K == 6 || K == 8) {
+    return 1 << 19;
+  }
 }
 
 template <int K>
-constexpr int beta();
-
-template <>
-constexpr int beta<6>() {
-  return 196;
-}
-
-template <>
-constexpr int beta<8>() {
-  return 120;
+constexpr int beta() {
+  if constexpr (K == 6) {
+    return 196;
+  } else if constexpr (K == 8) {
+    return 120;
+  }
 }
 
 template <int K>
-constexpr int omega();
-
-template <>
-constexpr int omega<6>() {
-  return 55;
-}
-
-template <>
-constexpr int omega<8>() {
-  return 75;
+constexpr int omega() {
+  if constexpr (K == 6) {
+    return 55;
+  } else if constexpr (K == 8) {
+    return 75;
+  }
 }
 
 template <int K>
-constexpr int eta();
-
-template <>
-constexpr int eta<6>() {
-  return 4;
-}
-
-template <>
-constexpr int eta<8>() {
-  return 2;
+constexpr int eta() {
+  if constexpr (K == 6) {
+    return 4;
+  } else if constexpr (K == 8) {
+    return 2;
+  }
 }
 
 template <int K>
-constexpr int plus_minus_eta_bitlen();
-
-template <>
-constexpr int plus_minus_eta_bitlen<6>() {
-  return 4;
-}
-
-template <>
-constexpr int plus_minus_eta_bitlen<8>() {
-  return 3;
+constexpr int plus_minus_eta_bitlen() {
+  if constexpr (K == 6) {
+    return 4;
+  } else if constexpr (K == 8) {
+    return 3;
+  }
 }
 
 // Fundamental types.

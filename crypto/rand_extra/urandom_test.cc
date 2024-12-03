@@ -15,6 +15,8 @@
 #include <gtest/gtest.h>
 #include <stdlib.h>
 
+#include <optional>
+
 #include <openssl/bytestring.h>
 #include <openssl/ctrdrbg.h>
 #include <openssl/rand.h>
@@ -305,30 +307,6 @@ static bool regs_break_syscall(int child_pid, const struct regs *orig_regs) {
 
 #endif
 
-// SyscallResult is like std::optional<int>.
-// TODO: use std::optional when we can use C++17.
-class SyscallResult {
- public:
-  SyscallResult &operator=(int value) {
-    has_value_ = true;
-    value_ = value;
-    return *this;
-  }
-
-  int value() const {
-    if (!has_value_) {
-      abort();
-    }
-    return value_;
-  }
-
-  bool has_value() const { return has_value_; }
-
- private:
-  bool has_value_ = false;
-  int value_ = 0;
-};
-
 // memcpy_to_remote copies |n| bytes from |in_src| in the local address space,
 // to |dest| in the address space of |child_pid|.
 static void memcpy_to_remote(int child_pid, uint64_t dest, const void *in_src,
@@ -471,7 +449,7 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
     // force_result is unset to indicate that the system call should run
     // normally. Otherwise it's, e.g. -EINVAL, to indicate that the system call
     // should not run and that the given value should be injected on return.
-    SyscallResult force_result;
+    std::optional<int> force_result;
 
     switch (regs.syscall) {
       case __NR_getrandom:

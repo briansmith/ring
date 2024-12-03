@@ -21,7 +21,7 @@ tasks:
     bazel: ${{ bazel }}
     build_targets: *build_targets
     build_flags: &macos_workaround
-      - '--cxxopt=-std=c++14'
+      - '--cxxopt=-std=c++17'
       - '--sandbox_block_path=/usr/local'
 bcr_test_module:
   module_path: util/bazel-example

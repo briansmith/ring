@@ -188,53 +188,6 @@ struct SSL_X509_METHOD;
 
 // C++ utilities.
 
-// Fill-ins for various functions in C++17.
-// TODO(crbug.com/42290600): Replace these with the standard ones when we
-// require C++17.
-
-template <typename ForwardIt>
-ForwardIt cxx17_uninitialized_default_construct_n(ForwardIt first, size_t n) {
-  using T = typename std::iterator_traits<ForwardIt>::value_type;
-  while (n > 0) {
-    new (std::addressof(*first)) T;
-    first++;
-    n--;
-  }
-  return first;
-}
-
-template <typename ForwardIt>
-ForwardIt cxx17_uninitialized_value_construct_n(ForwardIt first, size_t n) {
-  using T = typename std::iterator_traits<ForwardIt>::value_type;
-  while (n > 0) {
-    new (std::addressof(*first)) T();
-    first++;
-    n--;
-  }
-  return first;
-}
-
-template <typename InputIt, typename OutputIt>
-InputIt cxx17_uninitialized_move(InputIt first, InputIt last, OutputIt out) {
-  using OutputT = typename std::iterator_traits<OutputIt>::value_type;
-  for (; first != last; ++first) {
-    new (std::addressof(*out)) OutputT(std::move(*first));
-    ++out;
-  }
-  return out;
-}
-
-template <typename ForwardIt>
-ForwardIt cxx17_destroy_n(ForwardIt first, size_t n) {
-  using T = typename std::iterator_traits<ForwardIt>::value_type;
-  while (n > 0) {
-    first->~T();
-    first++;
-    n--;
-  }
-  return first;
-}
-
 // New behaves like |new| but uses |OPENSSL_malloc| for memory allocation. It
 // returns nullptr on allocation error. It only implements single-object
 // allocation and not new T[n].
@@ -318,7 +271,7 @@ class Array {
   // Reset releases the current contents of the array and takes ownership of the
   // raw pointer supplied by the caller.
   void Reset(T *new_data, size_t new_size) {
-    cxx17_destroy_n(data_, size_);
+    std::destroy_n(data_, size_);
     OPENSSL_free(data_);
     data_ = new_data;
     size_ = new_size;
@@ -341,7 +294,7 @@ class Array {
     if (!InitUninitialized(new_size)) {
       return false;
     }
-    cxx17_uninitialized_value_construct_n(data_, size_);
+    std::uninitialized_value_construct_n(data_, size_);
     return true;
   }
 
@@ -352,7 +305,7 @@ class Array {
     if (!InitUninitialized(new_size)) {
       return false;
     }
-    cxx17_uninitialized_default_construct_n(data_, size_);
+    std::uninitialized_default_construct_n(data_, size_);
     return true;
   }
 
@@ -372,7 +325,7 @@ class Array {
     if (new_size > size_) {
       abort();
     }
-    cxx17_destroy_n(data_ + new_size, size_ - new_size);
+    std::destroy_n(data_ + new_size, size_ - new_size);
     size_ = new_size;
   }
 
@@ -440,7 +393,7 @@ class Vector {
   const T *end() const { return data_ + size_; }
 
   void clear() {
-    cxx17_destroy_n(data_, size_);
+    std::destroy_n(data_, size_);
     OPENSSL_free(data_);
     data_ = nullptr;
     size_ = 0;
@@ -499,7 +452,7 @@ class Vector {
       return false;
     }
     size_t new_size = size_;
-    cxx17_uninitialized_move(begin(), end(), new_data);
+    std::uninitialized_move(begin(), end(), new_data);
     clear();
     data_ = new_data;
     size_ = new_size;
@@ -543,7 +496,7 @@ class InplaceVector {
   }
   InplaceVector &operator=(InplaceVector &&other) {
     clear();
-    cxx17_uninitialized_move(other.begin(), other.end(), data());
+    std::uninitialized_move(other.begin(), other.end(), data());
     size_ = other.size();
     return *this;
   }
@@ -575,7 +528,7 @@ class InplaceVector {
   // default-constructible.
   void Shrink(size_t new_size) {
     BSSL_CHECK(new_size <= size_);
-    cxx17_destroy_n(data() + new_size, size_ - new_size);
+    std::destroy_n(data() + new_size, size_ - new_size);
     size_ = static_cast<PackedSize<N>>(new_size);
   }
 
@@ -590,7 +543,7 @@ class InplaceVector {
     if (new_size > capacity()) {
       return false;
     }
-    cxx17_uninitialized_value_construct_n(data() + size_, new_size - size_);
+    std::uninitialized_value_construct_n(data() + size_, new_size - size_);
     size_ = static_cast<PackedSize<N>>(new_size);
     return true;
   }
@@ -606,7 +559,7 @@ class InplaceVector {
     if (new_size > capacity()) {
       return false;
     }
-    cxx17_uninitialized_default_construct_n(data() + size_, new_size - size_);
+    std::uninitialized_default_construct_n(data() + size_, new_size - size_);
     size_ = static_cast<PackedSize<N>>(new_size);
     return true;
   }

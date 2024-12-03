@@ -123,8 +123,7 @@ bool TemporaryFile::Init(bssl::Span<const uint8_t> content) {
   path_ = path;
 #else
   std::string path = temp_dir + "bssl_tmp_file.XXXXXX";
-  // TODO(davidben): Use |path.data()| when we require C++17.
-  int fd = mkstemp(&path[0]);
+  int fd = mkstemp(path.data());
   if (fd < 0) {
     perror("Could not create temporary file");
     return false;
@@ -208,8 +207,7 @@ bool TemporaryDirectory::Init() {
   }
 #else
   path += "bssl_tmp_dir.XXXXXX";
-  // TODO(davidben): Use |path.data()| when we require C++17.
-  if (mkdtemp(&path[0]) == nullptr) {
+  if (mkdtemp(path.data()) == nullptr) {
     perror("Could not make temporary directory");
     return false;
   }

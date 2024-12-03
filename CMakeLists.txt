@@ -97,7 +97,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   set(EMSCRIPTEN 1)
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -689,13 +689,9 @@ add_executable(pki_test ${PKI_TEST_SOURCES})
 target_link_libraries(pki_test test_support_lib boringssl_gtest pki crypto)
 add_dependencies(all_tests pki_test)
 
-# The PKI library requires C++17, but we haven't required this everywhere yet.
-# TODO(crbug.com/42290600): Remove the C++17 bits.
 set_target_properties(
   pki pki_test
   PROPERTIES
-  CXX_STANDARD 17
-  CXX_STANDARD_REQUIRED YES
   COMPILE_FLAGS "${PKI_CXX_FLAGS}")
 
 add_executable(bssl ${BSSL_SOURCES})
@@ -718,10 +714,6 @@ if(FUZZ)
     set_target_properties(
       Fuzzer PROPERTIES
       COMPILE_FLAGS "-Wno-shadow -Wno-format-nonliteral -Wno-missing-prototypes -fsanitize-coverage=0"
-      # libFuzzer requires C++17, but we haven't required this everywhere yet.
-      # TODO(crbug.com/42290600): Remove this.
-      CXX_STANDARD 17
-      CXX_STANDARD_REQUIRED TRUE
     )
   endif()
 
