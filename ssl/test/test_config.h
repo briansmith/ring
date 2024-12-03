@@ -15,6 +15,7 @@
 #ifndef HEADER_TEST_CONFIG
 #define HEADER_TEST_CONFIG
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -96,7 +97,7 @@ struct TestConfig {
   bool select_empty_alpn = false;
   bool defer_alps = false;
   std::vector<std::pair<std::string, std::string>> application_settings;
-  std::unique_ptr<std::string> expect_peer_application_settings;
+  std::optional<std::string> expect_peer_application_settings;
   bool alps_use_new_codepoint = false;
   std::string quic_transport_params;
   std::string expect_quic_transport_params;

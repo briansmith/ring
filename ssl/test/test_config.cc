@@ -136,15 +136,13 @@ Flag<Config> StringFlag(const char *name, std::string Config::*field,
                       }};
 }
 
-// TODO(davidben): When we can depend on C++17 or Abseil, switch this to
-// std::optional or absl::optional.
 template <typename Config>
 Flag<Config> OptionalStringFlag(const char *name,
-                                std::unique_ptr<std::string> Config::*field,
+                                std::optional<std::string> Config::*field,
                                 bool skip_handshaker = false) {
   return Flag<Config>{name, true, skip_handshaker,
                       [=](Config *config, const char *param) -> bool {
-                        (config->*field) = std::make_unique<std::string>(param);
+                        (config->*field).emplace(param);
                         return true;
                       }};
 }
