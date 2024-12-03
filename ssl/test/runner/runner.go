@@ -13845,56 +13845,64 @@ func addCurveTests() {
 }
 
 func addTLS13RecordTests() {
-	testCases = append(testCases, testCase{
-		name: "TLS13-RecordPadding",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			MinVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				RecordPadding: 10,
+	for _, protocol := range []protocol{tls, dtls} {
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "TLS13-RecordPadding-" + protocol.String(),
+			config: Config{
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					RecordPadding: 10,
+				},
 			},
-		},
-	})
+		})
 
-	testCases = append(testCases, testCase{
-		name: "TLS13-EmptyRecords",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			MinVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				OmitRecordContents: true,
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "TLS13-EmptyRecords-" + protocol.String(),
+			config: Config{
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					OmitRecordContents: true,
+				},
 			},
-		},
-		shouldFail:    true,
-		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
-	})
+			shouldFail:    true,
+			expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+		})
 
-	testCases = append(testCases, testCase{
-		name: "TLS13-OnlyPadding",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			MinVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				OmitRecordContents: true,
-				RecordPadding:      10,
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "TLS13-OnlyPadding-" + protocol.String(),
+			config: Config{
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					OmitRecordContents: true,
+					RecordPadding:      10,
+				},
 			},
-		},
-		shouldFail:    true,
-		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
-	})
+			shouldFail:    true,
+			expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+		})
 
-	testCases = append(testCases, testCase{
-		name: "TLS13-WrongOuterRecord",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			MinVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				OuterRecordType: recordTypeHandshake,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":INVALID_OUTER_RECORD_TYPE:",
-	})
+		if protocol == tls {
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				name:     "TLS13-WrongOuterRecord-" + protocol.String(),
+				config: Config{
+					MaxVersion: VersionTLS13,
+					MinVersion: VersionTLS13,
+					Bugs: ProtocolBugs{
+						OuterRecordType: recordTypeHandshake,
+					},
+				},
+				shouldFail:    true,
+				expectedError: ":INVALID_OUTER_RECORD_TYPE:",
+			})
+		}
+	}
 }
 
 func addSessionTicketTests() {
