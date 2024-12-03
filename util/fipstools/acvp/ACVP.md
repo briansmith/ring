@@ -136,6 +136,9 @@ The other commands are as follows. (Note that you only need to implement the com
 | ML-KEM-XX/keyGen     | Seed | Public key, private key |
 | ML-KEM-XX/encap      | Public key, entropy | Ciphertext, shared secret |
 | ML-KEM-XX/decap      | Private key, ciphertext | Shared secret |
+| SLH-DSA-XX/keyGen    | Seed | Private key, public key |
+| SLH-DSA-XX/sigGen    | Private key, message, entropy or empty | Signature |
+| SLH-DSA-XX/sigVer    | Public key, message, signature | Single-byte validity flag |
 
 ¹ The iterated tests would result in excessive numbers of round trips if the module wrapper handled only basic operations. Thus some ACVP logic is pushed down for these tests so that the inner loop can be handled locally. Either read the NIST documentation ([block-ciphers](https://pages.nist.gov/ACVP/draft-celi-acvp-symmetric.html#name-monte-carlo-tests-for-block) [hashes](https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-monte-carlo-tests-for-sha-1)) to understand the iteration count and return values or, probably more fruitfully, see how these functions are handled in the `modulewrapper` directory.
 
