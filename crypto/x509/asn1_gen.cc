@@ -497,7 +497,7 @@ static int generate_v3(CBB *cbb, const char *str, const X509V3_CTX *cnf,
       if (!CBB_add_u8(&child, 0)) {
         return 0;
       }
-      OPENSSL_FALLTHROUGH;
+      [[fallthrough]];
 
     case CBS_ASN1_OCTETSTRING:
       if (format == ASN1_GEN_FORMAT_ASCII) {

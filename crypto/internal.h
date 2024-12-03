@@ -205,24 +205,6 @@ typedef __uint128_t uint128_t;
 #endif
 #endif
 
-// Have a generic fall-through for different versions of C/C++.
-#if defined(__cplusplus) && __cplusplus >= 201703L
-#define OPENSSL_FALLTHROUGH [[fallthrough]]
-#elif defined(__cplusplus) && __cplusplus >= 201103L && defined(__clang__)
-#define OPENSSL_FALLTHROUGH [[clang::fallthrough]]
-#elif defined(__cplusplus) && __cplusplus >= 201103L && defined(__GNUC__)
-#define OPENSSL_FALLTHROUGH [[gnu::fallthrough]]
-#elif defined(__GNUC__)
-#define OPENSSL_FALLTHROUGH __attribute__((fallthrough))
-#elif defined(OPENSSL_CAN_USE_ATTR_FALLTHROUGH)
-// Clang 3.5, at least, complains about "error: declaration does not declare
-// anything", possibily because we put a semicolon after this macro in
-// practice. Thus limit it to >= Clang 5, which does work.
-#define OPENSSL_FALLTHROUGH __attribute__((fallthrough))
-#else  // all other cases
-#define OPENSSL_FALLTHROUGH
-#endif
-
 // GCC-like compilers indicate SSE2 with |__SSE2__|. MSVC leaves the caller to
 // know that x86_64 has SSE2, and uses _M_IX86_FP to indicate SSE2 on x86.
 // https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=msvc-170

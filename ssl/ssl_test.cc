@@ -6653,7 +6653,7 @@ class MockQUICTransport {
                 << " handshake data written after handshake keys installed";
             return false;
           }
-          OPENSSL_FALLTHROUGH;
+          [[fallthrough]];
         case ssl_encryption_handshake:
           if (!levels_[ssl_encryption_application].write_secret.empty()) {
             ADD_FAILURE()
@@ -6661,7 +6661,7 @@ class MockQUICTransport {
                 << " handshake data written after application keys installed";
             return false;
           }
-          OPENSSL_FALLTHROUGH;
+          [[fallthrough]];
         case ssl_encryption_application:
           break;
       }

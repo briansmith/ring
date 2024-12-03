@@ -823,7 +823,7 @@ static bool parse_sigalgs_list(Array<uint16_t> *out, const char *str) {
         break;
 
       case ':':
-        OPENSSL_FALLTHROUGH;
+        [[fallthrough]];
       case 0:
         if (buf_used == 0) {
           OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SIGNATURE_ALGORITHM);

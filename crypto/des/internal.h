@@ -94,25 +94,25 @@ extern "C" {
     switch (n) {                               \
       case 8:                                  \
         (l2) = ((uint32_t)(*(--(c)))) << 24L;  \
-        OPENSSL_FALLTHROUGH;                   \
+        [[fallthrough]];                       \
       case 7:                                  \
         (l2) |= ((uint32_t)(*(--(c)))) << 16L; \
-        OPENSSL_FALLTHROUGH;                   \
+        [[fallthrough]];                       \
       case 6:                                  \
         (l2) |= ((uint32_t)(*(--(c)))) << 8L;  \
-        OPENSSL_FALLTHROUGH;                   \
+        [[fallthrough]];                       \
       case 5:                                  \
         (l2) |= ((uint32_t)(*(--(c))));        \
-        OPENSSL_FALLTHROUGH;                   \
+        [[fallthrough]];                       \
       case 4:                                  \
         (l1) = ((uint32_t)(*(--(c)))) << 24L;  \
-        OPENSSL_FALLTHROUGH;                   \
+        [[fallthrough]];                       \
       case 3:                                  \
         (l1) |= ((uint32_t)(*(--(c)))) << 16L; \
-        OPENSSL_FALLTHROUGH;                   \
+        [[fallthrough]];                       \
       case 2:                                  \
         (l1) |= ((uint32_t)(*(--(c)))) << 8L;  \
-        OPENSSL_FALLTHROUGH;                   \
+        [[fallthrough]];                       \
       case 1:                                  \
         (l1) |= ((uint32_t)(*(--(c))));        \
     }                                          \
@@ -125,25 +125,25 @@ extern "C" {
     switch (n) {                                          \
       case 8:                                             \
         *(--(c)) = (unsigned char)(((l2) >> 24L) & 0xff); \
-        OPENSSL_FALLTHROUGH;                              \
+        [[fallthrough]];                                  \
       case 7:                                             \
         *(--(c)) = (unsigned char)(((l2) >> 16L) & 0xff); \
-        OPENSSL_FALLTHROUGH;                              \
+        [[fallthrough]];                                  \
       case 6:                                             \
         *(--(c)) = (unsigned char)(((l2) >> 8L) & 0xff);  \
-        OPENSSL_FALLTHROUGH;                              \
+        [[fallthrough]];                                  \
       case 5:                                             \
         *(--(c)) = (unsigned char)(((l2)) & 0xff);        \
-        OPENSSL_FALLTHROUGH;                              \
+        [[fallthrough]];                                  \
       case 4:                                             \
         *(--(c)) = (unsigned char)(((l1) >> 24L) & 0xff); \
-        OPENSSL_FALLTHROUGH;                              \
+        [[fallthrough]];                                  \
       case 3:                                             \
         *(--(c)) = (unsigned char)(((l1) >> 16L) & 0xff); \
-        OPENSSL_FALLTHROUGH;                              \
+        [[fallthrough]];                                  \
       case 2:                                             \
         *(--(c)) = (unsigned char)(((l1) >> 8L) & 0xff);  \
-        OPENSSL_FALLTHROUGH;                              \
+        [[fallthrough]];                                  \
       case 1:                                             \
         *(--(c)) = (unsigned char)(((l1)) & 0xff);        \
     }                                                     \
