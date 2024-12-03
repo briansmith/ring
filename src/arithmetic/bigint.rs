@@ -39,6 +39,7 @@
 use self::boxed_limbs::BoxedLimbs;
 pub(crate) use self::{
     modulus::{Modulus, OwnedModulus, MODULUS_MAX_LIMBS},
+    modulusvalue::OwnedModulusValue,
     private_exponent::PrivateExponent,
 };
 use crate::{
@@ -52,6 +53,7 @@ use core::{marker::PhantomData, num::NonZeroU64};
 
 mod boxed_limbs;
 mod modulus;
+mod modulusvalue;
 mod private_exponent;
 
 pub trait PublicModulus {}
@@ -866,7 +868,9 @@ mod tests {
 
     fn consume_modulus<M>(test_case: &mut test::TestCase, name: &str) -> OwnedModulus<M> {
         let value = test_case.consume_bytes(name);
-        OwnedModulus::from_be_bytes(untrusted::Input::from(&value)).unwrap()
+        OwnedModulus::from(
+            OwnedModulusValue::from_be_bytes(untrusted::Input::from(&value)).unwrap(),
+        )
     }
 
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {

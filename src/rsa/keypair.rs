@@ -338,7 +338,7 @@ impl KeyPair {
         // First, validate `2**half_n_bits < d`. Since 2**half_n_bits has a bit
         // length of half_n_bits + 1, this check gives us 2**half_n_bits <= d,
         // and knowing d is odd makes the inequality strict.
-        let d = bigint::OwnedModulus::<D>::from_be_bytes(d)
+        let d = bigint::OwnedModulusValue::<D>::from_be_bytes(d)
             .map_err(|_| KeyRejected::invalid_component())?;
         if !(n_bits.half_rounded_up() < d.len_bits()) {
             return Err(KeyRejected::inconsistent_components());
@@ -416,7 +416,7 @@ impl<M> PrivatePrime<M> {
         n_bits: BitLength,
         cpu_features: cpu::Features,
     ) -> Result<Self, KeyRejected> {
-        let p = bigint::OwnedModulus::from_be_bytes(p)?;
+        let p = bigint::OwnedModulusValue::from_be_bytes(p)?;
 
         // 5.c / 5.g:
         //
@@ -437,7 +437,7 @@ impl<M> PrivatePrime<M> {
         // TODO: Step 5.h: Verify GCD(q - 1, e) == 1.
 
         // Steps 5.e and 5.f are omitted as explained above.
-
+        let p = bigint::OwnedModulus::from(p);
         let oneRR = bigint::One::newRR(&p.modulus(cpu_features));
 
         Ok(Self { modulus: p, oneRR })
