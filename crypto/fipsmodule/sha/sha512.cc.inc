@@ -86,7 +86,7 @@ bcm_infallible BCM_sha384_init(SHA512_CTX *sha) {
   sha->Nh = 0;
   sha->num = 0;
   sha->md_len = BCM_SHA384_DIGEST_LENGTH;
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 
@@ -104,7 +104,7 @@ bcm_infallible BCM_sha512_init(SHA512_CTX *sha) {
   sha->Nh = 0;
   sha->num = 0;
   sha->md_len = BCM_SHA512_DIGEST_LENGTH;
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_sha512_256_init(SHA512_CTX *sha) {
@@ -121,7 +121,7 @@ bcm_infallible BCM_sha512_256_init(SHA512_CTX *sha) {
   sha->Nh = 0;
   sha->num = 0;
   sha->md_len = BCM_SHA512_256_DIGEST_LENGTH;
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 #if !defined(SHA512_ASM)
@@ -136,7 +136,7 @@ bcm_infallible BCM_sha384_final(uint8_t out[BCM_SHA384_DIGEST_LENGTH],
   // |sha->md_len| to |BCM_SHA384_DIGEST_LENGTH|.
   assert(sha->md_len == BCM_SHA384_DIGEST_LENGTH);
   sha512_final_impl(out, BCM_SHA384_DIGEST_LENGTH, sha);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_sha384_update(SHA512_CTX *sha, const void *data,
@@ -155,13 +155,13 @@ bcm_infallible BCM_sha512_256_final(uint8_t out[BCM_SHA512_256_DIGEST_LENGTH],
   // |sha->md_len| to |BCM_SHA512_256_DIGEST_LENGTH|.
   assert(sha->md_len == BCM_SHA512_256_DIGEST_LENGTH);
   sha512_final_impl(out, BCM_SHA512_256_DIGEST_LENGTH, sha);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_sha512_transform(SHA512_CTX *c,
                                     const uint8_t block[SHA512_CBLOCK]) {
   sha512_block_data_order(c->h, block, 1);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_sha512_update(SHA512_CTX *c, const void *in_data,
@@ -171,7 +171,7 @@ bcm_infallible BCM_sha512_update(SHA512_CTX *c, const void *in_data,
   const uint8_t *data = reinterpret_cast<const uint8_t *>(in_data);
 
   if (len == 0) {
-    return bcm_infallible_approved;
+    return bcm_infallible::approved;
   }
 
   l = (c->Nl + (((uint64_t)len) << 3)) & UINT64_C(0xffffffffffffffff);
@@ -189,7 +189,7 @@ bcm_infallible BCM_sha512_update(SHA512_CTX *c, const void *in_data,
     if (len < n) {
       OPENSSL_memcpy(p + c->num, data, len);
       c->num += (unsigned int)len;
-      return bcm_infallible_approved;
+      return bcm_infallible::approved;
     } else {
       OPENSSL_memcpy(p + c->num, data, n), c->num = 0;
       len -= n;
@@ -210,7 +210,7 @@ bcm_infallible BCM_sha512_update(SHA512_CTX *c, const void *in_data,
     c->num = (int)len;
   }
 
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_sha512_final(uint8_t out[BCM_SHA512_DIGEST_LENGTH],
@@ -221,7 +221,7 @@ bcm_infallible BCM_sha512_final(uint8_t out[BCM_SHA512_DIGEST_LENGTH],
   //
   // TODO(davidben): Add an assert and fix code to match them up.
   sha512_final_impl(out, sha->md_len, sha);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 static void sha512_final_impl(uint8_t *out, size_t md_len, SHA512_CTX *sha) {

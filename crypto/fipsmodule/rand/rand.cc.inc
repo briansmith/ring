@@ -169,12 +169,12 @@ static int rdrand(uint8_t *buf, size_t len) { return 0; }
 
 bcm_status BCM_rand_bytes_hwrng(uint8_t *buf, const size_t len) {
   if (!have_rdrand()) {
-    return bcm_status_failure;
+    return bcm_status::failure;
   }
   if (rdrand(buf, len)) {
-    return bcm_status_not_approved;
+    return bcm_status::not_approved;
   }
-  return bcm_status_failure;
+  return bcm_status::failure;
 }
 
 #if defined(BORINGSSL_FIPS)
@@ -213,7 +213,7 @@ bcm_infallible BCM_rand_load_entropy(const uint8_t *entropy, size_t entropy_len,
   buffer->bytes_valid += entropy_len;
   buffer->want_additional_input |= want_additional_input && (entropy_len != 0);
   CRYPTO_MUTEX_unlock_write(entropy_buffer_lock_bss_get());
-  return bcm_infallible_not_approved;
+  return bcm_infallible::not_approved;
 }
 
 // get_seed_entropy fills |out_entropy_len| bytes of |out_entropy| from the
@@ -330,7 +330,7 @@ static void rand_get_seed(struct rand_thread_state *state,
 bcm_infallible BCM_rand_bytes_with_additional_data(
     uint8_t *out, size_t out_len, const uint8_t user_additional_data[32]) {
   if (out_len == 0) {
-    return bcm_infallible_approved;
+    return bcm_infallible::approved;
   }
 
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
@@ -471,11 +471,11 @@ bcm_infallible BCM_rand_bytes_with_additional_data(
 #if defined(BORINGSSL_FIPS)
   CRYPTO_MUTEX_unlock_read(&state->clear_drbg_lock);
 #endif
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_rand_bytes(uint8_t *out, size_t out_len) {
   static const uint8_t kZeroAdditionalData[32] = {0};
   BCM_rand_bytes_with_additional_data(out, out_len, kZeroAdditionalData);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }

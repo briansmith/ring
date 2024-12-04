@@ -34,23 +34,21 @@ extern "C" {
 // FIPS service indicator. For the moment, the official service indicator
 // remains the counter, not these values. Once we fully transition to
 // these return values from bcm we will change that.
-enum bcm_infallible_t {
-  bcm_infallible_approved,
-  bcm_infallible_not_approved,
+enum class bcm_infallible_t {
+  approved,
+  not_approved,
 };
 
-enum bcm_status_t {
-  bcm_status_approved,
-  bcm_status_not_approved,
-
-  // Failure codes, which must all be negative.
-  bcm_status_failure,
+enum class bcm_status_t {
+  approved,
+  not_approved,
+  failure,
 };
 typedef enum bcm_status_t bcm_status;
 typedef enum bcm_infallible_t bcm_infallible;
 
 OPENSSL_INLINE int bcm_success(bcm_status status) {
-  return status == bcm_status_approved || status == bcm_status_not_approved;
+  return status == bcm_status::approved || status == bcm_status::not_approved;
 }
 
 

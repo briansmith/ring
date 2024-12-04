@@ -76,7 +76,7 @@ bcm_infallible BCM_sha224_init(SHA256_CTX *sha) {
   sha->h[6] = 0x64f98fa7UL;
   sha->h[7] = 0xbefa4fa4UL;
   sha->md_len = BCM_SHA224_DIGEST_LENGTH;
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_sha256_init(SHA256_CTX *sha) {
@@ -90,7 +90,7 @@ bcm_infallible BCM_sha256_init(SHA256_CTX *sha) {
   sha->h[6] = 0x1f83d9abUL;
   sha->h[7] = 0x5be0cd19UL;
   sha->md_len = BCM_SHA256_DIGEST_LENGTH;
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 #if !defined(SHA256_ASM)
@@ -101,14 +101,14 @@ static void sha256_block_data_order(uint32_t state[8], const uint8_t *in,
 bcm_infallible BCM_sha256_transform(SHA256_CTX *c,
                                     const uint8_t data[BCM_SHA256_CBLOCK]) {
   sha256_block_data_order(c->h, data, 1);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_sha256_update(SHA256_CTX *c, const void *data, size_t len) {
   crypto_md32_update(&sha256_block_data_order, c->h, c->data, BCM_SHA256_CBLOCK,
                      &c->num, &c->Nh, &c->Nl,
                      reinterpret_cast<const uint8_t *>(data), len);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_sha224_update(SHA256_CTX *ctx, const void *data,
@@ -140,7 +140,7 @@ bcm_infallible BCM_sha256_final(uint8_t out[BCM_SHA256_DIGEST_LENGTH],
   //
   // TODO(davidben): Add an assert and fix code to match them up.
   sha256_final_impl(out, c->md_len, c);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_sha224_final(uint8_t out[BCM_SHA224_DIGEST_LENGTH],
@@ -149,7 +149,7 @@ bcm_infallible BCM_sha224_final(uint8_t out[BCM_SHA224_DIGEST_LENGTH],
   // to |BCM_SHA224_DIGEST_LENGTH|.
   assert(ctx->md_len == BCM_SHA224_DIGEST_LENGTH);
   sha256_final_impl(out, BCM_SHA224_DIGEST_LENGTH, ctx);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 #if !defined(SHA256_ASM)
@@ -328,7 +328,7 @@ bcm_infallible BCM_sha256_transform_blocks(uint32_t state[8],
                                            const uint8_t *data,
                                            size_t num_blocks) {
   sha256_block_data_order(state, data, num_blocks);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 #undef Sigma0

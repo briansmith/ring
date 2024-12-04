@@ -72,7 +72,7 @@ bcm_infallible BCM_sha1_init(SHA_CTX *sha) {
   sha->h[2] = 0x98badcfeUL;
   sha->h[3] = 0x10325476UL;
   sha->h[4] = 0xc3d2e1f0UL;
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 #if !defined(SHA1_ASM)
@@ -82,14 +82,14 @@ static void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
 
 bcm_infallible BCM_sha1_transform(SHA_CTX *c, const uint8_t data[SHA_CBLOCK]) {
   sha1_block_data_order(c->h, data, 1);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_sha1_update(SHA_CTX *c, const void *data, size_t len) {
   crypto_md32_update(&sha1_block_data_order, c->h, c->data, SHA_CBLOCK, &c->num,
                      &c->Nh, &c->Nl, reinterpret_cast<const uint8_t *>(data),
                      len);
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 static void sha1_output_state(uint8_t out[SHA_DIGEST_LENGTH],
@@ -107,7 +107,7 @@ bcm_infallible BCM_sha1_final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
 
   sha1_output_state(out, c);
   FIPS_service_indicator_update_state();
-  return bcm_infallible_approved;
+  return bcm_infallible::approved;
 }
 
 bcm_infallible BCM_fips_186_2_prf(uint8_t *out, size_t out_len,
@@ -144,7 +144,7 @@ bcm_infallible BCM_fips_186_2_prf(uint8_t *out, size_t out_len,
     out += SHA_DIGEST_LENGTH;
     out_len -= SHA_DIGEST_LENGTH;
   }
-  return bcm_infallible_not_approved;
+  return bcm_infallible::not_approved;
 }
 
 #define Xupdate(a, ix, ia, ib, ic, id)    \
