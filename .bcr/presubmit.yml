@@ -4,7 +4,6 @@ build_targets: &build_targets
 
 matrix: &matrix
   non_macos_platform:
-    - centos7_java11_devtoolset10
     - debian11
     - ubuntu2204
     - windows
