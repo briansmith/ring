@@ -344,6 +344,99 @@ OPENSSL_EXPORT bcm_status BCM_mldsa65_marshal_private_key(
     CBB *out, const struct BCM_mldsa65_private_key *private_key);
 
 
+// BCM_MLDSA87_PRIVATE_KEY_BYTES is the number of bytes in an encoded ML-DSA-87
+// private key.
+#define BCM_MLDSA87_PRIVATE_KEY_BYTES 4896
+
+// BCM_MLDSA87_PUBLIC_KEY_BYTES is the number of bytes in an encoded ML-DSA-87
+// public key.
+#define BCM_MLDSA87_PUBLIC_KEY_BYTES 2592
+
+// BCM_MLDSA87_SIGNATURE_BYTES is the number of bytes in an encoded ML-DSA-87
+// signature.
+#define BCM_MLDSA87_SIGNATURE_BYTES 4627
+
+struct BCM_mldsa87_private_key {
+  union {
+    uint8_t bytes[32 + 32 + 64 + 256 * 4 * (7 + 8 + 8)];
+    uint32_t alignment;
+  } opaque;
+};
+
+struct BCM_mldsa87_public_key {
+  union {
+    uint8_t bytes[32 + 64 + 256 * 4 * 8];
+    uint32_t alignment;
+  } opaque;
+};
+
+OPENSSL_EXPORT bcm_status BCM_mldsa87_generate_key(
+    uint8_t out_encoded_public_key[BCM_MLDSA87_PUBLIC_KEY_BYTES],
+    uint8_t out_seed[BCM_MLDSA_SEED_BYTES],
+    struct BCM_mldsa87_private_key *out_private_key);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa87_private_key_from_seed(
+    struct BCM_mldsa87_private_key *out_private_key,
+    const uint8_t seed[BCM_MLDSA_SEED_BYTES]);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa87_public_from_private(
+    struct BCM_mldsa87_public_key *out_public_key,
+    const struct BCM_mldsa87_private_key *private_key);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa87_sign(
+    uint8_t out_encoded_signature[BCM_MLDSA87_SIGNATURE_BYTES],
+    const struct BCM_mldsa87_private_key *private_key, const uint8_t *msg,
+    size_t msg_len, const uint8_t *context, size_t context_len);
+
+OPENSSL_EXPORT bcm_status
+BCM_mldsa87_verify(const struct BCM_mldsa87_public_key *public_key,
+                   const uint8_t *signature, const uint8_t *msg, size_t msg_len,
+                   const uint8_t *context, size_t context_len);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa87_marshal_public_key(
+    CBB *out, const struct BCM_mldsa87_public_key *public_key);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa87_parse_public_key(
+    struct BCM_mldsa87_public_key *public_key, CBS *in);
+
+OPENSSL_EXPORT bcm_status BCM_mldsa87_parse_private_key(
+    struct BCM_mldsa87_private_key *private_key, CBS *in);
+
+// BCM_mldsa87_generate_key_external_entropy generates a public/private key pair
+// using the given seed, writes the encoded public key to
+// |out_encoded_public_key| and sets |out_private_key| to the private key.
+OPENSSL_EXPORT bcm_status BCM_mldsa87_generate_key_external_entropy(
+    uint8_t out_encoded_public_key[BCM_MLDSA87_PUBLIC_KEY_BYTES],
+    struct BCM_mldsa87_private_key *out_private_key,
+    const uint8_t entropy[BCM_MLDSA_SEED_BYTES]);
+
+// BCM_mldsa87_sign_internal signs |msg| using |private_key| and writes the
+// signature to |out_encoded_signature|. The |context_prefix| and |context| are
+// prefixed to the message, in that order, before signing. The |randomizer|
+// value can be set to zero bytes in order to make a deterministic signature, or
+// else filled with entropy for the usual |MLDSA_sign| behavior.
+OPENSSL_EXPORT bcm_status BCM_mldsa87_sign_internal(
+    uint8_t out_encoded_signature[BCM_MLDSA87_SIGNATURE_BYTES],
+    const struct BCM_mldsa87_private_key *private_key, const uint8_t *msg,
+    size_t msg_len, const uint8_t *context_prefix, size_t context_prefix_len,
+    const uint8_t *context, size_t context_len,
+    const uint8_t randomizer[BCM_MLDSA_SIGNATURE_RANDOMIZER_BYTES]);
+
+// BCM_mldsa87_verify_internal verifies that |encoded_signature| is a valid
+// signature of |msg| by |public_key|. The |context_prefix| and |context| are
+// prefixed to the message before verification, in that order.
+OPENSSL_EXPORT bcm_status BCM_mldsa87_verify_internal(
+    const struct BCM_mldsa87_public_key *public_key,
+    const uint8_t encoded_signature[BCM_MLDSA87_SIGNATURE_BYTES],
+    const uint8_t *msg, size_t msg_len, const uint8_t *context_prefix,
+    size_t context_prefix_len, const uint8_t *context, size_t context_len);
+
+// BCM_mldsa87_marshal_private_key serializes |private_key| to |out| in the
+// NIST format for ML-DSA-87 private keys.
+OPENSSL_EXPORT bcm_status BCM_mldsa87_marshal_private_key(
+    CBB *out, const struct BCM_mldsa87_private_key *private_key);
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
