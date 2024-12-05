@@ -140,7 +140,7 @@ static void scryptROMix(block_t *B, uint64_t r, uint64_t N, block_t *T,
 
 // SCRYPT_MAX_MEM is the default maximum memory that may be allocated by
 // |EVP_PBE_scrypt|.
-#define SCRYPT_MAX_MEM (1024 * 1024 * 32)
+#define SCRYPT_MAX_MEM (1024 * 1024 * 65)
 
 int EVP_PBE_scrypt(const char *password, size_t password_len,
                    const uint8_t *salt, size_t salt_len, uint64_t N, uint64_t r,
