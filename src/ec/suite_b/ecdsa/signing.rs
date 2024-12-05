@@ -337,7 +337,7 @@ impl rand::sealed::SecureRandom for NonceRandom<'_> {
     }
 }
 
-impl<'a> sealed::Sealed for NonceRandom<'a> {}
+impl sealed::Sealed for NonceRandom<'_> {}
 
 struct NonceRandomKey(digest::Digest);
 
