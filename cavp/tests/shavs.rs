@@ -15,7 +15,7 @@
 #![allow(missing_docs)]
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
+use wasm_bindgen_test::wasm_bindgen_test_configure;
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 wasm_bindgen_test_configure!(run_in_browser);
