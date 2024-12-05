@@ -63,7 +63,8 @@ pub(super) mod featureflags {
         prefixed_extern! {
             static mut OPENSSL_ia32cap_P: [u32; 4];
         }
-        // SAFETY: https://github.com/rust-lang/rust/issues/125833
+        // TODO(MSRV 1.82.0): Remove `unsafe`.
+        #[allow(unused_unsafe)]
         let p = unsafe { ptr::addr_of!(OPENSSL_ia32cap_P) };
         // SAFETY: Since only `get_or_init()` could have created
         // `_cpu_features`, and it only does so after the `INIT.call_once()`,
