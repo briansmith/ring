@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Brian Smith.
+// Copyright 2015-2024 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -34,6 +34,7 @@ pub use self::{
     sealing_key::SealingKey,
     unbound_key::UnboundKey,
 };
+use inout::InOut;
 
 /// A sequences of unique nonces.
 ///
@@ -175,6 +176,7 @@ mod chacha;
 mod chacha20_poly1305;
 pub mod chacha20_poly1305_openssh;
 mod gcm;
+mod inout;
 mod less_safe_key;
 mod nonce;
 mod opening_key;

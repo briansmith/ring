@@ -12,9 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, KeyBytes, BLOCK_LEN};
-use crate::{bits::BitLength, c, error, polyfill::slice};
-use core::{num::NonZeroUsize, ops::RangeFrom};
+use super::{Block, InOut, KeyBytes, BLOCK_LEN};
+use crate::{bits::BitLength, c, error};
+use core::num::NonZeroUsize;
 
 /// nonce || big-endian counter.
 #[repr(transparent)]
@@ -127,7 +127,7 @@ impl AES_KEY {
 ///   * The caller must ensure that fhe function `$name` satisfies the conditions
 ///     for the `f` parameter to `ctr32_encrypt_blocks`.
 macro_rules! ctr32_encrypt_blocks {
-    ($name:ident, $in_out:expr, $src:expr, $key:expr, $ctr:expr $(,)? ) => {{
+    ($name:ident, $in_out:expr, $key:expr, $ctr:expr $(,)? ) => {{
         use crate::{
             aead::aes::{ffi::AES_KEY, Counter, BLOCK_LEN},
             c,
@@ -141,7 +141,7 @@ macro_rules! ctr32_encrypt_blocks {
                 ivec: &Counter,
             );
         }
-        $key.ctr32_encrypt_blocks($name, $in_out, $src, $ctr)
+        $key.ctr32_encrypt_blocks($name, $in_out, $ctr)
     }};
 }
 
@@ -167,24 +167,22 @@ impl AES_KEY {
             key: &AES_KEY,
             ivec: &Counter,
         ),
-        in_out: &mut [u8],
-        src: RangeFrom<usize>,
+        mut in_out: InOut<'_>,
         ctr: &mut Counter,
     ) {
-        let (input, leftover) = slice::as_chunks(&in_out[src]);
-        debug_assert_eq!(leftover.len(), 0);
+        let (input, output, len) = in_out.input_output_len();
+        debug_assert_eq!(len % BLOCK_LEN, 0);
 
-        let blocks = match NonZeroUsize::new(input.len()) {
+        let blocks = match NonZeroUsize::new(len / BLOCK_LEN) {
             Some(blocks) => blocks,
             None => {
                 return;
             }
         };
 
+        let input: *const [u8; BLOCK_LEN] = input.cast();
+        let output: *mut [u8; BLOCK_LEN] = output.cast();
         let blocks_u32: u32 = blocks.get().try_into().unwrap();
-
-        let input = input.as_ptr();
-        let output: *mut [u8; BLOCK_LEN] = in_out.as_mut_ptr().cast();
 
         // SAFETY:
         //  * `input` points to `blocks` blocks.

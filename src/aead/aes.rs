@@ -12,14 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{nonce::Nonce, quic::Sample, NONCE_LEN};
+use super::{nonce::Nonce, quic::Sample, InOut, NONCE_LEN};
 use crate::{
     constant_time,
     cpu::{self, GetFeature as _},
     error,
 };
 use cfg_if::cfg_if;
-use core::ops::RangeFrom;
 
 pub(super) use ffi::Counter;
 
@@ -158,7 +157,7 @@ pub(super) trait EncryptBlock {
 }
 
 pub(super) trait EncryptCtr32 {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter);
+    fn ctr32_encrypt_within(&self, in_out: InOut<'_>, ctr: &mut Counter);
 }
 
 #[allow(dead_code)]
@@ -178,7 +177,7 @@ fn encrypt_iv_xor_block_using_encrypt_block(
 #[allow(dead_code)]
 fn encrypt_iv_xor_block_using_ctr32(key: &impl EncryptCtr32, iv: Iv, mut block: Block) -> Block {
     let mut ctr = Counter(iv.0); // This is OK because we're only encrypting one block.
-    key.ctr32_encrypt_within(&mut block, 0.., &mut ctr);
+    key.ctr32_encrypt_within(InOut::in_place(&mut block), &mut ctr);
     block
 }
 

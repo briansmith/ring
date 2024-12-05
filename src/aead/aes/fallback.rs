@@ -12,9 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, AES_KEY};
+use super::{Block, Counter, EncryptBlock, EncryptCtr32, InOut, Iv, KeyBytes, AES_KEY};
 use crate::error;
-use core::ops::RangeFrom;
 
 #[derive(Clone)]
 pub struct Key {
@@ -39,9 +38,7 @@ impl EncryptBlock for Key {
 }
 
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter) {
-        unsafe {
-            ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
-        }
+    fn ctr32_encrypt_within(&self, in_out: InOut<'_>, ctr: &mut Counter) {
+        unsafe { ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
     }
 }

@@ -14,8 +14,7 @@
 
 #![cfg(target_arch = "arm")]
 
-use super::{Counter, AES_KEY};
-use core::ops::RangeFrom;
+use super::{Counter, InOut, AES_KEY};
 
 /// SAFETY:
 ///   * The caller must ensure that if blocks > 0 then either `input` and
@@ -28,8 +27,7 @@ use core::ops::RangeFrom;
 ///   * Upon returning, `blocks` blocks will have been read from `input` and
 ///     written to `output`.
 pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
-    in_out: &mut [u8],
-    src: RangeFrom<usize>,
+    in_out: InOut<'_>,
     vpaes_key: &AES_KEY,
     ctr: &mut Counter,
 ) {
@@ -57,6 +55,6 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
     //  * `bsaes_ctr32_encrypt_blocks` satisfies the contract for
     //    `ctr32_encrypt_blocks`.
     unsafe {
-        ctr32_encrypt_blocks!(bsaes_ctr32_encrypt_blocks, in_out, src, &bsaes_key, ctr);
+        ctr32_encrypt_blocks!(bsaes_ctr32_encrypt_blocks, in_out, &bsaes_key, ctr);
     }
 }
