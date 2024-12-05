@@ -3540,6 +3540,27 @@ enum class QueuedKeyUpdate {
   kUpdateRequested,
 };
 
+// DTLS_PREV_READ_EPOCH_EXPIRE_SECONDS is how long to retain the previous read
+// epoch in DTLS 1.3. This value is set based on the following:
+//
+// - Section 4.2.1 of RFC 9147 recommends retaining past read epochs for the
+//   default TCP MSL. This accommodates packet reordering with KeyUpdate.
+//
+// - Section 5.8.1 of RFC 9147 requires being capable of ACKing the client's
+//   final flight for at least twice the default MSL. That requires retaining
+//   epoch 2 after the handshake.
+//
+// - Section 4 of RFC 9293 defines the MSL to be two minutes.
+#define DTLS_PREV_READ_EPOCH_EXPIRE_SECONDS (4 * 60)
+
+struct DTLSPrevReadEpoch {
+  static constexpr bool kAllowUniquePtr = true;
+  DTLSReadEpoch epoch;
+  // expire is the expiration time of the read epoch, expressed as a POSIX
+  // timestamp in seconds.
+  uint64_t expire;
+};
+
 struct DTLS1_STATE {
   static constexpr bool kAllowUniquePtr = true;
 
@@ -3579,12 +3600,15 @@ struct DTLS1_STATE {
   uint16_t handshake_write_seq = 0;
   uint16_t handshake_read_seq = 0;
 
-  // read_epoch is the current DTLS read epoch.
+  // read_epoch is the current read epoch.
   DTLSReadEpoch read_epoch;
 
-  // next_read_epoch is the next DTLS read epoch in DTLS 1.3. It will become
+  // next_read_epoch is the next read epoch in DTLS 1.3. It will become
   // current once a record is received from it.
   UniquePtr<DTLSReadEpoch> next_read_epoch;
+
+  // prev_read_epoch is the previous read epoch in DTLS 1.3.
+  UniquePtr<DTLSPrevReadEpoch> prev_read_epoch;
 
   // write_epoch is the current DTLS write epoch. Non-retransmit records will
   // generally use this epoch.

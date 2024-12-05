@@ -368,9 +368,8 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
     const size_t frag_off = msg_hdr.frag_off;
     const size_t frag_len = msg_hdr.frag_len;
     const size_t msg_len = msg_hdr.msg_len;
-    if (frag_off > msg_len || frag_len > msg_len - frag_off ||
-        msg_len > ssl_max_handshake_message_len(ssl)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
+    if (frag_off > msg_len || frag_len > msg_len - frag_off) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_RECORD);
       *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       return false;
     }
@@ -384,16 +383,21 @@ bool dtls1_process_handshake_fragments(SSL *ssl, uint8_t *out_alert,
       continue;
     }
 
-    assert(record_number.epoch() == ssl->d1->read_epoch.epoch);
-    if (ssl->d1->next_read_epoch != nullptr) {
-      // Any any time, we only expect new messages in one epoch. If
-      // |next_read_epoch| is set, we've started a new epoch but haven't
-      // received records in it yet. (Once a record is received in the new
-      // epoch, |next_read_epoch| becomes the current read epoch.) This new
-      // fragment is in the old epoch, but we expect handshake messages to be in
-      // the next epoch, so this is an error.
+    if (record_number.epoch() != ssl->d1->read_epoch.epoch ||
+        ssl->d1->next_read_epoch != nullptr) {
+      // New messages can only arrive in the latest epoch. This can fail if the
+      // record came from |prev_read_epoch|, or if it came from |read_epoch| but
+      // |next_read_epoch| exists. (It cannot come from |next_read_epoch|
+      // because |next_read_epoch| becomes |read_epoch| once it receives a
+      // record.)
       OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESS_HANDSHAKE_DATA);
       *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+      return false;
+    }
+
+    if (msg_len > ssl_max_handshake_message_len(ssl)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       return false;
     }
 
@@ -482,18 +486,23 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
       return ssl_open_record_discard;
 
     case SSL3_RT_CHANGE_CIPHER_SPEC:
+      if (record.size() != 1u || record[0] != SSL3_MT_CCS) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_CHANGE_CIPHER_SPEC);
+        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+        return ssl_open_record_error;
+      }
+
       // We do not support renegotiation, so encrypted ChangeCipherSpec records
       // are illegal.
-      if (ssl->d1->read_epoch.epoch != 0) {
+      if (record_number.epoch() != 0) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
         *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
         return ssl_open_record_error;
       }
 
-      if (record.size() != 1u || record[0] != SSL3_MT_CCS) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_CHANGE_CIPHER_SPEC);
-        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-        return ssl_open_record_error;
+      // Ignore ChangeCipherSpec from a previous epoch.
+      if (record_number.epoch() != ssl->d1->read_epoch.epoch) {
+        return ssl_open_record_discard;
       }
 
       // Flag the ChangeCipherSpec for later.
@@ -507,20 +516,17 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
       return dtls1_process_ack(ssl, out_alert, record_number, record);
 
     case SSL3_RT_HANDSHAKE:
-      // Break out to main processing.
-      break;
+      if (!dtls1_process_handshake_fragments(ssl, out_alert, record_number,
+                                             record)) {
+        return ssl_open_record_error;
+      }
+      return ssl_open_record_success;
 
     default:
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
       *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
       return ssl_open_record_error;
   }
-
-  if (!dtls1_process_handshake_fragments(ssl, out_alert, record_number,
-                                         record)) {
-    return ssl_open_record_error;
-  }
-  return ssl_open_record_success;
 }
 
 bool dtls1_get_message(const SSL *ssl, SSLMessage *out) {

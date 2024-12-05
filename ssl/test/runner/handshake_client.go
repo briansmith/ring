@@ -1477,9 +1477,6 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 	if c.config.Bugs.SendExtraFinished {
 		c.writeRecord(recordTypeHandshake, finished.marshal())
 	}
-	if err := c.flushHandshake(); err != nil {
-		return err
-	}
 
 	if data := c.config.Bugs.AppDataBeforeTLS13KeyChange; data != nil {
 		c.writeRecord(recordTypeApplicationData, data)
@@ -1488,14 +1485,18 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 	// Switch to application data keys.
 	c.useOutTrafficSecret(uint16(encryptionApplication), c.wireVersion, hs.suite, clientTrafficSecret)
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)
-	for _, ticket := range deferredTickets {
-		if err := c.processTLS13NewSessionTicket(ticket, hs.suite); err != nil {
+
+	if err := c.flushHandshake(); err != nil {
+		return err
+	}
+	if c.isDTLS && len(c.expectedACK) != 0 && !c.config.Bugs.SkipImplicitACKRead {
+		if err := c.readRecord(recordTypeACK); err != nil {
 			return err
 		}
 	}
 
-	if c.isDTLS && len(c.expectedACK) != 0 {
-		if err := c.readRecord(recordTypeACK); err != nil {
+	for _, ticket := range deferredTickets {
+		if err := c.processTLS13NewSessionTicket(ticket, hs.suite); err != nil {
 			return err
 		}
 	}

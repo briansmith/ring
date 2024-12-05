@@ -265,6 +265,13 @@ static bool parse_dtls13_record(SSL *ssl, CBS *in, ParsedDTLSRecord *out) {
     BSSL_CHECK(CBS_get_bytes(in, &out->body, CBS_len(in)));
   }
 
+  // Drop the previous read epoch if expired.
+  if (ssl->d1->prev_read_epoch != nullptr &&
+      ssl_ctx_get_current_time(ssl->ctx.get()).tv_sec >
+          ssl->d1->prev_read_epoch->expire) {
+    ssl->d1->prev_read_epoch = nullptr;
+  }
+
   // Look up the corresponding epoch. This header form only matches encrypted
   // DTLS 1.3 epochs.
   DTLSReadEpoch *read_epoch = nullptr;
@@ -273,6 +280,9 @@ static bool parse_dtls13_record(SSL *ssl, CBS *in, ParsedDTLSRecord *out) {
   } else if (ssl->d1->next_read_epoch != nullptr &&
              epoch == ssl->d1->next_read_epoch->epoch) {
     read_epoch = ssl->d1->next_read_epoch.get();
+  } else if (ssl->d1->prev_read_epoch != nullptr &&
+             epoch == ssl->d1->prev_read_epoch->epoch.epoch) {
+    read_epoch = &ssl->d1->prev_read_epoch->epoch;
   }
   if (read_epoch != nullptr && use_dtls13_record_header(ssl, epoch)) {
     out->read_epoch = read_epoch;
@@ -434,21 +444,31 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
 
   record.read_epoch->bitmap.Record(record.number.sequence());
 
-  // Once we receive a record from the next epoch, it becomes the current epoch.
+  // Once we receive a record from the next epoch in DTLS 1.3, it becomes the
+  // current epoch. Also save the previous epoch. This allows us to handle
+  // packet reordering on KeyUpdate, as well as ACK retransmissions of the
+  // Finished flight.
   if (record.read_epoch == ssl->d1->next_read_epoch.get()) {
+    assert(ssl_protocol_version(ssl) >= TLS1_3_VERSION);
+    auto prev = MakeUnique<DTLSPrevReadEpoch>();
+    if (prev == nullptr) {
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      return ssl_open_record_error;
+    }
+
+    // Release the epoch after a timeout.
+    prev->expire = ssl_ctx_get_current_time(ssl->ctx.get()).tv_sec;
+    if (prev->expire >= UINT64_MAX - DTLS_PREV_READ_EPOCH_EXPIRE_SECONDS) {
+      prev->expire = UINT64_MAX;  // Saturate on overflow.
+    } else {
+      prev->expire += DTLS_PREV_READ_EPOCH_EXPIRE_SECONDS;
+    }
+
+    prev->epoch = std::move(ssl->d1->read_epoch);
+    ssl->d1->prev_read_epoch = std::move(prev);
     ssl->d1->read_epoch = std::move(*ssl->d1->next_read_epoch);
     ssl->d1->next_read_epoch = nullptr;
   }
-
-  // We do not retain previous epochs, so it is guaranteed records come in at
-  // the "current" epoch. (But the current epoch may be one behind the
-  // handshake.)
-  //
-  // TODO(crbug.com/374890768): In DTLS 1.3, where rekeys may occur
-  // mid-connection, retaining previous epochs would make us more robust to
-  // packet reordering. If we do this, we'll need to take care to not
-  // accidentally accept data at the wrong epoch.
-  assert(record.number.epoch() == ssl->d1->read_epoch.epoch);
 
   // TODO(davidben): Limit the number of empty records as in TLS? This is only
   // useful if we also limit discarded packets.

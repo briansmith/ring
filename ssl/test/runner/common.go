@@ -1291,6 +1291,11 @@ type ProtocolBugs struct {
 	// post-handshake transaction) in DTLS. See DTLSController for details.
 	ACKFlightDTLS ACKFlightFunc
 
+	// SkipImplicitACKRead, if true, causes the DTLS 1.3 client to skip
+	// implicitly reading the ACK at the end of the handshake. This may be used
+	// when WriteFlightDTLS consumes the ACK itself.
+	SkipImplicitACKRead bool
+
 	// MockQUICTransport is the mockQUICTransport used when testing
 	// QUIC interfaces.
 	MockQUICTransport *mockQUICTransport
