@@ -40,8 +40,6 @@
 #include <openssl/evp.h>
 #define OPENSSL_UNSTABLE_EXPERIMENTAL_KYBER
 #include <openssl/experimental/kyber.h>
-#define OPENSSL_UNSTABLE_EXPERIMENTAL_SPX
-#include <openssl/experimental/spx.h>
 #include <openssl/hrss.h>
 #include <openssl/mem.h>
 #include <openssl/mldsa.h>
@@ -1345,52 +1343,6 @@ static bool SpeedMLKEM1024(const std::string &selected) {
   return true;
 }
 
-static bool SpeedSpx(const std::string &selected) {
-  if (!selected.empty() && selected.find("spx") == std::string::npos) {
-    return true;
-  }
-
-  TimeResults results;
-  if (!TimeFunctionParallel(&results, []() -> bool {
-        uint8_t public_key[32], private_key[64];
-        SPX_generate_key(public_key, private_key);
-        return true;
-      })) {
-    return false;
-  }
-
-  results.Print("SPHINCS+-SHA2-128s key generation");
-
-  uint8_t public_key[32], private_key[64];
-  SPX_generate_key(public_key, private_key);
-  static const uint8_t kMessage[] = {0, 1, 2, 3, 4, 5};
-
-  if (!TimeFunctionParallel(&results, [&private_key]() -> bool {
-        uint8_t out[SPX_SIGNATURE_BYTES];
-        SPX_sign(out, private_key, kMessage, sizeof(kMessage), true);
-        return true;
-      })) {
-    return false;
-  }
-
-  results.Print("SPHINCS+-SHA2-128s signing");
-
-  uint8_t signature[SPX_SIGNATURE_BYTES];
-  SPX_sign(signature, private_key, kMessage, sizeof(kMessage), true);
-
-  if (!TimeFunctionParallel(&results, [&public_key, &signature]() -> bool {
-        return SPX_verify(signature, public_key, kMessage, sizeof(kMessage)) ==
-               1;
-      })) {
-    fprintf(stderr, "SPHINCS+-SHA2-128s verify failed.\n");
-    return false;
-  }
-
-  results.Print("SPHINCS+-SHA2-128s verify");
-
-  return true;
-}
-
 static bool SpeedSLHDSA(const std::string &selected) {
   if (!selected.empty() && selected.find("SLH-DSA") == std::string::npos) {
     return true;
@@ -1933,7 +1885,6 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedMLDSA(selected) ||        //
       !SpeedMLKEM(selected) ||        //
       !SpeedMLKEM1024(selected) ||    //
-      !SpeedSpx(selected) ||          //
       !SpeedSLHDSA(selected) ||       //
       !SpeedHashToCurve(selected) ||  //
       !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1,

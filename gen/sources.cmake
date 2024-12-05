@@ -420,13 +420,6 @@ set(
   crypto/slhdsa/slhdsa.cc
   crypto/slhdsa/thash.cc
   crypto/slhdsa/wots.cc
-  crypto/spx/spx.cc
-  crypto/spx/spx_address.cc
-  crypto/spx/spx_fors.cc
-  crypto/spx/spx_merkle.cc
-  crypto/spx/spx_thash.cc
-  crypto/spx/spx_util.cc
-  crypto/spx/spx_wots.cc
   crypto/stack/stack.cc
   crypto/thread.cc
   crypto/thread_none.cc
@@ -552,7 +545,6 @@ set(
   include/openssl/evp_errors.h
   include/openssl/ex_data.h
   include/openssl/experimental/kyber.h
-  include/openssl/experimental/spx.h
   include/openssl/hkdf.h
   include/openssl/hmac.h
   include/openssl/hpke.h
@@ -663,13 +655,6 @@ set(
   crypto/slhdsa/params.h
   crypto/slhdsa/thash.h
   crypto/slhdsa/wots.h
-  crypto/spx/spx_address.h
-  crypto/spx/spx_fors.h
-  crypto/spx/spx_merkle.h
-  crypto/spx/spx_params.h
-  crypto/spx/spx_thash.h
-  crypto/spx/spx_util.h
-  crypto/spx/spx_wots.h
   crypto/trust_token/internal.h
   crypto/x509/ext_dat.h
   crypto/x509/internal.h
@@ -789,7 +774,6 @@ set(
   crypto/self_test.cc
   crypto/siphash/siphash_test.cc
   crypto/slhdsa/slhdsa_test.cc
-  crypto/spx/spx_test.cc
   crypto/stack/stack_test.cc
   crypto/test/gtest_main.cc
   crypto/thread_test.cc
@@ -895,8 +879,6 @@ set(
   crypto/slhdsa/slhdsa_prehash.txt
   crypto/slhdsa/slhdsa_siggen.txt
   crypto/slhdsa/slhdsa_sigver.txt
-  crypto/spx/spx_tests.txt
-  crypto/spx/spx_tests_deterministic.txt
   crypto/x509/test/basic_constraints_ca.pem
   crypto/x509/test/basic_constraints_ca_pathlen_0.pem
   crypto/x509/test/basic_constraints_ca_pathlen_1.pem
