@@ -19,9 +19,8 @@
     target_arch = "x86_64"
 ))]
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, AES_KEY};
+use super::{Block, Counter, EncryptBlock, EncryptCtr32, InOut, Iv, KeyBytes, AES_KEY};
 use crate::{cpu, error};
-use core::ops::RangeFrom;
 
 #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
 type RequiredCpuFeatures = cpu::arm::Neon;
@@ -57,17 +56,18 @@ impl EncryptBlock for Key {
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter) {
-        unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr) }
+    fn ctr32_encrypt_within(&self, in_out: InOut<'_>, ctr: &mut Counter) {
+        unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
     }
 }
 
 #[cfg(target_arch = "arm")]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(&self, in_out: InOut<'_>, ctr: &mut Counter) {
         use super::{bs, BLOCK_LEN};
 
         let in_out = {
+            let (in_out, src) = in_out.into_slice_src_mut();
             let blocks = in_out[src.clone()].len() / BLOCK_LEN;
 
             // bsaes operates in batches of 8 blocks.
@@ -84,20 +84,18 @@ impl EncryptCtr32 for Key {
                 0
             };
             let bsaes_in_out_len = bsaes_blocks * BLOCK_LEN;
+            let bs_in_out =
+                InOut::overlapping(&mut in_out[..(src.start + bsaes_in_out_len)], src.clone())
+                    .unwrap();
 
             // SAFETY:
             //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
             //    as required by `bsaes_ctr32_encrypt_blocks_with_vpaes_key`.
             unsafe {
-                bs::ctr32_encrypt_blocks_with_vpaes_key(
-                    &mut in_out[..(src.start + bsaes_in_out_len)],
-                    src.clone(),
-                    &self.inner,
-                    ctr,
-                );
+                bs::ctr32_encrypt_blocks_with_vpaes_key(bs_in_out, &self.inner, ctr);
             }
 
-            &mut in_out[bsaes_in_out_len..]
+            InOut::overlapping(&mut in_out[bsaes_in_out_len..], src).unwrap()
         };
 
         // SAFETY:
@@ -105,7 +103,7 @@ impl EncryptCtr32 for Key {
         //    as required by `vpaes_ctr32_encrypt_blocks`.
         //  * `vpaes_ctr32_encrypt_blocks` satisfies the contract for
         //    `ctr32_encrypt_blocks`.
-        unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr) }
+        unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
     }
 }
 
@@ -122,8 +120,8 @@ impl EncryptBlock for Key {
 
 #[cfg(target_arch = "x86")]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: &mut [u8], src: RangeFrom<usize>, ctr: &mut Counter) {
-        super::super::shift::shift_full_blocks(in_out, src, |input| {
+    fn ctr32_encrypt_within(&self, in_out: InOut<'_>, ctr: &mut Counter) {
+        super::super::shift::shift_full_blocks(in_out, |input| {
             self.encrypt_iv_xor_block(ctr.increment(), *input)
         });
     }

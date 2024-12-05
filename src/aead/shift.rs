@@ -16,10 +16,10 @@ use crate::polyfill::sliceutil::overwrite_at_start;
 
 #[cfg(target_arch = "x86")]
 pub fn shift_full_blocks<const BLOCK_LEN: usize>(
-    in_out: &mut [u8],
-    src: core::ops::RangeFrom<usize>,
+    in_out: super::InOut<'_>,
     mut transform: impl FnMut(&[u8; BLOCK_LEN]) -> [u8; BLOCK_LEN],
 ) {
+    let (in_out, src) = in_out.into_slice_src_mut();
     let in_out_len = in_out[src.clone()].len();
 
     for i in (0..in_out_len).step_by(BLOCK_LEN) {

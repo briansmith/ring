@@ -14,7 +14,7 @@
 
 use super::{
     aes::{self, Counter, BLOCK_LEN, ZERO_BLOCK},
-    gcm, shift, Aad, Nonce, Tag,
+    gcm, shift, Aad, InOut, Nonce, Tag,
 };
 use crate::{
     cpu, error,
@@ -160,7 +160,7 @@ pub(super) fn seal(
                 }
             };
             let (whole, remainder) = slice::as_chunks_mut(ramaining);
-            aes_key.ctr32_encrypt_within(slice::flatten_mut(whole), 0.., &mut ctr);
+            aes_key.ctr32_encrypt_within(InOut::in_place(slice::flatten_mut(whole)), &mut ctr);
             auth.update_blocks(whole);
             seal_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
@@ -240,7 +240,7 @@ fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
     let (whole, remainder) = slice::as_chunks_mut(in_out);
 
     for chunk in whole.chunks_mut(CHUNK_BLOCKS) {
-        aes_key.ctr32_encrypt_within(slice::flatten_mut(chunk), 0.., &mut ctr);
+        aes_key.ctr32_encrypt_within(InOut::in_place(slice::flatten_mut(chunk)), &mut ctr);
         auth.update_blocks(chunk);
     }
 
@@ -331,11 +331,8 @@ pub(super) fn open(
             let whole_len = slice::flatten(whole).len();
 
             // Decrypt any remaining whole blocks.
-            aes_key.ctr32_encrypt_within(
-                &mut in_out[..(src.start + whole_len)],
-                src.clone(),
-                &mut ctr,
-            );
+            let whole = InOut::overlapping(&mut in_out[..(src.start + whole_len)], src.clone())?;
+            aes_key.ctr32_encrypt_within(whole, &mut ctr);
 
             let in_out = match in_out.get_mut(whole_len..) {
                 Some(partial) => partial,
@@ -450,11 +447,11 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
             }
             auth.update_blocks(ciphertext);
 
-            aes_key.ctr32_encrypt_within(
+            let chunk = InOut::overlapping(
                 &mut in_out[output..][..(chunk_len + in_prefix_len)],
                 in_prefix_len..,
-                &mut ctr,
-            );
+            )?;
+            aes_key.ctr32_encrypt_within(chunk, &mut ctr);
             output += chunk_len;
             input += chunk_len;
         }
