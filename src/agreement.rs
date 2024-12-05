@@ -142,8 +142,15 @@ impl EphemeralPrivateKey {
         self.algorithm
     }
 
+    /// Do not use.
+    #[deprecated]
     #[cfg(test)]
     pub fn bytes(&self) -> &[u8] {
+        self.bytes_for_test()
+    }
+
+    #[cfg(test)]
+    pub(super) fn bytes_for_test(&self) -> &[u8] {
         self.private_key.bytes_less_safe()
     }
 }
