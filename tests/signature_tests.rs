@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use ring::{signature, test};
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
