@@ -19,7 +19,7 @@ use super::{
 use crate::{
     bits::BitLength,
     error,
-    limb::{self, Limb, LimbMask},
+    limb::{self, Limb},
 };
 
 /// `OwnedModulus`, without the overhead of Montgomery multiplication support.
@@ -47,10 +47,10 @@ impl<M> OwnedModulusValue<M> {
         if n.len() < MODULUS_MIN_LIMBS {
             return Err(error::KeyRejected::unexpected_error());
         }
-        if limb::limbs_are_even_constant_time(&n) != LimbMask::False {
+        if limb::limbs_are_even_constant_time(&n).leak() {
             return Err(error::KeyRejected::invalid_component());
         }
-        if limb::limbs_less_than_limb_constant_time(&n, 3) != LimbMask::False {
+        if limb::limbs_less_than_limb_constant_time(&n, 3).leak() {
             return Err(error::KeyRejected::unexpected_error());
         }
 
@@ -62,7 +62,7 @@ impl<M> OwnedModulusValue<M> {
     pub fn verify_less_than<L>(&self, l: &Modulus<L>) -> Result<(), error::Unspecified> {
         if self.len_bits() > l.len_bits()
             || (self.limbs.len() == l.limbs().len()
-                && limb::limbs_less_than_limbs_consttime(&self.limbs, l.limbs()) != LimbMask::True)
+                && !limb::limbs_less_than_limbs_consttime(&self.limbs, l.limbs()).leak())
         {
             return Err(error::Unspecified);
         }

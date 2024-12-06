@@ -46,7 +46,7 @@ use crate::{
     arithmetic::montgomery::*,
     bits::BitLength,
     c, error,
-    limb::{self, Limb, LimbMask, LIMB_BITS},
+    limb::{self, Limb, LIMB_BITS},
 };
 use alloc::vec;
 use core::{marker::PhantomData, num::NonZeroU64};
@@ -85,7 +85,7 @@ impl<M, E> Clone for Elem<M, E> {
 impl<M, E> Elem<M, E> {
     #[inline]
     pub fn is_zero(&self) -> bool {
-        limb::limbs_are_zero_constant_time(&self.limbs) == LimbMask::True
+        limb::limbs_are_zero_constant_time(&self.limbs).leak()
     }
 }
 
@@ -132,7 +132,7 @@ impl<M> Elem<M, Unencoded> {
     }
 
     fn is_one(&self) -> bool {
-        limb::limbs_equal_limb_constant_time(&self.limbs, 1) == LimbMask::True
+        limb::limbs_equal_limb_constant_time(&self.limbs, 1).leak()
     }
 }
 
@@ -696,7 +696,7 @@ pub fn elem_verify_equal_consttime<M, E>(
     a: &Elem<M, E>,
     b: &Elem<M, E>,
 ) -> Result<(), error::Unspecified> {
-    if limb::limbs_equal_limbs_consttime(&a.limbs, &b.limbs) == LimbMask::True {
+    if limb::limbs_equal_limbs_consttime(&a.limbs, &b.limbs).leak() {
         Ok(())
     } else {
         Err(error::Unspecified)

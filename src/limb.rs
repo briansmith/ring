@@ -32,10 +32,17 @@ pub const LIMB_BITS: usize = usize_from_u32(Limb::BITS);
 
 #[cfg_attr(target_pointer_width = "64", repr(u64))]
 #[cfg_attr(target_pointer_width = "32", repr(u32))]
-#[derive(Debug, PartialEq)]
 pub enum LimbMask {
+    #[cfg_attr(not(test), allow(dead_code))] // Only constructed by non-Rust & test code.
     True = Limb::MAX,
+    #[cfg_attr(not(test), allow(dead_code))] // Only constructed by non-Rust & test code.
     False = 0,
+}
+
+impl LimbMask {
+    pub fn leak(self) -> bool {
+        !matches!(self, LimbMask::False)
+    }
 }
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
@@ -58,7 +65,7 @@ pub fn limbs_less_than_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
 
 #[inline]
 pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> bool {
-    limbs_less_than_limbs_consttime(a, b) == LimbMask::True
+    limbs_less_than_limbs_consttime(a, b).leak()
 }
 
 #[inline]
@@ -142,11 +149,11 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
     result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
     parse_big_endian_and_pad_consttime(input, result)?;
-    if limbs_less_than_limbs_consttime(result, max_exclusive) != LimbMask::True {
+    if !limbs_less_than_limbs_consttime(result, max_exclusive).leak() {
         return Err(error::Unspecified);
     }
     if allow_zero != AllowZero::Yes {
-        if limbs_are_zero_constant_time(result) != LimbMask::False {
+        if limbs_are_zero_constant_time(result).leak() {
             return Err(error::Unspecified);
         }
     }
@@ -362,6 +369,10 @@ mod tests {
 
     const MAX: Limb = Limb::MAX;
 
+    fn leak_in_test(a: LimbMask) -> bool {
+        a.leak()
+    }
+
     #[test]
     fn test_limbs_are_even() {
         static EVENS: &[&[Limb]] = &[
@@ -376,7 +387,7 @@ mod tests {
             &[0, 0, 0, 0, MAX],
         ];
         for even in EVENS {
-            assert_eq!(limbs_are_even_constant_time(even), LimbMask::True);
+            assert!(leak_in_test(limbs_are_even_constant_time(even)));
         }
         static ODDS: &[&[Limb]] = &[
             &[1],
@@ -389,7 +400,7 @@ mod tests {
             &[1, 0, 0, 0, MAX],
         ];
         for odd in ODDS {
-            assert_eq!(limbs_are_even_constant_time(odd), LimbMask::False);
+            assert!(!leak_in_test(limbs_are_even_constant_time(odd)));
         }
     }
 
@@ -418,20 +429,20 @@ mod tests {
     #[test]
     fn test_limbs_are_zero() {
         for zero in ZEROES {
-            assert_eq!(limbs_are_zero_constant_time(zero), LimbMask::True);
+            assert!(leak_in_test(limbs_are_zero_constant_time(zero)));
         }
         for nonzero in NONZEROES {
-            assert_eq!(limbs_are_zero_constant_time(nonzero), LimbMask::False);
+            assert!(!leak_in_test(limbs_are_zero_constant_time(nonzero)));
         }
     }
 
     #[test]
     fn test_limbs_equal_limb() {
         for zero in ZEROES {
-            assert_eq!(limbs_equal_limb_constant_time(zero, 0), LimbMask::True);
+            assert!(leak_in_test(limbs_equal_limb_constant_time(zero, 0)));
         }
         for nonzero in NONZEROES {
-            assert_eq!(limbs_equal_limb_constant_time(nonzero, 0), LimbMask::False);
+            assert!(!leak_in_test(limbs_equal_limb_constant_time(nonzero, 0)));
         }
         static EQUAL: &[(&[Limb], Limb)] = &[
             (&[1], 1),
@@ -442,7 +453,7 @@ mod tests {
             (&[0b100, 0], 0b100),
         ];
         for &(a, b) in EQUAL {
-            assert_eq!(limbs_equal_limb_constant_time(a, b), LimbMask::True);
+            assert!(leak_in_test(limbs_equal_limb_constant_time(a, b)));
         }
         static UNEQUAL: &[(&[Limb], Limb)] = &[
             (&[0], 1),
@@ -456,7 +467,7 @@ mod tests {
             (&[MAX, 1], MAX),
         ];
         for &(a, b) in UNEQUAL {
-            assert_eq!(limbs_equal_limb_constant_time(a, b), LimbMask::False);
+            assert!(!leak_in_test(limbs_equal_limb_constant_time(a, b)));
         }
     }
 
@@ -473,7 +484,7 @@ mod tests {
             (&[MAX - 1, 0], MAX),
         ];
         for &(a, b) in LESSER {
-            assert_eq!(limbs_less_than_limb_constant_time(a, b), LimbMask::True);
+            assert!(leak_in_test(limbs_less_than_limb_constant_time(a, b)));
         }
         static EQUAL: &[(&[Limb], Limb)] = &[
             (&[0], 0),
@@ -492,7 +503,7 @@ mod tests {
             (&[MAX], MAX - 1),
         ];
         for &(a, b) in EQUAL.iter().chain(GREATER.iter()) {
-            assert_eq!(limbs_less_than_limb_constant_time(a, b), LimbMask::False);
+            assert!(!leak_in_test(limbs_less_than_limb_constant_time(a, b)));
         }
     }
 
