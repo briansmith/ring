@@ -360,7 +360,7 @@ prefixed_extern! {
 mod tests {
     use super::*;
 
-    const MAX: Limb = LimbMask::True as Limb;
+    const MAX: Limb = Limb::MAX;
 
     #[test]
     fn test_limbs_are_even() {
@@ -590,7 +590,7 @@ mod tests {
 
     #[test]
     fn test_limbs_minimal_bits() {
-        const ALL_ONES: Limb = LimbMask::True as Limb;
+        const ALL_ONES: Limb = Limb::MAX;
         static CASES: &[(&[Limb], usize)] = &[
             (&[], 0),
             (&[0], 0),
