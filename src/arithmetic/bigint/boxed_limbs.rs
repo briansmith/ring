@@ -15,7 +15,7 @@
 use super::Modulus;
 use crate::{
     error,
-    limb::{self, Limb, LimbMask, LIMB_BYTES},
+    limb::{self, Limb, LIMB_BYTES},
 };
 use alloc::{boxed::Box, vec};
 use core::{
@@ -88,7 +88,7 @@ impl<M> BoxedLimbs<M> {
     ) -> Result<Self, error::Unspecified> {
         let mut r = Self::zero(m.limbs().len());
         limb::parse_big_endian_and_pad_consttime(input, &mut r)?;
-        if limb::limbs_less_than_limbs_consttime(&r, m.limbs()) != LimbMask::True {
+        if !limb::limbs_less_than_limbs_consttime(&r, m.limbs()).leak() {
             return Err(error::Unspecified);
         }
         Ok(r)

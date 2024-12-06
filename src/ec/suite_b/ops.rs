@@ -128,7 +128,7 @@ impl CommonOps {
 
     #[inline]
     pub fn is_zero<M, E: Encoding>(&self, a: &elem::Elem<M, E>) -> bool {
-        limbs_are_zero_constant_time(&a.limbs[..self.num_limbs]) == LimbMask::True
+        limbs_are_zero_constant_time(&a.limbs[..self.num_limbs]).leak()
     }
 
     pub fn elem_verify_is_not_zero(&self, a: &Elem<R>) -> Result<(), error::Unspecified> {

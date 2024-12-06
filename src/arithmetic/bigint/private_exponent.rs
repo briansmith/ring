@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{limb, BoxedLimbs, Limb, LimbMask, Modulus};
+use super::{limb, BoxedLimbs, Limb, Modulus};
 use crate::error;
 use alloc::boxed::Box;
 
@@ -36,7 +36,7 @@ impl PrivateExponent {
         // `p - 1` and so we know `dP < p - 1`.
         //
         // Further we know `dP != 0` because `dP` is not even.
-        if limb::limbs_are_even_constant_time(&dP) != LimbMask::False {
+        if limb::limbs_are_even_constant_time(&dP).leak() {
             return Err(error::Unspecified);
         }
 
