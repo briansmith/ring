@@ -16,11 +16,15 @@
 
 use crate::{c, error};
 
+mod boolmask;
+
 #[cfg(target_pointer_width = "64")]
 pub(crate) type Word = u64;
 
 #[cfg(target_pointer_width = "32")]
 pub(crate) type Word = u32;
+
+pub(crate) use self::boolmask::BoolMask;
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
 /// The comparison of `a` and `b` is done in constant time with respect to the
@@ -60,7 +64,8 @@ pub(crate) fn xor_assign_at_start<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::{bssl, constant_time::xor_assign_at_start, error, limb::LimbMask, rand};
+    use super::*;
+    use crate::{bssl, rand};
 
     #[test]
     fn test_constant_time() -> Result<(), error::Unspecified> {
@@ -84,13 +89,13 @@ mod tests {
             let ref_out = if b { input } else { out };
 
             prefixed_extern! {
-                fn bssl_constant_time_test_conditional_memcpy(dst: &mut [u8; 256], src: &[u8; 256], b: LimbMask);
+                fn bssl_constant_time_test_conditional_memcpy(dst: &mut [u8; 256], src: &[u8; 256], b: BoolMask);
             }
             unsafe {
                 bssl_constant_time_test_conditional_memcpy(
                     &mut out,
                     &input,
-                    if b { LimbMask::True } else { LimbMask::False },
+                    if b { BoolMask::TRUE } else { BoolMask::FALSE },
                 )
             }
             assert_eq!(ref_in, input);
@@ -117,13 +122,13 @@ mod tests {
             };
 
             prefixed_extern! {
-                fn bssl_constant_time_test_conditional_memxor(dst: &mut [u8; 256], src: &[u8; 256], b: LimbMask);
+                fn bssl_constant_time_test_conditional_memxor(dst: &mut [u8; 256], src: &[u8; 256], b: BoolMask);
             }
             unsafe {
                 bssl_constant_time_test_conditional_memxor(
                     &mut out,
                     &input,
-                    if b { LimbMask::True } else { LimbMask::False },
+                    if b { BoolMask::TRUE } else { BoolMask::FALSE },
                 );
             }
 

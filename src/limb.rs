@@ -18,10 +18,10 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use crate::{c, error, polyfill::ArrayFlatMap};
+use crate::{c, constant_time, error, polyfill::ArrayFlatMap};
 
 #[cfg(any(test, feature = "alloc"))]
-use crate::{bits, constant_time, polyfill::usize_from_u32};
+use crate::{bits, polyfill::usize_from_u32};
 
 #[cfg(feature = "alloc")]
 use core::num::Wrapping;
@@ -29,23 +29,9 @@ use core::num::Wrapping;
 // XXX: Not correct for x32 ABIs.
 pub type Limb = constant_time::Word;
 pub const LIMB_BITS: usize = usize_from_u32(Limb::BITS);
-
-#[cfg_attr(target_pointer_width = "64", repr(u64))]
-#[cfg_attr(target_pointer_width = "32", repr(u32))]
-pub enum LimbMask {
-    #[cfg_attr(not(test), allow(dead_code))] // Only constructed by non-Rust & test code.
-    True = Limb::MAX,
-    #[cfg_attr(not(test), allow(dead_code))] // Only constructed by non-Rust & test code.
-    False = 0,
-}
-
-impl LimbMask {
-    pub fn leak(self) -> bool {
-        !matches!(self, LimbMask::False)
-    }
-}
-
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
+
+pub type LimbMask = constant_time::BoolMask;
 
 #[inline]
 pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
