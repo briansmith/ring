@@ -17,9 +17,10 @@
 use crate::{c, error};
 
 mod boolmask;
+mod leaky;
 mod word;
 
-pub(crate) use self::{boolmask::BoolMask, word::Word};
+pub(crate) use self::{boolmask::BoolMask, leaky::LeakyWord, word::Word};
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
 /// The comparison of `a` and `b` is done in constant time with respect to the
