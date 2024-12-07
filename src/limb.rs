@@ -182,7 +182,7 @@ pub fn parse_big_endian_and_pad_consttime(
     // TODO: Improve this.
     input.read_all(error::Unspecified, |input| {
         for i in 0..num_encoded_limbs {
-            let mut limb: Limb = 0;
+            let mut limb = 0;
             for _ in 0..bytes_in_current_limb {
                 let b: Limb = input.read_byte()?.into();
                 limb = (limb << 8) | b;
@@ -356,8 +356,9 @@ prefixed_extern! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec::Vec;
 
-    const MAX: Limb = Limb::MAX;
+    const MAX: LeakyLimb = LeakyLimb::MAX;
 
     fn leak_in_test(a: LimbMask) -> bool {
         a.leak()
@@ -365,7 +366,7 @@ mod tests {
 
     #[test]
     fn test_limbs_are_even() {
-        static EVENS: &[&[Limb]] = &[
+        static EVENS: &[&[LeakyLimb]] = &[
             &[],
             &[0],
             &[2],
@@ -377,9 +378,10 @@ mod tests {
             &[0, 0, 0, 0, MAX],
         ];
         for even in EVENS {
+            let even = &Vec::from_iter(even.iter().copied().map(Limb::from));
             assert!(leak_in_test(limbs_are_even_constant_time(even)));
         }
-        static ODDS: &[&[Limb]] = &[
+        static ODDS: &[&[LeakyLimb]] = &[
             &[1],
             &[3],
             &[1, 0],
@@ -390,11 +392,14 @@ mod tests {
             &[1, 0, 0, 0, MAX],
         ];
         for odd in ODDS {
+            let odd = &Vec::from_iter(odd.iter().copied().map(Limb::from));
             assert!(!leak_in_test(limbs_are_even_constant_time(odd)));
         }
     }
 
-    static ZEROES: &[&[Limb]] = &[
+    const ZERO: LeakyLimb = 0;
+
+    static ZEROES: &[&[LeakyLimb]] = &[
         &[],
         &[0],
         &[0, 0],
@@ -406,7 +411,7 @@ mod tests {
         &[0, 0, 0, 0, 0, 0, 0, 0, 0],
     ];
 
-    static NONZEROES: &[&[Limb]] = &[
+    static NONZEROES: &[&[LeakyLimb]] = &[
         &[1],
         &[0, 1],
         &[1, 1],
@@ -419,9 +424,11 @@ mod tests {
     #[test]
     fn test_limbs_are_zero() {
         for zero in ZEROES {
+            let zero = &Vec::from_iter(zero.iter().copied().map(Limb::from));
             assert!(leak_in_test(limbs_are_zero_constant_time(zero)));
         }
         for nonzero in NONZEROES {
+            let nonzero = &Vec::from_iter(nonzero.iter().copied().map(Limb::from));
             assert!(!leak_in_test(limbs_are_zero_constant_time(nonzero)));
         }
     }
@@ -429,12 +436,20 @@ mod tests {
     #[test]
     fn test_limbs_equal_limb() {
         for zero in ZEROES {
-            assert!(leak_in_test(limbs_equal_limb_constant_time(zero, 0)));
+            let zero = &Vec::from_iter(zero.iter().copied().map(Limb::from));
+            assert!(leak_in_test(limbs_equal_limb_constant_time(
+                zero,
+                Limb::from(ZERO)
+            )));
         }
         for nonzero in NONZEROES {
-            assert!(!leak_in_test(limbs_equal_limb_constant_time(nonzero, 0)));
+            let nonzero = &Vec::from_iter(nonzero.iter().copied().map(Limb::from));
+            assert!(!leak_in_test(limbs_equal_limb_constant_time(
+                nonzero,
+                Limb::from(ZERO)
+            )));
         }
-        static EQUAL: &[(&[Limb], Limb)] = &[
+        static EQUAL: &[(&[LeakyLimb], LeakyLimb)] = &[
             (&[1], 1),
             (&[MAX], MAX),
             (&[1, 0], 1),
@@ -443,9 +458,13 @@ mod tests {
             (&[0b100, 0], 0b100),
         ];
         for &(a, b) in EQUAL {
-            assert!(leak_in_test(limbs_equal_limb_constant_time(a, b)));
+            let a = &Vec::from_iter(a.iter().copied().map(Limb::from));
+            assert!(leak_in_test(limbs_equal_limb_constant_time(
+                a,
+                Limb::from(b)
+            )));
         }
-        static UNEQUAL: &[(&[Limb], Limb)] = &[
+        static UNEQUAL: &[(&[LeakyLimb], LeakyLimb)] = &[
             (&[0], 1),
             (&[2], 1),
             (&[3], 1),
@@ -457,6 +476,7 @@ mod tests {
             (&[MAX, 1], MAX),
         ];
         for &(a, b) in UNEQUAL {
+            let a = &Vec::from_iter(a.iter().copied().map(Limb::from));
             assert!(!leak_in_test(limbs_equal_limb_constant_time(a, b)));
         }
     }
@@ -464,7 +484,7 @@ mod tests {
     #[test]
     #[cfg(feature = "alloc")]
     fn test_limbs_less_than_limb_constant_time() {
-        static LESSER: &[(&[Limb], Limb)] = &[
+        static LESSER: &[(&[LeakyLimb], LeakyLimb)] = &[
             (&[0], 1),
             (&[0, 0], 1),
             (&[1, 0], 2),
@@ -474,16 +494,18 @@ mod tests {
             (&[MAX - 1, 0], MAX),
         ];
         for &(a, b) in LESSER {
+            let a = &Vec::from_iter(a.iter().copied().map(Limb::from));
+            let b = Limb::from(b);
             assert!(leak_in_test(limbs_less_than_limb_constant_time(a, b)));
         }
-        static EQUAL: &[(&[Limb], Limb)] = &[
+        static EQUAL: &[(&[LeakyLimb], LeakyLimb)] = &[
             (&[0], 0),
             (&[0, 0, 0, 0], 0),
             (&[1], 1),
             (&[1, 0, 0, 0, 0, 0, 0], 1),
             (&[MAX], MAX),
         ];
-        static GREATER: &[(&[Limb], Limb)] = &[
+        static GREATER: &[(&[LeakyLimb], LeakyLimb)] = &[
             (&[1], 0),
             (&[2, 0], 1),
             (&[3, 0, 0, 0], 1),
@@ -493,6 +515,8 @@ mod tests {
             (&[MAX], MAX - 1),
         ];
         for &(a, b) in EQUAL.iter().chain(GREATER.iter()) {
+            let a = &Vec::from_iter(a.iter().copied().map(Limb::from));
+            let b = Limb::from(b);
             assert!(!leak_in_test(limbs_less_than_limb_constant_time(a, b)));
         }
     }
@@ -504,7 +528,7 @@ mod tests {
         {
             // Empty input.
             let inp = untrusted::Input::from(&[]);
-            let mut result = [0; LIMBS];
+            let mut result = [0; LIMBS].map(From::<LeakyLimb>::from);
             assert!(parse_big_endian_and_pad_consttime(inp, &mut result).is_err());
         }
 
@@ -512,7 +536,7 @@ mod tests {
         {
             let inp = [1, 2, 3, 4, 5, 6, 7, 8, 9];
             let inp = untrusted::Input::from(&inp);
-            let mut result = [0; 8 / LIMB_BYTES];
+            let mut result = [0; 8 / LIMB_BYTES].map(From::<LeakyLimb>::from);
             assert!(parse_big_endian_and_pad_consttime(inp, &mut result[..]).is_err());
         }
 
@@ -520,7 +544,7 @@ mod tests {
         {
             let inp = [0xfe];
             let inp = untrusted::Input::from(&inp);
-            let mut result = [0; LIMBS];
+            let mut result = [0; LIMBS].map(From::<LeakyLimb>::from);
             assert_eq!(
                 Ok(()),
                 parse_big_endian_and_pad_consttime(inp, &mut result[..])
@@ -532,7 +556,7 @@ mod tests {
         {
             let inp = [0xbe, 0xef, 0xf0, 0x0d];
             let inp = untrusted::Input::from(&inp);
-            let mut result = [0; LIMBS];
+            let mut result = [0; LIMBS].map(From::<LeakyLimb>::from);
             assert_eq!(Ok(()), parse_big_endian_and_pad_consttime(inp, &mut result));
             assert_eq!(&[0xbeeff00d, 0, 0, 0], &result);
         }
@@ -555,6 +579,8 @@ mod tests {
             0x99aa_bbcc_ddee_ff00,
             0x1122_3344_5566_7788,
         ];
+
+        let limbs = limbs.map(From::<LeakyLimb>::from);
 
         let expected = [
             0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
@@ -584,6 +610,8 @@ mod tests {
             0x99aa_bbcc_ddee_ff00,
         ];
 
+        let limbs = limbs.map(From::<LeakyLimb>::from);
+
         let mut out = [0xabu8; 32];
 
         big_endian_from_limbs(&limbs[..], &mut out);
@@ -591,8 +619,8 @@ mod tests {
 
     #[test]
     fn test_limbs_minimal_bits() {
-        const ALL_ONES: Limb = Limb::MAX;
-        static CASES: &[(&[Limb], usize)] = &[
+        const ALL_ONES: LeakyLimb = LeakyLimb::MAX;
+        static CASES: &[(&[LeakyLimb], usize)] = &[
             (&[], 0),
             (&[0], 0),
             (&[ALL_ONES], LIMB_BITS),
@@ -609,6 +637,7 @@ mod tests {
             (&[ALL_ONES, ALL_ONES >> 1], LIMB_BITS + (LIMB_BITS) - 1),
         ];
         for (limbs, bits) in CASES {
+            let limbs = &Vec::from_iter(limbs.iter().copied().map(Limb::from));
             assert_eq!(limbs_minimal_bits(limbs).as_bits(), *bits);
         }
     }
