@@ -28,6 +28,7 @@ use core::num::Wrapping;
 
 // XXX: Not correct for x32 ABIs.
 pub type Limb = constant_time::Word;
+pub type LeakyLimb = constant_time::LeakyWord;
 pub const LIMB_BITS: usize = usize_from_u32(Limb::BITS);
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 

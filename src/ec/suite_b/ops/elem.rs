@@ -15,9 +15,9 @@
 use crate::{
     arithmetic::{
         limbs_from_hex,
-        montgomery::{Encoding, ProductEncoding},
+        montgomery::{Encoding, ProductEncoding, Unencoded},
     },
-    limb::{Limb, LIMB_BITS},
+    limb::{LeakyLimb, Limb, LIMB_BITS},
 };
 use core::marker::PhantomData;
 
@@ -36,6 +36,22 @@ pub struct Elem<M, E: Encoding> {
     pub(super) encoding: PhantomData<E>,
 }
 
+pub struct PublicElem<M, E: Encoding> {
+    pub(super) limbs: [LeakyLimb; MAX_LIMBS],
+    pub(super) m: PhantomData<M>,
+    pub(super) encoding: PhantomData<E>,
+}
+
+impl<M, E: Encoding> From<&PublicElem<M, E>> for Elem<M, E> {
+    fn from(value: &PublicElem<M, E>) -> Self {
+        Self {
+            limbs: core::array::from_fn(|i| Limb::from(value.limbs[i])),
+            m: value.m,
+            encoding: value.encoding,
+        }
+    }
+}
+
 impl<M, E: Encoding> Elem<M, E> {
     // There's no need to convert `value` to the Montgomery domain since
     // 0 * R**2 (mod m) == 0, so neither the modulus nor the encoding are needed
@@ -47,9 +63,19 @@ impl<M, E: Encoding> Elem<M, E> {
             encoding: PhantomData,
         }
     }
+}
 
+impl<M> Elem<M, Unencoded> {
+    pub fn one() -> Self {
+        let mut r = Self::zero();
+        r.limbs[0] = 1;
+        r
+    }
+}
+
+impl<M, E: Encoding> PublicElem<M, E> {
     pub const fn from_hex(hex: &str) -> Self {
-        Elem {
+        Self {
             limbs: limbs_from_hex(hex),
             m: PhantomData,
             encoding: PhantomData,

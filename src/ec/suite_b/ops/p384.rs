@@ -24,10 +24,10 @@ pub static COMMON_OPS: CommonOps = CommonOps {
         p: limbs_from_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff"),
         rr: limbs_from_hex("10000000200000000fffffffe000000000000000200000000fffffffe00000001"),
     },
-    n: Elem::from_hex("ffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973"),
+    n: PublicElem::from_hex("ffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973"),
 
-    a: Elem::from_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffffffc0000000000000003fffffffc"),
-    b: Elem::from_hex("cd08114b604fbff9b62b21f41f022094e3374bee94938ae277f2209b1920022ef729add87a4c32ec081188719d412dcc"),
+    a: PublicElem::from_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffffffc0000000000000003fffffffc"),
+    b: PublicElem::from_hex("cd08114b604fbff9b62b21f41f022094e3374bee94938ae277f2209b1920022ef729add87a4c32ec081188719d412dcc"),
 
     elem_mul_mont: p384_elem_mul_mont,
     elem_sqr_mont: p384_elem_sqr_mont,
@@ -35,9 +35,9 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     point_add_jacobian_impl: p384_point_add,
 };
 
-pub(super) static GENERATOR: (Elem<R>, Elem<R>) = (
-    Elem::from_hex("4d3aadc2299e1513812ff723614ede2b6454868459a30eff879c3afc541b4d6e20e378e2a0d6ce383dd0756649c0b528"),
-    Elem::from_hex("2b78abc25a15c5e9dd8002263969a840c6c3521968f4ffd98bade7562e83b050a1bfa8bf7bb4a9ac23043dad4b03a4fe"),
+pub(super) static GENERATOR: (PublicElem<R>, PublicElem<R>) = (
+    PublicElem::from_hex("4d3aadc2299e1513812ff723614ede2b6454868459a30eff879c3afc541b4d6e20e378e2a0d6ce383dd0756649c0b528"),
+    PublicElem::from_hex("2b78abc25a15c5e9dd8002263969a840c6c3521968f4ffd98bade7562e83b050a1bfa8bf7bb4a9ac23043dad4b03a4fe"),
 );
 
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
@@ -105,7 +105,8 @@ fn p384_elem_inv_squared(a: &Elem<R>, _cpu: cpu::Features) -> Elem<R> {
 
 fn p384_point_mul_base_impl(a: &Scalar, cpu: cpu::Features) -> Point {
     // XXX: Not efficient. TODO: Precompute multiples of the generator.
-    PRIVATE_KEY_OPS.point_mul(a, &GENERATOR, cpu)
+    let generator = (Elem::from(&GENERATOR.0), Elem::from(&GENERATOR.1));
+    PRIVATE_KEY_OPS.point_mul(a, &generator, cpu)
 }
 
 pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
@@ -124,7 +125,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
         twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy, cpu)
     },
 
-    q_minus_n: Elem::from_hex("389cb27e0bc8d21fa7e5f24cb74f58851313e696333ad68c"),
+    q_minus_n: PublicElem::from_hex("389cb27e0bc8d21fa7e5f24cb74f58851313e696333ad68c"),
 
     // TODO: Use an optimized variable-time implementation.
     scalar_inv_to_mont_vartime: |s, cpu| PRIVATE_SCALAR_OPS.scalar_inv_to_mont(s, cpu),
@@ -133,7 +134,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
-    oneRR_mod_n: Scalar::from_hex("c84ee012b39bf213fb05b7a28266895d40d49174aab1cc5bc3e483afcb82947ff3d81e5df1aa4192d319b2419b409a9"),
+    oneRR_mod_n: PublicScalar::from_hex("c84ee012b39bf213fb05b7a28266895d40d49174aab1cc5bc3e483afcb82947ff3d81e5df1aa4192d319b2419b409a9"),
     scalar_inv_to_mont: p384_scalar_inv_to_mont,
 };
 

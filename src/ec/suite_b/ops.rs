@@ -23,6 +23,7 @@ pub use self::elem::*;
 /// A field element, i.e. an element of ℤ/qℤ for the curve's field modulus
 /// *q*.
 pub type Elem<E> = elem::Elem<Q, E>;
+type PublicElem<E> = elem::PublicElem<Q, E>;
 
 /// Represents the (prime) order *q* of the curve's prime field.
 #[derive(Clone, Copy)]
@@ -31,6 +32,7 @@ pub enum Q {}
 /// A scalar. Its value is in [0, n). Zero-valued scalars are forbidden in most
 /// contexts.
 pub type Scalar<E = Unencoded> = elem::Elem<N, E>;
+type PublicScalar<E> = elem::PublicElem<N, E>;
 
 /// Represents the prime order *n* of the curve's group.
 #[derive(Clone, Copy)]
@@ -57,10 +59,10 @@ impl Point {
 pub struct CommonOps {
     num_limbs: usize,
     q: Modulus,
-    n: Elem<Unencoded>,
+    n: PublicElem<Unencoded>,
 
-    pub a: Elem<R>, // Must be -3 mod q
-    pub b: Elem<R>,
+    pub a: PublicElem<R>, // Must be -3 mod q
+    pub b: PublicElem<R>,
 
     // In all cases, `r`, `a`, and `b` may all alias each other.
     elem_mul_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
@@ -98,8 +100,7 @@ impl CommonOps {
 
     #[inline]
     pub fn elem_unencoded(&self, a: &Elem<R>) -> Elem<Unencoded> {
-        const ONE: Elem<Unencoded> = Elem::from_hex("1");
-        self.elem_product(a, &ONE)
+        self.elem_product(a, &Elem::one())
     }
 
     #[inline]
@@ -171,8 +172,8 @@ impl CommonOps {
 }
 
 struct Modulus {
-    p: [Limb; MAX_LIMBS],
-    rr: [Limb; MAX_LIMBS],
+    p: [LeakyLimb; MAX_LIMBS],
+    rr: [LeakyLimb; MAX_LIMBS],
 }
 
 /// Operations on private keys, for ECDH and ECDSA signing.
@@ -301,11 +302,11 @@ pub struct PublicScalarOps {
         cpu: cpu::Features,
     ) -> Point,
     scalar_inv_to_mont_vartime: fn(s: &Scalar<Unencoded>, cpu: cpu::Features) -> Scalar<R>,
-    pub(super) q_minus_n: Elem<Unencoded>,
+    pub(super) q_minus_n: PublicElem<Unencoded>,
 }
 
 impl PublicScalarOps {
-    pub fn n(&self) -> &Elem<Unencoded> {
+    pub fn n(&self) -> &PublicElem<Unencoded> {
         &self.scalar_ops.common.n
     }
 
@@ -323,7 +324,7 @@ impl PublicScalarOps {
             == b.limbs[..self.public_key_ops.common.num_limbs]
     }
 
-    pub fn elem_less_than(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
+    pub fn elem_less_than(&self, a: &Elem<Unencoded>, b: &PublicElem<Unencoded>) -> bool {
         let num_limbs = self.public_key_ops.common.num_limbs;
         limbs_less_than_limbs_vartime(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
     }
@@ -341,13 +342,14 @@ impl PublicScalarOps {
 pub struct PrivateScalarOps {
     pub scalar_ops: &'static ScalarOps,
 
-    oneRR_mod_n: Scalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
+    oneRR_mod_n: PublicScalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
     scalar_inv_to_mont: fn(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R>,
 }
 
 impl PrivateScalarOps {
     pub(super) fn to_mont(&self, s: &Scalar<Unencoded>, cpu: cpu::Features) -> Scalar<R> {
-        self.scalar_ops.scalar_product(s, &self.oneRR_mod_n, cpu)
+        self.scalar_ops
+            .scalar_product(s, &Scalar::from(&self.oneRR_mod_n), cpu)
     }
 
     /// Returns the modular inverse of `a` (mod `n`). Panics if `a` is zero.
@@ -417,7 +419,7 @@ pub fn elem_parse_big_endian_fixed_consttime(
     ops: &CommonOps,
     bytes: untrusted::Input,
 ) -> Result<Elem<Unencoded>, error::Unspecified> {
-    parse_big_endian_fixed_consttime(ops, bytes, AllowZero::Yes, &ops.q.p[..ops.num_limbs])
+    parse_big_endian_fixed_consttime(ops, bytes, AllowZero::Yes, &ops.q.p)
 }
 
 #[inline]
@@ -425,7 +427,7 @@ pub fn scalar_parse_big_endian_fixed_consttime(
     ops: &CommonOps,
     bytes: untrusted::Input,
 ) -> Result<Scalar, error::Unspecified> {
-    parse_big_endian_fixed_consttime(ops, bytes, AllowZero::No, &ops.n.limbs[..ops.num_limbs])
+    parse_big_endian_fixed_consttime(ops, bytes, AllowZero::No, &ops.n.limbs)
 }
 
 #[inline]
@@ -434,11 +436,12 @@ pub fn scalar_parse_big_endian_variable(
     allow_zero: AllowZero,
     bytes: untrusted::Input,
 ) -> Result<Scalar, error::Unspecified> {
+    let n = ops.n.limbs.map(Limb::from);
     let mut r = Scalar::zero();
     parse_big_endian_in_range_and_pad_consttime(
         bytes,
         allow_zero,
-        &ops.n.limbs[..ops.num_limbs],
+        &n[..ops.num_limbs],
         &mut r.limbs[..ops.num_limbs],
     )?;
     Ok(r)
@@ -463,8 +466,10 @@ fn parse_big_endian_fixed_consttime<M>(
     ops: &CommonOps,
     bytes: untrusted::Input,
     allow_zero: AllowZero,
-    max_exclusive: &[Limb],
+    max_exclusive: &[LeakyLimb; MAX_LIMBS],
 ) -> Result<elem::Elem<M, Unencoded>, error::Unspecified> {
+    let max_exclusive = max_exclusive.map(Limb::from);
+
     if bytes.len() != ops.len() {
         return Err(error::Unspecified);
     }
@@ -472,7 +477,7 @@ fn parse_big_endian_fixed_consttime<M>(
     parse_big_endian_in_range_and_pad_consttime(
         bytes,
         allow_zero,
-        max_exclusive,
+        &max_exclusive[..ops.num_limbs],
         &mut r.limbs[..ops.num_limbs],
     )?;
     Ok(r)
@@ -509,8 +514,8 @@ mod tests {
 
     fn q_minus_n_plus_n_equals_0_test(ops: &PublicScalarOps) {
         let cops = ops.scalar_ops.common;
-        let mut x = ops.q_minus_n;
-        cops.elem_add(&mut x, &cops.n);
+        let mut x = Elem::from(&ops.q_minus_n);
+        cops.elem_add(&mut x, &Elem::from(&cops.n));
         assert!(cops.is_zero(&x));
     }
 
@@ -958,9 +963,13 @@ mod tests {
     /// TODO: We should be testing `point_mul` with points other than the generator.
     #[test]
     fn p256_point_mul_test() {
+        let generator = (
+            Elem::from(&p256::GENERATOR.0),
+            Elem::from(&p256::GENERATOR.1),
+        );
         point_mul_base_tests(
             &p256::PRIVATE_KEY_OPS,
-            |s, cpu| p256::PRIVATE_KEY_OPS.point_mul(s, &p256::GENERATOR, cpu),
+            |s, cpu| p256::PRIVATE_KEY_OPS.point_mul(s, &generator, cpu),
             test_file!("ops/p256_point_mul_base_tests.txt"),
         );
     }
@@ -968,9 +977,14 @@ mod tests {
     /// TODO: We should be testing `point_mul` with points other than the generator.
     #[test]
     fn p384_point_mul_test() {
+        let generator = (
+            Elem::from(&p384::GENERATOR.0),
+            Elem::from(&p384::GENERATOR.1),
+        );
+
         point_mul_base_tests(
             &p384::PRIVATE_KEY_OPS,
-            |s, cpu| p384::PRIVATE_KEY_OPS.point_mul(s, &p384::GENERATOR, cpu),
+            |s, cpu| p384::PRIVATE_KEY_OPS.point_mul(s, &generator, cpu),
             test_file!("ops/p384_point_mul_base_tests.txt"),
         );
     }
