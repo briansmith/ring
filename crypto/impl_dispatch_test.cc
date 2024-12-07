@@ -36,6 +36,10 @@ class ImplDispatchTest : public ::testing::Test {
     aesni_ = CRYPTO_is_AESNI_capable();
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
     ssse3_ = CRYPTO_is_SSSE3_capable();
+    vaes_ = CRYPTO_is_VAES_capable() && CRYPTO_is_VPCLMULQDQ_capable() &&
+            CRYPTO_is_AVX512BW_capable() && CRYPTO_is_AVX512VL_capable() &&
+            CRYPTO_is_BMI2_capable();
+    avoid_zmm_ = CRYPTO_cpu_avoid_zmm_registers();
     is_x86_64_ =
 #if defined(OPENSSL_X86_64)
         true;
@@ -75,6 +79,8 @@ class ImplDispatchTest : public ::testing::Test {
   bool avx_movbe_ = false;
   bool ssse3_ = false;
   bool is_x86_64_ = false;
+  bool vaes_ = false;
+  bool avoid_zmm_ = false;
 #endif
 };
 
@@ -87,16 +93,23 @@ constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
 constexpr size_t kFlag_vpaes_encrypt = 4;
 constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
+constexpr size_t kFlag_aes_gcm_enc_update_vaes_avx10_256 = 6;
+constexpr size_t kFlag_aes_gcm_enc_update_vaes_avx10_512 = 7;
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_ctr32_encrypt_blocks, aesni_},
+          {kFlag_aes_hw_ctr32_encrypt_blocks, aesni_ && !(is_x86_64_ && vaes_)},
           {kFlag_aes_hw_encrypt, aesni_},
           {kFlag_aes_hw_set_encrypt_key, aesni_},
-          {kFlag_aesni_gcm_encrypt, is_x86_64_ && aesni_ && avx_movbe_},
+          {kFlag_aesni_gcm_encrypt,
+           is_x86_64_ && aesni_ && avx_movbe_ && !vaes_},
           {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
           {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
+          {kFlag_aes_gcm_enc_update_vaes_avx10_256,
+           is_x86_64_ && vaes_ && avoid_zmm_},
+          {kFlag_aes_gcm_enc_update_vaes_avx10_512,
+           is_x86_64_ && vaes_ && !avoid_zmm_},
       },
       [] {
         const uint8_t kZeros[16] = {0};

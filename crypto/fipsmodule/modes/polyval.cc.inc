@@ -56,8 +56,7 @@ void CRYPTO_POLYVAL_init(struct polyval_ctx *ctx, const uint8_t key[16]) {
   OPENSSL_memcpy(H, key, 16);
   reverse_and_mulX_ghash(H);
 
-  int is_avx;
-  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, ctx->Htable, &is_avx, H);
+  CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, ctx->Htable, H);
   OPENSSL_memset(&ctx->S, 0, sizeof(ctx->S));
 }
 

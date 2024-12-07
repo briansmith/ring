@@ -135,14 +135,42 @@ void gcm_init_ssse3(u128 Htable[16], const uint64_t H[2]) {
 #if defined(HW_GCM) && defined(OPENSSL_X86_64)
 static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
-                             uint8_t Xi[16], const u128 Htable[16]) {
-  return aesni_gcm_encrypt(in, out, len, key, ivec, Htable, Xi);
+                             uint8_t Xi[16], const u128 Htable[16],
+                             enum gcm_impl_t impl) {
+  switch (impl) {
+    case gcm_x86_vaes_avx10_256:
+      len &= kSizeTWithoutLower4Bits;
+      aes_gcm_enc_update_vaes_avx10_256(in, out, len, key, ivec, Htable, Xi);
+      CRYPTO_store_u32_be(&ivec[12], CRYPTO_load_u32_be(&ivec[12]) + len / 16);
+      return len;
+    case gcm_x86_vaes_avx10_512:
+      len &= kSizeTWithoutLower4Bits;
+      aes_gcm_enc_update_vaes_avx10_512(in, out, len, key, ivec, Htable, Xi);
+      CRYPTO_store_u32_be(&ivec[12], CRYPTO_load_u32_be(&ivec[12]) + len / 16);
+      return len;
+    default:
+      return aesni_gcm_encrypt(in, out, len, key, ivec, Htable, Xi);
+  }
 }
 
 static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
-                             uint8_t Xi[16], const u128 Htable[16]) {
-  return aesni_gcm_decrypt(in, out, len, key, ivec, Htable, Xi);
+                             uint8_t Xi[16], const u128 Htable[16],
+                             enum gcm_impl_t impl) {
+  switch (impl) {
+    case gcm_x86_vaes_avx10_256:
+      len &= kSizeTWithoutLower4Bits;
+      aes_gcm_dec_update_vaes_avx10_256(in, out, len, key, ivec, Htable, Xi);
+      CRYPTO_store_u32_be(&ivec[12], CRYPTO_load_u32_be(&ivec[12]) + len / 16);
+      return len;
+    case gcm_x86_vaes_avx10_512:
+      len &= kSizeTWithoutLower4Bits;
+      aes_gcm_dec_update_vaes_avx10_512(in, out, len, key, ivec, Htable, Xi);
+      CRYPTO_store_u32_be(&ivec[12], CRYPTO_load_u32_be(&ivec[12]) + len / 16);
+      return len;
+    default:
+      return aesni_gcm_decrypt(in, out, len, key, ivec, Htable, Xi);
+  }
 }
 #endif  // HW_GCM && X86_64
 
@@ -150,7 +178,8 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
 static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
-                             uint8_t Xi[16], const u128 Htable[16]) {
+                             uint8_t Xi[16], const u128 Htable[16],
+                             enum gcm_impl_t impl) {
   const size_t len_blocks = len & kSizeTWithoutLower4Bits;
   if (!len_blocks) {
     return 0;
@@ -161,7 +190,8 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 
 static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
-                             uint8_t Xi[16], const u128 Htable[16]) {
+                             uint8_t Xi[16], const u128 Htable[16],
+                             enum gcm_impl_t impl) {
   const size_t len_blocks = len & kSizeTWithoutLower4Bits;
   if (!len_blocks) {
     return 0;
@@ -173,21 +203,28 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 #endif  // HW_GCM && AARCH64
 
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
-                       u128 out_table[16], int *out_is_avx,
-                       const uint8_t gcm_key[16]) {
-  *out_is_avx = 0;
-
+                       u128 out_table[16], const uint8_t gcm_key[16]) {
   // H is passed to |gcm_init_*| as a pair of byte-swapped, 64-bit values.
   uint64_t H[2] = {CRYPTO_load_u64_be(gcm_key),
                    CRYPTO_load_u64_be(gcm_key + 8)};
 
 #if defined(GHASH_ASM_X86_64)
   if (crypto_gcm_clmul_enabled()) {
+    if (CRYPTO_is_AVX512BW_capable() && CRYPTO_is_AVX512VL_capable() &&
+        CRYPTO_is_VPCLMULQDQ_capable() && CRYPTO_is_BMI2_capable()) {
+      gcm_init_vpclmulqdq_avx10(out_table, H);
+      *out_mult = gcm_gmult_vpclmulqdq_avx10;
+      if (CRYPTO_cpu_avoid_zmm_registers()) {
+        *out_hash = gcm_ghash_vpclmulqdq_avx10_256;
+      } else {
+        *out_hash = gcm_ghash_vpclmulqdq_avx10_512;
+      }
+      return;
+    }
     if (CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable()) {
       gcm_init_avx(out_table, H);
       *out_mult = gcm_gmult_avx;
       *out_hash = gcm_ghash_avx;
-      *out_is_avx = 1;
       return;
     }
     gcm_init_clmul(out_table, H);
@@ -244,14 +281,25 @@ void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
   OPENSSL_memset(ghash_key, 0, sizeof(ghash_key));
   (*block)(ghash_key, ghash_key, aes_key);
 
-  int is_avx;
-  CRYPTO_ghash_init(&gcm_key->gmult, &gcm_key->ghash, gcm_key->Htable, &is_avx,
+  CRYPTO_ghash_init(&gcm_key->gmult, &gcm_key->ghash, gcm_key->Htable,
                     ghash_key);
 
-#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
-  gcm_key->use_hw_gcm_crypt = (gcm_pmull_capable() && block_is_hwaes) ? 1 : 0;
-#else
-  gcm_key->use_hw_gcm_crypt = (is_avx && block_is_hwaes) ? 1 : 0;
+#if !defined(OPENSSL_NO_ASM)
+#if defined(OPENSSL_X86_64)
+  if (gcm_key->ghash == gcm_ghash_vpclmulqdq_avx10_256 &&
+      CRYPTO_is_VAES_capable()) {
+    gcm_key->impl = gcm_x86_vaes_avx10_256;
+  } else if (gcm_key->ghash == gcm_ghash_vpclmulqdq_avx10_512 &&
+             CRYPTO_is_VAES_capable()) {
+    gcm_key->impl = gcm_x86_vaes_avx10_512;
+  } else if (gcm_key->ghash == gcm_ghash_avx && block_is_hwaes) {
+    gcm_key->impl = gcm_x86_aesni;
+  }
+#elif defined(OPENSSL_AARCH64)
+  if (gcm_pmull_capable() && block_is_hwaes) {
+    gcm_key->impl = gcm_arm64_aes;
+  }
+#endif
 #endif
 }
 
@@ -565,11 +613,11 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
 #if defined(HW_GCM)
   // Check |len| to work around a C language bug. See https://crbug.com/1019588.
-  if (ctx->gcm_key.use_hw_gcm_crypt && len > 0) {
+  if (ctx->gcm_key.impl != gcm_separate && len > 0) {
     // |hw_gcm_encrypt| may not process all the input given to it. It may
     // not process *any* of its input if it is deemed too small.
     size_t bulk = hw_gcm_encrypt(in, out, len, key, ctx->Yi, ctx->Xi,
-                                 ctx->gcm_key.Htable);
+                                 ctx->gcm_key.Htable, ctx->gcm_key.impl);
     in += bulk;
     out += bulk;
     len -= bulk;
@@ -654,11 +702,11 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
 #if defined(HW_GCM)
   // Check |len| to work around a C language bug. See https://crbug.com/1019588.
-  if (ctx->gcm_key.use_hw_gcm_crypt && len > 0) {
+  if (ctx->gcm_key.impl != gcm_separate && len > 0) {
     // |hw_gcm_decrypt| may not process all the input given to it. It may
     // not process *any* of its input if it is deemed too small.
     size_t bulk = hw_gcm_decrypt(in, out, len, key, ctx->Yi, ctx->Xi,
-                                 ctx->gcm_key.Htable);
+                                 ctx->gcm_key.Htable, ctx->gcm_key.impl);
     in += bulk;
     out += bulk;
     len -= bulk;

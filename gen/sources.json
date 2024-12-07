@@ -78,6 +78,8 @@
       "crypto/fipsmodule/tls/kdf.cc.inc"
     ],
     "asm": [
+      "gen/bcm/aes-gcm-avx10-x86_64-apple.S",
+      "gen/bcm/aes-gcm-avx10-x86_64-linux.S",
       "gen/bcm/aesni-gcm-x86_64-apple.S",
       "gen/bcm/aesni-gcm-x86_64-linux.S",
       "gen/bcm/aesni-x86-apple.S",
@@ -175,6 +177,7 @@
       "third_party/fiat/asm/fiat_p256_adx_sqr.S"
     ],
     "nasm": [
+      "gen/bcm/aes-gcm-avx10-x86_64-win.asm",
       "gen/bcm/aesni-gcm-x86_64-win.asm",
       "gen/bcm/aesni-x86-win.asm",
       "gen/bcm/aesni-x86_64-win.asm",

@@ -1537,7 +1537,9 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA512_capable(void) {
 //   3: aes_hw_set_encrypt_key
 //   4: vpaes_encrypt
 //   5: vpaes_set_encrypt_key
-extern uint8_t BORINGSSL_function_hit[7];
+//   6: aes_gcm_enc_update_vaes_avx10_256
+//   7: aes_gcm_enc_update_vaes_avx10_512
+extern uint8_t BORINGSSL_function_hit[8];
 #endif  // BORINGSSL_DISPATCH_TEST
 
 // OPENSSL_vasprintf_internal is just like |vasprintf(3)|. If |system_malloc| is
