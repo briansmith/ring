@@ -25,6 +25,7 @@ impl Scalar {
     pub fn from_bytes_checked(bytes: [u8; SCALAR_LEN]) -> Result<Self, error::Unspecified> {
         const ORDER: [limb::Limb; SCALAR_LEN / limb::LIMB_BYTES] =
             limbs_from_hex("1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed");
+        let order = ORDER.map(limb::Limb::from);
 
         // `bytes` is in little-endian order.
         let mut reversed = bytes;
@@ -34,7 +35,7 @@ impl Scalar {
         limb::parse_big_endian_in_range_and_pad_consttime(
             untrusted::Input::from(&reversed),
             limb::AllowZero::Yes,
-            &ORDER,
+            &order,
             &mut limbs,
         )?;
 

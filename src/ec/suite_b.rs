@@ -33,7 +33,12 @@ fn verify_affine_point_is_on_the_curve(
     ops: &CommonOps,
     (x, y): (&Elem<R>, &Elem<R>),
 ) -> Result<(), error::Unspecified> {
-    verify_affine_point_is_on_the_curve_scaled(ops, (x, y), &ops.a, &ops.b)
+    verify_affine_point_is_on_the_curve_scaled(
+        ops,
+        (x, y),
+        &Elem::from(&ops.a),
+        &Elem::from(&ops.b),
+    )
 }
 
 // Use `verify_affine_point_is_on_the_curve` instead of this function whenever
@@ -101,9 +106,9 @@ fn verify_jacobian_point_is_on_the_curve(
     //
     let z2 = ops.elem_squared(&z);
     let z4 = ops.elem_squared(&z2);
-    let z4_a = ops.elem_product(&z4, &ops.a);
+    let z4_a = ops.elem_product(&z4, &Elem::from(&ops.a));
     let z6 = ops.elem_product(&z4, &z2);
-    let z6_b = ops.elem_product(&z6, &ops.b);
+    let z6_b = ops.elem_product(&z6, &Elem::from(&ops.b));
     verify_affine_point_is_on_the_curve_scaled(ops, (&x, &y), &z4_a, &z6_b)?;
     Ok(z2)
 }

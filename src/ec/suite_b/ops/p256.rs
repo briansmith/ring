@@ -24,10 +24,10 @@ pub static COMMON_OPS: CommonOps = CommonOps {
         p: limbs_from_hex("ffffffff00000001000000000000000000000000ffffffffffffffffffffffff"),
         rr: limbs_from_hex("4fffffffdfffffffffffffffefffffffbffffffff0000000000000003"),
     },
-    n: Elem::from_hex("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"),
+    n: PublicElem::from_hex("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"),
 
-    a: Elem::from_hex("fffffffc00000004000000000000000000000003fffffffffffffffffffffffc"),
-    b: Elem::from_hex("dc30061d04874834e5a220abf7212ed6acf005cd78843090d89cdf6229c4bddf"),
+    a: PublicElem::from_hex("fffffffc00000004000000000000000000000003fffffffffffffffffffffffc"),
+    b: PublicElem::from_hex("dc30061d04874834e5a220abf7212ed6acf005cd78843090d89cdf6229c4bddf"),
 
     elem_mul_mont: p256_mul_mont,
     elem_sqr_mont: p256_sqr_mont,
@@ -36,9 +36,9 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 };
 
 #[cfg(test)]
-pub(super) static GENERATOR: (Elem<R>, Elem<R>) = (
-    Elem::from_hex("18905f76a53755c679fb732b7762251075ba95fc5fedb60179e730d418a9143c"),
-    Elem::from_hex("8571ff1825885d85d2e88688dd21f3258b4ab8e4ba19e45cddf25357ce95560a"),
+pub(super) static GENERATOR: (PublicElem<R>, PublicElem<R>) = (
+    PublicElem::from_hex("18905f76a53755c679fb732b7762251075ba95fc5fedb60179e730d418a9143c"),
+    PublicElem::from_hex("8571ff1825885d85d2e88688dd21f3258b4ab8e4ba19e45cddf25357ce95560a"),
 );
 
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
@@ -129,7 +129,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
         twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy, cpu)
     },
 
-    q_minus_n: Elem::from_hex("4319055358e8617b0c46353d039cdaae"),
+    q_minus_n: PublicElem::from_hex("4319055358e8617b0c46353d039cdaae"),
 
     // TODO: Use an optimized variable-time implementation.
     scalar_inv_to_mont_vartime: |s, cpu| PRIVATE_SCALAR_OPS.scalar_inv_to_mont(s, cpu),
@@ -164,7 +164,7 @@ fn point_mul_base_vartime(g_scalar: &Scalar, _cpu: cpu::Features) -> Point {
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
-    oneRR_mod_n: Scalar::from_hex(
+    oneRR_mod_n: PublicScalar::from_hex(
         "66e12d94f3d956202845b2392b6bec594699799c49bd6fa683244c95be79eea2",
     ),
     scalar_inv_to_mont: p256_scalar_inv_to_mont,
