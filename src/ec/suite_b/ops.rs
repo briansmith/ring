@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{arithmetic::limbs_from_hex, arithmetic::montgomery::*, cpu, error, limb::*};
+use crate::{
+    arithmetic::limbs_from_hex, arithmetic::montgomery::*, constant_time::LeakyWord, cpu, error,
+    limb::*,
+};
 use core::marker::PhantomData;
 
 pub use self::elem::*;
@@ -391,7 +394,7 @@ pub fn scalar_sum(ops: &CommonOps, a: &Scalar, mut b: Scalar) -> Scalar {
 }
 
 // Returns (`a` squared `squarings` times) * `b`.
-fn elem_sqr_mul(ops: &CommonOps, a: &Elem<R>, squarings: usize, b: &Elem<R>) -> Elem<R> {
+fn elem_sqr_mul(ops: &CommonOps, a: &Elem<R>, squarings: LeakyWord, b: &Elem<R>) -> Elem<R> {
     debug_assert!(squarings >= 1);
     let mut tmp = ops.elem_squared(a);
     for _ in 1..squarings {
@@ -401,7 +404,7 @@ fn elem_sqr_mul(ops: &CommonOps, a: &Elem<R>, squarings: usize, b: &Elem<R>) -> 
 }
 
 // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem<R>, squarings: usize, b: &Elem<R>) {
+fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem<R>, squarings: LeakyWord, b: &Elem<R>) {
     debug_assert!(squarings >= 1);
     for _ in 0..squarings {
         ops.elem_square(acc);

@@ -56,12 +56,12 @@ fn p256_elem_inv_squared(a: &Elem<R>, _cpu: cpu::Features) -> Elem<R> {
     //    0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc
 
     #[inline]
-    fn sqr_mul(a: &Elem<R>, squarings: usize, b: &Elem<R>) -> Elem<R> {
+    fn sqr_mul(a: &Elem<R>, squarings: LeakyWord, b: &Elem<R>) -> Elem<R> {
         elem_sqr_mul(&COMMON_OPS, a, squarings, b)
     }
 
     #[inline]
-    fn sqr_mul_acc(a: &mut Elem<R>, squarings: usize, b: &Elem<R>) {
+    fn sqr_mul_acc(a: &mut Elem<R>, squarings: LeakyWord, b: &Elem<R>) {
         elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b)
     }
 
@@ -194,7 +194,7 @@ fn p256_scalar_inv_to_mont(a: Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
     }
 
     // Returns (`a` squared `squarings` times) * `b`.
-    fn sqr_mul(a: &Scalar<R>, squarings: Limb, b: &Scalar<R>) -> Scalar<R> {
+    fn sqr_mul(a: &Scalar<R>, squarings: LeakyWord, b: &Scalar<R>) -> Scalar<R> {
         debug_assert!(squarings >= 1);
         let mut tmp = Scalar::zero();
         unsafe { p256_scalar_sqr_rep_mont(tmp.limbs.as_mut_ptr(), a.limbs.as_ptr(), squarings) }
@@ -202,7 +202,7 @@ fn p256_scalar_inv_to_mont(a: Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
     }
 
     // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: Limb, b: &Scalar<R>) {
+    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: LeakyWord, b: &Scalar<R>) {
         debug_assert!(squarings >= 1);
         unsafe { p256_scalar_sqr_rep_mont(acc.limbs.as_mut_ptr(), acc.limbs.as_ptr(), squarings) }
         binary_op_assign(p256_scalar_mul_mont, acc, b);

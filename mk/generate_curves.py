@@ -75,12 +75,12 @@ fn p%(bits)d_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
     //    %(q_minus_3)s
 
     #[inline]
-    fn sqr_mul(a: &Elem<R>, squarings: usize, b: &Elem<R>) -> Elem<R> {
+    fn sqr_mul(a: &Elem<R>, squarings: LeakyWord, b: &Elem<R>) -> Elem<R> {
         elem_sqr_mul(&COMMON_OPS, a, squarings, b)
     }
 
     #[inline]
-    fn sqr_mul_acc(a: &mut Elem<R>, squarings: usize, b: &Elem<R>) {
+    fn sqr_mul_acc(a: &mut Elem<R>, squarings: LeakyWord, b: &Elem<R>) {
         elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b)
     }
 
@@ -148,7 +148,7 @@ fn p%(bits)s_scalar_inv_to_mont(a: Scalar<R>) -> Scalar<R> {
     }
 
     // Returns (`a` squared `squarings` times) * `b`.
-    fn sqr_mul(a: &Scalar<R>, squarings: usize, b: &Scalar<R>) -> Scalar<R> {
+    fn sqr_mul(a: &Scalar<R>, squarings: LeakyWord, b: &Scalar<R>) -> Scalar<R> {
         debug_assert!(squarings >= 1);
         let mut tmp = sqr(a);
         for _ in 1..squarings {
@@ -158,7 +158,7 @@ fn p%(bits)s_scalar_inv_to_mont(a: Scalar<R>) -> Scalar<R> {
     }
 
     // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: usize, b: &Scalar<R>) {
+    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: LeakyWord, b: &Scalar<R>) {
         debug_assert!(squarings >= 1);
         for _ in 0..squarings {
             sqr_mut(acc);
@@ -189,7 +189,7 @@ fn p%(bits)s_scalar_inv_to_mont(a: Scalar<R>) -> Scalar<R> {
     ];
 
     for &(squarings, digit) in &REMAINING_WINDOWS[..] {
-        sqr_mul_acc(&mut acc, usize::from(squarings), &d[usize::from(digit)]);
+        sqr_mul_acc(&mut acc, LeakyWord::from(squarings), &d[usize::from(digit)]);
     }
 
     acc
