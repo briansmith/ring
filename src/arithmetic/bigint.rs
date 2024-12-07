@@ -507,7 +507,7 @@ pub fn elem_exp_consttime<M>(
     // awkwardness here stems from trying to use the assembly code like OpenSSL
     // does.
 
-    use crate::limb::Window;
+    use crate::limb::{LeakyWindow, Window};
 
     const WINDOW_BITS: usize = 5;
     const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
@@ -524,9 +524,9 @@ pub fn elem_exp_consttime<M>(
         table.split_at_mut(TABLE_ENTRIES * num_limbs)
     };
 
-    fn scatter(table: &mut [Limb], acc: &[Limb], i: Window, num_limbs: usize) {
+    fn scatter(table: &mut [Limb], acc: &[Limb], i: LeakyWindow, num_limbs: usize) {
         prefixed_extern! {
-            fn bn_scatter5(a: *const Limb, a_len: c::size_t, table: *mut Limb, i: Window);
+            fn bn_scatter5(a: *const Limb, a_len: c::size_t, table: *mut Limb, i: LeakyWindow);
         }
         unsafe { bn_scatter5(acc.as_ptr(), num_limbs, table.as_mut_ptr(), i) }
     }
@@ -628,14 +628,14 @@ pub fn elem_exp_consttime<M>(
         acc: &mut [Limb],
         m_cached: &[Limb],
         n0: &N0,
-        mut i: Window,
+        mut i: LeakyWindow,
         num_limbs: usize,
         cpu_features: cpu::Features,
     ) {
         loop {
             scatter(table, acc, i, num_limbs);
             i *= 2;
-            if i >= (TABLE_ENTRIES as Window) {
+            if i >= TABLE_ENTRIES as LeakyWindow {
                 break;
             }
             limbs_mont_square(acc, m_cached, n0, cpu_features);
@@ -655,8 +655,16 @@ pub fn elem_exp_consttime<M>(
     scatter_powers_of_2(table, acc, m_cached, n0, 1, num_limbs, cpu_features);
     // Fill in entries 3, 6, 12, 24; 5, 10, 20, 30; 7, 14, 28; 9, 18; 11, 22; 13, 26; 15, 30;
     // 17; 19; 21; 23; 25; 27; 29; 31.
-    for i in (3..(TABLE_ENTRIES as Window)).step_by(2) {
-        limbs_mul_mont_gather5_amm(table, acc, base_cached, m_cached, n0, i - 1, num_limbs);
+    for i in (3..(TABLE_ENTRIES as LeakyWindow)).step_by(2) {
+        limbs_mul_mont_gather5_amm(
+            table,
+            acc,
+            base_cached,
+            m_cached,
+            n0,
+            Window::from(i - 1), // Not secret
+            num_limbs,
+        );
         scatter_powers_of_2(table, acc, m_cached, n0, i, num_limbs, cpu_features);
     }
 

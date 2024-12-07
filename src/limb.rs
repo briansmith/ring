@@ -211,7 +211,10 @@ pub fn unstripped_be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> 
 }
 
 #[cfg(feature = "alloc")]
-pub type Window = Limb;
+pub type Window = constant_time::Word;
+
+#[cfg(feature = "alloc")]
+pub type LeakyWindow = constant_time::LeakyWord;
 
 /// Processes `limbs` as a sequence of 5-bit windows, folding the windows from
 /// most significant to least significant and returning the accumulated result.
@@ -263,7 +266,7 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
         init(leading_partial_window)
     };
 
-    let mut low_limb = 0;
+    let mut low_limb = Limb::from(0 as LeakyWindow);
     limbs
         .iter()
         .rev()
