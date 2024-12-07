@@ -19,14 +19,15 @@ use super::{ops::*, verify_affine_point_is_on_the_curve};
 use crate::{arithmetic::montgomery::R, cpu, ec, error, limb, rand};
 
 /// Generates a random scalar in the range [1, n).
-pub fn random_scalar(
+pub(super) fn random_scalar(
     ops: &PrivateKeyOps,
+    n: &Modulus<N>,
     rng: &dyn rand::SecureRandom,
 ) -> Result<Scalar, error::Unspecified> {
     let mut bytes = [0; ec::SCALAR_MAX_BYTES];
     let bytes = &mut bytes[..ops.common.len()];
     generate_private_scalar_bytes(ops, rng, bytes)?;
-    scalar_from_big_endian_bytes(ops, bytes)
+    scalar_from_big_endian_bytes(n, bytes)
 }
 
 pub fn generate_private_scalar_bytes(
@@ -84,17 +85,18 @@ pub fn generate_private_scalar_bytes(
 // private key that way, which means we have to convert it to a Scalar whenever
 // we need to use it.
 #[inline]
-pub fn private_key_as_scalar(ops: &PrivateKeyOps, private_key: &ec::Seed) -> Scalar {
+pub(super) fn private_key_as_scalar(n: &Modulus<N>, private_key: &ec::Seed) -> Scalar {
     // This cannot fail because we know the private key is valid.
-    scalar_from_big_endian_bytes(ops, private_key.bytes_less_safe()).unwrap()
+    scalar_from_big_endian_bytes(n, private_key.bytes_less_safe()).unwrap()
 }
 
-pub fn check_scalar_big_endian_bytes(
+pub(super) fn check_scalar_big_endian_bytes(
     ops: &PrivateKeyOps,
     bytes: &[u8],
 ) -> Result<(), error::Unspecified> {
     debug_assert_eq!(bytes.len(), ops.common.len());
-    scalar_from_big_endian_bytes(ops, bytes).map(|_| ())
+    let n = ops.common.scalar_modulus();
+    scalar_from_big_endian_bytes(&n, bytes).map(|_| ())
 }
 
 // Parses a fixed-length (zero-padded) big-endian-encoded scalar in the range
@@ -102,8 +104,8 @@ pub fn check_scalar_big_endian_bytes(
 // value is actually in range. In other words, this won't leak anything about a
 // valid value, but it might leak small amounts of information about an invalid
 // value (which constraint it failed).
-pub fn scalar_from_big_endian_bytes(
-    ops: &PrivateKeyOps,
+pub(super) fn scalar_from_big_endian_bytes(
+    n: &Modulus<N>,
     bytes: &[u8],
 ) -> Result<Scalar, error::Unspecified> {
     // [NSA Suite B Implementer's Guide to ECDSA] Appendix A.1.2, and
@@ -121,7 +123,7 @@ pub fn scalar_from_big_endian_bytes(
     // way, we avoid needing to compute or store the value (n - 1), we avoid the
     // need to implement a function to add one to a scalar, and we avoid needing
     // to convert the scalar back into an array of bytes.
-    scalar_parse_big_endian_fixed_consttime(ops.common, untrusted::Input::from(bytes))
+    scalar_parse_big_endian_fixed_consttime(n, untrusted::Input::from(bytes))
 }
 
 pub(super) fn public_from_private(
@@ -130,20 +132,23 @@ pub(super) fn public_from_private(
     my_private_key: &ec::Seed,
     cpu: cpu::Features,
 ) -> Result<(), error::Unspecified> {
+    let q = ops.common.elem_modulus();
     let elem_and_scalar_bytes = ops.common.len();
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
-    let my_private_key = private_key_as_scalar(ops, my_private_key);
+    let n = ops.common.scalar_modulus();
+    let my_private_key = private_key_as_scalar(&n, my_private_key);
     let my_public_key = ops.point_mul_base(&my_private_key, cpu);
     public_out[0] = 4; // Uncompressed encoding.
     let (x_out, y_out) = public_out[1..].split_at_mut(elem_and_scalar_bytes);
 
     // `big_endian_affine_from_jacobian` verifies that the point is not at
     // infinity and is on the curve.
-    big_endian_affine_from_jacobian(ops, x_out, Some(y_out), &my_public_key, cpu)
+    big_endian_affine_from_jacobian(ops, &q, x_out, Some(y_out), &my_public_key, cpu)
 }
 
 pub(super) fn affine_from_jacobian(
     ops: &PrivateKeyOps,
+    q: &Modulus<Q>,
     p: &Point,
     cpu: cpu::Features,
 ) -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
@@ -173,19 +178,20 @@ pub(super) fn affine_from_jacobian(
     // If we validated our inputs correctly and then computed (x, y, z), then
     // (x, y, z) will be on the curve. See
     // `verify_affine_point_is_on_the_curve_scaled` for the motivation.
-    verify_affine_point_is_on_the_curve(ops.common, (&x_aff, &y_aff))?;
+    verify_affine_point_is_on_the_curve(ops.common, q, (&x_aff, &y_aff))?;
 
     Ok((x_aff, y_aff))
 }
 
 pub(super) fn big_endian_affine_from_jacobian(
     ops: &PrivateKeyOps,
+    q: &Modulus<Q>,
     x_out: &mut [u8],
     y_out: Option<&mut [u8]>,
     p: &Point,
     cpu: cpu::Features,
 ) -> Result<(), error::Unspecified> {
-    let (x_aff, y_aff) = affine_from_jacobian(ops, p, cpu)?;
+    let (x_aff, y_aff) = affine_from_jacobian(ops, q, p, cpu)?;
     let x = ops.common.elem_unencoded(&x_aff);
     limb::big_endian_from_limbs(ops.leak_limbs(&x), x_out);
     if let Some(y_out) = y_out {

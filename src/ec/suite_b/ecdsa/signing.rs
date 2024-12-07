@@ -154,8 +154,10 @@ impl EcdsaKeyPair {
         rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::KeyRejected> {
         let cpu = cpu::features();
+
         let (seed, public_key) = key_pair.split();
-        let d = private_key::private_key_as_scalar(alg.private_key_ops, &seed);
+        let n = alg.private_scalar_ops.scalar_ops.scalar_modulus();
+        let d = private_key::private_key_as_scalar(&n, &seed);
         let d = alg.private_scalar_ops.to_mont(&d, cpu);
 
         let nonce_key = NonceRandomKey::new(alg, &seed, rng)?;
@@ -238,11 +240,13 @@ impl EcdsaKeyPair {
         let scalar_ops = ops.scalar_ops;
         let cops = scalar_ops.common;
         let private_key_ops = self.alg.private_key_ops;
+        let q = cops.elem_modulus();
+        let n = scalar_ops.scalar_modulus();
 
         for _ in 0..100 {
             // XXX: iteration conut?
             // Step 1.
-            let k = private_key::random_scalar(self.alg.private_key_ops, rng)?;
+            let k = private_key::random_scalar(self.alg.private_key_ops, &n, rng)?;
             let k_inv = ops.scalar_inv_to_mont(&k, cpu);
 
             // Step 2.
@@ -250,9 +254,9 @@ impl EcdsaKeyPair {
 
             // Step 3.
             let r = {
-                let (x, _) = private_key::affine_from_jacobian(private_key_ops, &r, cpu)?;
+                let (x, _) = private_key::affine_from_jacobian(private_key_ops, &q, &r, cpu)?;
                 let x = cops.elem_unencoded(&x);
-                elem_reduced_to_scalar(cops, &x)
+                n.elem_reduced_to_scalar(&x)
             };
             if cops.is_zero(&r) {
                 continue;
@@ -261,12 +265,12 @@ impl EcdsaKeyPair {
             // Step 4 is done by the caller.
 
             // Step 5.
-            let e = digest_scalar(scalar_ops, h);
+            let e = digest_scalar(&n, h);
 
             // Step 6.
             let s = {
-                let dr = scalar_ops.scalar_product(&self.d, &r, cpu);
-                let e_plus_dr = scalar_sum(cops, &e, dr);
+                let mut e_plus_dr = scalar_ops.scalar_product(&self.d, &r, cpu);
+                n.elem_add(&mut e_plus_dr, &e);
                 scalar_ops.scalar_product(&k_inv, &e_plus_dr, cpu)
             };
             if cops.is_zero(&s) {

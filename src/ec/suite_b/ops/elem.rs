@@ -122,11 +122,7 @@ pub fn binary_op<M, EA: Encoding, EB: Encoding, ER: Encoding>(
     a: &Elem<M, EA>,
     b: &Elem<M, EB>,
 ) -> Elem<M, ER> {
-    let mut r = Elem {
-        limbs: [0; NumLimbs::MAX],
-        m: PhantomData,
-        encoding: PhantomData,
-    };
+    let mut r = Elem::zero();
     unsafe { f(r.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr()) }
     r
 }
@@ -147,11 +143,7 @@ pub fn unary_op<M, E: Encoding>(
     f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
     a: &Elem<M, E>,
 ) -> Elem<M, E> {
-    let mut r = Elem {
-        limbs: [0; NumLimbs::MAX],
-        m: PhantomData,
-        encoding: PhantomData,
-    };
+    let mut r = Elem::zero();
     unsafe { f(r.limbs.as_mut_ptr(), a.limbs.as_ptr()) }
     r
 }

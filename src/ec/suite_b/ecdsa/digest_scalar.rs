@@ -42,30 +42,27 @@ use crate::{digest, ec::suite_b::ops::*};
 /// right will give a value less than 2**255, which is less than `n`. The
 /// analogous argument applies for P-384. However, it does *not* apply in
 /// general; for example, it doesn't apply to P-521.
-pub fn digest_scalar(ops: &ScalarOps, msg: digest::Digest) -> Scalar {
-    digest_scalar_(ops, msg.as_ref())
+pub(super) fn digest_scalar(n: &Modulus<N>, msg: digest::Digest) -> Scalar {
+    digest_scalar_(n, msg.as_ref())
 }
 
 #[cfg(test)]
-pub(crate) fn digest_bytes_scalar(ops: &ScalarOps, digest: &[u8]) -> Scalar {
-    digest_scalar_(ops, digest)
+pub(super) fn digest_bytes_scalar(n: &Modulus<N>, digest: &[u8]) -> Scalar {
+    digest_scalar_(n, digest)
 }
 
 // This is a separate function solely so that we can test specific digest
 // values like all-zero values and values larger than `n`.
-fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
-    let len = ops.scalar_bytes_len();
+fn digest_scalar_(n: &Modulus<N>, digest: &[u8]) -> Scalar {
+    let len = n.bytes_len();
     let digest = if digest.len() > len {
         &digest[..len]
     } else {
         digest
     };
 
-    scalar_parse_big_endian_partially_reduced_variable_consttime(
-        ops.common,
-        untrusted::Input::from(digest),
-    )
-    .unwrap()
+    scalar_parse_big_endian_partially_reduced_variable_consttime(n, untrusted::Input::from(digest))
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -94,18 +91,20 @@ mod tests {
                         panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
                     }
                 };
+                let n = ops.scalar_ops.scalar_modulus();
 
                 assert_eq!(input.len(), digest_alg.output_len());
                 assert_eq!(output.len(), ops.scalar_ops.scalar_bytes_len());
+                assert_eq!(output.len(), n.bytes_len());
 
                 let expected = scalar_parse_big_endian_variable(
-                    ops.public_key_ops.common,
+                    &n,
                     limb::AllowZero::Yes,
                     untrusted::Input::from(&output),
                 )
                 .unwrap();
 
-                let actual = digest_bytes_scalar(ops.scalar_ops, &input);
+                let actual = digest_bytes_scalar(&n, &input);
                 assert_eq!(
                     ops.scalar_ops.leak_limbs(&actual),
                     ops.scalar_ops.leak_limbs(&expected)

@@ -31,10 +31,12 @@ use crate::{arithmetic::montgomery::*, cpu, ec, error, io::der, pkcs8};
 //
 fn verify_affine_point_is_on_the_curve(
     ops: &CommonOps,
+    q: &Modulus<Q>,
     (x, y): (&Elem<R>, &Elem<R>),
 ) -> Result<(), error::Unspecified> {
     verify_affine_point_is_on_the_curve_scaled(
         ops,
+        q,
         (x, y),
         &Elem::from(&ops.a),
         &Elem::from(&ops.b),
@@ -52,6 +54,7 @@ fn verify_affine_point_is_on_the_curve(
 // This function also verifies that the point is not at infinity.
 fn verify_jacobian_point_is_on_the_curve(
     ops: &CommonOps,
+    q: &Modulus<Q>,
     p: &Point,
 ) -> Result<Elem<R>, error::Unspecified> {
     let z = ops.point_z(p);
@@ -109,7 +112,7 @@ fn verify_jacobian_point_is_on_the_curve(
     let z4_a = ops.elem_product(&z4, &Elem::from(&ops.a));
     let z6 = ops.elem_product(&z4, &z2);
     let z6_b = ops.elem_product(&z6, &Elem::from(&ops.b));
-    verify_affine_point_is_on_the_curve_scaled(ops, (&x, &y), &z4_a, &z6_b)?;
+    verify_affine_point_is_on_the_curve_scaled(ops, q, (&x, &y), &z4_a, &z6_b)?;
     Ok(z2)
 }
 
@@ -140,6 +143,7 @@ fn verify_jacobian_point_is_on_the_curve(
 // Jean-Pierre Seifert.
 fn verify_affine_point_is_on_the_curve_scaled(
     ops: &CommonOps,
+    q: &Modulus<Q>,
     (x, y): (&Elem<R>, &Elem<R>),
     a_scaled: &Elem<R>,
     b_scaled: &Elem<R>,
@@ -147,9 +151,9 @@ fn verify_affine_point_is_on_the_curve_scaled(
     let lhs = ops.elem_squared(y);
 
     let mut rhs = ops.elem_squared(x);
-    ops.elem_add(&mut rhs, a_scaled);
+    q.elem_add(&mut rhs, a_scaled);
     ops.elem_mul(&mut rhs, x);
-    ops.elem_add(&mut rhs, b_scaled);
+    q.elem_add(&mut rhs, b_scaled);
 
     if !ops.elems_are_equal(&lhs, &rhs).leak() {
         return Err(error::Unspecified);
