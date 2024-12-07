@@ -28,6 +28,7 @@ use crate::{arithmetic::montgomery::*, cpu, error};
 ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
 pub(super) fn parse_uncompressed_point(
     ops: &PublicKeyOps,
+    q: &Modulus<Q>,
     input: untrusted::Input,
     cpu: cpu::Features,
 ) -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
@@ -44,15 +45,15 @@ pub(super) fn parse_uncompressed_point(
 
         // NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers in the
         // interval [0, p-1] in the case that q is an odd prime p[.]"
-        let x = ops.elem_parse(input, cpu)?;
-        let y = ops.elem_parse(input, cpu)?;
+        let x = ops.elem_parse(q, input, cpu)?;
+        let y = ops.elem_parse(q, input, cpu)?;
         Ok((x, y))
     })?;
 
     // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
     // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed
     // modulo p."
-    verify_affine_point_is_on_the_curve(ops.common, (&x, &y))?;
+    verify_affine_point_is_on_the_curve(ops.common, q, (&x, &y))?;
 
     // NIST SP 800-56A Note: "Since its order is not verified, there is no
     // check that the public key is in the correct EC subgroup."
@@ -85,8 +86,9 @@ mod tests {
                 let is_valid = test_case.consume_string("Result") == "P";
 
                 let curve_ops = public_key_ops_from_curve_name(&curve_name);
+                let q = curve_ops.common.elem_modulus();
 
-                let result = parse_uncompressed_point(curve_ops, public_key, cpu);
+                let result = parse_uncompressed_point(curve_ops, &q, public_key, cpu);
                 assert_eq!(is_valid, result.is_ok());
 
                 // TODO: Verify that we when we re-serialize the parsed (x, y), the

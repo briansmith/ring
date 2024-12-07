@@ -14,7 +14,7 @@
 
 use super::{
     elem::{binary_op, binary_op_assign},
-    elem_sqr_mul, elem_sqr_mul_acc, Modulus, *,
+    elem_sqr_mul, elem_sqr_mul_acc, PublicModulus, *,
 };
 
 pub(super) const NUM_LIMBS: usize = 256 / LIMB_BITS;
@@ -22,9 +22,9 @@ pub(super) const NUM_LIMBS: usize = 256 / LIMB_BITS;
 pub static COMMON_OPS: CommonOps = CommonOps {
     num_limbs: elem::NumLimbs::P256,
 
-    q: Modulus {
+    q: PublicModulus {
         p: limbs_from_hex("ffffffff00000001000000000000000000000000ffffffffffffffffffffffff"),
-        rr: limbs_from_hex("4fffffffdfffffffffffffffefffffffbffffffff0000000000000003"),
+        rr: PublicElem::from_hex("4fffffffdfffffffffffffffefffffffbffffffff0000000000000003"),
     },
     n: PublicElem::from_hex("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"),
 
@@ -301,7 +301,7 @@ prefixed_extern! {
     fn p256_scalar_sqr_rep_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
-        rep: Limb,
+        rep: LeakyWord,
     );
 }
 
