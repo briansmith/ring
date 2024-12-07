@@ -12,33 +12,16 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::LeakyWord;
+#[cfg(target_pointer_width = "64")]
+type CompilerWord = u64;
 
-/// A native word that may hold a secret.
+#[cfg(target_pointer_width = "32")]
+type CompilerWord = u32;
+
+/// A native word that isn't secret.
 ///
-/// XXX: Currently this is a type alias of `LeakyWord` so it doesn't enforce,
-/// except by convention, the prevention of leaks. This is a temporary state to
-/// support the refactorings that will
+/// `LeakyWord` supports `as` conversions to/from native types.
 ///
 /// XXX: This isn't the native word size on targets where a pointer isn't the
 /// same size as a native word. TODO: Fix this.
-///
-/// XXX: Over time, we'll evolve Word into a newtype with an API that minimizes
-/// leaks and makes all leaks explicit, like so:
-pub(crate) type Word = LeakyWord;
-
-/* TODO:
-#[repr(transparent)]
-pub(crate) struct Word(LeakyWord);
-
-impl Word {
-    pub fn leak_word(self) -> LeakyWord { self.0 }
-}
-
-impl From<LeakyWord> for Word {
-    fn from(w: LeakyWord) -> Self {
-        // TODO: Use a stronger `black_box`.
-        Self(core::hint::black_box(w))
-    }
-}
-*/
+pub(crate) type LeakyWord = CompilerWord;
