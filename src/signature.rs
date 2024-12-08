@@ -272,7 +272,8 @@ pub use crate::ec::{
         verification::{
             EcdsaVerificationAlgorithm, ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
             ECDSA_P256_SHA384_ASN1, ECDSA_P384_SHA256_ASN1, ECDSA_P384_SHA384_ASN1,
-            ECDSA_P384_SHA384_FIXED,
+            ECDSA_P384_SHA384_FIXED, ECDSA_P521_SHA384_ASN1, ECDSA_P521_SHA384_FIXED,
+            ECDSA_P521_SHA512_ASN1, ECDSA_P521_SHA512_FIXED,
         },
     },
 };

@@ -45,6 +45,10 @@ enum AlgorithmID {
     ECDSA_P384_SHA256_ASN1,
     ECDSA_P384_SHA384_ASN1,
     ECDSA_P384_SHA384_FIXED,
+    ECDSA_P521_SHA384_FIXED,
+    ECDSA_P521_SHA512_FIXED,
+    ECDSA_P521_SHA384_ASN1,
+    ECDSA_P521_SHA512_ASN1,
 }
 
 derive_debug_via_id!(EcdsaVerificationAlgorithm);
@@ -217,6 +221,30 @@ pub static ECDSA_P384_SHA384_FIXED: EcdsaVerificationAlgorithm = EcdsaVerificati
     id: AlgorithmID::ECDSA_P384_SHA384_FIXED,
 };
 
+/// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
+/// P-521 curve and SHA-384.
+///
+/// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P521_SHA384_FIXED: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
+    ops: &p521::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA384,
+    split_rs: split_rs_fixed,
+    id: AlgorithmID::ECDSA_P521_SHA384_FIXED,
+};
+
+/// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
+/// P-521 curve and SHA-512.
+///
+/// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P521_SHA512_FIXED: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
+    ops: &p521::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA512,
+    split_rs: split_rs_fixed,
+    id: AlgorithmID::ECDSA_P521_SHA512_FIXED,
+};
+
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-256 curve
 /// and SHA-256.
 ///
@@ -275,6 +303,30 @@ pub static ECDSA_P384_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificatio
     id: AlgorithmID::ECDSA_P384_SHA384_ASN1,
 };
 
+/// Verification of ASN.1 DER-encoded ECDSA signatures using the P-521 curve
+/// and SHA-384.
+///
+/// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P521_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
+    ops: &p521::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA384,
+    split_rs: split_rs_asn1,
+    id: AlgorithmID::ECDSA_P521_SHA384_ASN1,
+};
+
+/// Verification of ASN.1 DER-encoded ECDSA signatures using the P-521 curve
+/// and SHA-512.
+///
+/// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P521_SHA512_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
+    ops: &p521::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA512,
+    split_rs: split_rs_asn1,
+    id: AlgorithmID::ECDSA_P521_SHA512_ASN1,
+};
+
 #[cfg(test)]
 mod tests {
     extern crate alloc;
@@ -312,6 +364,7 @@ mod tests {
                 let alg = match curve_name.as_str() {
                     "P-256" => &ECDSA_P256_SHA256_FIXED,
                     "P-384" => &ECDSA_P384_SHA384_FIXED,
+                    "P-521" => &ECDSA_P521_SHA512_FIXED,
                     _ => {
                         panic!("Unsupported curve: {}", curve_name);
                     }

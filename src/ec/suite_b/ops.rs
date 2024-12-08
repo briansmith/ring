@@ -58,6 +58,7 @@ impl Point {
 /// Operations and values needed by all curve operations.
 pub struct CommonOps {
     num_limbs: usize,
+    order_bits: usize,
     q: Modulus,
     n: PublicElem<Unencoded>,
 
@@ -75,7 +76,11 @@ impl CommonOps {
     // The length of a field element, which is the same as the length of a
     // scalar, in bytes.
     pub fn len(&self) -> usize {
-        self.num_limbs * LIMB_BYTES
+        (self.order_bits + 7) / 8
+    }
+
+    pub fn order_bits(&self) -> usize {
+        self.order_bits
     }
 
     #[cfg(test)]
@@ -530,6 +535,11 @@ mod tests {
     }
 
     #[test]
+    fn p521_q_minus_n_plus_n_equals_0_test() {
+        q_minus_n_plus_n_equals_0_test(&p521::PUBLIC_SCALAR_OPS);
+    }
+
+    #[test]
     fn p256_elem_add_test() {
         elem_add_test(
             &p256::PUBLIC_SCALAR_OPS,
@@ -542,6 +552,15 @@ mod tests {
         elem_add_test(
             &p384::PUBLIC_SCALAR_OPS,
             test_file!("ops/p384_elem_sum_tests.txt"),
+        );
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn p521_elem_add_test() {
+        elem_add_test(
+            &p521::PUBLIC_SCALAR_OPS,
+            test_file!("ops/p521_elem_sum_tests.txt"),
         );
     }
 
@@ -578,6 +597,19 @@ mod tests {
             &p384::COMMON_OPS,
             p384_elem_sub,
             test_file!("ops/p384_elem_sum_tests.txt"),
+        );
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn p521_elem_sub_test() {
+        prefixed_extern! {
+            fn p521_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
+        }
+        elem_sub_test(
+            &p521::COMMON_OPS,
+            p521_elem_sub,
+            test_file!("ops/p521_elem_sum_tests.txt"),
         );
     }
 
@@ -632,6 +664,19 @@ mod tests {
         );
     }
 
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn p521_elem_div_by_2_test() {
+        prefixed_extern! {
+            fn p521_elem_div_by_2(r: *mut Limb, a: *const Limb);
+        }
+        elem_div_by_2_test(
+            &p521::COMMON_OPS,
+            p521_elem_div_by_2,
+            test_file!("ops/p521_elem_div_by_2_tests.txt"),
+        );
+    }
+
     fn elem_div_by_2_test(
         ops: &CommonOps,
         elem_div_by_2: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
@@ -679,6 +724,19 @@ mod tests {
         );
     }
 
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn p521_elem_neg_test() {
+        prefixed_extern! {
+            fn p521_elem_neg(r: *mut Limb, a: *const Limb);
+        }
+        elem_neg_test(
+            &p521::COMMON_OPS,
+            p521_elem_neg,
+            test_file!("ops/p521_elem_neg_tests.txt"),
+        );
+    }
+
     fn elem_neg_test(
         ops: &CommonOps,
         elem_neg: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
@@ -722,6 +780,12 @@ mod tests {
         elem_mul_test(&p384::COMMON_OPS, test_file!("ops/p384_elem_mul_tests.txt"));
     }
 
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn p521_elem_mul_test() {
+        elem_mul_test(&p521::COMMON_OPS, test_file!("ops/p521_elem_mul_tests.txt"));
+    }
+
     fn elem_mul_test(ops: &CommonOps, test_file: test::File) {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
@@ -749,6 +813,15 @@ mod tests {
         scalar_mul_test(
             &p384::SCALAR_OPS,
             test_file!("ops/p384_scalar_mul_tests.txt"),
+        );
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn p521_scalar_mul_test() {
+        scalar_mul_test(
+            &p521::SCALAR_OPS,
+            test_file!("ops/p521_scalar_mul_tests.txt"),
         );
     }
 
@@ -828,6 +901,12 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "!self.scalar_ops.common.is_zero(a)")]
+    fn p521_scalar_inv_to_mont_zero_panic_test() {
+        let _ = p521::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR);
+    }
+
+    #[test]
     fn p256_point_sum_test() {
         point_sum_test(
             &p256::PRIVATE_KEY_OPS,
@@ -840,6 +919,15 @@ mod tests {
         point_sum_test(
             &p384::PRIVATE_KEY_OPS,
             test_file!("ops/p384_point_sum_tests.txt"),
+        );
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn p521_point_sum_test() {
+        point_sum_test(
+            &p521::PRIVATE_KEY_OPS,
+            test_file!("ops/p521_point_sum_tests.txt"),
         );
     }
 
@@ -932,6 +1020,22 @@ mod tests {
             &p384::PRIVATE_KEY_OPS,
             p384_point_double,
             test_file!("ops/p384_point_double_tests.txt"),
+        );
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn p521_point_double_test() {
+        prefixed_extern! {
+            fn p521_point_double(
+                r: *mut Limb,
+                a: *const Limb,
+            );
+        }
+        point_double_test(
+            &p521::PRIVATE_KEY_OPS,
+            p521_point_double,
+            test_file!("ops/p521_point_double_tests.txt"),
         );
     }
 
@@ -1056,6 +1160,15 @@ mod tests {
             &p384::PRIVATE_KEY_OPS,
             |s, cpu| p384::PRIVATE_KEY_OPS.point_mul_base(s, cpu),
             test_file!("ops/p384_point_mul_base_tests.txt"),
+        );
+    }
+
+    #[test]
+    fn p521_point_mul_base_test() {
+        point_mul_base_tests(
+            &p521::PRIVATE_KEY_OPS,
+            |s| p521::PRIVATE_KEY_OPS.point_mul_base(s),
+            test_file!("ops/p521_point_mul_base_tests.txt"),
         );
     }
 
@@ -1264,3 +1377,4 @@ mod tests {
 mod elem;
 pub mod p256;
 pub mod p384;
+pub mod p521;

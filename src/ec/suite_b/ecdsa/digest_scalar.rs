@@ -55,11 +55,25 @@ pub(crate) fn digest_bytes_scalar(ops: &ScalarOps, digest: &[u8]) -> Scalar {
 // values like all-zero values and values larger than `n`.
 fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
     let len = ops.scalar_bytes_len();
-    let digest = if digest.len() > len {
+    let mut digest = if digest.len() > len {
         &digest[..len]
     } else {
         digest
     };
+
+    let mut digest_shift = [0u8; MAX_LIMBS * crate::limb::LIMB_BYTES];
+    let shift = (digest.len() * 8).saturating_sub(ops.common.order_bits());
+    if shift > 0 {
+        // If the digest is too long after byte trancation
+        // shift right to get the proper number of bits
+        // This should not happen in practice for the supported curve/digest combos
+        debug_assert!(shift < 8);
+        digest_shift[0] = digest[0] >> shift;
+        for i in 1..len {
+            digest_shift[i] = digest[i] >> shift | digest[i - 1] << (8 - shift);
+        }
+        digest = &digest_shift[..len];
+    }
 
     scalar_parse_big_endian_partially_reduced_variable_consttime(
         ops.common,

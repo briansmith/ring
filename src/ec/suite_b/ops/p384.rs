@@ -19,6 +19,7 @@ use super::{
 
 pub static COMMON_OPS: CommonOps = CommonOps {
     num_limbs: 384 / LIMB_BITS,
+    order_bits: 384,
 
     q: Modulus {
         p: limbs_from_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff"),
