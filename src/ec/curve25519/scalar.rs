@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{arithmetic::limbs_from_hex, digest, error, limb};
+use crate::{arithmetic::limbs_from_hex, digest, error, limb, polyfill::slice};
+use core::array;
 
 #[repr(transparent)]
 pub struct Scalar([u8; SCALAR_LEN]);
@@ -27,17 +28,13 @@ impl Scalar {
             limbs_from_hex("1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed");
         let order = ORDER.map(limb::Limb::from);
 
-        // `bytes` is in little-endian order.
-        let mut reversed = bytes;
-        reversed.reverse();
-
-        let mut limbs = [0; SCALAR_LEN / limb::LIMB_BYTES];
-        limb::parse_big_endian_in_range_and_pad_consttime(
-            untrusted::Input::from(&reversed),
-            limb::AllowZero::Yes,
-            &order,
-            &mut limbs,
-        )?;
+        let (limbs_as_bytes, _empty): (&[[u8; limb::LIMB_BYTES]], _) = slice::as_chunks(&bytes);
+        debug_assert!(_empty.is_empty());
+        let limbs: [limb::Limb; SCALAR_LEN / limb::LIMB_BYTES] =
+            array::from_fn(|i| limb::Limb::from_le_bytes(limbs_as_bytes[i]));
+        if !limb::limbs_less_than_limbs_consttime(&limbs, &order).leak() {
+            return Err(error::Unspecified);
+        }
 
         Ok(Self(bytes))
     }
