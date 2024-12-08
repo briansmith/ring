@@ -18,7 +18,10 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use crate::{c, constant_time, error, polyfill::ArrayFlatMap};
+use crate::{
+    c, constant_time, error,
+    polyfill::{slice, ArrayFlatMap},
+};
 
 #[cfg(any(test, feature = "alloc"))]
 use crate::{bits, polyfill::usize_from_u32};
@@ -154,44 +157,38 @@ pub fn parse_big_endian_and_pad_consttime(
     input: untrusted::Input,
     result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
-    if input.is_empty() {
-        return Err(error::Unspecified);
-    }
+    let (partial, whole) = slice::as_rchunks(input.as_slice_less_safe());
 
-    // `bytes_in_current_limb` is the number of bytes in the current limb.
-    // It will be `LIMB_BYTES` for all limbs except maybe the highest-order
-    // limb.
-    let mut bytes_in_current_limb = input.len() % LIMB_BYTES;
-    if bytes_in_current_limb == 0 {
-        bytes_in_current_limb = LIMB_BYTES;
-    }
-
-    let num_encoded_limbs = (input.len() / LIMB_BYTES)
-        + (if bytes_in_current_limb == LIMB_BYTES {
-            0
-        } else {
-            1
-        });
-    if num_encoded_limbs > result.len() {
-        return Err(error::Unspecified);
-    }
-
-    result.fill(0);
-
-    // XXX: Questionable as far as constant-timedness is concerned.
-    // TODO: Improve this.
-    input.read_all(error::Unspecified, |input| {
-        for i in 0..num_encoded_limbs {
-            let mut limb = 0;
-            for _ in 0..bytes_in_current_limb {
-                let b: Limb = input.read_byte()?.into();
-                limb = (limb << 8) | b;
-            }
-            result[num_encoded_limbs - i - 1] = limb;
-            bytes_in_current_limb = LIMB_BYTES;
+    let mut partial_padded: [u8; LIMB_BYTES];
+    let partial_padded = match (partial, whole) {
+        (partial @ [_, ..], _) => {
+            partial_padded = [0; LIMB_BYTES];
+            partial_padded[(LIMB_BYTES - partial.len())..].copy_from_slice(partial);
+            Some(partial_padded)
         }
-        Ok(())
-    })
+        ([], [_, ..]) => None,
+        ([], []) => {
+            // Empty input is not allowed.
+            return Err(error::Unspecified);
+        }
+    };
+
+    let mut result = result.iter_mut();
+
+    for input in whole.iter().rev().chain(partial_padded.iter()) {
+        // The result isn't allowed to be shorter than the input.
+        match result.next() {
+            Some(r) => *r = Limb::from_be_bytes(*input),
+            None => return Err(error::Unspecified),
+        }
+    }
+
+    // Pad the result.
+    for r in result {
+        *r = 0;
+    }
+
+    Ok(())
 }
 
 pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
