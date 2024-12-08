@@ -22,7 +22,7 @@ pub const SCALAR_LEN: usize = 32;
 
 impl Scalar {
     // Constructs a `Scalar` from `bytes`, failing if `bytes` encodes a scalar
-    // that not in the range [0, n).
+    // that is not in the range [0, n).
     pub fn from_bytes_checked(bytes: [u8; SCALAR_LEN]) -> Result<Self, error::Unspecified> {
         const ORDER: [limb::Limb; SCALAR_LEN / limb::LIMB_BYTES] =
             limbs_from_hex("1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed");
