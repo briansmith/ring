@@ -740,7 +740,6 @@ static void err_add_error_vdata(unsigned num, va_list args) {
       assert(0);  // should not be possible.
     }
   }
-  va_end(args);
   err_set_error_data(buf);
 }
 
