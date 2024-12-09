@@ -328,7 +328,7 @@ impl PublicScalarOps {
         a.limbs[..num_limbs] == b.limbs[..num_limbs]
     }
 
-    pub fn elem_less_than(&self, a: &Elem<Unencoded>, b: &PublicElem<Unencoded>) -> bool {
+    pub fn elem_less_than_vartime(&self, a: &Elem<Unencoded>, b: &PublicElem<Unencoded>) -> bool {
         let num_limbs = self.public_key_ops.common.num_limbs.into();
         limbs_less_than_limbs_vartime(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
     }
