@@ -36,8 +36,10 @@ use super::{
     elem_sqr_mul, elem_sqr_mul_acc, Modulus, *,
 };
 
+pub(super) const NUM_LIMBS: usize = (%(bits)d + LIMB_BITS - 1) / LIMB_BITS;
+
 pub static COMMON_OPS: CommonOps = CommonOps {
-    num_limbs: (%(bits)d + LIMB_BITS - 1) / LIMB_BITS,
+    num_limbs: elem::NumLimbs::P%(bits)s,
     order_bits: %(bits)d,
 
     q: Modulus {
