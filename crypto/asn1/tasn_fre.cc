@@ -70,9 +70,6 @@ void ASN1_item_free(ASN1_VALUE *val, const ASN1_ITEM *it) {
 }
 
 void ASN1_item_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
-  const ASN1_TEMPLATE *tt = NULL, *seqtt;
-  const ASN1_EXTERN_FUNCS *ef;
-  int i;
   if (!pval) {
     return;
   }
@@ -97,16 +94,14 @@ void ASN1_item_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
       const ASN1_AUX *aux = reinterpret_cast<const ASN1_AUX *>(it->funcs);
       ASN1_aux_cb *asn1_cb = aux != NULL ? aux->asn1_cb : NULL;
       if (asn1_cb) {
-        i = asn1_cb(ASN1_OP_FREE_PRE, pval, it, NULL);
-        if (i == 2) {
+        if (asn1_cb(ASN1_OP_FREE_PRE, pval, it, NULL) == 2) {
           return;
         }
       }
-      i = asn1_get_choice_selector(pval, it);
+      int i = asn1_get_choice_selector(pval, it);
       if ((i >= 0) && (i < it->tcount)) {
-        ASN1_VALUE **pchval;
-        tt = it->templates + i;
-        pchval = asn1_get_field_ptr(pval, tt);
+        const ASN1_TEMPLATE *tt = it->templates + i;
+        ASN1_VALUE **pchval = asn1_get_field_ptr(pval, tt);
         ASN1_template_free(pchval, tt);
       }
       if (asn1_cb) {
@@ -117,12 +112,14 @@ void ASN1_item_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
       break;
     }
 
-    case ASN1_ITYPE_EXTERN:
-      ef = reinterpret_cast<const ASN1_EXTERN_FUNCS *>(it->funcs);
+    case ASN1_ITYPE_EXTERN: {
+      const ASN1_EXTERN_FUNCS *ef =
+          reinterpret_cast<const ASN1_EXTERN_FUNCS *>(it->funcs);
       if (ef && ef->asn1_ex_free) {
         ef->asn1_ex_free(pval, it);
       }
       break;
+    }
 
     case ASN1_ITYPE_SEQUENCE: {
       if (!asn1_refcount_dec_and_test_zero(pval, it)) {
@@ -131,8 +128,7 @@ void ASN1_item_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
       const ASN1_AUX *aux = reinterpret_cast<const ASN1_AUX *>(it->funcs);
       ASN1_aux_cb *asn1_cb = aux != NULL ? aux->asn1_cb : NULL;
       if (asn1_cb) {
-        i = asn1_cb(ASN1_OP_FREE_PRE, pval, it, NULL);
-        if (i == 2) {
+        if (asn1_cb(ASN1_OP_FREE_PRE, pval, it, NULL) == 2) {
           return;
         }
       }
@@ -140,14 +136,12 @@ void ASN1_item_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
       // If we free up as normal we will invalidate any ANY DEFINED BY
       // field and we wont be able to determine the type of the field it
       // defines. So free up in reverse order.
-      tt = it->templates + it->tcount - 1;
-      for (i = 0; i < it->tcount; tt--, i++) {
-        ASN1_VALUE **pseqval;
-        seqtt = asn1_do_adb(pval, tt, 0);
+      for (int i = it->tcount - 1; i >= 0; i--) {
+        const ASN1_TEMPLATE *seqtt = asn1_do_adb(pval, &it->templates[i], 0);
         if (!seqtt) {
           continue;
         }
-        pseqval = asn1_get_field_ptr(pval, seqtt);
+        ASN1_VALUE **pseqval = asn1_get_field_ptr(pval, seqtt);
         ASN1_template_free(pseqval, seqtt);
       }
       if (asn1_cb) {
