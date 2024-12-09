@@ -17,8 +17,10 @@ use super::{
     elem_sqr_mul, elem_sqr_mul_acc, Modulus, *,
 };
 
+pub(super) const NUM_LIMBS: usize = 256 / LIMB_BITS;
+
 pub static COMMON_OPS: CommonOps = CommonOps {
-    num_limbs: 256 / LIMB_BITS,
+    num_limbs: elem::NumLimbs::P256,
 
     q: Modulus {
         p: limbs_from_hex("ffffffff00000001000000000000000000000000ffffffffffffffffffffffff"),

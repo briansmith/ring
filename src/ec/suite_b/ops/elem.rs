@@ -12,21 +12,41 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use crate::ec::suite_b::ops::{
+    p256::NUM_LIMBS as P256_NUM_LIMBS, p384::NUM_LIMBS as P384_NUM_LIMBS,
+};
 use crate::{
     arithmetic::{
         limbs_from_hex,
         montgomery::{Encoding, ProductEncoding, Unencoded},
     },
-    limb::{LeakyLimb, Limb, LIMB_BITS},
+    limb::{LeakyLimb, Limb},
 };
 use core::marker::PhantomData;
+
+#[derive(Clone, Copy)]
+pub(super) enum NumLimbs {
+    P256,
+    P384,
+}
+
+impl NumLimbs {
+    pub(super) const MAX: usize = Self::P384.into();
+
+    pub(super) const fn into(self) -> usize {
+        match self {
+            NumLimbs::P256 => P256_NUM_LIMBS,
+            NumLimbs::P384 => P384_NUM_LIMBS,
+        }
+    }
+}
 
 /// Elements of ℤ/mℤ for some modulus *m*. Elements are always fully reduced
 /// with respect to *m*; i.e. the 0 <= x < m for every value x.
 #[derive(Clone, Copy)]
 pub struct Elem<M, E: Encoding> {
     // XXX: pub
-    pub(super) limbs: [Limb; MAX_LIMBS],
+    pub(super) limbs: [Limb; NumLimbs::MAX],
 
     /// The modulus *m* for the ring ℤ/mℤ for which this element is a value.
     pub(super) m: PhantomData<M>,
@@ -37,7 +57,7 @@ pub struct Elem<M, E: Encoding> {
 }
 
 pub struct PublicElem<M, E: Encoding> {
-    pub(super) limbs: [LeakyLimb; MAX_LIMBS],
+    pub(super) limbs: [LeakyLimb; NumLimbs::MAX],
     pub(super) m: PhantomData<M>,
     pub(super) encoding: PhantomData<E>,
 }
@@ -58,7 +78,7 @@ impl<M, E: Encoding> Elem<M, E> {
     // as inputs for constructing a zero-valued element.
     pub fn zero() -> Self {
         Self {
-            limbs: [0; MAX_LIMBS],
+            limbs: [0; NumLimbs::MAX],
             m: PhantomData,
             encoding: PhantomData,
         }
@@ -103,7 +123,7 @@ pub fn binary_op<M, EA: Encoding, EB: Encoding, ER: Encoding>(
     b: &Elem<M, EB>,
 ) -> Elem<M, ER> {
     let mut r = Elem {
-        limbs: [0; MAX_LIMBS],
+        limbs: [0; NumLimbs::MAX],
         m: PhantomData,
         encoding: PhantomData,
     };
@@ -128,7 +148,7 @@ pub fn unary_op<M, E: Encoding>(
     a: &Elem<M, E>,
 ) -> Elem<M, E> {
     let mut r = Elem {
-        limbs: [0; MAX_LIMBS],
+        limbs: [0; NumLimbs::MAX],
         m: PhantomData,
         encoding: PhantomData,
     };
@@ -153,5 +173,3 @@ pub fn unary_op_from_binary_op_assign<M, E: Encoding>(
 ) {
     unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr(), a.limbs.as_ptr()) }
 }
-
-pub const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
