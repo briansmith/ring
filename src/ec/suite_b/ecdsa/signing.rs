@@ -156,8 +156,8 @@ impl EcdsaKeyPair {
         let cpu = cpu::features();
 
         let (seed, public_key) = key_pair.split();
-        let n = alg.private_scalar_ops.scalar_ops.scalar_modulus();
-        let d = private_key::private_key_as_scalar(&n, &seed);
+        let n = &alg.private_scalar_ops.scalar_ops.scalar_modulus();
+        let d = private_key::private_key_as_scalar(n, &seed);
         let d = alg.private_scalar_ops.to_mont(&d, cpu);
 
         let nonce_key = NonceRandomKey::new(alg, &seed, rng)?;
@@ -240,13 +240,13 @@ impl EcdsaKeyPair {
         let scalar_ops = ops.scalar_ops;
         let cops = scalar_ops.common;
         let private_key_ops = self.alg.private_key_ops;
-        let q = cops.elem_modulus();
-        let n = scalar_ops.scalar_modulus();
+        let q = &cops.elem_modulus();
+        let n = &scalar_ops.scalar_modulus();
 
         for _ in 0..100 {
             // XXX: iteration conut?
             // Step 1.
-            let k = private_key::random_scalar(self.alg.private_key_ops, &n, rng)?;
+            let k = private_key::random_scalar(self.alg.private_key_ops, n, rng)?;
             let k_inv = ops.scalar_inv_to_mont(&k, cpu);
 
             // Step 2.
@@ -254,7 +254,7 @@ impl EcdsaKeyPair {
 
             // Step 3.
             let r = {
-                let (x, _) = private_key::affine_from_jacobian(private_key_ops, &q, &r, cpu)?;
+                let (x, _) = private_key::affine_from_jacobian(private_key_ops, q, &r, cpu)?;
                 let x = cops.elem_unencoded(&x);
                 n.elem_reduced_to_scalar(&x)
             };
@@ -265,7 +265,7 @@ impl EcdsaKeyPair {
             // Step 4 is done by the caller.
 
             // Step 5.
-            let e = digest_scalar(&n, h);
+            let e = digest_scalar(n, h);
 
             // Step 6.
             let s = {

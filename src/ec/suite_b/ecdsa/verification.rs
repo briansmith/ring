@@ -63,8 +63,8 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
 
             // NSA Guide Step 3: "Convert the bit string H to an integer e as
             // described in Appendix B.2."
-            let n = self.ops.scalar_ops.scalar_modulus();
-            digest_scalar(&n, h)
+            let n = &self.ops.scalar_ops.scalar_modulus();
+            digest_scalar(n, h)
         };
 
         self.verify_digest(public_key, e, signature)
@@ -85,8 +85,8 @@ impl EcdsaVerificationAlgorithm {
 
         let public_key_ops = self.ops.public_key_ops;
         let scalar_ops = self.ops.scalar_ops;
-        let q = public_key_ops.common.elem_modulus();
-        let n = scalar_ops.scalar_modulus();
+        let q = &public_key_ops.common.elem_modulus();
+        let n = &scalar_ops.scalar_modulus();
 
         // NSA Guide Prerequisites:
         //
@@ -105,7 +105,7 @@ impl EcdsaVerificationAlgorithm {
         // can do. Prerequisite #2 is handled implicitly as the domain
         // parameters are hard-coded into the source. Prerequisite #3 is
         // handled by `parse_uncompressed_point`.
-        let peer_pub_key = parse_uncompressed_point(public_key_ops, &q, public_key, cpu)?;
+        let peer_pub_key = parse_uncompressed_point(public_key_ops, q, public_key, cpu)?;
 
         let (r, s) = signature.read_all(error::Unspecified, |input| {
             (self.split_rs)(scalar_ops, input)
@@ -113,8 +113,8 @@ impl EcdsaVerificationAlgorithm {
 
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
-        let r = scalar_parse_big_endian_variable(&n, limb::AllowZero::No, r)?;
-        let s = scalar_parse_big_endian_variable(&n, limb::AllowZero::No, s)?;
+        let r = scalar_parse_big_endian_variable(n, limb::AllowZero::No, r)?;
+        let s = scalar_parse_big_endian_variable(n, limb::AllowZero::No, s)?;
 
         // NSA Guide Step 4: "Compute w = s**−1 mod n, using the routine in
         // Appendix B.1."
@@ -137,7 +137,7 @@ impl EcdsaVerificationAlgorithm {
         // `verify_affine_point_is_on_the_curve_scaled` for details on why).
         // But, we're going to avoid converting to affine for performance
         // reasons, so we do the verification using the Jacobian coordinates.
-        let z2 = verify_jacobian_point_is_on_the_curve(public_key_ops.common, &q, &product)?;
+        let z2 = verify_jacobian_point_is_on_the_curve(public_key_ops.common, q, &product)?;
 
         // NSA Guide Step 7: "Compute v = xR mod n."
         // NSA Guide Step 8: "Compare v and r0. If v = r0, output VALID;
@@ -319,9 +319,9 @@ mod tests {
                         panic!("Unsupported curve: {}", curve_name);
                     }
                 };
-                let n = alg.ops.scalar_ops.scalar_modulus();
+                let n = &alg.ops.scalar_ops.scalar_modulus();
 
-                let digest = super::super::digest_scalar::digest_bytes_scalar(&n, &digest[..]);
+                let digest = super::super::digest_scalar::digest_bytes_scalar(n, &digest[..]);
                 let actual_result = alg.verify_digest(
                     untrusted::Input::from(&public_key[..]),
                     digest,

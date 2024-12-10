@@ -91,20 +91,20 @@ mod tests {
                         panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
                     }
                 };
-                let n = ops.scalar_ops.scalar_modulus();
+                let n = &ops.scalar_ops.scalar_modulus();
 
                 assert_eq!(input.len(), digest_alg.output_len());
                 assert_eq!(output.len(), ops.scalar_ops.scalar_bytes_len());
                 assert_eq!(output.len(), n.bytes_len());
 
                 let expected = scalar_parse_big_endian_variable(
-                    &n,
+                    n,
                     limb::AllowZero::Yes,
                     untrusted::Input::from(&output),
                 )
                 .unwrap();
 
-                let actual = digest_bytes_scalar(&n, &input);
+                let actual = digest_bytes_scalar(n, &input);
                 assert_eq!(
                     ops.scalar_ops.leak_limbs(&actual),
                     ops.scalar_ops.leak_limbs(&expected)
