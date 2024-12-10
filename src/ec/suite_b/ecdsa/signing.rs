@@ -273,7 +273,7 @@ impl EcdsaKeyPair {
                 n.add_assign(&mut e_plus_dr, &e);
                 scalar_ops.scalar_product(&k_inv, &e_plus_dr, cpu)
             };
-            if cops.is_zero(&s) {
+            if n.is_zero(&s) {
                 continue;
             }
 

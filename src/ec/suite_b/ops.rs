@@ -154,7 +154,7 @@ impl Modulus<Q> {
 
 impl CommonOps {
     #[inline]
-    pub fn is_zero<M, E: Encoding>(&self, a: &elem::Elem<M, E>) -> bool {
+    fn is_zero<M, E: Encoding>(&self, a: &elem::Elem<M, E>) -> bool {
         let num_limbs = self.num_limbs.into();
         limbs_are_zero_constant_time(&a.limbs[..num_limbs]).leak()
     }
@@ -242,7 +242,7 @@ impl Modulus<Q> {
 }
 
 impl CommonOps {
-    pub(super) fn point_sum(&self, a: &Point, b: &Point, _cpu: cpu::Features) -> Point {
+    fn point_sum(&self, a: &Point, b: &Point, _cpu: cpu::Features) -> Point {
         let mut r = Point::new_at_infinity();
         unsafe {
             (self.point_add_jacobian_impl)(r.xyz.as_mut_ptr(), a.xyz.as_ptr(), b.xyz.as_ptr())
@@ -635,7 +635,7 @@ mod tests {
         let q = &cops.elem_modulus(cpu::features());
         let mut x = Elem::from(&ops.q_minus_n);
         q.add_assign(&mut x, &Elem::from(&cops.n));
-        assert!(cops.is_zero(&x));
+        assert!(q.is_zero(&x));
     }
 
     #[test]
