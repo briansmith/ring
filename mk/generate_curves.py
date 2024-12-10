@@ -33,7 +33,7 @@ rs_template = """
 
 use super::{
     elem::{binary_op, binary_op_assign},
-    elem_sqr_mul, elem_sqr_mul_acc, Modulus, *,
+    elem_sqr_mul, elem_sqr_mul_acc, PublicModulus, *,
 };
 
 pub(super) const NUM_LIMBS: usize = (%(bits)d + LIMB_BITS - 1) / LIMB_BITS;
@@ -42,9 +42,9 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     num_limbs: elem::NumLimbs::P%(bits)s,
     order_bits: %(bits)d,
 
-    q: Modulus {
+    q: PublicModulus {
         p: limbs_from_hex("%(q)x"),
-        rr: limbs_from_hex(%(q_rr)s),
+        rr: PublicElem::from_hex(%(q_rr)s),
     },
     n: PublicElem::from_hex("%(n)x"),
 

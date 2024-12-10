@@ -14,7 +14,7 @@
 
 use super::{
     elem::{binary_op, binary_op_assign},
-    elem_sqr_mul, elem_sqr_mul_acc, Modulus, *,
+    elem_sqr_mul, elem_sqr_mul_acc, PublicModulus, *,
 };
 
 pub(super) const NUM_LIMBS: usize = 384 / LIMB_BITS;
@@ -22,9 +22,9 @@ pub(super) const NUM_LIMBS: usize = 384 / LIMB_BITS;
 pub static COMMON_OPS: CommonOps = CommonOps {
     num_limbs: elem::NumLimbs::P384,
 
-    q: Modulus {
+    q: PublicModulus {
         p: limbs_from_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff"),
-        rr: limbs_from_hex("10000000200000000fffffffe000000000000000200000000fffffffe00000001"),
+        rr: PublicElem::from_hex("10000000200000000fffffffe000000000000000200000000fffffffe00000001"),
     },
     n: PublicElem::from_hex("ffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973"),
 
