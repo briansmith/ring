@@ -95,8 +95,8 @@ pub(super) fn check_scalar_big_endian_bytes(
     bytes: &[u8],
 ) -> Result<(), error::Unspecified> {
     debug_assert_eq!(bytes.len(), ops.common.len());
-    let n = ops.common.scalar_modulus();
-    scalar_from_big_endian_bytes(&n, bytes).map(|_| ())
+    let n = &ops.common.scalar_modulus();
+    scalar_from_big_endian_bytes(n, bytes).map(|_| ())
 }
 
 // Parses a fixed-length (zero-padded) big-endian-encoded scalar in the range
@@ -132,18 +132,18 @@ pub(super) fn public_from_private(
     my_private_key: &ec::Seed,
     cpu: cpu::Features,
 ) -> Result<(), error::Unspecified> {
-    let q = ops.common.elem_modulus();
+    let q = &ops.common.elem_modulus();
     let elem_and_scalar_bytes = ops.common.len();
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
-    let n = ops.common.scalar_modulus();
-    let my_private_key = private_key_as_scalar(&n, my_private_key);
+    let n = &ops.common.scalar_modulus();
+    let my_private_key = private_key_as_scalar(n, my_private_key);
     let my_public_key = ops.point_mul_base(&my_private_key, cpu);
     public_out[0] = 4; // Uncompressed encoding.
     let (x_out, y_out) = public_out[1..].split_at_mut(elem_and_scalar_bytes);
 
     // `big_endian_affine_from_jacobian` verifies that the point is not at
     // infinity and is on the curve.
-    big_endian_affine_from_jacobian(ops, &q, x_out, Some(y_out), &my_public_key, cpu)
+    big_endian_affine_from_jacobian(ops, q, x_out, Some(y_out), &my_public_key, cpu)
 }
 
 pub(super) fn affine_from_jacobian(

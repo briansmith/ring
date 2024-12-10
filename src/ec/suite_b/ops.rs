@@ -557,7 +557,7 @@ mod tests {
 
     fn q_minus_n_plus_n_equals_0_test(ops: &PublicScalarOps) {
         let cops = ops.scalar_ops.common;
-        let q = cops.elem_modulus();
+        let q = &cops.elem_modulus();
         let mut x = Elem::from(&ops.q_minus_n);
         q.elem_add(&mut x, &Elem::from(&cops.n));
         assert!(cops.is_zero(&x));
@@ -804,12 +804,12 @@ mod tests {
     fn scalar_mul_test(ops: &ScalarOps, test_file: test::File) {
         let cpu = cpu::features();
         let cops = ops.common;
-        let n = cops.scalar_modulus();
+        let n = &cops.scalar_modulus();
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
-            let a = consume_scalar(&n, test_case, "a");
-            let b = consume_scalar_mont(&n, test_case, "b");
-            let expected_result = consume_scalar(&n, test_case, "r");
+            let a = consume_scalar(n, test_case, "a");
+            let b = consume_scalar_mont(n, test_case, "b");
+            let expected_result = consume_scalar(n, test_case, "r");
             let actual_result = ops.scalar_product(&a, &b, cpu);
             assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
 
@@ -838,12 +838,12 @@ mod tests {
         test_file: test::File,
     ) {
         let cops = ops.common;
-        let n = cops.scalar_modulus();
+        let n = &cops.scalar_modulus();
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let cpu = cpu::features();
-            let a = consume_scalar(&n, test_case, "a");
-            let expected_result = consume_scalar(&n, test_case, "r");
+            let a = consume_scalar(n, test_case, "a");
+            let expected_result = consume_scalar(n, test_case, "r");
 
             {
                 let mut actual_result: Scalar<R> = Scalar {
@@ -1056,16 +1056,16 @@ mod tests {
     ) {
         let cpu = cpu::features();
         let cops = pub_ops.common;
-        let q = cops.elem_modulus();
-        let n = cops.scalar_modulus();
+        let q = &cops.elem_modulus();
+        let n = &cops.scalar_modulus();
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
-            let p_scalar = consume_scalar(&n, test_case, "p_scalar");
+            let p_scalar = consume_scalar(n, test_case, "p_scalar");
 
             let p = test_case.consume_bytes("p");
             let p = super::super::public_key::parse_uncompressed_point(
                 pub_ops,
-                &q,
+                q,
                 untrusted::Input::from(&p),
                 cpu,
             )
@@ -1080,7 +1080,7 @@ mod tests {
                 let (x, y) = actual_result[1..].split_at_mut(cops.len());
                 super::super::private_key::big_endian_affine_from_jacobian(
                     priv_ops,
-                    &q,
+                    q,
                     x,
                     Some(y),
                     &product,
@@ -1119,10 +1119,10 @@ mod tests {
         test_file: test::File,
     ) {
         let cpu = cpu::features();
-        let n = ops.common.scalar_modulus();
+        let n = &ops.common.scalar_modulus();
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
-            let g_scalar = consume_scalar(&n, test_case, "g_scalar");
+            let g_scalar = consume_scalar(n, test_case, "g_scalar");
             let expected_result: TestPoint<Unencoded> = consume_point(ops, test_case, "r");
             let actual_result = f(&g_scalar, cpu);
             assert_point_actual_equals_expected(ops, &actual_result, &expected_result);

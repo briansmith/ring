@@ -86,9 +86,9 @@ mod tests {
                 let is_valid = test_case.consume_string("Result") == "P";
 
                 let curve_ops = public_key_ops_from_curve_name(&curve_name);
-                let q = curve_ops.common.elem_modulus();
+                let q = &curve_ops.common.elem_modulus();
 
-                let result = parse_uncompressed_point(curve_ops, &q, public_key, cpu);
+                let result = parse_uncompressed_point(curve_ops, q, public_key, cpu);
                 assert_eq!(is_valid, result.is_ok());
 
                 // TODO: Verify that we when we re-serialize the parsed (x, y), the
