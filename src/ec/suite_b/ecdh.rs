@@ -93,7 +93,7 @@ fn ecdh(
     // The "NSA Guide" steps are from section 3.1 of the NSA guide, "Ephemeral
     // Unified Model."
 
-    let q = &public_key_ops.common.elem_modulus();
+    let q = &public_key_ops.common.elem_modulus(cpu);
 
     // NSA Guide Step 1 is handled separately.
 
@@ -103,7 +103,7 @@ fn ecdh(
     // `parse_uncompressed_point` verifies that the point is not at infinity
     // and that it is on the curve, using the Partial Public-Key Validation
     // Routine.
-    let peer_public_key = parse_uncompressed_point(public_key_ops, q, peer_public_key, cpu)?;
+    let peer_public_key = parse_uncompressed_point(public_key_ops, q, peer_public_key)?;
 
     // NIST SP 800-56Ar2 Step 1.
     // NSA Guide Step 3 (except point at infinity check).
@@ -125,7 +125,7 @@ fn ecdh(
     // information about their values can be recovered. This doesn't meet the
     // NSA guide's explicit requirement to "zeroize" them though.
     // TODO: this only needs common scalar ops
-    let n = &private_key_ops.common.scalar_modulus();
+    let n = &private_key_ops.common.scalar_modulus(cpu);
     let my_private_key = private_key_as_scalar(n, my_private_key);
     let product = private_key_ops.point_mul(&my_private_key, &peer_public_key, cpu);
 
@@ -137,7 +137,7 @@ fn ecdh(
     // `big_endian_affine_from_jacobian` verifies that the result is not at
     // infinity and also does an extra check to verify that the point is on
     // the curve.
-    big_endian_affine_from_jacobian(private_key_ops, q, out, None, &product, cpu)
+    big_endian_affine_from_jacobian(private_key_ops, q, out, None, &product)
 
     // NSA Guide Step 5 & 6 are deferred to the caller. Again, we have a
     // pretty liberal interpretation of the NIST's spec's "Destroy" that

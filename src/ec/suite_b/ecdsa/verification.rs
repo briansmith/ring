@@ -56,6 +56,7 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
         msg: untrusted::Input,
         signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
+        let cpu = cpu::features();
         let e = {
             // NSA Guide Step 2: "Use the selected hash function to compute H =
             // Hash(M)."
@@ -63,7 +64,7 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
 
             // NSA Guide Step 3: "Convert the bit string H to an integer e as
             // described in Appendix B.2."
-            let n = &self.ops.scalar_ops.scalar_modulus();
+            let n = &self.ops.scalar_ops.scalar_modulus(cpu);
             digest_scalar(n, h)
         };
 
@@ -85,8 +86,8 @@ impl EcdsaVerificationAlgorithm {
 
         let public_key_ops = self.ops.public_key_ops;
         let scalar_ops = self.ops.scalar_ops;
-        let q = &public_key_ops.common.elem_modulus();
-        let n = &scalar_ops.scalar_modulus();
+        let q = &public_key_ops.common.elem_modulus(cpu);
+        let n = &scalar_ops.scalar_modulus(cpu);
 
         // NSA Guide Prerequisites:
         //
@@ -105,7 +106,7 @@ impl EcdsaVerificationAlgorithm {
         // can do. Prerequisite #2 is handled implicitly as the domain
         // parameters are hard-coded into the source. Prerequisite #3 is
         // handled by `parse_uncompressed_point`.
-        let peer_pub_key = parse_uncompressed_point(public_key_ops, q, public_key, cpu)?;
+        let peer_pub_key = parse_uncompressed_point(public_key_ops, q, public_key)?;
 
         let (r, s) = signature.read_all(error::Unspecified, |input| {
             (self.split_rs)(scalar_ops, input)
@@ -137,7 +138,7 @@ impl EcdsaVerificationAlgorithm {
         // `verify_affine_point_is_on_the_curve_scaled` for details on why).
         // But, we're going to avoid converting to affine for performance
         // reasons, so we do the verification using the Jacobian coordinates.
-        let z2 = verify_jacobian_point_is_on_the_curve(public_key_ops.common, q, &product)?;
+        let z2 = verify_jacobian_point_is_on_the_curve(q, &product)?;
 
         // NSA Guide Step 7: "Compute v = xR mod n."
         // NSA Guide Step 8: "Compare v and r0. If v = r0, output VALID;
@@ -145,26 +146,20 @@ impl EcdsaVerificationAlgorithm {
         //
         // Instead, we use Greg Maxwell's trick to avoid the inversion mod `q`
         // that would be necessary to compute the affine X coordinate.
-        let x = public_key_ops.common.point_x(&product);
-        fn sig_r_equals_x(
-            ops: &PublicScalarOps,
-            r: &Elem<Unencoded>,
-            x: &Elem<R>,
-            z2: &Elem<R>,
-        ) -> bool {
-            let cops = ops.public_key_ops.common;
-            let r_jacobian = cops.elem_product(z2, r);
-            let x = cops.elem_unencoded(x);
-            ops.elem_equals_vartime(&r_jacobian, &x)
+        let x = q.point_x(&product);
+        fn sig_r_equals_x(q: &Modulus<Q>, r: &Elem<Unencoded>, x: &Elem<R>, z2: &Elem<R>) -> bool {
+            let r_jacobian = q.elem_product(z2, r);
+            let x = q.elem_unencoded(x);
+            q.elem_equals_vartime(&r_jacobian, &x)
         }
         let mut r = self.ops.scalar_as_elem(&r);
-        if sig_r_equals_x(self.ops, &r, &x, &z2) {
+        if sig_r_equals_x(q, &r, &x, &z2) {
             return Ok(());
         }
         if q.elem_less_than_vartime(&r, &self.ops.q_minus_n) {
             let n = Elem::from(self.ops.n());
-            q.elem_add(&mut r, &n);
-            if sig_r_equals_x(self.ops, &r, &x, &z2) {
+            q.add_assign(&mut r, &n);
+            if sig_r_equals_x(q, &r, &x, &z2) {
                 return Ok(());
             }
         }
@@ -287,6 +282,7 @@ mod tests {
 
     #[test]
     fn test_digest_based_test_vectors() {
+        let cpu = cpu::features();
         test::run(
             test_file!("../../../../crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt"),
             |section, test_case| {
@@ -319,7 +315,7 @@ mod tests {
                         panic!("Unsupported curve: {}", curve_name);
                     }
                 };
-                let n = &alg.ops.scalar_ops.scalar_modulus();
+                let n = &alg.ops.scalar_ops.scalar_modulus(cpu);
 
                 let digest = super::super::digest_scalar::digest_bytes_scalar(n, &digest[..]);
                 let actual_result = alg.verify_digest(

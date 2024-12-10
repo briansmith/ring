@@ -41,28 +41,32 @@ macro_rules! suite_b_curve {
             public_from_private: $public_from_private,
         };
 
-        fn $check_private_key_bytes(bytes: &[u8]) -> Result<(), error::Unspecified> {
+        fn $check_private_key_bytes(
+            bytes: &[u8],
+            cpu: cpu::Features,
+        ) -> Result<(), error::Unspecified> {
             debug_assert_eq!(bytes.len(), $bits / 8);
-            ec::suite_b::private_key::check_scalar_big_endian_bytes($private_key_ops, bytes)
+            ec::suite_b::private_key::check_scalar_big_endian_bytes($private_key_ops, bytes, cpu)
         }
 
         fn $generate_private_key(
             rng: &dyn rand::SecureRandom,
             out: &mut [u8],
+            cpu: cpu::Features,
         ) -> Result<(), error::Unspecified> {
-            ec::suite_b::private_key::generate_private_scalar_bytes($private_key_ops, rng, out)
+            ec::suite_b::private_key::generate_private_scalar_bytes($private_key_ops, rng, out, cpu)
         }
 
         fn $public_from_private(
             public_out: &mut [u8],
             private_key: &ec::Seed,
-            cpu_features: cpu::Features,
+            cpu: cpu::Features,
         ) -> Result<(), error::Unspecified> {
             ec::suite_b::private_key::public_from_private(
                 $private_key_ops,
                 public_out,
                 private_key,
-                cpu_features,
+                cpu,
             )
         }
     };

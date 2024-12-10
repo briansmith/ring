@@ -50,7 +50,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     point_mul_impl: p256_point_mul,
 };
 
-fn p256_elem_inv_squared(a: &Elem<R>, _cpu: cpu::Features) -> Elem<R> {
+fn p256_elem_inv_squared(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R> {
     // Calculate a**-2 (mod q) == a**(q - 3) (mod q)
     //
     // The exponent (q - 3) is:
@@ -58,39 +58,39 @@ fn p256_elem_inv_squared(a: &Elem<R>, _cpu: cpu::Features) -> Elem<R> {
     //    0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc
 
     #[inline]
-    fn sqr_mul(a: &Elem<R>, squarings: LeakyWord, b: &Elem<R>) -> Elem<R> {
-        elem_sqr_mul(&COMMON_OPS, a, squarings, b)
+    fn sqr_mul(q: &Modulus<Q>, a: &Elem<R>, squarings: LeakyWord, b: &Elem<R>) -> Elem<R> {
+        elem_sqr_mul(&COMMON_OPS, a, squarings, b, q.cpu())
     }
 
     #[inline]
-    fn sqr_mul_acc(a: &mut Elem<R>, squarings: LeakyWord, b: &Elem<R>) {
-        elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b)
+    fn sqr_mul_acc(q: &Modulus<Q>, a: &mut Elem<R>, squarings: LeakyWord, b: &Elem<R>) {
+        elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b, q.cpu())
     }
 
     let b_1 = &a;
-    let b_11 = sqr_mul(b_1, 1, b_1);
-    let b_111 = sqr_mul(&b_11, 1, b_1);
-    let f_11 = sqr_mul(&b_111, 3, &b_111);
-    let fff = sqr_mul(&f_11, 6, &f_11);
-    let fff_111 = sqr_mul(&fff, 3, &b_111);
-    let fffffff_11 = sqr_mul(&fff_111, 15, &fff_111);
-    let ffffffff = sqr_mul(&fffffff_11, 2, &b_11);
+    let b_11 = sqr_mul(q, b_1, 1, b_1);
+    let b_111 = sqr_mul(q, &b_11, 1, b_1);
+    let f_11 = sqr_mul(q, &b_111, 3, &b_111);
+    let fff = sqr_mul(q, &f_11, 6, &f_11);
+    let fff_111 = sqr_mul(q, &fff, 3, &b_111);
+    let fffffff_11 = sqr_mul(q, &fff_111, 15, &fff_111);
+    let ffffffff = sqr_mul(q, &fffffff_11, 2, &b_11);
 
     // ffffffff00000001
-    let mut acc = sqr_mul(&ffffffff, 31 + 1, b_1);
+    let mut acc = sqr_mul(q, &ffffffff, 31 + 1, b_1);
 
     // ffffffff00000001000000000000000000000000ffffffff
-    sqr_mul_acc(&mut acc, 96 + 32, &ffffffff);
+    sqr_mul_acc(q, &mut acc, 96 + 32, &ffffffff);
 
     // ffffffff00000001000000000000000000000000ffffffffffffffff
-    sqr_mul_acc(&mut acc, 32, &ffffffff);
+    sqr_mul_acc(q, &mut acc, 32, &ffffffff);
 
     // ffffffff00000001000000000000000000000000fffffffffffffffffffffff_11
-    sqr_mul_acc(&mut acc, 30, &fffffff_11);
+    sqr_mul_acc(q, &mut acc, 30, &fffffff_11);
 
     // ffffffff00000001000000000000000000000000fffffffffffffffffffffffc
-    COMMON_OPS.elem_square(&mut acc);
-    COMMON_OPS.elem_square(&mut acc);
+    q.elem_square(&mut acc);
+    q.elem_square(&mut acc);
 
     acc
 }

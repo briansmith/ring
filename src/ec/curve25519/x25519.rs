@@ -40,7 +40,10 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
 };
 
 #[allow(clippy::unnecessary_wraps)]
-fn x25519_check_private_key_bytes(bytes: &[u8]) -> Result<(), error::Unspecified> {
+fn x25519_check_private_key_bytes(
+    bytes: &[u8],
+    _: cpu::Features,
+) -> Result<(), error::Unspecified> {
     debug_assert_eq!(bytes.len(), PRIVATE_KEY_LEN);
     Ok(())
 }
@@ -48,6 +51,7 @@ fn x25519_check_private_key_bytes(bytes: &[u8]) -> Result<(), error::Unspecified
 fn x25519_generate_private_key(
     rng: &dyn rand::SecureRandom,
     out: &mut [u8],
+    _: cpu::Features,
 ) -> Result<(), error::Unspecified> {
     rng.fill(out)
 }
