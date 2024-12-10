@@ -169,7 +169,7 @@ sub _end_func {
             my $pos     = 16 * $i;
             $code .= "movdqa $pos(%rsp), %xmm$reg_num\n";
         }
-        $code .= "add $alloc_size, %rsp\n";
+        $code .= "add \$$alloc_size, %rsp\n";
     }
 
     # Restore any general purpose registers that were saved earlier.
