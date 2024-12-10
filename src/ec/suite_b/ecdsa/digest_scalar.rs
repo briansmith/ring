@@ -68,10 +68,11 @@ fn digest_scalar_(n: &Modulus<N>, digest: &[u8]) -> Scalar {
 #[cfg(test)]
 mod tests {
     use super::digest_bytes_scalar;
-    use crate::{digest, ec::suite_b::ops::*, limb, test};
+    use crate::{cpu, digest, ec::suite_b::ops::*, limb, test};
 
     #[test]
     fn test() {
+        let cpu = cpu::features();
         test::run(
             test_file!("ecdsa_digest_scalar_tests.txt"),
             |section, test_case| {
@@ -91,7 +92,7 @@ mod tests {
                         panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
                     }
                 };
-                let n = &ops.scalar_ops.scalar_modulus();
+                let n = &ops.scalar_ops.scalar_modulus(cpu);
 
                 assert_eq!(input.len(), digest_alg.output_len());
                 assert_eq!(output.len(), ops.scalar_ops.scalar_bytes_len());

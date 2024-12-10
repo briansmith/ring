@@ -16,7 +16,7 @@
 //! ECDH agreement).
 
 use super::{ops::*, verify_affine_point_is_on_the_curve};
-use crate::{arithmetic::montgomery::*, cpu, error};
+use crate::{arithmetic::montgomery::*, error};
 
 /// Parses a public key encoded in uncompressed form. The key is validated
 /// using the ECC Partial Public-Key Validation Routine from
@@ -30,7 +30,6 @@ pub(super) fn parse_uncompressed_point(
     ops: &PublicKeyOps,
     q: &Modulus<Q>,
     input: untrusted::Input,
-    cpu: cpu::Features,
 ) -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
     // NIST SP 800-56A Step 1: "Verify that Q is not the point at infinity.
     // This can be done by inspection if the point is entered in the standard
@@ -45,15 +44,15 @@ pub(super) fn parse_uncompressed_point(
 
         // NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers in the
         // interval [0, p-1] in the case that q is an odd prime p[.]"
-        let x = ops.elem_parse(q, input, cpu)?;
-        let y = ops.elem_parse(q, input, cpu)?;
+        let x = ops.elem_parse(q, input)?;
+        let y = ops.elem_parse(q, input)?;
         Ok((x, y))
     })?;
 
     // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
     // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed
     // modulo p."
-    verify_affine_point_is_on_the_curve(ops.common, q, (&x, &y))?;
+    verify_affine_point_is_on_the_curve(q, (&x, &y))?;
 
     // NIST SP 800-56A Note: "Since its order is not verified, there is no
     // check that the public key is in the correct EC subgroup."
@@ -69,7 +68,7 @@ pub(super) fn parse_uncompressed_point(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test;
+    use crate::{cpu, test};
 
     #[test]
     fn parse_uncompressed_point_test() {
@@ -86,9 +85,9 @@ mod tests {
                 let is_valid = test_case.consume_string("Result") == "P";
 
                 let curve_ops = public_key_ops_from_curve_name(&curve_name);
-                let q = &curve_ops.common.elem_modulus();
+                let q = &curve_ops.common.elem_modulus(cpu);
 
-                let result = parse_uncompressed_point(curve_ops, q, public_key, cpu);
+                let result = parse_uncompressed_point(curve_ops, q, public_key);
                 assert_eq!(is_valid, result.is_ok());
 
                 // TODO: Verify that we when we re-serialize the parsed (x, y), the

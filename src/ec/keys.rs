@@ -32,26 +32,26 @@ impl Seed {
     pub(crate) fn generate(
         curve: &'static Curve,
         rng: &dyn rand::SecureRandom,
-        _cpu_features: cpu::Features,
+        cpu: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
         let mut r = Self {
             bytes: [0u8; SEED_MAX_BYTES],
             curve,
         };
-        (curve.generate_private_key)(rng, &mut r.bytes[..curve.elem_scalar_seed_len])?;
+        (curve.generate_private_key)(rng, &mut r.bytes[..curve.elem_scalar_seed_len], cpu)?;
         Ok(r)
     }
 
     pub(crate) fn from_bytes(
         curve: &'static Curve,
         bytes: untrusted::Input,
-        _cpu_features: cpu::Features,
+        cpu: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
         let bytes = bytes.as_slice_less_safe();
         if curve.elem_scalar_seed_len != bytes.len() {
             return Err(error::Unspecified);
         }
-        (curve.check_private_key_bytes)(bytes)?;
+        (curve.check_private_key_bytes)(bytes, cpu)?;
         let mut r = Self {
             bytes: [0; SEED_MAX_BYTES],
             curve,

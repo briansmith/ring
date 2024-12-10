@@ -42,7 +42,9 @@ pub(super) struct Modulus<M> {
     // TODO: [Limb; elem::NumLimbs::MAX]
     limbs: &'static [Limb; elem::NumLimbs::MAX],
     num_limbs: elem::NumLimbs,
+    cops: &'static CommonOps,
     m: PhantomData<M>,
+    cpu: cpu::Features,
 }
 
 pub struct Point {
@@ -79,21 +81,25 @@ pub struct CommonOps {
 }
 
 impl CommonOps {
-    pub(super) fn elem_modulus(&'static self) -> Modulus<Q> {
+    pub(super) fn elem_modulus(&'static self, cpu_features: cpu::Features) -> Modulus<Q> {
         Modulus {
             // TODO: limbs: self.q.p.map(Limb::from),
             limbs: &self.q.p,
             num_limbs: self.num_limbs,
+            cops: self,
             m: PhantomData,
+            cpu: cpu_features,
         }
     }
 
-    pub(super) fn scalar_modulus(&'static self) -> Modulus<N> {
+    pub(super) fn scalar_modulus(&'static self, cpu_features: cpu::Features) -> Modulus<N> {
         Modulus {
             // TODO: limbs: self.n.limbs.map(Limb::from),
             limbs: &self.n.limbs,
             num_limbs: self.num_limbs,
+            cops: self,
             m: PhantomData,
+            cpu: cpu_features,
         }
     }
 
@@ -111,13 +117,19 @@ impl CommonOps {
 }
 
 impl<M> Modulus<M> {
+    pub fn cpu(&self) -> cpu::Features {
+        self.cpu
+    }
+
     // Keep in sync with `CommonOps::len()`.
     pub fn bytes_len(&self) -> usize {
         self.num_limbs.into() * LIMB_BYTES
     }
+}
 
+impl<M> Modulus<M> {
     #[inline]
-    pub fn elem_add<E: Encoding>(&self, a: &mut elem::Elem<M, E>, b: &elem::Elem<M, E>) {
+    pub fn add_assign<E: Encoding>(&self, a: &mut elem::Elem<M, E>, b: &elem::Elem<M, E>) {
         let num_limbs = self.num_limbs.into();
         limbs_add_assign_mod(
             &mut a.limbs[..num_limbs],
@@ -127,7 +139,7 @@ impl<M> Modulus<M> {
     }
 }
 
-impl CommonOps {
+impl Modulus<Q> {
     #[inline]
     pub fn elems_are_equal(&self, a: &Elem<R>, b: &Elem<R>) -> LimbMask {
         let num_limbs = self.num_limbs.into();
@@ -138,10 +150,48 @@ impl CommonOps {
     pub fn elem_unencoded(&self, a: &Elem<R>) -> Elem<Unencoded> {
         self.elem_product(a, &Elem::one())
     }
+}
+
+impl CommonOps {
+    #[inline]
+    pub fn is_zero<M, E: Encoding>(&self, a: &elem::Elem<M, E>) -> bool {
+        let num_limbs = self.num_limbs.into();
+        limbs_are_zero_constant_time(&a.limbs[..num_limbs]).leak()
+    }
 
     #[inline]
-    pub fn elem_mul(&self, a: &mut Elem<R>, b: &Elem<R>) {
+    fn elem_mul(&self, a: &mut Elem<R>, b: &Elem<R>, _cpu: cpu::Features) {
         elem::binary_op_assign(self.elem_mul_mont, a, b)
+    }
+
+    #[inline]
+    fn elem_product<EA: Encoding, EB: Encoding>(
+        &self,
+        a: &Elem<EA>,
+        b: &Elem<EB>,
+        _cpu: cpu::Features,
+    ) -> Elem<<(EA, EB) as ProductEncoding>::Output>
+    where
+        (EA, EB): ProductEncoding,
+    {
+        mul_mont(self.elem_mul_mont, a, b)
+    }
+
+    #[inline]
+    fn elem_square(&self, a: &mut Elem<R>, _cpu: cpu::Features) {
+        unary_op_assign(self.elem_sqr_mont, a);
+    }
+
+    #[inline]
+    fn elem_squared(&self, a: &Elem<R>, _cpu: cpu::Features) -> Elem<R> {
+        unary_op(self.elem_sqr_mont, a)
+    }
+}
+
+impl Modulus<Q> {
+    #[inline]
+    pub fn elem_mul(&self, a: &mut Elem<R>, b: &Elem<R>) {
+        self.cops.elem_mul(a, b, self.cpu)
     }
 
     #[inline]
@@ -153,25 +203,28 @@ impl CommonOps {
     where
         (EA, EB): ProductEncoding,
     {
-        mul_mont(self.elem_mul_mont, a, b)
+        self.cops.elem_product(a, b, self.cpu)
     }
 
     #[inline]
     pub fn elem_square(&self, a: &mut Elem<R>) {
-        unary_op_assign(self.elem_sqr_mont, a);
+        self.cops.elem_square(a, self.cpu)
     }
 
     #[inline]
     pub fn elem_squared(&self, a: &Elem<R>) -> Elem<R> {
-        unary_op(self.elem_sqr_mont, a)
+        self.cops.elem_squared(a, self.cpu)
     }
+}
 
+impl<M> Modulus<M> {
     #[inline]
-    pub fn is_zero<M, E: Encoding>(&self, a: &elem::Elem<M, E>) -> bool {
-        let num_limbs = self.num_limbs.into();
-        limbs_are_zero_constant_time(&a.limbs[..num_limbs]).leak()
+    pub fn is_zero<E: Encoding>(&self, a: &elem::Elem<M, E>) -> bool {
+        self.cops.is_zero(a)
     }
+}
 
+impl Modulus<Q> {
     pub fn elem_verify_is_not_zero(&self, a: &Elem<R>) -> Result<(), error::Unspecified> {
         if self.is_zero(a) {
             Err(error::Unspecified)
@@ -180,6 +233,15 @@ impl CommonOps {
         }
     }
 
+    pub(super) fn a(&self) -> &'static PublicElem<R> {
+        &self.cops.a
+    }
+    pub(super) fn b(&self) -> &'static PublicElem<R> {
+        &self.cops.b
+    }
+}
+
+impl CommonOps {
     pub(super) fn point_sum(&self, a: &Point, b: &Point, _cpu: cpu::Features) -> Point {
         let mut r = Point::new_at_infinity();
         unsafe {
@@ -187,7 +249,9 @@ impl CommonOps {
         }
         r
     }
+}
 
+impl Modulus<Q> {
     pub fn point_x(&self, p: &Point) -> Elem<R> {
         let num_limbs = self.num_limbs.into();
         let mut r = Elem::zero();
@@ -218,7 +282,7 @@ struct PublicModulus {
 /// Operations on private keys, for ECDH and ECDSA signing.
 pub struct PrivateKeyOps {
     pub common: &'static CommonOps,
-    elem_inv_squared: fn(a: &Elem<R>, cpu: cpu::Features) -> Elem<R>,
+    elem_inv_squared: fn(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R>,
     point_mul_base_impl: fn(a: &Scalar, cpu: cpu::Features) -> Point,
     point_mul_impl: unsafe extern "C" fn(
         r: *mut Limb,          // [3][num_limbs]
@@ -258,8 +322,8 @@ impl PrivateKeyOps {
     }
 
     #[inline]
-    pub(super) fn elem_inverse_squared(&self, a: &Elem<R>, cpu: cpu::Features) -> Elem<R> {
-        (self.elem_inv_squared)(a, cpu)
+    pub(super) fn elem_inverse_squared(&self, q: &Modulus<Q>, a: &Elem<R>) -> Elem<R> {
+        (self.elem_inv_squared)(q, a)
     }
 }
 
@@ -279,7 +343,6 @@ impl PublicKeyOps {
         &self,
         q: &Modulus<Q>,
         input: &mut untrusted::Reader,
-        _cpu: cpu::Features,
     ) -> Result<Elem<R>, error::Unspecified> {
         let _cpu = cpu::features();
         let encoded_value = input.read_bytes(self.common.len())?;
@@ -308,8 +371,8 @@ pub struct ScalarOps {
 }
 
 impl ScalarOps {
-    pub(super) fn scalar_modulus(&'static self) -> Modulus<N> {
-        self.common.scalar_modulus()
+    pub(super) fn scalar_modulus(&'static self, cpu_features: cpu::Features) -> Modulus<N> {
+        self.common.scalar_modulus(cpu_features)
     }
 
     // The (maximum) length of a scalar, not including any padding.
@@ -365,14 +428,14 @@ impl PublicScalarOps {
             encoding: PhantomData,
         }
     }
-
-    pub fn elem_equals_vartime(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
-        let num_limbs = self.public_key_ops.common.num_limbs.into();
-        limbs_equal_limbs_consttime(&a.limbs[..num_limbs], &b.limbs[..num_limbs]).leak()
-    }
 }
 
-impl<M> Modulus<M> {
+impl Modulus<Q> {
+    pub fn elem_equals_vartime(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
+        let num_limbs = self.num_limbs.into();
+        limbs_equal_limbs_consttime(&a.limbs[..num_limbs], &b.limbs[..num_limbs]).leak()
+    }
+
     pub fn elem_less_than_vartime(&self, a: &Elem<Unencoded>, b: &PublicElem<Unencoded>) -> bool {
         let num_limbs = self.num_limbs.into();
         // TODO: let b = Elem::from(b);
@@ -441,22 +504,34 @@ impl Modulus<N> {
 }
 
 // Returns (`a` squared `squarings` times) * `b`.
-fn elem_sqr_mul(ops: &CommonOps, a: &Elem<R>, squarings: LeakyWord, b: &Elem<R>) -> Elem<R> {
+fn elem_sqr_mul(
+    ops: &CommonOps,
+    a: &Elem<R>,
+    squarings: LeakyWord,
+    b: &Elem<R>,
+    cpu: cpu::Features,
+) -> Elem<R> {
     debug_assert!(squarings >= 1);
-    let mut tmp = ops.elem_squared(a);
+    let mut tmp = ops.elem_squared(a, cpu);
     for _ in 1..squarings {
-        ops.elem_square(&mut tmp);
+        ops.elem_square(&mut tmp, cpu);
     }
-    ops.elem_product(&tmp, b)
+    ops.elem_product(&tmp, b, cpu)
 }
 
 // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem<R>, squarings: LeakyWord, b: &Elem<R>) {
+fn elem_sqr_mul_acc(
+    ops: &CommonOps,
+    acc: &mut Elem<R>,
+    squarings: LeakyWord,
+    b: &Elem<R>,
+    cpu: cpu::Features,
+) {
     debug_assert!(squarings >= 1);
     for _ in 0..squarings {
-        ops.elem_square(acc);
+        ops.elem_square(acc, cpu);
     }
-    ops.elem_mul(acc, b)
+    ops.elem_mul(acc, b, cpu)
 }
 
 #[inline]
@@ -540,26 +615,26 @@ mod tests {
     };
 
     trait Convert<E: Encoding> {
-        fn convert(self, cops: &CommonOps) -> Elem<E>;
+        fn convert(self, q: &Modulus<Q>) -> Elem<E>;
     }
 
     impl Convert<R> for Elem<R> {
-        fn convert(self, _cops: &CommonOps) -> Elem<R> {
+        fn convert(self, _q: &Modulus<Q>) -> Elem<R> {
             self
         }
     }
 
     impl Convert<Unencoded> for Elem<R> {
-        fn convert(self, cops: &CommonOps) -> Elem<Unencoded> {
-            cops.elem_unencoded(&self)
+        fn convert(self, q: &Modulus<Q>) -> Elem<Unencoded> {
+            q.elem_unencoded(&self)
         }
     }
 
     fn q_minus_n_plus_n_equals_0_test(ops: &PublicScalarOps) {
         let cops = ops.scalar_ops.common;
-        let q = &cops.elem_modulus();
+        let q = &cops.elem_modulus(cpu::features());
         let mut x = Elem::from(&ops.q_minus_n);
-        q.elem_add(&mut x, &Elem::from(&cops.n));
+        q.add_assign(&mut x, &Elem::from(&cops.n));
         assert!(cops.is_zero(&x));
     }
 
@@ -591,7 +666,7 @@ mod tests {
 
     fn elem_add_test(ops: &PublicScalarOps, test_file: test::File) {
         let cops = ops.public_key_ops.common;
-        let q = &cops.elem_modulus();
+        let q = &cops.elem_modulus(cpu::features());
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
@@ -600,11 +675,11 @@ mod tests {
             let expected_sum = consume_elem(q, test_case, "r");
 
             let mut actual_sum = a;
-            q.elem_add(&mut actual_sum, &b);
+            q.add_assign(&mut actual_sum, &b);
             assert_limbs_are_equal(cops, &actual_sum.limbs, &expected_sum.limbs);
 
             let mut actual_sum = b;
-            q.elem_add(&mut actual_sum, &a);
+            q.add_assign(&mut actual_sum, &a);
             assert_limbs_are_equal(cops, &actual_sum.limbs, &expected_sum.limbs);
 
             Ok(())
@@ -631,7 +706,7 @@ mod tests {
         elem_sub: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
         test_file: test::File,
     ) {
-        let q = &ops.elem_modulus();
+        let q = &ops.elem_modulus(cpu::features());
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
@@ -683,7 +758,7 @@ mod tests {
         elem_div_by_2: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
         test_file: test::File,
     ) {
-        let q = &ops.elem_modulus();
+        let q = &ops.elem_modulus(cpu::features());
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
@@ -731,7 +806,7 @@ mod tests {
         elem_neg: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
         test_file: test::File,
     ) {
-        let q = &ops.elem_modulus();
+        let q = &ops.elem_modulus(cpu::features());
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
@@ -771,14 +846,14 @@ mod tests {
     }
 
     fn elem_mul_test(ops: &'static CommonOps, test_file: test::File) {
-        let q = &ops.elem_modulus();
+        let q = &ops.elem_modulus(cpu::features());
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
             let mut a = consume_elem(q, test_case, "a");
             let b = consume_elem(q, test_case, "b");
             let r = consume_elem(q, test_case, "r");
-            ops.elem_mul(&mut a, &b);
+            q.elem_mul(&mut a, &b);
             assert_limbs_are_equal(ops, &a.limbs, &r.limbs);
 
             Ok(())
@@ -804,7 +879,7 @@ mod tests {
     fn scalar_mul_test(ops: &ScalarOps, test_file: test::File) {
         let cpu = cpu::features();
         let cops = ops.common;
-        let n = &cops.scalar_modulus();
+        let n = &cops.scalar_modulus(cpu);
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let a = consume_scalar(n, test_case, "a");
@@ -837,8 +912,9 @@ mod tests {
         sqr_rep: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, rep: LeakyWord),
         test_file: test::File,
     ) {
+        let cpu = cpu::features();
         let cops = ops.common;
-        let n = &cops.scalar_modulus();
+        let n = &cops.scalar_modulus(cpu);
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let cpu = cpu::features();
@@ -1056,8 +1132,8 @@ mod tests {
     ) {
         let cpu = cpu::features();
         let cops = pub_ops.common;
-        let q = &cops.elem_modulus();
-        let n = &cops.scalar_modulus();
+        let q = &cops.elem_modulus(cpu);
+        let n = &cops.scalar_modulus(cpu);
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let p_scalar = consume_scalar(n, test_case, "p_scalar");
@@ -1067,7 +1143,6 @@ mod tests {
                 pub_ops,
                 q,
                 untrusted::Input::from(&p),
-                cpu,
             )
             .expect("valid point");
 
@@ -1084,7 +1159,6 @@ mod tests {
                     x,
                     Some(y),
                     &product,
-                    cpu,
                 )
                 .expect("successful encoding");
             }
@@ -1119,7 +1193,7 @@ mod tests {
         test_file: test::File,
     ) {
         let cpu = cpu::features();
-        let n = &ops.common.scalar_modulus();
+        let n = &ops.common.scalar_modulus(cpu);
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let g_scalar = consume_scalar(n, test_case, "g_scalar");
@@ -1140,28 +1214,29 @@ mod tests {
         let cpu = cpu::features();
 
         let cops = ops.common;
-        let actual_x = &cops.point_x(actual_point);
-        let actual_y = &cops.point_y(actual_point);
-        let actual_z = &cops.point_z(actual_point);
+        let q = &cops.elem_modulus(cpu);
+        let actual_x = &q.point_x(actual_point);
+        let actual_y = &q.point_y(actual_point);
+        let actual_z = &q.point_z(actual_point);
         match expected_point {
             TestPoint::Infinity => {
                 let zero = Elem::zero();
-                assert_elems_are_equal(cops, actual_z, &zero);
+                assert_elems_are_equal(q, actual_z, &zero);
             }
             TestPoint::Affine(expected_x, expected_y) => {
-                let zz_inv = ops.elem_inverse_squared(actual_z, cpu);
-                let x_aff = cops.elem_product(actual_x, &zz_inv);
+                let zz_inv = ops.elem_inverse_squared(q, actual_z);
+                let x_aff = q.elem_product(actual_x, &zz_inv);
                 let y_aff = {
-                    let zzzz_inv = cops.elem_squared(&zz_inv);
-                    let zzz_inv = cops.elem_product(actual_z, &zzzz_inv);
-                    cops.elem_product(actual_y, &zzz_inv)
+                    let zzzz_inv = q.elem_squared(&zz_inv);
+                    let zzz_inv = q.elem_product(actual_z, &zzzz_inv);
+                    q.elem_product(actual_y, &zzz_inv)
                 };
 
-                let x_aff = x_aff.convert(cops);
-                let y_aff = y_aff.convert(cops);
+                let x_aff = x_aff.convert(q);
+                let y_aff = y_aff.convert(q);
 
-                assert_elems_are_equal(cops, &x_aff, expected_x);
-                assert_elems_are_equal(cops, &y_aff, expected_y);
+                assert_elems_are_equal(q, &x_aff, expected_x);
+                assert_elems_are_equal(q, &y_aff, expected_y);
             }
         }
     }
@@ -1171,7 +1246,7 @@ mod tests {
         test_case: &mut test::TestCase,
         name: &str,
     ) -> Point {
-        let q = &ops.common.elem_modulus();
+        let q = &ops.common.elem_modulus(cpu::features());
         let input = test_case.consume_string(name);
         let elems = input.split(", ").collect::<Vec<&str>>();
         assert_eq!(elems.len(), 3);
@@ -1191,7 +1266,7 @@ mod tests {
         test_case: &mut test::TestCase,
         name: &str,
     ) -> AffinePoint {
-        let q = &ops.common.elem_modulus();
+        let q = &ops.common.elem_modulus(cpu::features());
         let input = test_case.consume_string(name);
         let elems = input.split(", ").collect::<Vec<&str>>();
         assert_eq!(elems.len(), 2);
@@ -1222,7 +1297,7 @@ mod tests {
         test_case: &mut test::TestCase,
         name: &str,
     ) -> TestPoint<E> {
-        let q = &ops.common.elem_modulus();
+        let q = &ops.common.elem_modulus(cpu::features());
         fn consume_point_elem<E: Encoding>(q: &Modulus<Q>, elems: &[&str], i: usize) -> Elem<E> {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
@@ -1247,8 +1322,8 @@ mod tests {
         TestPoint::Affine(x, y)
     }
 
-    fn assert_elems_are_equal<E: Encoding>(ops: &CommonOps, a: &Elem<E>, b: &Elem<E>) {
-        assert_limbs_are_equal(ops, &a.limbs, &b.limbs)
+    fn assert_elems_are_equal<E: Encoding>(q: &Modulus<Q>, a: &Elem<E>, b: &Elem<E>) {
+        assert_limbs_are_equal(q.cops, &a.limbs, &b.limbs)
     }
 
     fn assert_limbs_are_equal(

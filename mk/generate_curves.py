@@ -77,13 +77,13 @@ fn p%(bits)d_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
     //    %(q_minus_3)s
 
     #[inline]
-    fn sqr_mul(a: &Elem<R>, squarings: LeakyWord, b: &Elem<R>) -> Elem<R> {
-        elem_sqr_mul(&COMMON_OPS, a, squarings, b)
+    fn sqr_mul(q: &Modulus<Q>, a: &Elem<R>, squarings: LeakyWord, b: &Elem<R>) -> Elem<R> {
+        elem_sqr_mul(&COMMON_OPS, a, squarings, b, q.cpu())
     }
 
     #[inline]
-    fn sqr_mul_acc(a: &mut Elem<R>, squarings: LeakyWord, b: &Elem<R>) {
-        elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b)
+    fn sqr_mul_acc(q: &Modulus<Q>, a: &mut Elem<R>, squarings: LeakyWord, b: &Elem<R>) {
+        elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b, q.cpu())
     }
 
     let b_1 = &a;
