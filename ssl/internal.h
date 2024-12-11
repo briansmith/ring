@@ -1682,9 +1682,6 @@ class SSLBuffer {
   uint16_t cap_ = 0;
   // inline_buf_ is a static buffer for short reads.
   uint8_t inline_buf_[SSL3_RT_HEADER_LENGTH];
-  // buf_allocated_ is true if |buf_| points to allocated data and must be freed
-  // or false if it points into |inline_buf_|.
-  bool buf_allocated_ = false;
 };
 
 // ssl_read_buffer_extend_to extends the read buffer to the desired length. For
