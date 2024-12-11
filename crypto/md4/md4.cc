@@ -59,7 +59,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../crypto/fipsmodule/digest/md32_common.h"
+#include "../fipsmodule/digest/md32_common.h"
 #include "../internal.h"
 
 
