@@ -1,6 +1,5 @@
 /*
- * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
- * project.
+ * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project.
  */
 /* ====================================================================
  * Copyright (c) 2015 The OpenSSL Project.  All rights reserved.
