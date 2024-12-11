@@ -59,12 +59,6 @@ pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> bool {
 }
 
 #[inline]
-#[cfg(feature = "alloc")]
-pub fn limbs_less_than_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
-    unsafe { LIMBS_less_than_limb(a.as_ptr(), b, a.len()) }
-}
-
-#[inline]
 pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
@@ -345,11 +339,6 @@ prefixed_extern! {
     fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
 }
 
-#[cfg(feature = "alloc")]
-prefixed_extern! {
-    fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -475,46 +464,6 @@ mod tests {
         for &(a, b) in UNEQUAL {
             let a = &Vec::from_iter(a.iter().copied().map(Limb::from));
             assert!(!leak_in_test(limbs_equal_limb_constant_time(a, b)));
-        }
-    }
-
-    #[test]
-    #[cfg(feature = "alloc")]
-    fn test_limbs_less_than_limb_constant_time() {
-        static LESSER: &[(&[LeakyLimb], LeakyLimb)] = &[
-            (&[0], 1),
-            (&[0, 0], 1),
-            (&[1, 0], 2),
-            (&[2, 0], 3),
-            (&[2, 0], 3),
-            (&[MAX - 1], MAX),
-            (&[MAX - 1, 0], MAX),
-        ];
-        for &(a, b) in LESSER {
-            let a = &Vec::from_iter(a.iter().copied().map(Limb::from));
-            let b = Limb::from(b);
-            assert!(leak_in_test(limbs_less_than_limb_constant_time(a, b)));
-        }
-        static EQUAL: &[(&[LeakyLimb], LeakyLimb)] = &[
-            (&[0], 0),
-            (&[0, 0, 0, 0], 0),
-            (&[1], 1),
-            (&[1, 0, 0, 0, 0, 0, 0], 1),
-            (&[MAX], MAX),
-        ];
-        static GREATER: &[(&[LeakyLimb], LeakyLimb)] = &[
-            (&[1], 0),
-            (&[2, 0], 1),
-            (&[3, 0, 0, 0], 1),
-            (&[0, 1, 0, 0], 1),
-            (&[0, 0, 1, 0], 1),
-            (&[0, 0, 1, 1], 1),
-            (&[MAX], MAX - 1),
-        ];
-        for &(a, b) in EQUAL.iter().chain(GREATER.iter()) {
-            let a = &Vec::from_iter(a.iter().copied().map(Limb::from));
-            let b = Limb::from(b);
-            assert!(!leak_in_test(limbs_less_than_limb_constant_time(a, b)));
         }
     }
 

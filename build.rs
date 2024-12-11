@@ -855,7 +855,6 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "LIMBS_equal",
         "LIMBS_equal_limb",
         "LIMBS_less_than",
-        "LIMBS_less_than_limb",
         "LIMBS_reduce_once",
         "LIMBS_select_512_32",
         "LIMBS_shl_mod",

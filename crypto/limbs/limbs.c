@@ -80,15 +80,6 @@ Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs) {
   return constant_time_is_nonzero_w(borrow);
 }
 
-Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs) {
-  debug_assert_nonsecret(num_limbs >= 1);
-
-  Limb dummy;
-  Limb lo = constant_time_is_nonzero_w(limb_sub(&dummy, a[0], b));
-  Limb hi = LIMBS_are_zero(&a[1], num_limbs - 1);
-  return constant_time_select_w(lo, hi, lo);
-}
-
 /* if (r >= m) { r -= m; } */
 void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
   debug_assert_nonsecret(num_limbs >= 1);
