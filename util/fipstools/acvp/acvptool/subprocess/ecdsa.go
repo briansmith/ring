@@ -26,6 +26,7 @@ import (
 
 type ecdsaTestVectorSet struct {
 	Groups []ecdsaTestGroup `json:"testGroups"`
+	Algorithm string        `json:"algorithm"`
 	Mode   string           `json:"mode"`
 }
 
@@ -76,6 +77,10 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed ecdsaTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
+	}
+
+	if parsed.Algorithm == "DetECDSA" && parsed.Mode != "sigGen" {
+		return nil, fmt.Errorf("DetECDSA only specifies sigGen mode")
 	}
 
 	var ret []ecdsaTestGroupResponse
@@ -139,6 +144,10 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 				})
 
 			case "sigGen":
+				if group.ComponentTest && parsed.Algorithm == "DetECDSA" {
+					return nil, fmt.Errorf("DetECDSA does not support component tests")
+				}
+
 				p := e.primitives[group.HashAlgo]
 				h, ok := p.(*hashPrimitive)
 				if !ok {
@@ -147,7 +156,13 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 
 				if len(sigGenPrivateKey) == 0 {
 					// Ask the subprocess to generate a key for this test group.
-					result, err := m.Transact(e.algo+"/"+"keyGen", 3, []byte(group.Curve))
+					cmd := e.algo + "/keyGen"
+					if e.algo == "DetECDSA" {
+						// Use "ECDSA/keyGen" for DetECDSA to avoid the module wrapper needing to support a second
+						// keyGen command for DetECDSA.
+						cmd = "ECDSA/keyGen"
+					}
+					result, err := m.Transact(cmd, 3, []byte(group.Curve))
 					if err != nil {
 						return nil, fmt.Errorf("key generation failed for test case %d/%d: %s", group.ID, test.ID, err)
 					}

@@ -75,6 +75,7 @@ The other commands are as follows. (Note that you only need to implement the com
 | ECDSA/keyVer         | Curve name, X, Y | Single-byte valid flag |
 | ECDSA/sigGen         | Curve name, private key, hash name, message | R, S |
 | ECDSA/sigVer         | Curve name, hash name, message, X, Y, R, S | Single-byte validity flag |
+| DetECDSA/sigGen      | Curve name, private key, hash name, message | R, S |
 | EDDSA/keyGen         | Curve name | private key seed (D), public key (Q) |
 | EDDSA/keyVer         | Curve name, public key (Q) | Single-byte valid flag |
 | EDDSA/sigGen         | Curve name, private key seed (D), message, single-byte prehash flag, prehash context | Signature |
