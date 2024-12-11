@@ -1,4 +1,4 @@
-/* Copyright (c) 2018, Google Inc.
+/* Copyright 2018 The BoringSSL Authors
  * Copyright (c) 2020, Arm Ltd.
  *
  * Permission to use, copy, modify, and/or distribute this software for any

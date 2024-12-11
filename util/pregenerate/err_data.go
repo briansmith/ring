@@ -1,4 +1,4 @@
-// Copyright (c) 2015, Google Inc.
+// Copyright 2015 The BoringSSL Authors
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -226,7 +226,7 @@ func (t *ErrDataTask) Run() ([]byte, error) {
 	}
 
 	var out bytes.Buffer
-	out.WriteString(`/* Copyright (c) 2015, Google Inc.
+	out.WriteString(`/* Copyright 2015 The BoringSSL Authors
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

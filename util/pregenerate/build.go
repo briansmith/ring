@@ -1,4 +1,4 @@
-// Copyright (c) 2024, Google Inc.
+// Copyright 2024 The BoringSSL Authors
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -168,7 +168,7 @@ func sortedKeys[K cmp.Ordered, V any](m map[K]V) []K {
 }
 
 func writeHeader(b *bytes.Buffer, comment string) {
-	fmt.Fprintf(b, "%s Copyright (c) 2024, Google Inc.\n", comment)
+	fmt.Fprintf(b, "%s Copyright 2024 The BoringSSL Authors\n", comment)
 	fmt.Fprintf(b, "%s\n", comment)
 	fmt.Fprintf(b, "%s Permission to use, copy, modify, and/or distribute this software for any\n", comment)
 	fmt.Fprintf(b, "%s purpose with or without fee is hereby granted, provided that the above\n", comment)

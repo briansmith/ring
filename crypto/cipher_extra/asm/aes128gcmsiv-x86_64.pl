@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 # Copyright (c) 2017, Shay Gueron.
-# Copyright (c) 2017, Google Inc.
+# Copyright 2017 The BoringSSL Authors
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above

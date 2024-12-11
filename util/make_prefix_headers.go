@@ -1,4 +1,4 @@
-// Copyright (c) 2018, Google Inc.
+// Copyright 2018 The BoringSSL Authors
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -74,7 +74,7 @@ func writeCHeader(symbols []string, path string) error {
 	}
 	defer f.Close()
 
-	if _, err := f.WriteString(`// Copyright (c) 2018, Google Inc.
+	if _, err := f.WriteString(`// Copyright 2018 The BoringSSL Authors
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -113,7 +113,7 @@ func writeASMHeader(symbols []string, path string) error {
 	}
 	defer f.Close()
 
-	if _, err := f.WriteString(`// Copyright (c) 2018, Google Inc.
+	if _, err := f.WriteString(`// Copyright 2018 The BoringSSL Authors
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -159,7 +159,7 @@ func writeNASMHeader(symbols []string, path string) error {
 	defer f.Close()
 
 	// NASM uses a different syntax from the C preprocessor.
-	if _, err := f.WriteString(`; Copyright (c) 2018, Google Inc.
+	if _, err := f.WriteString(`; Copyright 2018 The BoringSSL Authors
 ;
 ; Permission to use, copy, modify, and/or distribute this software for any
 ; purpose with or without fee is hereby granted, provided that the above
