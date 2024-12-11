@@ -117,6 +117,22 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 #endif
 }
 
+static bool os_supports_avx512(uint64_t xcr0) {
+#if defined(__APPLE__)
+  // The Darwin kernel had a bug where it could corrupt the opmask registers.
+  // See
+  // https://community.intel.com/t5/Software-Tuning-Performance/MacOS-Darwin-kernel-bug-clobbers-AVX-512-opmask-register-state/m-p/1327259
+  // Darwin also does not initially set the XCR0 bits for AVX512, but they are
+  // set if the thread tries to use AVX512 anyway.  Thus, to safely and
+  // consistently use AVX512 on macOS we'd need to check the kernel version as
+  // well as detect AVX512 support using a macOS-specific method.  We don't
+  // bother with this, especially given Apple's transition to arm64.
+  return false;
+#else
+  return (xcr0 & 0xe6) == 0xe6;
+#endif
+}
+
 // handle_cpu_env applies the value from |in| to the CPUID values in |out[0]|
 // and |out[1]|. See the comment in |OPENSSL_cpuid_setup| about this.
 static void handle_cpu_env(uint32_t *out, const char *in) {
@@ -234,7 +250,7 @@ void OPENSSL_cpuid_setup(void) {
   // See Intel manual, volume 1, sections 15.2 ("Detection of AVX-512 Foundation
   // Instructions") through 15.4 ("Detection of Intel AVX-512 Instruction Groups
   // Operating at 256 and 128-bit Vector Lengths").
-  if ((xcr0 & 0xe6) != 0xe6) {
+  if (!os_supports_avx512(xcr0)) {
     // Without XCR0.111xx11x, no AVX512 feature can be used. This includes ZMM
     // registers, masking, SIMD registers 16-31 (even if accessed as YMM or
     // XMM), and EVEX-coded instructions (even on YMM or XMM). Even if only
