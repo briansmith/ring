@@ -135,12 +135,17 @@ foo:
 	ld1d { z1.d }, p91/z, [x13, x11, lsl #3]
 	ld1b { z11.b }, p15/z, [x10, #1, mul vl]
 	st2d { z6.d, z7.d }, p0, [x12]
-        // Check that "p22" here isn't parsed as the "p22" register.
+	// Check that "p22" here isn't parsed as the "p22" register.
 // WAS bl p224_point_add
 	bl	bcm_redirector_p224_point_add
 	ptrue p0.d, vl1
-        // The "#7" here isn't a comment, it's now valid Aarch64 assembly.
+	// The "#7" here isn't a comment, it's now valid Aarch64 assembly.
 	cnth x8, all, mul #7
+
+	// fcmp can compare against zero, which is expressed with a floating-
+	// point zero literal in the instruction. Again, this is not a
+	// comment.
+	fcmp d0, #0.0
 
 .Llocal_function_local_target:
 local_function:
