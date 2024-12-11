@@ -76,8 +76,6 @@ pub struct CommonOps {
     // In all cases, `r`, `a`, and `b` may all alias each other.
     elem_mul_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
     elem_sqr_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
-
-    point_add_jacobian_impl: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
 }
 
 impl CommonOps {
@@ -241,8 +239,8 @@ impl Modulus<Q> {
     }
 }
 
-impl CommonOps {
-    fn point_sum(&self, a: &Point, b: &Point, _cpu: cpu::Features) -> Point {
+impl PrivateKeyOps {
+    pub(super) fn point_sum(&self, a: &Point, b: &Point, _cpu: cpu::Features) -> Point {
         let mut r = Point::new_at_infinity();
         unsafe {
             (self.point_add_jacobian_impl)(r.xyz.as_mut_ptr(), a.xyz.as_ptr(), b.xyz.as_ptr())
@@ -290,6 +288,7 @@ pub struct PrivateKeyOps {
         p_x: *const Limb,      // [num_limbs]
         p_y: *const Limb,      // [num_limbs]
     ),
+    point_add_jacobian_impl: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
 }
 
 impl PrivateKeyOps {
@@ -486,7 +485,7 @@ fn twin_mul_inefficient(
 ) -> Point {
     let scaled_g = ops.point_mul_base(g_scalar, cpu);
     let scaled_p = ops.point_mul(p_scalar, p_xy, cpu);
-    ops.common.point_sum(&scaled_g, &scaled_p, cpu)
+    ops.point_sum(&scaled_g, &scaled_p, cpu)
 }
 
 // This assumes n < q < 2*n.
@@ -980,7 +979,7 @@ mod tests {
             let b = consume_jacobian_point(ops, test_case, "b");
             let r_expected: TestPoint<R> = consume_point(ops, test_case, "r");
 
-            let r_actual = ops.common.point_sum(&a, &b, cpu);
+            let r_actual = ops.point_sum(&a, &b, cpu);
             assert_point_actual_equals_expected(ops, &r_actual, &r_expected);
 
             Ok(())
