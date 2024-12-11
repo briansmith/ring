@@ -44,14 +44,13 @@ impl<M> OwnedModulusValue<M> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
+        const _MODULUS_MIN_LIMBS_AT_LEAST_2: () = assert!(MODULUS_MIN_LIMBS >= 2);
         if n.len() < MODULUS_MIN_LIMBS {
             return Err(error::KeyRejected::unexpected_error());
         }
+        // The above implies n >= 3, so we don't need to check it.
         if limb::limbs_are_even_constant_time(&n).leak() {
             return Err(error::KeyRejected::invalid_component());
-        }
-        if limb::limbs_less_than_limb_constant_time(&n, 3).leak() {
-            return Err(error::KeyRejected::unexpected_error());
         }
 
         let len_bits = limb::limbs_minimal_bits(&n);
