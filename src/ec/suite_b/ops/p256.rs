@@ -33,8 +33,6 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 
     elem_mul_mont: p256_mul_mont,
     elem_sqr_mont: p256_sqr_mont,
-
-    point_add_jacobian_impl: p256_point_add,
 };
 
 #[cfg(test)]
@@ -48,6 +46,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     elem_inv_squared: p256_elem_inv_squared,
     point_mul_base_impl: p256_point_mul_base_impl,
     point_mul_impl: p256_point_mul,
+    point_add_jacobian_impl: p256_point_add,
 };
 
 fn p256_elem_inv_squared(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R> {
@@ -146,7 +145,7 @@ fn twin_mul_nistz256(
 ) -> Point {
     let scaled_g = point_mul_base_vartime(g_scalar, cpu);
     let scaled_p = PRIVATE_KEY_OPS.point_mul(p_scalar, p_xy, cpu::features());
-    PRIVATE_KEY_OPS.common.point_sum(&scaled_g, &scaled_p, cpu)
+    PRIVATE_KEY_OPS.point_sum(&scaled_g, &scaled_p, cpu)
 }
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]

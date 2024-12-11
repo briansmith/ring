@@ -33,8 +33,6 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 
     elem_mul_mont: p384_elem_mul_mont,
     elem_sqr_mont: p384_elem_sqr_mont,
-
-    point_add_jacobian_impl: p384_point_add,
 };
 
 pub(super) static GENERATOR: (PublicElem<R>, PublicElem<R>) = (
@@ -47,6 +45,7 @@ pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     elem_inv_squared: p384_elem_inv_squared,
     point_mul_base_impl: p384_point_mul_base_impl,
     point_mul_impl: p384_point_mul,
+    point_add_jacobian_impl: p384_point_add,
 };
 
 fn p384_elem_inv_squared(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R> {
