@@ -29,7 +29,7 @@ pub(super) fn block_data_order_32(
     cpu_features: cpu::Features,
 ) {
     cfg_if! {
-        if #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))] {
+        if #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))] {
             if let Some(num) = core::num::NonZeroUsize::new(data.len()) {
                 // Assembly require CPU feature detection tohave been done.
                 let _cpu_features = cpu_features;
@@ -51,7 +51,7 @@ pub(super) fn block_data_order_64(
     cpu_features: cpu::Features,
 ) {
     cfg_if! {
-        if #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))] {
+        if #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))] {
             if let Some(num) = core::num::NonZeroUsize::new(data.len()) {
                 // Assembly require CPU feature detection tohave been done.
                 let _cpu_features = cpu_features;
@@ -404,7 +404,10 @@ impl Sha2 for Wrapping<u64> {
     ];
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
+#[cfg(all(
+    perlasm,
+    any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")
+))]
 prefixed_extern! {
     fn sha256_block_data_order(
         state: &mut [Wrapping<u32>; CHAINING_WORDS],

@@ -18,11 +18,14 @@ pub(in super::super) const BLOCK_LEN: usize = 16;
 pub(in super::super) type Block = [u8; BLOCK_LEN];
 pub(super) const ZERO_BLOCK: Block = [0u8; BLOCK_LEN];
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86",
-    target_arch = "x86_64"
+#[cfg(all(
+    perlasm,
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    )
 ))]
 macro_rules! htable_new {
     ( $name:ident, $value:expr $(,)? ) => {{
@@ -34,11 +37,14 @@ macro_rules! htable_new {
     }};
 }
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86",
-    target_arch = "x86_64"
+#[cfg(all(
+    perlasm,
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    )
 ))]
 macro_rules! gmult {
     ( $name:ident, $xi:expr, $h_table:expr $(,)? ) => {{
@@ -53,11 +59,14 @@ macro_rules! gmult {
 /// SAFETY:
 ///  * The function `$name` must meet the contract of the `f` paramweter of
 ///    `ghash()`.
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86",
-    target_arch = "x86_64"
+#[cfg(all(
+    perlasm,
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    )
 ))]
 macro_rules! ghash {
     ( $name:ident, $xi:expr, $h_table:expr, $input:expr $(,)? ) => {{
@@ -90,11 +99,14 @@ impl KeyValue {
 ///   * `f` must read `len` bytes from `inp`; it may assume
 ///     that `len` is a (non-zero) multiple of `BLOCK_LEN`.
 ///   * `f` may inspect CPU features.
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86",
-    target_arch = "x86_64"
+#[cfg(all(
+    perlasm,
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    )
 ))]
 impl HTable {
     pub(super) unsafe fn new(

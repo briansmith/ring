@@ -26,7 +26,7 @@ pub const fn usize_from_u32(x: u32) -> usize {
     x as usize
 }
 
-#[cfg(all(target_arch = "aarch64", target_pointer_width = "64"))]
+#[cfg(all(perlasm, target_arch = "aarch64", target_pointer_width = "64"))]
 #[allow(clippy::cast_possible_truncation)]
 pub fn usize_from_u64(x: u64) -> usize {
     x as usize

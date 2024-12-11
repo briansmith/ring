@@ -83,11 +83,14 @@
     clippy::cast_sign_loss
 )]
 #![cfg_attr(
-    not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86",
-        target_arch = "x86_64"
+    not(all(
+        perlasm,
+        any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86",
+            target_arch = "x86_64"
+        )
     )),
     allow(dead_code, unused_imports, unused_macros)
 )]
@@ -159,3 +162,6 @@ mod sealed {
     // ```
     pub trait Sealed {}
 }
+
+const _PERLASM_CONFIGURED: () =
+    assert!((cfg!(perlasm) && !cfg!(no_perlasm)) || (!cfg!(perlasm) && cfg!(no_perlasm)));

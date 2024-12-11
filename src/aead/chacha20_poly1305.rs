@@ -55,7 +55,7 @@ pub(super) fn seal(
     /// check.
     const _USIZE_BOUNDED_BY_U64: u64 = u64_from_usize(usize::MAX);
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "x86_64")))]
     if has_integrated(cpu_features) {
         // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
         // structure, but Rust can't do that yet; see
@@ -144,7 +144,7 @@ pub(super) fn open(
     // check.
     const _USIZE_BOUNDED_BY_U64: u64 = u64_from_usize(usize::MAX);
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "x86_64")))]
     if has_integrated(cpu_features) {
         // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
         // structure, but Rust can't do that yet; see
@@ -207,7 +207,7 @@ pub(super) fn open(
     Ok(finish(auth, aad.as_ref().len(), unprefixed_len))
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "x86_64")))]
 #[allow(clippy::needless_return)]
 #[inline(always)]
 fn has_integrated(cpu_features: cpu::Features) -> bool {
@@ -231,7 +231,7 @@ fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag
     auth.finish()
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "x86_64")))]
 mod integrated {
     use super::super::TAG_LEN;
 
