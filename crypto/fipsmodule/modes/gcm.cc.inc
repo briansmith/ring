@@ -274,6 +274,16 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
 
 void CRYPTO_gcm128_init_aes_key(GCM128_KEY *gcm_key, const uint8_t *key,
                                 size_t key_bytes) {
+  switch (key_bytes) {
+    case 16:
+      boringssl_fips_inc_counter(fips_counter_evp_aes_128_gcm);
+      break;
+
+    case 32:
+      boringssl_fips_inc_counter(fips_counter_evp_aes_256_gcm);
+      break;
+  }
+
   OPENSSL_memset(gcm_key, 0, sizeof(*gcm_key));
   int is_hwaes;
   gcm_key->ctr = aes_ctr_set_key(&gcm_key->aes, &is_hwaes, &gcm_key->block, key,
