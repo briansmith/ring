@@ -20,6 +20,7 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
+#include "../fipsmodule/aes/internal.h"
 #include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
 

@@ -58,23 +58,12 @@
 #include <string.h>
 
 #include "../../internal.h"
+#include "../aes/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-
-// block128_f is the type of an AES block cipher implementation.
-//
-// Unlike upstream OpenSSL, it and the other functions in this file hard-code
-// |AES_KEY|. It is undefined in C to call a function pointer with anything
-// other than the original type. Thus we either must match |block128_f| to the
-// type signature of |AES_encrypt| and friends or pass in |void*| wrapper
-// functions.
-//
-// These functions are called exclusively with AES, so we use the former.
-typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],
-                           const AES_KEY *key);
 
 OPENSSL_INLINE void CRYPTO_xor16(uint8_t out[16], const uint8_t a[16],
                                  const uint8_t b[16]) {
@@ -92,10 +81,6 @@ OPENSSL_INLINE void CRYPTO_xor16(uint8_t out[16], const uint8_t a[16],
 
 
 // CTR.
-
-// ctr128_f is the type of a function that performs CTR-mode encryption.
-typedef void (*ctr128_f)(const uint8_t *in, uint8_t *out, size_t blocks,
-                         const AES_KEY *key, const uint8_t ivec[16]);
 
 // CRYPTO_ctr128_encrypt_ctr32 encrypts (or decrypts, it's the same in CTR mode)
 // |len| bytes from |in| to |out| using |block| in counter mode. There's no
@@ -148,7 +133,9 @@ typedef struct gcm128_key_st {
   u128 Htable[16];
   gmult_func gmult;
   ghash_func ghash;
+  AES_KEY aes;
 
+  ctr128_f ctr;
   block128_f block;
   enum gcm_impl_t impl;
 } GCM128_KEY;
@@ -165,11 +152,6 @@ typedef struct {
     uint64_t msg;
   } len;
   uint8_t Xi[16];
-
-  // |gcm_*_ssse3| require |Htable| to be 16-byte-aligned.
-  // TODO(crbug.com/boringssl/604): Revisit this.
-  alignas(16) GCM128_KEY gcm_key;
-
   unsigned mres, ares;
 } GCM128_CONTEXT;
 
@@ -185,46 +167,44 @@ int crypto_gcm_clmul_enabled(void);
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                        u128 out_table[16], const uint8_t gcm_key[16]);
 
-// CRYPTO_gcm128_init_key initialises |gcm_key| to use |block| (typically AES)
-// with the given key. |block_is_hwaes| is one if |block| is |aes_hw_encrypt|.
-void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *key,
-                            block128_f block, int block_is_hwaes);
+// CRYPTO_gcm128_init_aes_key initialises |gcm_key| to with AES key |key|.
+void CRYPTO_gcm128_init_aes_key(GCM128_KEY *gcm_key, const uint8_t *key,
+                                size_t key_bytes);
 
-// CRYPTO_gcm128_setiv sets the IV (nonce) for |ctx|. The |key| must be the
-// same key that was passed to |CRYPTO_gcm128_init|.
-void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                         const uint8_t *iv, size_t iv_len);
+// CRYPTO_gcm128_init_ctx initializes |ctx| to encrypt with |key| and |iv|.
+void CRYPTO_gcm128_init_ctx(const GCM128_KEY *key, GCM128_CONTEXT *ctx,
+                            const uint8_t *iv, size_t iv_len);
 
-// CRYPTO_gcm128_aad sets the authenticated data for an instance of GCM.
-// This must be called before and data is encrypted. It returns one on success
+// CRYPTO_gcm128_aad adds to the authenticated data for an instance of GCM.
+// This must be called before and data is encrypted. |key| must be the same
+// value that was passed to |CRYPTO_gcm128_init_ctx|. It returns one on success
 // and zero otherwise.
-int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len);
+int CRYPTO_gcm128_aad(const GCM128_KEY *key, GCM128_CONTEXT *ctx,
+                      const uint8_t *aad, size_t aad_len);
 
-// CRYPTO_gcm128_encrypt_ctr32 encrypts |len| bytes from |in| to |out| using
-// a CTR function that only handles the bottom 32 bits of the nonce, like
-// |CRYPTO_ctr128_encrypt_ctr32|. The |key| must be the same key that was
-// passed to |CRYPTO_gcm128_init|. It returns one on success and zero
-// otherwise.
-int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                                const uint8_t *in, uint8_t *out, size_t len,
-                                ctr128_f stream);
+// CRYPTO_gcm128_encrypt encrypts |len| bytes from |in| to |out|. |key| must be
+// the same value that was passed to |CRYPTO_gcm128_init_ctx|. It returns one on
+// success and zero otherwise.
+int CRYPTO_gcm128_encrypt(const GCM128_KEY *key, GCM128_CONTEXT *ctx,
+                          const uint8_t *in, uint8_t *out, size_t len);
 
-// CRYPTO_gcm128_decrypt_ctr32 decrypts |len| bytes from |in| to |out| using
-// a CTR function that only handles the bottom 32 bits of the nonce, like
-// |CRYPTO_ctr128_encrypt_ctr32|. The |key| must be the same key that was
-// passed to |CRYPTO_gcm128_init|. It returns one on success and zero
-// otherwise.
-int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                                const uint8_t *in, uint8_t *out, size_t len,
-                                ctr128_f stream);
+// CRYPTO_gcm128_decrypt decrypts |len| bytes from |in| to |out|. |key| must be
+// the same value that was passed to |CRYPTO_gcm128_init_ctx|. It returns one on
+// success and zero otherwise.
+int CRYPTO_gcm128_decrypt(const GCM128_KEY *key, GCM128_CONTEXT *ctx,
+                          const uint8_t *in, uint8_t *out, size_t len);
 
 // CRYPTO_gcm128_finish calculates the authenticator and compares it against
-// |len| bytes of |tag|. It returns one on success and zero otherwise.
-int CRYPTO_gcm128_finish(GCM128_CONTEXT *ctx, const uint8_t *tag, size_t len);
+// |len| bytes of |tag|. |key| must be the same value that was passed to
+// |CRYPTO_gcm128_init_ctx|. It returns one on success and zero otherwise.
+int CRYPTO_gcm128_finish(const GCM128_KEY *key, GCM128_CONTEXT *ctx,
+                         const uint8_t *tag, size_t len);
 
 // CRYPTO_gcm128_tag calculates the authenticator and copies it into |tag|.
-// The minimum of |len| and 16 bytes are copied into |tag|.
-void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag, size_t len);
+// The minimum of |len| and 16 bytes are copied into |tag|. |key| must be the
+// same value that was passed to |CRYPTO_gcm128_init_ctx|.
+void CRYPTO_gcm128_tag(const GCM128_KEY *key, GCM128_CONTEXT *ctx, uint8_t *tag,
+                       size_t len);
 
 
 // GCM assembly.

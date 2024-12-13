@@ -24,6 +24,34 @@
 extern "C" {
 
 
+// block128_f is the type of an AES block cipher implementation.
+//
+// Unlike upstream OpenSSL, it and the other functions in this file hard-code
+// |AES_KEY|. It is undefined in C to call a function pointer with anything
+// other than the original type. Thus we either must match |block128_f| to the
+// type signature of |AES_encrypt| and friends or pass in |void*| wrapper
+// functions.
+//
+// These functions are called exclusively with AES, so we use the former.
+typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],
+                           const AES_KEY *key);
+
+// ctr128_f is the type of a function that performs CTR-mode encryption.
+typedef void (*ctr128_f)(const uint8_t *in, uint8_t *out, size_t blocks,
+                         const AES_KEY *key, const uint8_t ivec[16]);
+
+// aes_ctr_set_key initialises |*aes_key| using |key_bytes| bytes from |key|,
+// where |key_bytes| must either be 16, 24 or 32. If not NULL, |*out_block| is
+// set to a function that encrypts single blocks. If not NULL, |*out_is_hwaes|
+// is set to whether the hardware AES implementation was used. It returns a
+// function for optimised CTR-mode.
+ctr128_f aes_ctr_set_key(AES_KEY *aes_key, int *out_is_hwaes,
+                         block128_f *out_block, const uint8_t *key,
+                         size_t key_bytes);
+
+
+// AES implementations.
+
 #if !defined(OPENSSL_NO_ASM)
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
@@ -152,6 +180,9 @@ void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
 // VPAES to BSAES conversions are available on all BSAES platforms.
 void vpaes_encrypt_key_to_bsaes(AES_KEY *out_bsaes, const AES_KEY *vpaes);
 void vpaes_decrypt_key_to_bsaes(AES_KEY *out_bsaes, const AES_KEY *vpaes);
+void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in, uint8_t *out,
+                                           size_t blocks, const AES_KEY *key,
+                                           const uint8_t ivec[16]);
 #else
 OPENSSL_INLINE char bsaes_capable(void) { return 0; }
 

@@ -18,7 +18,7 @@
 
 #include <openssl/mem.h>
 
-#include "../cipher/internal.h"
+#include "../aes/internal.h"
 #include "../service_indicator/internal.h"
 #include "internal.h"
 

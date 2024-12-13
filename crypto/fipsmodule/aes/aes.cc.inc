@@ -144,3 +144,83 @@ void vpaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
   }
 }
 #endif
+
+#if defined(BSAES)
+void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in, uint8_t *out,
+                                           size_t blocks, const AES_KEY *key,
+                                           const uint8_t ivec[16]) {
+  // |bsaes_ctr32_encrypt_blocks| is faster than |vpaes_ctr32_encrypt_blocks|,
+  // but it takes at least one full 8-block batch to amortize the conversion.
+  if (blocks < 8) {
+    vpaes_ctr32_encrypt_blocks(in, out, blocks, key, ivec);
+    return;
+  }
+
+  size_t bsaes_blocks = blocks;
+  if (bsaes_blocks % 8 < 6) {
+    // |bsaes_ctr32_encrypt_blocks| internally works in 8-block batches. If the
+    // final batch is too small (under six blocks), it is faster to loop over
+    // |vpaes_encrypt|. Round |bsaes_blocks| down to a multiple of 8.
+    bsaes_blocks -= bsaes_blocks % 8;
+  }
+
+  AES_KEY bsaes;
+  vpaes_encrypt_key_to_bsaes(&bsaes, key);
+  bsaes_ctr32_encrypt_blocks(in, out, bsaes_blocks, &bsaes, ivec);
+  OPENSSL_cleanse(&bsaes, sizeof(bsaes));
+
+  in += 16 * bsaes_blocks;
+  out += 16 * bsaes_blocks;
+  blocks -= bsaes_blocks;
+
+  uint8_t new_ivec[16];
+  memcpy(new_ivec, ivec, 12);
+  uint32_t ctr = CRYPTO_load_u32_be(ivec + 12) + bsaes_blocks;
+  CRYPTO_store_u32_be(new_ivec + 12, ctr);
+
+  // Finish any remaining blocks with |vpaes_ctr32_encrypt_blocks|.
+  vpaes_ctr32_encrypt_blocks(in, out, blocks, key, new_ivec);
+}
+#endif  // BSAES
+
+ctr128_f aes_ctr_set_key(AES_KEY *aes_key, int *out_is_hwaes,
+                         block128_f *out_block, const uint8_t *key,
+                         size_t key_bytes) {
+  // This function assumes the key length was previously validated.
+  assert(key_bytes == 128 / 8 || key_bytes == 192 / 8 || key_bytes == 256 / 8);
+  if (hwaes_capable()) {
+    aes_hw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
+    if (out_is_hwaes) {
+      *out_is_hwaes = 1;
+    }
+    if (out_block) {
+      *out_block = aes_hw_encrypt;
+    }
+    return aes_hw_ctr32_encrypt_blocks;
+  }
+
+  if (vpaes_capable()) {
+    vpaes_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
+    if (out_block) {
+      *out_block = vpaes_encrypt;
+    }
+    if (out_is_hwaes) {
+      *out_is_hwaes = 0;
+    }
+#if defined(BSAES)
+    assert(bsaes_capable());
+    return vpaes_ctr32_encrypt_blocks_with_bsaes;
+#else
+    return vpaes_ctr32_encrypt_blocks;
+#endif
+  }
+
+  aes_nohw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
+  if (out_is_hwaes) {
+    *out_is_hwaes = 0;
+  }
+  if (out_block) {
+    *out_block = aes_nohw_encrypt;
+  }
+  return aes_nohw_ctr32_encrypt_blocks;
+}

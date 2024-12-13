@@ -21,6 +21,7 @@
 #include <openssl/err.h>
 #include <openssl/sha.h>
 
+#include "../fipsmodule/aes/internal.h"
 #include "../fipsmodule/cipher/internal.h"
 
 
