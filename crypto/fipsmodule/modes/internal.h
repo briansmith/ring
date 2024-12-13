@@ -97,21 +97,14 @@ OPENSSL_INLINE void CRYPTO_xor16(uint8_t out[16], const uint8_t a[16],
 typedef void (*ctr128_f)(const uint8_t *in, uint8_t *out, size_t blocks,
                          const AES_KEY *key, const uint8_t ivec[16]);
 
-// CRYPTO_ctr128_encrypt encrypts (or decrypts, it's the same in CTR mode)
+// CRYPTO_ctr128_encrypt_ctr32 encrypts (or decrypts, it's the same in CTR mode)
 // |len| bytes from |in| to |out| using |block| in counter mode. There's no
 // requirement that |len| be a multiple of any value and any partial blocks are
 // stored in |ecount_buf| and |*num|, which must be zeroed before the initial
 // call. The counter is a 128-bit, big-endian value in |ivec| and is
-// incremented by this function.
-void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                           const AES_KEY *key, uint8_t ivec[16],
-                           uint8_t ecount_buf[16], unsigned *num,
-                           block128_f block);
-
-// CRYPTO_ctr128_encrypt_ctr32 acts like |CRYPTO_ctr128_encrypt| but takes
-// |ctr|, a function that performs CTR mode but only deals with the lower 32
-// bits of the counter. This is useful when |ctr| can be an optimised
-// function.
+// incremented by this function. If the counter overflows, it wraps around.
+// |ctr| must be a function that performs CTR mode but only deals with the lower
+// 32 bits of the counter.
 void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out, size_t len,
                                  const AES_KEY *key, uint8_t ivec[16],
                                  uint8_t ecount_buf[16], unsigned *num,
@@ -206,18 +199,6 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
 // This must be called before and data is encrypted. It returns one on success
 // and zero otherwise.
 int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len);
-
-// CRYPTO_gcm128_encrypt encrypts |len| bytes from |in| to |out|. The |key|
-// must be the same key that was passed to |CRYPTO_gcm128_init|. It returns one
-// on success and zero otherwise.
-int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                          const uint8_t *in, uint8_t *out, size_t len);
-
-// CRYPTO_gcm128_decrypt decrypts |len| bytes from |in| to |out|. The |key|
-// must be the same key that was passed to |CRYPTO_gcm128_init|. It returns one
-// on success and zero otherwise.
-int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                          const uint8_t *in, uint8_t *out, size_t len);
 
 // CRYPTO_gcm128_encrypt_ctr32 encrypts |len| bytes from |in| to |out| using
 // a CTR function that only handles the bottom 32 bits of the nonce, like

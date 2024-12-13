@@ -33,9 +33,6 @@ extern "C" {
 OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_AESNI_capable(); }
 
 #define VPAES
-#if defined(OPENSSL_X86_64)
-#define VPAES_CTR32
-#endif
 #define VPAES_CBC
 OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_SSSE3_capable(); }
 
@@ -47,7 +44,6 @@ OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_ARMv8_AES_capable(); }
 #if defined(OPENSSL_ARM)
 #define BSAES
 #define VPAES
-#define VPAES_CTR32
 OPENSSL_INLINE int bsaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 #endif
@@ -55,7 +51,6 @@ OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 #if defined(OPENSSL_AARCH64)
 #define VPAES
 #define VPAES_CBC
-#define VPAES_CTR32
 OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 #endif
 
@@ -199,10 +194,8 @@ void vpaes_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                        const AES_KEY *key, uint8_t *ivec, int enc);
 #endif
-#if defined(VPAES_CTR32)
 void vpaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                 const AES_KEY *key, const uint8_t ivec[16]);
-#endif
 #else
 OPENSSL_INLINE char vpaes_capable(void) { return 0; }
 
@@ -227,6 +220,11 @@ OPENSSL_INLINE void vpaes_decrypt(const uint8_t *in, uint8_t *out,
 OPENSSL_INLINE void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out,
                                       size_t length, const AES_KEY *key,
                                       uint8_t *ivec, int enc) {
+  abort();
+}
+OPENSSL_INLINE void vpaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+                                               size_t len, const AES_KEY *key,
+                                               const uint8_t ivec[16]) {
   abort();
 }
 #endif  // !VPAES

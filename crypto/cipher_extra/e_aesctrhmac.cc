@@ -154,7 +154,7 @@ static void aead_aes_ctr_hmac_sha256_crypt(
     const struct aead_aes_ctr_hmac_sha256_ctx *aes_ctx, uint8_t *out,
     const uint8_t *in, size_t len, const uint8_t *nonce) {
   // Since the AEAD operation is one-shot, keeping a buffer of unused keystream
-  // bytes is pointless. However, |CRYPTO_ctr128_encrypt| requires it.
+  // bytes is pointless. However, |CRYPTO_ctr128_encrypt_ctr32| requires it.
   uint8_t partial_block_buffer[AES_BLOCK_SIZE];
   unsigned partial_block_offset = 0;
   OPENSSL_memset(partial_block_buffer, 0, sizeof(partial_block_buffer));
@@ -163,15 +163,9 @@ static void aead_aes_ctr_hmac_sha256_crypt(
   OPENSSL_memcpy(counter, nonce, EVP_AEAD_AES_CTR_HMAC_SHA256_NONCE_LEN);
   OPENSSL_memset(counter + EVP_AEAD_AES_CTR_HMAC_SHA256_NONCE_LEN, 0, 4);
 
-  if (aes_ctx->ctr) {
-    CRYPTO_ctr128_encrypt_ctr32(in, out, len, &aes_ctx->ks.ks, counter,
-                                partial_block_buffer, &partial_block_offset,
-                                aes_ctx->ctr);
-  } else {
-    CRYPTO_ctr128_encrypt(in, out, len, &aes_ctx->ks.ks, counter,
-                          partial_block_buffer, &partial_block_offset,
-                          aes_ctx->block);
-  }
+  CRYPTO_ctr128_encrypt_ctr32(in, out, len, &aes_ctx->ks.ks, counter,
+                              partial_block_buffer, &partial_block_offset,
+                              aes_ctx->ctr);
 }
 
 static int aead_aes_ctr_hmac_sha256_seal_scatter(

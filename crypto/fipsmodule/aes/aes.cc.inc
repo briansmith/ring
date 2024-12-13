@@ -125,3 +125,22 @@ int aes_hw_set_encrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
   }
 }
 #endif
+
+#if defined(VPAES) && defined(OPENSSL_X86)
+// On x86, there is no |vpaes_ctr32_encrypt_blocks|, so we implement it
+// ourselves. This avoids all callers needing to account for a missing function.
+void vpaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
+                                const AES_KEY *key, const uint8_t iv[16]) {
+  uint32_t ctr = CRYPTO_load_u32_be(iv + 12);
+  uint8_t iv_buf[16], enc[16];
+  OPENSSL_memcpy(iv_buf, iv, 12);
+  for (size_t i = 0; i < blocks; i++) {
+    CRYPTO_store_u32_be(iv_buf + 12, ctr);
+    vpaes_encrypt(iv_buf, enc, key);
+    CRYPTO_xor16(out, in, enc);
+    ctr++;
+    in += 16;
+    out += 16;
+  }
+}
+#endif

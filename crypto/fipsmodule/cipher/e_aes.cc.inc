@@ -211,7 +211,7 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 #if defined(BSAES)
       assert(bsaes_capable());
       dat->stream.ctr = vpaes_ctr32_encrypt_blocks_with_bsaes;
-#elif defined(VPAES_CTR32)
+#else
       dat->stream.ctr = vpaes_ctr32_encrypt_blocks;
 #endif
     }
@@ -221,6 +221,8 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     dat->stream.cbc = NULL;
     if (mode == EVP_CIPH_CBC_MODE) {
       dat->stream.cbc = aes_nohw_cbc_encrypt;
+    } else if (mode == EVP_CIPH_CTR_MODE) {
+      dat->stream.ctr = aes_nohw_ctr32_encrypt_blocks;
     }
   }
 
@@ -267,14 +269,8 @@ static int aes_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 static int aes_ctr_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                           size_t len) {
   EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
-
-  if (dat->stream.ctr) {
-    CRYPTO_ctr128_encrypt_ctr32(in, out, len, &dat->ks.ks, ctx->iv, ctx->buf,
-                                &ctx->num, dat->stream.ctr);
-  } else {
-    CRYPTO_ctr128_encrypt(in, out, len, &dat->ks.ks, ctx->iv, ctx->buf,
-                          &ctx->num, dat->block);
-  }
+  CRYPTO_ctr128_encrypt_ctr32(in, out, len, &dat->ks.ks, ctx->iv, ctx->buf,
+                              &ctx->num, dat->stream.ctr);
   return 1;
 }
 
@@ -314,10 +310,8 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
 #if defined(BSAES)
     assert(bsaes_capable());
     return vpaes_ctr32_encrypt_blocks_with_bsaes;
-#elif defined(VPAES_CTR32)
-    return vpaes_ctr32_encrypt_blocks;
 #else
-    return NULL;
+    return vpaes_ctr32_encrypt_blocks;
 #endif
   }
 
@@ -556,26 +550,14 @@ static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
         return -1;
       }
     } else if (ctx->encrypt) {
-      if (gctx->ctr) {
-        if (!CRYPTO_gcm128_encrypt_ctr32(&gctx->gcm, &gctx->ks.ks, in, out, len,
-                                         gctx->ctr)) {
-          return -1;
-        }
-      } else {
-        if (!CRYPTO_gcm128_encrypt(&gctx->gcm, &gctx->ks.ks, in, out, len)) {
-          return -1;
-        }
+      if (!CRYPTO_gcm128_encrypt_ctr32(&gctx->gcm, &gctx->ks.ks, in, out, len,
+                                       gctx->ctr)) {
+        return -1;
       }
     } else {
-      if (gctx->ctr) {
-        if (!CRYPTO_gcm128_decrypt_ctr32(&gctx->gcm, &gctx->ks.ks, in, out, len,
-                                         gctx->ctr)) {
-          return -1;
-        }
-      } else {
-        if (!CRYPTO_gcm128_decrypt(&gctx->gcm, &gctx->ks.ks, in, out, len)) {
-          return -1;
-        }
+      if (!CRYPTO_gcm128_decrypt_ctr32(&gctx->gcm, &gctx->ks.ks, in, out, len,
+                                       gctx->ctr)) {
+        return -1;
       }
     }
     return (int)len;
@@ -973,28 +955,14 @@ static int aead_aes_gcm_seal_scatter_impl(
     return 0;
   }
 
-  if (gcm_ctx->ctr) {
-    if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, key, in, out, in_len,
-                                     gcm_ctx->ctr)) {
-      return 0;
-    }
-  } else {
-    if (!CRYPTO_gcm128_encrypt(&gcm, key, in, out, in_len)) {
-      return 0;
-    }
+  if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, key, in, out, in_len, gcm_ctx->ctr)) {
+    return 0;
   }
 
-  if (extra_in_len) {
-    if (gcm_ctx->ctr) {
-      if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, key, extra_in, out_tag,
-                                       extra_in_len, gcm_ctx->ctr)) {
-        return 0;
-      }
-    } else {
-      if (!CRYPTO_gcm128_encrypt(&gcm, key, extra_in, out_tag, extra_in_len)) {
-        return 0;
-      }
-    }
+  if (extra_in_len > 0 &&
+      !CRYPTO_gcm128_encrypt_ctr32(&gcm, key, extra_in, out_tag, extra_in_len,
+                                   gcm_ctx->ctr)) {
+    return 0;
   }
 
   CRYPTO_gcm128_tag(&gcm, out_tag + extra_in_len, tag_len);
@@ -1044,15 +1012,8 @@ static int aead_aes_gcm_open_gather_impl(const struct aead_aes_gcm_ctx *gcm_ctx,
     return 0;
   }
 
-  if (gcm_ctx->ctr) {
-    if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, key, in, out, in_len,
-                                     gcm_ctx->ctr)) {
-      return 0;
-    }
-  } else {
-    if (!CRYPTO_gcm128_decrypt(&gcm, key, in, out, in_len)) {
-      return 0;
-    }
+  if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, key, in, out, in_len, gcm_ctx->ctr)) {
+    return 0;
   }
 
   CRYPTO_gcm128_tag(&gcm, tag, tag_len);

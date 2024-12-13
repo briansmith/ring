@@ -181,17 +181,10 @@ int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
     todo &= ~(AES_BLOCK_SIZE - 1);
     const size_t num_blocks = todo / AES_BLOCK_SIZE;
 
-    if (drbg->ctr) {
-      OPENSSL_memset(out, 0, todo);
-      ctr32_add(drbg, 1);
-      drbg->ctr(out, out, num_blocks, &drbg->ks, drbg->counter);
-      ctr32_add(drbg, (uint32_t)(num_blocks - 1));
-    } else {
-      for (size_t i = 0; i < todo; i += AES_BLOCK_SIZE) {
-        ctr32_add(drbg, 1);
-        drbg->block(drbg->counter, out + i, &drbg->ks);
-      }
-    }
+    OPENSSL_memset(out, 0, todo);
+    ctr32_add(drbg, 1);
+    drbg->ctr(out, out, num_blocks, &drbg->ks, drbg->counter);
+    ctr32_add(drbg, (uint32_t)(num_blocks - 1));
 
     out += todo;
     out_len -= todo;

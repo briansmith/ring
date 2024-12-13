@@ -188,13 +188,8 @@ static int ccm128_encrypt(const struct ccm128_context *ctx,
 
   uint8_t partial_buf[16];
   unsigned num = 0;
-  if (ctx->ctr != NULL) {
-    CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, state->nonce, partial_buf,
-                                &num, ctx->ctr);
-  } else {
-    CRYPTO_ctr128_encrypt(in, out, len, key, state->nonce, partial_buf, &num,
-                          ctx->block);
-  }
+  CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, state->nonce, partial_buf,
+                              &num, ctx->ctr);
   return 1;
 }
 
