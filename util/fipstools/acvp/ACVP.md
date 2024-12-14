@@ -82,8 +82,8 @@ The other commands are as follows. (Note that you only need to implement the com
 | EDDSA/sigVer         | Curve name, message, public key (Q), signature, single-byte prehash flag | Single-byte validity flag |
 | FFDH                 | p, q, g, peer public key, local private key (or empty),  local public key (or empty) | Local public key, shared key |
 | HKDF/&lt;HASH&gt;    | key, salt, info, num output bytes | Key |
-| HKDFExtract          | secret, salt | Key |
-| HKDFExpandLabel      | Output length, secret, label, transcript hash | Key |
+| HKDFExtract/&lt;HASH&gt; | secret, salt | Key |
+| HKDFExpandLabel/&lt;HASH&gt; | Output length, secret, label, transcript hash | Key |
 | HMAC-SHA-1           | Value to hash, key        | Digest  |
 | HMAC-SHA2-224        | Value to hash, key        | Digest  |
 | HMAC-SHA2-256        | Value to hash, key        | Digest  |
