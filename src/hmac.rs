@@ -315,11 +315,11 @@ impl Context {
         let cpu_features = cpu::features();
 
         let algorithm = self.inner.algorithm();
-        let mut pending = [0u8; digest::MAX_BLOCK_LEN];
-        let pending = &mut pending[..algorithm.block_len()];
+        let mut buffer = [0u8; digest::MAX_BLOCK_LEN];
+        let buffer = &mut buffer[..algorithm.block_len()];
         let num_pending = algorithm.output_len();
-        pending[..num_pending].copy_from_slice(self.inner.finish().as_ref());
-        Tag(self.outer.finish(pending, num_pending, cpu_features))
+        buffer[..num_pending].copy_from_slice(self.inner.finish().as_ref());
+        Tag(self.outer.finish(buffer, num_pending, cpu_features))
     }
 }
 
