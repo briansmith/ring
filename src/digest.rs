@@ -69,31 +69,36 @@ impl BlockContext {
         leftover
     }
 
+    // On input, `block[..num_pending]` is the (possibly-empty) last *partial*
+    // chunk of input. It *must* be partial; that is, it is required that
+    // `num_pending < self.algorithm.block_len`.
+    //
+    // `block` may be arbitrarily overwritten.
     pub(crate) fn finish(
         mut self,
-        pending: &mut [u8],
+        block: &mut [u8],
         num_pending: usize,
         cpu_features: cpu::Features,
     ) -> Digest {
         let block_len = self.algorithm.block_len();
-        assert_eq!(pending.len(), block_len);
-        assert!(num_pending < pending.len());
-        let pending = &mut pending[..block_len];
+        assert_eq!(block.len(), block_len);
+        assert!(num_pending < block.len());
+        let block = &mut block[..block_len];
 
         let mut padding_pos = num_pending;
-        pending[padding_pos] = 0x80;
+        block[padding_pos] = 0x80;
         padding_pos += 1;
 
-        if padding_pos > pending.len() - self.algorithm.len_len {
-            pending[padding_pos..].fill(0);
-            let (completed_bytes, leftover) = self.block_data_order(pending, cpu_features);
+        if padding_pos > block.len() - self.algorithm.len_len {
+            block[padding_pos..].fill(0);
+            let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
             debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
             // We don't increase |self.completed_bytes| because the padding
             // isn't data, and so it isn't included in the data length.
             padding_pos = 0;
         }
 
-        pending[padding_pos..(block_len - 8)].fill(0);
+        block[padding_pos..(block_len - 8)].fill(0);
 
         // Output the length, in bits, in big endian order.
         let completed_bytes = self
@@ -101,9 +106,9 @@ impl BlockContext {
             .checked_add(polyfill::u64_from_usize(num_pending))
             .unwrap();
         let copmleted_bits = BitLength::from_byte_len(completed_bytes).unwrap();
-        pending[(block_len - 8)..].copy_from_slice(&copmleted_bits.to_be_bytes());
+        block[(block_len - 8)..].copy_from_slice(&copmleted_bits.to_be_bytes());
 
-        let (completed_bytes, leftover) = self.block_data_order(pending, cpu_features);
+        let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
         debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
 
         Digest {
