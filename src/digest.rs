@@ -76,12 +76,11 @@ impl BlockContext {
     // `block` may be arbitrarily overwritten.
     pub(crate) fn finish(
         mut self,
-        block: &mut [u8],
+        block: &mut [u8; MAX_BLOCK_LEN],
         num_pending: usize,
         cpu_features: cpu::Features,
     ) -> Digest {
         let block_len = self.algorithm.block_len();
-        assert_eq!(block.len(), block_len);
         assert!(num_pending < block.len());
         let block = &mut block[..block_len];
 
@@ -220,13 +219,8 @@ impl Context {
     /// has been called.
     pub fn finish(mut self) -> Digest {
         let cpu_features = cpu::features();
-
-        let block_len = self.block.algorithm.block_len();
-        self.block.finish(
-            &mut self.pending[..block_len],
-            self.num_pending,
-            cpu_features,
-        )
+        self.block
+            .finish(&mut self.pending, self.num_pending, cpu_features)
     }
 
     /// The algorithm that this context is using.
