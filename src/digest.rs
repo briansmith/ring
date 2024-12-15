@@ -24,7 +24,7 @@ use self::{
 };
 use crate::{
     bits::{BitLength, FromByteLen as _},
-    cpu, debug,
+    cpu, debug, error,
     polyfill::{self, slice, sliceutil},
 };
 use core::num::Wrapping;
@@ -74,12 +74,19 @@ impl BlockContext {
     // `num_pending < self.algorithm.block_len`.
     //
     // `block` may be arbitrarily overwritten.
-    pub(crate) fn finish(
+    pub(crate) fn try_finish(
         mut self,
         block: &mut [u8; MAX_BLOCK_LEN],
         num_pending: usize,
         cpu_features: cpu::Features,
-    ) -> Digest {
+    ) -> Result<Digest, FinishError> {
+        let completed_bytes = self
+            .completed_bytes
+            .checked_add(polyfill::u64_from_usize(num_pending))
+            .ok_or_else(|| FinishError::too_much_input(self.completed_bytes))?;
+        let copmleted_bits = BitLength::from_byte_len(completed_bytes)
+            .map_err(|_: error::Unspecified| FinishError::too_much_input(self.completed_bytes))?;
+
         let block_len = self.algorithm.block_len();
         let block = &mut block[..block_len];
 
@@ -89,7 +96,11 @@ impl BlockContext {
                 padding
             }
             // Precondition violated.
-            Some([]) | None => unreachable!(),
+            unreachable => {
+                return Err(FinishError::pending_not_a_partial_block(
+                    unreachable.as_deref(),
+                ));
+            }
         };
 
         let padding = match padding
@@ -107,12 +118,6 @@ impl BlockContext {
             }
         };
 
-        let completed_bytes = self
-            .completed_bytes
-            .checked_add(polyfill::u64_from_usize(num_pending))
-            .unwrap();
-        let copmleted_bits = BitLength::from_byte_len(completed_bytes).unwrap();
-
         let (to_zero, len) = padding.split_at_mut(padding.len() - 8);
         to_zero.fill(0);
         len.copy_from_slice(&copmleted_bits.to_be_bytes());
@@ -120,10 +125,10 @@ impl BlockContext {
         let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
         debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
 
-        Digest {
+        Ok(Digest {
             algorithm: self.algorithm,
             value: (self.algorithm.format_output)(self.state),
-        }
+        })
     }
 
     #[must_use]
@@ -133,6 +138,37 @@ impl BlockContext {
         cpu_features: cpu::Features,
     ) -> (usize, &'d [u8]) {
         (self.algorithm.block_data_order)(&mut self.state, data, cpu_features)
+    }
+}
+
+pub(crate) enum FinishError {
+    #[allow(dead_code)]
+    TooMuchInput(u64),
+    #[allow(dead_code)]
+    PendingNotAPartialBlock(usize),
+}
+
+impl FinishError {
+    #[cold]
+    #[inline(never)]
+    fn too_much_input(completed_bytes: u64) -> Self {
+        Self::TooMuchInput(completed_bytes)
+    }
+
+    // unreachable
+    #[cold]
+    #[inline(never)]
+    fn pending_not_a_partial_block(padding: Option<&[u8]>) -> Self {
+        match padding {
+            None => Self::PendingNotAPartialBlock(0),
+            Some(padding) => Self::PendingNotAPartialBlock(padding.len()),
+        }
+    }
+}
+
+impl From<FinishError> for error::Unspecified {
+    fn from(_: FinishError) -> Self {
+        Self
     }
 }
 
@@ -227,10 +263,15 @@ impl Context {
     ///
     /// `finish` consumes the context so it cannot be (mis-)used after `finish`
     /// has been called.
-    pub fn finish(mut self) -> Digest {
+    pub fn finish(self) -> Digest {
+        self.try_finish().unwrap()
+    }
+
+    fn try_finish(mut self) -> Result<Digest, error::Unspecified> {
         let cpu_features = cpu::features();
         self.block
-            .finish(&mut self.pending, self.num_pending, cpu_features)
+            .try_finish(&mut self.pending, self.num_pending, cpu_features)
+            .map_err(error::Unspecified::from)
     }
 
     /// The algorithm that this context is using.
