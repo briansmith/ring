@@ -241,35 +241,9 @@ static int aes_ofb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   return 1;
 }
 
-#if defined(OPENSSL_32_BIT)
-#define EVP_AES_GCM_CTX_PADDING (4 + 8)
-#else
-#define EVP_AES_GCM_CTX_PADDING 8
-#endif
-
-static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
-  static_assert(
-      alignof(EVP_AES_GCM_CTX) <= 16,
-      "EVP_AES_GCM_CTX needs more alignment than this function provides");
-
-  // |malloc| guarantees up to 4-byte alignment on 32-bit and 8-byte alignment
-  // on 64-bit systems, so we need to adjust to reach 16-byte alignment.
-  assert(ctx->cipher->ctx_size ==
-         sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
-
-  char *ptr = reinterpret_cast<char *>(ctx->cipher_data);
-#if defined(OPENSSL_32_BIT)
-  assert((uintptr_t)ptr % 4 == 0);
-  ptr += (uintptr_t)ptr & 4;
-#endif
-  assert((uintptr_t)ptr % 8 == 0);
-  ptr += (uintptr_t)ptr & 8;
-  return (EVP_AES_GCM_CTX *)ptr;
-}
-
 static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
-  EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
+  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX*>(ctx->cipher_data);
   if (!iv && !key) {
     return 1;
   }
@@ -312,7 +286,7 @@ static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 }
 
 static void aes_gcm_cleanup(EVP_CIPHER_CTX *c) {
-  EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(c);
+  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX*>(c->cipher_data);
   OPENSSL_cleanse(&gctx->key, sizeof(gctx->key));
   OPENSSL_cleanse(&gctx->gcm, sizeof(gctx->gcm));
   if (gctx->iv != c->iv) {
@@ -321,7 +295,7 @@ static void aes_gcm_cleanup(EVP_CIPHER_CTX *c) {
 }
 
 static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
-  EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(c);
+  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX*>(c->cipher_data);
   switch (type) {
     case EVP_CTRL_INIT:
       gctx->key_set = 0;
@@ -421,10 +395,8 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
 
     case EVP_CTRL_COPY: {
       EVP_CIPHER_CTX *out = reinterpret_cast<EVP_CIPHER_CTX *>(ptr);
-      EVP_AES_GCM_CTX *gctx_out = aes_gcm_from_cipher_ctx(out);
-      // |EVP_CIPHER_CTX_copy| copies this generically, but we must redo it in
-      // case |out->cipher_data| and |in->cipher_data| are differently aligned.
-      OPENSSL_memcpy(gctx_out, gctx, sizeof(EVP_AES_GCM_CTX));
+      EVP_AES_GCM_CTX *gctx_out =
+          reinterpret_cast<EVP_AES_GCM_CTX *>(out->cipher_data);
       if (gctx->iv == c->iv) {
         gctx_out->iv = out->iv;
       } else {
@@ -444,7 +416,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
 
 static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                           size_t len) {
-  EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
+  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX*>(ctx->cipher_data);
 
   // If not set up, return error
   if (!gctx->key_set) {
@@ -552,7 +524,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_gcm) {
   out->block_size = 1;
   out->key_len = 16;
   out->iv_len = AES_GCM_NONCE_LENGTH;
-  out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING;
+  out->ctx_size = sizeof(EVP_AES_GCM_CTX);
   out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
@@ -620,7 +592,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_gcm) {
   out->block_size = 1;
   out->key_len = 24;
   out->iv_len = AES_GCM_NONCE_LENGTH;
-  out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING;
+  out->ctx_size = sizeof(EVP_AES_GCM_CTX);
   out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
@@ -688,7 +660,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_gcm) {
   out->block_size = 1;
   out->key_len = 32;
   out->iv_len = AES_GCM_NONCE_LENGTH;
-  out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING;
+  out->ctx_size = sizeof(EVP_AES_GCM_CTX);
   out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;

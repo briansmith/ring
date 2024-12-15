@@ -38,7 +38,7 @@ _CET_ENDBR
 	pxor	%xmm3,%xmm3
 	movq	$5,%rax
 L$oop_row_1:
-	movdqa	(%rsi),%xmm4
+	movdqu	(%rsi),%xmm4
 	leaq	16(%rsi),%rsi
 
 
@@ -86,7 +86,7 @@ L$oop_row_1:
 	pxor	%xmm3,%xmm3
 	movq	$5,%rax
 L$oop_row_2:
-	movdqa	(%rsi),%xmm4
+	movdqu	(%rsi),%xmm4
 	leaq	16(%rsi),%rsi
 
 
@@ -134,7 +134,7 @@ L$oop_row_2:
 	pxor	%xmm3,%xmm3
 	movq	$6,%rax
 L$oop_row_3:
-	movdqa	(%rsi),%xmm4
+	movdqu	(%rsi),%xmm4
 	leaq	16(%rsi),%rsi
 
 
@@ -241,7 +241,7 @@ L$oop_ghash:
 
 	movq	$5,%rax
 L$oop_row_4:
-	movdqa	(%rsi),%xmm4
+	movdqu	(%rsi),%xmm4
 	leaq	16(%rsi),%rsi
 
 
@@ -289,7 +289,7 @@ L$oop_row_4:
 	pxor	%xmm3,%xmm3
 	movq	$5,%rax
 L$oop_row_5:
-	movdqa	(%rsi),%xmm4
+	movdqu	(%rsi),%xmm4
 	leaq	16(%rsi),%rsi
 
 
@@ -337,7 +337,7 @@ L$oop_row_5:
 	pxor	%xmm3,%xmm3
 	movq	$6,%rax
 L$oop_row_6:
-	movdqa	(%rsi),%xmm4
+	movdqu	(%rsi),%xmm4
 	leaq	16(%rsi),%rsi
 
 

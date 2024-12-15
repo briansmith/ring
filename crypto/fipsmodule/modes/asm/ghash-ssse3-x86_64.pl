@@ -156,7 +156,7 @@ sub process_rows {
     return <<____;
 	movq	\$$rows, %rax
 .Loop_row_$call_counter:
-	movdqa	($Htable), %xmm4
+	movdqu	($Htable), %xmm4
 	leaq	16($Htable), $Htable
 
 	# Right-shift %xmm2 and %xmm3 by 8 bytes.

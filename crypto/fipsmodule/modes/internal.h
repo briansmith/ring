@@ -126,10 +126,6 @@ typedef void (*ghash_func)(uint8_t Xi[16], const u128 Htable[16],
                            const uint8_t *inp, size_t len);
 
 typedef struct gcm128_key_st {
-  // |gcm_*_ssse3| require a 16-byte-aligned |Htable| when hashing data, but not
-  // initialization. |GCM128_KEY| is not itself aligned to simplify embedding in
-  // |EVP_AEAD_CTX|, but |Htable|'s offset must be a multiple of 16.
-  // TODO(crbug.com/boringssl/604): Revisit this.
   u128 Htable[16];
   gmult_func gmult;
   ghash_func ghash;
@@ -223,8 +219,6 @@ void gcm_gmult_clmul(uint8_t Xi[16], const u128 Htable[16]);
 void gcm_ghash_clmul(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                      size_t len);
 
-// |gcm_gmult_ssse3| and |gcm_ghash_ssse3| require |Htable| to be
-// 16-byte-aligned, but |gcm_init_ssse3| does not.
 void gcm_init_ssse3(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_ssse3(uint8_t Xi[16], const u128 Htable[16]);
 void gcm_ghash_ssse3(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
@@ -382,9 +376,7 @@ size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
 
 struct polyval_ctx {
   uint8_t S[16];
-  // |gcm_*_ssse3| require |Htable| to be 16-byte-aligned.
-  // TODO(crbug.com/boringssl/604): Revisit this.
-  alignas(16) u128 Htable[16];
+  u128 Htable[16];
   gmult_func gmult;
   ghash_func ghash;
 };

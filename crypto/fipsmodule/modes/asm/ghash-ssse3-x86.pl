@@ -100,7 +100,7 @@ sub process_rows {
 
 	&mov("eax", $rows);
 &set_label("loop_row_$call_counter");
-	&movdqa("xmm4", &QWP(0, $Htable));
+	&movdqu("xmm4", &QWP(0, $Htable));
 	&lea($Htable, &DWP(16, $Htable));
 
 	# Right-shift xmm2 and xmm3 by 8 bytes.

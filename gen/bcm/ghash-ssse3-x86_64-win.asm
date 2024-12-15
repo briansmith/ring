@@ -52,7 +52,7 @@ DB	102,65,15,56,0,194
 	pxor	xmm3,xmm3
 	mov	rax,5
 $L$oop_row_1:
-	movdqa	xmm4,XMMWORD[rdx]
+	movdqu	xmm4,XMMWORD[rdx]
 	lea	rdx,[16+rdx]
 
 
@@ -100,7 +100,7 @@ DB	102,15,56,0,233
 	pxor	xmm3,xmm3
 	mov	rax,5
 $L$oop_row_2:
-	movdqa	xmm4,XMMWORD[rdx]
+	movdqu	xmm4,XMMWORD[rdx]
 	lea	rdx,[16+rdx]
 
 
@@ -148,7 +148,7 @@ DB	102,15,56,0,233
 	pxor	xmm3,xmm3
 	mov	rax,6
 $L$oop_row_3:
-	movdqa	xmm4,XMMWORD[rdx]
+	movdqu	xmm4,XMMWORD[rdx]
 	lea	rdx,[16+rdx]
 
 
@@ -266,7 +266,7 @@ DB	102,65,15,56,0,202
 
 	mov	rax,5
 $L$oop_row_4:
-	movdqa	xmm4,XMMWORD[rdx]
+	movdqu	xmm4,XMMWORD[rdx]
 	lea	rdx,[16+rdx]
 
 
@@ -314,7 +314,7 @@ DB	102,15,56,0,233
 	pxor	xmm3,xmm3
 	mov	rax,5
 $L$oop_row_5:
-	movdqa	xmm4,XMMWORD[rdx]
+	movdqu	xmm4,XMMWORD[rdx]
 	lea	rdx,[16+rdx]
 
 
@@ -362,7 +362,7 @@ DB	102,15,56,0,233
 	pxor	xmm3,xmm3
 	mov	rax,6
 $L$oop_row_6:
-	movdqa	xmm4,XMMWORD[rdx]
+	movdqu	xmm4,XMMWORD[rdx]
 	lea	rdx,[16+rdx]
 
 
