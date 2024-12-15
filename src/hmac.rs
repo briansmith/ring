@@ -315,8 +315,7 @@ impl Context {
         let cpu_features = cpu::features();
 
         let algorithm = self.inner.algorithm();
-        let mut buffer = [0u8; digest::MAX_BLOCK_LEN];
-        let buffer = &mut buffer[..algorithm.block_len()];
+        let buffer = &mut [0u8; digest::MAX_BLOCK_LEN];
         let num_pending = algorithm.output_len();
         buffer[..num_pending].copy_from_slice(self.inner.finish().as_ref());
         Tag(self.outer.finish(buffer, num_pending, cpu_features))
