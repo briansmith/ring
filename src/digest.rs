@@ -81,31 +81,41 @@ impl BlockContext {
         cpu_features: cpu::Features,
     ) -> Digest {
         let block_len = self.algorithm.block_len();
-        assert!(num_pending < block.len());
         let block = &mut block[..block_len];
 
-        let mut padding_pos = num_pending;
-        block[padding_pos] = 0x80;
-        padding_pos += 1;
+        let padding = match block.get_mut(num_pending..) {
+            Some([separator, padding @ ..]) => {
+                *separator = 0x80;
+                padding
+            }
+            // Precondition violated.
+            Some([]) | None => unreachable!(),
+        };
 
-        if padding_pos > block.len() - self.algorithm.block_len.len_len() {
-            block[padding_pos..].fill(0);
-            let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
-            debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
-            // We don't increase |self.completed_bytes| because the padding
-            // isn't data, and so it isn't included in the data length.
-            padding_pos = 0;
-        }
+        let padding = match padding
+            .len()
+            .checked_sub(self.algorithm.block_len.len_len())
+        {
+            Some(_) => padding,
+            None => {
+                padding.fill(0);
+                let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
+                debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
+                // We don't increase |self.completed_bytes| because the padding
+                // isn't data, and so it isn't included in the data length.
+                &mut block[..]
+            }
+        };
 
-        block[padding_pos..(block_len - 8)].fill(0);
-
-        // Output the length, in bits, in big endian order.
         let completed_bytes = self
             .completed_bytes
             .checked_add(polyfill::u64_from_usize(num_pending))
             .unwrap();
         let copmleted_bits = BitLength::from_byte_len(completed_bytes).unwrap();
-        block[(block_len - 8)..].copy_from_slice(&copmleted_bits.to_be_bytes());
+
+        let (to_zero, len) = padding.split_at_mut(padding.len() - 8);
+        to_zero.fill(0);
+        len.copy_from_slice(&copmleted_bits.to_be_bytes());
 
         let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
         debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
