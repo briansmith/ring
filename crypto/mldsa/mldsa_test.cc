@@ -24,6 +24,7 @@
 #include <openssl/span.h>
 
 #include "../fipsmodule/bcm_interface.h"
+#include "../internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 
@@ -126,10 +127,11 @@ static void MLDSABasicTest() {
   auto priv2 = std::make_unique<PrivateKey>();
   EXPECT_TRUE(PrivateKeyFromSeed(priv2.get(), seed, sizeof(seed)));
 
-  EXPECT_EQ(Bytes(Marshal(MarshalPrivate,
-                          reinterpret_cast<BCMPrivateKey *>(priv.get()))),
-            Bytes(Marshal(MarshalPrivate,
-                          reinterpret_cast<BCMPrivateKey *>(priv2.get()))));
+  EXPECT_EQ(
+      Bytes(Declassified(Marshal(
+          MarshalPrivate, reinterpret_cast<BCMPrivateKey *>(priv.get())))),
+      Bytes(Declassified(Marshal(
+          MarshalPrivate, reinterpret_cast<BCMPrivateKey *>(priv2.get())))));
 }
 
 TEST(MLDSATest, Basic65) {
@@ -379,6 +381,7 @@ template <typename PrivateKey, size_t PublicKeyBytes,
 static void MLDSAKeyGenTest(FileTest *t) {
   std::vector<uint8_t> seed, expected_public_key, expected_private_key;
   ASSERT_TRUE(t->GetBytes(&seed, "seed"));
+  CONSTTIME_SECRET(seed.data(), seed.size());
   ASSERT_TRUE(t->GetBytes(&expected_public_key, "pub"));
   ASSERT_TRUE(t->GetBytes(&expected_private_key, "priv"));
 
@@ -391,7 +394,8 @@ static void MLDSAKeyGenTest(FileTest *t) {
       Marshal(MarshalPrivate, priv.get());
 
   EXPECT_EQ(Bytes(encoded_public_key), Bytes(expected_public_key));
-  EXPECT_EQ(Bytes(encoded_private_key), Bytes(expected_private_key));
+  EXPECT_EQ(Bytes(Declassified(encoded_private_key)),
+            Bytes(expected_private_key));
 }
 
 TEST(MLDSATest, KeyGenTests65) {

@@ -1518,7 +1518,6 @@ int mldsa_public_from_private(struct public_key<K> *pub,
     return 0;
   }
 
-
   OPENSSL_memcpy(pub->rho, priv->rho, sizeof(pub->rho));
   OPENSSL_memcpy(pub->public_key_hash, priv->public_key_hash,
                  sizeof(pub->public_key_hash));
@@ -1533,6 +1532,8 @@ int mldsa_public_from_private(struct public_key<K> *pub,
   vector_add(&values->t, &values->t, &priv->s2);
 
   vector_power2_round(&pub->t1, &values->t0, &values->t);
+  // t1 is part of the public key and thus is public.
+  CONSTTIME_DECLASSIFY(&pub->t1, sizeof(pub->t1));
   return 1;
 }
 
@@ -1830,6 +1831,7 @@ bcm_status BCM_mldsa65_generate_key(
     uint8_t out_seed[BCM_MLDSA_SEED_BYTES],
     struct BCM_mldsa65_private_key *out_private_key) {
   BCM_rand_bytes(out_seed, BCM_MLDSA_SEED_BYTES);
+  CONSTTIME_SECRET(out_seed, BCM_MLDSA_SEED_BYTES);
   return BCM_mldsa65_generate_key_external_entropy(out_encoded_public_key,
                                                    out_private_key, out_seed);
 }
@@ -1880,6 +1882,7 @@ bcm_status BCM_mldsa65_sign(
   BSSL_CHECK(context_len <= 255);
   uint8_t randomizer[BCM_MLDSA_SIGNATURE_RANDOMIZER_BYTES];
   BCM_rand_bytes(randomizer, sizeof(randomizer));
+  CONSTTIME_SECRET(randomizer, sizeof(randomizer));
 
   const uint8_t context_prefix[2] = {0, static_cast<uint8_t>(context_len)};
   return BCM_mldsa65_sign_internal(
