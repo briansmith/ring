@@ -87,6 +87,7 @@ enum {
   BIO_CONN_S_OK,
 };
 
+namespace {
 typedef struct bio_connect_st {
   int state;
 
@@ -107,6 +108,7 @@ typedef struct bio_connect_st {
   // compatibility with the SSL info_callback.
   int (*info_callback)(const BIO *bio, int state, int ret);
 } BIO_CONNECT;
+}  // namespace
 
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) { return close(sock); }

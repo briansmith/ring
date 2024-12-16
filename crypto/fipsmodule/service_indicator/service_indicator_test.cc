@@ -30,7 +30,7 @@
 #include <openssl/hmac.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
-#include <openssl/rand.h> // TODO(bbe): only for RAND_bytes call below, replace with BCM call
+#include <openssl/rand.h>  // TODO(bbe): only for RAND_bytes call below, replace with BCM call
 #include <openssl/rsa.h>
 #include <openssl/service_indicator.h>
 
@@ -41,6 +41,8 @@
 #include "../rand/internal.h"
 #include "../tls/internal.h"
 
+
+namespace {
 
 using bssl::FIPSStatus;
 
@@ -2424,3 +2426,5 @@ TEST(ServiceIndicatorTest, BasicTest) {
 }
 
 #endif  // BORINGSSL_FIPS
+
+}  // namespace

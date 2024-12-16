@@ -7,7 +7,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -56,14 +56,14 @@
 #include <limits.h>
 #include <string.h>
 
-#include <openssl/bytestring.h>
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-#include "../fipsmodule/ec/internal.h"
 #include "../bytestring/internal.h"
+#include "../fipsmodule/ec/internal.h"
 #include "../internal.h"
 
 
@@ -86,7 +86,7 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
   CBS ec_private_key, private_key;
   uint64_t version;
   if (!CBS_get_asn1(cbs, &ec_private_key, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&ec_private_key, &version) ||
+      !CBS_get_asn1_uint64(&ec_private_key, &version) ||  //
       version != 1 ||
       !CBS_get_asn1(&ec_private_key, &private_key, CBS_ASN1_OCTETSTRING)) {
     OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);
@@ -150,7 +150,7 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
         !CBS_get_asn1(&child, &public_key, CBS_ASN1_BITSTRING) ||
         // As in a SubjectPublicKeyInfo, the byte-encoded public key is then
         // encoded as a BIT STRING with bits ordered as in the DER encoding.
-        !CBS_get_u8(&public_key, &padding) ||
+        !CBS_get_u8(&public_key, &padding) ||  //
         padding != 0 ||
         // Explicitly check |public_key| is non-empty to save the conversion
         // form later.
@@ -251,9 +251,11 @@ int EC_KEY_marshal_private_key(CBB *cbb, const EC_KEY *key,
 // kPrimeFieldOID is the encoding of 1.2.840.10045.1.1.
 static const uint8_t kPrimeField[] = {0x2a, 0x86, 0x48, 0xce, 0x3d, 0x01, 0x01};
 
+namespace {
 struct explicit_prime_curve {
   CBS prime, a, b, base_x, base_y, order;
 };
+}  // namespace
 
 static int parse_explicit_prime_curve(CBS *in,
                                       struct explicit_prime_curve *out) {
@@ -263,15 +265,15 @@ static int parse_explicit_prime_curve(CBS *in,
   int has_cofactor;
   uint64_t version;
   if (!CBS_get_asn1(in, &params, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&params, &version) ||
-      version != 1 ||
+      !CBS_get_asn1_uint64(&params, &version) ||  //
+      version != 1 ||                             //
       !CBS_get_asn1(&params, &field_id, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&field_id, &field_type, CBS_ASN1_OBJECT) ||
       CBS_len(&field_type) != sizeof(kPrimeField) ||
       OPENSSL_memcmp(CBS_data(&field_type), kPrimeField, sizeof(kPrimeField)) !=
           0 ||
       !CBS_get_asn1(&field_id, &out->prime, CBS_ASN1_INTEGER) ||
-      !CBS_is_unsigned_asn1_integer(&out->prime) ||
+      !CBS_is_unsigned_asn1_integer(&out->prime) ||  //
       CBS_len(&field_id) != 0 ||
       !CBS_get_asn1(&params, &curve, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&curve, &out->a, CBS_ASN1_OCTETSTRING) ||
@@ -291,7 +293,7 @@ static int parse_explicit_prime_curve(CBS *in,
 
   if (has_cofactor) {
     // We only support prime-order curves so the cofactor must be one.
-    if (CBS_len(&cofactor) != 1 ||
+    if (CBS_len(&cofactor) != 1 ||  //
         CBS_data(&cofactor)[0] != 1) {
       OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
       return 0;
@@ -546,7 +548,7 @@ int i2d_ECParameters(const EC_KEY *key, uint8_t **outp) {
   }
 
   CBB cbb;
-  if (!CBB_init(&cbb, 0) ||
+  if (!CBB_init(&cbb, 0) ||  //
       !EC_KEY_marshal_curve_name(&cbb, key->group)) {
     CBB_cleanup(&cbb);
     return -1;

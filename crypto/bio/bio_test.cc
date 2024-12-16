@@ -37,13 +37,15 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #else
-#include <io.h>
 #include <fcntl.h>
+#include <io.h>
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
 #include <ws2tcpip.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
+
+namespace {
 
 #if !defined(OPENSSL_WINDOWS)
 using Socket = int;
@@ -611,7 +613,7 @@ TEST(BIOTest, Gets) {
       // Empty BIO.
       {"", 256, ""},
   };
-  for (const auto& t : kGetsTests) {
+  for (const auto &t : kGetsTests) {
     SCOPED_TRACE(t.bio);
     SCOPED_TRACE(t.gets_len);
 
@@ -886,3 +888,5 @@ TEST_P(BIOPairTest, TestPair) {
 }
 
 INSTANTIATE_TEST_SUITE_P(All, BIOPairTest, testing::Values(false, true));
+
+}  // namespace

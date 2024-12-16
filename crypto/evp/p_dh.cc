@@ -18,9 +18,11 @@
 #include "internal.h"
 
 
+namespace {
 typedef struct dh_pkey_ctx_st {
   int pad;
 } DH_PKEY_CTX;
+}  // namespace
 
 static int pkey_dh_init(EVP_PKEY_CTX *ctx) {
   DH_PKEY_CTX *dctx =

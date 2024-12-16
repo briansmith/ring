@@ -216,6 +216,7 @@ err:
   return ret;
 }
 
+namespace {
 typedef struct bn_recp_ctx_st {
   BIGNUM N;   // the divisor
   BIGNUM Nr;  // the reciprocal
@@ -223,6 +224,7 @@ typedef struct bn_recp_ctx_st {
   int shift;
   int flags;
 } BN_RECP_CTX;
+}  // namespace
 
 static void BN_RECP_CTX_init(BN_RECP_CTX *recp) {
   BN_init(&recp->N);

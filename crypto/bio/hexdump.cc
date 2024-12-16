@@ -62,6 +62,7 @@
 #include "../internal.h"
 
 
+namespace {
 // hexdump_ctx contains the state of a hexdump.
 struct hexdump_ctx {
   BIO *bio;
@@ -70,16 +71,17 @@ struct hexdump_ctx {
   size_t n;              // number of bytes total.
   unsigned indent;
 };
+}  // namespace
 
 static void hexbyte(char *out, uint8_t b) {
   static const char hextable[] = "0123456789abcdef";
-  out[0] = hextable[b>>4];
-  out[1] = hextable[b&0x0f];
+  out[0] = hextable[b >> 4];
+  out[1] = hextable[b & 0x0f];
 }
 
 static char to_char(uint8_t b) {
   if (b < 32 || b > 126) {
-          return '.';
+    return '.';
   }
   return b;
 }

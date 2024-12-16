@@ -243,7 +243,7 @@ static int aes_ofb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 
 static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
-  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX*>(ctx->cipher_data);
+  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX *>(ctx->cipher_data);
   if (!iv && !key) {
     return 1;
   }
@@ -276,7 +276,7 @@ static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 }
 
 static void aes_gcm_cleanup(EVP_CIPHER_CTX *c) {
-  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX*>(c->cipher_data);
+  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX *>(c->cipher_data);
   OPENSSL_cleanse(&gctx->key, sizeof(gctx->key));
   OPENSSL_cleanse(&gctx->gcm, sizeof(gctx->gcm));
   if (gctx->iv != c->iv) {
@@ -285,7 +285,7 @@ static void aes_gcm_cleanup(EVP_CIPHER_CTX *c) {
 }
 
 static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
-  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX*>(c->cipher_data);
+  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX *>(c->cipher_data);
   switch (type) {
     case EVP_CTRL_INIT:
       gctx->key_set = 0;
@@ -406,7 +406,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
 
 static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                           size_t len) {
-  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX*>(ctx->cipher_data);
+  EVP_AES_GCM_CTX *gctx = reinterpret_cast<EVP_AES_GCM_CTX *>(ctx->cipher_data);
 
   // If not set up, return error
   if (!gctx->key_set) {
@@ -737,9 +737,11 @@ EVP_ECB_CIPHER_FUNCTION(256)
 
 #define EVP_AEAD_AES_GCM_TAG_LEN 16
 
+namespace {
 struct aead_aes_gcm_ctx {
   GCM128_KEY key;
 };
+}  // namespace
 
 static int aead_aes_gcm_init_impl(struct aead_aes_gcm_ctx *gcm_ctx,
                                   size_t *out_tag_len, const uint8_t *key,
@@ -1060,10 +1062,12 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_randnonce) {
   out->open_gather = aead_aes_gcm_open_gather_randnonce;
 }
 
+namespace {
 struct aead_aes_gcm_tls12_ctx {
   struct aead_aes_gcm_ctx gcm_ctx;
   uint64_t min_next_nonce;
 };
+}  // namespace
 
 static_assert(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
                   sizeof(struct aead_aes_gcm_tls12_ctx),
@@ -1152,12 +1156,14 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_tls12) {
   out->open_gather = aead_aes_gcm_open_gather;
 }
 
+namespace {
 struct aead_aes_gcm_tls13_ctx {
   struct aead_aes_gcm_ctx gcm_ctx;
   uint64_t min_next_nonce;
   uint64_t mask;
   uint8_t first;
 };
+}  // namespace
 
 static_assert(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
                   sizeof(struct aead_aes_gcm_tls13_ctx),

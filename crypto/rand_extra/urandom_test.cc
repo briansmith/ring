@@ -19,8 +19,8 @@
 #include <openssl/ctrdrbg.h>
 #include <openssl/rand.h>
 
-#include "getrandom_fillin.h"
 #include "../internal.h"
+#include "getrandom_fillin.h"
 
 
 #if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&               \
@@ -35,6 +35,8 @@
 #include <sys/uio.h>
 #include <sys/un.h>
 #include <sys/user.h>
+
+namespace {
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
@@ -77,8 +79,9 @@ struct Event {
   explicit Event(Syscall syscall) : type(syscall) {}
 
   bool operator==(const Event &other) const {
-    return type == other.type && length == other.length &&
-           flags == other.flags &&
+    return type == other.type &&      //
+           length == other.length &&  //
+           flags == other.flags &&    //
            filename == other.filename;
   }
 
@@ -492,7 +495,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
       {
         uintptr_t filename_ptr =
             (regs.syscall == __NR_openat) ? regs.args[1] : regs.args[0];
-        const std::string filename = get_string_from_remote(child_pid, filename_ptr);
+        const std::string filename =
+            get_string_from_remote(child_pid, filename_ptr);
         if (filename.find("/dev/__properties__/") == 0) {
           // Android may try opening these files as part of SELinux support.
           // They are ignored here.
@@ -722,7 +726,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       }
       used_daemon = kUsesDaemon && AppendDaemonEvents(&ret, flags);
     }
-    if (// Initialise CRNGT.
+    if (  // Initialise CRNGT.
         (!used_daemon && !sysrand(true, kSeedLength + (kIsFIPS ? 16 : 0))) ||
         // Personalisation draw if the daemon was used.
         (used_daemon && !sysrand(false, CTR_DRBG_ENTROPY_LEN)) ||
@@ -794,7 +798,7 @@ TEST(URandomTest, Test) {
     }
 
     if (!has_getrandom && !(flags & NO_GETRANDOM)) {
-        continue;
+      continue;
     }
 
     TRACE_FLAG(NO_GETRANDOM);
@@ -818,6 +822,8 @@ TEST(URandomTest, Test) {
     }
   }
 }
+
+}  // namespace
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

@@ -53,6 +53,7 @@ static const unsigned kReseedInterval = 4096;
 // continuous random number generator test in FIPS 140-2, section 4.9.2.
 #define CRNGT_BLOCK_SIZE 16
 
+namespace {
 // rand_thread_state contains the per-thread state for the RNG.
 struct rand_thread_state {
   CTR_DRBG_STATE drbg;
@@ -79,6 +80,7 @@ struct rand_thread_state {
   CRYPTO_MUTEX clear_drbg_lock;
 #endif
 };
+}  // namespace
 
 #if defined(BORINGSSL_FIPS)
 // thread_states_list is the head of a linked-list of all |rand_thread_state|

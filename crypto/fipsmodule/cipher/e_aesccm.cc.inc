@@ -54,8 +54,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../delocate.h"
 #include "../aes/internal.h"
+#include "../delocate.h"
 #include "../modes/internal.h"
 #include "../service_indicator/internal.h"
 #include "internal.h"
@@ -100,8 +100,8 @@ static int ccm128_init_state(const struct ccm128_context *ctx,
   const unsigned L = ctx->L;
 
   // |L| determines the expected |nonce_len| and the limit for |plaintext_len|.
-  if (plaintext_len > CRYPTO_ccm128_max_input(ctx) ||
-      nonce_len != 15 - L) {
+  if (plaintext_len > CRYPTO_ccm128_max_input(ctx)  //
+      || nonce_len != 15 - L) {
     return 0;
   }
 
@@ -167,7 +167,7 @@ static int ccm128_init_state(const struct ccm128_context *ctx,
   size_t remaining_blocks = 2 * ((plaintext_len + 15) / 16) + 1;
   if (plaintext_len + 15 < plaintext_len ||
       remaining_blocks + blocks < blocks ||
-      (uint64_t) remaining_blocks + blocks > UINT64_C(1) << 61) {
+      (uint64_t)remaining_blocks + blocks > UINT64_C(1) << 61) {
     return 0;
   }
 
@@ -257,6 +257,7 @@ static int CRYPTO_ccm128_decrypt(const struct ccm128_context *ctx,
 
 #define EVP_AEAD_AES_CCM_MAX_TAG_LEN 16
 
+namespace {
 struct aead_aes_ccm_ctx {
   union {
     double align;
@@ -264,6 +265,7 @@ struct aead_aes_ccm_ctx {
   } ks;
   struct ccm128_context ccm;
 };
+}  // namespace
 
 static_assert(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
                   sizeof(struct aead_aes_ccm_ctx),

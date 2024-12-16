@@ -130,6 +130,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "./internal.h"
 
 
+namespace {
 struct err_error_st {
   // file contains the filename where the error occurred.
   const char *file;
@@ -159,6 +160,7 @@ typedef struct err_state_st {
   // previously a |data| pointer of one of the elements of |errors|.
   void *to_free;
 } ERR_STATE;
+}  // namespace
 
 extern const uint32_t kOpenSSLReasonValues[];
 extern const size_t kOpenSSLReasonValuesLen;
@@ -431,11 +433,13 @@ static const char *err_string_lookup(uint32_t lib, uint32_t key,
   return &string_data[(*result) & 0x7fff];
 }
 
+namespace {
 typedef struct library_name_st {
   const char *str;
   const char *symbol;
   const char *reason_symbol;
 } LIBRARY_NAME;
+}  // namespace
 
 static const LIBRARY_NAME kLibraryNames[ERR_NUM_LIBS] = {
     {"invalid library (0)", NULL, NULL},

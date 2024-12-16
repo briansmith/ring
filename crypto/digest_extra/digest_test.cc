@@ -36,9 +36,11 @@
 #include "../test/test_util.h"
 
 
+namespace {
+
 struct MD {
   // name is the name of the digest.
-  const char* name;
+  const char *name;
   // md_func is the digest to test.
   const EVP_MD *(*func)(void);
   // one_shot_func is the convenience one-shot version of the
@@ -46,16 +48,16 @@ struct MD {
   uint8_t *(*one_shot_func)(const uint8_t *, size_t, uint8_t *);
 };
 
-static const MD md4 = { "MD4", &EVP_md4, nullptr };
-static const MD md5 = { "MD5", &EVP_md5, &MD5 };
-static const MD sha1 = { "SHA1", &EVP_sha1, &SHA1 };
-static const MD sha224 = { "SHA224", &EVP_sha224, &SHA224 };
-static const MD sha256 = { "SHA256", &EVP_sha256, &SHA256 };
-static const MD sha384 = { "SHA384", &EVP_sha384, &SHA384 };
-static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512 };
-static const MD sha512_256 = { "SHA512-256", &EVP_sha512_256, &SHA512_256 };
-static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr };
-static const MD blake2b256 = { "BLAKE2b-256", &EVP_blake2b256, nullptr };
+static const MD md4 = {"MD4", &EVP_md4, nullptr};
+static const MD md5 = {"MD5", &EVP_md5, &MD5};
+static const MD sha1 = {"SHA1", &EVP_sha1, &SHA1};
+static const MD sha224 = {"SHA224", &EVP_sha224, &SHA224};
+static const MD sha256 = {"SHA256", &EVP_sha256, &SHA256};
+static const MD sha384 = {"SHA384", &EVP_sha384, &SHA384};
+static const MD sha512 = {"SHA512", &EVP_sha512, &SHA512};
+static const MD sha512_256 = {"SHA512-256", &EVP_sha512_256, &SHA512_256};
+static const MD md5_sha1 = {"MD5-SHA1", &EVP_md5_sha1, nullptr};
+static const MD blake2b256 = {"BLAKE2b-256", &EVP_blake2b256, nullptr};
 
 struct DigestTestVector {
   // md is the digest to test.
@@ -145,15 +147,15 @@ static const DigestTestVector kTestVectors[] = {
 
     // MD5-SHA1 tests.
     {md5_sha1, "abc", 1,
-     "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89d"},
+     "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89"
+     "d"},
 
     // BLAKE2b-256 tests.
     {blake2b256, "abc", 1,
      "bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319"},
 };
 
-static void CompareDigest(const DigestTestVector *test,
-                          const uint8_t *digest,
+static void CompareDigest(const DigestTestVector *test, const uint8_t *digest,
                           size_t digest_len) {
   EXPECT_EQ(test->expected_hex,
             EncodeHex(bssl::MakeConstSpan(digest, digest_len)));
@@ -320,7 +322,7 @@ TEST(DigestTest, ASN1) {
 TEST(DigestTest, TransformBlocks) {
   uint8_t blocks[SHA256_CBLOCK * 10];
   for (size_t i = 0; i < sizeof(blocks); i++) {
-    blocks[i] = i*3;
+    blocks[i] = i * 3;
   }
 
   SHA256_CTX ctx1;
@@ -333,3 +335,5 @@ TEST(DigestTest, TransformBlocks) {
 
   EXPECT_TRUE(0 == OPENSSL_memcmp(ctx1.h, ctx2.h, sizeof(ctx1.h)));
 }
+
+}  // namespace

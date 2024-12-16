@@ -319,9 +319,11 @@ static void left_shift_3(uint8_t n[32]) {
   }
 }
 
+namespace {
 typedef struct {
   BN_ULONG words[32 / sizeof(BN_ULONG)];
 } scalar;
+}  // namespace
 
 // kOrder is the order of the prime-order subgroup of curve25519.
 static const scalar kOrder = {

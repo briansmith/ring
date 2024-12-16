@@ -25,6 +25,8 @@
 #include "../../test/wycheproof_util.h"
 
 
+namespace {
+
 struct HKDFTestVector {
   const EVP_MD *(*md_func)(void);
   const uint8_t ikm[80];
@@ -41,6 +43,7 @@ struct HKDFTestVector {
 
 // These test vectors are from RFC 5869.
 static const HKDFTestVector kTests[] = {
+    // clang-format off
   {
     EVP_sha256,
     {
@@ -246,6 +249,7 @@ static const HKDFTestVector kTests[] = {
       0x70, 0xcc, 0xe7, 0xac, 0xfc, 0x48
     }
   },
+    // clang-format on
 };
 
 TEST(HKDFTest, TestVectors) {
@@ -416,3 +420,5 @@ TEST(HKDFTest, WycheproofSHA512) {
   RunWycheproofTest("third_party/wycheproof_testvectors/hkdf_sha512_test.txt",
                     EVP_sha512());
 }
+
+}  // namespace

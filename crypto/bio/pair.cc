@@ -61,6 +61,7 @@
 #include "../internal.h"
 
 
+namespace {
 struct bio_bio_st {
   BIO *peer;  // NULL if buf == NULL.
               // If peer != NULL, then peer->ptr is also a bio_bio_st,
@@ -79,6 +80,7 @@ struct bio_bio_st {
                    // it (unsuccessfully) tried to read,
                    // never more than buffer space (size-len) warrants.
 };
+}  // namespace
 
 static int bio_new(BIO *bio) {
   struct bio_bio_st *b =

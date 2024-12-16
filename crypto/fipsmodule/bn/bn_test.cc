@@ -87,14 +87,16 @@
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 
-#include "./internal.h"
-#include "./rsaz_exp.h"
 #include "../../internal.h"
 #include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../../test/wycheproof_util.h"
+#include "./internal.h"
+#include "./rsaz_exp.h"
 
+
+namespace {
 
 static int HexToBIGNUM(bssl::UniquePtr<BIGNUM> *out, const char *in) {
   BIGNUM *raw = NULL;
@@ -160,10 +162,12 @@ class BIGNUMFileTest {
   unsigned num_bignums_;
 };
 
-static testing::AssertionResult AssertBIGNUMSEqual(
-    const char *operation_expr, const char *expected_expr,
-    const char *actual_expr, const char *operation, const BIGNUM *expected,
-    const BIGNUM *actual) {
+static testing::AssertionResult AssertBIGNUMSEqual(const char *operation_expr,
+                                                   const char *expected_expr,
+                                                   const char *actual_expr,
+                                                   const char *operation,
+                                                   const BIGNUM *expected,
+                                                   const BIGNUM *actual) {
   if (BN_cmp(expected, actual) == 0) {
     return testing::AssertionSuccess();
   }
@@ -650,8 +654,7 @@ static void TestModMul(BIGNUMFileTest *t, BN_CTX *ctx) {
     ASSERT_TRUE(mont);
 
     // Sanity-check that the constant-time version computes the same n0 and RR.
-    bssl::UniquePtr<BN_MONT_CTX> mont2(
-        BN_MONT_CTX_new_consttime(m.get(), ctx));
+    bssl::UniquePtr<BN_MONT_CTX> mont2(BN_MONT_CTX_new_consttime(m.get(), ctx));
     ASSERT_TRUE(mont2);
     EXPECT_BIGNUMS_EQUAL("RR (mod M) (constant-time)", &mont->RR, &mont2->RR);
     EXPECT_EQ(mont->n0[0], mont2->n0[0]);
@@ -701,8 +704,8 @@ static void TestModMul(BIGNUMFileTest *t, BN_CTX *ctx) {
       bn_from_montgomery_small(r_words.get(), m_width, r_words.get(), m_width,
                                mont.get());
       ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), m_width));
-      EXPECT_BIGNUMS_EQUAL("A * B (mod M) (Montgomery, words)",
-                           mod_mul.get(), ret.get());
+      EXPECT_BIGNUMS_EQUAL("A * B (mod M) (Montgomery, words)", mod_mul.get(),
+                           ret.get());
     }
 #endif
   }
@@ -1009,7 +1012,7 @@ static void RunBNFileTest(FileTest *t, BN_CTX *ctx) {
       {"ModInv", TestModInv},
       {"GCD", TestGCD},
   };
-  void (*func)(BIGNUMFileTest * t, BN_CTX * ctx) = nullptr;
+  void (*func)(BIGNUMFileTest *t, BN_CTX *ctx) = nullptr;
   for (const auto &test : kTests) {
     if (t->GetType() == test.name) {
       func = test.func;
@@ -1305,12 +1308,12 @@ struct MPITest {
 };
 
 static const MPITest kMPITests[] = {
-  { "0", "\x00\x00\x00\x00", 4 },
-  { "1", "\x00\x00\x00\x01\x01", 5 },
-  { "-1", "\x00\x00\x00\x01\x81", 5 },
-  { "128", "\x00\x00\x00\x02\x00\x80", 6 },
-  { "256", "\x00\x00\x00\x02\x01\x00", 6 },
-  { "-256", "\x00\x00\x00\x02\x81\x00", 6 },
+    {"0", "\x00\x00\x00\x00", 4},
+    {"1", "\x00\x00\x00\x01\x01", 5},
+    {"-1", "\x00\x00\x00\x01\x81", 5},
+    {"128", "\x00\x00\x00\x02\x00\x80", 6},
+    {"256", "\x00\x00\x00\x02\x01\x00", 6},
+    {"-256", "\x00\x00\x00\x02\x81\x00", 6},
 };
 
 TEST_F(BNTest, MPI) {
@@ -1417,8 +1420,8 @@ TEST_F(BNTest, RandRange) {
     ASSERT_TRUE(BN_rand_range_ex(bn.get(), 1, six.get()));
 
     BN_ULONG word = BN_get_word(bn.get());
-    if (BN_is_negative(bn.get()) ||
-        word < 1 ||
+    if (BN_is_negative(bn.get()) ||  //
+        word < 1 ||                  //
         word >= 6) {
       FAIL() << "BN_rand_range_ex generated invalid value: " << word;
     }
@@ -1448,10 +1451,8 @@ static const ASN1Test kASN1Tests[] = {
     {"127", "\x02\x01\x7f", 3},
     {"128", "\x02\x02\x00\x80", 4},
     {"0xdeadbeef", "\x02\x05\x00\xde\xad\xbe\xef", 7},
-    {"0x0102030405060708",
-     "\x02\x08\x01\x02\x03\x04\x05\x06\x07\x08", 10},
-    {"0xffffffffffffffff",
-      "\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff", 11},
+    {"0x0102030405060708", "\x02\x08\x01\x02\x03\x04\x05\x06\x07\x08", 10},
+    {"0xffffffffffffffff", "\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff", 11},
 };
 
 struct ASN1InvalidTest {
@@ -1481,7 +1482,7 @@ TEST_F(BNTest, ASN1) {
     bssl::UniquePtr<BIGNUM> bn2(BN_new());
     ASSERT_TRUE(bn2);
     CBS cbs;
-    CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
+    CBS_init(&cbs, reinterpret_cast<const uint8_t *>(test.der), test.der_len);
     ASSERT_TRUE(BN_parse_asn1_unsigned(&cbs, bn2.get()));
     EXPECT_EQ(0u, CBS_len(&cbs));
     EXPECT_BIGNUMS_EQUAL("decode ASN.1", bn.get(), bn2.get());
@@ -1498,7 +1499,7 @@ TEST_F(BNTest, ASN1) {
   }
 
   for (const ASN1InvalidTest &test : kASN1InvalidTests) {
-    SCOPED_TRACE(Bytes(test.der, test.der_len));;
+    SCOPED_TRACE(Bytes(test.der, test.der_len));
     bssl::UniquePtr<BIGNUM> bn(BN_new());
     ASSERT_TRUE(bn);
     CBS cbs;
@@ -1688,7 +1689,7 @@ TEST_F(BNTest, SmallPrime) {
   bssl::UniquePtr<BIGNUM> r(BN_new());
   ASSERT_TRUE(r);
   ASSERT_TRUE(BN_generate_prime_ex(r.get(), static_cast<int>(kBits), 0, NULL,
-                                  NULL, NULL));
+                                   NULL, NULL));
   EXPECT_EQ(kBits, BN_num_bits(r.get()));
 }
 
@@ -1771,7 +1772,7 @@ TEST_F(BNTest, SetGetU64) {
       {"ffffffffffffffff", UINT64_C(0xffffffffffffffff)},
   };
 
-  for (const auto& test : kU64Tests) {
+  for (const auto &test : kU64Tests) {
     SCOPED_TRACE(test.hex);
     bssl::UniquePtr<BIGNUM> bn(BN_new()), expected;
     ASSERT_TRUE(bn);
@@ -2068,7 +2069,7 @@ TEST_F(BNTest, PrimeChecking) {
   int is_probably_prime_1 = 0, is_probably_prime_2 = 0;
   enum bn_primality_result_t result_3;
 
-  const int max_prime = kPrimes[OPENSSL_ARRAY_SIZE(kPrimes)-1];
+  const int max_prime = kPrimes[OPENSSL_ARRAY_SIZE(kPrimes) - 1];
   size_t next_prime_index = 0;
 
   for (int i = 0; i <= max_prime; i++) {
@@ -2680,16 +2681,14 @@ TEST_F(BNTest, NonMinimal) {
   bssl::UniquePtr<BN_MONT_CTX> mont(
       BN_MONT_CTX_new_for_modulus(p.get(), ctx()));
   ASSERT_TRUE(mont);
-  bssl::UniquePtr<BN_MONT_CTX> mont2(
-      BN_MONT_CTX_new_consttime(p.get(), ctx()));
+  bssl::UniquePtr<BN_MONT_CTX> mont2(BN_MONT_CTX_new_consttime(p.get(), ctx()));
   ASSERT_TRUE(mont2);
 
   ASSERT_TRUE(bn_resize_words(p.get(), 32));
   bssl::UniquePtr<BN_MONT_CTX> mont3(
       BN_MONT_CTX_new_for_modulus(p.get(), ctx()));
   ASSERT_TRUE(mont3);
-  bssl::UniquePtr<BN_MONT_CTX> mont4(
-      BN_MONT_CTX_new_consttime(p.get(), ctx()));
+  bssl::UniquePtr<BN_MONT_CTX> mont4(BN_MONT_CTX_new_consttime(p.get(), ctx()));
   ASSERT_TRUE(mont4);
 
   EXPECT_EQ(mont->N.width, mont2->N.width);
@@ -2919,7 +2918,7 @@ TEST_F(BNTest, BNMulMontABI) {
 #endif
   }
 }
-#endif   // OPENSSL_BN_ASM_MONT && SUPPORTS_ABI_TEST
+#endif  // OPENSSL_BN_ASM_MONT && SUPPORTS_ABI_TEST
 
 #if defined(OPENSSL_BN_ASM_MONT5) && defined(SUPPORTS_ABI_TEST)
 TEST_F(BNTest, BNMulMont5ABI) {
@@ -3009,4 +3008,6 @@ TEST_F(BNTest, RSAZABI) {
   CHECK_ABI(rsaz_1024_gather5_avx2, rsaz1, table, 7);
   CHECK_ABI(rsaz_1024_red2norm_avx2, norm, rsaz1);
 }
-#endif   // RSAZ_ENABLED && SUPPORTS_ABI_TEST
+#endif  // RSAZ_ENABLED && SUPPORTS_ABI_TEST
+
+}  // namespace

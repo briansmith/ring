@@ -17,6 +17,9 @@
 #include <gtest/gtest.h>
 #include <openssl/asn1.h>
 
+
+namespace {
+
 struct TestData {
   const char *data;
   int type;
@@ -313,3 +316,5 @@ TEST(X509TimeTest, TestCmpTimeCurrent) {
   ASSERT_EQ(-1, X509_cmp_time(asn1_before.get(), NULL));
   ASSERT_EQ(1, X509_cmp_time(asn1_after.get(), NULL));
 }
+
+}  // namespace

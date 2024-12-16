@@ -36,10 +36,12 @@
 
 // Optimised AES-GCM-SIV
 
+namespace {
 struct aead_aes_gcm_siv_asm_ctx {
   alignas(16) uint8_t key[16 * 15];
   int is_128_bit;
 };
+}  // namespace
 
 // The assembly code assumes 8-byte alignment of the EVP_AEAD_CTX's state, and
 // aligns to 16 bytes itself.
@@ -533,6 +535,7 @@ static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
 
 #endif  // X86_64 && !NO_ASM && !WINDOWS
 
+namespace {
 struct aead_aes_gcm_siv_ctx {
   union {
     double align;
@@ -541,6 +544,7 @@ struct aead_aes_gcm_siv_ctx {
   block128_f kgk_block;
   unsigned is_256 : 1;
 };
+}  // namespace
 
 static_assert(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
                   sizeof(struct aead_aes_gcm_siv_ctx),
@@ -651,6 +655,7 @@ static void gcm_siv_polyval(
   out_tag[15] &= 0x7f;
 }
 
+namespace {
 // gcm_siv_record_keys contains the keys used for a specific GCM-SIV record.
 struct gcm_siv_record_keys {
   uint8_t auth_key[16];
@@ -660,6 +665,7 @@ struct gcm_siv_record_keys {
   } enc_key;
   block128_f enc_block;
 };
+}  // namespace
 
 // gcm_siv_keys calculates the keys for a specific GCM-SIV record with the
 // given nonce and writes them to |*out_keys|.

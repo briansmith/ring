@@ -847,6 +847,7 @@ void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
 #define COEFFICIENTS_PER_VEC (sizeof(vec_t) / sizeof(uint16_t))
 #define VECS_PER_POLY ((N + COEFFICIENTS_PER_VEC - 1) / COEFFICIENTS_PER_VEC)
 
+namespace {
 // poly represents a polynomial with coefficients mod Q. Note that, while Q is a
 // power of two, this does not operate in GF(Q). That would be a binary field
 // but this is simply mod Q. Thus the coefficients are not a field.
@@ -867,6 +868,7 @@ struct poly {
   alignas(16) uint16_t v[N + 3];
 #endif
 };
+}  // namespace
 
 // poly_normalize zeros out the excess elements of |x| which are included only
 // for alignment.
@@ -882,6 +884,7 @@ static void poly_assert_normalized(const struct poly *x) {
   assert(x->v[N + 2] == 0);
 }
 
+namespace {
 // POLY_MUL_SCRATCH contains space for the working variables needed by
 // |poly_mul|. The contents afterwards may be discarded, but the object may also
 // be reused with future |poly_mul| calls to save heap allocations.
@@ -909,6 +912,7 @@ struct POLY_MUL_SCRATCH {
 #endif
   } u;
 };
+}  // namespace
 
 #if defined(HRSS_HAVE_VECTOR_UNIT)
 

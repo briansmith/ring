@@ -48,6 +48,8 @@ static bssl::UniquePtr<TEST_INT> TEST_INT_new(int x) {
 
 DEFINE_STACK_OF(TEST_INT)
 
+namespace {
+
 struct ShallowStackDeleter {
   void operator()(STACK_OF(TEST_INT) *sk) const { sk_TEST_INT_free(sk); }
 };
@@ -529,3 +531,5 @@ TEST(StackTest, NullIsEmpty) {
   size_t index;
   EXPECT_FALSE(sk_TEST_INT_find(nullptr, &index, value.get()));
 }
+
+}  // namespace

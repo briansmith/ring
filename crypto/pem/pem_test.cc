@@ -26,6 +26,8 @@
 #include "../test/test_util.h"
 
 
+namespace {
+
 // Test that implausible ciphers, notably an IV-less RC4, aren't allowed in PEM.
 // This is a regression test for https://github.com/openssl/openssl/issues/6347,
 // though our fix differs from upstream.
@@ -53,7 +55,7 @@ static std::vector<uint8_t> DecodePEMBytes(const char *pem) {
   char *name, *header;
   uint8_t *data;
   long len;
-  if (bio == nullptr ||
+  if (bio == nullptr ||  //
       !PEM_read_bio(bio.get(), &name, &header, &data, &len)) {
     return {};
   }
@@ -313,3 +315,5 @@ Rvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLB
     }
   }
 }
+
+}  // namespace

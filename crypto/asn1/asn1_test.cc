@@ -136,7 +136,7 @@ TEST(ASN1Test, UnknownTags) {
 
 static bssl::UniquePtr<BIGNUM> BIGNUMPow2(unsigned bit) {
   bssl::UniquePtr<BIGNUM> bn(BN_new());
-  if (!bn ||
+  if (!bn ||  //
       !BN_set_bit(bn.get(), bit)) {
     return nullptr;
   }
@@ -415,8 +415,8 @@ TEST(ASN1Test, Integer) {
       SCOPED_TRACE(pair.first);
       const ASN1_INTEGER *obj = pair.second.get();
       EXPECT_EQ(t.type, ASN1_STRING_type(obj));
-      EXPECT_EQ(Bytes(t.data), Bytes(ASN1_STRING_get0_data(obj),
-                                     ASN1_STRING_length(obj)));
+      EXPECT_EQ(Bytes(t.data),
+                Bytes(ASN1_STRING_get0_data(obj), ASN1_STRING_length(obj)));
 
       // The object should encode correctly.
       TestSerialize(obj, i2d_ASN1_INTEGER, t.der);
@@ -911,7 +911,8 @@ TEST(ASN1Test, StringToUTF8) {
       {{0, 0, 0xfe, 0xff, 0, 0, 0, 88}, V_ASN1_UNIVERSALSTRING, nullptr},
       // Otherwise, BOMs should pass through.
       {{0, 88, 0xfe, 0xff}, V_ASN1_BMPSTRING, "X\xef\xbb\xbf"},
-      {{0, 0, 0, 88, 0, 0, 0xfe, 0xff}, V_ASN1_UNIVERSALSTRING,
+      {{0, 0, 0, 88, 0, 0, 0xfe, 0xff},
+       V_ASN1_UNIVERSALSTRING,
        "X\xef\xbb\xbf"},
       // The maximum code-point should pass though.
       {{0, 16, 0xff, 0xfd}, V_ASN1_UNIVERSALSTRING, "\xf4\x8f\xbf\xbd"},
@@ -975,7 +976,7 @@ static bool ASN1Time_check_posix(const ASN1_TIME *s, int64_t t) {
       !OPENSSL_gmtime_diff(&day, &sec, &ttm, &stm)) {
     return false;
   }
-  return day == 0 && sec ==0;
+  return day == 0 && sec == 0;
 }
 
 static std::string PrintStringToBIO(const ASN1_STRING *str,
@@ -1697,8 +1698,8 @@ TEST(ASN1Test, MBString) {
     ERR_clear_error();
 
     ASN1_STRING *str = nullptr;
-    EXPECT_EQ(-1, ASN1_mbstring_copy(&str, t.in.data(), t.in.size(),
-                                     t.format, t.mask));
+    EXPECT_EQ(-1, ASN1_mbstring_copy(&str, t.in.data(), t.in.size(), t.format,
+                                     t.mask));
     ERR_clear_error();
     EXPECT_EQ(nullptr, str);
   }
@@ -1846,9 +1847,9 @@ TEST(ASN1Test, StringByCustomNID) {
                                   ASN1_STRING_length(str.get())));
 
   // Minimum and maximum lengths are enforced.
-  str.reset(ASN1_STRING_set_by_NID(
-      nullptr, reinterpret_cast<const uint8_t *>("1234"), 4, MBSTRING_UTF8,
-      nid1));
+  str.reset(ASN1_STRING_set_by_NID(nullptr,
+                                   reinterpret_cast<const uint8_t *>("1234"), 4,
+                                   MBSTRING_UTF8, nid1));
   EXPECT_FALSE(str);
   ERR_clear_error();
   str.reset(ASN1_STRING_set_by_NID(
@@ -1981,7 +1982,7 @@ TEST(ASN1Test, StringTableSorted) {
   size_t table_len;
   asn1_get_string_table_for_testing(&table, &table_len);
   for (size_t i = 1; i < table_len; i++) {
-    EXPECT_LT(table[i-1].nid, table[i].nid);
+    EXPECT_LT(table[i - 1].nid, table[i].nid);
   }
 }
 
@@ -2058,8 +2059,7 @@ TEST(ASN1Test, Unpack) {
   ASSERT_TRUE(str);
 
   static const uint8_t kValid[] = {0x30, 0x00};
-  ASSERT_TRUE(
-      ASN1_STRING_set(str.get(), kValid, sizeof(kValid)));
+  ASSERT_TRUE(ASN1_STRING_set(str.get(), kValid, sizeof(kValid)));
   bssl::UniquePtr<BASIC_CONSTRAINTS> val(static_cast<BASIC_CONSTRAINTS *>(
       ASN1_item_unpack(str.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS))));
   ASSERT_TRUE(val);
@@ -2394,7 +2394,7 @@ TEST(ASN1Test, StringEncoding) {
       {d2i_ASN1_T61STRING, {0x14, 0x00}, true},
       {d2i_ASN1_T61STRING, {0x14, 0x01, 0x00}, true},
   };
-  for (const auto& t : kTests) {
+  for (const auto &t : kTests) {
     SCOPED_TRACE(Bytes(t.in));
     const uint8_t *inp;
 

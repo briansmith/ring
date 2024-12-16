@@ -79,10 +79,11 @@
 #endif
 
 
+namespace {
+
 // kPlaintext is a sample plaintext.
 static const uint8_t kPlaintext[] = {0x54, 0x85, 0x9b, 0x34,
                                      0x2c, 0x49, 0xea, 0x2a};
-
 
 // kKey1 is a DER-encoded 1024-bit RSAPrivateKey with e = 65537.
 static const uint8_t kKey1[] = {
@@ -690,8 +691,8 @@ TEST(RSATest, ASN1) {
   ERR_clear_error();
 
   // Public keys with negative moduli are invalid.
-  rsa.reset(RSA_public_key_from_bytes(kEstonianRSAKey,
-                                      sizeof(kEstonianRSAKey)));
+  rsa.reset(
+      RSA_public_key_from_bytes(kEstonianRSAKey, sizeof(kEstonianRSAKey)));
   EXPECT_FALSE(rsa);
   ERR_clear_error();
 }
@@ -744,8 +745,7 @@ TEST(RSATest, RoundKeyLengths) {
 }
 
 TEST(RSATest, BlindingDisabled) {
-  bssl::UniquePtr<RSA> rsa(
-      RSA_private_key_from_bytes(kKey2, sizeof(kKey2)));
+  bssl::UniquePtr<RSA> rsa(RSA_private_key_from_bytes(kKey2, sizeof(kKey2)));
   ASSERT_TRUE(rsa);
 
   rsa->flags |= RSA_FLAG_NO_BLINDING;
@@ -956,9 +956,9 @@ TEST(RSATest, KeygenFail) {
   // Cause RSA key generation after a prime has been generated, to test that
   // |rsa| is left alone.
   BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int, BN_GENCB *) -> int { return event != 3; },
-               nullptr);
+  BN_GENCB_set(
+      &cb, [](int event, int, BN_GENCB *) -> int { return event != 3; },
+      nullptr);
 
   bssl::UniquePtr<BIGNUM> e(BN_new());
   ASSERT_TRUE(e);
@@ -1017,17 +1017,18 @@ TEST(RSATest, KeygenFailOnce) {
   // Cause only the first iteration of RSA key generation to fail.
   bool failed = false;
   BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int n, BN_GENCB *cb_ptr) -> int {
-                 bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
-                 if (*failed_ptr) {
-                   ADD_FAILURE() << "Callback called multiple times.";
-                   return 1;
-                 }
-                 *failed_ptr = true;
-                 return 0;
-               },
-               &failed);
+  BN_GENCB_set(
+      &cb,
+      [](int event, int n, BN_GENCB *cb_ptr) -> int {
+        bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
+        if (*failed_ptr) {
+          ADD_FAILURE() << "Callback called multiple times.";
+          return 1;
+        }
+        *failed_ptr = true;
+        return 0;
+      },
+      &failed);
 
   // Although key generation internally retries, the external behavior of
   // |BN_GENCB| is preserved.
@@ -1044,20 +1045,21 @@ TEST(RSATest, KeygenInternalRetry) {
   // Simulate one internal attempt at key generation failing.
   bool failed = false;
   BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int n, BN_GENCB *cb_ptr) -> int {
-                 bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
-                 if (*failed_ptr) {
-                   return 1;
-                 }
-                 *failed_ptr = true;
-                 // This test does not test any public API behavior. It is just
-                 // a hack to exercise the retry codepath and make sure it
-                 // works.
-                 OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_MANY_ITERATIONS);
-                 return 0;
-               },
-               &failed);
+  BN_GENCB_set(
+      &cb,
+      [](int event, int n, BN_GENCB *cb_ptr) -> int {
+        bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
+        if (*failed_ptr) {
+          return 1;
+        }
+        *failed_ptr = true;
+        // This test does not test any public API behavior. It is just
+        // a hack to exercise the retry codepath and make sure it
+        // works.
+        OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_MANY_ITERATIONS);
+        return 0;
+      },
+      &failed);
 
   // Key generation internally retries on RSA_R_TOO_MANY_ITERATIONS.
   bssl::UniquePtr<BIGNUM> e(BN_new());
@@ -1083,8 +1085,8 @@ TEST(RSATest, OverwriteKey) {
   ciphertext.resize(len);
 
   std::vector<uint8_t> plaintext(RSA_size(key1.get()));
-  ASSERT_TRUE(RSA_decrypt(key1.get(), &len, plaintext.data(),
-                          plaintext.size(), ciphertext.data(), ciphertext.size(),
+  ASSERT_TRUE(RSA_decrypt(key1.get(), &len, plaintext.data(), plaintext.size(),
+                          ciphertext.data(), ciphertext.size(),
                           RSA_PKCS1_OAEP_PADDING));
   plaintext.resize(len);
   EXPECT_EQ(Bytes(plaintext), Bytes(kPlaintext));
@@ -1125,9 +1127,9 @@ TEST(RSATest, OverwriteKey) {
     ciphertext.resize(len);
 
     plaintext.resize(RSA_size(dec));
-    ASSERT_TRUE(RSA_decrypt(dec, &len, plaintext.data(),
-                            plaintext.size(), ciphertext.data(),
-                            ciphertext.size(), RSA_PKCS1_OAEP_PADDING));
+    ASSERT_TRUE(RSA_decrypt(dec, &len, plaintext.data(), plaintext.size(),
+                            ciphertext.data(), ciphertext.size(),
+                            RSA_PKCS1_OAEP_PADDING));
     plaintext.resize(len);
     EXPECT_EQ(Bytes(plaintext), Bytes(kPlaintext));
   };
@@ -1206,8 +1208,7 @@ TEST(RSATest, Negative) {
     return ret;
   };
 
-  bssl::UniquePtr<RSA> key(
-      RSA_private_key_from_bytes(kKey1, sizeof(kKey1)));
+  bssl::UniquePtr<RSA> key(RSA_private_key_from_bytes(kKey1, sizeof(kKey1)));
   ASSERT_TRUE(key);
   const BIGNUM *n = RSA_get0_n(key.get());
   bssl::UniquePtr<BIGNUM> neg_n = dup_neg(n);
@@ -1551,3 +1552,5 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
 #endif  // TSAN || (X86_64 && !FREEBSD)
 
 #endif  // THREADS
+
+}  // namespace

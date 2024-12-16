@@ -25,12 +25,14 @@
 #include <openssl/err.h>
 
 #include "../fipsmodule/cipher/internal.h"
-#include "internal.h"
 #include "../internal.h"
 #include "../test/abi_test.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "../test/wycheproof_util.h"
+#include "internal.h"
+
+namespace {
 
 // kLimitedImplementation indicates that tests that assume a generic AEAD
 // interface should not be performed. For example, the key-wrap AEADs only
@@ -55,9 +57,7 @@ constexpr uint32_t RequiresADLength(size_t length) {
 
 // RequiredADLength returns the AD length requirement encoded in |flags|, or
 // zero if there isn't one.
-constexpr size_t RequiredADLength(uint32_t flags) {
-  return (flags >> 3) & 0xf;
-}
+constexpr size_t RequiredADLength(uint32_t flags) { return (flags >> 3) & 0xf; }
 
 constexpr uint32_t RequiresMinimumTagLength(size_t length) {
   assert(length < 16);
@@ -278,8 +278,8 @@ TEST_P(PerAEADTest, TestExtraInput) {
   const std::string test_vectors =
       "crypto/cipher_extra/test/" + std::string(aead_config.test_vectors);
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
-    if (t->HasAttribute("NO_SEAL") ||
-        t->HasAttribute("FAILS") ||
+    if (t->HasAttribute("NO_SEAL") ||  //
+        t->HasAttribute("FAILS") ||    //
         (aead_config.flags & kNondeterministic)) {
       t->SkipCurrent();
       return;
@@ -384,9 +384,9 @@ TEST_P(PerAEADTest, TestVectorScatterGather) {
       uint32_t err = ERR_peek_error();
       if (ERR_GET_LIB(err) == ERR_LIB_CIPHER &&
           ERR_GET_REASON(err) == CIPHER_R_CTRL_NOT_IMPLEMENTED) {
-          t->SkipCurrent();
-          return;
-        }
+        t->SkipCurrent();
+        return;
+      }
     }
 
     if (t->HasAttribute("FAILS")) {
@@ -407,7 +407,7 @@ TEST_P(PerAEADTest, TestVectorScatterGather) {
 
     // Garbage at the end isn't ignored.
     out_tag.push_back(0);
-    out2.resize(out.size());
+    ASSERT_EQ(out2.size(), out.size());
     EXPECT_FALSE(EVP_AEAD_CTX_open_gather(
         ctx.get(), out2.data(), nonce.data(), nonce.size(), out.data(),
         out.size(), out_tag.data(), out_tag.size(), ad.data(), ad.size()))
@@ -423,7 +423,7 @@ TEST_P(PerAEADTest, TestVectorScatterGather) {
     // Verify integrity is checked.
     out_tag[0] ^= 0x80;
     out_tag.resize(out_tag.size() - 1);
-    out2.resize(out.size());
+    ASSERT_EQ(out2.size(), out.size());
     EXPECT_FALSE(EVP_AEAD_CTX_open_gather(
         ctx.get(), out2.data(), nonce.data(), nonce.size(), out.data(),
         out.size(), out_tag.data(), out_tag.size(), ad.data(), ad.size()))
@@ -483,8 +483,8 @@ TEST_P(PerAEADTest, TruncatedTags) {
 
   const size_t tag_len = MinimumTagLength(GetParam().flags);
   bssl::ScopedEVP_AEAD_CTX ctx;
-  ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), aead(), key, key_len,
-                                tag_len, NULL /* ENGINE */));
+  ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), aead(), key, key_len, tag_len,
+                                NULL /* ENGINE */));
 
   const uint8_t plaintext[1] = {'A'};
 
@@ -966,54 +966,54 @@ static void RunWycheproofTestCase(FileTest *t, const EVP_AEAD *aead) {
 TEST(AEADTest, WycheproofAESGCMSIV) {
   FileTestGTest("third_party/wycheproof_testvectors/aes_gcm_siv_test.txt",
                 [](FileTest *t) {
-    std::string key_size_str;
-    ASSERT_TRUE(t->GetInstruction(&key_size_str, "keySize"));
-    const EVP_AEAD *aead;
-    switch (atoi(key_size_str.c_str())) {
-      case 128:
-        aead = EVP_aead_aes_128_gcm_siv();
-        break;
-      case 256:
-        aead = EVP_aead_aes_256_gcm_siv();
-        break;
-      default:
-        FAIL() << "Unknown key size: " << key_size_str;
-    }
+                  std::string key_size_str;
+                  ASSERT_TRUE(t->GetInstruction(&key_size_str, "keySize"));
+                  const EVP_AEAD *aead;
+                  switch (atoi(key_size_str.c_str())) {
+                    case 128:
+                      aead = EVP_aead_aes_128_gcm_siv();
+                      break;
+                    case 256:
+                      aead = EVP_aead_aes_256_gcm_siv();
+                      break;
+                    default:
+                      FAIL() << "Unknown key size: " << key_size_str;
+                  }
 
-    RunWycheproofTestCase(t, aead);
-  });
+                  RunWycheproofTestCase(t, aead);
+                });
 }
 
 TEST(AEADTest, WycheproofAESGCM) {
   FileTestGTest("third_party/wycheproof_testvectors/aes_gcm_test.txt",
                 [](FileTest *t) {
-    std::string key_size_str;
-    ASSERT_TRUE(t->GetInstruction(&key_size_str, "keySize"));
-    const EVP_AEAD *aead;
-    switch (atoi(key_size_str.c_str())) {
-      case 128:
-        aead = EVP_aead_aes_128_gcm();
-        break;
-      case 192:
-        aead = EVP_aead_aes_192_gcm();
-        break;
-      case 256:
-        aead = EVP_aead_aes_256_gcm();
-        break;
-      default:
-        FAIL() << "Unknown key size: " << key_size_str;
-    }
+                  std::string key_size_str;
+                  ASSERT_TRUE(t->GetInstruction(&key_size_str, "keySize"));
+                  const EVP_AEAD *aead;
+                  switch (atoi(key_size_str.c_str())) {
+                    case 128:
+                      aead = EVP_aead_aes_128_gcm();
+                      break;
+                    case 192:
+                      aead = EVP_aead_aes_192_gcm();
+                      break;
+                    case 256:
+                      aead = EVP_aead_aes_256_gcm();
+                      break;
+                    default:
+                      FAIL() << "Unknown key size: " << key_size_str;
+                  }
 
-    RunWycheproofTestCase(t, aead);
-  });
+                  RunWycheproofTestCase(t, aead);
+                });
 }
 
 TEST(AEADTest, WycheproofChaCha20Poly1305) {
   FileTestGTest("third_party/wycheproof_testvectors/chacha20_poly1305_test.txt",
                 [](FileTest *t) {
-    t->IgnoreInstruction("keySize");
-    RunWycheproofTestCase(t, EVP_aead_chacha20_poly1305());
-  });
+                  t->IgnoreInstruction("keySize");
+                  RunWycheproofTestCase(t, EVP_aead_chacha20_poly1305());
+                });
 }
 
 TEST(AEADTest, WycheproofXChaCha20Poly1305) {
@@ -1025,6 +1025,6 @@ TEST(AEADTest, WycheproofXChaCha20Poly1305) {
       });
 }
 
-TEST(AEADTest, FreeNull) {
-  EVP_AEAD_CTX_free(nullptr);
-}
+TEST(AEADTest, FreeNull) { EVP_AEAD_CTX_free(nullptr); }
+
+}  // namespace
