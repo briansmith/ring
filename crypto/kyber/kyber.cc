@@ -138,10 +138,15 @@ static uint16_t reduce_once(uint16_t x) {
   assert(x < 2 * kPrime);
   const uint16_t subtracted = x - kPrime;
   uint16_t mask = 0u - (subtracted >> 15);
-  // On Aarch64, omitting a |value_barrier_u16| results in a 2x speedup of Kyber
-  // overall and Clang still produces constant-time code using `csel`. On other
-  // platforms & compilers on godbolt that we care about, this code also
-  // produces constant-time output.
+  // Although this is a constant-time select, we omit a value barrier here.
+  // Value barriers impede auto-vectorization (likely because it forces the
+  // value to transit through a general-purpose register). On AArch64, this is a
+  // difference of 2x.
+  //
+  // We usually add value barriers to selects because Clang turns consecutive
+  // selects with the same condition into a branch instead of CMOV/CSEL. This
+  // condition does not occur in Kyber, so omitting it seems to be safe so far,
+  // but see |scalar_centered_binomial_distribution_eta_2_with_prf|.
   return (mask & x) | (~mask & subtracted);
 }
 
@@ -337,16 +342,21 @@ static void scalar_centered_binomial_distribution_eta_2_with_prf(
   for (int i = 0; i < DEGREE; i += 2) {
     uint8_t byte = entropy[i / 2];
 
-    uint16_t value = kPrime;
-    value += (byte & 1) + ((byte >> 1) & 1);
+    uint16_t value = (byte & 1) + ((byte >> 1) & 1);
     value -= ((byte >> 2) & 1) + ((byte >> 3) & 1);
-    out->c[i] = reduce_once(value);
+    // Add |kPrime| if |value| underflowed. See |reduce_once| for a discussion
+    // on why the value barrier is omitted. While this could have been written
+    // reduce_once(value + kPrime), this is one extra addition and small range
+    // of |value| tempts some versions of Clang to emit a branch.
+    uint16_t mask = 0u - (value >> 15);
+    out->c[i] = value + (kPrime & mask);
 
     byte >>= 4;
-    value = kPrime;
-    value += (byte & 1) + ((byte >> 1) & 1);
+    value = (byte & 1) + ((byte >> 1) & 1);
     value -= ((byte >> 2) & 1) + ((byte >> 3) & 1);
-    out->c[i + 1] = reduce_once(value);
+    // See above.
+    mask = 0u - (value >> 15);
+    out->c[i + 1] = value + (kPrime & mask);
   }
 }
 
