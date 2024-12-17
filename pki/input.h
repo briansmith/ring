@@ -14,10 +14,8 @@
 #include <openssl/base.h>
 #include <openssl/span.h>
 
-#if defined(__has_include)
 #if __has_include(<version>)
 #include <version>
-#endif
 #endif
 
 #if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L

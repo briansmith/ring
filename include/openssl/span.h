@@ -27,10 +27,8 @@ extern "C++" {
 #include <string_view>
 #include <type_traits>
 
-#if defined(__has_include)
 #if __has_include(<version>)
 #include <version>
-#endif
 #endif
 
 #if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
