@@ -57,6 +57,8 @@ The other commands are as follows. (Note that you only need to implement the com
 | AES-CTR/encrypt      | Key, plaintexttext, initial counter, constant 1 | Ciphertext |
 | AES-GCM/open         | Tag length, key, ciphertext, nonce, ad | One-byte success flag, plaintext or empty |
 | AES-GCM/seal         | Tag length, key, plaintext, nonce, ad | Ciphertext |
+| AES-GCM-randnonce/open | Tag length, key, ciphertext (with rand nonce appended), nonce (empty), ad | One-byte success flag, plaintext or empty |
+| AES-GCM-randnonce/seal | Tag length, key, plaintext, nonce (empty), ad | Ciphertext (with rand nonce appended) |
 | AES-KW/open          | (dummy), key, ciphertext, (dummy), (dummy) | One-byte success flag, plaintext or empty |
 | AES-KW/seal          | (dummy), key, plaintext, (dummy), (dummy) | Ciphertext |
 | AES-KWP/open         | (dummy), key, ciphertext, (dummy), (dummy) | One-byte success flag, plaintext or empty |
