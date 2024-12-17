@@ -99,6 +99,11 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              uint8_t Xi[16], const u128 Htable[16],
                              enum gcm_impl_t impl) {
   switch (impl) {
+    case gcm_x86_vaes_avx2:
+      len &= kSizeTWithoutLower4Bits;
+      aes_gcm_enc_update_vaes_avx2(in, out, len, key, ivec, Htable, Xi);
+      CRYPTO_store_u32_be(&ivec[12], CRYPTO_load_u32_be(&ivec[12]) + len / 16);
+      return len;
     case gcm_x86_vaes_avx10_256:
       len &= kSizeTWithoutLower4Bits;
       aes_gcm_enc_update_vaes_avx10_256(in, out, len, key, ivec, Htable, Xi);
@@ -119,6 +124,11 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                              uint8_t Xi[16], const u128 Htable[16],
                              enum gcm_impl_t impl) {
   switch (impl) {
+    case gcm_x86_vaes_avx2:
+      len &= kSizeTWithoutLower4Bits;
+      aes_gcm_dec_update_vaes_avx2(in, out, len, key, ivec, Htable, Xi);
+      CRYPTO_store_u32_be(&ivec[12], CRYPTO_load_u32_be(&ivec[12]) + len / 16);
+      return len;
     case gcm_x86_vaes_avx10_256:
       len &= kSizeTWithoutLower4Bits;
       aes_gcm_dec_update_vaes_avx10_256(in, out, len, key, ivec, Htable, Xi);
@@ -171,15 +181,21 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
 
 #if defined(GHASH_ASM_X86_64)
   if (crypto_gcm_clmul_enabled()) {
-    if (CRYPTO_is_AVX512BW_capable() && CRYPTO_is_AVX512VL_capable() &&
-        CRYPTO_is_VPCLMULQDQ_capable() && CRYPTO_is_BMI2_capable()) {
-      gcm_init_vpclmulqdq_avx10(out_table, H);
-      *out_mult = gcm_gmult_vpclmulqdq_avx10;
-      if (CRYPTO_cpu_avoid_zmm_registers()) {
-        *out_hash = gcm_ghash_vpclmulqdq_avx10_256;
-      } else {
-        *out_hash = gcm_ghash_vpclmulqdq_avx10_512;
+    if (CRYPTO_is_VPCLMULQDQ_capable() && CRYPTO_is_AVX2_capable()) {
+      if (CRYPTO_is_AVX512BW_capable() && CRYPTO_is_AVX512VL_capable() &&
+          CRYPTO_is_BMI2_capable()) {
+        gcm_init_vpclmulqdq_avx10(out_table, H);
+        *out_mult = gcm_gmult_vpclmulqdq_avx10;
+        if (CRYPTO_cpu_avoid_zmm_registers()) {
+          *out_hash = gcm_ghash_vpclmulqdq_avx10_256;
+        } else {
+          *out_hash = gcm_ghash_vpclmulqdq_avx10_512;
+        }
+        return;
       }
+      gcm_init_vpclmulqdq_avx2(out_table, H);
+      *out_mult = gcm_gmult_vpclmulqdq_avx2;
+      *out_hash = gcm_ghash_vpclmulqdq_avx2;
       return;
     }
     if (CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable()) {
@@ -265,6 +281,9 @@ void CRYPTO_gcm128_init_aes_key(GCM128_KEY *gcm_key, const uint8_t *key,
   } else if (gcm_key->ghash == gcm_ghash_vpclmulqdq_avx10_512 &&
              CRYPTO_is_VAES_capable()) {
     gcm_key->impl = gcm_x86_vaes_avx10_512;
+  } else if (gcm_key->ghash == gcm_ghash_vpclmulqdq_avx2 &&
+             CRYPTO_is_VAES_capable()) {
+    gcm_key->impl = gcm_x86_vaes_avx2;
   } else if (gcm_key->ghash == gcm_ghash_avx && is_hwaes) {
     gcm_key->impl = gcm_x86_aesni;
   }

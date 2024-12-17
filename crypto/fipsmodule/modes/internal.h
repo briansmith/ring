@@ -69,6 +69,7 @@ void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out, size_t len,
 enum gcm_impl_t {
   gcm_separate = 0,  // No combined AES-GCM, but may have AES-CTR and GHASH.
   gcm_x86_aesni,
+  gcm_x86_vaes_avx2,
   gcm_x86_vaes_avx10_256,
   gcm_x86_vaes_avx10_512,
   gcm_arm64_aes,
@@ -199,6 +200,17 @@ size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                          const AES_KEY *key, uint8_t ivec[16],
                          const u128 Htable[16], uint8_t Xi[16]);
+
+void gcm_init_vpclmulqdq_avx2(u128 Htable[16], const uint64_t H[2]);
+void gcm_gmult_vpclmulqdq_avx2(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_vpclmulqdq_avx2(uint8_t Xi[16], const u128 Htable[16],
+                               const uint8_t *in, size_t len);
+void aes_gcm_enc_update_vaes_avx2(const uint8_t *in, uint8_t *out, size_t len,
+                                  const AES_KEY *key, const uint8_t ivec[16],
+                                  const u128 Htable[16], uint8_t Xi[16]);
+void aes_gcm_dec_update_vaes_avx2(const uint8_t *in, uint8_t *out, size_t len,
+                                  const AES_KEY *key, const uint8_t ivec[16],
+                                  const u128 Htable[16], uint8_t Xi[16]);
 
 void gcm_init_vpclmulqdq_avx10(u128 Htable[16], const uint64_t H[2]);
 void gcm_gmult_vpclmulqdq_avx10(uint8_t Xi[16], const u128 Htable[16]);
