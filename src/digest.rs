@@ -84,7 +84,7 @@ impl BlockContext {
             .completed_bytes
             .checked_add(polyfill::u64_from_usize(num_pending))
             .ok_or_else(|| FinishError::too_much_input(self.completed_bytes))?;
-        let copmleted_bits = BitLength::from_byte_len(completed_bytes)
+        let completed_bits = BitLength::from_byte_len(completed_bytes)
             .map_err(|_: error::Unspecified| FinishError::too_much_input(self.completed_bytes))?;
 
         let block_len = self.algorithm.block_len();
@@ -120,7 +120,7 @@ impl BlockContext {
 
         let (to_zero, len) = padding.split_at_mut(padding.len() - 8);
         to_zero.fill(0);
-        len.copy_from_slice(&copmleted_bits.to_be_bytes());
+        len.copy_from_slice(&completed_bits.to_be_bytes());
 
         let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
         debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
