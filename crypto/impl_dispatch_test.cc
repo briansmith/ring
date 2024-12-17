@@ -95,7 +95,6 @@ constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
 constexpr size_t kFlag_vpaes_encrypt = 4;
 constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
-constexpr size_t kFlag_aes_gcm_enc_update_vaes_avx10_256 = 6;
 constexpr size_t kFlag_aes_gcm_enc_update_vaes_avx10_512 = 7;
 constexpr size_t kFlag_aes_gcm_enc_update_vaes_avx2 = 8;
 
@@ -109,11 +108,10 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
            is_x86_64_ && aesni_ && avx_movbe_ && !vaes_},
           {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
           {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
-          {kFlag_aes_gcm_enc_update_vaes_avx10_256,
-           is_x86_64_ && vaes_ && avx10_ && avoid_zmm_},
           {kFlag_aes_gcm_enc_update_vaes_avx10_512,
            is_x86_64_ && vaes_ && avx10_ && !avoid_zmm_},
-          {kFlag_aes_gcm_enc_update_vaes_avx2, is_x86_64_ && vaes_ && !avx10_},
+          {kFlag_aes_gcm_enc_update_vaes_avx2,
+           is_x86_64_ && vaes_ && !(avx10_ && !avoid_zmm_)},
       },
       [] {
         const uint8_t kZeros[16] = {0};

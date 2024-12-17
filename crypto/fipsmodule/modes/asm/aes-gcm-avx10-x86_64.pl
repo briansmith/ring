@@ -1321,25 +1321,30 @@ ___
 }
 $code .= _end_func;
 
-_set_veclen 32;
-
-$code .= _begin_func "gcm_init_vpclmulqdq_avx10", 0;
-$code .= _aes_gcm_init;
-$code .= _end_func;
-
-$code .= _begin_func "gcm_ghash_vpclmulqdq_avx10_256", 1;
-$code .= _ghash_update;
-$code .= _end_func;
-
-$code .= _begin_func "aes_gcm_enc_update_vaes_avx10_256", 1;
-$code .= _aes_gcm_update 1;
-$code .= _end_func;
-
-$code .= _begin_func "aes_gcm_dec_update_vaes_avx10_256", 1;
-$code .= _aes_gcm_update 0;
-$code .= _end_func;
+# Disabled until significant deployment of AVX10/256 is seen.  The separate
+# *_vaes_avx2 implementation provides the only 256-bit support for now.
+#
+# $code .= _begin_func "gcm_init_vpclmulqdq_avx10_256", 0;
+# $code .= _aes_gcm_init;
+# $code .= _end_func;
+#
+# $code .= _begin_func "gcm_ghash_vpclmulqdq_avx10_256", 1;
+# $code .= _ghash_update;
+# $code .= _end_func;
+#
+# $code .= _begin_func "aes_gcm_enc_update_vaes_avx10_256", 1;
+# $code .= _aes_gcm_update 1;
+# $code .= _end_func;
+#
+# $code .= _begin_func "aes_gcm_dec_update_vaes_avx10_256", 1;
+# $code .= _aes_gcm_update 0;
+# $code .= _end_func;
 
 _set_veclen 64;
+
+$code .= _begin_func "gcm_init_vpclmulqdq_avx10_512", 0;
+$code .= _aes_gcm_init;
+$code .= _end_func;
 
 $code .= _begin_func "gcm_ghash_vpclmulqdq_avx10_512", 1;
 $code .= _ghash_update;

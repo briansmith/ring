@@ -104,11 +104,6 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       aes_gcm_enc_update_vaes_avx2(in, out, len, key, ivec, Htable, Xi);
       CRYPTO_store_u32_be(&ivec[12], CRYPTO_load_u32_be(&ivec[12]) + len / 16);
       return len;
-    case gcm_x86_vaes_avx10_256:
-      len &= kSizeTWithoutLower4Bits;
-      aes_gcm_enc_update_vaes_avx10_256(in, out, len, key, ivec, Htable, Xi);
-      CRYPTO_store_u32_be(&ivec[12], CRYPTO_load_u32_be(&ivec[12]) + len / 16);
-      return len;
     case gcm_x86_vaes_avx10_512:
       len &= kSizeTWithoutLower4Bits;
       aes_gcm_enc_update_vaes_avx10_512(in, out, len, key, ivec, Htable, Xi);
@@ -127,11 +122,6 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     case gcm_x86_vaes_avx2:
       len &= kSizeTWithoutLower4Bits;
       aes_gcm_dec_update_vaes_avx2(in, out, len, key, ivec, Htable, Xi);
-      CRYPTO_store_u32_be(&ivec[12], CRYPTO_load_u32_be(&ivec[12]) + len / 16);
-      return len;
-    case gcm_x86_vaes_avx10_256:
-      len &= kSizeTWithoutLower4Bits;
-      aes_gcm_dec_update_vaes_avx10_256(in, out, len, key, ivec, Htable, Xi);
       CRYPTO_store_u32_be(&ivec[12], CRYPTO_load_u32_be(&ivec[12]) + len / 16);
       return len;
     case gcm_x86_vaes_avx10_512:
@@ -183,14 +173,10 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
   if (crypto_gcm_clmul_enabled()) {
     if (CRYPTO_is_VPCLMULQDQ_capable() && CRYPTO_is_AVX2_capable()) {
       if (CRYPTO_is_AVX512BW_capable() && CRYPTO_is_AVX512VL_capable() &&
-          CRYPTO_is_BMI2_capable()) {
-        gcm_init_vpclmulqdq_avx10(out_table, H);
+          CRYPTO_is_BMI2_capable() && !CRYPTO_cpu_avoid_zmm_registers()) {
+        gcm_init_vpclmulqdq_avx10_512(out_table, H);
         *out_mult = gcm_gmult_vpclmulqdq_avx10;
-        if (CRYPTO_cpu_avoid_zmm_registers()) {
-          *out_hash = gcm_ghash_vpclmulqdq_avx10_256;
-        } else {
-          *out_hash = gcm_ghash_vpclmulqdq_avx10_512;
-        }
+        *out_hash = gcm_ghash_vpclmulqdq_avx10_512;
         return;
       }
       gcm_init_vpclmulqdq_avx2(out_table, H);
@@ -275,11 +261,8 @@ void CRYPTO_gcm128_init_aes_key(GCM128_KEY *gcm_key, const uint8_t *key,
 
 #if !defined(OPENSSL_NO_ASM)
 #if defined(OPENSSL_X86_64)
-  if (gcm_key->ghash == gcm_ghash_vpclmulqdq_avx10_256 &&
+  if (gcm_key->ghash == gcm_ghash_vpclmulqdq_avx10_512 &&
       CRYPTO_is_VAES_capable()) {
-    gcm_key->impl = gcm_x86_vaes_avx10_256;
-  } else if (gcm_key->ghash == gcm_ghash_vpclmulqdq_avx10_512 &&
-             CRYPTO_is_VAES_capable()) {
     gcm_key->impl = gcm_x86_vaes_avx10_512;
   } else if (gcm_key->ghash == gcm_ghash_vpclmulqdq_avx2 &&
              CRYPTO_is_VAES_capable()) {
