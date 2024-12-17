@@ -240,24 +240,20 @@ EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
       break;
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-      return 0;
+      return nullptr;
   }
 
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL) {
-    goto err;
+  bssl::UniquePtr<EVP_PKEY> ret(EVP_PKEY_new());
+  if (ret == nullptr) {
+    return nullptr;
   }
-  evp_pkey_set_method(ret, method);
+  evp_pkey_set_method(ret.get(), method);
 
-  if (!ret->ameth->set_priv_raw(ret, in, len)) {
-    goto err;
+  if (!ret->ameth->set_priv_raw(ret.get(), in, len)) {
+    return nullptr;
   }
 
-  return ret;
-
-err:
-  EVP_PKEY_free(ret);
-  return NULL;
+  return ret.release();
 }
 
 EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
@@ -274,24 +270,20 @@ EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
       break;
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-      return 0;
+      return nullptr;
   }
 
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL) {
-    goto err;
+  bssl::UniquePtr<EVP_PKEY> ret(EVP_PKEY_new());
+  if (ret == nullptr) {
+    return nullptr;
   }
-  evp_pkey_set_method(ret, method);
+  evp_pkey_set_method(ret.get(), method);
 
-  if (!ret->ameth->set_pub_raw(ret, in, len)) {
-    goto err;
+  if (!ret->ameth->set_pub_raw(ret.get(), in, len)) {
+    return nullptr;
   }
 
-  return ret;
-
-err:
-  EVP_PKEY_free(ret);
-  return NULL;
+  return ret.release();
 }
 
 int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,

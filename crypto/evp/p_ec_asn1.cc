@@ -47,26 +47,21 @@ static int eckey_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   // See RFC 5480, section 2.
 
   // The parameters are a named curve.
-  EC_KEY *eckey = NULL;
   const EC_GROUP *group = EC_KEY_parse_curve_name(params);
   if (group == NULL || CBS_len(params) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    goto err;
+    return 0;
   }
 
-  eckey = EC_KEY_new();
-  if (eckey == NULL ||  //
-      !EC_KEY_set_group(eckey, group) ||
-      !EC_KEY_oct2key(eckey, CBS_data(key), CBS_len(key), NULL)) {
-    goto err;
+  bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
+  if (eckey == nullptr ||  //
+      !EC_KEY_set_group(eckey.get(), group) ||
+      !EC_KEY_oct2key(eckey.get(), CBS_data(key), CBS_len(key), nullptr)) {
+    return 0;
   }
 
-  EVP_PKEY_assign_EC_KEY(out, eckey);
+  EVP_PKEY_assign_EC_KEY(out, eckey.release());
   return 1;
-
-err:
-  EC_KEY_free(eckey);
-  return 0;
 }
 
 static int eckey_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
