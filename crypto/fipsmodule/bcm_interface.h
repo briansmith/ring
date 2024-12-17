@@ -47,11 +47,11 @@ enum class bcm_status_t {
 typedef enum bcm_status_t bcm_status;
 typedef enum bcm_infallible_t bcm_infallible;
 
-OPENSSL_INLINE int bcm_success(bcm_status status) {
+inline int bcm_success(bcm_status status) {
   return status == bcm_status::approved || status == bcm_status::not_approved;
 }
 
-OPENSSL_INLINE bcm_status_t bcm_as_approved_status(int result) {
+inline bcm_status_t bcm_as_approved_status(int result) {
   return result ? bcm_status::approved : bcm_status::failure;
 }
 

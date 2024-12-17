@@ -65,8 +65,8 @@ extern "C" {
 #endif
 
 
-OPENSSL_INLINE void CRYPTO_xor16(uint8_t out[16], const uint8_t a[16],
-                                 const uint8_t b[16]) {
+inline void CRYPTO_xor16(uint8_t out[16], const uint8_t a[16],
+                         const uint8_t b[16]) {
   // TODO(davidben): Ideally we'd leave this to the compiler, which could use
   // vector registers, etc. But the compiler doesn't know that |in| and |out|
   // cannot partially alias. |restrict| is slightly two strict (we allow exact
@@ -273,16 +273,14 @@ void aes_gcm_dec_update_vaes_avx10_512(const uint8_t *in, uint8_t *out,
 #define GHASH_ASM_ARM
 #define GCM_FUNCREF
 
-OPENSSL_INLINE int gcm_pmull_capable(void) {
-  return CRYPTO_is_ARMv8_PMULL_capable();
-}
+inline int gcm_pmull_capable(void) { return CRYPTO_is_ARMv8_PMULL_capable(); }
 
 void gcm_init_v8(u128 Htable[16], const uint64_t H[2]);
 void gcm_gmult_v8(uint8_t Xi[16], const u128 Htable[16]);
 void gcm_ghash_v8(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                   size_t len);
 
-OPENSSL_INLINE int gcm_neon_capable(void) { return CRYPTO_is_NEON_capable(); }
+inline int gcm_neon_capable(void) { return CRYPTO_is_NEON_capable(); }
 
 void gcm_init_neon(u128 Htable[16], const uint64_t H[2]);
 void gcm_gmult_neon(uint8_t Xi[16], const u128 Htable[16]);

@@ -34,7 +34,7 @@ void CRYPTO_hchacha20(uint8_t out[32], const uint8_t key[32],
 #define CHACHA20_ASM_NOHW
 
 #define CHACHA20_ASM_SSSE3
-OPENSSL_INLINE int ChaCha20_ctr32_ssse3_capable(size_t len) {
+inline int ChaCha20_ctr32_ssse3_capable(size_t len) {
   // Unlike the x86_64 version, the x86 SSSE3 routine runs for all non-zero
   // lengths.
   return len > 0 && CRYPTO_is_SSSE3_capable() && CRYPTO_is_FXSR_capable();
@@ -48,7 +48,7 @@ void ChaCha20_ctr32_ssse3(uint8_t *out, const uint8_t *in, size_t in_len,
 #define CHACHA20_ASM_NOHW
 
 #define CHACHA20_ASM_NEON
-OPENSSL_INLINE int ChaCha20_ctr32_neon_capable(size_t len) {
+inline int ChaCha20_ctr32_neon_capable(size_t len) {
   return len >= 192 && CRYPTO_is_NEON_capable();
 }
 void ChaCha20_ctr32_neon(uint8_t *out, const uint8_t *in, size_t in_len,
@@ -57,14 +57,14 @@ void ChaCha20_ctr32_neon(uint8_t *out, const uint8_t *in, size_t in_len,
 #define CHACHA20_ASM_NOHW
 
 #define CHACHA20_ASM_AVX2
-OPENSSL_INLINE int ChaCha20_ctr32_avx2_capable(size_t len) {
+inline int ChaCha20_ctr32_avx2_capable(size_t len) {
   return len > 128 && CRYPTO_is_AVX2_capable();
 }
 void ChaCha20_ctr32_avx2(uint8_t *out, const uint8_t *in, size_t in_len,
                          const uint32_t key[8], const uint32_t counter[4]);
 
 #define CHACHA20_ASM_SSSE3_4X
-OPENSSL_INLINE int ChaCha20_ctr32_ssse3_4x_capable(size_t len) {
+inline int ChaCha20_ctr32_ssse3_4x_capable(size_t len) {
   int capable = len > 128 && CRYPTO_is_SSSE3_capable();
   int faster = len > 192 || !CRYPTO_cpu_perf_is_like_silvermont();
   return capable && faster;
@@ -73,7 +73,7 @@ void ChaCha20_ctr32_ssse3_4x(uint8_t *out, const uint8_t *in, size_t in_len,
                              const uint32_t key[8], const uint32_t counter[4]);
 
 #define CHACHA20_ASM_SSSE3
-OPENSSL_INLINE int ChaCha20_ctr32_ssse3_capable(size_t len) {
+inline int ChaCha20_ctr32_ssse3_capable(size_t len) {
   return len > 128 && CRYPTO_is_SSSE3_capable();
 }
 void ChaCha20_ctr32_ssse3(uint8_t *out, const uint8_t *in, size_t in_len,

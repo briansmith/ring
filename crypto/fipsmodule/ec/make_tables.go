@@ -132,10 +132,10 @@ func writeCurveData(w *columnWriter, curve elliptic.Curve, includeNonMontgomery 
 		return nil
 	}
 
-	if _, err := fmt.Fprintf(w, "OPENSSL_UNUSED static const uint64_t k%sFieldN0 = 0x%016x;\n", cName, montgomeryN0(params.P)); err != nil {
+	if _, err := fmt.Fprintf(w, "[[maybe_unused]] static const uint64_t k%sFieldN0 = 0x%016x;\n", cName, montgomeryN0(params.P)); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(w, "OPENSSL_UNUSED static const uint64_t k%sOrderN0 = 0x%016x;\n", cName, montgomeryN0(params.N)); err != nil {
+	if _, err := fmt.Fprintf(w, "[[maybe_unused]] static const uint64_t k%sOrderN0 = 0x%016x;\n", cName, montgomeryN0(params.N)); err != nil {
 		return err
 	}
 
@@ -469,7 +469,7 @@ func writeWords[Word any](w *columnWriter, words []Word, format func(Word) strin
 }
 
 func writeDecl(w *columnWriter, curve elliptic.Curve, bits int, decl string, n *big.Int) error {
-	if _, err := fmt.Fprintf(w, "OPENSSL_UNUSED static const uint%d_t %s[] = {\n    ", bits, decl); err != nil {
+	if _, err := fmt.Fprintf(w, "[[maybe_unused]] static const uint%d_t %s[] = {\n    ", bits, decl); err != nil {
 		return err
 	}
 	if bits == 32 {

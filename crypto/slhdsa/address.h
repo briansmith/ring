@@ -55,32 +55,30 @@ extern "C" {
 #define SLHDSA_SHA2_128S_OFFSET_TREE_INDEX 18
 
 
-OPENSSL_INLINE void slhdsa_set_chain_addr(uint8_t addr[32], uint32_t chain) {
+inline void slhdsa_set_chain_addr(uint8_t addr[32], uint32_t chain) {
   addr[SLHDSA_SHA2_128S_OFFSET_CHAIN_ADDR] = (uint8_t)chain;
 }
 
-OPENSSL_INLINE void slhdsa_set_hash_addr(uint8_t addr[32], uint32_t hash) {
+inline void slhdsa_set_hash_addr(uint8_t addr[32], uint32_t hash) {
   addr[SLHDSA_SHA2_128S_OFFSET_HASH_ADDR] = (uint8_t)hash;
 }
 
-OPENSSL_INLINE void slhdsa_set_keypair_addr(uint8_t addr[32],
-                                            uint32_t keypair) {
+inline void slhdsa_set_keypair_addr(uint8_t addr[32], uint32_t keypair) {
   addr[SLHDSA_SHA2_128S_OFFSET_KP_ADDR2] = (uint8_t)(keypair >> 8);
   addr[SLHDSA_SHA2_128S_OFFSET_KP_ADDR1] = (uint8_t)keypair;
 }
 
-OPENSSL_INLINE void slhdsa_copy_keypair_addr(uint8_t out[32],
-                                             const uint8_t in[32]) {
+inline void slhdsa_copy_keypair_addr(uint8_t out[32], const uint8_t in[32]) {
   OPENSSL_memcpy(out, in, SLHDSA_SHA2_128S_OFFSET_TREE + 8);
   out[SLHDSA_SHA2_128S_OFFSET_KP_ADDR2] = in[SLHDSA_SHA2_128S_OFFSET_KP_ADDR2];
   out[SLHDSA_SHA2_128S_OFFSET_KP_ADDR1] = in[SLHDSA_SHA2_128S_OFFSET_KP_ADDR1];
 }
 
-OPENSSL_INLINE void slhdsa_set_layer_addr(uint8_t addr[32], uint32_t layer) {
+inline void slhdsa_set_layer_addr(uint8_t addr[32], uint32_t layer) {
   addr[SLHDSA_SHA2_128S_OFFSET_LAYER] = (uint8_t)layer;
 }
 
-OPENSSL_INLINE void slhdsa_set_tree_addr(uint8_t addr[32], uint64_t tree) {
+inline void slhdsa_set_tree_addr(uint8_t addr[32], uint64_t tree) {
   CRYPTO_store_u64_be(&addr[SLHDSA_SHA2_128S_OFFSET_TREE], tree);
 }
 
@@ -92,7 +90,7 @@ OPENSSL_INLINE void slhdsa_set_tree_addr(uint8_t addr[32], uint64_t tree) {
 #define SLHDSA_SHA2_128S_ADDR_TYPE_WOTSPRF 5
 #define SLHDSA_SHA2_128S_ADDR_TYPE_FORSPRF 6
 
-OPENSSL_INLINE void slhdsa_set_type(uint8_t addr[32], uint32_t type) {
+inline void slhdsa_set_type(uint8_t addr[32], uint32_t type) {
   // FIPS 205 relies on this setting parts of the address to 0, so we do it
   // here to avoid confusion.
   //
@@ -101,17 +99,15 @@ OPENSSL_INLINE void slhdsa_set_type(uint8_t addr[32], uint32_t type) {
   addr[SLHDSA_SHA2_128S_OFFSET_TYPE] = (uint8_t)type;
 }
 
-OPENSSL_INLINE void slhdsa_set_tree_height(uint8_t addr[32],
-                                           uint32_t tree_height) {
+inline void slhdsa_set_tree_height(uint8_t addr[32], uint32_t tree_height) {
   addr[SLHDSA_SHA2_128S_OFFSET_TREE_HGT] = (uint8_t)tree_height;
 }
 
-OPENSSL_INLINE void slhdsa_set_tree_index(uint8_t addr[32],
-                                          uint32_t tree_index) {
+inline void slhdsa_set_tree_index(uint8_t addr[32], uint32_t tree_index) {
   CRYPTO_store_u32_be(&addr[SLHDSA_SHA2_128S_OFFSET_TREE_INDEX], tree_index);
 }
 
-OPENSSL_INLINE uint32_t slhdsa_get_tree_index(uint8_t addr[32]) {
+inline uint32_t slhdsa_get_tree_index(uint8_t addr[32]) {
   return CRYPTO_load_u32_be(addr + SLHDSA_SHA2_128S_OFFSET_TREE_INDEX);
 }
 

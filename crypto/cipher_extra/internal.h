@@ -179,7 +179,7 @@ static_assert(sizeof(union chacha20_poly1305_open_data) == 48,
 static_assert(sizeof(union chacha20_poly1305_seal_data) == 48 + 8 + 8,
               "wrong chacha20_poly1305_seal_data size");
 
-OPENSSL_INLINE int chacha20_poly1305_asm_capable(void) {
+inline int chacha20_poly1305_asm_capable(void) {
 #if defined(OPENSSL_X86_64)
   return CRYPTO_is_SSE4_1_capable();
 #elif defined(OPENSSL_AARCH64)
@@ -199,7 +199,7 @@ extern void chacha20_poly1305_open_nohw(
 extern void chacha20_poly1305_open_avx2(
     uint8_t *out_plaintext, const uint8_t *ciphertext, size_t plaintext_len,
     const uint8_t *ad, size_t ad_len, union chacha20_poly1305_open_data *data);
-OPENSSL_INLINE void chacha20_poly1305_open(uint8_t *out_plaintext,
+inline void chacha20_poly1305_open(uint8_t *out_plaintext,
                                    const uint8_t *ciphertext,
                                    size_t plaintext_len, const uint8_t *ad,
                                    size_t ad_len,
@@ -232,9 +232,11 @@ extern void chacha20_poly1305_seal_nohw(
 extern void chacha20_poly1305_seal_avx2(
     uint8_t *out_ciphertext, const uint8_t *plaintext, size_t plaintext_len,
     const uint8_t *ad, size_t ad_len, union chacha20_poly1305_seal_data *data);
-OPENSSL_INLINE void chacha20_poly1305_seal(
-    uint8_t *out_ciphertext, const uint8_t *plaintext, size_t plaintext_len,
-    const uint8_t *ad, size_t ad_len, union chacha20_poly1305_seal_data *data) {
+inline void chacha20_poly1305_seal(uint8_t *out_ciphertext,
+                                   const uint8_t *plaintext,
+                                   size_t plaintext_len, const uint8_t *ad,
+                                   size_t ad_len,
+                                   union chacha20_poly1305_seal_data *data) {
   if (CRYPTO_is_AVX2_capable() && CRYPTO_is_BMI2_capable()) {
     chacha20_poly1305_seal_avx2(out_ciphertext, plaintext, plaintext_len, ad,
                                 ad_len, data);
@@ -253,9 +255,9 @@ extern void chacha20_poly1305_seal(uint8_t *out_ciphertext,
 
 #else
 
-OPENSSL_INLINE int chacha20_poly1305_asm_capable(void) { return 0; }
+inline int chacha20_poly1305_asm_capable(void) { return 0; }
 
-OPENSSL_INLINE void chacha20_poly1305_open(uint8_t *out_plaintext,
+inline void chacha20_poly1305_open(uint8_t *out_plaintext,
                                    const uint8_t *ciphertext,
                                    size_t plaintext_len, const uint8_t *ad,
                                    size_t ad_len,
@@ -263,7 +265,7 @@ OPENSSL_INLINE void chacha20_poly1305_open(uint8_t *out_plaintext,
   abort();
 }
 
-OPENSSL_INLINE void chacha20_poly1305_seal(uint8_t *out_ciphertext,
+inline void chacha20_poly1305_seal(uint8_t *out_ciphertext,
                                    const uint8_t *plaintext,
                                    size_t plaintext_len, const uint8_t *ad,
                                    size_t ad_len,

@@ -53,36 +53,36 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst);
 
 // Service indicator functions are no-ops in non-FIPS builds.
 
-OPENSSL_INLINE void FIPS_service_indicator_update_state(void) {}
-OPENSSL_INLINE void FIPS_service_indicator_lock_state(void) {}
-OPENSSL_INLINE void FIPS_service_indicator_unlock_state(void) {}
+inline void FIPS_service_indicator_update_state(void) {}
+inline void FIPS_service_indicator_lock_state(void) {}
+inline void FIPS_service_indicator_unlock_state(void) {}
 
-OPENSSL_INLINE void AEAD_GCM_verify_service_indicator(
-    OPENSSL_UNUSED const EVP_AEAD_CTX *ctx) {}
+inline void AEAD_GCM_verify_service_indicator(
+    [[maybe_unused]] const EVP_AEAD_CTX *ctx) {}
 
-OPENSSL_INLINE void AEAD_CCM_verify_service_indicator(
-    OPENSSL_UNUSED const EVP_AEAD_CTX *ctx) {}
+inline void AEAD_CCM_verify_service_indicator(
+    [[maybe_unused]] const EVP_AEAD_CTX *ctx) {}
 
-OPENSSL_INLINE void EC_KEY_keygen_verify_service_indicator(
-    OPENSSL_UNUSED const EC_KEY *eckey) {}
+inline void EC_KEY_keygen_verify_service_indicator(
+    [[maybe_unused]] const EC_KEY *eckey) {}
 
-OPENSSL_INLINE void ECDH_verify_service_indicator(
-    OPENSSL_UNUSED const EC_KEY *ec_key) {}
+inline void ECDH_verify_service_indicator(
+    [[maybe_unused]] const EC_KEY *ec_key) {}
 
-OPENSSL_INLINE void EVP_Cipher_verify_service_indicator(
-    OPENSSL_UNUSED const EVP_CIPHER_CTX *ctx) {}
+inline void EVP_Cipher_verify_service_indicator(
+    [[maybe_unused]] const EVP_CIPHER_CTX *ctx) {}
 
-OPENSSL_INLINE void EVP_DigestSign_verify_service_indicator(
-    OPENSSL_UNUSED const EVP_MD_CTX *ctx) {}
+inline void EVP_DigestSign_verify_service_indicator(
+    [[maybe_unused]] const EVP_MD_CTX *ctx) {}
 
-OPENSSL_INLINE void EVP_DigestVerify_verify_service_indicator(
-    OPENSSL_UNUSED const EVP_MD_CTX *ctx) {}
+inline void EVP_DigestVerify_verify_service_indicator(
+    [[maybe_unused]] const EVP_MD_CTX *ctx) {}
 
-OPENSSL_INLINE void HMAC_verify_service_indicator(
-    OPENSSL_UNUSED const EVP_MD *evp_md) {}
+inline void HMAC_verify_service_indicator(
+    [[maybe_unused]] const EVP_MD *evp_md) {}
 
-OPENSSL_INLINE void TLSKDF_verify_service_indicator(
-    OPENSSL_UNUSED const EVP_MD *dgst) {}
+inline void TLSKDF_verify_service_indicator(
+    [[maybe_unused]] const EVP_MD *dgst) {}
 
 #endif  // BORINGSSL_FIPS
 

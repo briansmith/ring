@@ -273,13 +273,13 @@ void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num);
 
 // bn_secret marks |bn|'s contents, but not its width or sign, as secret. See
 // |CONSTTIME_SECRET| for details.
-OPENSSL_INLINE void bn_secret(BIGNUM *bn) {
+inline void bn_secret(BIGNUM *bn) {
   CONSTTIME_SECRET(bn->d, bn->width * sizeof(BN_ULONG));
 }
 
 // bn_declassify marks |bn|'s value as public. See |CONSTTIME_DECLASSIFY| for
 // details.
-OPENSSL_INLINE void bn_declassify(BIGNUM *bn) {
+inline void bn_declassify(BIGNUM *bn) {
   CONSTTIME_DECLASSIFY(bn->d, bn->width * sizeof(BN_ULONG));
 }
 
@@ -402,29 +402,29 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 
 #if defined(OPENSSL_X86_64)
-OPENSSL_INLINE int bn_mulx_adx_capable(void) {
+inline int bn_mulx_adx_capable(void) {
   // MULX is in BMI2.
   return CRYPTO_is_BMI2_capable() && CRYPTO_is_ADX_capable();
 }
 int bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                      const BN_ULONG *np, const BN_ULONG *n0, size_t num);
-OPENSSL_INLINE int bn_mul4x_mont_capable(size_t num) {
+inline int bn_mul4x_mont_capable(size_t num) {
   return num >= 8 && (num & 3) == 0;
 }
 int bn_mul4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                   const BN_ULONG *np, const BN_ULONG *n0, size_t num);
-OPENSSL_INLINE int bn_mulx4x_mont_capable(size_t num) {
+inline int bn_mulx4x_mont_capable(size_t num) {
   return bn_mul4x_mont_capable(num) && bn_mulx_adx_capable();
 }
 int bn_mulx4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                    const BN_ULONG *np, const BN_ULONG *n0, size_t num);
-OPENSSL_INLINE int bn_sqr8x_mont_capable(size_t num) {
+inline int bn_sqr8x_mont_capable(size_t num) {
   return num >= 8 && (num & 7) == 0;
 }
 int bn_sqr8x_mont(BN_ULONG *rp, const BN_ULONG *ap, BN_ULONG mulx_adx_capable,
                   const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 #elif defined(OPENSSL_ARM)
-OPENSSL_INLINE int bn_mul8x_mont_neon_capable(size_t num) {
+inline int bn_mul8x_mont_neon_capable(size_t num) {
   return (num & 7) == 0 && CRYPTO_is_NEON_capable();
 }
 int bn_mul8x_mont_neon(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
@@ -440,14 +440,12 @@ int bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 
 // The following functions implement |bn_mul_mont_gather5|. See
 // |bn_mul_mont_gather5| for details.
-OPENSSL_INLINE int bn_mul4x_mont_gather5_capable(int num) {
-  return (num & 7) == 0;
-}
+inline int bn_mul4x_mont_gather5_capable(int num) { return (num & 7) == 0; }
 void bn_mul4x_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap,
                            const BN_ULONG *table, const BN_ULONG *np,
                            const BN_ULONG *n0, int num, int power);
 
-OPENSSL_INLINE int bn_mulx4x_mont_gather5_capable(int num) {
+inline int bn_mulx4x_mont_gather5_capable(int num) {
   return bn_mul4x_mont_gather5_capable(num) && CRYPTO_is_ADX_capable() &&
          CRYPTO_is_BMI1_capable() && CRYPTO_is_BMI2_capable();
 }
@@ -475,9 +473,9 @@ void bn_gather5(BN_ULONG *out, size_t num, const BN_ULONG *table, size_t power);
 void bn_power5_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
                     const BN_ULONG *np, const BN_ULONG *n0, int num, int power);
 
-OPENSSL_INLINE int bn_power5_capable(int num) { return (num & 7) == 0; }
+inline int bn_power5_capable(int num) { return (num & 7) == 0; }
 
-OPENSSL_INLINE int bn_powerx5_capable(int num) {
+inline int bn_powerx5_capable(int num) {
   return bn_power5_capable(num) && CRYPTO_is_ADX_capable() &&
          CRYPTO_is_BMI1_capable() && CRYPTO_is_BMI2_capable();
 }

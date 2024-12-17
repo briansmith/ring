@@ -228,7 +228,7 @@ static BN_ULONG sgn0(const EC_GROUP *group, const EC_FELEM *a) {
   return buf[len - 1] & 1;
 }
 
-OPENSSL_UNUSED static int is_3mod4(const EC_GROUP *group) {
+[[maybe_unused]] static int is_3mod4(const EC_GROUP *group) {
   return group->field.N.width > 0 && (group->field.N.d[0] & 3) == 3;
 }
 
