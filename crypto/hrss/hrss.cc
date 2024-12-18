@@ -1835,6 +1835,8 @@ static void poly_lift(struct poly *out, const struct poly *a) {
   poly_normalize(out);
 }
 
+namespace {
+
 struct public_key {
   struct poly ph;
 };
@@ -1844,6 +1846,8 @@ struct private_key {
   struct poly ph_inverse;
   uint8_t hmac_key[32];
 };
+
+}  // namespace
 
 // public_key_from_external converts an external public key pointer into an
 // internal one. Externally the alignment is only specified to be eight bytes

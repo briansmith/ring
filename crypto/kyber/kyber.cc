@@ -575,6 +575,8 @@ static void vector_decompress(vector *a, int bits) {
   }
 }
 
+namespace {
+
 struct public_key {
   vector t;
   uint8_t rho[32];
@@ -606,6 +608,8 @@ static struct private_key *private_key_from_external(
       "Kyber private key align incorrect");
   return (struct private_key *)external;
 }
+
+}  // namespace
 
 // Calls |KYBER_generate_key_external_entropy| with random bytes from
 // |RAND_bytes|.
