@@ -30,6 +30,8 @@
 
 
 // The OBJECT IDENTIFIER header is also included in these values, per the spec.
+static const uint8_t kSHA256OID[] = {0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
+                                     0x65, 0x03, 0x04, 0x02, 0x01};
 static const uint8_t kSHA384OID[] = {0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
                                      0x65, 0x03, 0x04, 0x02, 0x02};
 #define MAX_OID_LENGTH 11
@@ -169,14 +171,22 @@ static int slhdsa_get_context_and_oid(uint8_t *out_context_and_oid,
   size_t oid_len;
   size_t expected_hash_len;
   switch (hash_nid) {
-    // The SLH-DSA spec only lists SHA-256 and SHA-512. This function supports
-    // SHA-384, which is non-standard.
+    case NID_sha256:
+      oid = kSHA256OID;
+      oid_len = sizeof(kSHA256OID);
+      static_assert(sizeof(kSHA256OID) <= MAX_OID_LENGTH, "");
+      expected_hash_len = 32;
+      break;
+
+    // The SLH-DSA spec only lists SHA-256 and SHA-512. This function also
+    // supports SHA-384, which is non-standard.
     case NID_sha384:
       oid = kSHA384OID;
       oid_len = sizeof(kSHA384OID);
       static_assert(sizeof(kSHA384OID) <= MAX_OID_LENGTH, "");
       expected_hash_len = 48;
       break;
+
     // If adding a hash function with a larger `oid_len`, update the size of
     // `context_and_oid` in the callers.
     default:

@@ -60,6 +60,32 @@ int SLHDSA_SHA2_128S_verify(
                                                  context, context_len));
 }
 
+int SLHDSA_SHA2_128S_prehash_sign(
+    uint8_t out_signature[SLHDSA_SHA2_128S_SIGNATURE_BYTES],
+    const uint8_t private_key[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES],
+    const uint8_t *hashed_msg, size_t hashed_msg_len, int hash_nid,
+    const uint8_t *context, size_t context_len) {
+  if (hash_nid != NID_sha256) {
+    return 0;
+  }
+  return bcm_success(BCM_slhdsa_sha2_128s_prehash_sign(
+      out_signature, private_key, hashed_msg, hashed_msg_len, hash_nid, context,
+      context_len));
+}
+
+int SLHDSA_SHA2_128S_prehash_verify(
+    const uint8_t *signature, size_t signature_len,
+    const uint8_t public_key[SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+    const uint8_t *hashed_msg, size_t hashed_msg_len, int hash_nid,
+    const uint8_t *context, size_t context_len) {
+  if (hash_nid != NID_sha256) {
+    return 0;
+  }
+  return bcm_success(BCM_slhdsa_sha2_128s_prehash_verify(
+      signature, signature_len, public_key, hashed_msg, hashed_msg_len,
+      hash_nid, context, context_len));
+}
+
 int SLHDSA_SHA2_128S_prehash_warning_nonstandard_sign(
     uint8_t out_signature[SLHDSA_SHA2_128S_SIGNATURE_BYTES],
     const uint8_t private_key[SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES],
