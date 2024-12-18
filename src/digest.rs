@@ -127,7 +127,7 @@ impl BlockContext {
 
         Ok(Digest {
             algorithm: self.algorithm,
-            value: (self.algorithm.format_output)(self.state),
+            value: self.state.format_output(),
         })
     }
 
@@ -348,8 +348,6 @@ pub struct Algorithm {
         cpu_features: cpu::Features,
     ) -> (usize, &'d [u8]),
 
-    format_output: fn(input: DynState) -> Output,
-
     initial_state: DynState,
 
     id: AlgorithmID,
@@ -405,7 +403,6 @@ pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
     chaining_len: sha1::CHAINING_LEN,
     block_len: sha1::BLOCK_LEN,
     block_data_order: dynstate::sha1_block_data_order,
-    format_output: dynstate::sha256_format_output,
     initial_state: DynState::new32([
         Wrapping(0x67452301u32),
         Wrapping(0xefcdab89u32),
@@ -427,7 +424,6 @@ pub static SHA256: Algorithm = Algorithm {
     chaining_len: SHA256_OUTPUT_LEN,
     block_len: SHA256_BLOCK_LEN,
     block_data_order: dynstate::sha256_block_data_order,
-    format_output: dynstate::sha256_format_output,
     initial_state: DynState::new32([
         Wrapping(0x6a09e667u32),
         Wrapping(0xbb67ae85u32),
@@ -449,7 +445,6 @@ pub static SHA384: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     block_data_order: dynstate::sha512_block_data_order,
-    format_output: dynstate::sha512_format_output,
     initial_state: DynState::new64([
         Wrapping(0xcbbb9d5dc1059ed8),
         Wrapping(0x629a292a367cd507),
@@ -471,7 +466,6 @@ pub static SHA512: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     block_data_order: dynstate::sha512_block_data_order,
-    format_output: dynstate::sha512_format_output,
     initial_state: DynState::new64([
         Wrapping(0x6a09e667f3bcc908),
         Wrapping(0xbb67ae8584caa73b),
@@ -497,7 +491,6 @@ pub static SHA512_256: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     block_data_order: dynstate::sha512_block_data_order,
-    format_output: dynstate::sha512_format_output,
     initial_state: DynState::new64([
         Wrapping(0x22312194fc2bf72c),
         Wrapping(0x9f555fa3c84c64c2),

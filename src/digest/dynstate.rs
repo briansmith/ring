@@ -33,6 +33,17 @@ impl DynState {
     pub const fn new64(initial_state: sha2::State64) -> Self {
         Self::As64(initial_state)
     }
+
+    pub fn format_output(self) -> Output {
+        match self {
+            Self::As64(state) => {
+                format_output::<_, _, { size_of::<u64>() }>(state, u64::to_be_bytes)
+            }
+            Self::As32(state) => {
+                format_output::<_, _, { size_of::<u32>() }>(state, u32::to_be_bytes)
+            }
+        }
+    }
 }
 
 pub(super) fn sha1_block_data_order<'d>(
@@ -84,24 +95,4 @@ pub(super) fn sha512_block_data_order<'d>(
     let (full_blocks, leftover) = slice::as_chunks(data);
     sha2::block_data_order_64(state, full_blocks, cpu_features);
     (full_blocks.len() * sha2::SHA512_BLOCK_LEN.into(), leftover)
-}
-
-pub(super) fn sha256_format_output(state: DynState) -> Output {
-    let state = match state {
-        DynState::As32(state) => state,
-        _ => {
-            unreachable!();
-        }
-    };
-    format_output::<_, _, { size_of::<u32>() }>(state, u32::to_be_bytes)
-}
-
-pub(super) fn sha512_format_output(state: DynState) -> Output {
-    let state = match state {
-        DynState::As64(state) => state,
-        _ => {
-            unreachable!();
-        }
-    };
-    format_output::<_, _, { size_of::<u64>() }>(state, u64::to_be_bytes)
 }
