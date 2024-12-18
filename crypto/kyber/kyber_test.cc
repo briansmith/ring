@@ -95,17 +95,20 @@ TEST(KyberTest, Basic) {
                  sizeof(first_two_bytes));
   CBS_init(&cbs, encoded_private_key.data(), encoded_private_key.size());
   ASSERT_TRUE(KYBER_parse_private_key(priv2.get(), &cbs));
-  EXPECT_EQ(Bytes(encoded_private_key),
-            Bytes(Marshal(KYBER_marshal_private_key, priv2.get())));
+  EXPECT_EQ(
+      Bytes(Declassified(encoded_private_key)),
+      Bytes(Declassified((Marshal(KYBER_marshal_private_key, priv2.get())))));
 
   uint8_t ciphertext[KYBER_CIPHERTEXT_BYTES];
   uint8_t shared_secret1[KYBER_SHARED_SECRET_BYTES];
   uint8_t shared_secret2[KYBER_SHARED_SECRET_BYTES];
   KYBER_encap(ciphertext, shared_secret1, pub.get());
   KYBER_decap(shared_secret2, ciphertext, priv.get());
-  EXPECT_EQ(Bytes(shared_secret1), Bytes(shared_secret2));
+  EXPECT_EQ(Bytes(Declassified(shared_secret1)),
+            Bytes(Declassified(shared_secret2)));
   KYBER_decap(shared_secret2, ciphertext, priv2.get());
-  EXPECT_EQ(Bytes(shared_secret1), Bytes(shared_secret2));
+  EXPECT_EQ(Bytes(Declassified(shared_secret1)),
+            Bytes(Declassified(shared_secret2)));
 }
 
 static void KyberFileTest(FileTest *t) {
@@ -134,6 +137,7 @@ static void KyberFileTest(FileTest *t) {
   // The test vectors provide a CTR-DRBG seed which is used to generate the
   // input entropy.
   ASSERT_EQ(seed.size(), size_t{CTR_DRBG_ENTROPY_LEN});
+  CONSTTIME_SECRET(seed.data(), seed.size());
   {
     bssl::UniquePtr<CTR_DRBG_STATE> state(
         CTR_DRBG_new(seed.data(), nullptr, 0));
@@ -146,8 +150,10 @@ static void KyberFileTest(FileTest *t) {
                                   KYBER_ENCAP_ENTROPY, nullptr, 0));
   }
 
-  EXPECT_EQ(Bytes(gen_key_entropy), Bytes(given_generate_entropy));
-  EXPECT_EQ(Bytes(encap_entropy), Bytes(given_encap_entropy_pre_hash));
+  EXPECT_EQ(Bytes(Declassified(gen_key_entropy)),
+            Bytes(given_generate_entropy));
+  EXPECT_EQ(Bytes(Declassified(encap_entropy)),
+            Bytes(given_encap_entropy_pre_hash));
 
   BORINGSSL_keccak(encap_entropy, sizeof(encap_entropy), encap_entropy,
                    sizeof(encap_entropy), boringssl_sha3_256);
@@ -165,11 +171,14 @@ static void KyberFileTest(FileTest *t) {
                                encap_entropy);
   KYBER_decap(decapsulated_key, ciphertext, &priv);
 
-  EXPECT_EQ(Bytes(encapsulated_key), Bytes(decapsulated_key));
-  EXPECT_EQ(Bytes(private_key_expected), Bytes(encoded_private_key));
+  EXPECT_EQ(Bytes(Declassified(encapsulated_key)),
+            Bytes(Declassified(decapsulated_key)));
+  EXPECT_EQ(Bytes(private_key_expected),
+            Bytes(Declassified(encoded_private_key)));
   EXPECT_EQ(Bytes(public_key_expected), Bytes(encoded_public_key));
   EXPECT_EQ(Bytes(ciphertext_expected), Bytes(ciphertext));
-  EXPECT_EQ(Bytes(shared_secret_expected), Bytes(encapsulated_key));
+  EXPECT_EQ(Bytes(shared_secret_expected),
+            Bytes(Declassified(encapsulated_key)));
 
   uint8_t corrupted_ciphertext[KYBER_CIPHERTEXT_BYTES];
   OPENSSL_memcpy(corrupted_ciphertext, ciphertext, KYBER_CIPHERTEXT_BYTES);
@@ -179,7 +188,8 @@ static void KyberFileTest(FileTest *t) {
   // It would be nice to have actual test vectors for the failure case, but the
   // NIST submission currently does not include those, so we are just testing
   // for inequality.
-  EXPECT_NE(Bytes(encapsulated_key), Bytes(corrupted_decapsulated_key));
+  EXPECT_NE(Bytes(Declassified(encapsulated_key)),
+            Bytes(Declassified(corrupted_decapsulated_key)));
 }
 
 TEST(KyberTest, TestVectors) {

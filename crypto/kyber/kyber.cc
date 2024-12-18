@@ -135,7 +135,7 @@ static const uint16_t kModRoots[128] = {
 
 // reduce_once reduces 0 <= x < 2*kPrime, mod kPrime.
 static uint16_t reduce_once(uint16_t x) {
-  assert(x < 2 * kPrime);
+  declassify_assert(x < 2 * kPrime);
   const uint16_t subtracted = x - kPrime;
   uint16_t mask = 0u - (subtracted >> 15);
   // Although this is a constant-time select, we omit a value barrier here.
@@ -153,7 +153,7 @@ static uint16_t reduce_once(uint16_t x) {
 // constant time reduce x mod kPrime using Barrett reduction. x must be less
 // than kPrime + 2×kPrime².
 static uint16_t reduce(uint32_t x) {
-  assert(x < kPrime + 2u * kPrime * kPrime);
+  declassify_assert(x < kPrime + 2u * kPrime * kPrime);
   uint64_t product = (uint64_t)x * kBarrettMultiplier;
   uint32_t quotient = (uint32_t)(product >> kBarrettShift);
   uint32_t remainder = x - quotient * kPrime;
@@ -480,7 +480,9 @@ static int scalar_decode(scalar *out, const uint8_t *in, int bits) {
       element_bits_done += chunk_bits;
     }
 
-    if (element >= kPrime) {
+    // An element is only out of range in the case of invalid input, in which
+    // case it is okay to leak the comparison.
+    if (constant_time_declassify_int(element >= kPrime)) {
       return 0;
     }
     out->c[i] = element;
@@ -528,7 +530,7 @@ static uint16_t compress(uint16_t x, int bits) {
   //   0 <= remainder <= kHalfPrime round to 0
   //   kHalfPrime < remainder <= kPrime + kHalfPrime round to 1
   //   kPrime + kHalfPrime < remainder < 2 * kPrime round to 2
-  assert(remainder < 2u * kPrime);
+  declassify_assert(remainder < 2u * kPrime);
   quotient += 1 & constant_time_lt_w(kHalfPrime, remainder);
   quotient += 1 & constant_time_lt_w(kPrime + kHalfPrime, remainder);
   return quotient & ((1 << bits) - 1);
@@ -617,6 +619,7 @@ void KYBER_generate_key(uint8_t out_encoded_public_key[KYBER_PUBLIC_KEY_BYTES],
                         struct KYBER_private_key *out_private_key) {
   uint8_t entropy[KYBER_GENERATE_KEY_ENTROPY];
   RAND_bytes(entropy, sizeof(entropy));
+  CONSTTIME_SECRET(entropy, sizeof(entropy));
   KYBER_generate_key_external_entropy(out_encoded_public_key, out_private_key,
                                       entropy);
 }
@@ -645,6 +648,8 @@ void KYBER_generate_key_external_entropy(
   hash_g(hashed, entropy, 32);
   const uint8_t *const rho = hashed;
   const uint8_t *const sigma = hashed + 32;
+  // rho is public.
+  CONSTTIME_DECLASSIFY(rho, 32);
   OPENSSL_memcpy(priv->pub.rho, hashed, sizeof(priv->pub.rho));
   matrix_expand(&priv->pub.m, rho);
   uint8_t counter = 0;
@@ -655,6 +660,8 @@ void KYBER_generate_key_external_entropy(
   vector_ntt(&error);
   matrix_mult_transpose(&priv->pub.t, &priv->pub.m, &priv->s);
   vector_add(&priv->pub.t, &error);
+  // t is part of the public key and thus is public.
+  CONSTTIME_DECLASSIFY(&priv->pub.t, sizeof(priv->pub.t));
 
   CBB cbb;
   CBB_init_fixed(&cbb, out_encoded_public_key, KYBER_PUBLIC_KEY_BYTES);
@@ -716,6 +723,7 @@ void KYBER_encap(uint8_t out_ciphertext[KYBER_CIPHERTEXT_BYTES],
                  const struct KYBER_public_key *public_key) {
   uint8_t entropy[KYBER_ENCAP_ENTROPY];
   RAND_bytes(entropy, KYBER_ENCAP_ENTROPY);
+  CONSTTIME_SECRET(entropy, KYBER_ENCAP_ENTROPY);
   KYBER_encap_external_entropy(out_ciphertext, out_shared_secret, public_key,
                                entropy);
 }
@@ -739,6 +747,8 @@ void KYBER_encap_external_entropy(
   uint8_t prekey_and_randomness[64];
   hash_g(prekey_and_randomness, input, sizeof(input));
   encrypt_cpa(out_ciphertext, pub, entropy, prekey_and_randomness + 32);
+  // The ciphertext is public.
+  CONSTTIME_DECLASSIFY(out_ciphertext, KYBER_CIPHERTEXT_BYTES);
   hash_h(prekey_and_randomness + 32, out_ciphertext, KYBER_CIPHERTEXT_BYTES);
   kdf(out_shared_secret, KYBER_SHARED_SECRET_BYTES, prekey_and_randomness,
       sizeof(prekey_and_randomness));
