@@ -154,7 +154,7 @@ impl crate::sealed::Sealed for SystemRandom {}
         target_arch = "wasm32",
         any(
             target_os = "wasi",
-            all(target_os = "unknown", feature = "wasm32_unknown_unknown_js")
+            all(target_os = "unknown", feature = "wasm32_unknown_unknown")
         )
     ),
 ))]
