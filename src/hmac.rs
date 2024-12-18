@@ -221,7 +221,7 @@ impl Key {
             .unwrap()
     }
 
-    fn try_new(
+    pub(crate) fn try_new(
         algorithm: Algorithm,
         key_value: &[u8],
         cpu_features: cpu::Features,
@@ -274,7 +274,11 @@ impl Key {
         Algorithm(self.inner.algorithm)
     }
 
-    fn try_sign(&self, data: &[u8], cpu: cpu::Features) -> Result<Tag, digest::FinishError> {
+    pub(crate) fn try_sign(
+        &self,
+        data: &[u8],
+        cpu: cpu::Features,
+    ) -> Result<Tag, digest::FinishError> {
         let mut ctx = Context::with_key(self);
         ctx.update(data);
         ctx.try_sign(cpu)
@@ -339,7 +343,7 @@ impl Context {
             .unwrap()
     }
 
-    fn try_sign(self, cpu_features: cpu::Features) -> Result<Tag, digest::FinishError> {
+    pub(crate) fn try_sign(self, cpu_features: cpu::Features) -> Result<Tag, digest::FinishError> {
         let inner = self.inner.try_finish(cpu_features)?;
         let inner = inner.as_ref();
         let num_pending = inner.len();

@@ -160,7 +160,7 @@ impl EcdsaKeyPair {
         let d = private_key::private_key_as_scalar(n, &seed);
         let d = alg.private_scalar_ops.to_mont(&d, cpu);
 
-        let nonce_key = NonceRandomKey::new(alg, &seed, rng)?;
+        let nonce_key = NonceRandomKey::new(alg, &seed, rng, cpu)?;
         Ok(Self {
             d,
             nonce_key,
@@ -178,7 +178,7 @@ impl EcdsaKeyPair {
         let cpu = cpu::features();
 
         // Step 4 (out of order).
-        let h = digest::digest(self.alg.digest_alg, message);
+        let h = digest::Digest::compute_from(self.alg.digest_alg, message, cpu)?;
 
         // Incorporate `h` into the nonce to hedge against faulty RNGs. (This
         // is not an approved random number generator that is mandated in
@@ -198,10 +198,12 @@ impl EcdsaKeyPair {
         rng: &dyn rand::SecureRandom,
         message: &[u8],
     ) -> Result<signature::Signature, error::Unspecified> {
-        // Step 4 (out of order).
-        let h = digest::digest(self.alg.digest_alg, message);
+        let cpu = cpu::features();
 
-        self.sign_digest(h, rng, cpu::features())
+        // Step 4 (out of order).
+        let h = digest::Digest::compute_from(self.alg.digest_alg, message, cpu)?;
+
+        self.sign_digest(h, rng, cpu)
     }
 
     /// Returns the signature of message digest `h` using a "random" nonce
@@ -278,9 +280,9 @@ impl EcdsaKeyPair {
             }
 
             // Step 7 with encoding.
-            return Ok(signature::Signature::new(|sig_bytes| {
-                (self.alg.format_rs)(scalar_ops, &r, &s, sig_bytes)
-            }));
+            return signature::Signature::new(|sig_bytes| {
+                Ok((self.alg.format_rs)(scalar_ops, &r, &s, sig_bytes))
+            });
         }
 
         Err(error::Unspecified)
@@ -303,6 +305,8 @@ impl core::fmt::Debug for NonceRandom<'_> {
 
 impl rand::sealed::SecureRandom for NonceRandom<'_> {
     fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        let cpu = cpu::features();
+
         // Use the same digest algorithm that will be used to digest the
         // message. The digest algorithm's output is exactly the right size;
         // this is checked below.
@@ -331,7 +335,7 @@ impl rand::sealed::SecureRandom for NonceRandom<'_> {
 
         ctx.update(self.message_digest.as_ref());
 
-        let nonce = ctx.finish();
+        let nonce = ctx.try_finish(cpu)?;
 
         // `copy_from_slice()` panics if the lengths differ, so we don't have
         // to separately assert that the lengths are the same.
@@ -350,6 +354,7 @@ impl NonceRandomKey {
         alg: &EcdsaSigningAlgorithm,
         seed: &ec::Seed,
         rng: &dyn rand::SecureRandom,
+        cpu: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
         let mut rand = [0; digest::MAX_OUTPUT_LEN];
         let rand = &mut rand[0..alg.curve.elem_scalar_seed_len];
@@ -363,7 +368,9 @@ impl NonceRandomKey {
         let mut ctx = digest::Context::new(alg.digest_alg);
         ctx.update(rand);
         ctx.update(seed.bytes_less_safe());
-        Ok(Self(ctx.finish()))
+        ctx.try_finish(cpu)
+            .map(Self)
+            .map_err(|_: digest::FinishError| error::KeyRejected::unexpected_error())
     }
 }
 

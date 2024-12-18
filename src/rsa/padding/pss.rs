@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, mgf1, Padding, RsaEncoding, Verification};
-use crate::{bits, constant_time, digest, error, rand};
+use crate::{bits, constant_time, cpu, digest, error, rand};
 
 /// RSA PSS padding as described in [RFC 3447 Section 8.1].
 ///
@@ -45,6 +45,8 @@ impl RsaEncoding for PSS {
         mod_bits: bits::BitLength,
         rng: &dyn rand::SecureRandom,
     ) -> Result<(), error::Unspecified> {
+        let cpu = cpu::features();
+
         let metrics = PSSMetrics::new(self.digest_alg, mod_bits)?;
 
         // The `m_out` this function fills is the big-endian-encoded value of `m`
@@ -77,7 +79,7 @@ impl RsaEncoding for PSS {
         };
 
         // Steps 5 and 6.
-        let h = pss_digest(self.digest_alg, m_hash, salt);
+        let h = pss_digest(self.digest_alg, m_hash, salt, cpu)?;
 
         // Step 7.
         db[..separator_pos].fill(0); // ps
@@ -86,7 +88,7 @@ impl RsaEncoding for PSS {
         db[separator_pos] = 0x01;
 
         // Steps 9 and 10.
-        mgf1(self.digest_alg, h.as_ref(), db);
+        mgf1(self.digest_alg, h.as_ref(), db, cpu)?;
 
         // Step 11.
         db[0] &= metrics.top_byte_mask;
@@ -108,6 +110,8 @@ impl Verification for PSS {
         m: &mut untrusted::Reader,
         mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified> {
+        let cpu = cpu::features();
+
         let metrics = PSSMetrics::new(self.digest_alg, mod_bits)?;
 
         // RSASSA-PSS-VERIFY Step 2(c). The `m` this function is given is the
@@ -146,7 +150,7 @@ impl Verification for PSS {
         let mut db = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let db = &mut db[..metrics.db_len];
 
-        mgf1(self.digest_alg, h_hash.as_slice_less_safe(), db);
+        mgf1(self.digest_alg, h_hash.as_slice_less_safe(), db, cpu)?;
 
         masked_db.read_all(error::Unspecified, |masked_bytes| {
             // Step 6. Check the top bits of first byte are zero.
@@ -179,7 +183,7 @@ impl Verification for PSS {
         let salt = &db[(db.len() - metrics.s_len)..];
 
         // Step 12 and 13.
-        let h_prime = pss_digest(self.digest_alg, m_hash, salt);
+        let h_prime = pss_digest(self.digest_alg, m_hash, salt, cpu)?;
 
         // Step 14.
         if h_hash.as_slice_less_safe() != h_prime.as_ref() {
@@ -243,7 +247,8 @@ fn pss_digest(
     digest_alg: &'static digest::Algorithm,
     m_hash: digest::Digest,
     salt: &[u8],
-) -> digest::Digest {
+    cpu: cpu::Features,
+) -> Result<digest::Digest, digest::FinishError> {
     // Fixed prefix.
     const PREFIX_ZEROS: [u8; 8] = [0u8; 8];
 
@@ -252,7 +257,7 @@ fn pss_digest(
     ctx.update(&PREFIX_ZEROS);
     ctx.update(m_hash.as_ref());
     ctx.update(salt);
-    ctx.finish()
+    ctx.try_finish(cpu)
 }
 
 macro_rules! rsa_pss_padding {

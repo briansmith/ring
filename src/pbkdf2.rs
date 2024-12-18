@@ -112,7 +112,7 @@
 //!     assert!(db.verify_password("alice", "@74d7]404j|W}6u").is_ok());
 //! }
 
-use crate::{constant_time, digest, error, hmac};
+use crate::{constant_time, cpu, digest, error, hmac};
 use core::num::NonZeroU32;
 
 /// A PBKDF2 algorithm.
@@ -159,6 +159,19 @@ pub fn derive(
     secret: &[u8],
     out: &mut [u8],
 ) {
+    try_derive(algorithm, iterations, salt, secret, out, cpu::features())
+        .map_err(error::Unspecified::from)
+        .unwrap()
+}
+
+fn try_derive(
+    algorithm: Algorithm,
+    iterations: NonZeroU32,
+    salt: &[u8],
+    secret: &[u8],
+    out: &mut [u8],
+    cpu: cpu::Features,
+) -> Result<(), digest::FinishError> {
     let digest_alg = algorithm.0.digest_algorithm();
     let output_len = digest_alg.output_len();
 
@@ -167,7 +180,7 @@ pub fn derive(
     // hasn't been optimized to the same extent as fastpbkdf2. In particular,
     // this implementation is probably doing a lot of unnecessary copying.
 
-    let secret = hmac::Key::new(algorithm.0, secret);
+    let secret = hmac::Key::try_new(algorithm.0, secret, cpu)?;
 
     // Clear |out|.
     out.fill(0);
@@ -176,16 +189,25 @@ pub fn derive(
 
     for chunk in out.chunks_mut(output_len) {
         idx = idx.checked_add(1).expect("derived key too long");
-        derive_block(&secret, iterations, salt, idx, chunk);
+        derive_block(&secret, iterations, salt, idx, chunk, cpu)?;
     }
+
+    Ok(())
 }
 
-fn derive_block(secret: &hmac::Key, iterations: NonZeroU32, salt: &[u8], idx: u32, out: &mut [u8]) {
+fn derive_block(
+    secret: &hmac::Key,
+    iterations: NonZeroU32,
+    salt: &[u8],
+    idx: u32,
+    out: &mut [u8],
+    cpu: cpu::Features,
+) -> Result<(), digest::FinishError> {
     let mut ctx = hmac::Context::with_key(secret);
     ctx.update(salt);
     ctx.update(&u32::to_be_bytes(idx));
 
-    let mut u = ctx.sign();
+    let mut u = ctx.try_sign(cpu)?;
 
     let mut remaining: u32 = iterations.into();
     loop {
@@ -196,8 +218,10 @@ fn derive_block(secret: &hmac::Key, iterations: NonZeroU32, salt: &[u8], idx: u3
         }
         remaining -= 1;
 
-        u = hmac::sign(secret, u.as_ref());
+        u = secret.try_sign(u.as_ref(), cpu)?;
     }
+
+    Ok(())
 }
 
 /// Verifies that a previously-derived (e.g., using `derive`) PBKDF2 value
@@ -227,6 +251,8 @@ pub fn verify(
     secret: &[u8],
     previously_derived: &[u8],
 ) -> Result<(), error::Unspecified> {
+    let cpu = cpu::features();
+
     let digest_alg = algorithm.0.digest_algorithm();
 
     if previously_derived.is_empty() {
@@ -236,7 +262,7 @@ pub fn verify(
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
 
     let output_len = digest_alg.output_len();
-    let secret = hmac::Key::new(algorithm.0, secret);
+    let secret = hmac::Key::try_new(algorithm.0, secret, cpu)?;
     let mut idx: u32 = 0;
 
     let mut matches = 1;
@@ -247,7 +273,7 @@ pub fn verify(
         let derived_chunk = &mut derived_buf[..previously_derived_chunk.len()];
         derived_chunk.fill(0);
 
-        derive_block(&secret, iterations, salt, idx, derived_chunk);
+        derive_block(&secret, iterations, salt, idx, derived_chunk, cpu)?;
 
         // XXX: This isn't fully constant-time-safe. TODO: Fix that.
         #[allow(clippy::bool_to_int_with_if)]

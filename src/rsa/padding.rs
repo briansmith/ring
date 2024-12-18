@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{bits, constant_time, digest, error, rand};
+use crate::{bits, constant_time, cpu, digest, error, rand};
 
 mod pkcs1;
 mod pss;
@@ -60,7 +60,12 @@ pub trait Verification: Padding {
 
 // Masks `out` with the output of the mask-generating function MGF1 as
 // described in https://tools.ietf.org/html/rfc3447#appendix-B.2.1.
-fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], out: &mut [u8]) {
+fn mgf1(
+    digest_alg: &'static digest::Algorithm,
+    seed: &[u8],
+    out: &mut [u8],
+    cpu: cpu::Features,
+) -> Result<(), digest::FinishError> {
     let digest_len = digest_alg.output_len();
 
     // Maximum counter value is the value of (mask_len / digest_len) rounded up.
@@ -70,12 +75,14 @@ fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], out: &mut [u8]) {
         // The counter will always fit in a `u32` because we reject absurdly
         // long inputs very early.
         ctx.update(&u32::to_be_bytes(i.try_into().unwrap()));
-        let digest = ctx.finish();
+        let digest = ctx.try_finish(cpu)?;
 
         // The last chunk may legitimately be shorter than `digest`, but
         // `digest` will never be shorter than `out`.
         constant_time::xor_assign_at_start(out, digest.as_ref());
     }
+
+    Ok(())
 }
 
 #[cfg(test)]

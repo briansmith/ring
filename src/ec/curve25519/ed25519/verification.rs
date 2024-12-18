@@ -60,7 +60,12 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         let mut a = ExtPoint::from_encoded_point_vartime(public_key)?;
         a.invert_vartime();
 
-        let h_digest = eddsa_digest(signature_r, public_key, msg.as_slice_less_safe());
+        let h_digest = eddsa_digest(
+            signature_r,
+            public_key,
+            msg.as_slice_less_safe(),
+            cpu_features,
+        )?;
         let h = Scalar::from_sha512_digest_reduced(h_digest);
 
         let mut r = Point::new_at_infinity();

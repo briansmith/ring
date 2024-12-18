@@ -15,7 +15,7 @@
 //! EdDSA Signatures.
 
 use super::ops::ELEM_LEN;
-use crate::digest;
+use crate::{cpu, digest};
 
 pub mod signing;
 pub mod verification;
@@ -23,10 +23,15 @@ pub mod verification;
 /// The length of an Ed25519 public key.
 pub const ED25519_PUBLIC_KEY_LEN: usize = ELEM_LEN;
 
-pub fn eddsa_digest(signature_r: &[u8], public_key: &[u8], msg: &[u8]) -> digest::Digest {
+fn eddsa_digest(
+    signature_r: &[u8],
+    public_key: &[u8],
+    msg: &[u8],
+    cpu: cpu::Features,
+) -> Result<digest::Digest, digest::FinishError> {
     let mut ctx = digest::Context::new(&digest::SHA512);
     ctx.update(signature_r);
     ctx.update(public_key);
     ctx.update(msg);
-    ctx.finish()
+    ctx.try_finish(cpu)
 }

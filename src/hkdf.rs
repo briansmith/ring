@@ -18,7 +18,7 @@
 //!
 //! [RFC 5869]: https://tools.ietf.org/html/rfc5869
 
-use crate::{error, hmac};
+use crate::{cpu, digest, error, hmac};
 
 /// An HKDF algorithm.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -62,13 +62,33 @@ impl Salt {
     /// Constructing a `Salt` is relatively expensive so it is good to reuse a
     /// `Salt` object instead of re-constructing `Salt`s with the same value.
     pub fn new(algorithm: Algorithm, value: &[u8]) -> Self {
-        Self(hmac::Key::new(algorithm.0, value))
+        Self::try_new(algorithm, value, cpu::features())
+            .map_err(error::Unspecified::from)
+            .unwrap()
+    }
+
+    pub(crate) fn try_new(
+        algorithm: Algorithm,
+        value: &[u8],
+        cpu: cpu::Features,
+    ) -> Result<Self, digest::FinishError> {
+        hmac::Key::try_new(algorithm.0, value, cpu).map(Self)
     }
 
     /// The [HKDF-Extract] operation.
     ///
     /// [HKDF-Extract]: https://tools.ietf.org/html/rfc5869#section-2.2
     pub fn extract(&self, secret: &[u8]) -> Prk {
+        self.try_extract(secret, cpu::features())
+            .map_err(error::Unspecified::from)
+            .unwrap()
+    }
+
+    pub(crate) fn try_extract(
+        &self,
+        secret: &[u8],
+        cpu: cpu::Features,
+    ) -> Result<Prk, digest::FinishError> {
         // The spec says that if no salt is provided then a key of
         // `digest_alg.output_len` bytes of zeros is used. But, HMAC keys are
         // already zero-padded to the block length, which is larger than the output
@@ -76,8 +96,8 @@ impl Salt {
         // `Key` constructor will automatically do the right thing for a
         // zero-length string.
         let salt = &self.0;
-        let prk = hmac::sign(salt, secret);
-        Prk(hmac::Key::new(salt.algorithm(), prk.as_ref()))
+        let prk = salt.try_sign(secret, cpu)?;
+        hmac::Key::try_new(salt.algorithm(), prk.as_ref(), cpu).map(Prk)
     }
 
     /// The algorithm used to derive this salt.
@@ -115,7 +135,18 @@ impl Prk {
     /// intentionally wants to leak the PRK secret, e.g. to implement
     /// `SSLKEYLOGFILE` functionality.
     pub fn new_less_safe(algorithm: Algorithm, value: &[u8]) -> Self {
-        Self(hmac::Key::new(algorithm.hmac_algorithm(), value))
+        let cpu = cpu::features();
+        Self::try_new_less_safe(algorithm, value, cpu)
+            .map_err(error::Unspecified::from)
+            .unwrap()
+    }
+
+    pub(crate) fn try_new_less_safe(
+        algorithm: Algorithm,
+        value: &[u8],
+        cpu: cpu::Features,
+    ) -> Result<Self, digest::FinishError> {
+        hmac::Key::try_new(algorithm.hmac_algorithm(), value, cpu).map(Self)
     }
 
     /// The [HKDF-Expand] operation.
@@ -181,7 +212,8 @@ impl<L: KeyType> Okm<'_, L> {
     /// constructed.)
     #[inline]
     pub fn fill(self, out: &mut [u8]) -> Result<(), error::Unspecified> {
-        fill_okm(self.prk, self.info, out, self.len_cached)
+        let cpu = cpu::features();
+        fill_okm(self.prk, self.info, out, self.len_cached, cpu)
     }
 }
 
@@ -190,6 +222,7 @@ fn fill_okm(
     info: &[&[u8]],
     out: &mut [u8],
     len: usize,
+    cpu: cpu::Features,
 ) -> Result<(), error::Unspecified> {
     if out.len() != len {
         return Err(error::Unspecified);
@@ -208,7 +241,7 @@ fn fill_okm(
         }
         ctx.update(&[n]);
 
-        let t = ctx.sign();
+        let t = ctx.try_sign(cpu)?;
         let t = t.as_ref();
 
         // Append `t` to the output.
