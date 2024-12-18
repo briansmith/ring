@@ -264,14 +264,15 @@ impl Context {
     /// `finish` consumes the context so it cannot be (mis-)used after `finish`
     /// has been called.
     pub fn finish(self) -> Digest {
-        self.try_finish().unwrap()
+        let cpu = cpu::features();
+        self.try_finish(cpu)
+            .map_err(error::Unspecified::from)
+            .unwrap()
     }
 
-    fn try_finish(mut self) -> Result<Digest, error::Unspecified> {
-        let cpu_features = cpu::features();
+    pub(crate) fn try_finish(mut self, cpu_features: cpu::Features) -> Result<Digest, FinishError> {
         self.block
             .try_finish(&mut self.pending, self.num_pending, cpu_features)
-            .map_err(error::Unspecified::from)
     }
 
     /// The algorithm that this context is using.
