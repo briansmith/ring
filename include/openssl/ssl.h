@@ -5698,11 +5698,20 @@ enum ssl_compliance_policy_t BORINGSSL_ENUM_INT {
 OPENSSL_EXPORT int SSL_CTX_set_compliance_policy(
     SSL_CTX *ctx, enum ssl_compliance_policy_t policy);
 
+// SSL_CTX_get_compliance_policy returns the compliance policy configured on
+// |ctx|.
+OPENSSL_EXPORT enum ssl_compliance_policy_t SSL_CTX_get_compliance_policy(
+    const SSL_CTX *ctx);
+
 // SSL_set_compliance_policy acts the same as |SSL_CTX_set_compliance_policy|,
 // but only configures a single |SSL*|.
 OPENSSL_EXPORT int SSL_set_compliance_policy(
     SSL *ssl, enum ssl_compliance_policy_t policy);
 
+// SSL_get_compliance_policy returns the compliance policy configured on
+// |ssl|.
+OPENSSL_EXPORT enum ssl_compliance_policy_t SSL_get_compliance_policy(
+    const SSL *ssl);
 
 // Nodejs compatibility section (hidden).
 //

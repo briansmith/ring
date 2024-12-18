@@ -646,7 +646,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->config->permute_extensions = ctx->permute_extensions;
   ssl->config->aes_hw_override = ctx->aes_hw_override;
   ssl->config->aes_hw_override_value = ctx->aes_hw_override_value;
-  ssl->config->tls13_cipher_policy = ctx->tls13_cipher_policy;
+  ssl->config->compliance_policy = ctx->compliance_policy;
 
   if (!ssl->config->supported_group_list.CopyFrom(ctx->supported_group_list) ||
       !ssl->config->alpn_client_proto_list.CopyFrom(
@@ -3297,7 +3297,7 @@ static const char kTLS12Ciphers[] =
     "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384";
 
 static int Configure(SSL_CTX *ctx) {
-  ctx->tls13_cipher_policy = ssl_compliance_policy_fips_202205;
+  ctx->compliance_policy = ssl_compliance_policy_fips_202205;
 
   return
       // Section 3.1:
@@ -3320,7 +3320,7 @@ static int Configure(SSL_CTX *ctx) {
 }
 
 static int Configure(SSL *ssl) {
-  ssl->config->tls13_cipher_policy = ssl_compliance_policy_fips_202205;
+  ssl->config->compliance_policy = ssl_compliance_policy_fips_202205;
 
   // See |Configure(SSL_CTX)|, above, for reasoning.
   return SSL_set_min_proto_version(ssl, TLS1_2_VERSION) &&
@@ -3354,7 +3354,7 @@ static const char kTLS12Ciphers[] =
     "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384";
 
 static int Configure(SSL_CTX *ctx) {
-  ctx->tls13_cipher_policy = ssl_compliance_policy_wpa3_192_202304;
+  ctx->compliance_policy = ssl_compliance_policy_wpa3_192_202304;
 
   return SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) &&
          SSL_CTX_set_max_proto_version(ctx, TLS1_3_VERSION) &&
@@ -3367,7 +3367,7 @@ static int Configure(SSL_CTX *ctx) {
 }
 
 static int Configure(SSL *ssl) {
-  ssl->config->tls13_cipher_policy = ssl_compliance_policy_wpa3_192_202304;
+  ssl->config->compliance_policy = ssl_compliance_policy_wpa3_192_202304;
 
   return SSL_set_min_proto_version(ssl, TLS1_2_VERSION) &&
          SSL_set_max_proto_version(ssl, TLS1_3_VERSION) &&
@@ -3384,12 +3384,12 @@ static int Configure(SSL *ssl) {
 namespace cnsa202407 {
 
 static int Configure(SSL_CTX *ctx) {
-  ctx->tls13_cipher_policy = ssl_compliance_policy_cnsa_202407;
+  ctx->compliance_policy = ssl_compliance_policy_cnsa_202407;
   return 1;
 }
 
 static int Configure(SSL *ssl) {
-  ssl->config->tls13_cipher_policy = ssl_compliance_policy_cnsa_202407;
+  ssl->config->compliance_policy = ssl_compliance_policy_cnsa_202407;
   return 1;
 }
 
@@ -3409,6 +3409,10 @@ int SSL_CTX_set_compliance_policy(SSL_CTX *ctx,
   }
 }
 
+enum ssl_compliance_policy_t SSL_CTX_get_compliance_policy(const SSL_CTX *ctx) {
+  return ctx->compliance_policy;
+}
+
 int SSL_set_compliance_policy(SSL *ssl, enum ssl_compliance_policy_t policy) {
   switch (policy) {
     case ssl_compliance_policy_fips_202205:
@@ -3420,4 +3424,8 @@ int SSL_set_compliance_policy(SSL *ssl, enum ssl_compliance_policy_t policy) {
     default:
       return 0;
   }
+}
+
+enum ssl_compliance_policy_t SSL_get_compliance_policy(const SSL *ssl) {
+  return ssl->config->compliance_policy;
 }

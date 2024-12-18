@@ -3717,9 +3717,9 @@ struct SSL_CONFIG {
   // structure for the client to use when negotiating ECH.
   Array<uint8_t> client_ech_config_list;
 
-  // tls13_cipher_policy limits the set of ciphers that can be selected when
+  // compliance_policy limits the set of ciphers that can be selected when
   // negotiating a TLS 1.3 connection.
-  enum ssl_compliance_policy_t tls13_cipher_policy = ssl_compliance_policy_none;
+  enum ssl_compliance_policy_t compliance_policy = ssl_compliance_policy_none;
 
   // verify_mode is a bitmask of |SSL_VERIFY_*| values.
   uint8_t verify_mode = SSL_VERIFY_NONE;
@@ -4371,9 +4371,9 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   int (*legacy_ocsp_callback)(SSL *ssl, void *arg) = nullptr;
   void *legacy_ocsp_callback_arg = nullptr;
 
-  // tls13_cipher_policy limits the set of ciphers that can be selected when
+  // compliance_policy limits the set of ciphers that can be selected when
   // negotiating a TLS 1.3 connection.
-  enum ssl_compliance_policy_t tls13_cipher_policy = ssl_compliance_policy_none;
+  enum ssl_compliance_policy_t compliance_policy = ssl_compliance_policy_none;
 
   // verify_sigalgs, if not empty, is the set of signature algorithms
   // accepted from the peer in decreasing order of preference.

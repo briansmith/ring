@@ -9843,5 +9843,23 @@ TEST(SSLTest, DTLSReadTimeoutExpired) {
       ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_READ_TIMEOUT_EXPIRED));
 }
 
+TEST(SSLTest, SetGetCompliancePolicy) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  EXPECT_EQ(SSL_CTX_get_compliance_policy(ctx.get()),
+            ssl_compliance_policy_none);
+
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  EXPECT_EQ(SSL_get_compliance_policy(ssl.get()), ssl_compliance_policy_none);
+
+  for (const auto policy : {ssl_compliance_policy_fips_202205,      //
+                            ssl_compliance_policy_wpa3_192_202304,  //
+                            ssl_compliance_policy_cnsa_202407}) {
+    SSL_CTX_set_compliance_policy(ctx.get(), policy);
+    EXPECT_EQ(SSL_CTX_get_compliance_policy(ctx.get()), policy);
+    SSL_set_compliance_policy(ssl.get(), policy);
+    EXPECT_EQ(SSL_get_compliance_policy(ssl.get()), policy);
+  }
+}
+
 }  // namespace
 BSSL_NAMESPACE_END

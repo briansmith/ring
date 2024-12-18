@@ -263,14 +263,14 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
                                 ? ssl->config->aes_hw_override_value
                                 : EVP_has_aes_hardware();
     const bssl::Span<const uint16_t> ciphers =
-        ssl->config->tls13_cipher_policy == ssl_compliance_policy_cnsa_202407
+        ssl->config->compliance_policy == ssl_compliance_policy_cnsa_202407
             ? bssl::Span<const uint16_t>(kCiphersCNSA)
             : (has_aes_hw ? bssl::Span<const uint16_t>(kCiphersAESHardware)
                           : bssl::Span<const uint16_t>(kCiphersNoAESHardware));
 
     for (auto cipher : ciphers) {
       if (!ssl_add_tls13_cipher(&child, cipher,
-                                ssl->config->tls13_cipher_policy)) {
+                                ssl->config->compliance_policy)) {
         return false;
       }
     }
