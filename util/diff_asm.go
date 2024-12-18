@@ -39,9 +39,13 @@ func mapName(path string) string {
 	}
 	switch pathSlash {
 	case "crypto/aes/asm/vpaes-armv7.pl",
+		"crypto/bn/asm/bn-armv8.pl",
 		"crypto/cipher_extra/asm/aes128gcmsiv-x86_64.pl",
+		"crypto/cipher_extra/asm/chacha20_poly1305_armv8.pl",
 		"crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl",
+		"crypto/ec/asm/p256_beeu-armv8-asm.pl",
 		"crypto/ec/asm/p256_beeu-x86_64-asm.pl",
+		"crypto/modes/asm/aesv8-gcm-armv8.pl",
 		"crypto/modes/asm/ghash-neon-armv8.pl",
 		"crypto/modes/asm/ghash-ssse3-x86.pl",
 		"crypto/modes/asm/ghash-ssse3-x86_64.pl",
@@ -49,6 +53,8 @@ func mapName(path string) string {
 		return ""
 	case "crypto/ec/asm/p256-x86_64-asm.pl":
 		return filepath.FromSlash("crypto/ec/asm/ecp_nistz256-x86_64.pl")
+	case "crypto/ec/asm/p256-armv8-asm.pl":
+		return filepath.FromSlash("crypto/ec/asm/ecp_nistz256-armv8.pl")
 	}
 	return path
 }
