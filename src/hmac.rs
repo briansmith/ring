@@ -312,19 +312,21 @@ impl Context {
     /// the return value of `sign` to a tag. Use `verify` for verification
     /// instead.
     pub fn sign(self) -> Tag {
-        self.try_sign().unwrap()
+        self.try_sign().map_err(error::Unspecified::from).unwrap()
     }
 
-    fn try_sign(self) -> Result<Tag, error::Unspecified> {
+    fn try_sign(self) -> Result<Tag, digest::FinishError> {
         let cpu_features = cpu::features();
-        let algorithm = self.inner.algorithm();
+        let inner = self.inner.try_finish(cpu_features)?;
+        let inner = inner.as_ref();
+        let num_pending = inner.len();
         let buffer = &mut [0u8; digest::MAX_BLOCK_LEN];
-        let num_pending = algorithm.output_len();
-        buffer[..num_pending].copy_from_slice(self.inner.finish().as_ref());
+        const _BUFFER_IS_LARGE_ENOUGH_TO_HOLD_INNER: () =
+            assert!(digest::MAX_OUTPUT_LEN < digest::MAX_BLOCK_LEN);
+        buffer[..num_pending].copy_from_slice(inner);
         self.outer
             .try_finish(buffer, num_pending, cpu_features)
             .map(Tag)
-            .map_err(error::Unspecified::from)
     }
 }
 
