@@ -109,7 +109,11 @@
 //! [code for `ring::hkdf`]:
 //!     https://github.com/briansmith/ring/blob/main/src/hkdf.rs
 
-use crate::{constant_time, cpu, digest, error, hkdf, rand};
+use crate::{
+    constant_time, cpu,
+    digest::{self, Digest},
+    error, hkdf, rand,
+};
 
 /// An HMAC algorithm.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -139,7 +143,7 @@ pub static HMAC_SHA512: Algorithm = Algorithm(&digest::SHA512);
 ///
 /// For a given tag `t`, use `t.as_ref()` to get the tag value as a byte slice.
 #[derive(Clone, Copy, Debug)]
-pub struct Tag(digest::Digest);
+pub struct Tag(Digest);
 
 impl AsRef<[u8]> for Tag {
     #[inline]
@@ -175,17 +179,21 @@ impl Key {
         algorithm: Algorithm,
         rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
-        Self::construct(algorithm, |buf| rng.fill(buf))
+        Self::construct(algorithm, |buf| rng.fill(buf), cpu::features())
     }
 
-    fn construct<F>(algorithm: Algorithm, fill: F) -> Result<Self, error::Unspecified>
+    fn construct<F>(
+        algorithm: Algorithm,
+        fill: F,
+        cpu: cpu::Features,
+    ) -> Result<Self, error::Unspecified>
     where
         F: FnOnce(&mut [u8]) -> Result<(), error::Unspecified>,
     {
         let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
         let key_bytes = &mut key_bytes[..algorithm.0.output_len()];
         fill(key_bytes)?;
-        Ok(Self::new(algorithm, key_bytes))
+        Self::try_new(algorithm, key_bytes, cpu).map_err(error::Unspecified::from)
     }
 
     /// Construct an HMAC signing key using the given digest algorithm and key
@@ -208,8 +216,16 @@ impl Key {
     /// `digest_alg.output_len * 8` bits. Support for such keys is likely to be
     /// removed in a future version of *ring*.
     pub fn new(algorithm: Algorithm, key_value: &[u8]) -> Self {
-        let cpu_features = cpu::features();
+        Self::try_new(algorithm, key_value, cpu::features())
+            .map_err(error::Unspecified::from)
+            .unwrap()
+    }
 
+    fn try_new(
+        algorithm: Algorithm,
+        key_value: &[u8],
+        cpu_features: cpu::Features,
+    ) -> Result<Self, digest::FinishError> {
         let digest_alg = algorithm.0;
         let mut key = Self {
             inner: digest::BlockContext::new(digest_alg),
@@ -222,7 +238,7 @@ impl Key {
         let key_value = if key_value.len() <= block_len {
             key_value
         } else {
-            key_hash = digest::digest(digest_alg, key_value);
+            key_hash = Digest::compute_from(digest_alg, key_value, cpu_features)?;
             key_hash.as_ref()
         };
 
@@ -249,13 +265,25 @@ impl Key {
         let leftover = key.outer.update(padded_key, cpu_features);
         debug_assert_eq!(leftover.len(), 0);
 
-        key
+        Ok(key)
     }
 
     /// The digest algorithm for the key.
     #[inline]
     pub fn algorithm(&self) -> Algorithm {
         Algorithm(self.inner.algorithm)
+    }
+
+    fn sign(&self, data: &[u8], cpu: cpu::Features) -> Result<Tag, digest::FinishError> {
+        let mut ctx = Context::with_key(self);
+        ctx.update(data);
+        ctx.try_sign(cpu)
+    }
+
+    fn verify(&self, data: &[u8], tag: &[u8], cpu: cpu::Features) -> Result<(), VerifyError> {
+        let computed = self.sign(data, cpu).map_err(VerifyError::DigestError)?;
+        constant_time::verify_slices_are_equal(computed.as_ref(), tag)
+            .map_err(|_: error::Unspecified| VerifyError::Mismatch)
     }
 }
 
@@ -267,7 +295,7 @@ impl hkdf::KeyType for Algorithm {
 
 impl From<hkdf::Okm<'_, Algorithm>> for Key {
     fn from(okm: hkdf::Okm<Algorithm>) -> Self {
-        Self::construct(*okm.len(), |buf| okm.fill(buf)).unwrap()
+        Self::construct(*okm.len(), |buf| okm.fill(buf), cpu::features()).unwrap()
     }
 }
 
@@ -312,11 +340,12 @@ impl Context {
     /// the return value of `sign` to a tag. Use `verify` for verification
     /// instead.
     pub fn sign(self) -> Tag {
-        self.try_sign().map_err(error::Unspecified::from).unwrap()
+        self.try_sign(cpu::features())
+            .map_err(error::Unspecified::from)
+            .unwrap()
     }
 
-    fn try_sign(self) -> Result<Tag, digest::FinishError> {
-        let cpu_features = cpu::features();
+    fn try_sign(self, cpu_features: cpu::Features) -> Result<Tag, digest::FinishError> {
         let inner = self.inner.try_finish(cpu_features)?;
         let inner = inner.as_ref();
         let num_pending = inner.len();
@@ -337,9 +366,9 @@ impl Context {
 /// It is generally not safe to implement HMAC verification by comparing the
 /// return value of `sign` to a tag. Use `verify` for verification instead.
 pub fn sign(key: &Key, data: &[u8]) -> Tag {
-    let mut ctx = Context::with_key(key);
-    ctx.update(data);
-    ctx.sign()
+    key.sign(data, cpu::features())
+        .map_err(error::Unspecified::from)
+        .unwrap()
 }
 
 /// Calculates the HMAC of `data` using the signing key `key`, and verifies
@@ -350,7 +379,14 @@ pub fn sign(key: &Key, data: &[u8]) -> Tag {
 ///
 /// The verification will be done in constant time to prevent timing attacks.
 pub fn verify(key: &Key, data: &[u8], tag: &[u8]) -> Result<(), error::Unspecified> {
-    constant_time::verify_slices_are_equal(sign(key, data).as_ref(), tag)
+    key.verify(data, tag, cpu::features())
+        .map_err(|_: VerifyError| error::Unspecified)
+}
+
+enum VerifyError {
+    #[allow(dead_code)]
+    DigestError(digest::FinishError),
+    Mismatch,
 }
 
 #[cfg(test)]
