@@ -298,9 +298,10 @@ impl Context {
 /// # }
 /// ```
 pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
-    let mut ctx = Context::new(algorithm);
-    ctx.update(data);
-    ctx.finish()
+    let cpu = cpu::features();
+    Digest::compute_from(algorithm, data, cpu)
+        .map_err(error::Unspecified::from)
+        .unwrap()
 }
 
 /// A calculated digest value.
@@ -313,6 +314,16 @@ pub struct Digest {
 }
 
 impl Digest {
+    pub(crate) fn compute_from(
+        algorithm: &'static Algorithm,
+        data: &[u8],
+        cpu: cpu::Features,
+    ) -> Result<Self, FinishError> {
+        let mut ctx = Context::new(algorithm);
+        ctx.update(data);
+        ctx.try_finish(cpu)
+    }
+
     /// The algorithm that was used to calculate the digest value.
     #[inline(always)]
     pub fn algorithm(&self) -> &'static Algorithm {
