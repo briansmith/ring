@@ -13,6 +13,48 @@
 use strict;
 use warnings;
 
+my %mapping;
+open(my $mapping_file, "<", "util/mapping.txt") or die;
+while (my $line = <$mapping_file>) {
+    chomp($line);
+    $line =~ s/#.*//;
+    next if $line =~ /^$/;
+
+    my ($path, $mapped) = split(/:/, $line, 2);
+    $mapped =~ s/^ +//;
+    $mapped =~ s/ +$//;
+    my @mapped = split(/ +/, $mapped);
+    $mapping{$path} = \@mapped;
+}
+close($mapping_file) or die;
+
+sub find_copyright_line($)
+{
+    my ($path) = @_;
+    my $mapped = $mapping{$path};
+    die "No mapping for $path found!" unless $mapped && @$mapped;
+    my $ret = find_mapped_copyright_line($mapped->[0]);
+    foreach my $m (@$mapped) {
+        my $other = find_mapped_copyright_line($m);
+        die "Copyright lines in $mapped->[0] and $m did not match" unless $other eq $ret;
+    }
+    return $ret;
+}
+
+sub find_mapped_copyright_line($)
+{
+    my ($path) = @_;
+    open(my $f, "<", "../openssl/$path") or die;
+    while (my $line = <$f>) {
+        chomp($line);
+        if ($line =~ /^ \* Copyright [-0-9]+ The OpenSSL Project Authors\. All Rights Reserved\.$/) {
+            close($f) or die;
+            return $line;
+        }
+    }
+    die "Could not find copyright line in ../openssl/$path";
+}
+
 # Read a multi-line comments.  If it matches a "fingerprint" of a legacy
 # copyright block, then just delete it.
 sub check_comment()
@@ -43,20 +85,10 @@ sub check_comment()
 # Look for leading copyright blocks and process (print/swallow) them.
 while ( <> ) {
     if ($. == 1) {
-        my $DATE;
-        # Look for special copyright EAY line at line one.
-        if ( /Copyright.*(199.)-.*Eric Young/ ) {
-            $DATE = $1;
-        } else {
-            # Nope, use when it first existed in git.
-            $DATE=`git log '--pretty=format:%cI' $ARGV | tail -1`;
-            $DATE =~ s/-.*//;
-        }
-        my $YEAR = $DATE ? $DATE : 1995;
-        my $SPAN = $YEAR == 2016 ? "2016" : "${YEAR}-2016";
+        my $copyright_line = find_copyright_line($ARGV);
         print <<EOF;
 /*
- * Copyright ${SPAN} The OpenSSL Project Authors. All Rights Reserved.
+$copyright_line
  *
  * Licensed under the OpenSSL license (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
