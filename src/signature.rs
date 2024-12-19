@@ -307,16 +307,15 @@ pub struct Signature {
 
 impl Signature {
     // Panics if `value` is too long.
-    pub(crate) fn new<F>(fill: F) -> Self
-    where
-        F: FnOnce(&mut [u8; MAX_LEN]) -> usize,
-    {
+    pub(crate) fn new<E>(
+        fill: impl FnOnce(&mut [u8; MAX_LEN]) -> Result<usize, E>,
+    ) -> Result<Self, E> {
         let mut r = Self {
             value: [0; MAX_LEN],
             len: 0,
         };
-        r.len = fill(&mut r.value);
-        r
+        r.len = fill(&mut r.value)?;
+        Ok(r)
     }
 }
 

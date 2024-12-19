@@ -60,7 +60,7 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
         let e = {
             // NSA Guide Step 2: "Use the selected hash function to compute H =
             // Hash(M)."
-            let h = digest::digest(self.digest_alg, msg.as_slice_less_safe());
+            let h = digest::Digest::compute_from(self.digest_alg, msg.as_slice_less_safe(), cpu)?;
 
             // NSA Guide Step 3: "Convert the bit string H to an integer e as
             // described in Appendix B.2."
