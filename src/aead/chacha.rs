@@ -17,11 +17,14 @@ use super::{quic::Sample, Nonce};
 
 #[cfg(any(
     test,
-    not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86",
-        target_arch = "x86_64"
+    not(all(
+        perlasm,
+        any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86",
+            target_arch = "x86_64"
+        )
     ))
 ))]
 mod fallback;
@@ -70,11 +73,14 @@ impl Key {
     /// Analogous to `slice::copy_within()`.
     #[inline(always)]
     pub fn encrypt_within(&self, counter: Counter, in_out: &mut [u8], src: RangeFrom<usize>) {
-        #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86",
-            target_arch = "x86_64"
+        #[cfg(all(
+            perlasm,
+            any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86",
+                target_arch = "x86_64"
+            )
         ))]
         #[inline(always)]
         pub(super) fn ChaCha20_ctr32(
@@ -113,11 +119,14 @@ impl Key {
             unsafe { ChaCha20_ctr32(output, input, in_out_len, key.words_less_safe(), &counter) }
         }
 
-        #[cfg(not(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86",
-            target_arch = "x86_64"
+        #[cfg(not(all(
+            perlasm,
+            any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86",
+                target_arch = "x86_64"
+            )
         )))]
         use fallback::ChaCha20_ctr32;
 
@@ -154,11 +163,14 @@ impl Counter {
     /// the caller.
     #[cfg(any(
         test,
-        not(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86",
-            target_arch = "x86_64"
+        not(all(
+            perlasm,
+            any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86",
+                target_arch = "x86_64"
+            )
         ))
     ))]
     fn into_words_less_safe(self) -> [u32; 4] {

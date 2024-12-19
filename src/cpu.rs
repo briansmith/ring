@@ -78,8 +78,8 @@ mod features {
     pub(crate) struct Features(NotSend);
 
     cfg_if::cfg_if! {
-        if #[cfg(any(target_arch = "aarch64", target_arch = "arm",
-                     target_arch = "x86", target_arch = "x86_64"))] {
+        if #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "arm",
+                     target_arch = "x86", target_arch = "x86_64")))] {
             impl Features {
                 // SAFETY: This must only be called after CPU features have been written
                 // and synchronized.
@@ -100,10 +100,10 @@ mod features {
 const _: () = assert!(size_of::<Features>() == 0);
 
 cfg_if::cfg_if! {
-    if #[cfg(any(target_arch = "aarch64", target_arch = "arm"))] {
+    if #[cfg(all(perlasm, any(target_arch = "aarch64", target_arch = "arm")))] {
         pub mod arm;
         use arm::featureflags::get_or_init as get_or_init_feature_flags;
-    } else if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+    } else if #[cfg(all(perlasm, any(target_arch = "x86", target_arch = "x86_64")))] {
         pub mod intel;
         use intel::featureflags::get_or_init as get_or_init_feature_flags;
     } else {
