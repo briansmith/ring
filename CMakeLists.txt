@@ -188,6 +188,8 @@ elseif(MSVC)
       "C4244" # 'function' : conversion from 'int' to 'uint8_t',
               # possible loss of data
       "C4267" # conversion from 'size_t' to 'int', possible loss of data
+      "C4702" # unreachable code; MSVC's warning is too aggressive. See
+              # https://crbug.com/385161043
       "C4706" # assignment within conditional expression
       )
   string(REPLACE "C" " -wd" MSVC_DISABLED_WARNINGS_STR
