@@ -167,10 +167,10 @@ impl AES_KEY {
             key: &AES_KEY,
             ivec: &Counter,
         ),
-        mut in_out: InOut<'_>,
+        in_out: InOut<'_>,
         ctr: &mut Counter,
     ) {
-        let (input, output, len) = in_out.input_output_len();
+        let (input, output, len) = in_out.into_input_output_len();
         debug_assert_eq!(len % BLOCK_LEN, 0);
 
         let blocks = match NonZeroUsize::new(len / BLOCK_LEN) {

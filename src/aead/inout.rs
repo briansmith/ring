@@ -42,7 +42,7 @@ impl InOut<'_> {
     pub fn len(&self) -> usize {
         self.in_out[self.src.clone()].len()
     }
-    pub fn input_output_len(&mut self) -> (*const u8, *mut u8, usize) {
+    pub fn into_input_output_len(self) -> (*const u8, *mut u8, usize) {
         let len = self.len();
         let output = self.in_out.as_mut_ptr();
         // TODO: MSRV(1.65): use `output.cast_const()`
