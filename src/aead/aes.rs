@@ -17,8 +17,10 @@ use crate::{
     constant_time,
     cpu::{self, GetFeature as _},
     error,
+    polyfill::unwrap_const,
 };
 use cfg_if::cfg_if;
+use core::num::NonZeroU32;
 
 pub(super) use ffi::Counter;
 
@@ -123,15 +125,17 @@ impl Counter {
     }
 
     pub fn increment(&mut self) -> Iv {
+        const ONE: NonZeroU32 = unwrap_const(NonZeroU32::new(1));
+
         let iv = Iv(self.0);
-        self.increment_by_less_safe(1);
+        self.increment_by_less_safe(ONE);
         iv
     }
 
-    fn increment_by_less_safe(&mut self, increment_by: u32) {
+    fn increment_by_less_safe(&mut self, increment_by: NonZeroU32) {
         let [.., c0, c1, c2, c3] = &mut self.0;
         let old_value: u32 = u32::from_be_bytes([*c0, *c1, *c2, *c3]);
-        let new_value = old_value + increment_by;
+        let new_value = old_value + increment_by.get();
         [*c0, *c1, *c2, *c3] = u32::to_be_bytes(new_value);
     }
 }
