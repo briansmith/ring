@@ -14,7 +14,7 @@
 
 use super::{Block, InOut, KeyBytes, BLOCK_LEN};
 use crate::{bits::BitLength, c, error};
-use core::num::NonZeroUsize;
+use core::num::{NonZeroU32, NonZeroUsize};
 
 /// nonce || big-endian counter.
 #[repr(transparent)]
@@ -182,15 +182,14 @@ impl AES_KEY {
 
         let input: *const [u8; BLOCK_LEN] = input.cast();
         let output: *mut [u8; BLOCK_LEN] = output.cast();
-        let blocks_u32: u32 = blocks.get().try_into().unwrap();
+        let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
 
         // SAFETY:
         //  * `input` points to `blocks` blocks.
         //  * `output` points to space for `blocks` blocks to be written.
         //  * input == output.add(n), where n == src.start, and the caller is
         //    responsible for ensuing this sufficient for `f` to work correctly.
-        //  * The caller is responsible for ensuring `f` can handle any value of
-        //    `blocks` including zero.
+        //  * `blocks` is non-zero so `f` doesn't have to work for empty slices.
         //  * The caller is responsible for ensuring `key` was initialized by the
         //    `set_encrypt_key!` invocation required by `f`.
         unsafe {
