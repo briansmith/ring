@@ -181,7 +181,8 @@ pub(super) mod featureflags {
             });
             let detected = detected & !filtered;
             let merged = ARMCAP_STATIC | detected;
-            // SAFETY: https://github.com/rust-lang/rust/issues/125833
+            // TODO(MSRV 1.82.0): Remove `unsafe`.
+            #[allow(unused_unsafe)]
             let p = unsafe { ptr::addr_of_mut!(OPENSSL_armcap_P) };
             // SAFETY: This is the only writer. Any concurrent reading doesn't
             // affect the safety of this write.
@@ -199,7 +200,8 @@ pub(super) mod featureflags {
     }
 
     pub(super) fn get(_cpu_features: cpu::Features) -> u32 {
-        // SAFETY: https://github.com/rust-lang/rust/issues/125833
+        // TODO(MSRV 1.82.0): Remove `unsafe`.
+        #[allow(unused_unsafe)]
         let p = unsafe { ptr::addr_of!(OPENSSL_armcap_P) };
 
         // SAFETY: Since only `get_or_init()` could have created
