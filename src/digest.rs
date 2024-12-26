@@ -324,6 +324,16 @@ impl Digest {
         ctx.try_finish(cpu)
     }
 
+    #[cold]
+    #[inline(never)]
+    pub(crate) fn compute_from_cold(
+        algorithm: &'static Algorithm,
+        data: &[u8],
+        cpu: cpu::Features,
+    ) -> Result<Self, FinishError> {
+        Self::compute_from(algorithm, data, cpu)
+    }
+
     /// The algorithm that was used to calculate the digest value.
     #[inline(always)]
     pub fn algorithm(&self) -> &'static Algorithm {
