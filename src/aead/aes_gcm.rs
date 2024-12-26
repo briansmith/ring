@@ -271,12 +271,11 @@ pub(super) fn open(
     Key(key): &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,
-    in_out: &mut [u8],
+    in_out_slice: &mut [u8],
     src: RangeFrom<usize>,
 ) -> Result<Tag, error::Unspecified> {
-    // Check that `src` is in bounds.
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-    let input = in_out.get(src.clone()).ok_or(error::Unspecified)?;
+    let in_out = InOut::overlapping(in_out_slice, src.clone())?;
 
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
@@ -299,20 +298,21 @@ pub(super) fn open(
                     Xi: &mut gcm::Xi) -> c::size_t;
             }
 
-            let mut auth = gcm::Context::new(gcm_key, aad, input.len())?;
+            let (input, output, len) = in_out.into_input_output_len();
+            let mut auth = gcm::Context::new(gcm_key, aad, len)?;
             let (htable, xi) = auth.inner();
             let processed = unsafe {
                 aesni_gcm_decrypt(
-                    in_out[src.clone()].as_ptr(),
-                    in_out.as_mut_ptr(),
-                    in_out.len() - src.start,
+                    input,
+                    output,
+                    len,
                     aes_key.inner_less_safe(),
                     &mut ctr,
                     htable,
                     xi,
                 )
             };
-            let in_out = match in_out.get_mut(processed..) {
+            let in_out = match in_out_slice.get_mut(processed..) {
                 Some(remaining) => remaining,
                 None => {
                     // This can't happen. If it did, then the assembly already
@@ -345,7 +345,8 @@ pub(super) fn open(
         DynKey::AesHwClMul(Combo { aes_key, gcm_key }) => {
             use crate::bits::BitLength;
 
-            let input_len = input.len();
+            let (input, output, input_len) = in_out.into_input_output_len();
+
             let mut auth = gcm::Context::new(gcm_key, aad, input_len)?;
 
             let remainder_len = input_len % BLOCK_LEN;
@@ -370,9 +371,9 @@ pub(super) fn open(
 
                 unsafe {
                     aes_gcm_dec_kernel(
-                        in_out[src.clone()].as_ptr(),
+                        input,
                         whole_block_bits,
-                        in_out.as_mut_ptr(),
+                        output,
                         xi,
                         &mut ctr,
                         aes_key.inner_less_safe(),
@@ -380,12 +381,12 @@ pub(super) fn open(
                     )
                 }
             }
-            let remainder = &mut in_out[whole_len..];
+            let remainder = &mut in_out_slice[whole_len..];
             open_finish(aes_key, auth, remainder, src, ctr, tag_iv)
         }
 
         #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-        DynKey::AesHwClMul(c) => open_strided(c, aad, in_out, src, ctr, tag_iv),
+        DynKey::AesHwClMul(c) => open_strided(c, aad, in_out_slice, src, ctr, tag_iv),
 
         #[cfg(any(
             target_arch = "aarch64",
@@ -393,9 +394,9 @@ pub(super) fn open(
             target_arch = "x86_64",
             target_arch = "x86"
         ))]
-        DynKey::Simd(c) => open_strided(c, aad, in_out, src, ctr, tag_iv),
+        DynKey::Simd(c) => open_strided(c, aad, in_out_slice, src, ctr, tag_iv),
 
-        DynKey::Fallback(c) => open_strided(c, aad, in_out, src, ctr, tag_iv),
+        DynKey::Fallback(c) => open_strided(c, aad, in_out_slice, src, ctr, tag_iv),
     }
 }
 
