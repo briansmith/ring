@@ -1,7 +1,8 @@
 use crate::{
     arithmetic::{bigint, montgomery::RR},
     bits::{self, FromByteLen as _},
-    cpu, error,
+    cpu,
+    error::{self, InputTooLongError},
     rsa::N,
 };
 use core::ops::RangeInclusive;
@@ -45,8 +46,9 @@ impl PublicModulus {
         // the public modulus to be exactly 2048 or 3072 bits, but we are more
         // flexible to be compatible with other commonly-used crypto libraries.
         assert!(min_bits >= MIN_BITS);
-        let bits_rounded_up =
-            bits::BitLength::from_byte_len(bits.as_usize_bytes_rounded_up()).unwrap(); // TODO: safe?
+        let bits_rounded_up = bits::BitLength::from_byte_len(bits.as_usize_bytes_rounded_up())
+            .map_err(error::erase::<InputTooLongError>)
+            .unwrap(); // TODO: safe?
         if bits_rounded_up < min_bits {
             return Err(error::KeyRejected::too_small());
         }

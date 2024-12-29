@@ -24,7 +24,8 @@ use self::{
 };
 use crate::{
     bits::{BitLength, FromByteLen as _},
-    cpu, debug, error,
+    cpu, debug,
+    error::{self, InputTooLongError},
     polyfill::{self, slice, sliceutil},
 };
 use core::num::Wrapping;
@@ -80,12 +81,15 @@ impl BlockContext {
         num_pending: usize,
         cpu_features: cpu::Features,
     ) -> Result<Digest, FinishError> {
-        let completed_bytes = self
+        let completed_bits = self
             .completed_bytes
             .checked_add(polyfill::u64_from_usize(num_pending))
-            .ok_or_else(|| FinishError::too_much_input(self.completed_bytes))?;
-        let completed_bits = BitLength::from_byte_len(completed_bytes)
-            .map_err(|_: error::Unspecified| FinishError::too_much_input(self.completed_bytes))?;
+            .ok_or_else(|| {
+                // Choosing self.completed_bytes here is lossy & somewhat arbitrary.
+                InputTooLongError::new(self.completed_bytes)
+            })
+            .and_then(BitLength::from_byte_len)
+            .map_err(FinishError::input_too_long)?;
 
         let block_len = self.algorithm.block_len();
         let block = &mut block[..block_len];
@@ -143,7 +147,7 @@ impl BlockContext {
 
 pub(crate) enum FinishError {
     #[allow(dead_code)]
-    TooMuchInput(u64),
+    InputTooLong(InputTooLongError<u64>),
     #[allow(dead_code)]
     PendingNotAPartialBlock(usize),
 }
@@ -151,8 +155,8 @@ pub(crate) enum FinishError {
 impl FinishError {
     #[cold]
     #[inline(never)]
-    fn too_much_input(completed_bytes: u64) -> Self {
-        Self::TooMuchInput(completed_bytes)
+    fn input_too_long(source: InputTooLongError<u64>) -> Self {
+        Self::InputTooLong(source)
     }
 
     // unreachable

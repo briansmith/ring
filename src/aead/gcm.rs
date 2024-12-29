@@ -16,7 +16,7 @@ use self::ffi::{Block, BLOCK_LEN, ZERO_BLOCK};
 use super::{aes_gcm, Aad};
 use crate::{
     bits::{BitLength, FromByteLen as _},
-    error,
+    error::{self, InputTooLongError},
     polyfill::{sliceutil::overwrite_at_start, NotSend},
 };
 use cfg_if::cfg_if;
@@ -57,8 +57,10 @@ impl<'key, K: Gmult> Context<'key, K> {
         if in_out_len > aes_gcm::MAX_IN_OUT_LEN {
             return Err(error::Unspecified);
         }
-        let in_out_len = BitLength::from_byte_len(in_out_len)?;
-        let aad_len = BitLength::from_byte_len(aad.as_ref().len())?;
+        let in_out_len =
+            BitLength::from_byte_len(in_out_len).map_err(error::erase::<InputTooLongError>)?;
+        let aad_len = BitLength::from_byte_len(aad.as_ref().len())
+            .map_err(error::erase::<InputTooLongError>)?;
 
         // NIST SP800-38D Section 5.2.1.1 says that the maximum AAD length is
         // 2**64 - 1 bits, i.e. BitLength<u64>::MAX, so we don't need to do an
