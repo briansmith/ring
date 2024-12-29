@@ -19,7 +19,9 @@ use super::{
 };
 use crate::{
     bits::{self, FromByteLen as _},
-    cpu, digest, error, sealed, signature,
+    cpu, digest,
+    error::{self, InputTooLongError},
+    sealed, signature,
 };
 
 impl signature::VerificationAlgorithm for RsaParameters {
@@ -201,7 +203,8 @@ pub(crate) fn verify_rsa_(
     cpu_features: cpu::Features,
 ) -> Result<(), error::Unspecified> {
     let max_bits: bits::BitLength =
-        bits::BitLength::from_byte_len(PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;
+        bits::BitLength::from_byte_len(PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)
+            .map_err(error::erase::<InputTooLongError>)?;
 
     // XXX: FIPS 186-4 seems to indicate that the minimum
     // exponent value is 2**16 + 1, but it isn't clear if this is just for

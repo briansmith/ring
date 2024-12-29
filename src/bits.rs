@@ -14,7 +14,7 @@
 
 //! Bit lengths.
 
-use crate::{error, polyfill};
+use crate::{error::InputTooLongError, polyfill};
 
 /// The length of something, in bits.
 ///
@@ -27,36 +27,35 @@ pub(crate) trait FromByteLen<T>: Sized {
     /// Constructs a `BitLength` from the given length in bytes.
     ///
     /// Fails if `bytes * 8` is too large for a `T`.
-    fn from_byte_len(bytes: T) -> Result<Self, error::Unspecified>;
+    fn from_byte_len(bytes: T) -> Result<Self, InputTooLongError<T>>;
 }
 
 impl FromByteLen<usize> for BitLength<usize> {
     #[inline]
-    fn from_byte_len(bytes: usize) -> Result<Self, error::Unspecified> {
+    fn from_byte_len(bytes: usize) -> Result<Self, InputTooLongError> {
         match bytes.checked_mul(8) {
             Some(bits) => Ok(Self(bits)),
-            None => Err(error::Unspecified),
+            None => Err(InputTooLongError::new(bytes)),
         }
     }
 }
 
 impl FromByteLen<u64> for BitLength<u64> {
     #[inline]
-    fn from_byte_len(bytes: u64) -> Result<Self, error::Unspecified> {
+    fn from_byte_len(bytes: u64) -> Result<Self, InputTooLongError<u64>> {
         match bytes.checked_mul(8) {
             Some(bits) => Ok(Self(bits)),
-            None => Err(error::Unspecified),
+            None => Err(InputTooLongError::new(bytes)),
         }
     }
 }
 
 impl FromByteLen<usize> for BitLength<u64> {
     #[inline]
-    fn from_byte_len(bytes: usize) -> Result<Self, error::Unspecified> {
-        let bytes = polyfill::u64_from_usize(bytes);
-        match bytes.checked_mul(8) {
+    fn from_byte_len(bytes: usize) -> Result<Self, InputTooLongError<usize>> {
+        match polyfill::u64_from_usize(bytes).checked_mul(8) {
             Some(bits) => Ok(Self(bits)),
-            None => Err(error::Unspecified),
+            None => Err(InputTooLongError::new(bytes)),
         }
     }
 }
@@ -102,8 +101,8 @@ impl BitLength<usize> {
 
     #[cfg(feature = "alloc")]
     #[inline]
-    pub(crate) fn try_sub_1(self) -> Result<Self, error::Unspecified> {
-        let sum = self.0.checked_sub(1).ok_or(error::Unspecified)?;
+    pub(crate) fn try_sub_1(self) -> Result<Self, crate::error::Unspecified> {
+        let sum = self.0.checked_sub(1).ok_or(crate::error::Unspecified)?;
         Ok(Self(sum))
     }
 }

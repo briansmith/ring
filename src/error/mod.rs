@@ -16,6 +16,15 @@
 
 pub use self::{key_rejected::KeyRejected, unspecified::Unspecified};
 
+pub(crate) use self::input_too_long::InputTooLongError;
+
+mod input_too_long;
 mod into_unspecified;
 mod key_rejected;
 mod unspecified;
+
+#[cold]
+#[inline(never)]
+pub(crate) fn erase<T>(_: T) -> Unspecified {
+    Unspecified
+}
