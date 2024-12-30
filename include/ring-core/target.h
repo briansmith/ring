@@ -42,9 +42,9 @@
 #elif !(defined(__ORDER_LITTLE_ENDIAN__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)) && \
       !(defined(__ORDER_BIG_ENDIAN__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))
 #error "Unsupported endianness"
-#elif defined(__LP64__)
+#elif defined(__LP64__) || defined(__loongarch64) || defined(__loongarch_lp64)
 #define OPENSSL_64_BIT
-#elif defined(__ILP32__)
+#elif defined(__ILP32__) || defined(__loongarch__)
 #define OPENSSL_32_BIT
 // Versions of GCC before 10.0 didn't define `__ILP32__` for all 32-bit targets.
 #elif defined(__MIPSEL__) || defined(__MIPSEB__) || defined(__PPC__) || defined(__powerpc__) || defined(__csky__) || defined(__XTENSA__)
