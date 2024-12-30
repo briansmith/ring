@@ -7,9 +7,6 @@
  * https://www.openssl.org/source/license.html
  */
 
-// This module was send to me my Pat Richards <patr@x509.com> who wrote it.
-// It is under my Copyright with his permission.
-
 #include <openssl/asn1t.h>
 #include <openssl/x509.h>
 
