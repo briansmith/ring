@@ -32,7 +32,7 @@ pub(super) mod fallback;
 pub(super) mod hw;
 pub(super) mod vp;
 
-pub type Overlapping<'o> = overlapping::Overlapping<'o>;
+pub type Overlapping<'o> = overlapping::Overlapping<'o, u8>;
 
 cfg_if! {
     if #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))] {
