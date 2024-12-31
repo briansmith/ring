@@ -15,17 +15,17 @@
 use crate::error;
 use core::ops::RangeFrom;
 
-pub struct Overlapping<'o> {
-    in_out: &'o mut [u8],
+pub struct Overlapping<'o, T> {
+    in_out: &'o mut [T],
     src: RangeFrom<usize>,
 }
 
-impl<'o> Overlapping<'o> {
-    pub fn in_place(in_out: &'o mut [u8]) -> Self {
+impl<'o, T> Overlapping<'o, T> {
+    pub fn in_place(in_out: &'o mut [T]) -> Self {
         Self { in_out, src: 0.. }
     }
 
-    pub fn new(in_out: &'o mut [u8], src: RangeFrom<usize>) -> Result<Self, SrcIndexError> {
+    pub fn new(in_out: &'o mut [T], src: RangeFrom<usize>) -> Result<Self, SrcIndexError> {
         match in_out.get(src.clone()) {
             Some(_) => Ok(Self { in_out, src }),
             None => Err(SrcIndexError::new(src)),
@@ -33,20 +33,20 @@ impl<'o> Overlapping<'o> {
     }
 
     #[cfg(any(target_arch = "arm", target_arch = "x86"))]
-    pub fn into_slice_src_mut(self) -> (&'o mut [u8], RangeFrom<usize>) {
+    pub fn into_slice_src_mut(self) -> (&'o mut [T], RangeFrom<usize>) {
         (self.in_out, self.src)
     }
 }
 
-impl Overlapping<'_> {
+impl<T> Overlapping<'_, T> {
     pub fn len(&self) -> usize {
         self.in_out[self.src.clone()].len()
     }
-    pub fn into_input_output_len(self) -> (*const u8, *mut u8, usize) {
+    pub fn into_input_output_len(self) -> (*const T, *mut T, usize) {
         let len = self.len();
         let output = self.in_out.as_mut_ptr();
         // TODO: MSRV(1.65): use `output.cast_const()`
-        let output_const: *const u8 = output;
+        let output_const: *const T = output;
         // SAFETY: The constructor ensures that `src` is a valid range.
         // Equivalent to `self.in_out[src.clone()].as_ptr()` but without
         // worries about compatibility with the stacked borrows model.
