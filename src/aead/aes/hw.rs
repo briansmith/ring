@@ -14,7 +14,7 @@
 
 #![cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, InOut, Iv, KeyBytes, AES_KEY};
+use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
 use crate::{cpu, error};
 
 #[cfg(target_arch = "aarch64")]
@@ -55,7 +55,7 @@ impl EncryptBlock for Key {
 }
 
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: InOut<'_>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
         #[cfg(target_arch = "x86_64")]
         let _: cpu::Features = cpu::features();
         unsafe { ctr32_encrypt_blocks!(aes_hw_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }

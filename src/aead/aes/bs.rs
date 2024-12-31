@@ -14,7 +14,7 @@
 
 #![cfg(target_arch = "arm")]
 
-use super::{Counter, InOut, AES_KEY};
+use super::{Counter, Overlapping, AES_KEY};
 
 /// SAFETY:
 ///   * The caller must ensure that if blocks > 0 then either `input` and
@@ -27,7 +27,7 @@ use super::{Counter, InOut, AES_KEY};
 ///   * Upon returning, `blocks` blocks will have been read from `input` and
 ///     written to `output`.
 pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
-    in_out: InOut<'_>,
+    in_out: Overlapping<'_>,
     vpaes_key: &AES_KEY,
     ctr: &mut Counter,
 ) {

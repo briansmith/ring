@@ -34,7 +34,6 @@ pub use self::{
     sealing_key::SealingKey,
     unbound_key::UnboundKey,
 };
-use inout::InOut;
 
 /// A sequences of unique nonces.
 ///
@@ -176,10 +175,10 @@ mod chacha;
 mod chacha20_poly1305;
 pub mod chacha20_poly1305_openssh;
 mod gcm;
-mod inout;
 mod less_safe_key;
 mod nonce;
 mod opening_key;
+mod overlapping;
 mod poly1305;
 pub mod quic;
 mod sealing_key;

@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, InOut, KeyBytes, BLOCK_LEN};
+use super::{Block, KeyBytes, Overlapping, BLOCK_LEN};
 use crate::{bits::BitLength, c, error};
 use core::num::{NonZeroU32, NonZeroUsize};
 
@@ -167,7 +167,7 @@ impl AES_KEY {
             key: &AES_KEY,
             ivec: &Counter,
         ),
-        in_out: InOut<'_>,
+        in_out: Overlapping<'_>,
         ctr: &mut Counter,
     ) {
         let (input, output, len) = in_out.into_input_output_len();
