@@ -19,7 +19,7 @@
     target_arch = "x86_64"
 ))]
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, InOut, Iv, KeyBytes, AES_KEY};
+use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
 use crate::{cpu, error};
 
 #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
@@ -56,14 +56,14 @@ impl EncryptBlock for Key {
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: InOut<'_>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
         unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
     }
 }
 
 #[cfg(target_arch = "arm")]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: InOut<'_>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
         use super::{bs, BLOCK_LEN};
 
         let in_out = {
@@ -85,7 +85,7 @@ impl EncryptCtr32 for Key {
             };
             let bsaes_in_out_len = bsaes_blocks * BLOCK_LEN;
             let bs_in_out =
-                InOut::overlapping(&mut in_out[..(src.start + bsaes_in_out_len)], src.clone())
+                Overlapping::new(&mut in_out[..(src.start + bsaes_in_out_len)], src.clone())
                     .unwrap();
 
             // SAFETY:
@@ -95,7 +95,7 @@ impl EncryptCtr32 for Key {
                 bs::ctr32_encrypt_blocks_with_vpaes_key(bs_in_out, &self.inner, ctr);
             }
 
-            InOut::overlapping(&mut in_out[bsaes_in_out_len..], src).unwrap()
+            Overlapping::new(&mut in_out[bsaes_in_out_len..], src).unwrap()
         };
 
         // SAFETY:
@@ -120,7 +120,7 @@ impl EncryptBlock for Key {
 
 #[cfg(target_arch = "x86")]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: InOut<'_>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
         super::super::shift::shift_full_blocks(in_out, |input| {
             self.encrypt_iv_xor_block(ctr.increment(), *input)
         });

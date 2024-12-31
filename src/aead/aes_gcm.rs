@@ -13,8 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    aes::{self, Counter, BLOCK_LEN, ZERO_BLOCK},
-    gcm, shift, Aad, InOut, Nonce, Tag,
+    aes::{self, Counter, Overlapping, BLOCK_LEN, ZERO_BLOCK},
+    gcm, shift, Aad, Nonce, Tag,
 };
 use crate::{
     cpu, error,
@@ -160,7 +160,8 @@ pub(super) fn seal(
                 }
             };
             let (whole, remainder) = slice::as_chunks_mut(ramaining);
-            aes_key.ctr32_encrypt_within(InOut::in_place(slice::flatten_mut(whole)), &mut ctr);
+            aes_key
+                .ctr32_encrypt_within(Overlapping::in_place(slice::flatten_mut(whole)), &mut ctr);
             auth.update_blocks(whole);
             seal_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
@@ -240,7 +241,7 @@ fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
     let (whole, remainder) = slice::as_chunks_mut(in_out);
 
     for chunk in whole.chunks_mut(CHUNK_BLOCKS) {
-        aes_key.ctr32_encrypt_within(InOut::in_place(slice::flatten_mut(chunk)), &mut ctr);
+        aes_key.ctr32_encrypt_within(Overlapping::in_place(slice::flatten_mut(chunk)), &mut ctr);
         auth.update_blocks(chunk);
     }
 
@@ -275,7 +276,7 @@ pub(super) fn open(
     src: RangeFrom<usize>,
 ) -> Result<Tag, error::Unspecified> {
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-    let in_out = InOut::overlapping(in_out_slice, src.clone())?;
+    let in_out = Overlapping::new(in_out_slice, src.clone())?;
 
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
@@ -331,7 +332,7 @@ pub(super) fn open(
             let whole_len = slice::flatten(whole).len();
 
             // Decrypt any remaining whole blocks.
-            let whole = InOut::overlapping(&mut in_out[..(src.start + whole_len)], src.clone())?;
+            let whole = Overlapping::new(&mut in_out[..(src.start + whole_len)], src.clone())?;
             aes_key.ctr32_encrypt_within(whole, &mut ctr);
 
             let in_out = match in_out.get_mut(whole_len..) {
@@ -448,7 +449,7 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
             }
             auth.update_blocks(ciphertext);
 
-            let chunk = InOut::overlapping(
+            let chunk = Overlapping::new(
                 &mut in_out[output..][..(chunk_len + in_prefix_len)],
                 in_prefix_len..,
             )?;

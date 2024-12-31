@@ -15,17 +15,17 @@
 use crate::error;
 use core::ops::RangeFrom;
 
-pub struct InOut<'i> {
-    in_out: &'i mut [u8],
+pub struct Overlapping<'o> {
+    in_out: &'o mut [u8],
     src: RangeFrom<usize>,
 }
 
-impl<'i> InOut<'i> {
-    pub fn in_place(in_out: &'i mut [u8]) -> Self {
+impl<'o> Overlapping<'o> {
+    pub fn in_place(in_out: &'o mut [u8]) -> Self {
         Self { in_out, src: 0.. }
     }
 
-    pub fn overlapping(in_out: &'i mut [u8], src: RangeFrom<usize>) -> Result<Self, SrcIndexError> {
+    pub fn new(in_out: &'o mut [u8], src: RangeFrom<usize>) -> Result<Self, SrcIndexError> {
         match in_out.get(src.clone()) {
             Some(_) => Ok(Self { in_out, src }),
             None => Err(SrcIndexError::new(src)),
@@ -33,12 +33,12 @@ impl<'i> InOut<'i> {
     }
 
     #[cfg(any(target_arch = "arm", target_arch = "x86"))]
-    pub fn into_slice_src_mut(self) -> (&'i mut [u8], RangeFrom<usize>) {
+    pub fn into_slice_src_mut(self) -> (&'o mut [u8], RangeFrom<usize>) {
         (self.in_out, self.src)
     }
 }
 
-impl InOut<'_> {
+impl Overlapping<'_> {
     pub fn len(&self) -> usize {
         self.in_out[self.src.clone()].len()
     }

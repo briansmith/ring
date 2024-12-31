@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{nonce::Nonce, quic::Sample, InOut, NONCE_LEN};
+use super::{nonce::Nonce, overlapping, quic::Sample, NONCE_LEN};
 use crate::{
     constant_time,
     cpu::{self, GetFeature as _},
@@ -31,6 +31,8 @@ mod bs;
 pub(super) mod fallback;
 pub(super) mod hw;
 pub(super) mod vp;
+
+pub type Overlapping<'o> = overlapping::Overlapping<'o>;
 
 cfg_if! {
     if #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))] {
@@ -161,7 +163,7 @@ pub(super) trait EncryptBlock {
 }
 
 pub(super) trait EncryptCtr32 {
-    fn ctr32_encrypt_within(&self, in_out: InOut<'_>, ctr: &mut Counter);
+    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter);
 }
 
 #[allow(dead_code)]
@@ -181,7 +183,7 @@ fn encrypt_iv_xor_block_using_encrypt_block(
 #[allow(dead_code)]
 fn encrypt_iv_xor_block_using_ctr32(key: &impl EncryptCtr32, iv: Iv, mut block: Block) -> Block {
     let mut ctr = Counter(iv.0); // This is OK because we're only encrypting one block.
-    key.ctr32_encrypt_within(InOut::in_place(&mut block), &mut ctr);
+    key.ctr32_encrypt_within(Overlapping::in_place(&mut block), &mut ctr);
     block
 }
 
