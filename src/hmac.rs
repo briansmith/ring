@@ -238,7 +238,7 @@ impl Key {
         let key_value = if key_value.len() <= block_len {
             key_value
         } else {
-            key_hash = Digest::compute_from(digest_alg, key_value, cpu_features)?;
+            key_hash = Digest::compute_from_cold(digest_alg, key_value, cpu_features)?;
             key_hash.as_ref()
         };
 
