@@ -12,6 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-pub use self::base::{Overlapping, SrcIndexError};
+pub use self::{
+    base::{Overlapping, SrcIndexError},
+    partial_block::PartialBlock,
+};
 
 mod base;
+mod partial_block;

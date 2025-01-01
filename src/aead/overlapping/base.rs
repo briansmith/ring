@@ -50,6 +50,14 @@ impl<'o, T> Overlapping<'o, T> {
     pub fn into_slice_src_mut(self) -> (&'o mut [T], RangeFrom<usize>) {
         (self.in_out, self.src)
     }
+
+    pub(super) fn into_unwritten_output(self) -> &'o mut [T] {
+        let len = self.len();
+        self.in_out.get_mut(..len).unwrap_or_else(|| {
+            // The invariant ensures this succeeds.
+            unreachable!()
+        })
+    }
 }
 
 impl<T> Overlapping<'_, T> {
