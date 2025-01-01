@@ -422,12 +422,14 @@ pub(super) fn open(
 fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks + gcm::Gmult>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
-    in_out: &mut [u8],
+    in_out_slice: &mut [u8],
     src: RangeFrom<usize>,
     mut ctr: Counter,
     tag_iv: aes::Iv,
 ) -> Result<Tag, error::Unspecified> {
-    let input = in_out.get(src.clone()).ok_or(error::Unspecified)?;
+    let in_out =
+        Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<SrcIndexError>)?;
+    let input = in_out.input();
     let input_len = input.len();
 
     let mut auth = gcm::Context::new(gcm_key, aad, input_len)?;
@@ -445,7 +447,7 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
                 chunk_len = whole_len - output;
             }
 
-            let ciphertext = &in_out[input..][..chunk_len];
+            let ciphertext = &in_out_slice[input..][..chunk_len];
             let (ciphertext, leftover) = slice::as_chunks(ciphertext);
             debug_assert_eq!(leftover.len(), 0);
             if ciphertext.is_empty() {
@@ -454,7 +456,7 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
             auth.update_blocks(ciphertext);
 
             let chunk = Overlapping::new(
-                &mut in_out[output..][..(chunk_len + in_prefix_len)],
+                &mut in_out_slice[output..][..(chunk_len + in_prefix_len)],
                 in_prefix_len..,
             )
             .map_err(error::erase::<SrcIndexError>)?;
@@ -464,7 +466,14 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
         }
     }
 
-    open_finish(aes_key, auth, &mut in_out[whole_len..], src, ctr, tag_iv)
+    open_finish(
+        aes_key,
+        auth,
+        &mut in_out_slice[whole_len..],
+        src,
+        ctr,
+        tag_iv,
+    )
 }
 
 fn open_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
