@@ -15,6 +15,7 @@
 use core::ops::RangeFrom;
 
 pub struct Overlapping<'o, T> {
+    // Invariant: self.src.start <= in_out.len().
     in_out: &'o mut [T],
     src: RangeFrom<usize>,
 }
@@ -32,6 +33,20 @@ impl<'o, T> Overlapping<'o, T> {
     }
 
     #[cfg(any(target_arch = "arm", target_arch = "x86"))]
+    pub fn copy_within(self) -> &'o mut [T]
+    where
+        T: Copy,
+    {
+        if self.src.start == 0 {
+            self.in_out
+        } else {
+            let len = self.len();
+            self.in_out.copy_within(self.src, 0);
+            &mut self.in_out[..len]
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "x86"))]
     pub fn into_slice_src_mut(self) -> (&'o mut [T], RangeFrom<usize>) {
         (self.in_out, self.src)
     }
@@ -39,8 +54,16 @@ impl<'o, T> Overlapping<'o, T> {
 
 impl<T> Overlapping<'_, T> {
     pub fn len(&self) -> usize {
-        self.in_out[self.src.clone()].len()
+        self.input().len()
     }
+
+    pub fn input(&self) -> &[T] {
+        self.in_out.get(self.src.clone()).unwrap_or_else(|| {
+            // Ensured by invariant.
+            unreachable!()
+        })
+    }
+
     pub fn into_input_output_len(self) -> (*const T, *mut T, usize) {
         let len = self.len();
         let output = self.in_out.as_mut_ptr();

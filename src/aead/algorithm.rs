@@ -18,6 +18,7 @@ use core::ops::RangeFrom;
 use super::{
     aes, aes_gcm, chacha20_poly1305,
     nonce::{Nonce, NONCE_LEN},
+    overlapping::{Overlapping, SrcIndexError},
     Aad, KeyInner, Tag, TAG_LEN,
 };
 
@@ -259,5 +260,6 @@ fn chacha20_poly1305_open(
         KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
-    chacha20_poly1305::open(key, nonce, aad, in_out, src, cpu_features)
+    let in_out = Overlapping::new(in_out, src).map_err(error::erase::<SrcIndexError>)?;
+    chacha20_poly1305::open(key, nonce, aad, in_out, cpu_features)
 }

@@ -13,7 +13,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{quic::Sample, Nonce};
+use super::{overlapping, quic::Sample, Nonce};
 
 #[cfg(any(
     test,
@@ -27,7 +27,8 @@ use super::{quic::Sample, Nonce};
 mod fallback;
 
 use crate::polyfill::ArraySplitMap;
-use core::ops::RangeFrom;
+
+pub type Overlapping<'o> = overlapping::Overlapping<'o, u8>;
 
 #[derive(Clone)]
 pub struct Key {
@@ -45,7 +46,7 @@ impl Key {
 impl Key {
     #[inline]
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
-        self.encrypt_within(counter, in_out, 0..);
+        self.encrypt_within(counter, Overlapping::in_place(in_out))
     }
 
     #[inline]
@@ -67,9 +68,8 @@ impl Key {
         out
     }
 
-    /// Analogous to `slice::copy_within()`.
     #[inline(always)]
-    pub fn encrypt_within(&self, counter: Counter, in_out: &mut [u8], src: RangeFrom<usize>) {
+    pub fn encrypt_within(&self, counter: Counter, in_out: Overlapping<'_>) {
         #[cfg(any(
             target_arch = "aarch64",
             target_arch = "arm",
@@ -77,27 +77,17 @@ impl Key {
             target_arch = "x86_64"
         ))]
         #[inline(always)]
-        pub(super) fn ChaCha20_ctr32(
-            key: &Key,
-            counter: Counter,
-            in_out: &mut [u8],
-            src: RangeFrom<usize>,
-        ) {
-            let in_out_len = in_out.len().checked_sub(src.start).unwrap();
-
+        pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, in_out: Overlapping<'_>) {
             // XXX: The x86 and at least one branch of the ARM assembly language
             // code doesn't allow overlapping input and output unless they are
             // exactly overlapping. TODO: Figure out which branch of the ARM code
             // has this limitation and come up with a better solution.
             //
             // https://rt.openssl.org/Ticket/Display.html?id=4362
-            let (output, input) =
-                if cfg!(any(target_arch = "aarch64", target_arch = "x86_64")) || src.start == 0 {
-                    (in_out.as_mut_ptr(), in_out[src].as_ptr())
-                } else {
-                    in_out.copy_within(src, 0);
-                    (in_out.as_mut_ptr(), in_out.as_ptr())
-                };
+            #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
+            let in_out = Overlapping::in_place(in_out.copy_within());
+
+            let (input, output, len) = in_out.into_input_output_len();
 
             // There's no need to worry if `counter` is incremented because it is
             // owned here and we drop immediately after the call.
@@ -110,7 +100,7 @@ impl Key {
                     counter: &Counter,
                 );
             }
-            unsafe { ChaCha20_ctr32(output, input, in_out_len, key.words_less_safe(), &counter) }
+            unsafe { ChaCha20_ctr32(output, input, len, key.words_less_safe(), &counter) }
         }
 
         #[cfg(not(any(
@@ -121,7 +111,7 @@ impl Key {
         )))]
         use fallback::ChaCha20_ctr32;
 
-        ChaCha20_ctr32(self, counter, in_out, src);
+        ChaCha20_ctr32(self, counter, in_out)
     }
 
     #[inline]
@@ -189,8 +179,8 @@ const BLOCK_LEN: usize = 64;
 mod tests {
     extern crate alloc;
 
-    use super::*;
-    use crate::test;
+    use super::{super::overlapping::SrcIndexError, *};
+    use crate::{error, test};
     use alloc::vec;
 
     const MAX_ALIGNMENT_AND_OFFSET: (usize, usize) = (15, 259);
@@ -232,7 +222,7 @@ mod tests {
     // works around that.
     fn chacha20_test(
         max_alignment_and_offset: (usize, usize),
-        f: impl for<'k, 'i> Fn(&'k Key, Counter, &'i mut [u8], RangeFrom<usize>),
+        f: impl for<'k, 'o> Fn(&'k Key, Counter, Overlapping<'o>),
     ) {
         // Reuse a buffer to avoid slowing down the tests with allocations.
         let mut buf = vec![0u8; 1300];
@@ -278,7 +268,7 @@ mod tests {
         expected: &[u8],
         buf: &mut [u8],
         (max_alignment, max_offset): (usize, usize),
-        f: &impl for<'k, 'i> Fn(&'k Key, Counter, &'i mut [u8], RangeFrom<usize>),
+        f: &impl for<'k, 'o> Fn(&'k Key, Counter, Overlapping<'o>),
     ) {
         const ARBITRARY: u8 = 123;
 
@@ -295,7 +285,10 @@ mod tests {
                     Nonce::try_assume_unique_for_key(nonce).unwrap(),
                     ctr,
                 );
-                f(key, ctr, buf, src);
+                let in_out = Overlapping::new(buf, src)
+                    .map_err(error::erase::<SrcIndexError>)
+                    .unwrap();
+                f(key, ctr, in_out);
                 assert_eq!(&buf[..input.len()], expected)
             }
         }
