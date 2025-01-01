@@ -58,6 +58,7 @@ pub struct SrcIndexError(#[allow(dead_code)] RangeFrom<usize>);
 
 impl SrcIndexError {
     #[cold]
+    #[inline(never)]
     fn new(src: RangeFrom<usize>) -> Self {
         Self(src)
     }
