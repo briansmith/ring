@@ -13,14 +13,13 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    chacha::{self, Counter, Iv},
+    chacha::{self, Counter, Iv, Overlapping},
     poly1305, Aad, Nonce, Tag,
 };
 use crate::{
     cpu, error,
     polyfill::{u64_from_usize, usize_from_u64_saturated},
 };
-use core::ops::RangeFrom;
 
 pub(super) const KEY_LEN: usize = chacha::KEY_LEN;
 
@@ -126,17 +125,12 @@ pub(super) fn open(
     key: &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,
-    in_out: &mut [u8],
-    src: RangeFrom<usize>,
+    in_out: Overlapping<'_>,
     cpu_features: cpu::Features,
 ) -> Result<Tag, error::Unspecified> {
     let Key(chacha20_key) = key;
 
-    let unprefixed_len = in_out
-        .len()
-        .checked_sub(src.start)
-        .ok_or(error::Unspecified)?;
-    if unprefixed_len > MAX_IN_OUT_LEN {
+    if in_out.len() > MAX_IN_OUT_LEN {
         return Err(error::Unspecified);
     }
     // RFC 8439 Section 2.8 says the maximum AAD length is 2**64 - 1, which is
@@ -180,11 +174,12 @@ pub(super) fn open(
             );
         }
 
+        let (input, output, len) = in_out.into_input_output_len();
         let out = unsafe {
             chacha20_poly1305_open(
-                in_out.as_mut_ptr(),
-                in_out.as_ptr().add(src.start),
-                unprefixed_len,
+                output,
+                input,
+                len,
                 aad.as_ref().as_ptr(),
                 aad.as_ref().len(),
                 &mut data,
@@ -202,9 +197,10 @@ pub(super) fn open(
     };
 
     poly1305_update_padded_16(&mut auth, aad.as_ref());
-    poly1305_update_padded_16(&mut auth, &in_out[src.clone()]);
-    chacha20_key.encrypt_within(counter, in_out, src.clone());
-    Ok(finish(auth, aad.as_ref().len(), unprefixed_len))
+    poly1305_update_padded_16(&mut auth, in_out.input());
+    let in_out_len = in_out.len();
+    chacha20_key.encrypt_within(counter, in_out);
+    Ok(finish(auth, aad.as_ref().len(), in_out_len))
 }
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]

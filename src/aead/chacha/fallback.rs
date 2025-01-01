@@ -15,15 +15,10 @@
 // Adapted from the public domain, estream code by D. Bernstein.
 // Adapted from the BoringSSL crypto/chacha/chacha.c.
 
-use super::{Counter, Key, BLOCK_LEN};
-use core::{mem::size_of, ops::RangeFrom};
+use super::{Counter, Key, Overlapping, BLOCK_LEN};
+use core::mem::size_of;
 
-pub(super) fn ChaCha20_ctr32(
-    key: &Key,
-    counter: Counter,
-    in_out: &mut [u8],
-    src: RangeFrom<usize>,
-) {
+pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, in_out: Overlapping<'_>) {
     const SIGMA: [u32; 4] = [
         u32::from_le_bytes(*b"expa"),
         u32::from_le_bytes(*b"nd 3"),
@@ -39,9 +34,7 @@ pub(super) fn ChaCha20_ctr32(
         key[6], key[7], counter[0], counter[1], counter[2], counter[3],
     ];
 
-    let mut in_out_len = in_out.len().checked_sub(src.start).unwrap();
-    let mut input = in_out[src].as_ptr();
-    let mut output = in_out.as_mut_ptr();
+    let (mut input, mut output, mut in_out_len) = in_out.into_input_output_len();
 
     let mut buf = [0u8; BLOCK_LEN];
     while in_out_len > 0 {
