@@ -64,7 +64,7 @@ impl EncryptCtr32 for Key {
 #[cfg(target_arch = "arm")]
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        use super::{bs, BLOCK_LEN};
+        use super::{super::overlapping::SrcIndexError, bs, BLOCK_LEN};
 
         let in_out = {
             let (in_out, src) = in_out.into_slice_src_mut();
@@ -86,7 +86,7 @@ impl EncryptCtr32 for Key {
             let bsaes_in_out_len = bsaes_blocks * BLOCK_LEN;
             let bs_in_out =
                 Overlapping::new(&mut in_out[..(src.start + bsaes_in_out_len)], src.clone())
-                    .unwrap();
+                    .unwrap_or_else(|SrcIndexError { .. }| unreachable!());
 
             // SAFETY:
             //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
@@ -95,7 +95,8 @@ impl EncryptCtr32 for Key {
                 bs::ctr32_encrypt_blocks_with_vpaes_key(bs_in_out, &self.inner, ctr);
             }
 
-            Overlapping::new(&mut in_out[bsaes_in_out_len..], src).unwrap()
+            Overlapping::new(&mut in_out[bsaes_in_out_len..], src)
+                .unwrap_or_else(|SrcIndexError { .. }| unreachable!())
         };
 
         // SAFETY:

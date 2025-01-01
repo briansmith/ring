@@ -55,7 +55,6 @@ impl<T> Overlapping<'_, T> {
     }
 }
 
-#[derive(Debug)]
 pub struct SrcIndexError(#[allow(dead_code)] RangeFrom<usize>);
 
 impl SrcIndexError {

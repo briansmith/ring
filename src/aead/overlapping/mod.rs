@@ -12,6 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-pub use self::base::Overlapping;
+#[allow(unused_imports)]
+pub use self::base::{Overlapping, SrcIndexError};
 
 mod base;
