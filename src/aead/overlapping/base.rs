@@ -12,7 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::error;
 use core::ops::RangeFrom;
 
 pub struct Overlapping<'o, T> {
@@ -61,11 +60,5 @@ impl SrcIndexError {
     #[cold]
     fn new(src: RangeFrom<usize>) -> Self {
         Self(src)
-    }
-}
-
-impl From<SrcIndexError> for error::Unspecified {
-    fn from(_: SrcIndexError) -> Self {
-        Self
     }
 }

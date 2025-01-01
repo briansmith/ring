@@ -14,7 +14,9 @@
 
 use super::{
     aes::{self, Counter, Overlapping, BLOCK_LEN, ZERO_BLOCK},
-    gcm, shift, Aad, Nonce, Tag,
+    gcm,
+    overlapping::SrcIndexError,
+    shift, Aad, Nonce, Tag,
 };
 use crate::{
     cpu, error,
@@ -276,7 +278,8 @@ pub(super) fn open(
     src: RangeFrom<usize>,
 ) -> Result<Tag, error::Unspecified> {
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-    let in_out = Overlapping::new(in_out_slice, src.clone())?;
+    let in_out =
+        Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<SrcIndexError>)?;
 
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
@@ -332,7 +335,8 @@ pub(super) fn open(
             let whole_len = slice::flatten(whole).len();
 
             // Decrypt any remaining whole blocks.
-            let whole = Overlapping::new(&mut in_out[..(src.start + whole_len)], src.clone())?;
+            let whole = Overlapping::new(&mut in_out[..(src.start + whole_len)], src.clone())
+                .map_err(error::erase::<SrcIndexError>)?;
             aes_key.ctr32_encrypt_within(whole, &mut ctr);
 
             let in_out = match in_out.get_mut(whole_len..) {
@@ -452,7 +456,8 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
             let chunk = Overlapping::new(
                 &mut in_out[output..][..(chunk_len + in_prefix_len)],
                 in_prefix_len..,
-            )?;
+            )
+            .map_err(error::erase::<SrcIndexError>)?;
             aes_key.ctr32_encrypt_within(chunk, &mut ctr);
             output += chunk_len;
             input += chunk_len;
