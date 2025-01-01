@@ -166,6 +166,8 @@ pub(super) fn seal(
             aes_key
                 .ctr32_encrypt_within(Overlapping::in_place(slice::flatten_mut(whole)), &mut ctr);
             auth.update_blocks(whole);
+            let remainder = OverlappingPartialBlock::new(Overlapping::in_place(remainder))
+                .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
             seal_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
 
@@ -204,6 +206,8 @@ pub(super) fn seal(
                     )
                 }
             }
+            let remainder = OverlappingPartialBlock::new(Overlapping::in_place(remainder))
+                .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
             seal_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
 
@@ -248,23 +252,26 @@ fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
         auth.update_blocks(chunk);
     }
 
+    let remainder = OverlappingPartialBlock::new(Overlapping::in_place(remainder))
+        .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
     seal_finish(aes_key, auth, remainder, ctr, tag_iv)
 }
 
 fn seal_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
     aes_key: &A,
     mut auth: gcm::Context<G>,
-    remainder: &mut [u8],
+    remainder: OverlappingPartialBlock<'_>,
     ctr: Counter,
     tag_iv: aes::Iv,
 ) -> Result<Tag, error::Unspecified> {
-    if !remainder.is_empty() {
+    let remainder_len = remainder.len();
+    if remainder_len > 0 {
         let mut input = ZERO_BLOCK;
-        overwrite_at_start(&mut input, remainder);
+        overwrite_at_start(&mut input, remainder.input());
         let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input);
-        output[remainder.len()..].fill(0);
+        output[remainder_len..].fill(0);
         auth.update_block(output);
-        overwrite_at_start(remainder, &output);
+        remainder.overwrite_at_start(output);
     }
 
     Ok(finish(aes_key, auth, tag_iv))
