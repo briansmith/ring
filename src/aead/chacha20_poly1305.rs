@@ -17,7 +17,8 @@ use super::{
     poly1305, Aad, Nonce, Tag,
 };
 use crate::{
-    cpu, error,
+    cpu,
+    error::InputTooLongError,
     polyfill::{u64_from_usize, usize_from_u64_saturated},
 };
 
@@ -43,11 +44,11 @@ pub(super) fn seal(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     cpu_features: cpu::Features,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let Key(chacha20_key) = key;
 
     if in_out.len() > MAX_IN_OUT_LEN {
-        return Err(error::Unspecified);
+        return Err(InputTooLongError::new(in_out.len()));
     }
     /// RFC 8439 Section 2.8 says the maximum AAD length is 2**64 - 1, which is
     /// never larger than usize::MAX, so we don't need an explicit length
@@ -127,11 +128,11 @@ pub(super) fn open(
     aad: Aad<&[u8]>,
     in_out: Overlapping<'_>,
     cpu_features: cpu::Features,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let Key(chacha20_key) = key;
 
     if in_out.len() > MAX_IN_OUT_LEN {
-        return Err(error::Unspecified);
+        return Err(InputTooLongError::new(in_out.len()));
     }
     // RFC 8439 Section 2.8 says the maximum AAD length is 2**64 - 1, which is
     // never larger than usize::MAX, so we don't need an explicit length

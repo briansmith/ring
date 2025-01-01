@@ -12,7 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{constant_time, cpu, error, hkdf};
+use crate::{
+    constant_time, cpu,
+    error::{self, InputTooLongError},
+    hkdf,
+};
 use core::ops::RangeFrom;
 
 use super::{
@@ -246,6 +250,7 @@ fn chacha20_poly1305_seal(
         _ => unreachable!(),
     };
     chacha20_poly1305::seal(key, nonce, aad, in_out, cpu_features)
+        .map_err(error::erase::<InputTooLongError>)
 }
 
 fn chacha20_poly1305_open(
@@ -262,4 +267,5 @@ fn chacha20_poly1305_open(
     };
     let in_out = Overlapping::new(in_out, src).map_err(error::erase::<SrcIndexError>)?;
     chacha20_poly1305::open(key, nonce, aad, in_out, cpu_features)
+        .map_err(error::erase::<InputTooLongError>)
 }
