@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::polyfill::sliceutil::overwrite_at_start;
-
 #[cfg(target_arch = "x86")]
 pub fn shift_full_blocks<const BLOCK_LEN: usize>(
     in_out: super::overlapping::Overlapping<'_, u8>,
@@ -31,20 +29,4 @@ pub fn shift_full_blocks<const BLOCK_LEN: usize>(
         let output = <&mut [u8; BLOCK_LEN]>::try_from(&mut in_out[i..][..BLOCK_LEN]).unwrap();
         *output = block;
     }
-}
-
-pub fn shift_partial<const BLOCK_LEN: usize>(
-    (in_prefix_len, in_out): (usize, &mut [u8]),
-    transform: impl FnOnce(&[u8]) -> [u8; BLOCK_LEN],
-) {
-    let (block, in_out_len) = {
-        let input = &in_out[in_prefix_len..];
-        let in_out_len = input.len();
-        if in_out_len == 0 {
-            return;
-        }
-        debug_assert!(in_out_len < BLOCK_LEN);
-        (transform(input), in_out_len)
-    };
-    overwrite_at_start(&mut in_out[..in_out_len], &block);
 }

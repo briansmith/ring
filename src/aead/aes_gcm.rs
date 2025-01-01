@@ -13,13 +13,14 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    aes::{self, Counter, Overlapping, BLOCK_LEN, ZERO_BLOCK},
+    aes::{self, Counter, Overlapping, OverlappingPartialBlock, BLOCK_LEN, ZERO_BLOCK},
     gcm,
     overlapping::SrcIndexError,
-    shift, Aad, Nonce, Tag,
+    Aad, Nonce, Tag,
 };
 use crate::{
-    cpu, error,
+    cpu,
+    error::{self, InputTooLongError},
     polyfill::{slice, sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
 use core::ops::RangeFrom;
@@ -343,7 +344,11 @@ pub(super) fn open(
                 Some(partial) => partial,
                 None => unreachable!(),
             };
-            open_finish(aes_key, auth, in_out_slice, src, ctr, tag_iv)
+            let in_out = Overlapping::new(in_out_slice, src)
+                .unwrap_or_else(|SrcIndexError { .. }| unreachable!());
+            let in_out = OverlappingPartialBlock::new(in_out)
+                .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
+            open_finish(aes_key, auth, in_out, ctr, tag_iv)
         }
 
         #[cfg(target_arch = "aarch64")]
@@ -387,7 +392,11 @@ pub(super) fn open(
                 }
             }
             let remainder = &mut in_out_slice[whole_len..];
-            open_finish(aes_key, auth, remainder, src, ctr, tag_iv)
+            let remainder = Overlapping::new(remainder, src)
+                .unwrap_or_else(|SrcIndexError { .. }| unreachable!());
+            let remainder = OverlappingPartialBlock::new(remainder)
+                .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
+            open_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
 
         #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
@@ -466,31 +475,27 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
         }
     }
 
-    open_finish(
-        aes_key,
-        auth,
-        &mut in_out_slice[whole_len..],
-        src,
-        ctr,
-        tag_iv,
-    )
+    let in_out = Overlapping::new(&mut in_out_slice[whole_len..], src)
+        .unwrap_or_else(|SrcIndexError { .. }| unreachable!());
+    let in_out = OverlappingPartialBlock::new(in_out)
+        .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
+
+    open_finish(aes_key, auth, in_out, ctr, tag_iv)
 }
 
 fn open_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
     aes_key: &A,
     mut auth: gcm::Context<G>,
-    remainder: &mut [u8],
-    src: RangeFrom<usize>,
+    remainder: OverlappingPartialBlock<'_>,
     ctr: Counter,
     tag_iv: aes::Iv,
 ) -> Result<Tag, error::Unspecified> {
-    shift::shift_partial((src.start, remainder), |remainder| {
+    if remainder.len() > 0 {
         let mut input = ZERO_BLOCK;
-        overwrite_at_start(&mut input, remainder);
+        overwrite_at_start(&mut input, remainder.input());
         auth.update_block(input);
-        aes_key.encrypt_iv_xor_block(ctr.into(), input)
-    });
-
+        remainder.overwrite_at_start(aes_key.encrypt_iv_xor_block(ctr.into(), input));
+    }
     Ok(finish(aes_key, auth, tag_iv))
 }
 
