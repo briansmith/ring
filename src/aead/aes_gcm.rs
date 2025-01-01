@@ -316,34 +316,34 @@ pub(super) fn open(
                     xi,
                 )
             };
-            let in_out = match in_out_slice.get_mut(processed..) {
-                Some(remaining) => remaining,
-                None => {
-                    // This can't happen. If it did, then the assembly already
-                    // caused a buffer overflow.
-                    unreachable!()
-                }
-            };
+            let in_out_slice = in_out_slice.get_mut(processed..).unwrap_or_else(|| {
+                // This can't happen. If it did, then the assembly already
+                // caused a buffer overflow.
+                unreachable!()
+            });
             // Authenticate any remaining whole blocks.
-            let input = match in_out.get(src.clone()) {
-                Some(remaining_input) => remaining_input,
-                None => unreachable!(),
-            };
-            let (whole, _) = slice::as_chunks(input);
+            let in_out = Overlapping::new(in_out_slice, src.clone()).unwrap_or_else(
+                |SrcIndexError { .. }| {
+                    // This can't happen. If it did, then the assembly already
+                    // overwrote part of the remaining input.
+                    unreachable!()
+                },
+            );
+            let (whole, _) = slice::as_chunks(in_out.input());
             auth.update_blocks(whole);
 
             let whole_len = slice::flatten(whole).len();
 
             // Decrypt any remaining whole blocks.
-            let whole = Overlapping::new(&mut in_out[..(src.start + whole_len)], src.clone())
+            let whole = Overlapping::new(&mut in_out_slice[..(src.start + whole_len)], src.clone())
                 .map_err(error::erase::<SrcIndexError>)?;
             aes_key.ctr32_encrypt_within(whole, &mut ctr);
 
-            let in_out = match in_out.get_mut(whole_len..) {
+            let in_out_slice = match in_out_slice.get_mut(whole_len..) {
                 Some(partial) => partial,
                 None => unreachable!(),
             };
-            open_finish(aes_key, auth, in_out, src, ctr, tag_iv)
+            open_finish(aes_key, auth, in_out_slice, src, ctr, tag_iv)
         }
 
         #[cfg(target_arch = "aarch64")]
