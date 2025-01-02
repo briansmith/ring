@@ -48,7 +48,6 @@ const X86: &str = "x86";
 const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
-const WASM32: &str = "wasm32";
 
 #[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
@@ -299,8 +298,8 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     let out_dir = PathBuf::from(out_dir);
 
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+    let vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
 
     let is_git = fs::metadata(c_root_dir.join(".git")).is_ok();
 
@@ -315,8 +314,8 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
 
     let target = Target {
         arch,
+        vendor,
         os,
-        env,
         is_debug,
         force_warnings_into_errors,
     };
@@ -395,8 +394,8 @@ fn generate_sources_and_preassemble<'a>(
 
 struct Target {
     arch: String,
+    vendor: String,
     os: String,
-    env: String,
 
     /// Is this a debug build? This affects whether assertions might be enabled
     /// in the C code. For packaged builds, this should always be `false`.
@@ -573,14 +572,11 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
     }
 
     // Allow cross-compiling without a target sysroot for these targets.
-    if (target.arch == WASM32)
-        || (target.os == "linux" && target.env == "musl" && target.arch != X86_64)
-    {
-        // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
-        if compiler.is_like_clang() {
-            let _ = c.flag("-nostdlibinc");
-            let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
-        }
+    // curve25519_adx.h includes <immintrin.h> which requires <stdlib.h>.
+    // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
+    if target.vendor != "apple" && target.arch != X86_64 && compiler.is_like_clang() {
+        let _ = c.flag("-nostdlibinc");
+        let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
     }
 
     if target.force_warnings_into_errors {

@@ -374,7 +374,7 @@ static inline crypto_word_t constant_time_declassify_w(crypto_word_t v) {
 
 // Endianness conversions.
 
-#if defined(__GNUC__) && __GNUC__ >= 2
+#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 2)
 static inline uint32_t CRYPTO_bswap4(uint32_t x) {
   return __builtin_bswap32(x);
 }
