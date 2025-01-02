@@ -134,7 +134,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"HMAC-SHA3-384":     &hmacPrimitive{"HMAC-SHA3-384", 48},
 		"HMAC-SHA3-512":     &hmacPrimitive{"HMAC-SHA3-512", 64},
 		"ctrDRBG":           &drbg{"ctrDRBG", map[string]bool{"AES-128": true, "AES-192": true, "AES-256": true}},
-		"hmacDRBG":          &drbg{"hmacDRBG", map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true}},
+		"hmacDRBG":          &drbg{"hmacDRBG", map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true, "SHA2-512/224": true, "SHA2-512/256": true, "SHA3-224": true, "SHA3-256": true, "SHA3-384": true, "SHA3-512": true}},
 		"KDF":               &kdfPrimitive{},
 		"KDA":               &hkdf{},
 		"TLS-v1.2":          &tlsKDF{},
