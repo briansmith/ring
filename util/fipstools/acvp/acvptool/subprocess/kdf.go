@@ -75,10 +75,13 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 			return nil, fmt.Errorf("%d bit key in test group %d: fractional bytes not supported", group.OutputBits, group.ID)
 		}
 
-		if group.KDFMode != "counter" {
-			// feedback mode would need the IV to be handled.
+		if group.KDFMode != "counter" && group.KDFMode != "feedback" {
 			// double-pipeline mode is not useful.
 			return nil, fmt.Errorf("KDF mode %q not supported", group.KDFMode)
+		}
+
+		if group.KDFMode == "feedback" && !group.ZeroIV {
+			return nil, fmt.Errorf("feedback mode with non-zero IV not supported")
 		}
 
 		switch group.CounterLocation {
@@ -108,7 +111,11 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 			}
 
 			// Make the call to the crypto module.
-			m.TransactAsync("KDF-counter", 3, [][]byte{outputBytes, []byte(group.MACMode), []byte(group.CounterLocation), key, counterBits}, func(result [][]byte) error {
+			cmd := "KDF-counter"
+			if group.KDFMode == "feedback" {
+				cmd = "KDF-feedback"
+			}
+			m.TransactAsync(cmd, 3, [][]byte{outputBytes, []byte(group.MACMode), []byte(group.CounterLocation), key, counterBits}, func(result [][]byte) error {
 				testResp.ID = test.ID
 				if test.Deferred {
 					testResp.KeyIn = hex.EncodeToString(result[0])
