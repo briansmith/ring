@@ -94,7 +94,7 @@ The other commands are as follows. (Note that you only need to implement the com
 | hmacDRBG/&lt;HASH&gt;| Output length, entropy, personalisation, ad1, ad2, nonce | Output |
 | hmacDRBG-reseed/&lt;HASH&gt;| Output length, entropy, personalisation, reseedAD, reseedEntropy, ad1, ad2, nonce | Output |
 | hmacDRBG-pr/&lt;HASH&gt;| Output length, entropy, personalisation, ad1, entropy1, ad2, entropy2, nonce | Output |
-| KDF-counter          | Number output bytes, PRF name, counter location string, key, number of counter bits | Counter, output |
+| KDF-counter          | Number output bytes, PRF name, counter location string, key (or empty), number of counter bits | key, counter, derived key |
 | RSA/keyGen           | Modulus bit-size | e, p, q, n, d |
 | RSA/sigGen/&lt;HASH&gt;/pkcs1v1.5 | Modulus bit-size | n, e, signature |
 | RSA/sigGen/&lt;HASH&gt;/pss       | Modulus bit-size | n, e, signature |
