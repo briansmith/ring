@@ -489,6 +489,7 @@ int PEM_write_bio(BIO *bp, const char *name, const char *header,
   unsigned char *buf = NULL;
   EVP_ENCODE_CTX ctx;
   int reason = ERR_R_BUF_LIB;
+  int retval = 0;
 
   EVP_EncodeInit(&ctx);
   nlen = strlen(name);
@@ -526,20 +527,19 @@ int PEM_write_bio(BIO *bp, const char *name, const char *header,
   if ((outl > 0) && (BIO_write(bp, (char *)buf, outl) != outl)) {
     goto err;
   }
-  OPENSSL_free(buf);
-  buf = NULL;
   if ((BIO_write(bp, "-----END ", 9) != 9) ||
       (BIO_write(bp, name, nlen) != nlen) ||
       (BIO_write(bp, "-----\n", 6) != 6)) {
     goto err;
   }
-  return i + outl;
+  retval = i + outl;
+
 err:
-  if (buf) {
-    OPENSSL_free(buf);
+  if (retval == 0) {
+    OPENSSL_PUT_ERROR(PEM, reason);
   }
-  OPENSSL_PUT_ERROR(PEM, reason);
-  return 0;
+  OPENSSL_free(buf);
+  return retval;
 }
 
 int PEM_read(FILE *fp, char **name, char **header, unsigned char **data,
