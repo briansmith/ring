@@ -72,7 +72,7 @@ bool tls_new(SSL *ssl) {
 }
 
 void tls_free(SSL *ssl) {
-  if (ssl == NULL || ssl->s3 == NULL) {
+  if (ssl->s3 == NULL) {
     return;
   }
 

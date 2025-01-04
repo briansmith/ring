@@ -130,10 +130,6 @@ int X509_STORE_up_ref(X509_STORE *store) {
 }
 
 void X509_STORE_free(X509_STORE *vfy) {
-  if (vfy == NULL) {
-    return;
-  }
-
   if (!CRYPTO_refcount_dec_and_test_zero(&vfy->references)) {
     return;
   }

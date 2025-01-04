@@ -76,10 +76,6 @@ BN_CTX *BN_CTX_new(void) {
 }
 
 void BN_CTX_free(BN_CTX *ctx) {
-  if (ctx == NULL) {
-    return;
-  }
-
   // All |BN_CTX_start| calls must be matched with |BN_CTX_end|, otherwise the
   // function may use more memory than expected, potentially without bound if
   // done in a loop. Assert that all |BIGNUM|s have been released.

@@ -22,10 +22,6 @@ BUF_MEM *BUF_MEM_new(void) {
 }
 
 void BUF_MEM_free(BUF_MEM *buf) {
-  if (buf == NULL) {
-    return;
-  }
-
   OPENSSL_free(buf->data);
   OPENSSL_free(buf);
 }
