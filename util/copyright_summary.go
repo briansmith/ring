@@ -26,17 +26,14 @@ import (
 	"iter"
 	"maps"
 	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
-	"strings"
 )
 
 var (
 	outPath     = flag.String("out", "", "The path to write the results in JSON format")
 	comparePath = flag.String("compare", "", "The path to a JSON file to compare against")
-	useMapping  = flag.Bool("use-mapping", false, "Apply the mapping and look up files in OpenSSL instead")
 )
 
 func sortedKeyValuePairs[K cmp.Ordered, V any](m map[K]V) iter.Seq2[K, V] {
@@ -69,35 +66,6 @@ var copyrightRE = regexp.MustCompile(
 		// summary to double-check an otherwise mostly automated process.
 		`([-a-zA-Z ]*[-a-zA-Z])`)
 
-var fileMapping map[string][]string
-
-//go:embed mapping.txt
-var fileMappingData string
-
-func parseMapping() (map[string][]string, error) {
-	ret := map[string][]string{}
-	for _, line := range strings.Split(fileMappingData, "\n") {
-		if idx := strings.IndexByte(line, '#'); idx >= 0 {
-			line = line[:idx]
-		}
-		line = strings.TrimSpace(line)
-		if len(line) == 0 {
-			continue
-		}
-		colon := strings.IndexByte(line, ':')
-		if colon < 0 {
-			return nil, fmt.Errorf("could not parse %q", line)
-		}
-		from := strings.TrimSpace(line[:colon])
-		to := strings.TrimSpace(line[colon+1:])
-		if _, ok := ret[from]; ok {
-			return nil, fmt.Errorf("duplicate mapping for %q", from)
-		}
-		ret[from] = strings.Fields(to)
-	}
-	return ret, nil
-}
-
 type CopyrightInfo struct {
 	Name      string
 	StartYear int
@@ -127,27 +95,6 @@ func summarize(info FileInfo) map[string]int {
 }
 
 func process(path string) (info FileInfo, err error) {
-	if !*useMapping {
-		return processImpl(path)
-	}
-
-	newPaths, ok := fileMapping[path]
-	if !ok {
-		err = fmt.Errorf("no mapping found for %q", path)
-		return
-	}
-	for _, newPath := range newPaths {
-		var newInfo FileInfo
-		newInfo, err = processImpl(filepath.Join("../openssl", newPath))
-		if err != nil {
-			return
-		}
-		info.MergeFrom(newInfo)
-	}
-	return
-}
-
-func processImpl(path string) (info FileInfo, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return
@@ -174,15 +121,6 @@ func processImpl(path string) (info FileInfo, err error) {
 
 func main() {
 	flag.Parse()
-
-	if *useMapping {
-		var err error
-		fileMapping, err = parseMapping()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing mapping file: %s\n", err)
-			os.Exit(1)
-		}
-	}
 
 	infos := map[string]FileInfo{}
 	for _, path := range flag.Args() {
