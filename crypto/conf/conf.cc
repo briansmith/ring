@@ -551,7 +551,7 @@ err:
   if (out_error_line != NULL) {
     *out_error_line = eline;
   }
-  snprintf(btmp, sizeof btmp, "%ld", eline);
+  sprintf(btmp, "%ld", eline);
   ERR_add_error_data(2, "line ", btmp);
   value_free(v);
   return 0;

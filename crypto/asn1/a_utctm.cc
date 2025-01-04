@@ -78,11 +78,11 @@ ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, int64_t posix_time, int offset_d
   }
 
   char buf[14];
-  int ret = snprintf(buf, sizeof(buf), "%02d%02d%02d%02d%02d%02dZ",
-                     data.tm_year % 100, data.tm_mon + 1, data.tm_mday,
-                     data.tm_hour, data.tm_min, data.tm_sec);
+  int ret = sprintf(buf, "%02d%02d%02d%02d%02d%02dZ", data.tm_year % 100,
+                    data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min,
+                    data.tm_sec);
   if (ret != (int)(sizeof(buf) - 1)) {
-    abort();  // |snprintf| should neither truncate nor write fewer bytes.
+    abort();  // |sprintf| should write exactly the expected number of bytes.
   }
 
   int free_s = 0;

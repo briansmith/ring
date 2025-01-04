@@ -262,8 +262,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         hent = NULL;
       }
       for (;;) {
-        snprintf(b->data, b->max, "%s/%08" PRIx32 ".%s%d", ent->dir, h, postfix,
-                 k);
+        sprintf(b->data, "%s/%08" PRIx32 ".%s%d", ent->dir, h, postfix, k);
         if (type == X509_LU_X509) {
           if ((X509_load_cert_file(xl, b->data, ent->dir_type)) == 0) {
             // Don't expose the lower level error, All of these boil

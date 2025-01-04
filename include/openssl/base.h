@@ -13,6 +13,13 @@
 
 // This file should be the first included by all BoringSSL headers.
 
+// Remove this after importing the following to remove all instances of
+// |sprintf|, |strcat|, and |strcpy| from the codebase.
+// * https://github.com/openssl/openssl/commit/86ba26c80a49aee3c588d286d91eb3843529f7e2
+// * https://github.com/openssl/openssl/commit/60eba30f60de55e3c782469fa555eede82606099
+// * https://github.com/openssl/openssl/commit/a2371fa93365cc0bc0e46b9d65f3a47a074b1c30
+#error "Do not build BoringSSL at this revision"
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>

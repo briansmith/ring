@@ -48,9 +48,9 @@ static void PEM_proc_type(char buf[PEM_BUFSIZE], int type) {
     str = "BAD-TYPE";
   }
 
-  OPENSSL_strlcat(buf, "Proc-Type: 4,", PEM_BUFSIZE);
-  OPENSSL_strlcat(buf, str, PEM_BUFSIZE);
-  OPENSSL_strlcat(buf, "\n", PEM_BUFSIZE);
+  strcat(buf, "Proc-Type: 4,");
+  strcat(buf, str);
+  strcat(buf, "\n");
 }
 
 // PEM_dek_info appends a DEK-Info header to |buf|, with an algorithm of |type|
@@ -59,15 +59,10 @@ static void PEM_dek_info(char buf[PEM_BUFSIZE], const char *type, size_t len,
                          char *str) {
   static const unsigned char map[17] = "0123456789ABCDEF";
 
-  OPENSSL_strlcat(buf, "DEK-Info: ", PEM_BUFSIZE);
-  OPENSSL_strlcat(buf, type, PEM_BUFSIZE);
-  OPENSSL_strlcat(buf, ",", PEM_BUFSIZE);
+  strcat(buf, "DEK-Info: ");
+  strcat(buf, type);
+  strcat(buf, ",");
   size_t buf_len = strlen(buf);
-  // We must write an additional |2 * len + 2| bytes after |buf_len|, including
-  // the trailing newline and NUL.
-  if (len > (PEM_BUFSIZE - buf_len - 2) / 2) {
-    return;
-  }
   for (size_t i = 0; i < len; i++) {
     buf[buf_len + i * 2] = map[(str[i] >> 4) & 0x0f];
     buf[buf_len + i * 2 + 1] = map[(str[i]) & 0x0f];
