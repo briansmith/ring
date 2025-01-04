@@ -1314,16 +1314,6 @@ extern uint32_t OPENSSL_armcap_P;
 // merged by the compiler.
 OPENSSL_ATTR_CONST uint32_t OPENSSL_get_armcap(void);
 
-// We do not detect any features at runtime on several 32-bit Arm platforms.
-// Apple platforms and OpenBSD require NEON and moved to 64-bit to pick up Armv8
-// extensions. Android baremetal does not aim to support 32-bit Arm at all, but
-// it simplifies things to make it build.
-#if defined(OPENSSL_ARM) && !defined(OPENSSL_STATIC_ARMCAP) && \
-    (defined(OPENSSL_APPLE) || defined(OPENSSL_OPENBSD) ||     \
-     defined(ANDROID_BAREMETAL))
-#define OPENSSL_STATIC_ARMCAP
-#endif
-
 // Normalize some older feature flags to their modern ACLE values.
 // https://developer.arm.com/architectures/system-architectures/software-standards/acle
 #if defined(__ARM_NEON__) && !defined(__ARM_NEON)
