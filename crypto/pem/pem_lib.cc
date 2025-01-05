@@ -391,14 +391,11 @@ int PEM_get_EVP_CIPHER_INFO(const char *header, EVP_CIPHER_INFO *cipher) {
     return 0;
   }
   header += 11;
-  if (*header != '4') {
+  if (header[0] != '4' || header[1] != ',') {
+    OPENSSL_PUT_ERROR(PEM, PEM_R_UNSUPPORTED_PROC_TYPE_VERSION);
     return 0;
   }
-  header++;
-  if (*header != ',') {
-    return 0;
-  }
-  header++;
+  header += 2;
   if (strncmp(header, "ENCRYPTED", 9) != 0) {
     OPENSSL_PUT_ERROR(PEM, PEM_R_NOT_ENCRYPTED);
     return 0;

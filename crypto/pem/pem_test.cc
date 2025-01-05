@@ -316,4 +316,125 @@ Rvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLB
   }
 }
 
+TEST(PEMTest, BadHeaders) {
+  const struct {
+    const char *pem;
+    int err_lib, err_reason;
+  } kTests[] = {
+      // Proc-Type must be the first header.
+      {
+          R"(
+-----BEGIN EC PRIVATE KEY-----
+DEK-Info: AES-128-CBC,B3B2988AECAE6EAB0D043105994C1123
+Proc-Type: 4,ENCRYPTED
+
+RK7DUIGDHWTFh2rpTX+dR88hUyC1PyDlIULiNCkuWFwHrJbc1gM6hMVOKmU196XC
+iITrIKmilFm9CPD6Tpfk/NhI/QPxyJlk1geIkxpvUZ2FCeMuYI1To14oYOUKv14q
+wr6JtaX2G+pOmwcSPymZC4u2TncAP7KHgS8UGcMw8CE=
+-----END EC PRIVATE KEY-----
+)",
+          ERR_LIB_PEM, PEM_R_NOT_PROC_TYPE},
+      // Unsupported Proc-Type version.
+      {
+          R"(
+-----BEGIN EC PRIVATE KEY-----
+Proc-Type: 5,ENCRYPTED
+DEK-Info: AES-128-CBC,B3B2988AECAE6EAB0D043105994C1123
+
+RK7DUIGDHWTFh2rpTX+dR88hUyC1PyDlIULiNCkuWFwHrJbc1gM6hMVOKmU196XC
+iITrIKmilFm9CPD6Tpfk/NhI/QPxyJlk1geIkxpvUZ2FCeMuYI1To14oYOUKv14q
+wr6JtaX2G+pOmwcSPymZC4u2TncAP7KHgS8UGcMw8CE=
+-----END EC PRIVATE KEY-----
+)",
+          ERR_LIB_PEM, PEM_R_UNSUPPORTED_PROC_TYPE_VERSION},
+      // Unsupported Proc-Type version.
+      {
+          R"(
+-----BEGIN EC PRIVATE KEY-----
+Proc-Type: 42,ENCRYPTED
+DEK-Info: AES-128-CBC,B3B2988AECAE6EAB0D043105994C1123
+
+RK7DUIGDHWTFh2rpTX+dR88hUyC1PyDlIULiNCkuWFwHrJbc1gM6hMVOKmU196XC
+iITrIKmilFm9CPD6Tpfk/NhI/QPxyJlk1geIkxpvUZ2FCeMuYI1To14oYOUKv14q
+wr6JtaX2G+pOmwcSPymZC4u2TncAP7KHgS8UGcMw8CE=
+-----END EC PRIVATE KEY-----
+)",
+          ERR_LIB_PEM, PEM_R_UNSUPPORTED_PROC_TYPE_VERSION},
+      // Unsupported Proc-Type.
+      {
+          R"(
+-----BEGIN EC PRIVATE KEY-----
+Proc-Type: 4,MIC-ONLY
+DEK-Info: AES-128-CBC,B3B2988AECAE6EAB0D043105994C1123
+
+RK7DUIGDHWTFh2rpTX+dR88hUyC1PyDlIULiNCkuWFwHrJbc1gM6hMVOKmU196XC
+iITrIKmilFm9CPD6Tpfk/NhI/QPxyJlk1geIkxpvUZ2FCeMuYI1To14oYOUKv14q
+wr6JtaX2G+pOmwcSPymZC4u2TncAP7KHgS8UGcMw8CE=
+-----END EC PRIVATE KEY-----
+)",
+          ERR_LIB_PEM, PEM_R_NOT_ENCRYPTED},
+      // Missing DEK-Info.
+      {
+          R"(
+-----BEGIN EC PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+
+RK7DUIGDHWTFh2rpTX+dR88hUyC1PyDlIULiNCkuWFwHrJbc1gM6hMVOKmU196XC
+iITrIKmilFm9CPD6Tpfk/NhI/QPxyJlk1geIkxpvUZ2FCeMuYI1To14oYOUKv14q
+wr6JtaX2G+pOmwcSPymZC4u2TncAP7KHgS8UGcMw8CE=
+-----END EC PRIVATE KEY-----
+)",
+          ERR_LIB_PEM, PEM_R_NOT_DEK_INFO},
+      // Unsupported cipher.
+      {
+          R"(
+-----BEGIN EC PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: AES-127-CBC,B3B2988AECAE6EAB0D043105994C1123
+
+RK7DUIGDHWTFh2rpTX+dR88hUyC1PyDlIULiNCkuWFwHrJbc1gM6hMVOKmU196XC
+iITrIKmilFm9CPD6Tpfk/NhI/QPxyJlk1geIkxpvUZ2FCeMuYI1To14oYOUKv14q
+wr6JtaX2G+pOmwcSPymZC4u2TncAP7KHgS8UGcMw8CE=
+-----END EC PRIVATE KEY-----
+)",
+          ERR_LIB_PEM, PEM_R_UNSUPPORTED_ENCRYPTION},
+      // IV is not hex.
+      {
+          R"(
+-----BEGIN EC PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: AES-128-CBC,B3B2988AECAE6EAB0D043105994C112Z
+
+RK7DUIGDHWTFh2rpTX+dR88hUyC1PyDlIULiNCkuWFwHrJbc1gM6hMVOKmU196XC
+iITrIKmilFm9CPD6Tpfk/NhI/QPxyJlk1geIkxpvUZ2FCeMuYI1To14oYOUKv14q
+wr6JtaX2G+pOmwcSPymZC4u2TncAP7KHgS8UGcMw8CE=
+-----END EC PRIVATE KEY-----
+)",
+          ERR_LIB_PEM, PEM_R_BAD_IV_CHARS},
+      // Truncated IV.
+      {
+          R"(
+-----BEGIN EC PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: AES-128-CBC,B3B2988AECAE6EAB0D043105994C112
+
+RK7DUIGDHWTFh2rpTX+dR88hUyC1PyDlIULiNCkuWFwHrJbc1gM6hMVOKmU196XC
+iITrIKmilFm9CPD6Tpfk/NhI/QPxyJlk1geIkxpvUZ2FCeMuYI1To14oYOUKv14q
+wr6JtaX2G+pOmwcSPymZC4u2TncAP7KHgS8UGcMw8CE=
+-----END EC PRIVATE KEY-----
+)",
+          ERR_LIB_PEM, PEM_R_BAD_IV_CHARS},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.pem);
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(t.pem, -1));
+    ASSERT_TRUE(bio);
+    bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(
+        bio.get(), nullptr, nullptr, const_cast<char *>("password")));
+    EXPECT_FALSE(pkey);
+    EXPECT_TRUE(ErrorEquals(ERR_get_error(), t.err_lib, t.err_reason));
+    ERR_clear_error();
+  }
+}
+
 }  // namespace
