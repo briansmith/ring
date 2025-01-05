@@ -21,6 +21,8 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "internal.h"
+
 
 static X509_PKEY *X509_PKEY_new(void) {
   return reinterpret_cast<X509_PKEY *>(OPENSSL_zalloc(sizeof(X509_PKEY)));

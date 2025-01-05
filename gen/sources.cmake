@@ -651,6 +651,7 @@ set(
   crypto/lhash/internal.h
   crypto/md5/internal.h
   crypto/obj/obj_dat.h
+  crypto/pem/internal.h
   crypto/pkcs7/internal.h
   crypto/pkcs8/internal.h
   crypto/poly1305/internal.h

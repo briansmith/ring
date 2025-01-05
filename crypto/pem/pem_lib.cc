@@ -24,6 +24,7 @@
 #include <openssl/x509.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 
 #define MIN_LENGTH 4
@@ -326,8 +327,8 @@ err:
   return ret;
 }
 
-int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data, long *plen,
-                  pem_password_cb *callback, void *u) {
+int PEM_do_header(const EVP_CIPHER_INFO *cipher, unsigned char *data,
+                  long *plen, pem_password_cb *callback, void *u) {
   int i = 0, j, o, pass_len;
   long len;
   EVP_CIPHER_CTX ctx;
@@ -350,14 +351,14 @@ int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data, long *plen,
     return 0;
   }
 
-  if (!EVP_BytesToKey(cipher->cipher, EVP_md5(), &(cipher->iv[0]),
+  if (!EVP_BytesToKey(cipher->cipher, EVP_md5(), cipher->iv,
                       (unsigned char *)buf, pass_len, 1, key, NULL)) {
     return 0;
   }
 
   j = (int)len;
   EVP_CIPHER_CTX_init(&ctx);
-  o = EVP_DecryptInit_ex(&ctx, cipher->cipher, NULL, key, &(cipher->iv[0]));
+  o = EVP_DecryptInit_ex(&ctx, cipher->cipher, NULL, key, cipher->iv);
   if (o) {
     o = EVP_DecryptUpdate(&ctx, data, &i, data, j);
   }

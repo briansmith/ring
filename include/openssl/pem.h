@@ -265,11 +265,6 @@ extern "C" {
 // "userdata": new with OpenSSL 0.9.4
 typedef int pem_password_cb(char *buf, int size, int rwflag, void *userdata);
 
-OPENSSL_EXPORT int PEM_get_EVP_CIPHER_INFO(char *header,
-                                           EVP_CIPHER_INFO *cipher);
-OPENSSL_EXPORT int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data,
-                                 long *len, pem_password_cb *callback, void *u);
-
 // PEM_read_bio reads from |bp|, until the next PEM block. If one is found, it
 // returns one and sets |*name|, |*header|, and |*data| to newly-allocated
 // buffers containing the PEM type, the header block, and the decoded data,
