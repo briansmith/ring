@@ -2974,6 +2974,8 @@ TEST(X509Test, MismatchAlgorithms) {
                           X509_R_SIGNATURE_ALGORITHM_MISMATCH));
 }
 
+// TODO(crbug.com/387737061): Test that this function can decrypt certificates
+// and CRLs, even though it leaves encrypted private keys alone.
 TEST(X509Test, PEMX509Info) {
   std::string cert = kRootCAPEM;
   auto cert_obj = CertFromPEM(kRootCAPEM);
@@ -2987,6 +2989,9 @@ TEST(X509Test, PEMX509Info) {
   auto crl_obj = CRLFromPEM(kBasicCRL);
   ASSERT_TRUE(crl_obj);
 
+  bssl::UniquePtr<EVP_PKEY> placeholder_key(EVP_PKEY_new());
+  ASSERT_TRUE(placeholder_key);
+
   std::string unknown =
       "-----BEGIN UNKNOWN-----\n"
       "AAAA\n"
@@ -2996,6 +3001,16 @@ TEST(X509Test, PEMX509Info) {
       "-----BEGIN CERTIFICATE-----\n"
       "AAAA\n"
       "-----END CERTIFICATE-----\n";
+
+  std::string encrypted_key = R"(-----BEGIN EC PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: AES-128-CBC,B3B2988AECAE6EAB0D043105994C1123
+
+RK7DUIGDHWTFh2rpTX+dR88hUyC1PyDlIULiNCkuWFwHrJbc1gM6hMVOKmU196XC
+iITrIKmilFm9CPD6Tpfk/NhI/QPxyJlk1geIkxpvUZ2FCeMuYI1To14oYOUKv14q
+wr6JtaX2G+pOmwcSPymZC4u2TncAP7KHgS8UGcMw8CE=
+-----END EC PRIVATE KEY-----
+)";
 
   // Each X509_INFO contains at most one certificate, CRL, etc. The format
   // creates a new X509_INFO when a repeated type is seen.
@@ -3012,7 +3027,12 @@ TEST(X509Test, PEMX509Info) {
       // Doubled keys also start new entries.
       rsa + rsa + rsa + rsa + crl +
       // As do CRLs.
-      crl + crl;
+      crl + crl +
+      // Encrypted private keys are not decrypted (decryption failures would be
+      // fatal) and just returned as placeholder.
+      crl + cert + encrypted_key +
+      // Placeholder keys are still keys, so a new key starts a new entry.
+      rsa;
 
   const struct ExpectedInfo {
     const X509 *cert;
@@ -3032,6 +3052,8 @@ TEST(X509Test, PEMX509Info) {
       {nullptr, rsa_obj.get(), crl_obj.get()},
       {nullptr, nullptr, crl_obj.get()},
       {nullptr, nullptr, crl_obj.get()},
+      {cert_obj.get(), placeholder_key.get(), crl_obj.get()},
+      {nullptr, rsa_obj.get(), nullptr},
   };
 
   auto check_info = [](const ExpectedInfo *expected, const X509_INFO *info) {
@@ -3047,8 +3069,14 @@ TEST(X509Test, PEMX509Info) {
     }
     if (expected->key != nullptr) {
       ASSERT_NE(nullptr, info->x_pkey);
-      // EVP_PKEY_cmp returns one if the keys are equal.
-      EXPECT_EQ(1, EVP_PKEY_cmp(expected->key, info->x_pkey->dec_pkey));
+      if (EVP_PKEY_id(expected->key) == EVP_PKEY_NONE) {
+        // Expect a placeholder key.
+        EXPECT_FALSE(info->x_pkey->dec_pkey);
+      } else {
+        // EVP_PKEY_cmp returns one if the keys are equal.
+        ASSERT_TRUE(info->x_pkey->dec_pkey);
+        EXPECT_EQ(1, EVP_PKEY_cmp(expected->key, info->x_pkey->dec_pkey));
+      }
     } else {
       EXPECT_EQ(nullptr, info->x_pkey);
     }

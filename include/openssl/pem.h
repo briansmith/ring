@@ -307,6 +307,14 @@ OPENSSL_EXPORT int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name,
 // on success. In this case, the caller retains ownership of |sk| in both
 // success and failure.
 //
+// This function will decrypt any encrypted certificates in |bp|, using |cb|,
+// but it will not decrypt encrypted private keys. Encrypted private keys are
+// instead represented as placeholder |X509_INFO| objects with an empty |x_pkey|
+// field. This allows this function to be used with inputs with unencrypted
+// certificates, but encrypted passwords, without knowing the password. However,
+// it also means that this function cannot be used to decrypt the private key
+// when the password is known.
+//
 // WARNING: If the input contains "TRUSTED CERTIFICATE" PEM blocks, this
 // function parses auxiliary properties as in |d2i_X509_AUX|. Passing untrusted
 // input to this function allows an attacker to influence those properties. See

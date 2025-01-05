@@ -168,7 +168,8 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk,
       key_type = EVP_PKEY_EC;
     }
 
-    // If a private key has a header, assume it is encrypted.
+    // If a private key has a header, assume it is encrypted. This function does
+    // not decrypt private keys.
     if (key_type != EVP_PKEY_NONE && strlen(header) > 10) {
       if (info->x_pkey != NULL) {
         if (!sk_X509_INFO_push(ret, info)) {
@@ -179,7 +180,7 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk,
           goto err;
         }
       }
-      // Historically, raw entries pushed an empty key.
+      // Use an empty key as a placeholder.
       info->x_pkey = X509_PKEY_new();
       if (info->x_pkey == NULL ||
           !PEM_get_EVP_CIPHER_INFO(header, &info->enc_cipher)) {
