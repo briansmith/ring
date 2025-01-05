@@ -22,10 +22,7 @@ extern "C" {
 // error. |header| must be a NUL-terminated string. If |header| does not
 // specify encryption, this function will return success and set
 // |cipher->cipher| to NULL.
-//
-// WARNING: This function will internally write to the string pointed by
-// |header|. |header| must not point to constant storage.
-int PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher);
+int PEM_get_EVP_CIPHER_INFO(const char *header, EVP_CIPHER_INFO *cipher);
 
 // PEM_do_header decrypts |*len| bytes from |data| in-place according to the
 // information in |cipher|. On success, it returns one and sets |*len| to the
