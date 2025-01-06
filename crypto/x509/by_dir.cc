@@ -203,7 +203,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
   uint32_t h;
   uint32_t hash_array[2];
   int hash_index;
-  BUF_MEM *b = NULL;
+  char *b = NULL;
   X509_OBJECT stmp, *tmp;
   const char *postfix = "";
 
@@ -228,11 +228,6 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
     goto finish;
   }
 
-  if ((b = BUF_MEM_new()) == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
-    goto finish;
-  }
-
   hash_array[0] = X509_NAME_hash(name);
   hash_array[1] = X509_NAME_hash_old(name);
   for (hash_index = 0; hash_index < 2; ++hash_index) {
@@ -242,12 +237,6 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
       size_t idx;
       BY_DIR_HASH htmp, *hent;
       ent = sk_BY_DIR_ENTRY_value(ctx->dirs, i);
-      if (!BUF_MEM_grow(b, strlen(ent->dir) + /* foreslash */ 1 +
-                               /* h, in hex */ 8 + /* period */ 1 +
-                               /* optional `postfix` */ 1 +
-                               /* k */ DECIMAL_SIZE(k) + /* NUL */ 1)) {
-        goto finish;
-      }
       if (type == X509_LU_CRL && ent->hashes) {
         htmp.hash = h;
         CRYPTO_MUTEX_lock_read(&ent->lock);
@@ -264,17 +253,22 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         hent = NULL;
       }
       for (;;) {
-        snprintf(b->data, b->max, "%s/%08" PRIx32 ".%s%d", ent->dir, h, postfix,
-                 k);
+        OPENSSL_free(b);
+        if (OPENSSL_asprintf(&b, "%s/%08" PRIx32 ".%s%d", ent->dir, h, postfix,
+                             k) == -1) {
+          OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
+          b = nullptr;
+          goto finish;
+        }
         if (type == X509_LU_X509) {
-          if ((X509_load_cert_file(xl, b->data, ent->dir_type)) == 0) {
+          if ((X509_load_cert_file(xl, b, ent->dir_type)) == 0) {
             // Don't expose the lower level error, All of these boil
             // down to "we could not find a CA".
             ERR_clear_error();
             break;
           }
         } else if (type == X509_LU_CRL) {
-          if ((X509_load_crl_file(xl, b->data, ent->dir_type)) == 0) {
+          if ((X509_load_crl_file(xl, b, ent->dir_type)) == 0) {
             // Don't expose the lower level error, All of these boil
             // down to "we could not find a CRL".
             ERR_clear_error();
@@ -347,7 +341,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
     }
   }
 finish:
-  BUF_MEM_free(b);
+  OPENSSL_free(b);
   return ok;
 }
 
