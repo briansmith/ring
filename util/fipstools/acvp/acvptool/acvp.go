@@ -29,11 +29,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	neturl "net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,6 +48,7 @@ var (
 	configFilename  = flag.String("config", "config.json", "Location of the configuration JSON file")
 	jsonInputFile   = flag.String("json", "", "Location of a vector-set input file")
 	uploadInputFile = flag.String("upload", "", "Location of a JSON results file to upload")
+	uploadDirectory = flag.String("directory", "", "Path to folder where result files to be uploaded are")
 	runFlag         = flag.String("run", "", "Name of primitive to run tests for")
 	fetchFlag       = flag.String("fetch", "", "Name of primitive to fetch vectors for")
 	expectedOutFlag = flag.String("expected-out", "", "Name of a file to write the expected results to")
@@ -386,7 +389,7 @@ func connect(config *Config, sessionTokensCacheDir string) (*acvp.Server, error)
 		return nil, errors.New("config file missing PrivateKeyDERFile and PrivateKeyFile")
 	}
 	if len(config.PrivateKeyDERFile) != 0 && len(config.PrivateKeyFile) != 0 {
-		return nil, errors.New("config file has both PrivateKeyDERFile and PrivateKeyFile. Can only have one.")
+		return nil, errors.New("config file has both PrivateKeyDERFile and PrivateKeyFile - can only have one")
 	}
 	privateKeyFile := config.PrivateKeyDERFile
 	if len(config.PrivateKeyFile) > 0 {
@@ -456,6 +459,141 @@ FetchResults:
 	}
 }
 
+func getLastDigitDir(path string) (string, error) {
+	parts := strings.Split(filepath.Clean(path), string(filepath.Separator))
+
+	for i := len(parts) - 1; i >= 0; i-- {
+		part := parts[i]
+		if _, err := strconv.Atoi(part); err == nil {
+			return part, nil
+		}
+	}
+	return "", errors.New("no directory consisting of only digits found")
+}
+
+func uploadResults(results []nistUploadResult, sessionID string, config *Config, sessionTokensCacheDir string) {
+	server, err := connect(config, sessionTokensCacheDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, result := range results {
+		url := result.URLPath
+		payload := result.JSONResult
+		log.Printf("Uploading result for %q", url)
+		if err := uploadResult(server, url, payload); err != nil {
+			log.Fatalf("Failed to upload: %s", err)
+		}
+	}
+
+	if ok, err := getResultsWithRetry(server, fmt.Sprintf("/acvp/v1/testSessions/%s", sessionID)); err != nil {
+		log.Fatal(err)
+	} else if !ok {
+		os.Exit(1)
+	}
+}
+
+// Vector Test Result files are JSON formatted with various objects and keys.
+// Define structs to read and process the files.
+type vectorResult struct {
+	Version    string      `json:"acvVersion,omitempty"`
+	Algorithm  string      `json:"algorithm,omitempty"`
+	ID         int         `json:"vsId,omitempty"`
+	// Objects under testGroups can have various keys so use an empty interface.
+	Tests []map[string]interface{} `json:"testGroups,omitempty"`
+}
+
+func getVectorSetID(jsonData []vectorResult) (int, error) {
+	vsId := 0
+	for _, item := range jsonData {
+		if item.ID > 0 && vsId == 0 {
+			vsId = item.ID
+		} else if item.ID > 0 && vsId != 0 {
+			return 0, errors.New("found multiple vsId values")
+		}
+	}
+	if vsId != 0 {
+		return vsId, nil
+	}
+	return 0, errors.New("could not find vsId")
+}
+
+func getVectorResult(jsonData []vectorResult) ([]byte, error) {
+	for _, item := range jsonData {
+		if item.ID > 0 {
+			out, err := json.Marshal(item)
+			if err != nil {
+				return nil, fmt.Errorf("unable to marshal JSON due to %s", err)
+			}
+			return out, nil
+		}
+	}
+	return nil, errors.New("could not find vsId necessary to identify vector result")
+}
+
+// Results to be uploaded have a specific URL path to POST/PUT to, along with
+// the test results.
+// Define a struct and store this data for processing.
+type nistUploadResult struct {
+	URLPath    string
+	JSONResult []byte
+}
+
+// Uploads a results directory based on the directory name being the session id.
+// Non-JSON files are ignored and JSON files are assumed to be test results.
+// The vectorSetId is retrieved from the test result file.
+func uploadResultsDirectory(directory string, config *Config, sessionTokensCacheDir string) {
+	directory = filepath.Clean(directory)
+	sessionID, err := getLastDigitDir(directory)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var results []nistUploadResult
+	// Read directory, identify, and process all files.
+	files, err := ioutil.ReadDir(directory)
+	if err != nil {
+		log.Fatalf("Unable to read directory: %s", err)
+	}
+
+	for _, file := range files {
+		// Add contents of the result file to results.
+		filePath := filepath.Join(directory, file.Name())
+		in, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			log.Fatalf("Cannot open input: %s", err)
+		}
+
+		var data []vectorResult
+		if err := json.Unmarshal(in, &data); err != nil {
+			// Assume file is not JSON. Log and continue to next file.
+			log.Printf("Failed to parse %q: %s", filePath, err)
+			continue
+		}
+
+		vectorSetID, err := getVectorSetID(data)
+		if err != nil {
+			log.Fatalf("Failed to get VectorSetId: %s", err)
+		}
+		// uploadResult() uses acvp.Server whose write() function takes the
+		// JSON *object* payload and turns it into a JSON *array* adding
+		// {"acvVersion":"1.0"} as a top-level object. Since the result file is
+		// already in this format, the JSON provided to uploadResult() must be
+		// modified to have those aspects removed. In other words, only store only
+		// the vector test result JSON object (do not store a JSON array or
+		// acvVersion object).
+		vectorTestResult, err := getVectorResult(data)
+		if err != nil {
+			log.Fatalf("Failed to get VectorResult: %s", err)
+		}
+		requestPath := fmt.Sprintf("/acvp/v1/testSessions/%s/vectorSets/%d", sessionID, vectorSetID)
+		newResult := nistUploadResult{URLPath: requestPath, JSONResult: vectorTestResult}
+		results = append(results, newResult)
+	}
+
+	uploadResults(results, sessionID, config, sessionTokensCacheDir)
+}
+
 // vectorSetHeader is the first element in the array of JSON elements that makes
 // up the on-disk format for a vector set.
 type vectorSetHeader struct {
@@ -465,22 +603,6 @@ type vectorSetHeader struct {
 }
 
 func uploadFromFile(file string, config *Config, sessionTokensCacheDir string) {
-	if len(*jsonInputFile) > 0 {
-		log.Fatalf("-upload cannot be used with -json")
-	}
-	if len(*runFlag) > 0 {
-		log.Fatalf("-upload cannot be used with -run")
-	}
-	if len(*fetchFlag) > 0 {
-		log.Fatalf("-upload cannot be used with -fetch")
-	}
-	if len(*expectedOutFlag) > 0 {
-		log.Fatalf("-upload cannot be used with -expected-out")
-	}
-	if *dumpRegcap {
-		log.Fatalf("-upload cannot be used with -regcap")
-	}
-
 	in, err := os.Open(file)
 	if err != nil {
 		log.Fatalf("Cannot open input: %s", err)
@@ -507,27 +629,47 @@ func uploadFromFile(file string, config *Config, sessionTokensCacheDir string) {
 		log.Fatalf("have %d URLs from header, but only %d result groups", len(header.VectorSetURLs), numGroups)
 	}
 
-	server, err := connect(config, sessionTokensCacheDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	// Process input and header data to nistUploadResult struct to simplify uploads.
+	var results []nistUploadResult
 	for i, url := range header.VectorSetURLs {
-		log.Printf("Uploading result for %q", url)
-		if err := uploadResult(server, url, input[i+1]); err != nil {
-			log.Fatalf("Failed to upload: %s", err)
-		}
+		newResult := nistUploadResult{URLPath: url, JSONResult: input[i+1]}
+		results = append(results, newResult)
+	}
+	sessionID, err := getLastDigitDir(header.URL)
+	if err != nil {
+		log.Fatalf("Cannot get session id: %s", err)
 	}
 
-	if ok, err := getResultsWithRetry(server, header.URL); err != nil {
-		log.Fatal(err)
-	} else if !ok {
-		os.Exit(1)
-	}
+	uploadResults(results, sessionID, config, sessionTokensCacheDir)
 }
 
 func main() {
 	flag.Parse()
+	// Check for various flags that are exclusive of each other.
+	// The flags that are available to upload results depend on the result format and storage.
+	// Only one result flag can be used at a time.
+	resultFlags := []bool{len(*uploadInputFile) > 0, len(*uploadDirectory) > 0}
+	resultFlagCount := 0
+	for _, f := range resultFlags {
+		if f {
+			resultFlagCount++
+		}
+	}
+	if resultFlagCount > 1 {
+		log.Fatalf("only one submit result action (-upload, -directory) is allowed at a time")
+	} else if resultFlagCount == 1 {
+		if len(*jsonInputFile) > 0 {
+			log.Fatalf("submit result action (-upload, -directory) cannot be used with -json")
+		} else if len(*runFlag) > 0 {
+			log.Fatalf("submit result action (-upload, -directory) cannot be used with -run")
+		} else if len(*fetchFlag) > 0 {
+			log.Fatalf("submit result action (-upload, -directory) cannot be used with -fetch")
+		} else if len(*expectedOutFlag) > 0 {
+			log.Fatalf("submit result action (-upload, -directory) cannot be used with -expected-out")
+		} else if *dumpRegcap {
+			log.Fatalf("submit result action (-upload, -directory) cannot be used with -regcap")
+		}
+	}
 
 	middle, err := subprocess.New(*wrapperPath)
 	if err != nil {
@@ -664,6 +806,11 @@ func main() {
 
 	if len(*uploadInputFile) > 0 {
 		uploadFromFile(*uploadInputFile, &config, sessionTokensCacheDir)
+		return
+	}
+
+	if len(*uploadDirectory) > 0 {
+		uploadResultsDirectory(*uploadDirectory, &config, sessionTokensCacheDir)
 		return
 	}
 
