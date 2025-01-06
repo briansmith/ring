@@ -45,6 +45,9 @@ BN_MONT_CTX *BN_MONT_CTX_new(void) {
 }
 
 void BN_MONT_CTX_free(BN_MONT_CTX *mont) {
+  if (mont == nullptr) {
+    return;
+  }
   bn_mont_ctx_cleanup(mont);
   OPENSSL_free(mont);
 }

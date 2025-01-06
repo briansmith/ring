@@ -13,25 +13,6 @@
 
 // This file should be the first included by all BoringSSL headers.
 
-// Remove this after importing the following to remove all instances of
-// |sprintf|, |strcat|, and |strcpy| from the codebase.
-// * https://github.com/openssl/openssl/commit/86ba26c80a49aee3c588d286d91eb3843529f7e2
-// * https://github.com/openssl/openssl/commit/60eba30f60de55e3c782469fa555eede82606099
-// * https://github.com/openssl/openssl/commit/a2371fa93365cc0bc0e46b9d65f3a47a074b1c30
-//
-// Also after importing
-// https://github.com/openssl/openssl/commit/e6e9170d6e28038768895e1af18e3aad8093bf4b
-// to make the following functions accept a NULL parameter:
-// * BIO_CONNECT_free
-// * BUF_MEM_free
-// * BN_CTX_free
-// * BN_RECP_CTX_free
-// * BN_MONT_CTX_free
-// * BN_BLINDING_free
-// * X509_STORE_free
-// * SSL_SESSION_free
-#error "Do not build BoringSSL at this revision"
-
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -421,7 +402,7 @@ extern "C++" {
 #define BORINGSSL_NO_CXX
 #endif
 
-}       // extern C++
+}  // extern C++
 #endif  // !BORINGSSL_NO_CXX
 
 #if defined(BORINGSSL_NO_CXX)

@@ -58,7 +58,8 @@ ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_set(ASN1_GENERALIZEDTIME *s,
 }
 
 ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_adj(ASN1_GENERALIZEDTIME *s,
-                                               int64_t posix_time, int offset_day,
+                                               int64_t posix_time,
+                                               int offset_day,
                                                long offset_sec) {
   struct tm data;
   if (!OPENSSL_posix_to_tm(posix_time, &data)) {
@@ -77,12 +78,11 @@ ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_adj(ASN1_GENERALIZEDTIME *s,
   }
 
   char buf[16];
-  int ret = sprintf(buf, "%04d%02d%02d%02d%02d%02dZ", data.tm_year + 1900,
-                    data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min,
-                    data.tm_sec);
-  if (ret != (int)(sizeof(buf) - 1)) {
-    abort();  // |sprintf| should write exactly the expected number of bytes.
-  }
+  int ret = snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02dZ",
+                     data.tm_year + 1900, data.tm_mon + 1, data.tm_mday,
+                     data.tm_hour, data.tm_min, data.tm_sec);
+  // |snprintf| must write exactly 15 bytes (plus the NUL) to the buffer.
+  BSSL_CHECK(ret == static_cast<int>(sizeof(buf) - 1));
 
   int free_s = 0;
   if (s == NULL) {

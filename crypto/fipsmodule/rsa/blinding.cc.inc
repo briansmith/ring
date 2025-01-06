@@ -58,6 +58,9 @@ err:
 }
 
 void BN_BLINDING_free(BN_BLINDING *r) {
+  if (r == nullptr) {
+    return;
+  }
   BN_free(r->A);
   BN_free(r->Ai);
   OPENSSL_free(r);

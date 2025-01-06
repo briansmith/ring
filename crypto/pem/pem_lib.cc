@@ -48,9 +48,9 @@ static void PEM_proc_type(char buf[PEM_BUFSIZE], int type) {
     str = "BAD-TYPE";
   }
 
-  strcat(buf, "Proc-Type: 4,");
-  strcat(buf, str);
-  strcat(buf, "\n");
+  OPENSSL_strlcat(buf, "Proc-Type: 4,", PEM_BUFSIZE);
+  OPENSSL_strlcat(buf, str, PEM_BUFSIZE);
+  OPENSSL_strlcat(buf, "\n", PEM_BUFSIZE);
 }
 
 // PEM_dek_info appends a DEK-Info header to |buf|, with an algorithm of |type|
@@ -59,16 +59,22 @@ static void PEM_dek_info(char buf[PEM_BUFSIZE], const char *type, size_t len,
                          char *str) {
   static const unsigned char map[17] = "0123456789ABCDEF";
 
-  strcat(buf, "DEK-Info: ");
-  strcat(buf, type);
-  strcat(buf, ",");
-  size_t buf_len = strlen(buf);
-  for (size_t i = 0; i < len; i++) {
-    buf[buf_len + i * 2] = map[(str[i] >> 4) & 0x0f];
-    buf[buf_len + i * 2 + 1] = map[(str[i]) & 0x0f];
+  OPENSSL_strlcat(buf, "DEK-Info: ", PEM_BUFSIZE);
+  OPENSSL_strlcat(buf, type, PEM_BUFSIZE);
+  OPENSSL_strlcat(buf, ",", PEM_BUFSIZE);
+
+  const size_t used = strlen(buf);
+  const size_t available = PEM_BUFSIZE - used;
+  if (len * 2 < len || len * 2 + 2 < len || available < len * 2 + 2) {
+    return;
   }
-  buf[buf_len + len * 2] = '\n';
-  buf[buf_len + len * 2 + 1] = '\0';
+
+  for (size_t i = 0; i < len; i++) {
+    buf[used + i * 2] = map[(str[i] >> 4) & 0x0f];
+    buf[used + i * 2 + 1] = map[(str[i]) & 0x0f];
+  }
+  buf[used + len * 2] = '\n';
+  buf[used + len * 2 + 1] = '\0';
 }
 
 void *PEM_ASN1_read(d2i_of_void *d2i, const char *name, FILE *fp, void **x,

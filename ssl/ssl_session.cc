@@ -830,6 +830,9 @@ int SSL_SESSION_up_ref(SSL_SESSION *session) {
 }
 
 void SSL_SESSION_free(SSL_SESSION *session) {
+  if (session == nullptr) {
+    return;
+  }
   session->DecRefInternal();
 }
 

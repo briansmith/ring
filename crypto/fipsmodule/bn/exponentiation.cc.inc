@@ -136,6 +136,9 @@ static void BN_RECP_CTX_init(BN_RECP_CTX *recp) {
 }
 
 static void BN_RECP_CTX_free(BN_RECP_CTX *recp) {
+  if (recp == nullptr) {
+    return;
+  }
   BN_free(&recp->N);
   BN_free(&recp->Nr);
 }

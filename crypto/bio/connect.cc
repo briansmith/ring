@@ -260,6 +260,9 @@ static BIO_CONNECT *BIO_CONNECT_new(void) {
 }
 
 static void BIO_CONNECT_free(BIO_CONNECT *c) {
+  if (c == nullptr) {
+    return;
+  }
   OPENSSL_free(c->param_hostname);
   OPENSSL_free(c->param_port);
   OPENSSL_free(c);

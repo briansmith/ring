@@ -370,7 +370,6 @@ int NCONF_load_bio(CONF *conf, BIO *in, long *out_error_line) {
   char *s, *p, *end;
   int again;
   long eline = 0;
-  char btmp[DECIMAL_SIZE(eline) + 1];
   CONF_VALUE *v = NULL;
   CONF_SECTION *sv = NULL;
   char *section = NULL, *buf;
@@ -551,8 +550,7 @@ err:
   if (out_error_line != NULL) {
     *out_error_line = eline;
   }
-  sprintf(btmp, "%ld", eline);
-  ERR_add_error_data(2, "line ", btmp);
+  ERR_add_error_dataf("line %ld", eline);
   value_free(v);
   return 0;
 }

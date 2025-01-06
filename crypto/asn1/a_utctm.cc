@@ -60,8 +60,8 @@ ASN1_UTCTIME *ASN1_UTCTIME_set(ASN1_UTCTIME *s, int64_t posix_time) {
   return ASN1_UTCTIME_adj(s, posix_time, 0, 0);
 }
 
-ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, int64_t posix_time, int offset_day,
-                               long offset_sec) {
+ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, int64_t posix_time,
+                               int offset_day, long offset_sec) {
   struct tm data;
   if (!OPENSSL_posix_to_tm(posix_time, &data)) {
     return NULL;
@@ -78,12 +78,11 @@ ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, int64_t posix_time, int offset_d
   }
 
   char buf[14];
-  int ret = sprintf(buf, "%02d%02d%02d%02d%02d%02dZ", data.tm_year % 100,
-                    data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min,
-                    data.tm_sec);
-  if (ret != (int)(sizeof(buf) - 1)) {
-    abort();  // |sprintf| should write exactly the expected number of bytes.
-  }
+  int ret = snprintf(buf, sizeof(buf), "%02d%02d%02d%02d%02d%02dZ",
+                     data.tm_year % 100, data.tm_mon + 1, data.tm_mday,
+                     data.tm_hour, data.tm_min, data.tm_sec);
+  // |snprintf| must write exactly 15 bytes (plus the NUL) to the buffer.
+  BSSL_CHECK(ret == static_cast<int>(sizeof(buf) - 1));
 
   int free_s = 0;
   if (s == NULL) {

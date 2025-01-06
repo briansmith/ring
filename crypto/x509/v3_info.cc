@@ -80,8 +80,8 @@ static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
   const AUTHORITY_INFO_ACCESS *ainfo =
       reinterpret_cast<const AUTHORITY_INFO_ACCESS *>(ext);
   ACCESS_DESCRIPTION *desc;
-  int nlen;
-  char objtmp[80], *ntmp;
+  int name_len;
+  char objtmp[80], *name;
   CONF_VALUE *vtmp;
   STACK_OF(CONF_VALUE) *tret = ret;
 
@@ -96,16 +96,17 @@ static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
     tret = tmp;
     vtmp = sk_CONF_VALUE_value(tret, i);
     i2t_ASN1_OBJECT(objtmp, sizeof objtmp, desc->method);
-    nlen = strlen(objtmp) + 3 + strlen(vtmp->name) + 1;
-    ntmp = reinterpret_cast<char *>(OPENSSL_malloc(nlen));
-    if (ntmp == NULL) {
+
+    name_len = strlen(objtmp) + 3 + strlen(vtmp->name) + 1;
+    name = reinterpret_cast<char *>(OPENSSL_malloc(name_len));
+    if (name == NULL) {
       goto err;
     }
-    strcpy(ntmp, objtmp);
-    strcat(ntmp, " - ");
-    strcat(ntmp, vtmp->name);
+    OPENSSL_strlcpy(name, objtmp, name_len);
+    OPENSSL_strlcat(name, " - ", name_len);
+    OPENSSL_strlcat(name, vtmp->name, name_len);
     OPENSSL_free(vtmp->name);
-    vtmp->name = ntmp;
+    vtmp->name = name;
   }
   if (ret == NULL && tret == NULL) {
     return sk_CONF_VALUE_new_null();
