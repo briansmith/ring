@@ -50,6 +50,10 @@ vars = {
   'llvm_libc_revision': '17e581644f9a71be3eb30f468722ce866058f93a',
   'ninja_version': 'version:2@1.12.1.chromium.4',
 
+  # Update to the latest revision of
+  # https://chromium.googlesource.com/chromium/src/tools/clang
+  'tools_clang_revision': 'bf9a3411372f2d5eed8b3d27ee8bd8cf6c17135f',
+
   # The Android NDK cannot be updated until https://crbug.com/boringssl/454 is fixed.
   # We rely on an older NDK to test building without NEON instructions as the baseline.
   'android_ndk_revision': 'U0e8L6l52ySjBrUBB82Vdyhsg60vVMqH0ItTW3TRHAQC',
@@ -145,7 +149,12 @@ deps = {
       }],
       'condition': 'checkout_riscv64',
       'dep_type': 'cipd',
-  }
+  },
+
+  'boringssl/util/bot/tools/clang': {
+    'url': Var('chromium_git') + '/chromium/src/tools/clang.git' + '@' + Var('tools_clang_revision'),
+    'condition': 'checkout_clang',
+  },
 }
 
 recursedeps = [
@@ -181,7 +190,8 @@ hooks = [
     'pattern': '.',
     'condition': 'checkout_clang',
     'action': [ 'python3',
-                'boringssl/util/bot/update_clang.py',
+                'boringssl/util/bot/tools/clang/scripts/update.py',
+                '--output-dir', 'boringssl/util/bot/llvm-build',
     ],
   },
   {

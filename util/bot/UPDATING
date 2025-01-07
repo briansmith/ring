@@ -10,10 +10,6 @@ To update to newer revisions, follow these instructions:
 
 DEPS: Update the variables as described in the comments.
 
-update_clang.py: Set CLANG_REVISION and CLANG_SUB_REVISION to the values used in
-    Chromium, found at
-    https://chromium.googlesource.com/chromium/src/+/main/tools/clang/scripts/update.py
-
 vs_toolchain.py: Update _GetDesiredVsToolchainHashes from Chromium, found at
     https://chromium.googlesource.com/chromium/src/+/main/build/vs_toolchain.py
     This may require taking other updates to that file. (Don't remove MSVC
