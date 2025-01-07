@@ -71,8 +71,17 @@ int ASN1_TIME_check(const ASN1_TIME *t) {
 // Convert an ASN1_TIME structure to GeneralizedTime
 ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(const ASN1_TIME *in,
                                                    ASN1_GENERALIZEDTIME **out) {
-  if (!ASN1_TIME_check(in)) {
-    return NULL;
+  struct tm tm;
+  if (in->type == V_ASN1_GENERALIZEDTIME) {
+    if (!asn1_generalizedtime_to_tm(&tm, in)) {
+      return nullptr;
+    }
+  } else if (in->type == V_ASN1_UTCTIME) {
+    if (!asn1_utctime_to_tm(&tm, in, /*allow_timezone_offset =*/0)) {
+      return nullptr;
+    }
+  } else {
+    return nullptr;
   }
 
   ASN1_GENERALIZEDTIME *ret = NULL;
@@ -84,33 +93,12 @@ ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(const ASN1_TIME *in,
     ret = *out;
   }
 
-  // If already GeneralizedTime just copy across
-  if (in->type == V_ASN1_GENERALIZEDTIME) {
-    if (!ASN1_STRING_set(ret, in->data, in->length)) {
-      goto err;
-    }
-    goto done;
-  }
-
-  // Grow the string to accomodate the two-digit century.
-  if (!ASN1_STRING_set(ret, NULL, in->length + 2)) {
+  int64_t posix_time;
+  if (!OPENSSL_tm_to_posix(&tm, &posix_time) ||  //
+      !ASN1_GENERALIZEDTIME_set(ret, posix_time)) {
     goto err;
   }
 
-  {
-    char *const out_str = (char *)ret->data;
-    // |ASN1_STRING_set| also allocates an additional byte for a trailing NUL.
-    const size_t out_str_capacity = in->length + 2 + 1;
-    // Work out the century and prepend
-    if (in->data[0] >= '5') {
-      OPENSSL_strlcpy(out_str, "19", out_str_capacity);
-    } else {
-      OPENSSL_strlcpy(out_str, "20", out_str_capacity);
-    }
-    OPENSSL_strlcat(out_str, (const char *)in->data, out_str_capacity);
-  }
-
-done:
   if (out != NULL && *out == NULL) {
     *out = ret;
   }
