@@ -23,10 +23,6 @@
 )]
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 
-// This crate requires the |new_uninit| feature which is available by
-// default in Rust 1.82 but present and usable in some earlier versions.
-#![feature(new_uninit)]
-
 //! Rust BoringSSL bindings
 
 extern crate alloc;
