@@ -476,8 +476,7 @@ fn cbb_to_vec<F: FnOnce(*mut bssl_sys::CBB)>(len: usize, func: F) -> Vec<u8> {
             bssl_sys::CBB_init_fixed(cbb, boxed.as_mut_ptr() as *mut u8, len) == 1
         })
     }
-    // `CBB_init` only fails if out of memory, which isn't something that this
-    // crate handles.
+    // `CBB_init_fixed` never fails and does not allocate.
     .unwrap();
 
     func(&mut cbb);
