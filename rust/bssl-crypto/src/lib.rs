@@ -28,7 +28,10 @@
 extern crate alloc;
 extern crate core;
 
-use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "mlalgs")]
+use alloc::boxed::Box;
+
+use alloc::vec::Vec;
 use core::ffi::c_void;
 
 #[macro_use]
@@ -48,7 +51,9 @@ pub mod ed25519;
 pub mod hkdf;
 pub mod hmac;
 pub mod hpke;
+#[cfg(feature = "mlalgs")]
 pub mod mldsa;
+#[cfg(feature = "mlalgs")]
 pub mod mlkem;
 pub mod rsa;
 pub mod slhdsa;
@@ -247,6 +252,7 @@ where
 /// Requires that the given function completely initializes the value.
 ///
 /// Safety: the argument must fully initialize the pointed-to `T`.
+#[cfg(feature = "mlalgs")]
 unsafe fn initialized_boxed_struct<T, F>(init: F) -> Box<T>
 where
     F: FnOnce(*mut T),
@@ -262,6 +268,7 @@ where
 ///
 /// Safety: the argument must fully initialize the pointed-to `T` if it returns
 /// true. If it returns false then there are no safety requirements.
+#[cfg(feature = "mlalgs")]
 unsafe fn initialized_boxed_struct_fallible<T, F>(init: F) -> Option<Box<T>>
 where
     F: FnOnce(*mut T) -> bool,
@@ -398,6 +405,7 @@ impl Drop for Buffer {
     }
 }
 
+#[cfg(feature = "mlalgs")]
 fn as_cbs(buf: &[u8]) -> bssl_sys::CBS {
     bssl_sys::CBS {
         data: buf.as_ffi_ptr(),
@@ -455,6 +463,7 @@ fn cbb_to_buffer<F: FnOnce(*mut bssl_sys::CBB)>(initial_capacity: usize, func: F
     unsafe { Buffer::new(ptr, len) }
 }
 
+#[cfg(feature = "mlalgs")]
 /// Calls `func` with a `CBB` pointer that has been initialized to a vector
 /// of `len` bytes. That function must write exactly `len` bytes to the
 /// `CBB`. Those bytes are then returned as a vector.
