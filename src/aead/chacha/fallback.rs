@@ -16,7 +16,8 @@
 // Adapted from the BoringSSL crypto/chacha/chacha.c.
 
 use super::{Counter, Key, Overlapping, BLOCK_LEN};
-use core::mem::size_of;
+use crate::{constant_time, polyfill::sliceutil};
+use core::{mem::size_of, slice};
 
 pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, in_out: Overlapping<'_>) {
     const SIGMA: [u32; 4] = [
@@ -41,16 +42,24 @@ pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, in_out: Overlapping<'_
         chacha_core(&mut buf, &state);
         state[12] += 1;
 
-        let todo = core::cmp::min(BLOCK_LEN, in_out_len);
-        for (i, &b) in buf[..todo].iter().enumerate() {
-            let input = unsafe { *input.add(i) };
-            let b = input ^ b;
-            unsafe { *output.add(i) = b };
+        // Both branches do the same thing, but the duplication helps the
+        // compiler optimize (vectorize) the `BLOCK_LEN` case.
+        if in_out_len >= BLOCK_LEN {
+            let input = unsafe { slice::from_raw_parts(input, BLOCK_LEN) };
+            constant_time::xor_assign_at_start(&mut buf, input);
+            let output = unsafe { slice::from_raw_parts_mut(output, BLOCK_LEN) };
+            sliceutil::overwrite_at_start(output, &buf);
+        } else {
+            let input = unsafe { slice::from_raw_parts(input, in_out_len) };
+            constant_time::xor_assign_at_start(&mut buf, input);
+            let output = unsafe { slice::from_raw_parts_mut(output, in_out_len) };
+            sliceutil::overwrite_at_start(output, &buf);
+            break;
         }
 
-        in_out_len -= todo;
-        input = unsafe { input.add(todo) };
-        output = unsafe { output.add(todo) };
+        in_out_len -= BLOCK_LEN;
+        input = unsafe { input.add(BLOCK_LEN) };
+        output = unsafe { output.add(BLOCK_LEN) };
     }
 }
 
