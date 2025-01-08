@@ -15,7 +15,7 @@
 use super::{
     aes::{self, Counter, Overlapping, OverlappingPartialBlock, BLOCK_LEN, ZERO_BLOCK},
     gcm,
-    overlapping::SrcIndexError,
+    overlapping::IndexError,
     Aad, Nonce, Tag,
 };
 use crate::{
@@ -286,8 +286,7 @@ pub(super) fn open(
     src: RangeFrom<usize>,
 ) -> Result<Tag, error::Unspecified> {
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-    let in_out =
-        Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<SrcIndexError>)?;
+    let in_out = Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
 
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
@@ -331,7 +330,7 @@ pub(super) fn open(
             });
             // Authenticate any remaining whole blocks.
             let in_out = Overlapping::new(in_out_slice, src.clone()).unwrap_or_else(
-                |SrcIndexError { .. }| {
+                |IndexError { .. }| {
                     // This can't happen. If it did, then the assembly already
                     // overwrote part of the remaining input.
                     unreachable!()
@@ -344,7 +343,7 @@ pub(super) fn open(
 
             // Decrypt any remaining whole blocks.
             let whole = Overlapping::new(&mut in_out_slice[..(src.start + whole_len)], src.clone())
-                .map_err(error::erase::<SrcIndexError>)?;
+                .map_err(error::erase::<IndexError>)?;
             aes_key.ctr32_encrypt_within(whole, &mut ctr);
 
             let in_out_slice = match in_out_slice.get_mut(whole_len..) {
@@ -352,7 +351,7 @@ pub(super) fn open(
                 None => unreachable!(),
             };
             let in_out = Overlapping::new(in_out_slice, src)
-                .unwrap_or_else(|SrcIndexError { .. }| unreachable!());
+                .unwrap_or_else(|IndexError { .. }| unreachable!());
             let in_out = OverlappingPartialBlock::new(in_out)
                 .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
             open_finish(aes_key, auth, in_out, ctr, tag_iv)
@@ -399,8 +398,8 @@ pub(super) fn open(
                 }
             }
             let remainder = &mut in_out_slice[whole_len..];
-            let remainder = Overlapping::new(remainder, src)
-                .unwrap_or_else(|SrcIndexError { .. }| unreachable!());
+            let remainder =
+                Overlapping::new(remainder, src).unwrap_or_else(|IndexError { .. }| unreachable!());
             let remainder = OverlappingPartialBlock::new(remainder)
                 .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
             open_finish(aes_key, auth, remainder, ctr, tag_iv)
@@ -443,8 +442,7 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
     mut ctr: Counter,
     tag_iv: aes::Iv,
 ) -> Result<Tag, error::Unspecified> {
-    let in_out =
-        Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<SrcIndexError>)?;
+    let in_out = Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
     let input = in_out.input();
     let input_len = input.len();
 
@@ -475,7 +473,7 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
                 &mut in_out_slice[output..][..(chunk_len + in_prefix_len)],
                 in_prefix_len..,
             )
-            .map_err(error::erase::<SrcIndexError>)?;
+            .map_err(error::erase::<IndexError>)?;
             aes_key.ctr32_encrypt_within(chunk, &mut ctr);
             output += chunk_len;
             input += chunk_len;
@@ -483,7 +481,7 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
     }
 
     let in_out = Overlapping::new(&mut in_out_slice[whole_len..], src)
-        .unwrap_or_else(|SrcIndexError { .. }| unreachable!());
+        .unwrap_or_else(|IndexError { .. }| unreachable!());
     let in_out = OverlappingPartialBlock::new(in_out)
         .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
 
