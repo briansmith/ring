@@ -74,6 +74,11 @@ void ec_scalar_reduce(const EC_GROUP *group, EC_SCALAR *out,
                       const BN_ULONG *words, size_t num);
 
 // ec_random_nonzero_scalar sets |out| to a uniformly selected random value from
+// zero to |group->order| - 1. It returns one on success and zero on error.
+int ec_random_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                     const uint8_t additional_data[32]);
+
+// ec_random_nonzero_scalar sets |out| to a uniformly selected random value from
 // 1 to |group->order| - 1. It returns one on success and zero on error.
 int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
                              const uint8_t additional_data[32]);

@@ -16,9 +16,9 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
-#include "../bn/internal.h"
 #include "../../internal.h"
+#include "../bn/internal.h"
+#include "internal.h"
 
 
 int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
@@ -47,6 +47,12 @@ int ec_scalar_is_zero(const EC_GROUP *group, const EC_SCALAR *a) {
     mask |= a->words[i];
   }
   return mask == 0;
+}
+
+int ec_random_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                     const uint8_t additional_data[32]) {
+  return bn_rand_range_words(out->words, 0, group->order.N.d,
+                             group->order.N.width, additional_data);
 }
 
 int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,

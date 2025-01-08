@@ -429,6 +429,7 @@ set(
   crypto/sha/sha512.cc
   crypto/siphash/siphash.cc
   crypto/slhdsa/slhdsa.cc
+  crypto/spake2plus/spake2plus.cc
   crypto/stack/stack.cc
   crypto/thread.cc
   crypto/thread_none.cc
@@ -662,6 +663,7 @@ set(
   crypto/rand_extra/getrandom_fillin.h
   crypto/rand_extra/sysrand_internal.h
   crypto/rsa_extra/internal.h
+  crypto/spake2plus/internal.h
   crypto/trust_token/internal.h
   crypto/x509/ext_dat.h
   crypto/x509/internal.h
@@ -781,6 +783,7 @@ set(
   crypto/self_test.cc
   crypto/siphash/siphash_test.cc
   crypto/slhdsa/slhdsa_test.cc
+  crypto/spake2plus/spake2plus_test.cc
   crypto/stack/stack_test.cc
   crypto/test/gtest_main.cc
   crypto/thread_test.cc
