@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use core::ops::RangeFrom;
+use super::{Array, LenMismatchError};
+use core::{mem, ops::RangeFrom};
 
 pub struct Overlapping<'o, T> {
     // Invariant: self.src.start <= in_out.len().
@@ -28,7 +29,7 @@ impl<'o, T> Overlapping<'o, T> {
     pub fn new(in_out: &'o mut [T], src: RangeFrom<usize>) -> Result<Self, IndexError> {
         match in_out.get(src.clone()) {
             Some(_) => Ok(Self { in_out, src }),
-            None => Err(IndexError::new(src)),
+            None => Err(IndexError::new(src.start)),
         }
     }
 
@@ -51,7 +52,7 @@ impl<'o, T> Overlapping<'o, T> {
         (self.in_out, self.src)
     }
 
-    pub(super) fn into_unwritten_output(self) -> &'o mut [T] {
+    pub fn into_unwritten_output(self) -> &'o mut [T] {
         let len = self.len();
         self.in_out.get_mut(..len).unwrap_or_else(|| {
             // The invariant ensures this succeeds.
@@ -83,14 +84,58 @@ impl<T> Overlapping<'_, T> {
         let input = unsafe { output_const.add(self.src.start) };
         (input, output, len)
     }
+
+    // Perhaps unlike `slice::split_first_chunk_mut`, this is biased,
+    // performance-wise, against the case where `N > self.len()`, so callers
+    // should be structured to avoid that.
+    //
+    // If the result is `Err` then nothing was written to `self`; if anything
+    // was written then the result will not be `Err`.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn split_first_chunk<const N: usize>(
+        mut self,
+        f: impl for<'a> FnOnce(Array<'a, T, N>),
+    ) -> Result<Self, IndexError> {
+        let src = self.src.clone();
+        let end = self
+            .src
+            .start
+            .checked_add(N)
+            .ok_or_else(|| IndexError::new(N))?;
+        let first = self
+            .in_out
+            .get_mut(..end)
+            .ok_or_else(|| IndexError::new(N))?;
+        let first = Overlapping::new(first, src).unwrap_or_else(|IndexError { .. }| {
+            // Since `end == src.start + N`.
+            unreachable!()
+        });
+        let first = Array::new(first).unwrap_or_else(|LenMismatchError { .. }| {
+            // Since `end == src.start + N`.
+            unreachable!()
+        });
+        // Once we call `f`, we must return `Ok` because `f` may have written
+        // over (part of) the input.
+        Ok({
+            f(first);
+            let tail = mem::take(&mut self.in_out).get_mut(N..).unwrap_or_else(|| {
+                // There are at least `N` elements since `end == src.start + N`.
+                unreachable!()
+            });
+            Self::new(tail, self.src).unwrap_or_else(|IndexError { .. }| {
+                // Follows from `end == src.start + N`.
+                unreachable!()
+            })
+        })
+    }
 }
 
-pub struct IndexError(#[allow(dead_code)] RangeFrom<usize>);
+pub struct IndexError(#[allow(dead_code)] usize);
 
 impl IndexError {
     #[cold]
     #[inline(never)]
-    fn new(src: RangeFrom<usize>) -> Self {
-        Self(src)
+    fn new(index: usize) -> Self {
+        Self(index)
     }
 }

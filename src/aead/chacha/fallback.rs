@@ -15,11 +15,11 @@
 // Adapted from the public domain, estream code by D. Bernstein.
 // Adapted from the BoringSSL crypto/chacha/chacha.c.
 
-use super::{Counter, Key, Overlapping, BLOCK_LEN};
+use super::{super::overlapping::IndexError, Counter, Key, Overlapping, BLOCK_LEN};
 use crate::{constant_time, polyfill::sliceutil};
-use core::{mem::size_of, slice};
+use core::mem::size_of;
 
-pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, in_out: Overlapping<'_>) {
+pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, mut in_out: Overlapping<'_>) {
     const SIGMA: [u32; 4] = [
         u32::from_le_bytes(*b"expa"),
         u32::from_le_bytes(*b"nd 3"),
@@ -35,31 +35,34 @@ pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, in_out: Overlapping<'_
         key[6], key[7], counter[0], counter[1], counter[2], counter[3],
     ];
 
-    let (mut input, mut output, mut in_out_len) = in_out.into_input_output_len();
+    let mut in_out_len = in_out.len();
 
     let mut buf = [0u8; BLOCK_LEN];
     while in_out_len > 0 {
         chacha_core(&mut buf, &state);
         state[12] += 1;
 
+        debug_assert_eq!(in_out_len, in_out.len());
+
         // Both branches do the same thing, but the duplication helps the
         // compiler optimize (vectorize) the `BLOCK_LEN` case.
         if in_out_len >= BLOCK_LEN {
-            let input = unsafe { slice::from_raw_parts(input, BLOCK_LEN) };
-            constant_time::xor_assign_at_start(&mut buf, input);
-            let output = unsafe { slice::from_raw_parts_mut(output, BLOCK_LEN) };
-            sliceutil::overwrite_at_start(output, &buf);
+            in_out = in_out
+                .split_first_chunk::<BLOCK_LEN>(|in_out| {
+                    constant_time::xor_assign_at_start(&mut buf, in_out.input());
+                    sliceutil::overwrite_at_start(in_out.into_unwritten_output(), &buf);
+                })
+                .unwrap_or_else(|IndexError { .. }| {
+                    // Since `in_out_len == in_out.len() && in_out_len >= BLOCK_LEN`.
+                    unreachable!()
+                });
         } else {
-            let input = unsafe { slice::from_raw_parts(input, in_out_len) };
-            constant_time::xor_assign_at_start(&mut buf, input);
-            let output = unsafe { slice::from_raw_parts_mut(output, in_out_len) };
-            sliceutil::overwrite_at_start(output, &buf);
+            constant_time::xor_assign_at_start(&mut buf, in_out.input());
+            sliceutil::overwrite_at_start(in_out.into_unwritten_output(), &buf);
             break;
         }
 
         in_out_len -= BLOCK_LEN;
-        input = unsafe { input.add(BLOCK_LEN) };
-        output = unsafe { output.add(BLOCK_LEN) };
     }
 }
 
