@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub use self::{
-    base::{Overlapping, SrcIndexError},
+    base::{IndexError, Overlapping},
     partial_block::PartialBlock,
 };
 

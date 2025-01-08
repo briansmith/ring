@@ -179,7 +179,7 @@ const BLOCK_LEN: usize = 64;
 mod tests {
     extern crate alloc;
 
-    use super::{super::overlapping::SrcIndexError, *};
+    use super::{super::overlapping::IndexError, *};
     use crate::{error, test};
     use alloc::vec;
 
@@ -286,7 +286,7 @@ mod tests {
                     ctr,
                 );
                 let in_out = Overlapping::new(buf, src)
-                    .map_err(error::erase::<SrcIndexError>)
+                    .map_err(error::erase::<IndexError>)
                     .unwrap();
                 f(key, ctr, in_out);
                 assert_eq!(&buf[..input.len()], expected)

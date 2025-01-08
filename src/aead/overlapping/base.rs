@@ -25,10 +25,10 @@ impl<'o, T> Overlapping<'o, T> {
         Self { in_out, src: 0.. }
     }
 
-    pub fn new(in_out: &'o mut [T], src: RangeFrom<usize>) -> Result<Self, SrcIndexError> {
+    pub fn new(in_out: &'o mut [T], src: RangeFrom<usize>) -> Result<Self, IndexError> {
         match in_out.get(src.clone()) {
             Some(_) => Ok(Self { in_out, src }),
-            None => Err(SrcIndexError::new(src)),
+            None => Err(IndexError::new(src)),
         }
     }
 
@@ -85,9 +85,9 @@ impl<T> Overlapping<'_, T> {
     }
 }
 
-pub struct SrcIndexError(#[allow(dead_code)] RangeFrom<usize>);
+pub struct IndexError(#[allow(dead_code)] RangeFrom<usize>);
 
-impl SrcIndexError {
+impl IndexError {
     #[cold]
     #[inline(never)]
     fn new(src: RangeFrom<usize>) -> Self {
