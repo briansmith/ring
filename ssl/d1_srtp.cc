@@ -1,5 +1,7 @@
 /*
  * Copyright 2011-2016 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright (C) 2006, Network Resonance, Inc.
+ * Copyright (C) 2011, RTFM, Inc.
  *
  * Licensed under the OpenSSL license (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -7,12 +9,7 @@
  * https://www.openssl.org/source/license.html
  */
 
-/*
-  DTLS code by Eric Rescorla <ekr@rtfm.com>
-
-  Copyright (C) 2006, Network Resonance, Inc.
-  Copyright (C) 2011, RTFM, Inc.
-*/
+// DTLS code by Eric Rescorla <ekr@rtfm.com>
 
 #include <openssl/ssl.h>
 
