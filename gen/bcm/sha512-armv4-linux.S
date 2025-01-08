@@ -14,11 +14,7 @@
 
 @ ====================================================================
 @ Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
-@ project. The module is, however, dual licensed under OpenSSL and
-@ CRYPTOGAMS licenses depending on where you obtain it. For further
-@ details see http://www.openssl.org/~appro/cryptogams/.
-@
-@ Permission to use under GPL terms is granted.
+@ project.
 @ ====================================================================
 
 @ SHA512 block procedure for ARMv4. September 2007.

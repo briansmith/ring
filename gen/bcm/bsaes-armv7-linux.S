@@ -14,12 +14,10 @@
 
 @ ====================================================================
 @ Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
-@ project. The module is, however, dual licensed under OpenSSL and
-@ CRYPTOGAMS licenses depending on where you obtain it. For further
-@ details see http://www.openssl.org/~appro/cryptogams/.
+@ project.
 @
 @ Specific modes and adaptation for Linux kernel by Ard Biesheuvel
-@ of Linaro. Permission to use under GPL terms is granted.
+@ of Linaro.
 @ ====================================================================
 
 @ Bit-sliced AES for ARM NEON

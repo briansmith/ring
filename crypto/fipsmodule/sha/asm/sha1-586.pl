@@ -9,9 +9,7 @@
 
 # ====================================================================
 # [Re]written by Andy Polyakov <appro@openssl.org> for the OpenSSL
-# project. The module is, however, dual licensed under OpenSSL and
-# CRYPTOGAMS licenses depending on where you obtain it. For further
-# details see http://www.openssl.org/~appro/cryptogams/.
+# project.
 # ====================================================================
 
 # "[Re]written" was achieved in two major overhauls. In 2004 BODY_*

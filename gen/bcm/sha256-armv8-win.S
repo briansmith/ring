@@ -13,11 +13,7 @@
 
 // ====================================================================
 // Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
-// project. The module is, however, dual licensed under OpenSSL and
-// CRYPTOGAMS licenses depending on where you obtain it. For further
-// details see http://www.openssl.org/~appro/cryptogams/.
-//
-// Permission to use under GPLv2 terms is granted.
+// project.
 // ====================================================================
 //
 // SHA256/512 for ARMv8.
