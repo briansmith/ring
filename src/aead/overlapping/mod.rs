@@ -13,9 +13,13 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub use self::{
+    array::Array,
     base::{IndexError, Overlapping},
     partial_block::PartialBlock,
 };
 
+use self::array::LenMismatchError;
+
+mod array;
 mod base;
 mod partial_block;
