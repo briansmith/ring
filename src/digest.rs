@@ -24,8 +24,7 @@ use self::{
 };
 use crate::{
     bits::{BitLength, FromByteLen as _},
-    cpu, debug,
-    error::{self, InputTooLongError},
+    cpu, debug, error,
     polyfill::{self, slice, sliceutil},
 };
 use core::num::Wrapping;
@@ -145,9 +144,11 @@ impl BlockContext {
     }
 }
 
+pub(crate) type InputTooLongError = error::InputTooLongError<u64>;
+
 pub(crate) enum FinishError {
     #[allow(dead_code)]
-    InputTooLong(InputTooLongError<u64>),
+    InputTooLong(InputTooLongError),
     #[allow(dead_code)]
     PendingNotAPartialBlock(usize),
 }
@@ -155,7 +156,7 @@ pub(crate) enum FinishError {
 impl FinishError {
     #[cold]
     #[inline(never)]
-    fn input_too_long(source: InputTooLongError<u64>) -> Self {
+    fn input_too_long(source: InputTooLongError) -> Self {
         Self::InputTooLong(source)
     }
 
@@ -167,12 +168,6 @@ impl FinishError {
             None => Self::PendingNotAPartialBlock(0),
             Some(padding) => Self::PendingNotAPartialBlock(padding.len()),
         }
-    }
-}
-
-impl From<FinishError> for error::Unspecified {
-    fn from(_: FinishError) -> Self {
-        Self
     }
 }
 
@@ -270,13 +265,23 @@ impl Context {
     pub fn finish(self) -> Digest {
         let cpu = cpu::features();
         self.try_finish(cpu)
-            .map_err(error::Unspecified::from)
+            .map_err(error::erase::<InputTooLongError>)
             .unwrap()
     }
 
-    pub(crate) fn try_finish(mut self, cpu_features: cpu::Features) -> Result<Digest, FinishError> {
+    pub(crate) fn try_finish(
+        mut self,
+        cpu_features: cpu::Features,
+    ) -> Result<Digest, InputTooLongError> {
         self.block
             .try_finish(&mut self.pending, self.num_pending, cpu_features)
+            .map_err(|err| match err {
+                FinishError::InputTooLong(i) => i,
+                FinishError::PendingNotAPartialBlock(_) => {
+                    // Due to invariant.
+                    unreachable!()
+                }
+            })
     }
 
     /// The algorithm that this context is using.
@@ -304,7 +309,7 @@ impl Context {
 pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
     let cpu = cpu::features();
     Digest::compute_from(algorithm, data, cpu)
-        .map_err(error::Unspecified::from)
+        .map_err(error::erase::<InputTooLongError>)
         .unwrap()
 }
 
@@ -322,7 +327,7 @@ impl Digest {
         algorithm: &'static Algorithm,
         data: &[u8],
         cpu: cpu::Features,
-    ) -> Result<Self, FinishError> {
+    ) -> Result<Self, InputTooLongError> {
         let mut ctx = Context::new(algorithm);
         ctx.update(data);
         ctx.try_finish(cpu)
