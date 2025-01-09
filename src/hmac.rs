@@ -111,9 +111,11 @@
 
 use crate::{
     constant_time, cpu,
-    digest::{self, Digest},
+    digest::{self, Digest, FinishError},
     error, hkdf, rand,
 };
+
+pub(crate) use crate::digest::InputTooLongError;
 
 /// An HMAC algorithm.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -193,7 +195,7 @@ impl Key {
         let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
         let key_bytes = &mut key_bytes[..algorithm.0.output_len()];
         fill(key_bytes)?;
-        Self::try_new(algorithm, key_bytes, cpu).map_err(error::Unspecified::from)
+        Self::try_new(algorithm, key_bytes, cpu).map_err(error::erase::<InputTooLongError>)
     }
 
     /// Construct an HMAC signing key using the given digest algorithm and key
@@ -217,7 +219,7 @@ impl Key {
     /// removed in a future version of *ring*.
     pub fn new(algorithm: Algorithm, key_value: &[u8]) -> Self {
         Self::try_new(algorithm, key_value, cpu::features())
-            .map_err(error::Unspecified::from)
+            .map_err(error::erase::<InputTooLongError>)
             .unwrap()
     }
 
@@ -225,7 +227,7 @@ impl Key {
         algorithm: Algorithm,
         key_value: &[u8],
         cpu_features: cpu::Features,
-    ) -> Result<Self, digest::FinishError> {
+    ) -> Result<Self, InputTooLongError> {
         let digest_alg = algorithm.0;
         let mut key = Self {
             inner: digest::BlockContext::new(digest_alg),
@@ -272,14 +274,16 @@ impl Key {
         Algorithm(self.inner.algorithm)
     }
 
-    fn sign(&self, data: &[u8], cpu: cpu::Features) -> Result<Tag, digest::FinishError> {
+    fn sign(&self, data: &[u8], cpu: cpu::Features) -> Result<Tag, InputTooLongError> {
         let mut ctx = Context::with_key(self);
         ctx.update(data);
         ctx.try_sign(cpu)
     }
 
     fn verify(&self, data: &[u8], tag: &[u8], cpu: cpu::Features) -> Result<(), VerifyError> {
-        let computed = self.sign(data, cpu).map_err(VerifyError::DigestError)?;
+        let computed = self
+            .sign(data, cpu)
+            .map_err(VerifyError::InputTooLongError)?;
         constant_time::verify_slices_are_equal(computed.as_ref(), tag)
             .map_err(|_: error::Unspecified| VerifyError::Mismatch)
     }
@@ -339,11 +343,15 @@ impl Context {
     /// instead.
     pub fn sign(self) -> Tag {
         self.try_sign(cpu::features())
-            .map_err(error::Unspecified::from)
+            .map_err(error::erase::<InputTooLongError>)
             .unwrap()
     }
 
-    fn try_sign(self, cpu_features: cpu::Features) -> Result<Tag, digest::FinishError> {
+    fn try_sign(self, cpu_features: cpu::Features) -> Result<Tag, InputTooLongError> {
+        // Consequently, `num_pending` is valid.
+        debug_assert_eq!(self.inner.algorithm(), self.outer.algorithm);
+        debug_assert!(self.inner.algorithm().output_len() < self.outer.algorithm.block_len());
+
         let inner = self.inner.try_finish(cpu_features)?;
         let inner = inner.as_ref();
         let num_pending = inner.len();
@@ -351,9 +359,24 @@ impl Context {
         const _BUFFER_IS_LARGE_ENOUGH_TO_HOLD_INNER: () =
             assert!(digest::MAX_OUTPUT_LEN < digest::MAX_BLOCK_LEN);
         buffer[..num_pending].copy_from_slice(inner);
+
         self.outer
             .try_finish(buffer, num_pending, cpu_features)
             .map(Tag)
+            .map_err(|err| match err {
+                FinishError::InputTooLong(i) => {
+                    // Unreachable, as we gave the inner context exactly the
+                    // same input we gave the outer context, and
+                    // `inner.try_finish` already succeeded. However, it is
+                    // quite difficult to prove this, and we already return
+                    // `InputTooLongError`, so just forward it along.
+                    i
+                }
+                FinishError::PendingNotAPartialBlock(_) => {
+                    // Follows from the assertions above.
+                    unreachable!()
+                }
+            })
     }
 }
 
@@ -365,7 +388,7 @@ impl Context {
 /// return value of `sign` to a tag. Use `verify` for verification instead.
 pub fn sign(key: &Key, data: &[u8]) -> Tag {
     key.sign(data, cpu::features())
-        .map_err(error::Unspecified::from)
+        .map_err(error::erase::<InputTooLongError>)
         .unwrap()
 }
 
@@ -382,8 +405,14 @@ pub fn verify(key: &Key, data: &[u8], tag: &[u8]) -> Result<(), error::Unspecifi
 }
 
 enum VerifyError {
+    // Theoretically somebody could have calculated a valid tag with a gigantic
+    // input that we do not support. If we were to support every theoretically
+    // valid input length, for *every* digest algorithm, then we could argue
+    // that hitting the input length limit implies a mismatch since nobody
+    // could have calculated such a tag with the given input.
     #[allow(dead_code)]
-    DigestError(digest::FinishError),
+    InputTooLongError(InputTooLongError),
+
     Mismatch,
 }
 
