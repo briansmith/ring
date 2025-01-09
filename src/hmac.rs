@@ -259,9 +259,7 @@ impl Key {
 
         // Remove the `IPAD` masking, leaving the unmasked padded key, then
         // mask with `OPAD`, all in one step.
-        for b in padded_key.iter_mut() {
-            *b ^= IPAD ^ OPAD;
-        }
+        constant_time::xor_assign(&mut padded_key[..], IPAD ^ OPAD);
         let leftover = key.outer.update(padded_key, cpu_features);
         debug_assert_eq!(leftover.len(), 0);
 
