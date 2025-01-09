@@ -48,6 +48,11 @@ pub(crate) fn xor_16(a: [u8; 16], b: [u8; 16]) -> [u8; 16] {
     r.to_ne_bytes()
 }
 
+#[inline(always)]
+pub(crate) fn xor_assign<'a>(a: impl IntoIterator<Item = &'a mut u8>, b: u8) {
+    a.into_iter().for_each(|a| *a ^= b);
+}
+
 /// XORs the first N bytes of `b` into `a`, where N is
 /// `core::cmp::min(a.len(), b.len())`.
 #[inline(always)]
