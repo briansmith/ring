@@ -170,7 +170,6 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
         goto err;
       }
     }
-    const BIGNUM *p_fixed = &rsa->mont_p->N;
 
     if (rsa->mont_q == NULL) {
       rsa->mont_q = BN_MONT_CTX_new_consttime(rsa->q, ctx);
@@ -178,22 +177,12 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
         goto err;
       }
     }
-    const BIGNUM *q_fixed = &rsa->mont_q->N;
 
-    if (rsa->dmp1 != NULL && rsa->dmq1 != NULL) {
-      // Key generation relies on this function to compute |iqmp|.
-      if (rsa->iqmp == NULL) {
-        BIGNUM *iqmp = BN_new();
-        if (iqmp == NULL || !bn_mod_inverse_secret_prime(iqmp, rsa->q, rsa->p,
-                                                         ctx, rsa->mont_p)) {
-          BN_free(iqmp);
-          goto err;
-        }
-        rsa->iqmp = iqmp;
-      }
-
+    if (rsa->dmp1 != NULL && rsa->dmq1 != NULL && rsa->iqmp != NULL) {
       // CRT components are only publicly bounded by their corresponding
       // moduli's bit lengths.
+      const BIGNUM *p_fixed = &rsa->mont_p->N;
+      const BIGNUM *q_fixed = &rsa->mont_q->N;
       if (!ensure_fixed_copy(&rsa->dmp1_fixed, rsa->dmp1, p_fixed->width) ||
           !ensure_fixed_copy(&rsa->dmq1_fixed, rsa->dmq1, q_fixed->width)) {
         goto err;
@@ -1054,10 +1043,14 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
   }
 
   // We need the RSA components non-NULL.
-  if (!ensure_bignum(&rsa->n) || !ensure_bignum(&rsa->d) ||
-      !ensure_bignum(&rsa->e) || !ensure_bignum(&rsa->p) ||
-      !ensure_bignum(&rsa->q) || !ensure_bignum(&rsa->dmp1) ||
-      !ensure_bignum(&rsa->dmq1)) {
+  if (!ensure_bignum(&rsa->n) ||     //
+      !ensure_bignum(&rsa->d) ||     //
+      !ensure_bignum(&rsa->e) ||     //
+      !ensure_bignum(&rsa->p) ||     //
+      !ensure_bignum(&rsa->q) ||     //
+      !ensure_bignum(&rsa->dmp1) ||  //
+      !ensure_bignum(&rsa->dmq1) ||  //
+      !ensure_bignum(&rsa->iqmp)) {
     goto bn_err;
   }
 
@@ -1143,6 +1136,14 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
   // |rsa->n| is computed from the private key, but is public.
   bn_declassify(rsa->n);
 
+  // Calculate q^-1 mod p.
+  rsa->mont_p = BN_MONT_CTX_new_consttime(rsa->p, ctx);
+  if (rsa->mont_p == NULL ||  //
+      !bn_mod_inverse_secret_prime(rsa->iqmp, rsa->q, rsa->p, ctx,
+                                   rsa->mont_p)) {
+    goto bn_err;
+  }
+
   // Sanity-check that |rsa->n| has the specified size. This is implied by
   // |generate_prime|'s bounds.
   if (BN_num_bits(rsa->n) != (unsigned)bits) {
@@ -1150,16 +1151,11 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
     goto err;
   }
 
-  // Call |freeze_private_key| to compute the inverse of q mod p, by way of
-  // |rsa->mont_p|.
-  if (!freeze_private_key(rsa, ctx)) {
-    goto bn_err;
-  }
-
   // The key generation process is complex and thus error-prone. It could be
   // disastrous to generate and then use a bad key so double-check that the key
-  // makes sense.
-  if (!RSA_check_key(rsa)) {
+  // makes sense. Also, while |rsa| is mutable, fill in the cached components.
+  if (!RSA_check_key(rsa) ||
+      !freeze_private_key(rsa, ctx)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_INTERNAL_ERROR);
     goto err;
   }
