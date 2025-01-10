@@ -252,8 +252,6 @@ void rsa_invalidate_key(RSA *rsa) {
   rsa->blinding_fork_generation = 0;
 }
 
-size_t rsa_default_size(const RSA *rsa) { return BN_num_bytes(rsa->n); }
-
 // MAX_BLINDINGS_PER_RSA defines the maximum number of cached BN_BLINDINGs per
 // RSA*. Then this limit is exceeded, BN_BLINDING objects will be created and
 // destroyed as needed.

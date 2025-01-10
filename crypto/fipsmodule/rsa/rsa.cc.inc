@@ -374,14 +374,7 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                                    padding);
 }
 
-unsigned RSA_size(const RSA *rsa) {
-  size_t ret = rsa->meth->size ? rsa->meth->size(rsa) : rsa_default_size(rsa);
-  // RSA modulus sizes are bounded by |BIGNUM|, which must fit in |unsigned|.
-  //
-  // TODO(https://crbug.com/boringssl/516): Should we make this return |size_t|?
-  assert(ret < UINT_MAX);
-  return (unsigned)ret;
-}
+unsigned RSA_size(const RSA *rsa) { return BN_num_bytes(rsa->n); }
 
 int RSA_is_opaque(const RSA *rsa) {
   return rsa->meth && (rsa->meth->flags & RSA_FLAG_OPAQUE);

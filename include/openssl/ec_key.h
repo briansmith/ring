@@ -261,11 +261,6 @@ struct ecdsa_method_st {
   int (*init)(EC_KEY *key);
   int (*finish)(EC_KEY *key);
 
-  // group_order_size returns the number of bytes needed to represent the order
-  // of the group. This is used to calculate the maximum size of an ECDSA
-  // signature in |ECDSA_size|.
-  size_t (*group_order_size)(const EC_KEY *key);
-
   // sign matches the arguments and behaviour of |ECDSA_sign|.
   int (*sign)(const uint8_t *digest, size_t digest_len, uint8_t *sig,
               unsigned int *sig_len, EC_KEY *eckey);

@@ -82,7 +82,6 @@ struct rsa_st {
 
 const RSA_METHOD *RSA_default_method(void);
 
-size_t rsa_default_size(const RSA *rsa);
 int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                          size_t max_out, const uint8_t *in, size_t in_len,
                          int padding);
