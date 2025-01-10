@@ -20,11 +20,11 @@
 
 use crate::{
     c, constant_time, error,
-    polyfill::{slice, ArrayFlatMap},
+    polyfill::{slice, usize_from_u32, ArrayFlatMap},
 };
 
 #[cfg(any(test, feature = "alloc"))]
-use crate::{bits, polyfill::usize_from_u32};
+use crate::bits;
 
 #[cfg(feature = "alloc")]
 use core::num::Wrapping;
