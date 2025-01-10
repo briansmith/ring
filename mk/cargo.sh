@@ -220,9 +220,12 @@ case $target in
     export WASM_BINDGEN_TEST_TIMEOUT=60
     ;;
   wasm32-wasi)
-    # The first two are only needed for when the "wasm_c" feature is enabled.
     use_clang=1
     export CARGO_TARGET_WASM32_WASI_RUNNER=target/tools/linux-x86_64/wasmtime/wasmtime
+    ;;
+  wasm32-wasip1)
+    use_clang=1
+    export CARGO_TARGET_WASM32_WASIP1_RUNNER=target/tools/linux-x86_64/wasmtime/wasmtime
     ;;
   *)
     ;;
