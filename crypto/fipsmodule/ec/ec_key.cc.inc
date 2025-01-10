@@ -277,12 +277,6 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   int ret = 0;
   FIPS_service_indicator_lock_state();
 
-  if (EC_KEY_is_opaque(key)) {
-    // Opaque keys can't be checked.
-    OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
-    goto end;
-  }
-
   if (!EC_KEY_check_key(key)) {
     goto end;
   }

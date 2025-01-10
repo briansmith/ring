@@ -738,11 +738,6 @@ int RSA_check_key(const RSA *key) {
   // https://crbug.com/boringssl/316. As a result, we inconsistently check RSA
   // invariants. We should fix this and integrate that logic.
 
-  if (RSA_is_opaque(key)) {
-    // Opaque keys can't be checked.
-    return 1;
-  }
-
   if (!rsa_check_public_key(key)) {
     return 0;
   }
@@ -893,12 +888,6 @@ DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
 }
 
 int RSA_check_fips(RSA *key) {
-  if (RSA_is_opaque(key)) {
-    // Opaque keys can't be checked.
-    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
-    return 0;
-  }
-
   if (!RSA_check_key(key)) {
     return 0;
   }
@@ -919,8 +908,11 @@ int RSA_check_fips(RSA *key) {
   // match. This is only a plausibility test and we expect the value to be
   // composite, so too few iterations will cause us to reject the key, not use
   // an implausible one.
+  //
+  // |key->e| may be nullptr if created with |RSA_new_private_key_no_e|.
   enum bn_primality_result_t primality_result;
-  if (BN_num_bits(key->e) <= 16 ||  //
+  if (key->e == nullptr ||          //
+      BN_num_bits(key->e) <= 16 ||  //
       BN_num_bits(key->e) > 256 ||  //
       !BN_is_odd(key->n) ||         //
       !BN_is_odd(key->e) ||
