@@ -1185,6 +1185,11 @@ TEST(ASN1Test, UTCTimeZoneOffsets) {
   // behind the epoch.
   EXPECT_EQ(ASN1_UTCTIME_cmp_time_t(s.get(), (4 * 60 * 60 * -1)), 0);
 
+  int64_t posix_time;
+  EXPECT_FALSE(ASN1_TIME_to_posix(s.get(), &posix_time));
+  ASSERT_TRUE(ASN1_TIME_to_posix_nonstandard(s.get(), &posix_time));
+  EXPECT_EQ(posix_time, (4 * 60 * 60 * -1));
+
   // Conscrypt expects a utc time with an arbitrary offset to be
   // accepted by ASN1_TIME_to_generalizedtime.
   bssl::UniquePtr<ASN1_STRING> g(

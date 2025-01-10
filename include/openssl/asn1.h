@@ -1326,13 +1326,21 @@ OPENSSL_EXPORT int ASN1_TIME_set_string(ASN1_TIME *s, const char *str);
 OPENSSL_EXPORT int ASN1_TIME_set_string_X509(ASN1_TIME *s, const char *str);
 
 // ASN1_TIME_to_time_t converts |t| to a time_t value in |out|. On
-// success, one is returned. On failure zero is returned. This function
+// success, one is returned. On failure, zero is returned. This function
 // will fail if the time can not be represented in a time_t.
 OPENSSL_EXPORT int ASN1_TIME_to_time_t(const ASN1_TIME *t, time_t *out);
 
 // ASN1_TIME_to_posix converts |t| to a POSIX time value in |out|. On
-// success, one is returned. On failure zero is returned.
+// success, one is returned. On failure, zero is returned.
 OPENSSL_EXPORT int ASN1_TIME_to_posix(const ASN1_TIME *t, int64_t *out);
+
+// ASN1_TIME_to_posix_nonstandard converts |t| to a POSIX time value in
+// |out|. It is exactly the same as |ASN1_TIME_to_posix| but allows for
+// non-standard four-digit timezone offsets on UTC times. On success, one is
+// returned. On failure, zero is returned. |ASN1_TIME_to_posix| should normally
+// be used instead of this function.
+OPENSSL_EXPORT int ASN1_TIME_to_posix_nonstandard(
+    const ASN1_TIME *t, int64_t *out);
 
 // TODO(davidben): Expand and document function prototypes generated in macros.
 
