@@ -34,7 +34,7 @@
 #include <openssl/sha.h>
 #include <openssl/trust_token.h>
 
-#include "../ec_extra/internal.h"
+#include "../ec/internal.h"
 #include "../fipsmodule/ec/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"

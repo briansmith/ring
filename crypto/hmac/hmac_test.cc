@@ -39,7 +39,7 @@ static const EVP_MD *GetDigest(const std::string &name) {
 }
 
 TEST(HMACTest, TestVectors) {
-  FileTestGTest("crypto/hmac_extra/hmac_tests.txt", [](FileTest *t) {
+  FileTestGTest("crypto/hmac/hmac_tests.txt", [](FileTest *t) {
     std::string digest_str;
     ASSERT_TRUE(t->GetAttribute(&digest_str, "HMAC"));
     const EVP_MD *digest = GetDigest(digest_str);

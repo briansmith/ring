@@ -173,7 +173,7 @@ INSTANTIATE_TEST_SUITE_P(All, PerAEADTest, testing::ValuesIn(kAEADs),
 //   CT: 5294265a60
 //   TAG: 1d45758621762e061368e68868e2f929
 TEST_P(PerAEADTest, TestVector) {
-  std::string test_vectors = "crypto/cipher_extra/test/";
+  std::string test_vectors = "crypto/cipher/test/";
   test_vectors += GetParam().test_vectors;
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
     std::vector<uint8_t> key, nonce, in, ad, ct, tag;
@@ -276,7 +276,7 @@ TEST_P(PerAEADTest, TestExtraInput) {
   }
 
   const std::string test_vectors =
-      "crypto/cipher_extra/test/" + std::string(aead_config.test_vectors);
+      "crypto/cipher/test/" + std::string(aead_config.test_vectors);
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
     if (t->HasAttribute("NO_SEAL") ||  //
         t->HasAttribute("FAILS") ||    //
@@ -321,7 +321,7 @@ TEST_P(PerAEADTest, TestExtraInput) {
 }
 
 TEST_P(PerAEADTest, TestVectorScatterGather) {
-  std::string test_vectors = "crypto/cipher_extra/test/";
+  std::string test_vectors = "crypto/cipher/test/";
   const KnownAEAD &aead_config = GetParam();
   test_vectors += aead_config.test_vectors;
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {

@@ -68,7 +68,7 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
 }
 
 TEST(ECDHTest, TestVectors) {
-  FileTestGTest("crypto/ecdh_extra/ecdh_tests.txt", [](FileTest *t) {
+  FileTestGTest("crypto/ecdh/ecdh_tests.txt", [](FileTest *t) {
     const EC_GROUP *group = GetCurve(t, "Curve");
     ASSERT_TRUE(group);
     bssl::UniquePtr<BIGNUM> priv_key = GetBIGNUM(t, "Private");

@@ -451,7 +451,7 @@ mod test {
     fn aes_128_gcm() {
         let test_cases: &[TestCase<16, 12>] = &[
             TestCase {
-                // TC 1 from crypto/cipher_extra/test/aes_128_gcm_tests.txt
+                // TC 1 from crypto/cipher/test/aes_128_gcm_tests.txt
                 key: decode_hex("d480429666d48b400633921c5407d1d1"),
                 nonce: decode_hex("3388c676dc754acfa66e172a"),
                 msg: Vec::new(),
@@ -475,7 +475,7 @@ mod test {
     fn aes_256_gcm() {
         let test_cases: &[TestCase<32, 12>] = &[
             TestCase {
-                // TC 1 from crypto/cipher_extra/test/aes_128_gcm_tests.txt
+                // TC 1 from crypto/cipher/test/aes_128_gcm_tests.txt
                 key: decode_hex("e5ac4a32c67e425ac4b143c83c6f161312a97d88d634afdf9f4da5bd35223f01"),
                 nonce: decode_hex("5bf11a0951f0bfc7ea5c9e58"),
                 msg: Vec::new(),

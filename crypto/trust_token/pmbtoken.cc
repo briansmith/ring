@@ -23,7 +23,7 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
-#include "../ec_extra/internal.h"
+#include "../ec/internal.h"
 #include "../fipsmodule/bn/internal.h"
 #include "../fipsmodule/ec/internal.h"
 

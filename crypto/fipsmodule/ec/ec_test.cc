@@ -30,7 +30,7 @@
 #include <openssl/obj.h>
 #include <openssl/span.h>
 
-#include "../../ec_extra/internal.h"
+#include "../../ec/internal.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../bn/internal.h"

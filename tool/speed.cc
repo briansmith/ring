@@ -67,7 +67,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <thread>
 #endif
 
-#include "../crypto/ec_extra/internal.h"
+#include "../crypto/ec/internal.h"
 #include "../crypto/fipsmodule/ec/internal.h"
 #include "../crypto/internal.h"
 #include "../crypto/trust_token/internal.h"

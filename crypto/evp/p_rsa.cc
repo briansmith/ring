@@ -21,7 +21,7 @@
 #include <openssl/rsa.h>
 
 #include "../internal.h"
-#include "../rsa_extra/internal.h"
+#include "../rsa/internal.h"
 #include "internal.h"
 
 

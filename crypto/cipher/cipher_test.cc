@@ -453,47 +453,39 @@ static void CipherFileTest(FileTest *t) {
 }
 
 TEST(CipherTest, TestVectors) {
-  FileTestGTest("crypto/cipher_extra/test/cipher_tests.txt", CipherFileTest);
+  FileTestGTest("crypto/cipher/test/cipher_tests.txt", CipherFileTest);
 }
 
 TEST(CipherTest, CAVP_AES_128_CBC) {
-  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_128_cbc.txt",
-                CipherFileTest);
+  FileTestGTest("crypto/cipher/test/nist_cavp/aes_128_cbc.txt", CipherFileTest);
 }
 
 TEST(CipherTest, CAVP_AES_128_CTR) {
-  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_128_ctr.txt",
-                CipherFileTest);
+  FileTestGTest("crypto/cipher/test/nist_cavp/aes_128_ctr.txt", CipherFileTest);
 }
 
 TEST(CipherTest, CAVP_AES_192_CBC) {
-  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_192_cbc.txt",
-                CipherFileTest);
+  FileTestGTest("crypto/cipher/test/nist_cavp/aes_192_cbc.txt", CipherFileTest);
 }
 
 TEST(CipherTest, CAVP_AES_192_CTR) {
-  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_192_ctr.txt",
-                CipherFileTest);
+  FileTestGTest("crypto/cipher/test/nist_cavp/aes_192_ctr.txt", CipherFileTest);
 }
 
 TEST(CipherTest, CAVP_AES_256_CBC) {
-  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_256_cbc.txt",
-                CipherFileTest);
+  FileTestGTest("crypto/cipher/test/nist_cavp/aes_256_cbc.txt", CipherFileTest);
 }
 
 TEST(CipherTest, CAVP_AES_256_CTR) {
-  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_256_ctr.txt",
-                CipherFileTest);
+  FileTestGTest("crypto/cipher/test/nist_cavp/aes_256_ctr.txt", CipherFileTest);
 }
 
 TEST(CipherTest, CAVP_TDES_CBC) {
-  FileTestGTest("crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt",
-                CipherFileTest);
+  FileTestGTest("crypto/cipher/test/nist_cavp/tdes_cbc.txt", CipherFileTest);
 }
 
 TEST(CipherTest, CAVP_TDES_ECB) {
-  FileTestGTest("crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt",
-                CipherFileTest);
+  FileTestGTest("crypto/cipher/test/nist_cavp/tdes_ecb.txt", CipherFileTest);
 }
 
 TEST(CipherTest, WycheproofAESCBC) {
