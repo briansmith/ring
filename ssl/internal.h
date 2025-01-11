@@ -21,6 +21,7 @@
 #include <initializer_list>
 #include <limits>
 #include <new>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -932,7 +933,7 @@ class SSLTranscript {
 // as the secret and |label| as the label. |seed1| and |seed2| are concatenated
 // to form the seed parameter. It returns true on success and false on failure.
 bool tls1_prf(const EVP_MD *digest, Span<uint8_t> out,
-              Span<const uint8_t> secret, Span<const char> label,
+              Span<const uint8_t> secret, std::string_view label,
               Span<const uint8_t> seed1, Span<const uint8_t> seed2);
 
 
@@ -1655,7 +1656,7 @@ bool tls13_derive_resumption_secret(SSL_HANDSHAKE *hs);
 // |exporter_secret|.
 bool tls13_export_keying_material(SSL *ssl, Span<uint8_t> out,
                                   Span<const uint8_t> secret,
-                                  Span<const char> label,
+                                  std::string_view label,
                                   Span<const uint8_t> context);
 
 // tls13_finished_mac calculates the MAC of the handshake transcript to verify

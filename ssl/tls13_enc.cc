@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include <algorithm>
+#include <string_view>
 #include <utility>
 
 #include <openssl/aead.h>
@@ -87,15 +88,11 @@ bool tls13_init_early_key_schedule(SSL_HANDSHAKE *hs,
          hkdf_extract_to_secret(hs, *transcript, session->secret);
 }
 
-static Span<const char> label_to_span(const char *label) {
-  return MakeConstSpan(label, strlen(label));
-}
-
 static bool hkdf_expand_label_with_prefix(Span<uint8_t> out,
                                           const EVP_MD *digest,
                                           Span<const uint8_t> secret,
-                                          Span<const uint8_t> label_prefix,
-                                          Span<const char> label,
+                                          std::string_view label_prefix,
+                                          std::string_view label,
                                           Span<const uint8_t> hash) {
   // This is a copy of CRYPTO_tls13_hkdf_expand_label, but modified to take an
   // arbitrary prefix for the label instead of using the hardcoded "tls13 "
@@ -108,7 +105,9 @@ static bool hkdf_expand_label_with_prefix(Span<uint8_t> out,
                 2 + 1 + label_prefix.size() + label.size() + 1 + hash.size()) ||
       !CBB_add_u16(&cbb, out.size()) ||
       !CBB_add_u8_length_prefixed(&cbb, &child) ||
-      !CBB_add_bytes(&child, label_prefix.data(), label_prefix.size()) ||
+      !CBB_add_bytes(&child,
+                     reinterpret_cast<const uint8_t *>(label_prefix.data()),
+                     label_prefix.size()) ||
       !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(label.data()),
                      label.size()) ||
       !CBB_add_u8_length_prefixed(&cbb, &child) ||
@@ -126,14 +125,11 @@ static bool hkdf_expand_label_with_prefix(Span<uint8_t> out,
 
 static bool hkdf_expand_label(Span<uint8_t> out, const EVP_MD *digest,
                               Span<const uint8_t> secret,
-                              Span<const char> label, Span<const uint8_t> hash,
+                              std::string_view label, Span<const uint8_t> hash,
                               bool is_dtls) {
   if (is_dtls) {
-    static const uint8_t kDTLS13LabelPrefix[] = "dtls13";
-    return hkdf_expand_label_with_prefix(
-        out, digest, secret,
-        MakeConstSpan(kDTLS13LabelPrefix, sizeof(kDTLS13LabelPrefix) - 1),
-        label, hash);
+    return hkdf_expand_label_with_prefix(out, digest, secret, "dtls13", label,
+                                         hash);
   }
   return CRYPTO_tls13_hkdf_expand_label(
              out.data(), out.size(), digest, secret.data(), secret.size(),
@@ -149,7 +145,7 @@ bool tls13_advance_key_schedule(SSL_HANDSHAKE *hs, Span<const uint8_t> in) {
   return EVP_Digest(nullptr, 0, derive_context, &derive_context_len,
                     hs->transcript.Digest(), nullptr) &&
          hkdf_expand_label(MakeSpan(hs->secret), hs->transcript.Digest(),
-                           hs->secret, label_to_span(kTLS13LabelDerived),
+                           hs->secret, kTLS13LabelDerived,
                            MakeConstSpan(derive_context, derive_context_len),
                            SSL_is_dtls(hs->ssl)) &&
          hkdf_extract_to_secret(hs, hs->transcript, in);
@@ -161,7 +157,7 @@ bool tls13_advance_key_schedule(SSL_HANDSHAKE *hs, Span<const uint8_t> in) {
 // success and false on error.
 static bool derive_secret_with_transcript(
     const SSL_HANDSHAKE *hs, InplaceVector<uint8_t, SSL_MAX_MD_SIZE> *out,
-    const SSLTranscript &transcript, Span<const char> label) {
+    const SSLTranscript &transcript, std::string_view label) {
   uint8_t context_hash[EVP_MAX_MD_SIZE];
   size_t context_hash_len;
   if (!transcript.GetHash(context_hash, &context_hash_len)) {
@@ -176,7 +172,7 @@ static bool derive_secret_with_transcript(
 
 static bool derive_secret(SSL_HANDSHAKE *hs,
                           InplaceVector<uint8_t, SSL_MAX_MD_SIZE> *out,
-                          Span<const char> label) {
+                          std::string_view label) {
   return derive_secret_with_transcript(hs, out, hs->transcript, label);
 }
 
@@ -205,10 +201,8 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
     uint8_t key_buf[EVP_AEAD_MAX_KEY_LENGTH], iv_buf[EVP_AEAD_MAX_NONCE_LENGTH];
     auto key = MakeSpan(key_buf).first(EVP_AEAD_key_length(aead));
     auto iv = MakeSpan(iv_buf).first(EVP_AEAD_nonce_length(aead));
-    if (!hkdf_expand_label(key, digest, traffic_secret, label_to_span("key"),
-                           {}, is_dtls) ||
-        !hkdf_expand_label(iv, digest, traffic_secret, label_to_span("iv"), {},
-                           is_dtls)) {
+    if (!hkdf_expand_label(key, digest, traffic_secret, "key", {}, is_dtls) ||
+        !hkdf_expand_label(iv, digest, traffic_secret, "iv", {}, is_dtls)) {
       return false;
     }
 
@@ -339,8 +333,8 @@ UniquePtr<RecordNumberEncrypter> RecordNumberEncrypter::Create(
 
   uint8_t rne_key_buf[RecordNumberEncrypter::kMaxKeySize];
   auto rne_key = MakeSpan(rne_key_buf).first(ret->KeySize());
-  if (!hkdf_expand_label(rne_key, digest, traffic_secret, label_to_span("sn"),
-                         {}, /*is_dtls=*/true) ||
+  if (!hkdf_expand_label(rne_key, digest, traffic_secret, "sn", {},
+                         /*is_dtls=*/true) ||
       !ret->SetKey(rne_key)) {
     return nullptr;
   }
@@ -362,9 +356,8 @@ bool tls13_derive_early_secret(SSL_HANDSHAKE *hs) {
   const SSLTranscript &transcript = (!ssl->server && hs->selected_ech_config)
                                         ? hs->inner_transcript
                                         : hs->transcript;
-  if (!derive_secret_with_transcript(
-          hs, &hs->early_traffic_secret, transcript,
-          label_to_span(kTLS13LabelClientEarlyTraffic)) ||
+  if (!derive_secret_with_transcript(hs, &hs->early_traffic_secret, transcript,
+                                     kTLS13LabelClientEarlyTraffic) ||
       !ssl_log_secret(ssl, "CLIENT_EARLY_TRAFFIC_SECRET",
                       hs->early_traffic_secret)) {
     return false;
@@ -375,11 +368,11 @@ bool tls13_derive_early_secret(SSL_HANDSHAKE *hs) {
 bool tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!derive_secret(hs, &hs->client_handshake_secret,
-                     label_to_span(kTLS13LabelClientHandshakeTraffic)) ||
+                     kTLS13LabelClientHandshakeTraffic) ||
       !ssl_log_secret(ssl, "CLIENT_HANDSHAKE_TRAFFIC_SECRET",
                       hs->client_handshake_secret) ||
       !derive_secret(hs, &hs->server_handshake_secret,
-                     label_to_span(kTLS13LabelServerHandshakeTraffic)) ||
+                     kTLS13LabelServerHandshakeTraffic) ||
       !ssl_log_secret(ssl, "SERVER_HANDSHAKE_TRAFFIC_SECRET",
                       hs->server_handshake_secret)) {
     return false;
@@ -391,15 +384,14 @@ bool tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs) {
 bool tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!derive_secret(hs, &hs->client_traffic_secret_0,
-                     label_to_span(kTLS13LabelClientApplicationTraffic)) ||
+                     kTLS13LabelClientApplicationTraffic) ||
       !ssl_log_secret(ssl, "CLIENT_TRAFFIC_SECRET_0",
                       hs->client_traffic_secret_0) ||
       !derive_secret(hs, &hs->server_traffic_secret_0,
-                     label_to_span(kTLS13LabelServerApplicationTraffic)) ||
+                     kTLS13LabelServerApplicationTraffic) ||
       !ssl_log_secret(ssl, "SERVER_TRAFFIC_SECRET_0",
                       hs->server_traffic_secret_0) ||
-      !derive_secret(hs, &ssl->s3->exporter_secret,
-                     label_to_span(kTLS13LabelExporter)) ||
+      !derive_secret(hs, &ssl->s3->exporter_secret, kTLS13LabelExporter) ||
       !ssl_log_secret(ssl, "EXPORTER_SECRET", ssl->s3->exporter_secret)) {
     return false;
   }
@@ -417,7 +409,7 @@ bool tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
   const SSL_SESSION *session = SSL_get_session(ssl);
   const EVP_MD *digest = ssl_session_get_digest(session);
   return hkdf_expand_label(secret, digest, secret,
-                           label_to_span(kTLS13LabelApplicationTraffic), {},
+                           kTLS13LabelApplicationTraffic, {},
                            SSL_is_dtls(ssl)) &&
          tls13_set_traffic_key(ssl, ssl_encryption_application, direction,
                                session, secret);
@@ -426,8 +418,7 @@ bool tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
 static const char kTLS13LabelResumption[] = "res master";
 
 bool tls13_derive_resumption_secret(SSL_HANDSHAKE *hs) {
-  return derive_secret(hs, &hs->new_session->secret,
-                       label_to_span(kTLS13LabelResumption));
+  return derive_secret(hs, &hs->new_session->secret, kTLS13LabelResumption);
 }
 
 static const char kTLS13LabelFinished[] = "finished";
@@ -442,8 +433,8 @@ static bool tls13_verify_data(uint8_t *out, size_t *out_len,
   uint8_t key_buf[EVP_MAX_MD_SIZE];
   auto key = MakeSpan(key_buf, EVP_MD_size(digest));
   unsigned len;
-  if (!hkdf_expand_label(key, digest, secret,
-                         label_to_span(kTLS13LabelFinished), {}, is_dtls) ||
+  if (!hkdf_expand_label(key, digest, secret, kTLS13LabelFinished, {},
+                         is_dtls) ||
       HMAC(digest, key.data(), key.size(), context.data(), context.size(), out,
            &len) == nullptr) {
     return false;
@@ -478,15 +469,14 @@ bool tls13_derive_session_psk(SSL_SESSION *session, Span<const uint8_t> nonce,
   // override with the PSK.
   assert(session->secret.size() == EVP_MD_size(digest));
   return hkdf_expand_label(MakeSpan(session->secret), digest, session->secret,
-                           label_to_span(kTLS13LabelResumptionPSK), nonce,
-                           is_dtls);
+                           kTLS13LabelResumptionPSK, nonce, is_dtls);
 }
 
 static const char kTLS13LabelExportKeying[] = "exporter";
 
 bool tls13_export_keying_material(SSL *ssl, Span<uint8_t> out,
                                   Span<const uint8_t> secret,
-                                  Span<const char> label,
+                                  std::string_view label,
                                   Span<const uint8_t> context) {
   if (secret.empty()) {
     assert(0);
@@ -513,9 +503,8 @@ bool tls13_export_keying_material(SSL *ssl, Span<uint8_t> out,
   auto derived_secret = MakeSpan(derived_secret_buf, EVP_MD_size(digest));
   return hkdf_expand_label(derived_secret, digest, secret, label,
                            export_context, SSL_is_dtls(ssl)) &&
-         hkdf_expand_label(out, digest, derived_secret,
-                           label_to_span(kTLS13LabelExportKeying), hash,
-                           SSL_is_dtls(ssl));
+         hkdf_expand_label(out, digest, derived_secret, kTLS13LabelExportKeying,
+                           hash, SSL_is_dtls(ssl));
 }
 
 static const char kTLS13LabelPSKBinder[] = "res binder";
@@ -544,7 +533,7 @@ static bool tls13_psk_binder(uint8_t *out, size_t *out_len,
                     0) ||
       !hkdf_expand_label(
           binder_key, digest, MakeConstSpan(early_secret, early_secret_len),
-          label_to_span(kTLS13LabelPSKBinder),
+          kTLS13LabelPSKBinder,
           MakeConstSpan(binder_context, binder_context_len), is_dtls)) {
     return false;
   }
@@ -703,8 +692,7 @@ bool ssl_ech_accept_confirmation(const SSL_HANDSHAKE *hs, Span<uint8_t> out,
   assert(out.size() == ECH_CONFIRMATION_SIGNAL_LEN);
   return hkdf_expand_label(
       out, transcript.Digest(), MakeConstSpan(secret, secret_len),
-      is_hrr ? label_to_span("hrr ech accept confirmation")
-             : label_to_span("ech accept confirmation"),
+      is_hrr ? "hrr ech accept confirmation" : "ech accept confirmation",
       MakeConstSpan(context, context_len), SSL_is_dtls(hs->ssl));
 }
 
