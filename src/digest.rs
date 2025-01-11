@@ -29,6 +29,8 @@ use crate::{
 };
 use core::num::Wrapping;
 
+pub(crate) use self::finish_error::FinishError;
+
 mod dynstate;
 mod sha1;
 mod sha2;
@@ -146,27 +148,20 @@ impl BlockContext {
 
 pub(crate) type InputTooLongError = error::InputTooLongError<u64>;
 
-pub(crate) enum FinishError {
-    #[allow(dead_code)]
-    InputTooLong(InputTooLongError),
-    #[allow(dead_code)]
-    PendingNotAPartialBlock(usize),
+cold_exhaustive_error! {
+    enum finish_error::FinishError {
+        input_too_long => InputTooLong(InputTooLongError),
+        pending_not_a_partial_block_inner => PendingNotAPartialBlock(usize),
+    }
 }
 
 impl FinishError {
     #[cold]
     #[inline(never)]
-    fn input_too_long(source: InputTooLongError) -> Self {
-        Self::InputTooLong(source)
-    }
-
-    // unreachable
-    #[cold]
-    #[inline(never)]
     fn pending_not_a_partial_block(padding: Option<&[u8]>) -> Self {
         match padding {
-            None => Self::PendingNotAPartialBlock(0),
-            Some(padding) => Self::PendingNotAPartialBlock(padding.len()),
+            None => Self::pending_not_a_partial_block_inner(0),
+            Some(padding) => Self::pending_not_a_partial_block_inner(padding.len()),
         }
     }
 }
