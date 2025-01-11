@@ -120,15 +120,15 @@ TEST(VectorTest, VectorContainingVectors) {
 
 TEST(VectorTest, NotDefaultConstructible) {
   struct NotDefaultConstructible {
-    explicit NotDefaultConstructible(size_t n) { array.Init(n); }
+    explicit NotDefaultConstructible(size_t n) { BSSL_CHECK(array.Init(n)); }
     Array<int> array;
   };
 
   Vector<NotDefaultConstructible> vec;
-  vec.Push(NotDefaultConstructible(0));
-  vec.Push(NotDefaultConstructible(1));
-  vec.Push(NotDefaultConstructible(2));
-  vec.Push(NotDefaultConstructible(3));
+  ASSERT_TRUE(vec.Push(NotDefaultConstructible(0)));
+  ASSERT_TRUE(vec.Push(NotDefaultConstructible(1)));
+  ASSERT_TRUE(vec.Push(NotDefaultConstructible(2)));
+  ASSERT_TRUE(vec.Push(NotDefaultConstructible(3)));
   EXPECT_EQ(vec.size(), 4u);
   EXPECT_EQ(0u, vec[0].array.size());
   EXPECT_EQ(1u, vec[1].array.size());

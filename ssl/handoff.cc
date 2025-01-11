@@ -668,8 +668,10 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   }
   s3->session_reused = session_reused;
   hs->channel_id_negotiated = channel_id_negotiated;
-  s3->next_proto_negotiated.CopyFrom(next_proto);
-  s3->alpn_selected.CopyFrom(alpn);
+  if (!s3->next_proto_negotiated.CopyFrom(next_proto) ||
+      !s3->alpn_selected.CopyFrom(alpn)) {
+    return false;
+  }
 
   const size_t hostname_len = CBS_len(&hostname);
   if (hostname_len == 0) {

@@ -161,7 +161,7 @@ class Array {
   // value-constructed copies of |T|. It returns true on success and false on
   // error. If |T| is a primitive type like |uint8_t|, value-construction means
   // it will be zero-initialized.
-  bool Init(size_t new_size) {
+  [[nodiscard]] bool Init(size_t new_size) {
     if (!InitUninitialized(new_size)) {
       return false;
     }
@@ -172,7 +172,7 @@ class Array {
   // InitForOverwrite behaves like |Init| but it default-constructs each element
   // instead. This means that, if |T| is a primitive type, the array will be
   // uninitialized and thus must be filled in by the caller.
-  bool InitForOverwrite(size_t new_size) {
+  [[nodiscard]] bool InitForOverwrite(size_t new_size) {
     if (!InitUninitialized(new_size)) {
       return false;
     }
@@ -182,7 +182,7 @@ class Array {
 
   // CopyFrom replaces the array with a newly-allocated copy of |in|. It returns
   // true on success and false on error.
-  bool CopyFrom(Span<const T> in) {
+  [[nodiscard]] bool CopyFrom(Span<const T> in) {
     if (!InitUninitialized(in.size())) {
       return false;
     }
@@ -273,7 +273,7 @@ class Vector {
 
   // Push adds |elem| at the end of the internal array, growing if necessary. It
   // returns false when allocation fails.
-  bool Push(T elem) {
+  [[nodiscard]] bool Push(T elem) {
     if (!MaybeGrow()) {
       return false;
     }
@@ -284,7 +284,7 @@ class Vector {
 
   // CopyFrom replaces the contents of the array with a copy of |in|. It returns
   // true on success and false on allocation error.
-  bool CopyFrom(Span<const T> in) {
+  [[nodiscard]] bool CopyFrom(Span<const T> in) {
     Array<T> copy;
     if (!copy.CopyFrom(in)) {
       return false;
@@ -406,7 +406,7 @@ class InplaceVector {
   // TryResize resizes the vector to |new_size| and returns true, or returns
   // false if |new_size| is too large. Any newly-added elements are
   // value-initialized.
-  bool TryResize(size_t new_size) {
+  [[nodiscard]] bool TryResize(size_t new_size) {
     if (new_size <= size_) {
       Shrink(new_size);
       return true;
@@ -422,7 +422,7 @@ class InplaceVector {
   // TryResizeForOverwrite behaves like |TryResize|, but newly-added elements
   // are default-initialized, so POD types may contain uninitialized values that
   // the caller is responsible for filling in.
-  bool TryResizeForOverwrite(size_t new_size) {
+  [[nodiscard]] bool TryResizeForOverwrite(size_t new_size) {
     if (new_size <= size_) {
       Shrink(new_size);
       return true;
@@ -437,7 +437,7 @@ class InplaceVector {
 
   // TryCopyFrom sets the vector to a copy of |in| and returns true, or returns
   // false if |in| is too large.
-  bool TryCopyFrom(Span<const T> in) {
+  [[nodiscard]] bool TryCopyFrom(Span<const T> in) {
     if (in.size() > capacity()) {
       return false;
     }
@@ -449,7 +449,7 @@ class InplaceVector {
 
   // TryPushBack appends |val| to the vector and returns a pointer to the
   // newly-inserted value, or nullptr if the vector is at capacity.
-  T *TryPushBack(T val) {
+  [[nodiscard]] T *TryPushBack(T val) {
     if (size() >= capacity()) {
       return nullptr;
     }
