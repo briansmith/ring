@@ -2194,7 +2194,7 @@ static bool GetECHLength(SSL_CTX *ctx, size_t *out_client_hello_len,
           ssl.get(), &parsed,
           // Skip record and handshake headers. This assumes the ClientHello
           // fits in one record.
-          MakeConstSpan(client_hello)
+          Span(client_hello)
               .subspan(SSL3_RT_HEADER_LENGTH + SSL3_HM_HEADER_LENGTH)) ||
       !SSL_early_callback_ctx_extension_get(
           &parsed, TLSEXT_TYPE_encrypted_client_hello, &unused, out_ech_len)) {
@@ -2254,64 +2254,61 @@ TEST(SSLTest, ECHPadding) {
 }
 
 TEST(SSLTest, ECHPublicName) {
-  auto str_to_span = [](const char *str) -> Span<const uint8_t> {
-    return MakeConstSpan(reinterpret_cast<const uint8_t *>(str), strlen(str));
-  };
-
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("example.com")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span(".example.com")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.com.")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example..com")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("www.-example.com")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("www.example-.com")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(StringAsBytes("example.com")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes(".example.com")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("example.com.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("example..com")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("www.-example.com")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("www.example-.com")));
   EXPECT_FALSE(
-      ssl_is_valid_ech_public_name(str_to_span("no_underscores.example")));
-  EXPECT_FALSE(
-      ssl_is_valid_ech_public_name(str_to_span("invalid_chars.\x01.example")));
-  EXPECT_FALSE(
-      ssl_is_valid_ech_public_name(str_to_span("invalid_chars.\xff.example")));
+      ssl_is_valid_ech_public_name(StringAsBytes("no_underscores.example")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      StringAsBytes("invalid_chars.\x01.example")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      StringAsBytes("invalid_chars.\xff.example")));
   static const uint8_t kWithNUL[] = {'t', 'e', 's', 't', 0};
   EXPECT_FALSE(ssl_is_valid_ech_public_name(kWithNUL));
 
   // Test an LDH label with every character and the maximum length.
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span(
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(StringAsBytes(
       "abcdefhijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-0123456789")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span(
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes(
       "abcdefhijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-01234567899")));
 
   // Inputs with trailing numeric components are rejected.
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("127.0.0.1")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.1")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.01")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.0x01")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.0X01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("127.0.0.1")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("example.1")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("example.01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("example.0x01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("example.0X01")));
   // Leading zeros and values that overflow |uint32_t| are still rejected.
   EXPECT_FALSE(ssl_is_valid_ech_public_name(
-      str_to_span("example.123456789000000000000000")));
+      StringAsBytes("example.123456789000000000000000")));
   EXPECT_FALSE(ssl_is_valid_ech_public_name(
-      str_to_span("example.012345678900000000000000")));
+      StringAsBytes("example.012345678900000000000000")));
   EXPECT_FALSE(ssl_is_valid_ech_public_name(
-      str_to_span("example.0x123456789abcdefABCDEF0")));
+      StringAsBytes("example.0x123456789abcdefABCDEF0")));
   EXPECT_FALSE(ssl_is_valid_ech_public_name(
-      str_to_span("example.0x0123456789abcdefABCDEF")));
+      StringAsBytes("example.0x0123456789abcdefABCDEF")));
   // Adding a non-digit or non-hex character makes it a valid DNS name again.
   // Single-component numbers are rejected.
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("example.1234567890a")));
   EXPECT_TRUE(
-      ssl_is_valid_ech_public_name(str_to_span("example.01234567890a")));
+      ssl_is_valid_ech_public_name(StringAsBytes("example.1234567890a")));
   EXPECT_TRUE(
-      ssl_is_valid_ech_public_name(str_to_span("example.0x123456789abcdefg")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("1")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("01")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0x01")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0X01")));
+      ssl_is_valid_ech_public_name(StringAsBytes("example.01234567890a")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(
+      StringAsBytes("example.0x123456789abcdefg")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("1")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("0x01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("0X01")));
   // Numbers with trailing dots are rejected. (They are already rejected by the
   // LDH label rules, but the WHATWG URL parser additionally rejects them.)
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("1.")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("01.")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0x01.")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0X01.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("1.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("01.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("0x01.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(StringAsBytes("0X01.")));
 }
 
 // When using the built-in verifier, test that |SSL_get0_ech_name_override| is
@@ -4844,18 +4841,18 @@ TEST(SSLTest, CredentialChains) {
             Bytes(CRYPTO_BUFFER_data(subject_buf.get()),
                   CRYPTO_BUFFER_len(subject_buf.get())));
 #if !defined(BORINGSSL_SHARED_LIBRARY)
-  ASSERT_FALSE(cred->ChainContainsIssuer(
-      MakeConstSpan(CRYPTO_BUFFER_data(subject_buf.get()),
-                    CRYPTO_BUFFER_len(subject_buf.get()))));
+  ASSERT_FALSE(
+      cred->ChainContainsIssuer(Span(CRYPTO_BUFFER_data(subject_buf.get()),
+                                     CRYPTO_BUFFER_len(subject_buf.get()))));
 #endif
 
   ASSERT_TRUE(
       SSL_CREDENTIAL_set1_cert_chain(cred.get(), chain.data(), chain.size()));
 
 #if !defined(BORINGSSL_SHARED_LIBRARY)
-  ASSERT_TRUE(cred->ChainContainsIssuer(
-      MakeConstSpan(CRYPTO_BUFFER_data(subject_buf.get()),
-                    CRYPTO_BUFFER_len(subject_buf.get()))));
+  ASSERT_TRUE(
+      cred->ChainContainsIssuer(Span(CRYPTO_BUFFER_data(subject_buf.get()),
+                                     CRYPTO_BUFFER_len(subject_buf.get()))));
 #endif
 
   ASSERT_TRUE(SSL_CREDENTIAL_set1_cert_chain(cred2.get(), test_chain.data(),
@@ -6947,23 +6944,22 @@ class QUICMethodTest : public testing::Test {
   static int SetReadSecretCallback(SSL *ssl, ssl_encryption_level_t level,
                                    const SSL_CIPHER *cipher,
                                    const uint8_t *secret, size_t secret_len) {
-    return TransportFromSSL(ssl)->SetReadSecret(
-        level, cipher, MakeConstSpan(secret, secret_len));
+    return TransportFromSSL(ssl)->SetReadSecret(level, cipher,
+                                                Span(secret, secret_len));
   }
 
   static int SetWriteSecretCallback(SSL *ssl, ssl_encryption_level_t level,
                                     const SSL_CIPHER *cipher,
                                     const uint8_t *secret, size_t secret_len) {
-    return TransportFromSSL(ssl)->SetWriteSecret(
-        level, cipher, MakeConstSpan(secret, secret_len));
+    return TransportFromSSL(ssl)->SetWriteSecret(level, cipher,
+                                                 Span(secret, secret_len));
   }
 
   static int AddHandshakeDataCallback(SSL *ssl,
                                       enum ssl_encryption_level_t level,
                                       const uint8_t *data, size_t len) {
     EXPECT_EQ(level, SSL_quic_write_level(ssl));
-    return TransportFromSSL(ssl)->WriteHandshakeData(level,
-                                                     MakeConstSpan(data, len));
+    return TransportFromSSL(ssl)->WriteHandshakeData(level, Span(data, len));
   }
 
   static int FlushFlightCallback(SSL *ssl) { return 1; }
@@ -7492,7 +7488,7 @@ TEST_F(QUICMethodTest, ExcessProvidedData) {
                                const uint8_t *data, size_t len) -> int {
     // Switch everything to the initial level.
     return TransportFromSSL(ssl)->WriteHandshakeData(ssl_encryption_initial,
-                                                     MakeConstSpan(data, len));
+                                                     Span(data, len));
   };
 
   SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
@@ -8094,7 +8090,7 @@ Span<const uint8_t> SessionIDOf(const SSL *ssl) {
   const SSL_SESSION *session = SSL_get_session(ssl);
   unsigned len;
   const uint8_t *data = SSL_SESSION_get_id(session, &len);
-  return MakeConstSpan(data, len);
+  return Span(data, len);
 }
 
 TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
@@ -8142,9 +8138,9 @@ static void WriteHelloRequest(SSL *server) {
   ASSERT_EQ(2u * (kKeyLen + kNonceLen), SSL_get_key_block_len(server));
   uint8_t key_block[2u * (kKeyLen + kNonceLen)];
   ASSERT_TRUE(SSL_generate_key_block(server, key_block, sizeof(key_block)));
-  Span<uint8_t> key = MakeSpan(key_block + kKeyLen, kKeyLen);
+  Span<uint8_t> key = Span(key_block).subspan(kKeyLen, kKeyLen);
   Span<uint8_t> nonce =
-      MakeSpan(key_block + kKeyLen + kKeyLen + kNonceLen, kNonceLen);
+      Span(key_block).subspan(kKeyLen + kKeyLen + kNonceLen, kNonceLen);
 
   uint8_t ad[13];
   uint64_t seq = SSL_get_write_sequence(server);

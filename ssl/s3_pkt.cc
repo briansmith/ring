@@ -163,9 +163,9 @@ static int do_tls_write(SSL *ssl, size_t *out_bytes_written, uint8_t type,
   // NewSessionTicket.
   Span<const uint8_t> pending_flight;
   if (ssl->s3->pending_flight != nullptr) {
-    pending_flight = MakeConstSpan(
-        reinterpret_cast<const uint8_t *>(ssl->s3->pending_flight->data),
-        ssl->s3->pending_flight->length);
+    pending_flight =
+        Span(reinterpret_cast<const uint8_t *>(ssl->s3->pending_flight->data),
+             ssl->s3->pending_flight->length);
     pending_flight = pending_flight.subspan(ssl->s3->pending_flight_offset);
   }
 

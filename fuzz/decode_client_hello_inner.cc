@@ -23,7 +23,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   static bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   static bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
 
-  CBS reader(bssl::MakeConstSpan(buf, len));
+  CBS reader(bssl::Span(buf, len));
   CBS encoded_client_hello_inner_cbs;
 
   if (!CBS_get_u24_length_prefixed(&reader, &encoded_client_hello_inner_cbs)) {

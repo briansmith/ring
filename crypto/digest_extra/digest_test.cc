@@ -157,8 +157,7 @@ static const DigestTestVector kTestVectors[] = {
 
 static void CompareDigest(const DigestTestVector *test, const uint8_t *digest,
                           size_t digest_len) {
-  EXPECT_EQ(test->expected_hex,
-            EncodeHex(bssl::MakeConstSpan(digest, digest_len)));
+  EXPECT_EQ(test->expected_hex, EncodeHex(bssl::Span(digest, digest_len)));
 }
 
 static void TestDigest(const DigestTestVector *test) {

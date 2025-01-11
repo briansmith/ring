@@ -88,7 +88,7 @@ bool tls1_configure_aead(SSL *ssl, evp_aead_direction_t direction,
   const size_t key_block_size = 2 * (mac_secret_len + key_len + iv_len);
   if (key_block_cache->empty()) {
     if (!key_block_cache->InitForOverwrite(key_block_size) ||
-        !generate_key_block(ssl, MakeSpan(*key_block_cache), session)) {
+        !generate_key_block(ssl, Span(*key_block_cache), session)) {
       return false;
     }
   }
@@ -148,8 +148,7 @@ bool tls1_generate_master_secret(SSL_HANDSHAKE *hs, Span<uint8_t> out,
     size_t digests_len;
     if (!hs->transcript.GetHash(digests, &digests_len) ||
         !tls1_prf(hs->transcript.Digest(), out, premaster,
-                  "extended master secret", MakeConstSpan(digests, digests_len),
-                  {})) {
+                  "extended master secret", Span(digests, digests_len), {})) {
       return false;
     }
   } else {
@@ -192,7 +191,7 @@ int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
     return 0;
   }
 
-  return generate_key_block(ssl, MakeSpan(out, out_len), SSL_get_session(ssl));
+  return generate_key_block(ssl, Span(out, out_len), SSL_get_session(ssl));
 }
 
 int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
@@ -212,8 +211,7 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
       context_len = 0;
     }
     return tls13_export_keying_material(ssl, out_span, ssl->s3->exporter_secret,
-                                        label_sv,
-                                        MakeConstSpan(context, context_len));
+                                        label_sv, Span(context, context_len));
   }
 
   // Exporters may be used in False Start, where the handshake has progressed

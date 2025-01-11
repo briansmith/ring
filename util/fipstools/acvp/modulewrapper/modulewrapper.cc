@@ -2264,7 +2264,7 @@ static bool MLDSAKeyGen(const Span<const uint8_t> args[],
   }
 
   return write_reply(
-      {pub_key_bytes, MakeConstSpan(CBB_data(cbb.get()), CBB_len(cbb.get()))});
+      {pub_key_bytes, Span(CBB_data(cbb.get()), CBB_len(cbb.get()))});
 }
 
 template <typename PrivateKey, size_t SignatureBytes,
@@ -2275,7 +2275,7 @@ template <typename PrivateKey, size_t SignatureBytes,
                                      const uint8_t *)>
 static bool MLDSASigGen(const Span<const uint8_t> args[],
                         ReplyCallback write_reply) {
-  CBS cbs = bssl::MakeConstSpan(args[0]);
+  CBS cbs = args[0];
   auto priv = std::make_unique<PrivateKey>();
   if (ParsePrivateKey(priv.get(), &cbs) != bcm_status::approved) {
     LOG_ERROR("Failed to parse ML-DSA private key.\n");
@@ -2314,7 +2314,7 @@ static bool MLDSASigVer(const Span<const uint8_t> args[],
   const Span<const uint8_t> msg = args[1];
   const Span<const uint8_t> signature = args[2];
 
-  CBS cbs = bssl::MakeConstSpan(pub_key_bytes);
+  CBS cbs = pub_key_bytes;
   auto pub = std::make_unique<PublicKey>();
   if (ParsePublicKey(pub.get(), &cbs) != bcm_status::approved) {
     LOG_ERROR("Failed to parse ML-DSA public key.\n");
@@ -2358,7 +2358,7 @@ static bool MLKEMKeyGen(const Span<const uint8_t> args[],
   }
 
   return write_reply(
-      {pub_key_bytes, MakeConstSpan(CBB_data(cbb.get()), CBB_len(cbb.get()))});
+      {pub_key_bytes, Span(CBB_data(cbb.get()), CBB_len(cbb.get()))});
 }
 
 template <typename PublicKey, bcm_status (*ParsePublic)(PublicKey *, CBS *),
@@ -2376,7 +2376,7 @@ static bool MLKEMEncap(const Span<const uint8_t> args[],
   }
 
   auto pub = std::make_unique<PublicKey>();
-  CBS cbs = bssl::MakeConstSpan(pub_key_bytes);
+  CBS cbs = pub_key_bytes;
   if (!bcm_success(ParsePublic(pub.get(), &cbs)) || CBS_len(&cbs) != 0) {
     LOG_ERROR("Failed to parse public key.\n");
     return false;
@@ -2398,7 +2398,7 @@ static bool MLKEMDecap(const Span<const uint8_t> args[],
   const Span<const uint8_t> ciphertext = args[1];
 
   auto priv = std::make_unique<PrivateKey>();
-  CBS cbs = bssl::MakeConstSpan(priv_key_bytes);
+  CBS cbs = priv_key_bytes;
   if (!bcm_success(ParsePrivate(priv.get(), &cbs))) {
     LOG_ERROR("Failed to parse private key.\n");
     return false;

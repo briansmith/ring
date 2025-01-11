@@ -117,9 +117,8 @@ static bool parse_server_hello_tls13(const SSL_HANDSHAKE *hs,
   // 5). The client could have sent a session ID indicating its willingness to
   // resume a DTLS 1.2 session, so just checking that the session IDs match is
   // incorrect.
-  Span<const uint8_t> expected_session_id = SSL_is_dtls(hs->ssl)
-                                                ? Span<const uint8_t>()
-                                                : MakeConstSpan(hs->session_id);
+  Span<const uint8_t> expected_session_id =
+      SSL_is_dtls(hs->ssl) ? Span<const uint8_t>() : Span(hs->session_id);
 
   // RFC 8446 fixes some legacy values. Check them.
   if (out->legacy_version != expected_version ||  //
@@ -496,8 +495,8 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   size_t hash_len = EVP_MD_size(
       ssl_get_handshake_digest(ssl_protocol_version(ssl), hs->new_cipher));
   if (!tls13_init_key_schedule(hs, ssl->s3->session_reused
-                                       ? MakeConstSpan(hs->new_session->secret)
-                                       : MakeConstSpan(kZeroes, hash_len))) {
+                                       ? Span(hs->new_session->secret)
+                                       : Span(kZeroes, hash_len))) {
     return ssl_hs_error;
   }
 
@@ -582,8 +581,7 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
-    if (MakeConstSpan(hs->early_session->early_alpn) !=
-        ssl->s3->alpn_selected) {
+    if (Span(hs->early_session->early_alpn) != ssl->s3->alpn_selected) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ALPN_MISMATCH_ON_EARLY_DATA);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
@@ -771,8 +769,8 @@ static enum ssl_hs_wait_t do_read_server_finished(SSL_HANDSHAKE *hs) {
       !tls13_process_finished(hs, msg, false /* don't use saved value */) ||
       !ssl_hash_message(hs, msg) ||
       // Update the secret to the master secret and derive traffic keys.
-      !tls13_advance_key_schedule(
-          hs, MakeConstSpan(kZeroes, hs->transcript.DigestLen())) ||
+      !tls13_advance_key_schedule(hs,
+                                  Span(kZeroes, hs->transcript.DigestLen())) ||
       !tls13_derive_application_secrets(hs)) {
     return ssl_hs_error;
   }

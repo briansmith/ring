@@ -74,7 +74,7 @@ bool SSL_HANDSHAKE::GetClientHello(SSLMessage *out_msg,
     out_msg->raw = CBS(ech_client_hello_buf);
     size_t header_len =
         SSL_is_dtls(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
-    out_msg->body = MakeConstSpan(ech_client_hello_buf).subspan(header_len);
+    out_msg->body = CBS(Span(ech_client_hello_buf).subspan(header_len));
   } else if (!ssl->method->get_message(ssl, out_msg)) {
     // The message has already been read, so this cannot fail.
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -398,11 +398,9 @@ enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->server) {
-    ssl->s3->previous_client_finished.CopyFrom(
-        MakeConstSpan(finished, finished_len));
+    ssl->s3->previous_client_finished.CopyFrom(Span(finished, finished_len));
   } else {
-    ssl->s3->previous_server_finished.CopyFrom(
-        MakeConstSpan(finished, finished_len));
+    ssl->s3->previous_server_finished.CopyFrom(Span(finished, finished_len));
   }
 
   // The Finished message should be the end of a flight.
@@ -426,7 +424,7 @@ bool ssl_send_finished(SSL_HANDSHAKE *hs) {
                                      ssl->server)) {
     return false;
   }
-  auto finished = MakeConstSpan(finished_buf, finished_len);
+  auto finished = Span(finished_buf, finished_len);
 
   // Log the master secret, if logging is enabled.
   if (!ssl_log_secret(ssl, "CLIENT_RANDOM", session->secret)) {

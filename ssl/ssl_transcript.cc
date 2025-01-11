@@ -127,7 +127,7 @@ bool SSLTranscript::UpdateForHelloRetryRequest() {
                              static_cast<uint8_t>(hash_len)};
   if (!EVP_DigestInit_ex(hash_.get(), Digest(), nullptr) ||
       !AddToBufferOrHash(header) ||
-      !AddToBufferOrHash(MakeConstSpan(old_hash, hash_len))) {
+      !AddToBufferOrHash(Span(old_hash, hash_len))) {
     return false;
   }
   return true;
@@ -207,8 +207,8 @@ bool SSLTranscript::GetFinishedMAC(uint8_t *out, size_t *out_len,
 
   std::string_view label = from_server ? "server finished" : "client finished";
   static const size_t kFinishedLen = 12;
-  if (!tls1_prf(Digest(), MakeSpan(out, kFinishedLen), session->secret, label,
-                MakeConstSpan(digest, digest_len), {})) {
+  if (!tls1_prf(Digest(), Span(out, kFinishedLen), session->secret, label,
+                Span(digest, digest_len), {})) {
     return false;
   }
 

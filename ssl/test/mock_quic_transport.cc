@@ -112,7 +112,7 @@ bool MockQuicTransport::ReadHeader(uint8_t *out_type,
         // If we receive early data records without any early data keys, skip
         // the record. This means early data was rejected.
         std::vector<uint8_t> discard(remaining_bytes);
-        if (!ReadAll(bio_.get(), bssl::MakeSpan(discard))) {
+        if (!ReadAll(bio_.get(), bssl::Span(discard))) {
           return false;
         }
         continue;
@@ -134,7 +134,7 @@ bool MockQuicTransport::ReadHeader(uint8_t *out_type,
       return false;
     }
     remaining_bytes -= secret.size();
-    if (!ReadAll(bio_.get(), bssl::MakeSpan(read_secret))) {
+    if (!ReadAll(bio_.get(), bssl::Span(read_secret))) {
       fprintf(stderr, "Error reading record secret.\n");
       return false;
     }
@@ -161,7 +161,7 @@ bool MockQuicTransport::ReadHandshake() {
   }
 
   std::vector<uint8_t> buf(len);
-  if (!ReadAll(bio_.get(), bssl::MakeSpan(buf))) {
+  if (!ReadAll(bio_.get(), bssl::Span(buf))) {
     return false;
   }
   return SSL_provide_quic_data(ssl_, level, buf.data(), buf.size());
@@ -199,7 +199,7 @@ int MockQuicTransport::ReadApplicationData(uint8_t *out, size_t max_out) {
     }
 
     std::vector<uint8_t> buf(len);
-    if (!ReadAll(bio_.get(), bssl::MakeSpan(buf))) {
+    if (!ReadAll(bio_.get(), bssl::Span(buf))) {
       return -1;
     }
     if (SSL_provide_quic_data(ssl_, level, buf.data(), buf.size()) != 1) {
@@ -225,7 +225,7 @@ int MockQuicTransport::ReadApplicationData(uint8_t *out, size_t max_out) {
     buf = pending_app_data_.data();
   }
   app_data_offset_ = 0;
-  if (!ReadAll(bio_.get(), bssl::MakeSpan(buf, len))) {
+  if (!ReadAll(bio_.get(), bssl::Span(buf, len))) {
     return -1;
   }
   if (len > max_out) {

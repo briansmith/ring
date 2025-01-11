@@ -720,10 +720,9 @@ bool GetHandshakeHint(SSL *ssl, SettingsWriter *writer, bool is_resume,
 
   bool has_hints;
   std::vector<uint8_t> hints;
-  if (!RequestHandshakeHint(
-          GetTestConfig(ssl), is_resume,
-          MakeConstSpan(CBB_data(input.get()), CBB_len(input.get())),
-          &has_hints, &hints)) {
+  if (!RequestHandshakeHint(GetTestConfig(ssl), is_resume,
+                            Span(CBB_data(input.get()), CBB_len(input.get())),
+                            &has_hints, &hints)) {
     return false;
   }
   if (has_hints &&

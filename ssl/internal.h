@@ -555,7 +555,7 @@ template <typename T, typename Name>
 inline size_t GetAllNames(const char **out, size_t max_out,
                           Span<const char *const> fixed_names, Name(T::*name),
                           Span<const T> objects) {
-  auto span = bssl::MakeSpan(out, max_out);
+  auto span = bssl::Span(out, max_out);
   for (size_t i = 0; !span.empty() && i < fixed_names.size(); i++) {
     span[0] = fixed_names[i];
     span = span.subspan(1);
@@ -878,8 +878,8 @@ class SSLTranscript {
   bool CopyToHashContext(EVP_MD_CTX *ctx, const EVP_MD *digest) const;
 
   Span<const uint8_t> buffer() const {
-    return MakeConstSpan(reinterpret_cast<const uint8_t *>(buffer_->data),
-                         buffer_->length);
+    return Span(reinterpret_cast<const uint8_t *>(buffer_->data),
+                buffer_->length);
   }
 
   // FreeBuffer releases the handshake buffer. Subsequent calls to
@@ -1467,11 +1467,9 @@ class SSLBuffer {
   bool empty() const { return size_ == 0; }
   size_t cap() const { return cap_; }
 
-  Span<uint8_t> span() { return MakeSpan(data(), size()); }
+  Span<uint8_t> span() { return Span(data(), size()); }
 
-  Span<uint8_t> remaining() {
-    return MakeSpan(data() + size(), cap() - size());
-  }
+  Span<uint8_t> remaining() { return Span(data() + size(), cap() - size()); }
 
   // Clear releases the buffer.
   void Clear();
@@ -3242,9 +3240,9 @@ struct hm_header_st {
 struct DTLSIncomingMessage {
   static constexpr bool kAllowUniquePtr = true;
 
-  Span<uint8_t> msg() { return MakeSpan(data).subspan(DTLS1_HM_HEADER_LENGTH); }
+  Span<uint8_t> msg() { return Span(data).subspan(DTLS1_HM_HEADER_LENGTH); }
   Span<const uint8_t> msg() const {
-    return MakeSpan(data).subspan(DTLS1_HM_HEADER_LENGTH);
+    return Span(data).subspan(DTLS1_HM_HEADER_LENGTH);
   }
   size_t msg_len() const { return msg().size(); }
 

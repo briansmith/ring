@@ -407,8 +407,8 @@ const char *SSL_get_version(const SSL *ssl) {
 }
 
 size_t SSL_get_all_version_names(const char **out, size_t max_out) {
-  return GetAllNames(out, max_out, MakeConstSpan(&kUnknownVersion, 1),
-                     &VersionInfo::name, MakeConstSpan(kVersionNames));
+  return GetAllNames(out, max_out, Span(&kUnknownVersion, 1),
+                     &VersionInfo::name, Span(kVersionNames));
 }
 
 const char *SSL_SESSION_get_version(const SSL_SESSION *session) {

@@ -268,7 +268,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   // would in a TLS 1.3 handshake.
   if (!SSL_is_dtls(ssl)) {
     hs->session_id.CopyFrom(
-        MakeConstSpan(client_hello.session_id, client_hello.session_id_len));
+        Span(client_hello.session_id, client_hello.session_id_len));
   }
 
   Array<SSL_CREDENTIAL *> creds;
@@ -513,12 +513,12 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   } else if (hs->channel_id_negotiated) {
     // Channel ID is incompatible with 0-RTT.
     ssl->s3->early_data_reason = ssl_early_data_channel_id;
-  } else if (MakeConstSpan(ssl->s3->alpn_selected) != session->early_alpn) {
+  } else if (Span(ssl->s3->alpn_selected) != session->early_alpn) {
     // The negotiated ALPN must match the one in the ticket.
     ssl->s3->early_data_reason = ssl_early_data_alpn_mismatch;
   } else if (hs->new_session->has_application_settings !=
                  session->has_application_settings ||
-             MakeConstSpan(hs->new_session->local_application_settings) !=
+             Span(hs->new_session->local_application_settings) !=
                  session->local_application_settings) {
     ssl->s3->early_data_reason = ssl_early_data_alps_mismatch;
   } else if (ssl->s3->ticket_age_skew < -kMaxTicketAgeSkewSeconds ||
@@ -578,8 +578,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
   // Set up the key schedule and incorporate the PSK into the running secret.
   if (!tls13_init_key_schedule(hs, ssl->s3->session_reused
-                                       ? MakeConstSpan(hs->new_session->secret)
-                                       : MakeConstSpan(kZeroes, hash_len)) ||
+                                       ? Span(hs->new_session->secret)
+                                       : Span(kZeroes, hash_len)) ||
       !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
@@ -652,7 +652,7 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
     // Now that the message is encoded, fill in the whole value.
     size_t offset = hrr.size() - ECH_CONFIRMATION_SIGNAL_LEN;
     if (!ssl_ech_accept_confirmation(
-            hs, MakeSpan(hrr).last(ECH_CONFIRMATION_SIGNAL_LEN),
+            hs, Span(hrr).last(ECH_CONFIRMATION_SIGNAL_LEN),
             ssl->s3->client_random, hs->transcript, /*is_hrr=*/true, hrr,
             offset)) {
       return ssl_hs_error;
@@ -850,7 +850,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
 
     // Update |server_hello|.
     Span<uint8_t> server_hello_out =
-        MakeSpan(server_hello).subspan(offset, ECH_CONFIRMATION_SIGNAL_LEN);
+        Span(server_hello).subspan(offset, ECH_CONFIRMATION_SIGNAL_LEN);
     OPENSSL_memcpy(server_hello_out.data(), random_suffix.data(),
                    ECH_CONFIRMATION_SIGNAL_LEN);
   }
@@ -965,8 +965,8 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   hs->can_release_private_key = true;
   if (!tls13_add_finished(hs) ||
       // Update the secret to the master secret and derive traffic keys.
-      !tls13_advance_key_schedule(
-          hs, MakeConstSpan(kZeroes, hs->transcript.DigestLen())) ||
+      !tls13_advance_key_schedule(hs,
+                                  Span(kZeroes, hs->transcript.DigestLen())) ||
       !tls13_derive_application_secrets(hs) ||
       !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
                              hs->new_session.get(),

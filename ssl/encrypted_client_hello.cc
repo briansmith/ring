@@ -172,8 +172,8 @@ bool ssl_decode_client_hello_inner(
     return false;
   }
 
-  auto inner_extensions = MakeConstSpan(client_hello_inner.extensions,
-                                        client_hello_inner.extensions_len);
+  auto inner_extensions =
+      Span(client_hello_inner.extensions, client_hello_inner.extensions_len);
   CBS ext_list_wrapper;
   if (!ssl_client_hello_get_extension(&client_hello_inner, &ext_list_wrapper,
                                       TLSEXT_TYPE_ech_outer_extensions)) {
@@ -255,8 +255,8 @@ bool ssl_decode_client_hello_inner(
     return false;
   }
 
-  if (!is_valid_client_hello_inner(
-          ssl, out_alert, MakeConstSpan(CBB_data(&body), CBB_len(&body)))) {
+  if (!is_valid_client_hello_inner(ssl, out_alert,
+                                   Span(CBB_data(&body), CBB_len(&body)))) {
     return false;
   }
 
@@ -277,8 +277,8 @@ bool ssl_client_hello_decrypt(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // point within |client_hello_outer->extensions|) replaced with zeros. See
   // draft-ietf-tls-esni-13, section 5.2.
   Array<uint8_t> aad;
-  if (!aad.CopyFrom(MakeConstSpan(client_hello_outer->client_hello,
-                                  client_hello_outer->client_hello_len))) {
+  if (!aad.CopyFrom(Span(client_hello_outer->client_hello,
+                         client_hello_outer->client_hello_len))) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
@@ -290,7 +290,7 @@ bool ssl_client_hello_decrypt(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   assert(reinterpret_cast<uintptr_t>(client_hello_outer->extensions +
                                      client_hello_outer->extensions_len) >=
          reinterpret_cast<uintptr_t>(payload.data() + payload.size()));
-  Span<uint8_t> payload_aad = MakeSpan(aad).subspan(
+  Span<uint8_t> payload_aad = Span(aad).subspan(
       payload.data() - client_hello_outer->client_hello, payload.size());
   OPENSSL_memset(payload_aad.data(), 0, payload_aad.size());
 
@@ -431,7 +431,7 @@ static bool parse_ech_config(CBS *cbs, ECHConfig *out, bool *out_supported,
   // Make a copy of the ECHConfig and parse from it, so the results alias into
   // the saved copy.
   if (!out->raw.CopyFrom(
-          MakeConstSpan(CBS_data(&orig), CBS_len(&orig) - CBS_len(cbs)))) {
+          Span(CBS_data(&orig), CBS_len(&orig) - CBS_len(cbs)))) {
     return false;
   }
 
@@ -539,7 +539,7 @@ bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
     return false;
   }
   if (ech_config_.kem_id != EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(key)) ||
-      MakeConstSpan(expected_public_key, expected_public_key_len) !=
+      Span(expected_public_key, expected_public_key_len) !=
           ech_config_.public_key) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH);
     return false;
@@ -650,7 +650,7 @@ bool ssl_select_ech_config(SSL_HANDSHAKE *hs, Span<uint8_t> out_enc,
   }
 
   if (!hs->config->client_ech_config_list.empty()) {
-    CBS cbs = MakeConstSpan(hs->config->client_ech_config_list);
+    CBS cbs = CBS(hs->config->client_ech_config_list);
     CBS child;
     if (!CBS_get_u16_length_prefixed(&cbs, &child) ||  //
         CBS_len(&child) == 0 ||                        //
@@ -804,16 +804,16 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
 
   if (needs_psk_binder) {
     size_t binder_len;
-    if (!tls13_write_psk_binder(hs, hs->inner_transcript, MakeSpan(hello_inner),
+    if (!tls13_write_psk_binder(hs, hs->inner_transcript, Span(hello_inner),
                                 &binder_len)) {
       return false;
     }
     // Also update the EncodedClientHelloInner.
     auto encoded_binder =
-        MakeSpan(const_cast<uint8_t *>(CBB_data(encoded_cbb.get())),
-                 CBB_len(encoded_cbb.get()))
+        Span(const_cast<uint8_t *>(CBB_data(encoded_cbb.get())),
+             CBB_len(encoded_cbb.get()))
             .last(binder_len);
-    auto hello_inner_binder = MakeConstSpan(hello_inner).last(binder_len);
+    auto hello_inner_binder = Span(hello_inner).last(binder_len);
     OPENSSL_memcpy(encoded_binder.data(), hello_inner_binder.data(),
                    binder_len);
   }
@@ -885,7 +885,7 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
   assert(!needs_psk_binder);
 
   // Replace the payload in |hs->ech_client_outer| with the encrypted value.
-  auto payload_span = MakeSpan(hs->ech_client_outer).last(payload_len);
+  auto payload_span = Span(hs->ech_client_outer).last(payload_len);
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   // In fuzzer mode, the server expects a cleartext payload.
   assert(payload_span.size() == encoded.size());
@@ -920,7 +920,7 @@ int SSL_set1_ech_config_list(SSL *ssl, const uint8_t *ech_config_list,
     return 0;
   }
 
-  auto span = MakeConstSpan(ech_config_list, ech_config_list_len);
+  auto span = Span(ech_config_list, ech_config_list_len);
   if (!ssl_is_valid_ech_config_list(span)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ECH_CONFIG_LIST);
     return 0;
@@ -972,8 +972,7 @@ void SSL_get0_ech_retry_configs(const SSL *ssl,
 int SSL_marshal_ech_config(uint8_t **out, size_t *out_len, uint8_t config_id,
                            const EVP_HPKE_KEY *key, const char *public_name,
                            size_t max_name_len) {
-  Span<const uint8_t> public_name_u8 = MakeConstSpan(
-      reinterpret_cast<const uint8_t *>(public_name), strlen(public_name));
+  Span<const uint8_t> public_name_u8 = StringAsBytes(public_name);
   if (!ssl_is_valid_ech_public_name(public_name_u8)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ECH_PUBLIC_NAME);
     return 0;
@@ -1036,7 +1035,7 @@ int SSL_ECH_KEYS_add(SSL_ECH_KEYS *configs, int is_retry_config,
   if (!parsed_config) {
     return 0;
   }
-  if (!parsed_config->Init(MakeConstSpan(ech_config, ech_config_len), key,
+  if (!parsed_config->Init(Span(ech_config, ech_config_len), key,
                            !!is_retry_config)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return 0;

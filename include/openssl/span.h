@@ -99,10 +99,10 @@ using EnableIfContainer = std::enable_if_t<
 //
 // FooMutate(bssl::Span<uint8_t>(vec));
 //
-// You can also use the |MakeSpan| and |MakeConstSpan| factory methods to
-// construct Spans in order to deduce the type of the Span automatically.
+// You can also use C++17 class template argument deduction to construct Spans
+// in order to deduce the type of the Span automatically.
 //
-// FooMutate(bssl::MakeSpan(vec));
+// FooMutate(bssl::Span(vec));
 //
 // Note that Spans have value type sematics. They are cheap to construct and
 // copy, and should be passed by value whenever a method would otherwise accept

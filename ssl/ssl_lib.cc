@@ -377,7 +377,7 @@ static uint32_t ssl_session_hash(const SSL_SESSION *sess) {
 }
 
 static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b) {
-  return MakeConstSpan(a->session_id) == b->session_id ? 0 : 1;
+  return Span(a->session_id) == b->session_id ? 0 : 1;
 }
 
 ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
@@ -699,7 +699,7 @@ int SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
     return 0;
   }
 
-  return tls_append_handshake_data(ssl, MakeConstSpan(data, len));
+  return tls_append_handshake_data(ssl, Span(data, len));
 }
 
 int SSL_do_handshake(SSL *ssl) {
@@ -963,8 +963,7 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
     }
     ret = ssl->method->write_app_data(
         ssl, &needs_handshake, &bytes_written,
-        MakeConstSpan(static_cast<const uint8_t *>(buf),
-                      static_cast<size_t>(num)));
+        Span(static_cast<const uint8_t *>(buf), static_cast<size_t>(num)));
   } while (needs_handshake);
   return ret <= 0 ? ret : static_cast<int>(bytes_written);
 }
@@ -1075,8 +1074,8 @@ int SSL_send_fatal_alert(SSL *ssl, uint8_t alert) {
 
 int SSL_set_quic_transport_params(SSL *ssl, const uint8_t *params,
                                   size_t params_len) {
-  return ssl->config && ssl->config->quic_transport_params.CopyFrom(
-                            MakeConstSpan(params, params_len));
+  return ssl->config &&
+         ssl->config->quic_transport_params.CopyFrom(Span(params, params_len));
 }
 
 void SSL_get_peer_quic_transport_params(const SSL *ssl,
@@ -1089,7 +1088,7 @@ void SSL_get_peer_quic_transport_params(const SSL *ssl,
 int SSL_set_quic_early_data_context(SSL *ssl, const uint8_t *context,
                                     size_t context_len) {
   return ssl->config && ssl->config->quic_early_data_context.CopyFrom(
-                            MakeConstSpan(context, context_len));
+                            Span(context, context_len));
 }
 
 void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled) {
@@ -1393,7 +1392,7 @@ int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
 
 static int set_session_id_context(CERT *cert, const uint8_t *sid_ctx,
                                   size_t sid_ctx_len) {
-  if (!cert->sid_ctx.TryCopyFrom(MakeConstSpan(sid_ctx, sid_ctx_len))) {
+  if (!cert->sid_ctx.TryCopyFrom(Span(sid_ctx, sid_ctx_len))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
     return 0;
   }
@@ -1814,7 +1813,7 @@ static bool check_group_ids(Span<const uint16_t> group_ids) {
 
 int SSL_CTX_set1_group_ids(SSL_CTX *ctx, const uint16_t *group_ids,
                            size_t num_group_ids) {
-  auto span = MakeConstSpan(group_ids, num_group_ids);
+  auto span = Span(group_ids, num_group_ids);
   return check_group_ids(span) && ctx->supported_group_list.CopyFrom(span);
 }
 
@@ -1823,7 +1822,7 @@ int SSL_set1_group_ids(SSL *ssl, const uint16_t *group_ids,
   if (!ssl->config) {
     return 0;
   }
-  auto span = MakeConstSpan(group_ids, num_group_ids);
+  auto span = Span(group_ids, num_group_ids);
   return check_group_ids(span) &&
          ssl->config->supported_group_list.CopyFrom(span);
 }
@@ -1848,7 +1847,7 @@ static bool ssl_nids_to_group_ids(Array<uint16_t> *out_group_ids,
 
 int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups, size_t num_groups) {
   return ssl_nids_to_group_ids(&ctx->supported_group_list,
-                               MakeConstSpan(groups, num_groups));
+                               Span(groups, num_groups));
 }
 
 int SSL_set1_groups(SSL *ssl, const int *groups, size_t num_groups) {
@@ -1856,7 +1855,7 @@ int SSL_set1_groups(SSL *ssl, const int *groups, size_t num_groups) {
     return 0;
   }
   return ssl_nids_to_group_ids(&ssl->config->supported_group_list,
-                               MakeConstSpan(groups, num_groups));
+                               Span(groups, num_groups));
 }
 
 static bool ssl_str_to_group_ids(Array<uint16_t> *out_group_ids,
@@ -2129,8 +2128,8 @@ int SSL_select_next_proto(uint8_t **out, uint8_t *out_len, const uint8_t *peer,
 
   // Both |peer| and |supported| must be valid protocol lists, but |peer| may be
   // empty in NPN.
-  auto peer_span = MakeConstSpan(peer, peer_len);
-  auto supported_span = MakeConstSpan(supported, supported_len);
+  auto peer_span = Span(peer, peer_len);
+  auto supported_span = Span(supported, supported_len);
   if ((!peer_span.empty() && !ssl_is_valid_alpn_list(peer_span)) ||
       !ssl_is_valid_alpn_list(supported_span)) {
     return OPENSSL_NPN_NO_OVERLAP;
@@ -2143,7 +2142,7 @@ int SSL_select_next_proto(uint8_t **out, uint8_t *out_len, const uint8_t *peer,
       return OPENSSL_NPN_NO_OVERLAP;
     }
 
-    if (ssl_alpn_list_contains_protocol(MakeConstSpan(supported, supported_len),
+    if (ssl_alpn_list_contains_protocol(Span(supported, supported_len),
                                         proto)) {
       // This function is not const-correct for compatibility with existing
       // callers.
@@ -2198,7 +2197,7 @@ void SSL_CTX_set_next_proto_select_cb(SSL_CTX *ctx,
 int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
                             size_t protos_len) {
   // Note this function's return value is backwards.
-  auto span = MakeConstSpan(protos, protos_len);
+  auto span = Span(protos, protos_len);
   if (!span.empty() && !ssl_is_valid_alpn_list(span)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL_LIST);
     return 1;
@@ -2211,7 +2210,7 @@ int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos, size_t protos_len) {
   if (!ssl->config) {
     return 1;
   }
-  auto span = MakeConstSpan(protos, protos_len);
+  auto span = Span(protos, protos_len);
   if (!span.empty() && !ssl_is_valid_alpn_list(span)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL_LIST);
     return 1;
@@ -2253,8 +2252,8 @@ int SSL_add_application_settings(SSL *ssl, const uint8_t *proto,
     return 0;
   }
   ALPSConfig config;
-  if (!config.protocol.CopyFrom(MakeConstSpan(proto, proto_len)) ||
-      !config.settings.CopyFrom(MakeConstSpan(settings, settings_len)) ||
+  if (!config.protocol.CopyFrom(Span(proto, proto_len)) ||
+      !config.settings.CopyFrom(Span(settings, settings_len)) ||
       !ssl->config->alps_configs.Push(std::move(config))) {
     return 0;
   }

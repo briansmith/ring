@@ -334,9 +334,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
 
 };
 
-Span<const SSL_CIPHER> AllCiphers() {
-  return MakeConstSpan(kCiphers, OPENSSL_ARRAY_SIZE(kCiphers));
-}
+Span<const SSL_CIPHER> AllCiphers() { return kCiphers; }
 
 static constexpr size_t NumTLS13Ciphers() {
   size_t num = 0;
@@ -1567,11 +1565,11 @@ int SSL_COMP_get_id(const SSL_COMP *comp) { return comp->id; }
 void SSL_COMP_free_compression_methods(void) {}
 
 size_t SSL_get_all_cipher_names(const char **out, size_t max_out) {
-  return GetAllNames(out, max_out, MakeConstSpan(&kUnknownCipher, 1),
-                     &SSL_CIPHER::name, MakeConstSpan(kCiphers));
+  return GetAllNames(out, max_out, Span(&kUnknownCipher, 1), &SSL_CIPHER::name,
+                     Span(kCiphers));
 }
 
 size_t SSL_get_all_standard_cipher_names(const char **out, size_t max_out) {
   return GetAllNames(out, max_out, Span<const char *>(),
-                     &SSL_CIPHER::standard_name, MakeConstSpan(kCiphers));
+                     &SSL_CIPHER::standard_name, Span(kCiphers));
 }

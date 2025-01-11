@@ -144,9 +144,8 @@ bool tls_flush_pending_hs_data(SSL *ssl) {
   }
 
   UniquePtr<BUF_MEM> pending_hs_data = std::move(ssl->s3->pending_hs_data);
-  auto data =
-      MakeConstSpan(reinterpret_cast<const uint8_t *>(pending_hs_data->data),
-                    pending_hs_data->length);
+  auto data = Span(reinterpret_cast<const uint8_t *>(pending_hs_data->data),
+                   pending_hs_data->length);
   if (SSL_is_quic(ssl)) {
     if ((ssl->s3->hs == nullptr || !ssl->s3->hs->hints_requested) &&
         !ssl->quic_method->add_handshake_data(ssl, ssl->s3->quic_write_level,

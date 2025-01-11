@@ -891,7 +891,7 @@ static int send_flight(SSL *ssl) {
     uint32_t old_offset = ssl->d1->outgoing_offset;
 
     size_t packet_len;
-    if (!seal_next_packet(ssl, MakeSpan(packet), &packet_len)) {
+    if (!seal_next_packet(ssl, Span(packet), &packet_len)) {
       return -1;
     }
 
@@ -1001,7 +1001,7 @@ static int send_ack(SSL *ssl) {
   }
 
   ssl_do_msg_callback(ssl, /*is_write=*/1, SSL3_RT_ACK,
-                      MakeConstSpan(CBB_data(&cbb), CBB_len(&cbb)));
+                      Span(CBB_data(&cbb), CBB_len(&cbb)));
 
   int bio_ret =
       BIO_write(ssl->wbio.get(), record, static_cast<int>(record_len));

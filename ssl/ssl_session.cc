@@ -457,7 +457,7 @@ SSLSessionType ssl_session_get_type(const SSL_SESSION *session) {
 bool ssl_session_is_context_valid(const SSL_HANDSHAKE *hs,
                                   const SSL_SESSION *session) {
   return session != nullptr &&
-         MakeConstSpan(session->sid_ctx) == hs->config->cert->sid_ctx;
+         Span(session->sid_ctx) == hs->config->cert->sid_ctx;
 }
 
 bool ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session) {
@@ -590,9 +590,9 @@ enum ssl_hs_wait_t ssl_get_prev_session(SSL_HANDSHAKE *hs,
       ssl_client_hello_get_extension(client_hello, &ticket,
                                      TLSEXT_TYPE_session_ticket);
   if (tickets_supported && CBS_len(&ticket) != 0) {
-    switch (ssl_process_ticket(hs, &session, &renew_ticket, ticket,
-                               MakeConstSpan(client_hello->session_id,
-                                             client_hello->session_id_len))) {
+    switch (ssl_process_ticket(
+        hs, &session, &renew_ticket, ticket,
+        Span(client_hello->session_id, client_hello->session_id_len))) {
       case ssl_ticket_aead_success:
         break;
       case ssl_ticket_aead_ignore_ticket:
@@ -607,7 +607,7 @@ enum ssl_hs_wait_t ssl_get_prev_session(SSL_HANDSHAKE *hs,
     // The client didn't send a ticket, so the session ID is a real ID.
     enum ssl_hs_wait_t lookup_ret = ssl_lookup_session(
         hs, &session,
-        MakeConstSpan(client_hello->session_id, client_hello->session_id_len));
+        Span(client_hello->session_id, client_hello->session_id_len));
     if (lookup_ret != ssl_hs_ok) {
       return lookup_ret;
     }
@@ -846,7 +846,7 @@ const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
 
 int SSL_SESSION_set1_id(SSL_SESSION *session, const uint8_t *sid,
                         size_t sid_len) {
-  if (!session->session_id.TryCopyFrom(MakeConstSpan(sid, sid_len))) {
+  if (!session->session_id.TryCopyFrom(Span(sid, sid_len))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_TOO_LONG);
     return 0;
   }
@@ -939,7 +939,7 @@ const uint8_t *SSL_SESSION_get0_id_context(const SSL_SESSION *session,
 
 int SSL_SESSION_set1_id_context(SSL_SESSION *session, const uint8_t *sid_ctx,
                                 size_t sid_ctx_len) {
-  if (!session->sid_ctx.TryCopyFrom(MakeConstSpan(sid_ctx, sid_ctx_len))) {
+  if (!session->sid_ctx.TryCopyFrom(Span(sid_ctx, sid_ctx_len))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
     return 0;
   }
@@ -969,7 +969,7 @@ void SSL_SESSION_get0_ticket(const SSL_SESSION *session,
 
 int SSL_SESSION_set_ticket(SSL_SESSION *session, const uint8_t *ticket,
                            size_t ticket_len) {
-  return session->ticket.CopyFrom(MakeConstSpan(ticket, ticket_len));
+  return session->ticket.CopyFrom(Span(ticket, ticket_len));
 }
 
 uint32_t SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *session) {

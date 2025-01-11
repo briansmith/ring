@@ -436,9 +436,7 @@ static bool ext_sni_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
     if (ssl->hostname == nullptr) {
       return true;
     }
-    hostname =
-        MakeConstSpan(reinterpret_cast<const uint8_t *>(ssl->hostname.get()),
-                      strlen(ssl->hostname.get()));
+    hostname = StringAsBytes(ssl->hostname.get());
   }
 
   CBB contents, server_name_list, name;
@@ -1102,8 +1100,7 @@ static bool ext_npn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
           ssl, &selected, &selected_len, orig_contents,
           static_cast<unsigned>(orig_len),
           ssl->ctx->next_proto_select_cb_arg) != SSL_TLSEXT_ERR_OK ||
-      !ssl->s3->next_proto_negotiated.CopyFrom(
-          MakeConstSpan(selected, selected_len))) {
+      !ssl->s3->next_proto_negotiated.CopyFrom(Span(selected, selected_len))) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
@@ -1437,8 +1434,7 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
         *out_alert = SSL_AD_INTERNAL_ERROR;
         return false;
       }
-      if (!ssl->s3->alpn_selected.CopyFrom(
-              MakeConstSpan(selected, selected_len))) {
+      if (!ssl->s3->alpn_selected.CopyFrom(Span(selected, selected_len))) {
         *out_alert = SSL_AD_INTERNAL_ERROR;
         return false;
       }
@@ -3019,7 +3015,7 @@ bool ssl_negotiate_alps(SSL_HANDSHAKE *hs, uint8_t *out_alert,
         *out_alert = SSL_AD_DECODE_ERROR;
         return false;
       }
-      if (protocol_name == MakeConstSpan(ssl->s3->alpn_selected)) {
+      if (protocol_name == Span(ssl->s3->alpn_selected)) {
         found = true;
       }
     }
@@ -4076,9 +4072,8 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs,
     }
   }
 
-  Span<const uint16_t> sigalgs = cred->sigalgs.empty()
-                                     ? MakeConstSpan(kSignSignatureAlgorithms)
-                                     : cred->sigalgs;
+  Span<const uint16_t> sigalgs =
+      cred->sigalgs.empty() ? Span(kSignSignatureAlgorithms) : cred->sigalgs;
   for (uint16_t sigalg : sigalgs) {
     if (!ssl_pkey_supports_algorithm(ssl, cred->pubkey.get(), sigalg,
                                      /*is_verify=*/false)) {

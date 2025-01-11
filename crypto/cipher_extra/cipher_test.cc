@@ -215,7 +215,7 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   std::vector<uint8_t> result(max_out);
   if (in_place) {
     std::copy(in.begin(), in.end(), result.begin());
-    in = bssl::MakeConstSpan(result).first(in.size());
+    in = bssl::Span(result).first(in.size());
   }
 
   size_t total = 0;
@@ -315,7 +315,7 @@ static void TestLowLevelAPI(
   } else {
     result.resize(expected.size());
   }
-  bssl::Span<uint8_t> out = bssl::MakeSpan(result);
+  bssl::Span<uint8_t> out = bssl::Span(result);
   // Input and output sizes for all the low-level APIs should match.
   ASSERT_EQ(in.size(), out.size());
 
@@ -733,8 +733,7 @@ TEST(CipherTest, GCMIncrementingIV) {
     uint8_t suffix[8];
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_IV_GEN,
                                     sizeof(suffix), suffix));
-    EXPECT_EQ(Bytes(suffix),
-              Bytes(bssl::MakeConstSpan(kIV3).last(sizeof(suffix))));
+    EXPECT_EQ(Bytes(suffix), Bytes(bssl::Span(kIV3).last(sizeof(suffix))));
     ASSERT_NO_FATAL_FAILURE(expect_iv(ctx.get(), kIV3, /*enc=*/true));
 
     // A length of -1 returns the whole IV.

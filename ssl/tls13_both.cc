@@ -373,7 +373,7 @@ bool tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     if (!tls13_finished_mac(hs, verify_data_buf, &len, !ssl->server)) {
       return false;
     }
-    verify_data = MakeConstSpan(verify_data_buf, len);
+    verify_data = Span(verify_data_buf, len);
   }
 
   bool finished_ok =
@@ -522,7 +522,7 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
   SSL_HANDSHAKE_HINTS *const hints = hs->hints.get();
   if (hints && !hs->hints_requested &&
       hints->cert_compression_alg_id == hs->cert_compression_alg_id &&
-      hints->cert_compression_input == MakeConstSpan(msg) &&
+      hints->cert_compression_input == Span(msg) &&
       !hints->cert_compression_output.empty()) {
     if (!CBB_add_bytes(&compressed, hints->cert_compression_output.data(),
                        hints->cert_compression_output.size())) {
@@ -538,7 +538,7 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
       hints->cert_compression_alg_id = hs->cert_compression_alg_id;
       if (!hints->cert_compression_input.CopyFrom(msg) ||
           !hints->cert_compression_output.CopyFrom(
-              MakeConstSpan(CBB_data(&compressed), CBB_len(&compressed)))) {
+              Span(CBB_data(&compressed), CBB_len(&compressed)))) {
         return false;
       }
     }

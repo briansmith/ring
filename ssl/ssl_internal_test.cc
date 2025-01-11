@@ -166,18 +166,18 @@ TEST(InplaceVector, Basic) {
   EXPECT_EQ(3, *iter);
   iter++;
   EXPECT_EQ(iter, vec.end());
-  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(data3));
+  EXPECT_EQ(Span(vec), Span(data3));
 
   InplaceVector<int, 4> vec2 = vec;
-  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(vec2));
+  EXPECT_EQ(Span(vec), Span(vec2));
 
   InplaceVector<int, 4> vec3;
   vec3 = vec;
-  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(vec2));
+  EXPECT_EQ(Span(vec), Span(vec2));
 
   int data4[] = {1, 2, 3, 4};
   ASSERT_TRUE(vec.TryCopyFrom(data4));
-  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(data4));
+  EXPECT_EQ(Span(vec), Span(data4));
 
   int data5[] = {1, 2, 3, 4, 5};
   EXPECT_FALSE(vec.TryCopyFrom(data5));
@@ -185,7 +185,7 @@ TEST(InplaceVector, Basic) {
 
   // Shrink the vector.
   ASSERT_TRUE(vec.TryResize(3));
-  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(data3));
+  EXPECT_EQ(Span(vec), Span(data3));
 
   // Enlarge it again. The new value should have been value-initialized.
   ASSERT_TRUE(vec.TryResize(4));
@@ -196,17 +196,17 @@ TEST(InplaceVector, Basic) {
   vec.CopyFrom(data4);
   const auto *ptr = &vec;
   vec = *ptr;
-  EXPECT_EQ(MakeConstSpan(vec), MakeConstSpan(data4));
+  EXPECT_EQ(Span(vec), Span(data4));
 }
 
 TEST(InplaceVectorTest, ComplexType) {
   InplaceVector<std::vector<int>, 4> vec_of_vecs;
   const std::vector<int> data[] = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
   vec_of_vecs.CopyFrom(data);
-  EXPECT_EQ(MakeConstSpan(vec_of_vecs), MakeConstSpan(data));
+  EXPECT_EQ(Span(vec_of_vecs), Span(data));
 
   vec_of_vecs.Resize(2);
-  EXPECT_EQ(MakeConstSpan(vec_of_vecs), MakeConstSpan(data, 2));
+  EXPECT_EQ(Span(vec_of_vecs), Span(data, 2));
 
   vec_of_vecs.Resize(4);
   EXPECT_EQ(4u, vec_of_vecs.size());
@@ -854,11 +854,11 @@ TEST(SSLAEADContextTest, Lengths) {
     SCOPED_TRACE(SSL_CIPHER_standard_name(cipher));
 
     const uint8_t kZeros[EVP_AEAD_MAX_KEY_LENGTH] = {0};
-    UniquePtr<SSLAEADContext> aead = SSLAEADContext::Create(
-        evp_aead_seal, cipher_test.version, cipher,
-        MakeConstSpan(kZeros).first(cipher_test.enc_key_len),
-        MakeConstSpan(kZeros).first(cipher_test.mac_key_len),
-        MakeConstSpan(kZeros).first(cipher_test.fixed_iv_len));
+    UniquePtr<SSLAEADContext> aead =
+        SSLAEADContext::Create(evp_aead_seal, cipher_test.version, cipher,
+                               Span(kZeros).first(cipher_test.enc_key_len),
+                               Span(kZeros).first(cipher_test.mac_key_len),
+                               Span(kZeros).first(cipher_test.fixed_iv_len));
     ASSERT_TRUE(aead);
 
     for (const auto &t : cipher_test.length_tests) {

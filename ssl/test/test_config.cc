@@ -1239,7 +1239,7 @@ static int AsyncTicketSeal(SSL *ssl, uint8_t *out, size_t *out_len,
     return 1;
   }
 
-  auto out_span = bssl::MakeSpan(out, max_out_len);
+  auto out_span = bssl::Span(out, max_out_len);
   // Encrypt the ticket with the all zero key and a random nonce.
   static const uint8_t kKey[16] = {0};
   const EVP_AEAD *aead = EVP_aead_aes_128_gcm_siv();
@@ -1268,7 +1268,7 @@ static ssl_ticket_aead_result_t AsyncTicketOpen(SSL *ssl, uint8_t *out,
                                                 size_t max_out_len,
                                                 const uint8_t *in,
                                                 size_t in_len) {
-  auto in_span = bssl::MakeSpan(in, in_len);
+  auto in_span = bssl::Span(in, in_len);
   const TestConfig *test_config = GetTestConfig(ssl);
   TestState *test_state = GetTestState(ssl);
   if (test_state->ticket_decrypt_done) {

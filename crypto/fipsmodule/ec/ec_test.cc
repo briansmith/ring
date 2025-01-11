@@ -1327,10 +1327,9 @@ TEST(ECTest, HashToCurve) {
     ASSERT_TRUE(EncodeECPoint(&buf, test.group, p.get(),
                               POINT_CONVERSION_UNCOMPRESSED));
     size_t field_len = (buf.size() - 1) / 2;
-    EXPECT_EQ(test.x_hex,
-              EncodeHex(bssl::MakeConstSpan(buf).subspan(1, field_len)));
-    EXPECT_EQ(test.y_hex, EncodeHex(bssl::MakeConstSpan(buf).subspan(
-                              1 + field_len, field_len)));
+    EXPECT_EQ(test.x_hex, EncodeHex(bssl::Span(buf).subspan(1, field_len)));
+    EXPECT_EQ(test.y_hex,
+              EncodeHex(bssl::Span(buf).subspan(1 + field_len, field_len)));
   }
 
   // hash-to-curve functions should check for the wrong group.
@@ -1405,7 +1404,7 @@ TEST(ECTest, HashToScalar) {
     uint8_t buf[EC_MAX_BYTES];
     size_t len;
     ec_scalar_to_bytes(test.group, buf, &len, &scalar);
-    EXPECT_EQ(test.result_hex, EncodeHex(bssl::MakeConstSpan(buf, len)));
+    EXPECT_EQ(test.result_hex, EncodeHex(bssl::Span(buf, len)));
   }
 
   // hash-to-scalar functions should check for the wrong group.

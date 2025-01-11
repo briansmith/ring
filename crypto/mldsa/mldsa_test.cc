@@ -63,7 +63,7 @@ TEST(MLDSATest, DISABLED_BitFlips) {
                            sizeof(kMessage), nullptr, 0));
 
   auto pub = std::make_unique<MLDSA65_public_key>();
-  CBS cbs = bssl::MakeConstSpan(encoded_public_key);
+  CBS cbs = CBS(encoded_public_key);
   ASSERT_TRUE(MLDSA65_parse_public_key(pub.get(), &cbs));
 
   EXPECT_EQ(MLDSA65_verify(pub.get(), encoded_signature.data(),
@@ -104,7 +104,7 @@ static void MLDSABasicTest() {
 
   const std::vector<uint8_t> encoded_private_key =
       Marshal(MarshalPrivate, reinterpret_cast<BCMPrivateKey *>(priv.get()));
-  CBS cbs = bssl::MakeConstSpan(encoded_private_key);
+  CBS cbs = CBS(encoded_private_key);
   EXPECT_TRUE(bcm_success(
       ParsePrivate(reinterpret_cast<BCMPrivateKey *>(priv.get()), &cbs)));
 
@@ -116,7 +116,7 @@ static void MLDSABasicTest() {
                    sizeof(kMessage), kContext, sizeof(kContext)));
 
   auto pub = std::make_unique<PublicKey>();
-  cbs = bssl::MakeConstSpan(encoded_public_key);
+  cbs = CBS(encoded_public_key);
   ASSERT_TRUE(ParsePublicKey(pub.get(), &cbs));
 
   EXPECT_EQ(
@@ -220,7 +220,7 @@ TEST(MLDSATest, SignatureIsRandomized) {
       MLDSA65_generate_key(encoded_public_key.data(), seed, priv.get()));
 
   auto pub = std::make_unique<MLDSA65_public_key>();
-  CBS cbs = bssl::MakeConstSpan(encoded_public_key);
+  CBS cbs = CBS(encoded_public_key);
   ASSERT_TRUE(MLDSA65_parse_public_key(pub.get(), &cbs));
 
   std::vector<uint8_t> encoded_signature1(MLDSA65_SIGNATURE_BYTES);
@@ -273,17 +273,17 @@ TEST(MLDSATest, InvalidPublicKeyEncodingLength) {
       MLDSA65_generate_key(encoded_public_key.data(), seed, priv.get()));
 
   // Public key is 1 byte too short.
-  CBS cbs = bssl::MakeConstSpan(encoded_public_key)
-                .first(MLDSA65_PUBLIC_KEY_BYTES - 1);
+  CBS cbs =
+      CBS(bssl::Span(encoded_public_key).first(MLDSA65_PUBLIC_KEY_BYTES - 1));
   auto parsed_pub = std::make_unique<MLDSA65_public_key>();
   EXPECT_FALSE(MLDSA65_parse_public_key(parsed_pub.get(), &cbs));
 
   // Public key has the correct length.
-  cbs = bssl::MakeConstSpan(encoded_public_key).first(MLDSA65_PUBLIC_KEY_BYTES);
+  cbs = CBS(bssl::Span(encoded_public_key).first(MLDSA65_PUBLIC_KEY_BYTES));
   EXPECT_TRUE(MLDSA65_parse_public_key(parsed_pub.get(), &cbs));
 
   // Public key is 1 byte too long.
-  cbs = bssl::MakeConstSpan(encoded_public_key);
+  cbs = CBS(encoded_public_key);
   EXPECT_FALSE(MLDSA65_parse_public_key(parsed_pub.get(), &cbs));
 }
 

@@ -91,7 +91,7 @@ static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       } else if (client_hello->version <= DTLS1_VERSION) {
         versions_len = 2;
       }
-      versions = MakeConstSpan(kDTLSVersions).last(versions_len);
+      versions = Span(kDTLSVersions).last(versions_len);
     } else {
       if (client_hello->version >= TLS1_2_VERSION) {
         versions_len = 6;
@@ -100,7 +100,7 @@ static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       } else if (client_hello->version >= TLS1_VERSION) {
         versions_len = 2;
       }
-      versions = MakeConstSpan(kTLSVersions).last(versions_len);
+      versions = Span(kTLSVersions).last(versions_len);
     }
   }
 
@@ -761,7 +761,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   // |ssl_client_hello_init| checks that |client_hello.session_id| is not too
   // large.
   hs->session_id.CopyFrom(
-      MakeConstSpan(client_hello.session_id, client_hello.session_id_len));
+      Span(client_hello.session_id, client_hello.session_id_len));
 
   // Determine whether we are doing session resumption.
   UniquePtr<SSL_SESSION> session;
@@ -1042,7 +1042,7 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
           hints->ecdhe_group_id == hs->new_session->group_id &&
           !hints->ecdhe_public_key.empty() &&
           !hints->ecdhe_private_key.empty()) {
-        CBS cbs = MakeConstSpan(hints->ecdhe_private_key);
+        CBS cbs = CBS(hints->ecdhe_private_key);
         hint_ok = hs->key_shares[0]->DeserializePrivateKey(&cbs);
       }
       if (hint_ok) {
@@ -1060,7 +1060,7 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
         if (hints && hs->hints_requested) {
           bssl::ScopedCBB private_key_cbb;
           if (!hints->ecdhe_public_key.CopyFrom(
-                  MakeConstSpan(CBB_data(&child), CBB_len(&child))) ||
+                  Span(CBB_data(&child), CBB_len(&child))) ||
               !CBB_init(private_key_cbb.get(), 32) ||
               !hs->key_shares[0]->SerializePrivateKey(private_key_cbb.get()) ||
               !CBBFinishArray(private_key_cbb.get(),
@@ -1470,7 +1470,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
   // Compute the master secret.
   hs->new_session->secret.ResizeForOverwrite(SSL3_MASTER_SECRET_SIZE);
-  if (!tls1_generate_master_secret(hs, MakeSpan(hs->new_session->secret),
+  if (!tls1_generate_master_secret(hs, Span(hs->new_session->secret),
                                    premaster_secret)) {
     return ssl_hs_error;
   }

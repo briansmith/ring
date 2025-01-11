@@ -67,8 +67,8 @@ bool ssl_credential_matches_requested_issuers(SSL_HANDSHAKE *hs,
     // credential matches it, it is good.
     if (hs->ca_names != nullptr) {
       for (const CRYPTO_BUFFER *ca_name : hs->ca_names.get()) {
-        if (cred->ChainContainsIssuer(MakeConstSpan(
-                CRYPTO_BUFFER_data(ca_name), CRYPTO_BUFFER_len(ca_name)))) {
+        if (cred->ChainContainsIssuer(Span(CRYPTO_BUFFER_data(ca_name),
+                                           CRYPTO_BUFFER_len(ca_name)))) {
           return true;
         }
       }
@@ -382,7 +382,7 @@ int SSL_CREDENTIAL_set1_delegated_credential(SSL_CREDENTIAL *cred,
     return 0;
   }
 
-  if (!cred->sigalgs.CopyFrom(MakeConstSpan(&dc_cert_verify_algorithm, 1))) {
+  if (!cred->sigalgs.CopyFrom(Span(&dc_cert_verify_algorithm, 1))) {
     return 0;
   }
 

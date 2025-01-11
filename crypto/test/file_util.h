@@ -20,6 +20,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <openssl/span.h>
@@ -95,9 +96,8 @@ class TemporaryFile {
   // true on success and false on error. On error, callers should call
   // |IgnoreTempFileErrors| to determine whether to ignore the error.
   bool Init(bssl::Span<const uint8_t> content = {});
-  bool Init(const std::string &content) {
-    return Init(bssl::MakeConstSpan(
-        reinterpret_cast<const uint8_t *>(content.data()), content.size()));
+  bool Init(std::string_view content) {
+    return Init(bssl::StringAsBytes(content));
   }
 
   // Open opens the file as a |FILE| with the specified mode.
@@ -139,14 +139,11 @@ class TemporaryDirectory {
   // It returns true on success and false on error. Subdirectories in the
   // temporary directory are not currently supported.
   bool AddFile(const std::string &filename, bssl::Span<const uint8_t> content);
-  bool AddFile(const std::string &filename, const std::string &content) {
-    return AddFile(
-        filename,
-        bssl::MakeConstSpan(reinterpret_cast<const uint8_t *>(content.data()),
-                            content.size()));
+  bool AddFile(const std::string &filename, std::string_view content) {
+    return AddFile(filename, bssl::StringAsBytes(content));
   }
 
-  // GetFilePath returns the path to the speciifed file within the temporary
+  // GetFilePath returns the path to the specified file within the temporary
   // directory.
   std::string GetFilePath(const std::string &filename) {
 #if defined(OPENSSL_WINDOWS)

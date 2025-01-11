@@ -208,9 +208,9 @@ enum ssl_private_key_result_t ssl_private_key_sign(
   // Replay the signature from handshake hints if available.
   if (hints && !hs->hints_requested &&         //
       sigalg == hints->signature_algorithm &&  //
-      in == hints->signature_input &&
-      MakeConstSpan(spki) == hints->signature_spki &&
-      !hints->signature.empty() &&  //
+      in == hints->signature_input &&          //
+      Span(spki) == hints->signature_spki &&   //
+      !hints->signature.empty() &&             //
       hints->signature.size() <= max_out) {
     // Signature algorithm and input both match. Reuse the signature from hints.
     *out_len = hints->signature.size();
@@ -251,7 +251,7 @@ enum ssl_private_key_result_t ssl_private_key_sign(
     hints->signature_algorithm = sigalg;
     hints->signature_spki = std::move(spki);
     if (!hints->signature_input.CopyFrom(in) ||
-        !hints->signature.CopyFrom(MakeConstSpan(out, *out_len))) {
+        !hints->signature.CopyFrom(Span(out, *out_len))) {
       return ssl_private_key_failure;
     }
   }
@@ -491,9 +491,9 @@ const char *SSL_get_signature_algorithm_name(uint16_t sigalg,
 size_t SSL_get_all_signature_algorithm_names(const char **out, size_t max_out) {
   const char *kPredefinedNames[] = {"ecdsa_sha256", "ecdsa_sha384",
                                     "ecdsa_sha512"};
-  return GetAllNames(out, max_out, MakeConstSpan(kPredefinedNames),
+  return GetAllNames(out, max_out, kPredefinedNames,
                      &SignatureAlgorithmName::name,
-                     MakeConstSpan(kSignatureAlgorithmNames));
+                     Span(kSignatureAlgorithmNames));
 }
 
 int SSL_get_signature_algorithm_key_type(uint16_t sigalg) {
@@ -603,7 +603,7 @@ int SSL_CREDENTIAL_set1_signing_algorithm_prefs(SSL_CREDENTIAL *cred,
     return 0;
   }
 
-  return set_sigalg_prefs(&cred->sigalgs, MakeConstSpan(prefs, num_prefs));
+  return set_sigalg_prefs(&cred->sigalgs, Span(prefs, num_prefs));
 }
 
 int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
@@ -899,8 +899,7 @@ int SSL_set1_sigalgs_list(SSL *ssl, const char *str) {
 
 int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
                                        size_t num_prefs) {
-  return set_sigalg_prefs(&ctx->verify_sigalgs,
-                          MakeConstSpan(prefs, num_prefs));
+  return set_sigalg_prefs(&ctx->verify_sigalgs, Span(prefs, num_prefs));
 }
 
 int SSL_set_verify_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
@@ -910,6 +909,5 @@ int SSL_set_verify_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
     return 0;
   }
 
-  return set_sigalg_prefs(&ssl->config->verify_sigalgs,
-                          MakeConstSpan(prefs, num_prefs));
+  return set_sigalg_prefs(&ssl->config->verify_sigalgs, Span(prefs, num_prefs));
 }

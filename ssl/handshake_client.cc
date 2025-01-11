@@ -234,7 +234,7 @@ bool ssl_add_client_hello(SSL_HANDSHAKE *hs) {
     // ClientHelloOuter cannot have a PSK binder. Otherwise the
     // ClientHellOuterAAD computation would break.
     assert(type != ssl_client_hello_outer);
-    if (!tls13_write_psk_binder(hs, hs->transcript, MakeSpan(msg),
+    if (!tls13_write_psk_binder(hs, hs->transcript, Span(msg),
                                 /*out_binder_len=*/0)) {
       return false;
     }
@@ -419,7 +419,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
 
   if (!ssl_setup_key_shares(hs, /*override_group_id=*/0) ||
       !ssl_setup_extension_permutation(hs) ||
-      !ssl_encrypt_client_hello(hs, MakeConstSpan(ech_enc, ech_enc_len)) ||
+      !ssl_encrypt_client_hello(hs, Span(ech_enc, ech_enc_len)) ||
       !ssl_add_client_hello(hs)) {
     return ssl_hs_error;
   }
@@ -666,8 +666,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
         sizeof(kJDK11DowngradeRandom) == sizeof(kTLS13DowngradeRandom),
         "downgrade signals have different size");
     auto suffix =
-        MakeConstSpan(ssl->s3->server_random, sizeof(ssl->s3->server_random))
-            .subspan(SSL3_RANDOM_SIZE - sizeof(kTLS13DowngradeRandom));
+        Span(ssl->s3->server_random).last(sizeof(kTLS13DowngradeRandom));
     if (suffix == kTLS12DowngradeRandom || suffix == kTLS13DowngradeRandom ||
         suffix == kJDK11DowngradeRandom) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_TLS13_DOWNGRADE);
@@ -1473,8 +1472,7 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   }
 
   hs->new_session->secret.ResizeForOverwrite(SSL3_MASTER_SECRET_SIZE);
-  if (!tls1_generate_master_secret(hs, MakeSpan(hs->new_session->secret),
-                                   pms)) {
+  if (!tls1_generate_master_secret(hs, Span(hs->new_session->secret), pms)) {
     return ssl_hs_error;
   }
 
