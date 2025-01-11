@@ -238,10 +238,8 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
           sk_CRYPTO_BUFFER_value(prev_session->certs.get(), i);
       const CRYPTO_BUFFER *new_cert =
           sk_CRYPTO_BUFFER_value(hs->new_session->certs.get(), i);
-      if (CRYPTO_BUFFER_len(old_cert) != CRYPTO_BUFFER_len(new_cert) ||
-          OPENSSL_memcmp(CRYPTO_BUFFER_data(old_cert),
-                         CRYPTO_BUFFER_data(new_cert),
-                         CRYPTO_BUFFER_len(old_cert)) != 0) {
+      if (Span(CRYPTO_BUFFER_data(old_cert), CRYPTO_BUFFER_len(old_cert)) !=
+          Span(CRYPTO_BUFFER_data(new_cert), CRYPTO_BUFFER_len(new_cert))) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_SERVER_CERT_CHANGED);
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
         return ssl_verify_invalid;

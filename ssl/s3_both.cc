@@ -468,16 +468,16 @@ ssl_open_record_t tls_open_handshake(SSL *ssl, size_t *out_consumed,
     // Some dedicated error codes for protocol mixups should the application
     // wish to interpret them differently. (These do not overlap with
     // ClientHello or V2ClientHello.)
-    const char *str = reinterpret_cast<const char *>(in.data());
-    if (strncmp("GET ", str, 4) == 0 ||   //
-        strncmp("POST ", str, 5) == 0 ||  //
-        strncmp("HEAD ", str, 5) == 0 ||  //
-        strncmp("PUT ", str, 4) == 0) {
+    auto str = bssl::BytesAsStringView(in);
+    if (str.substr(0, 4) == "GET " ||   //
+        str.substr(0, 5) == "POST " ||  //
+        str.substr(0, 5) == "HEAD " ||  //
+        str.substr(0, 4) == "PUT ") {
       OPENSSL_PUT_ERROR(SSL, SSL_R_HTTP_REQUEST);
       *out_alert = 0;
       return ssl_open_record_error;
     }
-    if (strncmp("CONNE", str, 5) == 0) {
+    if (str.substr(0, 5) == "CONNE") {
       OPENSSL_PUT_ERROR(SSL, SSL_R_HTTPS_PROXY_REQUEST);
       *out_alert = 0;
       return ssl_open_record_error;

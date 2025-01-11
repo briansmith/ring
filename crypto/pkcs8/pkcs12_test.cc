@@ -56,9 +56,8 @@ static void TestImpl(const char *name, bssl::Span<const uint8_t> der,
   if (friendly_name == nullptr) {
     EXPECT_EQ(nullptr, actual_name);
   } else {
-    EXPECT_EQ(friendly_name,
-              std::string(reinterpret_cast<const char *>(actual_name),
-                          static_cast<size_t>(actual_name_len)));
+    EXPECT_EQ(friendly_name, bssl::BytesAsStringView(
+                                 bssl::Span(actual_name, actual_name_len)));
   }
 }
 
@@ -381,8 +380,8 @@ static void TestRoundTrip(const char *password, const char *name,
     if (name == NULL) {
       EXPECT_EQ(nullptr, actual_name);
     } else {
-      EXPECT_EQ(name, std::string(reinterpret_cast<const char *>(actual_name),
-                                  static_cast<size_t>(actual_name_len)));
+      EXPECT_EQ(name, bssl::BytesAsStringView(
+                          bssl::Span(actual_name, actual_name_len)));
     }
   }
 
@@ -650,8 +649,8 @@ TEST(PKCS12Test, CreateWithAlias) {
   const unsigned char *parsed_alias =
       X509_alias_get0(sk_X509_value(ca_certs, 0), &alias_len);
   ASSERT_TRUE(parsed_alias);
-  ASSERT_EQ(alias, std::string(reinterpret_cast<const char *>(parsed_alias),
-                               static_cast<size_t>(alias_len)));
+  ASSERT_EQ(alias,
+            bssl::BytesAsStringView(bssl::Span(parsed_alias, alias_len)));
 }
 
 // PKCS#12 is built on top of PKCS#7, a misdesigned, overgeneralized combinator

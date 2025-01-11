@@ -178,10 +178,10 @@ bool ssl_log_secret(const SSL *ssl, const char *label,
 
   ScopedCBB cbb;
   Array<uint8_t> line;
+  auto label_bytes = bssl::StringAsBytes(label);
   if (!CBB_init(cbb.get(), strlen(label) + 1 + SSL3_RANDOM_SIZE * 2 + 1 +
                                secret.size() * 2 + 1) ||
-      !CBB_add_bytes(cbb.get(), reinterpret_cast<const uint8_t *>(label),
-                     strlen(label)) ||
+      !CBB_add_bytes(cbb.get(), label_bytes.data(), label_bytes.size()) ||
       !CBB_add_u8(cbb.get(), ' ') ||
       !cbb_add_hex_consttime(cbb.get(), ssl->s3->client_random) ||
       !CBB_add_u8(cbb.get(), ' ') ||

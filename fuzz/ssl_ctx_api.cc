@@ -231,7 +231,7 @@ static bool GetString(std::string *out, CBS *cbs) {
     return false;
   }
 
-  out->assign(reinterpret_cast<const char *>(CBS_data(&str)), CBS_len(&str));
+  *out = bssl::BytesAsStringView(str);
   return true;
 }
 

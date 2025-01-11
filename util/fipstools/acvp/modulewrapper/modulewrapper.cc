@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <assert.h>
@@ -1060,8 +1061,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         ]
       }
     ])";
-  return write_reply({Span<const uint8_t>(
-      reinterpret_cast<const uint8_t *>(kConfig), sizeof(kConfig) - 1)});
+  return write_reply({bssl::StringAsBytes(kConfig)});
 }
 
 static bool Flush(const Span<const uint8_t> args[], ReplyCallback write_reply) {
@@ -1100,8 +1100,7 @@ static bool HashMCT(const Span<const uint8_t> args[],
     memcpy(buf + DigestLength * 2, digest, DigestLength);
   }
 
-  return write_reply(
-      {Span<const uint8_t>(buf + 2 * DigestLength, DigestLength)});
+  return write_reply({Span(buf).subspan(2 * DigestLength, DigestLength)});
 }
 
 static uint32_t GetIterations(const Span<const uint8_t> iterations_bytes) {
@@ -2106,7 +2105,7 @@ static bool TLSKDF(const Span<const uint8_t> args[],
                    ReplyCallback write_reply) {
   const Span<const uint8_t> out_len_bytes = args[0];
   const Span<const uint8_t> secret = args[1];
-  const Span<const uint8_t> label = args[2];
+  const std::string_view label = bssl::BytesAsStringView(args[2]);
   const Span<const uint8_t> seed1 = args[3];
   const Span<const uint8_t> seed2 = args[4];
   const EVP_MD *md = MDFunc();
@@ -2117,11 +2116,10 @@ static bool TLSKDF(const Span<const uint8_t> args[],
   }
   memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
 
-  std::vector<uint8_t> out(static_cast<size_t>(out_len));
+  std::vector<uint8_t> out(size_t{out_len});
   if (!CRYPTO_tls1_prf(md, out.data(), out.size(), secret.data(), secret.size(),
-                       reinterpret_cast<const char *>(label.data()),
-                       label.size(), seed1.data(), seed1.size(), seed2.data(),
-                       seed2.size())) {
+                       label.data(), label.size(), seed1.data(), seed1.size(),
+                       seed2.data(), seed2.size())) {
     return 0;
   }
 
@@ -2621,10 +2619,9 @@ static constexpr struct {
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
-  const bssl::Span<const uint8_t> algorithm = args[0];
+  auto algorithm = bssl::BytesAsStringView(args[0]);
   for (const auto &func : kFunctions) {
-    if (algorithm.size() == strlen(func.name) &&
-        memcmp(algorithm.data(), func.name, algorithm.size()) == 0) {
+    if (algorithm == func.name) {
       if (args.size() - 1 != func.num_expected_args) {
         LOG_ERROR("\'%s\' operation received %zu arguments but expected %u.\n",
                   func.name, args.size() - 1, func.num_expected_args);
@@ -2635,9 +2632,7 @@ Handler FindHandler(Span<const Span<const uint8_t>> args) {
     }
   }
 
-  const std::string name(reinterpret_cast<const char *>(algorithm.data()),
-                         algorithm.size());
-  LOG_ERROR("Unknown operation: %s\n", name.c_str());
+  LOG_ERROR("Unknown operation: %s\n", std::string(algorithm).c_str());
   return nullptr;
 }
 

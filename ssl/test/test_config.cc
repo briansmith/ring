@@ -961,9 +961,8 @@ static int AlpnSelectCallback(SSL *ssl, const uint8_t **out, uint8_t *outlen,
   }
 
   if (!config->expect_advertised_alpn.empty() &&
-      (config->expect_advertised_alpn.size() != inlen ||
-       OPENSSL_memcmp(config->expect_advertised_alpn.data(), in, inlen) !=
-           0)) {
+      bssl::StringAsBytes(config->expect_advertised_alpn) !=
+          bssl::Span(in, inlen)) {
     fprintf(stderr, "bad ALPN select callback inputs.\n");
     exit(1);
   }
@@ -1577,10 +1576,8 @@ static bool CheckCertificateRequest(SSL *ssl) {
     const uint8_t *certificate_types;
     size_t certificate_types_len =
         SSL_get0_certificate_types(ssl, &certificate_types);
-    if (certificate_types_len != config->expect_certificate_types.size() ||
-        OPENSSL_memcmp(certificate_types,
-                       config->expect_certificate_types.data(),
-                       certificate_types_len) != 0) {
+    if (bssl::StringAsBytes(config->expect_certificate_types) !=
+        bssl::Span(certificate_types, certificate_types_len)) {
       fprintf(stderr, "certificate types mismatch.\n");
       return false;
     }

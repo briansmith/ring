@@ -42,9 +42,7 @@ TEST(InputTest, LessThan) {
 
 TEST(InputTest, AsString) {
   Input input(kInput);
-  std::string expected_string(reinterpret_cast<const char *>(kInput),
-                              std::size(kInput));
-  EXPECT_EQ(expected_string, input.AsString());
+  EXPECT_EQ(bssl::BytesAsStringView(kInput), input.AsString());
 }
 
 TEST(InputTest, StaticArray) {

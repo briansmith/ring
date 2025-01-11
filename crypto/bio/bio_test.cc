@@ -356,8 +356,7 @@ TEST(BIOTest, Printf) {
     const uint8_t *contents;
     size_t len;
     ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-    EXPECT_EQ("test " + in,
-              std::string(reinterpret_cast<const char *>(contents), len));
+    EXPECT_EQ("test " + in, bssl::BytesAsStringView(bssl::Span(contents, len)));
 
     ASSERT_TRUE(BIO_reset(bio.get()));
   }

@@ -21,7 +21,7 @@
 #include <string.h>
 
 #include <iosfwd>
-#include <string>
+#include <string_view>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -43,12 +43,8 @@ struct Bytes {
   Bytes(const char *data_arg, size_t len_arg)
       : span_(reinterpret_cast<const uint8_t *>(data_arg), len_arg) {}
 
-  explicit Bytes(const char *str)
-      : span_(reinterpret_cast<const uint8_t *>(str), strlen(str)) {}
-  explicit Bytes(const std::string &str)
-      : span_(reinterpret_cast<const uint8_t *>(str.data()), str.size()) {}
-  explicit Bytes(bssl::Span<const uint8_t> span)
-      : span_(span) {}
+  explicit Bytes(std::string_view str) : span_(bssl::StringAsBytes(str)) {}
+  explicit Bytes(bssl::Span<const uint8_t> span) : span_(span) {}
 
   bssl::Span<const uint8_t> span_;
 };

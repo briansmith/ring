@@ -17,16 +17,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <string>
+#include <string_view>
 
 #include <openssl/crypto.h>
 #include <openssl/span.h>
 
 #include "modulewrapper.h"
 
-
-static bool EqString(bssl::Span<const uint8_t> cmd, const char *str) {
-  return cmd.size() == strlen(str) && memcmp(str, cmd.data(), cmd.size()) == 0;
-}
 
 int main(int argc, char **argv) {
   if (argc == 2 && strcmp(argv[1], "--version") == 0) {
@@ -95,7 +92,8 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    if (EqString(args[0], "flush")) {
+    auto name = bssl::BytesAsStringView(args[0]);
+    if (name == "flush") {
       if (!bssl::acvp::FlushBuffer(STDOUT_FILENO)) {
         abort();
       }
@@ -107,12 +105,9 @@ int main(int argc, char **argv) {
       return 2;
     }
 
-    auto &reply_callback =
-        EqString(args[0], "getConfig") ? write_reply : buffer_reply;
+    auto &reply_callback = name == "getConfig" ? write_reply : buffer_reply;
     if (!handler(args.subspan(1).data(), reply_callback)) {
-      const std::string name(reinterpret_cast<const char *>(args[0].data()),
-                             args[0].size());
-      fprintf(stderr, "\'%s\' operation failed.\n", name.c_str());
+      fprintf(stderr, "\'%s\' operation failed.\n", std::string(name).c_str());
       return 3;
     }
   }

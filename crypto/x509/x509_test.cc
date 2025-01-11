@@ -2774,8 +2774,7 @@ TEST(X509Test, TestPrintUTCTIME) {
     size_t len;
     ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
     EXPECT_EQ(ok, (strcmp(t.want, "Bad time value") != 0) ? 1 : 0);
-    EXPECT_EQ(t.want,
-              std::string(reinterpret_cast<const char *>(contents), len));
+    EXPECT_EQ(t.want, bssl::BytesAsStringView(bssl::Span(contents, len)));
   }
 }
 
@@ -5440,7 +5439,7 @@ TEST(X509Test, Print) {
   const uint8_t *data;
   size_t data_len;
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &data_len));
-  std::string print(reinterpret_cast<const char *>(data), data_len);
+  auto print = bssl::BytesAsStringView(bssl::Span(data, data_len));
   EXPECT_EQ(print, R"(Certificate:
     Data:
         Version: 3 (0x2)

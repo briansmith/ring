@@ -332,8 +332,8 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
     const uint8_t *data;
     size_t len;
     SSL_get0_ocsp_response(ssl, &data, &len);
-    if (config->expect_ocsp_response.size() != len ||
-        OPENSSL_memcmp(config->expect_ocsp_response.data(), data, len) != 0) {
+    if (bssl::StringAsBytes(config->expect_ocsp_response) !=
+        bssl::Span(data, len)) {
       fprintf(stderr, "OCSP response mismatch\n");
       return false;
     }
@@ -343,9 +343,8 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
     const uint8_t *data;
     size_t len;
     SSL_get0_signed_cert_timestamp_list(ssl, &data, &len);
-    if (config->expect_signed_cert_timestamps.size() != len ||
-        OPENSSL_memcmp(config->expect_signed_cert_timestamps.data(), data,
-                       len) != 0) {
+    if (bssl::StringAsBytes(config->expect_signed_cert_timestamps) !=
+        bssl::Span(data, len)) {
       fprintf(stderr, "SCT list mismatch\n");
       return false;
     }
@@ -523,9 +522,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     const uint8_t *next_proto;
     unsigned next_proto_len;
     SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
-    if (next_proto_len != config->expect_next_proto.size() ||
-        OPENSSL_memcmp(next_proto, config->expect_next_proto.data(),
-                       next_proto_len) != 0) {
+    if (bssl::StringAsBytes(config->expect_next_proto) !=
+        bssl::Span(next_proto, next_proto_len)) {
       fprintf(stderr, "negotiated next proto mismatch\n");
       return false;
     }
@@ -539,8 +537,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   const uint8_t *alpn_proto;
   unsigned alpn_proto_len;
   SSL_get0_alpn_selected(ssl, &alpn_proto, &alpn_proto_len);
-  if (alpn_proto_len != expect_alpn.size() ||
-      OPENSSL_memcmp(alpn_proto, expect_alpn.data(), alpn_proto_len) != 0) {
+  if (bssl::StringAsBytes(expect_alpn) !=
+      bssl::Span(alpn_proto, alpn_proto_len)) {
     fprintf(stderr, "negotiated alpn proto mismatch\n");
     return false;
   }
@@ -558,9 +556,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   const uint8_t *peer_settings;
   size_t peer_settings_len;
   SSL_get0_peer_application_settings(ssl, &peer_settings, &peer_settings_len);
-  if (expect_settings !=
-      std::string(reinterpret_cast<const char *>(peer_settings),
-                  peer_settings_len)) {
+  if (bssl::StringAsBytes(expect_settings) !=
+      bssl::Span(peer_settings, peer_settings_len)) {
     fprintf(stderr, "peer application settings mismatch\n");
     return false;
   }
@@ -569,10 +566,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     const uint8_t *peer_params;
     size_t peer_params_len;
     SSL_get_peer_quic_transport_params(ssl, &peer_params, &peer_params_len);
-    if (peer_params_len != config->expect_quic_transport_params.size() ||
-        OPENSSL_memcmp(peer_params,
-                       config->expect_quic_transport_params.data(),
-                       peer_params_len) != 0) {
+    if (bssl::StringAsBytes(config->expect_quic_transport_params) !=
+        bssl::Span(peer_params, peer_params_len)) {
       fprintf(stderr, "QUIC transport params mismatch\n");
       return false;
     }
@@ -584,9 +579,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
       fprintf(stderr, "no channel id negotiated\n");
       return false;
     }
-    if (config->expect_channel_id.size() != 64 ||
-        OPENSSL_memcmp(config->expect_channel_id.data(), channel_id, 64) !=
-            0) {
+    if (bssl::StringAsBytes(config->expect_channel_id) != channel_id) {
       fprintf(stderr, "channel id mismatch\n");
       return false;
     }
