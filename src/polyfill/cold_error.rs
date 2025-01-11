@@ -35,6 +35,29 @@
 /// work around the lack of the ability to mark an enum variant `#[cold]` and
 /// `#[inline(never)]`.
 macro_rules! cold_exhaustive_error {
+    // struct
+    {
+        struct $mod_name:ident::$Error:ident {
+            $field:ident: $ValueType:ty
+        }
+    } => {
+        mod $mod_name {
+            #[allow(unused_imports)]
+            use super::*; // So `$ValueType` is in scope.
+
+            pub struct $Error { #[allow(dead_code)] $field: $ValueType }
+
+            impl $Error {
+                #[cold]
+                #[inline(never)]
+                pub(super) fn new($field: $ValueType) -> Self {
+                    Self { $field }
+                }
+            }
+        }
+    };
+
+    // enum
     {
         enum $mod_name:ident::$Error:ident {
             $(
