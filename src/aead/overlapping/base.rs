@@ -12,6 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+pub use self::index_error::IndexError;
 use super::{Array, LenMismatchError};
 use core::{mem, ops::RangeFrom};
 
@@ -130,12 +131,6 @@ impl<T> Overlapping<'_, T> {
     }
 }
 
-pub struct IndexError(#[allow(dead_code)] usize);
-
-impl IndexError {
-    #[cold]
-    #[inline(never)]
-    fn new(index: usize) -> Self {
-        Self(index)
-    }
+cold_exhaustive_error! {
+    struct index_error::IndexError { index: usize }
 }

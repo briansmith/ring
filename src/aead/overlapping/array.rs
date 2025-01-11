@@ -14,6 +14,7 @@
 
 #![cfg_attr(not(test), allow(dead_code))]
 
+pub use self::len_mismatch_error::LenMismatchError;
 use super::Overlapping;
 use core::array::TryFromSliceError;
 
@@ -58,15 +59,6 @@ impl<T, const N: usize> Array<'_, T, N> {
     }
 }
 
-pub struct LenMismatchError {
-    #[allow(dead_code)]
-    len: usize,
-}
-
-impl LenMismatchError {
-    #[cold]
-    #[inline(never)]
-    fn new(len: usize) -> Self {
-        Self { len }
-    }
+cold_exhaustive_error! {
+    struct len_mismatch_error::LenMismatchError { len: usize }
 }
