@@ -182,6 +182,7 @@ jobs:
           - riscv64gc-unknown-linux-gnu
           - wasm32-wasi
           - wasm32-wasip1
+          - wasm32-wasip2
           - x86_64-pc-windows-gnu
           - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
@@ -207,6 +208,10 @@ jobs:
 
           # Not available.
           - target: wasm32-wasip1
+            rust_channel: 1.63.0
+
+          # Not available.
+          - target: wasm32-wasip2
             rust_channel: 1.63.0
 
         include:
@@ -318,6 +323,9 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: wasm32-wasip1
+            host_os: ubuntu-22.04
+
+          - target: wasm32-wasip2
             host_os: ubuntu-22.04
 
           - target: x86_64-pc-windows-gnu

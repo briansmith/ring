@@ -227,6 +227,10 @@ case $target in
     use_clang=1
     export CARGO_TARGET_WASM32_WASIP1_RUNNER=target/tools/linux-x86_64/wasmtime/wasmtime
     ;;
+  wasm32-wasip2)
+    use_clang=1
+    export CARGO_TARGET_WASM32_WASIP2_RUNNER=target/tools/linux-x86_64/wasmtime/wasmtime
+    ;;
   *)
     ;;
 esac

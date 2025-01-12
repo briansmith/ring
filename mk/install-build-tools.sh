@@ -193,7 +193,7 @@ wasm32-unknown-unknown)
   cargo install wasm-bindgen-cli --bin wasm-bindgen-test-runner
   use_clang=1
   ;;
-wasm32-wasi|wasm32-wasip1)
+wasm32-wasi|wasm32-wasip1|wasm32-wasip2)
   use_clang=1
   git clone \
       --branch linux-x86_64 \
