@@ -157,16 +157,16 @@ cfg-if = { version = "1.0.0", default-features = false }
 getrandom = { version = "0.2.10" }
 untrusted = { version = "0.9" }
 
-[target.'cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86",target_arch = "x86_64"))'.dependencies]
+[target.'cfg(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little"), target_arch = "x86",target_arch = "x86_64"))'.dependencies]
 spin = { version = "0.9.8", default-features = false, features = ["once"] }
 
-[target.'cfg(all(any(target_arch = "aarch64", target_arch = "arm"), any(target_os = "android", target_os = "linux")))'.dependencies]
+[target.'cfg(all(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")), any(target_os = "android", target_os = "linux")))'.dependencies]
 libc = { version = "0.2.148", default-features = false }
 
-[target.'cfg(all(target_arch = "aarch64", target_vendor = "apple", any(target_os = "ios", target_os = "macos", target_os = "tvos", target_os = "visionos", target_os = "watchos")))'.dependencies]
+[target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_vendor = "apple", any(target_os = "ios", target_os = "macos", target_os = "tvos", target_os = "visionos", target_os = "watchos")))'.dependencies]
 libc = { version = "0.2.155", default-features = false }
 
-[target.'cfg(all(target_arch = "aarch64", target_os = "windows"))'.dependencies]
+[target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_os = "windows"))'.dependencies]
 windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]

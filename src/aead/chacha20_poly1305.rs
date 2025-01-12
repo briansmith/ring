@@ -55,7 +55,10 @@ pub(super) fn seal(
     /// check.
     const _USIZE_BOUNDED_BY_U64: u64 = u64_from_usize(usize::MAX);
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ))]
     if has_integrated(cpu_features) {
         // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
         // structure, but Rust can't do that yet; see
@@ -139,7 +142,10 @@ pub(super) fn open(
     // check.
     const _USIZE_BOUNDED_BY_U64: u64 = u64_from_usize(usize::MAX);
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ))]
     if has_integrated(cpu_features) {
         // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
         // structure, but Rust can't do that yet; see
@@ -204,11 +210,14 @@ pub(super) fn open(
     Ok(finish(auth, aad.as_ref().len(), in_out_len))
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    target_arch = "x86_64"
+))]
 #[allow(clippy::needless_return)]
 #[inline(always)]
 fn has_integrated(cpu_features: cpu::Features) -> bool {
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     {
         return cpu::arm::NEON.available(cpu_features);
     }
@@ -228,14 +237,20 @@ fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag
     auth.finish()
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    target_arch = "x86_64"
+))]
 mod integrated {
     use super::super::TAG_LEN;
 
     // Keep in sync with BoringSSL's `chacha20_poly1305_open_data` and
     // `chacha20_poly1305_seal_data`.
     #[repr(C)]
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ))]
     pub(super) union InOut<T>
     where
         T: Copy,
@@ -248,7 +263,10 @@ mod integrated {
     // 16-byte aligned. In practice it will always be 16-byte aligned because it
     // is embedded in a union where the other member of the union is 16-byte
     // aligned.
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ))]
     #[derive(Clone, Copy)]
     #[repr(align(16), C)]
     pub(super) struct Out {

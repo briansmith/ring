@@ -122,10 +122,16 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_ops: &SCALAR_OPS,
     public_key_ops: &PUBLIC_KEY_OPS,
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ))]
     twin_mul: twin_mul_nistz256,
 
-    #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
+    #[cfg(not(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    )))]
     twin_mul: |g_scalar, p_scalar, p_xy, cpu| {
         twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy, cpu)
     },
@@ -136,7 +142,10 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_inv_to_mont_vartime: |s, cpu| PRIVATE_SCALAR_OPS.scalar_inv_to_mont(s, cpu),
 };
 
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    target_arch = "x86_64"
+))]
 fn twin_mul_nistz256(
     g_scalar: &Scalar,
     p_scalar: &Scalar,
@@ -148,7 +157,10 @@ fn twin_mul_nistz256(
     PRIVATE_KEY_OPS.point_sum(&scaled_g, &scaled_p, cpu)
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    target_arch = "x86_64"
+))]
 fn point_mul_base_vartime(g_scalar: &Scalar, _cpu: cpu::Features) -> Point {
     prefixed_extern! {
         fn p256_point_mul_base_vartime(r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
@@ -306,7 +318,10 @@ prefixed_extern! {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ))]
     #[test]
     fn p256_point_mul_base_vartime_test() {
         use super::{super::tests::point_mul_base_tests, *};

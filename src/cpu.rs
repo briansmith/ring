@@ -78,7 +78,7 @@ mod features {
     pub(crate) struct Features(NotSend);
 
     cfg_if::cfg_if! {
-        if #[cfg(any(target_arch = "aarch64", target_arch = "arm",
+        if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little"),
                      target_arch = "x86", target_arch = "x86_64"))] {
             impl Features {
                 // SAFETY: This must only be called after CPU features have been written
@@ -100,7 +100,7 @@ mod features {
 const _: () = assert!(size_of::<Features>() == 0);
 
 cfg_if::cfg_if! {
-    if #[cfg(any(target_arch = "aarch64", target_arch = "arm"))] {
+    if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")))] {
         pub mod arm;
         use arm::featureflags::get_or_init as get_or_init_feature_flags;
     } else if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {

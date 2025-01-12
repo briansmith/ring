@@ -12,12 +12,16 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
+#![cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
 
 use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
 use crate::{cpu, error};
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 pub(in super::super) type RequiredCpuFeatures = cpu::arm::Aes;
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -37,7 +41,10 @@ impl Key {
         Ok(Self { inner })
     }
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ))]
     #[must_use]
     pub(in super::super) fn inner_less_safe(&self) -> &AES_KEY {
         &self.inner

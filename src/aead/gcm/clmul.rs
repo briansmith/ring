@@ -12,12 +12,16 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
+#![cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    target_arch = "x86",
+    target_arch = "x86_64"
+))]
 
 use super::{ffi::KeyValue, Gmult, HTable, Xi};
 use crate::cpu;
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 pub(in super::super) type RequiredCpuFeatures = cpu::arm::PMull;
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -45,7 +49,10 @@ impl Key {
         }
     }
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ))]
     pub(super) fn inner(&self) -> &HTable {
         &self.h_table
     }

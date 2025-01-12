@@ -66,8 +66,8 @@ macro_rules! prefixed_extern {
 
 #[deprecated = "`#[export_name]` creates problems and we will stop doing it."]
 #[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
     target_arch = "x86_64"
 )))]
