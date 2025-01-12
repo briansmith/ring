@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(target_arch = "arm")]
+#![cfg(all(target_arch = "arm", target_endian = "little"))]
 
 use super::{Counter, Overlapping, AES_KEY};
 

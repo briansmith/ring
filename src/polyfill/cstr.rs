@@ -26,7 +26,10 @@
 //! Work around lack of `core::ffi::CStr` prior to Rust 1.64, and the lack of
 //! `const fn` support for `CStr` in later versions.
 
-#![cfg(all(target_arch = "aarch64", target_vendor = "apple"))]
+#![cfg(all(
+    all(target_arch = "aarch64", target_endian = "little"),
+    target_vendor = "apple"
+))]
 
 use core::mem::{align_of, size_of};
 

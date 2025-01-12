@@ -42,7 +42,10 @@ pub fn detect_features() -> u32 {
     0
 }
 
-#[cfg(all(not(target_env = "uclibc"), target_arch = "aarch64"))]
+#[cfg(all(
+    not(target_env = "uclibc"),
+    all(target_arch = "aarch64", target_endian = "little")
+))]
 pub fn detect_features() -> u32 {
     use super::{AES, ARMCAP_STATIC, PMULL, SHA256, SHA512};
     use libc::{getauxval, AT_HWCAP, HWCAP_AES, HWCAP_PMULL, HWCAP_SHA2, HWCAP_SHA512};
@@ -70,7 +73,10 @@ pub fn detect_features() -> u32 {
     features
 }
 
-#[cfg(all(not(target_env = "uclibc"), target_arch = "arm"))]
+#[cfg(all(
+    not(target_env = "uclibc"),
+    all(target_arch = "arm", target_endian = "little")
+))]
 pub fn detect_features() -> u32 {
     use super::ARMCAP_STATIC;
 

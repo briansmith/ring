@@ -126,8 +126,8 @@ unsafe fn mul_mont(
 }
 
 #[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
     target_arch = "x86_64"
 )))]
@@ -165,8 +165,8 @@ prefixed_export! {
 #[cfg(any(
     feature = "alloc",
     not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
+        all(target_arch = "aarch64", target_endian = "little"),
+        all(target_arch = "arm", target_endian = "little"),
         target_arch = "x86",
         target_arch = "x86_64"
     ))
@@ -198,8 +198,8 @@ pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Li
 }
 
 #[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
     target_arch = "x86_64"
 )))]
@@ -219,8 +219,8 @@ fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
 #[cfg(any(
     test,
     not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
+        all(target_arch = "aarch64", target_endian = "little"),
+        all(target_arch = "arm", target_endian = "little"),
         target_arch = "x86_64",
         target_arch = "x86"
     ))
@@ -232,8 +232,8 @@ prefixed_extern! {
 }
 
 #[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86_64",
     target_arch = "x86"
 ))]

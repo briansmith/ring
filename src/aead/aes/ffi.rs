@@ -57,7 +57,7 @@ impl AES_KEY {
     }
 }
 
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", target_endian = "little"))]
 impl AES_KEY {
     pub(super) unsafe fn derive(
         f: for<'a> unsafe extern "C" fn(*mut AES_KEY, &'a AES_KEY),

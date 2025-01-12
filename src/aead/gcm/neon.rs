@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+#![cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little")
+))]
 
 use super::{Gmult, HTable, KeyValue, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::cpu;

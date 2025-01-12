@@ -19,8 +19,8 @@ pub(in super::super) type Block = [u8; BLOCK_LEN];
 pub(super) const ZERO_BLOCK: Block = [0u8; BLOCK_LEN];
 
 #[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
     target_arch = "x86_64"
 ))]
@@ -35,8 +35,8 @@ macro_rules! htable_new {
 }
 
 #[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
     target_arch = "x86_64"
 ))]
@@ -54,8 +54,8 @@ macro_rules! gmult {
 ///  * The function `$name` must meet the contract of the `f` paramweter of
 ///    `ghash()`.
 #[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
     target_arch = "x86_64"
 ))]
@@ -91,8 +91,8 @@ impl KeyValue {
 ///     that `len` is a (non-zero) multiple of `BLOCK_LEN`.
 ///   * `f` may inspect CPU features.
 #[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
     target_arch = "x86_64"
 ))]

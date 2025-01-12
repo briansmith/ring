@@ -18,8 +18,8 @@ use super::{overlapping, quic::Sample, Nonce};
 #[cfg(any(
     test,
     not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
+        all(target_arch = "aarch64", target_endian = "little"),
+        all(target_arch = "arm", target_endian = "little"),
         target_arch = "x86",
         target_arch = "x86_64"
     ))
@@ -71,8 +71,8 @@ impl Key {
     #[inline(always)]
     pub fn encrypt_within(&self, counter: Counter, in_out: Overlapping<'_>) {
         #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
+            all(target_arch = "aarch64", target_endian = "little"),
+            all(target_arch = "arm", target_endian = "little"),
             target_arch = "x86",
             target_arch = "x86_64"
         ))]
@@ -84,7 +84,10 @@ impl Key {
             // has this limitation and come up with a better solution.
             //
             // https://rt.openssl.org/Ticket/Display.html?id=4362
-            #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
+            #[cfg(not(any(
+                all(target_arch = "aarch64", target_endian = "little"),
+                target_arch = "x86_64"
+            )))]
             let in_out = Overlapping::in_place(in_out.copy_within());
 
             let (input, output, len) = in_out.into_input_output_len();
@@ -104,8 +107,8 @@ impl Key {
         }
 
         #[cfg(not(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
+            all(target_arch = "aarch64", target_endian = "little"),
+            all(target_arch = "arm", target_endian = "little"),
             target_arch = "x86",
             target_arch = "x86_64"
         )))]
@@ -145,8 +148,8 @@ impl Counter {
     #[cfg(any(
         test,
         not(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
+            all(target_arch = "aarch64", target_endian = "little"),
+            all(target_arch = "arm", target_endian = "little"),
             target_arch = "x86",
             target_arch = "x86_64"
         ))
@@ -195,8 +198,8 @@ mod tests {
     fn chacha20_test_default() {
         // Always use `MAX_OFFSET` if we hav assembly code.
         let max_offset = if cfg!(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
+            all(target_arch = "aarch64", target_endian = "little"),
+            all(target_arch = "arm", target_endian = "little"),
             target_arch = "x86",
             target_arch = "x86_64"
         )) {

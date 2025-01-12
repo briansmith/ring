@@ -13,8 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #![cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
     target_arch = "x86_64"
 ))]
@@ -22,7 +22,10 @@
 use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
 use crate::{cpu, error};
 
-#[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+#[cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little")
+))]
 type RequiredCpuFeatures = cpu::arm::Neon;
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -43,7 +46,11 @@ impl Key {
     }
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
+#[cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
+    target_arch = "x86_64"
+))]
 impl EncryptBlock for Key {
     fn encrypt_block(&self, block: Block) -> Block {
         super::encrypt_block_using_encrypt_iv_xor_block(self, block)
@@ -54,14 +61,17 @@ impl EncryptBlock for Key {
     }
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    target_arch = "x86_64"
+))]
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
         unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
     }
 }
 
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", target_endian = "little"))]
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
         use super::{super::overlapping::IndexError, bs, BLOCK_LEN};

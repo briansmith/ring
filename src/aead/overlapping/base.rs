@@ -34,7 +34,10 @@ impl<'o, T> Overlapping<'o, T> {
         }
     }
 
-    #[cfg(any(target_arch = "arm", target_arch = "x86"))]
+    #[cfg(any(
+        all(target_arch = "arm", target_endian = "little"),
+        target_arch = "x86"
+    ))]
     pub fn copy_within(self) -> &'o mut [T]
     where
         T: Copy,
@@ -48,7 +51,10 @@ impl<'o, T> Overlapping<'o, T> {
         }
     }
 
-    #[cfg(any(target_arch = "arm", target_arch = "x86"))]
+    #[cfg(any(
+        all(target_arch = "arm", target_endian = "little"),
+        target_arch = "x86"
+    ))]
     pub fn into_slice_src_mut(self) -> (&'o mut [T], RangeFrom<usize>) {
         (self.in_out, self.src)
     }

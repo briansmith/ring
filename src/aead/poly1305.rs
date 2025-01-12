@@ -56,7 +56,7 @@ macro_rules! dispatch {
       ( $( $a:expr ),+ ) ) => {
         match () {
             // BoringSSL uses `!defined(OPENSSL_APPLE)`.
-            #[cfg(all(target_arch = "arm", any(target_os = "android", target_os = "linux")))]
+            #[cfg(all(all(target_arch = "arm", target_endian = "little"), any(target_os = "android", target_os = "linux")))]
             () if cpu::arm::NEON.available($features) => {
                 prefixed_extern! {
                     fn $neon_f( $( $p : $t ),+ );

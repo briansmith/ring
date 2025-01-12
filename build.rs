@@ -301,6 +301,8 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+    let endian = env::var("CARGO_CFG_TARGET_ENDIAN").unwrap();
+    let is_little_endian = endian == "little";
 
     let is_git = fs::metadata(c_root_dir.join(".git")).is_ok();
 
@@ -321,9 +323,13 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
         force_warnings_into_errors,
     };
 
-    let asm_target = ASM_TARGETS.iter().find(|asm_target| {
-        asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
-    });
+    let asm_target = if is_little_endian {
+        ASM_TARGETS.iter().find(|asm_target| {
+            asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
+        })
+    } else {
+        None
+    };
 
     // If `.git` exists then assume this is the "local hacking" case where
     // we want to make it easy to build *ring* using `cargo build`/`cargo test`

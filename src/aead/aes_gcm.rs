@@ -29,8 +29,8 @@ use core::ops::RangeFrom;
 use aes::EncryptCtr32 as _;
 
 #[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
+    all(target_arch = "aarch64", target_endian = "little"),
+    all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
     target_arch = "x86_64"
 ))]
@@ -53,10 +53,17 @@ enum DynKey {
     #[cfg(target_arch = "x86_64")]
     AesHwClMulAvxMovbe(Combo<aes::hw::Key, gcm::clmulavxmovbe::Key>),
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
     AesHwClMul(Combo<aes::hw::Key, gcm::clmul::Key>),
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        all(target_arch = "arm", target_endian = "little")
+    ))]
     Simd(Combo<aes::vp::Key, gcm::neon::Key>),
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -75,7 +82,11 @@ impl DynKey {
             return Ok(Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }));
         }
 
-        #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
+        #[cfg(any(
+            all(target_arch = "aarch64", target_endian = "little"),
+            target_arch = "x86_64",
+            target_arch = "x86"
+        ))]
         if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
             let aes_key = aes::hw::Key::new(key, aes)?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
@@ -83,7 +94,10 @@ impl DynKey {
             return Ok(Self::AesHwClMul(Combo { aes_key, gcm_key }));
         }
 
-        #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+        #[cfg(any(
+            all(target_arch = "aarch64", target_endian = "little"),
+            all(target_arch = "arm", target_endian = "little")
+        ))]
         if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
             let aes_key = aes::vp::Key::new(key, aes)?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
@@ -171,7 +185,7 @@ pub(super) fn seal(
             seal_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
 
-        #[cfg(target_arch = "aarch64")]
+        #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
         DynKey::AesHwClMul(Combo { aes_key, gcm_key }) => {
             use crate::bits::BitLength;
 
@@ -215,8 +229,8 @@ pub(super) fn seal(
         DynKey::AesHwClMul(c) => seal_strided(c, aad, in_out, ctr, tag_iv),
 
         #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
+            all(target_arch = "aarch64", target_endian = "little"),
+            all(target_arch = "arm", target_endian = "little"),
             target_arch = "x86_64",
             target_arch = "x86"
         ))]
@@ -228,14 +242,20 @@ pub(super) fn seal(
 
 #[cfg_attr(
     any(
-        target_arch = "aarch64",
-        target_arch = "arm",
+        all(target_arch = "aarch64", target_endian = "little"),
+        all(target_arch = "arm", target_endian = "little"),
         target_arch = "x86",
         target_arch = "x86_64"
     ),
     inline(never)
 )]
-#[cfg_attr(any(target_arch = "aarch64", target_arch = "x86_64"), cold)]
+#[cfg_attr(
+    any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ),
+    cold
+)]
 fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks + gcm::Gmult>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
@@ -285,7 +305,10 @@ pub(super) fn open(
     in_out_slice: &mut [u8],
     src: RangeFrom<usize>,
 ) -> Result<Tag, error::Unspecified> {
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ))]
     let in_out = Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
 
     let mut ctr = Counter::one(nonce);
@@ -357,7 +380,7 @@ pub(super) fn open(
             open_finish(aes_key, auth, in_out, ctr, tag_iv)
         }
 
-        #[cfg(target_arch = "aarch64")]
+        #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
         DynKey::AesHwClMul(Combo { aes_key, gcm_key }) => {
             use crate::bits::BitLength;
 
@@ -409,8 +432,8 @@ pub(super) fn open(
         DynKey::AesHwClMul(c) => open_strided(c, aad, in_out_slice, src, ctr, tag_iv),
 
         #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
+            all(target_arch = "aarch64", target_endian = "little"),
+            all(target_arch = "arm", target_endian = "little"),
             target_arch = "x86_64",
             target_arch = "x86"
         ))]
@@ -423,7 +446,10 @@ pub(super) fn open(
 #[cfg_attr(
     any(
         all(
-            any(target_arch = "aarch64", target_arch = "arm"),
+            any(
+                all(target_arch = "aarch64", target_endian = "little"),
+                all(target_arch = "arm", target_endian = "little")
+            ),
             target_feature = "neon"
         ),
         all(
@@ -433,7 +459,13 @@ pub(super) fn open(
     ),
     inline(never)
 )]
-#[cfg_attr(any(target_arch = "aarch64", target_arch = "x86_64"), cold)]
+#[cfg_attr(
+    any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        target_arch = "x86_64"
+    ),
+    cold
+)]
 fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks + gcm::Gmult>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,

@@ -40,17 +40,17 @@ mod abi_assumptions {
 // detection.
 
 cfg_if::cfg_if! {
-    if #[cfg(all(target_arch = "aarch64",
+    if #[cfg(all(all(target_arch = "aarch64", target_endian = "little"),
                  any(target_os = "ios", target_os = "macos", target_os = "tvos", target_os = "visionos", target_os = "watchos")))] {
         mod darwin;
         use darwin as detect;
-    } else if #[cfg(all(target_arch = "aarch64", target_os = "fuchsia"))] {
+    } else if #[cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_os = "fuchsia"))] {
         mod fuchsia;
         use fuchsia as detect;
     } else if #[cfg(any(target_os = "android", target_os = "linux"))] {
         mod linux;
         use linux as detect;
-    } else if #[cfg(all(target_arch = "aarch64", target_os = "windows"))] {
+    } else if #[cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_os = "windows"))] {
         mod windows;
         use windows as detect;
     } else {
@@ -83,7 +83,7 @@ macro_rules! features {
         const ARMCAP_STATIC_DETECTED: u32 = 0
             $(
                 | (
-                    if cfg!(all(any(target_arch = "aarch64", target_arch = "arm"),
+                    if cfg!(all(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")),
                                 target_feature = $target_feature_name)) {
                         $name.mask
                     } else {
@@ -114,7 +114,7 @@ impl Feature {
     }
 }
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 features! {
     // Keep in sync with `ARMV7_NEON`.
     "neon" => Neon(NEON) {
@@ -150,7 +150,7 @@ features! {
     },
 }
 
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", target_endian = "little"))]
 features! {
     // Keep in sync with `ARMV7_NEON`.
     "neon" => Neon(NEON) {
@@ -229,8 +229,10 @@ pub(super) mod featureflags {
 }
 
 #[allow(clippy::assertions_on_constants)]
-const _AARCH64_HAS_NEON: () =
-    assert!(((ARMCAP_STATIC & NEON.mask) == NEON.mask) || !cfg!(target_arch = "aarch64"));
+const _AARCH64_HAS_NEON: () = assert!(
+    ((ARMCAP_STATIC & NEON.mask) == NEON.mask)
+        || !cfg!(all(target_arch = "aarch64", target_endian = "little"))
+);
 
 #[allow(clippy::assertions_on_constants)]
 const _FORCE_DYNAMIC_DETECTION_HONORED: () =
@@ -246,7 +248,7 @@ mod tests {
         assert_eq!(NEON.mask, 1);
     }
 
-    #[cfg(not(target_arch = "arm"))]
+    #[cfg(not(all(target_arch = "arm", target_endian = "little")))]
     #[test]
     fn test_mask_abi_hw() {
         assert_eq!(AES.mask, 4);
