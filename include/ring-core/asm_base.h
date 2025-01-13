@@ -73,14 +73,13 @@
 #error "ARM assembler must define __ARM_ARCH"
 #endif
 
-// __ARM_ARCH__ is used by OpenSSL assembly to determine the minimum target ARM
-// version.
-//
-// TODO(davidben): Switch the assembly to use |__ARM_ARCH| directly.
-#define __ARM_ARCH__ __ARM_ARCH
-
 // Even when building for 32-bit ARM, support for aarch64 crypto instructions
 // will be included.
+//
+// TODO(davidben): Remove this and the corresponding ifdefs? This is only
+// defined because some OpenSSL assembly files would allow disabling the NEON
+// code entirely. I think we'd prefer to do that by lifting the dispatch to C
+// anyway.
 #define __ARM_MAX_ARCH__ 8
 
 // Support macros for
