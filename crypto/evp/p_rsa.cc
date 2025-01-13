@@ -184,8 +184,11 @@ static int pkey_rsa_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
   const size_t key_len = EVP_PKEY_size(ctx->pkey);
   if (!setup_tbuf(rctx, ctx) ||
       !RSA_verify_raw(rsa, &rslen, rctx->tbuf, key_len, sig, siglen,
-                      rctx->pad_mode) ||
-      rslen != tbslen || CRYPTO_memcmp(tbs, rctx->tbuf, rslen) != 0) {
+                      rctx->pad_mode)) {
+    return 0;
+  }
+  if (rslen != tbslen || CRYPTO_memcmp(tbs, rctx->tbuf, rslen) != 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
     return 0;
   }
 
