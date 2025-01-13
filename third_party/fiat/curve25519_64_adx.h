@@ -1,3 +1,6 @@
+#include <ring-core/base.h>
+#include "../../crypto/internal.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <immintrin.h>
