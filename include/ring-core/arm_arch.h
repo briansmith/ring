@@ -73,27 +73,6 @@
 // ARMV8_SHA512 indicates support for hardware SHA-512 instructions.
 #define ARMV8_SHA512 (1 << 6)
 
-#if defined(__ASSEMBLER__)
-
-// We require the ARM assembler provide |__ARM_ARCH| from Arm C Language
-// Extensions (ACLE). This is supported in GCC 4.8+ and Clang 3.2+. MSVC does
-// not implement ACLE, but we require Clang's assembler on Windows.
-#if !defined(__ARM_ARCH)
-#error "ARM assembler must define __ARM_ARCH"
-#endif
-
-// __ARM_ARCH__ is used by OpenSSL assembly to determine the minimum target ARM
-// version.
-//
-// TODO(davidben): Switch the assembly to use |__ARM_ARCH| directly.
-#define __ARM_ARCH__ __ARM_ARCH
-
-// Even when building for 32-bit ARM, support for aarch64 crypto instructions
-// will be included.
-#define __ARM_MAX_ARCH__ 8
-
-#endif  // __ASSEMBLER__
-
 #endif  // ARM || AARCH64
 
 #endif  // OPENSSL_HEADER_ARM_ARCH_H
