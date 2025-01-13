@@ -223,7 +223,7 @@ impl Key {
             .unwrap()
     }
 
-    fn try_new(
+    pub(crate) fn try_new(
         algorithm: Algorithm,
         key_value: &[u8],
         cpu_features: cpu::Features,
@@ -274,7 +274,7 @@ impl Key {
         Algorithm(self.inner.algorithm)
     }
 
-    fn sign(&self, data: &[u8], cpu: cpu::Features) -> Result<Tag, InputTooLongError> {
+    pub(crate) fn sign(&self, data: &[u8], cpu: cpu::Features) -> Result<Tag, InputTooLongError> {
         let mut ctx = Context::with_key(self);
         ctx.update(data);
         ctx.try_sign(cpu)
@@ -347,7 +347,7 @@ impl Context {
             .unwrap()
     }
 
-    fn try_sign(self, cpu_features: cpu::Features) -> Result<Tag, InputTooLongError> {
+    pub(crate) fn try_sign(self, cpu_features: cpu::Features) -> Result<Tag, InputTooLongError> {
         // Consequently, `num_pending` is valid.
         debug_assert_eq!(self.inner.algorithm(), self.outer.algorithm);
         debug_assert!(self.inner.algorithm().output_len() < self.outer.algorithm.block_len());
