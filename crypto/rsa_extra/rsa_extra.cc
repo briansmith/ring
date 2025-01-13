@@ -14,4 +14,6 @@
 
 #include <openssl/rsa.h>
 
+int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) { return 1; }
+
 void RSA_blinding_off(RSA *rsa) {}
