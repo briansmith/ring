@@ -112,7 +112,12 @@
 //!     assert!(db.verify_password("alice", "@74d7]404j|W}6u").is_ok());
 //! }
 
-use crate::{constant_time, digest, error, hmac};
+use self::{derive_error::DeriveError, verify_error::VerifyError};
+use crate::{
+    constant_time, cpu, digest,
+    error::{self, TooMuchOutputRequestedError},
+    hmac::{self, InputTooLongError},
+};
 use core::num::NonZeroU32;
 
 /// A PBKDF2 algorithm.
@@ -150,8 +155,14 @@ pub static PBKDF2_HMAC_SHA512: Algorithm = Algorithm(hmac::HMAC_SHA512);
 ///
 /// # Panics
 ///
-/// `derive` panics if `out.len()` is larger than (2**32 - 1) * the digest
-/// algorithm's output length, per the PBKDF2 specification.
+/// Panics if `out.len() > u32::MAX * digest_alg.output_len()`, where
+/// `digest_alg` is the underlying HMAC/digest algorithm.
+///
+/// Panics if `salt` is so astronomically gigantic that it isn't a valid input
+/// to the underlying digest function.
+///
+/// Panics if `secret` is so astronomically gigantic that it isn't a valid
+/// input to the underlying digest function.
 pub fn derive(
     algorithm: Algorithm,
     iterations: NonZeroU32,
@@ -159,6 +170,20 @@ pub fn derive(
     secret: &[u8],
     out: &mut [u8],
 ) {
+    let cpu = cpu::features();
+    try_derive(algorithm, iterations, salt, secret, out, cpu)
+        .map_err(error::erase::<DeriveError>)
+        .unwrap()
+}
+
+fn try_derive(
+    algorithm: Algorithm,
+    iterations: NonZeroU32,
+    salt: &[u8],
+    secret: &[u8],
+    out: &mut [u8],
+    cpu: cpu::Features,
+) -> Result<(), DeriveError> {
     let digest_alg = algorithm.0.digest_algorithm();
     let output_len = digest_alg.output_len();
 
@@ -167,25 +192,40 @@ pub fn derive(
     // hasn't been optimized to the same extent as fastpbkdf2. In particular,
     // this implementation is probably doing a lot of unnecessary copying.
 
-    let secret = hmac::Key::new(algorithm.0, secret);
+    let secret =
+        hmac::Key::try_new(algorithm.0, secret, cpu).map_err(DeriveError::secret_too_long)?;
 
     // Clear |out|.
     out.fill(0);
 
     let mut idx: u32 = 0;
 
+    let out_len = out.len();
     for chunk in out.chunks_mut(output_len) {
-        idx = idx.checked_add(1).expect("derived key too long");
-        derive_block(&secret, iterations, salt, idx, chunk);
+        idx = idx.checked_add(1).ok_or_else(|| {
+            DeriveError::too_much_output_requested(TooMuchOutputRequestedError::new(out_len))
+        })?;
+        // If the salt is too long, then we'll detect this on the first
+        // iteration before we've written any output.
+        derive_block(&secret, iterations, salt, idx, chunk, cpu)
+            .map_err(DeriveError::salt_too_long)?;
     }
+    Ok(())
 }
 
-fn derive_block(secret: &hmac::Key, iterations: NonZeroU32, salt: &[u8], idx: u32, out: &mut [u8]) {
+fn derive_block(
+    secret: &hmac::Key,
+    iterations: NonZeroU32,
+    salt: &[u8],
+    idx: u32,
+    out: &mut [u8],
+    cpu: cpu::Features,
+) -> Result<(), InputTooLongError> {
     let mut ctx = hmac::Context::with_key(secret);
     ctx.update(salt);
     ctx.update(&u32::to_be_bytes(idx));
 
-    let mut u = ctx.sign();
+    let mut u = ctx.try_sign(cpu)?;
 
     let mut remaining: u32 = iterations.into();
     loop {
@@ -196,7 +236,28 @@ fn derive_block(secret: &hmac::Key, iterations: NonZeroU32, salt: &[u8], idx: u3
         }
         remaining -= 1;
 
-        u = hmac::sign(secret, u.as_ref());
+        // This will not fail, because the output of HMAC is never too long to
+        // be an input for the same algorithm, but we can't prove that with
+        // only locally-available information.
+        u = secret.sign(u.as_ref(), cpu)?
+    }
+    Ok(())
+}
+
+cold_exhaustive_error! {
+    enum derive_error::DeriveError {
+        secret_too_long => SecretTooLong(InputTooLongError),
+        salt_too_long => SaltTooLong(InputTooLongError),
+        too_much_output_requested => TooMuchOutputRequested(TooMuchOutputRequestedError),
+    }
+}
+
+cold_exhaustive_error! {
+    enum verify_error::VerifyError {
+        mismatch => Mismatch(()),
+        secret_too_long => SecretTooLong(InputTooLongError),
+        salt_too_long => SaltTooLong(InputTooLongError),
+        previously_derived_empty => PreviouslyDerivedEmpty(usize),
     }
 }
 
@@ -215,11 +276,6 @@ fn derive_block(secret: &hmac::Key, iterations: NonZeroU32, salt: &[u8], idx: u3
 /// | `secret`                   | P (password)
 /// | `previously_derived`       | dk (derived key)
 /// | `previously_derived.len()` | dkLen (derived key length)
-///
-/// # Panics
-///
-/// `verify` panics if `out.len()` is larger than (2**32 - 1) * the digest
-/// algorithm's output length, per the PBKDF2 specification.
 pub fn verify(
     algorithm: Algorithm,
     iterations: NonZeroU32,
@@ -227,27 +283,46 @@ pub fn verify(
     secret: &[u8],
     previously_derived: &[u8],
 ) -> Result<(), error::Unspecified> {
+    let cpu = cpu::features();
+    try_verify(algorithm, iterations, salt, secret, previously_derived, cpu)
+        .map_err(error::erase::<VerifyError>)
+}
+
+fn try_verify(
+    algorithm: Algorithm,
+    iterations: NonZeroU32,
+    salt: &[u8],
+    secret: &[u8],
+    previously_derived: &[u8],
+    cpu: cpu::Features,
+) -> Result<(), VerifyError> {
     let digest_alg = algorithm.0.digest_algorithm();
 
     if previously_derived.is_empty() {
-        return Err(error::Unspecified);
+        return Err(VerifyError::previously_derived_empty(0));
     }
 
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
 
     let output_len = digest_alg.output_len();
-    let secret = hmac::Key::new(algorithm.0, secret);
+    let secret =
+        hmac::Key::try_new(algorithm.0, secret, cpu).map_err(VerifyError::secret_too_long)?;
     let mut idx: u32 = 0;
 
     let mut matches = 1;
 
     for previously_derived_chunk in previously_derived.chunks(output_len) {
-        idx = idx.checked_add(1).expect("derived key too long");
+        idx = idx.checked_add(1).ok_or_else(|| {
+            // `previously_derived` is so gigantic that PBKDF2 couldn't
+            // have been used to compute it.
+            VerifyError::mismatch(())
+        })?;
 
         let derived_chunk = &mut derived_buf[..previously_derived_chunk.len()];
         derived_chunk.fill(0);
 
-        derive_block(&secret, iterations, salt, idx, derived_chunk);
+        derive_block(&secret, iterations, salt, idx, derived_chunk, cpu)
+            .map_err(VerifyError::salt_too_long)?;
 
         // XXX: This isn't fully constant-time-safe. TODO: Fix that.
         #[allow(clippy::bool_to_int_with_if)]
@@ -264,7 +339,7 @@ pub fn verify(
     }
 
     if matches == 0 {
-        return Err(error::Unspecified);
+        return Err(VerifyError::mismatch(()));
     }
 
     Ok(())
