@@ -14,7 +14,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    sha2::{ch, maj, State32, Word},
+    sha2::{
+        fallback::{ch, maj, Word},
+        State32,
+    },
     BlockLen, OutputLen,
 };
 use crate::polyfill::slice;

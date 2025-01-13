@@ -693,6 +693,34 @@ jobs:
             rust_channel: nightly
             host_os: ubuntu-22.04
 
+          - target: x86_64-unknown-linux-gnu
+            cpu_model: Haswell
+            features: --features=std
+            mode: # debug
+            rust_channel: nightly
+            host_os: ubuntu-22.04
+
+          - target: x86_64-unknown-linux-gnu
+            cpu_model: Nehalem
+            features: --features=std
+            mode: # debug
+            rust_channel: nightly
+            host_os: ubuntu-22.04
+
+          - target: x86_64-unknown-linux-gnu
+            cpu_model: SandyBridge
+            features: --features=std
+            mode: # debug
+            rust_channel: nightly
+            host_os: ubuntu-22.04
+
+          - target: x86_64-unknown-linux-gnu
+            cpu_model: Westmere
+            features: --features=std
+            mode: # debug
+            rust_channel: nightly
+            host_os: ubuntu-22.04
+
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-22.04
 

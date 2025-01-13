@@ -144,8 +144,14 @@ cfg_if! {
             mask: 1 << 28,
         };
 
+        const SHA: Feature = Feature {
+            word: 2,
+            mask: 1 << 29,
+        };
+
         impl_get_feature!{ MOVBE => Movbe }
         impl_get_feature!{ AVX => Avx }
+        impl_get_feature!{ SHA => Sha }
     }
 }
 
