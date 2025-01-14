@@ -41,7 +41,7 @@ pub(crate) fn block_data_order_32(
             if let Some(cpu) = cpu.get_feature() {
                 sha2_32_ffi!(unsafe { Sha => sha256_block_data_order_hw }, state, data, cpu)
             } else if let Some(cpu) = cpu.get_feature() {
-                sha2_32_ffi!(unsafe { (Avx, Ssse3) => sha256_block_data_order_avx }, state, data, cpu)
+                sha2_32_ffi!(unsafe { Avx => sha256_block_data_order_avx }, state, data, cpu)
             } else if let Some(cpu) = cpu.get_feature() {
                 sha2_32_ffi!(unsafe { Ssse3 => sha256_block_data_order_ssse3 }, state, data, cpu)
             } else {
