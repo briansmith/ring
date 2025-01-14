@@ -559,6 +559,8 @@ $L$aes192__func1:
 	vaesenc	ymm15,ymm15,ymm2
 
 $L$aes128__func1:
+	prefetcht0	[512+rcx]
+	prefetcht0	[((512+64))+rcx]
 
 	vmovdqu	ymm3,YMMWORD[rdx]
 	vpshufb	ymm3,ymm3,ymm0
@@ -1085,6 +1087,8 @@ $L$aes192__func2:
 	vaesenc	ymm15,ymm15,ymm2
 
 $L$aes128__func2:
+	prefetcht0	[512+rcx]
+	prefetcht0	[((512+64))+rcx]
 
 	vmovdqu	ymm3,YMMWORD[rcx]
 	vpshufb	ymm3,ymm3,ymm0

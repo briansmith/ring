@@ -500,6 +500,8 @@ _CET_ENDBR
 	vaesenc	%ymm2,%ymm15,%ymm15
 
 .Laes128__func1:
+	prefetcht0	512(%rdi)
+	prefetcht0	512+64(%rdi)
 
 	vmovdqu	0(%rsi),%ymm3
 	vpshufb	%ymm0,%ymm3,%ymm3
@@ -987,6 +989,8 @@ _CET_ENDBR
 	vaesenc	%ymm2,%ymm15,%ymm15
 
 .Laes128__func2:
+	prefetcht0	512(%rdi)
+	prefetcht0	512+64(%rdi)
 
 	vmovdqu	0(%rdi),%ymm3
 	vpshufb	%ymm0,%ymm3,%ymm3

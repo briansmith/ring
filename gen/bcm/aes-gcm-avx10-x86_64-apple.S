@@ -512,6 +512,10 @@ L$aes192__func1:
 	vaesenc	%zmm9,%zmm3,%zmm3
 
 L$aes128__func1:
+	prefetcht0	512+0(%rdi)
+	prefetcht0	512+64(%rdi)
+	prefetcht0	512+128(%rdi)
+	prefetcht0	512+192(%rdi)
 	vpshufb	%zmm8,%zmm4,%zmm4
 	vpxord	%zmm10,%zmm4,%zmm4
 	vpshufb	%zmm8,%zmm5,%zmm5
@@ -953,6 +957,10 @@ L$aes192__func2:
 	vaesenc	%zmm9,%zmm3,%zmm3
 
 L$aes128__func2:
+	prefetcht0	512+0(%rdi)
+	prefetcht0	512+64(%rdi)
+	prefetcht0	512+128(%rdi)
+	prefetcht0	512+192(%rdi)
 	vpshufb	%zmm8,%zmm4,%zmm4
 	vpxord	%zmm10,%zmm4,%zmm4
 	vpshufb	%zmm8,%zmm5,%zmm5
