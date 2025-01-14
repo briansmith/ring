@@ -134,6 +134,13 @@ impl_get_feature! { SSSE3 => Ssse3 }
 
 cfg_if! {
     if #[cfg(any(target_arch = "x86_64"))] {
+        //
+        const INTEL_CPU: Feature = Feature {
+            word: 0,
+            mask: 1 << 30,
+        };
+        impl_get_feature!{ INTEL_CPU => IntelCpu }
+
         pub(crate) const MOVBE: Feature = Feature {
             word: 1,
             mask: 1 << 22,
@@ -144,8 +151,14 @@ cfg_if! {
             mask: 1 << 28,
         };
 
+        const SHA: Feature = Feature {
+            word: 2,
+            mask: 1 << 29,
+        };
+
         impl_get_feature!{ MOVBE => Movbe }
         impl_get_feature!{ AVX => Avx }
+        impl_get_feature!{ SHA => Sha }
     }
 }
 

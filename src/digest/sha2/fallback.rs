@@ -1,4 +1,4 @@
-// Copyright 2019 Brian Smith.
+// Copyright 2019-2024 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,60 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::BlockLen;
-use crate::{cpu, polyfill::slice};
-use cfg_if::cfg_if;
+use super::CHAINING_WORDS;
+use crate::polyfill::slice;
 use core::{
     num::Wrapping,
     ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Not, Shr},
 };
-
-pub(super) type State32 = [Wrapping<u32>; CHAINING_WORDS];
-pub(super) type State64 = [Wrapping<u64>; CHAINING_WORDS];
-
-pub(super) fn block_data_order_32(
-    state: &mut State32,
-    data: &[[u8; SHA256_BLOCK_LEN.into()]],
-    cpu_features: cpu::Features,
-) {
-    cfg_if! {
-        if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little"), target_arch = "x86_64"))] {
-            if let Some(num) = core::num::NonZeroUsize::new(data.len()) {
-                // Assembly require CPU feature detection tohave been done.
-                let _cpu_features = cpu_features;
-                // SAFETY: `data` is a valid non-empty array of `num` blocks.
-                unsafe {
-                    sha256_block_data_order(state, data.as_ptr(), num)
-                }
-            }
-        } else {
-            let _cpu_features = cpu_features; // Unneeded.
-            *state = block_data_order(*state, data)
-        }
-    }
-}
-
-pub(super) fn block_data_order_64(
-    state: &mut State64,
-    data: &[[u8; SHA512_BLOCK_LEN.into()]],
-    cpu_features: cpu::Features,
-) {
-    cfg_if! {
-        if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little"), target_arch = "x86_64"))] {
-            if let Some(num) = core::num::NonZeroUsize::new(data.len()) {
-                // Assembly require CPU feature detection tohave been done.
-                let _cpu_features = cpu_features;
-                // SAFETY: `data` is a valid non-empty array of `num` blocks.
-                unsafe {
-                    sha512_block_data_order(state, data.as_ptr(), num)
-                }
-            }
-        } else {
-            let _cpu_features = cpu_features; // Unneeded.
-            *state = block_data_order(*state, data)
-        }
-    }
-}
 
 #[cfg_attr(
     any(
@@ -76,7 +28,7 @@ pub(super) fn block_data_order_64(
     allow(dead_code)
 )]
 #[inline]
-fn block_data_order<S: Sha2, const BLOCK_LEN: usize, const BYTES_LEN: usize>(
+pub(super) fn block_data_order<S: Sha2, const BLOCK_LEN: usize, const BYTES_LEN: usize>(
     mut H: [S; CHAINING_WORDS],
     M: &[[u8; BLOCK_LEN]],
 ) -> [S; CHAINING_WORDS]
@@ -139,13 +91,13 @@ where
 
 // FIPS 180-4 {4.1.1, 4.1.2, 4.1.3}
 #[inline(always)]
-pub(super) fn ch<W: Word>(x: W, y: W, z: W) -> W {
+pub(in super::super) fn ch<W: Word>(x: W, y: W, z: W) -> W {
     (x & y) | (!x & z)
 }
 
 // FIPS 180-4 {4.1.1, 4.1.2, 4.1.3}
 #[inline(always)]
-pub(super) fn maj<W: Word>(x: W, y: W, z: W) -> W {
+pub(in super::super) fn maj<W: Word>(x: W, y: W, z: W) -> W {
     (x & y) | (x & z) | (y & z)
 }
 
@@ -174,7 +126,7 @@ fn sigma_1<S: Sha2>(x: S) -> S {
 }
 
 // Commonality between SHA-1 and SHA-2 words.
-pub(super) trait Word:
+pub(in super::super) trait Word:
     'static
     + Sized
     + Copy
@@ -194,7 +146,7 @@ pub(super) trait Word:
 }
 
 /// A SHA-2 input word.
-trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> {
+pub(super) trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> {
     const BIG_SIGMA_0: (u32, u32, u32);
     const BIG_SIGMA_1: (u32, u32, u32);
     const SMALL_SIGMA_0: (u32, u32, usize);
@@ -204,9 +156,6 @@ trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> {
 }
 
 const MAX_ROUNDS: usize = 80;
-pub(super) const CHAINING_WORDS: usize = 8;
-pub(super) const SHA256_BLOCK_LEN: BlockLen = BlockLen::_512;
-pub(super) const SHA512_BLOCK_LEN: BlockLen = BlockLen::_1024;
 
 impl Word for Wrapping<u32> {
     const ZERO: Self = Self(0);
@@ -406,22 +355,4 @@ impl Sha2 for Wrapping<u64> {
         Self(0x5fcb6fab3ad6faec),
         Self(0x6c44198c4a475817),
     ];
-}
-
-#[cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86_64"
-))]
-prefixed_extern! {
-    fn sha256_block_data_order(
-        state: &mut [Wrapping<u32>; CHAINING_WORDS],
-        data: *const [u8; SHA256_BLOCK_LEN.into()],
-        num: crate::c::NonZero_size_t,
-    );
-    fn sha512_block_data_order(
-        state: &mut [Wrapping<u64>; CHAINING_WORDS],
-        data: *const [u8; SHA512_BLOCK_LEN.into()],
-        num: crate::c::NonZero_size_t,
-    );
 }
