@@ -33,7 +33,7 @@ use super::{
     chacha::{self, *},
     chacha20_poly1305, cpu, poly1305, Nonce, Tag,
 };
-use crate::{constant_time, error};
+use crate::{constant_time, error, polyfill::slice};
 
 /// A key for sealing packets.
 pub struct SealingKey {
@@ -65,16 +65,18 @@ impl SealingKey {
         plaintext_in_ciphertext_out: &mut [u8],
         tag_out: &mut [u8; TAG_LEN],
     ) {
-        let (len_in_out, data_and_padding_in_out) =
-            plaintext_in_ciphertext_out.split_at_mut(PACKET_LENGTH_LEN);
+        // XXX/TODO(SemVer): Refactor API to return an error.
+        let (len_in_out, data_and_padding_in_out): (&mut [u8; PACKET_LENGTH_LEN], _) =
+            slice::split_first_chunk_mut(plaintext_in_ciphertext_out).unwrap();
 
         let cpu_features = cpu::features();
         let (counter, poly_key) =
             chacha20_poly1305::begin(&self.key.k_2, make_nonce(sequence_number));
 
-        self.key
+        let _: Counter = self
+            .key
             .k_1
-            .encrypt_in_place(make_counter(sequence_number), len_in_out);
+            .encrypt_single_block_with_ctr_0(make_nonce(sequence_number), len_in_out);
         self.key
             .k_2
             .encrypt_in_place(counter, data_and_padding_in_out);
@@ -107,8 +109,10 @@ impl OpeningKey {
         encrypted_packet_length: [u8; PACKET_LENGTH_LEN],
     ) -> [u8; PACKET_LENGTH_LEN] {
         let mut packet_length = encrypted_packet_length;
-        let counter = make_counter(sequence_number);
-        self.key.k_1.encrypt_in_place(counter, &mut packet_length);
+        let _: Counter = self
+            .key
+            .k_1
+            .encrypt_single_block_with_ctr_0(make_nonce(sequence_number), &mut packet_length);
         packet_length
     }
 
@@ -170,11 +174,6 @@ fn make_nonce(sequence_number: u32) -> Nonce {
     let [s0, s1, s2, s3] = sequence_number.to_be_bytes();
     let nonce = [0, 0, 0, 0, 0, 0, 0, 0, s0, s1, s2, s3];
     Nonce::assume_unique_for_key(nonce)
-}
-
-fn make_counter(sequence_number: u32) -> Counter {
-    let nonce = make_nonce(sequence_number);
-    Counter::zero(nonce)
 }
 
 /// The length of key.

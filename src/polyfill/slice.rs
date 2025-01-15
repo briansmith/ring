@@ -112,3 +112,16 @@ pub fn split_at_checked<T>(slice: &[T], i: usize) -> Option<(&[T], &[T])> {
         None
     }
 }
+
+// TODO(MSRV-1.77): Use `slice::split_first_chunk_mut`.
+#[inline(always)]
+pub fn split_first_chunk_mut<T, const N: usize>(
+    slice: &mut [T],
+) -> Option<(&mut [T; N], &mut [T])> {
+    if slice.len() >= N {
+        let (head, tail) = slice.split_at_mut(N);
+        head.try_into().ok().map(|head| (head, tail))
+    } else {
+        None
+    }
+}

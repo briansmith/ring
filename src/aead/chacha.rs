@@ -49,22 +49,29 @@ impl Key {
         self.encrypt_within(counter, Overlapping::in_place(in_out))
     }
 
+    // Encrypts `in_out` with the counter 0 and returns counter 1,
+    // where the counter is derived from the nonce `nonce`.
     #[inline]
-    pub fn encrypt_iv_xor_in_place(&self, iv: Iv, in_out: &mut [u8; 32]) {
-        // It is safe to use `into_counter_for_single_block_less_safe()`
-        // because `in_out` is exactly one block long.
-        debug_assert!(in_out.len() <= BLOCK_LEN);
-        self.encrypt_in_place(iv.into_counter_for_single_block_less_safe(), in_out);
+    pub fn encrypt_single_block_with_ctr_0<const N: usize>(
+        &self,
+        nonce: Nonce,
+        in_out: &mut [u8; N],
+    ) -> Counter {
+        assert!(N <= BLOCK_LEN);
+        let (zero, one) = Counter::zero_one_less_safe(nonce);
+        self.encrypt_within(zero, Overlapping::in_place(in_out));
+        one
     }
 
     #[inline]
     pub fn new_mask(&self, sample: Sample) -> [u8; 5] {
+        let (ctr, nonce) = sample.split_at(4);
+        let ctr = u32::from_le_bytes(ctr.try_into().unwrap());
+        let nonce = Nonce::assume_unique_for_key(nonce.try_into().unwrap());
+        let ctr = Counter::from_nonce_and_ctr(nonce, ctr);
+
         let mut out: [u8; 5] = [0; 5];
-        let iv = Iv::assume_unique_for_key(sample);
-
-        debug_assert!(out.len() <= BLOCK_LEN);
-        self.encrypt_in_place(iv.into_counter_for_single_block_less_safe(), &mut out);
-
+        self.encrypt_within(ctr, Overlapping::in_place(&mut out));
         out
     }
 
@@ -128,19 +135,17 @@ impl Key {
 pub struct Counter([u32; 4]);
 
 impl Counter {
-    pub fn zero(nonce: Nonce) -> Self {
-        Self::from_nonce_and_ctr(nonce, 0)
+    // Nonce-reuse: the caller must only use the first counter (0) for at most
+    // a single block.
+    fn zero_one_less_safe(nonce: Nonce) -> (Self, Self) {
+        let ctr0 @ Self([_, n0, n1, n2]) = Self::from_nonce_and_ctr(nonce, 0);
+        let ctr1 = Self([1, n0, n1, n2]);
+        (ctr0, ctr1)
     }
 
     fn from_nonce_and_ctr(nonce: Nonce, ctr: u32) -> Self {
         let [n0, n1, n2] = nonce.as_ref().array_split_map(u32::from_le_bytes);
         Self([ctr, n0, n1, n2])
-    }
-
-    pub fn increment(&mut self) -> Iv {
-        let iv = Iv(self.0);
-        self.0[0] += 1;
-        iv
     }
 
     /// This is "less safe" because it hands off management of the counter to
@@ -156,21 +161,6 @@ impl Counter {
     ))]
     fn into_words_less_safe(self) -> [u32; 4] {
         self.0
-    }
-}
-
-/// The IV for a single block encryption.
-///
-/// Intentionally not `Clone` to ensure each is used only once.
-pub struct Iv([u32; 4]);
-
-impl Iv {
-    fn assume_unique_for_key(value: [u8; 16]) -> Self {
-        Self(value.array_split_map(u32::from_le_bytes))
-    }
-
-    fn into_counter_for_single_block_less_safe(self) -> Counter {
-        Counter(self.0)
     }
 }
 
