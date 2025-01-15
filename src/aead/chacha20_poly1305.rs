@@ -224,10 +224,8 @@ fn has_integrated(cpu_features: cpu::Features) -> bool {
 
 // Also used by chacha20_poly1305_openssh.
 pub(super) fn begin(key: &chacha::Key, nonce: Nonce) -> (Counter, poly1305::Key) {
-    let mut counter = Counter::zero(nonce);
-    let iv = counter.increment();
     let mut key_bytes = [0u8; poly1305::KEY_LEN];
-    key.encrypt_iv_xor_in_place(iv, &mut key_bytes);
+    let counter = key.encrypt_single_block_with_ctr_0(nonce, &mut key_bytes);
     let poly1305_key = poly1305::Key::new(key_bytes);
     (counter, poly1305_key)
 }
