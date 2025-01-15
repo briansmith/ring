@@ -31,8 +31,7 @@
 
 use super::{
     chacha::{self, *},
-    chacha20_poly1305::derive_poly1305_key,
-    cpu, poly1305, Nonce, Tag,
+    chacha20_poly1305, cpu, poly1305, Nonce, Tag,
 };
 use crate::{constant_time, error};
 
@@ -66,12 +65,12 @@ impl SealingKey {
         plaintext_in_ciphertext_out: &mut [u8],
         tag_out: &mut [u8; TAG_LEN],
     ) {
-        let cpu_features = cpu::features();
-        let mut counter = make_counter(sequence_number);
-        let poly_key = derive_poly1305_key(&self.key.k_2, counter.increment());
-
         let (len_in_out, data_and_padding_in_out) =
             plaintext_in_ciphertext_out.split_at_mut(PACKET_LENGTH_LEN);
+
+        let cpu_features = cpu::features();
+        let (counter, poly_key) =
+            chacha20_poly1305::begin(&self.key.k_2, make_nonce(sequence_number));
 
         self.key
             .k_1
@@ -132,13 +131,15 @@ impl OpeningKey {
             return Err(error::Unspecified);
         }
 
-        let mut counter = make_counter(sequence_number);
+        let cpu = cpu::features();
+        let (counter, poly_key) =
+            chacha20_poly1305::begin(&self.key.k_2, make_nonce(sequence_number));
 
         // We must verify the tag before decrypting so that
         // `ciphertext_in_plaintext_out` is unmodified if verification fails.
         // This is beyond what we guarantee.
-        let poly_key = derive_poly1305_key(&self.key.k_2, counter.increment());
-        verify(poly_key, ciphertext_in_plaintext_out, tag)?;
+        let calculated_tag = poly1305::sign(poly_key, ciphertext_in_plaintext_out, cpu);
+        constant_time::verify_slices_are_equal(calculated_tag.as_ref(), tag)?;
 
         // Won't panic because the length was checked above.
         let after_packet_length = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
@@ -165,10 +166,15 @@ impl Key {
     }
 }
 
-fn make_counter(sequence_number: u32) -> Counter {
+fn make_nonce(sequence_number: u32) -> Nonce {
     let [s0, s1, s2, s3] = sequence_number.to_be_bytes();
     let nonce = [0, 0, 0, 0, 0, 0, 0, 0, s0, s1, s2, s3];
-    Counter::zero(Nonce::assume_unique_for_key(nonce))
+    Nonce::assume_unique_for_key(nonce)
+}
+
+fn make_counter(sequence_number: u32) -> Counter {
+    let nonce = make_nonce(sequence_number);
+    Counter::zero(nonce)
 }
 
 /// The length of key.
@@ -179,8 +185,3 @@ pub const PACKET_LENGTH_LEN: usize = 4; // 32 bits
 
 /// The length in bytes of an authentication tag.
 pub const TAG_LEN: usize = super::TAG_LEN;
-
-fn verify(key: poly1305::Key, msg: &[u8], tag: &[u8; TAG_LEN]) -> Result<(), error::Unspecified> {
-    let Tag(calculated_tag) = poly1305::sign(key, msg, cpu::features());
-    constant_time::verify_slices_are_equal(calculated_tag.as_ref(), tag)
-}

@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    chacha::{self, Counter, Iv, Overlapping},
+    chacha::{self, Counter, Overlapping},
     poly1305, Aad, Nonce, Tag,
 };
 use crate::{
@@ -113,11 +113,8 @@ pub(super) fn seal(
         return Ok(Tag(out.tag));
     }
 
-    let mut counter = Counter::zero(nonce);
-    let mut auth = {
-        let key = derive_poly1305_key(chacha20_key, counter.increment());
-        poly1305::Context::from_key(key, cpu_features)
-    };
+    let (counter, poly1305_key) = begin(chacha20_key, nonce);
+    let mut auth = poly1305::Context::from_key(poly1305_key, cpu_features);
 
     poly1305_update_padded_16(&mut auth, aad.as_ref());
     chacha20_key.encrypt_in_place(counter, in_out);
@@ -197,11 +194,8 @@ pub(super) fn open(
         return Ok(Tag(out.tag));
     }
 
-    let mut counter = Counter::zero(nonce);
-    let mut auth = {
-        let key = derive_poly1305_key(chacha20_key, counter.increment());
-        poly1305::Context::from_key(key, cpu_features)
-    };
+    let (counter, poly1305_key) = begin(chacha20_key, nonce);
+    let mut auth = poly1305::Context::from_key(poly1305_key, cpu_features);
 
     poly1305_update_padded_16(&mut auth, aad.as_ref());
     poly1305_update_padded_16(&mut auth, in_out.input());
@@ -226,6 +220,16 @@ fn has_integrated(cpu_features: cpu::Features) -> bool {
     {
         return cpu::intel::SSE41.available(cpu_features);
     }
+}
+
+// Also used by chacha20_poly1305_openssh.
+pub(super) fn begin(key: &chacha::Key, nonce: Nonce) -> (Counter, poly1305::Key) {
+    let mut counter = Counter::zero(nonce);
+    let iv = counter.increment();
+    let mut key_bytes = [0u8; poly1305::KEY_LEN];
+    key.encrypt_iv_xor_in_place(iv, &mut key_bytes);
+    let poly1305_key = poly1305::Key::new(key_bytes);
+    (counter, poly1305_key)
 }
 
 fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
@@ -284,11 +288,4 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
             ctx.update(&ZEROES[..(poly1305::BLOCK_LEN - remainder_len)])
         }
     }
-}
-
-// Also used by chacha20_poly1305_openssh.
-pub(super) fn derive_poly1305_key(chacha_key: &chacha::Key, iv: Iv) -> poly1305::Key {
-    let mut key_bytes = [0u8; poly1305::KEY_LEN];
-    chacha_key.encrypt_iv_xor_in_place(iv, &mut key_bytes);
-    poly1305::Key::new(key_bytes)
 }
