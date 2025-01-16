@@ -143,13 +143,11 @@ impl OpeningKey {
         verify(poly_key, ciphertext_in_plaintext_out, tag)?;
 
         // Won't panic because the length was checked above.
-        let plaintext_in_ciphertext_out = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
+        let after_packet_length = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
 
-        self.key
-            .k_2
-            .encrypt_in_place(counter, plaintext_in_ciphertext_out);
+        self.key.k_2.encrypt_in_place(counter, after_packet_length);
 
-        Ok(plaintext_in_ciphertext_out)
+        Ok(after_packet_length)
     }
 }
 
