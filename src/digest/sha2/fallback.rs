@@ -41,12 +41,11 @@ where
 
         // FIPS 180-4 {6.2.2, 6.4.2} Step 1
         //
-        // TODO: Use `let W: [S::ZERO; S::ROUNDS]` instead of allocating
-        // `MAX_ROUNDS` items and then slicing to `K.len()`; depends on
+        // TODO(MSRV): Use `let W: [S::from(0); S::ROUNDS]` instead; depends on
         // https://github.com/rust-lang/rust/issues/43408.
-        let mut W = [S::ZERO; MAX_ROUNDS];
+        let mut W = S::zero_w();
         let W: &[S] = {
-            let W = &mut W[..S::K.len()];
+            let W = W.as_mut();
             for (W, M) in W.iter_mut().zip(M) {
                 let bytes: &S::InputBytes = M.into();
                 *W = S::from_be_bytes(*bytes);
@@ -152,10 +151,11 @@ pub(super) trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> 
     const SMALL_SIGMA_0: (u32, u32, usize);
     const SMALL_SIGMA_1: (u32, u32, usize);
 
+    type W: AsMut<[Self]>;
+    fn zero_w() -> Self::W;
+
     const K: &'static [Self];
 }
-
-const MAX_ROUNDS: usize = 80;
 
 impl Word for Wrapping<u32> {
     const ZERO: Self = Self(0);
@@ -179,6 +179,12 @@ impl Sha2 for Wrapping<u32> {
     const BIG_SIGMA_1: (u32, u32, u32) = (6, 11, 25);
     const SMALL_SIGMA_0: (u32, u32, usize) = (7, 18, 3);
     const SMALL_SIGMA_1: (u32, u32, usize) = (17, 19, 10);
+
+    // FIPS 180-4 {6.2.2} Step 1
+    type W = [Self; 64];
+    fn zero_w() -> Self::W {
+        [Self::ZERO; 64]
+    }
 
     // FIPS 180-4 4.2.2
     const K: &'static [Self] = &[
@@ -271,6 +277,12 @@ impl Sha2 for Wrapping<u64> {
     const BIG_SIGMA_1: (u32, u32, u32) = (14, 18, 41);
     const SMALL_SIGMA_0: (u32, u32, usize) = (1, 8, 7);
     const SMALL_SIGMA_1: (u32, u32, usize) = (19, 61, 6);
+
+    // FIPS 180-4 {6.4.2} Step 1
+    type W = [Self; 80];
+    fn zero_w() -> Self::W {
+        [Self::ZERO; 80]
+    }
 
     // FIPS 180-4 4.2.3
     const K: &'static [Self] = &[
