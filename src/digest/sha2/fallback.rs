@@ -50,7 +50,7 @@ where
                 let bytes: &S::InputBytes = M.into();
                 *W = S::from_be_bytes(*bytes);
             }
-            for t in M.len()..S::K.len() {
+            for t in M.len()..(S::K.as_ref().len()) {
                 W[t] = sigma_1(W[t - 2]) + W[t - 7] + sigma_0(W[t - 15]) + W[t - 16]
             }
 
@@ -61,7 +61,7 @@ where
         let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h] = H;
 
         // FIPS 180-4 {6.2.2, 6.4.2} Step 3
-        for (Kt, Wt) in S::K.iter().zip(W.iter()) {
+        for (Kt, Wt) in S::K.as_ref().iter().zip(W.iter()) {
             let T1 = h + SIGMA_1(e) + ch(e, f, g) + *Kt + *Wt;
             let T2 = SIGMA_0(a) + maj(a, b, c);
             h = g;
@@ -151,10 +151,12 @@ pub(super) trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> 
     const SMALL_SIGMA_0: (u32, u32, usize);
     const SMALL_SIGMA_1: (u32, u32, usize);
 
-    type W: AsMut<[Self]>;
+    const ROUNDS: usize;
+
+    type W: AsRef<[Self]> + AsMut<[Self]>;
     fn zero_w() -> Self::W;
 
-    const K: &'static [Self];
+    const K: &'static Self::W;
 }
 
 impl Word for Wrapping<u32> {
@@ -181,13 +183,15 @@ impl Sha2 for Wrapping<u32> {
     const SMALL_SIGMA_1: (u32, u32, usize) = (17, 19, 10);
 
     // FIPS 180-4 {6.2.2} Step 1
-    type W = [Self; 64];
+    const ROUNDS: usize = 64;
+
+    type W = [Self; Self::ROUNDS];
     fn zero_w() -> Self::W {
-        [Self::ZERO; 64]
+        [Self::ZERO; Self::ROUNDS]
     }
 
     // FIPS 180-4 4.2.2
-    const K: &'static [Self] = &[
+    const K: &'static Self::W = &[
         Self(0x428a2f98),
         Self(0x71374491),
         Self(0xb5c0fbcf),
@@ -279,13 +283,15 @@ impl Sha2 for Wrapping<u64> {
     const SMALL_SIGMA_1: (u32, u32, usize) = (19, 61, 6);
 
     // FIPS 180-4 {6.4.2} Step 1
-    type W = [Self; 80];
+    const ROUNDS: usize = 80;
+
+    type W = [Self; Self::ROUNDS];
     fn zero_w() -> Self::W {
-        [Self::ZERO; 80]
+        [Self::ZERO; Self::ROUNDS]
     }
 
     // FIPS 180-4 4.2.3
-    const K: &'static [Self] = &[
+    const K: &'static Self::W = &[
         Self(0x428a2f98d728ae22),
         Self(0x7137449123ef65cd),
         Self(0xb5c0fbcfec4d3b2f),
