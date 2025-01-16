@@ -117,7 +117,7 @@ pub(crate) const SSSE3: Feature = Feature {
 };
 
 #[allow(dead_code)]
-pub(crate) const SSE41: Feature = Feature {
+const SSE41: Feature = Feature {
     word: 1,
     mask: 1 << 19,
 };
@@ -156,6 +156,7 @@ cfg_if! {
             mask: 1 << 29,
         };
 
+        impl_get_feature!{ SSE41 => Sse41 }
         impl_get_feature!{ MOVBE => Movbe }
         impl_get_feature!{ AVX => Avx }
         impl_get_feature!{ SHA => Sha }
