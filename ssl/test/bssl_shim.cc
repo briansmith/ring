@@ -154,11 +154,6 @@ static int Usage(const char *program) {
   return 1;
 }
 
-template <typename T>
-struct Free {
-  void operator()(T *buf) { free(buf); }
-};
-
 // Connect returns a new socket connected to the runner, or -1 on error.
 static OwnedSocket Connect(const TestConfig *config) {
   sockaddr_storage addr;
