@@ -70,17 +70,15 @@ impl SealingKey {
         let mut counter = make_counter(sequence_number);
         let poly_key = derive_poly1305_key(&self.key.k_2, counter.increment());
 
-        {
-            let (len_in_out, data_and_padding_in_out) =
-                plaintext_in_ciphertext_out.split_at_mut(PACKET_LENGTH_LEN);
+        let (len_in_out, data_and_padding_in_out) =
+            plaintext_in_ciphertext_out.split_at_mut(PACKET_LENGTH_LEN);
 
-            self.key
-                .k_1
-                .encrypt_in_place(make_counter(sequence_number), len_in_out);
-            self.key
-                .k_2
-                .encrypt_in_place(counter, data_and_padding_in_out);
-        }
+        self.key
+            .k_1
+            .encrypt_in_place(make_counter(sequence_number), len_in_out);
+        self.key
+            .k_2
+            .encrypt_in_place(counter, data_and_padding_in_out);
 
         let Tag(tag) = poly1305::sign(poly_key, plaintext_in_ciphertext_out, cpu_features);
         *tag_out = tag;
