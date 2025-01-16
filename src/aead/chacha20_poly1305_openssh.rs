@@ -126,6 +126,10 @@ impl OpeningKey {
         ciphertext_in_plaintext_out: &'a mut [u8],
         tag: &[u8; TAG_LEN],
     ) -> Result<&'a [u8], error::Unspecified> {
+        if ciphertext_in_plaintext_out.len() < PACKET_LENGTH_LEN {
+            return Err(error::Unspecified);
+        }
+
         let mut counter = make_counter(sequence_number);
 
         // We must verify the tag before decrypting so that
@@ -134,7 +138,9 @@ impl OpeningKey {
         let poly_key = derive_poly1305_key(&self.key.k_2, counter.increment());
         verify(poly_key, ciphertext_in_plaintext_out, tag)?;
 
+        // Won't panic because the length was checked above.
         let plaintext_in_ciphertext_out = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
+
         self.key
             .k_2
             .encrypt_in_place(counter, plaintext_in_ciphertext_out);
