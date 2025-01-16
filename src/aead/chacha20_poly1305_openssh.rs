@@ -56,6 +56,10 @@ impl SealingKey {
     /// `padding_length||payload||random padding`. It will be overwritten by
     /// `encrypted_packet_length||ciphertext`, where `encrypted_packet_length`
     /// is encrypted with `K_1` and `ciphertext` is encrypted by `K_2`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `plaintext_in_ciphertext_out.len() < PACKET_LENGTH_LEN`.
     pub fn seal_in_place(
         &self,
         sequence_number: u32,
