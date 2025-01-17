@@ -71,13 +71,13 @@ pub(super) fn seal_fallback(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
-    cpu_features: cpu::Features,
+    cpu: cpu::Features,
 ) -> Result<Tag, InputTooLongError> {
-    let (counter, poly1305_key) = begin(chacha20_key, nonce, aad, in_out)?;
-    let mut auth = poly1305::Context::from_key(poly1305_key, cpu_features);
+    let (counter, poly1305_key) = begin(chacha20_key, nonce, aad, in_out, cpu)?;
+    let mut auth = poly1305::Context::from_key(poly1305_key, cpu);
 
     poly1305_update_padded_16(&mut auth, aad.as_ref());
-    chacha20_key.encrypt(counter, in_out.into());
+    chacha20_key.encrypt(counter, in_out.into(), cpu);
     poly1305_update_padded_16(&mut auth, in_out);
     Ok(finish(auth, aad.as_ref().len(), in_out.len()))
 }
@@ -105,15 +105,15 @@ pub(super) fn open_fallback(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: Overlapping<'_>,
-    cpu_features: cpu::Features,
+    cpu: cpu::Features,
 ) -> Result<Tag, InputTooLongError> {
-    let (counter, poly1305_key) = begin(chacha20_key, nonce, aad, in_out.input())?;
-    let mut auth = poly1305::Context::from_key(poly1305_key, cpu_features);
+    let (counter, poly1305_key) = begin(chacha20_key, nonce, aad, in_out.input(), cpu)?;
+    let mut auth = poly1305::Context::from_key(poly1305_key, cpu);
 
     poly1305_update_padded_16(&mut auth, aad.as_ref());
     poly1305_update_padded_16(&mut auth, in_out.input());
     let in_out_len = in_out.len();
-    chacha20_key.encrypt(counter, in_out);
+    chacha20_key.encrypt(counter, in_out, cpu);
     Ok(finish(auth, aad.as_ref().len(), in_out_len))
 }
 
@@ -137,11 +137,12 @@ pub(super) fn begin(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     input: &[u8],
+    cpu: cpu::Features,
 ) -> Result<(Counter, poly1305::Key), InputTooLongError> {
     check_input_lengths(aad, input)?;
 
     let mut key_bytes = [0u8; poly1305::KEY_LEN];
-    let counter = key.encrypt_single_block_with_ctr_0(nonce, &mut key_bytes);
+    let counter = key.encrypt_single_block_with_ctr_0(nonce, &mut key_bytes, cpu);
     let poly1305_key = poly1305::Key::new(key_bytes);
     Ok((counter, poly1305_key))
 }
