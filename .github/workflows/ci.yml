@@ -617,6 +617,11 @@ jobs:
 
         # TODO: targets
         include:
+          # First because it is slowest; we hope being first will nudge it to
+          # start sooner.
+          - target: s390x-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
           - target: aarch64-apple-darwin
             host_os: macos-14
 
@@ -671,9 +676,6 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: riscv64gc-unknown-linux-gnu
-            host_os: ubuntu-22.04
-
-          - target: s390x-unknown-linux-gnu
             host_os: ubuntu-22.04
 
           - target: x86_64-apple-darwin
