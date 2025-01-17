@@ -15,17 +15,23 @@
 
 use super::{overlapping, quic::Sample, Nonce};
 use crate::cpu;
+use cfg_if::cfg_if;
 
-#[cfg(any(
-    test,
-    not(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        all(target_arch = "arm", target_endian = "little"),
-        target_arch = "x86",
-        target_arch = "x86_64"
-    ))
-))]
-mod fallback;
+cfg_if! {
+    if #[cfg(any(
+                all(target_arch = "aarch64", target_endian = "little"),
+                all(target_arch = "arm", target_endian = "little"),
+                target_arch = "x86",
+                target_arch = "x86_64"
+            ))] {
+        #[macro_use]
+        mod ffi;
+        #[cfg(test)]
+        mod fallback;
+    } else {
+        mod fallback;
+    }
+}
 
 use crate::polyfill::ArraySplitMap;
 
@@ -74,52 +80,31 @@ impl Key {
     }
 
     #[inline(always)]
-    pub(super) fn encrypt(&self, counter: Counter, in_out: Overlapping<'_>, _cpu: cpu::Features) {
-        #[cfg(any(
-            all(target_arch = "aarch64", target_endian = "little"),
-            all(target_arch = "arm", target_endian = "little"),
-            target_arch = "x86",
-            target_arch = "x86_64"
-        ))]
-        #[inline(always)]
-        pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, in_out: Overlapping<'_>) {
-            // XXX: The x86 and at least one branch of the ARM assembly language
-            // code doesn't allow overlapping input and output unless they are
-            // exactly overlapping. TODO: Figure out which branch of the ARM code
-            // has this limitation and come up with a better solution.
-            //
-            // https://rt.openssl.org/Ticket/Display.html?id=4362
-            #[cfg(not(any(
-                all(target_arch = "aarch64", target_endian = "little"),
-                target_arch = "x86_64"
-            )))]
-            let in_out = Overlapping::from(in_out.copy_within());
-
-            let (input, output, len) = in_out.into_input_output_len();
-
-            // There's no need to worry if `counter` is incremented because it is
-            // owned here and we drop immediately after the call.
-            prefixed_extern! {
-                fn ChaCha20_ctr32(
-                    out: *mut u8,
-                    in_: *const u8,
-                    in_len: crate::c::size_t,
-                    key: &[u32; KEY_LEN / 4],
-                    counter: &Counter,
-                );
+    pub(super) fn encrypt(&self, counter: Counter, in_out: Overlapping<'_>, cpu: cpu::Features) {
+        // XXX: The x86 and at least one branch of the ARM assembly language
+        // code doesn't allow overlapping input and output unless they are
+        // "in place". See https://rt.openssl.org/Ticket/Display.html?id=4362.
+        cfg_if! {
+            if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
+                chacha20_ctr32_ffi!(
+                    unsafe { (cpu::Features, Overlapping<'_>) => ChaCha20_ctr32 },
+                    self, counter, in_out, cpu)
+            } else if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
+                chacha20_ctr32_ffi!(
+                    unsafe { (cpu::Features, &mut [u8]) => ChaCha20_ctr32 },
+                    self, counter, in_out.copy_within(), cpu)
+            } else if #[cfg(target_arch = "x86")] {
+                chacha20_ctr32_ffi!(
+                    unsafe { (cpu::Features, &mut [u8]) => ChaCha20_ctr32 },
+                    self, counter, in_out.copy_within(), cpu)
+            } else if #[cfg(target_arch = "x86_64")] {
+                chacha20_ctr32_ffi!(
+                    unsafe { (cpu::Features, Overlapping<'_>) => ChaCha20_ctr32 },
+                    self, counter, in_out, cpu)
+            } else {
+                fallback::ChaCha20_ctr32(self, counter, in_out)
             }
-            unsafe { ChaCha20_ctr32(output, input, len, key.words_less_safe(), &counter) }
         }
-
-        #[cfg(not(any(
-            all(target_arch = "aarch64", target_endian = "little"),
-            all(target_arch = "arm", target_endian = "little"),
-            target_arch = "x86",
-            target_arch = "x86_64"
-        )))]
-        use fallback::ChaCha20_ctr32;
-
-        ChaCha20_ctr32(self, counter, in_out)
     }
 
     #[inline]
