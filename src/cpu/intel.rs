@@ -163,6 +163,8 @@ cfg_if! {
             mask: 1 << 5,
         };
 
+        // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
+        // static feature detection for this.
         const SHA: Feature = Feature {
             word: 2,
             mask: 1 << 29,
