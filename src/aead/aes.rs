@@ -196,7 +196,7 @@ fn encrypt_iv_xor_block_using_encrypt_block(
 #[allow(dead_code)]
 fn encrypt_iv_xor_block_using_ctr32(key: &impl EncryptCtr32, iv: Iv, mut block: Block) -> Block {
     let mut ctr = Counter(iv.0); // This is OK because we're only encrypting one block.
-    key.ctr32_encrypt_within(Overlapping::in_place(&mut block), &mut ctr);
+    key.ctr32_encrypt_within(block.as_mut().into(), &mut ctr);
     block
 }
 
