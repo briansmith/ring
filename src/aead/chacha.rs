@@ -97,8 +97,8 @@ impl Key {
                 }
                 if in_out.len() >= 1 {
                     chacha20_ctr32_ffi!(
-                        unsafe { (1, cpu::Features, Overlapping<'_>) => ChaCha20_ctr32_nohw },
-                        self, counter, in_out, cpu)
+                        unsafe { (1, (), Overlapping<'_>) => ChaCha20_ctr32_nohw },
+                        self, counter, in_out, ())
                 }
             } else if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
                 use cpu::{GetFeature as _, arm::Neon};
@@ -112,18 +112,45 @@ impl Key {
                 }
                 if in_out.len() >= 1 {
                     chacha20_ctr32_ffi!(
-                        unsafe { (1, cpu::Features, &mut [u8]) => ChaCha20_ctr32_nohw },
-                        self, counter, in_out.copy_within(), cpu)
+                        unsafe { (1, (), &mut [u8]) => ChaCha20_ctr32_nohw },
+                        self, counter, in_out.copy_within(), ())
                 }
             } else if #[cfg(target_arch = "x86")] {
                 chacha20_ctr32_ffi!(
                     unsafe { (0, cpu::Features, &mut [u8]) => ChaCha20_ctr32 },
                     self, counter, in_out.copy_within(), cpu)
             } else if #[cfg(target_arch = "x86_64")] {
-                chacha20_ctr32_ffi!(
-                    unsafe { (0, cpu::Features, Overlapping<'_>) => ChaCha20_ctr32 },
-                    self, counter, in_out, cpu)
+                use cpu::{GetFeature, intel::{Avx2, Ssse3}};
+                const SSE_MIN_LEN: usize = 128 + 1; // Also AVX2, SSSE3_4X, SSSE3
+                if in_out.len() >= SSE_MIN_LEN {
+                    if let Some(cpu) = cpu.get_feature() {
+                        return chacha20_ctr32_ffi!(
+                            unsafe { (SSE_MIN_LEN, Avx2, Overlapping<'_>) => ChaCha20_ctr32_avx2 },
+                            self, counter, in_out, cpu);
+                    }
+                    if let Some(cpu) = <cpu::Features as GetFeature<Ssse3>>::get_feature(&cpu) {
+                        if in_out.len() >= 192 || !cpu.perf_is_like_silvermont() {
+                            return chacha20_ctr32_ffi!(
+                                unsafe {
+                                    (SSE_MIN_LEN, Ssse3, Overlapping<'_>) =>
+                                    ChaCha20_ctr32_ssse3_4x
+                                },
+                                self, counter, in_out, cpu)
+                        }
+                        return chacha20_ctr32_ffi!(
+                            unsafe {
+                                (SSE_MIN_LEN, Ssse3, Overlapping<'_>) => ChaCha20_ctr32_ssse3
+                            },
+                            self, counter, in_out, cpu)
+                    }
+                }
+                if in_out.len() >= 1 {
+                    chacha20_ctr32_ffi!(
+                        unsafe { (1, (), Overlapping<'_>) => ChaCha20_ctr32_nohw },
+                        self, counter, in_out, ())
+                }
             } else {
+                let _: cpu::Features = cpu;
                 fallback::ChaCha20_ctr32(self, counter, in_out)
             }
         }
