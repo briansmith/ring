@@ -77,26 +77,28 @@ impl SealingKey {
         let (len_in_out, data_and_padding_in_out): (&mut [u8; PACKET_LENGTH_LEN], _) =
             slice::split_first_chunk_mut(plaintext_in_ciphertext_out).unwrap();
 
-        let cpu_features = cpu::features();
+        let cpu = cpu::features();
         // XXX/TODO(SemVer): Refactor API to return an error.
         let (counter, poly_key) = chacha20_poly1305::begin(
             &self.key.k_2,
             make_nonce(sequence_number),
             Aad::from(len_in_out),
             data_and_padding_in_out,
+            cpu,
         )
         .map_err(error::erase::<InputTooLongError>)
         .unwrap();
 
-        let _: Counter = self
-            .key
-            .k_1
-            .encrypt_single_block_with_ctr_0(make_nonce(sequence_number), len_in_out);
+        let _: Counter = self.key.k_1.encrypt_single_block_with_ctr_0(
+            make_nonce(sequence_number),
+            len_in_out,
+            cpu,
+        );
         self.key
             .k_2
-            .encrypt(counter, data_and_padding_in_out.into());
+            .encrypt(counter, data_and_padding_in_out.into(), cpu);
 
-        let Tag(tag) = poly1305::sign(poly_key, plaintext_in_ciphertext_out, cpu_features);
+        let Tag(tag) = poly1305::sign(poly_key, plaintext_in_ciphertext_out, cpu);
         *tag_out = tag;
     }
 }
@@ -123,11 +125,13 @@ impl OpeningKey {
         sequence_number: u32,
         encrypted_packet_length: [u8; PACKET_LENGTH_LEN],
     ) -> [u8; PACKET_LENGTH_LEN] {
+        let cpu = cpu::features();
         let mut packet_length = encrypted_packet_length;
-        let _: Counter = self
-            .key
-            .k_1
-            .encrypt_single_block_with_ctr_0(make_nonce(sequence_number), &mut packet_length);
+        let _: Counter = self.key.k_1.encrypt_single_block_with_ctr_0(
+            make_nonce(sequence_number),
+            &mut packet_length,
+            cpu,
+        );
         packet_length
     }
 
@@ -155,6 +159,7 @@ impl OpeningKey {
             make_nonce(sequence_number),
             Aad::from(packet_length),
             after_packet_length,
+            cpu,
         )
         .map_err(error::erase::<InputTooLongError>)?;
 
@@ -167,7 +172,9 @@ impl OpeningKey {
         // Won't panic because the length was checked above.
         let after_packet_length = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
 
-        self.key.k_2.encrypt(counter, after_packet_length.into());
+        self.key
+            .k_2
+            .encrypt(counter, after_packet_length.into(), cpu);
 
         Ok(after_packet_length)
     }

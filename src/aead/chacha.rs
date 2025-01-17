@@ -14,6 +14,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{overlapping, quic::Sample, Nonce};
+use crate::cpu;
 
 #[cfg(any(
     test,
@@ -47,31 +48,33 @@ impl Key {
     // Encrypts `in_out` with the counter 0 and returns counter 1,
     // where the counter is derived from the nonce `nonce`.
     #[inline]
-    pub fn encrypt_single_block_with_ctr_0<const N: usize>(
+    pub(super) fn encrypt_single_block_with_ctr_0<const N: usize>(
         &self,
         nonce: Nonce,
         in_out: &mut [u8; N],
+        cpu: cpu::Features,
     ) -> Counter {
         assert!(N <= BLOCK_LEN);
         let (zero, one) = Counter::zero_one_less_safe(nonce);
-        self.encrypt(zero, in_out.as_mut().into());
+        self.encrypt(zero, in_out.as_mut().into(), cpu);
         one
     }
 
     #[inline]
     pub fn new_mask(&self, sample: Sample) -> [u8; 5] {
+        let cpu = cpu::features(); // TODO: Remove this.
         let (ctr, nonce) = sample.split_at(4);
         let ctr = u32::from_le_bytes(ctr.try_into().unwrap());
         let nonce = Nonce::assume_unique_for_key(nonce.try_into().unwrap());
         let ctr = Counter::from_nonce_and_ctr(nonce, ctr);
 
         let mut out: [u8; 5] = [0; 5];
-        self.encrypt(ctr, out.as_mut().into());
+        self.encrypt(ctr, out.as_mut().into(), cpu);
         out
     }
 
     #[inline(always)]
-    pub fn encrypt(&self, counter: Counter, in_out: Overlapping<'_>) {
+    pub(super) fn encrypt(&self, counter: Counter, in_out: Overlapping<'_>, _cpu: cpu::Features) {
         #[cfg(any(
             all(target_arch = "aarch64", target_endian = "little"),
             all(target_arch = "arm", target_endian = "little"),
@@ -198,7 +201,9 @@ mod tests {
     // Smoketest the fallback implementation.
     #[test]
     fn chacha20_test_fallback() {
-        chacha20_test(MAX_ALIGNMENT_AND_OFFSET_SUBSET, fallback::ChaCha20_ctr32);
+        chacha20_test(MAX_ALIGNMENT_AND_OFFSET_SUBSET, |key, ctr, in_out, _cpu| {
+            fallback::ChaCha20_ctr32(key, ctr, in_out)
+        });
     }
 
     // Verifies the encryption is successful when done on overlapping buffers.
@@ -210,8 +215,10 @@ mod tests {
     // works around that.
     fn chacha20_test(
         max_alignment_and_offset: (usize, usize),
-        f: impl for<'k, 'o> Fn(&'k Key, Counter, Overlapping<'o>),
+        f: impl for<'k, 'o> Fn(&'k Key, Counter, Overlapping<'o>, cpu::Features),
     ) {
+        let cpu = cpu::features();
+
         // Reuse a buffer to avoid slowing down the tests with allocations.
         let mut buf = vec![0u8; 1300];
 
@@ -240,6 +247,7 @@ mod tests {
                     &output[..len],
                     &mut buf,
                     max_alignment_and_offset,
+                    cpu,
                     &f,
                 );
             }
@@ -256,7 +264,8 @@ mod tests {
         expected: &[u8],
         buf: &mut [u8],
         (max_alignment, max_offset): (usize, usize),
-        f: &impl for<'k, 'o> Fn(&'k Key, Counter, Overlapping<'o>),
+        cpu: cpu::Features,
+        f: &impl for<'k, 'o> Fn(&'k Key, Counter, Overlapping<'o>, cpu::Features),
     ) {
         const ARBITRARY: u8 = 123;
 
@@ -276,7 +285,7 @@ mod tests {
                 let in_out = Overlapping::new(buf, src)
                     .map_err(error::erase::<IndexError>)
                     .unwrap();
-                f(key, ctr, in_out);
+                f(key, ctr, in_out, cpu);
                 assert_eq!(&buf[..input.len()], expected)
             }
         }
