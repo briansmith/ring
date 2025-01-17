@@ -78,7 +78,7 @@ luci.milo(
 console_view = luci.console_view(
     name = "main",
     repo = REPO_URL,
-    refs = ["refs/heads/master"],
+    refs = ["refs/heads/master", "refs/heads/main"],
     title = "BoringSSL Main Console",
 )
 
@@ -98,10 +98,10 @@ cq_group = luci.cq_group(
 )
 
 poller = luci.gitiles_poller(
-    name = "master-gitiles-trigger",
+    name = "main-gitiles-trigger",
     bucket = "ci",
     repo = REPO_URL,
-    refs = ["refs/heads/master"],
+    refs = ["refs/heads/master", "refs/heads/main"],
 )
 
 luci.logdog(
