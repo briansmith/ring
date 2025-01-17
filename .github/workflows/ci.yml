@@ -620,7 +620,7 @@ jobs:
           # First because it is slowest; we hope being first will nudge it to
           # start sooner.
           - target: s390x-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: aarch64-apple-darwin
             host_os: macos-14
@@ -629,25 +629,25 @@ jobs:
           # https://github.com/rust-lang/rust/issues/79556 and
           # https://github.com/rust-lang/rust/issues/79555 are fixed.
           - target: aarch64-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - features: --features=unstable-testing-arm-no-hw,std
             target: aarch64-unknown-linux-gnu
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: arm-unknown-linux-gnueabi
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: armv7-unknown-linux-gnueabihf
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - features: --features=unstable-testing-arm-no-neon,std
             target: armv7-unknown-linux-gnueabihf
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           # TODO: Use the -musl target after
           # https://github.com/rust-lang/rust/issues/79556 and
@@ -657,19 +657,19 @@ jobs:
             features: --features=std
             mode: # debug
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: powerpc-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: powerpc64-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: powerpc64le-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: riscv64gc-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: x86_64-apple-darwin
             host_os: macos-13
@@ -679,87 +679,87 @@ jobs:
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Conroe-v1
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Denverton-v2
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Denverton-v2
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Haswell
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Haswell
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Nehalem
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Nehalem
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: SandyBridge
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: SandyBridge
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Westmere
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Westmere
             features: --features=std
             mode: --release
             rust_channel: nightly
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-musl
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
     steps:
       - if: ${{ contains(matrix.host_os, 'ubuntu') }}
