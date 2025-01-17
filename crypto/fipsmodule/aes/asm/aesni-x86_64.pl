@@ -672,10 +672,7 @@ $code.=<<___;
 	lea	7($ctr),%r9
 	 mov	%r10d,0x60+12(%rsp)
 	bswap	%r9d
-	leaq	OPENSSL_ia32cap_P(%rip),%r10
-	 mov	4(%r10),%r10d
 	xor	$key0,%r9d
-	 and	\$`1<<26|1<<22`,%r10d		# isolate XSAVE+MOVBE
 	mov	%r9d,0x70+12(%rsp)
 
 	$movkey	0x10($key),$rndkey1
@@ -686,103 +683,9 @@ $code.=<<___;
 	cmp	\$8,$len		# $len is in blocks
 	jb	.Lctr32_tail		# short input if ($len<8)
 
-	sub	\$6,$len		# $len is biased by -6
-	cmp	\$`1<<22`,%r10d		# check for MOVBE without XSAVE
-	je	.Lctr32_6x		# [which denotes Atom Silvermont]
-
 	lea	0x80($key),$key		# size optimization
-	sub	\$2,$len		# $len is biased by -8
+	sub	\$8,$len		# $len is biased by -8
 	jmp	.Lctr32_loop8
-
-.align	16
-.Lctr32_6x:
-	shl	\$4,$rounds
-	mov	\$48,$rnds_
-	bswap	$key0
-	lea	32($key,$rounds),$key	# end of key schedule
-	sub	%rax,%r10		# twisted $rounds
-	jmp	.Lctr32_loop6
-
-.align	16
-.Lctr32_loop6:
-	 add	\$6,$ctr		# next counter value
-	$movkey	-48($key,$rnds_),$rndkey0
-	aesenc	$rndkey1,$inout0
-	 mov	$ctr,%eax
-	 xor	$key0,%eax
-	aesenc	$rndkey1,$inout1
-	 movbe	%eax,`0x00+12`(%rsp)	# store next counter value
-	 lea	1($ctr),%eax
-	aesenc	$rndkey1,$inout2
-	 xor	$key0,%eax
-	 movbe	%eax,`0x10+12`(%rsp)
-	aesenc	$rndkey1,$inout3
-	 lea	2($ctr),%eax
-	 xor	$key0,%eax
-	aesenc	$rndkey1,$inout4
-	 movbe	%eax,`0x20+12`(%rsp)
-	 lea	3($ctr),%eax
-	aesenc	$rndkey1,$inout5
-	$movkey	-32($key,$rnds_),$rndkey1
-	 xor	$key0,%eax
-
-	aesenc	$rndkey0,$inout0
-	 movbe	%eax,`0x30+12`(%rsp)
-	 lea	4($ctr),%eax
-	aesenc	$rndkey0,$inout1
-	 xor	$key0,%eax
-	 movbe	%eax,`0x40+12`(%rsp)
-	aesenc	$rndkey0,$inout2
-	 lea	5($ctr),%eax
-	 xor	$key0,%eax
-	aesenc	$rndkey0,$inout3
-	 movbe	%eax,`0x50+12`(%rsp)
-	 mov	%r10,%rax		# mov	$rnds_,$rounds
-	aesenc	$rndkey0,$inout4
-	aesenc	$rndkey0,$inout5
-	$movkey	-16($key,$rnds_),$rndkey0
-
-	call	.Lenc_loop6
-
-	movdqu	($inp),$inout6		# load 6 input blocks
-	movdqu	0x10($inp),$inout7
-	movdqu	0x20($inp),$in0
-	movdqu	0x30($inp),$in1
-	movdqu	0x40($inp),$in2
-	movdqu	0x50($inp),$in3
-	lea	0x60($inp),$inp		# $inp+=6*16
-	$movkey	-64($key,$rnds_),$rndkey1
-	pxor	$inout0,$inout6		# inp^=E(ctr)
-	movaps	0x00(%rsp),$inout0	# load next counter [xor-ed with 0 round]
-	pxor	$inout1,$inout7
-	movaps	0x10(%rsp),$inout1
-	pxor	$inout2,$in0
-	movaps	0x20(%rsp),$inout2
-	pxor	$inout3,$in1
-	movaps	0x30(%rsp),$inout3
-	pxor	$inout4,$in2
-	movaps	0x40(%rsp),$inout4
-	pxor	$inout5,$in3
-	movaps	0x50(%rsp),$inout5
-	movdqu	$inout6,($out)		# store 6 output blocks
-	movdqu	$inout7,0x10($out)
-	movdqu	$in0,0x20($out)
-	movdqu	$in1,0x30($out)
-	movdqu	$in2,0x40($out)
-	movdqu	$in3,0x50($out)
-	lea	0x60($out),$out		# $out+=6*16
-
-	sub	\$6,$len
-	jnc	.Lctr32_loop6		# loop if $len-=6 didn't borrow
-
-	add	\$6,$len		# restore real remaining $len
-	jz	.Lctr32_done		# done if ($len==0)
-
-	lea	-48($rnds_),$rounds
-	lea	-80($key,$rnds_),$key	# restore $key
-	neg	$rounds
-	shr	\$4,$rounds		# restore $rounds
-	jmp	.Lctr32_tail
 
 .align	32
 .Lctr32_loop8:
