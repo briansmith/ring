@@ -77,7 +77,7 @@ pub(super) fn seal_fallback(
     let mut auth = poly1305::Context::from_key(poly1305_key, cpu_features);
 
     poly1305_update_padded_16(&mut auth, aad.as_ref());
-    chacha20_key.encrypt_in_place(counter, in_out);
+    chacha20_key.encrypt(counter, in_out.into());
     poly1305_update_padded_16(&mut auth, in_out);
     Ok(finish(auth, aad.as_ref().len(), in_out.len()))
 }
@@ -113,7 +113,7 @@ pub(super) fn open_fallback(
     poly1305_update_padded_16(&mut auth, aad.as_ref());
     poly1305_update_padded_16(&mut auth, in_out.input());
     let in_out_len = in_out.len();
-    chacha20_key.encrypt_within(counter, in_out);
+    chacha20_key.encrypt(counter, in_out);
     Ok(finish(auth, aad.as_ref().len(), in_out_len))
 }
 
