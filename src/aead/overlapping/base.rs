@@ -22,11 +22,13 @@ pub struct Overlapping<'o, T> {
     src: RangeFrom<usize>,
 }
 
-impl<'o, T> Overlapping<'o, T> {
-    pub fn in_place(in_out: &'o mut [T]) -> Self {
+impl<'o, T> From<&'o mut [T]> for Overlapping<'o, T> {
+    fn from(in_out: &'o mut [T]) -> Self {
         Self { in_out, src: 0.. }
     }
+}
 
+impl<'o, T> Overlapping<'o, T> {
     pub fn new(in_out: &'o mut [T], src: RangeFrom<usize>) -> Result<Self, IndexError> {
         match in_out.get(src.clone()) {
             Some(_) => Ok(Self { in_out, src }),

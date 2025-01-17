@@ -46,7 +46,7 @@ impl Key {
 impl Key {
     #[inline]
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
-        self.encrypt_within(counter, Overlapping::in_place(in_out))
+        self.encrypt_within(counter, in_out.into())
     }
 
     // Encrypts `in_out` with the counter 0 and returns counter 1,
@@ -59,7 +59,7 @@ impl Key {
     ) -> Counter {
         assert!(N <= BLOCK_LEN);
         let (zero, one) = Counter::zero_one_less_safe(nonce);
-        self.encrypt_within(zero, Overlapping::in_place(in_out));
+        self.encrypt_within(zero, in_out.as_mut().into());
         one
     }
 
@@ -71,7 +71,7 @@ impl Key {
         let ctr = Counter::from_nonce_and_ctr(nonce, ctr);
 
         let mut out: [u8; 5] = [0; 5];
-        self.encrypt_within(ctr, Overlapping::in_place(&mut out));
+        self.encrypt_within(ctr, out.as_mut().into());
         out
     }
 
@@ -95,7 +95,7 @@ impl Key {
                 all(target_arch = "aarch64", target_endian = "little"),
                 target_arch = "x86_64"
             )))]
-            let in_out = Overlapping::in_place(in_out.copy_within());
+            let in_out = Overlapping::from(in_out.copy_within());
 
             let (input, output, len) = in_out.into_input_output_len();
 
