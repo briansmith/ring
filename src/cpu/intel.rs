@@ -146,9 +146,21 @@ cfg_if! {
             mask: 1 << 22,
         };
 
+        // We intentionally avoid defining an `XSave` accessor function. See
+        // `Ssse3::cpu_perf_is_like_silvermont`.
+        const XSAVE_BUT_NOT_REALLY: Feature = Feature {
+            word: 1,
+            mask: 1 << 26,
+        };
+
         pub(crate) const AVX: Feature = Feature {
             word: 1,
             mask: 1 << 28,
+        };
+
+        const AVX2: Feature = Feature {
+            word: 2,
+            mask: 1 << 5,
         };
 
         const SHA: Feature = Feature {
@@ -159,7 +171,36 @@ cfg_if! {
         impl_get_feature!{ SSE41 => Sse41 }
         impl_get_feature!{ MOVBE => Movbe }
         impl_get_feature!{ AVX => Avx }
+        impl_get_feature!{ AVX2 => Avx2 }
         impl_get_feature!{ SHA => Sha }
+
+        impl Ssse3 {
+            /// BoringSSL's counterpart is `CRYPTO_cpu_perf_is_like_silvermont`.
+            ///
+            /// Returns true if, based on a heuristic, the
+            /// CPU has Silvermont-like performance characteristics. It is often faster to
+            /// run different codepaths on these CPUs than the available instructions would
+            /// otherwise select. See chacha-x86_64.pl.
+            ///
+            /// Bonnell, Silvermont's predecessor in the Atom lineup, will also be matched by
+            /// this. Goldmont (Silvermont's successor in the Atom lineup) added XSAVE so it
+            /// isn't matched by this. Various sources indicate AMD first implemented MOVBE
+            /// and XSAVE at the same time in Jaguar, so it seems like AMD chips will not be
+            /// matched by this. That seems to be the case for other x86(-64) CPUs.
+            ///
+            /// WARNING: This MUST NOT be used to guard the execution of the XSAVE
+            /// instruction. This is the "hardware supports XSAVE" bit, not the OSXSAVE bit
+            /// that indicates whether we can safely execute XSAVE. This bit may be set
+            /// even when XSAVE is disabled (by the operating system). See how the users of
+            /// this bit use it.
+            ///
+            /// Historically, the XSAVE bit was artificially cleared on Knights Landing
+            /// and Knights Mill chips, but as Intel has removed all support from GCC,
+            /// LLVM, and SDE, we assume they are no longer worth special-casing.
+            pub fn perf_is_like_silvermont(self) -> bool {
+                XSAVE_BUT_NOT_REALLY.available(self.0) && MOVBE.available(self.0)
+            }
+        }
     }
 }
 
