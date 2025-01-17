@@ -1140,10 +1140,9 @@ ___
 { my ($inp,$bits,$key) = @_4args;
   $bits =~ s/%r/%e/;
 
-# This is based on submission by
-#
-#	Huang Ying <ying.huang@intel.com>
-#	Vinodh Gopal <vinodh.gopal@intel.com>
+# This is based on submission from Intel by
+#	Huang Ying
+#	Vinodh Gopal
 #	Kahraman Akdemir
 #
 # Aggressively optimized in respect to aeskeygenassist's critical path
