@@ -633,7 +633,7 @@ jobs:
 
           - features: --features=unstable-testing-arm-no-hw,std
             target: aarch64-unknown-linux-gnu
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
@@ -645,7 +645,7 @@ jobs:
 
           - features: --features=unstable-testing-arm-no-neon,std
             target: armv7-unknown-linux-gnueabihf
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
@@ -677,84 +677,84 @@ jobs:
           - target: i686-unknown-linux-gnu
             cpu_model: Conroe-v1
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Conroe-v1
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Denverton-v2
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Denverton-v2
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Haswell
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Haswell
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Nehalem
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Nehalem
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: SandyBridge
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: SandyBridge
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Westmere
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Westmere
             features: --features=std
-            mode: # debug
+            mode: --release
             rust_channel: nightly
             host_os: ubuntu-22.04
 
