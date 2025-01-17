@@ -31,9 +31,13 @@
 
 use super::{
     chacha::{self, *},
-    chacha20_poly1305, cpu, poly1305, Nonce, Tag,
+    chacha20_poly1305, cpu, poly1305, Aad, Nonce, Tag,
 };
-use crate::{constant_time, error, polyfill::slice};
+use crate::{
+    constant_time,
+    error::{self, InputTooLongError},
+    polyfill::slice,
+};
 
 /// A key for sealing packets.
 pub struct SealingKey {
@@ -59,6 +63,10 @@ impl SealingKey {
     /// # Panics
     ///
     /// Panics if `plaintext_in_ciphertext_out.len() < PACKET_LENGTH_LEN`.
+    ///
+    /// Panics if `plaintext_in_ciphertext_out` is longer than the maximum
+    /// input size for ChaCha20-Poly1305. Note that this limit is much,
+    /// much larger than SSH's 256KB maximum record size.
     pub fn seal_in_place(
         &self,
         sequence_number: u32,
@@ -70,8 +78,15 @@ impl SealingKey {
             slice::split_first_chunk_mut(plaintext_in_ciphertext_out).unwrap();
 
         let cpu_features = cpu::features();
-        let (counter, poly_key) =
-            chacha20_poly1305::begin(&self.key.k_2, make_nonce(sequence_number));
+        // XXX/TODO(SemVer): Refactor API to return an error.
+        let (counter, poly_key) = chacha20_poly1305::begin(
+            &self.key.k_2,
+            make_nonce(sequence_number),
+            Aad::from(len_in_out),
+            data_and_padding_in_out,
+        )
+        .map_err(error::erase::<InputTooLongError>)
+        .unwrap();
 
         let _: Counter = self
             .key
@@ -131,13 +146,17 @@ impl OpeningKey {
         ciphertext_in_plaintext_out: &'a mut [u8],
         tag: &[u8; TAG_LEN],
     ) -> Result<&'a [u8], error::Unspecified> {
-        if ciphertext_in_plaintext_out.len() < PACKET_LENGTH_LEN {
-            return Err(error::Unspecified);
-        }
+        let (packet_length, after_packet_length): (&mut [u8; PACKET_LENGTH_LEN], _) =
+            slice::split_first_chunk_mut(ciphertext_in_plaintext_out).ok_or(error::Unspecified)?;
 
         let cpu = cpu::features();
-        let (counter, poly_key) =
-            chacha20_poly1305::begin(&self.key.k_2, make_nonce(sequence_number));
+        let (counter, poly_key) = chacha20_poly1305::begin(
+            &self.key.k_2,
+            make_nonce(sequence_number),
+            Aad::from(packet_length),
+            after_packet_length,
+        )
+        .map_err(error::erase::<InputTooLongError>)?;
 
         // We must verify the tag before decrypting so that
         // `ciphertext_in_plaintext_out` is unmodified if verification fails.

@@ -73,8 +73,7 @@ pub(super) fn seal_fallback(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Result<Tag, InputTooLongError> {
-    check_input_lengths(aad, in_out)?;
-    let (counter, poly1305_key) = begin(chacha20_key, nonce);
+    let (counter, poly1305_key) = begin(chacha20_key, nonce, aad, in_out)?;
     let mut auth = poly1305::Context::from_key(poly1305_key, cpu_features);
 
     poly1305_update_padded_16(&mut auth, aad.as_ref());
@@ -108,8 +107,7 @@ pub(super) fn open_fallback(
     in_out: Overlapping<'_>,
     cpu_features: cpu::Features,
 ) -> Result<Tag, InputTooLongError> {
-    check_input_lengths(aad, in_out.input())?;
-    let (counter, poly1305_key) = begin(chacha20_key, nonce);
+    let (counter, poly1305_key) = begin(chacha20_key, nonce, aad, in_out.input())?;
     let mut auth = poly1305::Context::from_key(poly1305_key, cpu_features);
 
     poly1305_update_padded_16(&mut auth, aad.as_ref());
@@ -134,11 +132,18 @@ fn check_input_lengths(aad: Aad<&[u8]>, input: &[u8]) -> Result<(), InputTooLong
 }
 
 // Also used by chacha20_poly1305_openssh.
-pub(super) fn begin(key: &chacha::Key, nonce: Nonce) -> (Counter, poly1305::Key) {
+pub(super) fn begin(
+    key: &chacha::Key,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    input: &[u8],
+) -> Result<(Counter, poly1305::Key), InputTooLongError> {
+    check_input_lengths(aad, input)?;
+
     let mut key_bytes = [0u8; poly1305::KEY_LEN];
     let counter = key.encrypt_single_block_with_ctr_0(nonce, &mut key_bytes);
     let poly1305_key = poly1305::Key::new(key_bytes);
-    (counter, poly1305_key)
+    Ok((counter, poly1305_key))
 }
 
 fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
