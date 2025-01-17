@@ -44,11 +44,6 @@ impl Key {
 }
 
 impl Key {
-    #[inline]
-    pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
-        self.encrypt_within(counter, in_out.into())
-    }
-
     // Encrypts `in_out` with the counter 0 and returns counter 1,
     // where the counter is derived from the nonce `nonce`.
     #[inline]
@@ -59,7 +54,7 @@ impl Key {
     ) -> Counter {
         assert!(N <= BLOCK_LEN);
         let (zero, one) = Counter::zero_one_less_safe(nonce);
-        self.encrypt_within(zero, in_out.as_mut().into());
+        self.encrypt(zero, in_out.as_mut().into());
         one
     }
 
@@ -71,12 +66,12 @@ impl Key {
         let ctr = Counter::from_nonce_and_ctr(nonce, ctr);
 
         let mut out: [u8; 5] = [0; 5];
-        self.encrypt_within(ctr, out.as_mut().into());
+        self.encrypt(ctr, out.as_mut().into());
         out
     }
 
     #[inline(always)]
-    pub fn encrypt_within(&self, counter: Counter, in_out: Overlapping<'_>) {
+    pub fn encrypt(&self, counter: Counter, in_out: Overlapping<'_>) {
         #[cfg(any(
             all(target_arch = "aarch64", target_endian = "little"),
             all(target_arch = "arm", target_endian = "little"),
@@ -197,7 +192,7 @@ mod tests {
         } else {
             MAX_ALIGNMENT_AND_OFFSET_SUBSET
         };
-        chacha20_test(max_offset, Key::encrypt_within);
+        chacha20_test(max_offset, Key::encrypt);
     }
 
     // Smoketest the fallback implementation.

@@ -94,7 +94,7 @@ impl SealingKey {
             .encrypt_single_block_with_ctr_0(make_nonce(sequence_number), len_in_out);
         self.key
             .k_2
-            .encrypt_in_place(counter, data_and_padding_in_out);
+            .encrypt(counter, data_and_padding_in_out.into());
 
         let Tag(tag) = poly1305::sign(poly_key, plaintext_in_ciphertext_out, cpu_features);
         *tag_out = tag;
@@ -167,7 +167,7 @@ impl OpeningKey {
         // Won't panic because the length was checked above.
         let after_packet_length = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
 
-        self.key.k_2.encrypt_in_place(counter, after_packet_length);
+        self.key.k_2.encrypt(counter, after_packet_length.into());
 
         Ok(after_packet_length)
     }
