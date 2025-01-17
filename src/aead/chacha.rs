@@ -86,20 +86,31 @@ impl Key {
         // "in place". See https://rt.openssl.org/Ticket/Display.html?id=4362.
         cfg_if! {
             if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
-                chacha20_ctr32_ffi!(
-                    unsafe { (cpu::Features, Overlapping<'_>) => ChaCha20_ctr32 },
-                    self, counter, in_out, cpu)
+                use cpu::{GetFeature as _, arm::Neon};
+                const NEON_MIN_LEN: usize = 192 + 1;
+                if in_out.len() >= NEON_MIN_LEN {
+                    if let Some(cpu) = cpu.get_feature() {
+                        return chacha20_ctr32_ffi!(
+                            unsafe { (NEON_MIN_LEN, Neon, Overlapping<'_>) => ChaCha20_ctr32_neon },
+                            self, counter, in_out, cpu);
+                    }
+                }
+                if in_out.len() >= 1 {
+                    chacha20_ctr32_ffi!(
+                        unsafe { (1, cpu::Features, Overlapping<'_>) => ChaCha20_ctr32_nohw },
+                        self, counter, in_out, cpu)
+                }
             } else if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
                 chacha20_ctr32_ffi!(
-                    unsafe { (cpu::Features, &mut [u8]) => ChaCha20_ctr32 },
+                    unsafe { (0, cpu::Features, &mut [u8]) => ChaCha20_ctr32 },
                     self, counter, in_out.copy_within(), cpu)
             } else if #[cfg(target_arch = "x86")] {
                 chacha20_ctr32_ffi!(
-                    unsafe { (cpu::Features, &mut [u8]) => ChaCha20_ctr32 },
+                    unsafe { (0, cpu::Features, &mut [u8]) => ChaCha20_ctr32 },
                     self, counter, in_out.copy_within(), cpu)
             } else if #[cfg(target_arch = "x86_64")] {
                 chacha20_ctr32_ffi!(
-                    unsafe { (cpu::Features, Overlapping<'_>) => ChaCha20_ctr32 },
+                    unsafe { (0, cpu::Features, Overlapping<'_>) => ChaCha20_ctr32 },
                     self, counter, in_out, cpu)
             } else {
                 fallback::ChaCha20_ctr32(self, counter, in_out)

@@ -14,12 +14,12 @@
 
 use super::{super::overlapping::Overlapping, Counter, Key};
 
-// `unsafe { (C, InOut) => f }` means that the function `f` is safe to call
-// iff CPU features `C` are available and the input type is `InOut`. If `f`
-// supports overlapping input/output then `InOut` should be
-// `Overlapping<'_, u8>`; otherwise it should be `&mut [u8]`.
+// `unsafe { (N, C, InOut) => f }` means that the function `f` is safe to call
+// iff the in/out length is at least `N`, the CPU features `C` are available,
+// and the input type is `InOut`. If `f` supports overlapping input/output then
+// `InOut` should be `Overlapping<'_, u8>`; otherwise it should be `&mut [u8]`.
 macro_rules! chacha20_ctr32_ffi {
-    ( unsafe { ($Cpu:ty, $InOut:ty) => $f:ident },
+    ( unsafe { ($MIN_LEN:expr, $Cpu:ty, $InOut:ty) => $f:ident },
       $key:expr, $counter:expr, $in_out:expr, $cpu:expr ) => {{
         prefixed_extern! {
             fn $f(
@@ -34,14 +34,21 @@ macro_rules! chacha20_ctr32_ffi {
         // to call if additionally we have a value of type `$Cpu` and an in/out
         // value of the indicated type, which we do.
         unsafe {
-            crate::aead::chacha::ffi::chacha20_ctr32_ffi::<$InOut, $Cpu>(
+            crate::aead::chacha::ffi::chacha20_ctr32_ffi::<$InOut, $Cpu, $MIN_LEN>(
                 $key, $counter, $in_out, $cpu, $f,
             )
         }
     }};
 }
 
-pub(super) unsafe fn chacha20_ctr32_ffi<'o, InOut: 'o + Into<Overlapping<'o, u8>>, Cpu>(
+// Panics if `in_out.len() < MIN_LEN`. The caller should have guarded against
+// that so that the assertion gets optimized away.
+pub(super) unsafe fn chacha20_ctr32_ffi<
+    'o,
+    InOut: 'o + Into<Overlapping<'o, u8>>,
+    Cpu,
+    const MIN_LEN: usize,
+>(
     key: &Key,
     counter: Counter,
     in_out: InOut,
@@ -50,6 +57,7 @@ pub(super) unsafe fn chacha20_ctr32_ffi<'o, InOut: 'o + Into<Overlapping<'o, u8>
 ) {
     let in_out: Overlapping<'_, u8> = in_out.into();
     let (input, output, len) = in_out.into_input_output_len();
+    assert!(len >= MIN_LEN);
     let key = key.words_less_safe();
     let _: Cpu = cpu;
     unsafe { f(output, input, len, key, &counter) }
