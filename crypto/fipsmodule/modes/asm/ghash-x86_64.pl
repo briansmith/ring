@@ -120,7 +120,6 @@ $do4xaggr=1;
 
 $code=<<___;
 .text
-.extern	OPENSSL_ia32cap_P
 ___
 
 
@@ -387,14 +386,8 @@ if ($do4xaggr) {
 my ($Xl,$Xm,$Xh,$Hkey3,$Hkey4)=map("%xmm$_",(11..15));
 
 $code.=<<___;
-	leaq		OPENSSL_ia32cap_P(%rip),%rax
-	mov		4(%rax),%eax
 	cmp		\$0x30,$len
 	jb		.Lskip4x
-
-	and		\$`1<<26|1<<22`,%eax	# isolate MOVBE+XSAVE
-	cmp		\$`1<<22`,%eax		# check for MOVBE without XSAVE
-	je		.Lskip4x
 
 	sub		\$0x30,$len
 	mov		\$0xA040608020C0E000,%rax	# ((7..0)·0xE0)&0xff
