@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-pub use super::n0::N0;
+pub use super::{n0::N0, InOut};
 use crate::cpu;
 
 // Indicates that the element is not encoded; there is no *R* factor
@@ -113,15 +113,24 @@ impl ProductEncoding for (RRR, RInverse) {
 use crate::{bssl, c, limb::Limb};
 
 #[inline(always)]
-unsafe fn mul_mont(
-    r: *mut Limb,
-    a: *const Limb,
-    b: *const Limb,
-    n: *const Limb,
-    n0: &N0,
-    num_limbs: c::size_t,
-    _: cpu::Features,
-) {
+pub(super) fn limbs_mul_mont(ra: InOut<[Limb]>, b: &[Limb], n: &[Limb], n0: &N0, _: cpu::Features) {
+    // XXX/TODO: All the `debug_assert_eq!` length checking needs to be
+    // replaced with enforcement that happens regardless of debug mode.
+    let (r, a) = match ra {
+        InOut::InPlace(r) => {
+            debug_assert_eq!(r.len(), n.len());
+            (r.as_mut_ptr(), r.as_ptr())
+        }
+        InOut::Disjoint(r, a) => {
+            debug_assert_eq!(r.len(), n.len());
+            debug_assert_eq!(a.len(), n.len());
+            (r.as_mut_ptr(), a.as_ptr())
+        }
+    };
+    debug_assert_eq!(b.len(), n.len());
+    let b = b.as_ptr();
+    let num_limbs = n.len();
+    let n = n.as_ptr();
     unsafe { bn_mul_mont(r, a, b, n, n0, num_limbs) }
 }
 
@@ -249,71 +258,15 @@ prefixed_extern! {
     );
 }
 
-/// r *= a
-pub(super) fn limbs_mont_mul(
-    r: &mut [Limb],
-    a: &[Limb],
-    m: &[Limb],
-    n0: &N0,
-    cpu_features: cpu::Features,
-) {
-    debug_assert_eq!(r.len(), m.len());
-    debug_assert_eq!(a.len(), m.len());
-    unsafe {
-        mul_mont(
-            r.as_mut_ptr(),
-            r.as_ptr(),
-            a.as_ptr(),
-            m.as_ptr(),
-            n0,
-            r.len(),
-            cpu_features,
-        )
-    }
-}
-
-/// r = a * b
-#[cfg(not(target_arch = "x86_64"))]
-pub(super) fn limbs_mont_product(
-    r: &mut [Limb],
-    a: &[Limb],
-    b: &[Limb],
-    m: &[Limb],
-    n0: &N0,
-    cpu_features: cpu::Features,
-) {
-    debug_assert_eq!(r.len(), m.len());
-    debug_assert_eq!(a.len(), m.len());
-    debug_assert_eq!(b.len(), m.len());
-
-    unsafe {
-        mul_mont(
-            r.as_mut_ptr(),
-            a.as_ptr(),
-            b.as_ptr(),
-            m.as_ptr(),
-            n0,
-            r.len(),
-            cpu_features,
-        )
-    }
-}
-
 /// r = r**2
-pub(super) fn limbs_square_mont(r: &mut [Limb], m: &[Limb], n0: &N0, cpu_features: cpu::Features) {
-    debug_assert_eq!(r.len(), m.len());
-    unsafe {
-        mul_mont(
-            r.as_mut_ptr(),
-            r.as_ptr(),
-            r.as_ptr(),
-            m.as_ptr(),
-            n0,
-            r.len(),
-            cpu_features,
-        )
-    }
+pub(super) fn limbs_square_mont(r: &mut [Limb], n: &[Limb], n0: &N0, _cpu: cpu::Features) {
+    debug_assert_eq!(r.len(), n.len());
+    let r = r.as_mut_ptr();
+    let num_limbs = n.len();
+    let n = n.as_ptr();
+    unsafe { bn_mul_mont(r, r, r, n, n0, num_limbs) }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,4 +1,4 @@
-// Copyright 2017-2023 Brian Smith.
+// Copyright 2025 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,17 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-mod constant;
-
-#[cfg(feature = "alloc")]
-pub mod bigint;
-
-mod inout;
-pub mod montgomery;
-
-mod n0;
-
-#[allow(dead_code)]
-const BIGINT_MODULUS_MAX_LIMBS: usize = 8192 / crate::limb::LIMB_BITS;
-
-pub use self::{constant::limbs_from_hex, inout::InOut};
+pub enum InOut<'io, T: ?Sized> {
+    InPlace(&'io mut T),
+    #[cfg_attr(target_arch = "x86_64", allow(dead_code))]
+    Disjoint(&'io mut T, &'io T),
+}

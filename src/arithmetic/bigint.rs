@@ -42,8 +42,8 @@ pub(crate) use self::{
     modulusvalue::OwnedModulusValue,
     private_exponent::PrivateExponent,
 };
+use super::{montgomery::*, InOut};
 use crate::{
-    arithmetic::montgomery::*,
     bits::BitLength,
     c, error,
     limb::{self, Limb, LIMB_BITS},
@@ -99,7 +99,13 @@ fn from_montgomery_amm<M>(limbs: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, Unenc
     let mut one = [0; MODULUS_MAX_LIMBS];
     one[0] = 1;
     let one = &one[..m.limbs().len()];
-    limbs_mont_mul(&mut limbs, one, m.limbs(), m.n0(), m.cpu_features());
+    limbs_mul_mont(
+        InOut::InPlace(&mut limbs),
+        one,
+        m.limbs(),
+        m.n0(),
+        m.cpu_features(),
+    );
     Elem {
         limbs,
         encoding: PhantomData,
@@ -144,7 +150,13 @@ pub fn elem_mul<M, AF, BF>(
 where
     (AF, BF): ProductEncoding,
 {
-    limbs_mont_mul(&mut b.limbs, &a.limbs, m.limbs(), m.n0(), m.cpu_features());
+    limbs_mul_mont(
+        InOut::InPlace(&mut b.limbs),
+        &a.limbs,
+        m.limbs(),
+        m.n0(),
+        m.cpu_features(),
+    );
     Elem {
         limbs: b.limbs,
         encoding: PhantomData,
@@ -467,7 +479,13 @@ pub fn elem_exp_consttime<M>(
         let src1 = entry(previous, src1, num_limbs);
         let src2 = entry(previous, src2, num_limbs);
         let dst = entry_mut(rest, 0, num_limbs);
-        limbs_mont_product(dst, src1, src2, m.limbs(), m.n0(), m.cpu_features());
+        limbs_mul_mont(
+            InOut::Disjoint(dst, src1),
+            src2,
+            m.limbs(),
+            m.n0(),
+            m.cpu_features(),
+        );
     }
 
     let tmp = m.zero();
