@@ -300,7 +300,7 @@ pub(super) fn limbs_mont_product(
 }
 
 /// r = r**2
-pub(super) fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0, cpu_features: cpu::Features) {
+pub(super) fn limbs_square_mont(r: &mut [Limb], m: &[Limb], n0: &N0, cpu_features: cpu::Features) {
     debug_assert_eq!(r.len(), m.len());
     unsafe {
         mul_mont(
