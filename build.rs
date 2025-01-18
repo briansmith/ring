@@ -190,6 +190,11 @@ const ASM_TARGETS: &[AsmTarget] = &[
         perlasm_format: "elf",
     },
     AsmTarget {
+        oss: &["horizon"],
+        arch: ARM,
+        perlasm_format: "linux32",
+    },
+    AsmTarget {
         oss: APPLE_ABI,
         arch: AARCH64,
         perlasm_format: "ios64",
