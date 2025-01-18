@@ -205,7 +205,7 @@ fn elem_squared<M, E>(
 where
     (E, E): ProductEncoding,
 {
-    limbs_mont_square(&mut a.limbs, m.limbs(), m.n0(), m.cpu_features());
+    limbs_square_mont(&mut a.limbs, m.limbs(), m.n0(), m.cpu_features());
     Elem {
         limbs: a.limbs,
         encoding: PhantomData,
@@ -638,7 +638,7 @@ pub fn elem_exp_consttime<M>(
             if i >= TABLE_ENTRIES as LeakyWindow {
                 break;
             }
-            limbs_mont_square(acc, m_cached, n0, cpu_features);
+            limbs_square_mont(acc, m_cached, n0, cpu_features);
         }
     }
 
