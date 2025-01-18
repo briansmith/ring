@@ -132,6 +132,7 @@ impl crate::sealed::Sealed for SystemRandom {}
     target_os = "haiku",
     target_os = "hermit",
     target_os = "hurd",
+    target_os = "horizon",
     target_os = "illumos",
     target_os = "linux",
     target_os = "netbsd",
