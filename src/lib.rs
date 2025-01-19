@@ -106,9 +106,6 @@ mod prefixed;
 pub mod test;
 
 #[macro_use]
-mod arithmetic;
-
-#[macro_use]
 mod bssl;
 
 #[macro_use]
@@ -117,7 +114,7 @@ mod polyfill;
 pub mod aead;
 
 pub mod agreement;
-
+mod arithmetic;
 mod bits;
 
 pub(crate) mod c;
