@@ -42,7 +42,7 @@ pub(crate) use self::{
     modulusvalue::OwnedModulusValue,
     private_exponent::PrivateExponent,
 };
-use super::{montgomery::*, InOut, MAX_LIMBS};
+use super::{montgomery::*, LimbSliceError, MAX_LIMBS};
 use crate::{
     bits::BitLength,
     c, error,
@@ -99,13 +99,8 @@ fn from_montgomery_amm<M>(limbs: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, Unenc
     let mut one = [0; MAX_LIMBS];
     one[0] = 1;
     let one = &one[..m.limbs().len()];
-    limbs_mul_mont(
-        InOut::InPlace(&mut limbs),
-        one,
-        m.limbs(),
-        m.n0(),
-        m.cpu_features(),
-    );
+    limbs_mul_mont((&mut limbs[..], one), m.limbs(), m.n0(), m.cpu_features())
+        .unwrap_or_else(unwrap_impossible_limb_slice_error);
     Elem {
         limbs,
         encoding: PhantomData,
@@ -151,12 +146,12 @@ where
     (AF, BF): ProductEncoding,
 {
     limbs_mul_mont(
-        InOut::InPlace(&mut b.limbs),
-        &a.limbs,
+        (&mut b.limbs[..], &a.limbs[..]),
         m.limbs(),
         m.n0(),
         m.cpu_features(),
-    );
+    )
+    .unwrap_or_else(unwrap_impossible_limb_slice_error);
     Elem {
         limbs: b.limbs,
         encoding: PhantomData,
@@ -217,7 +212,8 @@ fn elem_squared<M, E>(
 where
     (E, E): ProductEncoding,
 {
-    limbs_square_mont(&mut a.limbs, m.limbs(), m.n0(), m.cpu_features());
+    limbs_square_mont(&mut a.limbs, m.limbs(), m.n0(), m.cpu_features())
+        .unwrap_or_else(unwrap_impossible_limb_slice_error);
     Elem {
         limbs: a.limbs,
         encoding: PhantomData,
@@ -479,13 +475,8 @@ pub fn elem_exp_consttime<M>(
         let src1 = entry(previous, src1, num_limbs);
         let src2 = entry(previous, src2, num_limbs);
         let dst = entry_mut(rest, 0, num_limbs);
-        limbs_mul_mont(
-            InOut::Disjoint(dst, src1),
-            src2,
-            m.limbs(),
-            m.n0(),
-            m.cpu_features(),
-        );
+        limbs_mul_mont((dst, src1, src2), m.limbs(), m.n0(), m.cpu_features())
+            .map_err(error::erase::<LimbSliceError>)?;
     }
 
     let tmp = m.zero();
@@ -649,15 +640,16 @@ pub fn elem_exp_consttime<M>(
         mut i: LeakyWindow,
         num_limbs: usize,
         cpu_features: cpu::Features,
-    ) {
+    ) -> Result<(), LimbSliceError> {
         loop {
             scatter(table, acc, i, num_limbs);
             i *= 2;
             if i >= TABLE_ENTRIES as LeakyWindow {
                 break;
             }
-            limbs_square_mont(acc, m_cached, n0, cpu_features);
+            limbs_square_mont(acc, m_cached, n0, cpu_features)?;
         }
+        Ok(())
     }
 
     // All entries in `table` will be Montgomery encoded.
@@ -670,7 +662,8 @@ pub fn elem_exp_consttime<M>(
     acc.copy_from_slice(base_cached);
 
     // Fill in entries 1, 2, 4, 8, 16.
-    scatter_powers_of_2(table, acc, m_cached, n0, 1, num_limbs, cpu_features);
+    scatter_powers_of_2(table, acc, m_cached, n0, 1, num_limbs, cpu_features)
+        .map_err(error::erase::<LimbSliceError>)?;
     // Fill in entries 3, 6, 12, 24; 5, 10, 20, 30; 7, 14, 28; 9, 18; 11, 22; 13, 26; 15, 30;
     // 17; 19; 21; 23; 25; 27; 29; 31.
     for i in (3..(TABLE_ENTRIES as LeakyWindow)).step_by(2) {
@@ -683,7 +676,8 @@ pub fn elem_exp_consttime<M>(
             Window::from(i - 1), // Not secret
             num_limbs,
         );
-        scatter_powers_of_2(table, acc, m_cached, n0, i, num_limbs, cpu_features);
+        scatter_powers_of_2(table, acc, m_cached, n0, i, num_limbs, cpu_features)
+            .map_err(error::erase::<LimbSliceError>)?;
     }
 
     let acc = limb::fold_5_bit_windows(
@@ -726,6 +720,16 @@ pub fn elem_verify_equal_consttime<M, E>(
         Ok(())
     } else {
         Err(error::Unspecified)
+    }
+}
+
+#[cold]
+#[inline(never)]
+fn unwrap_impossible_limb_slice_error(err: LimbSliceError) {
+    match err {
+        LimbSliceError::LenMismatch(_) => unreachable!(),
+        LimbSliceError::TooShort(_) => unreachable!(),
+        LimbSliceError::TooLong(_) => unreachable!(),
     }
 }
 

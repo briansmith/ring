@@ -1,4 +1,4 @@
-// Copyright 2017-2023 Brian Smith.
+// Copyright 2017-2025 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-pub use super::{n0::N0, InOut};
+pub use super::n0::N0;
+use super::{inout::AliasingSlices, LimbSliceError, MIN_LIMBS};
 use crate::cpu;
 
 // Indicates that the element is not encoded; there is no *R* factor
@@ -113,25 +114,15 @@ impl ProductEncoding for (RRR, RInverse) {
 use crate::{bssl, c, limb::Limb};
 
 #[inline(always)]
-pub(super) fn limbs_mul_mont(ra: InOut<[Limb]>, b: &[Limb], n: &[Limb], n0: &N0, _: cpu::Features) {
-    // XXX/TODO: All the `debug_assert_eq!` length checking needs to be
-    // replaced with enforcement that happens regardless of debug mode.
-    let (r, a) = match ra {
-        InOut::InPlace(r) => {
-            debug_assert_eq!(r.len(), n.len());
-            (r.as_mut_ptr(), r.as_ptr())
-        }
-        InOut::Disjoint(r, a) => {
-            debug_assert_eq!(r.len(), n.len());
-            debug_assert_eq!(a.len(), n.len());
-            (r.as_mut_ptr(), a.as_ptr())
-        }
-    };
-    debug_assert_eq!(b.len(), n.len());
-    let b = b.as_ptr();
-    let num_limbs = n.len();
-    let n = n.as_ptr();
-    unsafe { bn_mul_mont(r, a, b, n, n0, num_limbs) }
+pub(super) fn limbs_mul_mont(
+    in_out: impl AliasingSlices<Limb>,
+    n: &[Limb],
+    n0: &N0,
+    cpu: cpu::Features,
+) -> Result<(), LimbSliceError> {
+    bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
+        (MIN_LIMBS, cpu::Features) => bn_mul_mont
+    })
 }
 
 #[cfg(not(any(
@@ -242,31 +233,14 @@ prefixed_extern! {
     fn limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
 }
 
-#[cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86_64",
-    target_arch = "x86"
-))]
-prefixed_extern! {
-    // `r` and/or 'a' and/or 'b' may alias.
-    fn bn_mul_mont(
-        r: *mut Limb,
-        a: *const Limb,
-        b: *const Limb,
-        n: *const Limb,
-        n0: &N0,
-        num_limbs: c::size_t,
-    );
-}
-
 /// r = r**2
-pub(super) fn limbs_square_mont(r: &mut [Limb], n: &[Limb], n0: &N0, _cpu: cpu::Features) {
-    debug_assert_eq!(r.len(), n.len());
-    let r = r.as_mut_ptr();
-    let num_limbs = n.len();
-    let n = n.as_ptr();
-    unsafe { bn_mul_mont(r, r, r, n, n0, num_limbs) }
+pub(super) fn limbs_square_mont(
+    r: &mut [Limb],
+    n: &[Limb],
+    n0: &N0,
+    cpu: cpu::Features,
+) -> Result<(), LimbSliceError> {
+    limbs_mul_mont(r, n, n0, cpu)
 }
 
 #[cfg(test)]
