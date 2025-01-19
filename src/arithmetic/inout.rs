@@ -13,7 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub enum InOut<'io, T: ?Sized> {
-    InPlace(&'io mut T),
+    SquareInPlace(&'io mut T),
+    InPlace(&'io mut T, &'io T),
     #[cfg_attr(target_arch = "x86_64", allow(dead_code))]
-    Disjoint(&'io mut T, &'io T),
+    Disjoint(&'io mut T, &'io T, &'io T),
 }

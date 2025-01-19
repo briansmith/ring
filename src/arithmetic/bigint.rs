@@ -100,8 +100,7 @@ fn from_montgomery_amm<M>(limbs: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, Unenc
     one[0] = 1;
     let one = &one[..m.limbs().len()];
     limbs_mul_mont(
-        InOut::InPlace(&mut limbs),
-        one,
+        InOut::InPlace(&mut limbs, one),
         m.limbs(),
         m.n0(),
         m.cpu_features(),
@@ -151,8 +150,7 @@ where
     (AF, BF): ProductEncoding,
 {
     limbs_mul_mont(
-        InOut::InPlace(&mut b.limbs),
-        &a.limbs,
+        InOut::InPlace(&mut b.limbs, &a.limbs),
         m.limbs(),
         m.n0(),
         m.cpu_features(),
@@ -480,8 +478,7 @@ pub fn elem_exp_consttime<M>(
         let src2 = entry(previous, src2, num_limbs);
         let dst = entry_mut(rest, 0, num_limbs);
         limbs_mul_mont(
-            InOut::Disjoint(dst, src1),
-            src2,
+            InOut::Disjoint(dst, src1, src2),
             m.limbs(),
             m.n0(),
             m.cpu_features(),

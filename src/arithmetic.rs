@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[macro_use]
+mod ffi;
+
 mod constant;
 
 #[cfg(feature = "alloc")]
@@ -21,6 +24,8 @@ mod inout;
 pub mod montgomery;
 
 mod n0;
+
+pub(crate) use self::ffi::BIGINT_MODULUS_MIN_LIMBS;
 
 #[allow(dead_code)]
 const BIGINT_MODULUS_MAX_LIMBS: usize = 8192 / crate::limb::LIMB_BITS;

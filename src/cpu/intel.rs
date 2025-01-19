@@ -174,6 +174,8 @@ cfg_if! {
         impl_get_feature!{ MOVBE => Movbe }
         impl_get_feature!{ AVX => Avx }
         impl_get_feature!{ AVX2 => Avx2 }
+        impl_get_feature!{ BMI2 => Bmi2 }
+        impl_get_feature!{ ADX => Adx }
         impl_get_feature!{ SHA => Sha }
 
         impl Ssse3 {

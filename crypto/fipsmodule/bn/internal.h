@@ -166,22 +166,40 @@ typedef crypto_word_t BN_ULONG;
 #endif
 
 
+// If at least one of |ap| or |bp| is fully reduced, |rp| will be fully reduced.
+// If neither is fully-reduced, the output may not be either.
+//
+// This function allocates |num| words on the stack, so |num| should be at most
+// |BN_MONTGOMERY_MAX_WORDS|.
+//
+// TODO(davidben): The x86_64 implementation expects a 32-bit input and masks
+// off upper bits. The aarch64 implementation expects a 64-bit input and does
+// not. |size_t| is the safer option but not strictly correct for x86_64. But
+// the |BN_MONTGOMERY_MAX_WORDS| bound makes this moot.
+//
+// See also discussion in |ToWord| in abi_test.h for notes on smaller-than-word
+// inputs.
+//
 // |num| must be at least 4, at least on x86.
 //
 // In other forks, |bn_mul_mont| returns an |int| indicating whether it
 // actually did the multiplication. All our implementations always do the
 // multiplication, and forcing callers to deal with the possibility of it
 // failing just leads to further problems.
-//
-// In other forks, |bn_mod_mul|'s `num` argument has type |int| but it is
-// implicitly treated as a |size_t|; when |int| is smaller than |size_t|
-// then the |movq 48(%rsp),%r9| done by x86_64-xlate.pl implicitly does the
-// conversion.
 OPENSSL_STATIC_ASSERT(sizeof(int) == sizeof(size_t) ||
                       (sizeof(int) == 4 && sizeof(size_t) == 8),
                       "int and size_t ABI mismatch");
+#if !defined(OPENSSL_X86_64)
 void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                  const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+#else
+void bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                     const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+static inline void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                 const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
+    bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
+}
+#endif
 
 static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
                                  BN_ULONG a, BN_ULONG b) {

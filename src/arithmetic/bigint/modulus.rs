@@ -21,12 +21,7 @@ use crate::{
 };
 use core::marker::PhantomData;
 
-/// The x86 implementation of `bn_mul_mont`, at least, requires at least 4
-/// limbs. For a long time we have required 4 limbs for all targets, though
-/// this may be unnecessary. TODO: Replace this with
-/// `n.len() < 256 / LIMB_BITS` so that 32-bit and 64-bit platforms behave the
-/// same.
-pub const MODULUS_MIN_LIMBS: usize = 4;
+pub const MODULUS_MIN_LIMBS: usize = super::super::BIGINT_MODULUS_MIN_LIMBS;
 
 pub const MODULUS_MAX_LIMBS: usize = super::super::BIGINT_MODULUS_MAX_LIMBS;
 
