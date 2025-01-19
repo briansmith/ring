@@ -17,7 +17,8 @@
 pub use self::{key_rejected::KeyRejected, unspecified::Unspecified};
 
 pub(crate) use self::{
-    input_too_long::InputTooLongError, too_much_output_requested::TooMuchOutputRequestedError,
+    input_too_long::InputTooLongError, len_mismatch_error::LenMismatchError,
+    too_much_output_requested::TooMuchOutputRequestedError,
 };
 
 mod input_too_long;
@@ -46,5 +47,12 @@ cold_exhaustive_error! {
         //      length.
         //    * Some arbitrary value.
         imprecise_output_length: usize
+    }
+}
+
+cold_exhaustive_error! {
+    struct len_mismatch_error::LenMismatchError
+        with pub(crate) constructor {
+        len: usize
     }
 }
