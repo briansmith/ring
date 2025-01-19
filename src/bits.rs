@@ -92,7 +92,7 @@ impl BitLength<usize> {
         feature = "alloc"
     ))]
     #[inline]
-    pub fn as_usize_bytes_rounded_up(&self) -> usize {
+    pub const fn as_usize_bytes_rounded_up(&self) -> usize {
         // Equivalent to (self.0 + 7) / 8, except with no potential for
         // overflow and without branches.
 
@@ -130,3 +130,10 @@ impl TryFrom<BitLength<u64>> for BitLength<core::num::NonZeroU64> {
         value.try_into().map(BitLength)
     }
 }
+
+const _TEST_AS_USIZE_BYTES_ROUNDED_UP_EVEN: () =
+    assert!(BitLength::from_bits(8192).as_usize_bytes_rounded_up() == 8192 / 8);
+const _TEST_AS_USIZE_BYTES_ROUNDED_UP_ONE_BIT_HIGH: () =
+    assert!(BitLength::from_bits(8192 + 1).as_usize_bytes_rounded_up() == (8192 / 8) + 1);
+const _TEST_AS_USIZE_BYTES_ROUNDED_UP_SEVEN_BITS_HIGH: () =
+    assert!(BitLength::from_bits(8192 + 7).as_usize_bytes_rounded_up() == (8192 / 8) + 1);
