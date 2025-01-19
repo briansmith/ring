@@ -12,27 +12,34 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::limb::LIMB_BITS;
+pub(crate) use self::{constant::limbs_from_hex, limb_slice_error::LimbSliceError};
+use crate::{error::LenMismatchError, limb::LIMB_BITS};
+
+#[macro_use]
+mod ffi;
 
 mod constant;
 
 #[cfg(feature = "alloc")]
 pub mod bigint;
 
-mod inout;
+pub(crate) mod inout;
 pub mod montgomery;
 
 mod n0;
 
 // The minimum number of limbs allowed for any `&[Limb]` operation.
 //
-// This must be at least 4 for bn_mul_mont to work, at least on x86.
-//
 // TODO: Use `256 / LIMB_BITS` so that the limit is independent of limb size.
-#[allow(dead_code)] // XXX: Presently only used by `bigint`.
 pub const MIN_LIMBS: usize = 4;
 
 // The maximum number of limbs allowed for any `&[Limb]` operation.
 pub const MAX_LIMBS: usize = 8192 / LIMB_BITS;
 
-pub use self::{constant::limbs_from_hex, inout::InOut};
+cold_exhaustive_error! {
+    enum limb_slice_error::LimbSliceError {
+        len_mismatch => LenMismatch(LenMismatchError),
+        too_short => TooShort(usize),
+        too_long => TooLong(usize),
+    }
+}
