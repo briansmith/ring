@@ -23,13 +23,13 @@ use crate::{
     arithmetic::bigint,
     bits, error,
     io::{self, der},
-    limb,
 };
 
 pub(crate) mod padding;
 
 // Maximum RSA modulus size supported for signature verification (in bytes).
-const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = bigint::MODULUS_MAX_LIMBS * limb::LIMB_BYTES;
+const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize =
+    bits::BitLength::from_bits(8192).as_usize_bytes_rounded_up();
 
 // Keep in sync with the documentation comment for `KeyPair`.
 const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength = bits::BitLength::from_bits(4096);
