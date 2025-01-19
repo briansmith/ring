@@ -150,6 +150,8 @@ prefixed_export! {
         n0: &N0,
         num_limbs: c::size_t,
     ) {
+        use super::MAX_LIMBS;
+
         // The mutable pointer `r` may alias `a` and/or `b`, so the lifetimes of
         // any slices for `a` or `b` must not overlap with the lifetime of any
         // mutable for `r`.
@@ -157,7 +159,7 @@ prefixed_export! {
         // Nothing aliases `n`
         let n = unsafe { core::slice::from_raw_parts(n, num_limbs) };
 
-        let mut tmp = [0; 2 * super::BIGINT_MODULUS_MAX_LIMBS];
+        let mut tmp = [0; 2 * MAX_LIMBS];
         let tmp = &mut tmp[..(2 * num_limbs)];
         {
             let a: &[Limb] = unsafe { core::slice::from_raw_parts(a, num_limbs) };
@@ -269,6 +271,7 @@ pub(super) fn limbs_square_mont(r: &mut [Limb], n: &[Limb], n0: &N0, _cpu: cpu::
 
 #[cfg(test)]
 mod tests {
+    use super::super::MAX_LIMBS;
     use super::*;
     use crate::limb::Limb;
 
@@ -290,7 +293,7 @@ mod tests {
         ];
 
         for (i, (r_input, a, w, expected_retval, expected_r)) in TEST_CASES.iter().enumerate() {
-            let mut r = [0; super::super::BIGINT_MODULUS_MAX_LIMBS];
+            let mut r = [0; MAX_LIMBS];
             let r = {
                 let r = &mut r[..r_input.len()];
                 r.copy_from_slice(r_input);

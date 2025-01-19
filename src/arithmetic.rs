@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use crate::limb::LIMB_BITS;
+
 mod constant;
 
 #[cfg(feature = "alloc")]
@@ -22,7 +24,15 @@ pub mod montgomery;
 
 mod n0;
 
-#[allow(dead_code)]
-const BIGINT_MODULUS_MAX_LIMBS: usize = 8192 / crate::limb::LIMB_BITS;
+// The minimum number of limbs allowed for any `&[Limb]` operation.
+//
+// This must be at least 4 for bn_mul_mont to work, at least on x86.
+//
+// TODO: Use `256 / LIMB_BITS` so that the limit is independent of limb size.
+#[allow(dead_code)] // XXX: Presently only used by `bigint`.
+pub const MIN_LIMBS: usize = 4;
+
+// The maximum number of limbs allowed for any `&[Limb]` operation.
+pub const MAX_LIMBS: usize = 8192 / LIMB_BITS;
 
 pub use self::{constant::limbs_from_hex, inout::InOut};

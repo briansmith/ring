@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    modulus::{MODULUS_MAX_LIMBS, MODULUS_MIN_LIMBS},
+    super::{MAX_LIMBS, MIN_LIMBS},
     BoxedLimbs, Modulus, PublicModulus,
 };
 use crate::{
@@ -41,11 +41,11 @@ impl<M: PublicModulus> Clone for OwnedModulusValue<M> {
 impl<M> OwnedModulusValue<M> {
     pub(crate) fn from_be_bytes(input: untrusted::Input) -> Result<Self, error::KeyRejected> {
         let n = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
-        if n.len() > MODULUS_MAX_LIMBS {
+        if n.len() > MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
-        const _MODULUS_MIN_LIMBS_AT_LEAST_2: () = assert!(MODULUS_MIN_LIMBS >= 2);
-        if n.len() < MODULUS_MIN_LIMBS {
+        const _MODULUS_MIN_LIMBS_AT_LEAST_2: () = assert!(MIN_LIMBS >= 2);
+        if n.len() < MIN_LIMBS {
             return Err(error::KeyRejected::unexpected_error());
         }
         // The above implies n >= 3, so we don't need to check it.
