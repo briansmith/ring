@@ -37,7 +37,7 @@
 macro_rules! cold_exhaustive_error {
     // struct
     {
-        struct $mod_name:ident::$Error:ident {
+        struct $mod_name:ident::$Error:ident with $vis:vis constructor {
             $field:ident: $ValueType:ty
         }
     } => {
@@ -50,9 +50,21 @@ macro_rules! cold_exhaustive_error {
             impl $Error {
                 #[cold]
                 #[inline(never)]
-                pub(super) fn new($field: $ValueType) -> Self {
+                $vis fn new($field: $ValueType) -> Self {
                     Self { $field }
                 }
+            }
+        }
+    };
+    // struct with default constructor visibility.
+    {
+        struct $mod_name:ident::$Error:ident {
+            $field:ident: $ValueType:ty
+        }
+    } => {
+        cold_exhaustive_error! {
+            struct $mod_name::$Error with pub(super) constructor {
+                $field: $ValueType
             }
         }
     };

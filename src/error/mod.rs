@@ -23,11 +23,28 @@ pub(crate) use self::{
 mod input_too_long;
 mod into_unspecified;
 mod key_rejected;
-mod too_much_output_requested;
 mod unspecified;
 
 #[cold]
 #[inline(never)]
 pub(crate) fn erase<T>(_: T) -> Unspecified {
     Unspecified
+}
+
+cold_exhaustive_error! {
+    struct too_much_output_requested::TooMuchOutputRequestedError
+        with pub(crate) constructor {
+        // Note that this might not actually be the (exact) output length
+        // requested, and its units might be lost. For example, it could be any of
+        // the following:
+        //
+        //    * The length in bytes of the entire output.
+        //    * The length in bytes of some *part* of the output.
+        //    * A bit length.
+        //    * A length in terms of "blocks" or other grouping of output values.
+        //    * Some intermediate quantity that was used when checking the output
+        //      length.
+        //    * Some arbitrary value.
+        imprecise_output_length: usize
+    }
 }
