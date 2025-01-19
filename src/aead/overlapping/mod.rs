@@ -18,8 +18,6 @@ pub use self::{
     partial_block::PartialBlock,
 };
 
-use self::array::LenMismatchError;
-
 mod array;
 mod base;
 mod partial_block;

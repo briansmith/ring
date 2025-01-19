@@ -14,8 +14,8 @@
 
 #![cfg_attr(not(test), allow(dead_code))]
 
-pub use self::len_mismatch_error::LenMismatchError;
 use super::Overlapping;
+use crate::error::LenMismatchError;
 use core::array::TryFromSliceError;
 
 pub struct Array<'o, T, const N: usize> {
@@ -57,8 +57,4 @@ impl<T, const N: usize> Array<'_, T, N> {
                 unreachable!() // Due to invariant
             })
     }
-}
-
-cold_exhaustive_error! {
-    struct len_mismatch_error::LenMismatchError { len: usize }
 }
