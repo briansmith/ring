@@ -120,6 +120,26 @@ pub(super) fn limbs_mul_mont(
     n0: &N0,
     cpu: cpu::Features,
 ) -> Result<(), LimbSliceError> {
+    // WARNING: In OpenSSL/BoringSSL, `bn_mul_mont` returns `int`, but in this
+    // codebase they don't return a result.
+    //
+    // WARNING: In BoringSSL, at least the 32-bit ARM implementations don't
+    // actually return 1 or 0, but non-zero or zero, despite how they are
+    // documented in BoringSSL.
+    //
+    // The implementations of `bn_mul_mont` for the implementations in the
+    // *ring* tree are ABI-compatible with both. However, in some ABIs (for
+    // other architectures), the ABI for `void` functions and `int`-returning
+    // functions is significantly different. So if/when importing in, or
+    // otherwise linking to, other implementations of `bn_mul_mont`, the
+    // `bn_mul_mont` implementation will need to be verified for ABI
+    // compatibility and/or adapted.
+
+    // Required for 32-bit arm.
+    const _32_BIT_ARM_REQUIRES_MIN_LIMBS_AT_LEAST_2: () = assert!(MIN_LIMBS >= 2);
+    // We haven't tested other implementations with less than 4 limbs.
+    const _32_BIT_X86_REQUIRES_MIN_LIMBS_AT_LEAST_4: () = assert!(MIN_LIMBS >= 4);
+
     bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
         (MIN_LIMBS, cpu::Features) => bn_mul_mont
     })

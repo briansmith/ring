@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{inout::AliasingSlices, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
+use super::{inout::AliasingSlices, n0::N0, LimbSliceError, MAX_LIMBS};
 use crate::{c, limb::Limb, polyfill::usize_from_u32};
 use core::mem::size_of;
 
@@ -33,7 +33,6 @@ macro_rules! bn_mul_mont_ffi {
         use crate::{c, limb::Limb};
         prefixed_extern! {
             // `r` and/or 'a' and/or 'b' may alias.
-            // XXX: BoringSSL declares these functions to return `int`.
             fn $f(
                 r: *mut Limb,
                 a: *const Limb,
@@ -66,12 +65,6 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const MIN_LEN: usize>(
         len: c::size_t,
     ),
 ) -> Result<(), LimbSliceError> {
-    /// The x86 implementation of `bn_mul_mont`, at least, requires at least 4
-    /// limbs. For a long time we have required 4 limbs for all targets, though
-    /// this may be unnecessary.
-    const _MIN_LIMBS_AT_LEAST_4: () = assert!(MIN_LIMBS >= 4);
-    // We haven't tested shorter lengths.
-    assert!(MIN_LEN >= MIN_LIMBS);
     if n.len() < MIN_LEN {
         return Err(LimbSliceError::too_short(n.len()));
     }
