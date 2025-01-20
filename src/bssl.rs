@@ -21,14 +21,27 @@ use crate::{c, error};
 #[repr(transparent)]
 pub struct Result(c::int);
 
+impl Result {
+    #[cfg(not(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        all(target_arch = "arm", target_endian = "little"),
+        target_arch = "x86",
+        target_arch = "x86_64"
+    )))]
+    pub fn ok() -> Self {
+        Self(1)
+    }
+}
+
 impl From<Result> for core::result::Result<(), error::Unspecified> {
-    fn from(ret: Result) -> Self {
-        match ret.0 {
-            1 => Ok(()),
-            c => {
-                debug_assert_eq!(c, 0, "`bssl::Result` value must be 0 or 1");
-                Err(error::Unspecified)
-            }
+    fn from(Result(ret): Result) -> Self {
+        // BoringSSL functions are supposed to return 1 on success but some,
+        // such as bn_mul_mont* on 32-bit ARM at least, return other non-zero
+        // values on success instead.
+        if ret == 0 {
+            Err(error::Unspecified)
+        } else {
+            Ok(())
         }
     }
 }

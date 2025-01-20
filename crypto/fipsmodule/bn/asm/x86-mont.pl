@@ -68,6 +68,8 @@ $frame=32;				# size of above frame rounded up to 16n
 
 	&xor	("eax","eax");
 	&mov	("edi",&wparam(5));	# int num
+	&cmp	("edi",4);
+	&jl	(&label("just_leave"));
 
 	&lea	("esi",&wparam(0));	# put aside pointer to argument block
 	&lea	("edx",&wparam(1));	# load ap
@@ -327,6 +329,7 @@ $mask="mm7";
 
 	&mov	("esp",$_sp);		# pull saved stack pointer
 	&mov	("eax",1);
+&set_label("just_leave");
 &function_end("bn_mul_mont");
 
 &asciz("Montgomery Multiplication for x86, CRYPTOGAMS by <appro\@openssl.org>");

@@ -39,7 +39,10 @@ static const BN_ULONG N_N0[] = {
 void p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
   /* XXX: Inefficient. TODO: optimize with dedicated multiplication routine. */
-  bn_mul_mont(r, a, b, N, N_N0, P256_LIMBS);
+  debug_assert_nonsecret(P256_LIMBS >= 4);
+  int res = bn_mul_mont(r, a, b, N, N_N0, P256_LIMBS);
+  debug_assert_nonsecret(res != 0);
+  (void)res;
 }
 
 /* XXX: Inefficient. TODO: optimize with dedicated squaring routine. */

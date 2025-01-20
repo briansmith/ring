@@ -140,7 +140,7 @@ prefixed_export! {
         n: *const Limb,
         n0: &N0,
         num_limbs: c::size_t,
-    ) {
+    ) -> crate::bssl::Result {
         use super::MAX_LIMBS;
 
         // The mutable pointer `r` may alias `a` and/or `b`, so the lifetimes of
@@ -159,6 +159,7 @@ prefixed_export! {
         }
         let r: &mut [Limb] = unsafe { core::slice::from_raw_parts_mut(r, num_limbs) };
         limbs_from_mont_in_place(r, tmp, n, n0);
+        bssl::Result::ok()
     }
 }
 

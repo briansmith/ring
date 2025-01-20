@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{inout::AliasingSlices, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
-use crate::{c, limb::Limb, polyfill::usize_from_u32};
+use crate::{c, error, limb::Limb, polyfill::usize_from_u32};
 use core::mem::size_of;
 
 const _MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
@@ -41,7 +41,7 @@ macro_rules! bn_mul_mont_ffi {
                 n: *const Limb,
                 n0: &N0,
                 len: c::size_t,
-            );
+            ) -> crate::bssl::Result;
         }
         unsafe {
             crate::arithmetic::ffi::bn_mul_mont_ffi::<$Cpu, { $MIN_LEN }>(
@@ -64,7 +64,7 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const MIN_LEN: usize>(
         n: *const Limb,
         n0: &N0,
         len: c::size_t,
-    ),
+    ) -> crate::bssl::Result,
 ) -> Result<(), LimbSliceError> {
     /// The x86 implementation of `bn_mul_mont`, at least, requires at least 4
     /// limbs. For a long time we have required 4 limbs for all targets, though
@@ -81,12 +81,18 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const MIN_LEN: usize>(
         return Err(LimbSliceError::too_long(n.len()));
     }
 
+    let len = n.len();
     in_out
         .with_pointers(n.len(), |r, a, b| {
-            let len = n.len();
             let n = n.as_ptr();
             let _: Cpu = cpu;
-            unsafe { f(r, a, b, n, n0, len) };
+            let result = unsafe { f(r, a, b, n, n0, len) };
+            Result::from(result)
         })
-        .map_err(LimbSliceError::len_mismatch)
+        .map_err(LimbSliceError::len_mismatch)?
+        .map_err(
+            #[cold]
+            #[inline(never)]
+            |_: error::Unspecified| LimbSliceError::too_short(len),
+        )
 }

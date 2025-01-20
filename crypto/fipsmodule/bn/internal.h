@@ -165,23 +165,16 @@ typedef crypto_word_t BN_ULONG;
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
 
-
-// |num| must be at least 4, at least on x86.
-//
-// In other forks, |bn_mul_mont| returns an |int| indicating whether it
-// actually did the multiplication. All our implementations always do the
-// multiplication, and forcing callers to deal with the possibility of it
-// failing just leads to further problems.
-//
-// In other forks, |bn_mod_mul|'s `num` argument has type |int| but it is
-// implicitly treated as a |size_t|; when |int| is smaller than |size_t|
-// then the |movq 48(%rsp),%r9| done by x86_64-xlate.pl implicitly does the
-// conversion.
+// See `bn_mul_mont_ffi` and `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
 OPENSSL_STATIC_ASSERT(sizeof(int) == sizeof(size_t) ||
                       (sizeof(int) == 4 && sizeof(size_t) == 8),
                       "int and size_t ABI mismatch");
-void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                 const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+// |num| must be at least 4, at least on x86.
+// BoringSSL documents the return value as being 1 or 0, but some
+// implementations (e.g. 32-bit ARM) return different values on
+// success.
+int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 
 static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
                                  BN_ULONG a, BN_ULONG b) {
