@@ -170,7 +170,7 @@ static void elem_div_by_2(Elem r, const Elem a) {
 
 static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
   /* XXX: Not (clearly) constant-time; inefficient.*/
-  bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
+  bn_mul_mont_small(r, a, b, Q, Q_N0, P384_LIMBS);
 }
 
 static inline void elem_mul_by_2(Elem r, const Elem a) {
@@ -215,7 +215,7 @@ void p384_elem_neg(Elem r, const Elem a) {
 void p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
   /* XXX: Inefficient. TODO: Add dedicated multiplication routine. */
-  bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
+  bn_mul_mont_small(r, a, b, N, N_N0, P384_LIMBS);
 }
 
 
