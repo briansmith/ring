@@ -315,7 +315,7 @@ $code.=<<___;
 
 	mov	8(%rsp,$num,8),%rsi	# restore %rsp
 .cfi_def_cfa	%rsi,8
-	mov	\$1,%rax
+	# No return value
 	mov	-48(%rsi),%r15
 .cfi_restore	%r15
 	mov	-40(%rsi),%r14
@@ -762,7 +762,7 @@ ___
 $code.=<<___;
 	mov	8(%rsp,$num,8),%rsi	# restore %rsp
 .cfi_def_cfa	%rsi, 8
-	mov	\$1,%rax
+	# No return value
 	mov	-48(%rsi),%r15
 .cfi_restore	%r15
 	mov	-40(%rsi),%r14
@@ -976,7 +976,7 @@ $code.=<<___;
 	add	\$32,$num
 	jnz	.Lsqr8x_cond_copy
 
-	mov	\$1,%rax
+	# No return value
 	mov	-48(%rsi),%r15
 .cfi_restore	%r15
 	mov	-40(%rsi),%r14
@@ -1345,7 +1345,7 @@ $code.=<<___;
 
 	mov	%rdx,($tptr)
 
-	mov	\$1,%rax
+	# No return value
 	mov	-48(%rsi),%r15
 .cfi_restore	%r15
 	mov	-40(%rsi),%r14

@@ -74,7 +74,8 @@ typedef crypto_word_t BN_ULONG;
 // If neither is fully-reduced, the output may not be either.
 //
 // This function allocates |num| words on the stack, so |num| should be at most
-// |BN_MONTGOMERY_MAX_WORDS|.
+// |BN_MONTGOMERY_MAX_WORDS|. Additionally, |num| must be at least 128 /
+// |BN_BITS2|.
 //
 // TODO(davidben): The x86_64 implementation expects a 32-bit input and masks
 // off upper bits. The aarch64 implementation expects a 64-bit input and does
@@ -83,13 +84,6 @@ typedef crypto_word_t BN_ULONG;
 //
 // See also discussion in |ToWord| in abi_test.h for notes on smaller-than-word
 // inputs.
-//
-// |num| must be at least 4, at least on x86.
-//
-// In other forks, |bn_mul_mont| returns an |int| indicating whether it
-// actually did the multiplication. All our implementations always do the
-// multiplication, and forcing callers to deal with the possibility of it
-// failing just leads to further problems.
 OPENSSL_STATIC_ASSERT(sizeof(int) == sizeof(size_t) ||
                       (sizeof(int) == 4 && sizeof(size_t) == 8),
                       "int and size_t ABI mismatch");
