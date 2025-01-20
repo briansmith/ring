@@ -68,9 +68,9 @@ $_sp=&DWP(4*6,"esp");
 $_bpend=&DWP(4*7,"esp");
 $frame=32;				# size of above frame rounded up to 16n
 
-	&xor	("eax","eax");
+	# No return value. Instead, the caller must ensure num >= 4
 	&mov	("edi",&wparam(5));	# int num
-
+	# No return value.
 	&lea	("esi",&wparam(0));	# put aside pointer to argument block
 	&lea	("edx",&wparam(1));	# load ap
 	&add	("edi",2);		# extra two words on top of tp
@@ -324,7 +324,7 @@ $mask="mm7";
 	&jge	(&label("copy"));
 
 	&mov	("esp",$_sp);		# pull saved stack pointer
-	&mov	("eax",1);
+	# No return value
 &function_end("bn_mul_mont");
 
 &asciz("Montgomery Multiplication for x86, CRYPTOGAMS by <appro\@openssl.org>");
