@@ -101,8 +101,11 @@ pub(super) fn bn_sqr8x_mont(
     n0: &N0,
     cpu: crate::cpu::Features,
 ) -> core::ops::ControlFlow<(), ()> {
-    use crate::cpu;
-    use core::{ops::ControlFlow, ptr};
+    use crate::cpu::{
+        intel::{Adx, Bmi2},
+        GetFeature as _,
+    };
+    use core::ops::ControlFlow;
 
     prefixed_extern! {
         // `r` and/or 'a' may alias.
@@ -110,7 +113,7 @@ pub(super) fn bn_sqr8x_mont(
         fn bn_sqr8x_mont(
             rp: *mut Limb,
             ap: *const Limb,
-            unused_bp: *const Limb,
+            mulx_adx_capable: Limb,
             np: *const Limb,
             n0: &N0,
             num: c::size_t);
@@ -129,11 +132,15 @@ pub(super) fn bn_sqr8x_mont(
 
     let rp = in_out.as_mut_ptr();
     let ap = in_out.as_ptr();
-    let unused_bp = ptr::null();
+    let mulx_adx: Option<(Adx, Bmi2)> = cpu.get_feature();
+    // `Limb::from(mulx_adx.is_some())`, but intentionally branchy.
+    let mulx_adx_capable = match mulx_adx {
+        Some(_) => Limb::from(true),
+        None => Limb::from(false),
+    };
     let np = n.as_ptr();
     let num = n.len();
-    let _: cpu::Features = cpu;
-    unsafe { bn_sqr8x_mont(rp, ap, unused_bp, np, n0, num) };
+    unsafe { bn_sqr8x_mont(rp, ap, mulx_adx_capable, np, n0, num) };
 
     ControlFlow::Break(())
 }
