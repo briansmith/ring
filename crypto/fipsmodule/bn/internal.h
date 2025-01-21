@@ -208,10 +208,28 @@ static inline void bn_mul_mont_small(
     const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
     bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
 }
-#else
-void bn_mul_mont(
+#elif defined(OPENSSL_ARM)
+void bn_mul8x_mont_neon(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                        const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+void bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                      const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+static inline void bn_mul_mont_small(
     BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-    const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+    const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
+    // Approximate what `bn_mul_mont` did so that the NEON version for P-256
+    // when practical.
+    if (num == 8) {
+        // XXX: This should not be accessing `OPENSSL_armcap_P` directly.
+        if ((OPENSSL_armcap_P & ARMV7_NEON) != 0) {
+            bn_mul8x_mont_neon(rp, ap, bp, np, n0, num);
+            return;
+        }
+    }
+    bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
+}
+#else
+void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                 const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 static inline void bn_mul_mont_small(
     BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
     const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
