@@ -201,11 +201,10 @@ impl TestCase {
     /// doesn't have the attribute.
     pub fn consume_optional_bytes(&mut self, key: &str) -> Option<Vec<u8>> {
         let s = self.consume_optional_string(key)?;
-        let result = if s.starts_with('\"') {
+        let result = if let [b'\"', s @ ..] = s.as_bytes() {
             // The value is a quoted UTF-8 string.
-
-            let mut bytes = Vec::with_capacity(s.as_bytes().len() - 2);
-            let mut s = s.as_bytes().iter().skip(1);
+            let mut s = s.iter();
+            let mut bytes = Vec::with_capacity(s.len() - 1);
             loop {
                 let b = match s.next() {
                     Some(b'\\') => {
