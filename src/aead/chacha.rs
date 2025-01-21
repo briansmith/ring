@@ -81,9 +81,6 @@ impl Key {
 
     #[inline(always)]
     pub(super) fn encrypt(&self, counter: Counter, in_out: Overlapping<'_>, cpu: cpu::Features) {
-        // XXX: The x86 and at least one branch of the ARM assembly language
-        // code doesn't allow overlapping input and output unless they are
-        // "in place". See https://rt.openssl.org/Ticket/Display.html?id=4362.
         cfg_if! {
             if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
                 use cpu::{GetFeature as _, arm::Neon};
@@ -116,9 +113,18 @@ impl Key {
                         self, counter, in_out.copy_within(), ())
                 }
             } else if #[cfg(target_arch = "x86")] {
-                chacha20_ctr32_ffi!(
-                    unsafe { (0, cpu::Features, &mut [u8]) => ChaCha20_ctr32 },
-                    self, counter, in_out.copy_within(), cpu)
+                use cpu::{GetFeature as _, intel::{Fxsr, Ssse3}};
+                if in_out.len() >= 1 {
+                    if let Some(cpu) = cpu.get_feature() {
+                        chacha20_ctr32_ffi!(
+                            unsafe { (1, (Fxsr, Ssse3), &mut [u8]) => ChaCha20_ctr32_ssse3 },
+                            self, counter, in_out.copy_within(), cpu)
+                    } else {
+                        chacha20_ctr32_ffi!(
+                            unsafe { (1, (), &mut [u8]) => ChaCha20_ctr32_nohw },
+                            self, counter, in_out.copy_within(), ())
+                    }
+                }
             } else if #[cfg(target_arch = "x86_64")] {
                 use cpu::{GetFeature, intel::{Avx2, Ssse3}};
                 const SSE_MIN_LEN: usize = 128 + 1; // Also AVX2, SSSE3_4X, SSSE3
