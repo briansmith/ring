@@ -99,7 +99,9 @@ pub(super) fn bn_sqr8x_mont(
     in_out: &mut [Limb],
     n: &[Limb],
     n0: &N0,
+    cpu: crate::cpu::Features,
 ) -> core::ops::ControlFlow<(), ()> {
+    use crate::cpu;
     use core::{ops::ControlFlow, ptr};
 
     prefixed_extern! {
@@ -130,6 +132,7 @@ pub(super) fn bn_sqr8x_mont(
     let unused_bp = ptr::null();
     let np = n.as_ptr();
     let num = n.len();
+    let _: cpu::Features = cpu;
     unsafe { bn_sqr8x_mont(rp, ap, unused_bp, np, n0, num) };
 
     ControlFlow::Break(())
