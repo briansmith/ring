@@ -217,7 +217,7 @@ pub(super) mod featureflags {
     // BoringSSL's crypto.c.
     //
     // SAFETY:
-    // - Some assembly language functions access `OPENSSL_armcap_P` directly.
+    // - Some C code accesses `OPENSSL_armcap_P` directly.
     //   Callers of those functions must obtain a `cpu::Features` before calling
     //   them.
     // - `OPENSSL_armcap_P` must always be a superset of `ARMCAP_STATIC`.

@@ -499,4 +499,9 @@ static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
 extern uint32_t OPENSSL_ia32cap_P[4];
 #endif
 
+#if defined(OPENSSL_ARM)
+// OPENSSL_armcap_P contains ARM CPU capabilities.
+extern uint32_t OPENSSL_armcap_P;
+#endif  // OPENSSL_ARM
+
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H

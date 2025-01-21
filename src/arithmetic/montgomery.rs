@@ -123,7 +123,23 @@ pub(super) fn limbs_mul_mont(
 ) -> Result<(), LimbSliceError> {
     const MOD_FALLBACK: usize = 1; // No restriction.
     cfg_if! {
-        if #[cfg(target_arch = "x86_64")] {
+        if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
+            const MIN_8X: usize = 8;
+            const MOD_8X: usize = 8;
+            if n.len() >= MIN_8X && n.len() % MOD_8X == 0 {
+                use crate::cpu::{GetFeature as _, arm::Neon};
+                if let Some(cpu) = cpu.get_feature() {
+                    return bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
+                        (MIN_8X, MOD_8X, Neon) => bn_mul8x_mont_neon
+                    });
+                }
+            }
+            // The ARM version of `bn_mul_mont_nohw` has a minimum of 2.
+            const _MIN_LIMBS_AT_LEAST_2: () = assert!(MIN_LIMBS >= 2);
+            bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
+                (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
+            })
+        } else if #[cfg(target_arch = "x86_64")] {
             const MIN_4X: usize = 8;
             const MOD_4X: usize = 4;
             if n.len() >= MIN_4X && n.len() % MOD_4X == 0 {

@@ -894,6 +894,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "bn_mul_mont_nohw",
         "bn_mul4x_mont",
         "bn_mulx4x_mont",
+        "bn_mul8x_mont_neon",
         "bn_mul_mont_gather5",
         "bn_neg_inv_mod_r_u64",
         "bn_power5",
