@@ -29,7 +29,7 @@ const _MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
 
 macro_rules! bn_mul_mont_ffi {
     ( $in_out:expr, $n:expr, $n0:expr, $cpu:expr,
-      unsafe { ($MIN_LEN:expr, $Cpu:ty) => $f:ident }) => {{
+      unsafe { ($MIN_LEN:expr, $MOD_LEN:expr, $Cpu:ty) => $f:ident }) => {{
         use crate::{c, limb::Limb};
         prefixed_extern! {
             // `r` and/or 'a' and/or 'b' may alias.
@@ -44,7 +44,7 @@ macro_rules! bn_mul_mont_ffi {
             );
         }
         unsafe {
-            crate::arithmetic::ffi::bn_mul_mont_ffi::<$Cpu, { $MIN_LEN }>(
+            crate::arithmetic::ffi::bn_mul_mont_ffi::<$Cpu, { $MIN_LEN }, { $MOD_LEN }>(
                 $in_out, $n, $n0, $cpu, $f,
             )
         }
@@ -52,7 +52,7 @@ macro_rules! bn_mul_mont_ffi {
 }
 
 #[inline]
-pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const MIN_LEN: usize>(
+pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const LEN_MIN: usize, const LEN_MOD: usize>(
     mut in_out: impl AliasingSlices<Limb>,
     n: &[Limb],
     n0: &N0,
@@ -66,13 +66,15 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const MIN_LEN: usize>(
         len: c::size_t,
     ),
 ) -> Result<(), LimbSliceError> {
+    assert_eq!(n.len() % LEN_MOD, 0); // The caller should guard against this.
+
     /// The x86 implementation of `bn_mul_mont`, at least, requires at least 4
     /// limbs. For a long time we have required 4 limbs for all targets, though
     /// this may be unnecessary.
     const _MIN_LIMBS_AT_LEAST_4: () = assert!(MIN_LIMBS >= 4);
     // We haven't tested shorter lengths.
-    assert!(MIN_LEN >= MIN_LIMBS);
-    if n.len() < MIN_LEN {
+    assert!(LEN_MIN >= MIN_LIMBS);
+    if n.len() < LEN_MIN {
         return Err(LimbSliceError::too_short(n.len()));
     }
 
@@ -89,4 +91,46 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const MIN_LEN: usize>(
             unsafe { f(r, a, b, n, n0, len) };
         })
         .map_err(LimbSliceError::len_mismatch)
+}
+
+#[cfg(target_arch = "x86_64")]
+#[inline]
+pub(super) fn bn_sqr8x_mont(
+    in_out: &mut [Limb],
+    n: &[Limb],
+    n0: &N0,
+) -> core::ops::ControlFlow<(), ()> {
+    use core::{ops::ControlFlow, ptr};
+
+    prefixed_extern! {
+        // `r` and/or 'a' may alias.
+        // XXX: BoringSSL declares this to return `int`.
+        fn bn_sqr8x_mont(
+            rp: *mut Limb,
+            ap: *const Limb,
+            unused_bp: *const Limb,
+            np: *const Limb,
+            n0: &N0,
+            num: c::size_t);
+    }
+
+    if n.len() < 8 {
+        return ControlFlow::Continue(());
+    }
+    if n.len() % 8 != 0 {
+        return ControlFlow::Continue(());
+    }
+    // Avoid stack overflow from the alloca inside.
+    if n.len() > MAX_LIMBS {
+        return ControlFlow::Continue(());
+    }
+
+    let rp = in_out.as_mut_ptr();
+    let ap = in_out.as_ptr();
+    let unused_bp = ptr::null();
+    let np = n.as_ptr();
+    let num = n.len();
+    unsafe { bn_sqr8x_mont(rp, ap, unused_bp, np, n0, num) };
+
+    ControlFlow::Break(())
 }

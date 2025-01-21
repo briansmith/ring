@@ -15,6 +15,7 @@
 pub use super::n0::N0;
 use super::{inout::AliasingSlices, LimbSliceError, MIN_LIMBS};
 use crate::cpu;
+use cfg_if::cfg_if;
 
 // Indicates that the element is not encoded; there is no *R* factor
 // that needs to be canceled out.
@@ -120,9 +121,34 @@ pub(super) fn limbs_mul_mont(
     n0: &N0,
     cpu: cpu::Features,
 ) -> Result<(), LimbSliceError> {
-    bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
-        (MIN_LIMBS, cpu::Features) => bn_mul_mont
-    })
+    const MOD_FALLBACK: usize = 1; // No restriction.
+    cfg_if! {
+        if #[cfg(target_arch = "x86_64")] {
+            const MIN_4X: usize = 8;
+            const MOD_4X: usize = 4;
+            if n.len() >= MIN_4X && n.len() % MOD_4X == 0 {
+                use crate::cpu::{GetFeature as _, intel::{Adx, Bmi2}};
+                if let Some(cpu) = cpu.get_feature() {
+                    // MULX is in BMI2.
+                    bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
+                        (MIN_4X, MOD_4X, (Adx, Bmi2)) => bn_mulx4x_mont
+                    })
+                } else {
+                    bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
+                        (MIN_4X, MOD_4X, ()) => bn_mul4x_mont
+                    })
+                }
+            } else {
+                bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
+                    (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
+                })
+            }
+        } else {
+            bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
+                (MIN_LIMBS, MOD_FALLBACK, cpu::Features) => bn_mul_mont
+            })
+        }
+    }
 }
 
 #[cfg(not(any(
@@ -240,7 +266,22 @@ pub(super) fn limbs_square_mont(
     n0: &N0,
     cpu: cpu::Features,
 ) -> Result<(), LimbSliceError> {
-    limbs_mul_mont(r, n, n0, cpu)
+    cfg_if! {
+        if #[cfg(target_arch = "x86_64")] {
+            use super::ffi;
+            use core::ops::ControlFlow;
+            match ffi::bn_sqr8x_mont(r, n, n0) {
+                ControlFlow::Break(()) => {
+                    Ok(())
+                }
+                ControlFlow::Continue(()) => {
+                    limbs_mul_mont(r, n, n0, cpu)
+                }
+            }
+        } else {
+            limbs_mul_mont(r, n, n0, cpu)
+        }
+    }
 }
 
 #[cfg(test)]
