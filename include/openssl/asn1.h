@@ -1181,10 +1181,6 @@ OPENSSL_EXPORT ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s,
 // If |s| is NULL, this function validates |str| without copying it.
 OPENSSL_EXPORT int ASN1_UTCTIME_set_string(ASN1_UTCTIME *s, const char *str);
 
-// ASN1_UTCTIME_cmp_time_t compares |s| to |t|. It returns -1 if |s| < |t|, 0 if
-// they are equal, 1 if |s| > |t|, and -2 on error.
-OPENSSL_EXPORT int ASN1_UTCTIME_cmp_time_t(const ASN1_UTCTIME *s, time_t t);
-
 // ASN1_GENERALIZEDTIME_new calls |ASN1_STRING_type_new| with
 // |V_ASN1_GENERALIZEDTIME|. The resulting object contains empty contents and
 // must be initialized to be a valid GeneralizedTime.

@@ -102,34 +102,3 @@ ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, int64_t posix_time,
   s->type = V_ASN1_UTCTIME;
   return s;
 }
-
-int ASN1_UTCTIME_cmp_time_t(const ASN1_UTCTIME *s, time_t t) {
-  struct tm stm, ttm;
-  int day, sec;
-
-  if (!asn1_utctime_to_tm(&stm, s, /*allow_timezone_offset=*/1)) {
-    return -2;
-  }
-
-  if (!OPENSSL_posix_to_tm(t, &ttm)) {
-    return -2;
-  }
-
-  if (!OPENSSL_gmtime_diff(&day, &sec, &ttm, &stm)) {
-    return -2;
-  }
-
-  if (day > 0) {
-    return 1;
-  }
-  if (day < 0) {
-    return -1;
-  }
-  if (sec > 0) {
-    return 1;
-  }
-  if (sec < 0) {
-    return -1;
-  }
-  return 0;
-}

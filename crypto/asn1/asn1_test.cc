@@ -1169,7 +1169,7 @@ TEST(ASN1Test, UTCTimeZoneOffsets) {
   EXPECT_EQ(V_ASN1_UTCTIME, ASN1_STRING_type(s.get()));
   EXPECT_EQ("700101000000Z", ASN1StringToStringView(s.get()));
 
-  // UTCTIME_set_string should not allow a timezeone offset
+  // UTCTIME_set_string should not allow a timezone offset
   EXPECT_FALSE(ASN1_UTCTIME_set_string(s.get(), "700101000000-0400"));
 
   // Forcibly construct a utc time with a timezone offset.
@@ -1178,12 +1178,8 @@ TEST(ASN1Test, UTCTimeZoneOffsets) {
   EXPECT_EQ(V_ASN1_UTCTIME, ASN1_STRING_type(s.get()));
   EXPECT_EQ("700101000000-0400", ASN1StringToStringView(s.get()));
 
-  // check is expected to be valid with timezeone offsets
+  // check is expected to be valid with timezone offsets
   ASSERT_TRUE(ASN1_UTCTIME_check(s.get()));
-
-  // cmp_time_t allows timezeone offset, and we are expected to be 4 hours
-  // behind the epoch.
-  EXPECT_EQ(ASN1_UTCTIME_cmp_time_t(s.get(), (4 * 60 * 60 * -1)), 0);
 
   int64_t posix_time;
   EXPECT_FALSE(ASN1_TIME_to_posix(s.get(), &posix_time));
