@@ -141,8 +141,9 @@ require "x86asm.pl";
 $output=pop;
 open STDOUT,">$output";
 
-&asm_init($ARGV[0],$x86only = $ARGV[$#ARGV] eq "386");
+&asm_init($ARGV[0]);
 
+$x86only=0;
 $sse2=1;
 
 if (!$x86only) {{{
