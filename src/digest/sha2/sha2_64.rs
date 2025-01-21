@@ -35,7 +35,12 @@ pub(crate) fn block_data_order_64(
                 sha2_64_ffi!(unsafe { () => sha512_block_data_order_nohw }, state, data, ())
             }
         } else if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
-            sha2_64_ffi!(unsafe { cpu::Features => sha512_block_data_order }, state, data, cpu)
+            use cpu::{GetFeature as _, arm::Neon};
+            if let Some(cpu) = cpu.get_feature() {
+                sha2_64_ffi!(unsafe { Neon => sha512_block_data_order_neon }, state, data, cpu)
+            } else {
+                sha2_64_ffi!(unsafe { () => sha512_block_data_order_nohw }, state, data, ())
+            }
         } else if #[cfg(target_arch = "x86_64")] {
             use cpu::{GetFeature as _, intel::{IntelCpu, Avx}};
             if let Some(cpu) = cpu.get_feature() {

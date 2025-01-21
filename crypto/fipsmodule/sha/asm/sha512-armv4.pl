@@ -276,35 +276,13 @@ WORD64(0x3c9ebe0a,0x15c9bebc, 0x431d67c4,0x9c100d4c)
 WORD64(0x4cc5d4be,0xcb3e42b6, 0x597f299c,0xfc657e2a)
 WORD64(0x5fcb6fab,0x3ad6faec, 0x6c44198c,0x4a475817)
 .size	K512,.-K512
-#if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-.extern OPENSSL_armcap_P
-.hidden OPENSSL_armcap_P
-.LOPENSSL_armcap:
-.word	OPENSSL_armcap_P-.Lsha512_block_data_order
-.skip	32-4
-#else
-.skip	32
-#endif
 
-.global	sha512_block_data_order
-.type	sha512_block_data_order,%function
-sha512_block_data_order:
-.Lsha512_block_data_order:
-	adr	r3,.Lsha512_block_data_order
-#if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-	ldr	r12,.LOPENSSL_armcap
-	ldr	r12,[r3,r12]		@ OPENSSL_armcap_P
-#ifdef	__APPLE__
-	ldr	r12,[r12]
-#endif
-	tst	r12,#ARMV7_NEON
-	bne	.LNEON
-#endif
+.global	sha512_block_data_order_nohw
+.type	sha512_block_data_order_nohw,%function
+sha512_block_data_order_nohw:
 	add	$len,$inp,$len,lsl#7	@ len to point at the end of inp
 	stmdb	sp!,{r4-r12,lr}
-	@ TODO(davidben): When the OPENSSL_armcap logic above is removed,
-	@ replace this with a simple ADR.
-	sub	$Ktbl,r3,#672		@ K512
+	adr	$Ktbl,K512
 	sub	sp,sp,#9*8
 
 	ldr	$Elo,[$ctx,#$Eoff+$lo]
@@ -503,7 +481,7 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	sha512_block_data_order,.-sha512_block_data_order
+.size	sha512_block_data_order_nohw,.-sha512_block_data_order_nohw
 ___
 
 {
@@ -610,10 +588,10 @@ $code.=<<___;
 .arch	armv7-a
 .fpu	neon
 
+.global	sha512_block_data_order_neon
 .type	sha512_block_data_order_neon,%function
 .align	4
 sha512_block_data_order_neon:
-.LNEON:
 	dmb				@ errata #451034 on early Cortex A8
 	add	$len,$inp,$len,lsl#7	@ len to point at the end of inp
 	adr	$Ktbl,K512
@@ -650,6 +628,7 @@ ___
 }
 $code.=<<___;
 .asciz	"SHA512 block transform for ARMv4/NEON, CRYPTOGAMS by <appro\@openssl.org>"
+.align	2
 ___
 
 $code =~ s/\`([^\`]*)\`/eval $1/gem;
