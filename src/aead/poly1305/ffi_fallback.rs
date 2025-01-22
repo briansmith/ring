@@ -34,7 +34,9 @@ impl State {
         super::Context::Fallback(r)
     }
 
-    pub(super) fn update(&mut self, input: &[u8]) {
+    // `input.len % BLOCK_LEN == 0` must be true for every call except the
+    // final one.
+    pub(super) fn update_internal(&mut self, input: &[u8]) {
         prefixed_extern! {
             fn CRYPTO_poly1305_update(
                 state: &mut poly1305_state,

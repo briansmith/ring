@@ -19,7 +19,7 @@ use super::{
 use crate::{
     cpu,
     error::InputTooLongError,
-    polyfill::{u64_from_usize, usize_from_u64_saturated},
+    polyfill::{slice, sliceutil, u64_from_usize, usize_from_u64_saturated},
 };
 use cfg_if::cfg_if;
 
@@ -147,23 +147,21 @@ pub(super) fn begin(
     Ok((counter, poly1305_key))
 }
 
-fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
+fn finish(auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
     let mut block = [0u8; poly1305::BLOCK_LEN];
     let (alen, clen) = block.split_at_mut(poly1305::BLOCK_LEN / 2);
     alen.copy_from_slice(&u64::to_le_bytes(u64_from_usize(aad_len)));
     clen.copy_from_slice(&u64::to_le_bytes(u64_from_usize(in_out_len)));
-    auth.update(&block);
-    auth.finish()
+    auth.finish(&block)
 }
 
 #[inline]
 fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
-    if !input.is_empty() {
-        ctx.update(input);
-        let remainder_len = input.len() % poly1305::BLOCK_LEN;
-        if remainder_len != 0 {
-            const ZEROES: [u8; poly1305::BLOCK_LEN] = [0; poly1305::BLOCK_LEN];
-            ctx.update(&ZEROES[..(poly1305::BLOCK_LEN - remainder_len)])
-        }
+    let (whole, remainder) = slice::as_chunks(input);
+    ctx.update(whole);
+    if !remainder.is_empty() {
+        let mut block = [0u8; poly1305::BLOCK_LEN];
+        sliceutil::overwrite_at_start(&mut block, remainder);
+        ctx.update_block(block);
     }
 }

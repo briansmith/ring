@@ -38,7 +38,7 @@ impl State {
         super::Context::ArmNeon(r)
     }
 
-    pub(super) fn update(&mut self, input: &[u8]) {
+    pub(super) fn update_internal(&mut self, input: &[u8]) {
         prefixed_extern! {
             fn CRYPTO_poly1305_update_neon(
                 state: &mut poly1305_state,
