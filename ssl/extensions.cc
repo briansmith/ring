@@ -3667,7 +3667,7 @@ static bool ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, const CBS *cbs,
     if (!(hs->extensions.sent & (1u << ext_index))) {
       // If the extension was never sent then it is illegal.
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-      ERR_add_error_dataf("extension :%u", (unsigned)type);
+      ERR_add_error_dataf("extension %u", (unsigned)type);
       *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
       return false;
     }

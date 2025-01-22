@@ -198,6 +198,7 @@ bool ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
         continue;
       }
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+      ERR_add_error_dataf("extension %u", unsigned{type});
       *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
       return false;
     }
