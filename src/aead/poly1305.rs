@@ -17,6 +17,7 @@
 
 use super::{Tag, TAG_LEN};
 use crate::{c, cpu};
+use core::num::NonZeroUsize;
 
 /// A Poly1305 key.
 pub(super) struct Key {
@@ -91,12 +92,14 @@ impl Context {
     }
 
     #[inline(always)]
-    pub fn update(&mut self, input: &[u8]) {
-        dispatch!(
-            self.cpu_features =>
-            (CRYPTO_poly1305_update | CRYPTO_poly1305_update_neon)
-            (statep: &mut poly1305_state, input: *const u8, in_len: c::size_t)
-            (&mut self.state, input.as_ptr(), input.len()));
+    pub fn update_padded_16(&mut self, input: &[u8]) {
+        if let Some(len) = NonZeroUsize::new(input.len()) {
+            dispatch!(
+                self.cpu_features =>
+                (CRYPTO_poly1305_update_padded_16 | CRYPTO_poly1305_update_neon)
+                (statep: &mut poly1305_state, input: *const u8, in_len: c::NonZero_size_t)
+                (&mut self.state, input.as_ptr(), len));
+        }
     }
 
     pub(super) fn finish(mut self) -> Tag {
@@ -116,7 +119,7 @@ impl Context {
 /// poly1305 test vectors.
 pub(super) fn sign(key: Key, input: &[u8], cpu_features: cpu::Features) -> Tag {
     let mut ctx = Context::from_key(key, cpu_features);
-    ctx.update(input);
+    ctx.update_padded_16(input);
     ctx.finish()
 }
 

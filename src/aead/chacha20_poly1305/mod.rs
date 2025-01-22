@@ -76,9 +76,9 @@ pub(super) fn seal_fallback(
     let (counter, poly1305_key) = begin(chacha20_key, nonce, aad, in_out, cpu)?;
     let mut auth = poly1305::Context::from_key(poly1305_key, cpu);
 
-    poly1305_update_padded_16(&mut auth, aad.as_ref());
+    auth.update_padded_16(aad.as_ref());
     chacha20_key.encrypt(counter, in_out.into(), cpu);
-    poly1305_update_padded_16(&mut auth, in_out);
+    auth.update_padded_16(in_out);
     Ok(finish(auth, aad.as_ref().len(), in_out.len()))
 }
 
@@ -110,8 +110,8 @@ pub(super) fn open_fallback(
     let (counter, poly1305_key) = begin(chacha20_key, nonce, aad, in_out.input(), cpu)?;
     let mut auth = poly1305::Context::from_key(poly1305_key, cpu);
 
-    poly1305_update_padded_16(&mut auth, aad.as_ref());
-    poly1305_update_padded_16(&mut auth, in_out.input());
+    auth.update_padded_16(aad.as_ref());
+    auth.update_padded_16(in_out.input());
     let in_out_len = in_out.len();
     chacha20_key.encrypt(counter, in_out, cpu);
     Ok(finish(auth, aad.as_ref().len(), in_out_len))
@@ -152,18 +152,6 @@ fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag
     let (alen, clen) = block.split_at_mut(poly1305::BLOCK_LEN / 2);
     alen.copy_from_slice(&u64::to_le_bytes(u64_from_usize(aad_len)));
     clen.copy_from_slice(&u64::to_le_bytes(u64_from_usize(in_out_len)));
-    auth.update(&block);
+    auth.update_padded_16(&block);
     auth.finish()
-}
-
-#[inline]
-fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
-    if !input.is_empty() {
-        ctx.update(input);
-        let remainder_len = input.len() % poly1305::BLOCK_LEN;
-        if remainder_len != 0 {
-            const ZEROES: [u8; poly1305::BLOCK_LEN] = [0; poly1305::BLOCK_LEN];
-            ctx.update(&ZEROES[..(poly1305::BLOCK_LEN - remainder_len)])
-        }
-    }
 }
