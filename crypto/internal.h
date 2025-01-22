@@ -194,6 +194,7 @@ static inline int buffers_alias(const void *a, size_t a_bytes,
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
 #if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push)
@@ -230,6 +231,14 @@ typedef uint32_t crypto_word_t;
 // always has the same output for a given input. This allows it to eliminate
 // dead code, move computations across loops, and vectorize.
 static inline crypto_word_t value_barrier_w(crypto_word_t a) {
+#if defined(__GNUC__) || defined(__clang__)
+  __asm__("" : "+r"(a) : /* no inputs */);
+#endif
+  return a;
+}
+
+// value_barrier_u32 behaves like |value_barrier_w| but takes a |uint32_t|.
+static inline uint32_t value_barrier_u32(uint32_t a) {
 #if defined(__GNUC__) || defined(__clang__)
   __asm__("" : "+r"(a) : /* no inputs */);
 #endif
@@ -328,14 +337,6 @@ static inline void constant_time_conditional_memxor(void *dst, const void *src,
   }
 }
 
-#if defined(_MSC_VER) && !defined(__clang__)
-// '=': conversion from 'int64_t' to 'int32_t', possible loss of data
-#pragma warning(pop)
-#endif
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
-
 #if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
 
 // CONSTTIME_SECRET takes a pointer and a number of bytes and marks that region
@@ -371,6 +372,28 @@ static inline crypto_word_t constant_time_declassify_w(crypto_word_t v) {
   CONSTTIME_DECLASSIFY(&v, sizeof(v));
   return value_barrier_w(v);
 }
+
+static inline int constant_time_declassify_int(int v) {
+  OPENSSL_STATIC_ASSERT(sizeof(uint32_t) == sizeof(int),
+                "int is not the same size as uint32_t");
+  // See comment above.
+  CONSTTIME_DECLASSIFY(&v, sizeof(v));
+  return value_barrier_u32((uint32_t)v);
+}
+
+#if defined(_MSC_VER) && !defined(__clang__)
+// '=': conversion from 'int64_t' to 'int32_t', possible loss of data
+#pragma warning(pop)
+#endif
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
+// declassify_assert behaves like |assert| but declassifies the result of
+// evaluating |expr|. This allows the assertion to branch on the (presumably
+// public) result, but still ensures that values leading up to the computation
+// were secret.
+#define declassify_assert(expr) dev_assert_secret(constant_time_declassify_int(expr))
 
 // Endianness conversions.
 
