@@ -13,7 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 // testresult is an implementation of Chromium's JSON test result format. See
-// https://chromium.googlesource.com/chromium/src/+/master/docs/testing/json_test_results_format.md
+// https://chromium.googlesource.com/chromium/src/+/main/docs/testing/json_test_results_format.md
 package testresult
 
 import (

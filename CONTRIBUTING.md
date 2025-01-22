@@ -33,9 +33,9 @@ on commit. Run:
     chmod u+x .git/hooks/commit-msg
 
 #### Uploading changes
-To upload a change, push it to the special `refs/for/master` target:
+To upload a change, push it to the special `refs/for/main` target:
 
-    git push origin HEAD:refs/for/master
+    git push origin HEAD:refs/for/main
 
 The output will then give you a link to the change. Add `agl@google.com`,
 `davidben@google.com`, and `bbe@google.com` as reviewers.

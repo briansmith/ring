@@ -1893,7 +1893,7 @@ sha256_block_data_order_neon:
 	@ TODO(davidben): adrl would avoid a load, but clang-assembler does not
 	@ support it. We might be able to emulate it with a macro, but Android's
 	@ did not work when I tried it.
-	@ https://android.googlesource.com/platform/ndk/+/refs/heads/master/docs/ClangMigration.md#arm
+	@ https://android.googlesource.com/platform/ndk/+/refs/heads/main/docs/ClangMigration.md#arm
 	ldr	r14,.LK256_shortcut_neon
 .LK256_add_neon:
 	add	r14,pc,r14

@@ -5604,7 +5604,7 @@ OPENSSL_EXPORT enum ssl_compliance_policy_t SSL_get_compliance_policy(
 //
 // See PORTING.md in the BoringSSL source tree for a table of corresponding
 // functions.
-// https://boringssl.googlesource.com/boringssl/+/master/PORTING.md#Replacements-for-values
+// https://boringssl.googlesource.com/boringssl/+/main/PORTING.md#Replacements-for-values
 
 #define DTLS_CTRL_GET_TIMEOUT doesnt_exist
 #define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist

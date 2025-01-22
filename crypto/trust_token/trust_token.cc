@@ -23,7 +23,7 @@
 
 
 // The Trust Token API is described in
-// https://github.com/WICG/trust-token-api/blob/master/README.md and provides a
+// https://github.com/WICG/trust-token-api/blob/main/README.md and provides a
 // protocol for issuing and redeeming tokens built on top of the PMBTokens
 // construction.
 

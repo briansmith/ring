@@ -31,8 +31,8 @@ extern "C" {
 //
 // References:
 // https://eprint.iacr.org/2020/072.pdf
-// https://github.com/alxdavids/privacy-pass-ietf/tree/master/drafts
-// https://github.com/WICG/trust-token-api/blob/master/README.md
+// https://github.com/ietf-wg-privacypass/base-drafts
+// https://github.com/WICG/trust-token-api/blob/main/README.md
 //
 // WARNING: This API is unstable and subject to change.
 
