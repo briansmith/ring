@@ -148,6 +148,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"ML-KEM":            &mlkem{},
 		"SLH-DSA":           &slhdsa{},
 		"kdf-components":    &ssh{},
+		"KTS-IFC":           &kts{map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true, "SHA2-512/224": true, "SHA2-512/256": true, "SHA3-224": true, "SHA3-256": true, "SHA3-384": true, "SHA3-512": true}},
 	}
 	m.primitives["ECDSA"] = &ecdsa{"ECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m.primitives}
 	m.primitives["DetECDSA"] = &ecdsa{"DetECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m.primitives}
