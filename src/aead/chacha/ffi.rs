@@ -55,6 +55,7 @@ pub(super) unsafe fn chacha20_ctr32_ffi<
     cpu: Cpu,
     f: unsafe extern "C" fn(*mut u8, *const u8, crate::c::size_t, &[u32; 8], &Counter),
 ) {
+    assert!(MIN_LEN > 0);
     let in_out: Overlapping<'_, u8> = in_out.into();
     let (input, output, len) = in_out.into_input_output_len();
     assert!(len >= MIN_LEN);
