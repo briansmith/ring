@@ -15,9 +15,10 @@
 // TODO: enforce maximum input length.
 
 use super::{Tag, TAG_LEN};
-use crate::cpu;
 #[cfg(all(target_arch = "arm", target_endian = "little"))]
 use crate::cpu::GetFeature as _;
+use crate::{cpu, polyfill::slice};
+use core::array;
 
 mod ffi_arm_neon;
 mod ffi_fallback;
@@ -62,16 +63,24 @@ impl Context {
         ffi_fallback::State::new_context(key)
     }
 
-    #[inline(always)]
-    pub fn update(&mut self, input: &[u8]) {
+    pub fn update_block(&mut self, input: [u8; BLOCK_LEN]) {
+        self.update(array::from_ref(&input))
+    }
+
+    pub fn update(&mut self, input: &[[u8; BLOCK_LEN]]) {
+        self.update_internal(slice::flatten(input));
+    }
+
+    fn update_internal(&mut self, input: &[u8]) {
         match self {
             #[cfg(all(target_arch = "arm", target_endian = "little"))]
-            Self::ArmNeon(state) => state.update(input),
-            Self::Fallback(state) => state.update(input),
+            Self::ArmNeon(state) => state.update_internal(input),
+            Self::Fallback(state) => state.update_internal(input),
         }
     }
 
-    pub(super) fn finish(self) -> Tag {
+    pub(super) fn finish(mut self, input: &[u8]) -> Tag {
+        self.update_internal(input);
         match self {
             #[cfg(all(target_arch = "arm", target_endian = "little"))]
             Self::ArmNeon(state) => state.finish(),
@@ -85,9 +94,8 @@ impl Context {
 /// This is used by chacha20_poly1305_openssh and the standalone
 /// poly1305 test vectors.
 pub(super) fn sign(key: Key, input: &[u8], cpu_features: cpu::Features) -> Tag {
-    let mut ctx = Context::from_key(key, cpu_features);
-    ctx.update(input);
-    ctx.finish()
+    let ctx = Context::from_key(key, cpu_features);
+    ctx.finish(input)
 }
 
 #[cfg(test)]

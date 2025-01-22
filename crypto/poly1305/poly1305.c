@@ -32,8 +32,6 @@ struct poly1305_state_st {
   uint32_t r0, r1, r2, r3, r4;
   uint32_t s1, s2, s3, s4;
   uint32_t h0, h1, h2, h3, h4;
-  uint8_t buf[16];
-  size_t buf_used;
   uint8_t key[16];
 };
 
@@ -179,7 +177,6 @@ void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   state->h3 = 0;
   state->h4 = 0;
 
-  state->buf_used = 0;
   OPENSSL_memcpy(state->key, key + 16, sizeof(state->key));
 }
 
@@ -192,47 +189,13 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
     return;
   }
 
-  if (state->buf_used) {
-    size_t todo = 16 - state->buf_used;
-    if (todo > in_len) {
-      todo = in_len;
-    }
-    for (size_t i = 0; i < todo; i++) {
-      state->buf[state->buf_used + i] = in[i];
-    }
-    state->buf_used += todo;
-    in_len -= todo;
-    in += todo;
-
-    if (state->buf_used == 16) {
-      poly1305_update(state, state->buf, 16);
-      state->buf_used = 0;
-    }
-  }
-
-  if (in_len >= 16) {
-    size_t todo = in_len & ~0xf;
-    poly1305_update(state, in, todo);
-    in += todo;
-    in_len &= 0xf;
-  }
-
-  if (in_len) {
-    for (size_t i = 0; i < in_len; i++) {
-      state->buf[i] = in[i];
-    }
-    state->buf_used = in_len;
-  }
+  poly1305_update(state, in, in_len);
 }
 
 void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   struct poly1305_state_st *state = poly1305_aligned_state(statep);
   uint32_t g0, g1, g2, g3, g4;
   uint32_t b, nb;
-
-  if (state->buf_used) {
-    poly1305_update(state, state->buf, state->buf_used);
-  }
 
   b = state->h0 >> 26;
   state->h0 = state->h0 & 0x3ffffff;
