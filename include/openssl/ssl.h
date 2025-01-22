@@ -1782,10 +1782,11 @@ OPENSSL_EXPORT int SSL_session_reused(const SSL *ssl);
 // renegotiation (RFC 5746) or TLS 1.3. Otherwise, it returns zero.
 OPENSSL_EXPORT int SSL_get_secure_renegotiation_support(const SSL *ssl);
 
-// SSL_export_keying_material exports a value derived from the master secret, as
-// specified in RFC 5705. It writes |out_len| bytes to |out| given a label and
-// optional context. (Since a zero length context is allowed, the |use_context|
-// flag controls whether a context is included.)
+// SSL_export_keying_material exports a connection-specific secret from |ssl|,
+// as specified in RFC 5705. It writes |out_len| bytes to |out| given a label
+// and optional context. If |use_context| is zero, the |context| parameter is
+// ignored. Prior to TLS 1.3, using a zero-length context and using no context
+// would give different output.
 //
 // It returns one on success and zero otherwise.
 OPENSSL_EXPORT int SSL_export_keying_material(
