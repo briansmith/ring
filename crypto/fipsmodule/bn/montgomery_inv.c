@@ -98,7 +98,7 @@ uint64_t bn_neg_inv_mod_r_u64(uint64_t n) {
 
   // The invariant now shows that u*r - v*n == 1 since r == 2 * alpha.
 #if BN_BITS2 == 64 && defined(BN_ULLONG)
-  dev_assert_secret(1 == ((BN_ULLONG)u * 2 * alpha) - ((BN_ULLONG)v * beta));
+  declassify_assert(1 == ((BN_ULLONG)u * 2 * alpha) - ((BN_ULLONG)v * beta));
 #endif
 
   return v;
