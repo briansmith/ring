@@ -23,15 +23,19 @@
  * but we haven't verified that assumption. TODO: Fix it so we don't need to
  * make that assumption. */
 
+/* Returns 0xfff..f if |a| is zero, and zero otherwise. */
+Limb LIMB_is_zero(const Limb a) {
+  return constant_time_is_zero_w(a);
+}
+
 /* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. |num_limbs|
  * may be zero. */
 Limb LIMBS_are_zero(const Limb a[], size_t num_limbs) {
-  Limb is_zero = CONSTTIME_TRUE_W;
+  Limb all = 0;
   for (size_t i = 0; i < num_limbs; ++i) {
-    is_zero = constant_time_select_w(is_zero, constant_time_is_zero_w(a[i]),
-                                     is_zero);
+    all |= a[i];
   }
-  return is_zero;
+  return LIMB_is_zero(all);
 }
 
 /* Returns 0xffff..f if |a == b|, and zero otherwise. |num_limbs| may be zero. */
@@ -52,18 +56,6 @@ Limb LIMBS_equal_limb(const Limb a[], Limb b, size_t num_limbs) {
   Limb lo_equal = constant_time_eq_w(a[0], b);
   Limb hi_zero = LIMBS_are_zero(&a[1], num_limbs - 1);
   return constant_time_select_w(lo_equal, hi_zero, 0);
-}
-
-/* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise.
- * |num_limbs| may be zero. */
-Limb LIMBS_are_even(const Limb a[], size_t num_limbs) {
-  Limb lo;
-  if (num_limbs == 0) {
-    lo = 0;
-  } else {
-    lo = a[0];
-  }
-  return constant_time_is_zero_w(lo & 1);
 }
 
 /* Returns 0xffff...f if |a| is less than |b|, and zero otherwise. */
