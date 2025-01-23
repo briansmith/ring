@@ -221,7 +221,7 @@ struct TestConfig {
   bool cnsa_202407 = false;
   bool no_check_client_certificate_type = false;
   bool no_check_ecdsa_curve = false;
-  int expect_selected_credential = -1;
+  std::optional<int> expect_selected_credential;
   std::vector<CredentialConfig> credentials;
   int private_key_delay_ms = 0;
 

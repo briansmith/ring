@@ -674,9 +674,10 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
-  if (config->expect_selected_credential != state->selected_credential) {
+  if (config->expect_selected_credential.has_value() &&
+      *config->expect_selected_credential != state->selected_credential) {
     fprintf(stderr, "Credential %d was used, wanted %d\n",
-            state->selected_credential, config->expect_selected_credential);
+            state->selected_credential, *config->expect_selected_credential);
     return false;
   }
 

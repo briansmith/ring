@@ -113,6 +113,20 @@ Flag<Config> IntFlag(const char *name, T Config::*field,
 }
 
 template <typename Config, typename T>
+Flag<Config> OptionalIntFlag(const char *name, std::optional<T> Config::*field,
+                             bool skip_handshaker = false) {
+  return Flag<Config>{name, true, skip_handshaker,
+                      [=](Config *config, const char *param) -> bool {
+                        T value;
+                        if (!StringToInt(&value, param)) {
+                          return false;
+                        }
+                        config->*field = value;
+                        return true;
+                      }};
+}
+
+template <typename Config, typename T>
 Flag<Config> IntVectorFlag(const char *name, std::vector<T> Config::*field,
                            bool skip_handshaker = false) {
   return Flag<Config>{name, true, skip_handshaker,
@@ -486,8 +500,8 @@ const Flag<TestConfig> *FindFlag(const char *name) {
         BoolFlag("-no-check-client-certificate-type",
                  &TestConfig::no_check_client_certificate_type),
         BoolFlag("-no-check-ecdsa-curve", &TestConfig::no_check_ecdsa_curve),
-        IntFlag("-expect-selected-credential",
-                &TestConfig::expect_selected_credential),
+        OptionalIntFlag("-expect-selected-credential",
+                        &TestConfig::expect_selected_credential),
         // Credential flags are stateful. First, use one of the
         // -new-*-credential flags to introduce a new credential. Then the flags
         // below switch from acting on the legacy credential to the newly-added
