@@ -59,11 +59,11 @@ impl<M> OwnedModulusValue<M> {
     }
 
     pub fn verify_less_than<L>(&self, l: &Modulus<L>) -> Result<(), error::Unspecified> {
-        if self.len_bits() > l.len_bits()
-            || (self.limbs.len() == l.limbs().len()
-                && !limb::limbs_less_than_limbs_consttime(&self.limbs, l.limbs()).leak())
-        {
+        if self.len_bits() > l.len_bits() {
             return Err(error::Unspecified);
+        }
+        if self.limbs.len() == l.limbs().len() {
+            limb::verify_limbs_less_than_limbs_leak_bit(&self.limbs, l.limbs())?;
         }
         Ok(())
     }

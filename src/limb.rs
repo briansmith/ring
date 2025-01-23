@@ -19,9 +19,11 @@
 //! limbs use the native endianness.
 
 use crate::{
-    c, constant_time, error,
+    c, constant_time,
+    error::{self, LenMismatchError},
     polyfill::{slice, usize_from_u32, ArrayFlatMap},
 };
+use core::num::NonZeroUsize;
 
 #[cfg(any(test, feature = "alloc"))]
 use crate::bits;
@@ -48,17 +50,42 @@ pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
 }
 
 #[inline]
-pub fn limbs_less_than_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
+fn limbs_less_than_limbs_constant_time(
+    a: &[Limb],
+    b: &[Limb],
+) -> Result<LimbMask, LenMismatchError> {
     prefixed_extern! {
-        fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
+        fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::NonZero_size_t)
+            -> LimbMask;
     }
-    assert_eq!(a.len(), b.len());
-    unsafe { LIMBS_less_than(a.as_ptr(), b.as_ptr(), b.len()) }
+    // Use `b.len` because usually `b` will be the modulus which is likely to
+    // have had its length checked already so this can be elided by the
+    // optimizer.
+    // XXX: Questionable whether `LenMismatchError` is appropriate.
+    let len = NonZeroUsize::new(b.len()).ok_or_else(|| LenMismatchError::new(a.len()))?;
+    if a.len() != len.into() {
+        return Err(LenMismatchError::new(a.len()));
+    }
+    Ok(unsafe { LIMBS_less_than(a.as_ptr(), b.as_ptr(), len) })
 }
 
 #[inline]
-pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> bool {
-    limbs_less_than_limbs_consttime(a, b).leak()
+pub(crate) fn verify_limbs_less_than_limbs_leak_bit(
+    a: &[Limb],
+    b: &[Limb],
+) -> Result<(), error::Unspecified> {
+    let r = limbs_less_than_limbs_constant_time(a, b).map_err(error::erase::<LenMismatchError>)?;
+    if r.leak() {
+        Ok(())
+    } else {
+        Err(error::Unspecified)
+    }
+}
+
+#[inline]
+pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> Result<bool, LenMismatchError> {
+    let r = limbs_less_than_limbs_constant_time(a, b)?;
+    Ok(r.leak())
 }
 
 #[inline]
@@ -148,9 +175,7 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
     result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
     parse_big_endian_and_pad_consttime(input, result)?;
-    if !limbs_less_than_limbs_consttime(result, max_exclusive).leak() {
-        return Err(error::Unspecified);
-    }
+    verify_limbs_less_than_limbs_leak_bit(result, max_exclusive)?;
     if allow_zero != AllowZero::Yes {
         if limbs_are_zero_constant_time(result).leak() {
             return Err(error::Unspecified);

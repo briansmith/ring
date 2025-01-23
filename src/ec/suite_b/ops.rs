@@ -13,7 +13,11 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::{
-    arithmetic::limbs_from_hex, arithmetic::montgomery::*, constant_time::LeakyWord, cpu, error,
+    arithmetic::limbs_from_hex,
+    arithmetic::montgomery::*,
+    constant_time::LeakyWord,
+    cpu,
+    error::{self, LenMismatchError},
     limb::*,
 };
 use core::marker::PhantomData;
@@ -437,8 +441,8 @@ impl Modulus<Q> {
 
     pub fn elem_less_than_vartime(&self, a: &Elem<Unencoded>, b: &PublicElem<Unencoded>) -> bool {
         let num_limbs = self.num_limbs.into();
-        // TODO: let b = Elem::from(b);
         limbs_less_than_limbs_vartime(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
     }
 }
 
