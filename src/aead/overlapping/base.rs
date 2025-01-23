@@ -91,7 +91,14 @@ impl<T> Overlapping<'_, T> {
         // SAFETY: The constructor ensures that `src` is a valid range.
         // Equivalent to `self.in_out[src.clone()].as_ptr()` but without
         // worries about compatibility with the stacked borrows model.
-        let input = unsafe { output_const.add(self.src.start) };
+        // TODO(MSRV-1.80, probably): Avoid special casing 0; see
+        // https://github.com/rust-lang/rust/pull/117329
+        // https://github.com/rust-lang/rustc_codegen_gcc/issues/516
+        let input = if self.src.start == 0 {
+            output_const
+        } else {
+            unsafe { output_const.add(self.src.start) }
+        };
         (input, output, len)
     }
 
