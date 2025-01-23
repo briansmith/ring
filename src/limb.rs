@@ -22,6 +22,7 @@ use crate::{
     c, constant_time, error,
     polyfill::{slice, usize_from_u32, ArrayFlatMap},
 };
+use core::num::NonZeroUsize;
 
 #[cfg(any(test, feature = "alloc"))]
 use crate::bits;
@@ -69,13 +70,20 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
+/// Leaks one bit of information (other than the lengths of the inputs):
+/// Whether the given limbs are even.
 #[cfg(any(test, feature = "alloc"))]
 #[inline]
-pub fn limbs_are_even_constant_time(limbs: &[Limb]) -> LimbMask {
+pub fn limbs_reject_even_leak_bit(limbs: &[Limb]) -> Result<(), error::Unspecified> {
     prefixed_extern! {
-        fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+        fn LIMBS_are_even(a: *const Limb, num_limbs: c::NonZero_size_t) -> LimbMask;
     }
-    unsafe { LIMBS_are_even(limbs.as_ptr(), limbs.len()) }
+    let len = NonZeroUsize::new(limbs.len()).ok_or(error::Unspecified)?;
+    let r = unsafe { LIMBS_are_even(limbs.as_ptr(), len) };
+    if r.leak() {
+        return Err(error::Unspecified);
+    }
+    Ok(())
 }
 
 #[cfg(any(test, feature = "alloc"))]
@@ -372,7 +380,10 @@ mod tests {
         ];
         for even in EVENS {
             let even = &Vec::from_iter(even.iter().copied().map(Limb::from));
-            assert!(leak_in_test(limbs_are_even_constant_time(even)));
+            assert!(matches!(
+                limbs_reject_even_leak_bit(even),
+                Err(error::Unspecified)
+            ));
         }
         static ODDS: &[&[LeakyLimb]] = &[
             &[1],
@@ -386,7 +397,7 @@ mod tests {
         ];
         for odd in ODDS {
             let odd = &Vec::from_iter(odd.iter().copied().map(Limb::from));
-            assert!(!leak_in_test(limbs_are_even_constant_time(odd)));
+            assert!(matches!(limbs_reject_even_leak_bit(odd), Ok(())));
         }
     }
 

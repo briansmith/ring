@@ -36,9 +36,7 @@ impl PrivateExponent {
         // `p - 1` and so we know `dP < p - 1`.
         //
         // Further we know `dP != 0` because `dP` is not even.
-        if limb::limbs_are_even_constant_time(&dP).leak() {
-            return Err(error::Unspecified);
-        }
+        limb::limbs_reject_even_leak_bit(&dP)?;
 
         Ok(Self {
             limbs: dP.into_limbs(),

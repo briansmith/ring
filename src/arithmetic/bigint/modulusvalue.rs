@@ -49,9 +49,8 @@ impl<M> OwnedModulusValue<M> {
             return Err(error::KeyRejected::unexpected_error());
         }
         // The above implies n >= 3, so we don't need to check it.
-        if limb::limbs_are_even_constant_time(&n).leak() {
-            return Err(error::KeyRejected::invalid_component());
-        }
+        limb::limbs_reject_even_leak_bit(&n)
+            .map_err(|_: error::Unspecified| error::KeyRejected::invalid_component())?;
 
         let len_bits = limb::limbs_minimal_bits(&n);
 
