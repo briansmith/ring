@@ -32,9 +32,7 @@ impl Scalar {
         debug_assert!(_empty.is_empty());
         let limbs: [limb::Limb; SCALAR_LEN / limb::LIMB_BYTES] =
             array::from_fn(|i| limb::Limb::from_le_bytes(limbs_as_bytes[i]));
-        if !limb::limbs_less_than_limbs_consttime(&limbs, &order).leak() {
-            return Err(error::Unspecified);
-        }
+        limb::verify_limbs_less_than_limbs_leak_bit(&limbs, &order)?;
 
         Ok(Self(bytes))
     }

@@ -88,9 +88,7 @@ impl<M> BoxedLimbs<M> {
     ) -> Result<Self, error::Unspecified> {
         let mut r = Self::zero(m.limbs().len());
         limb::parse_big_endian_and_pad_consttime(input, &mut r)?;
-        if !limb::limbs_less_than_limbs_consttime(&r, m.limbs()).leak() {
-            return Err(error::Unspecified);
-        }
+        limb::verify_limbs_less_than_limbs_leak_bit(&r, m.limbs())?;
         Ok(r)
     }
 
