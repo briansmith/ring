@@ -44,7 +44,6 @@ pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
     prefixed_extern! {
         fn LIMBS_equal(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
     }
-
     assert_eq!(a.len(), b.len());
     unsafe { LIMBS_equal(a.as_ptr(), b.as_ptr(), a.len()) }
 }
@@ -89,11 +88,16 @@ pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> Result<bool, Len
 }
 
 #[inline]
-pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
+fn limb_is_zero_constant_time(limb: Limb) -> LimbMask {
     prefixed_extern! {
-        fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+        fn LIMB_is_zero(limb: Limb) -> LimbMask;
     }
-    unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
+    unsafe { LIMB_is_zero(limb) }
+}
+
+#[inline]
+pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
+    limb_is_zero_constant_time(limbs.iter().fold(0, |a, b| a | b))
 }
 
 /// Leaks one bit of information (other than the lengths of the inputs):
@@ -101,12 +105,8 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
 #[cfg(any(test, feature = "alloc"))]
 #[inline]
 pub fn limbs_reject_even_leak_bit(limbs: &[Limb]) -> Result<(), error::Unspecified> {
-    prefixed_extern! {
-        fn LIMBS_are_even(a: *const Limb, num_limbs: c::NonZero_size_t) -> LimbMask;
-    }
-    let len = NonZeroUsize::new(limbs.len()).ok_or(error::Unspecified)?;
-    let r = unsafe { LIMBS_are_even(limbs.as_ptr(), len) };
-    if r.leak() {
+    let bottom = *limbs.first().ok_or(error::Unspecified)?;
+    if limb_is_zero_constant_time(bottom & 1).leak() {
         return Err(error::Unspecified);
     }
     Ok(())
