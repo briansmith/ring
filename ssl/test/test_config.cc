@@ -147,25 +147,25 @@ Flag<Config> OptionalStringFlag(const char *name,
                       }};
 }
 
-bool DecodeBase64(std::string *out, const std::string &in) {
+bool DecodeBase64(std::vector<uint8_t> *out, const std::string &in) {
   size_t len;
   if (!EVP_DecodedLength(&len, in.size())) {
     fprintf(stderr, "Invalid base64: %s.\n", in.c_str());
     return false;
   }
-  std::vector<uint8_t> buf(len);
-  if (!EVP_DecodeBase64(buf.data(), &len, buf.size(),
+  out->resize(len);
+  if (!EVP_DecodeBase64(out->data(), &len, out->size(),
                         reinterpret_cast<const uint8_t *>(in.data()),
                         in.size())) {
     fprintf(stderr, "Invalid base64: %s.\n", in.c_str());
     return false;
   }
-  out->assign(reinterpret_cast<const char *>(buf.data()), len);
+  out->resize(len);
   return true;
 }
 
 template <typename Config>
-Flag<Config> Base64Flag(const char *name, std::string Config::*field,
+Flag<Config> Base64Flag(const char *name, std::vector<uint8_t> Config::*field,
                         bool skip_handshaker = false) {
   return Flag<Config>{name, true, skip_handshaker,
                       [=](Config *config, const char *param) -> bool {
@@ -175,11 +175,11 @@ Flag<Config> Base64Flag(const char *name, std::string Config::*field,
 
 template <typename Config>
 Flag<Config> Base64VectorFlag(const char *name,
-                              std::vector<std::string> Config::*field,
+                              std::vector<std::vector<uint8_t>> Config::*field,
                               bool skip_handshaker = false) {
   return Flag<Config>{name, true, skip_handshaker,
                       [=](Config *config, const char *param) -> bool {
-                        std::string value;
+                        std::vector<uint8_t> value;
                         if (!DecodeBase64(&value, param)) {
                           return false;
                         }
@@ -1385,8 +1385,7 @@ static bssl::UniquePtr<SSL_CREDENTIAL> CredentialFromConfig(
 
   if (!cred_config.delegated_credential.empty()) {
     bssl::UniquePtr<CRYPTO_BUFFER> buf(
-        CRYPTO_BUFFER_new(reinterpret_cast<const uint8_t *>(
-                              cred_config.delegated_credential.data()),
+        CRYPTO_BUFFER_new(cred_config.delegated_credential.data(),
                           cred_config.delegated_credential.size(), nullptr));
     if (buf == nullptr ||
         !SSL_CREDENTIAL_set1_delegated_credential(cred.get(), buf.get())) {
@@ -1395,9 +1394,9 @@ static bssl::UniquePtr<SSL_CREDENTIAL> CredentialFromConfig(
   }
 
   if (!cred_config.ocsp_response.empty()) {
-    bssl::UniquePtr<CRYPTO_BUFFER> buf(CRYPTO_BUFFER_new(
-        reinterpret_cast<const uint8_t *>(cred_config.ocsp_response.data()),
-        cred_config.ocsp_response.size(), nullptr));
+    bssl::UniquePtr<CRYPTO_BUFFER> buf(
+        CRYPTO_BUFFER_new(cred_config.ocsp_response.data(),
+                          cred_config.ocsp_response.size(), nullptr));
     if (buf == nullptr ||
         !SSL_CREDENTIAL_set1_ocsp_response(cred.get(), buf.get())) {
       return nullptr;
@@ -1406,8 +1405,7 @@ static bssl::UniquePtr<SSL_CREDENTIAL> CredentialFromConfig(
 
   if (!cred_config.signed_cert_timestamps.empty()) {
     bssl::UniquePtr<CRYPTO_BUFFER> buf(
-        CRYPTO_BUFFER_new(reinterpret_cast<const uint8_t *>(
-                              cred_config.signed_cert_timestamps.data()),
+        CRYPTO_BUFFER_new(cred_config.signed_cert_timestamps.data(),
                           cred_config.signed_cert_timestamps.size(), nullptr));
     if (buf == nullptr || !SSL_CREDENTIAL_set1_signed_cert_timestamp_list(
                               cred.get(), buf.get())) {
@@ -1576,7 +1574,7 @@ static bool CheckCertificateRequest(SSL *ssl) {
     const uint8_t *certificate_types;
     size_t certificate_types_len =
         SSL_get0_certificate_types(ssl, &certificate_types);
-    if (bssl::StringAsBytes(config->expect_certificate_types) !=
+    if (bssl::Span(config->expect_certificate_types) !=
         bssl::Span(certificate_types, certificate_types_len)) {
       fprintf(stderr, "certificate types mismatch.\n");
       return false;
@@ -2217,9 +2215,8 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     return nullptr;
   }
   if (!ech_config_list.empty() &&
-      !SSL_set1_ech_config_list(
-          ssl.get(), reinterpret_cast<const uint8_t *>(ech_config_list.data()),
-          ech_config_list.size())) {
+      !SSL_set1_ech_config_list(ssl.get(), ech_config_list.data(),
+                                ech_config_list.size())) {
     return nullptr;
   }
   if (ech_server_configs.size() != ech_server_keys.size() ||
@@ -2235,18 +2232,14 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       return nullptr;
     }
     for (size_t i = 0; i < ech_server_configs.size(); i++) {
-      const std::string &ech_config = ech_server_configs[i];
-      const std::string &ech_private_key = ech_server_keys[i];
+      bssl::Span<const uint8_t> ech_config = ech_server_configs[i];
+      bssl::Span<const uint8_t> ech_private_key = ech_server_keys[i];
       const int is_retry_config = ech_is_retry_config[i];
       bssl::ScopedEVP_HPKE_KEY key;
-      if (!EVP_HPKE_KEY_init(
-              key.get(), EVP_hpke_x25519_hkdf_sha256(),
-              reinterpret_cast<const uint8_t *>(ech_private_key.data()),
-              ech_private_key.size()) ||
-          !SSL_ECH_KEYS_add(
-              keys.get(), is_retry_config,
-              reinterpret_cast<const uint8_t *>(ech_config.data()),
-              ech_config.size(), key.get())) {
+      if (!EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
+                             ech_private_key.data(), ech_private_key.size()) ||
+          !SSL_ECH_KEYS_add(keys.get(), is_retry_config, ech_config.data(),
+                            ech_config.size(), key.get())) {
         return nullptr;
       }
     }
@@ -2367,10 +2360,8 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     SSL_set_quic_use_legacy_codepoint(ssl.get(), quic_use_legacy_codepoint);
   }
   if (!quic_transport_params.empty()) {
-    if (!SSL_set_quic_transport_params(
-            ssl.get(),
-            reinterpret_cast<const uint8_t *>(quic_transport_params.data()),
-            quic_transport_params.size())) {
+    if (!SSL_set_quic_transport_params(ssl.get(), quic_transport_params.data(),
+                                       quic_transport_params.size())) {
       return nullptr;
     }
   }

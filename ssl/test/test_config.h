@@ -32,9 +32,9 @@ struct CredentialConfig {
   std::string cert_file;
   std::string key_file;
   std::vector<uint16_t> signing_prefs;
-  std::string delegated_credential;
-  std::string ocsp_response;
-  std::string signed_cert_timestamps;
+  std::vector<uint8_t> delegated_credential;
+  std::vector<uint8_t> ocsp_response;
+  std::vector<uint8_t> signed_cert_timestamps;
 };
 
 struct TestConfig {
@@ -56,16 +56,16 @@ struct TestConfig {
   std::string trust_cert;
   std::string expect_server_name;
   bool enable_ech_grease = false;
-  std::vector<std::string> ech_server_configs;
-  std::vector<std::string> ech_server_keys;
+  std::vector<std::vector<uint8_t>> ech_server_configs;
+  std::vector<std::vector<uint8_t>> ech_server_keys;
   std::vector<int> ech_is_retry_config;
   bool expect_ech_accept = false;
   std::string expect_ech_name_override;
   bool expect_no_ech_name_override = false;
-  std::string expect_ech_retry_configs;
+  std::vector<uint8_t> expect_ech_retry_configs;
   bool expect_no_ech_retry_configs = false;
-  std::string ech_config_list;
-  std::string expect_certificate_types;
+  std::vector<uint8_t> ech_config_list;
+  std::vector<uint8_t> expect_certificate_types;
   bool require_any_client_certificate = false;
   std::string advertise_npn;
   bool advertise_empty_npn = false;
@@ -83,7 +83,7 @@ struct TestConfig {
   bool no_tls11 = false;
   bool no_tls1 = false;
   bool no_ticket = false;
-  std::string expect_channel_id;
+  std::vector<uint8_t> expect_channel_id;
   bool enable_channel_id = false;
   std::string send_channel_id;
   bool shim_writes_first = false;
@@ -99,8 +99,8 @@ struct TestConfig {
   std::vector<std::pair<std::string, std::string>> application_settings;
   std::optional<std::string> expect_peer_application_settings;
   bool alps_use_new_codepoint = false;
-  std::string quic_transport_params;
-  std::string expect_quic_transport_params;
+  std::vector<uint8_t> quic_transport_params;
+  std::vector<uint8_t> expect_quic_transport_params;
   // Set quic_use_legacy_codepoint to 0 or 1 to configure, -1 uses default.
   int quic_use_legacy_codepoint = -1;
   bool expect_session_miss = false;
@@ -109,9 +109,9 @@ struct TestConfig {
   std::string psk_identity;
   std::string srtp_profiles;
   bool enable_ocsp_stapling = false;
-  std::string expect_ocsp_response;
+  std::vector<uint8_t> expect_ocsp_response;
   bool enable_signed_cert_timestamps = false;
-  std::string expect_signed_cert_timestamps;
+  std::vector<uint8_t> expect_signed_cert_timestamps;
   uint16_t min_version = 0;
   uint16_t max_version = 0;
   uint16_t expect_version = 0;
@@ -142,14 +142,14 @@ struct TestConfig {
   bool renew_ticket = false;
   bool skip_ticket = false;
   bool enable_early_data = false;
-  std::string ocsp_response;
+  std::vector<uint8_t> ocsp_response;
   bool check_close_notify = false;
   bool shim_shuts_down = false;
   bool verify_fail = false;
   bool verify_peer = false;
   bool verify_peer_if_no_obc = false;
   bool expect_verify_result = false;
-  std::string signed_cert_timestamps;
+  std::vector<uint8_t> signed_cert_timestamps;
   int expect_total_renegotiations = 0;
   bool renegotiate_once = false;
   bool renegotiate_freely = false;
@@ -167,7 +167,7 @@ struct TestConfig {
   bool enable_grease = false;
   bool permute_extensions = false;
   int max_cert_list = 0;
-  std::string ticket_key;
+  std::vector<uint8_t> ticket_key;
   bool use_exporter_between_reads = false;
   uint16_t expect_cipher_aes = 0;
   uint16_t expect_cipher_no_aes = 0;

@@ -323,8 +323,7 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
     const uint8_t *data;
     size_t len;
     SSL_get0_ocsp_response(ssl, &data, &len);
-    if (bssl::StringAsBytes(config->expect_ocsp_response) !=
-        bssl::Span(data, len)) {
+    if (bssl::Span(config->expect_ocsp_response) != bssl::Span(data, len)) {
       fprintf(stderr, "OCSP response mismatch\n");
       return false;
     }
@@ -334,7 +333,7 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
     const uint8_t *data;
     size_t len;
     SSL_get0_signed_cert_timestamp_list(ssl, &data, &len);
-    if (bssl::StringAsBytes(config->expect_signed_cert_timestamps) !=
+    if (bssl::Span(config->expect_signed_cert_timestamps) !=
         bssl::Span(data, len)) {
       fprintf(stderr, "SCT list mismatch\n");
       return false;
@@ -554,7 +553,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     const uint8_t *peer_params;
     size_t peer_params_len;
     SSL_get_peer_quic_transport_params(ssl, &peer_params, &peer_params_len);
-    if (bssl::StringAsBytes(config->expect_quic_transport_params) !=
+    if (bssl::Span(config->expect_quic_transport_params) !=
         bssl::Span(peer_params, peer_params_len)) {
       fprintf(stderr, "QUIC transport params mismatch\n");
       return false;
@@ -567,7 +566,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
       fprintf(stderr, "no channel id negotiated\n");
       return false;
     }
-    if (bssl::StringAsBytes(config->expect_channel_id) != channel_id) {
+    if (bssl::Span(config->expect_channel_id) != channel_id) {
       fprintf(stderr, "channel id mismatch\n");
       return false;
     }
@@ -907,7 +906,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     bssl::Span<const uint8_t> expected =
         config->expect_no_ech_retry_configs
             ? bssl::Span<const uint8_t>()
-            : bssl::StringAsBytes(config->expect_ech_retry_configs);
+            : bssl::Span(config->expect_ech_retry_configs);
     if (ret) {
       fprintf(stderr, "Expected ECH rejection, but connection succeeded.\n");
       return false;
