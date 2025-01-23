@@ -696,9 +696,6 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 		hs.hello.hasKeyShare = false
 	}
 
-	firstHelloRetryRequest := true
-
-ResendHelloRetryRequest:
 	var sendHelloRetryRequest bool
 	cipherSuite := hs.suite.id
 	if config.Bugs.SendHelloRetryRequestCipherSuite != 0 {
@@ -906,9 +903,14 @@ ResendHelloRetryRequest:
 			return err
 		}
 
-		if firstHelloRetryRequest && config.Bugs.SecondHelloRetryRequest {
-			firstHelloRetryRequest = false
-			goto ResendHelloRetryRequest
+		if config.Bugs.SecondHelloRetryRequest {
+			c.writeRecord(recordTypeHandshake, helloRetryRequest.marshal())
+			// The peer should reject this. Read from the connection to pick up the alert.
+			_, err := c.readHandshake()
+			if err != nil {
+				return err
+			}
+			return errors.New("tls: client sent message instead of alert")
 		}
 	}
 

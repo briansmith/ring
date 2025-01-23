@@ -15870,8 +15870,9 @@ func addTLS13HandshakeTests() {
 				SecondHelloRetryRequest: true,
 			},
 		},
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_MESSAGE:",
+		shouldFail:         true,
+		expectedError:      ":UNEXPECTED_MESSAGE:",
+		expectedLocalError: "remote error: unexpected message",
 	})
 
 	testCases = append(testCases, testCase{
