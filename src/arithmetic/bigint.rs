@@ -42,7 +42,7 @@ pub(crate) use self::{
     modulusvalue::OwnedModulusValue,
     private_exponent::PrivateExponent,
 };
-use super::{inout::AliasingSlices3, limbs512, montgomery::*, LimbSliceError, MAX_LIMBS};
+use super::{inout::AliasingSlices3, limbs::*, limbs512, montgomery::*, LimbSliceError, MAX_LIMBS};
 use crate::{
     bits::BitLength,
     c,
@@ -213,8 +213,8 @@ pub fn elem_reduced_once<A, M>(
     other_modulus_len_bits: BitLength,
 ) -> Elem<M, Unencoded> {
     assert_eq!(m.len_bits(), other_modulus_len_bits);
-    r.limbs.copy_from_slice(&a.limbs);
-    limb::limbs_reduce_once(&mut r.limbs, m.limbs())
+
+    limbs_reduce_once(&mut r.limbs, &a.limbs, m.limbs())
         .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     Elem {
         limbs: r.limbs,
