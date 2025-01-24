@@ -40,12 +40,12 @@ pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 pub type LimbMask = constant_time::BoolMask;
 
 #[inline]
-pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
-    prefixed_extern! {
-        fn LIMBS_equal(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
+pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> Result<LimbMask, LenMismatchError> {
+    if a.len() != b.len() {
+        return Err(LenMismatchError::new(a.len()));
     }
-    assert_eq!(a.len(), b.len());
-    unsafe { LIMBS_equal(a.as_ptr(), b.as_ptr(), a.len()) }
+    let all = a.iter().zip(b).fold(0, |running, (a, b)| running | (a ^ b));
+    Ok(limb_is_zero_constant_time(all))
 }
 
 #[inline]

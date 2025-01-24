@@ -150,7 +150,7 @@ impl EcdsaVerificationAlgorithm {
         fn sig_r_equals_x(q: &Modulus<Q>, r: &Elem<Unencoded>, x: &Elem<R>, z2: &Elem<R>) -> bool {
             let r_jacobian = q.elem_product(z2, r);
             let x = q.elem_unencoded(x);
-            q.elem_equals_vartime(&r_jacobian, &x)
+            q.elems_are_equal(&r_jacobian, &x).leak()
         }
         let mut r = self.ops.scalar_as_elem(&r);
         if sig_r_equals_x(q, &r, &x, &z2) {
