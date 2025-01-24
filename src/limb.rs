@@ -21,7 +21,7 @@
 use crate::{
     c, constant_time,
     error::{self, LenMismatchError},
-    polyfill::{slice, usize_from_u32, ArrayFlatMap},
+    polyfill::{slice, usize_from_u32, AliasingSlices, ArrayFlatMap},
 };
 use core::num::NonZeroUsize;
 
@@ -152,16 +152,6 @@ pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
 
     // No bits were set.
     bits::BitLength::from_bits(0)
-}
-
-/// Equivalent to `if (r >= m) { r -= m; }`
-#[inline]
-pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
-    prefixed_extern! {
-        fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
-    }
-    assert_eq!(r.len(), m.len());
-    unsafe { LIMBS_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len()) };
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -374,6 +364,25 @@ pub(crate) fn limbs_negative_odd(r: &mut [Limb], a: &[Limb]) {
     // Two's complement step 2: Add one. Since `a` is odd, `r` is even. Thus we
     // can use a bitwise or for addition.
     r[0] |= 1;
+}
+
+// `if cond { r = a; }`
+pub fn limbs_cmov(r: &mut [Limb], a: &[Limb], cond: LimbMask) -> Result<(), LenMismatchError> {
+    prefixed_extern! {
+        // r, a, and/or b may alias.
+        fn LIMBS_select(
+            r: *mut Limb,
+            a: *const Limb,
+            b: *const Limb,
+            num_limbs: c::NonZero_size_t,
+            cond: LimbMask);
+    }
+    let len = r.len();
+    (r, a).with_pointers(len, |r, a, b| {
+        if let Some(num_limbs) = NonZeroUsize::new(len) {
+            unsafe { LIMBS_select(r, b, a, num_limbs, cond) }
+        }
+    })
 }
 
 #[cfg(any(test, feature = "alloc"))]

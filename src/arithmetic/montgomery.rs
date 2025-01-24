@@ -13,8 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub use super::n0::N0;
-use super::{inout::AliasingSlices, LimbSliceError, MIN_LIMBS};
-use crate::cpu;
+use super::{LimbSliceError, MIN_LIMBS};
+use crate::{cpu, polyfill::AliasingSlices};
 use cfg_if::cfg_if;
 
 // Indicates that the element is not encoded; there is no *R* factor

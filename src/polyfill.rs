@@ -51,6 +51,7 @@ pub const fn usize_from_u64_saturated(x: u64) -> usize {
 #[macro_use]
 mod cold_error;
 
+mod aliasing_slices;
 mod array_flat_map;
 mod array_split_map;
 
@@ -72,8 +73,8 @@ mod test;
 mod unwrap_const;
 
 pub use self::{
-    array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, notsend::NotSend,
-    unwrap_const::unwrap_const,
+    aliasing_slices::AliasingSlices, array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap,
+    notsend::NotSend, unwrap_const::unwrap_const,
 };
 
 #[cfg(feature = "alloc")]

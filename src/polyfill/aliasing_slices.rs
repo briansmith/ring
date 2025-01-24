@@ -14,7 +14,7 @@
 
 pub(crate) use crate::error::LenMismatchError;
 
-pub(crate) trait AliasingSlices<T> {
+pub trait AliasingSlices<T> {
     fn with_pointers<R>(
         &mut self,
         expected_len: usize,
