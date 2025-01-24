@@ -23,6 +23,7 @@ mod constant;
 #[cfg(feature = "alloc")]
 pub mod bigint;
 
+pub mod add;
 pub mod montgomery;
 
 mod n0;

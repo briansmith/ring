@@ -42,7 +42,7 @@ pub(crate) use self::{
     modulusvalue::OwnedModulusValue,
     private_exponent::PrivateExponent,
 };
-use super::{montgomery::*, LimbSliceError, MAX_LIMBS};
+use super::{add::*, montgomery::*, LimbSliceError, MAX_LIMBS};
 use crate::{
     bits::BitLength,
     c,
@@ -172,7 +172,8 @@ pub fn elem_reduced_once<A, M>(
     assert_eq!(m.len_bits(), other_modulus_len_bits);
 
     let mut r = a.limbs.clone();
-    limb::limbs_reduce_once_constant_time(&mut r, m.limbs());
+    limbs_reduce_once(&mut r, &a.limbs, m.limbs())
+        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     Elem {
         limbs: BoxedLimbs::new_unchecked(r.into_limbs()),
         encoding: PhantomData,

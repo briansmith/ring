@@ -14,7 +14,7 @@
 
 use crate::{
     arithmetic::limbs_from_hex,
-    arithmetic::montgomery::*,
+    arithmetic::{add::*, montgomery::*},
     constant_time::LeakyWord,
     cpu,
     error::{self, LenMismatchError},
@@ -490,10 +490,15 @@ fn twin_mul_inefficient(
 
 // This assumes n < q < 2*n.
 impl Modulus<N> {
-    pub fn elem_reduced_to_scalar(&self, elem: &Elem<Unencoded>) -> Scalar<Unencoded> {
+    pub fn elem_reduced_to_scalar(&self, a: &Elem<Unencoded>) -> Scalar<Unencoded> {
         let num_limbs = self.num_limbs.into();
-        let mut r_limbs = elem.limbs;
-        limbs_reduce_once_constant_time(&mut r_limbs[..num_limbs], &self.limbs[..num_limbs]);
+        let mut r_limbs = a.limbs;
+        limbs_reduce_once(
+            &mut r_limbs[..num_limbs],
+            &a.limbs[..num_limbs],
+            &self.limbs[..num_limbs],
+        )
+        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         Scalar {
             limbs: r_limbs,
             m: PhantomData,
@@ -571,13 +576,12 @@ pub(super) fn scalar_parse_big_endian_partially_reduced_variable_consttime(
     bytes: untrusted::Input,
 ) -> Result<Scalar, error::Unspecified> {
     let num_limbs = n.num_limbs.into();
+    let mut unreduced = [0; elem::NumLimbs::MAX];
+    let unreduced = &mut unreduced[..num_limbs];
+    parse_big_endian_and_pad_consttime(bytes, unreduced)?;
     let mut r = Scalar::zero();
-    {
-        let r = &mut r.limbs[..num_limbs];
-        parse_big_endian_and_pad_consttime(bytes, r)?;
-        limbs_reduce_once_constant_time(r, &n.limbs[..num_limbs]);
-    }
-
+    limbs_reduce_once(&mut r.limbs[..num_limbs], unreduced, &n.limbs[..num_limbs])
+        .map_err(error::erase::<LenMismatchError>)?;
     Ok(r)
 }
 
