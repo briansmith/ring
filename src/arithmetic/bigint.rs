@@ -132,10 +132,6 @@ impl<M> Elem<M, Unencoded> {
         // See Falko Strenzke, "Manger's Attack revisited", ICICS 2010.
         limb::big_endian_from_limbs(&self.limbs, out)
     }
-
-    fn is_one(&self) -> bool {
-        limb::limbs_equal_limb_constant_time(&self.limbs, 1).leak()
-    }
 }
 
 pub fn elem_mul<M, AF, BF>(
@@ -705,11 +701,8 @@ pub fn verify_inverses_consttime<M>(
     b: Elem<M, Unencoded>,
     m: &Modulus<M>,
 ) -> Result<(), error::Unspecified> {
-    if elem_mul(a, b, m).is_one() {
-        Ok(())
-    } else {
-        Err(error::Unspecified)
-    }
+    let r = elem_mul(a, b, m);
+    limb::verify_limbs_equal_1_leak_bit(&r.limbs)
 }
 
 #[inline]

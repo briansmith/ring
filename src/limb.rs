@@ -114,11 +114,14 @@ pub fn limbs_reject_even_leak_bit(limbs: &[Limb]) -> Result<(), error::Unspecifi
 
 #[cfg(any(test, feature = "alloc"))]
 #[inline]
-pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
-    prefixed_extern! {
-        fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+pub fn verify_limbs_equal_1_leak_bit(a: &[Limb]) -> Result<(), error::Unspecified> {
+    if let [bottom, ref rest @ ..] = *a {
+        let equal = limb_is_zero_constant_time(bottom ^ 1) & limbs_are_zero_constant_time(rest);
+        if equal.leak() {
+            return Ok(());
+        }
     }
-    unsafe { LIMBS_equal_limb(a.as_ptr(), b, a.len()) }
+    Err(error::Unspecified)
 }
 
 /// Returns the number of bits in `a`.
@@ -425,8 +428,6 @@ mod tests {
         }
     }
 
-    const ZERO: LeakyLimb = 0;
-
     static ZEROES: &[&[LeakyLimb]] = &[
         &[],
         &[0],
@@ -463,49 +464,32 @@ mod tests {
 
     #[test]
     fn test_limbs_equal_limb() {
-        for zero in ZEROES {
-            let zero = &Vec::from_iter(zero.iter().copied().map(Limb::from));
-            assert!(leak_in_test(limbs_equal_limb_constant_time(
-                zero,
-                Limb::from(ZERO)
-            )));
-        }
-        for nonzero in NONZEROES {
-            let nonzero = &Vec::from_iter(nonzero.iter().copied().map(Limb::from));
-            assert!(!leak_in_test(limbs_equal_limb_constant_time(
-                nonzero,
-                Limb::from(ZERO)
-            )));
-        }
-        static EQUAL: &[(&[LeakyLimb], LeakyLimb)] = &[
-            (&[1], 1),
-            (&[MAX], MAX),
-            (&[1, 0], 1),
-            (&[MAX, 0, 0], MAX),
-            (&[0b100], 0b100),
-            (&[0b100, 0], 0b100),
-        ];
-        for &(a, b) in EQUAL {
+        // Equal
+        static EQUAL: &[&[LeakyLimb]] = &[&[1], &[1, 0], &[1, 0, 0], &[1, 0, 0, 0, 0, 0, 0]];
+        for a in EQUAL {
             let a = &Vec::from_iter(a.iter().copied().map(Limb::from));
-            assert!(leak_in_test(limbs_equal_limb_constant_time(
-                a,
-                Limb::from(b)
-            )));
+            assert!(matches!(verify_limbs_equal_1_leak_bit(a), Ok(())));
         }
-        static UNEQUAL: &[(&[LeakyLimb], LeakyLimb)] = &[
-            (&[0], 1),
-            (&[2], 1),
-            (&[3], 1),
-            (&[1, 1], 1),
-            (&[0b100, 0b100], 0b100),
-            (&[1, 0, 0b100, 0, 0, 0, 0, 0], 1),
-            (&[1, 0, 0, 0, 0, 0, 0, 0b100], 1),
-            (&[MAX, MAX], MAX),
-            (&[MAX, 1], MAX),
+
+        // Unequal
+        static UNEQUAL: &[&[LeakyLimb]] = &[
+            &[0],
+            &[2],
+            &[3],
+            &[MAX],
+            &[0, 1],
+            &[1, 1],
+            &[0, 0, 0, 0, 0, 0, 0, 1],
+            &[0, 0, 0, 0, 1, 0, 0, 0],
+            &[0, 0, 0, 0, 1, 0, 0, 1],
+            &[MAX, 1],
         ];
-        for &(a, b) in UNEQUAL {
+        for a in UNEQUAL {
             let a = &Vec::from_iter(a.iter().copied().map(Limb::from));
-            assert!(!leak_in_test(limbs_equal_limb_constant_time(a, b)));
+            assert!(matches!(
+                verify_limbs_equal_1_leak_bit(a),
+                Err(error::Unspecified)
+            ));
         }
     }
 
