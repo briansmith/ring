@@ -14,4 +14,8 @@
 
 pub(super) mod aarch64;
 pub(super) mod fallback;
+pub(super) mod reduce_once;
 pub(super) mod x86_64;
+
+pub(crate) use self::reduce_once::limbs_reduce_once;
+use fallback::{cmov::limbs_cmov, sub::limbs_sub};

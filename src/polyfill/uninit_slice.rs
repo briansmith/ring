@@ -169,14 +169,24 @@ impl<'target, E: Copy> Uninit<'target, E> {
 // somebody might then unsoundly write `uninit` into it without using `unsafe`.
 // We avoid that problem here because `Uninit` never writes `uninit` and it
 // never exposes a `MaybeUninit<T>` (mutable) reference externally.
-impl<'target, E> AliasedUninit<'target, E> {
+impl<'target, E> Uninit<'target, E> {
     pub fn from_mut(target: &'target mut [E]) -> Self {
         let target: &'target mut [E] = target;
         let target: *mut [E] = target;
         let target: *mut [MaybeUninit<E>] = target as *mut [MaybeUninit<E>];
-        let _target: &'target mut [MaybeUninit<E>] = unsafe { &mut *target };
+        let target: &'target mut [MaybeUninit<E>] = unsafe { &mut *target };
+        Self { target }
+    }
+}
+
+// Generally it isn't safe to cast `mut T` to `mut MaybeUninit<T>` because
+// somebody might then unsoundly write `uninit` into it without using `unsafe`.
+// We avoid that problem here because `Uninit` never writes `uninit` and it
+// never exposes a `MaybeUninit<T>` (mutable) reference externally.
+impl<'target, E> AliasedUninit<'target, E> {
+    pub fn from_mut(target: &'target mut [E]) -> Self {
         Self {
-            target,
+            target: Uninit::from_mut(target).target,
             _a: PhantomData,
         }
     }

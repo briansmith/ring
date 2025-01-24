@@ -61,27 +61,6 @@ Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs) {
   return constant_time_is_nonzero_w(borrow);
 }
 
-/* if (r >= m) { r -= m; } */
-void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
-  debug_assert_nonsecret(num_limbs >= 1);
-  /* This could be done more efficiently if we had |num_limbs| of extra space
-   * available, by storing |r - m| and then doing a conditional copy of either
-   * |r| or |r - m|. But, in order to operate in constant space, with an eye
-   * towards this function being used in RSA in the future, we do things a
-   * slightly less efficient way. */
-  Limb lt = LIMBS_less_than(r, m, num_limbs);
-  Carry borrow =
-      limb_sub(&r[0], r[0], constant_time_select_w(lt, 0, m[0]));
-  for (size_t i = 1; i < num_limbs; ++i) {
-    /* XXX: This is probably particularly inefficient because the operations in
-     * constant_time_select affect the carry flag, so there will likely be
-     * loads and stores of |borrow|. */
-    borrow =
-        limb_sbb(&r[i], r[i], constant_time_select_w(lt, 0, m[i]), borrow);
-  }
-  dev_assert_secret(borrow == 0);
-}
-
 void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
                    size_t num_limbs) {
   Limb overflow1 =
@@ -92,6 +71,14 @@ void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
   for (size_t i = 1; i < num_limbs; ++i) {
     borrow = limb_sbb(&r[i], r[i], m[i] & overflow, borrow);
   }
+}
+
+// r, `a` and/or `b` may alias.
+Limb LIMBS_sub(Limb a_high, Limb r[], const Limb a[], const Limb b[], size_t num_limbs) {
+  debug_assert_nonsecret(num_limbs >= 1);
+  Carry underflow = limbs_sub(r, a, b, num_limbs);
+  limb_sbb(&a_high, a_high, 0, underflow);
+  return a_high;
 }
 
 void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
@@ -120,6 +107,13 @@ void LIMBS_shl_mod(Limb r[], const Limb a[], const Limb m[], size_t num_limbs) {
   for (size_t i = 1; i < num_limbs; ++i) {
     borrow = limb_sbb(&r[i], r[i], m[i] & overflow, borrow);
   }
+}
+
+// r, a, and/or b may alias.
+void LIMBS_select(Limb cond, Limb r[], const Limb a[], const Limb b[], size_t num_limbs) {
+    for (size_t i = 0; i < num_limbs; ++i) {
+        r[i] = constant_time_select_w(cond, a[i], b[i]);
+    }
 }
 
 int LIMBS_select_512_32(Limb r[], const Limb table[], size_t num_limbs,

@@ -123,19 +123,6 @@ pub fn verify_limbs_equal_1_leak_bit(a: &[Limb]) -> Result<(), error::Unspecifie
     Err(error::Unspecified)
 }
 
-/// Equivalent to `if (r >= m) { r -= m; }`
-#[inline]
-pub fn limbs_reduce_once(r: &mut [Limb], m: &[Limb]) -> Result<(), LenMismatchError> {
-    prefixed_extern! {
-        unsafe fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: NonZero<c::size_t>);
-    }
-    let num_limbs = NonZero::new(r.len()).ok_or_else(|| LenMismatchError::new(m.len()))?;
-    let r = r.as_mut_ptr(); // Non-dangling because num_limbs is non-zero.
-    let m = m.as_ptr(); // Non-dangling because num_limbs is non-zero.
-    unsafe { LIMBS_reduce_once(r, m, num_limbs) };
-    Ok(())
-}
-
 #[derive(Clone, Copy, PartialEq)]
 pub enum AllowZero {
     No,

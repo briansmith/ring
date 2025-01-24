@@ -16,7 +16,7 @@
 use crate::polyfill::prelude::*;
 
 use super::{
-    super::{MAX_LIMBS, montgomery::*},
+    super::{MAX_LIMBS, limbs, montgomery::*},
     IntoMont, Mont, Uninit,
     boxed_limbs::BoxedLimbs,
     unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
@@ -194,13 +194,9 @@ impl<M> Uninit<M> {
         other_modulus_len_bits: BitLength,
     ) -> Elem<M, Unencoded> {
         assert_eq!(m.len_bits(), other_modulus_len_bits);
-        // TODO: We should add a variant of `limbs_reduced_once` that does the
-        // reduction out-of-place, to eliminate this copy.
-        let mut r = self
-            .write_copy_of_slice_checked(a.limbs.as_ref())
-            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        limb::limbs_reduce_once(r.as_mut(), m.limbs())
-            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+        let r = self
+            .write_fully_with(|r| limbs::limbs_reduce_once(r, a.leak_limbs_less_safe(), m.limbs()))
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
         Elem::<M, Unencoded>::assume_in_range_and_encoded_less_safe(r)
     }
 

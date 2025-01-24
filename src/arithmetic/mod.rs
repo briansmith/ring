@@ -24,7 +24,7 @@ mod constant;
 pub mod bigint;
 
 mod exp_vartime;
-mod limbs;
+pub mod limbs;
 mod limbs512;
 pub mod montgomery;
 

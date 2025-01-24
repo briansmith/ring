@@ -14,7 +14,7 @@
 
 use crate::{
     arithmetic::limbs_from_hex,
-    arithmetic::montgomery::*,
+    arithmetic::{limbs::*, montgomery::*},
     bb::LeakyWord,
     cpu,
     error::{self, LenMismatchError},
@@ -22,6 +22,7 @@ use crate::{
 };
 use core::marker::PhantomData;
 
+use crate::polyfill::slice::Uninit;
 use elem::{mul_mont, unary_op, unary_op_assign, unary_op_from_binary_op_assign};
 
 /// A field element, i.e. an element of ℤ/qℤ for the curve's field modulus
@@ -490,11 +491,15 @@ fn twin_mul_inefficient(
 
 // This assumes n < q < 2*n.
 impl Modulus<N> {
-    pub fn elem_reduced_to_scalar(&self, elem: &Elem<Unencoded>) -> Scalar<Unencoded> {
+    pub fn elem_reduced_to_scalar(&self, a: &Elem<Unencoded>) -> Scalar<Unencoded> {
         let num_limbs = self.num_limbs.into();
-        let mut r_limbs = elem.limbs;
-        limbs_reduce_once(&mut r_limbs[..num_limbs], &self.limbs[..num_limbs])
-            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+        let mut r_limbs = a.limbs;
+        let _: &mut [Limb] = limbs_reduce_once(
+            Uninit::from_mut(&mut r_limbs[..num_limbs]),
+            &a.limbs[..num_limbs],
+            &self.limbs[..num_limbs],
+        )
+        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         Scalar {
             limbs: r_limbs,
             m: PhantomData,
@@ -572,14 +577,17 @@ pub(super) fn scalar_parse_big_endian_partially_reduced_variable_consttime(
     bytes: untrusted::Input,
 ) -> Result<Scalar, error::Unspecified> {
     let num_limbs = n.num_limbs.into();
+    let mut unreduced = [0; elem::NumLimbs::MAX];
+    let unreduced = &mut unreduced[..num_limbs];
+    parse_big_endian_and_pad_consttime(bytes, unreduced)
+        .map_err(error::erase::<LenMismatchError>)?;
     let mut r = Scalar::zero();
-    {
-        let r = &mut r.limbs[..num_limbs];
-        parse_big_endian_and_pad_consttime(bytes, r).map_err(error::erase::<LenMismatchError>)?;
-        limbs_reduce_once(r, &n.limbs[..num_limbs])
-            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-    }
-
+    let _: &mut _ = limbs_reduce_once(
+        Uninit::from_mut(&mut r.limbs[..num_limbs]),
+        unreduced,
+        &n.limbs[..num_limbs],
+    )
+    .map_err(error::erase::<LenMismatchError>)?;
     Ok(r)
 }
 

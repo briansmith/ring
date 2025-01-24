@@ -12,4 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+pub(super) mod cmov;
 pub(in super::super) mod mont;
+pub(super) mod sub;
