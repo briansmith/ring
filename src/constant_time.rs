@@ -68,6 +68,10 @@ mod tests {
     use super::*;
     use crate::{bssl, rand};
 
+    fn leak_in_test(a: BoolMask) -> bool {
+        a.leak()
+    }
+
     #[test]
     fn test_constant_time() -> Result<(), error::Unspecified> {
         prefixed_extern! {
@@ -138,5 +142,13 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn test_bool_mask_bitwise_and_is_logical_and() {
+        assert!(leak_in_test(BoolMask::TRUE & BoolMask::TRUE));
+        assert!(!leak_in_test(BoolMask::TRUE & BoolMask::FALSE));
+        assert!(!leak_in_test(BoolMask::FALSE & BoolMask::TRUE));
+        assert!(!leak_in_test(BoolMask::FALSE & BoolMask::FALSE));
     }
 }
