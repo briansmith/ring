@@ -12,8 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{inout::AliasingSlices, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
-use crate::{c, limb::Limb, polyfill::usize_from_u32};
+use super::{n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
+use crate::{
+    c,
+    limb::Limb,
+    polyfill::{usize_from_u32, AliasingSlices},
+};
 use core::mem::size_of;
 
 const _MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
