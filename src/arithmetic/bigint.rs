@@ -45,7 +45,8 @@ pub(crate) use self::{
 use super::{montgomery::*, LimbSliceError, MAX_LIMBS};
 use crate::{
     bits::BitLength,
-    c, error,
+    c,
+    error::{self, LenMismatchError},
     limb::{self, Limb, LIMB_BITS},
 };
 use alloc::vec;
@@ -716,11 +717,18 @@ pub fn elem_verify_equal_consttime<M, E>(
     a: &Elem<M, E>,
     b: &Elem<M, E>,
 ) -> Result<(), error::Unspecified> {
-    if limb::limbs_equal_limbs_consttime(&a.limbs, &b.limbs).leak() {
-        Ok(())
-    } else {
-        Err(error::Unspecified)
+    let equal = limb::limbs_equal_limbs_consttime(&a.limbs, &b.limbs)
+        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+    if !equal.leak() {
+        return Err(error::Unspecified);
     }
+    Ok(())
+}
+
+#[cold]
+#[inline(never)]
+fn unwrap_impossible_len_mismatch_error<T>(LenMismatchError { .. }: LenMismatchError) -> T {
+    unreachable!()
 }
 
 #[cold]

@@ -143,9 +143,10 @@ impl<M> Modulus<M> {
 
 impl Modulus<Q> {
     #[inline]
-    pub fn elems_are_equal(&self, a: &Elem<R>, b: &Elem<R>) -> LimbMask {
+    pub fn elems_are_equal<E: Encoding>(&self, a: &Elem<E>, b: &Elem<E>) -> LimbMask {
         let num_limbs = self.num_limbs.into();
         limbs_equal_limbs_consttime(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error)
     }
 
     #[inline]
@@ -434,11 +435,6 @@ impl PublicScalarOps {
 }
 
 impl Modulus<Q> {
-    pub fn elem_equals_vartime(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
-        let num_limbs = self.num_limbs.into();
-        limbs_equal_limbs_consttime(&a.limbs[..num_limbs], &b.limbs[..num_limbs]).leak()
-    }
-
     pub fn elem_less_than_vartime(&self, a: &Elem<Unencoded>, b: &PublicElem<Unencoded>) -> bool {
         let num_limbs = self.num_limbs.into();
         limbs_less_than_limbs_vartime(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
@@ -602,6 +598,12 @@ fn parse_big_endian_fixed_consttime<M>(
         &mut r.limbs[..num_limbs],
     )?;
     Ok(r)
+}
+
+#[cold]
+#[inline(never)]
+fn unwrap_impossible_len_mismatch_error<T>(LenMismatchError { .. }: LenMismatchError) -> T {
+    unreachable!()
 }
 
 #[cfg(test)]
