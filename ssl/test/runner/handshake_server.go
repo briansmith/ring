@@ -1068,32 +1068,33 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 		c.writeRecord(recordTypeHandshake, encryptedExtensions.marshal())
 	}
 
-	if hs.sessionState == nil {
-		if config.ClientAuth >= RequestClientCert {
-			// Request a client certificate
-			certReq := &certificateRequestMsg{
-				vers:                  c.wireVersion,
-				hasSignatureAlgorithm: !config.Bugs.OmitCertificateRequestAlgorithms,
-				hasRequestContext:     true,
-				requestContext:        config.Bugs.SendRequestContext,
-				customExtension:       config.Bugs.SendCustomCertificateRequest,
-			}
-			if !config.Bugs.NoSignatureAlgorithms {
-				certReq.signatureAlgorithms = config.verifySignatureAlgorithms()
-			}
-
-			// An empty list of certificateAuthorities signals to
-			// the client that it may send any certificate in response
-			// to our request. When we know the CAs we trust, then
-			// we can send them down, so that the client can choose
-			// an appropriate certificate to give to us.
-			if config.ClientCAs != nil {
-				certReq.certificateAuthorities = config.ClientCAs.Subjects()
-			}
-			hs.writeServerHash(certReq.marshal())
-			c.writeRecord(recordTypeHandshake, certReq.marshal())
+	requestClientCert := config.ClientAuth >= RequestClientCert && (hs.sessionState == nil || config.Bugs.AlwaysSendCertificateRequest)
+	if requestClientCert {
+		// Request a client certificate
+		certReq := &certificateRequestMsg{
+			vers:                  c.wireVersion,
+			hasSignatureAlgorithm: !config.Bugs.OmitCertificateRequestAlgorithms,
+			hasRequestContext:     true,
+			requestContext:        config.Bugs.SendRequestContext,
+			customExtension:       config.Bugs.SendCustomCertificateRequest,
+		}
+		if !config.Bugs.NoSignatureAlgorithms {
+			certReq.signatureAlgorithms = config.verifySignatureAlgorithms()
 		}
 
+		// An empty list of certificateAuthorities signals to
+		// the client that it may send any certificate in response
+		// to our request. When we know the CAs we trust, then
+		// we can send them down, so that the client can choose
+		// an appropriate certificate to give to us.
+		if config.ClientCAs != nil {
+			certReq.certificateAuthorities = config.ClientCAs.Subjects()
+		}
+		hs.writeServerHash(certReq.marshal())
+		c.writeRecord(recordTypeHandshake, certReq.marshal())
+	}
+
+	if hs.sessionState == nil || config.Bugs.AlwaysSendCertificate {
 		certMsg := &certificateMsg{
 			hasRequestContext: true,
 		}
@@ -1308,7 +1309,7 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
-	if config.ClientAuth >= RequestClientCert {
+	if requestClientCert {
 		certMsg, err := readHandshakeType[certificateMsg](c)
 		if err != nil {
 			return err

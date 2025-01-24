@@ -1769,6 +1769,15 @@ type ProtocolBugs struct {
 	// extension in a TLS 1.3 CertificateRequest.
 	SendCustomCertificateRequest uint16
 
+	// AlwaysSendCertificateRequest, if true, causes the server to send
+	// CertificateRequest in TLS 1.3, even in handshakes where it is not
+	// allowed, such as resumption.
+	AlwaysSendCertificateRequest bool
+
+	// AlwaysSendCertificate, if true, causes the server to send Certificate in
+	// TLS 1.3, even in handshakes where it is not allowed, such as resumption.
+	AlwaysSendCertificate bool
+
 	// SendSNIWarningAlert, if true, causes the server to send an
 	// unrecognized_name alert before the ServerHello.
 	SendSNIWarningAlert bool

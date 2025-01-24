@@ -17015,6 +17015,41 @@ func addTLS13HandshakeTests() {
 		expectedLocalError: "remote error: unexpected message",
 	})
 
+	// PSK/resumption handshakes should not accept CertificateRequest or
+	// Certificate messages.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "CertificateInResumption-TLS13",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				AlwaysSendCertificate: true,
+			},
+		},
+		resumeSession:      true,
+		shouldFail:         true,
+		expectedError:      ":UNEXPECTED_MESSAGE:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "CertificateRequestInResumption-TLS13",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			ClientAuth: RequireAnyClientCert,
+			Bugs: ProtocolBugs{
+				AlwaysSendCertificateRequest: true,
+			},
+		},
+		shimCertificate:    &rsaCertificate,
+		resumeSession:      true,
+		shouldFail:         true,
+		expectedError:      ":UNEXPECTED_MESSAGE:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+
 	// If the client or server has 0-RTT enabled but disabled TLS 1.3, it should
 	// report a reason of protocol_version.
 	testCases = append(testCases, testCase{
