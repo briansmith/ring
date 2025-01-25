@@ -15,23 +15,58 @@
 
 #![cfg(all(target_arch = "arm", target_endian = "little"))]
 
-use super::{poly1305_state, Key, Tag, KEY_LEN, OPAQUE_LEN, TAG_LEN};
+use super::{Key, Tag, KEY_LEN, TAG_LEN};
 use crate::{c, cpu::arm::Neon};
 use core::num::NonZeroUsize;
 
 // XXX/TODO(MSRV): change to `pub(super)`.
 pub(in super::super) struct State {
-    state: poly1305_state,
+    state: poly1305_state_st,
     neon: Neon,
+}
+
+// TODO: Is 16 enough?
+#[repr(C, align(16))]
+struct poly1305_state_st {
+    r: fe1305x2,
+    h: fe1305x2,
+    c: fe1305x2,
+    precomp: [fe1305x2; 2],
+
+    data: [u8; data_len()],
+
+    buf: [u8; 32],
+    buf_used: c::size_t,
+    key: [u8; 16],
+}
+
+const fn data_len() -> usize {
+    128
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct fe1305x2 {
+    v: [u32; 12], // for alignment; only using 10
 }
 
 impl State {
     pub(super) fn new_context(Key { key_and_nonce }: Key, neon: Neon) -> super::Context {
         prefixed_extern! {
-            fn CRYPTO_poly1305_init_neon(state: &mut poly1305_state, key: &[u8; KEY_LEN]);
+            fn CRYPTO_poly1305_init_neon(state: &mut poly1305_state_st, key: &[u8; KEY_LEN]);
         }
         let mut r = Self {
-            state: poly1305_state([0u8; OPAQUE_LEN]),
+            state: poly1305_state_st {
+                r: fe1305x2 { v: [0; 12] },
+                h: fe1305x2 { v: [0; 12] },
+                c: fe1305x2 { v: [0; 12] },
+                precomp: [fe1305x2 { v: [0; 12] }; 2],
+
+                data: [0u8; data_len()],
+                buf: Default::default(),
+                buf_used: 0,
+                key: [0u8; 16],
+            },
             neon,
         };
         unsafe { CRYPTO_poly1305_init_neon(&mut r.state, &key_and_nonce) }
@@ -41,7 +76,7 @@ impl State {
     pub(super) fn update_internal(&mut self, input: &[u8]) {
         prefixed_extern! {
             fn CRYPTO_poly1305_update_neon(
-                state: &mut poly1305_state,
+                st: &mut poly1305_state_st,
                 input: *const u8,
                 in_len: c::NonZero_size_t);
         }
@@ -54,7 +89,7 @@ impl State {
 
     pub(super) fn finish(mut self) -> Tag {
         prefixed_extern! {
-            fn CRYPTO_poly1305_finish_neon(statep: &mut poly1305_state, mac: &mut [u8; TAG_LEN]);
+            fn CRYPTO_poly1305_finish_neon(st: &mut poly1305_state_st, mac: &mut [u8; TAG_LEN]);
         }
         let mut tag = Tag([0u8; TAG_LEN]);
         unsafe { CRYPTO_poly1305_finish_neon(&mut self.state, &mut tag.0) }

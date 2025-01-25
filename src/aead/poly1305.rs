@@ -38,14 +38,6 @@ impl Key {
     }
 }
 
-// Keep in sync with `poly1305_state` in ring-core/poly1305.h.
-//
-// The C code, in particular the way the `poly1305_aligned_state` functions
-// are used, is only correct when the state buffer is 64-byte aligned.
-#[repr(C, align(64))]
-struct poly1305_state([u8; OPAQUE_LEN]);
-const OPAQUE_LEN: usize = 512;
-
 pub(super) enum Context {
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
     ArmNeon(ffi_arm_neon::State),

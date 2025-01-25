@@ -15,17 +15,19 @@
 // This implementation was taken from the public domain, neon2 version in
 // SUPERCOP by D. J. Bernstein and Peter Schwabe.
 
-#include <ring-core/poly1305.h>
+#include <ring-core/base.h>
 
 #include "../internal.h"
 
 
 #pragma GCC diagnostic ignored "-Wsign-conversion"
-#pragma GCC diagnostic ignored "-Wcast-align"
 
+// Keep in sync with ffi_arm_neon.rs
 typedef struct {
   uint32_t v[12];  // for alignment; only using 10
 } fe1305x2;
+
+// TODO: static asserts on sizes and alignments of fe1305x2.
 
 #define addmulmod openssl_poly1305_neon2_addmulmod
 #define blocks openssl_poly1305_neon2_blocks
@@ -174,23 +176,26 @@ static void fe1305x2_frombytearray(fe1305x2 *r, const uint8_t *x, size_t xlen) {
 
 static const alignas(16) fe1305x2 zero;
 
+// Keep in sync with ffi_arm_neon.rs
 struct poly1305_state_st {
-  uint8_t data[sizeof(fe1305x2[5]) + 128];
+  alignas(16) fe1305x2 r;
+  fe1305x2 h;
+  fe1305x2 c;
+  fe1305x2 precomp[2];
+
+  uint8_t data[128];
+
   uint8_t buf[32];
   size_t buf_used;
   uint8_t key[16];
 };
 
-OPENSSL_STATIC_ASSERT(
-    sizeof(struct poly1305_state_st) + 63 <= sizeof(poly1305_state),
-    "poly1305_state isn't large enough to hold aligned poly1305_state_st.");
+// TODO: static asserts on sizes and alignments of fe1305x2.
 
-void CRYPTO_poly1305_init_neon(poly1305_state *state, const uint8_t key[32]) {
-  struct poly1305_state_st *st = (struct poly1305_state_st *)(state);
-  fe1305x2 *const r = (fe1305x2 *)(st->data + (15 & (-(int)st->data)));
-  fe1305x2 *const h = r + 1;
-  fe1305x2 *const c = h + 1;
-  fe1305x2 *const precomp = c + 1;
+void CRYPTO_poly1305_init_neon(struct poly1305_state_st *st, const uint8_t key[32]) {
+  fe1305x2 *const r = &st->r;
+  fe1305x2 *const h = &st->h;
+  fe1305x2 *const precomp = &st->precomp[0];
 
   r->v[1] = r->v[0] = 0x3ffffff & load32(key);
   r->v[3] = r->v[2] = 0x3ffff03 & (load32(key + 3) >> 2);
@@ -209,13 +214,11 @@ void CRYPTO_poly1305_init_neon(poly1305_state *state, const uint8_t key[32]) {
   st->buf_used = 0;
 }
 
-void CRYPTO_poly1305_update_neon(poly1305_state *state, const uint8_t *in,
+void CRYPTO_poly1305_update_neon(struct poly1305_state_st *st, const uint8_t *in,
                                  size_t in_len) {
-  struct poly1305_state_st *st = (struct poly1305_state_st *)(state);
-  fe1305x2 *const r = (fe1305x2 *)(st->data + (15 & (-(int)st->data)));
-  fe1305x2 *const h = r + 1;
-  fe1305x2 *const c = h + 1;
-  fe1305x2 *const precomp = c + 1;
+  fe1305x2 *const h = &st->h;
+  fe1305x2 *const c = &st->c;
+  fe1305x2 *const precomp = &st->precomp[0];
 
   if (st->buf_used) {
     size_t todo = 32 - st->buf_used;
@@ -257,12 +260,11 @@ void CRYPTO_poly1305_update_neon(poly1305_state *state, const uint8_t *in,
   }
 }
 
-void CRYPTO_poly1305_finish_neon(poly1305_state *state, uint8_t mac[16]) {
-  struct poly1305_state_st *st = (struct poly1305_state_st *)(state);
-  fe1305x2 *const r = (fe1305x2 *)(st->data + (15 & (-(int)st->data)));
-  fe1305x2 *const h = r + 1;
-  fe1305x2 *const c = h + 1;
-  fe1305x2 *const precomp = c + 1;
+void CRYPTO_poly1305_finish_neon(struct poly1305_state_st *st, uint8_t mac[16]) {
+  fe1305x2 *const r = &st->r;
+  fe1305x2 *const h = &st->h;
+  fe1305x2 *const c = &st->c;
+  fe1305x2 *const precomp = &st->precomp[0];
 
   addmulmod(h, h, precomp, &zero);
 
