@@ -1,4 +1,4 @@
-// Copyright 2019-2024 Brian Smith.
+// Copyright 2019-2025 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -45,11 +45,11 @@ where
         // https://github.com/rust-lang/rust/issues/43408.
         let mut W = S::zero_w();
         let W = W.as_mut();
-        for (W, M) in W.iter_mut().zip(M) {
-            let bytes: &S::InputBytes = M.into();
-            *W = S::from_be_bytes(*bytes);
-        }
-        for t in M.len()..(S::K.as_ref().len()) {
+        W.iter_mut().zip(M).for_each(|(Wt, Mt)| {
+            let Mt: &S::InputBytes = Mt.into();
+            *Wt = S::from_be_bytes(*Mt);
+        });
+        for t in 16..S::ROUNDS {
             W[t] = sigma_1(W[t - 2]) + W[t - 7] + sigma_0(W[t - 15]) + W[t - 16]
         }
 
