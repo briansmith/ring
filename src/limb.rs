@@ -21,9 +21,9 @@
 use crate::{
     c, constant_time,
     error::{self, LenMismatchError},
-    polyfill::{slice, usize_from_u32, ArrayFlatMap},
+    polyfill::{sliceutil, usize_from_u32, ArrayFlatMap},
 };
-use core::num::NonZeroUsize;
+use core::{iter, num::NonZeroUsize};
 
 #[cfg(any(test, feature = "alloc"))]
 use crate::bits;
@@ -201,36 +201,22 @@ pub fn parse_big_endian_and_pad_consttime(
     input: untrusted::Input,
     result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
-    let (partial, whole) = slice::as_rchunks(input.as_slice_less_safe());
-
-    let mut partial_padded: [u8; LIMB_BYTES];
-    let partial_padded = match (partial, whole) {
-        (partial @ [_, ..], _) => {
-            partial_padded = [0; LIMB_BYTES];
-            partial_padded[(LIMB_BYTES - partial.len())..].copy_from_slice(partial);
-            Some(partial_padded)
-        }
-        ([], [_, ..]) => None,
-        ([], []) => {
-            // Empty input is not allowed.
-            return Err(error::Unspecified);
-        }
-    };
-
-    let mut result = result.iter_mut();
-
-    for input in whole.iter().rev().chain(partial_padded.iter()) {
-        // The result isn't allowed to be shorter than the input.
-        match result.next() {
-            Some(r) => *r = Limb::from_be_bytes(*input),
-            None => return Err(error::Unspecified),
-        }
+    if input.is_empty() {
+        return Err(error::Unspecified);
+    }
+    let input_limbs = input.as_slice_less_safe().rchunks(LIMB_BYTES).map(|chunk| {
+        let mut padded = [0; LIMB_BYTES];
+        sliceutil::overwrite_at_start(&mut padded[(LIMB_BYTES - chunk.len())..], chunk);
+        Limb::from_be_bytes(padded)
+    });
+    if input_limbs.len() > result.len() {
+        return Err(error::Unspecified);
     }
 
-    // Pad the result.
-    for r in result {
-        *r = 0;
-    }
+    result
+        .iter_mut()
+        .zip(input_limbs.chain(iter::repeat(0)))
+        .for_each(|(r, i)| *r = i);
 
     Ok(())
 }

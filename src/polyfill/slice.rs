@@ -55,21 +55,6 @@ pub fn as_chunks_mut<T, const N: usize>(slice: &mut [T]) -> (&mut [[T; N]], &mut
     (chunked, remainder)
 }
 
-// TODO(MSRV feature(slice_as_chunks)): Use `slice::as_rchunks` instead.
-// This is adapted from the above implementation of `as_chunks`.
-#[inline(always)]
-pub fn as_rchunks<T, const N: usize>(slice: &[T]) -> (&[T], &[[T; N]]) {
-    assert!(N != 0, "chunk size must be non-zero");
-    let len = slice.len() / N;
-    let (remainder, multiple_of_n) = slice.split_at(slice.len() - (len * N));
-    // SAFETY: We already panicked for zero, and ensured by construction
-    // that the length of the subslice is a multiple of N.
-    // SAFETY: We cast a slice of `new_len * N` elements into
-    // a slice of `new_len` many `N` elements chunks.
-    let chunked = unsafe { core::slice::from_raw_parts(multiple_of_n.as_ptr().cast(), len) };
-    (remainder, chunked)
-}
-
 // TODO(MSRV feature(slice_flatten)): Use `slice::flatten` instead.
 // This is derived from the libcore implementation, using only stable APIs.
 pub fn flatten<T, const N: usize>(slice: &[[T; N]]) -> &[T] {
