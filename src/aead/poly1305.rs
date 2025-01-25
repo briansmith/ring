@@ -17,8 +17,7 @@
 use super::{Tag, TAG_LEN};
 #[cfg(all(target_arch = "arm", target_endian = "little"))]
 use crate::cpu::GetFeature as _;
-use crate::{cpu, polyfill::slice};
-use core::array;
+use crate::{cpu, polyfill::slice::AsChunks};
 
 mod ffi_arm_neon;
 mod ffi_fallback;
@@ -64,11 +63,11 @@ impl Context {
     }
 
     pub fn update_block(&mut self, input: [u8; BLOCK_LEN]) {
-        self.update(array::from_ref(&input))
+        self.update(AsChunks::from_ref(&input))
     }
 
-    pub fn update(&mut self, input: &[[u8; BLOCK_LEN]]) {
-        self.update_internal(slice::flatten(input));
+    pub fn update(&mut self, input: AsChunks<u8, BLOCK_LEN>) {
+        self.update_internal(input.as_flattened());
     }
 
     fn update_internal(&mut self, input: &[u8]) {

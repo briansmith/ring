@@ -15,7 +15,7 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::{clmul, Gmult, HTable, KeyValue, UpdateBlocks, Xi, BLOCK_LEN};
-use crate::cpu;
+use crate::{cpu, polyfill::slice::AsChunks};
 
 pub(in super::super) type RequiredCpuFeatures = (
     clmul::RequiredCpuFeatures,
@@ -47,7 +47,7 @@ impl Gmult for Key {
 }
 
 impl UpdateBlocks for Key {
-    fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]) {
+    fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, BLOCK_LEN>) {
         unsafe { ghash!(gcm_ghash_avx, xi, &self.inner.inner(), input) }
     }
 }

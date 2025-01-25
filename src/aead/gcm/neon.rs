@@ -18,7 +18,7 @@
 ))]
 
 use super::{Gmult, HTable, KeyValue, UpdateBlocks, Xi, BLOCK_LEN};
-use crate::cpu;
+use crate::{cpu, polyfill::slice::AsChunks};
 
 pub(in super::super) type RequiredCpuFeatures = cpu::arm::Neon;
 
@@ -42,7 +42,7 @@ impl Gmult for Key {
 }
 
 impl UpdateBlocks for Key {
-    fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]) {
+    fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, BLOCK_LEN>) {
         unsafe { ghash!(gcm_ghash_neon, xi, &self.h_table, input) }
     }
 }

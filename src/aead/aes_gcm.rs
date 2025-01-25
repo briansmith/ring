@@ -176,9 +176,9 @@ pub(super) fn seal(
                     unreachable!()
                 }
             };
-            let (whole, remainder) = slice::as_chunks_mut(ramaining);
-            aes_key.ctr32_encrypt_within(slice::flatten_mut(whole).into(), &mut ctr);
-            auth.update_blocks(whole);
+            let (mut whole, remainder) = slice::as_chunks_mut(ramaining);
+            aes_key.ctr32_encrypt_within(whole.as_flattened_mut().into(), &mut ctr);
+            auth.update_blocks(whole.into());
             let remainder = OverlappingPartialBlock::new(remainder.into())
                 .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
             seal_finish(aes_key, auth, remainder, ctr, tag_iv)
@@ -190,7 +190,7 @@ pub(super) fn seal(
 
             let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
 
-            let (whole, remainder) = slice::as_chunks_mut(in_out);
+            let (mut whole, remainder) = slice::as_chunks_mut(in_out);
             let whole_block_bits = auth.in_out_whole_block_bits();
             let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
             if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
@@ -264,11 +264,11 @@ fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
 ) -> Result<Tag, error::Unspecified> {
     let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
 
-    let (whole, remainder) = slice::as_chunks_mut(in_out);
+    let (mut whole, remainder) = slice::as_chunks_mut(in_out);
 
-    for chunk in whole.chunks_mut(CHUNK_BLOCKS) {
-        aes_key.ctr32_encrypt_within(slice::flatten_mut(chunk).into(), &mut ctr);
-        auth.update_blocks(chunk);
+    for mut chunk in whole.chunks_mut::<CHUNK_BLOCKS>() {
+        aes_key.ctr32_encrypt_within(chunk.as_flattened_mut().into(), &mut ctr);
+        auth.update_blocks(chunk.into());
     }
 
     let remainder = OverlappingPartialBlock::new(remainder.into())
@@ -361,7 +361,7 @@ pub(super) fn open(
             let (whole, _) = slice::as_chunks(in_out.input());
             auth.update_blocks(whole);
 
-            let whole_len = slice::flatten(whole).len();
+            let whole_len = whole.as_flattened().len();
 
             // Decrypt any remaining whole blocks.
             let whole = Overlapping::new(&mut in_out_slice[..(src.start + whole_len)], src.clone())
