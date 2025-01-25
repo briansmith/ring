@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2015-2025 Brian Smith.
 // Copyright 2016 Simon Sapin.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
@@ -61,9 +61,9 @@ fn block_data_order(
 
         // FIPS 180-4 6.1.2 Step 1
         let mut W: [W32; ROUNDS] = [W32::ZERO; ROUNDS];
-        for t in 0..16 {
-            W[t] = W32::from_be_bytes(M[t]);
-        }
+        W.iter_mut().zip(M).for_each(|(Wt, Mt)| {
+            *Wt = W32::from_be_bytes(*Mt);
+        });
         for t in 16..ROUNDS {
             let wt = W[t - 3] ^ W[t - 8] ^ W[t - 14] ^ W[t - 16];
             W[t] = rotl(wt, 1);
