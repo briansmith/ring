@@ -60,7 +60,7 @@ pub(super) fn sha1_block_data_order<'d>(
 
     let (full_blocks, leftover) = slice::as_chunks(data);
     sha1::sha1_block_data_order(state, full_blocks);
-    (full_blocks.len() * sha1::BLOCK_LEN.into(), leftover)
+    (full_blocks.as_flattened().len(), leftover)
 }
 
 pub(super) fn sha256_block_data_order<'d>(

@@ -23,7 +23,7 @@
 // Unlike the BearSSL notes, we use u128 in the 64-bit implementation.
 
 use super::{ffi::U128, Gmult, KeyValue, UpdateBlocks, Xi, BLOCK_LEN};
-use crate::polyfill::ArraySplitMap as _;
+use crate::polyfill::{slice::AsChunks, ArraySplitMap as _};
 
 #[derive(Clone)]
 pub struct Key {
@@ -43,7 +43,7 @@ impl Gmult for Key {
 }
 
 impl UpdateBlocks for Key {
-    fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]) {
+    fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, BLOCK_LEN>) {
         ghash(xi, self.h, input);
     }
 }
@@ -248,9 +248,9 @@ fn gmult(xi: &mut Xi, h: U128) {
     })
 }
 
-fn ghash(xi: &mut Xi, h: U128, input: &[[u8; BLOCK_LEN]]) {
+fn ghash(xi: &mut Xi, h: U128, input: AsChunks<u8, BLOCK_LEN>) {
     with_swapped_xi(xi, |swapped| {
-        input.iter().for_each(|&input| {
+        input.into_iter().for_each(|&input| {
             let input = input.array_split_map(u64::from_be_bytes);
             swapped[0] ^= input[1];
             swapped[1] ^= input[0];

@@ -66,7 +66,11 @@ impl Gmult for Key {
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 impl super::UpdateBlocks for Key {
-    fn update_blocks(&self, xi: &mut Xi, input: &[[u8; super::BLOCK_LEN]]) {
+    fn update_blocks(
+        &self,
+        xi: &mut Xi,
+        input: crate::polyfill::slice::AsChunks<u8, { super::BLOCK_LEN }>,
+    ) {
         let _: cpu::Features = cpu::features();
         unsafe { ghash!(gcm_ghash_clmul, xi, &self.h_table, input) }
     }

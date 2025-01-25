@@ -20,8 +20,8 @@ use super::{
     },
     BlockLen, OutputLen,
 };
-use crate::polyfill::slice;
-use core::num::Wrapping;
+use crate::polyfill::slice::{self, AsChunks};
+use core::{mem::size_of, num::Wrapping};
 
 pub(super) const BLOCK_LEN: BlockLen = BlockLen::_512;
 pub const CHAINING_LEN: usize = 160 / 8;
@@ -39,7 +39,7 @@ fn parity(x: W32, y: W32, z: W32) -> W32 {
 type State = [W32; CHAINING_WORDS];
 const ROUNDS: usize = 80;
 
-pub fn sha1_block_data_order(state: &mut State32, data: &[[u8; BLOCK_LEN.into()]]) {
+pub fn sha1_block_data_order(state: &mut State32, data: AsChunks<u8, { BLOCK_LEN.into() }>) {
     // The unwrap won't fail because `CHAINING_WORDS` is smaller than the
     // length.
     let state: &mut State = (&mut state[..CHAINING_WORDS]).try_into().unwrap();
@@ -52,11 +52,11 @@ pub fn sha1_block_data_order(state: &mut State32, data: &[[u8; BLOCK_LEN.into()]
 #[rustfmt::skip]
 fn block_data_order(
     mut H: [W32; CHAINING_WORDS],
-    M: &[[u8; BLOCK_LEN.into()]],
+    M: AsChunks<u8, { BLOCK_LEN.into() }>,
 ) -> [W32; CHAINING_WORDS]
 {
     for M in M {
-        let (M, remainder): (&[<W32 as Word>::InputBytes], &[u8]) = slice::as_chunks(M);
+        let (M, remainder): (AsChunks<u8, {size_of::<W32>()}>, &[u8]) = slice::as_chunks(M);
         debug_assert!(remainder.is_empty());
 
         // FIPS 180-4 6.1.2 Step 1

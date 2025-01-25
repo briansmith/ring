@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{constant_time, polyfill::ArraySplitMap};
+use crate::{
+    constant_time,
+    polyfill::{slice::AsChunks, ArraySplitMap},
+};
 
 pub(in super::super) const BLOCK_LEN: usize = 16;
 pub(in super::super) type Block = [u8; BLOCK_LEN];
@@ -125,12 +128,11 @@ impl HTable {
             len: crate::c::NonZero_size_t,
         ),
         xi: &mut Xi,
-        input: &[[u8; BLOCK_LEN]],
+        input: AsChunks<u8, BLOCK_LEN>,
     ) {
-        use crate::polyfill::slice;
         use core::num::NonZeroUsize;
 
-        let input = slice::flatten(input);
+        let input = input.as_flattened();
 
         let input_len = match NonZeroUsize::new(input.len()) {
             Some(len) => len,

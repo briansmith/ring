@@ -17,7 +17,7 @@ use super::{aes_gcm, Aad};
 use crate::{
     bits::{BitLength, FromByteLen as _},
     error::{self, InputTooLongError},
-    polyfill::{sliceutil::overwrite_at_start, NotSend},
+    polyfill::{slice::AsChunks, sliceutil::overwrite_at_start, NotSend},
 };
 use cfg_if::cfg_if;
 
@@ -120,7 +120,7 @@ impl Context<'_, clmulavxmovbe::Key> {
 
 impl<K: UpdateBlocks> Context<'_, K> {
     #[inline(always)]
-    pub fn update_blocks(&mut self, input: &[[u8; BLOCK_LEN]]) {
+    pub fn update_blocks(&mut self, input: AsChunks<u8, BLOCK_LEN>) {
         self.key.update_blocks(&mut self.Xi, input);
     }
 }
@@ -150,5 +150,5 @@ pub(super) trait Gmult {
 }
 
 pub(super) trait UpdateBlocks {
-    fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]);
+    fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, BLOCK_LEN>);
 }
