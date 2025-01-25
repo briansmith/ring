@@ -44,18 +44,14 @@ where
         // TODO(MSRV): Use `let W: [S::from(0); S::ROUNDS]` instead; depends on
         // https://github.com/rust-lang/rust/issues/43408.
         let mut W = S::zero_w();
-        let W: &[S] = {
-            let W = W.as_mut();
-            for (W, M) in W.iter_mut().zip(M) {
-                let bytes: &S::InputBytes = M.into();
-                *W = S::from_be_bytes(*bytes);
-            }
-            for t in M.len()..(S::K.as_ref().len()) {
-                W[t] = sigma_1(W[t - 2]) + W[t - 7] + sigma_0(W[t - 15]) + W[t - 16]
-            }
-
-            W
-        };
+        let W = W.as_mut();
+        for (W, M) in W.iter_mut().zip(M) {
+            let bytes: &S::InputBytes = M.into();
+            *W = S::from_be_bytes(*bytes);
+        }
+        for t in M.len()..(S::K.as_ref().len()) {
+            W[t] = sigma_1(W[t - 2]) + W[t - 7] + sigma_0(W[t - 15]) + W[t - 16]
+        }
 
         // FIPS 180-4 {6.2.2, 6.4.2} Step 2
         let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h] = H;
