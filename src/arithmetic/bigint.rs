@@ -172,7 +172,8 @@ pub fn elem_reduced_once<A, M>(
     assert_eq!(m.len_bits(), other_modulus_len_bits);
 
     let mut r = a.limbs.clone();
-    limb::limbs_reduce_once_constant_time(&mut r, m.limbs());
+    limb::limbs_reduce_once_constant_time(&mut r, m.limbs())
+        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     Elem {
         limbs: BoxedLimbs::new_unchecked(r.into_limbs()),
         encoding: PhantomData,
