@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{inout::AliasingSlices, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
+use super::{inout::AliasingSlices3, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
 use crate::{c, limb::Limb, polyfill::usize_from_u32};
 use core::mem::size_of;
 
@@ -53,7 +53,7 @@ macro_rules! bn_mul_mont_ffi {
 
 #[inline]
 pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const LEN_MIN: usize, const LEN_MOD: usize>(
-    in_out: impl AliasingSlices<Limb>,
+    in_out: impl AliasingSlices3<Limb>,
     n: &[Limb],
     n0: &N0,
     cpu: Cpu,
