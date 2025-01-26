@@ -16,7 +16,7 @@ pub(crate) use crate::error::LenMismatchError;
 
 pub(crate) trait AliasingSlices<T> {
     fn with_pointers<R>(
-        &mut self,
+        self,
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError>;
@@ -24,7 +24,7 @@ pub(crate) trait AliasingSlices<T> {
 
 impl<T> AliasingSlices<T> for &mut [T] {
     fn with_pointers<R>(
-        &mut self,
+        self,
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
@@ -38,7 +38,7 @@ impl<T> AliasingSlices<T> for &mut [T] {
 
 impl<T> AliasingSlices<T> for (&mut [T], &[T]) {
     fn with_pointers<R>(
-        &mut self,
+        self,
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
@@ -55,7 +55,7 @@ impl<T> AliasingSlices<T> for (&mut [T], &[T]) {
 
 impl<T> AliasingSlices<T> for (&mut [T], &[T], &[T]) {
     fn with_pointers<R>(
-        &mut self,
+        self,
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
