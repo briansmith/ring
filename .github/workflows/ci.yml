@@ -176,9 +176,6 @@ jobs:
           - arm-unknown-linux-gnueabi
           - armv7-linux-androideabi
           - armv7-unknown-linux-musleabihf
-          - i686-pc-windows-msvc
-          - i686-unknown-linux-gnu
-          - i686-unknown-linux-musl
           - riscv64gc-unknown-linux-gnu
           - wasm32-wasi
           - wasm32-wasip1
@@ -270,15 +267,6 @@ jobs:
             cargo_options: --no-run
 
           - target: armv7-unknown-linux-musleabihf
-            host_os: ubuntu-22.04
-
-          - target: i686-pc-windows-msvc
-            host_os: windows-latest
-
-          - target: i686-unknown-linux-gnu
-            host_os: ubuntu-22.04
-
-          - target: i686-unknown-linux-musl
             host_os: ubuntu-22.04
 
           - target: mips-unknown-linux-gnu
@@ -448,7 +436,6 @@ jobs:
 
         target:
           - aarch64-unknown-linux-musl
-          - i686-pc-windows-msvc
           - x86_64-unknown-linux-gnu
 
         mode:
@@ -463,9 +450,6 @@ jobs:
         include:
           - target: aarch64-unknown-linux-musl
             host_os: ubuntu-22.04
-
-          - target: i686-pc-windows-msvc
-            host_os: windows-latest
 
           - target: x86_64-unknown-linux-gnu
             host_os: ubuntu-22.04
@@ -649,16 +633,6 @@ jobs:
             rust_channel: nightly
             host_os: ubuntu-24.04
 
-          # TODO: Use the -musl target after
-          # https://github.com/rust-lang/rust/issues/79556 and
-          # https://github.com/rust-lang/rust/issues/79555 are fixed.
-          - target: i686-unknown-linux-gnu
-            cpu_model: # default
-            features: --features=std
-            mode: # debug
-            rust_channel: nightly
-            host_os: ubuntu-24.04
-
           - target: powerpc-unknown-linux-gnu
             host_os: ubuntu-24.04
 
@@ -674,22 +648,8 @@ jobs:
           - target: x86_64-apple-darwin
             host_os: macos-13
 
-          - target: i686-unknown-linux-gnu
-            cpu_model: Conroe-v1
-            features: --features=std
-            mode: --release
-            rust_channel: nightly
-            host_os: ubuntu-24.04
-
           - target: x86_64-unknown-linux-gnu
             cpu_model: Conroe-v1
-            features: --features=std
-            mode: --release
-            rust_channel: nightly
-            host_os: ubuntu-24.04
-
-          - target: i686-unknown-linux-gnu
-            cpu_model: Denverton-v2
             features: --features=std
             mode: --release
             rust_channel: nightly
@@ -702,22 +662,8 @@ jobs:
             rust_channel: nightly
             host_os: ubuntu-24.04
 
-          - target: i686-unknown-linux-gnu
-            cpu_model: Haswell
-            features: --features=std
-            mode: --release
-            rust_channel: nightly
-            host_os: ubuntu-24.04
-
           - target: x86_64-unknown-linux-gnu
             cpu_model: Haswell
-            features: --features=std
-            mode: --release
-            rust_channel: nightly
-            host_os: ubuntu-24.04
-
-          - target: i686-unknown-linux-gnu
-            cpu_model: Nehalem
             features: --features=std
             mode: --release
             rust_channel: nightly
@@ -730,22 +676,8 @@ jobs:
             rust_channel: nightly
             host_os: ubuntu-24.04
 
-          - target: i686-unknown-linux-gnu
-            cpu_model: SandyBridge
-            features: --features=std
-            mode: --release
-            rust_channel: nightly
-            host_os: ubuntu-24.04
-
           - target: x86_64-unknown-linux-gnu
             cpu_model: SandyBridge
-            features: --features=std
-            mode: --release
-            rust_channel: nightly
-            host_os: ubuntu-24.04
-
-          - target: i686-unknown-linux-gnu
-            cpu_model: Westmere
             features: --features=std
             mode: --release
             rust_channel: nightly
