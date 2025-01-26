@@ -14,7 +14,7 @@
 
 pub(crate) use crate::error::LenMismatchError;
 
-pub(crate) trait AliasingSlices<T> {
+pub(crate) trait AliasingSlices3<T> {
     /// The pointers passed to `f` will all be non-null and properly aligned,
     /// but may be dangling.
     ///
@@ -35,7 +35,7 @@ pub(crate) trait AliasingSlices<T> {
     ) -> Result<R, LenMismatchError>;
 }
 
-impl<T> AliasingSlices<T> for &mut [T] {
+impl<T> AliasingSlices3<T> for &mut [T] {
     fn with_pointers<R>(
         self,
         expected_len: usize,
@@ -49,7 +49,7 @@ impl<T> AliasingSlices<T> for &mut [T] {
     }
 }
 
-impl<T> AliasingSlices<T> for (&mut [T], &[T]) {
+impl<T> AliasingSlices3<T> for (&mut [T], &[T]) {
     fn with_pointers<R>(
         self,
         expected_len: usize,
@@ -66,7 +66,7 @@ impl<T> AliasingSlices<T> for (&mut [T], &[T]) {
     }
 }
 
-impl<T> AliasingSlices<T> for (&mut [T], &[T], &[T]) {
+impl<T> AliasingSlices3<T> for (&mut [T], &[T], &[T]) {
     fn with_pointers<R>(
         self,
         expected_len: usize,
