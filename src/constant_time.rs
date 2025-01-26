@@ -15,6 +15,7 @@
 //! Constant-time operations.
 
 use crate::{c, error};
+use core::num::NonZeroUsize;
 
 mod boolmask;
 mod leaky;
@@ -27,18 +28,28 @@ pub(crate) use self::{boolmask::BoolMask, leaky::LeakyWord, word::Word};
 /// contents of each, but NOT in constant time with respect to the lengths of
 /// `a` and `b`.
 pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecified> {
-    if a.len() != b.len() {
+    let len = a.len(); // Arbitrary choice.
+    if b.len() != len {
         return Err(error::Unspecified);
     }
-    let result = unsafe { CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len()) };
-    match result {
-        0 => Ok(()),
-        _ => Err(error::Unspecified),
+    match NonZeroUsize::new(len) {
+        Some(len) => {
+            let a = a.as_ptr();
+            let b = b.as_ptr();
+            // SAFETY: `a` and `b` are valid non-null non-dangling pointers to `len`
+            // bytes.
+            let result = unsafe { CRYPTO_memcmp(a, b, len) };
+            match result {
+                0 => Ok(()),
+                _ => Err(error::Unspecified),
+            }
+        }
+        None => Ok(()), // Empty slices are equal.
     }
 }
 
 prefixed_extern! {
-    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
+    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::NonZero_size_t) -> c::int;
 }
 
 pub(crate) fn xor_16(a: [u8; 16], b: [u8; 16]) -> [u8; 16] {
