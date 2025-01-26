@@ -371,6 +371,7 @@ prefixed_extern! {
 mod tests {
     use super::*;
     use alloc::vec::Vec;
+    use cfg_if::cfg_if;
 
     const MAX: LeakyLimb = LeakyLimb::MAX;
 
@@ -519,7 +520,53 @@ mod tests {
             assert_eq!(&[0xbeeff00d, 0, 0, 0], &result);
         }
 
-        // XXX: This is a weak set of tests. TODO: expand it.
+        cfg_if! {
+            if #[cfg(target_pointer_width = "64")] {
+                static TEST_CASES: &[(&[u8], &[Limb])] = &[
+                    (&[1], &[1, 0]),
+                    (&[1, 2], &[0x102, 0]),
+                    (&[1, 2, 3], &[0x10203, 0]),
+                    (&[1, 2, 3, 4], &[0x102_0304, 0]),
+                    (&[1, 2, 3, 4, 5], &[0x1_0203_0405, 0]),
+                    (&[1, 2, 3, 4, 5, 6], &[0x102_0304_0506, 0]),
+                    (&[1, 2, 3, 4, 5, 6, 7], &[0x1_0203_0405_0607, 0]),
+                    (&[1, 2, 3, 4, 5, 6, 7, 8], &[0x102_0304_0506_0708, 0]),
+                    (&[1, 2, 3, 4, 5, 6, 7, 8, 9], &[0x0203_0405_0607_0809, 0x1]),
+                    (&[1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa], &[0x0304_0506_0708_090a, 0x102]),
+                    (&[1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb], &[0x0405_0607_0809_0a0b, 0x1_0203]),
+                ];
+                for (be_bytes, limbs) in TEST_CASES {
+                    let mut buf = [0; 2];
+                    parse_big_endian_and_pad_consttime(untrusted::Input::from(be_bytes), &mut buf)
+                        .unwrap();
+                    assert_eq!(limbs, &buf, "({be_bytes:x?}, {limbs:x?}");
+                }
+            } else if #[cfg(target_pointer_width = "32")] {
+                static TEST_CASES: &[(&[u8], &[Limb])] = &[
+                    (&[1], &[1, 0, 0]),
+                    (&[1, 2], &[0x102, 0, 0]),
+                    (&[1, 2, 3], &[0x10203, 0, 0]),
+                    (&[1, 2, 3, 4], &[0x102_0304, 0, 0]),
+                    (&[1, 2, 3, 4, 5], &[0x0203_0405, 0x1, 0]),
+                    (&[1, 2, 3, 4, 5, 6], &[0x0304_0506, 0x102, 0]),
+                    (&[1, 2, 3, 4, 5, 6, 7], &[0x0405_0607, 0x1_0203, 0]),
+                    (&[1, 2, 3, 4, 5, 6, 7, 8], &[0x0506_0708, 0x102_0304, 0]),
+                    (&[1, 2, 3, 4, 5, 6, 7, 8, 9], &[0x0607_0809, 0x0203_0405, 0x1]),
+                    (&[1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa], &[0x0708_090a, 0x0304_0506, 0x102]),
+                    (&[1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb], &[0x0809_0a0b, 0x0405_0607, 0x1_0203]),
+                ];
+                for (be_bytes, limbs) in TEST_CASES {
+                    let mut buf = [0; 3];
+                    parse_big_endian_and_pad_consttime(untrusted::Input::from(be_bytes), &mut buf)
+                        .unwrap();
+                    assert_eq!(limbs, &buf, "({be_bytes:x?}, {limbs:x?}");
+                }
+            } else {
+                panic!("Unsupported target_pointer_width");
+            }
+
+            // XXX: This is a weak set of tests. TODO: expand it.
+        }
     }
 
     #[test]
