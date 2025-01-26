@@ -154,16 +154,6 @@ pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
     bits::BitLength::from_bits(0)
 }
 
-/// Equivalent to `if (r >= m) { r -= m; }`
-#[inline]
-pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
-    prefixed_extern! {
-        fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
-    }
-    assert_eq!(r.len(), m.len());
-    unsafe { LIMBS_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len()) };
-}
-
 #[derive(Clone, Copy, PartialEq)]
 pub enum AllowZero {
     No,
