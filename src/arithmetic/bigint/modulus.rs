@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{super::montgomery::Unencoded, BoxedLimbs, Elem, OwnedModulusValue, PublicModulus, N0};
+use super::{
+    super::montgomery::Unencoded, unwrap_impossible_len_mismatch_error, BoxedLimbs, Elem,
+    OwnedModulusValue, PublicModulus, N0,
+};
 use crate::{
     bits::BitLength,
     cpu, error,
@@ -164,6 +167,7 @@ impl<M> Modulus<'_, M> {
             // to 2**r (mod m).
             for _ in 0..leading_zero_bits_in_m {
                 limb::limbs_double_mod(out, self.limbs)
+                    .unwrap_or_else(unwrap_impossible_len_mismatch_error);
             }
         }
 
