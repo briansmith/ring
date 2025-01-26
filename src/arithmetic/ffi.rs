@@ -53,7 +53,7 @@ macro_rules! bn_mul_mont_ffi {
 
 #[inline]
 pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const LEN_MIN: usize, const LEN_MOD: usize>(
-    mut in_out: impl AliasingSlices<Limb>,
+    in_out: impl AliasingSlices<Limb>,
     n: &[Limb],
     n0: &N0,
     cpu: Cpu,
