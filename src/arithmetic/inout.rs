@@ -15,6 +15,19 @@
 pub(crate) use crate::error::LenMismatchError;
 
 pub(crate) trait AliasingSlices<T> {
+    /// The pointers passed to `f` will all be non-null and properly aligned,
+    /// but may be dangling.
+    ///
+    /// The first pointer, `r` points to potentially-uninitialized writable
+    /// space for `expected_len` elements of type `T`. Accordingly, `f` must
+    /// not read from `r` before writing to it.
+    ///
+    /// The second & third pointers, `a` and `b`, point to `expected_len`
+    /// initialized values of type `T`.
+    ///
+    /// `r`, `a`, and/or `b` may alias each other, but only in the following
+    /// ways: `ptr::eq(r, a)`, `ptr::eq(r, b)`, and/or `ptr::eq(a, b)`; they
+    /// will not be "overlapping."
     fn with_pointers<R>(
         self,
         expected_len: usize,
