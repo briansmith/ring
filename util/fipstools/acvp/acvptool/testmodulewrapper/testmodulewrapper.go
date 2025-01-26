@@ -70,6 +70,10 @@ var handlers = map[string]func([][]byte) error{
 	"SHAKE-256":                shakeAftVot(sha3.NewShake256),
 	"SHAKE-256/VOT":            shakeAftVot(sha3.NewShake256),
 	"SHAKE-256/MCT":            shakeMct(sha3.NewShake256),
+	"cSHAKE-128":               cShakeAft(sha3.NewCShake128),
+	"cSHAKE-128/MCT":           cShakeMct(sha3.NewCShake128),
+	"cSHAKE-256":               cShakeAft(sha3.NewCShake256),
+	"cSHAKE-256/MCT":           cShakeMct(sha3.NewCShake256),
 }
 
 func flush(args [][]byte) error {
@@ -254,6 +258,34 @@ func getConfig(args [][]byte) error {
 		"outputLen": [{
 			"min": 128,
 			"max": 4096,
+			"increment": 8
+		}],
+		"revision": "1.0"
+	}, {
+		"algorithm": "cSHAKE-128",
+		"hexCustomization": false,
+		"outputLen": [{
+			"min": 16,
+			"max": 65536,
+			"increment": 8
+		}],
+		"msgLen": [{
+			"min": 0,
+			"max": 65536,
+			"increment": 8
+		}],
+		"revision": "1.0"
+	}, {
+		"algorithm": "cSHAKE-256",
+		"hexCustomization": false,
+		"outputLen": [{
+			"min": 16,
+			"max": 65536,
+			"increment": 8
+		}],
+		"msgLen": [{
+			"min": 0,
+			"max": 65536,
 			"increment": 8
 		}],
 		"revision": "1.0"
@@ -762,6 +794,91 @@ func shakeMct(digestFn func() sha3.ShakeHash) func([][]byte) error {
 		binary.LittleEndian.PutUint32(encodedOutputLenBytes, outputLenBytes)
 
 		return reply(md, encodedOutputLenBytes)
+	}
+}
+
+func cShakeAft(hFn func(N, S []byte) sha3.ShakeHash) func([][]byte) error {
+	return func(args [][]byte) error {
+		if len(args) != 4 {
+			return fmt.Errorf("cShakeAft received %d args, wanted 4", len(args))
+		}
+
+		msg := args[0]
+		outLenBytes := binary.LittleEndian.Uint32(args[1])
+		functionName := args[2]
+		customization := args[3]
+
+		h := hFn(functionName, customization)
+		h.Write(msg)
+		digest := make([]byte, outLenBytes)
+		h.Read(digest)
+
+		return reply(digest)
+	}
+}
+
+func cShakeMct(hFn func(N, S []byte) sha3.ShakeHash) func([][]byte) error {
+	return func(args [][]byte) error {
+		if len(args) != 6 {
+			return fmt.Errorf("cShakeMct received %d args, wanted 6", len(args))
+		}
+
+		message := args[0]
+		minOutLenBytes := binary.LittleEndian.Uint32(args[1])
+		maxOutLenBytes := binary.LittleEndian.Uint32(args[2])
+		outputLenBytes := binary.LittleEndian.Uint32(args[3])
+		incrementBytes := binary.LittleEndian.Uint32(args[4])
+		customization := args[5]
+
+		if outputLenBytes < 2 {
+			return fmt.Errorf("invalid output length: %d", outputLenBytes)
+		}
+
+		rangeBits := (maxOutLenBytes*8 - minOutLenBytes*8) + 1
+		if rangeBits == 0 {
+			return fmt.Errorf("invalid maxOutLenBytes and minOutLenBytes: %d, %d", maxOutLenBytes, minOutLenBytes)
+		}
+
+		// cSHAKE Monte Carlo test inner loop:
+		//   https://pages.nist.gov/ACVP/draft-celi-acvp-xof.html#section-6.2.1
+		for i := 0; i < 1000; i++ {
+			// InnerMsg = Left(Output[i-1] || ZeroBits(128), 128);
+			boundary := min(len(message), 16)
+			innerMsg := make([]byte, 16)
+			copy(innerMsg, message[:boundary])
+
+			// Output[i] = CSHAKE(InnerMsg, OutputLen, FunctionName, Customization);
+			h := hFn(nil, customization) // Note: function name fixed to "" for MCT.
+			h.Write(innerMsg)
+			digest := make([]byte, outputLenBytes)
+			h.Read(digest)
+			message = digest
+
+			// Rightmost_Output_bits = Right(Output[i], 16);
+			rightmostOutput := digest[outputLenBytes-2:]
+			// IMPORTANT: the specification says:
+			//   NOTE: For the "Rightmost_Output_bits % Range" operation, the Rightmost_Output_bits bit string
+			//   should be interpreted as a little endian-encoded number.
+			// This is **a lie**! It has to be interpreted as a big-endian number.
+			rightmostOutputBE := binary.BigEndian.Uint16(rightmostOutput)
+
+			// OutputLen = MinOutLen + (floor((Rightmost_Output_bits % Range) / OutLenIncrement) * OutLenIncrement);
+			incrementBits := incrementBytes * 8
+			outputLenBits := (minOutLenBytes * 8) + (((uint32)(rightmostOutputBE)%rangeBits)/incrementBits)*incrementBits
+			outputLenBytes = outputLenBits / 8
+
+			// Customization = BitsToString(InnerMsg || Rightmost_Output_bits);
+			msgWithBits := append(innerMsg, rightmostOutput...)
+			customization = make([]byte, len(msgWithBits))
+			for i, b := range msgWithBits {
+				customization[i] = (b % 26) + 65
+			}
+		}
+
+		encodedOutputLenBytes := make([]byte, 4)
+		binary.LittleEndian.PutUint32(encodedOutputLenBytes, outputLenBytes)
+
+		return reply(message, encodedOutputLenBytes, customization)
 	}
 }
 
