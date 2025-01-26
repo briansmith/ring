@@ -14,7 +14,7 @@
 
 use super::{inout::AliasingSlices3, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
 use crate::{c, limb::Limb, polyfill::usize_from_u32};
-use core::mem::size_of;
+use core::{mem::size_of, num::NonZeroUsize};
 
 const _MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
     // BoringSSL's limit: 8 kiloBYTES.
@@ -40,7 +40,7 @@ macro_rules! bn_mul_mont_ffi {
                 b: *const Limb,
                 n: *const Limb,
                 n0: &N0,
-                len: c::size_t,
+                len: c::NonZero_size_t,
             );
         }
         unsafe {
@@ -63,7 +63,7 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const LEN_MIN: usize, const LEN_MOD: u
         b: *const Limb,
         n: *const Limb,
         n0: &N0,
-        len: c::size_t,
+        len: c::NonZero_size_t,
     ),
 ) -> Result<(), LimbSliceError> {
     assert_eq!(n.len() % LEN_MOD, 0); // The caller should guard against this.
@@ -77,15 +77,18 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const LEN_MIN: usize, const LEN_MOD: u
     if n.len() < LEN_MIN {
         return Err(LimbSliceError::too_short(n.len()));
     }
+    let len = NonZeroUsize::new(n.len()).unwrap_or_else(|| {
+        // Unreachable because we checked against `LEN_MIN`, and we checked
+        // `LEN_MIN` is nonzero.
+        unreachable!()
+    });
 
     // Avoid stack overflow from the alloca inside.
-    if n.len() > MAX_LIMBS {
+    if len.get() > MAX_LIMBS {
         return Err(LimbSliceError::too_long(n.len()));
     }
-
     in_out
-        .with_pointers(n.len(), |r, a, b| {
-            let len = n.len();
+        .with_non_dangling_non_null_pointers_rab(len, |r, a, b| {
             let n = n.as_ptr();
             let _: Cpu = cpu;
             unsafe { f(r, a, b, n, n0, len) };

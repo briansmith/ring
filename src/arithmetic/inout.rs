@@ -13,10 +13,11 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub(crate) use crate::error::LenMismatchError;
+use core::num::NonZeroUsize;
 
 pub(crate) trait AliasingSlices3<T> {
     /// The pointers passed to `f` will all be non-null and properly aligned,
-    /// but may be dangling.
+    /// and will not be dangling.
     ///
     /// The first pointer, `r` points to potentially-uninitialized writable
     /// space for `expected_len` elements of type `T`. Accordingly, `f` must
@@ -28,7 +29,30 @@ pub(crate) trait AliasingSlices3<T> {
     /// `r`, `a`, and/or `b` may alias each other, but only in the following
     /// ways: `ptr::eq(r, a)`, `ptr::eq(r, b)`, and/or `ptr::eq(a, b)`; they
     /// will not be "overlapping."
-    fn with_pointers<R>(
+    ///
+    /// Implementations of this trait shouldn't override this default
+    /// implementation.
+    #[inline(always)]
+    fn with_non_dangling_non_null_pointers_rab<R>(
+        self,
+        expected_len: NonZeroUsize,
+        f: impl FnOnce(*mut T, *const T, *const T) -> R,
+    ) -> Result<R, LenMismatchError>
+    where
+        Self: Sized,
+    {
+        self.with_potentially_dangling_non_null_pointers_rab(expected_len.into(), f)
+    }
+
+    /// If `expected_len == 0` then the pointers passed to `f` may be
+    /// dangling pointers, which should not be passed to C functions. In all
+    /// other respects, this works like
+    /// `Self::with_non_dangling_non_null_pointers_rab`.
+    ///
+    /// Implementations of this trait should implement this method and not
+    /// `with_non_dangling_non_null_pointers_rab`. Users of this trait should
+    /// use `with_non_dangling_non_null_pointers_rab` and not this.
+    fn with_potentially_dangling_non_null_pointers_rab<R>(
         self,
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
@@ -36,7 +60,7 @@ pub(crate) trait AliasingSlices3<T> {
 }
 
 impl<T> AliasingSlices3<T> for &mut [T] {
-    fn with_pointers<R>(
+    fn with_potentially_dangling_non_null_pointers_rab<R>(
         self,
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
@@ -50,7 +74,7 @@ impl<T> AliasingSlices3<T> for &mut [T] {
 }
 
 impl<T> AliasingSlices3<T> for (&mut [T], &[T]) {
-    fn with_pointers<R>(
+    fn with_potentially_dangling_non_null_pointers_rab<R>(
         self,
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
@@ -67,7 +91,7 @@ impl<T> AliasingSlices3<T> for (&mut [T], &[T]) {
 }
 
 impl<T> AliasingSlices3<T> for (&mut [T], &[T], &[T]) {
-    fn with_pointers<R>(
+    fn with_potentially_dangling_non_null_pointers_rab<R>(
         self,
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
