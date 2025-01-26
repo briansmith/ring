@@ -19,7 +19,7 @@
 //! limbs use the native endianness.
 
 use crate::{
-    arithmetic::inout::AliasingSlices3,
+    arithmetic::inout::{AliasingSlices2, AliasingSlices3},
     c, constant_time,
     error::{self, LenMismatchError},
     polyfill::{sliceutil, usize_from_u32, ArrayFlatMap},
@@ -349,14 +349,22 @@ pub(crate) fn limbs_add_assign_mod(
 }
 
 // r *= 2 (mod m).
-pub(crate) fn limbs_double_mod(r: &mut [Limb], m: &[Limb]) {
-    assert_eq!(r.len(), m.len());
+pub(crate) fn limbs_double_mod(r: &mut [Limb], m: &[Limb]) -> Result<(), LenMismatchError> {
     prefixed_extern! {
-        fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t);
+        // `r` and `a` may alias.
+        fn LIMBS_shl_mod(
+            r: *mut Limb,
+            a: *const Limb,
+            m: *const Limb,
+            num_limbs: c::NonZero_size_t);
     }
-    unsafe {
-        LIMBS_shl_mod(r.as_mut_ptr(), r.as_ptr(), m.as_ptr(), m.len());
-    }
+    let num_limbs = NonZeroUsize::new(m.len()).ok_or_else(|| LenMismatchError::new(m.len()))?;
+    r.with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
+        let m = m.as_ptr(); // Also non-dangling because num_limbs > 0.
+        unsafe {
+            LIMBS_shl_mod(r, a, m, num_limbs);
+        }
+    })
 }
 
 // *r = -a, assuming a is odd.

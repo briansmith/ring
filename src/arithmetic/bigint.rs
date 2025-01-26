@@ -161,6 +161,7 @@ where
 // r *= 2.
 fn elem_double<M, AF>(r: &mut Elem<M, AF>, m: &Modulus<M>) {
     limb::limbs_double_mod(&mut r.limbs, m.limbs())
+        .unwrap_or_else(unwrap_impossible_len_mismatch_error)
 }
 
 // TODO: This is currently unused, but we intend to eventually use this to
