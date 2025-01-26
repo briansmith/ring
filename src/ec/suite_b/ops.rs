@@ -137,7 +137,8 @@ impl<M> Modulus<M> {
             &mut a.limbs[..num_limbs],
             &b.limbs[..num_limbs],
             &self.limbs[..num_limbs],
-        );
+        )
+        .unwrap_or_else(unwrap_impossible_len_mismatch_error)
     }
 }
 

@@ -42,7 +42,7 @@ pub(crate) use self::{
     modulusvalue::OwnedModulusValue,
     private_exponent::PrivateExponent,
 };
-use super::{montgomery::*, LimbSliceError, MAX_LIMBS};
+use super::{inout::AliasingSlices3, montgomery::*, LimbSliceError, MAX_LIMBS};
 use crate::{
     bits::BitLength,
     c,
@@ -50,7 +50,10 @@ use crate::{
     limb::{self, Limb, LIMB_BITS},
 };
 use alloc::vec;
-use core::{marker::PhantomData, num::NonZeroU64};
+use core::{
+    marker::PhantomData,
+    num::{NonZeroU64, NonZeroUsize},
+};
 
 mod boxed_limbs;
 mod modulus;
@@ -233,7 +236,8 @@ pub fn elem_widen<Larger, Smaller>(
 
 // TODO: Document why this works for all Montgomery factors.
 pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
-    limb::limbs_add_assign_mod(&mut a.limbs, &b.limbs, m.limbs());
+    limb::limbs_add_assign_mod(&mut a.limbs, &b.limbs, m.limbs())
+        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     a
 }
 
@@ -246,18 +250,16 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem
             a: *const Limb,
             b: *const Limb,
             m: *const Limb,
-            num_limbs: c::size_t,
+            num_limbs: c::NonZero_size_t,
         );
     }
-    unsafe {
-        LIMBS_sub_mod(
-            a.limbs.as_mut_ptr(),
-            a.limbs.as_ptr(),
-            b.limbs.as_ptr(),
-            m.limbs().as_ptr(),
-            m.limbs().len(),
-        );
-    }
+    let num_limbs = NonZeroUsize::new(m.limbs().len()).unwrap();
+    (a.limbs.as_mut(), b.limbs.as_ref())
+        .with_non_dangling_non_null_pointers_rab(num_limbs, |r, a, b| {
+            let m = m.limbs().as_ptr(); // Also non-dangling because num_limbs is non-zero.
+            unsafe { LIMBS_sub_mod(r, a, b, m, num_limbs) }
+        })
+        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     a
 }
 
