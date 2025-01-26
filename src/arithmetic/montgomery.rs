@@ -160,6 +160,9 @@ pub(super) fn limbs_mul_mont(
                 })
             }
         } else {
+            // The x86 implementation of `bn_mul_mont`, at least, requires at least 4
+            // limbs.
+            const _MIN_LIMBS_AT_LEAST_4: () = assert!(MIN_LIMBS >= 4);
             bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
                 (MIN_LIMBS, MOD_FALLBACK, cpu::Features) => bn_mul_mont
             })
