@@ -597,6 +597,8 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
     if target.force_warnings_into_errors {
         c.warnings_into_errors(true);
     }
+
+    c.flag_if_supported("-fno-lto");
 }
 
 fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir: &Path) {
