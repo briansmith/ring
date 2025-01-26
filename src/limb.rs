@@ -19,6 +19,7 @@
 //! limbs use the native endianness.
 
 use crate::{
+    arithmetic::inout::AliasingSlices3,
     c, constant_time,
     error::{self, LenMismatchError},
     polyfill::{sliceutil, usize_from_u32, ArrayFlatMap},
@@ -325,9 +326,11 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
 }
 
 #[inline]
-pub(crate) fn limbs_add_assign_mod(a: &mut [Limb], b: &[Limb], m: &[Limb]) {
-    debug_assert_eq!(a.len(), m.len());
-    debug_assert_eq!(b.len(), m.len());
+pub(crate) fn limbs_add_assign_mod(
+    a: &mut [Limb],
+    b: &[Limb],
+    m: &[Limb],
+) -> Result<(), LenMismatchError> {
     prefixed_extern! {
         // `r` and `a` may alias.
         fn LIMBS_add_mod(
@@ -335,10 +338,14 @@ pub(crate) fn limbs_add_assign_mod(a: &mut [Limb], b: &[Limb], m: &[Limb]) {
             a: *const Limb,
             b: *const Limb,
             m: *const Limb,
-            num_limbs: c::size_t,
+            num_limbs: c::NonZero_size_t,
         );
     }
-    unsafe { LIMBS_add_mod(a.as_mut_ptr(), a.as_ptr(), b.as_ptr(), m.as_ptr(), m.len()) }
+    let num_limbs = NonZeroUsize::new(m.len()).ok_or_else(|| LenMismatchError::new(m.len()))?;
+    (a, b).with_non_dangling_non_null_pointers_rab(num_limbs, |r, a, b| {
+        let m = m.as_ptr(); // Also non-dangling because `num_limbs` is non-zero.
+        unsafe { LIMBS_add_mod(r, a, b, m, num_limbs) }
+    })
 }
 
 // r *= 2 (mod m).
