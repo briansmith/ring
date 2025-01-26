@@ -44,8 +44,6 @@ open STDOUT,">$output";
 
 $sse2=1;
 
-&external_label("OPENSSL_ia32cap_P") if ($sse2);
-
 &function_begin("bn_mul_mont");
 
 $i="edx";
@@ -143,10 +141,6 @@ $mul0="mm4";
 $mul1="mm5";
 $temp="mm6";
 $mask="mm7";
-
-	&picmeup("eax","OPENSSL_ia32cap_P");
-	&bt	(&DWP(0,"eax"),26);
-	# The non-SSE2 code was removed.
 
 	&mov	("eax",-1);
 	&movd	($mask,"eax");		# mask 32 lower bits
@@ -288,8 +282,8 @@ $mask="mm7";
 	&jle	(&label("outer"));
 
 	&emms	();				# done with mmx bank
-
-}	# The non-SSE2 code was removed. 
+	&jmp	(&label("common_tail"));
+}
 
 &set_label("common_tail",16);
 	&mov	($np,$_np);			# load modulus pointer
