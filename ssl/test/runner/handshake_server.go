@@ -590,22 +590,6 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 	hs.finishedHash.discardHandshakeBuffer()
 	hs.writeClientHash(hs.clientHello.marshal())
 
-	supportedCurve := false
-	var selectedCurve CurveID
-	preferredCurves := config.curvePreferences()
-	for _, curve := range hs.clientHello.supportedCurves {
-		if slices.Contains(preferredCurves, curve) {
-			supportedCurve = true
-			selectedCurve = curve
-			break
-		}
-	}
-
-	if !supportedCurve {
-		c.sendAlert(alertHandshakeFailure)
-		return errors.New("tls: no curve supported by both client and server")
-	}
-
 	pskIdentities := hs.clientHello.pskIdentities
 	pskKEModes := hs.clientHello.pskKEModes
 
@@ -724,8 +708,24 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 		helloRetryRequest.customExtension = config.Bugs.CustomHelloRetryRequestExtension
 	}
 
+	var selectedCurve CurveID
 	var selectedKeyShare *keyShareEntry
 	if hs.hello.hasKeyShare {
+		// Select the matching curve.
+		supportedCurve := false
+		preferredCurves := config.curvePreferences()
+		for _, curve := range hs.clientHello.supportedCurves {
+			if slices.Contains(preferredCurves, curve) {
+				supportedCurve = true
+				selectedCurve = curve
+				break
+			}
+		}
+		if !supportedCurve {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: no curve supported by both client and server")
+		}
+
 		// Look for the key share corresponding to our selected curve.
 		for i := range hs.clientHello.keyShares {
 			if hs.clientHello.keyShares[i].group == selectedCurve {
