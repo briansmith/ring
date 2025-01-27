@@ -1935,7 +1935,8 @@ BSSL_NAMESPACE_BEGIN
 bool ssl_get_credential_list(SSL_HANDSHAKE *hs, Array<SSL_CREDENTIAL *> *out);
 
 // ssl_credential_matches_requested_issuers returns true if |cred| is a
-// usable match for any requested issuers in |hs|.
+// usable match for any requested issuers in |hs|, and false with an error
+// otherwise.
 bool ssl_credential_matches_requested_issuers(SSL_HANDSHAKE *hs,
                                               const SSL_CREDENTIAL *cred);
 

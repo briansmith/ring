@@ -752,6 +752,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   }
   if (!params.ok()) {
     // The error from the last attempt is in the error queue.
+    assert(ERR_peek_error() != 0);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
   }

@@ -62,27 +62,26 @@ bool ssl_get_credential_list(SSL_HANDSHAKE *hs, Array<SSL_CREDENTIAL *> *out) {
 
 bool ssl_credential_matches_requested_issuers(SSL_HANDSHAKE *hs,
                                               const SSL_CREDENTIAL *cred) {
-  if (cred->must_match_issuer) {
-    // If we have names sent by the CA extension, and this
-    // credential matches it, it is good.
-    if (hs->ca_names != nullptr) {
-      for (const CRYPTO_BUFFER *ca_name : hs->ca_names.get()) {
-        if (cred->ChainContainsIssuer(Span(CRYPTO_BUFFER_data(ca_name),
-                                           CRYPTO_BUFFER_len(ca_name)))) {
-          return true;
-        }
-      }
-    }
-    // TODO(bbe): Other forms of issuer matching go here.
-
-    // If this cred must match a requested issuer and we
-    // get here, we should not use it.
-    return false;
+  if (!cred->must_match_issuer) {
+    // This credential does not need to match a requested issuer, so
+    // it is good to use without a match.
+    return true;
   }
 
-  // This cred does not need to match a requested issuer, so
-  // it is good to use without a match.
-  return true;
+  // If we have names sent by the CA extension, and this
+  // credential matches it, it is good.
+  if (hs->ca_names != nullptr) {
+    for (const CRYPTO_BUFFER *ca_name : hs->ca_names.get()) {
+      if (cred->ChainContainsIssuer(
+              Span(CRYPTO_BUFFER_data(ca_name), CRYPTO_BUFFER_len(ca_name)))) {
+        return true;
+      }
+    }
+  }
+  // TODO(bbe): Other forms of issuer matching go here.
+
+  OPENSSL_PUT_ERROR(SSL, SSL_R_NO_MATCHING_ISSUER);
+  return false;
 }
 
 BSSL_NAMESPACE_END
