@@ -40,6 +40,11 @@ impl<T, const N: usize> AsChunksMut<'_, T, N> {
         self.0.as_ptr().cast()
     }
 
+    #[cfg(target_arch = "x86_64")]
+    pub fn as_ptr(&self) -> *const [T; N] {
+        self.0.as_ptr().cast()
+    }
+
     #[cfg(target_arch = "aarch64")]
     pub fn as_mut_ptr(&mut self) -> *mut [T; N] {
         self.0.as_mut_ptr().cast()
@@ -61,6 +66,13 @@ impl<T, const N: usize> AsChunksMut<'_, T, N> {
     #[inline(always)]
     pub fn chunks_mut<const CHUNK_LEN: usize>(&mut self) -> AsChunksMutChunksMutIter<T, N> {
         AsChunksMutChunksMutIter(self.0.chunks_mut(CHUNK_LEN * N))
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    #[inline(always)]
+    pub fn split_at_mut(&mut self, mid: usize) -> (AsChunksMut<T, N>, AsChunksMut<T, N>) {
+        let (before, after) = self.0.split_at_mut(mid * N);
+        (AsChunksMut(before), AsChunksMut(after))
     }
 }
 

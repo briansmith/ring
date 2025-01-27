@@ -42,14 +42,14 @@ pub(crate) use self::{
     modulusvalue::OwnedModulusValue,
     private_exponent::PrivateExponent,
 };
-use super::{inout::AliasingSlices3, montgomery::*, LimbSliceError, MAX_LIMBS};
+use super::{inout::AliasingSlices3, limbs512, montgomery::*, LimbSliceError, MAX_LIMBS};
 use crate::{
     bits::BitLength,
     c,
     error::{self, LenMismatchError},
     limb::{self, Limb, LIMB_BITS},
+    polyfill::slice::{self, AsChunks},
 };
-use alloc::vec;
 use core::{
     marker::PhantomData,
     num::{NonZeroU64, NonZeroUsize},
@@ -410,20 +410,57 @@ pub(crate) fn elem_exp_vartime<M>(
     acc
 }
 
-#[cfg(not(target_arch = "x86_64"))]
 pub fn elem_exp_consttime<M>(
+    base: Elem<M, R>,
+    exponent: &PrivateExponent,
+    m: &Modulus<M>,
+) -> Result<Elem<M, Unencoded>, LimbSliceError> {
+    // `elem_exp_consttime_inner` is parameterized on `STORAGE_LIMBS` only so
+    // we can run tests with larger-than-supported-in-operation test vectors.
+    elem_exp_consttime_inner::<M, { ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS * STORAGE_ENTRIES }>(
+        base, exponent, m,
+    )
+}
+
+// The maximum modulus size supported for `elem_exp_consttime` in normal
+// operation.
+const ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS: usize = 2048 / LIMB_BITS;
+const _LIMBS_PER_CHUNK_DIVIDES_ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS: () =
+    assert!(ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS % limbs512::LIMBS_PER_CHUNK == 0);
+const WINDOW_BITS: u32 = 5;
+const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
+const STORAGE_ENTRIES: usize = TABLE_ENTRIES + if cfg!(target_arch = "x86_64") { 3 } else { 0 };
+
+#[cfg(not(target_arch = "x86_64"))]
+fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
     use crate::{bssl, limb::Window};
 
-    const WINDOW_BITS: usize = 5;
-    const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
-
     let num_limbs = m.limbs().len();
+    let m_chunked: AsChunks<Limb, { limbs512::LIMBS_PER_CHUNK }> = match slice::as_chunks(m.limbs())
+    {
+        (m, []) => m,
+        _ => {
+            return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
+                num_limbs,
+            )))
+        }
+    };
+    let cpe = m_chunked.len(); // 512-bit chunks per entry.
 
-    let mut table = vec![0; TABLE_ENTRIES * num_limbs];
+    // This code doesn't have the strict alignment requirements that the x86_64
+    // version does, but uses the same aligned storage for convenience.
+    assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
+    let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::zeroed();
+    let mut table = table
+        .aligned_chunks_mut(TABLE_ENTRIES, cpe)
+        .map_err(LimbSliceError::len_mismatch)?;
+
+    // TODO: Rewrite the below in terms of `AsChunks`.
+    let table = table.as_flattened_mut();
 
     fn gather<M>(table: &[Limb], acc: &mut Elem<M, R>, i: Window) {
         prefixed_extern! {
@@ -463,9 +500,9 @@ pub fn elem_exp_consttime<M>(
     }
 
     // table[0] = base**0 (i.e. 1).
-    m.oneR(entry_mut(&mut table, 0, num_limbs));
+    m.oneR(entry_mut(table, 0, num_limbs));
 
-    entry_mut(&mut table, 1, num_limbs).copy_from_slice(&base.limbs);
+    entry_mut(table, 1, num_limbs).copy_from_slice(&base.limbs);
     for i in 2..TABLE_ENTRIES {
         let (src1, src2) = if i % 2 == 0 {
             (i / 2, i / 2)
@@ -497,7 +534,7 @@ pub fn elem_exp_consttime<M>(
 }
 
 #[cfg(target_arch = "x86_64")]
-pub fn elem_exp_consttime<M>(
+fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
     m: &Modulus<M>,
@@ -508,8 +545,8 @@ pub fn elem_exp_consttime<M>(
             intel::{Adx, Bmi2},
             GetFeature as _,
         },
-        limb::LIMB_BYTES,
-        polyfill::slice::{self, AsChunks, AsChunksMut},
+        limb::{LeakyWindow, Window},
+        polyfill::slice::AsChunksMut,
     };
 
     let cpu2 = m.cpu_features().get_feature();
@@ -517,62 +554,51 @@ pub fn elem_exp_consttime<M>(
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.
+    // Subsequently, it was changed such that, according to BoringSSL, they
+    // only require 16 byte alignment. We enforce the old, stronger, alignment
+    // unless/until we can see a benefit to reducing it.
+    //
     // Similarly, OpenSSL uses the x86_64 assembly functions by giving it only
-    // inputs `tmp`, `am`, and `np` that immediately follow the table. All the
-    // awkwardness here stems from trying to use the assembly code like OpenSSL
-    // does.
+    // inputs `tmp`, `am`, and `np` that immediately follow the table.
+    // According to BoringSSL, in older versions of the OpenSSL code, this
+    // extra space was required for memory safety because the assembly code
+    // would over-read the table; according to BoringSSL, this is no longer the
+    // case. Regardless, the upstream code also contained comments implying
+    // that this was also important for performance. For now, we do as OpenSSL
+    // did/does.
+    const MOD_EXP_CTIME_ALIGN: usize = 64;
+    // Required by
+    const _TABLE_ENTRIES_IS_32: () = assert!(TABLE_ENTRIES == 32);
+    const _STORAGE_ENTRIES_HAS_3_EXTRA: () = assert!(STORAGE_ENTRIES == TABLE_ENTRIES + 3);
 
-    use crate::limb::{LeakyWindow, Window};
-
-    const WINDOW_BITS: usize = 5;
-    const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
-
-    let num_limbs = m.limbs().len();
-
-    const ALIGNMENT: usize = 64;
-    assert_eq!(ALIGNMENT % LIMB_BYTES, 0);
-    let mut table = vec![0; ((TABLE_ENTRIES + 3) * num_limbs) + ALIGNMENT];
-    let (table, state) = {
-        let misalignment = (table.as_ptr() as usize) % ALIGNMENT;
-        let table = &mut table[((ALIGNMENT - misalignment) / LIMB_BYTES)..];
-        assert_eq!((table.as_ptr() as usize) % ALIGNMENT, 0);
-        table.split_at_mut(TABLE_ENTRIES * num_limbs)
+    let m_original: AsChunks<Limb, 8> = match slice::as_chunks(m.limbs()) {
+        (m, []) => m,
+        _ => return Err(LimbSliceError::len_mismatch(LenMismatchError::new(8))),
     };
+    let cpe = m_original.len(); // 512-bit chunks per entry.
+
+    assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
+    let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::zeroed();
+    let mut table = table
+        .aligned_chunks_mut(STORAGE_ENTRIES, cpe)
+        .map_err(LimbSliceError::len_mismatch)?;
+    let (mut table, mut state) = table.split_at_mut(TABLE_ENTRIES * cpe);
+    assert_eq!((table.as_ptr() as usize) % MOD_EXP_CTIME_ALIGN, 0);
 
     // These are named `(tmp, am, np)` in BoringSSL.
-    let (acc, base_cached, m_cached): (&mut [Limb], &[Limb], &[Limb]) = {
-        let (acc, rest) = state.split_at_mut(num_limbs);
-        let (base_cached, rest) = rest.split_at_mut(num_limbs);
+    let (mut acc, mut rest) = state.split_at_mut(cpe);
+    let (mut base_cached, mut m_cached) = rest.split_at_mut(cpe);
 
-        // Upstream, the input `base` is not Montgomery-encoded, so they compute a
-        // Montgomery-encoded copy and store it here.
-        base_cached.copy_from_slice(&base.limbs);
+    // Upstream, the input `base` is not Montgomery-encoded, so they compute a
+    // Montgomery-encoded copy and store it here.
+    base_cached.as_flattened_mut().copy_from_slice(&base.limbs);
+    let base_cached = base_cached.as_ref();
 
-        let m_cached = &mut rest[..num_limbs];
-        // "To improve cache locality" according to upstream.
-        m_cached.copy_from_slice(m.limbs());
-
-        (acc, base_cached, m_cached)
-    };
-
-    let n0 = m.n0();
-
-    // TODO: Move the use of `Chunks`/`ChunksMut` up into the signature of the
-    // function so this conversion isn't necessary.
-    let (mut table, mut acc, base_cached, m_cached) = match (
-        slice::as_chunks_mut(table),
-        slice::as_chunks_mut(acc),
-        slice::as_chunks(base_cached),
-        slice::as_chunks(m_cached),
-    ) {
-        ((table, []), (acc, []), (base_cached, []), (m_cached, [])) => {
-            (table, acc, base_cached, m_cached)
-        }
-        _ => {
-            // XXX: Not the best error to return
-            return Err(LimbSliceError::len_mismatch(LenMismatchError::new(8)));
-        }
-    };
+    // "To improve cache locality" according to upstream.
+    m_cached
+        .as_flattened_mut()
+        .copy_from_slice(m_original.as_flattened());
+    let m_cached = m_cached.as_ref();
 
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
     // gathering, storing the last calculated power into `acc`.
@@ -604,6 +630,8 @@ pub fn elem_exp_consttime<M>(
     // acc = base**1 (i.e. base).
     acc.as_flattened_mut()
         .copy_from_slice(base_cached.as_flattened());
+
+    let n0 = m.n0();
 
     // Fill in entries 1, 2, 4, 8, 16.
     scatter_powers_of_2(table.as_mut(), acc.as_mut(), m_cached, n0, 1, cpu2)?;
@@ -715,10 +743,25 @@ mod tests {
                         .expect("valid exponent")
                 };
                 let base = into_encoded(base, &m);
-                let actual_result = elem_exp_consttime(base, &e, &m)
-                    .map_err(error::erase::<LimbSliceError>)
-                    .unwrap();
-                assert_elem_eq(&actual_result, &expected_result);
+
+                let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
+                let actual_result = if !too_big {
+                    elem_exp_consttime(base, &e, &m)
+                } else {
+                    let actual_result = elem_exp_consttime(base.clone(), &e, &m);
+                    // TODO: Be more specific with which error we expect?
+                    assert!(actual_result.is_err());
+                    // Try again with a larger-than-normally-supported limit
+                    elem_exp_consttime_inner::<_, { (4096 / LIMB_BITS) * STORAGE_ENTRIES }>(
+                        base, &e, &m,
+                    )
+                };
+                match actual_result {
+                    Ok(r) => assert_elem_eq(&r, &expected_result),
+                    Err(LimbSliceError::LenMismatch { .. }) => panic!(),
+                    Err(LimbSliceError::TooLong { .. }) => panic!(),
+                    Err(LimbSliceError::TooShort { .. }) => panic!(),
+                };
 
                 Ok(())
             },
