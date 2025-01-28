@@ -1088,7 +1088,7 @@ void PathVerifier::BasicCertificateProcessing(
   // The key purpose is checked not just for the end-entity certificate, but
   // also interpreted as a constraint when it appears in intermediates. This
   // goes beyond what RFC 5280 describes, but is the de-facto standard. See
-  // https://wiki.mozilla.org/CA:CertificatePolicyV2.1#Frequently_Asked_Questions
+  // https://wiki.mozilla.org/CA/CertificatePolicyV2.1#Frequently_Asked_Questions
   VerifyExtendedKeyUsage(cert, required_key_purpose, errors, is_target_cert,
                          is_target_cert_issuer);
 }
