@@ -299,9 +299,8 @@ pub(super) fn limbs_square_mont(
 ) -> Result<(), LimbSliceError> {
     cfg_if! {
         if #[cfg(target_arch = "x86_64")] {
-            use super::ffi;
             use core::ops::ControlFlow;
-            match ffi::bn_sqr8x_mont(r, n, n0, cpu) {
+            match super::x86_64_mont::bn_sqr8x_mont(r, n, n0, cpu) {
                 ControlFlow::Break(()) => {
                     Ok(())
                 }
