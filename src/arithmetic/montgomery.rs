@@ -301,9 +301,9 @@ pub(super) fn limbs_square_mont(
         if #[cfg(target_arch = "x86_64")] {
             use core::ops::ControlFlow;
             match super::x86_64_mont::bn_sqr8x_mont(r, n, n0, cpu) {
-                ControlFlow::Break(()) => {
-                    Ok(())
-                }
+                ControlFlow::Break(r) => {
+                    r.map_err(LimbSliceError::len_mismatch)
+                },
                 ControlFlow::Continue(()) => {
                     limbs_mul_mont(r, n, n0, cpu)
                 }
