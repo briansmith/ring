@@ -14,7 +14,7 @@
 
 #![cfg(target_arch = "x86_64")]
 
-use super::{n0::N0, MAX_LIMBS};
+use super::{inout::AliasingSlices2, n0::N0, MAX_LIMBS};
 use crate::{
     c,
     cpu::{
@@ -22,6 +22,7 @@ use crate::{
         intel::{Adx, Bmi2},
         GetFeature as _,
     },
+    error::LenMismatchError,
     limb::Limb,
 };
 use core::ops::ControlFlow;
@@ -32,10 +33,11 @@ pub(super) fn bn_sqr8x_mont(
     n: &[Limb],
     n0: &N0,
     cpu: cpu::Features,
-) -> ControlFlow<(), ()> {
+) -> ControlFlow<Result<(), LenMismatchError>> {
     prefixed_extern! {
         // `r` and/or 'a' may alias.
         // XXX: BoringSSL declares this to return `int`.
+        // `num` must be a non-zero multiple of 8.
         fn bn_sqr8x_mont(
             rp: *mut Limb,
             ap: *const Limb,
@@ -45,28 +47,31 @@ pub(super) fn bn_sqr8x_mont(
             num: c::size_t);
     }
 
-    if n.len() < 8 {
+    let num_limbs = n.len();
+    if num_limbs < 8 {
         return ControlFlow::Continue(());
     }
-    if n.len() % 8 != 0 {
+    if num_limbs % 8 != 0 {
         return ControlFlow::Continue(());
     }
     // Avoid stack overflow from the alloca inside.
-    if n.len() > MAX_LIMBS {
+    if num_limbs > MAX_LIMBS {
         return ControlFlow::Continue(());
     }
 
-    let rp = in_out.as_mut_ptr();
-    let ap = in_out.as_ptr();
     let mulx_adx: Option<(Adx, Bmi2)> = cpu.get_feature();
     // `Limb::from(mulx_adx.is_some())`, but intentionally branchy.
     let mulx_adx_capable = match mulx_adx {
         Some(_) => Limb::from(true),
         None => Limb::from(false),
     };
-    let np = n.as_ptr();
-    let num = n.len();
-    unsafe { bn_sqr8x_mont(rp, ap, mulx_adx_capable, np, n0, num) };
 
-    ControlFlow::Break(())
+    // It's OK if the pointers are dangling because `bn_sqr8x_mont` is an
+    // assembly language function. But also, we know `num_limbs > 0` from
+    // above.
+    let r = in_out.with_potentially_dangling_non_null_pointers_ra(num_limbs, |r, a| {
+        let n = n.as_ptr();
+        unsafe { bn_sqr8x_mont(r, a, mulx_adx_capable, n, n0, num_limbs) };
+    });
+    ControlFlow::Break(r)
 }
