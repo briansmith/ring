@@ -297,21 +297,16 @@ pub(super) fn limbs_square_mont(
     n0: &N0,
     cpu: cpu::Features,
 ) -> Result<(), LimbSliceError> {
-    cfg_if! {
-        if #[cfg(target_arch = "x86_64")] {
-            use core::ops::ControlFlow;
-            match super::x86_64_mont::bn_sqr8x_mont(r, n, n0, cpu) {
-                ControlFlow::Break(r) => {
-                    r.map_err(LimbSliceError::len_mismatch)
-                },
-                ControlFlow::Continue(()) => {
-                    limbs_mul_mont(r, n, n0, cpu)
-                }
-            }
-        } else {
-            limbs_mul_mont(r, n, n0, cpu)
+    #[cfg(target_arch = "x86_64")]
+    {
+        use super::x86_64_mont;
+        use crate::polyfill::slice;
+        if let ((r, []), (n, [])) = (slice::as_chunks_mut(r), slice::as_chunks(n)) {
+            return x86_64_mont::sqr_mont5(r, n, n0, cpu);
         }
     }
+
+    limbs_mul_mont(r, n, n0, cpu)
 }
 
 #[cfg(test)]

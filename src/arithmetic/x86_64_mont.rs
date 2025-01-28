@@ -24,16 +24,17 @@ use crate::{
     },
     error::LenMismatchError,
     limb::{LeakyWindow, Limb, Window},
+    polyfill::slice::{AsChunks, AsChunksMut},
 };
-use core::{num::NonZeroUsize, ops::ControlFlow};
+use core::num::NonZeroUsize;
 
 #[inline]
-pub(super) fn bn_sqr8x_mont(
-    in_out: &mut [Limb],
-    n: &[Limb],
+pub(super) fn sqr_mont5(
+    mut in_out: AsChunksMut<Limb, 8>,
+    n: AsChunks<Limb, 8>,
     n0: &N0,
     cpu: cpu::Features,
-) -> ControlFlow<Result<(), LenMismatchError>> {
+) -> Result<(), LimbSliceError> {
     prefixed_extern! {
         // `r` and/or 'a' may alias.
         // XXX: BoringSSL declares this to return `int`.
@@ -44,19 +45,16 @@ pub(super) fn bn_sqr8x_mont(
             mulx_adx_capable: Limb,
             np: *const Limb,
             n0: &N0,
-            num: c::size_t);
+            num: c::NonZero_size_t);
     }
 
-    let num_limbs = n.len();
-    if num_limbs < 8 {
-        return ControlFlow::Continue(());
-    }
-    if num_limbs % 8 != 0 {
-        return ControlFlow::Continue(());
-    }
+    let in_out = in_out.as_flattened_mut();
+    let n = n.as_flattened();
+    let num_limbs = NonZeroUsize::new(n.len()).ok_or_else(|| LimbSliceError::too_short(n.len()))?;
+
     // Avoid stack overflow from the alloca inside.
-    if num_limbs > MAX_LIMBS {
-        return ControlFlow::Continue(());
+    if num_limbs.get() > MAX_LIMBS {
+        return Err(LimbSliceError::too_long(num_limbs.get()));
     }
 
     let mulx_adx: Option<(Adx, Bmi2)> = cpu.get_feature();
@@ -66,14 +64,12 @@ pub(super) fn bn_sqr8x_mont(
         None => Limb::from(false),
     };
 
-    // It's OK if the pointers are dangling because `bn_sqr8x_mont` is an
-    // assembly language function. But also, we know `num_limbs > 0` from
-    // above.
-    let r = in_out.with_potentially_dangling_non_null_pointers_ra(num_limbs, |r, a| {
-        let n = n.as_ptr();
-        unsafe { bn_sqr8x_mont(r, a, mulx_adx_capable, n, n0, num_limbs) };
-    });
-    ControlFlow::Break(r)
+    in_out
+        .with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
+            let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
+            unsafe { bn_sqr8x_mont(r, a, mulx_adx_capable, n, n0, num_limbs) };
+        })
+        .map_err(LimbSliceError::len_mismatch)
 }
 
 #[inline(always)]
