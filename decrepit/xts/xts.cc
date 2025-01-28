@@ -15,7 +15,7 @@
 #include <openssl/cipher.h>
 
 #include "../../crypto/fipsmodule/cipher/internal.h"
-#include "../../crypto/fipsmodule/modes/internal.h"
+#include "../../crypto/fipsmodule/aes/internal.h"
 
 
 typedef struct xts128_context {

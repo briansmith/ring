@@ -19,7 +19,7 @@
 #include <openssl/ctrdrbg.h>
 
 #include "../../bcm_support.h"
-#include "../modes/internal.h"
+#include "../aes/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {

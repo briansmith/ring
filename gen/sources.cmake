@@ -25,8 +25,15 @@ set(
 
   crypto/fipsmodule/aes/aes.cc.inc
   crypto/fipsmodule/aes/aes_nohw.cc.inc
+  crypto/fipsmodule/aes/cbc.cc.inc
+  crypto/fipsmodule/aes/cfb.cc.inc
+  crypto/fipsmodule/aes/ctr.cc.inc
+  crypto/fipsmodule/aes/gcm.cc.inc
+  crypto/fipsmodule/aes/gcm_nohw.cc.inc
   crypto/fipsmodule/aes/key_wrap.cc.inc
   crypto/fipsmodule/aes/mode_wrappers.cc.inc
+  crypto/fipsmodule/aes/ofb.cc.inc
+  crypto/fipsmodule/aes/polyval.cc.inc
   crypto/fipsmodule/bn/add.cc.inc
   crypto/fipsmodule/bn/asm/x86_64-gcc.cc.inc
   crypto/fipsmodule/bn/bn.cc.inc
@@ -78,13 +85,6 @@ set(
   crypto/fipsmodule/keccak/keccak.cc.inc
   crypto/fipsmodule/mldsa/mldsa.cc.inc
   crypto/fipsmodule/mlkem/mlkem.cc.inc
-  crypto/fipsmodule/modes/cbc.cc.inc
-  crypto/fipsmodule/modes/cfb.cc.inc
-  crypto/fipsmodule/modes/ctr.cc.inc
-  crypto/fipsmodule/modes/gcm.cc.inc
-  crypto/fipsmodule/modes/gcm_nohw.cc.inc
-  crypto/fipsmodule/modes/ofb.cc.inc
-  crypto/fipsmodule/modes/polyval.cc.inc
   crypto/fipsmodule/rand/ctrdrbg.cc.inc
   crypto/fipsmodule/rand/rand.cc.inc
   crypto/fipsmodule/rsa/blinding.cc.inc
@@ -637,7 +637,6 @@ set(
   crypto/fipsmodule/ec/p256_table.h
   crypto/fipsmodule/ecdsa/internal.h
   crypto/fipsmodule/keccak/internal.h
-  crypto/fipsmodule/modes/internal.h
   crypto/fipsmodule/rand/internal.h
   crypto/fipsmodule/rsa/internal.h
   crypto/fipsmodule/service_indicator/internal.h
@@ -747,6 +746,7 @@ set(
   crypto/evp/pbkdf_test.cc
   crypto/evp/scrypt_test.cc
   crypto/fipsmodule/aes/aes_test.cc
+  crypto/fipsmodule/aes/gcm_test.cc
   crypto/fipsmodule/bn/bn_test.cc
   crypto/fipsmodule/cmac/cmac_test.cc
   crypto/fipsmodule/ec/ec_test.cc
@@ -755,7 +755,6 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa_test.cc
   crypto/fipsmodule/hkdf/hkdf_test.cc
   crypto/fipsmodule/keccak/keccak_test.cc
-  crypto/fipsmodule/modes/gcm_test.cc
   crypto/fipsmodule/rand/ctrdrbg_test.cc
   crypto/fipsmodule/service_indicator/service_indicator_test.cc
   crypto/fipsmodule/sha/sha_test.cc

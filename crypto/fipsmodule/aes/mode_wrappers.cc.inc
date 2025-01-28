@@ -12,7 +12,6 @@
 #include <assert.h>
 
 #include "../aes/internal.h"
-#include "../modes/internal.h"
 #include "../service_indicator/internal.h"
 
 

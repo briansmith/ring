@@ -12,7 +12,6 @@
 #include <assert.h>
 
 #include "internal.h"
-#include "../modes/internal.h"
 
 
 // Be aware that different sets of AES functions use incompatible key

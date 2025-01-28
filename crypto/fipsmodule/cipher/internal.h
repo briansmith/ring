@@ -16,7 +16,7 @@
 #include <openssl/aes.h>
 
 #include "../../internal.h"
-#include "../modes/internal.h"
+#include "../aes/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
