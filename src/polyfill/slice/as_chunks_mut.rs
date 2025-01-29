@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use super::AsChunks;
+
 #[inline(always)]
 pub fn as_chunks_mut<T, const N: usize>(slice: &mut [T]) -> (AsChunksMut<T, N>, &mut [T]) {
     assert!(N != 0, "chunk size must be non-zero");
@@ -22,7 +24,12 @@ pub fn as_chunks_mut<T, const N: usize>(slice: &mut [T]) -> (AsChunksMut<T, N>, 
 
 pub struct AsChunksMut<'a, T, const N: usize>(&'a mut [T]);
 
-impl<'a, T, const N: usize> AsChunksMut<'a, T, N> {
+impl<T, const N: usize> AsChunksMut<'_, T, N> {
+    #[inline(always)]
+    pub fn as_flattened(&self) -> &[T] {
+        self.0
+    }
+
     #[inline(always)]
     pub fn as_flattened_mut(&mut self) -> &mut [T] {
         self.0
@@ -38,16 +45,22 @@ impl<'a, T, const N: usize> AsChunksMut<'a, T, N> {
         self.0.as_mut_ptr().cast()
     }
 
+    #[cfg(target_arch = "x86_64")]
+    #[inline(always)]
+    pub fn as_mut(&mut self) -> AsChunksMut<T, N> {
+        AsChunksMut(self.0)
+    }
+
+    #[inline(always)]
+    pub fn as_ref(&self) -> AsChunks<T, N> {
+        AsChunks::<T, N>::from(self)
+    }
+
     // Argument moved from runtime argument to `const` argument so that
     // `CHUNK_LEN * N` is checked at compile time for overflow.
     #[inline(always)]
     pub fn chunks_mut<const CHUNK_LEN: usize>(&mut self) -> AsChunksMutChunksMutIter<T, N> {
         AsChunksMutChunksMutIter(self.0.chunks_mut(CHUNK_LEN * N))
-    }
-
-    #[inline(always)]
-    pub(super) fn into_inner_for_conversion(self) -> &'a [T] {
-        self.0
     }
 }
 

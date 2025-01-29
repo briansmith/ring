@@ -28,6 +28,8 @@ use crate::{
 };
 use core::num::NonZeroUsize;
 
+const _512_IS_LIMB_BITS_TIMES_8: () = assert!(8 * Limb::BITS == 512);
+
 #[inline]
 pub(super) fn sqr_mont5(
     mut in_out: AsChunksMut<Limb, 8>,
@@ -74,8 +76,8 @@ pub(super) fn sqr_mont5(
 
 #[inline(always)]
 pub(super) fn scatter5(
-    a: &[Limb],
-    table: &mut [Limb],
+    a: AsChunks<Limb, 8>,
+    mut table: AsChunksMut<Limb, 8>,
     power: LeakyWindow,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
@@ -88,7 +90,9 @@ pub(super) fn scatter5(
             power: LeakyWindow,
         );
     }
-    let num_limbs = check_common(a, table)?;
+    let num_limbs = check_common(a, table.as_ref())?;
+    let a = a.as_flattened();
+    let table = table.as_flattened_mut();
     assert!(power < 32);
     unsafe { bn_scatter5(a.as_ptr(), num_limbs, table.as_mut_ptr(), power) };
     Ok(())
@@ -97,8 +101,8 @@ pub(super) fn scatter5(
 // SAFETY: `power` must be less than 32.
 #[inline(always)]
 pub(super) unsafe fn gather5(
-    r: &mut [Limb],
-    table: &[Limb],
+    mut r: AsChunksMut<Limb, 8>,
+    table: AsChunks<Limb, 8>,
     power: Window,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
@@ -110,7 +114,9 @@ pub(super) unsafe fn gather5(
             table: *const Limb,
             power: Window);
     }
-    let num_limbs = check_common(r, table)?;
+    let num_limbs = check_common(r.as_ref(), table)?;
+    let r = r.as_flattened_mut();
+    let table = table.as_flattened();
     // SAFETY: We cannot assert that `power` is in range because it is secret.
     // TODO: Create a `Window5` type that is guaranteed to be in range.
     unsafe { bn_gather5(r.as_mut_ptr(), num_limbs, table.as_ptr(), power) };
@@ -120,10 +126,10 @@ pub(super) unsafe fn gather5(
 // SAFETY: `power` must be less than 32.
 #[inline(always)]
 pub(super) unsafe fn mul_mont_gather5_amm(
-    r: &mut [Limb],
-    a: &[Limb],
-    table: &[Limb],
-    n: &[Limb],
+    mut r: AsChunksMut<Limb, 8>,
+    a: AsChunks<Limb, 8>,
+    table: AsChunks<Limb, 8>,
+    n: AsChunks<Limb, 8>,
     n0: &N0,
     power: Window,
     _maybe_adx_bmi1_bmi2: cpu::Features, // TODO: Option<(Adx, Bmi1, Bmi2)>,
@@ -141,10 +147,14 @@ pub(super) unsafe fn mul_mont_gather5_amm(
             power: Window,
         );
     }
-    let num_limbs = check_common_with_n(r, table, n)?;
+    let num_limbs = check_common_with_n(r.as_ref(), table, n)?;
+    let a = a.as_flattened();
     if a.len() != num_limbs.get() {
         return Err(LimbSliceError::len_mismatch(LenMismatchError::new(a.len())));
     }
+    let r = r.as_flattened_mut();
+    let table = table.as_flattened();
+    let n = n.as_flattened();
     // SAFETY: We cannot assert that `power` is in range because it is secret.
     // TODO: Create a `Window5` type that is guaranteed to be in range.
     unsafe {
@@ -164,9 +174,9 @@ pub(super) unsafe fn mul_mont_gather5_amm(
 // SAFETY: `power` must be less than 32.
 #[inline(always)]
 pub(super) unsafe fn power5_amm(
-    in_out: &mut [Limb],
-    table: &[Limb],
-    n: &[Limb],
+    mut in_out: AsChunksMut<Limb, 8>,
+    table: AsChunks<Limb, 8>,
+    n: AsChunks<Limb, 8>,
     n0: &N0,
     power: Window,
     _maybe_adx_bmi1_bmi2: cpu::Features, // TODO: Option<(Adx, Bmi1, Bmi2)>,
@@ -184,7 +194,10 @@ pub(super) unsafe fn power5_amm(
             power: Window,
         );
     }
-    let num_limbs = check_common_with_n(in_out, table, n)?;
+    let num_limbs = check_common_with_n(in_out.as_ref(), table, n)?;
+    let in_out = in_out.as_flattened_mut();
+    let table = table.as_flattened();
+    let n = n.as_flattened();
     // SAFETY: We cannot assert that `power` is in range because it is secret.
     // TODO: Create a `Window5` type that is guaranteed to be in range.
     unsafe {
@@ -206,13 +219,14 @@ pub(super) unsafe fn power5_amm(
 // consistently in each function and also by inlining this function and all the
 // callers.
 #[inline(always)]
-fn check_common(a: &[Limb], table: &[Limb]) -> Result<NonZeroUsize, LimbSliceError> {
+fn check_common(
+    a: AsChunks<Limb, 8>,
+    table: AsChunks<Limb, 8>,
+) -> Result<NonZeroUsize, LimbSliceError> {
     assert_eq!((table.as_ptr() as usize) % 16, 0); // According to BoringSSL.
+    let a = a.as_flattened();
+    let table = table.as_flattened();
     let num_limbs = NonZeroUsize::new(a.len()).ok_or_else(|| LimbSliceError::too_short(a.len()))?;
-    if num_limbs.get() % 8 != 0 {
-        // TODO: Use a different error.
-        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(a.len())));
-    }
     if num_limbs.get() > MAX_LIMBS {
         return Err(LimbSliceError::too_long(a.len()));
     }
@@ -226,14 +240,15 @@ fn check_common(a: &[Limb], table: &[Limb]) -> Result<NonZeroUsize, LimbSliceErr
 
 #[inline(always)]
 fn check_common_with_n(
-    a: &[Limb],
-    table: &[Limb],
-    n: &[Limb],
+    a: AsChunks<Limb, 8>,
+    table: AsChunks<Limb, 8>,
+    n: AsChunks<Limb, 8>,
 ) -> Result<NonZeroUsize, LimbSliceError> {
     // Choose `a` instead of `n` so that every function starts with
     // `check_common` passing the exact same arguments, so that the compiler
     // can easily de-dupe the checks.
     let num_limbs = check_common(a, table)?;
+    let n = n.as_flattened();
     if n.len() != num_limbs.get() {
         return Err(LimbSliceError::len_mismatch(LenMismatchError::new(n.len())));
     }
