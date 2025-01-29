@@ -242,9 +242,11 @@ pub fn unstripped_be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> 
     ArrayFlatMap::new(limbs.iter().rev().copied(), Limb::to_be_bytes).unwrap()
 }
 
+// Used in FFI
 #[cfg(feature = "alloc")]
 pub type Window = constant_time::Word;
 
+// Used in FFI
 #[cfg(feature = "alloc")]
 pub type LeakyWindow = constant_time::LeakyWord;
 
