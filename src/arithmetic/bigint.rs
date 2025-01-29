@@ -504,12 +504,16 @@ pub fn elem_exp_consttime<M>(
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
     use super::x86_64_mont::{gather5, mul_mont_gather5_amm, power5_amm, scatter5, sqr_mont5};
     use crate::{
-        cpu,
+        cpu::{
+            intel::{Adx, Bmi2},
+            GetFeature as _,
+        },
         limb::LIMB_BYTES,
         polyfill::slice::{self, AsChunks, AsChunksMut},
     };
 
-    let cpu_features = m.cpu_features();
+    let cpu2 = m.cpu_features().get_feature();
+    let cpu3 = m.cpu_features().get_feature();
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.
@@ -578,7 +582,7 @@ pub fn elem_exp_consttime<M>(
         m_cached: AsChunks<Limb, 8>,
         n0: &N0,
         mut i: LeakyWindow,
-        cpu_features: cpu::Features,
+        cpu: Option<(Adx, Bmi2)>,
     ) -> Result<(), LimbSliceError> {
         loop {
             scatter5(acc.as_ref(), table.as_mut(), i)?;
@@ -586,7 +590,7 @@ pub fn elem_exp_consttime<M>(
             if i >= TABLE_ENTRIES as LeakyWindow {
                 break;
             }
-            sqr_mont5(acc.as_mut(), m_cached, n0, cpu_features)?;
+            sqr_mont5(acc.as_mut(), m_cached, n0, cpu)?;
         }
         Ok(())
     }
@@ -602,7 +606,7 @@ pub fn elem_exp_consttime<M>(
         .copy_from_slice(base_cached.as_flattened());
 
     // Fill in entries 1, 2, 4, 8, 16.
-    scatter_powers_of_2(table.as_mut(), acc.as_mut(), m_cached, n0, 1, cpu_features)?;
+    scatter_powers_of_2(table.as_mut(), acc.as_mut(), m_cached, n0, 1, cpu2)?;
     // Fill in entries 3, 6, 12, 24; 5, 10, 20, 30; 7, 14, 28; 9, 18; 11, 22; 13, 26; 15, 30;
     // 17; 19; 21; 23; 25; 27; 29; 31.
     for i in (3..(TABLE_ENTRIES as LeakyWindow)).step_by(2) {
@@ -616,10 +620,10 @@ pub fn elem_exp_consttime<M>(
                 m_cached,
                 n0,
                 power,
-                cpu_features,
+                cpu3,
             )
         }?;
-        scatter_powers_of_2(table.as_mut(), acc.as_mut(), m_cached, n0, i, cpu_features)?;
+        scatter_powers_of_2(table.as_mut(), acc.as_mut(), m_cached, n0, i, cpu2)?;
     }
 
     let table = table.as_ref();
@@ -632,7 +636,7 @@ pub fn elem_exp_consttime<M>(
             acc
         },
         |mut acc, window| {
-            unsafe { power5_amm(acc.as_mut(), table, m_cached, n0, window, cpu_features) }
+            unsafe { power5_amm(acc.as_mut(), table, m_cached, n0, window, cpu3) }
                 .unwrap_or_else(unwrap_impossible_limb_slice_error);
             acc
         },
