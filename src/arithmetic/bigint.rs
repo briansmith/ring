@@ -502,8 +502,12 @@ pub fn elem_exp_consttime<M>(
     exponent: &PrivateExponent,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
-    use super::x86_64_mont::{gather5, mul_mont_gather5_amm, power5_amm, scatter5};
-    use crate::{cpu, limb::LIMB_BYTES};
+    use super::x86_64_mont::{gather5, mul_mont_gather5_amm, power5_amm, scatter5, sqr_mont5};
+    use crate::{
+        cpu,
+        limb::LIMB_BYTES,
+        polyfill::slice::{self, AsChunks, AsChunksMut},
+    };
 
     let cpu_features = m.cpu_features();
 
@@ -549,23 +553,40 @@ pub fn elem_exp_consttime<M>(
 
     let n0 = m.n0();
 
+    // TODO: Move the use of `Chunks`/`ChunksMut` up into the signature of the
+    // function so this conversion isn't necessary.
+    let (mut table, mut acc, base_cached, m_cached) = match (
+        slice::as_chunks_mut(table),
+        slice::as_chunks_mut(acc),
+        slice::as_chunks(base_cached),
+        slice::as_chunks(m_cached),
+    ) {
+        ((table, []), (acc, []), (base_cached, []), (m_cached, [])) => {
+            (table, acc, base_cached, m_cached)
+        }
+        _ => {
+            // XXX: Not the best error to return
+            return Err(LimbSliceError::len_mismatch(LenMismatchError::new(8)));
+        }
+    };
+
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
     // gathering, storing the last calculated power into `acc`.
     fn scatter_powers_of_2(
-        table: &mut [Limb],
-        acc: &mut [Limb],
-        m_cached: &[Limb],
+        mut table: AsChunksMut<Limb, 8>,
+        mut acc: AsChunksMut<Limb, 8>,
+        m_cached: AsChunks<Limb, 8>,
         n0: &N0,
         mut i: LeakyWindow,
         cpu_features: cpu::Features,
     ) -> Result<(), LimbSliceError> {
         loop {
-            scatter5(acc, table, i)?;
+            scatter5(acc.as_ref(), table.as_mut(), i)?;
             i *= 2;
             if i >= TABLE_ENTRIES as LeakyWindow {
                 break;
             }
-            limbs_square_mont(acc, m_cached, n0, cpu_features)?;
+            sqr_mont5(acc.as_mut(), m_cached, n0, cpu_features)?;
         }
         Ok(())
     }
@@ -573,41 +594,52 @@ pub fn elem_exp_consttime<M>(
     // All entries in `table` will be Montgomery encoded.
 
     // acc = table[0] = base**0 (i.e. 1).
-    m.oneR(acc);
-    scatter5(acc, table, 0)?;
+    m.oneR(acc.as_flattened_mut());
+    scatter5(acc.as_ref(), table.as_mut(), 0)?;
 
     // acc = base**1 (i.e. base).
-    acc.copy_from_slice(base_cached);
+    acc.as_flattened_mut()
+        .copy_from_slice(base_cached.as_flattened());
 
     // Fill in entries 1, 2, 4, 8, 16.
-    scatter_powers_of_2(table, acc, m_cached, n0, 1, cpu_features)?;
+    scatter_powers_of_2(table.as_mut(), acc.as_mut(), m_cached, n0, 1, cpu_features)?;
     // Fill in entries 3, 6, 12, 24; 5, 10, 20, 30; 7, 14, 28; 9, 18; 11, 22; 13, 26; 15, 30;
     // 17; 19; 21; 23; 25; 27; 29; 31.
     for i in (3..(TABLE_ENTRIES as LeakyWindow)).step_by(2) {
         let power = Window::from(i - 1);
         assert!(power < 32); // Not secret,
         unsafe {
-            mul_mont_gather5_amm(acc, base_cached, table, m_cached, n0, power, cpu_features)
+            mul_mont_gather5_amm(
+                acc.as_mut(),
+                base_cached,
+                table.as_ref(),
+                m_cached,
+                n0,
+                power,
+                cpu_features,
+            )
         }?;
-        scatter_powers_of_2(table, acc, m_cached, n0, i, cpu_features)?;
+        scatter_powers_of_2(table.as_mut(), acc.as_mut(), m_cached, n0, i, cpu_features)?;
     }
+
+    let table = table.as_ref();
 
     let acc = limb::fold_5_bit_windows(
         exponent.limbs(),
         |initial_window| {
-            unsafe { gather5(acc, table, initial_window) }
+            unsafe { gather5(acc.as_mut(), table, initial_window) }
                 .unwrap_or_else(unwrap_impossible_limb_slice_error);
             acc
         },
-        |acc, window| {
-            unsafe { power5_amm(acc, table, m_cached, n0, window, cpu_features) }
+        |mut acc, window| {
+            unsafe { power5_amm(acc.as_mut(), table, m_cached, n0, window, cpu_features) }
                 .unwrap_or_else(unwrap_impossible_limb_slice_error);
             acc
         },
     );
 
     let mut r_amm = base.limbs;
-    r_amm.copy_from_slice(acc);
+    r_amm.copy_from_slice(acc.as_flattened());
 
     Ok(from_montgomery_amm(r_amm, m))
 }

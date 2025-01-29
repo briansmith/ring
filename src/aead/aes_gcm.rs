@@ -178,7 +178,7 @@ pub(super) fn seal(
             };
             let (mut whole, remainder) = slice::as_chunks_mut(ramaining);
             aes_key.ctr32_encrypt_within(whole.as_flattened_mut().into(), &mut ctr);
-            auth.update_blocks(whole.into());
+            auth.update_blocks(whole.as_ref());
             let remainder = OverlappingPartialBlock::new(remainder.into())
                 .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
             seal_finish(aes_key, auth, remainder, ctr, tag_iv)
@@ -268,7 +268,7 @@ fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
 
     for mut chunk in whole.chunks_mut::<CHUNK_BLOCKS>() {
         aes_key.ctr32_encrypt_within(chunk.as_flattened_mut().into(), &mut ctr);
-        auth.update_blocks(chunk.into());
+        auth.update_blocks(chunk.as_ref());
     }
 
     let remainder = OverlappingPartialBlock::new(remainder.into())
