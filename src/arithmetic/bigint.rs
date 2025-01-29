@@ -415,7 +415,7 @@ pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
     m: &Modulus<M>,
-) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+) -> Result<Elem<M, Unencoded>, LimbSliceError> {
     use crate::{bssl, limb::Window};
 
     const WINDOW_BITS: usize = 5;
@@ -476,8 +476,7 @@ pub fn elem_exp_consttime<M>(
         let src1 = entry(previous, src1, num_limbs);
         let src2 = entry(previous, src2, num_limbs);
         let dst = entry_mut(rest, 0, num_limbs);
-        limbs_mul_mont((dst, src1, src2), m.limbs(), m.n0(), m.cpu_features())
-            .map_err(error::erase::<LimbSliceError>)?;
+        limbs_mul_mont((dst, src1, src2), m.limbs(), m.n0(), m.cpu_features())?;
     }
 
     let tmp = m.zero();
@@ -502,12 +501,10 @@ pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
     m: &Modulus<M>,
-) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+) -> Result<Elem<M, Unencoded>, LimbSliceError> {
+    use super::x86_64_mont::{gather5, mul_mont_gather5_amm, power5_amm, scatter5};
     use crate::{cpu, limb::LIMB_BYTES};
 
-    // Pretty much all the math here requires CPU feature detection to have
-    // been done. `cpu_features` isn't threaded through all the internal
-    // functions, so just make it clear that it has been done at this point.
     let cpu_features = m.cpu_features();
 
     // The x86_64 assembly was written under the assumption that the input data
@@ -533,85 +530,6 @@ pub fn elem_exp_consttime<M>(
         assert_eq!((table.as_ptr() as usize) % ALIGNMENT, 0);
         table.split_at_mut(TABLE_ENTRIES * num_limbs)
     };
-
-    fn scatter(table: &mut [Limb], acc: &[Limb], i: LeakyWindow, num_limbs: usize) {
-        prefixed_extern! {
-            fn bn_scatter5(a: *const Limb, a_len: c::size_t, table: *mut Limb, i: LeakyWindow);
-        }
-        unsafe { bn_scatter5(acc.as_ptr(), num_limbs, table.as_mut_ptr(), i) }
-    }
-
-    fn gather(table: &[Limb], acc: &mut [Limb], i: Window, num_limbs: usize) {
-        prefixed_extern! {
-            fn bn_gather5(r: *mut Limb, a_len: c::size_t, table: *const Limb, i: Window);
-        }
-        unsafe { bn_gather5(acc.as_mut_ptr(), num_limbs, table.as_ptr(), i) }
-    }
-
-    fn limbs_mul_mont_gather5_amm(
-        table: &[Limb],
-        acc: &mut [Limb],
-        base: &[Limb],
-        m: &[Limb],
-        n0: &N0,
-        i: Window,
-        num_limbs: usize,
-    ) {
-        prefixed_extern! {
-            fn bn_mul_mont_gather5(
-                rp: *mut Limb,
-                ap: *const Limb,
-                table: *const Limb,
-                np: *const Limb,
-                n0: &N0,
-                num: c::size_t,
-                power: Window,
-            );
-        }
-        unsafe {
-            bn_mul_mont_gather5(
-                acc.as_mut_ptr(),
-                base.as_ptr(),
-                table.as_ptr(),
-                m.as_ptr(),
-                n0,
-                num_limbs,
-                i,
-            );
-        }
-    }
-
-    fn power_amm(
-        table: &[Limb],
-        acc: &mut [Limb],
-        m_cached: &[Limb],
-        n0: &N0,
-        i: Window,
-        num_limbs: usize,
-    ) {
-        prefixed_extern! {
-            fn bn_power5(
-                r: *mut Limb,
-                a: *const Limb,
-                table: *const Limb,
-                n: *const Limb,
-                n0: &N0,
-                num: c::size_t,
-                i: Window,
-            );
-        }
-        unsafe {
-            bn_power5(
-                acc.as_mut_ptr(),
-                acc.as_ptr(),
-                table.as_ptr(),
-                m_cached.as_ptr(),
-                n0,
-                num_limbs,
-                i,
-            );
-        }
-    }
 
     // These are named `(tmp, am, np)` in BoringSSL.
     let (acc, base_cached, m_cached): (&mut [Limb], &[Limb], &[Limb]) = {
@@ -639,11 +557,10 @@ pub fn elem_exp_consttime<M>(
         m_cached: &[Limb],
         n0: &N0,
         mut i: LeakyWindow,
-        num_limbs: usize,
         cpu_features: cpu::Features,
     ) -> Result<(), LimbSliceError> {
         loop {
-            scatter(table, acc, i, num_limbs);
+            scatter5(acc, table, i)?;
             i *= 2;
             if i >= TABLE_ENTRIES as LeakyWindow {
                 break;
@@ -657,38 +574,34 @@ pub fn elem_exp_consttime<M>(
 
     // acc = table[0] = base**0 (i.e. 1).
     m.oneR(acc);
-    scatter(table, acc, 0, num_limbs);
+    scatter5(acc, table, 0)?;
 
     // acc = base**1 (i.e. base).
     acc.copy_from_slice(base_cached);
 
     // Fill in entries 1, 2, 4, 8, 16.
-    scatter_powers_of_2(table, acc, m_cached, n0, 1, num_limbs, cpu_features)
-        .map_err(error::erase::<LimbSliceError>)?;
+    scatter_powers_of_2(table, acc, m_cached, n0, 1, cpu_features)?;
     // Fill in entries 3, 6, 12, 24; 5, 10, 20, 30; 7, 14, 28; 9, 18; 11, 22; 13, 26; 15, 30;
     // 17; 19; 21; 23; 25; 27; 29; 31.
     for i in (3..(TABLE_ENTRIES as LeakyWindow)).step_by(2) {
-        limbs_mul_mont_gather5_amm(
-            table,
-            acc,
-            base_cached,
-            m_cached,
-            n0,
-            Window::from(i - 1), // Not secret
-            num_limbs,
-        );
-        scatter_powers_of_2(table, acc, m_cached, n0, i, num_limbs, cpu_features)
-            .map_err(error::erase::<LimbSliceError>)?;
+        let power = Window::from(i - 1);
+        assert!(power < 32); // Not secret,
+        unsafe {
+            mul_mont_gather5_amm(acc, base_cached, table, m_cached, n0, power, cpu_features)
+        }?;
+        scatter_powers_of_2(table, acc, m_cached, n0, i, cpu_features)?;
     }
 
     let acc = limb::fold_5_bit_windows(
         exponent.limbs(),
         |initial_window| {
-            gather(table, acc, initial_window, num_limbs);
+            unsafe { gather5(acc, table, initial_window) }
+                .unwrap_or_else(unwrap_impossible_limb_slice_error);
             acc
         },
         |acc, window| {
-            power_amm(table, acc, m_cached, n0, window, num_limbs);
+            unsafe { power5_amm(acc, table, m_cached, n0, window, cpu_features) }
+                .unwrap_or_else(unwrap_impossible_limb_slice_error);
             acc
         },
     );
@@ -766,7 +679,9 @@ mod tests {
                         .expect("valid exponent")
                 };
                 let base = into_encoded(base, &m);
-                let actual_result = elem_exp_consttime(base, &e, &m).unwrap();
+                let actual_result = elem_exp_consttime(base, &e, &m)
+                    .map_err(error::erase::<LimbSliceError>)
+                    .unwrap();
                 assert_elem_eq(&actual_result, &expected_result);
 
                 Ok(())
