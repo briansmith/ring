@@ -36,6 +36,12 @@ pub(crate) trait GetFeature<T> {
     fn get_feature(&self) -> Option<T>;
 }
 
+impl GetFeature<()> for Features {
+    fn get_feature(&self) -> Option<()> {
+        Some(())
+    }
+}
+
 impl<A, B, T> GetFeature<(A, B)> for T
 where
     T: GetFeature<A>,

@@ -75,7 +75,11 @@ impl Key {
             target_arch = "x86_64"
         ))]
         if let Some(hw_features) = cpu_features.get_feature() {
-            return Ok(Self::Hw(hw::Key::new(bytes, hw_features)?));
+            return Ok(Self::Hw(hw::Key::new(
+                bytes,
+                hw_features,
+                cpu_features.get_feature(),
+            )?));
         }
 
         #[cfg(any(

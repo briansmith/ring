@@ -881,6 +881,8 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "OPENSSL_ia32cap_P",
         "aes_hw_ctr32_encrypt_blocks",
         "aes_hw_set_encrypt_key",
+        "aes_hw_set_encrypt_key_alt",
+        "aes_hw_set_encrypt_key_base",
         "aes_nohw_ctr32_encrypt_blocks",
         "aes_nohw_encrypt",
         "aes_nohw_set_encrypt_key",

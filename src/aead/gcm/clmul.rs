@@ -71,7 +71,6 @@ impl super::UpdateBlocks for Key {
         xi: &mut Xi,
         input: crate::polyfill::slice::AsChunks<u8, { super::BLOCK_LEN }>,
     ) {
-        let _: cpu::Features = cpu::features();
         unsafe { ghash!(gcm_ghash_clmul, xi, &self.h_table, input) }
     }
 }
