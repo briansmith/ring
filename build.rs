@@ -714,7 +714,6 @@ fn perlasm(
         ];
         if asm_target.arch == X86 {
             args.push("-fPIC".into());
-            args.push("-DOPENSSL_IA32_SSE2".into());
         }
         // Work around PerlAsm issue for ARM and AAarch64 targets by replacing
         // back slashes with forward slashes.
