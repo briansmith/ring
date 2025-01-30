@@ -1042,7 +1042,6 @@ ___
 
 { my ($inp,$bits,$key) = @_4args;
   $bits =~ s/%r/%e/;
-
 # This is based on submission from Intel by
 #	Huang Ying
 #	Vinodh Gopal
@@ -1072,7 +1071,6 @@ $code.=<<___;
 .type	${PREFIX}_set_encrypt_key,\@abi-omnipotent
 .align	16
 ${PREFIX}_set_encrypt_key:
-__aesni_set_encrypt_key:
 .cfi_startproc
 .seh_startproc
 	_CET_ENDBR
@@ -1375,7 +1373,6 @@ __aesni_set_encrypt_key:
 	xorps	%xmm1,%xmm2
 	ret
 .size	${PREFIX}_set_encrypt_key,.-${PREFIX}_set_encrypt_key
-.size	__aesni_set_encrypt_key,.-__aesni_set_encrypt_key
 ___
 }
 
