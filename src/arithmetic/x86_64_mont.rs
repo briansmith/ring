@@ -159,25 +159,18 @@ pub(super) unsafe fn mul_mont_gather5_amm(
         return Err(LimbSliceError::len_mismatch(LenMismatchError::new(a.len())));
     }
     let r = r.as_flattened_mut();
+    let r = r.as_mut_ptr();
+    let a = a.as_ptr();
     let table = table.as_flattened();
+    let table = table.as_ptr();
     let n = n.as_flattened();
+    let n = n.as_ptr();
     // SAFETY: We cannot assert that `power` is in range because it is secret.
     // TODO: Create a `Window5` type that is guaranteed to be in range.
-    let mul_mont_gather5 = if maybe_adx_bmi1_bmi2.is_some() {
-        bn_mulx4x_mont_gather5
+    if maybe_adx_bmi1_bmi2.is_some() {
+        unsafe { bn_mulx4x_mont_gather5(r, a, table, n, n0, num_limbs, power) }
     } else {
-        bn_mul4x_mont_gather5
-    };
-    unsafe {
-        mul_mont_gather5(
-            r.as_mut_ptr(),
-            a.as_ptr(),
-            table.as_ptr(),
-            n.as_ptr(),
-            n0,
-            num_limbs,
-            power,
-        )
+        unsafe { bn_mul4x_mont_gather5(r, a, table, n, n0, num_limbs, power) }
     };
     Ok(())
 }
@@ -218,26 +211,19 @@ pub(super) unsafe fn power5_amm(
     }
     let num_limbs = check_common_with_n(in_out.as_ref(), table, n)?;
     let in_out = in_out.as_flattened_mut();
+    let r = in_out.as_mut_ptr();
+    let a = in_out.as_ptr();
     let table = table.as_flattened();
+    let table = table.as_ptr();
     let n = n.as_flattened();
+    let n = n.as_ptr();
     // SAFETY: We cannot assert that `power` is in range because it is secret.
     // TODO: Create a `Window5` type that is guaranteed to be in range.
-    let power5 = if maybe_adx_bmi1_bmi2.is_some() {
-        bn_powerx5
+    if maybe_adx_bmi1_bmi2.is_some() {
+        unsafe { bn_powerx5(r, a, table, n, n0, num_limbs, power) }
     } else {
-        bn_power5_nohw
+        unsafe { bn_power5_nohw(r, a, table, n, n0, num_limbs, power) }
     };
-    unsafe {
-        power5(
-            in_out.as_mut_ptr(),
-            in_out.as_ptr(),
-            table.as_ptr(),
-            n.as_ptr(),
-            n0,
-            num_limbs,
-            power,
-        );
-    }
     Ok(())
 }
 
