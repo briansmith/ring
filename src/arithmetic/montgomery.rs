@@ -300,9 +300,9 @@ pub(super) fn limbs_square_mont(
     #[cfg(target_arch = "x86_64")]
     {
         use super::x86_64_mont;
-        use crate::polyfill::slice;
+        use crate::{cpu::GetFeature as _, polyfill::slice};
         if let ((r, []), (n, [])) = (slice::as_chunks_mut(r), slice::as_chunks(n)) {
-            return x86_64_mont::sqr_mont5(r, n, n0, cpu);
+            return x86_64_mont::sqr_mont5(r, n, n0, cpu.get_feature());
         }
     }
 

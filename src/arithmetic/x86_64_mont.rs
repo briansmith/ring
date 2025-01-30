@@ -17,11 +17,7 @@
 use super::{inout::AliasingSlices2, n0::N0, LimbSliceError, MAX_LIMBS};
 use crate::{
     c,
-    cpu::{
-        self,
-        intel::{Adx, Bmi2},
-        GetFeature as _,
-    },
+    cpu::intel::{Adx, Bmi1, Bmi2},
     error::LenMismatchError,
     limb::{LeakyWindow, Limb, Window},
     polyfill::slice::{AsChunks, AsChunksMut},
@@ -35,7 +31,7 @@ pub(super) fn sqr_mont5(
     mut in_out: AsChunksMut<Limb, 8>,
     n: AsChunks<Limb, 8>,
     n0: &N0,
-    cpu: cpu::Features,
+    maybe_adx_bmi2: Option<(Adx, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
         // `r` and/or 'a' may alias.
@@ -59,9 +55,8 @@ pub(super) fn sqr_mont5(
         return Err(LimbSliceError::too_long(num_limbs.get()));
     }
 
-    let mulx_adx: Option<(Adx, Bmi2)> = cpu.get_feature();
     // `Limb::from(mulx_adx.is_some())`, but intentionally branchy.
-    let mulx_adx_capable = match mulx_adx {
+    let mulx_adx_capable = match maybe_adx_bmi2 {
         Some(_) => Limb::from(true),
         None => Limb::from(false),
     };
@@ -132,12 +127,23 @@ pub(super) unsafe fn mul_mont_gather5_amm(
     n: AsChunks<Limb, 8>,
     n0: &N0,
     power: Window,
-    _maybe_adx_bmi1_bmi2: cpu::Features, // TODO: Option<(Adx, Bmi1, Bmi2)>,
+    maybe_adx_bmi1_bmi2: Option<(Adx, Bmi1, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
         // Upstream has `num: c::int` and `power: c::int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        pub(super) fn bn_mul_mont_gather5(
+        pub(super) fn bn_mul4x_mont_gather5(
+            rp: *mut Limb,
+            ap: *const Limb,
+            table: *const Limb,
+            np: *const Limb,
+            n0: &N0,
+            num: c::NonZero_size_t,
+            power: Window,
+        );
+        // Upstream has `num: c::int` and `power: c::int`; see
+        // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
+        pub(super) fn bn_mulx4x_mont_gather5(
             rp: *mut Limb,
             ap: *const Limb,
             table: *const Limb,
@@ -157,8 +163,13 @@ pub(super) unsafe fn mul_mont_gather5_amm(
     let n = n.as_flattened();
     // SAFETY: We cannot assert that `power` is in range because it is secret.
     // TODO: Create a `Window5` type that is guaranteed to be in range.
+    let mul_mont_gather5 = if maybe_adx_bmi1_bmi2.is_some() {
+        bn_mulx4x_mont_gather5
+    } else {
+        bn_mul4x_mont_gather5
+    };
     unsafe {
-        bn_mul_mont_gather5(
+        mul_mont_gather5(
             r.as_mut_ptr(),
             a.as_ptr(),
             table.as_ptr(),
@@ -179,12 +190,23 @@ pub(super) unsafe fn power5_amm(
     n: AsChunks<Limb, 8>,
     n0: &N0,
     power: Window,
-    _maybe_adx_bmi1_bmi2: cpu::Features, // TODO: Option<(Adx, Bmi1, Bmi2)>,
+    maybe_adx_bmi1_bmi2: Option<(Adx, Bmi1, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
         // Upstream has `num: c::int` and `power: c::int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        fn bn_power5(
+        fn bn_power5_nohw(
+            rp: *mut Limb,
+            ap: *const Limb,
+            table: *const Limb,
+            np: *const Limb,
+            n0: &N0,
+            num: c::NonZero_size_t,
+            power: Window,
+        );
+        // Upstream has `num: c::int` and `power: c::int`; see
+        // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
+        fn bn_powerx5(
             rp: *mut Limb,
             ap: *const Limb,
             table: *const Limb,
@@ -200,8 +222,13 @@ pub(super) unsafe fn power5_amm(
     let n = n.as_flattened();
     // SAFETY: We cannot assert that `power` is in range because it is secret.
     // TODO: Create a `Window5` type that is guaranteed to be in range.
+    let power5 = if maybe_adx_bmi1_bmi2.is_some() {
+        bn_powerx5
+    } else {
+        bn_power5_nohw
+    };
     unsafe {
-        bn_power5(
+        power5(
             in_out.as_mut_ptr(),
             in_out.as_ptr(),
             table.as_ptr(),
