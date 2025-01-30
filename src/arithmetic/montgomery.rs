@@ -125,9 +125,17 @@ pub(super) fn limbs_mul_mont(
     cfg_if! {
         if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
             let _: cpu::Features = cpu;
-            bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
-                (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont
-            })
+            const MIN_4X: usize = 4;
+            const MOD_4X: usize = 4;
+            if n.len() >= MIN_4X && n.len() % MOD_4X == 0 {
+                bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
+                    (MIN_4X, MOD_4X, ()) => bn_mul4x_mont
+                })
+            } else {
+                bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
+                    (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
+                })
+            }
         } else if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
             const MIN_8X: usize = 8;
             const MOD_8X: usize = 8;
@@ -297,6 +305,15 @@ pub(super) fn limbs_square_mont(
     n0: &N0,
     cpu: cpu::Features,
 ) -> Result<(), LimbSliceError> {
+    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+    {
+        use super::aarch64_mont;
+        use crate::polyfill::slice;
+        if let ((r, []), (n, [])) = (slice::as_chunks_mut(r), slice::as_chunks(n)) {
+            return aarch64_mont::sqr_mont5(r, n, n0);
+        }
+    }
+
     #[cfg(target_arch = "x86_64")]
     {
         use super::x86_64_mont;

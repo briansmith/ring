@@ -208,6 +208,16 @@ static inline void bn_mul_mont_small(
     const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
     bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
 }
+#elif defined(OPENSSL_AARCH64)
+void bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                      const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+static inline void bn_mul_mont_small(
+    BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+    const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
+    // No point in optimizing for P-256 because P-256 doesn't call into
+    // this on AArch64.
+    bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
+}
 #elif defined(OPENSSL_ARM)
 void bn_mul8x_mont_neon(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                         const BN_ULONG *np, const BN_ULONG *n0, size_t num);

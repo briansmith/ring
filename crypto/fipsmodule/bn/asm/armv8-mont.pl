@@ -55,7 +55,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
  $lo1,$hi1,$nj,$m1,$nlo,$nhi,
  $ovf, $i,$j,$tp,$tj) = map("x$_",6..17,19..24);
 
-# int bn_mul_mont(
+# void bn_mul_mont_nohw(
 $rp="x0";	# BN_ULONG *rp,
 $ap="x1";	# const BN_ULONG *ap,
 $bp="x2";	# const BN_ULONG *bp,
@@ -68,16 +68,11 @@ $code.=<<___;
 
 .text
 
-.globl	bn_mul_mont
-.type	bn_mul_mont,%function
+.globl	bn_mul_mont_nohw
+.type	bn_mul_mont_nohw,%function
 .align	5
-bn_mul_mont:
+bn_mul_mont_nohw:
 	AARCH64_SIGN_LINK_REGISTER
-	tst	$num,#7
-	b.eq	__bn_sqr8x_mont
-	tst	$num,#3
-	b.eq	__bn_mul4x_mont
-.Lmul_mont:
 	stp	x29,x30,[sp,#-64]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -272,7 +267,7 @@ bn_mul_mont:
 	ldr	x29,[sp],#64
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	bn_mul_mont,.-bn_mul_mont
+.size	bn_mul_mont_nohw,.-bn_mul_mont_nohw
 ___
 {
 ########################################################################
@@ -285,14 +280,11 @@ my ($cnt,$carry,$topmost)=("x27","x28","x30");
 my ($tp,$ap_end,$na0)=($bp,$np,$carry);
 
 $code.=<<___;
-.type	__bn_sqr8x_mont,%function
+.globl	bn_sqr8x_mont
+.type	bn_sqr8x_mont,%function
 .align	5
-__bn_sqr8x_mont:
-	// Not adding AARCH64_SIGN_LINK_REGISTER here because __bn_sqr8x_mont is jumped to
-	// only from bn_mul_mont which has already signed the return address.
-	cmp	$ap,$bp
-	b.ne	__bn_mul4x_mont
-.Lsqr8x_mont:
+bn_sqr8x_mont:
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1049,7 +1041,7 @@ $code.=<<___;
 	// x30 is popped earlier
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	__bn_sqr8x_mont,.-__bn_sqr8x_mont
+.size	bn_sqr8x_mont,.-bn_sqr8x_mont
 ___
 }
 
@@ -1068,12 +1060,11 @@ my  $bp_end=$rp;
 my  ($carry,$topmost) = ($rp,"x30");
 
 $code.=<<___;
-.type	__bn_mul4x_mont,%function
+.globl	bn_mul4x_mont
+.type	bn_mul4x_mont,%function
 .align	5
-__bn_mul4x_mont:
-	// Not adding AARCH64_SIGN_LINK_REGISTER here because __bn_mul4x_mont is jumped to
-	// only from bn_mul_mont or __bn_mul8x_mont which have already signed the
-	// return address.
+bn_mul4x_mont:
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1510,7 +1501,7 @@ __bn_mul4x_mont:
 	// x30 is popped earlier
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	__bn_mul4x_mont,.-__bn_mul4x_mont
+.size	bn_mul4x_mont,.-bn_mul4x_mont
 ___
 }
 $code.=<<___;
