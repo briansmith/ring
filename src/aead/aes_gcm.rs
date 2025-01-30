@@ -76,7 +76,7 @@ impl DynKey {
     fn new(key: aes::KeyBytes, cpu_features: cpu::Features) -> Result<Self, error::Unspecified> {
         #[cfg(target_arch = "x86_64")]
         if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
-            let aes_key = aes::hw::Key::new(key, aes)?;
+            let aes_key = aes::hw::Key::new(key, aes, cpu_features.get_feature())?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             let gcm_key = gcm::clmulavxmovbe::Key::new(gcm_key_value, gcm);
             return Ok(Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }));
@@ -88,7 +88,7 @@ impl DynKey {
             target_arch = "x86"
         ))]
         if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
-            let aes_key = aes::hw::Key::new(key, aes)?;
+            let aes_key = aes::hw::Key::new(key, aes, cpu_features.get_feature())?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             let gcm_key = gcm::clmul::Key::new(gcm_key_value, gcm);
             return Ok(Self::AesHwClMul(Combo { aes_key, gcm_key }));

@@ -106,6 +106,11 @@ pub(crate) const FXSR: Feature = Feature {
     mask: 1 << 24,
 };
 
+pub(crate) const AVX: Feature = Feature {
+    word: 1,
+    mask: 1 << 28,
+};
+
 pub(crate) const PCLMULQDQ: Feature = Feature {
     word: 1,
     mask: 1 << 1,
@@ -131,6 +136,7 @@ impl_get_feature! { AES => Aes }
 impl_get_feature! { FXSR => Fxsr }
 impl_get_feature! { PCLMULQDQ => ClMul }
 impl_get_feature! { SSSE3 => Ssse3 }
+impl_get_feature! { AVX => Avx }
 
 cfg_if! {
     if #[cfg(any(target_arch = "x86_64"))] {
@@ -153,11 +159,6 @@ cfg_if! {
             mask: 1 << 26,
         };
 
-        pub(crate) const AVX: Feature = Feature {
-            word: 1,
-            mask: 1 << 28,
-        };
-
         const AVX2: Feature = Feature {
             word: 2,
             mask: 1 << 5,
@@ -172,7 +173,6 @@ cfg_if! {
 
         impl_get_feature!{ SSE41 => Sse41 }
         impl_get_feature!{ MOVBE => Movbe }
-        impl_get_feature!{ AVX => Avx }
         impl_get_feature!{ AVX2 => Avx2 }
         impl_get_feature!{ BMI1 => Bmi1 }
         impl_get_feature!{ BMI2 => Bmi2 }
