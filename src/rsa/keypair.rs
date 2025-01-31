@@ -490,9 +490,8 @@ fn elem_exp_consttime<M>(
     cpu_features: cpu::Features,
 ) -> Result<bigint::Elem<M>, error::Unspecified> {
     let m = &p.modulus.modulus(cpu_features);
-    let c_mod_m = bigint::elem_reduced(c, m, other_prime_len_bits);
-    let c_mod_m = bigint::elem_mul(p.oneRRR.as_ref(), c_mod_m, m);
-    bigint::elem_exp_consttime(c_mod_m, &p.exponent, m).map_err(error::erase::<LimbSliceError>)
+    bigint::elem_exp_consttime(c, &p.oneRRR, &p.exponent, m, other_prime_len_bits)
+        .map_err(error::erase::<LimbSliceError>)
 }
 
 // Type-level representations of the different moduli used in RSA signing, in
