@@ -410,15 +410,21 @@ pub(crate) fn elem_exp_vartime<M>(
     acc
 }
 
-pub fn elem_exp_consttime<M>(
-    base: Elem<M, R>,
+pub fn elem_exp_consttime<N, P>(
+    base: &Elem<N>,
+    oneRRR: &One<P, RRR>,
     exponent: &PrivateExponent,
-    m: &Modulus<M>,
-) -> Result<Elem<M, Unencoded>, LimbSliceError> {
+    p: &Modulus<P>,
+    other_prime_len_bits: BitLength,
+) -> Result<Elem<P, Unencoded>, LimbSliceError> {
     // `elem_exp_consttime_inner` is parameterized on `STORAGE_LIMBS` only so
     // we can run tests with larger-than-supported-in-operation test vectors.
-    elem_exp_consttime_inner::<M, { ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS * STORAGE_ENTRIES }>(
-        base, exponent, m,
+    elem_exp_consttime_inner::<N, P, { ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS * STORAGE_ENTRIES }>(
+        base,
+        oneRRR,
+        exponent,
+        p,
+        other_prime_len_bits,
     )
 }
 
@@ -432,12 +438,16 @@ const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
 const STORAGE_ENTRIES: usize = TABLE_ENTRIES + if cfg!(target_arch = "x86_64") { 3 } else { 0 };
 
 #[cfg(not(target_arch = "x86_64"))]
-fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
-    base: Elem<M, R>,
+fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
+    base_mod_n: &Elem<N>,
+    oneRRR: &One<M, RRR>,
     exponent: &PrivateExponent,
     m: &Modulus<M>,
+    other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
     use crate::{bssl, limb::Window};
+
+    let base_rinverse: Elem<M, RInverse> = elem_reduced(base_mod_n, m, other_prime_len_bits);
 
     let num_limbs = m.limbs().len();
     let m_chunked: AsChunks<Limb, { limbs512::LIMBS_PER_CHUNK }> = match slice::as_chunks(m.limbs())
@@ -502,7 +512,17 @@ fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
     // table[0] = base**0 (i.e. 1).
     m.oneR(entry_mut(table, 0, num_limbs));
 
-    entry_mut(table, 1, num_limbs).copy_from_slice(&base.limbs);
+    // table[1] = base*R == (base/R * RRR)/R
+    limbs_mul_mont(
+        (
+            entry_mut(table, 1, num_limbs),
+            base_rinverse.limbs.as_ref(),
+            oneRRR.as_ref().limbs.as_ref(),
+        ),
+        m.limbs(),
+        m.n0(),
+        m.cpu_features(),
+    )?;
     for i in 2..TABLE_ENTRIES {
         let (src1, src2) = if i % 2 == 0 {
             (i / 2, i / 2)
@@ -518,7 +538,7 @@ fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
 
     let tmp = m.zero();
     let mut acc = Elem {
-        limbs: base.limbs,
+        limbs: base_rinverse.limbs,
         encoding: PhantomData,
     };
     let (acc, _) = limb::fold_5_bit_windows(
@@ -534,10 +554,12 @@ fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
 }
 
 #[cfg(target_arch = "x86_64")]
-fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
-    base: Elem<M, R>,
+fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
+    base_mod_n: &Elem<N>,
+    oneRRR: &One<M, RRR>,
     exponent: &PrivateExponent,
     m: &Modulus<M>,
+    other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
     use super::x86_64_mont::{gather5, mul_mont_gather5_amm, power5_amm, scatter5, sqr_mont5};
     use crate::{
@@ -549,8 +571,16 @@ fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
         polyfill::slice::AsChunksMut,
     };
 
+    let n0 = m.n0();
+
     let cpu2 = m.cpu_features().get_feature();
     let cpu3 = m.cpu_features().get_feature();
+
+    if base_mod_n.limbs.len() != m.limbs().len() * 2 {
+        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
+            base_mod_n.limbs.len(),
+        )));
+    }
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.
@@ -589,16 +619,25 @@ fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
     let (mut acc, mut rest) = state.split_at_mut(cpe);
     let (mut base_cached, mut m_cached) = rest.split_at_mut(cpe);
 
-    // Upstream, the input `base` is not Montgomery-encoded, so they compute a
-    // Montgomery-encoded copy and store it here.
-    base_cached.as_flattened_mut().copy_from_slice(&base.limbs);
-    let base_cached = base_cached.as_ref();
-
     // "To improve cache locality" according to upstream.
     m_cached
         .as_flattened_mut()
         .copy_from_slice(m_original.as_flattened());
     let m_cached = m_cached.as_ref();
+
+    let base_rinverse: Elem<M, RInverse> = elem_reduced(base_mod_n, m, other_prime_len_bits);
+    // base_cached = base*R == (base/R * RRR)/R
+    limbs_mul_mont(
+        (
+            base_cached.as_flattened_mut(),
+            base_rinverse.limbs.as_ref(),
+            oneRRR.as_ref().limbs.as_ref(),
+        ),
+        m_cached.as_flattened(),
+        n0,
+        m.cpu_features(),
+    )?;
+    let base_cached = base_cached.as_ref();
 
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
     // gathering, storing the last calculated power into `acc`.
@@ -630,8 +669,6 @@ fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
     // acc = base**1 (i.e. base).
     acc.as_flattened_mut()
         .copy_from_slice(base_cached.as_flattened());
-
-    let n0 = m.n0();
 
     // Fill in entries 1, 2, 4, 8, 16.
     scatter_powers_of_2(table.as_mut(), acc.as_mut(), m_cached, n0, 1, cpu2)?;
@@ -670,7 +707,8 @@ fn elem_exp_consttime_inner<M, const STORAGE_LIMBS: usize>(
         },
     );
 
-    let mut r_amm = base.limbs;
+    // Reuse `base_rinverse`'s limbs to save an allocation.
+    let mut r_amm = base_rinverse.limbs;
     r_amm.copy_from_slice(acc.as_flattened());
 
     Ok(from_montgomery_amm(r_amm, m))
@@ -742,18 +780,40 @@ mod tests {
                     PrivateExponent::from_be_bytes_for_test_only(untrusted::Input::from(&bytes), &m)
                         .expect("valid exponent")
                 };
-                let base = into_encoded(base, &m);
+
+                let oneRR = One::newRR(&m);
+                let oneRRR = One::newRRR(oneRR, &m);
+
+                // `base` in the test vectors is reduced (mod M) already but
+                // the API expects the bsae to be (mod N) where N = M * P for
+                // some other prime of the same length. Fake that here.
+                // Pretend there's another prime of equal length.
+                struct N {}
+                let other_modulus_len_bits = m.len_bits();
+                let base: Elem<N> = {
+                    let mut limbs = BoxedLimbs::zero(base.limbs.len() * 2);
+                    limbs[..base.limbs.len()].copy_from_slice(&base.limbs);
+                    Elem {
+                        limbs,
+                        encoding: PhantomData,
+                    }
+                };
 
                 let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
                 let actual_result = if !too_big {
-                    elem_exp_consttime(base, &e, &m)
+                    elem_exp_consttime(&base, &oneRRR, &e, &m, other_modulus_len_bits)
                 } else {
-                    let actual_result = elem_exp_consttime(base.clone(), &e, &m);
+                    let actual_result =
+                        elem_exp_consttime(&base, &oneRRR, &e, &m, other_modulus_len_bits);
                     // TODO: Be more specific with which error we expect?
                     assert!(actual_result.is_err());
                     // Try again with a larger-than-normally-supported limit
-                    elem_exp_consttime_inner::<_, { (4096 / LIMB_BITS) * STORAGE_ENTRIES }>(
-                        base, &e, &m,
+                    elem_exp_consttime_inner::<_, _, { (4096 / LIMB_BITS) * STORAGE_ENTRIES }>(
+                        &base,
+                        &oneRRR,
+                        &e,
+                        &m,
+                        other_modulus_len_bits,
                     )
                 };
                 match actual_result {
