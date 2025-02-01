@@ -164,7 +164,8 @@ impl Inner {
         }
 
         // Step 2.
-        let m = self.exponentiate_elem(&s, cpu_features);
+        let m = n.alloc_zero();
+        let m = self.exponentiate_elem(m, &s, cpu_features);
 
         // Step 3.
         Ok(fill_be_bytes_n(m, self.n.len_bits(), out_buffer))
@@ -175,6 +176,7 @@ impl Inner {
     /// This is constant-time with respect to `base` only.
     pub(super) fn exponentiate_elem(
         &self,
+        out: bigint::Storage<N>,
         base: &bigint::Elem<N>,
         cpu_features: cpu::Features,
     ) -> bigint::Elem<N> {
@@ -185,13 +187,14 @@ impl Inner {
 
         let n = &self.n.value(cpu_features);
 
-        let base_r = bigint::elem_mul(self.n.oneRR(), base.clone(), n);
+        let tmp = n.alloc_zero();
+        let base_r = bigint::elem_mul_into(tmp, self.n.oneRR(), base, n);
 
         // During RSA public key operations the exponent is almost always either
         // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
         // weight of 2. The maximum bit length and maximum Hamming weight of the
         // exponent is bounded by the value of `PublicExponent::MAX`.
-        let acc = bigint::elem_exp_vartime(base_r, exponent_without_low_bit, n);
+        let acc = bigint::elem_exp_vartime(out, base_r, exponent_without_low_bit, n);
 
         // Now do the multiplication for the low bit and convert out of the Montgomery domain.
         bigint::elem_mul(base, acc, n)

@@ -439,7 +439,8 @@ impl<M> PrivatePrime<M> {
 
         // Steps 5.e and 5.f are omitted as explained above.
         let p = bigint::OwnedModulus::from(p);
-        let oneRR = bigint::One::newRR(&p.modulus(cpu_features));
+        let pm = p.modulus(cpu_features);
+        let oneRR = bigint::One::newRR(pm.alloc_zero(), &pm);
 
         Ok(Self { modulus: p, oneRR })
     }
@@ -595,7 +596,7 @@ impl KeyPair {
         // Step 2.b.iii.
         let h = {
             let p = &self.p.modulus.modulus(cpu_features);
-            let m_2 = bigint::elem_reduced_once(&m_2, p, q_bits);
+            let m_2 = bigint::elem_reduced_once(p.alloc_zero(), &m_2, p, q_bits);
             let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, p);
             bigint::elem_mul(&self.qInv, m_1_minus_m_2, p)
         };
@@ -623,7 +624,11 @@ impl KeyPair {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = self.public.inner().exponentiate_elem(&m, cpu_features);
+            let verify = n.alloc_zero();
+            let verify = self
+                .public
+                .inner()
+                .exponentiate_elem(verify, &m, cpu_features);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }
 

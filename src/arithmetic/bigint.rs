@@ -88,12 +88,11 @@ pub struct Elem<M, E = Unencoded> {
     encoding: PhantomData<E>,
 }
 
-// TODO: `derive(Clone)` after https://github.com/rust-lang/rust/issues/26925
-// is resolved or restrict `M: Clone` and `E: Clone`.
-impl<M, E> Clone for Elem<M, E> {
-    fn clone(&self) -> Self {
+impl<M, E> Elem<M, E> {
+    pub fn clone_into(&self, mut out: Storage<M>) -> Self {
+        out.limbs.copy_from_slice(&self.limbs);
         Self {
-            limbs: self.limbs.clone(),
+            limbs: out.limbs,
             encoding: self.encoding,
         }
     }
@@ -154,6 +153,28 @@ impl<M> Elem<M, Unencoded> {
     }
 }
 
+pub fn elem_mul_into<M, AF, BF>(
+    mut out: Storage<M>,
+    a: &Elem<M, AF>,
+    b: &Elem<M, BF>,
+    m: &Modulus<M>,
+) -> Elem<M, <(AF, BF) as ProductEncoding>::Output>
+where
+    (AF, BF): ProductEncoding,
+{
+    limbs_mul_mont(
+        (out.limbs.as_mut(), b.limbs.as_ref(), a.limbs.as_ref()),
+        m.limbs(),
+        m.n0(),
+        m.cpu_features(),
+    )
+    .unwrap_or_else(unwrap_impossible_limb_slice_error);
+    Elem {
+        limbs: out.limbs,
+        encoding: PhantomData,
+    }
+}
+
 pub fn elem_mul<M, AF, BF>(
     a: &Elem<M, AF>,
     mut b: Elem<M, BF>,
@@ -186,17 +207,17 @@ fn elem_double<M, AF>(r: &mut Elem<M, AF>, m: &Modulus<M>) {
 // should update the testing so it is reflective of that usage, instead of
 // the old usage.
 pub fn elem_reduced_once<A, M>(
+    mut r: Storage<M>,
     a: &Elem<A, Unencoded>,
     m: &Modulus<M>,
     other_modulus_len_bits: BitLength,
 ) -> Elem<M, Unencoded> {
     assert_eq!(m.len_bits(), other_modulus_len_bits);
-
-    let mut r = a.limbs.clone();
-    limb::limbs_reduce_once_constant_time(&mut r, m.limbs())
+    r.limbs.copy_from_slice(&a.limbs);
+    limb::limbs_reduce_once_constant_time(&mut r.limbs, m.limbs())
         .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     Elem {
-        limbs: BoxedLimbs::new_unchecked(r.into_limbs()),
+        limbs: r.limbs,
         encoding: PhantomData,
     }
 }
@@ -300,17 +321,16 @@ impl<M> One<M, RR> {
     // values, using `LIMB_BITS` here, rather than `N0::LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0::LIMBS_USED` is either one or two.
-    pub(crate) fn newRR(m: &Modulus<M>) -> Self {
+    pub(crate) fn newRR(mut out: Storage<M>, m: &Modulus<M>) -> Self {
         // The number of limbs in the numbers involved.
         let w = m.limbs().len();
 
         // The length of the numbers involved, in bits. R = 2**r.
         let r = w * LIMB_BITS;
 
-        let mut acc = m.alloc_zero();
-        m.oneR(&mut acc.limbs);
+        m.oneR(&mut out.limbs);
         let mut acc: Elem<M, R> = Elem {
-            limbs: acc.limbs,
+            limbs: out.limbs,
             encoding: PhantomData,
         };
 
@@ -388,9 +408,9 @@ impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
     }
 }
 
-impl<M: PublicModulus, E> Clone for One<M, E> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
+impl<M: PublicModulus, E> One<M, E> {
+    pub fn clone_into(&self, out: Storage<M>) -> Self {
+        Self(self.0.clone_into(out))
     }
 }
 
@@ -404,6 +424,7 @@ impl<M: PublicModulus, E> Clone for One<M, E> {
 // TODO: The test coverage needs to be expanded, e.g. test with the largest
 // accepted exponent and with the most common values of 65537 and 3.
 pub(crate) fn elem_exp_vartime<M>(
+    out: Storage<M>,
     base: Elem<M, R>,
     exponent: NonZeroU64,
     m: &Modulus<M>,
@@ -426,7 +447,7 @@ pub(crate) fn elem_exp_vartime<M>(
     // [Knuth]: The Art of Computer Programming, Volume 2: Seminumerical
     //          Algorithms (3rd Edition), Section 4.6.3.
     let exponent = exponent.get();
-    let mut acc = base.clone();
+    let mut acc = base.clone_into(out);
     let mut bit = 1 << (64 - 1 - exponent.leading_zeros());
     debug_assert!((exponent & bit) != 0);
     while bit > 1 {
@@ -817,7 +838,7 @@ mod tests {
                         .expect("valid exponent")
                 };
 
-                let oneRR = One::newRR(&m);
+                let oneRR = One::newRR(m.alloc_zero(), &m);
                 let oneRRR = One::newRRR(oneRR, &m);
 
                 // `base` in the test vectors is reduced (mod M) already but
@@ -896,8 +917,8 @@ mod tests {
                 let a = consume_elem(test_case, "A", &m);
                 let b = consume_elem(test_case, "B", &m);
 
-                let b = into_encoded(b, &m);
-                let a = into_encoded(a, &m);
+                let b = into_encoded(m.alloc_zero(), b, &m);
+                let a = into_encoded(m.alloc_zero(), a, &m);
                 let actual_result = elem_mul(&a, b, &m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
@@ -920,7 +941,7 @@ mod tests {
                 let expected_result = consume_elem(test_case, "ModSquare", &m);
                 let a = consume_elem(test_case, "A", &m);
 
-                let a = into_encoded(a, &m);
+                let a = into_encoded(m.alloc_zero(), a, &m);
                 let actual_result = elem_squared(a, &m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
@@ -948,7 +969,7 @@ mod tests {
                 let other_modulus_len_bits = m_.len_bits();
 
                 let actual_result = elem_reduced(m.alloc_zero(), &a, &m, other_modulus_len_bits);
-                let oneRR = One::newRR(&m);
+                let oneRR = One::newRR(m.alloc_zero(), &m);
                 let actual_result = elem_mul(oneRR.as_ref(), actual_result, &m);
                 assert_elem_eq(&actual_result, &expected_result);
 
@@ -973,7 +994,8 @@ mod tests {
                 let expected_result = consume_elem::<M>(test_case, "r", &m);
                 let other_modulus_len_bits = m.len_bits();
 
-                let actual_result = elem_reduced_once(&a, &m, other_modulus_len_bits);
+                let actual_result =
+                    elem_reduced_once(m.alloc_zero(), &a, &m, other_modulus_len_bits);
                 assert_elem_eq(&actual_result, &expected_result);
 
                 Ok(())
@@ -1018,8 +1040,8 @@ mod tests {
         }
     }
 
-    fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
-        let oneRR = One::newRR(m);
+    fn into_encoded<M>(out: Storage<M>, a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
+        let oneRR = One::newRR(out, m);
         elem_mul(oneRR.as_ref(), a, m)
     }
 }
