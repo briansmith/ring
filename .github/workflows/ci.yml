@@ -365,6 +365,12 @@ jobs:
       - if: ${{ matrix.xcode_version != '' }}
         run: sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode_version }}.app
 
+      # Work around build failures with cc-rs 1.2.11
+      - if: ${{ contains(matrix.host_os, 'macos') }}
+        run: |
+          cargo generate-lockfile
+          cargo update -p cc --precise 1.2.10
+
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
           mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
