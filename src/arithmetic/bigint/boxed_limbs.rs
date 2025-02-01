@@ -15,7 +15,7 @@
 use super::Modulus;
 use crate::{
     error,
-    limb::{self, Limb, LIMB_BYTES},
+    limb::{self, Limb},
 };
 use alloc::{boxed::Box, vec};
 use core::{
@@ -58,21 +58,6 @@ impl<M> Clone for BoxedLimbs<M> {
 }
 
 impl<M> BoxedLimbs<M> {
-    pub(super) fn positive_minimal_width_from_be_bytes(
-        input: untrusted::Input,
-    ) -> Result<Self, error::KeyRejected> {
-        // Reject leading zeros. Also reject the value zero ([0]) because zero
-        // isn't positive.
-        if untrusted::Reader::new(input).peek(0) {
-            return Err(error::KeyRejected::invalid_encoding());
-        }
-        let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
-        let mut r = Self::zero(num_limbs);
-        limb::parse_big_endian_and_pad_consttime(input, &mut r)
-            .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-        Ok(r)
-    }
-
     pub(super) fn from_be_bytes_padded_less_than(
         input: untrusted::Input,
         m: &Modulus<M>,

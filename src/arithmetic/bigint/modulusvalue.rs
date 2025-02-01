@@ -19,7 +19,7 @@ use super::{
 use crate::{
     bits::BitLength,
     error,
-    limb::{self, Limb},
+    limb::{self, Limb, LIMB_BYTES},
 };
 
 /// `OwnedModulus`, without the overhead of Montgomery multiplication support.
@@ -40,21 +40,31 @@ impl<M: PublicModulus> Clone for OwnedModulusValue<M> {
 
 impl<M> OwnedModulusValue<M> {
     pub(crate) fn from_be_bytes(input: untrusted::Input) -> Result<Self, error::KeyRejected> {
-        let n = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
-        if n.len() > MAX_LIMBS {
-            return Err(error::KeyRejected::too_large());
-        }
+        let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
         const _MODULUS_MIN_LIMBS_AT_LEAST_2: () = assert!(MIN_LIMBS >= 2);
-        if n.len() < MIN_LIMBS {
+        if num_limbs < MIN_LIMBS {
             return Err(error::KeyRejected::unexpected_error());
         }
-        // The above implies n >= 3, so we don't need to check it.
-        limb::limbs_reject_even_leak_bit(&n)
+        if num_limbs > MAX_LIMBS {
+            return Err(error::KeyRejected::too_large());
+        }
+        // The above implies n >= 3, so we don't need to check that.
+
+        // Reject leading zeros. Also reject the value zero ([0]) because zero
+        // isn't positive.
+        if untrusted::Reader::new(input).peek(0) {
+            return Err(error::KeyRejected::invalid_encoding());
+        }
+
+        let mut limbs = BoxedLimbs::zero(num_limbs);
+        limb::parse_big_endian_and_pad_consttime(input, &mut limbs)
+            .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
+        limb::limbs_reject_even_leak_bit(&limbs)
             .map_err(|_: error::Unspecified| error::KeyRejected::invalid_component())?;
 
-        let len_bits = limb::limbs_minimal_bits(&n);
+        let len_bits = limb::limbs_minimal_bits(&limbs);
 
-        Ok(Self { limbs: n, len_bits })
+        Ok(Self { limbs, len_bits })
     }
 
     pub fn verify_less_than<L>(&self, l: &Modulus<L>) -> Result<(), error::Unspecified> {
