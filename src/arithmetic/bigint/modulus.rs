@@ -14,7 +14,7 @@
 
 use super::{
     super::montgomery::Unencoded, unwrap_impossible_len_mismatch_error, BoxedLimbs, Elem,
-    OwnedModulusValue, PublicModulus, N0,
+    OwnedModulusValue, PublicModulus, Storage, N0,
 };
 use crate::{
     bits::BitLength,
@@ -175,10 +175,9 @@ impl<M> Modulus<'_, M> {
     }
 
     // TODO: XXX Avoid duplication with `Modulus`.
-    pub(super) fn zero<E>(&self) -> Elem<M, E> {
-        Elem {
+    pub fn alloc_zero(&self) -> Storage<M> {
+        Storage {
             limbs: BoxedLimbs::zero(self.limbs.len()),
-            encoding: PhantomData,
         }
     }
 
