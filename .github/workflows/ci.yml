@@ -231,10 +231,9 @@ jobs:
             cargo_options: --no-run -Z build-std
 
           - target: aarch64-apple-visionos
-            host_os: macos-14
+            host_os: macos-15
             rust_channel: nightly
             mode: --release
-            xcode_version: 15.2
             # TODO: Run in the emulator.
             cargo_options: --no-run -Z build-std
 
