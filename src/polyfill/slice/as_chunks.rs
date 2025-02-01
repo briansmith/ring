@@ -97,3 +97,11 @@ impl<'a, T, const N: usize> From<&'a AsChunksMut<'_, T, N>> for AsChunks<'a, T, 
         Self(as_mut.as_flattened())
     }
 }
+
+// TODO: `impl From<AsChunks<'a, T, {2*N}> for AsChunks<'a, T, N>`.
+impl<'a, T> From<AsChunks<'a, T, 8>> for AsChunks<'a, T, 4> {
+    #[inline(always)]
+    fn from(as_2x: AsChunks<'a, T, 8>) -> Self {
+        Self(as_2x.0)
+    }
+}
