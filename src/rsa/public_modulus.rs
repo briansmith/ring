@@ -8,10 +8,24 @@ use crate::{
 use core::ops::RangeInclusive;
 
 /// The modulus (n) of an RSA public key.
-#[derive(Clone)]
 pub struct PublicModulus {
     value: bigint::OwnedModulus<N>,
     oneRR: bigint::One<N, RR>,
+}
+
+impl Clone for PublicModulus {
+    fn clone(&self) -> Self {
+        let PublicModulus { value, oneRR } = self;
+        let value = value.clone();
+
+        // XXX: Shouldn't really be needed just to call `alloc_zero()`,
+        // but not worth optimizing away.
+        let cpu = cpu::features();
+        let n = value.modulus(cpu);
+        let oneRR = oneRR.clone_into(n.alloc_zero());
+
+        Self { value, oneRR }
+    }
 }
 
 /*
@@ -56,7 +70,8 @@ impl PublicModulus {
             return Err(error::KeyRejected::too_large());
         }
         let value = bigint::OwnedModulus::from(value);
-        let oneRR = bigint::One::newRR(&value.modulus(cpu_features));
+        let m = value.modulus(cpu_features);
+        let oneRR = bigint::One::newRR(m.alloc_zero(), &m);
 
         Ok(Self { value, oneRR })
     }

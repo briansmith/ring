@@ -58,15 +58,6 @@ impl<M> Clone for BoxedLimbs<M> {
 }
 
 impl<M> BoxedLimbs<M> {
-    // The caller must ensure that `limbs.len()` is the same width as the
-    // modulus.
-    pub(super) fn new_unchecked(limbs: Box<[Limb]>) -> Self {
-        Self {
-            limbs,
-            m: PhantomData,
-        }
-    }
-
     pub(super) fn positive_minimal_width_from_be_bytes(
         input: untrusted::Input,
     ) -> Result<Self, error::KeyRejected> {
