@@ -9,11 +9,12 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+msrv=1.63.0
 cargo clean --target-dir=target/pregenerate_asm
 RING_PREGENERATE_ASM=1 CC_AARCH64_PC_WINDOWS_MSVC=clang \
-  cargo build -p ring --target-dir=target/pregenerate_asm
+  cargo +${msrv} build -p ring --target-dir=target/pregenerate_asm
 if [[ -n "$(git status --porcelain -- ':(exclude)pregenerated/')" ]]; then
   echo Repository is dirty.
   exit 1
 fi
-cargo package -p ring --allow-dirty
+cargo +${msrv} package -p ring --allow-dirty
