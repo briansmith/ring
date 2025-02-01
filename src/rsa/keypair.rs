@@ -365,7 +365,7 @@ impl KeyPair {
 
         // Step 7.f.
         let qInv = bigint::elem_mul(p.oneRR.as_ref(), qInv, pm);
-        let q_mod_p = bigint::elem_reduced(&q_mod_n, pm, q.modulus.len_bits());
+        let q_mod_p = bigint::elem_reduced(pm.alloc_zero(), &q_mod_n, pm, q.modulus.len_bits());
         let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(), q_mod_p, pm);
         bigint::verify_inverses_consttime(&qInv, q_mod_p, pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
@@ -490,8 +490,15 @@ fn elem_exp_consttime<M>(
     cpu_features: cpu::Features,
 ) -> Result<bigint::Elem<M>, error::Unspecified> {
     let m = &p.modulus.modulus(cpu_features);
-    bigint::elem_exp_consttime(c, &p.oneRRR, &p.exponent, m, other_prime_len_bits)
-        .map_err(error::erase::<LimbSliceError>)
+    bigint::elem_exp_consttime(
+        m.alloc_zero(),
+        c,
+        &p.oneRRR,
+        &p.exponent,
+        m,
+        other_prime_len_bits,
+    )
+    .map_err(error::erase::<LimbSliceError>)
 }
 
 // Type-level representations of the different moduli used in RSA signing, in
@@ -598,11 +605,11 @@ impl KeyPair {
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
         let p_bits = self.p.modulus.len_bits();
-        let h = bigint::elem_widen(h, n, p_bits)?;
+        let h = bigint::elem_widen(n.alloc_zero(), h, n, p_bits)?;
         let q_mod_n = self.q.modulus.to_elem(n)?;
         let q_mod_n = bigint::elem_mul(n_one, q_mod_n, n);
         let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
-        let m_2 = bigint::elem_widen(m_2, n, q_bits)?;
+        let m_2 = bigint::elem_widen(n.alloc_zero(), m_2, n, q_bits)?;
         let m = bigint::elem_add(m_2, q_times_h, n);
 
         // Step 2.b.v isn't needed since there are only two primes.

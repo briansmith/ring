@@ -62,6 +62,19 @@ mod private_exponent;
 
 pub trait PublicModulus {}
 
+// When we need to create a new `Elem`, first we create a `Storage` and then
+// move its `limbs` into the new element. When we want to recylce an `Elem`'s
+// memory allocation, we convert it back into a `Storage`.
+pub struct Storage<M> {
+    limbs: BoxedLimbs<M>,
+}
+
+impl<M, E> From<Elem<M, E>> for Storage<M> {
+    fn from(elem: Elem<M, E>) -> Self {
+        Self { limbs: elem.limbs }
+    }
+}
+
 /// Elements of ℤ/mℤ for some modulus *m*.
 //
 // Defaulting `E` to `Unencoded` is a convenience for callers from outside this
@@ -96,17 +109,21 @@ impl<M, E> Elem<M, E> {
 /// Does a Montgomery reduction on `limbs` assuming they are Montgomery-encoded ('R') and assuming
 /// they are the same size as `m`, but perhaps not reduced mod `m`. The result will be
 /// fully reduced mod `m`.
-fn from_montgomery_amm<M>(limbs: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, Unencoded> {
-    debug_assert_eq!(limbs.len(), m.limbs().len());
-
-    let mut limbs = limbs;
+///
+/// WARNING: Takes a `Storage` as an in/out value.
+fn from_montgomery_amm<M>(mut in_out: Storage<M>, m: &Modulus<M>) -> Elem<M, Unencoded> {
     let mut one = [0; MAX_LIMBS];
     one[0] = 1;
     let one = &one[..m.limbs().len()];
-    limbs_mul_mont((&mut limbs[..], one), m.limbs(), m.n0(), m.cpu_features())
-        .unwrap_or_else(unwrap_impossible_limb_slice_error);
+    limbs_mul_mont(
+        (&mut in_out.limbs[..], one),
+        m.limbs(),
+        m.n0(),
+        m.cpu_features(),
+    )
+    .unwrap_or_else(unwrap_impossible_limb_slice_error);
     Elem {
-        limbs,
+        limbs: in_out.limbs,
         encoding: PhantomData,
     }
 }
@@ -115,7 +132,7 @@ fn from_montgomery_amm<M>(limbs: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, Unenc
 impl<M> Elem<M, R> {
     #[inline]
     pub fn into_unencoded(self, m: &Modulus<M>) -> Elem<M, Unencoded> {
-        from_montgomery_amm(self.limbs, m)
+        from_montgomery_amm(Storage::from(self), m)
     }
 }
 
@@ -186,6 +203,7 @@ pub fn elem_reduced_once<A, M>(
 
 #[inline]
 pub fn elem_reduced<Larger, Smaller>(
+    mut r: Storage<Smaller>,
     a: &Elem<Larger, Unencoded>,
     m: &Modulus<Smaller>,
     other_prime_len_bits: BitLength,
@@ -202,9 +220,11 @@ pub fn elem_reduced<Larger, Smaller>(
     let tmp = &mut tmp[..a.limbs.len()];
     tmp.copy_from_slice(&a.limbs);
 
-    let mut r = m.zero();
     limbs_from_mont_in_place(&mut r.limbs, tmp, m.limbs(), m.n0());
-    r
+    Elem {
+        limbs: r.limbs,
+        encoding: PhantomData,
+    }
 }
 
 fn elem_squared<M, E>(
@@ -223,6 +243,7 @@ where
 }
 
 pub fn elem_widen<Larger, Smaller>(
+    mut r: Storage<Larger>,
     a: Elem<Smaller, Unencoded>,
     m: &Modulus<Larger>,
     smaller_modulus_bits: BitLength,
@@ -230,9 +251,13 @@ pub fn elem_widen<Larger, Smaller>(
     if smaller_modulus_bits >= m.len_bits() {
         return Err(error::Unspecified);
     }
-    let mut r = m.zero();
-    r.limbs[..a.limbs.len()].copy_from_slice(&a.limbs);
-    Ok(r)
+    let (to_copy, to_zero) = r.limbs.split_at_mut(a.limbs.len());
+    to_copy.copy_from_slice(&a.limbs);
+    to_zero.fill(0);
+    Ok(Elem {
+        limbs: r.limbs,
+        encoding: PhantomData,
+    })
 }
 
 // TODO: Document why this works for all Montgomery factors.
@@ -282,8 +307,12 @@ impl<M> One<M, RR> {
         // The length of the numbers involved, in bits. R = 2**r.
         let r = w * LIMB_BITS;
 
-        let mut acc: Elem<M, R> = m.zero();
+        let mut acc = m.alloc_zero();
         m.oneR(&mut acc.limbs);
+        let mut acc: Elem<M, R> = Elem {
+            limbs: acc.limbs,
+            encoding: PhantomData,
+        };
 
         // 2**t * R can be calculated by t doublings starting with R.
         //
@@ -411,6 +440,7 @@ pub(crate) fn elem_exp_vartime<M>(
 }
 
 pub fn elem_exp_consttime<N, P>(
+    out: Storage<P>,
     base: &Elem<N>,
     oneRRR: &One<P, RRR>,
     exponent: &PrivateExponent,
@@ -420,6 +450,7 @@ pub fn elem_exp_consttime<N, P>(
     // `elem_exp_consttime_inner` is parameterized on `STORAGE_LIMBS` only so
     // we can run tests with larger-than-supported-in-operation test vectors.
     elem_exp_consttime_inner::<N, P, { ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS * STORAGE_ENTRIES }>(
+        out,
         base,
         oneRRR,
         exponent,
@@ -439,6 +470,7 @@ const STORAGE_ENTRIES: usize = TABLE_ENTRIES + if cfg!(target_arch = "x86_64") {
 
 #[cfg(not(target_arch = "x86_64"))]
 fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
+    out: Storage<M>,
     base_mod_n: &Elem<N>,
     oneRRR: &One<M, RRR>,
     exponent: &PrivateExponent,
@@ -447,7 +479,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
     use crate::{bssl, limb::Window};
 
-    let base_rinverse: Elem<M, RInverse> = elem_reduced(base_mod_n, m, other_prime_len_bits);
+    let base_rinverse: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
 
     let num_limbs = m.limbs().len();
     let m_chunked: AsChunks<Limb, { limbs512::LIMBS_PER_CHUNK }> = match slice::as_chunks(m.limbs())
@@ -536,9 +568,13 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         limbs_mul_mont((dst, src1, src2), m.limbs(), m.n0(), m.cpu_features())?;
     }
 
-    let tmp = m.zero();
     let mut acc = Elem {
         limbs: base_rinverse.limbs,
+        encoding: PhantomData,
+    };
+    let tmp = m.alloc_zero();
+    let tmp = Elem {
+        limbs: tmp.limbs,
         encoding: PhantomData,
     };
     let (acc, _) = limb::fold_5_bit_windows(
@@ -555,6 +591,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
 #[cfg(target_arch = "x86_64")]
 fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
+    out: Storage<M>,
     base_mod_n: &Elem<N>,
     oneRRR: &One<M, RRR>,
     exponent: &PrivateExponent,
@@ -625,7 +662,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .copy_from_slice(m_original.as_flattened());
     let m_cached = m_cached.as_ref();
 
-    let base_rinverse: Elem<M, RInverse> = elem_reduced(base_mod_n, m, other_prime_len_bits);
+    let base_rinverse: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
     // base_cached = base*R == (base/R * RRR)/R
     limbs_mul_mont(
         (
@@ -638,6 +675,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         m.cpu_features(),
     )?;
     let base_cached = base_cached.as_ref();
+    let mut out = Storage::from(base_rinverse); // recycle.
 
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
     // gathering, storing the last calculated power into `acc`.
@@ -708,10 +746,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     );
 
     // Reuse `base_rinverse`'s limbs to save an allocation.
-    let mut r_amm = base_rinverse.limbs;
-    r_amm.copy_from_slice(acc.as_flattened());
-
-    Ok(from_montgomery_amm(r_amm, m))
+    out.limbs.copy_from_slice(acc.as_flattened());
+    Ok(from_montgomery_amm(out, m))
 }
 
 /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
@@ -801,14 +837,28 @@ mod tests {
 
                 let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
                 let actual_result = if !too_big {
-                    elem_exp_consttime(&base, &oneRRR, &e, &m, other_modulus_len_bits)
+                    elem_exp_consttime(
+                        m.alloc_zero(),
+                        &base,
+                        &oneRRR,
+                        &e,
+                        &m,
+                        other_modulus_len_bits,
+                    )
                 } else {
-                    let actual_result =
-                        elem_exp_consttime(&base, &oneRRR, &e, &m, other_modulus_len_bits);
+                    let actual_result = elem_exp_consttime(
+                        m.alloc_zero(),
+                        &base,
+                        &oneRRR,
+                        &e,
+                        &m,
+                        other_modulus_len_bits,
+                    );
                     // TODO: Be more specific with which error we expect?
                     assert!(actual_result.is_err());
                     // Try again with a larger-than-normally-supported limit
                     elem_exp_consttime_inner::<_, _, { (4096 / LIMB_BITS) * STORAGE_ENTRIES }>(
+                        m.alloc_zero(),
                         &base,
                         &oneRRR,
                         &e,
@@ -897,7 +947,7 @@ mod tests {
                     consume_elem_unchecked::<M>(test_case, "A", expected_result.limbs.len() * 2);
                 let other_modulus_len_bits = m_.len_bits();
 
-                let actual_result = elem_reduced(&a, &m, other_modulus_len_bits);
+                let actual_result = elem_reduced(m.alloc_zero(), &a, &m, other_modulus_len_bits);
                 let oneRR = One::newRR(&m);
                 let actual_result = elem_mul(oneRR.as_ref(), actual_result, &m);
                 assert_elem_eq(&actual_result, &expected_result);
