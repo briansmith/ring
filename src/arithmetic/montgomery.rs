@@ -162,25 +162,16 @@ pub(super) fn limbs_mul_mont(
                 (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont
             })
         } else if #[cfg(target_arch = "x86_64")] {
-            const MIN_4X: usize = 8;
-            const MOD_4X: usize = 4;
-            if n.len() >= MIN_4X && n.len() % MOD_4X == 0 {
-                use crate::cpu::{GetFeature as _, intel::{Adx, Bmi2}};
-                if let Some(cpu) = cpu.get_feature() {
-                    // MULX is in BMI2.
-                    bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
-                        (MIN_4X, MOD_4X, (Adx, Bmi2)) => bn_mulx4x_mont
-                    })
-                } else {
-                    bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
-                        (MIN_4X, MOD_4X, ()) => bn_mul4x_mont
-                    })
+            use crate::{cpu::GetFeature as _, polyfill::slice};
+            use super::x86_64_mont;
+            if n.len() >= x86_64_mont::MIN_4X {
+                if let (n, []) = slice::as_chunks(n) {
+                    return x86_64_mont::mul_mont5_4x(in_out, n, n0, cpu.get_feature());
                 }
-            } else {
-                bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
-                    (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
-                })
             }
+            bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
+                (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
+            })
         } else {
             // Use the fallback implementation implemented below.
             bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {

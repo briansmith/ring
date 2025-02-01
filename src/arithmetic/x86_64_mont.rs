@@ -14,7 +14,11 @@
 
 #![cfg(target_arch = "x86_64")]
 
-use super::{inout::AliasingSlices2, n0::N0, LimbSliceError, MAX_LIMBS};
+use super::{
+    inout::{AliasingSlices2, AliasingSlices3},
+    n0::N0,
+    LimbSliceError, MAX_LIMBS,
+};
 use crate::{
     c,
     cpu::intel::{Adx, Bmi1, Bmi2},
@@ -25,6 +29,45 @@ use crate::{
 use core::num::NonZeroUsize;
 
 const _512_IS_LIMB_BITS_TIMES_8: () = assert!(8 * Limb::BITS == 512);
+
+#[inline]
+pub(super) fn mul_mont5(
+    mut r: AsChunksMut<Limb, 8>,
+    a: AsChunks<Limb, 8>,
+    b: AsChunks<Limb, 8>,
+    m: AsChunks<Limb, 8>,
+    n0: &N0,
+    maybe_adx_bmi2: Option<(Adx, Bmi2)>,
+) -> Result<(), LimbSliceError> {
+    mul_mont5_4x(
+        (r.as_flattened_mut(), a.as_flattened(), b.as_flattened()),
+        m.into(),
+        n0,
+        maybe_adx_bmi2,
+    )
+}
+
+pub const MIN_4X: usize = 8;
+
+#[inline]
+pub(super) fn mul_mont5_4x(
+    in_out: impl AliasingSlices3<Limb>,
+    n: AsChunks<Limb, 4>,
+    n0: &N0,
+    maybe_adx_bmi2: Option<(Adx, Bmi2)>,
+) -> Result<(), LimbSliceError> {
+    const MOD_4X: usize = 4;
+    let n = n.as_flattened();
+    if let Some(cpu) = maybe_adx_bmi2 {
+        bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
+            (MIN_4X, MOD_4X, (Adx, Bmi2)) => bn_mulx4x_mont
+        })
+    } else {
+        bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
+            (MIN_4X, MOD_4X, ()) => bn_mul4x_mont
+        })
+    }
+}
 
 #[inline]
 pub(super) fn sqr_mont5(

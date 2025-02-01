@@ -619,7 +619,9 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     m: &Modulus<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
-    use super::x86_64_mont::{gather5, mul_mont_gather5_amm, power5_amm, scatter5, sqr_mont5};
+    use super::x86_64_mont::{
+        gather5, mul_mont5, mul_mont_gather5_amm, power5_amm, scatter5, sqr_mont5,
+    };
     use crate::{
         cpu::{
             intel::{Adx, Bmi2},
@@ -640,6 +642,22 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         )));
     }
 
+    let m_original: AsChunks<Limb, 8> = match slice::as_chunks(m.limbs()) {
+        (m, []) => m,
+        _ => return Err(LimbSliceError::len_mismatch(LenMismatchError::new(8))),
+    };
+    let cpe = m_original.len(); // 512-bit chunks per entry
+
+    let oneRRR = &oneRRR.as_ref().limbs;
+    let oneRRR = match slice::as_chunks(oneRRR) {
+        (c, []) => c,
+        _ => {
+            return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
+                oneRRR.len(),
+            )))
+        }
+    };
+
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.
     // Subsequently, it was changed such that, according to BoringSSL, they
@@ -659,12 +677,6 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     const _TABLE_ENTRIES_IS_32: () = assert!(TABLE_ENTRIES == 32);
     const _STORAGE_ENTRIES_HAS_3_EXTRA: () = assert!(STORAGE_ENTRIES == TABLE_ENTRIES + 3);
 
-    let m_original: AsChunks<Limb, 8> = match slice::as_chunks(m.limbs()) {
-        (m, []) => m,
-        _ => return Err(LimbSliceError::len_mismatch(LenMismatchError::new(8))),
-    };
-    let cpe = m_original.len(); // 512-bit chunks per entry.
-
     assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
     let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::zeroed();
     let mut table = table
@@ -683,20 +695,27 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .copy_from_slice(m_original.as_flattened());
     let m_cached = m_cached.as_ref();
 
-    let base_rinverse: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
+    let out: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
+    let base_rinverse = match slice::as_chunks(&out.limbs) {
+        (c, []) => c,
+        _ => {
+            return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
+                out.limbs.len(),
+            )))
+        }
+    };
+
     // base_cached = base*R == (base/R * RRR)/R
-    limbs_mul_mont(
-        (
-            base_cached.as_flattened_mut(),
-            base_rinverse.limbs.as_ref(),
-            oneRRR.as_ref().limbs.as_ref(),
-        ),
-        m_cached.as_flattened(),
+    mul_mont5(
+        base_cached.as_mut(),
+        base_rinverse,
+        oneRRR,
+        m_cached,
         n0,
-        m.cpu_features(),
+        cpu2,
     )?;
     let base_cached = base_cached.as_ref();
-    let mut out = Storage::from(base_rinverse); // recycle.
+    let mut out = Storage::from(out); // recycle.
 
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
     // gathering, storing the last calculated power into `acc`.
