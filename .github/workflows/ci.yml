@@ -234,7 +234,7 @@ jobs:
             host_os: macos-14
             rust_channel: nightly
             mode: --release
-            xcode_version: 15.2
+            xcode_version: 16.2
             # TODO: Run in the emulator.
             cargo_options: --no-run -Z build-std
 

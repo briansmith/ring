@@ -175,6 +175,9 @@ wasm-bindgen-test = { version = "0.3.37", default-features = false, features = [
 [target.'cfg(any(unix, windows, target_os = "wasi"))'.dev-dependencies]
 libc = { version = "0.2.148", default-features = false }
 
+[target.'cfg(all(target_vendor = "apple", not(any(target_os = "macos", target_os = "ios"))))'.build-dependencies]
+cc = { version = "<1.2.11", default-features = false }
+
 [build-dependencies]
 cc = { version = "1.0.83", default-features = false }
 
