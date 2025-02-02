@@ -524,12 +524,15 @@ static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
 //     ECX for CPUID where EAX = 1
 //     Bit 11 is used to indicate AMD XOP support, not SDBG
 //   Index 2:
-//     EBX for CPUID where EAX = 7
+//     EBX for CPUID where EAX = 7, ECX = 0
 //   Index 3:
-//     ECX for CPUID where EAX = 7
+//     ECX for CPUID where EAX = 7, ECX = 0
 //
-// Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
-// bits in XCR0, so it is not necessary to check those.
+// Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the XMM, YMM,
+// and AVX512 bits in XCR0, so it is not necessary to check those. (WARNING: See
+// caveats in cpu_intel.c.)
+//
+// From C, this symbol should only be accessed with |OPENSSL_get_ia32cap|.
 extern uint32_t OPENSSL_ia32cap_P[4];
 #endif
 
