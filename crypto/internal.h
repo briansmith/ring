@@ -525,6 +525,8 @@ static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
 //     Bit 11 is used to indicate AMD XOP support, not SDBG
 //   Index 2:
 //     EBX for CPUID where EAX = 7, ECX = 0
+//     Bit 14 (for removed feature MPX) is used to indicate a preference for ymm
+//       registers over zmm even when zmm registers are supported
 //   Index 3:
 //     ECX for CPUID where EAX = 7, ECX = 0
 //
