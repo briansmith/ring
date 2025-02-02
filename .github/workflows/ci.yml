@@ -689,6 +689,29 @@ jobs:
             host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
+            cpu_model: Opteron_G4-v1
+            features: --features=std
+            mode: --release
+            rust_channel: nightly
+            host_os: ubuntu-24.04
+
+          # Excavator is pre-Zen but with AVX2.
+          - target: x86_64-unknown-linux-gnu
+            cpu_model: Opteron_G5-v1
+            features: --features=std
+            mode: --release
+            rust_channel: nightly
+            host_os: ubuntu-24.04
+
+          # Excavator is pre-Zen but with AVX2.
+          - target: x86_64-unknown-linux-gnu
+            cpu_model: EPYC-v1
+            features: --features=std
+            mode: --release
+            rust_channel: nightly
+            host_os: ubuntu-24.04
+
+          - target: x86_64-unknown-linux-gnu
             cpu_model: Conroe-v1
             features: --features=std
             mode: --release

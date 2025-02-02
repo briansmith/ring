@@ -42,11 +42,13 @@ pub(crate) fn block_data_order_64(
                 sha2_64_ffi!(unsafe { () => sha512_block_data_order_nohw }, state, data, ())
             }
         } else if #[cfg(target_arch = "x86_64")] {
-            use cpu::{GetFeature as _, intel::{IntelCpu, Avx}};
+            use cpu::{GetFeature as _, intel::{Avx, NotPreZenAmd}};
             if let Some(cpu) = cpu.get_feature() {
-                // Pre-Zen AMD CPUs had slow SHLD/SHRD; Zen added the SHA
-                // extension; see the discussion in upstream's sha1-586.pl.
-                sha2_64_ffi!(unsafe { (Avx, IntelCpu) => sha512_block_data_order_avx }, state, data, cpu)
+                // Pre-Zen AMD CPUs had microcoded SHLD/SHRD which makes the
+                // AVX version slow. We're also unsure of the side channel
+                // ramifications of those microcoded instructions.
+                sha2_64_ffi!(unsafe { (Avx, NotPreZenAmd) => sha512_block_data_order_avx },
+                    state, data, cpu);
             } else {
                 sha2_64_ffi!(unsafe { () => sha512_block_data_order_nohw }, state, data, ())
             }
