@@ -157,17 +157,14 @@ fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>, _cpu_features: cpu::Features
     bytes
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))] {
-        #[inline(always)]
-        pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
-            cpu::intel::ADX.available(cpu)
-            && cpu::intel::BMI1.available(cpu)
-            && cpu::intel::BMI2.available(cpu)
-        }
-    } else {
-        #[inline(always)]
-        pub (super) fn has_fe25519_adx(_cpu: cpu::Features) -> bool {
+#[inline(always)]
+pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
+    cfg_if::cfg_if! {
+        if #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))] {
+            use cpu::{intel::{Adx, Bmi1, Bmi2}, GetFeature as _};
+            matches!(cpu.get_feature(), Some((Adx { .. }, Bmi1 { .. }, Bmi2 { .. })))
+        } else {
+            let _ = cpu;
             false
         }
     }

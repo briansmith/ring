@@ -70,15 +70,13 @@ fn x25519_public_from_private(
         all(target_arch = "arm", target_endian = "little"),
         any(target_os = "android", target_os = "linux")
     ))]
-    {
-        if cpu::arm::NEON.available(cpu_features) {
-            static MONTGOMERY_BASE_POINT: [u8; 32] = [
-                9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0,
-            ];
-            x25519_neon(public_out, &private_key, &MONTGOMERY_BASE_POINT);
-            return Ok(());
-        }
+    if let Some(cpu) = <cpu::Features as cpu::GetFeature<_>>::get_feature(&cpu_features) {
+        static MONTGOMERY_BASE_POINT: [u8; 32] = [
+            9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ];
+        x25519_neon(public_out, &private_key, &MONTGOMERY_BASE_POINT, cpu);
+        return Ok(());
     }
 
     prefixed_extern! {
@@ -119,10 +117,8 @@ fn x25519_ecdh(
             all(target_arch = "arm", target_endian = "little"),
             any(target_os = "android", target_os = "linux")
         ))]
-        {
-            if cpu::arm::NEON.available(cpu_features) {
-                return x25519_neon(out, scalar, point);
-            }
+        if let Some(cpu) = <cpu::Features as cpu::GetFeature<_>>::get_feature(&cpu_features) {
+            return x25519_neon(out, scalar, point, cpu);
         }
 
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
@@ -172,7 +168,12 @@ fn x25519_ecdh(
     all(target_arch = "arm", target_endian = "little"),
     any(target_os = "android", target_os = "linux")
 ))]
-fn x25519_neon(out: &mut ops::EncodedPoint, scalar: &ops::MaskedScalar, point: &ops::EncodedPoint) {
+fn x25519_neon(
+    out: &mut ops::EncodedPoint,
+    scalar: &ops::MaskedScalar,
+    point: &ops::EncodedPoint,
+    _cpu: cpu::arm::Neon,
+) {
     prefixed_extern! {
         fn x25519_NEON(
             out: &mut ops::EncodedPoint,
