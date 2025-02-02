@@ -327,11 +327,22 @@ static inline void constant_time_conditional_memcpy(void *dst, const void *src,
 // |mask| is 0xff..ff and does nothing if |mask| is 0. The |n|-byte memory
 // ranges at |dst| and |src| must not overlap, as when calling |memcpy|.
 static inline void constant_time_conditional_memxor(void *dst, const void *src,
-                                                    const size_t n,
+                                                    size_t n,
                                                     const crypto_word_t mask) {
   debug_assert_nonsecret(!buffers_alias(dst, n, src, n));
   aliasing_uint8_t *out = dst;
   const aliasing_uint8_t *in = src;
+#if defined(__GNUC__) && !defined(__clang__)
+  // gcc 13.2.0 doesn't automatically vectorize this loop regardless of barrier
+  typedef aliasing_uint8_t v32u8 __attribute__((vector_size(32), aligned(1), may_alias));
+  size_t n_vec = n&~(size_t)31;
+  v32u8 masks = ((aliasing_uint8_t)mask-(v32u8){}); // broadcast
+  for (size_t i = 0; i < n_vec; i += 32) {
+    *(v32u8*)&out[i] ^= masks & *(v32u8 const*)&in[i];
+  }
+  out += n_vec;
+  n -= n_vec;
+#endif
   for (size_t i = 0; i < n; i++) {
     out[i] ^= value_barrier_w(mask) & in[i];
   }
@@ -513,12 +524,17 @@ static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
 //     ECX for CPUID where EAX = 1
 //     Bit 11 is used to indicate AMD XOP support, not SDBG
 //   Index 2:
-//     EBX for CPUID where EAX = 7
+//     EBX for CPUID where EAX = 7, ECX = 0
+//     Bit 14 (for removed feature MPX) is used to indicate a preference for ymm
+//       registers over zmm even when zmm registers are supported
 //   Index 3:
-//     ECX for CPUID where EAX = 7
+//     ECX for CPUID where EAX = 7, ECX = 0
 //
-// Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
-// bits in XCR0, so it is not necessary to check those.
+// Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the XMM, YMM,
+// and AVX512 bits in XCR0, so it is not necessary to check those. (WARNING: See
+// caveats in cpu_intel.c.)
+//
+// From C, this symbol should only be accessed with |OPENSSL_get_ia32cap|.
 extern uint32_t OPENSSL_ia32cap_P[4];
 #endif
 
