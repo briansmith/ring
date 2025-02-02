@@ -206,6 +206,28 @@ cfg_if! {
                 XSAVE_BUT_NOT_REALLY.available(self.0) && MOVBE.available(self.0)
             }
         }
+
+        #[derive(Clone, Copy)]
+        pub(crate) struct NotPreZenAmd(super::Features);
+
+        impl super::GetFeature<NotPreZenAmd> for super::Features {
+            fn get_feature(&self) -> Option<NotPreZenAmd> {
+                let sha2: Option<Avx2> = self.get_feature();
+                // Pre-Zen AMD CPUs didn't implement SHA. (One Pre-Zen AMD CPU
+                // did support AVX2.) If we're building for a CPU that requires
+                // SHA instructions then we want to avoid the runtime check for
+                // an Intel/AND CPU.
+                if sha2.is_some() {
+                    return Some(NotPreZenAmd(*self));
+                }
+                // Perhaps we should do !AMD instead of Intel.
+                let intel: Option<IntelCpu> = self.get_feature();
+                if intel.is_some() {
+                    return Some(NotPreZenAmd(*self))
+                }
+                None
+            }
+        }
     }
 }
 
