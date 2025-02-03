@@ -212,11 +212,11 @@ poly_hash_ad_internal:
 .cfi_endproc	
 .size	poly_hash_ad_internal, .-poly_hash_ad_internal
 
-.globl	chacha20_poly1305_open_nohw
-.hidden chacha20_poly1305_open_nohw
-.type	chacha20_poly1305_open_nohw,@function
+.globl	chacha20_poly1305_open_sse41
+.hidden chacha20_poly1305_open_sse41
+.type	chacha20_poly1305_open_sse41,@function
 .align	64
-chacha20_poly1305_open_nohw:
+chacha20_poly1305_open_sse41:
 .cfi_startproc	
 _CET_ENDBR
 	pushq	%rbp
@@ -2084,7 +2084,7 @@ _CET_ENDBR
 	movdqa	%xmm10,%xmm6
 	movdqa	%xmm14,%xmm10
 	jmp	.Lopen_sse_128_xor_hash
-.size	chacha20_poly1305_open_nohw, .-chacha20_poly1305_open_nohw
+.size	chacha20_poly1305_open_sse41, .-chacha20_poly1305_open_sse41
 .cfi_endproc	
 
 
@@ -2093,11 +2093,11 @@ _CET_ENDBR
 
 
 
-.globl	chacha20_poly1305_seal_nohw
-.hidden chacha20_poly1305_seal_nohw
-.type	chacha20_poly1305_seal_nohw,@function
+.globl	chacha20_poly1305_seal_sse41
+.hidden chacha20_poly1305_seal_sse41
+.type	chacha20_poly1305_seal_sse41,@function
 .align	64
-chacha20_poly1305_seal_nohw:
+chacha20_poly1305_seal_sse41:
 .cfi_startproc	
 _CET_ENDBR
 	pushq	%rbp
@@ -4085,7 +4085,7 @@ process_extra_in_trailer:
 	movq	%r8,%r8
 	call	poly_hash_ad_internal
 	jmp	.Lseal_sse_128_tail_xor
-.size	chacha20_poly1305_seal_nohw, .-chacha20_poly1305_seal_nohw
+.size	chacha20_poly1305_seal_sse41, .-chacha20_poly1305_seal_sse41
 .cfi_endproc	
 
 

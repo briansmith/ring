@@ -220,14 +220,14 @@ $L$hash_ad_done:
 
 
 
-global	chacha20_poly1305_open_nohw
+global	chacha20_poly1305_open_sse41
 
 ALIGN	64
-chacha20_poly1305_open_nohw:
+chacha20_poly1305_open_sse41:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_chacha20_poly1305_open_nohw:
+$L$SEH_begin_chacha20_poly1305_open_sse41:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -2113,7 +2113,7 @@ $L$open_sse_128_xor_hash:
 	movdqa	xmm6,xmm10
 	movdqa	xmm10,xmm14
 	jmp	NEAR $L$open_sse_128_xor_hash
-$L$SEH_end_chacha20_poly1305_open_nohw:
+$L$SEH_end_chacha20_poly1305_open_sse41:
 
 
 
@@ -2122,14 +2122,14 @@ $L$SEH_end_chacha20_poly1305_open_nohw:
 
 
 
-global	chacha20_poly1305_seal_nohw
+global	chacha20_poly1305_seal_sse41
 
 ALIGN	64
-chacha20_poly1305_seal_nohw:
+chacha20_poly1305_seal_sse41:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_chacha20_poly1305_seal_nohw:
+$L$SEH_begin_chacha20_poly1305_seal_sse41:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -4135,7 +4135,7 @@ DB	102,69,15,58,15,246,4
 	mov	r8,r8
 	call	poly_hash_ad_internal
 	jmp	NEAR $L$seal_sse_128_tail_xor
-$L$SEH_end_chacha20_poly1305_seal_nohw:
+$L$SEH_end_chacha20_poly1305_seal_sse41:
 
 
 

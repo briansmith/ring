@@ -212,11 +212,11 @@ L$hash_ad_done:
 
 
 
-.globl	_chacha20_poly1305_open_nohw
-.private_extern _chacha20_poly1305_open_nohw
+.globl	_chacha20_poly1305_open_sse41
+.private_extern _chacha20_poly1305_open_sse41
 
 .p2align	6
-_chacha20_poly1305_open_nohw:
+_chacha20_poly1305_open_sse41:
 
 _CET_ENDBR
 	pushq	%rbp
@@ -2079,11 +2079,11 @@ L$open_sse_128_xor_hash:
 
 
 
-.globl	_chacha20_poly1305_seal_nohw
-.private_extern _chacha20_poly1305_seal_nohw
+.globl	_chacha20_poly1305_seal_sse41
+.private_extern _chacha20_poly1305_seal_sse41
 
 .p2align	6
-_chacha20_poly1305_seal_nohw:
+_chacha20_poly1305_seal_sse41:
 
 _CET_ENDBR
 	pushq	%rbp
