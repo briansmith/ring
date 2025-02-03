@@ -171,24 +171,12 @@ void OPENSSL_cpuid_setup(void) {
     }
   }
 
-  // Force the hyper-threading bit so that the more conservative path is always
-  // chosen.
-  edx |= 1u << 28;
-
-  // Reserved bit #20 was historically repurposed to control the in-memory
-  // representation of RC4 state. Always set it to zero.
-  edx &= ~(1u << 20);
-
   // Reserved bit #30 is repurposed to signal an Intel CPU.
   if (is_intel) {
     edx |= (1u << 30);
   } else {
     edx &= ~(1u << 30);
   }
-
-  // The SDBG bit is repurposed to denote AMD XOP support. Don't ever use AMD
-  // XOP code paths.
-  ecx &= ~(1u << 11);
 
   uint64_t xcr0 = 0;
   if (ecx & (1u << 27)) {
