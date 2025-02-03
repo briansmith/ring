@@ -59,8 +59,8 @@ pub(super) fn seal(
         all(target_arch = "aarch64", target_endian = "little"),
         target_arch = "x86_64"
     ))]
-    if let Some(cpu) = cpu.get_feature() {
-        return integrated::seal(key, nonce, aad, in_out, cpu);
+    if let Some(required) = cpu.get_feature() {
+        return integrated::seal(key, nonce, aad, in_out, required, cpu.get_feature());
     }
 
     seal_fallback(key, nonce, aad, in_out, cpu)
@@ -93,8 +93,8 @@ pub(super) fn open(
         all(target_arch = "aarch64", target_endian = "little"),
         target_arch = "x86_64"
     ))]
-    if let Some(cpu) = cpu.get_feature() {
-        return integrated::open(key, nonce, aad, in_out, cpu);
+    if let Some(required) = cpu.get_feature() {
+        return integrated::open(key, nonce, aad, in_out, required, cpu.get_feature());
     }
 
     open_fallback(key, nonce, aad, in_out, cpu)

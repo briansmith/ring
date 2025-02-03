@@ -17,14 +17,47 @@ use super::{
     chacha::Overlapping,
     check_input_lengths, Aad, InputTooLongError, Key, Nonce, Tag, KEY_LEN,
 };
-use crate::cpu;
 use cfg_if::cfg_if;
+
+macro_rules! declare_open {
+    ( $name:ident ) => {
+        prefixed_extern! {
+            fn $name(
+                out_plaintext: *mut u8,
+                ciphertext: *const u8,
+                plaintext_len: usize,
+                ad: *const u8,
+                ad_len: usize,
+                data: &mut InOut<open_data_in>,
+            );
+        }
+    };
+}
+
+macro_rules! declare_seal {
+    ( $name:ident ) => {
+        prefixed_extern! {
+            fn $name(
+                out_ciphertext: *mut u8,
+                plaintext: *const u8,
+                plaintext_len: usize,
+                ad: *const u8,
+                ad_len: usize,
+                data: &mut InOut<seal_data_in>,
+            );
+        }
+    };
+}
 
 cfg_if! {
     if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
-        type RequiredCpuFeatures = cpu::arm::Neon;
+        use crate::cpu::arm::Neon;
+        type RequiredCpuFeatures = Neon;
+        type OptionalCpuFeatures = ();
     } else {
-        type RequiredCpuFeatures = cpu::intel::Sse41;
+        use crate::cpu::intel::{Avx2, Bmi2, Sse41};
+        type RequiredCpuFeatures = Sse41;
+        type OptionalCpuFeatures = (Avx2, Bmi2);
     }
 }
 
@@ -33,7 +66,8 @@ pub(super) fn seal(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
-    _cpu_features: RequiredCpuFeatures,
+    required_cpu_features: RequiredCpuFeatures,
+    optional_cpu_features: Option<OptionalCpuFeatures>,
 ) -> Result<Tag, InputTooLongError> {
     check_input_lengths(aad, in_out)?;
 
@@ -64,30 +98,44 @@ pub(super) fn seal(
     };
 
     // Encrypts `plaintext_len` bytes from `plaintext` and writes them to `out_ciphertext`.
-    prefixed_extern! {
-        fn chacha20_poly1305_seal(
-            out_ciphertext: *mut u8,
-            plaintext: *const u8,
-            plaintext_len: usize,
-            ad: *const u8,
-            ad_len: usize,
-            data: &mut InOut<seal_data_in>,
-        );
+
+    let output = in_out.as_mut_ptr();
+    let input = in_out.as_ptr();
+    let len = in_out.len();
+    let ad = aad.as_ref().as_ptr();
+    let ad_len = aad.as_ref().len();
+
+    #[allow(clippy::needless_late_init)]
+    let tag;
+
+    cfg_if! {
+        if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
+            declare_seal! { chacha20_poly1305_seal }
+            let _: Neon = required_cpu_features;
+            let _: Option<()> = optional_cpu_features;
+            tag = unsafe {
+                chacha20_poly1305_seal(output, input, len, ad, ad_len, &mut data);
+                &data.out.tag
+            };
+        } else {
+            if matches!((required_cpu_features, optional_cpu_features),
+                        (Sse41 { .. }, Some((Avx2 { .. }, Bmi2 { .. })))) {
+                declare_seal! { chacha20_poly1305_seal_avx2 }
+                tag = unsafe {
+                    chacha20_poly1305_seal_avx2(output, input, len, ad, ad_len, &mut data);
+                    &data.out.tag
+                };
+            } else {
+                declare_seal! { chacha20_poly1305_seal_nohw }
+                tag = unsafe {
+                    chacha20_poly1305_seal_nohw(output, input, len, ad, ad_len, &mut data);
+                    &data.out.tag
+                };
+            }
+        }
     }
 
-    let out = unsafe {
-        chacha20_poly1305_seal(
-            in_out.as_mut_ptr(),
-            in_out.as_ptr(),
-            in_out.len(),
-            aad.as_ref().as_ptr(),
-            aad.as_ref().len(),
-            &mut data,
-        );
-        &data.out
-    };
-
-    Ok(Tag(out.tag))
+    Ok(Tag(*tag))
 }
 
 pub(super) fn open(
@@ -95,7 +143,8 @@ pub(super) fn open(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: Overlapping<'_>,
-    _cpu: RequiredCpuFeatures,
+    required_cpu_features: RequiredCpuFeatures,
+    optional_cpu_features: Option<OptionalCpuFeatures>,
 ) -> Result<Tag, InputTooLongError> {
     check_input_lengths(aad, in_out.input())?;
 
@@ -121,32 +170,40 @@ pub(super) fn open(
         },
     };
 
-    // Decrypts `plaintext_len` bytes from `ciphertext` and writes them to `out_plaintext`.
-    prefixed_extern! {
-        fn chacha20_poly1305_open(
-            out_plaintext: *mut u8,
-            ciphertext: *const u8,
-            plaintext_len: usize,
-            ad: *const u8,
-            ad_len: usize,
-            data: &mut InOut<open_data_in>,
-        );
-    }
-
     let (input, output, len) = in_out.into_input_output_len();
-    let out = unsafe {
-        chacha20_poly1305_open(
-            output,
-            input,
-            len,
-            aad.as_ref().as_ptr(),
-            aad.as_ref().len(),
-            &mut data,
-        );
-        &data.out
-    };
+    let ad = aad.as_ref().as_ptr();
+    let ad_len = aad.as_ref().len();
 
-    Ok(Tag(out.tag))
+    #[allow(clippy::needless_late_init)]
+    let tag;
+
+    cfg_if! {
+        if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
+            declare_open! { chacha20_poly1305_open }
+            let _: Neon = required_cpu_features;
+            let _: Option<()> = optional_cpu_features;
+            tag = unsafe {
+                chacha20_poly1305_open(output, input, len, ad, ad_len, &mut data);
+                &data.out.tag
+            };
+        } else {
+            if matches!((required_cpu_features, optional_cpu_features),
+                        (Sse41 { .. }, Some((Avx2 { .. }, Bmi2 { .. })))) {
+                declare_open! { chacha20_poly1305_open_avx2 }
+                tag = unsafe {
+                    chacha20_poly1305_open_avx2(output, input, len, ad, ad_len, &mut data);
+                    &data.out.tag
+                };
+            } else {
+                declare_open! { chacha20_poly1305_open_nohw }
+                tag = unsafe {
+                    chacha20_poly1305_open_nohw(output, input, len, ad, ad_len, &mut data);
+                    &data.out.tag
+                };
+            }
+        }
+    }
+    Ok(Tag(*tag))
 }
 
 // Keep in sync with BoringSSL's `chacha20_poly1305_open_data` and
