@@ -472,8 +472,12 @@ int CBS_peek_asn1_tag(const CBS *cbs, CBS_ASN1_TAG tag_value) {
 }
 
 int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
+  return CBS_get_asn1_uint64_with_tag(cbs, out, CBS_ASN1_INTEGER);
+}
+
+int CBS_get_asn1_uint64_with_tag(CBS *cbs, uint64_t *out, CBS_ASN1_TAG tag) {
   CBS bytes;
-  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_INTEGER) ||
+  if (!CBS_get_asn1(cbs, &bytes, tag) ||
       !CBS_is_unsigned_asn1_integer(&bytes)) {
     return 0;
   }
@@ -494,9 +498,13 @@ int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
 }
 
 int CBS_get_asn1_int64(CBS *cbs, int64_t *out) {
+  return CBS_get_asn1_int64_with_tag(cbs, out, CBS_ASN1_INTEGER);
+}
+
+int CBS_get_asn1_int64_with_tag(CBS *cbs, int64_t *out, CBS_ASN1_TAG tag) {
   int is_negative;
   CBS bytes;
-  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_INTEGER) ||
+  if (!CBS_get_asn1(cbs, &bytes, tag) ||
       !CBS_is_valid_asn1_integer(&bytes, &is_negative)) {
     return 0;
   }

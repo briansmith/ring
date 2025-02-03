@@ -292,10 +292,27 @@ OPENSSL_EXPORT int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out,
 // in 64 bits.
 OPENSSL_EXPORT int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out);
 
+// CBS_get_asn1_uint64_with_tag gets an ASN.1 INTEGER from |cbs| using
+// |CBS_get_asn1| and sets |*out| to its value. |tag| is used to handle to
+// handle implicitly tagged INTEGER fields. It returns one on success and zero
+// on error, where error includes the integer being negative, or too large to
+// represent in 64 bits.
+OPENSSL_EXPORT int CBS_get_asn1_uint64_with_tag(CBS *cbs, uint64_t *out,
+                                                CBS_ASN1_TAG tag);
+
+
 // CBS_get_asn1_int64 gets an ASN.1 INTEGER from |cbs| using |CBS_get_asn1|
 // and sets |*out| to its value. It returns one on success and zero on error,
 // where error includes the integer being too large to represent in 64 bits.
 OPENSSL_EXPORT int CBS_get_asn1_int64(CBS *cbs, int64_t *out);
+
+// CBS_get_asn1_int64_with_tag gets an ASN.1 INTEGER from |cbs| using
+// |CBS_get_asn1| and sets |*out| to its value. |tag| is used to handle to
+// handle implicitly tagged INTEGER fields. It returns one on success and zero
+// on error, where error includes the integer being too large to represent in 64
+// bits.
+OPENSSL_EXPORT int CBS_get_asn1_int64_with_tag(CBS *cbs, int64_t *out,
+                                               CBS_ASN1_TAG tag);
 
 // CBS_get_asn1_bool gets an ASN.1 BOOLEAN from |cbs| and sets |*out| to zero
 // or one based on its value. It returns one on success or zero on error.
