@@ -3,7 +3,7 @@
 The files in this directory are generated using [Fiat
 Cryptography](https://github.com/mit-plv/fiat-crypto) from the associated
 library of arithmetic-implementation templates. These files are included under
-the MIT license. (See LICENSE file.)
+the Apache 2.0 license. (See LICENSE file.)
 
 Some files are included directly from the `fiat-c/src` directory of the Fiat
 Cryptography repository. Their contents are `#include`d into source files, so
