@@ -83,32 +83,9 @@ impl Feature {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
-const ADX: Feature = Feature {
-    word: 2,
-    mask: 1 << 19,
-};
-
-#[cfg(target_arch = "x86_64")]
-const BMI1: Feature = Feature {
-    word: 2,
-    mask: 1 << 3,
-};
-
-#[cfg(target_arch = "x86_64")]
-const BMI2: Feature = Feature {
-    word: 2,
-    mask: 1 << 8,
-};
-
 const FXSR: Feature = Feature {
     word: 0,
     mask: 1 << 24,
-};
-
-const AVX: Feature = Feature {
-    word: 1,
-    mask: 1 << 28,
 };
 
 const PCLMULQDQ: Feature = Feature {
@@ -139,10 +116,33 @@ const AES: Feature = Feature {
     mask: 1 << 25,
 };
 
+const AVX: Feature = Feature {
+    word: 1,
+    mask: 1 << 28,
+};
+
+#[cfg(target_arch = "x86_64")]
+const BMI1: Feature = Feature {
+    word: 2,
+    mask: 1 << 3,
+};
+
 #[cfg(target_arch = "x86_64")]
 const AVX2: Feature = Feature {
     word: 2,
     mask: 1 << 5,
+};
+
+#[cfg(target_arch = "x86_64")]
+const BMI2: Feature = Feature {
+    word: 2,
+    mask: 1 << 8,
+};
+
+#[cfg(target_arch = "x86_64")]
+const ADX: Feature = Feature {
+    word: 2,
+    mask: 1 << 19,
 };
 
 // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
