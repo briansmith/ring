@@ -83,105 +83,45 @@ impl Feature {
     }
 }
 
-const FXSR: Feature = Feature {
-    word: 0,
-    mask: 1 << 24,
-};
+macro_rules! impl_get_feature_cpuid {
+    { ( $( $arch:expr ),+ ) => ($word:expr, $bit:expr) => $NAME:ident => $Name:ident } => {
+        #[cfg(any( $( target_arch = $arch ),+ ))]
+        const $NAME: Feature = Feature {
+            word: $word,
+            mask: 1 << $bit,
+        };
 
-const PCLMULQDQ: Feature = Feature {
-    word: 1,
-    mask: 1 << 1,
-};
+        #[cfg(any( $( target_arch = $arch ),+ ))]
+        impl_get_feature! { $NAME => $Name }
+    }
+}
 
-const SSSE3: Feature = Feature {
-    word: 1,
-    mask: 1 << 9,
-};
+impl_get_feature_cpuid! { ("x86", "x86_64") => (0, 24) => FXSR => Fxsr }
 
-#[cfg(target_arch = "x86_64")]
-const SSE41: Feature = Feature {
-    word: 1,
-    mask: 1 << 19,
-};
+// Synthesized
+impl_get_feature_cpuid! { ("x86_64") => (0, 30) => INTEL_CPU => IntelCpu }
 
-#[cfg(target_arch = "x86_64")]
-const MOVBE: Feature = Feature {
-    word: 1,
-    mask: 1 << 22,
-};
+impl_get_feature_cpuid! { ("x86", "x86_64") => (1, 1) => PCLMULQDQ => ClMul }
+impl_get_feature_cpuid! { ("x86", "x86_64") => (1, 9) => SSSE3 => Ssse3 }
+impl_get_feature_cpuid! { ("x86", "x86_64") => (1, 19) => SSE41 => Sse41 }
+impl_get_feature_cpuid! { ("x86_64") => (1, 22) => MOVBE => Movbe }
+impl_get_feature_cpuid! { ("x86", "x86_64") => (1, 25) => AES => Aes }
 
+// Synthesized
+impl_get_feature_cpuid! { ("x86_64") => (1, 26) => XSAVE_BUT_NOT_REALLY => XSaveButNotReally }
 
-const AES: Feature = Feature {
-    word: 1,
-    mask: 1 << 25,
-};
-
-const AVX: Feature = Feature {
-    word: 1,
-    mask: 1 << 28,
-};
-
-#[cfg(target_arch = "x86_64")]
-const BMI1: Feature = Feature {
-    word: 2,
-    mask: 1 << 3,
-};
-
-#[cfg(target_arch = "x86_64")]
-const AVX2: Feature = Feature {
-    word: 2,
-    mask: 1 << 5,
-};
-
-#[cfg(target_arch = "x86_64")]
-const BMI2: Feature = Feature {
-    word: 2,
-    mask: 1 << 8,
-};
-
-#[cfg(target_arch = "x86_64")]
-const ADX: Feature = Feature {
-    word: 2,
-    mask: 1 << 19,
-};
+impl_get_feature_cpuid! { ("x86", "x86_64") => (1, 28) => AVX => Avx }
+impl_get_feature_cpuid! { ("x86_64") => (2, 3) => BMI1 => Bmi1 }
+impl_get_feature_cpuid! { ("x86_64") => (2, 5) => AVX2 => Avx2 }
+impl_get_feature_cpuid! { ("x86_64") => (2, 8) => BMI2 => Bmi2 }
+impl_get_feature_cpuid! { ("x86_64") => (2, 19) => ADX => Adx }
 
 // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
 // static feature detection for this.
-#[cfg(target_arch = "x86_64")]
-const SHA: Feature = Feature {
-    word: 2,
-    mask: 1 << 29,
-};
-
-impl_get_feature! { AES => Aes }
-impl_get_feature! { FXSR => Fxsr }
-impl_get_feature! { PCLMULQDQ => ClMul }
-impl_get_feature! { SSSE3 => Ssse3 }
-impl_get_feature! { AVX => Avx }
+impl_get_feature_cpuid! { ("x86_64") => (2, 29) => SHA => Sha }
 
 cfg_if! {
     if #[cfg(target_arch = "x86_64")] {
-        //
-        const INTEL_CPU: Feature = Feature {
-            word: 0,
-            mask: 1 << 30,
-        };
-        impl_get_feature!{ INTEL_CPU => IntelCpu }
-
-        // We intentionally avoid defining an `XSave` accessor function. See
-        // `Ssse3::cpu_perf_is_like_silvermont`.
-        const XSAVE_BUT_NOT_REALLY: Feature = Feature {
-            word: 1,
-            mask: 1 << 26,
-        };
-
-        impl_get_feature!{ SSE41 => Sse41 }
-        impl_get_feature!{ MOVBE => Movbe }
-        impl_get_feature!{ AVX2 => Avx2 }
-        impl_get_feature!{ BMI1 => Bmi1 }
-        impl_get_feature!{ BMI2 => Bmi2 }
-        impl_get_feature!{ ADX => Adx }
-        impl_get_feature!{ SHA => Sha }
 
         impl Ssse3 {
             /// BoringSSL's counterpart is `CRYPTO_cpu_perf_is_like_silvermont`.
@@ -207,7 +147,8 @@ cfg_if! {
             /// and Knights Mill chips, but as Intel has removed all support from GCC,
             /// LLVM, and SDE, we assume they are no longer worth special-casing.
             pub fn perf_is_like_silvermont(self) -> bool {
-                XSAVE_BUT_NOT_REALLY.available(self.0) && MOVBE.available(self.0)
+                use super::GetFeature as _;
+                matches!(self.0.get_feature(), Some((XSaveButNotReally { .. }, Movbe { .. })))
             }
         }
 
