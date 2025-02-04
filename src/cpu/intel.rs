@@ -35,7 +35,7 @@ mod abi_assumptions {
     const _ASSUMED_ENDIANNESS: () = assert!(cfg!(target_endian = "little"));
 }
 
-pub(crate) struct Feature {
+struct Feature {
     word: usize,
     mask: u32,
 }
@@ -84,39 +84,39 @@ impl Feature {
 }
 
 #[allow(dead_code)]
-pub(crate) const ADX: Feature = Feature {
+const ADX: Feature = Feature {
     word: 2,
     mask: 1 << 19,
 };
 
 #[allow(dead_code)]
-pub(crate) const BMI1: Feature = Feature {
+const BMI1: Feature = Feature {
     word: 2,
     mask: 1 << 3,
 };
 
 #[allow(dead_code)]
-pub(crate) const BMI2: Feature = Feature {
+const BMI2: Feature = Feature {
     word: 2,
     mask: 1 << 8,
 };
 
-pub(crate) const FXSR: Feature = Feature {
+const FXSR: Feature = Feature {
     word: 0,
     mask: 1 << 24,
 };
 
-pub(crate) const AVX: Feature = Feature {
+const AVX: Feature = Feature {
     word: 1,
     mask: 1 << 28,
 };
 
-pub(crate) const PCLMULQDQ: Feature = Feature {
+const PCLMULQDQ: Feature = Feature {
     word: 1,
     mask: 1 << 1,
 };
 
-pub(crate) const SSSE3: Feature = Feature {
+const SSSE3: Feature = Feature {
     word: 1,
     mask: 1 << 9,
 };
@@ -127,7 +127,7 @@ const SSE41: Feature = Feature {
     mask: 1 << 19,
 };
 
-pub(crate) const AES: Feature = Feature {
+const AES: Feature = Feature {
     word: 1,
     mask: 1 << 25,
 };
@@ -147,7 +147,7 @@ cfg_if! {
         };
         impl_get_feature!{ INTEL_CPU => IntelCpu }
 
-        pub(crate) const MOVBE: Feature = Feature {
+        const MOVBE: Feature = Feature {
             word: 1,
             mask: 1 << 22,
         };
