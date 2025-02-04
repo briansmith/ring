@@ -34,6 +34,11 @@
 // initialising it to zero, it becomes a "data symbol", which isn't so
 // affected.
 HIDDEN uint32_t OPENSSL_ia32cap_P[4] = {0};
+#if defined(OPENSSL_X86_64)
+// These are declared as `AtomicU32` on the Rust side.
+HIDDEN uint32_t avx2_available = 0;
+HIDDEN uint32_t adx_bmi2_available = 0;
+#endif
 #elif defined(OPENSSL_ARM)
 HIDDEN uint32_t neon_available = 0;
 #endif

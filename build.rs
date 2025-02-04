@@ -851,6 +851,8 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     ];
 
     static SYMBOLS_TO_PREFIX: &[&str] = &[
+        "adx_bmi2_available",
+        "avx2_available",
         "CRYPTO_memcmp",
         "CRYPTO_poly1305_finish",
         "CRYPTO_poly1305_finish_neon",

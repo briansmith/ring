@@ -54,9 +54,55 @@ pub(super) mod featureflags {
         // SAFETY: This is the only caller. Any concurrent reading doesn't
         // affect the safety of the writing.
         let () = INIT.call_once(|| unsafe { OPENSSL_cpuid_setup() });
+
         // SAFETY: We initialized the CPU features as required.
         // `INIT.call_once` has `happens-before` semantics.
-        unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }
+        let cpu = unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() };
+
+        #[cfg(target_arch = "x86_64")]
+        {
+            use super::{super::GetFeature as _, Adx, Avx2, Bmi2};
+            use core::{
+                mem::align_of,
+                sync::atomic::{AtomicU32, Ordering},
+            };
+
+            // These are declared as `uint32_t` on the C side.
+            const _ATOMIC32_ALIGNMENT_EQUSLS_U32_ALIGNMENT: () =
+                assert!(align_of::<AtomicU32>() == align_of::<u32>());
+
+            if matches!(cpu.get_feature(), Some((Adx { .. }, Bmi2 { .. }))) {
+                prefixed_extern! {
+                    static adx_bmi2_available: AtomicU32;
+                }
+                // SAFETY: This is the only writer, and concurrent writing is
+                // prevented as this is the `OnceLock`-like one-time
+                // initialization provided by `spin::Once`. Any concurrent
+                // reading doesn't affect the safety of this write.
+                //
+                // Any read of `adx_bmi2_available` before this will be zero,
+                // which is safe (no risk of illegal instructions) and correct
+                // (the value computed will be the same regardless).
+                let flag = unsafe { &adx_bmi2_available };
+                flag.store(1, Ordering::Relaxed);
+            }
+            if matches!(cpu.get_feature(), Some(Avx2 { .. })) {
+                prefixed_extern! {
+                    static avx2_available: AtomicU32;
+                }
+                // SAFETY: This is the only writer, and concurrent writing is
+                // prevented as this is the `OnceLock`-like one-time
+                // initialization provided by `spin::Once`.
+                //
+                // Any read of `avx2_available` before this will be zero, which
+                // is safe (no risk of illegal instructions) and correct (the
+                // value computed will be the same regardless).
+                let flag = unsafe { &avx2_available };
+                flag.store(1, Ordering::Relaxed);
+            }
+        }
+
+        cpu
     }
 
     pub(super) fn get(_cpu_features: cpu::Features) -> &'static [u32; 4] {
@@ -67,9 +113,11 @@ pub(super) mod featureflags {
         #[allow(unused_unsafe)]
         let p = unsafe { ptr::addr_of!(OPENSSL_ia32cap_P) };
         // SAFETY: Since only `get_or_init()` could have created
-        // `_cpu_features`, and it only does so after the `INIT.call_once()`,
-        // which guarantees `happens-before` semantics, we can read from
-        // `OPENSSL_ia32cap_P` without further synchronization.
+        // `_cpu_features`, and it only does so after the `INIT.call_once()`
+        // (which guarantees `happens-before` semantics), or during the
+        // `INIT.call_once()` after writing to `OPENSSL_ia32cap_P`, we can
+        // safely read from `OPENSSL_ia32cap_P` without further
+        // synchronization.
         unsafe { &*p }
     }
 }
