@@ -135,19 +135,10 @@ impl Key {
                             self, counter, in_out, cpu);
                     }
                     if let Some(cpu) = <cpu::Features as GetFeature<Ssse3>>::get_feature(&cpu) {
-                        if in_out.len() >= 192 || !cpu.perf_is_like_silvermont() {
-                            return chacha20_ctr32_ffi!(
-                                unsafe {
-                                    (SSE_MIN_LEN, Ssse3, Overlapping<'_>) =>
-                                    ChaCha20_ctr32_ssse3_4x
-                                },
-                                self, counter, in_out, cpu)
-                        }
                         return chacha20_ctr32_ffi!(
-                            unsafe {
-                                (SSE_MIN_LEN, Ssse3, Overlapping<'_>) => ChaCha20_ctr32_ssse3
-                            },
-                            self, counter, in_out, cpu)
+                            unsafe { (SSE_MIN_LEN, Ssse3, Overlapping<'_>) =>
+                                ChaCha20_ctr32_ssse3_4x },
+                            self, counter, in_out, cpu);
                     }
                 }
                 if in_out.len() >= 1 {
