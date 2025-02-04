@@ -24,6 +24,24 @@ import (
 // The following structures reflect the JSON of ACVP KAS KDF tests. See
 // https://pages.nist.gov/ACVP/draft-hammett-acvp-kas-kdf-hkdf.html
 
+type multiModeKda struct {
+	modes map[string]primitive
+}
+
+func (k multiModeKda) Process(vectorSet []byte, m Transactable) (any, error) {
+	var vector struct {
+		Mode string `json:"mode"`
+	}
+	if err := json.Unmarshal(vectorSet, &vector); err != nil {
+		return nil, fmt.Errorf("invalid KDA test vector: %w", err)
+	}
+	mode, ok := k.modes[vector.Mode]
+	if !ok {
+		return nil, fmt.Errorf("unsupported KDA mode %q", vector.Mode)
+	}
+	return mode.Process(vectorSet, m)
+}
+
 type hkdfTestVectorSet struct {
 	Groups []hkdfTestGroup `json:"testGroups"`
 }
