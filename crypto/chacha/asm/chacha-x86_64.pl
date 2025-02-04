@@ -405,161 +405,6 @@ $code.=<<___;
 ___
 
 ########################################################################
-# SSSE3 code path that handles shorter lengths
-{
-my ($a,$b,$c,$d,$t,$t1,$rot16,$rot24)=map("%xmm$_",(0..7));
-
-sub SSSE3ROUND {	# critical path is 20 "SIMD ticks" per round
-	&paddd	($a,$b);
-	&pxor	($d,$a);
-	&pshufb	($d,$rot16);
-
-	&paddd	($c,$d);
-	&pxor	($b,$c);
-	&movdqa	($t,$b);
-	&psrld	($b,20);
-	&pslld	($t,12);
-	&por	($b,$t);
-
-	&paddd	($a,$b);
-	&pxor	($d,$a);
-	&pshufb	($d,$rot24);
-
-	&paddd	($c,$d);
-	&pxor	($b,$c);
-	&movdqa	($t,$b);
-	&psrld	($b,25);
-	&pslld	($t,7);
-	&por	($b,$t);
-}
-
-my $xframe = $win64 ? 32+8 : 8;
-
-$code.=<<___;
-.globl	ChaCha20_ctr32_ssse3
-.type	ChaCha20_ctr32_ssse3,\@function,5
-.align	32
-ChaCha20_ctr32_ssse3:
-.cfi_startproc
-	_CET_ENDBR
-	mov	%rsp,%r9		# frame pointer
-.cfi_def_cfa_register	r9
-___
-$code.=<<___;
-	sub	\$64+$xframe,%rsp
-___
-$code.=<<___	if ($win64);
-	movaps	%xmm6,-0x28(%r9)
-	movaps	%xmm7,-0x18(%r9)
-.Lssse3_body:
-___
-$code.=<<___;
-	movdqa	.Lsigma(%rip),$a
-	movdqu	($key),$b
-	movdqu	16($key),$c
-	movdqu	($counter),$d
-	movdqa	.Lrot16(%rip),$rot16
-	movdqa	.Lrot24(%rip),$rot24
-
-	movdqa	$a,0x00(%rsp)
-	movdqa	$b,0x10(%rsp)
-	movdqa	$c,0x20(%rsp)
-	movdqa	$d,0x30(%rsp)
-	mov	\$10,$counter		# reuse $counter
-	jmp	.Loop_ssse3
-
-.align	32
-.Loop_outer_ssse3:
-	movdqa	.Lone(%rip),$d
-	movdqa	0x00(%rsp),$a
-	movdqa	0x10(%rsp),$b
-	movdqa	0x20(%rsp),$c
-	paddd	0x30(%rsp),$d
-	mov	\$10,$counter
-	movdqa	$d,0x30(%rsp)
-	jmp	.Loop_ssse3
-
-.align	32
-.Loop_ssse3:
-___
-	&SSSE3ROUND();
-	&pshufd	($c,$c,0b01001110);
-	&pshufd	($b,$b,0b00111001);
-	&pshufd	($d,$d,0b10010011);
-	&nop	();
-
-	&SSSE3ROUND();
-	&pshufd	($c,$c,0b01001110);
-	&pshufd	($b,$b,0b10010011);
-	&pshufd	($d,$d,0b00111001);
-
-	&dec	($counter);
-	&jnz	(".Loop_ssse3");
-
-$code.=<<___;
-	paddd	0x00(%rsp),$a
-	paddd	0x10(%rsp),$b
-	paddd	0x20(%rsp),$c
-	paddd	0x30(%rsp),$d
-
-	cmp	\$64,$len
-	jb	.Ltail_ssse3
-
-	movdqu	0x00($inp),$t
-	movdqu	0x10($inp),$t1
-	pxor	$t,$a			# xor with input
-	movdqu	0x20($inp),$t
-	pxor	$t1,$b
-	movdqu	0x30($inp),$t1
-	lea	0x40($inp),$inp		# inp+=64
-	pxor	$t,$c
-	pxor	$t1,$d
-
-	movdqu	$a,0x00($out)		# write output
-	movdqu	$b,0x10($out)
-	movdqu	$c,0x20($out)
-	movdqu	$d,0x30($out)
-	lea	0x40($out),$out		# out+=64
-
-	sub	\$64,$len
-	jnz	.Loop_outer_ssse3
-
-	jmp	.Ldone_ssse3
-
-.align	16
-.Ltail_ssse3:
-	movdqa	$a,0x00(%rsp)
-	movdqa	$b,0x10(%rsp)
-	movdqa	$c,0x20(%rsp)
-	movdqa	$d,0x30(%rsp)
-	xor	$counter,$counter
-
-.Loop_tail_ssse3:
-	movzb	($inp,$counter),%eax
-	movzb	(%rsp,$counter),%ecx
-	lea	1($counter),$counter
-	xor	%ecx,%eax
-	mov	%al,-1($out,$counter)
-	dec	$len
-	jnz	.Loop_tail_ssse3
-
-.Ldone_ssse3:
-___
-$code.=<<___	if ($win64);
-	movaps	-0x28(%r9),%xmm6
-	movaps	-0x18(%r9),%xmm7
-___
-$code.=<<___;
-	lea	(%r9),%rsp
-.cfi_def_cfa_register	rsp
-.Lssse3_epilogue:
-	ret
-.cfi_endproc
-.size	ChaCha20_ctr32_ssse3,.-ChaCha20_ctr32_ssse3
-___
-}
-
-########################################################################
 # SSSE3 code path that handles longer messages.
 {
 # assign variables to favor Atom front-end
@@ -1964,10 +1809,6 @@ full_handler:
 	.rva	.LSEH_end_ChaCha20_ctr32_nohw
 	.rva	.LSEH_info_ChaCha20_ctr32_nohw
 
-	.rva	.LSEH_begin_ChaCha20_ctr32_ssse3
-	.rva	.LSEH_end_ChaCha20_ctr32_ssse3
-	.rva	.LSEH_info_ChaCha20_ctr32_ssse3
-
 	.rva	.LSEH_begin_ChaCha20_ctr32_ssse3_4x
 	.rva	.LSEH_end_ChaCha20_ctr32_ssse3_4x
 	.rva	.LSEH_info_ChaCha20_ctr32_ssse3_4x
@@ -1983,11 +1824,6 @@ $code.=<<___;
 .LSEH_info_ChaCha20_ctr32_nohw:
 	.byte	9,0,0,0
 	.rva	se_handler
-
-.LSEH_info_ChaCha20_ctr32_ssse3:
-	.byte	9,0,0,0
-	.rva	ssse3_handler
-	.rva	.Lssse3_body,.Lssse3_epilogue
 
 .LSEH_info_ChaCha20_ctr32_ssse3_4x:
 	.byte	9,0,0,0
