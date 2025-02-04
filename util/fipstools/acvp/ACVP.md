@@ -148,6 +148,7 @@ The other commands are as follows. (Note that you only need to implement the com
 | SSHKDF/&lt;HASH&gt;/server | K, H, SessionID, cipher algorithm | server IV key, server encryption key, server integrity key |
 | KTS-IFC/&lt;HASH&gt;/initiator | output length bytes, serverN bytes, serverE bytes | generated ciphertext (iutC), derived keying material (dkm) |
 | KTS-IFC/&lt;HASH&gt;/responder | iutN bytes, iutE bytes, iutP bytes, iutQ bytes, iutD bytes, ciphertext (serverC) bytes | derived keying material (dkm) |
+| OneStepNoCounter/&lt;HASH&gt; | key, info, salt, output length bytes | derived key |
 
 ¹ The iterated tests would result in excessive numbers of round trips if the module wrapper handled only basic operations. Thus some ACVP logic is pushed down for these tests so that the inner loop can be handled locally. Either read the NIST documentation ([block-ciphers](https://pages.nist.gov/ACVP/draft-celi-acvp-symmetric.html#name-monte-carlo-tests-for-block) [hashes](https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-monte-carlo-tests-for-sha-1)) to understand the iteration count and return values or, probably more fruitfully, see how these functions are handled in the `modulewrapper` directory.
 

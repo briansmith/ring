@@ -23,6 +23,7 @@ import (
 
 // The following structures reflect the JSON of ACVP KAS KDF tests. See
 // https://pages.nist.gov/ACVP/draft-hammett-acvp-kas-kdf-hkdf.html
+// https://pages.nist.gov/ACVP/draft-hammett-acvp-kas-kdf-onestepnocounter.html
 
 type multiModeKda struct {
 	modes map[string]primitive
@@ -42,7 +43,28 @@ func (k multiModeKda) Process(vectorSet []byte, m Transactable) (any, error) {
 	return mode.Process(vectorSet, m)
 }
 
+type kdaPartyInfo struct {
+	IDHex    string `json:"partyId"`
+	ExtraHex string `json:"ephemeralData"`
+}
+
+func (p *kdaPartyInfo) data() ([]byte, error) {
+	ret, err := hex.DecodeString(p.IDHex)
+	if err != nil {
+		return nil, err
+	}
+	if len(p.ExtraHex) > 0 {
+		extra, err := hex.DecodeString(p.ExtraHex)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, extra...)
+	}
+	return ret, nil
+}
+
 type hkdfTestVectorSet struct {
+	Mode   string          `json:"mode"`
 	Groups []hkdfTestGroup `json:"testGroups"`
 }
 
@@ -56,8 +78,8 @@ type hkdfTestGroup struct {
 type hkdfTest struct {
 	ID          uint64         `json:"tcId"`
 	Params      hkdfParameters `json:"kdfParameter"`
-	PartyU      hkdfPartyInfo  `json:"fixedInfoPartyU"`
-	PartyV      hkdfPartyInfo  `json:"fixedInfoPartyV"`
+	PartyU      kdaPartyInfo   `json:"fixedInfoPartyU"`
+	PartyV      kdaPartyInfo   `json:"fixedInfoPartyV"`
 	ExpectedHex string         `json:"dkm"`
 }
 
@@ -99,28 +121,6 @@ func (p *hkdfParameters) extract() (key, salt []byte, err error) {
 	return key, salt, nil
 }
 
-type hkdfPartyInfo struct {
-	IDHex    string `json:"partyId"`
-	ExtraHex string `json:"ephemeralData"`
-}
-
-func (p *hkdfPartyInfo) data() ([]byte, error) {
-	ret, err := hex.DecodeString(p.IDHex)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(p.ExtraHex) > 0 {
-		extra, err := hex.DecodeString(p.ExtraHex)
-		if err != nil {
-			return nil, err
-		}
-		ret = append(ret, extra...)
-	}
-
-	return ret, nil
-}
-
 type hkdfTestGroupResponse struct {
 	ID    uint64             `json:"tgId"`
 	Tests []hkdfTestResponse `json:"tests"`
@@ -138,6 +138,10 @@ func (k *hkdf) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed hkdfTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
+	}
+
+	if parsed.Mode != "HKDF" {
+		return nil, fmt.Errorf("unexpected KDA mode %q", parsed.Mode)
 	}
 
 	var respGroups []hkdfTestGroupResponse
@@ -193,6 +197,174 @@ func (k *hkdf) Process(vectorSet []byte, m Transactable) (any, error) {
 				if len(result[0]) != int(outBytes) {
 					return fmt.Errorf("HKDF operation resulted in %d bytes but wanted %d", len(result[0]), outBytes)
 				}
+				if isValidationTest {
+					passed := bytes.Equal(expected, result[0])
+					testResp.Passed = &passed
+				} else {
+					testResp.KeyOut = hex.EncodeToString(result[0])
+				}
+
+				groupResp.Tests = append(groupResp.Tests, testResp)
+				return nil
+			})
+		}
+
+		m.Barrier(func() {
+			respGroups = append(respGroups, groupResp)
+		})
+	}
+
+	if err := m.Flush(); err != nil {
+		return nil, err
+	}
+
+	return respGroups, nil
+}
+
+type oneStepTestVectorSet struct {
+	Mode   string             `json:"mode"`
+	Groups []oneStepTestGroup `json:"testGroups"`
+}
+
+type oneStepTestGroup struct {
+	ID     uint64               `json:"tgId"`
+	Type   string               `json:"testType"` // AFT or VAL
+	Config oneStepConfiguration `json:"kdfConfiguration"`
+	Tests  []oneStepTest        `json:"tests"`
+}
+
+type oneStepConfiguration struct {
+	Type               string `json:"kdfType"`
+	SaltMethod         string `json:"saltMethod"`
+	FixedInfoPattern   string `json:"fixedInfoPattern"`
+	FixedInputEncoding string `json:"fixedInfoEncoding"`
+	AuxFunction        string `json:"auxFunction"`
+	OutputBits         uint32 `json:"l"`
+}
+
+func (c *oneStepConfiguration) extract() (outBytes uint32, auxFunction string, err error) {
+	if c.Type != "oneStepNoCounter" ||
+		c.FixedInfoPattern != "uPartyInfo||vPartyInfo" ||
+		c.FixedInputEncoding != "concatenation" ||
+		c.OutputBits%8 != 0 {
+		return 0, "", fmt.Errorf("KDA not configured for OneStepNoCounter: %#v", c)
+	}
+	return c.OutputBits / 8, c.AuxFunction, nil
+}
+
+type oneStepTest struct {
+	ID              uint64                `json:"tcId"`
+	Params          oneStepTestParameters `json:"kdfParameter"`
+	FixedInfoPartyU kdaPartyInfo          `json:"fixedInfoPartyU"`
+	FixedInfoPartyV kdaPartyInfo          `json:"fixedInfoPartyV"`
+	DerivedKeyHex   string                `json:"dkm,omitempty"` // For VAL tests only.
+}
+
+type oneStepTestParameters struct {
+	KdfType    string `json:"kdfType"`
+	SaltHex    string `json:"salt"`
+	ZHex       string `json:"z"`
+	OutputBits uint32 `json:"l"`
+}
+
+func (p oneStepTestParameters) extract() (key []byte, salt []byte, outLen uint32, err error) {
+	if p.KdfType != "oneStepNoCounter" ||
+		p.OutputBits%8 != 0 {
+		return nil, nil, 0, fmt.Errorf("KDA not configured for OneStepNoCounter: %#v", p)
+	}
+	outLen = p.OutputBits / 8
+	salt, err = hex.DecodeString(p.SaltHex)
+	if err != nil {
+		return
+	}
+	key, err = hex.DecodeString(p.ZHex)
+	if err != nil {
+		return
+	}
+	return
+}
+
+type oneStepTestGroupResponse struct {
+	ID    uint64                `json:"tgId"`
+	Tests []oneStepTestResponse `json:"tests"`
+}
+
+type oneStepTestResponse struct {
+	ID     uint64 `json:"tcId"`
+	KeyOut string `json:"dkm,omitempty"`        // For AFT
+	Passed *bool  `json:"testPassed,omitempty"` // For VAL
+}
+
+type oneStepNoCounter struct{}
+
+func (k oneStepNoCounter) Process(vectorSet []byte, m Transactable) (any, error) {
+	var parsed oneStepTestVectorSet
+	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
+		return nil, err
+	}
+
+	if parsed.Mode != "OneStepNoCounter" {
+		return nil, fmt.Errorf("unexpected KDA mode %q", parsed.Mode)
+	}
+
+	var respGroups []oneStepTestGroupResponse
+	for _, group := range parsed.Groups {
+		group := group
+
+		groupResp := oneStepTestGroupResponse{ID: group.ID}
+		outBytes, hashName, err := group.Config.extract()
+		if err != nil {
+			return nil, err
+		}
+
+		var isValidationTest bool
+		switch group.Type {
+		case "VAL":
+			isValidationTest = true
+		case "AFT":
+			isValidationTest = false
+		default:
+			return nil, fmt.Errorf("unknown test type %q", group.Type)
+		}
+
+		for _, test := range group.Tests {
+			test := test
+			testResp := oneStepTestResponse{ID: test.ID}
+
+			key, salt, paramsOutBytes, err := test.Params.extract()
+			if err != nil {
+				return nil, err
+			}
+			if paramsOutBytes != outBytes {
+				return nil, fmt.Errorf("test %d in group %d: output length mismatch: %d != %d", test.ID, group.ID, paramsOutBytes, outBytes)
+			}
+
+			uData, err := test.FixedInfoPartyU.data()
+			if err != nil {
+				return nil, err
+			}
+			vData, err := test.FixedInfoPartyV.data()
+			if err != nil {
+				return nil, err
+			}
+
+			info := make([]byte, 0, len(uData)+len(vData))
+			info = append(info, uData...)
+			info = append(info, vData...)
+			var expected []byte
+			if isValidationTest {
+				expected, err = hex.DecodeString(test.DerivedKeyHex)
+				if err != nil {
+					return nil, fmt.Errorf("test %d in group %d: invalid DerivedKeyHex: %w", test.ID, group.ID, err)
+				}
+			}
+
+			cmd := "OneStepNoCounter/" + hashName
+			m.TransactAsync(cmd, 1, [][]byte{key, info, salt, uint32le(outBytes)}, func(result [][]byte) error {
+				if len(result[0]) != int(outBytes) {
+					return fmt.Errorf("OneStepNoCounter operation resulted in %d bytes but wanted %d", len(result[0]), outBytes)
+				}
+
 				if isValidationTest {
 					passed := bytes.Equal(expected, result[0])
 					testResp.Passed = &passed
