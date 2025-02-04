@@ -161,11 +161,9 @@ features! {
 pub(super) mod featureflags {
     use super::{detect, ALL_FEATURES, ARMCAP_STATIC, NEON};
     use crate::cpu;
-    use core::ptr;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
-        // SAFETY: `init` must be called only in `INIT.call_once(init)` below.
-        unsafe fn init() {
+        fn init() -> u32 {
             let detected = detect::detect_features();
             let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
                 ALL_FEATURES
@@ -181,51 +179,53 @@ pub(super) mod featureflags {
             });
             let detected = detected & !filtered;
             let merged = ARMCAP_STATIC | detected;
-            // TODO(MSRV 1.82.0): Remove `unsafe`.
-            #[allow(unused_unsafe)]
-            let p = unsafe { ptr::addr_of_mut!(OPENSSL_armcap_P) };
-            // SAFETY: This is the only writer. Any concurrent reading doesn't
-            // affect the safety of this write.
-            unsafe {
-                p.write(merged);
+
+            #[cfg(target_arch = "arm")]
+            if (merged & NEON.mask) == NEON.mask {
+                prefixed_extern! {
+                    static mut neon_available: u32;
+                }
+
+                // TODO(MSRV 1.82.0): Remove `unsafe`.
+                #[allow(unused_unsafe)]
+                let p = unsafe { core::ptr::addr_of_mut!(neon_available) };
+
+                // SAFETY: This is the only writer, and concurrent writing is
+                // prevented as this is the `OnceLock`-like one-time
+                // initialization provided by `spin::Once`. Any concurrent
+                // reading doesn't affect the safety of this write. Any read
+                // of `neon_available` before this initialization will be zero,
+                // which is safe (no risk of illegal instructions) and correct
+                // (the value computed will be the same regardless).
+                //
+                // The way we use `spin::Once` ensures the happens-before
+                // relationship that is needed for readers to observe this
+                // write.
+                unsafe {
+                    p.write(1);
+                }
             }
+
+            merged
         }
-        static INIT: spin::Once<()> = spin::Once::new();
+
         // SAFETY: This is the only caller. Any concurrent reading doesn't
         // affect the safety of the writing.
-        let () = INIT.call_once(|| unsafe { init() });
+        let _: &u32 = FEATURES.call_once(init);
+
         // SAFETY: We initialized the CPU features as required.
-        // `INIT.call_once` has `happens-before` semantics.
         unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }
     }
 
     pub(super) fn get(_cpu_features: cpu::Features) -> u32 {
-        // TODO(MSRV 1.82.0): Remove `unsafe`.
-        #[allow(unused_unsafe)]
-        let p = unsafe { ptr::addr_of!(OPENSSL_armcap_P) };
-
         // SAFETY: Since only `get_or_init()` could have created
-        // `_cpu_features`, and it only does so after the `INIT.call_once()`,
-        // which guarantees `happens-before` semantics, we can read from
-        // `OPENSSL_armcap_P` without further synchronization.
-        unsafe { ptr::read(p) }
+        // `_cpu_features`, and it only does so after `FEATURES.call_once()`,
+        // we have met the prerequisites for calling `get_unchecked()`.
+        let features: &u32 = unsafe { FEATURES.get_unchecked() };
+        *features
     }
 
-    // Some non-Rust code still checks this even when it is statically known
-    // the given feature is available, so we have to ensure that this is
-    // initialized properly. Keep this in sync with the initialization in
-    // BoringSSL's crypto.c.
-    //
-    // SAFETY:
-    // - Some C code accesses `OPENSSL_armcap_P` directly.
-    //   Callers of those functions must obtain a `cpu::Features` before calling
-    //   them.
-    // - `OPENSSL_armcap_P` must always be a superset of `ARMCAP_STATIC`.
-    // TODO: Remove all the direct accesses of this from assembly language code, and then replace this
-    // with a `OnceCell<u32>` that will provide all the necessary safety guarantees.
-    prefixed_extern! {
-        static mut OPENSSL_armcap_P: u32;
-    }
+    static FEATURES: spin::Once<u32> = spin::Once::new();
 }
 
 #[allow(clippy::assertions_on_constants)]

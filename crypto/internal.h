@@ -572,8 +572,7 @@ static inline int CRYPTO_is_ADX_capable(void) {
 
 
 #if defined(OPENSSL_ARM)
-// OPENSSL_armcap_P contains ARM CPU capabilities.
-extern uint32_t OPENSSL_armcap_P;
+extern uint32_t neon_available;
 #endif  // OPENSSL_ARM
 
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H
