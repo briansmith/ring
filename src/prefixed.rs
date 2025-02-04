@@ -46,7 +46,24 @@ macro_rules! prefixed_extern {
         }
     };
 
-    // A global variable.
+    // A `static` global variable.
+    {
+        $( #[$meta:meta] )*
+        $vis:vis static $name:ident: $typ:ty;
+    } => {
+        extern "C" {
+            prefixed_item! {
+                link_name
+                $name
+                {
+                    $( #[$meta] )*
+                    $vis static $name: $typ;
+                }
+            }
+        }
+    };
+
+    // A `static mut` global variable.
     {
         $( #[$meta:meta] )*
         $vis:vis static mut $name:ident: $typ:ty;

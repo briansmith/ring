@@ -533,41 +533,11 @@ static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
 // Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the XMM, YMM,
 // and AVX512 bits in XCR0, so it is not necessary to check those. (WARNING: See
 // caveats in cpu_intel.c.)
-//
-// From C, this symbol should only be accessed with |OPENSSL_get_ia32cap|.
 extern uint32_t OPENSSL_ia32cap_P[4];
-
-// Intentionally racy. The Rust code that uses the C code ensures that
-// `OPENSSL_ia32cap_P` is initialized by instantiating `cpu::Features`
-// before calling into any function that uses this.
-static inline uint32_t OPENSSL_get_ia32cap(int idx) {
-  return OPENSSL_ia32cap_P[idx];
-}
-
-static inline int CRYPTO_is_AVX2_capable(void) {
-#if defined(__AVX2__)
-  return 1;
-#else
-  return (OPENSSL_get_ia32cap(2) & (1u << 5)) != 0;
+#if defined(OPENSSL_X86_64)
+extern uint32_t avx2_available;
+extern uint32_t adx_bmi2_available;
 #endif
-}
-
-static inline int CRYPTO_is_BMI2_capable(void) {
-#if defined(__BMI2__)
-  return 1;
-#else
-  return (OPENSSL_get_ia32cap(2) & (1u << 8)) != 0;
-#endif
-}
-
-static inline int CRYPTO_is_ADX_capable(void) {
-#if defined(__ADX__)
-  return 1;
-#else
-  return (OPENSSL_get_ia32cap(2) & (1u << 19)) != 0;
-#endif
-}
-
 #endif
 
 
