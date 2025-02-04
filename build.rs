@@ -64,7 +64,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/mem.c"),
     (&[], "crypto/poly1305/poly1305.c"),
 
-    (&[AARCH64, ARM, X86_64, X86], "crypto/crypto.c"),
+    (&[ARM, X86_64, X86], "crypto/crypto.c"),
 
     (&[X86_64, X86], "crypto/cpu_intel.c"),
 
@@ -876,7 +876,6 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "LIMBS_window5_split_window",
         "LIMBS_window5_unsplit_window",
         "LIMB_shr",
-        "OPENSSL_armcap_P",
         "OPENSSL_cpuid_setup",
         "OPENSSL_ia32cap_P",
         "aes_hw_ctr32_encrypt_blocks",
@@ -950,6 +949,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "ecp_nistz256_neg",
         "ecp_nistz256_select_w5",
         "ecp_nistz256_select_w7",
+        "neon_available",
         "p256_mul_mont",
         "p256_point_add",
         "p256_point_add_affine",
