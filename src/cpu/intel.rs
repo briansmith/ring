@@ -132,7 +132,8 @@ impl Feature {
 }
 
 macro_rules! impl_get_feature_cpuid {
-    { ( $( $arch:expr ),+ ) => ($word:expr, $bit:expr) => $NAME:ident => $Name:ident } => {
+    { $( { ( $( $arch:expr ),+ ) => ($word:expr, $bit:expr) => $NAME:ident => $Name:ident }, )+ } => {
+      $(
         #[cfg(any( $( target_arch = $arch ),+ ))]
         const $NAME: Feature = Feature {
             word: $word,
@@ -141,28 +142,28 @@ macro_rules! impl_get_feature_cpuid {
 
         #[cfg(any( $( target_arch = $arch ),+ ))]
         impl_get_feature! { $NAME => $Name }
+      )+
     }
 }
 
-impl_get_feature_cpuid! { ("x86", "x86_64") => (0, 24) => FXSR => Fxsr }
-
-// Synthesized
-impl_get_feature_cpuid! { ("x86_64") => (0, 30) => INTEL_CPU => IntelCpu }
-
-impl_get_feature_cpuid! { ("x86", "x86_64") => (1, 1) => PCLMULQDQ => ClMul }
-impl_get_feature_cpuid! { ("x86", "x86_64") => (1, 9) => SSSE3 => Ssse3 }
-impl_get_feature_cpuid! { ("x86", "x86_64") => (1, 19) => SSE41 => Sse41 }
-impl_get_feature_cpuid! { ("x86_64") => (1, 22) => MOVBE => Movbe }
-impl_get_feature_cpuid! { ("x86", "x86_64") => (1, 25) => AES => Aes }
-impl_get_feature_cpuid! { ("x86", "x86_64") => (1, 28) => AVX => Avx }
-impl_get_feature_cpuid! { ("x86_64") => (2, 3) => BMI1 => Bmi1 }
-impl_get_feature_cpuid! { ("x86_64") => (2, 5) => AVX2 => Avx2 }
-impl_get_feature_cpuid! { ("x86_64") => (2, 8) => BMI2 => Bmi2 }
-impl_get_feature_cpuid! { ("x86_64") => (2, 19) => ADX => Adx }
-
-// See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
-// static feature detection for this.
-impl_get_feature_cpuid! { ("x86_64") => (2, 29) => SHA => Sha }
+impl_get_feature_cpuid! {
+    // Synthesized
+    { ("x86_64") => (0, 30) => INTEL_CPU => IntelCpu },
+    { ("x86", "x86_64") => (0, 24) => FXSR => Fxsr },
+    { ("x86", "x86_64") => (1, 1) => PCLMULQDQ => ClMul },
+    { ("x86", "x86_64") => (1, 9) => SSSE3 => Ssse3 },
+    { ("x86", "x86_64") => (1, 19) => SSE41 => Sse41 },
+    { ("x86_64") => (1, 22) => MOVBE => Movbe },
+    { ("x86", "x86_64") => (1, 25) => AES => Aes },
+    { ("x86", "x86_64") => (1, 28) => AVX => Avx },
+    { ("x86_64") => (2, 3) => BMI1 => Bmi1 },
+    { ("x86_64") => (2, 5) => AVX2 => Avx2 },
+    { ("x86_64") => (2, 8) => BMI2 => Bmi2 },
+    { ("x86_64") => (2, 19) => ADX => Adx },
+    // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
+    // static feature detection for this.
+    { ("x86_64") => (2, 29) => SHA => Sha },
+}
 
 cfg_if! {
     if #[cfg(target_arch = "x86_64")] {
