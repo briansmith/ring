@@ -83,19 +83,19 @@ impl Feature {
     }
 }
 
-#[allow(dead_code)]
+#[cfg(target_arch = "x86_64")]
 const ADX: Feature = Feature {
     word: 2,
     mask: 1 << 19,
 };
 
-#[allow(dead_code)]
+#[cfg(target_arch = "x86_64")]
 const BMI1: Feature = Feature {
     word: 2,
     mask: 1 << 3,
 };
 
-#[allow(dead_code)]
+#[cfg(target_arch = "x86_64")]
 const BMI2: Feature = Feature {
     word: 2,
     mask: 1 << 8,
@@ -121,15 +121,36 @@ const SSSE3: Feature = Feature {
     mask: 1 << 9,
 };
 
-#[allow(dead_code)]
+#[cfg(target_arch = "x86_64")]
 const SSE41: Feature = Feature {
     word: 1,
     mask: 1 << 19,
 };
 
+#[cfg(target_arch = "x86_64")]
+const MOVBE: Feature = Feature {
+    word: 1,
+    mask: 1 << 22,
+};
+
+
 const AES: Feature = Feature {
     word: 1,
     mask: 1 << 25,
+};
+
+#[cfg(target_arch = "x86_64")]
+const AVX2: Feature = Feature {
+    word: 2,
+    mask: 1 << 5,
+};
+
+// See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
+// static feature detection for this.
+#[cfg(target_arch = "x86_64")]
+const SHA: Feature = Feature {
+    word: 2,
+    mask: 1 << 29,
 };
 
 impl_get_feature! { AES => Aes }
@@ -139,7 +160,7 @@ impl_get_feature! { SSSE3 => Ssse3 }
 impl_get_feature! { AVX => Avx }
 
 cfg_if! {
-    if #[cfg(any(target_arch = "x86_64"))] {
+    if #[cfg(target_arch = "x86_64")] {
         //
         const INTEL_CPU: Feature = Feature {
             word: 0,
@@ -147,28 +168,11 @@ cfg_if! {
         };
         impl_get_feature!{ INTEL_CPU => IntelCpu }
 
-        const MOVBE: Feature = Feature {
-            word: 1,
-            mask: 1 << 22,
-        };
-
         // We intentionally avoid defining an `XSave` accessor function. See
         // `Ssse3::cpu_perf_is_like_silvermont`.
         const XSAVE_BUT_NOT_REALLY: Feature = Feature {
             word: 1,
             mask: 1 << 26,
-        };
-
-        const AVX2: Feature = Feature {
-            word: 2,
-            mask: 1 << 5,
-        };
-
-        // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
-        // static feature detection for this.
-        const SHA: Feature = Feature {
-            word: 2,
-            mask: 1 << 29,
         };
 
         impl_get_feature!{ SSE41 => Sse41 }
