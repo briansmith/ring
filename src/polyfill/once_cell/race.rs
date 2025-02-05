@@ -34,7 +34,9 @@ impl OnceNonZeroUsize {
     /// Creates a new empty cell.
     #[inline]
     pub const fn new() -> OnceNonZeroUsize {
-        OnceNonZeroUsize { inner: AtomicUsize::new(0) }
+        OnceNonZeroUsize {
+            inner: AtomicUsize::new(0),
+        }
     }
 
     /// Gets the underlying value.
@@ -78,7 +80,8 @@ impl OnceNonZeroUsize {
             None => {
                 let mut val = f()?.get();
                 let exchange =
-                    self.inner.compare_exchange(0, val, Ordering::AcqRel, Ordering::Acquire);
+                    self.inner
+                        .compare_exchange(0, val, Ordering::AcqRel, Ordering::Acquire);
                 if let Err(old) = exchange {
                     val = old;
                 }
