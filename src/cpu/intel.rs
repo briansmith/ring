@@ -37,7 +37,11 @@ mod abi_assumptions {
 }
 
 pub(super) mod featureflags {
-    use crate::cpu;
+    use crate::{
+        cpu,
+        polyfill::{once_cell::race, usize_from_u32},
+    };
+    use core::num::NonZeroUsize;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
         // SAFETY: `OPENSSL_cpuid_setup` must be called only in
@@ -46,13 +50,15 @@ pub(super) mod featureflags {
             fn OPENSSL_cpuid_setup(out: &mut [u32; 4]);
         }
 
-        let _: &u32 = FEATURES.call_once(|| {
+        let _: NonZeroUsize = FEATURES.get_or_init(|| {
             let mut cpuid = [0; 4];
             // SAFETY: We assume that it is safe to execute CPUID and XGETBV.
             unsafe {
                 OPENSSL_cpuid_setup(&mut cpuid);
             }
-            super::cpuid_to_caps_and_set_c_flags(&cpuid)
+            let caps = super::cpuid_to_caps_and_set_c_flags(&cpuid);
+            let caps = usize_from_u32(caps) | (1 << (super::Shift::Initialized as u32));
+            NonZeroUsize::new(caps).unwrap() // Can't fail because we just set a bit of `caps`.
         });
 
         // SAFETY: We initialized the CPU features as required.
@@ -62,13 +68,21 @@ pub(super) mod featureflags {
 
     pub(in super::super) fn get(_cpu_features: cpu::Features) -> u32 {
         // SAFETY: Since only `get_or_init()` could have created
-        // `_cpu_features`, and it only does so after `FEATURES.call_once()`,
-        // we have met the prerequisites for calling `get_unchecked()`.
-        let features: &u32 = unsafe { FEATURES.get_unchecked() };
-        *features
+        // `_cpu_features`, and it only does so after `FEATURES.get_or_init()`,
+        // we know we are reading from `FEATURES` after initializing it.
+        //
+        // Also, 0 means "no features detected" to users, which is designed to
+        // be a safe configuration.
+        let features = FEATURES.get().map(NonZeroUsize::get).unwrap_or(0);
+
+        // The truncation is lossless, as we set the value with a u32.
+        #[allow(clippy::cast_possible_truncation)]
+        let features = features as u32;
+
+        features
     }
 
-    static FEATURES: spin::Once<u32> = spin::Once::new();
+    static FEATURES: race::OnceNonZeroUsize = race::OnceNonZeroUsize::new();
 
     pub const STATIC_DETECTED: u32 = 0;
     pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
@@ -139,6 +153,10 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
         prefixed_extern! {
             static avx2_available: AtomicU32;
         }
+        // SAFETY: The C code only reads `avx2_available`, and its reads are
+        // synchronized through the `OnceNonZeroUsize` Acquire/Release
+        // semantics as we ensure we have a `cpu::Features` instance before
+        // calling into the C code.
         let flag = unsafe { &avx2_available };
         flag.store(1, core::sync::atomic::Ordering::Relaxed);
     }
@@ -157,6 +175,10 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
                 prefixed_extern! {
                     static adx_bmi2_available: AtomicU32;
                 }
+                // SAFETY: The C code only reads `adx_bmi2_available`, and its
+                // reads are synchronized through the `OnceNonZeroUsize`
+                // Acquire/Release semantics as we ensure we have a
+                // `cpu::Features` instance before calling into the C code.
                 let flag = unsafe { &adx_bmi2_available };
                 flag.store(1, core::sync::atomic::Ordering::Relaxed);
             }
