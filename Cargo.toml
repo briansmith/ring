@@ -160,9 +160,6 @@ cfg-if = { version = "1.0.0", default-features = false }
 getrandom = { version = "0.2.10" }
 untrusted = { version = "0.9" }
 
-[target.'cfg(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")))'.dependencies]
-spin = { version = "0.9.8", default-features = false, features = ["once"] }
-
 [target.'cfg(all(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")), any(target_os = "android", target_os = "linux")))'.dependencies]
 libc = { version = "0.2.148", default-features = false }
 

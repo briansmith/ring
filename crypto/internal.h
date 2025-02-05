@@ -541,7 +541,7 @@ extern uint32_t adx_bmi2_available;
 
 
 #if defined(OPENSSL_ARM)
-extern uint32_t neon_available;
+extern alignas(4) uint32_t neon_available;
 #endif  // OPENSSL_ARM
 
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H
