@@ -19,19 +19,12 @@
 //! `Acquire` and `Release` have very little performance overhead on most
 //! architectures versus `Relaxed`.
 
-#[cfg(not(feature = "portable-atomic"))]
 use core::sync::atomic;
-#[cfg(feature = "portable-atomic")]
-use portable_atomic as atomic;
 
-use atomic::{AtomicPtr, AtomicUsize, Ordering};
-use core::cell::UnsafeCell;
-use core::marker::PhantomData;
+use atomic::{AtomicUsize, Ordering};
 use core::num::NonZeroUsize;
-use core::ptr;
 
 /// A thread-safe cell which can be written to only once.
-#[derive(Default, Debug)]
 pub struct OnceNonZeroUsize {
     inner: AtomicUsize,
 }
@@ -48,20 +41,6 @@ impl OnceNonZeroUsize {
     pub fn get(&self) -> Option<NonZeroUsize> {
         let val = self.inner.load(Ordering::Acquire);
         NonZeroUsize::new(val)
-    }
-
-    /// Sets the contents of this cell to `value`.
-    ///
-    /// Returns `Ok(())` if the cell was empty and `Err(())` if it was
-    /// full.
-    #[inline]
-    pub fn set(&self, value: NonZeroUsize) -> Result<(), ()> {
-        let exchange =
-            self.inner.compare_exchange(0, value.get(), Ordering::AcqRel, Ordering::Acquire);
-        match exchange {
-            Ok(_) => Ok(()),
-            Err(_) => Err(()),
-        }
     }
 
     /// Gets the contents of the cell, initializing it with `f` if the cell was
