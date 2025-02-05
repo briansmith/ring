@@ -682,6 +682,20 @@ jobs:
             host_os: macos-13
 
           - target: i686-unknown-linux-gnu
+            cpu_model: coreduo-v1
+            features: --features=std
+            mode: --release
+            rust_channel: nightly
+            host_os: ubuntu-24.04
+
+          - target: x86_64-unknown-linux-gnu
+            cpu_model: phenom-v1
+            features: --features=std
+            mode: --release
+            rust_channel: nightly
+            host_os: ubuntu-24.04
+
+          - target: i686-unknown-linux-gnu
             cpu_model: Conroe-v1
             features: --features=std
             mode: --release
