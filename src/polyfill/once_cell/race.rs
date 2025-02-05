@@ -56,38 +56,26 @@ impl OnceNonZeroUsize {
     where
         F: FnOnce() -> NonZeroUsize,
     {
-        enum Void {}
-        match self.get_or_try_init(|| Ok::<NonZeroUsize, Void>(f())) {
-            Ok(val) => val,
-            Err(void) => match void {},
+        let val = self.inner.load(Ordering::Acquire);
+        match NonZeroUsize::new(val) {
+            Some(it) => it,
+            None => self.init_cold(f),
         }
     }
 
-    /// Gets the contents of the cell, initializing it with `f` if
-    /// the cell was empty. If the cell was empty and `f` failed, an
-    /// error is returned.
-    ///
-    /// If several threads concurrently run `get_or_init`, more than one `f` can
-    /// be called. However, all threads will return the same value, produced by
-    /// some `f`.
-    pub fn get_or_try_init<F, E>(&self, f: F) -> Result<NonZeroUsize, E>
+    #[cold]
+    #[inline(never)]
+    fn init_cold<F>(&self, f: F) -> NonZeroUsize
     where
-        F: FnOnce() -> Result<NonZeroUsize, E>,
+        F: FnOnce() -> NonZeroUsize,
     {
-        let val = self.inner.load(Ordering::Acquire);
-        let res = match NonZeroUsize::new(val) {
-            Some(it) => it,
-            None => {
-                let mut val = f()?.get();
-                let exchange =
-                    self.inner
-                        .compare_exchange(0, val, Ordering::AcqRel, Ordering::Acquire);
-                if let Err(old) = exchange {
-                    val = old;
-                }
-                unsafe { NonZeroUsize::new_unchecked(val) }
-            }
-        };
-        Ok(res)
+        let mut val = f().get();
+        let exchange = self
+            .inner
+            .compare_exchange(0, val, Ordering::AcqRel, Ordering::Acquire);
+        if let Err(old) = exchange {
+            val = old;
+        }
+        unsafe { NonZeroUsize::new_unchecked(val) }
     }
 }
