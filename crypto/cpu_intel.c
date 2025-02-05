@@ -116,7 +116,7 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 #endif
 }
 
-void OPENSSL_cpuid_setup(void) {
+void OPENSSL_cpuid_setup(uint32_t OPENSSL_ia32cap_P[4]) {
   // Determine the vendor and maximum input value.
   uint32_t eax, ebx, ecx, edx;
   OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0);

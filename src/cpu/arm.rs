@@ -61,6 +61,22 @@ cfg_if::cfg_if! {
     }
 }
 
+macro_rules! impl_get_feature_arm {
+    { $feature:path => $T:ident } => {
+        impl_get_feature!( $T );
+
+        impl crate::cpu::GetFeature<$T> for super::Features {
+            fn get_feature(&self) -> Option<$T> {
+                if $feature.available(*self) {
+                    Some($T(*self))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
 macro_rules! features {
     {
         $(
@@ -75,7 +91,7 @@ macro_rules! features {
             pub(crate) const $name: Feature = Feature {
                 mask: $mask,
             };
-            impl_get_feature!{ $name => $TyName }
+            impl_get_feature_arm!{ $name => $TyName }
         )+
 
         // See const assertions below.

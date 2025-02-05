@@ -533,7 +533,6 @@ static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
 // Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the XMM, YMM,
 // and AVX512 bits in XCR0, so it is not necessary to check those. (WARNING: See
 // caveats in cpu_intel.c.)
-extern uint32_t OPENSSL_ia32cap_P[4];
 #if defined(OPENSSL_X86_64)
 extern uint32_t avx2_available;
 extern uint32_t adx_bmi2_available;

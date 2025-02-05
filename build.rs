@@ -879,7 +879,6 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "LIMBS_window5_unsplit_window",
         "LIMB_shr",
         "OPENSSL_cpuid_setup",
-        "OPENSSL_ia32cap_P",
         "aes_hw_ctr32_encrypt_blocks",
         "aes_hw_set_encrypt_key",
         "aes_hw_set_encrypt_key_alt",
