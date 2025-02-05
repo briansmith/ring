@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use cfg_if::cfg_if;
+use core::{mem::align_of, sync::atomic::AtomicU32};
 
 mod abi_assumptions {
     use core::mem::size_of;
@@ -35,140 +36,191 @@ mod abi_assumptions {
     const _ASSUMED_ENDIANNESS: () = assert!(cfg!(target_endian = "little"));
 }
 
-struct Feature {
-    word: usize,
-    mask: u32,
-}
-
 pub(super) mod featureflags {
     use crate::cpu;
-    use core::ptr;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
         // SAFETY: `OPENSSL_cpuid_setup` must be called only in
         // `INIT.call_once()` below.
         prefixed_extern! {
-            fn OPENSSL_cpuid_setup();
+            fn OPENSSL_cpuid_setup(out: &mut [u32; 4]);
         }
-        static INIT: spin::Once<()> = spin::Once::new();
-        // SAFETY: This is the only caller. Any concurrent reading doesn't
-        // affect the safety of the writing.
-        let () = INIT.call_once(|| unsafe { OPENSSL_cpuid_setup() });
+
+        let _: &u32 = FEATURES.call_once(|| {
+            let mut cpuid = [0; 4];
+            // SAFETY: We assume that it is safe to execute CPUID and XGETBV.
+            unsafe {
+                OPENSSL_cpuid_setup(&mut cpuid);
+            }
+            super::cpuid_to_caps_and_set_c_flags(&cpuid)
+        });
 
         // SAFETY: We initialized the CPU features as required.
         // `INIT.call_once` has `happens-before` semantics.
-        let cpu = unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() };
+        unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }
+    }
 
-        #[cfg(target_arch = "x86_64")]
-        {
-            use super::{super::GetFeature as _, Adx, Avx2, Bmi2};
-            use core::{
-                mem::align_of,
-                sync::atomic::{AtomicU32, Ordering},
-            };
+    pub(super) fn get(_cpu_features: cpu::Features) -> u32 {
+        // SAFETY: Since only `get_or_init()` could have created
+        // `_cpu_features`, and it only does so after `FEATURES.call_once()`,
+        // we have met the prerequisites for calling `get_unchecked()`.
+        let features: &u32 = unsafe { FEATURES.get_unchecked() };
+        *features
+    }
 
-            // These are declared as `uint32_t` on the C side.
-            const _ATOMIC32_ALIGNMENT_EQUSLS_U32_ALIGNMENT: () =
-                assert!(align_of::<AtomicU32>() == align_of::<u32>());
+    static FEATURES: spin::Once<u32> = spin::Once::new();
+}
 
-            if matches!(cpu.get_feature(), Some((Adx { .. }, Bmi2 { .. }))) {
+fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
+    // The `prefixed_extern!` uses below assume this
+    const _ATOMIC32_ALIGNMENT_EQUSLS_U32_ALIGNMENT: () =
+        assert!(align_of::<AtomicU32>() == align_of::<u32>());
+
+    fn check(cpuid: &[u32; 4], idx: usize, bit: u32) -> bool {
+        let shifted = 1 << bit;
+        (cpuid[idx] & shifted) == shifted
+    }
+    fn set(out: &mut u32, shift: Shift) {
+        let shifted = 1 << (shift as u32);
+        debug_assert_eq!(*out & shifted, 0);
+        *out |= shifted;
+        debug_assert_eq!(*out & shifted, shifted);
+    }
+
+    let mut caps = 0;
+
+    if check(cpuid, 0, 24) {
+        set(&mut caps, Shift::Fxsr);
+    }
+
+    // Synthesized.
+    #[cfg(target_arch = "x86_64")]
+    if check(cpuid, 0, 30) {
+        set(&mut caps, Shift::IntelCpu);
+    }
+
+    if check(cpuid, 1, 1) {
+        set(&mut caps, Shift::ClMul);
+    }
+
+    if check(cpuid, 1, 9) {
+        set(&mut caps, Shift::Ssse3);
+    }
+
+    if check(cpuid, 1, 19) {
+        set(&mut caps, Shift::Sse41);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    if check(cpuid, 1, 22) {
+        set(&mut caps, Shift::Movbe);
+    }
+
+    if check(cpuid, 1, 25) {
+        set(&mut caps, Shift::Aes);
+    }
+
+    if check(cpuid, 1, 28) {
+        set(&mut caps, Shift::Avx);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    if check(cpuid, 2, 3) {
+        set(&mut caps, Shift::Bmi1);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    if check(cpuid, 2, 5) {
+        set(&mut caps, Shift::Avx2);
+
+        prefixed_extern! {
+            static avx2_available: AtomicU32;
+        }
+        let flag = unsafe { &avx2_available };
+        flag.store(1, core::sync::atomic::Ordering::Relaxed);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    {
+        let bmi2_available = check(cpuid, 2, 8);
+        if bmi2_available {
+            set(&mut caps, Shift::Bmi2);
+        };
+
+        if check(cpuid, 2, 19) {
+            set(&mut caps, Shift::Adx);
+
+            if bmi2_available {
                 prefixed_extern! {
                     static adx_bmi2_available: AtomicU32;
                 }
-                // SAFETY: This is the only writer, and concurrent writing is
-                // prevented as this is the `OnceLock`-like one-time
-                // initialization provided by `spin::Once`. Any concurrent
-                // reading doesn't affect the safety of this write.
-                //
-                // Any read of `adx_bmi2_available` before this will be zero,
-                // which is safe (no risk of illegal instructions) and correct
-                // (the value computed will be the same regardless).
                 let flag = unsafe { &adx_bmi2_available };
-                flag.store(1, Ordering::Relaxed);
-            }
-            if matches!(cpu.get_feature(), Some(Avx2 { .. })) {
-                prefixed_extern! {
-                    static avx2_available: AtomicU32;
-                }
-                // SAFETY: This is the only writer, and concurrent writing is
-                // prevented as this is the `OnceLock`-like one-time
-                // initialization provided by `spin::Once`.
-                //
-                // Any read of `avx2_available` before this will be zero, which
-                // is safe (no risk of illegal instructions) and correct (the
-                // value computed will be the same regardless).
-                let flag = unsafe { &avx2_available };
-                flag.store(1, Ordering::Relaxed);
+                flag.store(1, core::sync::atomic::Ordering::Relaxed);
             }
         }
-
-        cpu
     }
 
-    pub(super) fn get(_cpu_features: cpu::Features) -> &'static [u32; 4] {
-        prefixed_extern! {
-            static mut OPENSSL_ia32cap_P: [u32; 4];
-        }
-        // TODO(MSRV 1.82.0): Remove `unsafe`.
-        #[allow(unused_unsafe)]
-        let p = unsafe { ptr::addr_of!(OPENSSL_ia32cap_P) };
-        // SAFETY: Since only `get_or_init()` could have created
-        // `_cpu_features`, and it only does so after the `INIT.call_once()`
-        // (which guarantees `happens-before` semantics), or during the
-        // `INIT.call_once()` after writing to `OPENSSL_ia32cap_P`, we can
-        // safely read from `OPENSSL_ia32cap_P` without further
-        // synchronization.
-        unsafe { &*p }
+    // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
+    // static feature detection for this.
+    #[cfg(target_arch = "x86_64")]
+    if check(cpuid, 2, 29) {
+        set(&mut caps, Shift::Sha);
     }
-}
 
-impl Feature {
-    #[allow(clippy::needless_return)]
-    #[inline(always)]
-    pub fn available(&self, cpu_features: super::Features) -> bool {
-        let flags = featureflags::get(cpu_features);
-        self.mask == self.mask & flags[self.word]
-    }
+    caps
 }
 
 macro_rules! impl_get_feature_cpuid {
-    { $( { ( $( $arch:expr ),+ ) => ($word:expr, $bit:expr) => $NAME:ident => $Name:ident }, )+ } => {
-      $(
-        #[cfg(any( $( target_arch = $arch ),+ ))]
-        const $NAME: Feature = Feature {
-            word: $word,
-            mask: 1 << $bit,
-        };
+    { $( { ( $( $arch:expr ),+ ) => $Name:ident }, )+ } => {
+        $(
+            #[cfg(any( $( target_arch = $arch ),+ ))]
+            impl_get_feature! { $Name }
 
-        #[cfg(any( $( target_arch = $arch ),+ ))]
-        impl_get_feature! { $NAME => $Name }
-      )+
+            #[cfg(any( $( target_arch = $arch ),+ ))]
+            impl crate::cpu::GetFeature<$Name> for super::Features {
+                fn get_feature(&self) -> Option<$Name> {
+                    let shifted = 1 << (Shift::$Name as u32);
+                    let caps = featureflags::get(*self);
+                    if (caps & shifted) == shifted {
+                        Some($Name(*self))
+                    } else {
+                        None
+                    }
+                }
+            }
+        )+
+
+        #[repr(u32)]
+        enum Shift {
+            $(
+                #[cfg(any( $( target_arch = $arch ),+ ))]
+                $Name,
+            )+
+        }
     }
 }
 
 impl_get_feature_cpuid! {
     // Synthesized
-    { ("x86_64") => (0, 30) => INTEL_CPU => IntelCpu },
-    { ("x86", "x86_64") => (0, 24) => FXSR => Fxsr },
-    { ("x86", "x86_64") => (1, 1) => PCLMULQDQ => ClMul },
-    { ("x86", "x86_64") => (1, 9) => SSSE3 => Ssse3 },
-    { ("x86", "x86_64") => (1, 19) => SSE41 => Sse41 },
-    { ("x86_64") => (1, 22) => MOVBE => Movbe },
-    { ("x86", "x86_64") => (1, 25) => AES => Aes },
-    { ("x86", "x86_64") => (1, 28) => AVX => Avx },
-    { ("x86_64") => (2, 3) => BMI1 => Bmi1 },
-    { ("x86_64") => (2, 5) => AVX2 => Avx2 },
-    { ("x86_64") => (2, 8) => BMI2 => Bmi2 },
-    { ("x86_64") => (2, 19) => ADX => Adx },
+    { ("x86_64") => IntelCpu },
+    { ("x86", "x86_64") => Fxsr },
+    { ("x86", "x86_64") => ClMul },
+    { ("x86", "x86_64") => Ssse3 },
+    { ("x86", "x86_64") => Sse41 },
+    { ("x86_64") => Movbe },
+    { ("x86", "x86_64") => Aes },
+    { ("x86", "x86_64") => Avx },
+    { ("x86_64") => Bmi1 },
+    { ("x86_64") => Avx2 },
+    { ("x86_64") => Bmi2 },
+    { ("x86_64") => Adx },
     // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
     // static feature detection for this.
-    { ("x86_64") => (2, 29) => SHA => Sha },
+    { ("x86_64") => Sha },
 }
 
 cfg_if! {
     if #[cfg(target_arch = "x86_64")] {
-
-
         #[derive(Clone, Copy)]
         pub(crate) struct NotPreZenAmd(super::Features);
 
@@ -190,16 +242,5 @@ cfg_if! {
                 None
             }
         }
-    }
-}
-
-#[cfg(all(target_arch = "x86_64", test))]
-mod x86_64_tests {
-    use super::*;
-
-    #[test]
-    fn test_avx_movbe_mask() {
-        // This is the OpenSSL style of testing these bits.
-        assert_eq!((AVX.mask | MOVBE.mask) >> 22, 0x41);
     }
 }

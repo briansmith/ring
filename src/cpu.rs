@@ -16,19 +16,9 @@ pub(crate) use self::features::Features;
 use core::mem::size_of;
 
 macro_rules! impl_get_feature {
-    { $feature:path => $T:ident } => {
+    { $T:ident } => {
         #[derive(Clone, Copy)]
         pub(crate) struct $T(crate::cpu::Features);
-
-        impl crate::cpu::GetFeature<$T> for super::Features {
-            fn get_feature(&self) -> Option<$T> {
-                if $feature.available(*self) {
-                    Some($T(*self))
-                } else {
-                    None
-                }
-            }
-        }
     }
 }
 
