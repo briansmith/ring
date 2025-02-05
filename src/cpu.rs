@@ -61,6 +61,12 @@ macro_rules! impl_get_feature {
 
             #[cfg(target_arch = "x86_64")]
             IntelCpu,
+
+            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+            // Synthesized to ensure the dynamic flag set is always non-zero.
+            //
+            // Keep this at the end as it is never checked except during init.
+            Initialized,
         }
     }
 }
