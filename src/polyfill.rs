@@ -61,6 +61,11 @@ pub mod sliceutil;
 #[cfg(feature = "alloc")]
 mod leading_zeros_skipped;
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub mod once_cell {
+    pub mod race;
+}
+
 mod notsend;
 pub mod ptr;
 
