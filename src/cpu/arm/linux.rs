@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::NEON;
+use super::Neon;
 
 // Work around a bug in LLVM/rustc where `-C target_cpu=cortex-a72`--
 // and `-C target_cpu=native` on Cortex-A72 Raspberry PI devices in
@@ -33,7 +33,7 @@ use super::NEON;
 // XXX/TODO(MSRV https://github.com/llvm/llvm-project/issues/90365): This
 // workaround is heavy-handed since it forces extra branches for devices that
 // have correctly-modeled feature sets, so it should be removed.
-pub const FORCE_DYNAMIC_DETECTION: u32 = !NEON.mask;
+pub const FORCE_DYNAMIC_DETECTION: u32 = !Neon::mask();
 
 // `uclibc` does not provide `getauxval` so just use static feature detection
 // for it.
@@ -47,27 +47,27 @@ pub fn detect_features() -> u32 {
     all(target_arch = "aarch64", target_endian = "little")
 ))]
 pub fn detect_features() -> u32 {
-    use super::{AES, ARMCAP_STATIC, PMULL, SHA256, SHA512};
+    use super::{Aes, PMull, Sha256, Sha512, CAPS_STATIC};
     use libc::{getauxval, AT_HWCAP, HWCAP_AES, HWCAP_PMULL, HWCAP_SHA2, HWCAP_SHA512};
 
     let mut features = 0;
 
     // We do not need to check for the presence of NEON, as Armv8-A always has it
-    const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
+    const _ASSERT_NEON_DETECTED: () = assert!((CAPS_STATIC & Neon::mask()) == Neon::mask());
 
     let caps = unsafe { getauxval(AT_HWCAP) };
 
     if caps & HWCAP_AES == HWCAP_AES {
-        features |= AES.mask;
+        features |= Aes::mask();
     }
     if caps & HWCAP_PMULL == HWCAP_PMULL {
-        features |= PMULL.mask;
+        features |= PMull::mask();
     }
     if caps & HWCAP_SHA2 == HWCAP_SHA2 {
-        features |= SHA256.mask;
+        features |= Sha256::mask();
     }
     if caps & HWCAP_SHA512 == HWCAP_SHA512 {
-        features |= SHA512.mask;
+        features |= Sha512::mask();
     }
 
     features
@@ -78,7 +78,7 @@ pub fn detect_features() -> u32 {
     all(target_arch = "arm", target_endian = "little")
 ))]
 pub fn detect_features() -> u32 {
-    use super::ARMCAP_STATIC;
+    use super::CAPS_STATIC;
 
     // The `libc` crate doesn't provide this functionality on all
     // 32-bit Linux targets, like Android or -musl. Use this polyfill
@@ -93,13 +93,13 @@ pub fn detect_features() -> u32 {
 
     let mut features = 0;
 
-    if ARMCAP_STATIC & NEON.mask != NEON.mask {
+    if CAPS_STATIC & Neon::mask() != Neon::mask() {
         let caps = unsafe { getauxval(AT_HWCAP) };
 
         // OpenSSL and BoringSSL don't enable any other features if NEON isn't
         // available. We don't enable any hardware implementations for 32-bit ARM.
         if caps & HWCAP_NEON == HWCAP_NEON {
-            features |= NEON.mask;
+            features |= Neon::mask();
         }
     }
 

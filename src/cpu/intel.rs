@@ -170,57 +170,44 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     caps
 }
 
-macro_rules! impl_get_feature_cpuid {
-    { $( { ( $( $arch:expr ),+ ) => $Name:ident }, )+ } => {
-        $(
-            #[cfg(any( $( target_arch = $arch ),+ ))]
-            impl_get_feature! { $Name }
-
-            #[cfg(any( $( target_arch = $arch ),+ ))]
-            impl crate::cpu::GetFeature<$Name> for super::Features {
-                fn get_feature(&self) -> Option<$Name> {
-                    let shifted = 1 << (Shift::$Name as u32);
-                    let caps = featureflags::get(*self);
-                    if (caps & shifted) == shifted {
-                        Some($Name(*self))
-                    } else {
-                        None
-                    }
-                }
-            }
-        )+
-
-        #[repr(u32)]
-        enum Shift {
-            $(
-                #[cfg(any( $( target_arch = $arch ),+ ))]
-                $Name,
-            )+
-        }
-    }
-}
-
-impl_get_feature_cpuid! {
-    // Synthesized
-    { ("x86_64") => IntelCpu },
-    { ("x86", "x86_64") => Fxsr },
-    { ("x86", "x86_64") => ClMul },
-    { ("x86", "x86_64") => Ssse3 },
-    { ("x86", "x86_64") => Sse41 },
-    { ("x86_64") => Movbe },
-    { ("x86", "x86_64") => Aes },
-    { ("x86", "x86_64") => Avx },
-    { ("x86_64") => Bmi1 },
-    { ("x86_64") => Avx2 },
-    { ("x86_64") => Bmi2 },
-    { ("x86_64") => Adx },
-    // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
-    // static feature detection for this.
-    { ("x86_64") => Sha },
+impl_get_feature! {
+    static_detected: 0,
+    force_dynamic_detection: 0,
+    features: [
+        { ("x86", "x86_64") => Fxsr },
+        { ("x86", "x86_64") => ClMul },
+        { ("x86", "x86_64") => Ssse3 },
+        { ("x86", "x86_64") => Sse41 },
+        { ("x86_64") => Movbe },
+        { ("x86", "x86_64") => Aes },
+        { ("x86", "x86_64") => Avx },
+        { ("x86_64") => Bmi1 },
+        { ("x86_64") => Avx2 },
+        { ("x86_64") => Bmi2 },
+        { ("x86_64") => Adx },
+        // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
+        // static feature detection for this.
+        { ("x86_64") => Sha },
+    ],
 }
 
 cfg_if! {
     if #[cfg(target_arch = "x86_64")] {
+        #[derive(Clone, Copy)]
+        pub(crate) struct IntelCpu(super::Features);
+
+        impl super::GetFeature<IntelCpu> for super::Features {
+            fn get_feature(&self) -> Option<IntelCpu> {
+                const MASK: u32 = 1 << (Shift::IntelCpu as u32);
+                let caps = featureflags::get(*self);
+                if (caps & MASK) == MASK {
+                    Some(IntelCpu(*self))
+                } else {
+                    None
+                }
+            }
+        }
+
         #[derive(Clone, Copy)]
         pub(crate) struct NotPreZenAmd(super::Features);
 
