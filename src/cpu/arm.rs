@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use super::CAPS_STATIC;
+
 mod abi_assumptions {
     use core::mem::size_of;
 
@@ -62,8 +64,6 @@ cfg_if::cfg_if! {
 }
 
 impl_get_feature! {
-    static_detected: STATIC_DETECTED,
-    force_dynamic_detection: detect::FORCE_DYNAMIC_DETECTION,
     features: [
         // TODO(MSRV): 32-bit ARM doesn't have `target_feature = "neon"` yet.
         { ("aarch64", "arm") => Neon },
@@ -88,7 +88,8 @@ impl_get_feature! {
 }
 
 pub(super) mod featureflags {
-    use super::{detect, Neon, CAPS_STATIC};
+    pub(in super::super) use super::detect::FORCE_DYNAMIC_DETECTION;
+    use super::*;
     use crate::cpu;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
@@ -143,7 +144,7 @@ pub(super) mod featureflags {
         unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }
     }
 
-    pub(super) fn get(_cpu_features: cpu::Features) -> u32 {
+    pub(in super::super) fn get(_cpu_features: cpu::Features) -> u32 {
         // SAFETY: Since only `get_or_init()` could have created
         // `_cpu_features`, and it only does so after `FEATURES.call_once()`,
         // we have met the prerequisites for calling `get_unchecked()`.
@@ -152,49 +153,32 @@ pub(super) mod featureflags {
     }
 
     static FEATURES: spin::Once<u32> = spin::Once::new();
+
+    // TODO(MSRV): There is no "pmull" feature listed from
+    // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
+    // PMULL detection into AES detection, but later versions split it; see
+    // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
+    // "Features introduced prior to 2020." Change this to use "pmull" when
+    // that is supported.
+    //
+    // "sha3" is overloaded for both SHA-3 and SHA-512.
+    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+    #[rustfmt::skip]
+    pub(in super::super) const STATIC_DETECTED: u32 = 0
+        | (if cfg!(target_feature = "neon") { Neon::mask() } else { 0 })
+        | (if cfg!(target_feature = "aes") { Aes::mask() } else { 0 })
+        | (if cfg!(target_feature = "aes") { PMull::mask() } else { 0 })
+        | (if cfg!(target_feature = "sha2") { Sha256::mask() } else { 0 })
+        | (if cfg!(target_feature = "sha3") { Sha512::mask() } else { 0 })
+        ;
+
+    // TODO(MSRV): 32-bit ARM doesn't support any static feature detection yet.
+    #[cfg(all(target_arch = "arm", target_endian = "little"))]
+    pub(in super::super) const STATIC_DETECTED: u32 = 0;
 }
-
-// TODO(MSRV): There is no "pmull" feature listed from
-// `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
-// PMULL detection into AES detection, but later versions split it; see
-// https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
-// "Features introduced prior to 2020." Change this to use "pmull" when
-// that is supported.
-//
-// "sha3" is overloaded for both SHA-3 and SHA-512.
-#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-#[rustfmt::skip]
-const STATIC_DETECTED: u32 = 0
-    | (if cfg!(target_feature = "neon") { Neon::mask() } else { 0 })
-    | (if cfg!(target_feature = "aes") { Aes::mask() } else { 0 })
-    | (if cfg!(target_feature = "aes") { PMull::mask() } else { 0 })
-    | (if cfg!(target_feature = "sha2") { Sha256::mask() } else { 0 })
-    | (if cfg!(target_feature = "sha3") { Sha512::mask() } else { 0 })
-    ;
-
-// TODO(MSRV): 32-bit ARM doesn't support any static feature detection yet.
-#[cfg(all(target_arch = "arm", target_endian = "little"))]
-const STATIC_DETECTED: u32 = 0;
 
 #[allow(clippy::assertions_on_constants)]
 const _AARCH64_HAS_NEON: () = assert!(
     ((CAPS_STATIC & Neon::mask()) == Neon::mask())
         || !cfg!(all(target_arch = "aarch64", target_endian = "little"))
 );
-
-#[allow(clippy::assertions_on_constants)]
-const _FORCE_DYNAMIC_DETECTION_HONORED: () =
-    assert!((CAPS_STATIC & detect::FORCE_DYNAMIC_DETECTION) == 0);
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::cpu;
-
-    #[test]
-    fn test_armcap_static_is_subset_of_armcap_dynamic() {
-        let cpu = cpu::features();
-        let armcap_dynamic = featureflags::get(cpu);
-        assert_eq!(armcap_dynamic & CAPS_STATIC, CAPS_STATIC);
-    }
-}
