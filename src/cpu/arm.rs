@@ -61,143 +61,53 @@ cfg_if::cfg_if! {
     }
 }
 
-macro_rules! impl_get_feature_arm {
-    { $feature:path => $T:ident } => {
-        impl_get_feature!( $T );
+impl_get_feature! {
+    static_detected: STATIC_DETECTED,
+    force_dynamic_detection: detect::FORCE_DYNAMIC_DETECTION,
+    features: [
+        // TODO(MSRV): 32-bit ARM doesn't have `target_feature = "neon"` yet.
+        { ("aarch64", "arm") => Neon },
 
-        impl crate::cpu::GetFeature<$T> for super::Features {
-            fn get_feature(&self) -> Option<$T> {
-                if $feature.available(*self) {
-                    Some($T(*self))
-                } else {
-                    None
-                }
-            }
-        }
-    }
-}
+        // TODO(MSRV): There is no "pmull" feature listed from
+        // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
+        // PMULL detection into AES detection, but later versions split it; see
+        // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
+        // "Features introduced prior to 2020." Change this to use "pmull" when
+        // that is supported.
+        { ("aarch64") => PMull },
 
-macro_rules! features {
-    {
-        $(
-            $target_feature_name:expr => $TyName:ident($name:ident) {
-                mask: $mask:expr,
-            }
-        ),+
-        , // trailing comma is required.
-    } => {
-        $(
-            #[allow(dead_code)]
-            pub(crate) const $name: Feature = Feature {
-                mask: $mask,
-            };
-            impl_get_feature_arm!{ $name => $TyName }
-        )+
+        { ("aarch64") => Aes },
 
-        // See const assertions below.
-        const ARMCAP_STATIC: u32 = ARMCAP_STATIC_DETECTED & !detect::FORCE_DYNAMIC_DETECTION;
-        const ARMCAP_STATIC_DETECTED: u32 = 0
-            $(
-                | (
-                    if cfg!(all(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")),
-                                target_feature = $target_feature_name)) {
-                        $name.mask
-                    } else {
-                        0
-                    }
-                )
-            )+;
+        { ("aarch64") => Sha256 },
 
-        const ALL_FEATURES: &[Feature] = &[
-            $(
-                $name
-            ),+
-        ];
-    }
-}
+        // Keep in sync with `ARMV8_SHA512`.
 
-pub(crate) struct Feature {
-    mask: u32,
-}
-
-impl Feature {
-    #[inline(always)]
-    pub fn available(&self, cpu_features: super::Features) -> bool {
-        if self.mask == self.mask & ARMCAP_STATIC {
-            return true;
-        }
-        self.mask == self.mask & featureflags::get(cpu_features)
-    }
-}
-
-#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-features! {
-    // Keep in sync with `ARMV7_NEON`.
-    "neon" => Neon(NEON) {
-        mask: 1 << 0,
-    },
-
-    // Keep in sync with `ARMV8_AES`.
-    "aes" => Aes(AES) {
-        mask: 1 << 2,
-    },
-
-    // Keep in sync with `ARMV8_SHA256`.
-    "sha2" => Sha256(SHA256) {
-        mask: 1 << 4,
-    },
-
-    // Keep in sync with `ARMV8_PMULL`.
-    //
-    // TODO(MSRV): There is no "pmull" feature listed from
-    // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
-    // PMULL detection into AES detection, but later versions split it; see
-    // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
-    // "Features introduced prior to 2020." Change this to use "pmull" when
-    // that is supported.
-    "aes" => PMull(PMULL) {
-        mask: 1 << 5,
-    },
-
-    // Keep in sync with `ARMV8_SHA512`.
-    // "sha3" is overloaded for both SHA-3 and SHA512.
-    "sha3" => Sha512(SHA512) {
-        mask: 1 << 6,
-    },
-}
-
-#[cfg(all(target_arch = "arm", target_endian = "little"))]
-features! {
-    // Keep in sync with `ARMV7_NEON`.
-    "neon" => Neon(NEON) {
-        mask: 1 << 0,
-    },
+        // "sha3" is overloaded for both SHA-3 and SHA-512.
+        { ("aarch64") => Sha512 },
+    ],
 }
 
 pub(super) mod featureflags {
-    use super::{detect, ALL_FEATURES, ARMCAP_STATIC, NEON};
+    use super::{detect, Neon, CAPS_STATIC};
     use crate::cpu;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
         fn init() -> u32 {
             let detected = detect::detect_features();
             let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
-                ALL_FEATURES
-                    .iter()
-                    .fold(0, |acc, feature| acc | feature.mask)
-                    & !NEON.mask
+                !Neon::mask()
             } else {
                 0
             }) | (if cfg!(feature = "unstable-testing-arm-no-neon") {
-                NEON.mask
+                Neon::mask()
             } else {
                 0
             });
             let detected = detected & !filtered;
-            let merged = ARMCAP_STATIC | detected;
+            let merged = CAPS_STATIC | detected;
 
             #[cfg(target_arch = "arm")]
-            if (merged & NEON.mask) == NEON.mask {
+            if (merged & Neon::mask()) == Neon::mask() {
                 prefixed_extern! {
                     static mut neon_available: u32;
                 }
@@ -244,15 +154,37 @@ pub(super) mod featureflags {
     static FEATURES: spin::Once<u32> = spin::Once::new();
 }
 
+// TODO(MSRV): There is no "pmull" feature listed from
+// `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
+// PMULL detection into AES detection, but later versions split it; see
+// https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
+// "Features introduced prior to 2020." Change this to use "pmull" when
+// that is supported.
+//
+// "sha3" is overloaded for both SHA-3 and SHA-512.
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+#[rustfmt::skip]
+const STATIC_DETECTED: u32 = 0
+    | (if cfg!(target_feature = "neon") { Neon::mask() } else { 0 })
+    | (if cfg!(target_feature = "aes") { Aes::mask() } else { 0 })
+    | (if cfg!(target_feature = "aes") { PMull::mask() } else { 0 })
+    | (if cfg!(target_feature = "sha2") { Sha256::mask() } else { 0 })
+    | (if cfg!(target_feature = "sha3") { Sha512::mask() } else { 0 })
+    ;
+
+// TODO(MSRV): 32-bit ARM doesn't support any static feature detection yet.
+#[cfg(all(target_arch = "arm", target_endian = "little"))]
+const STATIC_DETECTED: u32 = 0;
+
 #[allow(clippy::assertions_on_constants)]
 const _AARCH64_HAS_NEON: () = assert!(
-    ((ARMCAP_STATIC & NEON.mask) == NEON.mask)
+    ((CAPS_STATIC & Neon::mask()) == Neon::mask())
         || !cfg!(all(target_arch = "aarch64", target_endian = "little"))
 );
 
 #[allow(clippy::assertions_on_constants)]
 const _FORCE_DYNAMIC_DETECTION_HONORED: () =
-    assert!((ARMCAP_STATIC & detect::FORCE_DYNAMIC_DETECTION) == 0);
+    assert!((CAPS_STATIC & detect::FORCE_DYNAMIC_DETECTION) == 0);
 
 #[cfg(test)]
 mod tests {
@@ -260,29 +192,9 @@ mod tests {
     use crate::cpu;
 
     #[test]
-    fn test_mask_abi() {
-        assert_eq!(NEON.mask, 1);
-    }
-
-    #[cfg(not(all(target_arch = "arm", target_endian = "little")))]
-    #[test]
-    fn test_mask_abi_hw() {
-        assert_eq!(AES.mask, 4);
-        assert_eq!(SHA256.mask, 16);
-        assert_eq!(PMULL.mask, 32);
-        assert_eq!(SHA512.mask, 64);
-    }
-
-    #[test]
     fn test_armcap_static_is_subset_of_armcap_dynamic() {
         let cpu = cpu::features();
         let armcap_dynamic = featureflags::get(cpu);
-        assert_eq!(armcap_dynamic & ARMCAP_STATIC, ARMCAP_STATIC);
-
-        ALL_FEATURES.iter().for_each(|feature| {
-            if (ARMCAP_STATIC & feature.mask) != 0 {
-                assert!(feature.available(cpu));
-            }
-        })
+        assert_eq!(armcap_dynamic & CAPS_STATIC, CAPS_STATIC);
     }
 }

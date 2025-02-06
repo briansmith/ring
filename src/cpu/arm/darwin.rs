@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{AES, ARMCAP_STATIC, NEON, PMULL, SHA256, SHA512};
+use super::{Aes, Neon, PMull, Sha256, Sha512, CAPS_STATIC};
 use crate::polyfill::cstr;
 
 // ```
@@ -30,9 +30,9 @@ use crate::polyfill::cstr;
 // XXX/TODO(coverage)/TODO(size): aarch64-apple-darwin is statically guaranteed to have "sha3" but
 // other aarch64-apple-* targets require dynamic detection. Since we don't have test coverage for
 // the other targets yet, we wouldn't have a way of testing the dynamic detection if we statically
-// enabled `SHA512` for -darwin. So instead, temporarily, we statically ignore the static
+// enabled `Sha512` for -darwin. So instead, temporarily, we statically ignore the static
 // availability of the feature on -darwin so that it runs the dynamic detection.
-pub const MIN_STATIC_FEATURES: u32 = NEON.mask | AES.mask | SHA256.mask | PMULL.mask;
+pub const MIN_STATIC_FEATURES: u32 = Neon::mask() | Aes::mask() | Sha256::mask() | PMull::mask();
 pub const FORCE_DYNAMIC_DETECTION: u32 = !MIN_STATIC_FEATURES;
 
 // MSRV: Enforce 1.61.0 onaarch64-apple-*, in particular) prior to. Earlier
@@ -41,14 +41,14 @@ pub const FORCE_DYNAMIC_DETECTION: u32 = !MIN_STATIC_FEATURES;
 // Rust 1.56 don't know about it.
 #[allow(clippy::assertions_on_constants)]
 const _AARCH64_APPLE_TARGETS_EXPECTED_FEATURES: () =
-    assert!((ARMCAP_STATIC & MIN_STATIC_FEATURES) == MIN_STATIC_FEATURES);
+    assert!((CAPS_STATIC & MIN_STATIC_FEATURES) == MIN_STATIC_FEATURES);
 
 // Ensure we don't accidentally allow features statically beyond
 // `MIN_STATIC_FEATURES` so that dynamic detection is done uniformly for
 // all of these targets.
 #[allow(clippy::assertions_on_constants)]
 const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () =
-    assert!(ARMCAP_STATIC == MIN_STATIC_FEATURES);
+    assert!(CAPS_STATIC == MIN_STATIC_FEATURES);
 
 pub fn detect_features() -> u32 {
     fn detect_feature(name: cstr::Ref) -> bool {
@@ -75,7 +75,7 @@ pub fn detect_features() -> u32 {
     }
 
     // We do not need to check for the presence of NEON, as Armv8-A always has it
-    const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
+    const _ASSERT_NEON_DETECTED: () = assert!((CAPS_STATIC & Neon::mask()) == Neon::mask());
 
     let mut features = 0;
 
@@ -83,7 +83,7 @@ pub fn detect_features() -> u32 {
     const SHA512_NAME: cstr::Ref =
         cstr::unwrap_const_from_bytes_with_nul(b"hw.optional.armv8_2_sha512\0");
     if detect_feature(SHA512_NAME) {
-        features |= SHA512.mask;
+        features |= Sha512::mask();
     }
 
     features
@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn sha512_detection() {
         // We intentionally disable static feature detection for SHA-512.
-        const _SHA512_NOT_STATICALLY_DETECTED: () = assert!((ARMCAP_STATIC & SHA512.mask) == 0);
+        const _SHA512_NOT_STATICALLY_DETECTED: () = assert!((CAPS_STATIC & Sha512::mask()) == 0);
 
         if cfg!(target_os = "macos") {
             use crate::cpu::{arm::Sha512, GetFeature as _};

@@ -16,9 +16,57 @@ pub(crate) use self::features::Features;
 use core::mem::size_of;
 
 macro_rules! impl_get_feature {
-    { $T:ident } => {
-        #[derive(Clone, Copy)]
-        pub(crate) struct $T(crate::cpu::Features);
+    {
+      static_detected: $STATIC_DETECTED:expr,
+      force_dynamic_detection: $FORCE_DYNAMIC_DETECTION:expr,
+      features: [
+          $( { ( $( $arch:expr ),+ ) => $Name:ident }, )+
+      ],
+    } => {
+        $(
+            #[cfg(any( $( target_arch = $arch ),+ ))]
+            #[derive(Clone, Copy)]
+            pub(crate) struct $Name(crate::cpu::Features);
+
+            #[cfg(any( $( target_arch = $arch ),+ ))]
+            impl $Name {
+                const fn mask() -> u32 {
+                    1 << (Shift::$Name as u32)
+                }
+            }
+
+            #[cfg(any( $( target_arch = $arch ),+ ))]
+            impl crate::cpu::GetFeature<$Name> for super::Features {
+                #[inline(always)]
+                fn get_feature(&self) -> Option<$Name> {
+                    const MASK: u32 = $Name::mask();
+                    const STATICALLY_DETECTED: bool = (CAPS_STATIC & MASK) == MASK;
+                    if STATICALLY_DETECTED { // TODO: `const`
+                        return Some($Name(*self));
+                    }
+
+                    let caps = featureflags::get(*self);
+                    if (caps & MASK) == MASK {
+                        Some($Name(*self))
+                    } else {
+                        None
+                    }
+                }
+            }
+        )+
+
+        #[repr(u32)]
+        enum Shift {
+            $(
+                #[cfg(any( $( target_arch = $arch ),+ ))]
+                $Name,
+            )+
+
+            #[cfg(target_arch = "x86_64")]
+            IntelCpu,
+        }
+
+        const CAPS_STATIC: u32 = $STATIC_DETECTED & !$FORCE_DYNAMIC_DETECTION;
     }
 }
 
