@@ -60,7 +60,7 @@ pub(super) mod featureflags {
         unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }
     }
 
-    pub(super) fn get(_cpu_features: cpu::Features) -> u32 {
+    pub(in super::super) fn get(_cpu_features: cpu::Features) -> u32 {
         // SAFETY: Since only `get_or_init()` could have created
         // `_cpu_features`, and it only does so after `FEATURES.call_once()`,
         // we have met the prerequisites for calling `get_unchecked()`.
@@ -69,6 +69,9 @@ pub(super) mod featureflags {
     }
 
     static FEATURES: spin::Once<u32> = spin::Once::new();
+
+    pub const STATIC_DETECTED: u32 = 0;
+    pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
 }
 
 fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
@@ -171,8 +174,6 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
 }
 
 impl_get_feature! {
-    static_detected: 0,
-    force_dynamic_detection: 0,
     features: [
         { ("x86", "x86_64") => Fxsr },
         { ("x86", "x86_64") => ClMul },

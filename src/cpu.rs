@@ -17,8 +17,6 @@ use core::mem::size_of;
 
 macro_rules! impl_get_feature {
     {
-      static_detected: $STATIC_DETECTED:expr,
-      force_dynamic_detection: $FORCE_DYNAMIC_DETECTION:expr,
       features: [
           $( { ( $( $arch:expr ),+ ) => $Name:ident }, )+
       ],
@@ -40,7 +38,7 @@ macro_rules! impl_get_feature {
                 #[inline(always)]
                 fn get_feature(&self) -> Option<$Name> {
                     const MASK: u32 = $Name::mask();
-                    const STATICALLY_DETECTED: bool = (CAPS_STATIC & MASK) == MASK;
+                    const STATICALLY_DETECTED: bool = (crate::cpu::CAPS_STATIC & MASK) == MASK;
                     if STATICALLY_DETECTED { // TODO: `const`
                         return Some($Name(*self));
                     }
@@ -65,8 +63,6 @@ macro_rules! impl_get_feature {
             #[cfg(target_arch = "x86_64")]
             IntelCpu,
         }
-
-        const CAPS_STATIC: u32 = $STATIC_DETECTED & !$FORCE_DYNAMIC_DETECTION;
     }
 }
 
@@ -109,7 +105,7 @@ where
 
 #[inline(always)]
 pub(crate) fn features() -> Features {
-    get_or_init_feature_flags()
+    featureflags::get_or_init()
 }
 
 mod features {
@@ -146,13 +142,44 @@ const _: () = assert!(size_of::<Features>() == 0);
 cfg_if::cfg_if! {
     if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")))] {
         pub mod arm;
-        use arm::featureflags::get_or_init as get_or_init_feature_flags;
+        use arm::featureflags;
     } else if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
         pub mod intel;
-        use intel::featureflags::get_or_init as get_or_init_feature_flags;
+        use intel::featureflags;
     } else {
-        pub(super) fn get_or_init_feature_flags() -> Features {
-            Features::new_no_features_to_detect()
+        mod featureflags {
+            use super::Features;
+
+            #[inline(always)]
+            pub(super) fn get_or_init() -> Features {
+                Features::new_no_features_to_detect()
+            }
+
+            #[inline(always)]
+            pub(super) fn get(_cpu_features: Features) -> u32 {
+                STATIC_DETECTED
+            }
+
+            pub(super) const STATIC_DETECTED: u32 = 0;
+            pub(super) const FORCE_DYNAMIC_DETECTION: u32 = 0;
         }
+    }
+}
+
+const CAPS_STATIC: u32 = featureflags::STATIC_DETECTED & !featureflags::FORCE_DYNAMIC_DETECTION;
+
+#[allow(clippy::assertions_on_constants, clippy::bad_bit_mask)]
+const _FORCE_DYNAMIC_DETECTION_HONORED: () =
+    assert!((CAPS_STATIC & featureflags::FORCE_DYNAMIC_DETECTION) == 0);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_static_is_subset_of_dynamic() {
+        let cpu = features();
+        let dynamic = featureflags::get(cpu);
+        assert_eq!(dynamic & CAPS_STATIC, CAPS_STATIC);
     }
 }
