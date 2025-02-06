@@ -1,6 +1,6 @@
-# FIPS 140-2
+# FIPS 140-3
 
-BoringSSL as a whole is not FIPS validated. However, there is a core library (called BoringCrypto) that has been FIPS validated. This document contains some notes about the design of the FIPS module and some documentation on performing FIPS-related tasks. This is not a substitute for reading the offical Security Policy.
+BoringSSL as a whole is not FIPS validated. However, there is a core library (called BoringCrypto) that has been FIPS validated. This document contains some notes about the design of the FIPS module and some documentation on performing FIPS-related tasks. This is not a substitute for reading the official Security Policy.
 
 Please note that we cannot answer questions about FIPS, nor about using BoringSSL in a FIPS-compliant manner. Please consult with an [accredited CMVP lab](http://csrc.nist.gov/groups/STM/testing_labs/) on these subjects.
 
@@ -15,6 +15,12 @@ BoringCrypto has undergone the following validations:
 1. 2021-01-28: certificate [#4156](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/4156), [security policy](./policydocs/BoringCrypto-Android-Security-Policy-20210319.docx) (in docx format).
 1. 2021-04-29: certificate [#4407](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4407).
 1. 2022-06-13: certificate [#4735](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4735).
+
+## Update stream
+
+On 2025-01-16, the FedRAMP Board published an [updated policy](https://www.fedramp.gov/updates/docs/cryptographic-module/) on cryptographic modules. That policy suggests that module vendors should “promote the use of update streams over the use of validated module streams”. An _update stream_ “contains the latest patches and updates to be applied to software, regardless of the FIPS-validation status of the changed software”.
+
+BoringSSL's `main` branch is the update stream for the module. We intend to perform validations such all changes to the module are submitted to the CMVP within six months, as required by FRR7.
 
 ## Running ACVP tests
 
