@@ -248,6 +248,7 @@ pub fn elem_reduced<Larger, Smaller>(
     }
 }
 
+#[inline]
 fn elem_squared<M, E>(
     mut a: Elem<M, E>,
     m: &Modulus<M>,
