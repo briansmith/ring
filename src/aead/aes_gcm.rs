@@ -74,6 +74,7 @@ enum DynKey {
 
 impl DynKey {
     fn new(key: aes::KeyBytes, cpu: cpu::Features) -> Result<Self, error::Unspecified> {
+        let cpu = cpu.values();
         #[cfg(target_arch = "x86_64")]
         if let Some((aes, gcm)) = cpu.get_feature() {
             let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature())?;

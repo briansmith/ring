@@ -43,6 +43,7 @@ pub(crate) fn block_data_order_32(
             }
         } else if #[cfg(target_arch = "x86_64")] {
             use cpu::{GetFeature as _, intel::{Avx, IntelCpu, Sha, Ssse3 }};
+            let cpu = cpu.values();
             if let Some(cpu) = cpu.get_feature() {
                 sha2_32_ffi!(unsafe { (Sha, Ssse3) => sha256_block_data_order_hw }, state, data, cpu)
             } else if let Some(cpu) = cpu.get_feature() {

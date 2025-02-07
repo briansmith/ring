@@ -129,12 +129,13 @@ impl Key {
                 use cpu::{GetFeature, intel::{Avx2, Ssse3}};
                 const SSE_MIN_LEN: usize = 128 + 1; // Also AVX2, SSSE3_4X, SSSE3
                 if in_out.len() >= SSE_MIN_LEN {
-                    if let Some(cpu) = cpu.get_feature() {
+                    let values = cpu.values();
+                    if let Some(cpu) = values.get_feature() {
                         return chacha20_ctr32_ffi!(
                             unsafe { (SSE_MIN_LEN, Avx2, Overlapping<'_>) => ChaCha20_ctr32_avx2 },
                             self, counter, in_out, cpu);
                     }
-                    if let Some(cpu) = <cpu::Features as GetFeature<Ssse3>>::get_feature(&cpu) {
+                    if let Some(cpu) = values.get_feature() {
                         return chacha20_ctr32_ffi!(
                             unsafe { (SSE_MIN_LEN, Ssse3, Overlapping<'_>) =>
                                 ChaCha20_ctr32_ssse3_4x },

@@ -34,18 +34,17 @@ macro_rules! impl_get_feature {
             }
 
             #[cfg(any( $( target_arch = $arch ),+ ))]
-            impl crate::cpu::GetFeature<$Name> for super::Features {
+            impl crate::cpu::GetFeature<$Name> for super::features::Values {
                 #[inline(always)]
                 fn get_feature(&self) -> Option<$Name> {
                     const MASK: u32 = $Name::mask();
                     const STATICALLY_DETECTED: bool = (crate::cpu::CAPS_STATIC & MASK) == MASK;
                     if STATICALLY_DETECTED { // TODO: `const`
-                        return Some($Name(*self));
+                        return Some($Name(self.cpu()));
                     }
 
-                    let caps = featureflags::get(*self);
-                    if (caps & MASK) == MASK {
-                        Some($Name(*self))
+                    if (self.values() & MASK) == MASK {
+                        Some($Name(self.cpu()))
                     } else {
                         None
                     }
@@ -70,17 +69,19 @@ pub(crate) trait GetFeature<T> {
     fn get_feature(&self) -> Option<T>;
 }
 
-impl GetFeature<()> for Features {
+impl GetFeature<()> for features::Values {
+    #[inline(always)]
     fn get_feature(&self) -> Option<()> {
         Some(())
     }
 }
 
-impl<A, B, T> GetFeature<(A, B)> for T
+impl<A, B> GetFeature<(A, B)> for features::Values
 where
-    T: GetFeature<A>,
-    T: GetFeature<B>,
+    features::Values: GetFeature<A>,
+    features::Values: GetFeature<B>,
 {
+    #[inline(always)]
     fn get_feature(&self) -> Option<(A, B)> {
         match (self.get_feature(), self.get_feature()) {
             (Some(a), Some(b)) => Some((a, b)),
@@ -89,17 +90,28 @@ where
     }
 }
 
-impl<A, B, C, T> GetFeature<(A, B, C)> for T
+impl<A, B, C> GetFeature<(A, B, C)> for features::Values
 where
-    T: GetFeature<A>,
-    T: GetFeature<B>,
-    T: GetFeature<C>,
+    features::Values: GetFeature<A>,
+    features::Values: GetFeature<B>,
+    features::Values: GetFeature<C>,
 {
+    #[inline(always)]
     fn get_feature(&self) -> Option<(A, B, C)> {
         match (self.get_feature(), self.get_feature(), self.get_feature()) {
             (Some(a), Some(b), Some(c)) => Some((a, b, c)),
             _ => None,
         }
+    }
+}
+
+impl<F> GetFeature<F> for Features
+where
+    features::Values: GetFeature<F>,
+{
+    #[inline(always)]
+    fn get_feature(&self) -> Option<F> {
+        self.values().get_feature()
     }
 }
 
@@ -117,6 +129,15 @@ mod features {
     #[derive(Copy, Clone)]
     pub(crate) struct Features(NotSend);
 
+    impl Features {
+        pub fn values(self) -> Values {
+            Values {
+                values: super::featureflags::get(self),
+                cpu: self,
+            }
+        }
+    }
+
     cfg_if::cfg_if! {
         if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little"),
                      target_arch = "x86", target_arch = "x86_64"))] {
@@ -133,6 +154,23 @@ mod features {
                     Self(NotSend::VALUE)
                 }
             }
+        }
+    }
+
+    pub struct Values {
+        values: u32,
+        cpu: Features,
+    }
+
+    impl Values {
+        #[inline(always)]
+        pub(super) fn values(&self) -> u32 {
+            self.values
+        }
+
+        #[inline(always)]
+        pub(super) fn cpu(&self) -> Features {
+            self.cpu
         }
     }
 }
