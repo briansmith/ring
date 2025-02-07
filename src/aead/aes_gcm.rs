@@ -73,22 +73,28 @@ enum DynKey {
 }
 
 impl DynKey {
-    fn new(key: aes::KeyBytes, cpu_features: cpu::Features) -> Result<Self, error::Unspecified> {
+    fn new(key: aes::KeyBytes, cpu: cpu::Features) -> Result<Self, error::Unspecified> {
         #[cfg(target_arch = "x86_64")]
-        if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
-            let aes_key = aes::hw::Key::new(key, aes, cpu_features.get_feature())?;
+        if let Some((aes, gcm)) = cpu.get_feature() {
+            let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature())?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
-            let gcm_key = gcm::clmulavxmovbe::Key::new(gcm_key_value, gcm);
-            return Ok(Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }));
+            let combo = if let Some(cpu) = cpu.get_feature() {
+                let gcm_key = gcm::clmulavxmovbe::Key::new(gcm_key_value, cpu);
+                Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key })
+            } else {
+                let gcm_key = gcm::clmul::Key::new(gcm_key_value, gcm);
+                Self::AesHwClMul(Combo { aes_key, gcm_key })
+            };
+            return Ok(combo);
         }
 
+        // x86_64 is handled above.
         #[cfg(any(
             all(target_arch = "aarch64", target_endian = "little"),
-            target_arch = "x86_64",
             target_arch = "x86"
         ))]
-        if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
-            let aes_key = aes::hw::Key::new(key, aes, cpu_features.get_feature())?;
+        if let (Some(aes), Some(gcm)) = (cpu.get_feature(), cpu.get_feature()) {
+            let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature())?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             let gcm_key = gcm::clmul::Key::new(gcm_key_value, gcm);
             return Ok(Self::AesHwClMul(Combo { aes_key, gcm_key }));
@@ -98,23 +104,53 @@ impl DynKey {
             all(target_arch = "aarch64", target_endian = "little"),
             all(target_arch = "arm", target_endian = "little")
         ))]
-        if let (Some(aes), Some(gcm)) = (cpu_features.get_feature(), cpu_features.get_feature()) {
-            let aes_key = aes::vp::Key::new(key, aes)?;
-            let gcm_key_value = derive_gcm_key_value(&aes_key);
-            let gcm_key = gcm::neon::Key::new(gcm_key_value, gcm);
-            return Ok(Self::Simd(Combo { aes_key, gcm_key }));
+        if let Some(cpu) = cpu.get_feature() {
+            return Self::new_neon(key, cpu);
         }
 
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        if let Some(aes) = cpu_features.get_feature() {
-            let aes_key = aes::vp::Key::new(key, aes)?;
-            let gcm_key_value = derive_gcm_key_value(&aes_key);
-            let gcm_key = gcm::fallback::Key::new(gcm_key_value);
-            return Ok(Self::Simd(Combo { aes_key, gcm_key }));
+        if let Some(cpu) = cpu.get_feature() {
+            return Self::new_ssse3(key, cpu);
         }
 
-        let _ = cpu_features;
+        let _ = cpu;
+        Self::new_fallback(key)
+    }
 
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        all(target_arch = "arm", target_endian = "little")
+    ))]
+    #[cfg_attr(target_arch = "aarch64", inline(never))]
+    fn new_neon(key: aes::KeyBytes, cpu: cpu::arm::Neon) -> Result<Self, error::Unspecified> {
+        let aes_key = aes::vp::Key::new(key, cpu)?;
+        let gcm_key_value = derive_gcm_key_value(&aes_key);
+        let gcm_key = gcm::neon::Key::new(gcm_key_value, cpu);
+        Ok(Self::Simd(Combo { aes_key, gcm_key }))
+    }
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    #[inline(never)]
+    fn new_ssse3(
+        key: aes::KeyBytes,
+        cpu: aes::vp::RequiredCpuFeatures,
+    ) -> Result<Self, error::Unspecified> {
+        let aes_key = aes::vp::Key::new(key, cpu)?;
+        let gcm_key_value = derive_gcm_key_value(&aes_key);
+        let gcm_key = gcm::fallback::Key::new(gcm_key_value);
+        Ok(Self::Simd(Combo { aes_key, gcm_key }))
+    }
+
+    #[cfg_attr(
+        any(
+            all(target_arch = "aarch64", target_endian = "little"),
+            all(target_arch = "arm", target_endian = "little"),
+            target_arch = "x86",
+            target_arch = "x86_64",
+        ),
+        inline(never)
+    )]
+    fn new_fallback(key: aes::KeyBytes) -> Result<Self, error::Unspecified> {
         let aes_key = aes::fallback::Key::new(key)?;
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::fallback::Key::new(gcm_key_value);
