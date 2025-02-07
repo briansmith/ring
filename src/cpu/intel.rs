@@ -106,26 +106,10 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
 
     let mut caps = 0;
 
-    if check(cpuid, 0, 24) {
-        set(&mut caps, Shift::Fxsr);
-    }
-
     // Synthesized.
     #[cfg(target_arch = "x86_64")]
     if check(cpuid, 0, 30) {
         set(&mut caps, Shift::IntelCpu);
-    }
-
-    if check(cpuid, 1, 1) {
-        set(&mut caps, Shift::ClMul);
-    }
-
-    if check(cpuid, 1, 9) {
-        set(&mut caps, Shift::Ssse3);
-    }
-
-    if check(cpuid, 1, 19) {
-        set(&mut caps, Shift::Sse41);
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -133,32 +117,9 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
         set(&mut caps, Shift::Movbe);
     }
 
-    if check(cpuid, 1, 25) {
-        set(&mut caps, Shift::Aes);
-    }
-
-    if check(cpuid, 1, 28) {
-        set(&mut caps, Shift::Avx);
-    }
-
     #[cfg(target_arch = "x86_64")]
     if check(cpuid, 2, 3) {
         set(&mut caps, Shift::Bmi1);
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    if check(cpuid, 2, 5) {
-        set(&mut caps, Shift::Avx2);
-
-        prefixed_extern! {
-            static avx2_available: AtomicU32;
-        }
-        // SAFETY: The C code only reads `avx2_available`, and its reads are
-        // synchronized through the `OnceNonZeroUsize` Acquire/Release
-        // semantics as we ensure we have a `cpu::Features` instance before
-        // calling into the C code.
-        let flag = unsafe { &avx2_available };
-        flag.store(1, core::sync::atomic::Ordering::Relaxed);
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -183,6 +144,56 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
                 flag.store(1, core::sync::atomic::Ordering::Relaxed);
             }
         }
+    }
+
+    // The preceding do not require (or denote) the ability to access any SIMD
+    // registers.
+
+    // AMD: "Collectively the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and
+    // SSE4A subsets are referred to as the legacy SSE instructions. All legacy
+    // SSE instructions support 128-bit vector operands."
+
+    if check(cpuid, 0, 24) {
+        set(&mut caps, Shift::Fxsr);
+    }
+
+    if check(cpuid, 1, 9) {
+        set(&mut caps, Shift::Ssse3);
+    }
+
+    if check(cpuid, 1, 19) {
+        set(&mut caps, Shift::Sse41);
+    }
+
+    // AMD: "The extended SSE instructions include the AES, AVX, AVX2, CLMUL,
+    // FMA4, FMA, and XOP subsets. All extended SSE instructions provide
+    // support for 128-bit vector operands and most also support 256-bit
+    // operands."
+
+    if check(cpuid, 1, 28) {
+        set(&mut caps, Shift::Avx);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    if check(cpuid, 2, 5) {
+        set(&mut caps, Shift::Avx2);
+
+        prefixed_extern! {
+            static avx2_available: AtomicU32;
+        }
+        // SAFETY: The C code only reads `avx2_available`, and its reads are
+        // synchronized through the `OnceNonZeroUsize` Acquire/Release
+        // semantics as we ensure we have a `cpu::Features` instance before
+        // calling into the C code.
+        let flag = unsafe { &avx2_available };
+        flag.store(1, core::sync::atomic::Ordering::Relaxed);
+    }
+
+    if check(cpuid, 1, 1) {
+        set(&mut caps, Shift::ClMul);
+    }
+    if check(cpuid, 1, 25) {
+        set(&mut caps, Shift::Aes);
     }
 
     // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
