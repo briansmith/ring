@@ -197,12 +197,11 @@ cfg_if! {
         #[derive(Clone, Copy)]
         pub(crate) struct IntelCpu(super::Features);
 
-        impl super::GetFeature<IntelCpu> for super::Features {
+        impl super::GetFeature<IntelCpu> for super::features::Values {
             fn get_feature(&self) -> Option<IntelCpu> {
                 const MASK: u32 = 1 << (Shift::IntelCpu as u32);
-                let caps = featureflags::get(*self);
-                if (caps & MASK) == MASK {
-                    Some(IntelCpu(*self))
+                if (self.values() & MASK) == MASK {
+                    Some(IntelCpu(self.cpu()))
                 } else {
                     None
                 }
@@ -212,7 +211,7 @@ cfg_if! {
         #[derive(Clone, Copy)]
         pub(crate) struct NotPreZenAmd(super::Features);
 
-        impl super::GetFeature<NotPreZenAmd> for super::Features {
+        impl super::GetFeature<NotPreZenAmd> for super::features::Values {
             fn get_feature(&self) -> Option<NotPreZenAmd> {
                 let sha2: Option<Avx2> = self.get_feature();
                 // Pre-Zen AMD CPUs didn't implement SHA. (One Pre-Zen AMD CPU
@@ -220,12 +219,12 @@ cfg_if! {
                 // SHA instructions then we want to avoid the runtime check for
                 // an Intel/AND CPU.
                 if sha2.is_some() {
-                    return Some(NotPreZenAmd(*self));
+                    return Some(NotPreZenAmd(self.cpu()));
                 }
                 // Perhaps we should do !AMD instead of Intel.
                 let intel: Option<IntelCpu> = self.get_feature();
                 if intel.is_some() {
-                    return Some(NotPreZenAmd(*self))
+                    return Some(NotPreZenAmd(self.cpu()))
                 }
                 None
             }
