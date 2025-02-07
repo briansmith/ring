@@ -1177,6 +1177,7 @@ set(
   PKI_HEADERS
 
   include/openssl/pki/certificate.h
+  include/openssl/pki/ocsp.h
   include/openssl/pki/signature_verify_cache.h
   include/openssl/pki/verify.h
   include/openssl/pki/verify_error.h
