@@ -1151,7 +1151,6 @@ set(
   pki/ip_util.cc
   pki/name_constraints.cc
   pki/ocsp.cc
-  pki/ocsp_verify_result.cc
   pki/parse_certificate.cc
   pki/parse_name.cc
   pki/parse_values.cc
@@ -1204,8 +1203,6 @@ set(
   pki/name_constraints.h
   pki/nist_pkits_unittest.h
   pki/ocsp.h
-  pki/ocsp_revocation_status.h
-  pki/ocsp_verify_result.h
   pki/parse_certificate.h
   pki/parse_name.h
   pki/parse_values.h

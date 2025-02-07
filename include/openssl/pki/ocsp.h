@@ -38,7 +38,17 @@ enum class OCSPRevocationStatus {
 // and indicating a non-revoked status, will have |response_status = PROVIDED|
 // and |revocation_status = GOOD|.
 struct OPENSSL_EXPORT OCSPVerifyResult {
-  bool operator==(const OCSPVerifyResult &other) const;
+  bool operator==(const OCSPVerifyResult &other) const {
+    if (response_status != other.response_status) {
+      return false;
+    }
+
+    if (response_status == PROVIDED) {
+      // |revocation_status| is only defined when |response_status| is PROVIDED.
+      return revocation_status == other.revocation_status;
+    }
+    return true;
+  }
 
   // This value is histogrammed in Chrome, so do not re-order or change values,
   // and add new values at the end.
