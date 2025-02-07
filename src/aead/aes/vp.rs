@@ -29,7 +29,7 @@ use crate::{cpu, error};
 type RequiredCpuFeatures = cpu::arm::Neon;
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-type RequiredCpuFeatures = cpu::intel::Ssse3;
+pub(in super::super) type RequiredCpuFeatures = cpu::intel::Ssse3;
 
 #[derive(Clone)]
 pub(in super::super) struct Key {
