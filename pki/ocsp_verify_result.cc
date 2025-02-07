@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ocsp_verify_result.h"
+#include <openssl/pki/ocsp.h>
 
 BSSL_NAMESPACE_BEGIN
 

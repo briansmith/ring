@@ -21,10 +21,9 @@
 #include <vector>
 
 #include <openssl/base.h>
+#include <openssl/pki/ocsp.h>
 
 #include "input.h"
-#include "ocsp_revocation_status.h"
-#include "ocsp_verify_result.h"
 #include "parse_values.h"
 #include "parser.h"
 #include "signature_algorithm.h"
