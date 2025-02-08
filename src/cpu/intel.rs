@@ -105,7 +105,6 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     }
 
     // CPUID leaf 1.
-    let leaf1_edx = cpuid[0];
     let leaf1_ecx = cpuid[1];
 
     // Structured Extended Feature Flags Enumeration Leaf (Initial EAX Value = 07H, ECX = 0)
@@ -161,10 +160,6 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     // AMD: "Collectively the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and
     // SSE4A subsets are referred to as the legacy SSE instructions. All legacy
     // SSE instructions support 128-bit vector operands."
-
-    if check(leaf1_edx, 24) {
-        set(&mut caps, Shift::Fxsr);
-    }
 
     // Intel: "11.6.2 Checking for Intel SSE and SSE2 Support"
     // * "Check that the CPU supports the CPUID instruction."
@@ -279,7 +274,6 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
 
 impl_get_feature! {
     features: [
-        { ("x86", "x86_64") => Fxsr },
         { ("x86", "x86_64") => ClMul },
         { ("x86", "x86_64") => Ssse3 },
         { ("x86", "x86_64") => Sse41 },
