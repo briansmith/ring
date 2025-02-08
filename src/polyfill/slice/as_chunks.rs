@@ -98,6 +98,13 @@ impl<'a, T, const N: usize> From<&'a AsChunksMut<'_, T, N>> for AsChunks<'a, T, 
     }
 }
 
+impl<'a, T, const N: usize> From<&'a [T; N]> for AsChunks<'a, T, N> {
+    #[inline(always)]
+    fn from(array: &'a [T; N]) -> Self {
+        Self(array)
+    }
+}
+
 // TODO: `impl From<AsChunks<'a, T, {2*N}> for AsChunks<'a, T, N>`.
 impl<'a, T> From<AsChunks<'a, T, 8>> for AsChunks<'a, T, 4> {
     #[inline(always)]

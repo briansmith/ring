@@ -47,7 +47,7 @@ pub(super) struct Context<'key, K> {
     _not_send: NotSend,
 }
 
-impl<'key, K: Gmult> Context<'key, K> {
+impl<'key, K: UpdateBlock> Context<'key, K> {
     #[inline(always)]
     pub(crate) fn new(
         key: &'key K,
@@ -125,10 +125,9 @@ impl<K: UpdateBlocks> Context<'_, K> {
     }
 }
 
-impl<K: Gmult> Context<'_, K> {
+impl<K: UpdateBlock> Context<'_, K> {
     pub fn update_block(&mut self, a: Block) {
-        self.Xi.bitxor_assign(a);
-        self.key.gmult(&mut self.Xi);
+        self.key.update_block(&mut self.Xi, a);
     }
 
     #[inline(always)]
@@ -145,8 +144,8 @@ impl<K: Gmult> Context<'_, K> {
     }
 }
 
-pub(super) trait Gmult {
-    fn gmult(&self, xi: &mut Xi);
+pub(super) trait UpdateBlock {
+    fn update_block(&self, xi: &mut Xi, a: Block);
 }
 
 pub(super) trait UpdateBlocks {

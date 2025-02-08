@@ -37,22 +37,6 @@ macro_rules! htable_new {
     }};
 }
 
-#[cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86",
-    target_arch = "x86_64"
-))]
-macro_rules! gmult {
-    ( $name:ident, $xi:expr, $h_table:expr $(,)? ) => {{
-        use crate::aead::gcm::ffi::{HTable, Xi};
-        prefixed_extern! {
-            fn $name(xi: &mut Xi, Htable: &HTable);
-        }
-        $h_table.gmult($name, $xi)
-    }};
-}
-
 /// SAFETY:
 ///  * The function `$name` must meet the contract of the `f` paramweter of
 ///    `ghash()`.
@@ -111,6 +95,10 @@ impl HTable {
         r
     }
 
+    #[cfg(any(
+        all(target_arch = "aarch64", target_endian = "little"),
+        all(target_arch = "arm", target_endian = "little")
+    ))]
     pub(super) unsafe fn gmult(
         &self,
         f: unsafe extern "C" fn(xi: &mut Xi, h_table: &HTable),

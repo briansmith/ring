@@ -281,55 +281,6 @@ $code.=<<___;
 ___
 }
 
-{ my ($Xip,$Htbl)=@_4args;
-
-$code.=<<___;
-.globl	gcm_gmult_clmul
-.type	gcm_gmult_clmul,\@abi-omnipotent
-.align	16
-gcm_gmult_clmul:
-.cfi_startproc
-	_CET_ENDBR
-.L_gmult_clmul:
-	movdqu		($Xip),$Xi
-	movdqa		.Lbswap_mask(%rip),$T3
-	movdqu		($Htbl),$Hkey
-	movdqu		0x20($Htbl),$T2
-	pshufb		$T3,$Xi
-___
-	&clmul64x64_T2	($Xhi,$Xi,$Hkey,$T2);
-$code.=<<___ if (0 || (&reduction_alg9($Xhi,$Xi)&&0));
-	# experimental alternative. special thing about is that there
-	# no dependency between the two multiplications...
-	mov		\$`0xE1<<1`,%eax
-	mov		\$0xA040608020C0E000,%r10	# ((7..0)·0xE0)&0xff
-	mov		\$0x07,%r11d
-	movq		%rax,$T1
-	movq		%r10,$T2
-	movq		%r11,$T3		# borrow $T3
-	pand		$Xi,$T3
-	pshufb		$T3,$T2			# ($Xi&7)·0xE0
-	movq		%rax,$T3
-	pclmulqdq	\$0x00,$Xi,$T1		# ·(0xE1<<1)
-	pxor		$Xi,$T2
-	pslldq		\$15,$T2
-	paddd		$T2,$T2			# <<(64+56+1)
-	pxor		$T2,$Xi
-	pclmulqdq	\$0x01,$T3,$Xi
-	movdqa		.Lbswap_mask(%rip),$T3	# reload $T3
-	psrldq		\$1,$T1
-	pxor		$T1,$Xhi
-	pslldq		\$7,$Xi
-	pxor		$Xhi,$Xi
-___
-$code.=<<___;
-	pshufb		$T3,$Xi
-	movdqu		$Xi,($Xip)
-	ret
-.cfi_endproc
-.size	gcm_gmult_clmul,.-gcm_gmult_clmul
-___
-}
 
 { my ($Xip,$Htbl,$inp,$len)=@_4args;
   my ($Xln,$Xmn,$Xhn,$Hkey2,$HK) = map("%xmm$_",(3..7));
