@@ -113,11 +113,11 @@ impl Key {
                         self, counter, in_out.copy_within(), ())
                 }
             } else if #[cfg(target_arch = "x86")] {
-                use cpu::{GetFeature as _, intel::{Fxsr, Ssse3}};
+                use cpu::{GetFeature as _, intel::Ssse3};
                 if in_out.len() >= 1 {
                     if let Some(cpu) = cpu.get_feature() {
                         chacha20_ctr32_ffi!(
-                            unsafe { (1, (Fxsr, Ssse3), &mut [u8]) => ChaCha20_ctr32_ssse3 },
+                            unsafe { (1, (Ssse3), &mut [u8]) => ChaCha20_ctr32_ssse3 },
                             self, counter, in_out.copy_within(), cpu)
                     } else {
                         chacha20_ctr32_ffi!(
