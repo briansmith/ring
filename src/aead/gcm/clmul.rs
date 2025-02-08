@@ -25,7 +25,7 @@ use crate::cpu;
 pub(in super::super) type RequiredCpuFeatures = cpu::arm::PMull;
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-pub(in super::super) type RequiredCpuFeatures = (cpu::intel::ClMul, cpu::intel::Fxsr);
+pub(in super::super) type RequiredCpuFeatures = (cpu::intel::ClMul, cpu::intel::Ssse3);
 
 #[derive(Clone)]
 pub struct Key {
