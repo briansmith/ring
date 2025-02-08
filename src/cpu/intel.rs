@@ -93,9 +93,9 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     const _ATOMIC32_ALIGNMENT_EQUSLS_U32_ALIGNMENT: () =
         assert!(align_of::<AtomicU32>() == align_of::<u32>());
 
-    fn check(cpuid: &[u32; 4], idx: usize, bit: u32) -> bool {
+    fn check(leaf: u32, bit: u32) -> bool {
         let shifted = 1 << bit;
-        (cpuid[idx] & shifted) == shifted
+        (leaf & shifted) == shifted
     }
     fn set(out: &mut u32, shift: Shift) {
         let shifted = 1 << (shift as u32);
@@ -104,32 +104,41 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
         debug_assert_eq!(*out & shifted, shifted);
     }
 
+    // CPUID leaf 1.
+    let leaf1_edx = cpuid[0];
+    let leaf1_ecx = cpuid[1];
+
+    // Structured Extended Feature Flags Enumeration Leaf (Initial EAX Value = 07H, ECX = 0)
+    let extended_features_ebx = cpuid[2];
+
+    // We don't need anything from cpuid[3] presently.
+
     let mut caps = 0;
 
     // Synthesized.
     #[cfg(target_arch = "x86_64")]
-    if check(cpuid, 0, 30) {
+    if check(cpuid[0], 30) {
         set(&mut caps, Shift::IntelCpu);
     }
 
     #[cfg(target_arch = "x86_64")]
-    if check(cpuid, 1, 22) {
+    if check(leaf1_ecx, 22) {
         set(&mut caps, Shift::Movbe);
     }
 
     #[cfg(target_arch = "x86_64")]
-    if check(cpuid, 2, 3) {
+    if check(extended_features_ebx, 3) {
         set(&mut caps, Shift::Bmi1);
     }
 
     #[cfg(target_arch = "x86_64")]
     {
-        let bmi2_available = check(cpuid, 2, 8);
+        let bmi2_available = check(extended_features_ebx, 8);
         if bmi2_available {
             set(&mut caps, Shift::Bmi2);
         };
 
-        if check(cpuid, 2, 19) {
+        if check(extended_features_ebx, 19) {
             set(&mut caps, Shift::Adx);
 
             if bmi2_available {
@@ -153,15 +162,15 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     // SSE4A subsets are referred to as the legacy SSE instructions. All legacy
     // SSE instructions support 128-bit vector operands."
 
-    if check(cpuid, 0, 24) {
+    if check(leaf1_edx, 24) {
         set(&mut caps, Shift::Fxsr);
     }
 
-    if check(cpuid, 1, 9) {
+    if check(leaf1_ecx, 9) {
         set(&mut caps, Shift::Ssse3);
     }
 
-    if check(cpuid, 1, 19) {
+    if check(leaf1_ecx, 19) {
         set(&mut caps, Shift::Sse41);
     }
 
@@ -170,12 +179,12 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     // support for 128-bit vector operands and most also support 256-bit
     // operands."
 
-    if check(cpuid, 1, 28) {
+    if check(leaf1_ecx, 28) {
         set(&mut caps, Shift::Avx);
     }
 
     #[cfg(target_arch = "x86_64")]
-    if check(cpuid, 2, 5) {
+    if check(extended_features_ebx, 5) {
         set(&mut caps, Shift::Avx2);
 
         prefixed_extern! {
@@ -189,17 +198,17 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
         flag.store(1, core::sync::atomic::Ordering::Relaxed);
     }
 
-    if check(cpuid, 1, 1) {
+    if check(leaf1_ecx, 1) {
         set(&mut caps, Shift::ClMul);
     }
-    if check(cpuid, 1, 25) {
+    if check(leaf1_ecx, 25) {
         set(&mut caps, Shift::Aes);
     }
 
     // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
     // static feature detection for this.
     #[cfg(target_arch = "x86_64")]
-    if check(cpuid, 2, 29) {
+    if check(extended_features_ebx, 29) {
         set(&mut caps, Shift::Sha);
     }
 
