@@ -292,7 +292,10 @@ pub(super) fn seal(
     ),
     cold
 )]
-fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks + gcm::Gmult>(
+fn seal_strided<
+    A: aes::EncryptBlock + aes::EncryptCtr32,
+    G: gcm::UpdateBlock + gcm::UpdateBlocks,
+>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
@@ -313,7 +316,7 @@ fn seal_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
     seal_finish(aes_key, auth, remainder, ctr, tag_iv)
 }
 
-fn seal_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
+fn seal_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     aes_key: &A,
     mut auth: gcm::Context<G>,
     remainder: OverlappingPartialBlock<'_>,
@@ -501,7 +504,10 @@ pub(super) fn open(
     ),
     cold
 )]
-fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks + gcm::Gmult>(
+fn open_strided<
+    A: aes::EncryptBlock + aes::EncryptCtr32,
+    G: gcm::UpdateBlock + gcm::UpdateBlocks,
+>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
     in_out_slice: &mut [u8],
@@ -555,7 +561,7 @@ fn open_strided<A: aes::EncryptBlock + aes::EncryptCtr32, G: gcm::UpdateBlocks +
     open_finish(aes_key, auth, in_out, ctr, tag_iv)
 }
 
-fn open_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
+fn open_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     aes_key: &A,
     mut auth: gcm::Context<G>,
     remainder: OverlappingPartialBlock<'_>,
@@ -571,7 +577,7 @@ fn open_finish<A: aes::EncryptBlock, G: gcm::Gmult>(
     Ok(finish(aes_key, auth, tag_iv))
 }
 
-fn finish<A: aes::EncryptBlock, G: gcm::Gmult>(
+fn finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     aes_key: &A,
     gcm_ctx: gcm::Context<G>,
     tag_iv: aes::Iv,

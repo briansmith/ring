@@ -22,7 +22,7 @@
 //
 // Unlike the BearSSL notes, we use u128 in the 64-bit implementation.
 
-use super::{ffi::U128, Gmult, KeyValue, UpdateBlocks, Xi, BLOCK_LEN};
+use super::{ffi::U128, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::polyfill::{slice::AsChunks, ArraySplitMap as _};
 
 #[derive(Clone)]
@@ -36,8 +36,9 @@ impl Key {
     }
 }
 
-impl Gmult for Key {
-    fn gmult(&self, xi: &mut Xi) {
+impl UpdateBlock for Key {
+    fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
+        xi.bitxor_assign(a);
         gmult(xi, self.h);
     }
 }

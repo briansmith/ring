@@ -267,30 +267,6 @@ my ($Xhi,$Xi) = @_;
 	&ret		();
 &function_end_B("gcm_init_clmul");
 
-&function_begin_B("gcm_gmult_clmul");
-	&mov		($Xip,&wparam(0));
-	&mov		($Htbl,&wparam(1));
-
-	&call		(&label("pic"));
-&set_label("pic");
-	&blindpop	($const);
-	&lea		($const,&DWP(&label("bswap")."-".&label("pic"),$const));
-
-	&movdqu		($Xi,&QWP(0,$Xip));
-	&movdqa		($T3,&QWP(0,$const));
-	&movups		($Hkey,&QWP(0,$Htbl));
-	&pshufb		($Xi,$T3);
-	&movups		($T2,&QWP(32,$Htbl));
-
-	&clmul64x64_T2	($Xhi,$Xi,$Hkey,$T2);
-	&reduction_alg9	($Xhi,$Xi);
-
-	&pshufb		($Xi,$T3);
-	&movdqu		(&QWP(0,$Xip),$Xi);
-
-	&ret	();
-&function_end_B("gcm_gmult_clmul");
-
 &function_begin("gcm_ghash_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));

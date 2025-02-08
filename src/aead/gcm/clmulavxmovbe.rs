@@ -14,40 +14,37 @@
 
 #![cfg(target_arch = "x86_64")]
 
-use super::{clmul, Gmult, HTable, KeyValue, UpdateBlocks, Xi, BLOCK_LEN};
+use super::{HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::{cpu, polyfill::slice::AsChunks};
 
-pub(in super::super) type RequiredCpuFeatures = (
-    clmul::RequiredCpuFeatures,
-    cpu::intel::Avx,
-    cpu::intel::Movbe,
-);
+pub(in super::super) type RequiredCpuFeatures =
+    (cpu::intel::ClMul, cpu::intel::Avx, cpu::intel::Movbe);
 
 #[derive(Clone)]
 pub struct Key {
-    inner: clmul::Key,
+    h_table: HTable,
 }
 
 impl Key {
-    pub(in super::super) fn new(key_value: KeyValue, cpu: RequiredCpuFeatures) -> Self {
+    pub(in super::super) fn new(value: KeyValue, _cpu: RequiredCpuFeatures) -> Self {
         Self {
-            inner: clmul::Key::new_avx(key_value, cpu),
+            h_table: unsafe { htable_new!(gcm_init_avx, value) },
         }
     }
 
     pub(super) fn inner(&self) -> &HTable {
-        self.inner.inner()
+        &self.h_table
     }
 }
 
-impl Gmult for Key {
-    fn gmult(&self, xi: &mut Xi) {
-        self.inner.gmult(xi)
+impl UpdateBlock for Key {
+    fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
+        self.update_blocks(xi, (&a).into())
     }
 }
 
 impl UpdateBlocks for Key {
     fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, BLOCK_LEN>) {
-        unsafe { ghash!(gcm_ghash_avx, xi, &self.inner.inner(), input) }
+        unsafe { ghash!(gcm_ghash_avx, xi, self.inner(), input) }
     }
 }

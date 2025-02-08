@@ -17,7 +17,7 @@
     all(target_arch = "arm", target_endian = "little")
 ))]
 
-use super::{Gmult, HTable, KeyValue, UpdateBlocks, Xi, BLOCK_LEN};
+use super::{HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::{cpu, polyfill::slice::AsChunks};
 
 pub(in super::super) type RequiredCpuFeatures = cpu::arm::Neon;
@@ -35,9 +35,13 @@ impl Key {
     }
 }
 
-impl Gmult for Key {
-    fn gmult(&self, xi: &mut Xi) {
-        unsafe { gmult!(gcm_gmult_neon, xi, &self.h_table) }
+impl UpdateBlock for Key {
+    fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
+        prefixed_extern! {
+            fn gcm_gmult_neon(xi: &mut Xi, Htable: &HTable);
+        }
+        xi.bitxor_assign(a);
+        unsafe { self.h_table.gmult(gcm_gmult_neon, xi) };
     }
 }
 
