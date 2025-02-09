@@ -536,33 +536,9 @@ static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
 
 // Runtime CPU feature support
 
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-// OPENSSL_ia32cap_P contains the Intel CPUID bits when running on an x86 or
-// x86-64 system.
-//
-//   Index 0:
-//     EDX for CPUID where EAX = 1
-//     Bit 20 is always zero
-//     Bit 28 is adjusted to reflect whether the data cache is shared between
-//       multiple logical cores
-//     Bit 30 is used to indicate an Intel CPU
-//   Index 1:
-//     ECX for CPUID where EAX = 1
-//     Bit 11 is used to indicate AMD XOP support, not SDBG
-//   Index 2:
-//     EBX for CPUID where EAX = 7, ECX = 0
-//     Bit 14 (for removed feature MPX) is used to indicate a preference for ymm
-//       registers over zmm even when zmm registers are supported
-//   Index 3:
-//     ECX for CPUID where EAX = 7, ECX = 0
-//
-// Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the XMM, YMM,
-// and AVX512 bits in XCR0, so it is not necessary to check those. (WARNING: See
-// caveats in cpu_intel.c.)
 #if defined(OPENSSL_X86_64)
 extern uint32_t avx2_available;
 extern uint32_t adx_bmi2_available;
-#endif
 #endif
 
 
