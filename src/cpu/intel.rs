@@ -141,6 +141,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
             set(&mut caps, Shift::Adx);
 
             if bmi2_available {
+                // Declared as `uint32_t` in the C code.
                 prefixed_extern! {
                     static adx_bmi2_available: AtomicU32;
                 }
@@ -223,6 +224,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     if check(extended_features_ebx, 5) {
         set(&mut caps, Shift::Avx2);
 
+        // Declared as `uint32_t` in the C code.
         prefixed_extern! {
             static avx2_available: AtomicU32;
         }
