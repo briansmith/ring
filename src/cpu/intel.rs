@@ -90,7 +90,7 @@ pub(super) mod featureflags {
 
 fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     // The `prefixed_extern!` uses below assume this
-    const _ATOMIC32_ALIGNMENT_EQUSLS_U32_ALIGNMENT: () =
+    const _ATOMIC32_ALIGNMENT_EQUALS_U32_ALIGNMENT: () =
         assert!(align_of::<AtomicU32>() == align_of::<u32>());
 
     fn check(leaf: u32, bit: u32) -> bool {
