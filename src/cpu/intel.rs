@@ -13,7 +13,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use cfg_if::cfg_if;
-use core::{mem::align_of, sync::atomic::AtomicU32};
 
 mod abi_assumptions {
     use core::mem::size_of;
@@ -90,6 +89,9 @@ pub(super) mod featureflags {
 
 fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     // The `prefixed_extern!` uses below assume this
+    #[cfg(target_arch = "x86_64")]
+    use core::{mem::align_of, sync::atomic::AtomicU32};
+    #[cfg(target_arch = "x86_64")]
     const _ATOMIC32_ALIGNMENT_EQUALS_U32_ALIGNMENT: () =
         assert!(align_of::<AtomicU32>() == align_of::<u32>());
 
