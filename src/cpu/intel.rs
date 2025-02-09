@@ -12,6 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+// "Intel" citations are for "Intel 64 and IA-32 Architectures Software
+// Developer’s Manual", Combined Volumes, December 2024.
+// "AMD" citations are for "AMD64 Technology AMD64 Architecture
+// Programmer’s Manual, Volumes 1-5" Revision 4.08 April 2024.
+
 use cfg_if::cfg_if;
 
 mod abi_assumptions {
@@ -37,6 +42,7 @@ mod abi_assumptions {
 
 pub(super) mod featureflags {
     use super::super::CAPS_STATIC;
+    use super::*;
     use crate::{
         cpu,
         polyfill::{once_cell::race, usize_from_u32},
@@ -44,22 +50,13 @@ pub(super) mod featureflags {
     use core::num::NonZeroUsize;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
-        // SAFETY: `OPENSSL_cpuid_setup` must be called only in
-        // `INIT.call_once()` below.
-        prefixed_extern! {
-            fn OPENSSL_cpuid_setup(out: &mut [u32; 4]);
-        }
-
         let _: NonZeroUsize = FEATURES.get_or_init(|| {
-            let mut cpuid = [0; 4];
-            // SAFETY: We assume that it is safe to execute CPUID and XGETBV.
-            unsafe {
-                OPENSSL_cpuid_setup(&mut cpuid);
-            }
-            let detected = super::cpuid_to_caps_and_set_c_flags(&cpuid);
+            // SAFETY: `cpuid_all` assumes CPUID is available and that it is
+            // compatible with Intel.
+            let cpuid_results = unsafe { cpuid_all() };
+            let detected = cpuid_to_caps_and_set_c_flags(cpuid_results);
             let merged = CAPS_STATIC | detected;
-
-            let merged = usize_from_u32(merged) | (1 << (super::Shift::Initialized as u32));
+            let merged = usize_from_u32(merged) | (1 << (Shift::Initialized as u32));
             NonZeroUsize::new(merged).unwrap() // Can't fail because we just set a bit.
         });
 
@@ -105,39 +102,107 @@ pub(super) mod featureflags {
     pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
 }
 
-fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
-    // "Intel" citations are for "Intel 64 and IA-32 Architectures Software
-    // Developer’s Manual", Combined Volumes, December 2024.
-    // "AMD" citations are for "AMD64 Technology AMD64 Architecture
-    // Programmer’s Manual, Volumes 1-5" Revision 4.08 April 2024.
+struct CpuidSummary {
+    #[cfg(target_arch = "x86_64")]
+    is_intel: bool,
+    leaf1_edx: u32,
+    leaf1_ecx: u32,
+    #[cfg(target_arch = "x86_64")]
+    extended_features_ebx: u32,
+    xcr0: u64,
+}
 
-    // The `prefixed_extern!` uses below assume this
+// SAFETY: This unconditionally uses CPUID because we don't have a good
+// way to detect CPUID and because we don't know of a CPU that supports
+// SSE2 (that we currently statically require) but doesn't support
+// CPUID. SGX is one environment where CPUID isn't allowed but where
+// SSE2 is statically supported. Ideally there would be a
+// `cfg!(target_feature = "cpuid")` we could use.
+unsafe fn cpuid_all() -> CpuidSummary {
+    #[cfg(target_arch = "x86")]
+    use core::arch::x86 as arch;
+    #[cfg(target_arch = "x86_64")]
+    use core::arch::x86_64 as arch;
+
+    // Intel: "21.1.1 Notes on Where to Start".
+    let r = unsafe { arch::__cpuid(0) };
+
+    let leaf1_edx;
+    let leaf1_ecx;
+
+    #[cfg(target_arch = "x86_64")]
+    let is_intel = (r.ebx == 0x756e6547) && (r.edx == 0x49656e69) && (r.ecx == 0x6c65746e);
+
+    #[cfg(target_arch = "x86_64")]
+    let extended_features_ebx;
+
+    if r.eax >= 1 {
+        // SAFETY: `r.eax >= 1` indicates leaf 1 is available.
+        let r = unsafe { arch::__cpuid(1) };
+        leaf1_edx = r.edx;
+        leaf1_ecx = r.ecx;
+
+        #[cfg(target_arch = "x86_64")]
+        if r.eax >= 7 {
+            // SAFETY: `r.eax >= 7` implies we can execute this.
+            let r = unsafe { arch::__cpuid(7) };
+            extended_features_ebx = r.ebx;
+        } else {
+            extended_features_ebx = 0;
+        }
+    } else {
+        // Expected to be unreachable on any environment we currently
+        // support.
+        leaf1_edx = 0;
+        leaf1_ecx = 0;
+        #[cfg(target_arch = "x86_64")]
+        {
+            extended_features_ebx = 0;
+        }
+    }
+
+    let xcr0 = if check(leaf1_ecx, 27) {
+        unsafe { arch::_xgetbv(0) }
+    } else {
+        0
+    };
+
+    CpuidSummary {
+        #[cfg(target_arch = "x86_64")]
+        is_intel,
+        leaf1_edx,
+        leaf1_ecx,
+        #[cfg(target_arch = "x86_64")]
+        extended_features_ebx,
+        xcr0,
+    }
+}
+
+fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
     #[cfg(target_arch = "x86_64")]
     use core::{mem::align_of, sync::atomic::AtomicU32};
+
+    let CpuidSummary {
+        #[cfg(target_arch = "x86_64")]
+        is_intel,
+        leaf1_edx,
+        leaf1_ecx,
+        #[cfg(target_arch = "x86_64")]
+        extended_features_ebx,
+        xcr0,
+    } = r;
+
+    // The `prefixed_extern!` uses below assume this
     #[cfg(target_arch = "x86_64")]
     const _ATOMIC32_ALIGNMENT_EQUALS_U32_ALIGNMENT: () =
         assert!(align_of::<AtomicU32>() == align_of::<u32>());
 
-    fn check(leaf: u32, bit: u32) -> bool {
-        let shifted = 1 << bit;
-        (leaf & shifted) == shifted
-    }
     fn set(out: &mut u32, shift: Shift) {
         let shifted = 1 << (shift as u32);
         debug_assert_eq!(*out & shifted, 0);
         *out |= shifted;
         debug_assert_eq!(*out & shifted, shifted);
     }
-
-    #[cfg(target_arch = "x86_64")]
-    let is_intel = check(cpuid[0], 30); // Synthesized by `OPENSSL_cpuid_setup`
-
-    // CPUID leaf 1.
-    let leaf1_ecx = cpuid[1];
-
-    // Intel: "Structured Extended Feature Flags Enumeration Leaf"
-    #[cfg(target_arch = "x86_64")]
-    let extended_features_ebx = cpuid[2];
 
     let mut caps = 0;
 
@@ -179,6 +244,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
             set(&mut caps, Shift::Sse2);
         }
     }
+    let _ = leaf1_edx;
 
     // Sometimes people delete the `_SSE_REQUIRED`/`_SSE2_REQUIRED` const
     // assertions in an attempt to support pre-SSE2 32-bit x86 systems. If they
@@ -211,43 +277,43 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     // AMD: "The extended SSE instructions include [...]."
 
     // Intel: "14.3 DETECTION OF INTEL AVX INSTRUCTIONS"
-    // `OPENSSL_cpuid_setup` clears this bit when it detects the OS doesn't
-    // support AVX state.
-    let avx_available = check(leaf1_ecx, 28);
-    if avx_available {
+    let os_supports_xmm_and_ymm = (xcr0 & 6) == 6;
+    let cpu_supports_avx = check(leaf1_ecx, 28);
+
+    if os_supports_xmm_and_ymm && cpu_supports_avx {
         set(&mut caps, Shift::Avx);
-    }
 
-    // "14.7.1 Detection of Intel AVX2 Hardware support"
-    // XXX: We don't condition AVX2 on AVX. TODO: Address this.
-    // `OPENSSL_cpuid_setup` clears this bit when it detects the OS doesn't
-    // support AVX state.
-    #[cfg(target_arch = "x86_64")]
-    if check(extended_features_ebx, 5) {
-        set(&mut caps, Shift::Avx2);
+        // "14.7.1 Detection of Intel AVX2 Hardware support"
+        #[cfg(target_arch = "x86_64")]
+        if check(extended_features_ebx, 5) {
+            set(&mut caps, Shift::Avx2);
 
-        // Declared as `uint32_t` in the C code.
-        prefixed_extern! {
-            static avx2_available: AtomicU32;
+            // Declared as `uint32_t` in the C code.
+            prefixed_extern! {
+                static avx2_available: AtomicU32;
+            }
+            // SAFETY: The C code only reads `avx2_available`, and its reads are
+            // synchronized through the `OnceNonZeroUsize` Acquire/Release
+            // semantics as we ensure we have a `cpu::Features` instance before
+            // calling into the C code.
+            let flag = unsafe { &avx2_available };
+            flag.store(1, core::sync::atomic::Ordering::Relaxed);
         }
-        // SAFETY: The C code only reads `avx2_available`, and its reads are
-        // synchronized through the `OnceNonZeroUsize` Acquire/Release
-        // semantics as we ensure we have a `cpu::Features` instance before
-        // calling into the C code.
-        let flag = unsafe { &avx2_available };
-        flag.store(1, core::sync::atomic::Ordering::Relaxed);
     }
 
     // Intel: "12.13.4 Checking for Intel AES-NI Support"
     // If/when we support dynamic detection of SSE/SSE2, revisit this.
     // TODO: Clarify "interesting" states like (!SSE && AVX && AES-NI)
-    // and AES-NI & !AVX.
-    // Each check of `ClMul`, `Aes`, and `Sha` must be paired with a check for
-    // an AVX feature (e.g. `Avx`) or an SSE feature (e.g. `Ssse3`), as every
-    // use will either be supported by SSE* or AVX* instructions. We then
-    // assume that those supporting instructions' prerequisites (e.g. OS
-    // support for AVX or SSE state, respectively) are the only prerequisites
-    // for these features.
+    // and (AES-NI & !AVX).
+    //
+    // PCLMULQDQ and AES-NI instructions come in P* (SSE) and VP* (AVX)
+    // variants. The use of the SSE variants must be guarded by a check of both
+    // the `ClMul`/`Aes` feature AND an SSE (e.g. `Ssse3`) or AVX (e.g. `Avx`)
+    // feature. Which SSE/AVX feature to check for will depend on the
+    // supporting instructions around the VPCLMULQDQ/AES-NI constructions.
+    // (PCLMULQDQ and AES-NI also come  additional "VPCLMULQDQ"/"VAES"
+    // variants, which are a separate thing entirely; support for those will be
+    // added later.)
     if check(leaf1_ecx, 1) {
         set(&mut caps, Shift::ClMul);
     }
@@ -288,7 +354,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
         // rust `std::arch::is_x86_feature_detected` does a very similar thing
         // but only looks at AVX, not ADX. Note that they reference an older
         // version of the erratum labeled SKL052.
-        let believe_bmi_bits = !is_intel || (adx_available || avx_available);
+        let believe_bmi_bits = !is_intel || (adx_available || cpu_supports_avx);
 
         if check(extended_features_ebx, 3) && believe_bmi_bits {
             set(&mut caps, Shift::Bmi1);
@@ -314,6 +380,11 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     }
 
     caps
+}
+
+fn check(leaf: u32, bit: u32) -> bool {
+    let shifted = 1 << bit;
+    (leaf & shifted) == shifted
 }
 
 impl_get_feature! {
