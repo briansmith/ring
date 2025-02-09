@@ -88,6 +88,11 @@ pub(super) mod featureflags {
 }
 
 fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
+    // "Intel" citations are for "Intel 64 and IA-32 Architectures Software
+    // Developer’s Manual", Combined Volumes, December 2024.
+    // "AMD" citations are for "AMD64 Technology AMD64 Architecture
+    // Programmer’s Manual, Volumes 1-5" Revision 4.08 April 2024.
+
     // The `prefixed_extern!` uses below assume this
     #[cfg(target_arch = "x86_64")]
     use core::{mem::align_of, sync::atomic::AtomicU32};
@@ -109,7 +114,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     // CPUID leaf 1.
     let leaf1_ecx = cpuid[1];
 
-    // Structured Extended Feature Flags Enumeration Leaf (Initial EAX Value = 07H, ECX = 0)
+    // Intel: "Structured Extended Feature Flags Enumeration Leaf"
     #[cfg(target_arch = "x86_64")]
     let extended_features_ebx = cpuid[2];
 
@@ -158,36 +163,27 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     // The preceding do not require (or denote) the ability to access any SIMD
     // registers.
 
-    // AMD: "Collectively the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and
-    // SSE4A subsets are referred to as the legacy SSE instructions. All legacy
-    // SSE instructions support 128-bit vector operands."
+    // AMD: "Collectively the SSE1, [...] are referred to as the legacy SSE
+    // instructions. All legacy SSE instructions support 128-bit vector
+    // operands."
 
     // Intel: "11.6.2 Checking for Intel SSE and SSE2 Support"
-    // * "Check that the CPU supports the CPUID instruction."
-    //   We don't support CPUs that don't support CPUiD.
-    // TODO: Encode this in const assertion.
-    // * "Check that the processor supports Intel SSE and/or SSE2 (true if
-    // CPUID.01H:EDX.SSE[bit 25] = 1 and/or CPUID.01H:EDX.SSE2[bit 26] = 1)."
-    // We have to assume so if `target_feature = "sse"` since we're already
-    // using SSE registers.
+    // We have to assume the prerequisites for SSE/SSE2 are met since we're
+    // already almost deifnitely using SSE registers if these target features
+    // are enabled.
     const _SSE_REQUIRED: () = assert!(cfg!(target_feature = "sse"));
     const _SSE2_REQUIRED: () = assert!(cfg!(target_feature = "sse2"));
 
     // Intel: "12.7.2 Checking for SSSE3 Support"
-    // * "Operating system support for Intel SSE implies sufficient support
-    //    for SSSE3 and Intel SSE2 and SSE3." SSE2 checks are done above.
-    // * "[F]ollow the steps illustrated in Section 11.6.2"; see above.
-    // * Check that the processor supports SSSE3.
+    // If/when we support dynamic detection of SSE/SSE2, make this conditional
+    // on SSE/SSE2.
     if check(leaf1_ecx, 9) {
         set(&mut caps, Shift::Ssse3);
     }
 
     // Intel: "12.12.2 Checking for Intel SSE4.1 Support"
-    // * "[F]ollow the steps illustrated in Section 11.6.2"; see above.
-    // * "Check that the processor supports Intel SSE4.1 (if
-    //    CPUID.01H:ECX.SSE4_1[bit 19] = 1), Intel SSE3 (if
-    //    CPUID.01H:ECX.SSE3[bit 0] = 1), and SSSE3 (if
-    //    CPUID.01H:ECX.SSSE3[bit 9] = 1)."
+    // If/when we support dynamic detection of SSE/SSE2, make this conditional
+    // on SSE/SSE2.
     // XXX: We don't check for SSE3 and we're not sure if it is compatible for
     //      us to do so; does AMD advertise SSE3? TODO: address this.
     // XXX: We don't condition this on SSSE3 being available. TODO: address
@@ -197,29 +193,19 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
         set(&mut caps, Shift::Sse41);
     }
 
-    // AMD: "The extended SSE instructions include the AES, AVX, AVX2, CLMUL,
-    // FMA4, FMA, and XOP subsets. All extended SSE instructions provide
-    // support for 128-bit vector operands and most also support 256-bit
-    // operands."
+    // AMD: "The extended SSE instructions include [...]."
 
     // Intel: "14.3 DETECTION OF INTEL AVX INSTRUCTIONS"
-    // * "Detect CPUID.1:ECX.OSXSAVE[bit 27] = 1"
-    // * "Issue XGETBV and verify that XCR0[2:1] = ‘11b’ (XMM state and YMM
-    //   state are enabled by OS)."
-    // * "[D]etect CPUID.1:ECX.AVX[bit 28] = 1"
-    // `OPENSSL_cpuid_setup` does the first two steps and clears the bit when
-    // appropriate.
+    // `OPENSSL_cpuid_setup` clears this bit when it detects the OS doesn't
+    // support AVX state.
     if check(leaf1_ecx, 28) {
         set(&mut caps, Shift::Avx);
     }
 
     // "14.7.1 Detection of Intel AVX2 Hardware support"
-    // "Application Software must identify that hardware supports Intel AVX[;]
-    // after that it must also detect support for Intel AVX2 by checking
-    // CPUID.(EAX=07H, ECX=0H):EBX.AVX2[bit 5]."
     // XXX: We don't condition AVX2 on AVX. TODO: Address this.
-    // `OPENSSL_cpuid_setup` does check for OS support (sse AVX section above)
-    // and clears the bit when appropriate.
+    // `OPENSSL_cpuid_setup` clears this bit when it detects the OS doesn't
+    // support AVX state.
     #[cfg(target_arch = "x86_64")]
     if check(extended_features_ebx, 5) {
         set(&mut caps, Shift::Avx2);
@@ -237,36 +223,23 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     }
 
     // Intel: "12.13.4 Checking for Intel AES-NI Support"
-    // * "[F]ollow the steps illustrated in Section 11.6.2"; see above.
-    // * "Check that the processor supports Intel AES-NI (if
-    //   CPUID.01H:ECX.AESNI[bit 25] = 1); check that the processor
-    //   supports PCLMULQDQ (if CPUID.01H:ECX.PCLMULQDQ[bit 1] = 1)."
-    //
-    // We do not explicitly condition this on the presence of SSE1/SSE2
-    // support or operating system support for SSE/AVX state. We currently
-    // assume SSE1/SSE2 support. However, we don't assume AVX state support.
+    // If/when we support dynamic detection of SSE/SSE2, revisit this.
     // TODO: Clarify "interesting" states like (!SSE && AVX && AES-NI)
     // and AES-NI & !AVX.
-    // TODO: Every use of `ClMul` needs to check either AVX or an SSE feature;
-    // we should enforce this in the type system.
+    // Each check of `ClMul`, `Aes`, and `Sha` must be paired with a check for
+    // an AVX feature (e.g. `Avx`) or an SSE feature (e.g. `Ssse3`), as every
+    // use will either be supported by SSE* or AVX* instructions. We then
+    // assume that those supporting instructions' prerequisites (e.g. OS
+    // support for AVX or SSE state, respectively) are the only prerequisites
+    // for these features.
     if check(leaf1_ecx, 1) {
         set(&mut caps, Shift::ClMul);
     }
-    // TODO: Every use of `Aes` needs to check either AVX or an SSE feature;
-    // we should enforce this in the type system.
     if check(leaf1_ecx, 25) {
         set(&mut caps, Shift::Aes);
     }
-
     // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
     // static feature detection for this.
-    //
-    // XXX: There doesn't seem to be good documentation in the Intel or AMD
-    // manuals about preconditions. We assume OS SSE state support is required,
-    // at least. We don't explicitly condition this on SSE support because we
-    // presently require SSE2 to be statically enabled.
-    // TODO: The only user of this feature also checks SSSE3 so we can just
-    // make this conditional on SSSE3.
     #[cfg(target_arch = "x86_64")]
     if check(extended_features_ebx, 29) {
         set(&mut caps, Shift::Sha);
