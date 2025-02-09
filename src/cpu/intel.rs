@@ -115,24 +115,21 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
 
     let mut caps = 0;
 
-    // Synthesized.
-    #[cfg(target_arch = "x86_64")]
-    if check(cpuid[0], 30) {
-        set(&mut caps, Shift::IntelCpu);
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    if check(leaf1_ecx, 22) {
-        set(&mut caps, Shift::Movbe);
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    if check(extended_features_ebx, 3) {
-        set(&mut caps, Shift::Bmi1);
-    }
-
     #[cfg(target_arch = "x86_64")]
     {
+        // Synthesized.
+        if check(cpuid[0], 30) {
+            set(&mut caps, Shift::IntelCpu);
+        }
+
+        if check(leaf1_ecx, 22) {
+            set(&mut caps, Shift::Movbe);
+        }
+
+        if check(extended_features_ebx, 3) {
+            set(&mut caps, Shift::Bmi1);
+        }
+
         let bmi2_available = check(extended_features_ebx, 8);
         if bmi2_available {
             set(&mut caps, Shift::Bmi2);
