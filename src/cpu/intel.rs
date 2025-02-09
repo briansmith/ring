@@ -192,6 +192,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     //      us to do so; does AMD advertise SSE3? TODO: address this.
     // XXX: We don't condition this on SSSE3 being available. TODO: address
     //      this.
+    #[cfg(target_arch = "x86_64")]
     if check(leaf1_ecx, 19) {
         set(&mut caps, Shift::Sse41);
     }
@@ -277,7 +278,7 @@ impl_get_feature! {
     features: [
         { ("x86", "x86_64") => ClMul },
         { ("x86", "x86_64") => Ssse3 },
-        { ("x86", "x86_64") => Sse41 },
+        { ("x86_64") => Sse41 },
         { ("x86_64") => Movbe },
         { ("x86", "x86_64") => Aes },
         { ("x86", "x86_64") => Avx },
