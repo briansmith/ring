@@ -108,6 +108,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     let leaf1_ecx = cpuid[1];
 
     // Structured Extended Feature Flags Enumeration Leaf (Initial EAX Value = 07H, ECX = 0)
+    #[cfg(target_arch = "x86_64")]
     let extended_features_ebx = cpuid[2];
 
     // We don't need anything from cpuid[3] presently.
