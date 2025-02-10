@@ -258,20 +258,15 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
     // Intel: "12.7.2 Checking for SSSE3 Support"
     // If/when we support dynamic detection of SSE/SSE2, make this conditional
     // on SSE/SSE2.
+    // TODO: Make this conditional on SSE3.
     if check(leaf1_ecx, 9) {
         set(&mut caps, Shift::Ssse3);
-    }
 
-    // Intel: "12.12.2 Checking for Intel SSE4.1 Support"
-    // If/when we support dynamic detection of SSE/SSE2, make this conditional
-    // on SSE/SSE2.
-    // XXX: We don't check for SSE3 and we're not sure if it is compatible for
-    //      us to do so; does AMD advertise SSE3? TODO: address this.
-    // XXX: We don't condition this on SSSE3 being available. TODO: address
-    //      this.
-    #[cfg(target_arch = "x86_64")]
-    if check(leaf1_ecx, 19) {
-        set(&mut caps, Shift::Sse41);
+        // Intel: "12.12.2 Checking for Intel SSE4.1 Support"
+        #[cfg(target_arch = "x86_64")]
+        if check(leaf1_ecx, 19) {
+            set(&mut caps, Shift::Sse41);
+        }
     }
 
     // AMD: "The extended SSE instructions include [...]."
