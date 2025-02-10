@@ -295,36 +295,33 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
 
     let initial_value = {
         let leading_partial_window =
-            unsafe { LIMBS_window5_split_window(*limbs.last().unwrap(), 0, window_low_bit) };
+            unsafe { LIMBS_window5_split_window(*limbs.first().unwrap(), 0, window_low_bit) };
         window_low_bit.0 -= WINDOW_BITS;
         init(leading_partial_window)
     };
 
     let mut low_limb = Limb::from(0 as LeakyWindow);
-    limbs
-        .iter()
-        .rev()
-        .fold(initial_value, |mut acc, current_limb| {
-            let higher_limb = low_limb;
-            low_limb = *current_limb;
+    limbs.iter().fold(initial_value, |mut acc, current_limb| {
+        let higher_limb = low_limb;
+        low_limb = *current_limb;
 
-            if window_low_bit.0 > Wrapping(LIMB_BITS) - WINDOW_BITS {
-                let window =
-                    unsafe { LIMBS_window5_split_window(low_limb, higher_limb, window_low_bit) };
-                window_low_bit.0 -= WINDOW_BITS;
-                acc = fold(acc, window);
-            };
-            while window_low_bit.0 < Wrapping(LIMB_BITS) {
-                let window = unsafe { LIMBS_window5_unsplit_window(low_limb, window_low_bit) };
-                // The loop exits when this subtraction underflows, causing `window_low_bit` to
-                // wrap around to a very large value.
-                window_low_bit.0 -= WINDOW_BITS;
-                acc = fold(acc, window);
-            }
-            window_low_bit.0 += Wrapping(LIMB_BITS); // "Fix" the underflow.
+        if window_low_bit.0 > Wrapping(LIMB_BITS) - WINDOW_BITS {
+            let window =
+                unsafe { LIMBS_window5_split_window(low_limb, higher_limb, window_low_bit) };
+            window_low_bit.0 -= WINDOW_BITS;
+            acc = fold(acc, window);
+        };
+        while window_low_bit.0 < Wrapping(LIMB_BITS) {
+            let window = unsafe { LIMBS_window5_unsplit_window(low_limb, window_low_bit) };
+            // The loop exits when this subtraction underflows, causing `window_low_bit` to
+            // wrap around to a very large value.
+            window_low_bit.0 -= WINDOW_BITS;
+            acc = fold(acc, window);
+        }
+        window_low_bit.0 += Wrapping(LIMB_BITS); // "Fix" the underflow.
 
-            acc
-        })
+        acc
+    })
 }
 
 #[inline]

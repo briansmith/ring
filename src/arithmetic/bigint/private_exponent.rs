@@ -17,6 +17,8 @@ use crate::error;
 use alloc::boxed::Box;
 
 pub struct PrivateExponent {
+    // Unlike most `[Limb]` we deal with, these are stored most significant
+    // word first.
     limbs: Box<[Limb]>,
 }
 
@@ -26,7 +28,7 @@ impl PrivateExponent {
         input: untrusted::Input,
         p: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
-        let dP = BoxedLimbs::from_be_bytes_padded_less_than(input, p)?;
+        let mut dP = BoxedLimbs::from_be_bytes_padded_less_than(input, p)?;
 
         // Proof that `dP < p - 1`:
         //
@@ -37,6 +39,7 @@ impl PrivateExponent {
         //
         // Further we know `dP != 0` because `dP` is not even.
         limb::limbs_reject_even_leak_bit(&dP)?;
+        dP.reverse();
 
         Ok(Self {
             limbs: dP.into_limbs(),
@@ -61,7 +64,7 @@ impl PrivateExponent {
         let mut limbs = BoxedLimbs::<M>::zero(num_limbs);
         limb::parse_big_endian_and_pad_consttime(input, &mut limbs)
             .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-
+        limbs.reverse();
         Ok(Self {
             limbs: limbs.into_limbs(),
         })
