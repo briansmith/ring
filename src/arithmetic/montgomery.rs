@@ -152,9 +152,8 @@ pub(super) fn limbs_mul_mont(
             bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
                 (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
             })
-        } else if #[cfg(target_arch = "x86")] {
-            // XXX: *ring* has long assumed target_arch = "x86" has SSE2.
-            // TODO: Use the fallback if SSE2 isn't available.
+        } else if #[cfg(all(target_arch = "x86", target_feature = "sse2"))] {
+            // TODO: Do runtime detection of SSE2.
             // The X86 implementation of `bn_mul_mont` has a minimum of 4.
             const _MIN_LIMBS_AT_LEAST_4: () = assert!(MIN_LIMBS >= 4);
             let _: cpu::Features = cpu;
