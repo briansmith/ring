@@ -83,7 +83,7 @@ impl<T> Overlapping<'_, T> {
         })
     }
 
-    pub fn into_input_output_len(self) -> (*const T, *mut T, usize) {
+    pub fn with_input_output_len<R>(self, f: impl FnOnce(*const T, *mut T, usize) -> R) -> R {
         let len = self.len();
         let output = self.in_out.as_mut_ptr();
         // TODO: MSRV(1.65): use `output.cast_const()`
@@ -99,7 +99,7 @@ impl<T> Overlapping<'_, T> {
         } else {
             unsafe { output_const.add(self.src.start) }
         };
-        (input, output, len)
+        f(input, output, len)
     }
 
     // Perhaps unlike `slice::split_first_chunk_mut`, this is biased,

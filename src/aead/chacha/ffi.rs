@@ -57,9 +57,10 @@ pub(super) unsafe fn chacha20_ctr32_ffi<
 ) {
     assert!(MIN_LEN > 0);
     let in_out: Overlapping<'_, u8> = in_out.into();
-    let (input, output, len) = in_out.into_input_output_len();
-    assert!(len >= MIN_LEN);
-    let key = key.words_less_safe();
-    let _: Cpu = cpu;
-    unsafe { f(output, input, len, key, &counter) }
+    in_out.with_input_output_len(|input, output, len| {
+        assert!(len >= MIN_LEN);
+        let key = key.words_less_safe();
+        let _: Cpu = cpu;
+        unsafe { f(output, input, len, key, &counter) }
+    });
 }
