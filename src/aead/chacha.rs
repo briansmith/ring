@@ -26,7 +26,7 @@ cfg_if! {
             ))] {
         #[macro_use]
         mod ffi;
-        #[cfg(test)]
+        #[cfg(any(target_arch = "x86", test))]
         mod fallback;
     } else {
         mod fallback;
@@ -120,9 +120,8 @@ impl Key {
                             unsafe { (1, Ssse3, &mut [u8]) => ChaCha20_ctr32_ssse3 },
                             self, counter, in_out.copy_within(), cpu)
                     } else {
-                        chacha20_ctr32_ffi!(
-                            unsafe { (1, (), &mut [u8]) => ChaCha20_ctr32_nohw },
-                            self, counter, in_out.copy_within(), ())
+                        let _: cpu::Features = cpu;
+                        fallback::ChaCha20_ctr32(self, counter, in_out)
                     }
                 }
             } else if #[cfg(target_arch = "x86_64")] {
@@ -185,7 +184,6 @@ impl Counter {
         not(any(
             all(target_arch = "aarch64", target_endian = "little"),
             all(target_arch = "arm", target_endian = "little"),
-            target_arch = "x86",
             target_arch = "x86_64"
         ))
     ))]
