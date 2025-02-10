@@ -47,8 +47,8 @@ import (
 	"syscall"
 	"time"
 
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
-	"boringssl.googlesource.com/boringssl/util/testresult"
+	"boringssl.googlesource.com/boringssl.git/ssl/test/runner/hpke"
+	"boringssl.googlesource.com/boringssl.git/util/testresult"
 	"golang.org/x/crypto/cryptobyte"
 )
 

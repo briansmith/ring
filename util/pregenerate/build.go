@@ -24,7 +24,7 @@ import (
 	"slices"
 	"strings"
 
-	"boringssl.googlesource.com/boringssl/util/build"
+	"boringssl.googlesource.com/boringssl.git/util/build"
 )
 
 // An InputTarget is a build target with build inputs that still need to be

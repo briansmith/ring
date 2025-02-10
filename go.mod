@@ -1,4 +1,4 @@
-module boringssl.googlesource.com/boringssl
+module boringssl.googlesource.com/boringssl.git
 
 go 1.24
 

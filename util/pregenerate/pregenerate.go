@@ -28,7 +28,7 @@ import (
 	"strings"
 	"sync"
 
-	"boringssl.googlesource.com/boringssl/util/build"
+	"boringssl.googlesource.com/boringssl.git/util/build"
 )
 
 var (

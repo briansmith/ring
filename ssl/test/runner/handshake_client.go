@@ -21,8 +21,8 @@ import (
 	"slices"
 	"time"
 
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/spake2plus"
+	"boringssl.googlesource.com/boringssl.git/ssl/test/runner/hpke"
+	"boringssl.googlesource.com/boringssl.git/ssl/test/runner/spake2plus"
 	"golang.org/x/crypto/cryptobyte"
 )
 

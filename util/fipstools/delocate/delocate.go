@@ -28,8 +28,8 @@ import (
 	"strconv"
 	"strings"
 
-	"boringssl.googlesource.com/boringssl/util/ar"
-	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
+	"boringssl.googlesource.com/boringssl.git/util/ar"
+	"boringssl.googlesource.com/boringssl.git/util/fipstools/fipscommon"
 )
 
 // inputFile represents a textual assembly file.

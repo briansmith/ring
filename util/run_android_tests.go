@@ -31,8 +31,8 @@ import (
 	"strconv"
 	"strings"
 
-	"boringssl.googlesource.com/boringssl/util/build"
-	"boringssl.googlesource.com/boringssl/util/testconfig"
+	"boringssl.googlesource.com/boringssl.git/util/build"
+	"boringssl.googlesource.com/boringssl.git/util/testconfig"
 )
 
 var (

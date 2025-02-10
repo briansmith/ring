@@ -30,8 +30,8 @@ import (
 	"sync"
 	"syscall"
 
-	"boringssl.googlesource.com/boringssl/util/testconfig"
-	"boringssl.googlesource.com/boringssl/util/testresult"
+	"boringssl.googlesource.com/boringssl.git/util/testconfig"
+	"boringssl.googlesource.com/boringssl.git/util/testresult"
 )
 
 // TODO(davidben): Link tests with the malloc shim and port -malloc-test to this runner.

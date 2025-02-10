@@ -30,8 +30,8 @@ import (
 	"os"
 	"strings"
 
-	"boringssl.googlesource.com/boringssl/util/ar"
-	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
+	"boringssl.googlesource.com/boringssl.git/util/ar"
+	"boringssl.googlesource.com/boringssl.git/util/fipstools/fipscommon"
 )
 
 func do(outPath, oInput string, arInput string) error {

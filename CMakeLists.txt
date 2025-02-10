@@ -549,7 +549,7 @@ if(FIPS_DELOCATE)
     set(TARGET_FLAG "--target=${CMAKE_ASM_COMPILER_TARGET}")
   endif()
 
-  go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
+  go_executable(delocate boringssl.googlesource.com/boringssl.git/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/delocate
@@ -571,7 +571,7 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
   go_executable(inject_hash
-                boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
+                boringssl.googlesource.com/boringssl.git/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
     COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
@@ -753,9 +753,9 @@ if(FIPS)
   add_custom_target(
     acvp_tests
     COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_CURRENT_BINARY_DIR}/acvptool
-            boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
+            boringssl.googlesource.com/boringssl.git/util/fipstools/acvp/acvptool
     COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_CURRENT_BINARY_DIR}/testmodulewrapper
-            boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
+            boringssl.googlesource.com/boringssl.git/util/fipstools/acvp/acvptool/testmodulewrapper
     COMMAND cd util/fipstools/acvp/acvptool/test &&
             ${GO_EXECUTABLE} run check_expected.go
             -tool ${CMAKE_CURRENT_BINARY_DIR}/acvptool

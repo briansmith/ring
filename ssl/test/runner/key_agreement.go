@@ -18,7 +18,7 @@ import (
 	"math/big"
 	"slices"
 
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/kyber"
+	"boringssl.googlesource.com/boringssl.git/ssl/test/runner/kyber"
 	"filippo.io/mlkem768"
 	"golang.org/x/crypto/curve25519"
 )
