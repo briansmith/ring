@@ -94,10 +94,9 @@ pub(super) mod featureflags {
         cpu,
         polyfill::{once_cell::race, usize_from_u32},
     };
-    use core::{
-        num::NonZeroUsize,
-        sync::atomic::{AtomicU32, Ordering},
-    };
+    use core::num::NonZeroUsize;
+    #[cfg(all(target_arch = "arm", target_endian = "little"))]
+    use core::sync::atomic::{AtomicU32, Ordering};
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
         fn init() -> NonZeroUsize {
