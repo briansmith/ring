@@ -170,32 +170,33 @@ impl AES_KEY {
         in_out: Overlapping<'_>,
         ctr: &mut Counter,
     ) {
-        let (input, output, len) = in_out.into_input_output_len();
-        debug_assert_eq!(len % BLOCK_LEN, 0);
+        in_out.with_input_output_len(|input, output, len| {
+            debug_assert_eq!(len % BLOCK_LEN, 0);
 
-        let blocks = match NonZeroUsize::new(len / BLOCK_LEN) {
-            Some(blocks) => blocks,
-            None => {
-                return;
+            let blocks = match NonZeroUsize::new(len / BLOCK_LEN) {
+                Some(blocks) => blocks,
+                None => {
+                    return;
+                }
+            };
+
+            let input: *const [u8; BLOCK_LEN] = input.cast();
+            let output: *mut [u8; BLOCK_LEN] = output.cast();
+            let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
+
+            // SAFETY:
+            //  * `input` points to `blocks` blocks.
+            //  * `output` points to space for `blocks` blocks to be written.
+            //  * input == output.add(n), where n == src.start, and the caller is
+            //    responsible for ensuing this sufficient for `f` to work correctly.
+            //  * `blocks` is non-zero so `f` doesn't have to work for empty slices.
+            //  * The caller is responsible for ensuring `key` was initialized by the
+            //    `set_encrypt_key!` invocation required by `f`.
+            unsafe {
+                f(input, output, blocks, self, ctr);
             }
-        };
 
-        let input: *const [u8; BLOCK_LEN] = input.cast();
-        let output: *mut [u8; BLOCK_LEN] = output.cast();
-        let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
-
-        // SAFETY:
-        //  * `input` points to `blocks` blocks.
-        //  * `output` points to space for `blocks` blocks to be written.
-        //  * input == output.add(n), where n == src.start, and the caller is
-        //    responsible for ensuing this sufficient for `f` to work correctly.
-        //  * `blocks` is non-zero so `f` doesn't have to work for empty slices.
-        //  * The caller is responsible for ensuring `key` was initialized by the
-        //    `set_encrypt_key!` invocation required by `f`.
-        unsafe {
-            f(input, output, blocks, self, ctr);
-        }
-
-        ctr.increment_by_less_safe(blocks_u32);
+            ctr.increment_by_less_safe(blocks_u32);
+        });
     }
 }

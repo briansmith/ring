@@ -170,40 +170,42 @@ pub(super) fn open(
         },
     };
 
-    let (input, output, len) = in_out.into_input_output_len();
-    let ad = aad.as_ref().as_ptr();
-    let ad_len = aad.as_ref().len();
+    in_out.with_input_output_len(|input, output, len| {
+        let ad = aad.as_ref().as_ptr();
+        let ad_len = aad.as_ref().len();
 
-    #[allow(clippy::needless_late_init)]
-    let tag;
+        #[allow(clippy::needless_late_init)]
+        let tag;
 
-    cfg_if! {
-        if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
-            declare_open! { chacha20_poly1305_open }
-            let _: Neon = required_cpu_features;
-            let _: Option<()> = optional_cpu_features;
-            tag = unsafe {
-                chacha20_poly1305_open(output, input, len, ad, ad_len, &mut data);
-                &data.out.tag
-            };
-        } else {
-            if matches!((required_cpu_features, optional_cpu_features),
-                        (Sse41 { .. }, Some((Avx2 { .. }, Bmi2 { .. })))) {
-                declare_open! { chacha20_poly1305_open_avx2 }
+        cfg_if! {
+            if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
+                declare_open! { chacha20_poly1305_open }
+                let _: Neon = required_cpu_features;
+                let _: Option<()> = optional_cpu_features;
                 tag = unsafe {
-                    chacha20_poly1305_open_avx2(output, input, len, ad, ad_len, &mut data);
+                    chacha20_poly1305_open(output, input, len, ad, ad_len, &mut data);
                     &data.out.tag
                 };
             } else {
-                declare_open! { chacha20_poly1305_open_nohw }
-                tag = unsafe {
-                    chacha20_poly1305_open_nohw(output, input, len, ad, ad_len, &mut data);
-                    &data.out.tag
-                };
+                if matches!((required_cpu_features, optional_cpu_features),
+                            (Sse41 { .. }, Some((Avx2 { .. }, Bmi2 { .. })))) {
+                    declare_open! { chacha20_poly1305_open_avx2 }
+                    tag = unsafe {
+                        chacha20_poly1305_open_avx2(output, input, len, ad, ad_len, &mut data);
+                        &data.out.tag
+                    };
+                } else {
+                    declare_open! { chacha20_poly1305_open_nohw }
+                    tag = unsafe {
+                        chacha20_poly1305_open_nohw(output, input, len, ad, ad_len, &mut data);
+                        &data.out.tag
+                    };
+                }
             }
         }
-    }
-    Ok(Tag(*tag))
+
+        Ok(Tag(*tag))
+    })
 }
 
 // Keep in sync with BoringSSL's `chacha20_poly1305_open_data` and
