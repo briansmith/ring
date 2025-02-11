@@ -152,14 +152,21 @@ pub(super) fn limbs_mul_mont(
             bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
                 (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
             })
-        } else if #[cfg(all(target_arch = "x86", target_feature = "sse2"))] {
-            // TODO: Do runtime detection of SSE2.
+        } else if #[cfg(target_arch = "x86")] {
+            use crate::{cpu::GetFeature as _, cpu::intel::Sse2};
             // The X86 implementation of `bn_mul_mont` has a minimum of 4.
             const _MIN_LIMBS_AT_LEAST_4: () = assert!(MIN_LIMBS >= 4);
-            let _: cpu::Features = cpu;
-            bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
-                (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont
-            })
+            if let Some(cpu) = cpu.get_feature() {
+                bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
+                    (MIN_LIMBS, MOD_FALLBACK, Sse2) => bn_mul_mont
+                })
+            } else {
+                // This isn't really an FFI call; it's defined below.
+                unsafe {
+                    super::ffi::bn_mul_mont_ffi::<(), {MIN_LIMBS}, 1>(in_out, n, n0, (),
+                    bn_mul_mont_fallback)
+                }
+            }
         } else if #[cfg(target_arch = "x86_64")] {
             use crate::{cpu::GetFeature as _, polyfill::slice};
             use super::x86_64_mont;
@@ -172,7 +179,9 @@ pub(super) fn limbs_mul_mont(
                 (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
             })
         } else {
-            // Use the fallback implementation implemented below.
+            // Use the fallback implementation implemented below through the
+            // FFI wrapper defined below, so that Rust and C code both go
+            // through `bn_mul_mont`.
             bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
                 (MIN_LIMBS, MOD_FALLBACK, cpu::Features) => bn_mul_mont
             })
@@ -180,40 +189,58 @@ pub(super) fn limbs_mul_mont(
     }
 }
 
-#[cfg(not(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86",
-    target_arch = "x86_64"
-)))]
-// TODO: Stop calling this from C and un-export it.
-prefixed_export! {
-    unsafe extern "C" fn bn_mul_mont(
-        r: *mut Limb,
-        a: *const Limb,
-        b: *const Limb,
-        n: *const Limb,
-        n0: &N0,
-        num_limbs: c::size_t,
-    ) {
-        use super::MAX_LIMBS;
+cfg_if! {
+    if  #[cfg(not(any(
+            all(target_arch = "aarch64", target_endian = "little"),
+            all(target_arch = "arm", target_endian = "little"),
+            target_arch = "x86_64")))] {
 
-        // The mutable pointer `r` may alias `a` and/or `b`, so the lifetimes of
-        // any slices for `a` or `b` must not overlap with the lifetime of any
-        // mutable for `r`.
-
-        // Nothing aliases `n`
-        let n = unsafe { core::slice::from_raw_parts(n, num_limbs) };
-
-        let mut tmp = [0; 2 * MAX_LIMBS];
-        let tmp = &mut tmp[..(2 * num_limbs)];
-        {
-            let a: &[Limb] = unsafe { core::slice::from_raw_parts(a, num_limbs) };
-            let b: &[Limb] = unsafe { core::slice::from_raw_parts(b, num_limbs) };
-            limbs_mul(tmp, a, b);
+        // TODO: Stop calling this from C and un-export it.
+        #[cfg(not(target_arch = "x86"))]
+        prefixed_export! {
+            unsafe extern "C" fn bn_mul_mont(
+                r: *mut Limb,
+                a: *const Limb,
+                b: *const Limb,
+                n: *const Limb,
+                n0: &N0,
+                num_limbs: c::NonZero_size_t,
+            ) {
+                unsafe { bn_mul_mont_fallback(r, a, b, n, n0, num_limbs) }
+            }
         }
-        let r: &mut [Limb] = unsafe { core::slice::from_raw_parts_mut(r, num_limbs) };
-        limbs_from_mont_in_place(r, tmp, n, n0);
+
+        #[cfg_attr(target_arch = "x86", cold)]
+        #[cfg_attr(target_arch = "x86", inline(never))]
+        unsafe extern "C" fn bn_mul_mont_fallback(
+            r: *mut Limb,
+            a: *const Limb,
+            b: *const Limb,
+            n: *const Limb,
+            n0: &N0,
+            num_limbs: c::NonZero_size_t,
+        ) {
+            use super::MAX_LIMBS;
+
+            let num_limbs = num_limbs.get();
+
+            // The mutable pointer `r` may alias `a` and/or `b`, so the lifetimes of
+            // any slices for `a` or `b` must not overlap with the lifetime of any
+            // mutable for `r`.
+
+            // Nothing aliases `n`
+            let n = unsafe { core::slice::from_raw_parts(n, num_limbs) };
+
+            let mut tmp = [0; 2 * MAX_LIMBS];
+            let tmp = &mut tmp[..(2 * num_limbs)];
+            {
+                let a: &[Limb] = unsafe { core::slice::from_raw_parts(a, num_limbs) };
+                let b: &[Limb] = unsafe { core::slice::from_raw_parts(b, num_limbs) };
+                limbs_mul(tmp, a, b);
+            }
+            let r: &mut [Limb] = unsafe { core::slice::from_raw_parts_mut(r, num_limbs) };
+            limbs_from_mont_in_place(r, tmp, n, n0);
+        }
     }
 }
 
@@ -257,7 +284,6 @@ pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Li
 #[cfg(not(any(
     all(target_arch = "aarch64", target_endian = "little"),
     all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86",
     target_arch = "x86_64"
 )))]
 fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
@@ -279,7 +305,6 @@ fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
         all(target_arch = "aarch64", target_endian = "little"),
         all(target_arch = "arm", target_endian = "little"),
         target_arch = "x86_64",
-        target_arch = "x86"
     ))
 ))]
 prefixed_extern! {
