@@ -188,7 +188,7 @@ pub(super) fn limbs_mul_mont(
 )))]
 // TODO: Stop calling this from C and un-export it.
 prefixed_export! {
-    unsafe fn bn_mul_mont(
+    unsafe extern "C" fn bn_mul_mont(
         r: *mut Limb,
         a: *const Limb,
         b: *const Limb,
