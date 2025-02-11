@@ -649,42 +649,6 @@ $code.=<<___;
 	mov	8*3(%rbp),%r15
 	jmp	.Lsqr4x_sub_entry
 ___
-} else {
-my @ri=("%rax",$bp,$m0,$m1);
-my $rp="%rdx";
-$code.=<<___
-	xor	\$1,$N[1]
-	lea	($tp,$num),$tp		# rewind $tp
-	sar	\$5,$num		# cf=0
-	lea	($np,$N[1],8),$np
-	mov	56+8(%rsp),$rp		# restore $rp
-	jmp	.Lsub4x
-
-.align	32
-.Lsub4x:
-	.byte	0x66
-	mov	8*0($tp),@ri[0]
-	mov	8*1($tp),@ri[1]
-	.byte	0x66
-	sbb	16*0($np),@ri[0]
-	mov	8*2($tp),@ri[2]
-	sbb	16*1($np),@ri[1]
-	mov	3*8($tp),@ri[3]
-	lea	4*8($tp),$tp
-	sbb	16*2($np),@ri[2]
-	mov	@ri[0],8*0($rp)
-	sbb	16*3($np),@ri[3]
-	lea	16*4($np),$np
-	mov	@ri[1],8*1($rp)
-	mov	@ri[2],8*2($rp)
-	mov	@ri[3],8*3($rp)
-	lea	8*4($rp),$rp
-
-	inc	$num
-	jnz	.Lsub4x
-
-	ret
-___
 }
 $code.=<<___;
 .cfi_endproc
