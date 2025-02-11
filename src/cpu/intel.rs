@@ -153,11 +153,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     const _SSE_REQUIRED: () = assert!(cfg!(target_feature = "sse"));
     const _SSE2_REQUIRED: () = assert!(cfg!(target_feature = "sse2"));
 
-    #[cfg(all(
-        target_arch = "x86",
-        not(target_feature = "sse2"),
-        not(any(target_os = "none", target_os = "windows"))
-    ))]
+    #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
     {
         // If somebody is trying to compile for an x86 target without SSE2
         // and they deleted the `_SSE2_REQUIRED` const assertion above then
@@ -371,5 +367,17 @@ cfg_if! {
                 None
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // This should always pass on any x86 system except very, very, old ones.
+    #[cfg(target_arch = "x86")]
+    #[test]
+    fn x86_has_sse2() {
+        use super::*;
+        use crate::cpu::{self, GetFeature as _};
+        assert!(matches!(cpu::features().get_feature(), Some(Sse2 { .. })))
     }
 }
