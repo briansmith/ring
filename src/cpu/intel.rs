@@ -123,6 +123,9 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
         debug_assert_eq!(*out & shifted, shifted);
     }
 
+    #[cfg(target_arch = "x86_64")]
+    let is_intel = check(cpuid[0], 30); // Synthesized by `OPENSSL_cpuid_setup`
+
     // CPUID leaf 1.
     let leaf1_ecx = cpuid[1];
 
@@ -130,50 +133,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     #[cfg(target_arch = "x86_64")]
     let extended_features_ebx = cpuid[2];
 
-    // We don't need anything from cpuid[3] presently.
-
     let mut caps = 0;
-
-    #[cfg(target_arch = "x86_64")]
-    {
-        // Synthesized.
-        if check(cpuid[0], 30) {
-            set(&mut caps, Shift::IntelCpu);
-        }
-
-        if check(leaf1_ecx, 22) {
-            set(&mut caps, Shift::Movbe);
-        }
-
-        if check(extended_features_ebx, 3) {
-            set(&mut caps, Shift::Bmi1);
-        }
-
-        let bmi2_available = check(extended_features_ebx, 8);
-        if bmi2_available {
-            set(&mut caps, Shift::Bmi2);
-        };
-
-        if check(extended_features_ebx, 19) {
-            set(&mut caps, Shift::Adx);
-
-            if bmi2_available {
-                // Declared as `uint32_t` in the C code.
-                prefixed_extern! {
-                    static adx_bmi2_available: AtomicU32;
-                }
-                // SAFETY: The C code only reads `adx_bmi2_available`, and its
-                // reads are synchronized through the `OnceNonZeroUsize`
-                // Acquire/Release semantics as we ensure we have a
-                // `cpu::Features` instance before calling into the C code.
-                let flag = unsafe { &adx_bmi2_available };
-                flag.store(1, core::sync::atomic::Ordering::Relaxed);
-            }
-        }
-    }
-
-    // The preceding do not require (or denote) the ability to access any SIMD
-    // registers.
 
     // AMD: "Collectively the SSE1, [...] are referred to as the legacy SSE
     // instructions. All legacy SSE instructions support 128-bit vector
@@ -296,6 +256,43 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     #[cfg(target_arch = "x86_64")]
     if check(extended_features_ebx, 29) {
         set(&mut caps, Shift::Sha);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    {
+        if is_intel {
+            set(&mut caps, Shift::IntelCpu);
+        }
+
+        if check(leaf1_ecx, 22) {
+            set(&mut caps, Shift::Movbe);
+        }
+
+        if check(extended_features_ebx, 3) {
+            set(&mut caps, Shift::Bmi1);
+        }
+
+        let bmi2_available = check(extended_features_ebx, 8);
+        if bmi2_available {
+            set(&mut caps, Shift::Bmi2);
+        };
+
+        if check(extended_features_ebx, 19) {
+            set(&mut caps, Shift::Adx);
+
+            if bmi2_available {
+                // Declared as `uint32_t` in the C code.
+                prefixed_extern! {
+                    static adx_bmi2_available: AtomicU32;
+                }
+                // SAFETY: The C code only reads `adx_bmi2_available`, and its
+                // reads are synchronized through the `OnceNonZeroUsize`
+                // Acquire/Release semantics as we ensure we have a
+                // `cpu::Features` instance before calling into the C code.
+                let flag = unsafe { &adx_bmi2_available };
+                flag.store(1, core::sync::atomic::Ordering::Relaxed);
+            }
+        }
     }
 
     caps
