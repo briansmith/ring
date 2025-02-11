@@ -186,32 +186,6 @@ my ($Xhi,$Xi,$Hkey,$HK)=@_;
 	&pxor		($Xi,$T2);		#
 }
 
-sub clmul64x64_T3 {
-# Even though this subroutine offers visually better ILP, it
-# was empirically found to be a tad slower than above version.
-# At least in gcm_ghash_clmul context. But it's just as well,
-# because loop modulo-scheduling is possible only thanks to
-# minimized "register" pressure...
-my ($Xhi,$Xi,$Hkey)=@_;
-
-	&movdqa		($T1,$Xi);		#
-	&movdqa		($Xhi,$Xi);
-	&pclmulqdq	($Xi,$Hkey,0x00);	#######
-	&pclmulqdq	($Xhi,$Hkey,0x11);	#######
-	&pshufd		($T2,$T1,0b01001110);	#
-	&pshufd		($T3,$Hkey,0b01001110);
-	&pxor		($T2,$T1);		#
-	&pxor		($T3,$Hkey);
-	&pclmulqdq	($T2,$T3,0x00);		#######
-	&pxor		($T2,$Xi);		#
-	&pxor		($T2,$Xhi);		#
-
-	&movdqa		($T3,$T2);		#
-	&psrldq		($T2,8);
-	&pslldq		($T3,8);		#
-	&pxor		($Xhi,$T2);
-	&pxor		($Xi,$T3);		#
-}
 
 if (1) {		# Algorithm 9 with <<1 twist.
 			# Reduction is shorter and uses only two
