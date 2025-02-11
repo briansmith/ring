@@ -211,7 +211,8 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     // Intel: "14.3 DETECTION OF INTEL AVX INSTRUCTIONS"
     // `OPENSSL_cpuid_setup` clears this bit when it detects the OS doesn't
     // support AVX state.
-    if check(leaf1_ecx, 28) {
+    let avx_available = check(leaf1_ecx, 28);
+    if avx_available {
         set(&mut caps, Shift::Avx);
     }
 
@@ -268,30 +269,45 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
             set(&mut caps, Shift::Movbe);
         }
 
-        if check(extended_features_ebx, 3) {
+        let adx_available = check(extended_features_ebx, 19);
+        if adx_available {
+            set(&mut caps, Shift::Adx);
+        }
+
+        // Some 6th Generation (Skylake) CPUs claim to support BMI1 and BMI2
+        // when they don't; see erratum "SKD052". The Intel document at
+        // https://www.intel.com/content/dam/www/public/us/en/documents/specification-updates/6th-gen-core-u-y-spec-update.pdf
+        // contains the footnote "Affects 6th Generation Intel Pentium processor
+        // family and Intel Celeron processor family". Further research indicates
+        // that Skylake Pentium/Celeron do not implement AVX or ADX. It turns
+        // out that we only use BMI1 and BMI2 in combination with ADX and/or
+        // AVX.
+        //
+        // rust `std::arch::is_x86_feature_detected` does a very similar thing
+        // but only looks at AVX, not ADX. Note that they reference an older
+        // version of the erratum labeled SKL052.
+        let believe_bmi_bits = !is_intel || (adx_available || avx_available);
+
+        if check(extended_features_ebx, 3) && believe_bmi_bits {
             set(&mut caps, Shift::Bmi1);
         }
 
-        let bmi2_available = check(extended_features_ebx, 8);
+        let bmi2_available = check(extended_features_ebx, 8) && believe_bmi_bits;
         if bmi2_available {
             set(&mut caps, Shift::Bmi2);
-        };
+        }
 
-        if check(extended_features_ebx, 19) {
-            set(&mut caps, Shift::Adx);
-
-            if bmi2_available {
-                // Declared as `uint32_t` in the C code.
-                prefixed_extern! {
-                    static adx_bmi2_available: AtomicU32;
-                }
-                // SAFETY: The C code only reads `adx_bmi2_available`, and its
-                // reads are synchronized through the `OnceNonZeroUsize`
-                // Acquire/Release semantics as we ensure we have a
-                // `cpu::Features` instance before calling into the C code.
-                let flag = unsafe { &adx_bmi2_available };
-                flag.store(1, core::sync::atomic::Ordering::Relaxed);
+        if adx_available && bmi2_available {
+            // Declared as `uint32_t` in the C code.
+            prefixed_extern! {
+                static adx_bmi2_available: AtomicU32;
             }
+            // SAFETY: The C code only reads `adx_bmi2_available`, and its
+            // reads are synchronized through the `OnceNonZeroUsize`
+            // Acquire/Release semantics as we ensure we have a
+            // `cpu::Features` instance before calling into the C code.
+            let flag = unsafe { &adx_bmi2_available };
+            flag.store(1, core::sync::atomic::Ordering::Relaxed);
         }
     }
 
