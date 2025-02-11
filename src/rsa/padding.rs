@@ -18,10 +18,11 @@ mod pkcs1;
 mod pss;
 
 pub use self::{
-    pkcs1::{RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512},
+    pkcs1::{
+        RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512,
+    },
     pss::{RSA_PSS_SHA256, RSA_PSS_SHA384, RSA_PSS_SHA512},
 };
-pub(super) use pkcs1::RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY;
 
 /// Common features of both RSA padding encoding and RSA padding verification.
 pub trait Padding: 'static + Sync + crate::sealed::Sealed + core::fmt::Debug {
