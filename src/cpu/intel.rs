@@ -86,14 +86,20 @@ pub(super) mod featureflags {
 
     static FEATURES: race::OnceNonZeroUsize = race::OnceNonZeroUsize::new();
 
-    #[cfg(target_arch = "x86_64")]
-    #[rustfmt::skip]
-    pub const STATIC_DETECTED: u32 = 0;
-
     #[cfg(target_arch = "x86")]
     #[rustfmt::skip]
     pub const STATIC_DETECTED: u32 = 0
         | (if cfg!(target_feature = "sse2") { super::Sse2::mask() } else { 0 })
+        ;
+
+    // Limited to x86_64-v2 features.
+    // TODO: Add missing x86-64-v3 features if we find real-world use of x86-64-v3.
+    // TODO: Add all features we use.
+    #[cfg(target_arch = "x86_64")]
+    #[rustfmt::skip]
+    pub const STATIC_DETECTED: u32 = 0
+        | if cfg!(target_feature = "sse4.1") { super::Sse41::mask() } else { 0 }
+        | if cfg!(target_feature = "ssse3") { super::Ssse3::mask() } else { 0 }
         ;
 
     pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
