@@ -2130,16 +2130,6 @@ func addBasicTests() {
 			expectedError:   ":UNKNOWN_CERTIFICATE_TYPE:",
 		},
 		{
-			name: "NoCheckClientCertificateTypes",
-			config: Config{
-				MaxVersion:             VersionTLS12,
-				ClientAuth:             RequestClientCert,
-				ClientCertificateTypes: []byte{CertTypeECDSASign},
-			},
-			shimCertificate: &rsaCertificate,
-			flags:           []string{"-no-check-client-certificate-type"},
-		},
-		{
 			name: "UnauthenticatedECDH",
 			config: Config{
 				MaxVersion:   VersionTLS12,
@@ -13912,19 +13902,6 @@ func addCurveTests() {
 		shimCertificate: &ecdsaP256Certificate,
 		shouldFail:      true,
 		expectedError:   ":WRONG_CURVE:",
-	})
-
-	// This behavior may, temporarily, be disabled with a flag.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "NoCheckECDSACurve-TLS12",
-		config: Config{
-			MinVersion:       VersionTLS12,
-			MaxVersion:       VersionTLS12,
-			CurvePreferences: []CurveID{CurveP384},
-		},
-		shimCertificate: &ecdsaP256Certificate,
-		flags:           []string{"-no-check-ecdsa-curve"},
 	})
 
 	// If the ECDSA certificate is ineligible due to a curve mismatch, the

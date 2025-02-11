@@ -571,9 +571,7 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       jdk11_workaround(false),
       quic_use_legacy_codepoint(false),
       permute_extensions(false),
-      alps_use_new_codepoint(false),
-      check_client_certificate_type(true),
-      check_ecdsa_curve(true) {
+      alps_use_new_codepoint(false) {
   assert(ssl);
 }
 
@@ -2922,20 +2920,6 @@ void SSL_set_jdk11_workaround(SSL *ssl, int enable) {
     return;
   }
   ssl->config->jdk11_workaround = !!enable;
-}
-
-void SSL_set_check_client_certificate_type(SSL *ssl, int enable) {
-  if (!ssl->config) {
-    return;
-  }
-  ssl->config->check_client_certificate_type = !!enable;
-}
-
-void SSL_set_check_ecdsa_curve(SSL *ssl, int enable) {
-  if (!ssl->config) {
-    return;
-  }
-  ssl->config->check_ecdsa_curve = !!enable;
 }
 
 void SSL_set_quic_use_legacy_codepoint(SSL *ssl, int use_legacy) {

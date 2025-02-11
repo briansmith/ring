@@ -228,8 +228,6 @@ struct TestConfig {
   bool fips_202205 = false;
   bool wpa_202304 = false;
   bool cnsa_202407 = false;
-  bool no_check_client_certificate_type = false;
-  bool no_check_ecdsa_curve = false;
   std::optional<int> expect_selected_credential;
   std::vector<CredentialConfig> credentials;
   int private_key_delay_ms = 0;

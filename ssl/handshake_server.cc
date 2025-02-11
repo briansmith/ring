@@ -245,7 +245,7 @@ static TLS12ServerParams choose_params(SSL_HANDSHAKE *hs,
     // ECDSA keys must additionally be checked against the peer's supported
     // curve list.
     int key_type = EVP_PKEY_id(cred->pubkey.get());
-    if (hs->config->check_ecdsa_curve && key_type == EVP_PKEY_EC) {
+    if (key_type == EVP_PKEY_EC) {
       EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(cred->pubkey.get());
       uint16_t group_id;
       if (!ssl_nid_to_group_id(

@@ -497,9 +497,6 @@ const Flag<TestConfig> *FindFlag(const char *name) {
         BoolFlag("-fips-202205", &TestConfig::fips_202205),
         BoolFlag("-wpa-202304", &TestConfig::wpa_202304),
         BoolFlag("-cnsa-202407", &TestConfig::cnsa_202407),
-        BoolFlag("-no-check-client-certificate-type",
-                 &TestConfig::no_check_client_certificate_type),
-        BoolFlag("-no-check-ecdsa-curve", &TestConfig::no_check_ecdsa_curve),
         OptionalIntFlag("-expect-selected-credential",
                         &TestConfig::expect_selected_credential),
         // Credential flags are stateful. First, use one of the
@@ -2220,12 +2217,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (ignore_rsa_key_usage) {
     SSL_set_enforce_rsa_key_usage(ssl.get(), 0);
-  }
-  if (no_check_client_certificate_type) {
-    SSL_set_check_client_certificate_type(ssl.get(), 0);
-  }
-  if (no_check_ecdsa_curve) {
-    SSL_set_check_ecdsa_curve(ssl.get(), 0);
   }
   if (no_tls13) {
     SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1_3);
