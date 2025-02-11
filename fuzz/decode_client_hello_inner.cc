@@ -37,7 +37,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
 
   // Use the remaining bytes in |reader| as the ClientHelloOuter.
   SSL_CLIENT_HELLO client_hello_outer;
-  if (!bssl::ssl_client_hello_init(ssl.get(), &client_hello_outer, reader)) {
+  if (!SSL_parse_client_hello(ssl.get(), &client_hello_outer, CBS_data(&reader),
+                              CBS_len(&reader))) {
     return 0;
   }
 

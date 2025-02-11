@@ -4897,6 +4897,19 @@ OPENSSL_EXPORT int SSL_used_hello_retry_request(const SSL *ssl);
 // https://bugs.openjdk.java.net/browse/JDK-8213202
 OPENSSL_EXPORT void SSL_set_jdk11_workaround(SSL *ssl, int enable);
 
+// SSL_parse_client_hello decodes a ClientHello structure from |len| bytes in
+// |in|. On success, it returns one and writes the result to |*out|. Otherwise,
+// it returns zero. |ssl| will be saved into |*out| and determines how the
+// ClientHello is parsed, notably TLS vs DTLS. The fields in |*out| will alias
+// |in| and are only valid as long as |in| is valid and unchanged.
+//
+// |in| should contain just the ClientHello structure (RFC 8446 and RFC 9147),
+// excluding the handshake header and already reassembled from record layer.
+// That is, |in| should begin with the legacy_version field, not the
+// client_hello HandshakeType constant or the handshake ContentType constant.
+OPENSSL_EXPORT int SSL_parse_client_hello(const SSL *ssl, SSL_CLIENT_HELLO *out,
+                                          const uint8_t *in, size_t len);
+
 
 // Deprecated functions.
 

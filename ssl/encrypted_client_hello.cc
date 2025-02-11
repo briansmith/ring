@@ -92,7 +92,7 @@ static bool is_valid_client_hello_inner(SSL *ssl, uint8_t *out_alert,
   // See draft-ietf-tls-esni-13, section 7.1.
   SSL_CLIENT_HELLO client_hello;
   CBS extension;
-  if (!ssl_client_hello_init(ssl, &client_hello, body) ||
+  if (!SSL_parse_client_hello(ssl, &client_hello, body.data(), body.size()) ||
       !ssl_client_hello_get_extension(&client_hello, &extension,
                                       TLSEXT_TYPE_encrypted_client_hello) ||
       CBS_len(&extension) != 1 ||  //
@@ -139,7 +139,6 @@ bool ssl_decode_client_hello_inner(
   CBS cbs = encoded_client_hello_inner;
   if (!ssl_parse_client_hello_with_trailing_data(ssl, &cbs,
                                                  &client_hello_inner)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return false;
   }
   // The remaining data is padding.

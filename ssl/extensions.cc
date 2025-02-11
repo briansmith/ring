@@ -121,16 +121,6 @@ static bool is_post_quantum_group(uint16_t id) {
   }
 }
 
-bool ssl_client_hello_init(const SSL *ssl, SSL_CLIENT_HELLO *out,
-                           Span<const uint8_t> body) {
-  CBS cbs = body;
-  if (!ssl_parse_client_hello_with_trailing_data(ssl, &cbs, out) ||
-      CBS_len(&cbs) != 0) {
-    return false;
-  }
-  return true;
-}
-
 bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
                                                SSL_CLIENT_HELLO *out) {
   OPENSSL_memset(out, 0, sizeof(*out));
@@ -142,6 +132,7 @@ bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
       !CBS_get_bytes(cbs, &random, SSL3_RANDOM_SIZE) ||
       !CBS_get_u8_length_prefixed(cbs, &session_id) ||
       CBS_len(&session_id) > SSL_MAX_SSL_SESSION_ID_LENGTH) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return false;
   }
 
@@ -153,6 +144,7 @@ bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
   if (SSL_is_dtls(out->ssl)) {
     CBS cookie;
     if (!CBS_get_u8_length_prefixed(cbs, &cookie)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return false;
     }
     out->dtls_cookie = CBS_data(&cookie);
@@ -167,6 +159,7 @@ bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
       CBS_len(&cipher_suites) < 2 || (CBS_len(&cipher_suites) & 1) != 0 ||
       !CBS_get_u8_length_prefixed(cbs, &compression_methods) ||
       CBS_len(&compression_methods) < 1) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return false;
   }
 
@@ -185,6 +178,7 @@ bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
     CBS extensions;
     if (!CBS_get_u16_length_prefixed(cbs, &extensions) ||
         !tls1_check_duplicate_extensions(&extensions)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return false;
     }
     out->extensions = CBS_data(&extensions);
@@ -4558,6 +4552,19 @@ bool ssl_is_sct_list_valid(const CBS *contents) {
 BSSL_NAMESPACE_END
 
 using namespace bssl;
+
+int SSL_parse_client_hello(const SSL *ssl, SSL_CLIENT_HELLO *out,
+                           const uint8_t *in, size_t len) {
+  CBS cbs = Span(in, len);
+  if (!ssl_parse_client_hello_with_trailing_data(ssl, &cbs, out)) {
+    return 0;
+  }
+  if (CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return 0;
+  }
+  return 1;
+}
 
 int SSL_early_callback_ctx_extension_get(const SSL_CLIENT_HELLO *client_hello,
                                          uint16_t extension_type,

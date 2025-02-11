@@ -96,7 +96,8 @@ bool SSL_serialize_handoff(const SSL *ssl, CBB *out,
                                  s3->hs_buf->length) ||
       !serialize_features(&seq) || !CBB_flush(out) ||
       !ssl->method->get_message(ssl, &msg) ||
-      !ssl_client_hello_init(ssl, out_hello, msg.body)) {
+      !SSL_parse_client_hello(ssl, out_hello, CBS_data(&msg.body),
+                              CBS_len(&msg.body))) {
     return false;
   }
 
