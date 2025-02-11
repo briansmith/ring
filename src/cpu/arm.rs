@@ -133,7 +133,7 @@ pub(super) mod featureflags {
             }
 
             let merged = usize_from_u32(merged) | (1 << (Shift::Initialized as u32));
-            NonZeroUsize::new(merged).unwrap() // TODO: fix unwrap.
+            NonZeroUsize::new(merged).unwrap() // Can't fail because we just set a bit.
         }
 
         // SAFETY: This is the only caller. Any concurrent reading doesn't

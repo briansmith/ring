@@ -36,6 +36,7 @@ mod abi_assumptions {
 }
 
 pub(super) mod featureflags {
+    use super::super::CAPS_STATIC;
     use crate::{
         cpu,
         polyfill::{once_cell::race, usize_from_u32},
@@ -55,9 +56,11 @@ pub(super) mod featureflags {
             unsafe {
                 OPENSSL_cpuid_setup(&mut cpuid);
             }
-            let caps = super::cpuid_to_caps_and_set_c_flags(&cpuid);
-            let caps = usize_from_u32(caps) | (1 << (super::Shift::Initialized as u32));
-            NonZeroUsize::new(caps).unwrap() // Can't fail because we just set a bit of `caps`.
+            let detected = super::cpuid_to_caps_and_set_c_flags(&cpuid);
+            let merged = CAPS_STATIC | detected;
+
+            let merged = usize_from_u32(merged) | (1 << (super::Shift::Initialized as u32));
+            NonZeroUsize::new(merged).unwrap() // Can't fail because we just set a bit.
         });
 
         // SAFETY: We initialized the CPU features as required.
@@ -83,7 +86,16 @@ pub(super) mod featureflags {
 
     static FEATURES: race::OnceNonZeroUsize = race::OnceNonZeroUsize::new();
 
+    #[cfg(target_arch = "x86_64")]
+    #[rustfmt::skip]
     pub const STATIC_DETECTED: u32 = 0;
+
+    #[cfg(target_arch = "x86")]
+    #[rustfmt::skip]
+    pub const STATIC_DETECTED: u32 = 0
+        | (if cfg!(target_feature = "sse2") { super::Sse2::mask() } else { 0 })
+        ;
+
     pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
 }
 
@@ -169,10 +181,51 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
 
     // Intel: "11.6.2 Checking for Intel SSE and SSE2 Support"
     // We have to assume the prerequisites for SSE/SSE2 are met since we're
-    // already almost deifnitely using SSE registers if these target features
+    // already almost definitely using SSE registers if these target features
     // are enabled.
+    //
+    // These also seem to help ensure CMOV support; There doesn't seem to be
+    // a `cfg!(target_feature = "cmov")`. It is likely that removing these
+    // assertions will remove the requirement for CMOV. With our without
+    // CMOV, it is likely that some of our timing side channel prevention does
+    // not work. Presumably the people who delete these are verifying that it
+    // all works fine.
     const _SSE_REQUIRED: () = assert!(cfg!(target_feature = "sse"));
     const _SSE2_REQUIRED: () = assert!(cfg!(target_feature = "sse2"));
+
+    #[cfg(all(
+        target_arch = "x86",
+        not(target_feature = "sse2"),
+        not(any(target_os = "none", target_os = "windows"))
+    ))]
+    {
+        // If somebody is trying to compile for an x86 target without SSE2
+        // and they deleted the `_SSE2_REQUIRED` const assertion above then
+        // they're probably trying to support a Linux/BSD/etc. distro that
+        // tries to support ancient x86 systems without SSE/SSE2. Try to
+        // reduce the harm caused, by implementing dynamic feature detection
+        // for them so that most systems will work like normal.
+        //
+        // Note that usually an x86-64 target with SSE2 disabled by default,
+        // usually `-none-` targets, will not support dynamically-detected use
+        // of SIMD registers via CPUID. A whole different mechanism is needed
+        // to support them. Same for i*86-*-none targets.
+        let leaf1_edx = cpuid[0];
+        let sse1_available = check(leaf1_edx, 25);
+        let sse2_available = check(leaf1_edx, 26);
+        if sse1_available && sse2_available {
+            set(&mut caps, Shift::Sse2);
+        }
+    }
+
+    // Sometimes people delete the `_SSE_REQUIRED`/`_SSE2_REQUIRED` const
+    // assertions in an attempt to support pre-SSE2 32-bit x86 systems. If they
+    // do, hopefully they won't delete these redundant assertions, so that
+    // x86_64 isn't affected.
+    #[cfg(target_arch = "x86_64")]
+    const _SSE2_REQUIRED_X86_64: () = assert!(cfg!(target_feature = "sse2"));
+    #[cfg(target_arch = "x86_64")]
+    const _SSE_REQUIRED_X86_64: () = assert!(cfg!(target_feature = "sse2"));
 
     // Intel: "12.7.2 Checking for SSSE3 Support"
     // If/when we support dynamic detection of SSE/SSE2, make this conditional
@@ -263,6 +316,8 @@ impl_get_feature! {
         // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
         // static feature detection for this.
         { ("x86_64") => Sha },
+        // x86_64 can just assume SSE2 is available.
+        { ("x86") => Sse2 },
     ],
 }
 
