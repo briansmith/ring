@@ -88,7 +88,6 @@ bool SSL_HANDSHAKE::GetClientHello(SSLMessage *out_msg,
 
   if (!SSL_parse_client_hello(ssl, out_client_hello, CBS_data(&out_msg->body),
                               CBS_len(&out_msg->body))) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return false;
   }

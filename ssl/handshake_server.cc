@@ -534,7 +534,6 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
   SSL_CLIENT_HELLO client_hello;
   if (!SSL_parse_client_hello(ssl, &client_hello, CBS_data(&msg.body),
                               CBS_len(&msg.body))) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }

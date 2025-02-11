@@ -10006,14 +10006,16 @@ TEST(SSLTest, ParseClientHello) {
     trailing_data.push_back(0);
     EXPECT_FALSE(SSL_parse_client_hello(
         ssl.get(), &client_hello, trailing_data.data(), trailing_data.size()));
-    EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_DECODE_ERROR));
+    EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_SSL,
+                            SSL_R_CLIENTHELLO_PARSE_FAILED));
     ERR_clear_error();
 
     // Other invalid inputs.
     static const uint8_t kInvalid[] = {'n', 'o', 'p', 'e'};
     EXPECT_FALSE(SSL_parse_client_hello(ssl.get(), &client_hello, kInvalid,
                                         sizeof(kInvalid)));
-    EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_DECODE_ERROR));
+    EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_SSL,
+                            SSL_R_CLIENTHELLO_PARSE_FAILED));
     ERR_clear_error();
   }
 }

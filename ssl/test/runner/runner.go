@@ -8756,7 +8756,7 @@ func addExtensionTests() {
 					resumeSession: true,
 					shouldFail:    true,
 					// The maximum session ID length is 32.
-					expectedError: ":DECODE_ERROR:",
+					expectedError: ":CLIENTHELLO_PARSE_FAILED:",
 				})
 			}
 
@@ -15271,6 +15271,11 @@ func addTrailingMessageDataTests() {
 			t.test.expectedLocalError = ""
 		}
 
+		if t.messageType == typeClientHello {
+			// We have a different error for ClientHello parsing.
+			t.test.expectedError = ":CLIENTHELLO_PARSE_FAILED:"
+		}
+
 		if t.messageType == typeFinished {
 			// Bad Finished messages read as the verify data having
 			// the wrong length.
@@ -15425,7 +15430,7 @@ func addTLS13HandshakeTests() {
 			},
 		},
 		shouldFail:         true,
-		expectedError:      ":DECODE_ERROR:",
+		expectedError:      ":CLIENTHELLO_PARSE_FAILED:",
 		expectedLocalError: "remote error: error decoding message",
 	})
 	testCases = append(testCases, testCase{
@@ -15438,7 +15443,7 @@ func addTLS13HandshakeTests() {
 			},
 		},
 		shouldFail:         true,
-		expectedError:      ":DECODE_ERROR:",
+		expectedError:      ":CLIENTHELLO_PARSE_FAILED:",
 		expectedLocalError: "remote error: error decoding message",
 	})
 

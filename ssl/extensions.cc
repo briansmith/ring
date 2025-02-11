@@ -132,7 +132,7 @@ bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
       !CBS_get_bytes(cbs, &random, SSL3_RANDOM_SIZE) ||
       !CBS_get_u8_length_prefixed(cbs, &session_id) ||
       CBS_len(&session_id) > SSL_MAX_SSL_SESSION_ID_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     return false;
   }
 
@@ -144,7 +144,7 @@ bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
   if (SSL_is_dtls(out->ssl)) {
     CBS cookie;
     if (!CBS_get_u8_length_prefixed(cbs, &cookie)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
       return false;
     }
     out->dtls_cookie = CBS_data(&cookie);
@@ -159,7 +159,7 @@ bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
       CBS_len(&cipher_suites) < 2 || (CBS_len(&cipher_suites) & 1) != 0 ||
       !CBS_get_u8_length_prefixed(cbs, &compression_methods) ||
       CBS_len(&compression_methods) < 1) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     return false;
   }
 
@@ -178,7 +178,7 @@ bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
     CBS extensions;
     if (!CBS_get_u16_length_prefixed(cbs, &extensions) ||
         !tls1_check_duplicate_extensions(&extensions)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
       return false;
     }
     out->extensions = CBS_data(&extensions);
@@ -4560,7 +4560,7 @@ int SSL_parse_client_hello(const SSL *ssl, SSL_CLIENT_HELLO *out,
     return 0;
   }
   if (CBS_len(&cbs) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     return 0;
   }
   return 1;
