@@ -86,14 +86,26 @@ pub(super) mod featureflags {
 
     static FEATURES: race::OnceNonZeroUsize = race::OnceNonZeroUsize::new();
 
-    #[cfg(target_arch = "x86_64")]
-    #[rustfmt::skip]
-    pub const STATIC_DETECTED: u32 = 0;
-
     #[cfg(target_arch = "x86")]
     #[rustfmt::skip]
     pub const STATIC_DETECTED: u32 = 0
         | (if cfg!(target_feature = "sse2") { super::Sse2::mask() } else { 0 })
+        ;
+
+    #[cfg(target_arch = "x86_64")]
+    #[rustfmt::skip]
+    pub const STATIC_DETECTED: u32 = 0
+        | if cfg!(target_feature = "adx") { super::Adx::mask() } else { 0 }
+        | if cfg!(target_feature = "aes") { super::Aes::mask() } else { 0 }
+        | if cfg!(target_feature = "avx") { super::Avx::mask() } else { 0 }
+        | if cfg!(target_feature = "avx2") { super::Avx2::mask() } else { 0 }
+        | if cfg!(target_feature = "bmi1") { super::Bmi1::mask() } else { 0 }
+        | if cfg!(target_feature = "bmi2") { super::Bmi2::mask() } else { 0 }
+        | if cfg!(target_feature = "movbe") { super::Movbe::mask() } else { 0 }
+        | if cfg!(target_feature = "pclmulqdq") { super::ClMul::mask() } else { 0 }
+        | if cfg!(target_feature = "sha") { super::Sha::mask() } else { 0 }
+        | if cfg!(target_feature = "sse4.1") { super::Sse41::mask() } else { 0 }
+        | if cfg!(target_feature = "ssse3") { super::Ssse3::mask() } else { 0 }
         ;
 
     pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
