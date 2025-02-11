@@ -162,14 +162,16 @@ typedef __uint128_t uint128_t;
 // GCC-like compilers indicate SSE2 with |__SSE2__|. MSVC leaves the caller to
 // know that x86_64 has SSE2, and uses _M_IX86_FP to indicate SSE2 on x86.
 // https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=msvc-170
-#if defined(__SSE2__) || defined(_M_AMD64) || defined(_M_X64) || \
-    (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
-#define OPENSSL_SSE2
-#endif
-
-#if defined(OPENSSL_X86) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SSE2)
-#error \
-    "x86 assembly requires SSE2. Build with -msse2 (recommended), or disable assembly optimizations with -DOPENSSL_NO_ASM."
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+# if defined(_MSC_VER) && !defined(__clang__)
+#  if defined(_M_AMD64) || defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#   define OPENSSL_SSE2
+#  else
+#   error "SSE2 is required."
+#  endif
+# elif !defined(__SSE2__)
+#  error "SSE2 is required."
+# endif
 #endif
 
 // For convenience in testing the fallback code, we allow disabling SSE2
