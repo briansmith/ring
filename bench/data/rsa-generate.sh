@@ -36,7 +36,7 @@ for i in "${m[@]}"
 do
     echo $i
     openssl genpkey -algorithm RSA \
-        -pkeyopt rsa_keygen_bits:2048 \
+        -pkeyopt rsa_keygen_bits:$i \
         -pkeyopt rsa_keygen_pubexp:3 | \
       openssl pkcs8 -topk8 -nocrypt -outform der > rsa-$i-3.p8
 
