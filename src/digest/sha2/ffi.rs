@@ -23,7 +23,7 @@ macro_rules! sha2_ffi {
       $state:expr, $data:expr, $cpu:expr $(,)? ) => {{
         prefixed_extern! {
             fn $f(
-                state: &mut [core::num::Wrapping<$U>; crate::digest::sha2::CHAINING_WORDS],
+                state: *mut [core::num::Wrapping<$U>; crate::digest::sha2::CHAINING_WORDS],
                 data: *const [u8; $BLOCK_LEN],
                 num: crate::c::NonZero_size_t);
         }
@@ -53,7 +53,7 @@ pub(super) unsafe fn sha2_ffi<U, Cpu, const BLOCK_LEN: usize>(
     data: AsChunks<u8, BLOCK_LEN>,
     cpu: Cpu,
     f: unsafe extern "C" fn(
-        &mut [Wrapping<U>; CHAINING_WORDS],
+        *mut [Wrapping<U>; CHAINING_WORDS],
         *const [u8; BLOCK_LEN],
         crate::c::NonZero_size_t,
     ),
