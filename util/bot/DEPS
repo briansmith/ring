@@ -31,28 +31,27 @@ vars = {
   #  cipd describe PACKAGE_NAME -version latest
 
   # infra/3pp/tools/bazel_bootstrap/linux-amd64
-  # Keep this in sync with .bazelversion. The CIPD versions have an extra .1 at
-  # the end which must be removed. See https://crbug.com/380903148.
-  'bazel_version': 'version:3@7.4.1.1',
+  # Keep this in sync with .bazelversion.
+  'bazel_version': 'version:3@7.5.0.chromium.1',
   # infra/3pp/tools/cmake/linux-amd64
-  'cmake_version': 'version:3@3.31.1.chromium.8',
+  'cmake_version': 'version:3@3.31.5.chromium.8',
   # infra/3pp/tools/go/linux-amd64
-  'go_version': 'version:3@1.23.3',
+  'go_version': 'version:3@1.24.0',
   # infra/3pp/tools/perl/windows-amd64
   'perl_version': 'version:2@5.32.1.1',
 
   # Update the following from
   # https://chromium.googlesource.com/chromium/src/+/main/DEPS
   'android_sdk_platform-tools_version': 'WihaseZR6cojZbkzIqwGhpTp92ztaGfqq8njBU8eTXYC',
-  'libfuzzer_revision': 'a7128317fe7935a43d6c9f39df54f21113951941',
-  'libcxx_revision': '76cb1e3b4a69ccc6407c9a3aaab3aaba2432f868',
-  'libcxxabi_revision': '6c4fa00e4becc30085cbc8b44c2764ef307daae2',
-  'llvm_libc_revision': '17e581644f9a71be3eb30f468722ce866058f93a',
+  'libfuzzer_revision': 'e31b99917861f891308269c36a32363b120126bb',
+  'libcxx_revision': '61c68567ca977656440757c3effe124057509e8f',
+  'libcxxabi_revision': '634228a732a1d9ae1a6d459556e8fc58707cf961',
+  'llvm_libc_revision': '5333472378a666cca9d0fcf6551b4d768c70a55c',
   'ninja_version': 'version:2@1.12.1.chromium.4',
 
   # Update to the latest revision of
   # https://chromium.googlesource.com/chromium/src/tools/clang
-  'tools_clang_revision': 'bf9a3411372f2d5eed8b3d27ee8bd8cf6c17135f',
+  'tools_clang_revision': '2ca96532f8f3dfc83e43070fca2549ed6393699d',
 
   # The Android NDK cannot be updated until https://crbug.com/boringssl/454 is fixed.
   # We rely on an older NDK to test building without NEON instructions as the baseline.

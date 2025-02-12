@@ -51,7 +51,7 @@ func (ka *rsaKeyAgreement) generateServerKeyExchange(config *Config, cert *Crede
 
 	// Generate an ephemeral RSA key to use instead of the real
 	// one, as in RSA_EXPORT.
-	key, err := rsa.GenerateKey(config.rand(), 512)
+	key, err := rsa.GenerateKey(config.rand(), 1024)
 	if err != nil {
 		return nil, err
 	}
