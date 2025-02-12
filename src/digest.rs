@@ -536,7 +536,7 @@ pub const MAX_OUTPUT_LEN: usize = OutputLen::MAX.into();
 pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
 #[inline]
-fn format_output<T, F, const N: usize>(input: [Wrapping<T>; sha2::CHAINING_WORDS], f: F) -> Output
+fn format_output<T, F, const N: usize>(input: &[Wrapping<T>; sha2::CHAINING_WORDS], f: F) -> Output
 where
     F: Fn(T) -> [u8; N],
     T: Copy,
