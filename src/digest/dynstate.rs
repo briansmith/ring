@@ -14,7 +14,7 @@
 
 use super::{format_output, sha1, sha2, Output};
 use crate::{cpu, polyfill::slice};
-use core::mem::size_of;
+use core::{mem::size_of, num::Wrapping};
 
 // Invariant: When constructed with `new32` (resp. `new64`), `As32` (resp.
 // `As64`) is the active variant.
@@ -26,21 +26,21 @@ pub(super) enum DynState {
 }
 
 impl DynState {
-    pub const fn new32(initial_state: sha2::State32) -> Self {
-        Self::As32(initial_state)
+    pub const fn new32(initial_state: [Wrapping<u32>; sha2::CHAINING_WORDS]) -> Self {
+        Self::As32(sha2::State32::new(initial_state))
     }
 
-    pub const fn new64(initial_state: sha2::State64) -> Self {
-        Self::As64(initial_state)
+    pub const fn new64(initial_state: [Wrapping<u64>; sha2::CHAINING_WORDS]) -> Self {
+        Self::As64(sha2::State64::new(initial_state))
     }
 
     pub fn format_output(self) -> Output {
         match self {
             Self::As64(state) => {
-                format_output::<_, _, { size_of::<u64>() }>(state, u64::to_be_bytes)
+                format_output::<_, _, { size_of::<u64>() }>(state.as_ref(), u64::to_be_bytes)
             }
             Self::As32(state) => {
-                format_output::<_, _, { size_of::<u32>() }>(state, u32::to_be_bytes)
+                format_output::<_, _, { size_of::<u32>() }>(state.as_ref(), u32::to_be_bytes)
             }
         }
     }
