@@ -18,6 +18,7 @@ package spake2plus
 import (
 	"bytes"
 	"crypto/elliptic"
+	"crypto/hkdf"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -26,7 +27,6 @@ import (
 	"io"
 	"math/big"
 
-	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/scrypt"
 )
 
@@ -330,9 +330,10 @@ func computeTranscriptAndConfirmation(
 }
 
 func doHKDF(ikm, info []byte, size int) []byte {
-	h := hkdf.New(sha256.New, ikm, nil, info)
-	out := make([]byte, size)
-	h.Read(out)
+	out, err := hkdf.Key(sha256.New, ikm, nil, string(info), size)
+	if err != nil {
+		panic(err)
+	}
 	return out
 }
 

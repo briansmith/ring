@@ -16,10 +16,10 @@ package hpke
 
 import (
 	"crypto"
+	"crypto/hkdf"
 	"crypto/rand"
 
 	"golang.org/x/crypto/curve25519"
-	"golang.org/x/crypto/hkdf"
 )
 
 const (
@@ -44,7 +44,11 @@ func labeledExtract(kdfHash crypto.Hash, salt, suiteID, label, ikm []byte) []byt
 	labeledIKM = append(labeledIKM, suiteID...)
 	labeledIKM = append(labeledIKM, label...)
 	labeledIKM = append(labeledIKM, ikm...)
-	return hkdf.Extract(kdfHash.New, labeledIKM, salt)
+	ret, err := hkdf.Extract(kdfHash.New, labeledIKM, salt)
+	if err != nil {
+		panic(err)
+	}
+	return ret
 }
 
 func labeledExpand(kdfHash crypto.Hash, prk, suiteID, label, info []byte, length int) []byte {
@@ -60,11 +64,9 @@ func labeledExpand(kdfHash crypto.Hash, prk, suiteID, label, info []byte, length
 	labeledInfo = append(labeledInfo, label...)
 	labeledInfo = append(labeledInfo, info...)
 
-	reader := hkdf.Expand(kdfHash.New, prk, labeledInfo)
-	key := make([]uint8, length)
-	_, err := reader.Read(key)
+	key, err := hkdf.Expand(kdfHash.New, prk, string(labeledInfo), length)
 	if err != nil {
-		panic("failed to perform HKDF expand operation")
+		panic(err)
 	}
 	return key
 }

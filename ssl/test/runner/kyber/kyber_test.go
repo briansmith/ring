@@ -17,13 +17,12 @@ package kyber
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha3"
 	"encoding/hex"
 	"flag"
 	"os"
 	"strings"
 	"testing"
-
-	"golang.org/x/crypto/sha3"
 )
 
 var testVectorsPath = flag.String("test-vectors", "../../../../crypto/kyber/kyber_tests.txt", "The path to the test vectors to use")
@@ -96,7 +95,7 @@ func TestVectors(t *testing.T) {
 }
 
 func TestIteration(t *testing.T) {
-	h := sha3.NewShake256()
+	h := sha3.NewSHAKE256()
 
 	for i := 0; i < 4096; i++ {
 		var generateEntropy [64]byte

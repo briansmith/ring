@@ -24,9 +24,12 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ed25519"
+	"crypto/hkdf"
 	"crypto/hmac"
+	"crypto/pbkdf2"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/sha3"
 	"crypto/sha512"
 	"encoding/binary"
 	"errors"
@@ -37,9 +40,6 @@ import (
 
 	"filippo.io/edwards25519"
 
-	"golang.org/x/crypto/hkdf"
-	"golang.org/x/crypto/pbkdf2"
-	"golang.org/x/crypto/sha3"
 	"golang.org/x/crypto/xts"
 )
 
@@ -64,16 +64,16 @@ var handlers = map[string]func([][]byte) error{
 	"EDDSA/keyVer":             eddsaKeyVer,
 	"EDDSA/sigGen":             eddsaSigGen,
 	"EDDSA/sigVer":             eddsaSigVer,
-	"SHAKE-128":                shakeAftVot(sha3.NewShake128),
-	"SHAKE-128/VOT":            shakeAftVot(sha3.NewShake128),
-	"SHAKE-128/MCT":            shakeMct(sha3.NewShake128),
-	"SHAKE-256":                shakeAftVot(sha3.NewShake256),
-	"SHAKE-256/VOT":            shakeAftVot(sha3.NewShake256),
-	"SHAKE-256/MCT":            shakeMct(sha3.NewShake256),
-	"cSHAKE-128":               cShakeAft(sha3.NewCShake128),
-	"cSHAKE-128/MCT":           cShakeMct(sha3.NewCShake128),
-	"cSHAKE-256":               cShakeAft(sha3.NewCShake256),
-	"cSHAKE-256/MCT":           cShakeMct(sha3.NewCShake256),
+	"SHAKE-128":                shakeAftVot(sha3.NewSHAKE128),
+	"SHAKE-128/VOT":            shakeAftVot(sha3.NewSHAKE128),
+	"SHAKE-128/MCT":            shakeMct(sha3.NewSHAKE128),
+	"SHAKE-256":                shakeAftVot(sha3.NewSHAKE256),
+	"SHAKE-256/VOT":            shakeAftVot(sha3.NewSHAKE256),
+	"SHAKE-256/MCT":            shakeMct(sha3.NewSHAKE256),
+	"cSHAKE-128":               cShakeAft(sha3.NewCSHAKE128),
+	"cSHAKE-128/MCT":           cShakeMct(sha3.NewCSHAKE128),
+	"cSHAKE-256":               cShakeAft(sha3.NewCSHAKE256),
+	"cSHAKE-256/MCT":           cShakeMct(sha3.NewCSHAKE256),
 }
 
 func flush(args [][]byte) error {
@@ -428,9 +428,10 @@ func hkdfMAC(args [][]byte) error {
 
 	length := binary.LittleEndian.Uint32(lengthBytes)
 
-	mac := hkdf.New(sha256.New, key, salt, info)
-	ret := make([]byte, length)
-	mac.Read(ret)
+	ret, err := hkdf.Key(sha256.New, key, salt, string(info), int(length))
+	if err != nil {
+		return err
+	}
 
 	return reply(ret)
 }
@@ -615,13 +616,13 @@ func pbkdf(args [][]byte) error {
 	case "SHA2-512/256":
 		h = sha512.New512_256
 	case "SHA3-224":
-		h = sha3.New224
+		h = func() hash.Hash { return sha3.New224() }
 	case "SHA3-256":
-		h = sha3.New256
+		h = func() hash.Hash { return sha3.New256() }
 	case "SHA3-384":
-		h = sha3.New384
+		h = func() hash.Hash { return sha3.New384() }
 	case "SHA3-512":
-		h = sha3.New512
+		h = func() hash.Hash { return sha3.New512() }
 	default:
 		return fmt.Errorf("pbkdf unknown HMAC algorithm: %q", hmacName)
 	}
@@ -629,7 +630,10 @@ func pbkdf(args [][]byte) error {
 	salt, password := args[2], args[3]
 	iterationCount := binary.LittleEndian.Uint32(args[4])
 
-	derivedKey := pbkdf2.Key(password, salt, int(iterationCount), int(keyLen), h)
+	derivedKey, err := pbkdf2.Key(h, string(password), salt, int(iterationCount), int(keyLen))
+	if err != nil {
+		return err
+	}
 
 	return reply(derivedKey)
 }
@@ -731,7 +735,7 @@ func eddsaSigVer(args [][]byte) error {
 	return reply([]byte{1})
 }
 
-func shakeAftVot(digestFn func() sha3.ShakeHash) func([][]byte) error {
+func shakeAftVot(digestFn func() *sha3.SHAKE) func([][]byte) error {
 	return func(args [][]byte) error {
 		if len(args) != 2 {
 			return fmt.Errorf("shakeAftVot received %d args, wanted 2", len(args))
@@ -749,7 +753,7 @@ func shakeAftVot(digestFn func() sha3.ShakeHash) func([][]byte) error {
 	}
 }
 
-func shakeMct(digestFn func() sha3.ShakeHash) func([][]byte) error {
+func shakeMct(digestFn func() *sha3.SHAKE) func([][]byte) error {
 	return func(args [][]byte) error {
 		if len(args) != 4 {
 			return fmt.Errorf("shakeMct received %d args, wanted 4", len(args))
@@ -797,7 +801,7 @@ func shakeMct(digestFn func() sha3.ShakeHash) func([][]byte) error {
 	}
 }
 
-func cShakeAft(hFn func(N, S []byte) sha3.ShakeHash) func([][]byte) error {
+func cShakeAft(hFn func(N, S []byte) *sha3.SHAKE) func([][]byte) error {
 	return func(args [][]byte) error {
 		if len(args) != 4 {
 			return fmt.Errorf("cShakeAft received %d args, wanted 4", len(args))
@@ -817,7 +821,7 @@ func cShakeAft(hFn func(N, S []byte) sha3.ShakeHash) func([][]byte) error {
 	}
 }
 
-func cShakeMct(hFn func(N, S []byte) sha3.ShakeHash) func([][]byte) error {
+func cShakeMct(hFn func(N, S []byte) *sha3.SHAKE) func([][]byte) error {
 	return func(args [][]byte) error {
 		if len(args) != 6 {
 			return fmt.Errorf("cShakeMct received %d args, wanted 6", len(args))
