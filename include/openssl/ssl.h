@@ -1147,17 +1147,29 @@ OPENSSL_EXPORT const EVP_MD *SSL_get_signature_algorithm_digest(
 OPENSSL_EXPORT int SSL_is_signature_algorithm_rsa_pss(uint16_t sigalg);
 
 // SSL_CTX_set_signing_algorithm_prefs configures |ctx| to use |prefs| as the
-// preference list when signing with |ctx|'s private key. It returns one on
-// success and zero on error. |prefs| should not include the internal-only value
-// |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+// preference list when signing with |ctx|'s private key in TLS 1.2 and up. It
+// returns one on success and zero on error. |prefs| should not include the
+// internal-only TLS 1.0 value |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+//
+// This setting is not used in TLS 1.0 and 1.1. Those protocols always sign a
+// hardcoded algorithm (an MD5/SHA-1 concatenation for RSA, and SHA-1 for
+// ECDSA). BoringSSL will use those algorithms if and only if those versions are
+// used. To disable them, set the minimum version to TLS 1.2 (default) or
+// higher.
 OPENSSL_EXPORT int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx,
                                                        const uint16_t *prefs,
                                                        size_t num_prefs);
 
 // SSL_set_signing_algorithm_prefs configures |ssl| to use |prefs| as the
-// preference list when signing with |ssl|'s private key. It returns one on
-// success and zero on error. |prefs| should not include the internal-only value
-// |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+// preference list when signing with |ssl|'s private key in TLS 1.2 and up. It
+// returns one on success and zero on error. |prefs| should not include the
+// internal-only TLS 1.0 value |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+//
+// This setting is not used in TLS 1.0 and 1.1. Those protocols always sign a
+// hardcoded algorithm (an MD5/SHA-1 concatenation for RSA, and SHA-1 for
+// ECDSA). BoringSSL will use those algorithms if and only if those versions are
+// used. To disable them, set the minimum version to TLS 1.2 (default) or
+// higher.
 OPENSSL_EXPORT int SSL_set_signing_algorithm_prefs(SSL *ssl,
                                                    const uint16_t *prefs,
                                                    size_t num_prefs);
@@ -2847,17 +2859,29 @@ OPENSSL_EXPORT int SSL_set0_verify_cert_store(SSL *ssl, X509_STORE *store);
 OPENSSL_EXPORT int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store);
 
 // SSL_CTX_set_verify_algorithm_prefs configures |ctx| to use |prefs| as the
-// preference list when verifying signatures from the peer's long-term key. It
-// returns one on zero on error. |prefs| should not include the internal-only
-// value |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+// preference list when verifying signatures from the peer's long-term key in
+// TLS 1.2 and up. It returns one on zero on error. |prefs| should not include
+// the internal-only TLS 1.0 value |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+//
+// This setting is not used in TLS 1.0 and 1.1. Those protocols always sign a
+// hardcoded algorithm (an MD5/SHA-1 concatenation for RSA, and SHA-1 for
+// ECDSA). BoringSSL will accept those algorithms if and only if those versions
+// are used. To disable them, set the minimum version to TLS 1.2 (default) or
+// higher.
 OPENSSL_EXPORT int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx,
                                                       const uint16_t *prefs,
                                                       size_t num_prefs);
 
 // SSL_set_verify_algorithm_prefs configures |ssl| to use |prefs| as the
-// preference list when verifying signatures from the peer's long-term key. It
-// returns one on zero on error. |prefs| should not include the internal-only
-// value |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+// preference list when verifying signatures from the peer's long-term key in
+// TLS 1.2 and up. It returns one on zero on error. |prefs| should not include
+// the internal-only TLS 1.0 value |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+//
+// This setting is not used in TLS 1.0 and 1.1. Those protocols always sign a
+// hardcoded algorithm (an MD5/SHA-1 concatenation for RSA, and SHA-1 for
+// ECDSA). BoringSSL will accept those algorithms if and only if those versions
+// are used. To disable them, set the minimum version to TLS 1.2 (default) or
+// higher.
 OPENSSL_EXPORT int SSL_set_verify_algorithm_prefs(SSL *ssl,
                                                   const uint16_t *prefs,
                                                   size_t num_prefs);
