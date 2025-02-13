@@ -1447,8 +1447,9 @@ func (c *Conn) readHandshake() (any, error) {
 		return nil, err
 	}
 
+	typ := data[0]
 	var m handshakeMessage
-	switch data[0] {
+	switch typ {
 	case typeHelloRequest:
 		m = new(helloRequestMsg)
 	case typeClientHello:
@@ -1523,7 +1524,8 @@ func (c *Conn) readHandshake() (any, error) {
 	}
 
 	if !m.unmarshal(data) {
-		return nil, c.in.setErrorLocked(c.sendAlert(alertDecodeError))
+		c.sendAlert(alertDecodeError)
+		return nil, c.in.setErrorLocked(fmt.Errorf("tls: error decoding %s message", messageTypeToString(typ)))
 	}
 	return m, nil
 }

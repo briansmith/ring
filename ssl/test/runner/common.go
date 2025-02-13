@@ -91,11 +91,57 @@ const (
 	typeFinished              uint8 = 20
 	typeCertificateStatus     uint8 = 22
 	typeKeyUpdate             uint8 = 24
-	typeCompressedCertificate uint8 = 25  // Not IANA assigned
+	typeCompressedCertificate uint8 = 25
 	typeNextProtocol          uint8 = 67  // Not IANA assigned
 	typeChannelID             uint8 = 203 // Not IANA assigned
 	typeMessageHash           uint8 = 254
 )
+
+func messageTypeToString(typ uint8) string {
+	switch typ {
+	case typeHelloRequest:
+		return "HelloRequest"
+	case typeClientHello:
+		return "ClientHello"
+	case typeServerHello:
+		return "ServerHello"
+	case typeHelloVerifyRequest:
+		return "HelloVerifyRequest"
+	case typeNewSessionTicket:
+		return "NewSessionTicket"
+	case typeEndOfEarlyData:
+		return "EndOfEarlyData"
+	case typeEncryptedExtensions:
+		return "EncryptedExtensions"
+	case typeCertificate:
+		return "Certificate"
+	case typeServerKeyExchange:
+		return "ServerKeyExchange"
+	case typeCertificateRequest:
+		return "CertificateRequest"
+	case typeServerHelloDone:
+		return "ServerHelloDone"
+	case typeCertificateVerify:
+		return "CertificateVerify"
+	case typeClientKeyExchange:
+		return "ClientKeyExchange"
+	case typeFinished:
+		return "Finished"
+	case typeCertificateStatus:
+		return "CertificateStatus"
+	case typeKeyUpdate:
+		return "KeyUpdate"
+	case typeCompressedCertificate:
+		return "CompressedCertificate"
+	case typeNextProtocol:
+		return "NextProtocol"
+	case typeChannelID:
+		return "ChannelID"
+	case typeMessageHash:
+		return "MessageHash"
+	}
+	return fmt.Sprintf("unknown(%d)", typ)
+}
 
 // TLS compression types.
 const (
