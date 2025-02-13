@@ -26,6 +26,7 @@ use crate::{
 };
 use core::ops::RangeFrom;
 
+#[inline(never)]
 pub(super) fn seal(
     aes_key: &aes::hw::Key,
     gcm_key: &gcm::clmulavxmovbe::Key,
@@ -79,6 +80,7 @@ pub(super) fn seal(
     super::seal_finish(aes_key, auth, remainder, ctr, tag_iv)
 }
 
+#[inline(never)]
 pub(super) fn open(
     aes_key: &aes::hw::Key,
     gcm_key: &gcm::clmulavxmovbe::Key,

@@ -151,7 +151,7 @@ impl Counter {
         iv
     }
 
-    fn increment_by_less_safe(&mut self, increment_by: NonZeroU32) {
+    pub(super) fn increment_by_less_safe(&mut self, increment_by: NonZeroU32) {
         let [.., c0, c1, c2, c3] = &mut self.0;
         let old_value: u32 = u32::from_be_bytes([*c0, *c1, *c2, *c3]);
         let new_value = old_value + increment_by.get();

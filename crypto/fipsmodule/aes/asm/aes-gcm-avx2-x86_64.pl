@@ -439,12 +439,8 @@ sub _ghash_4x {
 #                                const uint8_t *in, size_t len);
 #
 # Using the key |Htable|, update the GHASH accumulator |Xi| with the data given
-# by |in| and |len|.  |len| must be a multiple of 16.
-#
-# This function handles large amounts of AAD efficiently, while also keeping the
-# overhead low for small amounts of AAD which is the common case.  TLS uses less
-# than one block of AAD, but (uncommonly) other use cases may use much more.
-$code .= _begin_func "gcm_ghash_vpclmulqdq_avx2", 1;
+# by |in| and |len|.  |len| must be exactly 16.
+$code .= _begin_func "gcm_ghash_vpclmulqdq_avx2_1", 1;
 {
     # Function arguments
     my ( $GHASH_ACC_PTR, $HTABLE, $AAD, $AADLEN ) = @argregs[ 0 .. 3 ];
@@ -470,49 +466,8 @@ $code .= _begin_func "gcm_ghash_vpclmulqdq_avx2", 1;
     vpshufb         $BSWAP_MASK_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
     vbroadcasti128  .Lgfpoly(%rip), $GFPOLY
 
-    # Optimize for AADLEN < 32 by checking for AADLEN < 32 before AADLEN < 128.
-    cmp             \$32, $AADLEN
-    jb              .Lghash_lastblock
-
-    cmp             \$127, $AADLEN
-    jbe             .Lghash_loop_1x
-
-    # Update GHASH with 128 bytes of AAD at a time.
-    vmovdqu         $OFFSETOF_H_POWERS_XORED($HTABLE), $H_POW2_XORED
-    vmovdqu         $OFFSETOF_H_POWERS_XORED+32($HTABLE), $H_POW1_XORED
-.Lghash_loop_4x:
-    @{[ _ghash_4x   $AAD, $HTABLE, $BSWAP_MASK, $H_POW2_XORED, $H_POW1_XORED,
-                    $TMP0, $TMP0_XMM, $TMP1, $TMP2, $LO, $MI, $GHASH_ACC,
-                    $GHASH_ACC_XMM ]}
-    sub             \$-128, $AAD  # 128 is 4 bytes, -128 is 1 byte
-    add             \$-128, $AADLEN
-    cmp             \$127, $AADLEN
-    ja              .Lghash_loop_4x
-
-    # Update GHASH with 32 bytes of AAD at a time.
-    cmp             \$32, $AADLEN
-    jb              .Lghash_loop_1x_done
-.Lghash_loop_1x:
-    vmovdqu         ($AAD), $TMP0
-    vpshufb         $BSWAP_MASK, $TMP0, $TMP0
-    vpxor           $TMP0, $GHASH_ACC, $GHASH_ACC
-    vmovdqu         $OFFSETOFEND_H_POWERS-32($HTABLE), $TMP0
-    @{[ _ghash_mul  $TMP0, $GHASH_ACC, $GHASH_ACC, $GFPOLY, $TMP1, $TMP2, $LO ]}
-    vextracti128    \$1, $GHASH_ACC, $TMP0_XMM
-    vpxor           $TMP0_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
-    add             \$32, $AAD
-    sub             \$32, $AADLEN
-    cmp             \$32, $AADLEN
-    jae             .Lghash_loop_1x
-.Lghash_loop_1x_done:
-    # Issue the vzeroupper that is needed after using ymm registers.  Do it here
-    # instead of at the end, to minimize overhead for small AADLEN.
-    vzeroupper
-
     # Update GHASH with the remaining 16-byte block if any.
 .Lghash_lastblock:
-    test            $AADLEN, $AADLEN
-    jz              .Lghash_done
     vmovdqu         ($AAD), $TMP0_XMM
     vpshufb         $BSWAP_MASK_XMM, $TMP0_XMM, $TMP0_XMM
     vpxor           $TMP0_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM

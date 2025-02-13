@@ -36,6 +36,7 @@ pub struct Key {
 }
 
 impl Key {
+    #[cfg_attr(target_arch = "x86_64", inline(never))]
     pub(in super::super) fn new(value: KeyValue, _cpu: RequiredCpuFeatures) -> Self {
         Self {
             h_table: unsafe { htable_new!(gcm_init_clmul, value) },
