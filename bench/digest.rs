@@ -35,6 +35,11 @@ const INPUT_LENGTHS: &[usize] = &[
     1024 * 1024,
 ];
 
+const SMALL_MAX: usize = 8192;
+
+#[repr(align(64))]
+struct Small([u8; SMALL_MAX]);
+
 fn oneshot(c: &mut Criterion) {
     for &(alg_name, algorithm) in ALGORITHMS {
         for input_len in INPUT_LENGTHS {
@@ -42,7 +47,17 @@ fn oneshot(c: &mut Criterion) {
                 BenchmarkId::new(format!("digest::oneshot::{alg_name}"), input_len),
                 input_len,
                 |b, &input_len| {
-                    let input = vec![0u8; input_len];
+                    let small;
+                    let v;
+                    let input = if input_len <= SMALL_MAX {
+                        // Use an aligned buffer to minimize alignment-related variance.
+                        small = Small([0; SMALL_MAX]);
+                        &small.0[..input_len]
+                    } else {
+                        // TODO: Align this similarly.
+                        v = vec![0u8; input_len];
+                        &v[..]
+                    };
                     b.iter(|| -> usize {
                         let digest = digest::digest(algorithm, &input);
                         black_box(digest.as_ref().len())
