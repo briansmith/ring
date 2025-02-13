@@ -243,11 +243,9 @@ pub fn unstripped_be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> 
 }
 
 // Used in FFI
-#[cfg(feature = "alloc")]
 pub type Window = constant_time::Word;
 
 // Used in FFI
-#[cfg(feature = "alloc")]
 pub type LeakyWindow = constant_time::LeakyWord;
 
 /// Processes `limbs` as a sequence of 5-bit windows, folding the windows from

@@ -87,10 +87,6 @@ impl BitLength<usize> {
     }
 
     /// The bit length, rounded up to a whole number of bytes.
-    #[cfg(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        feature = "alloc"
-    ))]
     #[inline]
     pub const fn as_usize_bytes_rounded_up(&self) -> usize {
         // Equivalent to (self.0 + 7) / 8, except with no potential for
