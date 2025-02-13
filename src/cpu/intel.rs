@@ -137,7 +137,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
 
     // Intel: "Structured Extended Feature Flags Enumeration Leaf"
     #[cfg(target_arch = "x86_64")]
-    let extended_features_ebx = cpuid[2];
+    let (extended_features_ebx, extended_features_ecx) = (cpuid[2], cpuid[3]);
 
     let mut caps = 0;
 
@@ -216,6 +216,20 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     let avx_available = check(leaf1_ecx, 28);
     if avx_available {
         set(&mut caps, Shift::Avx);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    if avx_available {
+        // The Intel docs don't seem to document the detection. The instruction
+        // definitions of the VEX.256 instructions reference the
+        // VAES/VPCLMULQDQ features and the documentation for the extended
+        // features gives the values. We combine these into one feature because
+        // we never use them independently.
+        let vaes_available = check(extended_features_ecx, 9);
+        let vclmul_available = check(extended_features_ecx, 10);
+        if vaes_available && vclmul_available {
+            set(&mut caps, Shift::VAesClmul);
+        }
     }
 
     // "14.7.1 Detection of Intel AVX2 Hardware support"
@@ -318,6 +332,7 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
 
 impl_get_feature! {
     features: [
+        { ("x86_64") => VAesClmul },
         { ("x86", "x86_64") => ClMul },
         { ("x86", "x86_64") => Ssse3 },
         { ("x86_64") => Sse41 },

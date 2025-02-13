@@ -38,6 +38,7 @@ pub(super) mod clmul;
 pub(super) mod clmulavxmovbe;
 pub(super) mod fallback;
 pub(super) mod neon;
+pub(super) mod vclmulavx2;
 
 pub(super) struct Context<'key, K> {
     Xi: Xi,
@@ -111,6 +112,15 @@ impl Context<'_, clmul::Key> {
 
 #[cfg(target_arch = "x86_64")]
 impl Context<'_, clmulavxmovbe::Key> {
+    /// Access to `inner` for the integrated AES-GCM implementations only.
+    #[inline]
+    pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
+        (self.key.inner(), &mut self.Xi)
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+impl Context<'_, vclmulavx2::Key> {
     /// Access to `inner` for the integrated AES-GCM implementations only.
     #[inline]
     pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {

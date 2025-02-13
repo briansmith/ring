@@ -35,6 +35,7 @@ use cpu::GetFeature as _;
 
 mod aarch64;
 mod aeshwclmulmovbe;
+mod vaesclmulavx2;
 
 #[derive(Clone)]
 pub(super) struct Key(DynKey);
@@ -50,6 +51,9 @@ impl Key {
 
 #[derive(Clone)]
 enum DynKey {
+    #[cfg(target_arch = "x86_64")]
+    VAesClMulAvx2(Combo<aes::hw::Key, gcm::vclmulavx2::Key>),
+
     #[cfg(target_arch = "x86_64")]
     AesHwClMulAvxMovbe(Combo<aes::hw::Key, gcm::clmulavxmovbe::Key>),
 
@@ -75,11 +79,16 @@ enum DynKey {
 impl DynKey {
     fn new(key: aes::KeyBytes, cpu: cpu::Features) -> Result<Self, error::Unspecified> {
         let cpu = cpu.values();
+
         #[cfg(target_arch = "x86_64")]
         if let Some((aes, gcm)) = cpu.get_feature() {
+            // 14.3.1 Detection of VEX-Encoded AES and VPCLMULQDQ
             let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature())?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             let combo = if let Some(cpu) = cpu.get_feature() {
+                let gcm_key = gcm::vclmulavx2::Key::new(gcm_key_value, cpu);
+                Self::VAesClMulAvx2(Combo { aes_key, gcm_key })
+            } else if let Some(cpu) = cpu.get_feature() {
                 let gcm_key = gcm::clmulavxmovbe::Key::new(gcm_key_value, cpu);
                 Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key })
             } else {
@@ -182,6 +191,16 @@ pub(super) fn seal(
         }
 
         #[cfg(target_arch = "x86_64")]
+        DynKey::VAesClMulAvx2(c) => seal_whole_partial(
+            c,
+            aad,
+            in_out,
+            ctr,
+            tag_iv,
+            vaesclmulavx2::seal_whole_vaes_clmul_avx2,
+        ),
+
+        #[cfg(target_arch = "x86_64")]
         DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
             aeshwclmulmovbe::seal(aes_key, gcm_key, ctr, tag_iv, aad, in_out)
         }
@@ -201,7 +220,10 @@ pub(super) fn seal(
     }
 }
 
-#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+#[cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    target_arch = "x86_64"
+))]
 fn seal_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
@@ -296,6 +318,17 @@ pub(super) fn open(
         }
 
         #[cfg(target_arch = "x86_64")]
+        DynKey::VAesClMulAvx2(c) => open_whole_partial(
+            c,
+            aad,
+            in_out_slice,
+            src,
+            ctr,
+            tag_iv,
+            vaesclmulavx2::open_whole_vaes_clmul_avx2,
+        ),
+
+        #[cfg(target_arch = "x86_64")]
         DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
             aeshwclmulmovbe::open(aes_key, gcm_key, ctr, tag_iv, aad, in_out_slice, src)
         }
@@ -315,7 +348,10 @@ pub(super) fn open(
     }
 }
 
-#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+#[cfg(any(
+    all(target_arch = "aarch64", target_endian = "little"),
+    target_arch = "x86_64"
+))]
 fn open_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
