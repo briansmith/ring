@@ -69,8 +69,6 @@ uint32_t OPENSSL_get_ia32cap(int idx) {
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
-#include <openssl/arm_arch.h>
-
 #if defined(OPENSSL_STATIC_ARMCAP)
 
 // See ARM ACLE for the definitions of these macros. Note |__ARM_FEATURE_AES|

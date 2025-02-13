@@ -217,8 +217,6 @@ ___
 }
 
 $code.=<<___;
-#include "openssl/arm_arch.h"
-
 .text
 .globl  beeu_mod_inverse_vartime
 .type   beeu_mod_inverse_vartime, %function

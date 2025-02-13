@@ -176,8 +176,6 @@ ___
 }
 
 $code.=<<___;
-#include <openssl/arm_arch.h>
-
 .text
 
 .globl	sha1_block_data_order_nohw

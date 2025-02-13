@@ -69,8 +69,6 @@ $n0="x4";	# const BN_ULONG *n0,
 $num="x5";	# size_t num);
 
 $code.=<<___;
-#include <openssl/arm_arch.h>
-
 .text
 
 .globl	bn_mul_mont

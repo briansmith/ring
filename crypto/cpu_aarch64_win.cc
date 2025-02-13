@@ -20,8 +20,6 @@
 
 #include <windows.h>
 
-#include <openssl/arm_arch.h>
-
 
 void OPENSSL_cpuid_setup(void) {
   // We do not need to check for the presence of NEON, as Armv8-A always has it

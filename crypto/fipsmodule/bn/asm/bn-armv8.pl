@@ -32,8 +32,6 @@ open OUT, "| \"$^X\" \"$xlate\" $flavour \"$output\"";
 my ($rp, $ap, $bp, $num) = ("x0", "x1", "x2", "x3");
 my ($a0, $a1, $b0, $b1, $num_pairs) = ("x4", "x5", "x6", "x7", "x8");
 my $code = <<____;
-#include <openssl/arm_arch.h>
-
 .text
 
 // BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,

@@ -177,10 +177,6 @@ ___
 }
 
 $code.=<<___;
-#ifndef	__KERNEL__
-# include <openssl/arm_arch.h>
-#endif
-
 .text
 
 .globl	$func

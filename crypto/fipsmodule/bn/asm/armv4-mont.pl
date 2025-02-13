@@ -102,8 +102,6 @@ $_n0="$num,#14*4";
 $_num="$num,#15*4";	$_bpend=$_num;
 
 $code=<<___;
-#include <openssl/arm_arch.h>
-
 @ Silence ARMv8 deprecated IT instruction warnings. This file is used by both
 @ ARMv7 and ARMv8 processors and does not use ARMv8 instructions.
 .arch  armv7-a

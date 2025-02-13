@@ -45,8 +45,6 @@ open OUT, "| \"$^X\" \"$xlate\" $flavour \"$output\"";
 
 my ($func, $state, $argv, $argc) = ("x0", "x1", "x2", "x3");
 my $code = <<____;
-#include <openssl/arm_arch.h>
-
 .text
 
 // abi_test_trampoline loads callee-saved registers from |state|, calls |func|

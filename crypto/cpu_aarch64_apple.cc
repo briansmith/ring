@@ -20,8 +20,6 @@
 #include <sys/sysctl.h>
 #include <sys/types.h>
 
-#include <openssl/arm_arch.h>
-
 
 static int has_hw_feature(const char *name) {
   int value;

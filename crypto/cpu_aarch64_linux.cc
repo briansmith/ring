@@ -19,8 +19,6 @@
 
 #include <sys/auxv.h>
 
-#include <openssl/arm_arch.h>
-
 
 void OPENSSL_cpuid_setup(void) {
   unsigned long hwcap = getauxval(AT_HWCAP);

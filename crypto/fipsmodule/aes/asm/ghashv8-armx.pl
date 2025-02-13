@@ -73,8 +73,6 @@ my ($Xl,$Xm,$Xh,$IN)=map("q$_",(0..3));
 my ($t0,$t1,$t2,$xC2,$H,$Hhl,$H2)=map("q$_",(8..14));
 
 $code=<<___;
-#include <openssl/arm_arch.h>
-
 #if __ARM_MAX_ARCH__>=7
 .text
 ___

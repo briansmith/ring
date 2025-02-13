@@ -15,7 +15,6 @@
 #ifndef OPENSSL_HEADER_CRYPTO_INTERNAL_H
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
-#include <openssl/arm_arch.h>
 #include <openssl/crypto.h>
 #include <openssl/ex_data.h>
 #include <openssl/stack.h>
@@ -1290,8 +1289,26 @@ inline int CRYPTO_is_VPCLMULQDQ_capable(void) {
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
-// OPENSSL_armcap_P contains ARM CPU capabilities. From C, this should only be
-// accessed with |OPENSSL_get_armcap|.
+// ARMV7_NEON indicates support for NEON.
+#define ARMV7_NEON (1 << 0)
+
+// ARMV8_AES indicates support for hardware AES instructions.
+#define ARMV8_AES (1 << 2)
+
+// ARMV8_SHA1 indicates support for hardware SHA-1 instructions.
+#define ARMV8_SHA1 (1 << 3)
+
+// ARMV8_SHA256 indicates support for hardware SHA-256 instructions.
+#define ARMV8_SHA256 (1 << 4)
+
+// ARMV8_PMULL indicates support for carryless multiplication.
+#define ARMV8_PMULL (1 << 5)
+
+// ARMV8_SHA512 indicates support for hardware SHA-512 instructions.
+#define ARMV8_SHA512 (1 << 6)
+
+// OPENSSL_armcap_P contains ARM CPU capabilities as a bitmask of the above
+// constants. This should only be accessed with |OPENSSL_get_armcap|.
 extern uint32_t OPENSSL_armcap_P;
 
 // OPENSSL_get_armcap initializes the library if needed and returns ARM CPU

@@ -195,7 +195,6 @@ open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT=*OUT;
 
 $code=<<___;
-#include <openssl/arm_arch.h>
 #if __ARM_MAX_ARCH__ >= 8
 
 .arch armv8-a+crypto

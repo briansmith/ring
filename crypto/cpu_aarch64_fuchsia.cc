@@ -21,8 +21,6 @@
 #include <zircon/syscalls.h>
 #include <zircon/types.h>
 
-#include <openssl/arm_arch.h>
-
 
 void OPENSSL_cpuid_setup(void) {
   uint32_t hwcap;

@@ -309,7 +309,6 @@ ___
 
 {
 $code.=<<___;
-#include <openssl/arm_arch.h>
 .section .rodata
 
 .align 7

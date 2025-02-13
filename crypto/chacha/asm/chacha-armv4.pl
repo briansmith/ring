@@ -176,8 +176,6 @@ my @ret;
 }
 
 $code.=<<___;
-#include <openssl/arm_arch.h>
-
 @ Silence ARMv8 deprecated IT instruction warnings. This file is used by both
 @ ARMv7 and ARMv8 processors and does not use ARMv8 instructions.
 .arch  armv7-a

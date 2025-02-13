@@ -61,8 +61,6 @@
 @ Add CBC, CTR and XTS subroutines and adapt for kernel use; courtesy of Ard.
 
 #ifndef __KERNEL__
-# include <openssl/arm_arch.h>
-
 # define VFP_ABI_PUSH	vstmdb	sp!,{d8-d15}
 # define VFP_ABI_POP	vldmia	sp!,{d8-d15}
 # define VFP_ABI_FRAME	0x40

@@ -58,8 +58,6 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 $prefix="aes_hw";
 
 $code=<<___;
-#include <openssl/arm_arch.h>
-
 #if __ARM_MAX_ARCH__>=7
 .text
 ___

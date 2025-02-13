@@ -56,8 +56,6 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
 $code.=<<___;
-#include <openssl/arm_arch.h>
-
 .section	.rodata
 
 .type	_vpaes_consts,%object

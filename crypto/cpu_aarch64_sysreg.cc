@@ -21,8 +21,6 @@
     (defined(ANDROID_BAREMETAL) || defined(OPENSSL_FREEBSD)) &&    \
     !defined(OPENSSL_NO_ASM)
 
-#include <openssl/arm_arch.h>
-
 #define ID_AA64PFR0_EL1_ADVSIMD 5
 
 #define ID_AA64ISAR0_EL1_AES 1

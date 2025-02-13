@@ -24,12 +24,6 @@
 #include "gtest_main.h"
 #include "../internal.h"
 
-#if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) &&       \
-    !defined(OPENSSL_STATIC_ARMCAP)
-#include <openssl/arm_arch.h>
-#define TEST_ARM_CPUS
-#endif
-
 
 int main(int argc, char **argv) {
   testing::InitGoogleMock(&argc, argv);
@@ -43,7 +37,8 @@ int main(int argc, char **argv) {
     }
 #endif
 
-#if defined(TEST_ARM_CPUS)
+#if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && \
+    !defined(OPENSSL_STATIC_ARMCAP)
     if (strncmp(argv[i], "--cpu=", 6) == 0) {
       const char *cpu = argv[i] + 6;
       uint32_t armcap;
@@ -68,7 +63,7 @@ int main(int argc, char **argv) {
       printf("Simulating CPU '%s'\n", cpu);
       *armcap_ptr = armcap;
     }
-#endif  // TEST_ARM_CPUS
+#endif  // (ARM || AARCH64) && !STATIC_ARMCAP
 
     if (strcmp(argv[i], "--no_unwind_tests") == 0) {
       unwind_tests = false;

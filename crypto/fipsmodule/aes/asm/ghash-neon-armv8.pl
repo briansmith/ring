@@ -162,8 +162,6 @@ ___
 }
 
 $code .= <<___;
-#include <openssl/arm_arch.h>
-
 .text
 
 .global	gcm_init_neon

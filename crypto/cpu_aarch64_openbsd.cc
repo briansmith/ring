@@ -21,8 +21,6 @@
 #include <machine/cpu.h>
 #include <sys/sysctl.h>
 
-#include <openssl/arm_arch.h>
-
 #include "internal.h"
 
 

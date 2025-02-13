@@ -192,8 +192,6 @@ ___
 }
 
 $code=<<___;
-#include <openssl/arm_arch.h>
-
 .text
 #if defined(__thumb2__)
 .syntax	unified

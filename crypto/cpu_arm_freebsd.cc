@@ -19,7 +19,6 @@
 #include <sys/auxv.h>
 #include <sys/types.h>
 
-#include <openssl/arm_arch.h>
 #include <openssl/mem.h>
 
 

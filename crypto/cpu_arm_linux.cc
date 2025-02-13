@@ -22,7 +22,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <openssl/arm_arch.h>
 #include <openssl/mem.h>
 
 #include "cpu_arm_linux.h"
