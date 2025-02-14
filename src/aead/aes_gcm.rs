@@ -33,6 +33,7 @@ use core::ops::RangeFrom;
 ))]
 use cpu::GetFeature as _;
 
+mod aarch64;
 mod aeshwclmulmovbe;
 
 #[derive(Clone)]
@@ -175,49 +176,14 @@ pub(super) fn seal(
     let tag_iv = ctr.increment();
 
     match key {
+        #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+        DynKey::AesHwClMul(c) => {
+            seal_whole_partial(c, aad, in_out, ctr, tag_iv, aarch64::seal_whole)
+        }
+
         #[cfg(target_arch = "x86_64")]
         DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
             aeshwclmulmovbe::seal(aes_key, gcm_key, ctr, tag_iv, aad, in_out)
-        }
-
-        #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-        DynKey::AesHwClMul(Combo { aes_key, gcm_key }) => {
-            use crate::bits::BitLength;
-
-            let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
-
-            let (mut whole, remainder) = slice::as_chunks_mut(in_out);
-            let whole_block_bits = auth.in_out_whole_block_bits();
-            let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
-            if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
-                use core::num::NonZeroU64;
-
-                let (htable, xi) = auth.inner();
-                prefixed_extern! {
-                    fn aes_gcm_enc_kernel(
-                        input: *const [u8; BLOCK_LEN],
-                        in_bits: BitLength<NonZeroU64>,
-                        output: *mut [u8; BLOCK_LEN],
-                        Xi: &mut gcm::Xi,
-                        ivec: &mut Counter,
-                        key: &aes::AES_KEY,
-                        Htable: &gcm::HTable);
-                }
-                unsafe {
-                    aes_gcm_enc_kernel(
-                        whole.as_ptr(),
-                        whole_block_bits,
-                        whole.as_mut_ptr(),
-                        xi,
-                        &mut ctr,
-                        aes_key.inner_less_safe(),
-                        htable,
-                    )
-                }
-            }
-            let remainder = OverlappingPartialBlock::new(remainder.into())
-                .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
-            seal_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
 
         #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
@@ -233,6 +199,23 @@ pub(super) fn seal(
 
         DynKey::Fallback(c) => seal_strided(c, aad, in_out, ctr, tag_iv),
     }
+}
+
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+fn seal_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
+    Combo { aes_key, gcm_key }: &Combo<A, G>,
+    aad: Aad<&[u8]>,
+    in_out: &mut [u8],
+    mut ctr: Counter,
+    tag_iv: aes::Iv,
+    seal_whole: impl FnOnce(&A, &mut gcm::Context<G>, &mut Counter, slice::AsChunksMut<u8, BLOCK_LEN>),
+) -> Result<Tag, error::Unspecified> {
+    let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
+    let (whole, remainder) = slice::as_chunks_mut(in_out);
+    seal_whole(aes_key, &mut auth, &mut ctr, whole);
+    let remainder = OverlappingPartialBlock::new(remainder.into())
+        .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
+    seal_finish(aes_key, auth, remainder, ctr, tag_iv)
 }
 
 #[cfg_attr(
@@ -307,57 +290,14 @@ pub(super) fn open(
     let tag_iv = ctr.increment();
 
     match key {
+        #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+        DynKey::AesHwClMul(c) => {
+            open_whole_partial(c, aad, in_out_slice, src, ctr, tag_iv, aarch64::open_whole)
+        }
+
         #[cfg(target_arch = "x86_64")]
         DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
             aeshwclmulmovbe::open(aes_key, gcm_key, ctr, tag_iv, aad, in_out_slice, src)
-        }
-
-        #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-        DynKey::AesHwClMul(Combo { aes_key, gcm_key }) => {
-            use crate::bits::BitLength;
-
-            let in_out =
-                Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
-            let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
-            let remainder_len = in_out.len() % BLOCK_LEN;
-            let whole_len = in_out.len() - remainder_len;
-            in_out.with_input_output_len(|input, output, _len| {
-                let whole_block_bits = auth.in_out_whole_block_bits();
-                let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
-                if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
-                    use core::num::NonZeroU64;
-
-                    let (htable, xi) = auth.inner();
-                    prefixed_extern! {
-                        fn aes_gcm_dec_kernel(
-                            input: *const u8,
-                            in_bits: BitLength<NonZeroU64>,
-                            output: *mut u8,
-                            Xi: &mut gcm::Xi,
-                            ivec: &mut Counter,
-                            key: &aes::AES_KEY,
-                            Htable: &gcm::HTable);
-                    }
-
-                    unsafe {
-                        aes_gcm_dec_kernel(
-                            input,
-                            whole_block_bits,
-                            output,
-                            xi,
-                            &mut ctr,
-                            aes_key.inner_less_safe(),
-                            htable,
-                        )
-                    }
-                }
-            });
-            let remainder = &mut in_out_slice[whole_len..];
-            let remainder =
-                Overlapping::new(remainder, src).unwrap_or_else(|IndexError { .. }| unreachable!());
-            let remainder = OverlappingPartialBlock::new(remainder)
-                .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
-            open_finish(aes_key, auth, remainder, ctr, tag_iv)
         }
 
         #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
@@ -373,6 +313,36 @@ pub(super) fn open(
 
         DynKey::Fallback(c) => open_strided(c, aad, in_out_slice, src, ctr, tag_iv),
     }
+}
+
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+fn open_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
+    Combo { aes_key, gcm_key }: &Combo<A, G>,
+    aad: Aad<&[u8]>,
+    in_out_slice: &mut [u8],
+    src: RangeFrom<usize>,
+    mut ctr: Counter,
+    tag_iv: aes::Iv,
+    open_whole: impl FnOnce(&A, &mut gcm::Context<G>, Overlapping, &mut Counter),
+) -> Result<Tag, error::Unspecified> {
+    let in_out = Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
+    let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
+
+    let remainder_len = in_out.len() % BLOCK_LEN;
+
+    let in_out_slice_len = in_out_slice.len();
+    let whole_in_out_slice = &mut in_out_slice[..(in_out_slice_len - remainder_len)];
+    let whole = Overlapping::new(whole_in_out_slice, src.clone())
+        .unwrap_or_else(|IndexError { .. }| unreachable!());
+    let whole_len = whole.len();
+    open_whole(aes_key, &mut auth, whole, &mut ctr);
+
+    let remainder = &mut in_out_slice[whole_len..];
+    let remainder =
+        Overlapping::new(remainder, src).unwrap_or_else(|IndexError { .. }| unreachable!());
+    let remainder = OverlappingPartialBlock::new(remainder)
+        .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
+    open_finish(aes_key, auth, remainder, ctr, tag_iv)
 }
 
 #[cfg_attr(
