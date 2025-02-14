@@ -1,5 +1,7 @@
 filippo.io/edwards25519 v1.1.0 h1:FNf4tywRC1HmFuKW5xopWpigGjJKiJSV0Cqo0cJWDaA=
 filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
+filippo.io/mlkem768 v0.0.0-20241021091500-d85de16e2039 h1:I/alPPIVzEkPeQKVU7Sl5gv/sQ0IC4zgqHiACrSgUW8=
+filippo.io/mlkem768 v0.0.0-20241021091500-d85de16e2039/go.mod h1:IkpYfciLz5fI/S4/Z0NlhR4cpv6ubCMDnIwAe0XiojA=
 golang.org/x/crypto v0.31.0 h1:ihbySMvVjLAeSH1IbfcRTkD/iNscyz8rGzjF/E5hV6U=
 golang.org/x/crypto v0.31.0/go.mod h1:kDsLvtWBEx7MV9tJOj9bnXsPbxwJQ6csT/x4KIN4Ssk=
 golang.org/x/net v0.27.0 h1:5K3Njcw06/l2y9vpGCSdcxWOYHOUk3dVNGDXN+FvAys=
