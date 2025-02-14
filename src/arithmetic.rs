@@ -25,6 +25,7 @@ mod constant;
 #[cfg(feature = "alloc")]
 pub mod bigint;
 
+pub mod add;
 pub(crate) mod inout;
 mod limbs512;
 pub mod montgomery;
