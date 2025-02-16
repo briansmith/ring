@@ -14,30 +14,30 @@
 
 #![cfg(target_arch = "x86_64")]
 
-use super::{
-    ffi::{self, KeyValue, BLOCK_LEN},
-    UpdateBlock, Xi,
-};
+use super::{ffi, ffi::KeyValue, UpdateBlock, Xi};
 use crate::{
+    aead::gcm::ffi::BLOCK_LEN,
     c,
-    cpu::intel::{Avx2, VAesClmul},
+    cpu::intel::{Avx2, Avx512_BW_VL_ZMM, Bmi2, VAesClmul},
     polyfill::slice::AsChunks,
 };
 use core::mem::MaybeUninit;
 
 #[derive(Clone)]
 #[repr(transparent)]
-pub struct Key([ffi::U128; 12]);
+pub struct Key([ffi::U128; 16]);
 
 impl Key {
-    #[inline(never)]
-    pub(in super::super) fn new(value: KeyValue, _cpu: (Avx2, VAesClmul)) -> Self {
+    pub(in super::super) fn new(
+        value: KeyValue,
+        _cpu: (Avx2, Avx512_BW_VL_ZMM, Bmi2, VAesClmul),
+    ) -> Self {
         prefixed_extern! {
-            fn gcm_init_vpclmulqdq_avx2(HTable: *mut Key, h: &KeyValue);
+            fn gcm_init_vpclmulqdq_avx512(HTable: *mut Key, h: &KeyValue);
         }
         let mut uninit = MaybeUninit::<Key>::uninit();
         unsafe {
-            gcm_init_vpclmulqdq_avx2(uninit.as_mut_ptr(), &value);
+            gcm_init_vpclmulqdq_avx512(uninit.as_mut_ptr(), &value);
         }
         unsafe { uninit.assume_init() }
     }
@@ -46,7 +46,7 @@ impl Key {
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
         prefixed_extern! {
-            fn gcm_ghash_vpclmulqdq_avx2_16(
+            fn gcm_ghash_vpclmulqdq_avx512_16(
                 xi: &mut Xi,
                 Htable: &Key,
                 inp: *const u8,
@@ -55,7 +55,7 @@ impl UpdateBlock for Key {
         }
         let input: AsChunks<u8, BLOCK_LEN> = (&a).into();
         ffi::with_non_dangling_ptr(input, |input, len| unsafe {
-            gcm_ghash_vpclmulqdq_avx2_16(xi, self, input, len)
+            gcm_ghash_vpclmulqdq_avx512_16(xi, self, input, len)
         })
     }
 }
