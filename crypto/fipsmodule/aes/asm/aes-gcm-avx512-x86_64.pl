@@ -588,10 +588,11 @@ sub _ghash_4x {
     return $code;
 }
 
-# void gcm_gmult_vpclmulqdq_avx512(uint8_t Xi[16], const u128 Htable[16]);
-$code .= _begin_func "gcm_gmult_vpclmulqdq_avx512", 1;
+# void gcm_ghash_vpclmulqdq_avx512_16(uint8_t Xi[16], const u128 Htable[16],
+#                                     const uint8_t aad[16], size_t aad_len_16););
+$code .= _begin_func "gcm_ghash_vpclmulqdq_avx512_16", 1;
 {
-    my ( $GHASH_ACC_PTR, $HTABLE ) = @argregs[ 0 .. 1 ];
+    my ( $GHASH_ACC_PTR, $HTABLE, $AAD, $AAD_LEN_16 ) = @argregs[ 0 .. 3 ];
     my ( $GHASH_ACC, $BSWAP_MASK, $H_POW1, $GFPOLY, $T0, $T1, $T2 ) =
       map( "%xmm$_", ( 0 .. 6 ) );
 
@@ -599,7 +600,12 @@ $code .= _begin_func "gcm_gmult_vpclmulqdq_avx512", 1;
     @{[ _save_xmmregs (6) ]}
     .seh_endprologue
 
+    # Load the GHASH accumulator.
     vmovdqu         ($GHASH_ACC_PTR), $GHASH_ACC
+
+    # XOR the AAD into the accumulator.
+    vpxor           ($AAD), $GHASH_ACC, $GHASH_ACC
+
     vmovdqu         .Lbswap_mask(%rip), $BSWAP_MASK
     vmovdqu         $OFFSETOFEND_H_POWERS-16($HTABLE), $H_POW1
     vmovdqu         .Lgfpoly(%rip), $GFPOLY
@@ -611,127 +617,6 @@ $code .= _begin_func "gcm_gmult_vpclmulqdq_avx512", 1;
     vmovdqu         $GHASH_ACC, ($GHASH_ACC_PTR)
 
     # No need for vzeroupper, since only xmm registers were used.
-___
-}
-$code .= _end_func;
-
-# void gcm_ghash_vpclmulqdq_avx512(uint8_t Xi[16], const u128 Htable[16],
-#                                  const uint8_t *in, size_t len);
-#
-# Using the key |Htable|, update the GHASH accumulator |Xi| with the data given
-# by |in| and |len|.  |len| must be a multiple of 16.
-#
-# This function handles large amounts of AAD efficiently, while also keeping the
-# overhead low for small amounts of AAD which is the common case.  TLS uses less
-# than one block of AAD, but (uncommonly) other use cases may use much more.
-$code .= _begin_func "gcm_ghash_vpclmulqdq_avx512", 1;
-{
-    # Function arguments
-    my ( $GHASH_ACC_PTR, $HTABLE, $AAD, $AADLEN ) = @argregs[ 0 .. 3 ];
-
-    # Additional local variables
-    my ( $GHASHDATA0, $GHASHDATA0_XMM ) = ( "%zmm0", "%xmm0" );
-    my ( $GHASHDATA1, $GHASHDATA1_XMM ) = ( "%zmm1", "%xmm1" );
-    my ( $GHASHDATA2, $GHASHDATA2_XMM ) = ( "%zmm2", "%xmm2" );
-    my ( $GHASHDATA3, $GHASHDATA3_XMM ) = ( "%zmm3", "%xmm3" );
-    my @GHASHDATA = ( $GHASHDATA0, $GHASHDATA1, $GHASHDATA2, $GHASHDATA3 );
-    my @GHASHDATA_XMM =
-      ( $GHASHDATA0_XMM, $GHASHDATA1_XMM, $GHASHDATA2_XMM, $GHASHDATA3_XMM );
-    my ( $BSWAP_MASK, $BSWAP_MASK_XMM ) = ( "%zmm4", "%xmm4" );
-    my ( $GHASH_ACC, $GHASH_ACC_XMM )   = ( "%zmm5", "%xmm5" );
-    my ( $H_POW4, $H_POW3, $H_POW2 )    = ( "%zmm6", "%zmm7", "%zmm8" );
-    my ( $H_POW1, $H_POW1_XMM )         = ( "%zmm9", "%xmm9" );
-    my ( $GFPOLY, $GFPOLY_XMM )         = ( "%zmm10", "%xmm10" );
-    my ( $GHASHTMP0, $GHASHTMP1, $GHASHTMP2 ) =
-      ( "%zmm11", "%zmm12", "%zmm13" );
-
-    $code .= <<___;
-    @{[ _save_xmmregs (6 .. 13) ]}
-    .seh_endprologue
-
-    # Load the bswap_mask and gfpoly constants.  Since AADLEN is usually small,
-    # usually only 128-bit vectors will be used.  So as an optimization, don't
-    # broadcast these constants to all 128-bit lanes quite yet.
-    vmovdqu         .Lbswap_mask(%rip), $BSWAP_MASK_XMM
-    vmovdqu         .Lgfpoly(%rip), $GFPOLY_XMM
-
-    # Load the GHASH accumulator.
-    vmovdqu         ($GHASH_ACC_PTR), $GHASH_ACC_XMM
-    vpshufb         $BSWAP_MASK_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
-
-    # Optimize for AADLEN < 64 by checking for AADLEN < 64 before AADLEN < 256.
-    cmp             \$64, $AADLEN
-    jb              .Laad_blockbyblock
-
-    # AADLEN >= 64, so we'll operate on full vectors.  Broadcast bswap_mask and
-    # gfpoly to all 128-bit lanes.
-    vshufi64x2      \$0, $BSWAP_MASK, $BSWAP_MASK, $BSWAP_MASK
-    vshufi64x2      \$0, $GFPOLY, $GFPOLY, $GFPOLY
-
-    # Load the lowest set of key powers.
-    vmovdqu8        $OFFSETOFEND_H_POWERS-1*64($HTABLE), $H_POW1
-
-    cmp             \$256, $AADLEN
-    jb              .Laad_loop_1x
-
-    # AADLEN >= 256.  Load the higher key powers.
-    vmovdqu8        $OFFSETOFEND_H_POWERS-4*64($HTABLE), $H_POW4
-    vmovdqu8        $OFFSETOFEND_H_POWERS-3*64($HTABLE), $H_POW3
-    vmovdqu8        $OFFSETOFEND_H_POWERS-2*64($HTABLE), $H_POW2
-
-    # Update GHASH with 256 bytes of AAD at a time.
-.Laad_loop_4x:
-    vmovdqu8        0*64($AAD), $GHASHDATA0
-    vmovdqu8        1*64($AAD), $GHASHDATA1
-    vmovdqu8        2*64($AAD), $GHASHDATA2
-    vmovdqu8        3*64($AAD), $GHASHDATA3
-    @{[ _ghash_4x   $BSWAP_MASK, @GHASHDATA, @GHASHDATA_XMM, $H_POW4, $H_POW3,
-                    $H_POW2, $H_POW1, $GFPOLY, $GHASHTMP0, $GHASHTMP1,
-                    $GHASHTMP2, $GHASH_ACC, $GHASH_ACC_XMM ]}
-    add             \$256, $AAD
-    sub             \$256, $AADLEN
-    cmp             \$256, $AADLEN
-    jae             .Laad_loop_4x
-
-    # Update GHASH with 64 bytes of AAD at a time.
-    cmp             \$64, $AADLEN
-    jb              .Laad_large_done
-.Laad_loop_1x:
-    vmovdqu8        ($AAD), $GHASHDATA0
-    vpshufb         $BSWAP_MASK, $GHASHDATA0, $GHASHDATA0
-    vpxord          $GHASHDATA0, $GHASH_ACC, $GHASH_ACC
-    @{[ _ghash_mul  $H_POW1, $GHASH_ACC, $GHASH_ACC, $GFPOLY,
-                    $GHASHDATA0, $GHASHDATA1, $GHASHDATA2 ]}
-    @{[ _horizontal_xor $GHASH_ACC, $GHASH_ACC_XMM, $GHASH_ACC_XMM,
-                        $GHASHDATA0_XMM, $GHASHDATA1_XMM, $GHASHDATA2_XMM ]}
-    add             \$64, $AAD
-    sub             \$64, $AADLEN
-    cmp             \$64, $AADLEN
-    jae             .Laad_loop_1x
-
-.Laad_large_done:
-
-    # GHASH the remaining data 16 bytes at a time, using xmm registers only.
-.Laad_blockbyblock:
-    test            $AADLEN, $AADLEN
-    jz              .Laad_done
-    vmovdqu         $OFFSETOFEND_H_POWERS-16($HTABLE), $H_POW1_XMM
-.Laad_loop_blockbyblock:
-    vmovdqu         ($AAD), $GHASHDATA0_XMM
-    vpshufb         $BSWAP_MASK_XMM, $GHASHDATA0_XMM, $GHASHDATA0_XMM
-    vpxor           $GHASHDATA0_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
-    @{[ _ghash_mul  $H_POW1_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM, $GFPOLY_XMM,
-                    $GHASHDATA0_XMM, $GHASHDATA1_XMM, $GHASHDATA2_XMM ]}
-    add             \$16, $AAD
-    sub             \$16, $AADLEN
-    jnz             .Laad_loop_blockbyblock
-
-.Laad_done:
-    # Store the updated GHASH accumulator back to memory.
-    vpshufb         $BSWAP_MASK_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
-    vmovdqu         $GHASH_ACC_XMM, ($GHASH_ACC_PTR)
-
-    vzeroupper      # This is needed after using ymm or zmm registers.
 ___
 }
 $code .= _end_func;
@@ -1292,11 +1177,6 @@ sub filter_and_print {
             my $postspace = $+{postspace};
             if (exists $asmMap{$trimmed}) {
                 $line = ${prespace} . $asmMap{$trimmed} . ${postspace};
-            } else {
-                if($trimmed =~ /(vpclmulqdq|vaes).*%[yz]mm/) {
-                    die ("found instruction not supported under old binutils, please update asmMap with the results of running\n" .
-                         'find target -name "*aes-gcm-avx512*.o" -exec python3 crypto/fipsmodule/aes/asm/make-avx-map-for-old-binutils.py \{\} \; | LC_ALL=C sort | uniq');
-                }
             }
         }
         print $line,"\n";

@@ -45,6 +45,7 @@ pub(super) mod clmulavxmovbe;
 pub(super) mod fallback;
 pub(super) mod neon;
 pub(super) mod vclmulavx2;
+pub(super) mod vclmulavx512;
 
 pub(super) struct Context<'key, K> {
     Xi: Xi,
@@ -124,6 +125,15 @@ impl Context<'_, vclmulavx2::Key> {
     /// Access to `inner` for the integrated AES-GCM implementations only.
     #[inline]
     pub(super) fn inner(&mut self) -> (&vclmulavx2::Key, &mut Xi) {
+        (self.key, &mut self.Xi)
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+impl Context<'_, vclmulavx512::Key> {
+    /// Access to `inner` for the integrated AES-GCM implementations only.
+    #[inline]
+    pub(super) fn inner(&mut self) -> (&vclmulavx512::Key, &mut Xi) {
         (self.key, &mut self.Xi)
     }
 }
