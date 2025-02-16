@@ -14,9 +14,6 @@
 
 //! Error reporting.
 
-#[cfg(feature = "std")]
-extern crate std;
-
 /// An error parsing or validating a key.
 ///
 /// The `Display` implementation will return a string that will help you better
@@ -101,8 +98,7 @@ impl KeyRejected {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for KeyRejected {}
+impl core::error::Error for KeyRejected {}
 
 impl core::fmt::Display for KeyRejected {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
