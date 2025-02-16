@@ -28,7 +28,7 @@ pub fn detect_features() -> u32 {
     const ZX_FEATURE_KIND_CPU: u32 = 0;
     const ZX_ARM64_FEATURE_ISA_AES: u32 = 1 << 3;
     const ZX_ARM64_FEATURE_ISA_PMULL: u32 = 1 << 4;
-    const ZX_ARM64_FEATURE_ISA_SHA2: u32 = 1 << 6;
+    const ZX_ARM64_FEATURE_ISA_SHA256: u32 = 1 << 6;
 
     let mut caps = 0;
     let rc = unsafe { zx_system_get_features(ZX_FEATURE_KIND_CPU, &mut caps) };
@@ -45,7 +45,7 @@ pub fn detect_features() -> u32 {
         if caps & ZX_ARM64_FEATURE_ISA_PMULL == ZX_ARM64_FEATURE_ISA_PMULL {
             features |= PMull::mask();
         }
-        if caps & ZX_ARM64_FEATURE_ISA_SHA2 == ZX_ARM64_FEATURE_ISA_SHA2 {
+        if caps & ZX_ARM64_FEATURE_ISA_SHA256 == ZX_ARM64_FEATURE_ISA_SHA256 {
             features |= Sha256::mask();
         }
     }
