@@ -26,7 +26,6 @@ pub fn detect_features() -> u32 {
 
     const ZX_OK: i32 = 0;
     const ZX_FEATURE_KIND_CPU: u32 = 0;
-    const ZX_ARM64_FEATURE_ISA_ASIMD: u32 = 1 << 2;
     const ZX_ARM64_FEATURE_ISA_AES: u32 = 1 << 3;
     const ZX_ARM64_FEATURE_ISA_PMULL: u32 = 1 << 4;
     const ZX_ARM64_FEATURE_ISA_SHA2: u32 = 1 << 6;
