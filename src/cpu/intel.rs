@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 // "Intel" citations are for "Intel 64 and IA-32 Architectures Software
-// Developer’s Manual", Combined Volumes, December 2024.
+// Developer’s Manual", Combined Volumes, June 2025.
 // "AMD" citations are for "AMD64 Technology AMD64 Architecture
 // Programmer’s Manual, Volumes 1-5" Revision 4.08 April 2024.
 
@@ -305,6 +305,42 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
         // calling into the C code.
         let flag = unsafe { &avx2_available };
         flag.store(1, core::sync::atomic::Ordering::Relaxed);
+
+        // Intel: The OS isn't allowed to enable ZMM state w/o enabling YMM/XMM
+        // state.
+        let os_supports_zmm_ymm_xmm =
+            check(r.xcr0, 7) && check(r.xcr0, 6) && check(r.xcr0, 5) && os_supports_ymm_xmm;
+
+        // Intel: "15.2 DETECTION OF AVX-512 FOUNDATION INSTRUCTIONS".
+        let f = os_supports_zmm_ymm_xmm && check(extended_features_ebx, 16);
+
+        // Intel: "15.3 DETECTION OF 512-BIT INSTRUCTION GROUPS OF THE INTEL
+        // AVX-512 FAMILY"
+        let bw = os_supports_zmm_ymm_xmm && check(extended_features_ebx, 30);
+
+        // Intel: "15.4 DETECTION OF INTEL AVX-512 INSTRUCTION GROUPS OPERATING
+        // AT 256 AND 128-BIT VECTOR LENGTHS".
+        let vl = os_supports_zmm_ymm_xmm && check(extended_features_ebx, 31);
+
+        // TODO: Disable on CPUs where downclocking is an issue.
+        let using_zmm_causes_excessive_downclocking = false;
+
+        cfg_if! {
+            if #[cfg(any(target_os = "macos", target_vendor = "apple"))] {
+                // Initial releases of macOS 12 had a serious bug w.r.t. AVX-512
+                // support; see https://go-review.googlesource.com/c/sys/+/620256.
+                // Given that, plus Apple's transition to ARM, AVX-512 isn't worth
+                // supporting for their targets.
+                let _ = using_zmm_causes_excessive_downclocking;
+                let avoid_zmm = true;
+            } else {
+                let avoid_zmm = using_zmm_causes_excessive_downclocking;
+            }
+        }
+
+        if f && bw && vl && !avoid_zmm {
+            set(&mut caps, Shift::Avx512_BW_VL_ZMM);
+        }
     }
 
     // Intel: "12.13.4 Checking for Intel AES-NI Support"
@@ -416,6 +452,14 @@ fn check<T: BitAnd<Output = T> + Copy + Eq + From<u8> + Shl<u32, Output = T>>(
 }
 
 impl_get_feature! {
+    // AVX512BW + AVX512VL + AND using ZMM registers isn't expected to caus
+    // downclocking.
+    // Initial releases of macOS 12 had a serious bug w.r.t. AVX-512
+    // support; see https://go-review.googlesource.com/c/sys/+/620256.
+    // Given that, plus Apple's transition to ARM, AVX-512 isn't worth
+    // supporting for their targets.
+    Avx512_BW_VL_ZMM,
+
     #[cfg(target_arch = "x86_64")]
     VAesClmul,
 
