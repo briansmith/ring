@@ -1118,6 +1118,13 @@ ___
 .Laes128$local_label_suffix:
 ___
 
+    # Prefetch the source data 512 bytes ahead into the L1 data cache, to
+    # improve performance when the hardware prefetcher is disabled.  Assumes the
+    # L1 data cache line size is 64 bytes (de facto standard on x86_64).
+    for ( my $i = 0 ; $i < 4 * $VL ; $i += 64 ) {
+        $code .= "prefetcht0  512+$i($SRC)\n";
+    }
+
     # Finish the AES encryption of the counter blocks in V0-V3, interleaved
     # with the GHASH update of the ciphertext blocks in GHASHDATA[0-3].
     for my $i ( reverse 1 .. 9 ) {
