@@ -583,8 +583,11 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
         let _ = c.define("NDEBUG", None);
     }
 
-    if (target.arch == X86) && !compiler.is_like_msvc() {
-        let _ = c.flag("-msse2");
+    if target.arch == X86 {
+        let is_msvc_not_clang_cl = compiler.is_like_msvc() && !compiler.is_like_clang_cl();
+        if !is_msvc_not_clang_cl {
+            let _ = c.flag("-msse2");
+        }
     }
 
     // Allow cross-compiling without a target sysroot for these targets.
