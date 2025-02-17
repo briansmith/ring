@@ -84,7 +84,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86_64], "crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/modes/asm/ghash-x86_64.pl"),
     (&[X86_64], SHA512_X86_64),
-    (&[X86_64], "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl"),
+    (&[X86_64], "crypto/cipher/asm/chacha20_poly1305_x86_64.pl"),
     (&[X86_64], "third_party/fiat/asm/fiat_curve25519_adx_mul.S"),
     (&[X86_64], "third_party/fiat/asm/fiat_curve25519_adx_square.S"),
 
@@ -102,7 +102,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[ARM], "crypto/fipsmodule/sha/asm/sha512-armv4.pl"),
 
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
-    (&[AARCH64], "crypto/cipher_extra/asm/chacha20_poly1305_armv8.pl"),
+    (&[AARCH64], "crypto/cipher/asm/chacha20_poly1305_armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/aes/asm/aesv8-armx.pl"),
     (&[AARCH64], "crypto/fipsmodule/aes/asm/vpaes-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/bn/asm/armv8-mont.pl"),
