@@ -1,5 +1,4 @@
-// Copyright 2016 Brian Smith.
-// Portions Copyright (c) 2016, Google Inc.
+// Copyright 2016-2025 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above

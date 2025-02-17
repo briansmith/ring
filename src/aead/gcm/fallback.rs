@@ -1,4 +1,4 @@
-// Copyright (c) 2019, Google Inc.
+// Copyright 2019 The BoringSSL Authors
 // Portions Copyright 2020-2024 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any

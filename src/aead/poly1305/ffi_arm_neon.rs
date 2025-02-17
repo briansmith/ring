@@ -1,5 +1,5 @@
-// Copyright 2015-2025 Brian Smith.
-// Portions Copyright (c) 2014, 2015, Google Inc.
+// Portions Copyright 2015-2025 Brian Smith.
+// Portions Copyright 2014 The BoringSSL Authors
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
