@@ -122,18 +122,6 @@ include = [
     "src/ec/suite_b/ecdsa/ecPublicKey_p384_pkcs8_v1_template.der",
     "src/rsa/signature_rsa_example_private_key.der",
     "src/rsa/signature_rsa_example_public_key.der",
-    "tests/**/*.rs",
-    "tests/ecdsa_test_private_key_p256.p8",
-    "tests/ecdsa_test_public_key_p256.der",
-    "tests/ecdsa_test_public_key_p256_debug.txt",
-    "tests/ed25519_test_private_key.bin",
-    "tests/ed25519_test_private_key.p8",
-    "tests/ed25519_test_public_key.bin",
-    "tests/ed25519_test_public_key.der",
-    "tests/rsa_test_private_key_2048.p8",
-    "tests/rsa_test_public_key_2048.der",
-    "tests/rsa_test_public_key_2048_debug.txt",
-    "tests/rsa_test_public_modulus.bin",
     "third_party/fiat/asm/fiat_curve25519_adx_mul.S",
     "third_party/fiat/asm/fiat_curve25519_adx_square.S",
     "third_party/fiat/curve25519_32.h",
@@ -165,9 +153,6 @@ libc = { version = "0.2.155", default-features = false }
 
 [target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_os = "windows"))'.dependencies]
 windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Threading"] }
-
-[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
-wasm-bindgen-test = { version = "0.3.37", default-features = false, features = ["std"] }
 
 [target.'cfg(any(unix, windows, target_os = "wasi"))'.dev-dependencies]
 libc = { version = "0.2.148", default-features = false }
@@ -212,10 +197,11 @@ members = [
     # intentionally not a default member so that `cargo test` doesn't cause criterion.rs and all its
     # dependencies to get built.
     "bench",
-
     "cavp",
+    "test",
 ]
 default-members = [
     ".",
-    "cavp"
+    "cavp",
+    "test"
 ]
