@@ -440,10 +440,10 @@ poly_hash_ad_internal:
 #                             union chacha20_poly1305_open_data *aead_data)
 #
 $code.="
-.globl chacha20_poly1305_open_nohw
-.type chacha20_poly1305_open_nohw,\@function,6
+.globl chacha20_poly1305_open_sse41
+.type chacha20_poly1305_open_sse41,\@function,6
 .align 64
-chacha20_poly1305_open_nohw:
+chacha20_poly1305_open_sse41:
 .cfi_startproc
     _CET_ENDBR
     push %rbp
@@ -849,7 +849,7 @@ $code.="
         movdqa $C2, $B2
         movdqa $D2, $C2
     jmp .Lopen_sse_128_xor_hash
-.size chacha20_poly1305_open_nohw, .-chacha20_poly1305_open_nohw
+.size chacha20_poly1305_open_sse41, .-chacha20_poly1305_open_sse41
 .cfi_endproc
 
 ################################################################################
@@ -858,10 +858,10 @@ $code.="
 #                             size_t plaintext_len, const uint8_t *ad,
 #                             size_t ad_len,
 #                             union chacha20_poly1305_seal_data *data);
-.globl  chacha20_poly1305_seal_nohw
-.type chacha20_poly1305_seal_nohw,\@function,6
+.globl  chacha20_poly1305_seal_sse41
+.type chacha20_poly1305_seal_sse41,\@function,6
 .align 64
-chacha20_poly1305_seal_nohw:
+chacha20_poly1305_seal_sse41:
 .cfi_startproc
     _CET_ENDBR
     push %rbp
@@ -1357,7 +1357,7 @@ $code.="
     mov %r8, $itr2
     call poly_hash_ad_internal
     jmp .Lseal_sse_128_tail_xor
-.size chacha20_poly1305_seal_nohw, .-chacha20_poly1305_seal_nohw
+.size chacha20_poly1305_seal_sse41, .-chacha20_poly1305_seal_sse41
 .cfi_endproc\n";
 }
 
