@@ -118,17 +118,17 @@ pub(super) fn seal(
                 &data.out.tag
             };
         } else {
-            if matches!((required_cpu_features, optional_cpu_features),
-                        (Sse41 { .. }, Some((Avx2 { .. }, Bmi2 { .. })))) {
+            let _: Sse41 = required_cpu_features;
+            if matches!(optional_cpu_features, Some((Avx2 { .. }, Bmi2 { .. }))) {
                 declare_seal! { chacha20_poly1305_seal_avx2 }
                 tag = unsafe {
                     chacha20_poly1305_seal_avx2(output, input, len, ad, ad_len, &mut data);
                     &data.out.tag
                 };
             } else {
-                declare_seal! { chacha20_poly1305_seal_nohw }
+                declare_seal! { chacha20_poly1305_seal_sse41 }
                 tag = unsafe {
-                    chacha20_poly1305_seal_nohw(output, input, len, ad, ad_len, &mut data);
+                    chacha20_poly1305_seal_sse41(output, input, len, ad, ad_len, &mut data);
                     &data.out.tag
                 };
             }
@@ -187,17 +187,17 @@ pub(super) fn open(
                     &data.out.tag
                 };
             } else {
-                if matches!((required_cpu_features, optional_cpu_features),
-                            (Sse41 { .. }, Some((Avx2 { .. }, Bmi2 { .. })))) {
+                let _: Sse41 = required_cpu_features;
+                if matches!(optional_cpu_features, Some((Avx2 { .. }, Bmi2 { .. }))) {
                     declare_open! { chacha20_poly1305_open_avx2 }
                     tag = unsafe {
                         chacha20_poly1305_open_avx2(output, input, len, ad, ad_len, &mut data);
                         &data.out.tag
                     };
                 } else {
-                    declare_open! { chacha20_poly1305_open_nohw }
+                    declare_open! { chacha20_poly1305_open_sse41 }
                     tag = unsafe {
-                        chacha20_poly1305_open_nohw(output, input, len, ad, ad_len, &mut data);
+                        chacha20_poly1305_open_sse41(output, input, len, ad, ad_len, &mut data);
                         &data.out.tag
                     };
                 }
