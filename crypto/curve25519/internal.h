@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, Google Inc.
+/* Copyright 2020 The BoringSSL Authors
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,7 +25,7 @@
 
 // x25519_NEON is defined in asm/x25519-arm.S.
 void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
-                     const uint8_t point[32]);
+                 const uint8_t point[32]);
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && \

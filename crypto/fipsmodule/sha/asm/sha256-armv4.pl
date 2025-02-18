@@ -9,11 +9,7 @@
 
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
-# project. The module is, however, dual licensed under OpenSSL and
-# CRYPTOGAMS licenses depending on where you obtain it. For further
-# details see http://www.openssl.org/~appro/cryptogams/.
-#
-# Permission to use under GPL terms is granted.
+# project.
 # ====================================================================
 
 # SHA256 block procedure for ARMv4. May 2007.
@@ -485,7 +481,7 @@ sha256_block_data_order_neon:
 	@ TODO(davidben): adrl would avoid a load, but clang-assembler does not
 	@ support it. We might be able to emulate it with a macro, but Android's
 	@ did not work when I tried it.
-	@ https://android.googlesource.com/platform/ndk/+/refs/heads/master/docs/ClangMigration.md#arm
+	@ https://android.googlesource.com/platform/ndk/+/refs/heads/main/docs/ClangMigration.md#arm
 	ldr	$Ktbl,.LK256_shortcut_neon
 .LK256_add_neon:
 	add	$Ktbl,pc,$Ktbl

@@ -1,4 +1,4 @@
-// Copyright (c) 2020, Google Inc.
+// Copyright 2020 The BoringSSL Authors
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -51,7 +51,7 @@ func writeBuiltinCurves(path string) error {
 	defer f.Close()
 	w := &columnWriter{w: f}
 
-	const fileHeader = `/* Copyright (c) 2023, Google Inc.
+	const fileHeader = `/* Copyright 2023 The BoringSSL Authors
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -224,7 +224,7 @@ func writeP256Table(path string) error {
 	defer f.Close()
 	w := &columnWriter{w: f}
 
-	const fileHeader = `/* Copyright (c) 2020, Google Inc.
+	const fileHeader = `/* Copyright 2020 The BoringSSL Authors
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
