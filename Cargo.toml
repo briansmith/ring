@@ -5,7 +5,7 @@ categories = ["cryptography", "no-std"]
 description = "Safe, fast, small crypto using Rust."
 edition = "2021"
 keywords = ["crypto", "cryptography", "rand", "ECC", "RSA"]
-license-file = "LICENSE"
+license = "Apache-2.0 AND ISC"
 name = "ring"
 repository = "https://github.com/briansmith/ring"
 
@@ -25,6 +25,10 @@ links = "ring_core_0_17_9_"
 
 include = [
     "LICENSE",
+    "LICENSE-BoringSSL",
+    "src/polyfill/once_cell/LICENSE-APACHE",
+    "src/polyfill/once_cell/LICENSE-MIT",
+
     "Cargo.toml",
 
     "pregenerated/*",
