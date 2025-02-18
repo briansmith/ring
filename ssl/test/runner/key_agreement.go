@@ -10,6 +10,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/mlkem"
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
@@ -19,7 +20,6 @@ import (
 	"slices"
 
 	"boringssl.googlesource.com/boringssl.git/ssl/test/runner/kyber"
-	"filippo.io/mlkem768"
 )
 
 type keyType int
@@ -439,26 +439,24 @@ func (e *kyberKEM) decap(config *Config, ciphertext []byte) (secret []byte, err 
 }
 
 // mlkem768KEM implements ML-KEM-768
-//
-// TODO(davidben): Switch this to crypto/mlkem from the standard library.
 type mlkem768KEM struct {
-	decapKey *mlkem768.DecapsulationKey
+	decapKey *mlkem.DecapsulationKey768
 }
 
 func (e *mlkem768KEM) encapsulationKeySize() int {
-	return mlkem768.EncapsulationKeySize
+	return mlkem.EncapsulationKeySize768
 }
 
 func (e *mlkem768KEM) ciphertextSize() int {
-	return mlkem768.CiphertextSize
+	return mlkem.CiphertextSize768
 }
 
 func (m *mlkem768KEM) generate(config *Config) (publicKey []byte, err error) {
-	m.decapKey, err = mlkem768.GenerateKey()
+	m.decapKey, err = mlkem.GenerateKey768()
 	if err != nil {
 		return
 	}
-	publicKey = m.decapKey.EncapsulationKey()
+	publicKey = m.decapKey.EncapsulationKey().Bytes()
 	if config.Bugs.MLKEMEncapKeyNotReduced {
 		// Set the first 12 bits so that the first word is definitely
 		// not reduced.
@@ -469,11 +467,16 @@ func (m *mlkem768KEM) generate(config *Config) (publicKey []byte, err error) {
 }
 
 func (m *mlkem768KEM) encap(config *Config, peerKey []byte) (ciphertext []byte, secret []byte, err error) {
-	return mlkem768.Encapsulate(peerKey)
+	key, err := mlkem.NewEncapsulationKey768(peerKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	secret, ciphertext = key.Encapsulate()
+	return
 }
 
 func (m *mlkem768KEM) decap(config *Config, ciphertext []byte) (secret []byte, err error) {
-	return mlkem768.Decapsulate(m.decapKey, ciphertext)
+	return m.decapKey.Decapsulate(ciphertext)
 }
 
 // concatKEM concatenates two kemImplementations.
