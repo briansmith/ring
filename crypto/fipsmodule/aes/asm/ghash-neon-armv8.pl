@@ -162,8 +162,6 @@ ___
 }
 
 $code .= <<___;
-#include <ring-core/arm_arch.h>
-
 .text
 
 .global	gcm_init_neon

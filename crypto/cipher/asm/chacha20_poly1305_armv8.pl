@@ -309,7 +309,6 @@ ___
 
 {
 $code.=<<___;
-#include <ring-core/arm_arch.h>
 .section .rodata
 
 .align 7

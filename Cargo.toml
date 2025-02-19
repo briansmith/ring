@@ -112,7 +112,6 @@ include = [
     "crypto/cipher/asm/chacha20_poly1305_x86_64.pl",
     "examples/**/*.rs",
     "include/ring-core/aes.h",
-    "include/ring-core/arm_arch.h",
     "include/ring-core/asm_base.h",
     "include/ring-core/base.h",
     "include/ring-core/check.h",
