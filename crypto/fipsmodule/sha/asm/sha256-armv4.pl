@@ -179,9 +179,7 @@ ___
 }
 
 $code=<<___;
-#ifndef __KERNEL__
-# include <ring-core/arm_arch.h>
-#else
+#ifdef __KERNEL__
 # define __ARM_ARCH __LINUX_ARM_ARCH__
 # define __ARM_MAX_ARCH__ 7
 #endif

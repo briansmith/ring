@@ -176,7 +176,6 @@ ___
 
 $code.=<<___;
 #ifndef	__KERNEL__
-# include <ring-core/arm_arch.h>
 #endif
 
 .text
