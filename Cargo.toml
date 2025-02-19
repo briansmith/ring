@@ -2,7 +2,7 @@
 authors = ["Brian Smith <brian@briansmith.org>"]
 build = "build.rs"
 categories = ["cryptography", "no-std"]
-description = "Safe, fast, small crypto using Rust."
+description = "An experiment."
 edition = "2021"
 keywords = ["crypto", "cryptography", "rand", "ECC", "RSA"]
 license = "Apache-2.0 AND ISC"
