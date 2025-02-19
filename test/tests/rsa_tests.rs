@@ -139,7 +139,7 @@ fn test_signature_rsa_pkcs1_sign_output_buffer_len() {
     let rng = rand::SystemRandom::new();
 
     const PRIVATE_KEY_DER: &[u8] =
-        include_bytes!("../src/rsa/signature_rsa_example_private_key.der");
+        include_bytes!("../../src/rsa/signature_rsa_example_private_key.der");
     let key_pair = rsa::KeyPair::from_der(PRIVATE_KEY_DER).unwrap();
 
     // When the output buffer is not exactly the right length, `sign()` returns

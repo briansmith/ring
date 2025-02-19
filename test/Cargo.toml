@@ -1,0 +1,17 @@
+[package]
+edition = "2021"
+name = "ring-test"
+publish = false
+version = "0.1.0"
+
+[dependencies]
+ring = { path = "../" }
+untrusted = { version = "0.9" }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = { version = "0.3.37", default-features = false, features = ["std"] }
+
+[features]
+alloc = ["ring/alloc"]
+slow_tests = ["ring/slow_tests"]
+std = ["alloc", "ring/std"]
