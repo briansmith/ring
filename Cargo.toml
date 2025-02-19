@@ -25,6 +25,7 @@ links = "ring_core_0_17_9_"
 
 include = [
     "LICENSE",
+    "LICENSE-other-bits",
     "LICENSE-BoringSSL",
     "src/polyfill/once_cell/LICENSE-APACHE",
     "src/polyfill/once_cell/LICENSE-MIT",
