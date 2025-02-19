@@ -1,5 +1,5 @@
 *ring* uses an "ISC" license, like BoringSSL used to use, for new code
-files. See License-other-bits for the text of that license.
+files. See LICENSE-other-bits for the text of that license.
 
 See LICENSE-BoringSSL for code that was sourced from BoringSSL.
 
