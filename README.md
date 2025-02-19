@@ -7,24 +7,14 @@ AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+Most of the C and assembly language code in *ring* comes from BoringSSL. 
+BoringSSL is a fork of OpenSSL. This quote from the BoringSSL README.md 
+discouraging you from using it applies to *ring*:
 
-*ring*
-======
-
-*ring* is focused on the implementation, testing, and optimization of a core
-set of cryptographic operations exposed via an easy-to-use (and hard-to-misuse)
-API. *ring* exposes a [Rust](https://www.rust-lang.org/) API and is written in
-a hybrid of Rust, C, and assembly language.
-
-Particular attention is being paid to making it easy to build and integrate
-*ring* into applications and higher-level frameworks, and to ensuring that
-*ring* works optimally on small devices, and eventually microcontrollers, to
-support Internet of Things (IoT) applications.
-
-Most of the C and assembly language code in *ring* comes from BoringSSL, and
-BoringSSL is derived from OpenSSL. *ring* merges changes from BoringSSL
-regularly. Also, several changes that were developed for *ring* have been
-contributed to and integrated into BoringSSL.
+> BoringSSL is a fork of OpenSSL that is designed to meet Google's needs.
+>
+> Although BoringSSL is an open source project, it is not intended for general
+> use, as OpenSSL is. We don't recommend that third parties depend upon it.
 
 
 
