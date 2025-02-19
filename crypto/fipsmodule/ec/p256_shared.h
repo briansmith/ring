@@ -45,7 +45,6 @@
 #define P256_LIMBS (256 / BN_BITS2)
 
 // A P256_POINT represents a P-256 point in Jacobian coordinates.
-// All coordinates are in the Montgomery domain.
 typedef struct {
   BN_ULONG X[P256_LIMBS];
   BN_ULONG Y[P256_LIMBS];
