@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::CHAINING_WORDS;
+use super::{state::State, CHAINING_WORDS};
 use crate::polyfill::slice::AsChunks;
 use core::num::{NonZeroUsize, Wrapping};
 
@@ -49,7 +49,7 @@ macro_rules! sha2_64_ffi {
 }
 
 pub(super) unsafe fn sha2_ffi<U, Cpu, const BLOCK_LEN: usize>(
-    state: &mut [Wrapping<U>; CHAINING_WORDS],
+    state: &mut State<U>,
     data: AsChunks<u8, BLOCK_LEN>,
     cpu: Cpu,
     f: unsafe extern "C" fn(
@@ -59,6 +59,7 @@ pub(super) unsafe fn sha2_ffi<U, Cpu, const BLOCK_LEN: usize>(
     ),
 ) {
     if let Some(blocks) = NonZeroUsize::new(data.len()) {
+        let state: *mut [Wrapping<U>; CHAINING_WORDS] = state.as_mut();
         let data = data.as_ptr();
         let _: Cpu = cpu;
         // SAFETY:

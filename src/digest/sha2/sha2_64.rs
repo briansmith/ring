@@ -12,14 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{BlockLen, CHAINING_WORDS};
+use super::BlockLen;
 use crate::{cpu, polyfill::slice::AsChunks};
 use cfg_if::cfg_if;
-use core::num::Wrapping;
 
 pub(in super::super) const SHA512_BLOCK_LEN: BlockLen = BlockLen::_1024;
 
-pub type State64 = [Wrapping<u64>; CHAINING_WORDS];
+pub type State64 = super::state::State<u64>;
 
 pub(crate) fn block_data_order_64(
     state: &mut State64,

@@ -42,7 +42,7 @@ const ROUNDS: usize = 80;
 pub fn sha1_block_data_order(state: &mut State32, data: AsChunks<u8, { BLOCK_LEN.into() }>) {
     // The unwrap won't fail because `CHAINING_WORDS` is smaller than the
     // length.
-    let state: &mut State = (&mut state[..CHAINING_WORDS]).try_into().unwrap();
+    let state: &mut State = (&mut state.as_mut()[..CHAINING_WORDS]).try_into().unwrap();
     // SAFETY: The caller guarantees that this is called with data pointing to `num`
     // `BLOCK_LEN`-long blocks.
     *state = block_data_order(*state, data)
