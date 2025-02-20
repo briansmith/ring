@@ -146,9 +146,14 @@ pub const fn compile_time_assert_send<T: Send>() {}
 /// implement `Sync`.
 pub const fn compile_time_assert_sync<T: Sync>() {}
 
+/// `compile_time_assert_core_error_error::<T>();` fails to compile if `T`
+/// doesn't implement `core::error::Error`.
+pub const fn compile_time_assert_core_error_error<T: core::error::Error>() {}
+
 /// `compile_time_assert_std_error_error::<T>();` fails to compile if `T`
-/// doesn't implement `std::error::Error`.
+/// doesn't implement `core::error::Error`.
 #[cfg(feature = "std")]
+#[deprecated(note = "Use `compile_time_assert_core_error_error`")]
 pub const fn compile_time_assert_std_error_error<T: std::error::Error>() {}
 
 /// A test case. A test case consists of a set of named attributes. Every

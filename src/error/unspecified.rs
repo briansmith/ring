@@ -12,9 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[cfg(feature = "std")]
-extern crate std;
-
 /// An error with absolutely no details.
 ///
 /// *ring* uses this unit type as the error type in most of its results
@@ -25,7 +22,7 @@ extern crate std;
 ///
 /// `Result<T, ring::error::Unspecified>` is mostly equivalent to
 /// `Result<T, ()>`. However, `ring::error::Unspecified` implements
-/// [`std::error::Error`] and users of *ring* can implement
+/// [`core::error::Error`] and users of *ring* can implement
 /// `From<ring::error::Unspecified>` to map this to their own error types, as
 /// described in [“Error Handling” in the Rust Book]:
 ///
@@ -36,7 +33,7 @@ extern crate std;
 ///     CryptoError,
 ///
 /// #  #[cfg(feature = "alloc")]
-///     IOError(std::io::Error),
+///     IOError(core::io::Error),
 ///     // [...]
 /// }
 ///
@@ -68,18 +65,17 @@ extern crate std;
 /// cause of a failure. Users of *ring* are encouraged to report such cases so
 /// that they can be addressed individually.
 ///
-/// [`std::error::Error`]: https://doc.rust-lang.org/std/error/trait.Error.html
+/// [`core::error::Error`]: https://doc.rust-lang.org/core/error/trait.Error.html
 /// [“Error Handling” in the Rust Book]:
 ///     https://doc.rust-lang.org/book/first-edition/error-handling.html#the-from-trait
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Unspecified;
 
-// This is required for the implementation of `std::error::Error`.
+// This is required for the implementation of `core::error::Error`.
 impl core::fmt::Display for Unspecified {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.write_str("ring::error::Unspecified")
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for Unspecified {}
+impl core::error::Error for Unspecified {}
