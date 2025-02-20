@@ -151,7 +151,7 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "/Zc:wchar_t",
             "/Zc:forScope",
             "/Zc:inline",
-            "/Zm20000",
+            "/Zm125",
             // Warnings.
             "/Wall",
             "/wd4127", // C4127: conditional expression is constant
@@ -607,11 +607,12 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
     }
 }
 
+
 fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir: &Path) {
     let out_file = obj_path(out_dir, file);
     let oformat = match arch {
         x if x == X86_64 => "win64",
-        x if x == X86 => "win32",
+        x if x == X86   => "win32",
         _ => panic!("unsupported arch: {}", arch),
     };
 
@@ -619,9 +620,10 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir:
     let mut include_dir = include_dir.as_os_str().to_os_string();
     include_dir.push(OsString::from(String::from(std::path::MAIN_SEPARATOR)));
 
-    let mut c = Command::new("./target/tools/windows/nasm/nasm");
-    let _ = c
-        .arg("-o")
+    let nasm_exe = get_nasm_executable();
+
+    let mut c = Command::new(nasm_exe);
+    c.arg("-o")
         .arg(out_file.to_str().expect("Invalid path"))
         .arg("-f")
         .arg(oformat)
@@ -633,6 +635,31 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir:
         .arg("-gcv8")
         .arg(c_root_dir.join(file));
     run_command(c);
+}
+
+fn get_nasm_executable() -> PathBuf {
+    // First, try the default target path.
+    let default_path = if cfg!(target_os = "windows") {
+        PathBuf::from("./target/tools/windows/nasm/nasm.exe")
+    } else {
+        PathBuf::from("./target/tools/windows/nasm/nasm")
+    };
+    if default_path.exists() {
+        return default_path;
+    }
+    // If the default isn't there, try to run "nasm" (or "nasm.exe" on Windows)
+    let fallback = if cfg!(target_os = "windows") {
+        "nasm.exe"
+    } else {
+        "nasm"
+    };
+    // Try executing fallback with --version to see if it is available.
+    if let Ok(output) = Command::new(fallback).arg("--version").output() {
+        if output.status.success() {
+            return PathBuf::from(fallback);
+        }
+    }
+    panic!("Nasm executable not found. Please install NASM or ensure it is available in your PATH.");
 }
 
 fn run_command_with_args(command_name: &Path, args: &[OsString]) {
