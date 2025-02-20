@@ -151,7 +151,7 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "/Zc:wchar_t",
             "/Zc:forScope",
             "/Zc:inline",
-            "/Zm3000",
+            "/Zm2500",
             // Warnings.
             "/Wall",
             "/wd4127", // C4127: conditional expression is constant
