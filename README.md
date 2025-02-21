@@ -16,6 +16,9 @@ discouraging you from using it applies to this project:
 > Although BoringSSL is an open source project, it is not intended for general
 > use, as OpenSSL is. We don't recommend that third parties depend upon it.
 
+This project was originally shared on GitHub in 2015 as an experiment. It was
+put on crates.io shortly to help other people with their experiments. It is an
+experiment.
 
 
 Side Channels
