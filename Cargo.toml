@@ -5,7 +5,7 @@ categories = ["cryptography", "no-std"]
 description = "An experiment."
 edition = "2021"
 keywords = ["crypto", "cryptography", "rand", "ECC", "RSA"]
-license = "Apache-2.0 AND ISC"
+license-file = "LICENSE"
 name = "ring"
 repository = "https://github.com/briansmith/ring"
 
