@@ -54,14 +54,14 @@ fn rsa_from_pkcs8_test() {
 #[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_pkcs1_sign() {
-    let rng = rand::SystemRandom::new();
-    test::run(
-        test_file!("rsa_pkcs1_sign_tests.txt"),
-        |section, test_case| {
+    fn run(test_file: test::File) {
+        let rng = rand::SystemRandom::new();
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
             let digest_name = test_case.consume_string("Digest");
             let alg = match digest_name.as_ref() {
+                "SHA1" => &signature::RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
                 "SHA256" => &signature::RSA_PKCS1_SHA256,
                 "SHA384" => &signature::RSA_PKCS1_SHA384,
                 "SHA512" => &signature::RSA_PKCS1_SHA512,
@@ -88,8 +88,11 @@ fn test_signature_rsa_pkcs1_sign() {
                 .unwrap();
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
             Ok(())
-        },
-    );
+        });
+    }
+
+    run(test_file!("rsa_pkcs1_sign_tests.txt"));
+    run(test_file!("rsa_pkcs1_sha1_sign_tests.txt"));
 }
 
 #[cfg(feature = "alloc")]
