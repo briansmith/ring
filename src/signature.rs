@@ -111,7 +111,7 @@
 //! [NIST Special Publication 800-56A, revision 2]:
 //!     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
 //! [Suite B implementer's guide to FIPS 186-3]:
-//!     https://github.com/briansmith/ring/blob/main/doc/ecdsa.pdf
+//!     https://github.com/ctz/ring/blob/main/doc/ecdsa.pdf
 //! [RFC 3279 Section 2.2.3]:
 //!     https://tools.ietf.org/html/rfc3279#section-2.2.3
 //! [RFC 3447 Section 8.2]:
