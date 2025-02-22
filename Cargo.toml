@@ -1,5 +1,4 @@
 [package]
-authors = ["Brian Smith <brian@briansmith.org>"]
 build = "build.rs"
 categories = ["cryptography", "no-std"]
 description = "An experiment."
