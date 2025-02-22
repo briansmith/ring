@@ -1,3 +1,9 @@
+> [!IMPORTANT]
+> This is a fork for security maintenance of *ring* 0.17.
+>
+> Please report [any security issues](SECURITY.md); we will triage and
+> address them.  Other issues may be addressed, on a case-by-case basis.
+
 THE SOFTWARE IS PROVIDED "AS IS" AND BRIAN SMITH AND THE AUTHORS DISCLAIM
 ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
 OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL BRIAN SMITH OR THE AUTHORS
