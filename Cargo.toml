@@ -7,7 +7,7 @@ edition = "2021"
 keywords = ["crypto", "cryptography", "rand", "ECC", "RSA"]
 license = "Apache-2.0 AND ISC"
 name = "ring"
-repository = "https://github.com/briansmith/ring"
+repository = "https://github.com/ctz/ring"
 
 # Keep in sync with .github/workflows/ci.yml ("MSRV") and see the MSRV note
 # in cpu/arm.rs

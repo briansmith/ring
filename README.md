@@ -140,7 +140,7 @@ Bug Reporting
 Please see [SECURITY.md](SECURITY.md) for help on reporting security vulnerabilities.
 
 Please report bugs that aren't security vulnerabilities either as pull requests or as issues in
-[the issue tracker](https://github.com/briansmith/ring/issues).
+[the issue tracker](https://github.com/ctz/ring/issues).
 
 
 License

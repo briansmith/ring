@@ -9,7 +9,7 @@ in the next release.
 ## Reporting a Vulnerability
 
 Please [use *ring*'s security advisory reporting tool provided by
-GitHub](https://github.com/briansmith/ring/security/advisories/new) to report security issues.
+GitHub](https://github.com/ctz/ring/security/advisories/new) to report security issues.
 
 We strive to fix security issues as quickly as possible. Across the industry, often the developers'
 slowness in developing and releasing a fix is the biggest delay in the process; we take pride in
