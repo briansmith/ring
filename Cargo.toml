@@ -223,3 +223,8 @@ default-members = [
     ".",
     "cavp"
 ]
+
+[patch.crates-io]
+# https://github.com/rust-lang/cc-rs/pull/1357
+# https://github.com/rust-lang/cc-rs/pull/1358
+cc = { git = "https://github.com/rust-lang/cc-rs", rev = "cc342c5" }

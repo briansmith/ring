@@ -22,9 +22,11 @@ edition of Visual Studio, like Community, Standard, or Enterprise). The
 “Desktop development with C++” workflow must be installed. Visual Studio
 2022 Version 17.5 is supported; earlier versions of Visual Studio may work.
 
+### (Cross-)compiling to Windows ARM64
+
 For Windows ARM64 targets (aarch64-pc-windows-msvc), the Visual Studio Build
 Tools “VS 2022 C++ ARM64 build tools” and "clang" components must be installed.
-Add Microsoft's provided version of `clang` to `%PATH%`, which will allow the
+Add Microsoft's provided version of `clang-cl` to `%PATH%`, which will allow the
 build to work in GitHub Actions without installing anything:
 ```
 $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin"
