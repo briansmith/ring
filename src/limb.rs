@@ -382,6 +382,7 @@ prefixed_extern! {
     fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
 }
 
+#[allow(clippy::useless_conversion)]
 #[cfg(test)]
 mod tests {
     use super::*;
