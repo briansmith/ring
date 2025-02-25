@@ -16,7 +16,7 @@
 // Adapted from the BoringSSL crypto/chacha/chacha.c.
 
 use super::{super::overlapping::IndexError, Counter, Key, Overlapping, BLOCK_LEN};
-use crate::{constant_time, polyfill::sliceutil};
+use crate::{bb, polyfill::sliceutil};
 use core::mem::size_of;
 
 pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, mut in_out: Overlapping<'_>) {
@@ -49,7 +49,7 @@ pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, mut in_out: Overlappin
         if in_out_len >= BLOCK_LEN {
             in_out = in_out
                 .split_first_chunk::<BLOCK_LEN>(|in_out| {
-                    constant_time::xor_assign_at_start(&mut buf, in_out.input());
+                    bb::xor_assign_at_start(&mut buf, in_out.input());
                     sliceutil::overwrite_at_start(in_out.into_unwritten_output(), &buf);
                 })
                 .unwrap_or_else(|IndexError { .. }| {
@@ -57,7 +57,7 @@ pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, mut in_out: Overlappin
                     unreachable!()
                 });
         } else {
-            constant_time::xor_assign_at_start(&mut buf, in_out.input());
+            bb::xor_assign_at_start(&mut buf, in_out.input());
             sliceutil::overwrite_at_start(in_out.into_unwritten_output(), &buf);
             break;
         }

@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::{
-    constant_time,
+    bb,
     polyfill::{slice::AsChunks, ArraySplitMap},
 };
 
@@ -160,6 +160,6 @@ pub(in super::super) struct Xi(pub(super) Block);
 impl Xi {
     #[inline]
     pub(super) fn bitxor_assign(&mut self, a: Block) {
-        self.0 = constant_time::xor_16(self.0, a)
+        self.0 = bb::xor_16(self.0, a)
     }
 }

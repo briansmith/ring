@@ -14,7 +14,7 @@
 
 use super::{nonce::Nonce, overlapping, quic::Sample, NONCE_LEN};
 use crate::{
-    constant_time,
+    bb,
     cpu::{self, GetFeature as _},
     error,
     polyfill::unwrap_const,
@@ -194,7 +194,7 @@ fn encrypt_iv_xor_block_using_encrypt_block(
     block: Block,
 ) -> Block {
     let encrypted_iv = key.encrypt_block(iv.0);
-    constant_time::xor_16(encrypted_iv, block)
+    bb::xor_16(encrypted_iv, block)
 }
 
 #[allow(dead_code)]

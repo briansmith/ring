@@ -15,7 +15,7 @@
 //! X25519 Key agreement.
 
 use super::{ops, scalar::SCALAR_LEN};
-use crate::{agreement, c, constant_time, cpu, ec, error, rand};
+use crate::{agreement, bb, c, cpu, ec, error, rand};
 
 static CURVE25519: ec::Curve = ec::Curve {
     public_key_len: PUBLIC_KEY_LEN,
@@ -155,7 +155,7 @@ fn x25519_ecdh(
     );
 
     let zeros: SharedSecret = [0; SHARED_SECRET_LEN];
-    if constant_time::verify_slices_are_equal(out, &zeros).is_ok() {
+    if bb::verify_slices_are_equal(out, &zeros).is_ok() {
         // All-zero output results when the input is a point of small order.
         return Err(error::Unspecified);
     }

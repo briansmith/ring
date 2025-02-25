@@ -20,7 +20,7 @@
 
 use crate::{
     arithmetic::inout::{AliasingSlices2, AliasingSlices3},
-    c, constant_time,
+    bb, c,
     error::{self, LenMismatchError},
     polyfill::{sliceutil, usize_from_u32, ArrayFlatMap},
 };
@@ -33,12 +33,12 @@ use crate::bits;
 use core::num::Wrapping;
 
 // XXX: Not correct for x32 ABIs.
-pub type Limb = constant_time::Word;
-pub type LeakyLimb = constant_time::LeakyWord;
+pub type Limb = bb::Word;
+pub type LeakyLimb = bb::LeakyWord;
 pub const LIMB_BITS: usize = usize_from_u32(Limb::BITS);
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
-pub type LimbMask = constant_time::BoolMask;
+pub type LimbMask = bb::BoolMask;
 
 #[inline]
 pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> Result<LimbMask, LenMismatchError> {
@@ -243,10 +243,10 @@ pub fn unstripped_be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> 
 }
 
 // Used in FFI
-pub type Window = constant_time::Word;
+pub type Window = bb::Word;
 
 // Used in FFI
-pub type LeakyWindow = constant_time::LeakyWord;
+pub type LeakyWindow = bb::LeakyWord;
 
 /// Processes `limbs` as a sequence of 5-bit windows, folding the windows from
 /// most significant to least significant and returning the accumulated result.
