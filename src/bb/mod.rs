@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2015-2025 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Constant-time operations.
+//! Building blocks.
 
 use crate::{c, error};
 use core::num::NonZeroUsize;
@@ -24,9 +24,6 @@ mod word;
 pub(crate) use self::{boolmask::BoolMask, leaky::LeakyWord, word::Word};
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
-/// The comparison of `a` and `b` is done in constant time with respect to the
-/// contents of each, but NOT in constant time with respect to the lengths of
-/// `a` and `b`.
 pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecified> {
     let len = a.len(); // Arbitrary choice.
     if b.len() != len {

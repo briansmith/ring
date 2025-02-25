@@ -102,10 +102,10 @@ pub(super) fn check_scalar_big_endian_bytes(
 }
 
 // Parses a fixed-length (zero-padded) big-endian-encoded scalar in the range
-// [1, n). This is constant-time with respect to the actual value *only if* the
-// value is actually in range. In other words, this won't leak anything about a
-// valid value, but it might leak small amounts of information about an invalid
-// value (which constraint it failed).
+// [1, n). This is intended to be constant-time with respect to the actual
+// value *only if* the value is actually in range. In other words, this won't
+// leak anything about a valid value, but it might leak small amounts of
+// information about an invalid value (which constraint it failed).
 pub(super) fn scalar_from_big_endian_bytes(
     n: &Modulus<N>,
     bytes: &[u8],

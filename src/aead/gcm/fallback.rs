@@ -15,7 +15,7 @@
 
 // This file is based on BoringSSL's gcm_nohw.c.
 
-// This file contains a constant-time implementation of GHASH based on the notes
+// This file contains a implementation of GHASH based on the notes
 // in https://bearssl.org/constanttime.html#ghash-for-gcm and the reduction
 // algorithm described in
 // https://crypto.stanford.edu/RealWorldCrypto/slides/gueron.pdf.

@@ -34,7 +34,7 @@ use super::{
     chacha20_poly1305, cpu, poly1305, Aad, Nonce, Tag,
 };
 use crate::{
-    constant_time,
+    bb,
     error::{self, InputTooLongError},
     polyfill::slice,
 };
@@ -167,7 +167,7 @@ impl OpeningKey {
         // `ciphertext_in_plaintext_out` is unmodified if verification fails.
         // This is beyond what we guarantee.
         let calculated_tag = poly1305::sign(poly_key, ciphertext_in_plaintext_out, cpu);
-        constant_time::verify_slices_are_equal(calculated_tag.as_ref(), tag)?;
+        bb::verify_slices_are_equal(calculated_tag.as_ref(), tag)?;
 
         // Won't panic because the length was checked above.
         let after_packet_length = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];

@@ -14,7 +14,11 @@
 
 #![allow(missing_docs)]
 
-use ring::{constant_time, error, rand};
+#[allow(deprecated)]
+use constant_time::verify_slices_are_equal;
+#[allow(deprecated)]
+use ring::constant_time;
+use ring::{error, rand};
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
@@ -23,6 +27,7 @@ use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 wasm_bindgen_test_configure!(run_in_browser);
 
 // This logic is loosely based on BoringSSL's `TEST(ConstantTimeTest, MemCmp)`.
+#[allow(deprecated)]
 #[test]
 fn test_verify_slices_are_equal() {
     let initial: [u8; 256] = rand::generate(&rand::SystemRandom::new()).unwrap().expose();
@@ -32,20 +37,17 @@ fn test_verify_slices_are_equal() {
         for len in 0..copy.len() {
             // Not equal because the lengths do not match.
             assert_eq!(
-                constant_time::verify_slices_are_equal(&initial, &copy[..len]),
+                verify_slices_are_equal(&initial, &copy[..len]),
                 Err(error::Unspecified)
             );
             // Equal lengths and equal contents.
             assert_eq!(
-                constant_time::verify_slices_are_equal(&initial[..len], &copy[..len]),
+                verify_slices_are_equal(&initial[..len], &copy[..len]),
                 Ok(())
             );
         }
         // Equal lengths and equal contents.
-        assert_eq!(
-            constant_time::verify_slices_are_equal(&initial, &copy),
-            Ok(())
-        );
+        assert_eq!(verify_slices_are_equal(&initial, &copy), Ok(()));
     }
 
     for i in 0..initial.len() {
@@ -68,14 +70,8 @@ fn test_verify_slices_are_equal() {
                     Ok(())
                 };
                 assert_eq!(a == b, expected_result.is_ok()); // Sanity check.
-                assert_eq!(
-                    constant_time::verify_slices_are_equal(a, b),
-                    expected_result
-                );
-                assert_eq!(
-                    constant_time::verify_slices_are_equal(b, a),
-                    expected_result
-                );
+                assert_eq!(verify_slices_are_equal(a, b), expected_result);
+                assert_eq!(verify_slices_are_equal(b, a), expected_result);
             }
         }
     }

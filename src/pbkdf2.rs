@@ -114,7 +114,7 @@
 
 use self::{derive_error::DeriveError, verify_error::VerifyError};
 use crate::{
-    constant_time, cpu, digest,
+    bb, cpu, digest,
     error::{self, TooMuchOutputRequestedError},
     hmac::{self, InputTooLongError},
 };
@@ -229,7 +229,7 @@ fn derive_block(
 
     let mut remaining: u32 = iterations.into();
     loop {
-        constant_time::xor_assign_at_start(&mut out[..], u.as_ref());
+        bb::xor_assign_at_start(&mut out[..], u.as_ref());
 
         if remaining == 1 {
             break;
@@ -327,9 +327,7 @@ fn try_verify(
         // XXX: This isn't fully constant-time-safe. TODO: Fix that.
         #[allow(clippy::bool_to_int_with_if)]
         let current_block_matches =
-            if constant_time::verify_slices_are_equal(derived_chunk, previously_derived_chunk)
-                .is_ok()
-            {
+            if bb::verify_slices_are_equal(derived_chunk, previously_derived_chunk).is_ok() {
                 1
             } else {
                 0

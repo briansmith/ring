@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, mgf1, Padding, RsaEncoding, Verification};
-use crate::{bits, constant_time, digest, error, rand};
+use crate::{bb, bits, digest, error, rand};
 
 /// RSA PSS padding as described in [RFC 3447 Section 8.1].
 ///
@@ -159,7 +159,7 @@ impl Verification for PSS {
             // Step 8.
             let db_rest = &mut db[1..];
             let masked_bytes = masked_bytes.read_bytes(db_rest.len())?;
-            constant_time::xor_assign_at_start(db_rest, masked_bytes.as_slice_less_safe());
+            bb::xor_assign_at_start(db_rest, masked_bytes.as_slice_less_safe());
             Ok(())
         })?;
 

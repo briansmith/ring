@@ -15,7 +15,7 @@
 use crate::{
     arithmetic::limbs_from_hex,
     arithmetic::montgomery::*,
-    constant_time::LeakyWord,
+    bb::LeakyWord,
     cpu,
     error::{self, LenMismatchError},
     limb::*,

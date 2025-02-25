@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{bits, constant_time, digest, error, rand};
+use crate::{bb, bits, digest, error, rand};
 
 mod pkcs1;
 mod pss;
@@ -74,7 +74,7 @@ fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], out: &mut [u8]) {
 
         // The last chunk may legitimately be shorter than `digest`, but
         // `digest` will never be shorter than `out`.
-        constant_time::xor_assign_at_start(out, digest.as_ref());
+        bb::xor_assign_at_start(out, digest.as_ref());
     }
 }
 
