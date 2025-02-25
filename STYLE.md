@@ -7,6 +7,16 @@ style guidelines for that code are in the second section of this document.
 *ring* usually follows the [Rust Guidelines](https://aturon.github.io/), but
 there are some differences and *ring* adds additional guidelines.
 
+## Function naming regarding side channels.
+
+Don't name things in a way that implies that they prevent side channels.
+
+If we use third-party code that has names that imply anything about side
+channels, then keep the name.
+
+If a function is explicitly intended to be variable-time, e.g. some building
+block used RSA signature verification, name it with a `_vartime` suffix.
+
 ## Submodules and file naming.
 
 In general, avoid nesting modules and avoid exporting any non-module items from
