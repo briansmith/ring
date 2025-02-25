@@ -74,7 +74,7 @@ pub struct ExtPoint {
 
 impl ExtPoint {
     // Returns the result of multiplying the base point by the scalar in constant time.
-    pub(super) fn from_scalarmult_base_consttime(scalar: &Scalar, cpu: cpu::Features) -> Self {
+    pub(super) fn from_scalarmult_base(scalar: &Scalar, cpu: cpu::Features) -> Self {
         let mut r = Self {
             x: Elem::zero(),
             y: Elem::zero(),
