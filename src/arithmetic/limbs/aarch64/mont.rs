@@ -14,7 +14,7 @@
 
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
-use super::{inout::AliasingSlices3 as _, n0::N0, LimbSliceError, MAX_LIMBS};
+use super::super::super::{inout::AliasingSlices3 as _, n0::N0, LimbSliceError, MAX_LIMBS};
 use crate::{
     c,
     limb::Limb,
@@ -23,7 +23,7 @@ use crate::{
 use core::num::NonZeroUsize;
 
 #[inline]
-pub(super) fn sqr_mont5(
+pub(in super::super::super) fn sqr_mont5(
     mut in_out: AsChunksMut<Limb, 8>,
     n: AsChunks<Limb, 8>,
     n0: &N0,
