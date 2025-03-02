@@ -146,7 +146,7 @@ pub(super) unsafe fn gather5(
     prefixed_extern! {
         // Upstream uses `num: c::size_t` too, and `power: c::size_t`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        pub(super) fn bn_gather5(
+        fn bn_gather5(
             out: *mut Limb,
             num: c::NonZero_size_t,
             table: *const Limb,
@@ -175,7 +175,7 @@ pub(super) unsafe fn mul_mont_gather5_amm(
     prefixed_extern! {
         // Upstream has `num: c::int` and `power: c::int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        pub(super) fn bn_mul4x_mont_gather5(
+        fn bn_mul4x_mont_gather5(
             rp: *mut Limb,
             ap: *const Limb,
             table: *const Limb,
@@ -186,7 +186,7 @@ pub(super) unsafe fn mul_mont_gather5_amm(
         );
         // Upstream has `num: c::int` and `power: c::int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        pub(super) fn bn_mulx4x_mont_gather5(
+        fn bn_mulx4x_mont_gather5(
             rp: *mut Limb,
             ap: *const Limb,
             table: *const Limb,
