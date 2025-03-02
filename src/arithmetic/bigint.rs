@@ -620,7 +620,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     m: &Modulus<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
-    use super::x86_64_mont::{
+    use super::limbs::x86_64::mont::{
         gather5, mul_mont5, mul_mont_gather5_amm, power5_amm, scatter5, sqr_mont5,
     };
     use crate::{
