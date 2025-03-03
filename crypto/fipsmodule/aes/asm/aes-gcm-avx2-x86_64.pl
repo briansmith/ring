@@ -435,31 +435,6 @@ sub _ghash_4x {
     return $code;
 }
 
-# void gcm_gmult_vpclmulqdq_avx2(uint8_t Xi[16], const u128 Htable[16]);
-$code .= _begin_func "gcm_gmult_vpclmulqdq_avx2", 1;
-{
-    my ( $GHASH_ACC_PTR, $HTABLE ) = @argregs[ 0 .. 1 ];
-    my ( $GHASH_ACC, $BSWAP_MASK, $H_POW1, $GFPOLY, $T0, $T1, $T2 ) =
-      map( "%xmm$_", ( 0 .. 6 ) );
-
-    $code .= <<___;
-    @{[ _save_xmmregs (6) ]}
-    .seh_endprologue
-
-    vmovdqu         ($GHASH_ACC_PTR), $GHASH_ACC
-    vmovdqu         .Lbswap_mask(%rip), $BSWAP_MASK
-    vmovdqu         $OFFSETOFEND_H_POWERS-16($HTABLE), $H_POW1
-    vmovdqu         .Lgfpoly(%rip), $GFPOLY
-    vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
-
-    @{[ _ghash_mul  $H_POW1, $GHASH_ACC, $GHASH_ACC, $GFPOLY, $T0, $T1, $T2 ]}
-
-    vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
-    vmovdqu         $GHASH_ACC, ($GHASH_ACC_PTR)
-___
-}
-$code .= _end_func;
-
 # void gcm_ghash_vpclmulqdq_avx2(uint8_t Xi[16], const u128 Htable[16],
 #                                const uint8_t *in, size_t len);
 #
