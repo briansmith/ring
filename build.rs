@@ -107,8 +107,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
 
     (&[ARM, X86_64, X86], "crypto/crypto.c"),
 
-    (&[X86_64, X86], "crypto/cpu_intel.c"),
-
     (&[X86], "crypto/fipsmodule/aes/asm/aesni-x86.pl"),
     (&[X86], "crypto/fipsmodule/aes/asm/ghash-x86.pl"),
     (&[X86], "crypto/fipsmodule/aes/asm/vpaes-x86.pl"),
@@ -926,7 +924,6 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "LIMBS_window5_split_window",
         "LIMBS_window5_unsplit_window",
         "LIMB_shr",
-        "OPENSSL_cpuid_setup",
         "aes_gcm_dec_kernel",
         "aes_gcm_dec_update_vaes_avx2",
         "aes_gcm_enc_kernel",
