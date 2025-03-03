@@ -9,7 +9,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-msrv=1.63.0
+msrv=1.66.0
 cargo clean --target-dir=target/pregenerate_asm
 RING_PREGENERATE_ASM=1 CC_AARCH64_PC_WINDOWS_MSVC=clang \
   cargo +${msrv} build -p ring --target-dir=target/pregenerate_asm
