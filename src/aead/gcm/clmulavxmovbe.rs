@@ -15,10 +15,7 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::{HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
-use crate::{cpu, polyfill::slice::AsChunks};
-
-pub(in super::super) type RequiredCpuFeatures =
-    (cpu::intel::ClMul, cpu::intel::Avx, cpu::intel::Movbe);
+use crate::{cpu::intel, polyfill::slice::AsChunks};
 
 #[derive(Clone)]
 pub struct Key {
@@ -26,7 +23,11 @@ pub struct Key {
 }
 
 impl Key {
-    pub(in super::super) fn new(value: KeyValue, _cpu: RequiredCpuFeatures) -> Self {
+    #[inline(never)]
+    pub(in super::super) fn new(
+        value: KeyValue,
+        _required_cpu_features: (intel::ClMul, intel::Avx, intel::Movbe),
+    ) -> Self {
         Self {
             h_table: unsafe { htable_new!(gcm_init_avx, value) },
         }
