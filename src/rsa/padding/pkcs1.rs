@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, Padding, RsaEncoding, Verification};
+use super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, Padding, RsaEncodingInternal, Verification};
 use crate::{bits, digest, error, io::der, rand};
 
 /// PKCS#1 1.5 padding as described in [RFC 3447 Section 8.2].
@@ -35,7 +35,7 @@ impl Padding for PKCS1 {
     }
 }
 
-impl RsaEncoding for PKCS1 {
+impl RsaEncodingInternal for PKCS1 {
     fn encode(
         &self,
         m_hash: digest::Digest,

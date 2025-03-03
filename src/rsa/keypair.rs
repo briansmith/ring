@@ -13,7 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    padding::RsaEncoding, KeyPairComponents, PublicExponent, PublicKey, PublicKeyComponents, N,
+    padding::{RsaEncoding, RsaEncodingInternal},
+    KeyPairComponents, PublicExponent, PublicKey, PublicKeyComponents, N,
 };
 
 /// RSA PKCS#1 1.5 signatures.
@@ -546,7 +547,13 @@ impl KeyPair {
 
         // Use the output buffer as the scratch space for the signature to
         // reduce the required stack space.
-        padding_alg.encode(m_hash, signature, self.public().inner().n().len_bits(), rng)?;
+        RsaEncodingInternal::encode(
+            padding_alg,
+            m_hash,
+            signature,
+            self.public().inner().n().len_bits(),
+            rng,
+        )?;
 
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.

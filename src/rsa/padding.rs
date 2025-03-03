@@ -33,9 +33,11 @@ pub trait Padding: 'static + Sync + crate::sealed::Sealed + core::fmt::Debug {
 /// An RSA signature encoding as described in [RFC 3447 Section 8].
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
+#[allow(private_bounds)]
 #[cfg(feature = "alloc")]
-pub trait RsaEncoding: Padding {
+pub trait RsaEncoding: RsaEncodingInternal + Padding {
     #[doc(hidden)]
+    #[deprecated(note = "Internal API that was accidentally exposed.")]
     fn encode(
         &self,
         m_hash: digest::Digest,
@@ -43,6 +45,34 @@ pub trait RsaEncoding: Padding {
         mod_bits: bits::BitLength,
         rng: &dyn rand::SecureRandom,
     ) -> Result<(), error::Unspecified>;
+}
+
+#[cfg(feature = "alloc")]
+pub(super) trait RsaEncodingInternal: Padding {
+    fn encode(
+        &self,
+        m_hash: digest::Digest,
+        m_out: &mut [u8],
+        mod_bits: bits::BitLength,
+        rng: &dyn rand::SecureRandom,
+    ) -> Result<(), error::Unspecified>;
+}
+
+#[cfg(feature = "alloc")]
+impl<T> RsaEncoding for T
+where
+    T: RsaEncodingInternal,
+{
+    #[doc(hidden)]
+    fn encode(
+        &self,
+        m_hash: digest::Digest,
+        m_out: &mut [u8],
+        mod_bits: bits::BitLength,
+        rng: &dyn rand::SecureRandom,
+    ) -> Result<(), error::Unspecified> {
+        <Self as RsaEncodingInternal>::encode(self, m_hash, m_out, mod_bits, rng)
+    }
 }
 
 /// Verification of an RSA signature encoding as described in
@@ -153,7 +183,8 @@ mod test {
 
                 let mut m_out = vec![0u8; bit_len.as_usize_bytes_rounded_up()];
                 let digest = digest::digest(alg.digest_alg(), &msg);
-                alg.encode(digest, &mut m_out, bit_len, &rng).unwrap();
+                #[allow(deprecated)]
+                RsaEncoding::encode(alg, digest, &mut m_out, bit_len, &rng).unwrap();
                 assert_eq!(m_out, encoded);
 
                 Ok(())

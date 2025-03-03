@@ -12,7 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, mgf1, Padding, RsaEncoding, Verification};
+use super::{
+    super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, mgf1, Padding, RsaEncodingInternal, Verification,
+};
 use crate::{bb, bits, digest, error, rand};
 
 /// RSA PSS padding as described in [RFC 3447 Section 8.1].
@@ -35,7 +37,7 @@ impl Padding for PSS {
     }
 }
 
-impl RsaEncoding for PSS {
+impl RsaEncodingInternal for PSS {
     // Implement padding procedure per EMSA-PSS,
     // https://tools.ietf.org/html/rfc3447#section-9.1.
     fn encode(
