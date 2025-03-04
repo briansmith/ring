@@ -173,7 +173,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
     maybe_adx_bmi1_bmi2: Option<(Adx, Bmi1, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
-        // Upstream has `num: c::int` and `power: c::int`; see
+        // Upstream has `num: c_int` and `power: c_int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
         fn bn_mul4x_mont_gather5(
             rp: *mut Limb,
@@ -184,7 +184,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
             num: c::NonZero_size_t,
             power: Window,
         );
-        // Upstream has `num: c::int` and `power: c::int`; see
+        // Upstream has `num: c_int` and `power: c_int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
         fn bn_mulx4x_mont_gather5(
             rp: *mut Limb,
@@ -229,7 +229,7 @@ pub(in super::super::super) unsafe fn power5_amm(
     maybe_adx_bmi1_bmi2: Option<(Adx, Bmi1, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
-        // Upstream has `num: c::int` and `power: c::int`; see
+        // Upstream has `num: c_int` and `power: c_int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
         fn bn_power5_nohw(
             rp: *mut Limb,
@@ -240,7 +240,7 @@ pub(in super::super::super) unsafe fn power5_amm(
             num: c::NonZero_size_t,
             power: Window,
         );
-        // Upstream has `num: c::int` and `power: c::int`; see
+        // Upstream has `num: c_int` and `power: c_int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
         fn bn_powerx5(
             rp: *mut Limb,

@@ -15,7 +15,7 @@
 //! Building blocks.
 
 use crate::{c, error};
-use core::num::NonZeroUsize;
+use core::{ffi::c_int, num::NonZeroUsize};
 
 mod boolmask;
 mod leaky;
@@ -46,7 +46,7 @@ pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecif
 }
 
 prefixed_extern! {
-    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::NonZero_size_t) -> c::int;
+    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::NonZero_size_t) -> c_int;
 }
 
 pub(crate) fn xor_16(a: [u8; 16], b: [u8; 16]) -> [u8; 16] {

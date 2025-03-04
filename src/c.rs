@@ -20,8 +20,8 @@
 //! probably change if/when we support 16-bit platforms or platforms where
 //! `usize` and `uintptr_t` are different sizes.
 //!
-//! TODO(MSRV-1.64): Use `core::ffi::{c_int, c_uint}`, remove the libc
-//! compatibility testing, and remove the libc dev-dependency.
+//! TODO(MSRV, feature(c_size_t)): Use `core::{ffi::c_size_t}`.
+//! TODO(MSRV-1.79): Use `NonZero<c_size_t>`.
 
 // Keep in sync with the checks in base.h that verify these assumptions.
 
@@ -29,31 +29,5 @@
 
 use core::num::NonZeroUsize;
 
-pub(crate) type int = i32;
-pub(crate) type uint = u32;
 pub(crate) type size_t = usize;
 pub(crate) type NonZero_size_t = NonZeroUsize;
-
-#[cfg(all(test, any(unix, windows)))]
-mod tests {
-    use crate::c;
-
-    #[test]
-    fn test_libc_compatible() {
-        {
-            let x: c::int = 1;
-            let _x: libc::c_int = x;
-        }
-
-        {
-            let x: c::uint = 1;
-            let _x: libc::c_uint = x;
-        }
-
-        {
-            let x: c::size_t = 1;
-            let _x: libc::size_t = x;
-            let _x: usize = x;
-        }
-    }
-}
