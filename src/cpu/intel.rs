@@ -36,7 +36,7 @@ mod abi_assumptions {
 }
 
 pub(super) mod featureflags {
-    use super::super::CAPS_STATIC;
+    use super::{super::CAPS_STATIC, *};
     use crate::{
         cpu,
         polyfill::{once_cell::race, usize_from_u32},
@@ -56,10 +56,10 @@ pub(super) mod featureflags {
             unsafe {
                 OPENSSL_cpuid_setup(&mut cpuid);
             }
-            let detected = super::cpuid_to_caps_and_set_c_flags(&cpuid);
+            let detected = cpuid_to_caps_and_set_c_flags(&cpuid);
             let merged = CAPS_STATIC | detected;
 
-            let merged = usize_from_u32(merged) | (1 << (super::Shift::Initialized as u32));
+            let merged = usize_from_u32(merged) | (1 << (Shift::Initialized as u32));
             NonZeroUsize::new(merged).unwrap() // Can't fail because we just set a bit.
         });
 
@@ -96,8 +96,8 @@ pub(super) mod featureflags {
     #[cfg(target_arch = "x86_64")]
     #[rustfmt::skip]
     pub const STATIC_DETECTED: u32 = 0
-        | if cfg!(target_feature = "sse4.1") { super::Sse41::mask() } else { 0 }
-        | if cfg!(target_feature = "ssse3") { super::Ssse3::mask() } else { 0 }
+        | if cfg!(target_feature = "sse4.1") { Sse41::mask() } else { 0 }
+        | if cfg!(target_feature = "ssse3") { Ssse3::mask() } else { 0 }
         ;
 
     pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
