@@ -104,10 +104,6 @@
 //! ```
 //!
 //! [RFC 2104]: https://tools.ietf.org/html/rfc2104
-//! [code for `ring::pbkdf2`]:
-//!     https://github.com/briansmith/ring/blob/main/src/pbkdf2.rs
-//! [code for `ring::hkdf`]:
-//!     https://github.com/briansmith/ring/blob/main/src/hkdf.rs
 
 use crate::{
     bb, cpu,
