@@ -17,10 +17,10 @@
 
 pub use super::scalar::{MaskedScalar, Scalar, SCALAR_LEN};
 use crate::{
-    bssl, c, cpu, error,
+    bssl, cpu, error,
     limb::{Limb, LIMB_BITS},
 };
-use core::marker::PhantomData;
+use core::{ffi::c_int, marker::PhantomData};
 
 // Elem<T>` is `fe` in curve25519/internal.h.
 // Elem<L> is `fe_loose` in curve25519/internal.h.
@@ -82,7 +82,7 @@ impl ExtPoint {
             t: Elem::zero(),
         };
         prefixed_extern! {
-            fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar, has_fe25519_adx: c::int);
+            fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar, has_fe25519_adx: c_int);
         }
         unsafe {
             x25519_ge_scalarmult_base(&mut r, scalar, has_fe25519_adx(cpu).into());

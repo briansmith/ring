@@ -14,7 +14,10 @@
 
 use super::{Block, KeyBytes, Overlapping, BLOCK_LEN};
 use crate::{bits::BitLength, c, error};
-use core::num::{NonZeroU32, NonZeroUsize};
+use core::{
+    ffi::{c_int, c_uint},
+    num::{NonZeroU32, NonZeroUsize},
+};
 
 /// nonce || big-endian counter.
 #[repr(transparent)]
@@ -25,7 +28,7 @@ pub(in super::super) struct Counter(pub(super) [u8; BLOCK_LEN]);
 #[derive(Clone)]
 pub(in super::super) struct AES_KEY {
     pub rd_key: [u32; 4 * (MAX_ROUNDS + 1)],
-    pub rounds: c::uint,
+    pub rounds: c_uint,
 }
 
 // Keep this in sync with `AES_MAXNR` in aes.h.
@@ -34,7 +37,7 @@ const MAX_ROUNDS: usize = 14;
 impl AES_KEY {
     #[inline]
     pub(super) unsafe fn new(
-        f: unsafe extern "C" fn(*const u8, BitLength<c::int>, *mut AES_KEY) -> c::int,
+        f: unsafe extern "C" fn(*const u8, BitLength<c_int>, *mut AES_KEY) -> c_int,
         bytes: KeyBytes<'_>,
     ) -> Result<Self, error::Unspecified> {
         let mut key = Self {
@@ -88,9 +91,10 @@ impl AES_KEY {
 // crypto/fipsmodule/aes/internal.h.
 macro_rules! set_encrypt_key {
     ( $name:ident, $key_bytes:expr $(,)? ) => {{
-        use crate::{bits::BitLength, c};
+        use crate::bits::BitLength;
+        use core::ffi::c_int;
         prefixed_extern! {
-            fn $name(user_key: *const u8, bits: BitLength<c::int>, key: *mut AES_KEY) -> c::int;
+            fn $name(user_key: *const u8, bits: BitLength<c_int>, key: *mut AES_KEY) -> c_int;
         }
         $crate::aead::aes::ffi::AES_KEY::new($name, $key_bytes)
     }};
