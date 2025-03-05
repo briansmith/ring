@@ -55,7 +55,7 @@ fn test_sample_len(alg: &'static quic::Algorithm) {
 
     let key = quic::HeaderProtectionKey::new(alg, &key_data).unwrap();
 
-    let sample_len = 16;
+    let sample_len = alg.sample_len();
     let sample_data = vec![0u8; sample_len + 2];
 
     // Sample is the right size.
