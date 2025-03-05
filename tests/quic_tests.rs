@@ -32,6 +32,7 @@ fn quic_chacha20() {
 }
 
 fn test_quic(alg: &'static quic::Algorithm, test_file: test::File) {
+    test_key_len(alg);
     test_sample_len(alg);
 
     test::run(test_file, |section, test_case| {
@@ -46,6 +47,17 @@ fn test_quic(alg: &'static quic::Algorithm, test_file: test::File) {
 
         Ok(())
     });
+}
+
+#[allow(clippy::range_plus_one)]
+fn test_key_len(alg: &'static quic::Algorithm) {
+    let key_len = alg.key_len();
+    let key_data = vec![0u8; key_len + 1];
+
+    assert!(quic::HeaderProtectionKey::new(alg, &[]).is_err());
+    assert!(quic::HeaderProtectionKey::new(alg, &key_data[..key_len]).is_ok());
+    assert!(quic::HeaderProtectionKey::new(alg, &key_data[..(key_len + 1)]).is_err());
+    assert!(quic::HeaderProtectionKey::new(alg, &key_data[..(key_len - 1)]).is_err());
 }
 
 #[allow(clippy::range_plus_one)]
