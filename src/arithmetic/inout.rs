@@ -41,7 +41,7 @@ pub(crate) trait AliasingSlices2<T> {
     where
         Self: Sized,
     {
-        self.with_potentially_dangling_non_null_pointers_ra(expected_len.into(), f)
+        self.with_potentially_dangling_non_null_pointers_ra(expected_len.get(), f)
     }
 
     /// If `expected_len == 0` then the pointers passed to `f` may be
@@ -116,7 +116,7 @@ pub(crate) trait AliasingSlices3<T> {
     where
         Self: Sized,
     {
-        self.with_potentially_dangling_non_null_pointers_rab(expected_len.into(), f)
+        self.with_potentially_dangling_non_null_pointers_rab(expected_len.get(), f)
     }
 
     /// If `expected_len == 0` then the pointers passed to `f` may be
