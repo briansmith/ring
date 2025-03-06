@@ -84,3 +84,11 @@ For security vulnerabilities, see https://github.com/briansmith/ring/security/po
 
 Please report bugs that aren't security vulnerabilities either as pull requests or as issues in
 [the issue tracker](https://github.com/briansmith/ring/issues).
+
+
+
+Release Notes
+-------------
+It is recommended that you review every commit in this project. Some
+particularly noteworthy changes are noted in the [RELEASES.md](RELEASES.md). We could use some
+help in making this better.
