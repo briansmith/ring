@@ -1,3 +1,13 @@
+Version 0.17.13 (2025-03-06)
+============================
+Increased MSRV to 1.66.0 to avoid bugs in earlier versions so that we can
+safely use `core::arch::x86_64::__cpuid` and `core::arch::x86::__cpuid` from
+Rust in future releases.
+
+AVX2-based VAES-CLMUL implementation. This will be a notable performance
+improvement for most newish x86-64 systems. This will likely raise the minimum
+binutils version supported for very old Linux distros.
+
 Version 0.17.12 (2025-03-05)
 ============================
 Bug fix: https://github.com/briansmith/ring/pull/2447 for denial of service (DoS).
