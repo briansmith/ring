@@ -25,7 +25,7 @@ use crate::{
     polyfill::{sliceutil, usize_from_u32, ArrayFlatMap},
 };
 use core::{iter, num::NonZeroUsize};
-
+use core::num::NonZero;
 #[cfg(any(test, feature = "alloc"))]
 use crate::bits;
 
@@ -60,7 +60,7 @@ fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> Result<LimbMask, LenMismatch
     // optimizer.
     // XXX: Questionable whether `LenMismatchError` is appropriate.
     let len = NonZeroUsize::new(b.len()).ok_or_else(|| LenMismatchError::new(a.len()))?;
-    if a.len() != len.into() {
+    if a.len() != <NonZero<usize> as Into<usize>>::into(len) {
         return Err(LenMismatchError::new(a.len()));
     }
     Ok(unsafe { LIMBS_less_than(a.as_ptr(), b.as_ptr(), len) })
