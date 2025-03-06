@@ -74,3 +74,13 @@ for *ring*.
 
 Besides all of the above, there are many other things to consider regarding
 timing side channels and other kinds of side channels.
+
+
+
+Bug Reporting
+-------------
+
+For security vulnerabilities, see https://github.com/briansmith/ring/security/policy.
+
+Please report bugs that aren't security vulnerabilities either as pull requests or as issues in
+[the issue tracker](https://github.com/briansmith/ring/issues).
