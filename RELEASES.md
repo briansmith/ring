@@ -3,7 +3,9 @@ Version 0.17.12 (2025-03-05)
 Bug fix: https://github.com/briansmith/ring/pull/2447 for denial of service (DoS).
 
 * Fixes a panic in `ring::aead::quic::HeaderProtectionKey::new_mask()` when
-integer overflow checking is enabled.
+integer overflow checking is enabled. In the QUIC protocol, an attacker can
+induce this panic by sending a specially-crafted packet. Even unintentionally
+it is likely to occur in 1 out of every 2**32 packets sent and/or received.
 
 * Fixes a panic on 64-bit targets in `ring::aead::{AES_128_GCM, AES_256_GCM}`
 when overflow checking is enabled, when encrypting/decrypting approximately
