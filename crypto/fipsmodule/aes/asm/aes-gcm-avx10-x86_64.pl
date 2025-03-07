@@ -256,13 +256,9 @@ sub _set_veclen {
     }
 }
 
-# The _ghash_mul_step macro does one step of GHASH multiplication of the
-# 128-bit lanes of \a by the corresponding 128-bit lanes of \b and storing the
-# reduced products in \dst.  \t0, \t1, and \t2 are temporary registers of the
-# same size as \a and \b.  To complete all steps, this must invoked with \i=0
-# through \i=9.  The division into steps allows users of this macro to
-# optionally interleave the computation with other instructions.  Users of this
-# macro must preserve the parameter registers across steps.
+# The _ghash_mul macro multiplies the 128-bit lanes of \a by the corresponding
+# 128-bit lanes of \b and stores the reduced products in \dst.  \t0, \t1, and
+# \t2 are temporary registers of the same size as \a and \b.
 #
 # The multiplications are done in GHASH's representation of the finite field
 # GF(2^128).  Elements of GF(2^128) are represented as binary polynomials
@@ -359,52 +355,21 @@ sub _set_veclen {
 #
 # Using Karatsuba multiplication instead of "schoolbook" multiplication
 # similarly would save a vpclmulqdq but does not seem to be worth it.
-sub _ghash_mul_step {
-    my ( $i, $a, $b, $dst, $gfpoly, $t0, $t1, $t2 ) = @_;
-    if ( $i == 0 ) {
-        return "vpclmulqdq \$0x00, $a, $b, $t0\n" .    # LO = a_L * b_L
-          "vpclmulqdq \$0x01, $a, $b, $t1\n";          # MI_0 = a_L * b_H
-    }
-    elsif ( $i == 1 ) {
-        return "vpclmulqdq \$0x10, $a, $b, $t2\n";     # MI_1 = a_H * b_L
-    }
-    elsif ( $i == 2 ) {
-        return "vpxord $t2, $t1, $t1\n";               # MI = MI_0 + MI_1
-    }
-    elsif ( $i == 3 ) {
-        return
-          "vpclmulqdq \$0x01, $t0, $gfpoly, $t2\n";  # LO_L*(x^63 + x^62 + x^57)
-    }
-    elsif ( $i == 4 ) {
-        return "vpshufd \$0x4e, $t0, $t0\n";         # Swap halves of LO
-    }
-    elsif ( $i == 5 ) {
-        return "vpternlogd \$0x96, $t2, $t0, $t1\n";    # Fold LO into MI
-    }
-    elsif ( $i == 6 ) {
-        return "vpclmulqdq \$0x11, $a, $b, $dst\n";     # HI = a_H * b_H
-    }
-    elsif ( $i == 7 ) {
-        return
-          "vpclmulqdq \$0x01, $t1, $gfpoly, $t0\n";  # MI_L*(x^63 + x^62 + x^57)
-    }
-    elsif ( $i == 8 ) {
-        return "vpshufd \$0x4e, $t1, $t1\n";         # Swap halves of MI
-    }
-    elsif ( $i == 9 ) {
-        return "vpternlogd \$0x96, $t0, $t1, $dst\n";    # Fold MI into HI
-    }
-}
-
-# GHASH-multiply the 128-bit lanes of \a by the 128-bit lanes of \b and store
-# the reduced products in \dst.  See _ghash_mul_step for full explanation.
 sub _ghash_mul {
     my ( $a, $b, $dst, $gfpoly, $t0, $t1, $t2 ) = @_;
-    my $code = "";
-    for my $i ( 0 .. 9 ) {
-        $code .= _ghash_mul_step $i, $a, $b, $dst, $gfpoly, $t0, $t1, $t2;
-    }
-    return $code;
+    return <<___;
+    vpclmulqdq      \$0x00, $a, $b, $t0        # LO = a_L * b_L
+    vpclmulqdq      \$0x01, $a, $b, $t1        # MI_0 = a_L * b_H
+    vpclmulqdq      \$0x10, $a, $b, $t2        # MI_1 = a_H * b_L
+    vpxord          $t2, $t1, $t1              # MI = MI_0 + MI_1
+    vpclmulqdq      \$0x01, $t0, $gfpoly, $t2  # LO_L*(x^63 + x^62 + x^57)
+    vpshufd         \$0x4e, $t0, $t0           # Swap halves of LO
+    vpternlogd      \$0x96, $t2, $t0, $t1      # Fold LO into MI
+    vpclmulqdq      \$0x11, $a, $b, $dst       # HI = a_H * b_H
+    vpclmulqdq      \$0x01, $t1, $gfpoly, $t0  # MI_L*(x^63 + x^62 + x^57)
+    vpshufd         \$0x4e, $t1, $t1           # Swap halves of MI
+    vpternlogd      \$0x96, $t0, $t1, $dst     # Fold MI into HI
+___
 }
 
 # GHASH-multiply the 128-bit lanes of \a by the 128-bit lanes of \b and add the
@@ -423,7 +388,7 @@ ___
 }
 
 # Reduce the unreduced products from \lo, \mi, and \hi and store the 128-bit
-# reduced products in \hi.  See _ghash_mul_step for explanation of reduction.
+# reduced products in \hi.  See _ghash_mul for explanation of reduction.
 sub _ghash_reduce {
     my ( $lo, $mi, $hi, $gfpoly, $t0 ) = @_;
     return <<___;
@@ -477,7 +442,7 @@ sub _aes_gcm_init {
     # interpretation of polynomial coefficients), which can also be
     # interpreted as multiplication by x mod x^128 + x^127 + x^126 + x^121
     # + 1 using the alternative, natural interpretation of polynomial
-    # coefficients.  For details, see the comment above _ghash_mul_step.
+    # coefficients.  For details, see the comment above _ghash_mul.
     #
     # Either way, for the multiplication the concrete operation performed
     # is a left shift of the 128-bit value by 1 bit, then an XOR with (0xc2
@@ -596,8 +561,8 @@ ___
 #     128-bits each.  This leaves VL/16 128-bit intermediate values.
 #   - Sum (XOR) these values and store the 128-bit result in GHASH_ACC_XMM.
 #
-# See _ghash_mul_step for the full explanation of the operations performed for
-# each individual finite field multiplication and reduction.
+# See _ghash_mul for the full explanation of the operations performed for each
+# individual finite field multiplication and reduction.
 sub _ghash_step_4x {
     my ($i) = @_;
     if ( $i == 0 ) {
