@@ -71,10 +71,14 @@
 # 32, masking support, and new instructions such as vpternlogd (which can do a
 # three-argument XOR).  These features are very useful for AES-GCM.
 
-$flavour = shift;
-$output  = shift;
+use strict;
+
+my $flavour = shift;
+my $output  = shift;
 if ( $flavour =~ /\./ ) { $output = $flavour; undef $flavour; }
 
+my $win64;
+my @argregs;
 if ( $flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/ ) {
     $win64   = 1;
     @argregs = ( "%rcx", "%rdx", "%r8", "%r9" );
@@ -85,13 +89,19 @@ else {
 }
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/;
-$dir = $1;
+my $dir = $1;
+my $xlate;
 ( $xlate = "${dir}x86_64-xlate.pl" and -f $xlate )
   or ( $xlate = "${dir}../../../perlasm/x86_64-xlate.pl" and -f $xlate )
   or die "can't locate x86_64-xlate.pl";
 
 open OUT, "| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT = *OUT;
+
+my $g_cur_func_name;
+my $g_cur_func_uses_seh;
+my @g_cur_func_saved_gpregs;
+my @g_cur_func_saved_xmmregs;
 
 sub _begin_func {
     my ( $funcname, $uses_seh ) = @_;
@@ -189,7 +199,7 @@ ___
     return $code;
 }
 
-$code = <<___;
+my $code = <<___;
 .section .rodata
 .align 64
 
@@ -229,31 +239,68 @@ ___
 
 # Number of powers of the hash key stored in the key struct.  The powers are
 # stored from highest (H^NUM_H_POWERS) to lowest (H^1).
-$NUM_H_POWERS = 16;
+my $NUM_H_POWERS = 16;
 
-$OFFSETOFEND_H_POWERS = $NUM_H_POWERS * 16;
+my $OFFSETOFEND_H_POWERS = $NUM_H_POWERS * 16;
 
 # Offset to 'rounds' in AES_KEY struct
-$OFFSETOF_AES_ROUNDS = 240;
+my $OFFSETOF_AES_ROUNDS = 240;
 
 # The current vector length in bytes
-undef $VL;
+my $VL;
+
+my (
+    $V0,  $V1,  $V2,  $V3,  $V4,  $V5,  $V6,  $V7,  $V8,  $V9,  $V10,
+    $V11, $V12, $V13, $V14, $V15, $V16, $V17, $V18, $V19, $V20, $V21,
+    $V22, $V23, $V24, $V25, $V26, $V27, $V28, $V29, $V30, $V31
+);
 
 # Set the vector length in bytes.  This sets the VL variable and defines
 # register aliases V0-V31 that map to the ymm or zmm registers.
 sub _set_veclen {
     ($VL) = @_;
-    foreach my $i ( 0 .. 31 ) {
-        if ( $VL == 32 ) {
-            ${"V${i}"} = "%ymm${i}";
-        }
-        elsif ( $VL == 64 ) {
-            ${"V${i}"} = "%zmm${i}";
-        }
-        else {
-            die "Unsupported vector length";
-        }
+    my $prefix;
+    if ( $VL == 32 ) {
+        $prefix = "%ymm";
     }
+    elsif ( $VL == 64 ) {
+        $prefix = "%zmm";
+    }
+    else {
+        die "Unsupported vector length";
+    }
+    $V0  = "${prefix}0";
+    $V1  = "${prefix}1";
+    $V2  = "${prefix}2";
+    $V3  = "${prefix}3";
+    $V4  = "${prefix}4";
+    $V5  = "${prefix}5";
+    $V6  = "${prefix}6";
+    $V7  = "${prefix}7";
+    $V8  = "${prefix}8";
+    $V9  = "${prefix}9";
+    $V10 = "${prefix}10";
+    $V11 = "${prefix}11";
+    $V12 = "${prefix}12";
+    $V13 = "${prefix}13";
+    $V14 = "${prefix}14";
+    $V15 = "${prefix}15";
+    $V16 = "${prefix}16";
+    $V17 = "${prefix}17";
+    $V18 = "${prefix}18";
+    $V19 = "${prefix}19";
+    $V20 = "${prefix}20";
+    $V21 = "${prefix}21";
+    $V22 = "${prefix}22";
+    $V23 = "${prefix}23";
+    $V24 = "${prefix}24";
+    $V25 = "${prefix}25";
+    $V26 = "${prefix}26";
+    $V27 = "${prefix}27";
+    $V28 = "${prefix}28";
+    $V29 = "${prefix}29";
+    $V30 = "${prefix}30";
+    $V31 = "${prefix}31";
 }
 
 # The _ghash_mul macro multiplies the 128-bit lanes of \a by the corresponding
@@ -401,7 +448,7 @@ sub _ghash_reduce {
 ___
 }
 
-$g_init_macro_expansion_count = 0;
+my $g_init_macro_expansion_count = 0;
 
 # void gcm_init_##suffix(u128 Htable[16], const uint64_t H[2]);
 #
@@ -419,7 +466,10 @@ sub _aes_gcm_init {
     # Function arguments
     my ( $HTABLE, $H_PTR ) = @argregs[ 0 .. 1 ];
 
-    # Additional local variables.  V0-V2 and %rax are used as temporaries.
+    # Additional local variables.  %rax is used as a temporary register.
+    my ( $TMP0, $TMP0_YMM, $TMP0_XMM ) = ( $V0, "%ymm0", "%xmm0" );
+    my ( $TMP1, $TMP1_YMM, $TMP1_XMM ) = ( $V1, "%ymm1", "%xmm1" );
+    my ( $TMP2, $TMP2_YMM, $TMP2_XMM ) = ( $V2, "%ymm2", "%xmm2" );
     my $POWERS_PTR     = "%r8";
     my $RNDKEYLAST_PTR = "%r9";
     my ( $H_CUR, $H_CUR_YMM, $H_CUR_XMM )    = ( "$V3", "%ymm3", "%xmm3" );
@@ -449,11 +499,11 @@ sub _aes_gcm_init {
     # << 120) | 1 if a 1 bit was carried out.  However, there's no 128-bit
     # wide shift instruction, so instead double each of the two 64-bit
     # halves and incorporate the internal carry bit into the value XOR'd.
-    vpshufd         \$0xd3, $H_CUR_XMM, %xmm0
-    vpsrad          \$31, %xmm0, %xmm0
+    vpshufd         \$0xd3, $H_CUR_XMM, $TMP0_XMM
+    vpsrad          \$31, $TMP0_XMM, $TMP0_XMM
     vpaddq          $H_CUR_XMM, $H_CUR_XMM, $H_CUR_XMM
-    # H_CUR_XMM ^= xmm0 & gfpoly_and_internal_carrybit
-    vpternlogd      \$0x78, .Lgfpoly_and_internal_carrybit(%rip), %xmm0, $H_CUR_XMM
+    # H_CUR_XMM ^= TMP0_XMM & gfpoly_and_internal_carrybit
+    vpternlogd      \$0x78, .Lgfpoly_and_internal_carrybit(%rip), $TMP0_XMM, $H_CUR_XMM
 
     # Load the gfpoly constant.
     vbroadcasti32x4 .Lgfpoly(%rip), $GFPOLY
@@ -466,7 +516,7 @@ sub _aes_gcm_init {
     # end up with two factors of x^-1, but the multiplication consumes one.
     # So the product H^2 ends up with the desired one factor of x^-1.
     @{[ _ghash_mul  $H_CUR_XMM, $H_CUR_XMM, $H_INC_XMM, $GFPOLY_XMM,
-                    "%xmm0", "%xmm1", "%xmm2" ]}
+                    $TMP0_XMM, $TMP1_XMM, $TMP2_XMM ]}
 
     # Create H_CUR_YMM = [H^2, H^1] and H_INC_YMM = [H^2, H^2].
     vinserti128     \$1, $H_CUR_XMM, $H_INC_YMM, $H_CUR_YMM
@@ -478,7 +528,7 @@ ___
         # Create H_CUR = [H^4, H^3, H^2, H^1] and H_INC = [H^4, H^4, H^4, H^4].
         $code .= <<___;
         @{[ _ghash_mul  $H_INC_YMM, $H_CUR_YMM, $H_INC_YMM, $GFPOLY_YMM,
-                        "%ymm0", "%ymm1", "%ymm2" ]}
+                        $TMP0_YMM, $TMP1_YMM, $TMP2_YMM ]}
         vinserti64x4    \$1, $H_CUR_YMM, $H_INC, $H_CUR
         vshufi64x2      \$0, $H_INC, $H_INC, $H_INC
 ___
@@ -495,7 +545,7 @@ ___
     mov             \$@{[ $NUM_H_POWERS*16/$VL - 1 ]}, %eax
 .Lprecompute_next$local_label_suffix:
     sub             \$$VL, $POWERS_PTR
-    @{[ _ghash_mul  $H_INC, $H_CUR, $H_CUR, $GFPOLY, $V0, $V1, $V2 ]}
+    @{[ _ghash_mul  $H_INC, $H_CUR, $H_CUR, $GFPOLY, $TMP0, $TMP1, $TMP2 ]}
     vmovdqu8        $H_CUR, ($POWERS_PTR)
     dec             %eax
     jnz             .Lprecompute_next$local_label_suffix
@@ -564,7 +614,13 @@ ___
 # See _ghash_mul for the full explanation of the operations performed for each
 # individual finite field multiplication and reduction.
 sub _ghash_step_4x {
-    my ($i) = @_;
+    my (
+        $i,              $BSWAP_MASK,     $GHASHDATA0,     $GHASHDATA1,
+        $GHASHDATA2,     $GHASHDATA3,     $GHASHDATA0_XMM, $GHASHDATA1_XMM,
+        $GHASHDATA2_XMM, $GHASHDATA3_XMM, $H_POW4,         $H_POW3,
+        $H_POW2,         $H_POW1,         $GFPOLY,         $GHASHTMP0,
+        $GHASHTMP1,      $GHASHTMP2,      $GHASH_ACC,      $GHASH_ACC_XMM
+    ) = @_;
     if ( $i == 0 ) {
         return <<___;
         vpshufb         $BSWAP_MASK, $GHASHDATA0, $GHASHDATA0
@@ -642,17 +698,17 @@ ___
     }
 }
 
-# Update GHASH with the blocks given in GHASHDATA[0-3].
-# See _ghash_step_4x for full explanation.
+# Update GHASH with four vectors of data blocks.  See _ghash_step_4x for full
+# explanation.
 sub _ghash_4x {
     my $code = "";
     for my $i ( 0 .. 9 ) {
-        $code .= _ghash_step_4x $i;
+        $code .= _ghash_step_4x $i, @_;
     }
     return $code;
 }
 
-$g_ghash_macro_expansion_count = 0;
+my $g_ghash_macro_expansion_count = 0;
 
 # void gcm_ghash_##suffix(uint8_t Xi[16], const u128 Htable[16],
 #                         const uint8_t *in, size_t len);
@@ -661,10 +717,8 @@ $g_ghash_macro_expansion_count = 0;
 # prototype.  This macro supports both VL=32 and VL=64.  _set_veclen must have
 # been invoked with the desired length.
 #
-# The generated function processes the AAD (Additional Authenticated Data) in
-# GCM.  Using the key |Htable|, it updates the GHASH accumulator |Xi| with the
-# data given by |in| and |len|.  On the first call, |Xi| must be all zeroes.
-# |len| must be a multiple of 16.
+# This function uses the key |Htable| to update the GHASH accumulator |Xi| with
+# the data given by |in| and |len|.  |len| must be a multiple of 16.
 #
 # This function handles large amounts of AAD efficiently, while also keeping the
 # overhead low for small amounts of AAD which is the common case.  TLS uses less
@@ -674,19 +728,22 @@ sub _ghash_update {
     my $code               = "";
 
     # Function arguments
-    my ( $GHASH_ACC_PTR, $H_POWERS, $AAD, $AADLEN ) = @argregs[ 0 .. 3 ];
+    my ( $GHASH_ACC_PTR, $HTABLE, $AAD, $AADLEN ) = @argregs[ 0 .. 3 ];
 
     # Additional local variables
-    ( $GHASHDATA0, $GHASHDATA0_XMM ) = ( $V0, "%xmm0" );
-    ( $GHASHDATA1, $GHASHDATA1_XMM ) = ( $V1, "%xmm1" );
-    ( $GHASHDATA2, $GHASHDATA2_XMM ) = ( $V2, "%xmm2" );
-    ( $GHASHDATA3, $GHASHDATA3_XMM ) = ( $V3, "%xmm3" );
-    ( $BSWAP_MASK, $BSWAP_MASK_XMM ) = ( $V4, "%xmm4" );
-    ( $GHASH_ACC,  $GHASH_ACC_XMM )  = ( $V5, "%xmm5" );
-    ( $H_POW4, $H_POW3, $H_POW2 )          = ( $V6, $V7, $V8 );
-    ( $H_POW1, $H_POW1_XMM )               = ( $V9, "%xmm9" );
-    ( $GFPOLY, $GFPOLY_XMM )               = ( $V10, "%xmm10" );
-    ( $GHASHTMP0, $GHASHTMP1, $GHASHTMP2 ) = ( $V11, $V12, $V13 );
+    my ( $GHASHDATA0, $GHASHDATA0_XMM ) = ( $V0, "%xmm0" );
+    my ( $GHASHDATA1, $GHASHDATA1_XMM ) = ( $V1, "%xmm1" );
+    my ( $GHASHDATA2, $GHASHDATA2_XMM ) = ( $V2, "%xmm2" );
+    my ( $GHASHDATA3, $GHASHDATA3_XMM ) = ( $V3, "%xmm3" );
+    my @GHASHDATA = ( $GHASHDATA0, $GHASHDATA1, $GHASHDATA2, $GHASHDATA3 );
+    my @GHASHDATA_XMM =
+      ( $GHASHDATA0_XMM, $GHASHDATA1_XMM, $GHASHDATA2_XMM, $GHASHDATA3_XMM );
+    my ( $BSWAP_MASK, $BSWAP_MASK_XMM )       = ( $V4, "%xmm4" );
+    my ( $GHASH_ACC, $GHASH_ACC_XMM )         = ( $V5, "%xmm5" );
+    my ( $H_POW4, $H_POW3, $H_POW2 )          = ( $V6, $V7, $V8 );
+    my ( $H_POW1, $H_POW1_XMM )               = ( $V9, "%xmm9" );
+    my ( $GFPOLY, $GFPOLY_XMM )               = ( $V10, "%xmm10" );
+    my ( $GHASHTMP0, $GHASHTMP1, $GHASHTMP2 ) = ( $V11, $V12, $V13 );
 
     $code .= <<___;
     @{[ _save_xmmregs (6 .. 13) ]}
@@ -712,15 +769,15 @@ sub _ghash_update {
     vshufi64x2      \$0, $GFPOLY, $GFPOLY, $GFPOLY
 
     # Load the lowest set of key powers.
-    vmovdqu8        $OFFSETOFEND_H_POWERS-1*$VL($H_POWERS), $H_POW1
+    vmovdqu8        $OFFSETOFEND_H_POWERS-1*$VL($HTABLE), $H_POW1
 
     cmp             \$4*$VL-1, $AADLEN
     jbe             .Laad_loop_1x$local_label_suffix
 
     # AADLEN >= 4*VL.  Load the higher key powers.
-    vmovdqu8        $OFFSETOFEND_H_POWERS-4*$VL($H_POWERS), $H_POW4
-    vmovdqu8        $OFFSETOFEND_H_POWERS-3*$VL($H_POWERS), $H_POW3
-    vmovdqu8        $OFFSETOFEND_H_POWERS-2*$VL($H_POWERS), $H_POW2
+    vmovdqu8        $OFFSETOFEND_H_POWERS-4*$VL($HTABLE), $H_POW4
+    vmovdqu8        $OFFSETOFEND_H_POWERS-3*$VL($HTABLE), $H_POW3
+    vmovdqu8        $OFFSETOFEND_H_POWERS-2*$VL($HTABLE), $H_POW2
 
     # Update GHASH with 4*VL bytes of AAD at a time.
 .Laad_loop_4x$local_label_suffix:
@@ -728,7 +785,9 @@ sub _ghash_update {
     vmovdqu8        1*$VL($AAD), $GHASHDATA1
     vmovdqu8        2*$VL($AAD), $GHASHDATA2
     vmovdqu8        3*$VL($AAD), $GHASHDATA3
-    @{[ _ghash_4x ]}
+    @{[ _ghash_4x   $BSWAP_MASK, @GHASHDATA, @GHASHDATA_XMM, $H_POW4, $H_POW3,
+                    $H_POW2, $H_POW1, $GFPOLY, $GHASHTMP0, $GHASHTMP1,
+                    $GHASHTMP2, $GHASH_ACC, $GHASH_ACC_XMM ]}
     sub             \$-4*$VL, $AAD  # shorter than 'add 4*VL' when VL=32
     add             \$-4*$VL, $AADLEN
     cmp             \$4*$VL-1, $AADLEN
@@ -756,7 +815,7 @@ sub _ghash_update {
 .Laad_blockbyblock$local_label_suffix:
     test            $AADLEN, $AADLEN
     jz              .Laad_done$local_label_suffix
-    vmovdqu         $OFFSETOFEND_H_POWERS-16($H_POWERS), $H_POW1_XMM
+    vmovdqu         $OFFSETOFEND_H_POWERS-16($HTABLE), $H_POW1_XMM
 .Laad_loop_blockbyblock$local_label_suffix:
     vmovdqu         ($AAD), $GHASHDATA0_XMM
     vpshufb         $BSWAP_MASK_XMM, $GHASHDATA0_XMM, $GHASHDATA0_XMM
@@ -777,69 +836,72 @@ ___
     return $code;
 }
 
-# Do one non-last round of AES encryption on the counter blocks in V0-V3 using
-# the round key that has been broadcast to all 128-bit lanes of \round_key.
+# Do one non-last round of AES encryption on the counter blocks in aesdata[0-3]
+# using the round key that has been broadcast to all 128-bit lanes of round_key.
 sub _vaesenc_4x {
-    my ($round_key) = @_;
+    my ( $round_key, $aesdata0, $aesdata1, $aesdata2, $aesdata3 ) = @_;
     return <<___;
-    vaesenc         $round_key, $V0, $V0
-    vaesenc         $round_key, $V1, $V1
-    vaesenc         $round_key, $V2, $V2
-    vaesenc         $round_key, $V3, $V3
+    vaesenc         $round_key, $aesdata0, $aesdata0
+    vaesenc         $round_key, $aesdata1, $aesdata1
+    vaesenc         $round_key, $aesdata2, $aesdata2
+    vaesenc         $round_key, $aesdata3, $aesdata3
 ___
 }
 
 # Start the AES encryption of four vectors of counter blocks.
 sub _ctr_begin_4x {
+    my (
+        $le_ctr,   $le_ctr_inc, $bswap_mask, $rndkey0,
+        $aesdata0, $aesdata1,   $aesdata2,   $aesdata3
+    ) = @_;
     return <<___;
-    # Increment LE_CTR four times to generate four vectors of little-endian
-    # counter blocks, swap each to big-endian, and store them in V0-V3.
-    vpshufb         $BSWAP_MASK, $LE_CTR, $V0
-    vpaddd          $LE_CTR_INC, $LE_CTR, $LE_CTR
-    vpshufb         $BSWAP_MASK, $LE_CTR, $V1
-    vpaddd          $LE_CTR_INC, $LE_CTR, $LE_CTR
-    vpshufb         $BSWAP_MASK, $LE_CTR, $V2
-    vpaddd          $LE_CTR_INC, $LE_CTR, $LE_CTR
-    vpshufb         $BSWAP_MASK, $LE_CTR, $V3
-    vpaddd          $LE_CTR_INC, $LE_CTR, $LE_CTR
+    # Increment le_ctr four times to generate four vectors of little-endian
+    # counter blocks, swap each to big-endian, and store them in aesdata[0-3].
+    vpshufb         $bswap_mask, $le_ctr, $aesdata0
+    vpaddd          $le_ctr_inc, $le_ctr, $le_ctr
+    vpshufb         $bswap_mask, $le_ctr, $aesdata1
+    vpaddd          $le_ctr_inc, $le_ctr, $le_ctr
+    vpshufb         $bswap_mask, $le_ctr, $aesdata2
+    vpaddd          $le_ctr_inc, $le_ctr, $le_ctr
+    vpshufb         $bswap_mask, $le_ctr, $aesdata3
+    vpaddd          $le_ctr_inc, $le_ctr, $le_ctr
 
     # AES "round zero": XOR in the zero-th round key.
-    vpxord          $RNDKEY0, $V0, $V0
-    vpxord          $RNDKEY0, $V1, $V1
-    vpxord          $RNDKEY0, $V2, $V2
-    vpxord          $RNDKEY0, $V3, $V3
+    vpxord          $rndkey0, $aesdata0, $aesdata0
+    vpxord          $rndkey0, $aesdata1, $aesdata1
+    vpxord          $rndkey0, $aesdata2, $aesdata2
+    vpxord          $rndkey0, $aesdata3, $aesdata3
 ___
 }
 
-# Do the last AES round for four vectors of counter blocks V0-V3, XOR source
-# data with the resulting keystream, and write the result to DST and
-# GHASHDATA[0-3].  (Implementation differs slightly, but has the same effect.)
+# Do the last AES round for four vectors of counter blocks, XOR four vectors of
+# source data with the resulting keystream blocks, and write the result to the
+# destination buffer and ghashdata[0-3].  The implementation differs slightly as
+# it takes advantage of the property vaesenclast(key, a) ^ b ==
+# vaesenclast(key ^ b, a) to reduce latency, but it has the same effect.
 sub _aesenclast_and_xor_4x {
+    my (
+        $src,        $dst,        $rndkeylast, $aesdata0,
+        $aesdata1,   $aesdata2,   $aesdata3,   $ghashdata0,
+        $ghashdata1, $ghashdata2, $ghashdata3
+    ) = @_;
     return <<___;
-    # XOR the source data with the last round key, saving the result in
-    # GHASHDATA[0-3].  This reduces latency by taking advantage of the
-    # property vaesenclast(key, a) ^ b == vaesenclast(key ^ b, a).
-    vpxord          0*$VL($SRC), $RNDKEYLAST, $GHASHDATA0
-    vpxord          1*$VL($SRC), $RNDKEYLAST, $GHASHDATA1
-    vpxord          2*$VL($SRC), $RNDKEYLAST, $GHASHDATA2
-    vpxord          3*$VL($SRC), $RNDKEYLAST, $GHASHDATA3
-
-    # Do the last AES round.  This handles the XOR with the source data
-    # too, as per the optimization described above.
-    vaesenclast     $GHASHDATA0, $V0, $GHASHDATA0
-    vaesenclast     $GHASHDATA1, $V1, $GHASHDATA1
-    vaesenclast     $GHASHDATA2, $V2, $GHASHDATA2
-    vaesenclast     $GHASHDATA3, $V3, $GHASHDATA3
-
-    # Store the en/decrypted data to DST.
-    vmovdqu8        $GHASHDATA0, 0*$VL($DST)
-    vmovdqu8        $GHASHDATA1, 1*$VL($DST)
-    vmovdqu8        $GHASHDATA2, 2*$VL($DST)
-    vmovdqu8        $GHASHDATA3, 3*$VL($DST)
+    vpxord          0*$VL($src), $rndkeylast, $ghashdata0
+    vpxord          1*$VL($src), $rndkeylast, $ghashdata1
+    vpxord          2*$VL($src), $rndkeylast, $ghashdata2
+    vpxord          3*$VL($src), $rndkeylast, $ghashdata3
+    vaesenclast     $ghashdata0, $aesdata0, $ghashdata0
+    vaesenclast     $ghashdata1, $aesdata1, $ghashdata1
+    vaesenclast     $ghashdata2, $aesdata2, $ghashdata2
+    vaesenclast     $ghashdata3, $aesdata3, $ghashdata3
+    vmovdqu8        $ghashdata0, 0*$VL($dst)
+    vmovdqu8        $ghashdata1, 1*$VL($dst)
+    vmovdqu8        $ghashdata2, 2*$VL($dst)
+    vmovdqu8        $ghashdata3, 3*$VL($dst)
 ___
 }
 
-$g_update_macro_expansion_count = 0;
+my $g_update_macro_expansion_count = 0;
 
 # void aes_gcm_{enc,dec}_update_##suffix(const uint8_t *in, uint8_t *out,
 #                                        size_t len, const AES_KEY *key,
@@ -867,60 +929,64 @@ $g_update_macro_expansion_count = 0;
 # 32-bit word of the counter is incremented, following the GCM standard.
 sub _aes_gcm_update {
     my $local_label_suffix = "__func" . ++$g_update_macro_expansion_count;
-
-    my ($enc) = @_;
-
-    my $code = "";
+    my ($enc)              = @_;
+    my $code               = "";
 
     # Function arguments
-    ( $SRC, $DST, $DATALEN, $AESKEY, $BE_CTR_PTR, $H_POWERS, $GHASH_ACC_PTR ) =
-      $win64
+    my ( $SRC, $DST, $DATALEN, $AESKEY, $BE_CTR_PTR, $HTABLE, $GHASH_ACC_PTR )
+      = $win64
       ? ( @argregs[ 0 .. 3 ], "%rsi", "%rdi", "%r12" )
       : ( @argregs[ 0 .. 5 ], "%r12" );
 
-    # Additional local variables
-
+    # Additional local variables.
     # %rax, %k1, and %k2 are used as temporary registers.  BE_CTR_PTR is
     # also available as a temporary register after the counter is loaded.
 
     # AES key length in bytes
-    ( $AESKEYLEN, $AESKEYLEN64 ) = ( "%r10d", "%r10" );
+    my ( $AESKEYLEN, $AESKEYLEN64 ) = ( "%r10d", "%r10" );
 
     # Pointer to the last AES round key for the chosen AES variant
-    $RNDKEYLAST_PTR = "%r11";
+    my $RNDKEYLAST_PTR = "%r11";
 
-    # In the main loop, V0-V3 are used as AES input and output.  Elsewhere
-    # they are used as temporary registers.
+    # AESDATA[0-3] hold the counter blocks that are being encrypted by AES.
+    my ( $AESDATA0, $AESDATA0_XMM ) = ( $V0, "%xmm0" );
+    my ( $AESDATA1, $AESDATA1_XMM ) = ( $V1, "%xmm1" );
+    my ( $AESDATA2, $AESDATA2_XMM ) = ( $V2, "%xmm2" );
+    my ( $AESDATA3, $AESDATA3_XMM ) = ( $V3, "%xmm3" );
+    my @AESDATA = ( $AESDATA0, $AESDATA1, $AESDATA2, $AESDATA3 );
 
     # GHASHDATA[0-3] hold the ciphertext blocks and GHASH input data.
-    ( $GHASHDATA0, $GHASHDATA0_XMM ) = ( $V4, "%xmm4" );
-    ( $GHASHDATA1, $GHASHDATA1_XMM ) = ( $V5, "%xmm5" );
-    ( $GHASHDATA2, $GHASHDATA2_XMM ) = ( $V6, "%xmm6" );
-    ( $GHASHDATA3, $GHASHDATA3_XMM ) = ( $V7, "%xmm7" );
+    my ( $GHASHDATA0, $GHASHDATA0_XMM ) = ( $V4, "%xmm4" );
+    my ( $GHASHDATA1, $GHASHDATA1_XMM ) = ( $V5, "%xmm5" );
+    my ( $GHASHDATA2, $GHASHDATA2_XMM ) = ( $V6, "%xmm6" );
+    my ( $GHASHDATA3, $GHASHDATA3_XMM ) = ( $V7, "%xmm7" );
+    my @GHASHDATA = ( $GHASHDATA0, $GHASHDATA1, $GHASHDATA2, $GHASHDATA3 );
+    my @GHASHDATA_XMM =
+      ( $GHASHDATA0_XMM, $GHASHDATA1_XMM, $GHASHDATA2_XMM, $GHASHDATA3_XMM );
 
     # BSWAP_MASK is the shuffle mask for byte-reflecting 128-bit values
     # using vpshufb, copied to all 128-bit lanes.
-    ( $BSWAP_MASK, $BSWAP_MASK_XMM ) = ( $V8, "%xmm8" );
+    my ( $BSWAP_MASK, $BSWAP_MASK_XMM ) = ( $V8, "%xmm8" );
 
     # RNDKEY temporarily holds the next AES round key.
-    $RNDKEY = $V9;
+    my $RNDKEY = $V9;
 
     # GHASH_ACC is the accumulator variable for GHASH.  When fully reduced,
     # only the lowest 128-bit lane can be nonzero.  When not fully reduced,
     # more than one lane may be used, and they need to be XOR'd together.
-    ( $GHASH_ACC, $GHASH_ACC_XMM ) = ( $V10, "%xmm10" );
+    my ( $GHASH_ACC, $GHASH_ACC_XMM ) = ( $V10, "%xmm10" );
 
     # LE_CTR_INC is the vector of 32-bit words that need to be added to a
     # vector of little-endian counter blocks to advance it forwards.
-    $LE_CTR_INC = $V11;
+    my $LE_CTR_INC = $V11;
 
     # LE_CTR contains the next set of little-endian counter blocks.
-    $LE_CTR = $V12;
+    my $LE_CTR = $V12;
 
     # RNDKEY0, RNDKEYLAST, and RNDKEY_M[9-1] contain cached AES round keys,
     # copied to all 128-bit lanes.  RNDKEY0 is the zero-th round key,
     # RNDKEYLAST the last, and RNDKEY_M\i the one \i-th from the last.
-    (
+    my (
         $RNDKEY0,   $RNDKEYLAST, $RNDKEY_M9, $RNDKEY_M8,
         $RNDKEY_M7, $RNDKEY_M6,  $RNDKEY_M5, $RNDKEY_M4,
         $RNDKEY_M3, $RNDKEY_M2,  $RNDKEY_M1
@@ -929,20 +995,27 @@ sub _aes_gcm_update {
     # GHASHTMP[0-2] are temporary variables used by _ghash_step_4x.  These
     # cannot coincide with anything used for AES encryption, since for
     # performance reasons GHASH and AES encryption are interleaved.
-    ( $GHASHTMP0, $GHASHTMP1, $GHASHTMP2 ) = ( $V24, $V25, $V26 );
+    my ( $GHASHTMP0, $GHASHTMP1, $GHASHTMP2 ) = ( $V24, $V25, $V26 );
 
     # H_POW[4-1] contain the powers of the hash key H^(4*VL/16)...H^1.  The
     # descending numbering reflects the order of the key powers.
-    ( $H_POW4, $H_POW3, $H_POW2, $H_POW1 ) = ( $V27, $V28, $V29, $V30 );
+    my ( $H_POW4, $H_POW3, $H_POW2, $H_POW1 ) = ( $V27, $V28, $V29, $V30 );
 
     # GFPOLY contains the .Lgfpoly constant, copied to all 128-bit lanes.
-    $GFPOLY = $V31;
+    my $GFPOLY = $V31;
+
+    my @ghash_4x_args = (
+        $BSWAP_MASK, @GHASHDATA, @GHASHDATA_XMM, $H_POW4,
+        $H_POW3,     $H_POW2,    $H_POW1,        $GFPOLY,
+        $GHASHTMP0,  $GHASHTMP1, $GHASHTMP2,     $GHASH_ACC,
+        $GHASH_ACC_XMM
+    );
 
     if ($win64) {
         $code .= <<___;
-        @{[ _save_gpregs $BE_CTR_PTR, $H_POWERS, $GHASH_ACC_PTR ]}
+        @{[ _save_gpregs $BE_CTR_PTR, $HTABLE, $GHASH_ACC_PTR ]}
         mov             64(%rsp), $BE_CTR_PTR     # arg5
-        mov             72(%rsp), $H_POWERS       # arg6
+        mov             72(%rsp), $HTABLE         # arg6
         mov             80(%rsp), $GHASH_ACC_PTR  # arg7
         @{[ _save_xmmregs (6 .. 15) ]}
         .seh_endprologue
@@ -999,10 +1072,10 @@ ___
     jbe             .Lcrypt_loop_4x_done$local_label_suffix
 
     # Load powers of the hash key.
-    vmovdqu8        $OFFSETOFEND_H_POWERS-4*$VL($H_POWERS), $H_POW4
-    vmovdqu8        $OFFSETOFEND_H_POWERS-3*$VL($H_POWERS), $H_POW3
-    vmovdqu8        $OFFSETOFEND_H_POWERS-2*$VL($H_POWERS), $H_POW2
-    vmovdqu8        $OFFSETOFEND_H_POWERS-1*$VL($H_POWERS), $H_POW1
+    vmovdqu8        $OFFSETOFEND_H_POWERS-4*$VL($HTABLE), $H_POW4
+    vmovdqu8        $OFFSETOFEND_H_POWERS-3*$VL($HTABLE), $H_POW3
+    vmovdqu8        $OFFSETOFEND_H_POWERS-2*$VL($HTABLE), $H_POW2
+    vmovdqu8        $OFFSETOFEND_H_POWERS-1*$VL($HTABLE), $H_POW1
 ___
 
     # Main loop: en/decrypt and hash 4 vectors at a time.
@@ -1024,15 +1097,15 @@ ___
         $code .= <<___;
         # Encrypt the first 4 vectors of plaintext blocks.  Leave the resulting
         # ciphertext in GHASHDATA[0-3] for GHASH.
-        @{[ _ctr_begin_4x ]}
+        @{[ _ctr_begin_4x $LE_CTR, $LE_CTR_INC, $BSWAP_MASK, $RNDKEY0, @AESDATA ]}
         lea             16($AESKEY), %rax
 .Lvaesenc_loop_first_4_vecs$local_label_suffix:
         vbroadcasti32x4 (%rax), $RNDKEY
-        @{[ _vaesenc_4x $RNDKEY ]}
+        @{[ _vaesenc_4x $RNDKEY, @AESDATA ]}
         add             \$16, %rax
         cmp             %rax, $RNDKEYLAST_PTR
         jne             .Lvaesenc_loop_first_4_vecs$local_label_suffix
-        @{[ _aesenclast_and_xor_4x ]}
+        @{[ _aesenclast_and_xor_4x $SRC, $DST, $RNDKEYLAST, @AESDATA, @GHASHDATA ]}
         sub             \$-4*$VL, $SRC  # shorter than 'add 4*VL' when VL=32
         sub             \$-4*$VL, $DST
         add             \$-4*$VL, $DATALEN
@@ -1041,14 +1114,18 @@ ___
 ___
     }
 
-    # Cache as many additional AES round keys as possible.
-    for my $i ( reverse 1 .. 9 ) {
-        $code .= <<___;
-        vbroadcasti32x4 -$i*16($RNDKEYLAST_PTR), ${"RNDKEY_M$i"}
-___
-    }
-
     $code .= <<___;
+    # Cache as many additional AES round keys as possible.
+    vbroadcasti32x4 -9*16($RNDKEYLAST_PTR), $RNDKEY_M9
+    vbroadcasti32x4 -8*16($RNDKEYLAST_PTR), $RNDKEY_M8
+    vbroadcasti32x4 -7*16($RNDKEYLAST_PTR), $RNDKEY_M7
+    vbroadcasti32x4 -6*16($RNDKEYLAST_PTR), $RNDKEY_M6
+    vbroadcasti32x4 -5*16($RNDKEYLAST_PTR), $RNDKEY_M5
+    vbroadcasti32x4 -4*16($RNDKEYLAST_PTR), $RNDKEY_M4
+    vbroadcasti32x4 -3*16($RNDKEYLAST_PTR), $RNDKEY_M3
+    vbroadcasti32x4 -2*16($RNDKEYLAST_PTR), $RNDKEY_M2
+    vbroadcasti32x4 -1*16($RNDKEYLAST_PTR), $RNDKEY_M1
+
 .Lcrypt_loop_4x$local_label_suffix:
 ___
 
@@ -1065,20 +1142,20 @@ ___
 
     $code .= <<___;
     # Start the AES encryption of the counter blocks.
-    @{[ _ctr_begin_4x ]}
+    @{[ _ctr_begin_4x $LE_CTR, $LE_CTR_INC, $BSWAP_MASK, $RNDKEY0, @AESDATA ]}
     cmp             \$24, $AESKEYLEN
     jl              .Laes128$local_label_suffix
     je              .Laes192$local_label_suffix
     # AES-256
     vbroadcasti32x4 -13*16($RNDKEYLAST_PTR), $RNDKEY
-    @{[ _vaesenc_4x $RNDKEY ]}
+    @{[ _vaesenc_4x $RNDKEY, @AESDATA ]}
     vbroadcasti32x4 -12*16($RNDKEYLAST_PTR), $RNDKEY
-    @{[ _vaesenc_4x $RNDKEY ]}
+    @{[ _vaesenc_4x $RNDKEY, @AESDATA ]}
 .Laes192$local_label_suffix:
     vbroadcasti32x4 -11*16($RNDKEYLAST_PTR), $RNDKEY
-    @{[ _vaesenc_4x $RNDKEY ]}
+    @{[ _vaesenc_4x $RNDKEY, @AESDATA ]}
     vbroadcasti32x4 -10*16($RNDKEYLAST_PTR), $RNDKEY
-    @{[ _vaesenc_4x $RNDKEY ]}
+    @{[ _vaesenc_4x $RNDKEY, @AESDATA ]}
 .Laes128$local_label_suffix:
 ___
 
@@ -1089,17 +1166,31 @@ ___
         $code .= "prefetcht0  512+$i($SRC)\n";
     }
 
-    # Finish the AES encryption of the counter blocks in V0-V3, interleaved
-    # with the GHASH update of the ciphertext blocks in GHASHDATA[0-3].
-    for my $i ( reverse 1 .. 9 ) {
-        $code .= <<___;
-        @{[ _ghash_step_4x  (9 - $i) ]}
-        @{[ _vaesenc_4x     ${"RNDKEY_M$i"} ]}
-___
-    }
     $code .= <<___;
-    @{[ _ghash_step_4x  9 ]}
-    @{[ _aesenclast_and_xor_4x ]}
+    # Finish the AES encryption of the counter blocks in AESDATA[0-3],
+    # interleaved with the GHASH update of the ciphertext blocks in
+    # GHASHDATA[0-3].
+    @{[ _ghash_step_4x  0, @ghash_4x_args ]}
+    @{[ _vaesenc_4x     $RNDKEY_M9, @AESDATA ]}
+    @{[ _ghash_step_4x  1, @ghash_4x_args ]}
+    @{[ _vaesenc_4x     $RNDKEY_M8, @AESDATA ]}
+    @{[ _ghash_step_4x  2, @ghash_4x_args ]}
+    @{[ _vaesenc_4x     $RNDKEY_M7, @AESDATA ]}
+    @{[ _ghash_step_4x  3, @ghash_4x_args ]}
+    @{[ _vaesenc_4x     $RNDKEY_M6, @AESDATA ]}
+    @{[ _ghash_step_4x  4, @ghash_4x_args ]}
+    @{[ _vaesenc_4x     $RNDKEY_M5, @AESDATA ]}
+    @{[ _ghash_step_4x  5, @ghash_4x_args ]}
+    @{[ _vaesenc_4x     $RNDKEY_M4, @AESDATA ]}
+    @{[ _ghash_step_4x  6, @ghash_4x_args ]}
+    @{[ _vaesenc_4x     $RNDKEY_M3, @AESDATA ]}
+    @{[ _ghash_step_4x  7, @ghash_4x_args ]}
+    @{[ _vaesenc_4x     $RNDKEY_M2, @AESDATA ]}
+    @{[ _ghash_step_4x  8, @ghash_4x_args ]}
+    @{[ _vaesenc_4x     $RNDKEY_M1, @AESDATA ]}
+
+    @{[ _ghash_step_4x  9, @ghash_4x_args ]}
+    @{[ _aesenclast_and_xor_4x $SRC, $DST, $RNDKEYLAST, @AESDATA, @GHASHDATA ]}
     sub             \$-4*$VL, $SRC  # shorter than 'add 4*VL' when VL=32
     sub             \$-4*$VL, $DST
     add             \$-4*$VL, $DATALEN
@@ -1112,7 +1203,7 @@ ___
         # Update GHASH with the last set of ciphertext blocks.
         $code .= <<___;
 .Lghash_last_ciphertext_4x$local_label_suffix:
-        @{[ _ghash_4x ]}
+        @{[ _ghash_4x @ghash_4x_args ]}
 ___
     }
 
@@ -1146,7 +1237,7 @@ ___
     mov             $DATALEN, %rax
     neg             %rax
     and             \$-16, %rax  # -round_up(DATALEN, 16)
-    lea             $OFFSETOFEND_H_POWERS($H_POWERS,%rax), $POWERS_PTR
+    lea             $OFFSETOFEND_H_POWERS($HTABLE,%rax), $POWERS_PTR
 ___
 
     # Start collecting the unreduced GHASH intermediate value LO, MI, HI.
@@ -1165,29 +1256,29 @@ ___
     # Process a full vector of length VL.
 
     # Encrypt a vector of counter blocks.
-    vpshufb         $BSWAP_MASK, $LE_CTR, $V0
+    vpshufb         $BSWAP_MASK, $LE_CTR, $AESDATA0
     vpaddd          $LE_CTR_INC, $LE_CTR, $LE_CTR
-    vpxord          $RNDKEY0, $V0, $V0
+    vpxord          $RNDKEY0, $AESDATA0, $AESDATA0
     lea             16($AESKEY), %rax
 .Lvaesenc_loop_tail_full_vec$local_label_suffix:
     vbroadcasti32x4 (%rax), $RNDKEY
-    vaesenc         $RNDKEY, $V0, $V0
+    vaesenc         $RNDKEY, $AESDATA0, $AESDATA0
     add             \$16, %rax
     cmp             %rax, $RNDKEYLAST_PTR
     jne             .Lvaesenc_loop_tail_full_vec$local_label_suffix
-    vaesenclast     $RNDKEYLAST, $V0, $V0
+    vaesenclast     $RNDKEYLAST, $AESDATA0, $AESDATA0
 
     # XOR the data with the vector of keystream blocks.
-    vmovdqu8        ($SRC), $V1
-    vpxord          $V1, $V0, $V0
-    vmovdqu8        $V0, ($DST)
+    vmovdqu8        ($SRC), $AESDATA1
+    vpxord          $AESDATA1, $AESDATA0, $AESDATA0
+    vmovdqu8        $AESDATA0, ($DST)
 
     # Update GHASH with the ciphertext blocks, without reducing.
     vmovdqu8        ($POWERS_PTR), $H_POW1
-    vpshufb         $BSWAP_MASK, @{[ $enc ? $V0 : $V1 ]}, $V0
-    vpxord          $GHASH_ACC, $V0, $V0
-    @{[ _ghash_mul_noreduce $H_POW1, $V0, $LO, $MI, $HI, $GHASHDATA3,
-                            $V1, $V2, $V3 ]}
+    vpshufb         $BSWAP_MASK, @{[ $enc ? $AESDATA0 : $AESDATA1 ]}, $AESDATA0
+    vpxord          $GHASH_ACC, $AESDATA0, $AESDATA0
+    @{[ _ghash_mul_noreduce $H_POW1, $AESDATA0, $LO, $MI, $HI,
+                            $GHASHDATA3, $AESDATA1, $AESDATA2, $AESDATA3 ]}
     vpxor           $GHASH_ACC_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
 
     add             \$$VL, $POWERS_PTR
@@ -1216,21 +1307,21 @@ ___
 
     # Encrypt one last vector of counter blocks.  This does not need to be
     # masked.  The counter does not need to be incremented here.
-    vpshufb         $BSWAP_MASK, $LE_CTR, $V0
-    vpxord          $RNDKEY0, $V0, $V0
+    vpshufb         $BSWAP_MASK, $LE_CTR, $AESDATA0
+    vpxord          $RNDKEY0, $AESDATA0, $AESDATA0
     lea             16($AESKEY), %rax
 .Lvaesenc_loop_tail_partialvec$local_label_suffix:
     vbroadcasti32x4 (%rax), $RNDKEY
-    vaesenc         $RNDKEY, $V0, $V0
+    vaesenc         $RNDKEY, $AESDATA0, $AESDATA0
     add             \$16, %rax
     cmp             %rax, $RNDKEYLAST_PTR
     jne             .Lvaesenc_loop_tail_partialvec$local_label_suffix
-    vaesenclast     $RNDKEYLAST, $V0, $V0
+    vaesenclast     $RNDKEYLAST, $AESDATA0, $AESDATA0
 
     # XOR the data with the appropriate number of keystream bytes.
-    vmovdqu8        ($SRC), $V1\{%k1}{z}
-    vpxord          $V1, $V0, $V0
-    vmovdqu8        $V0, ($DST){%k1}
+    vmovdqu8        ($SRC), $AESDATA1\{%k1}{z}
+    vpxord          $AESDATA1, $AESDATA0, $AESDATA0
+    vmovdqu8        $AESDATA0, ($DST){%k1}
 
     # Update GHASH with the ciphertext block(s), without reducing.
     #
@@ -1245,17 +1336,17 @@ ___
     # they're multiplied with are also all-zeroes.  Therefore they just add
     # 0 * 0 = 0 to the final GHASH result, which makes no difference.
     vmovdqu8        ($POWERS_PTR), $H_POW1\{%k2}{z}
-    @{[ $enc ? "vmovdqu8 $V0, $V1\{%k1}{z}" : "" ]}
-    vpshufb         $BSWAP_MASK, $V1, $V0
-    vpxord          $GHASH_ACC, $V0, $V0
-    @{[ _ghash_mul_noreduce $H_POW1, $V0, $LO, $MI, $HI, $GHASHDATA3,
-                            $V1, $V2, $V3 ]}
+    @{[ $enc ? "vmovdqu8 $AESDATA0, $AESDATA1\{%k1}{z}" : "" ]}
+    vpshufb         $BSWAP_MASK, $AESDATA1, $AESDATA0
+    vpxord          $GHASH_ACC, $AESDATA0, $AESDATA0
+    @{[ _ghash_mul_noreduce $H_POW1, $AESDATA0, $LO, $MI, $HI,
+                            $GHASHDATA3, $AESDATA1, $AESDATA2, $AESDATA3 ]}
 
 .Lreduce$local_label_suffix:
     # Finally, do the GHASH reduction.
-    @{[ _ghash_reduce   $LO, $MI, $HI, $GFPOLY, $V0 ]}
+    @{[ _ghash_reduce   $LO, $MI, $HI, $GFPOLY, $AESDATA0 ]}
     @{[ _horizontal_xor $HI, $HI_XMM, $GHASH_ACC_XMM,
-                        "%xmm0", "%xmm1", "%xmm2" ]}
+                        $AESDATA0_XMM, $AESDATA1_XMM, $AESDATA2_XMM ]}
 
 .Ldone$local_label_suffix:
     # Store the updated GHASH accumulator back to memory.
@@ -1270,7 +1361,7 @@ ___
 # void gcm_gmult_vpclmulqdq_avx10(uint8_t Xi[16], const u128 Htable[16]);
 $code .= _begin_func "gcm_gmult_vpclmulqdq_avx10", 1;
 {
-    my ( $GHASH_ACC_PTR, $H_POWERS ) = @argregs[ 0 .. 1 ];
+    my ( $GHASH_ACC_PTR, $HTABLE ) = @argregs[ 0 .. 1 ];
     my ( $GHASH_ACC, $BSWAP_MASK, $H_POW1, $GFPOLY, $T0, $T1, $T2 ) =
       map( "%xmm$_", ( 0 .. 6 ) );
 
@@ -1280,7 +1371,7 @@ $code .= _begin_func "gcm_gmult_vpclmulqdq_avx10", 1;
 
     vmovdqu         ($GHASH_ACC_PTR), $GHASH_ACC
     vmovdqu         .Lbswap_mask(%rip), $BSWAP_MASK
-    vmovdqu         $OFFSETOFEND_H_POWERS-16($H_POWERS), $H_POW1
+    vmovdqu         $OFFSETOFEND_H_POWERS-16($HTABLE), $H_POW1
     vmovdqu         .Lgfpoly(%rip), $GFPOLY
     vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
 
