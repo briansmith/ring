@@ -12,11 +12,25 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-mod fallback;
-mod reduce_once;
+use super::*;
+use crate::{error::LenMismatchError, limb::*};
+use core::num::NonZeroUsize;
 
-pub(super) mod aarch64;
-pub(super) mod x86_64;
+/// Equivalent to `if (r >= m) { r -= m; }`
+#[inline]
+pub fn limbs_reduce_once(r: &mut [Limb], a: &[Limb], m: &[Limb]) -> Result<(), LenMismatchError> {
+    let num_limbs = NonZeroUsize::new(m.len()).ok_or_else(|| LenMismatchError::new(m.len()))?;
+    reduce_once(0, r, a, m, num_limbs)
+}
 
-pub(crate) use self::reduce_once::limbs_reduce_once;
-use fallback::{cmov::limbs_cmov, sub::limbs_sub};
+fn reduce_once(
+    a_high: Limb,
+    r: &mut [Limb],
+    a: &[Limb],
+    m: &[Limb],
+    num_limbs: NonZeroUsize,
+) -> Result<(), LenMismatchError> {
+    #[allow(clippy::useless_asref)]
+    let borrow = limbs_sub(a_high, (r.as_mut(), a, m), num_limbs)?;
+    limbs_cmov(borrow, r, a, num_limbs)
+}
