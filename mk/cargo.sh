@@ -192,6 +192,9 @@ case $target in
     fi
     ;;
   x86_64-unknown-linux-musl)
+    if [ -n "${RING_CPU_MODEL-}" ]; then
+      export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_x86_64 -cpu ${RING_CPU_MODEL}"
+    fi
     use_clang=1
     # XXX: Work around https://github.com/rust-lang/rust/issues/79555.
     if [ -n "${RING_COVERAGE-}" ]; then
