@@ -143,11 +143,12 @@ def print_verify_test(case, n, e):
     print('Result = %s' % case['Result'])
     print('')
 
-def main(fn, test_type, padding_alg):
+def main(fn, test_type, padding_alg, alg):
     input_file_digest = hashlib.sha384(open(fn, 'rb').read()).hexdigest()
     # File header
     print("# RSA %(padding_alg)s Test Vectors for FIPS 186-4 from %(fn)s in" % \
             { "fn": fn, "padding_alg": padding_alg })
+    print("# http://csrc.nist.gov/groups/STM/cavp/documents/dss/186-2rsatestvectors.zip")
     print("# http://csrc.nist.gov/groups/STM/cavp/documents/dss/186-3rsatestvectors.zip")
     print("# accessible from")
     print("# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors")
@@ -180,6 +181,10 @@ def main(fn, test_type, padding_alg):
             last_field = "S"
 
     for case in parse(fn, last_field):
+        if alg is not None and case['SHAAlg'] != alg:
+            debug("Skipping filtered algorithm", DEBUG)
+            continue
+
         if case['SHAAlg'] == 'SHA224':
             # SHA224 not supported in *ring*.
             debug("Skipping due to use of SHA224", DEBUG)
@@ -223,10 +228,11 @@ def main(fn, test_type, padding_alg):
     debug("%d test cases output." % num_cases, True)
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print("Usage:\n python %s <filename>" % sys.argv[0])
+    if len(sys.argv) not in [2, 3]:
+        print("Usage:\n python %s <filename> [algorithm]" % sys.argv[0])
     else:
         fn = sys.argv[1]
+        alg = sys.argv[2] if len(sys.argv) > 2 else None
         if 'PSS' in fn:
             pad_alg = 'PSS'
         elif '15' in fn:
@@ -243,4 +249,4 @@ if __name__ == '__main__':
             print("Could not determine test type.")
             quit()
 
-        main(sys.argv[1], test_type, pad_alg)
+        main(sys.argv[1], test_type, pad_alg, alg)
