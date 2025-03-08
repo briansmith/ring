@@ -201,7 +201,7 @@ wasm32-wasi|wasm32-wasip1|wasm32-wasip2)
       https://github.com/briansmith/ring-toolchain \
       target/tools/linux-x86_64
   ;;
-x86_64-unknown-linux-gnu)
+x86_64-unknown-linux-*)
   if [ -n "${RING_CPU_MODEL-}" ]; then
     install_packages qemu-user
   fi
