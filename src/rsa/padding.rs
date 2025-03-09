@@ -93,13 +93,14 @@ fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], out: &mut [u8]) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{digest, error, test};
+    use crate::testutil as test;
+    use crate::{digest, error};
     use alloc::vec;
 
     #[test]
     fn test_pss_padding_verify() {
         test::run(
-            test_file!("rsa_pss_padding_tests.txt"),
+            test_vector_file!("rsa_pss_padding_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -138,7 +139,7 @@ mod test {
     #[test]
     fn test_pss_padding_encode() {
         test::run(
-            test_file!("rsa_pss_padding_tests.txt"),
+            test_vector_file!("rsa_pss_padding_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

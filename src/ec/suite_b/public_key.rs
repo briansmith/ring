@@ -68,13 +68,14 @@ pub(super) fn parse_uncompressed_point(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{cpu, test};
+    use crate::cpu;
+    use crate::testutil as test;
 
     #[test]
     fn parse_uncompressed_point_test() {
         let cpu = cpu::features();
         test::run(
-            test_file!("suite_b_public_key_tests.txt"),
+            test_vector_file!("suite_b_public_key_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

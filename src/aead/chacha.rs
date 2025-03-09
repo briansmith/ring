@@ -201,7 +201,8 @@ mod tests {
     extern crate alloc;
 
     use super::{super::overlapping::IndexError, *};
-    use crate::{error, test};
+    use crate::error;
+    use crate::testutil as test;
     use alloc::vec;
 
     const MAX_ALIGNMENT_AND_OFFSET: (usize, usize) = (15, 259);
@@ -252,38 +253,41 @@ mod tests {
         // Reuse a buffer to avoid slowing down the tests with allocations.
         let mut buf = vec![0u8; 1300];
 
-        test::run(test_file!("chacha_tests.txt"), move |section, test_case| {
-            assert_eq!(section, "");
+        test::run(
+            test_vector_file!("chacha_tests.txt"),
+            move |section, test_case| {
+                assert_eq!(section, "");
 
-            let key = test_case.consume_bytes("Key");
-            let key: &[u8; KEY_LEN] = key.as_slice().try_into()?;
-            let key = Key::new(*key);
+                let key = test_case.consume_bytes("Key");
+                let key: &[u8; KEY_LEN] = key.as_slice().try_into()?;
+                let key = Key::new(*key);
 
-            let ctr = test_case.consume_usize("Ctr");
-            let nonce = test_case.consume_bytes("Nonce");
-            let input = test_case.consume_bytes("Input");
-            let output = test_case.consume_bytes("Output");
+                let ctr = test_case.consume_usize("Ctr");
+                let nonce = test_case.consume_bytes("Nonce");
+                let input = test_case.consume_bytes("Input");
+                let output = test_case.consume_bytes("Output");
 
-            // Run the test case over all prefixes of the input because the
-            // behavior of ChaCha20 implementation changes dependent on the
-            // length of the input.
-            for len in 0..=input.len() {
-                #[allow(clippy::cast_possible_truncation)]
-                chacha20_test_case_inner(
-                    &key,
-                    &nonce,
-                    ctr as u32,
-                    &input[..len],
-                    &output[..len],
-                    &mut buf,
-                    max_alignment_and_offset,
-                    cpu,
-                    &f,
-                );
-            }
+                // Run the test case over all prefixes of the input because the
+                // behavior of ChaCha20 implementation changes dependent on the
+                // length of the input.
+                for len in 0..=input.len() {
+                    #[allow(clippy::cast_possible_truncation)]
+                    chacha20_test_case_inner(
+                        &key,
+                        &nonce,
+                        ctr as u32,
+                        &input[..len],
+                        &output[..len],
+                        &mut buf,
+                        max_alignment_and_offset,
+                        cpu,
+                        &f,
+                    );
+                }
 
-            Ok(())
-        });
+                Ok(())
+            },
+        );
     }
 
     fn chacha20_test_case_inner(

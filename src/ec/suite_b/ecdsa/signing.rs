@@ -526,14 +526,15 @@ static EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
 
 #[cfg(test)]
 mod tests {
-    use crate::{rand, signature, test};
+    use crate::testutil as test;
+    use crate::{rand, signature};
 
     #[test]
     fn signature_ecdsa_sign_fixed_test() {
         let rng = rand::SystemRandom::new();
 
         test::run(
-            test_file!("ecdsa_sign_fixed_tests.txt"),
+            test_vector_file!("ecdsa_sign_fixed_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -575,7 +576,7 @@ mod tests {
         let rng = rand::SystemRandom::new();
 
         test::run(
-            test_file!("ecdsa_sign_asn1_tests.txt"),
+            test_vector_file!("ecdsa_sign_asn1_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

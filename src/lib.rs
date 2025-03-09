@@ -100,8 +100,9 @@ mod debug;
 #[macro_use]
 mod prefixed;
 
+#[doc(hidden)]
 #[macro_use]
-pub mod test;
+mod testutil;
 
 #[macro_use]
 mod bssl;
@@ -167,3 +168,10 @@ mod sealed {
     // ```
     pub trait Sealed {}
 }
+
+#[deprecated(note = "internal API that will be removed")]
+pub mod deprecated_test;
+
+#[allow(deprecated)]
+#[deprecated(note = "internal API that will be removed")]
+pub use deprecated_test as test;

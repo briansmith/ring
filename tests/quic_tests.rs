@@ -14,7 +14,9 @@
 
 #![allow(missing_docs)]
 
-use ring::{aead::quic, test, test_file};
+use ring::aead::quic;
+#[allow(deprecated)]
+use ring::{test, test_file};
 
 #[test]
 fn quic_aes_128() {
