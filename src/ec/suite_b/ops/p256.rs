@@ -328,7 +328,7 @@ mod tests {
         point_mul_base_tests(
             &PRIVATE_KEY_OPS,
             point_mul_base_vartime,
-            test_file!("p256_point_mul_base_tests.txt"),
+            test_vector_file!("p256_point_mul_base_tests.txt"),
         );
     }
 }

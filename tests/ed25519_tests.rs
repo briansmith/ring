@@ -17,8 +17,9 @@
 use ring::{
     error, rand,
     signature::{self, Ed25519KeyPair, KeyPair},
-    test, test_file,
 };
+#[allow(deprecated)]
+use ring::{test, test_file};
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
@@ -48,6 +49,7 @@ fn test_signature_ed25519() {
         }
 
         // Test PKCS#8 generation, parsing, and private-to-public calculations.
+        #[allow(deprecated)]
         let rng = test::rand::FixedSliceRandom { bytes: &seed };
         let pkcs8 = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
         let key_pair = Ed25519KeyPair::from_pkcs8(pkcs8.as_ref()).unwrap();

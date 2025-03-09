@@ -68,13 +68,14 @@ fn digest_scalar_(n: &Modulus<N>, digest: &[u8]) -> Scalar {
 #[cfg(test)]
 mod tests {
     use super::digest_bytes_scalar;
-    use crate::{cpu, digest, ec::suite_b::ops::*, limb, test};
+    use crate::testutil as test;
+    use crate::{cpu, digest, ec::suite_b::ops::*, limb};
 
     #[test]
     fn test() {
         let cpu = cpu::features();
         test::run(
-            test_file!("ecdsa_digest_scalar_tests.txt"),
+            test_vector_file!("ecdsa_digest_scalar_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

@@ -17,8 +17,9 @@
 use ring::{
     rand,
     signature::{self, KeyPair},
-    test, test_file,
 };
+#[allow(deprecated)]
+use ring::{test, test_file};
 
 // ECDSA *signing* tests are in src/ec/ecdsa/signing.rs.
 

@@ -53,7 +53,7 @@
 //! ```ignore
 //! use ring::test;
 //!
-//! test::run(test::test_file!("hmac_tests.txt"), |section, test_case| {
+//! test::run(test::test_vector_file!("hmac_tests.txt"), |section, test_case| {
 //!     assert_eq!(section, ""); // This test doesn't use named sections.
 //!
 //!     let digest_alg = test_case.consume_digest_alg("HMAC");
@@ -90,7 +90,7 @@
 //! a = 2b11cb945c8cf152ffa4c9c2b1c965b019b35d0b7626919ef0ae6cb9d232f8af
 //! b = 18905f76a53755c679fb732b7762251075ba95fc5fedb60179e730d418a9143c
 //! r = 18905f76a53755c679fb732b7762251075ba95fc5fedb60179e730d418a9143c
-//! thread 'example_test' panicked at 'Test failed.', src\test.rs:206
+//! thread 'example_test' panicked at 'Test failed.', src\testutil:206
 //! stack backtrace:
 //!    0:     0x7ff654a05c7c - std::rt::lang_start::h61f4934e780b4dfc
 //!    1:     0x7ff654a04f32 - std::rt::lang_start::h61f4934e780b4dfc
@@ -292,10 +292,10 @@ impl TestCase {
 }
 
 /// References a test input file.
-#[macro_export]
-macro_rules! test_file {
+#[cfg(test)]
+macro_rules! test_vector_file {
     ($file_name:expr) => {
-        $crate::test::File {
+        $crate::testutil::File {
             file_name: $file_name,
             contents: include_str!($file_name),
         }
@@ -538,11 +538,12 @@ pub mod rand {
 
 #[cfg(test)]
 mod tests {
-    use crate::{error, test};
+    use crate::error;
+    use crate::testutil as test;
 
     #[test]
     fn one_ok() {
-        test::run(test_file!("test_1_tests.txt"), |_, test_case| {
+        test::run(test_vector_file!("test_1_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
             Ok(())
         });
@@ -551,7 +552,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Test failed.")]
     fn one_err() {
-        test::run(test_file!("test_1_tests.txt"), |_, test_case| {
+        test::run(test_vector_file!("test_1_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
             Err(error::Unspecified)
         });
@@ -560,7 +561,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Oh noes!")]
     fn one_panics() {
-        test::run(test_file!("test_1_tests.txt"), |_, test_case| {
+        test::run(test_vector_file!("test_1_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
             panic!("Oh noes!");
         });
@@ -586,7 +587,7 @@ mod tests {
 
     fn err_one(test_to_fail: usize) {
         let mut n = 0;
-        test::run(test_file!("test_3_tests.txt"), |_, test_case| {
+        test::run(test_vector_file!("test_3_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
             let result = if n != test_to_fail {
                 Ok(())
@@ -618,7 +619,7 @@ mod tests {
 
     fn panic_one(test_to_fail: usize) {
         let mut n = 0;
-        test::run(test_file!("test_3_tests.txt"), |_, test_case| {
+        test::run(test_vector_file!("test_3_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
             if n == test_to_fail {
                 panic!("Oh Noes!");
@@ -631,6 +632,9 @@ mod tests {
     #[test]
     #[should_panic(expected = "Syntax error: Expected Key = Value.")]
     fn syntax_error() {
-        test::run(test_file!("test_1_syntax_error_tests.txt"), |_, _| Ok(()));
+        test::run(
+            test_vector_file!("test_1_syntax_error_tests.txt"),
+            |_, _| Ok(()),
+        );
     }
 }

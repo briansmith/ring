@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::test;
+use crate::testutil;
 use core::{marker::PhantomData, mem::size_of};
 
 /// A ZST that can be added to any type to make the type `!Send`.
@@ -23,6 +23,8 @@ impl NotSend {
     pub const VALUE: Self = Self(PhantomData);
 }
 
-const _: () = test::compile_time_assert_clone::<NotSend>();
-const _: () = test::compile_time_assert_copy::<NotSend>();
+#[allow(deprecated)]
+const _: () = testutil::compile_time_assert_clone::<NotSend>();
+#[allow(deprecated)]
+const _: () = testutil::compile_time_assert_copy::<NotSend>();
 const _: () = assert!(size_of::<NotSend>() == 0);
