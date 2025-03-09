@@ -207,11 +207,11 @@ fn encrypt_iv_xor_block_using_ctr32(key: &impl EncryptCtr32, iv: Iv, mut block: 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test;
+    use crate::testutil as test;
 
     #[test]
     pub fn test_aes() {
-        test::run(test_file!("aes_tests.txt"), |section, test_case| {
+        test::run(test_vector_file!("aes_tests.txt"), |section, test_case| {
             assert_eq!(section, "");
             let key = consume_key(test_case, "Key");
             let input = test_case.consume_bytes("Input");

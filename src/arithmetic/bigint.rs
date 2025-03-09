@@ -833,7 +833,8 @@ fn unwrap_impossible_limb_slice_error(err: LimbSliceError) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{cpu, test};
+    use crate::cpu;
+    use crate::testutil as test;
 
     // Type-level representation of an arbitrary modulus.
     struct M {}
@@ -844,7 +845,7 @@ mod tests {
     fn test_elem_exp_consttime() {
         let cpu_features = cpu::features();
         test::run(
-            test_file!("../../crypto/fipsmodule/bn/test/mod_exp_tests.txt"),
+            test_vector_file!("../../crypto/fipsmodule/bn/test/mod_exp_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -927,7 +928,7 @@ mod tests {
     fn test_elem_mul() {
         let cpu_features = cpu::features();
         test::run(
-            test_file!("../../crypto/fipsmodule/bn/test/mod_mul_tests.txt"),
+            test_vector_file!("../../crypto/fipsmodule/bn/test/mod_mul_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -952,7 +953,7 @@ mod tests {
     fn test_elem_squared() {
         let cpu_features = cpu::features();
         test::run(
-            test_file!("bigint_elem_squared_tests.txt"),
+            test_vector_file!("bigint_elem_squared_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -975,7 +976,7 @@ mod tests {
     fn test_elem_reduced() {
         let cpu_features = cpu::features();
         test::run(
-            test_file!("bigint_elem_reduced_tests.txt"),
+            test_vector_file!("bigint_elem_reduced_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -1002,7 +1003,7 @@ mod tests {
     fn test_elem_reduced_once() {
         let cpu_features = cpu::features();
         test::run(
-            test_file!("bigint_elem_reduced_once_tests.txt"),
+            test_vector_file!("bigint_elem_reduced_once_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

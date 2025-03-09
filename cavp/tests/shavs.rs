@@ -21,7 +21,9 @@ use wasm_bindgen_test::wasm_bindgen_test_configure;
 wasm_bindgen_test_configure!(run_in_browser);
 
 mod digest_shavs {
-    use ring::{digest, test};
+    use ring::digest;
+    #[allow(deprecated)]
+    use ring::test;
 
     fn run_known_answer_test(digest_alg: &'static digest::Algorithm, test_file: test::File) {
         let section_name = &format!("L = {}", digest_alg.output_len());
@@ -51,7 +53,9 @@ mod digest_shavs {
             #[allow(non_snake_case)]
             mod $algorithm_name {
                 use super::run_known_answer_test;
-                use ring::{digest, test_file};
+                use ring::digest;
+                #[allow(deprecated)]
+                use ring::test_file;
 
                 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
                 use wasm_bindgen_test::wasm_bindgen_test as test;

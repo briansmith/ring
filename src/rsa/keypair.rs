@@ -641,14 +641,14 @@ impl KeyPair {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test;
+    use crate::testutil as test;
     use alloc::vec;
 
     #[test]
     fn test_rsakeypair_private_exponentiate() {
         let cpu = cpu::features();
         test::run(
-            test_file!("keypair_private_exponentiate_tests.txt"),
+            test_vector_file!("keypair_private_exponentiate_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

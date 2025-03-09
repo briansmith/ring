@@ -20,8 +20,9 @@ use ring::{
     io::der,
     rand, rsa,
     signature::{self, KeyPair},
-    test, test_file,
 };
+#[allow(deprecated)]
+use ring::{test, test_file};
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
@@ -119,6 +120,7 @@ fn test_signature_rsa_pss_sign() {
             let salt = test_case.consume_bytes("Salt");
             let expected = test_case.consume_bytes("Sig");
 
+            #[allow(deprecated)]
             let rng = test::rand::FixedSliceRandom { bytes: &salt };
 
             let mut actual = vec![0u8; key_pair.public().modulus_len()];
