@@ -14,10 +14,9 @@
 
 #![allow(missing_docs)]
 
-use ring::{
-    rand::{self, SecureRandom as _},
-    test,
-};
+use ring::rand::{self, SecureRandom as _};
+#[allow(deprecated)]
+use ring::test;
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};

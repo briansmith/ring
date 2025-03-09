@@ -147,7 +147,8 @@ fn ecdh(
 #[cfg(test)]
 mod tests {
     use super::super::ops;
-    use crate::{agreement, ec, limb, test};
+    use crate::testutil as test;
+    use crate::{agreement, ec, limb};
 
     static SUPPORTED_SUITE_B_ALGS: [(&str, &agreement::Algorithm, &ec::Curve, &ops::CommonOps); 2] = [
         (

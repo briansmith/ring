@@ -277,14 +277,14 @@ pub static ECDSA_P384_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificatio
 mod tests {
     extern crate alloc;
     use super::*;
-    use crate::test;
+    use crate::testutil as test;
     use alloc::{vec, vec::Vec};
 
     #[test]
     fn test_digest_based_test_vectors() {
         let cpu = cpu::features();
         test::run(
-            test_file!("../../../../crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt"),
+            test_vector_file!("../../../../crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
