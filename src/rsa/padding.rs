@@ -30,11 +30,23 @@ pub trait Padding: 'static + Sync + crate::sealed::Sealed + core::fmt::Debug {
     fn digest_alg(&self) -> &'static digest::Algorithm;
 }
 
+pub(super) fn encode(
+    encoding: &dyn RsaEncoding,
+    m_hash: digest::Digest,
+    m_out: &mut [u8],
+    mod_bits: bits::BitLength,
+    rng: &dyn rand::SecureRandom,
+) -> Result<(), error::Unspecified> {
+    #[allow(deprecated)]
+    encoding.encode(m_hash, m_out, mod_bits, rng)
+}
+
 /// An RSA signature encoding as described in [RFC 3447 Section 8].
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
 #[cfg(feature = "alloc")]
 pub trait RsaEncoding: Padding {
+    #[deprecated(note = "internal API that will be removed")]
     #[doc(hidden)]
     fn encode(
         &self,
@@ -153,6 +165,7 @@ mod test {
 
                 let mut m_out = vec![0u8; bit_len.as_usize_bytes_rounded_up()];
                 let digest = digest::digest(alg.digest_alg(), &msg);
+                #[allow(deprecated)]
                 alg.encode(digest, &mut m_out, bit_len, &rng).unwrap();
                 assert_eq!(m_out, encoded);
 
