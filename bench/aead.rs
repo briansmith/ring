@@ -28,11 +28,19 @@ static ALGORITHMS: &[(&str, &aead::Algorithm)] = &[
 
 static RECORD_LENGTHS: &[usize] = &[
     TLS12_FINISHED_LEN,
-    TLS13_FINISHED_LEN,
     16,
+    TLS13_FINISHED_LEN,
+    64,
+    128,
+    256,
+    512,
+    1024,
     // ~1 packet of data in TLS.
     1350,
+    2048,
+    4096,
     8192,
+    16384,
 ];
 
 // All the AEADs we're testing use 96-bit nonces.
