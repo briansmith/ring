@@ -65,62 +65,6 @@ my $g_cur_func_uses_seh;
 my @g_cur_func_saved_gpregs;
 my @g_cur_func_saved_xmmregs;
 
-sub assemble {
-# This function replaces AVX2 assembly instructions with their assembled forms,
-# to allow the code to work on old versions of binutils (older than 2.30) that do
-# not support these instructions.
-    my ( $data, $comment ) = @_;
-    my %asmMap = (
-'vaesenc         %ymm2, %ymm12, %ymm12' => '.byte 0xc4,0x62,0x1d,0xdc,0xe2',
-'vaesenc         %ymm2, %ymm13, %ymm13' => '.byte 0xc4,0x62,0x15,0xdc,0xea',
-'vaesenc         %ymm2, %ymm14, %ymm14' => '.byte 0xc4,0x62,0x0d,0xdc,0xf2',
-'vaesenc         %ymm2, %ymm15, %ymm15' => '.byte 0xc4,0x62,0x05,0xdc,0xfa',
-'vaesenclast     %ymm10, %ymm12, %ymm12' => '.byte 0xc4,0x42,0x1d,0xdd,0xe2',
-'vaesenclast     %ymm10, %ymm13, %ymm13' => '.byte 0xc4,0x42,0x15,0xdd,0xea',
-'vaesenclast     %ymm2, %ymm12, %ymm12' => '.byte 0xc4,0x62,0x1d,0xdd,0xe2',
-'vaesenclast     %ymm3, %ymm13, %ymm13' => '.byte 0xc4,0x62,0x15,0xdd,0xeb',
-'vaesenclast     %ymm5, %ymm14, %ymm14' => '.byte 0xc4,0x62,0x0d,0xdd,0xf5',
-'vaesenclast     %ymm6, %ymm15, %ymm15' => '.byte 0xc4,0x62,0x05,0xdd,0xfe',
-'vpclmulqdq      $0x00, %ymm2, %ymm12, %ymm4' => '.byte 0xc4,0xe3,0x1d,0x44,0xe2,0x00',
-'vpclmulqdq      $0x00, %ymm2, %ymm12, %ymm5' => '.byte 0xc4,0xe3,0x1d,0x44,0xea,0x00',
-'vpclmulqdq      $0x00, %ymm3, %ymm13, %ymm4' => '.byte 0xc4,0xe3,0x15,0x44,0xe3,0x00',
-'vpclmulqdq      $0x00, %ymm4, %ymm3, %ymm2' => '.byte 0xc4,0xe3,0x65,0x44,0xd4,0x00',
-'vpclmulqdq      $0x00, %ymm4, %ymm3, %ymm5' => '.byte 0xc4,0xe3,0x65,0x44,0xec,0x00',
-'vpclmulqdq      $0x00, %ymm5, %ymm3, %ymm0' => '.byte 0xc4,0xe3,0x65,0x44,0xc5,0x00',
-'vpclmulqdq      $0x00, %ymm5, %ymm4, %ymm0' => '.byte 0xc4,0xe3,0x5d,0x44,0xc5,0x00',
-'vpclmulqdq      $0x00, %ymm7, %ymm2, %ymm6' => '.byte 0xc4,0xe3,0x6d,0x44,0xf7,0x00',
-'vpclmulqdq      $0x00, %ymm8, %ymm2, %ymm2' => '.byte 0xc4,0xc3,0x6d,0x44,0xd0,0x00',
-'vpclmulqdq      $0x01, %ymm0, %ymm6, %ymm2' => '.byte 0xc4,0xe3,0x4d,0x44,0xd0,0x01',
-'vpclmulqdq      $0x01, %ymm1, %ymm6, %ymm0' => '.byte 0xc4,0xe3,0x4d,0x44,0xc1,0x01',
-'vpclmulqdq      $0x01, %ymm2, %ymm12, %ymm4' => '.byte 0xc4,0xe3,0x1d,0x44,0xe2,0x01',
-'vpclmulqdq      $0x01, %ymm2, %ymm12, %ymm6' => '.byte 0xc4,0xe3,0x1d,0x44,0xf2,0x01',
-'vpclmulqdq      $0x01, %ymm3, %ymm13, %ymm4' => '.byte 0xc4,0xe3,0x15,0x44,0xe3,0x01',
-'vpclmulqdq      $0x01, %ymm5, %ymm2, %ymm3' =>  '.byte 0xc4,0xe3,0x6d,0x44,0xdd,0x01',
-'vpclmulqdq      $0x01, %ymm5, %ymm3, %ymm1' => '.byte 0xc4,0xe3,0x65,0x44,0xcd,0x01',
-'vpclmulqdq      $0x01, %ymm5, %ymm4, %ymm1' => '.byte 0xc4,0xe3,0x5d,0x44,0xcd,0x01',
-'vpclmulqdq      $0x01, %ymm5, %ymm4, %ymm2' => '.byte 0xc4,0xe3,0x5d,0x44,0xd5,0x01',
-'vpclmulqdq      $0x01, %ymm6, %ymm2, %ymm3' => '.byte 0xc4,0xe3,0x6d,0x44,0xde,0x01',
-'vpclmulqdq      $0x01, %ymm6, %ymm4, %ymm2' => '.byte 0xc4,0xe3,0x5d,0x44,0xd6,0x01',
-'vpclmulqdq      $0x10, %ymm2, %ymm12, %ymm4' => '.byte 0xc4,0xe3,0x1d,0x44,0xe2,0x10',
-'vpclmulqdq      $0x10, %ymm3, %ymm13, %ymm4' => '.byte 0xc4,0xe3,0x15,0x44,0xe3,0x10',
-'vpclmulqdq      $0x10, %ymm5, %ymm3, %ymm2' => '.byte 0xc4,0xe3,0x65,0x44,0xd5,0x10',
-'vpclmulqdq      $0x10, %ymm5, %ymm4, %ymm2' => '.byte 0xc4,0xe3,0x5d,0x44,0xd5,0x10',
-'vpclmulqdq      $0x10, %ymm7, %ymm2, %ymm2' => '.byte 0xc4,0xe3,0x6d,0x44,0xd7,0x10',
-'vpclmulqdq      $0x10, %ymm8, %ymm2, %ymm2' => '.byte 0xc4,0xc3,0x6d,0x44,0xd0,0x10',
-'vpclmulqdq      $0x11, %ymm2, %ymm12, %ymm4' => '.byte 0xc4,0xe3,0x1d,0x44,0xe2,0x11',
-'vpclmulqdq      $0x11, %ymm2, %ymm12, %ymm7' => '.byte 0xc4,0xe3,0x1d,0x44,0xfa,0x11',
-'vpclmulqdq      $0x11, %ymm3, %ymm13, %ymm4' => '.byte 0xc4,0xe3,0x15,0x44,0xe3,0x11',
-'vpclmulqdq      $0x11, %ymm4, %ymm3, %ymm1' => '.byte 0xc4,0xe3,0x65,0x44,0xcc,0x11',
-'vpclmulqdq      $0x11, %ymm4, %ymm3, %ymm2' => '.byte 0xc4,0xe3,0x65,0x44,0xd4,0x11',
-'vpclmulqdq      $0x11, %ymm5, %ymm3, %ymm4' => '.byte 0xc4,0xe3,0x65,0x44,0xe5,0x11',
-'vpclmulqdq      $0x11, %ymm5, %ymm4, %ymm3' => '.byte 0xc4,0xe3,0x5d,0x44,0xdd,0x11',
-    );
-    if (exists $asmMap{$data}) {
-        $data = $asmMap{$data};
-    }
-    return $data . $comment . "\n";
-}
-
 sub _begin_func {
     my ( $funcname, $uses_seh ) = @_;
     $g_cur_func_name          = $funcname;
@@ -265,21 +209,21 @@ my $OFFSETOF_AES_ROUNDS = 240;
 # the reduced products in \dst.  Uses schoolbook multiplication.
 sub _ghash_mul {
     my ( $a, $b, $dst, $gfpoly, $t0, $t1, $t2 ) = @_;
-    return (
-    assemble("vpclmulqdq      \$0x00, $a, $b, $t0", "        # LO = a_L * b_L") .
-    assemble("vpclmulqdq      \$0x01, $a, $b, $t1", "        # MI_0 = a_L * b_H") .
-    assemble("vpclmulqdq      \$0x10, $a, $b, $t2", "        # MI_1 = a_H * b_L") .
-    assemble("vpxor           $t2, $t1, $t1", "              # MI = MI_0 + MI_1") .
-    assemble("vpclmulqdq      \$0x01, $t0, $gfpoly, $t2", "  # LO_L*(x^63 + x^62 + x^57)") .
-    assemble("vpshufd         \$0x4e, $t0, $t0", "           # Swap halves of LO") .
-    assemble("vpxor           $t0, $t1, $t1", "              # Fold LO into MI (part 1)") .
-    assemble("vpxor           $t2, $t1, $t1", "              # Fold LO into MI (part 2)") .
-    assemble("vpclmulqdq      \$0x11, $a, $b, $dst", "       # HI = a_H * b_H") .
-    assemble("vpclmulqdq      \$0x01, $t1, $gfpoly, $t0", "  # MI_L*(x^63 + x^62 + x^57)") .
-    assemble("vpshufd         \$0x4e, $t1, $t1", "           # Swap halves of MI") .
-    assemble("vpxor           $t1, $dst, $dst", "            # Fold MI into HI (part 1)") .
-    assemble("vpxor           $t0, $dst, $dst", "            # Fold MI into HI (part 2)")
-);
+    return <<___;
+    vpclmulqdq      \$0x00, $a, $b, $t0        # LO = a_L * b_L
+    vpclmulqdq      \$0x01, $a, $b, $t1        # MI_0 = a_L * b_H
+    vpclmulqdq      \$0x10, $a, $b, $t2        # MI_1 = a_H * b_L
+    vpxor           $t2, $t1, $t1              # MI = MI_0 + MI_1
+    vpclmulqdq      \$0x01, $t0, $gfpoly, $t2  # LO_L*(x^63 + x^62 + x^57)
+    vpshufd         \$0x4e, $t0, $t0           # Swap halves of LO
+    vpxor           $t0, $t1, $t1              # Fold LO into MI (part 1)
+    vpxor           $t2, $t1, $t1              # Fold LO into MI (part 2)
+    vpclmulqdq      \$0x11, $a, $b, $dst       # HI = a_H * b_H
+    vpclmulqdq      \$0x01, $t1, $gfpoly, $t0  # MI_L*(x^63 + x^62 + x^57)
+    vpshufd         \$0x4e, $t1, $t1           # Swap halves of MI
+    vpxor           $t1, $dst, $dst            # Fold MI into HI (part 1)
+    vpxor           $t0, $dst, $dst            # Fold MI into HI (part 2)
+___
 }
 
 # void gcm_init_vpclmulqdq_avx2(u128 Htable[16], const uint64_t H[2]);
@@ -378,38 +322,38 @@ sub _ghash_step_4x {
     ) = @_;
     my ( $hi, $hi_xmm ) = ( $ghash_acc, $ghash_acc_xmm );    # alias
     if ( $i == 0 ) {
-        return (
-        assemble("", "# First vector") .
-        assemble("vmovdqu         0*32($ghashdata_ptr), $tmp1", "") .
-        assemble("vpshufb         $bswap_mask, $tmp1, $tmp1", "") .
-        assemble("vmovdqu         0*32($htable), $tmp2", "") .
-        assemble("vpxor           $ghash_acc, $tmp1, $tmp1", "") .
-        assemble("vpclmulqdq      \$0x00, $tmp2, $tmp1, $lo", "") .
-        assemble("vpclmulqdq      \$0x11, $tmp2, $tmp1, $hi", "") .
-        assemble("vpunpckhqdq     $tmp1, $tmp1, $tmp0", "") .
-        assemble("vpxor           $tmp1, $tmp0, $tmp0", "") .
-        assemble("vpclmulqdq      \$0x00, $h_pow2_xored, $tmp0, $mi", "")
-)
+        return <<___;
+        # First vector
+        vmovdqu         0*32($ghashdata_ptr), $tmp1
+        vpshufb         $bswap_mask, $tmp1, $tmp1
+        vmovdqu         0*32($htable), $tmp2
+        vpxor           $ghash_acc, $tmp1, $tmp1
+        vpclmulqdq      \$0x00, $tmp2, $tmp1, $lo
+        vpclmulqdq      \$0x11, $tmp2, $tmp1, $hi
+        vpunpckhqdq     $tmp1, $tmp1, $tmp0
+        vpxor           $tmp1, $tmp0, $tmp0
+        vpclmulqdq      \$0x00, $h_pow2_xored, $tmp0, $mi
+___
     }
     elsif ( $i == 1 ) {
         return <<___;
 ___
     }
     elsif ( $i == 2 ) {
-        return (
-        assemble("", "# Second vector") .
-        assemble("vmovdqu         1*32($ghashdata_ptr), $tmp1", "") .
-        assemble("vpshufb         $bswap_mask, $tmp1, $tmp1", "") .
-        assemble("vmovdqu         1*32($htable), $tmp2", "") .
-        assemble("vpclmulqdq      \$0x00, $tmp2, $tmp1, $tmp0", "") .
-        assemble("vpxor           $tmp0, $lo, $lo", "") .
-        assemble("vpclmulqdq      \$0x11, $tmp2, $tmp1, $tmp0", "") .
-        assemble("vpxor           $tmp0, $hi, $hi", "") .
-        assemble("vpunpckhqdq     $tmp1, $tmp1, $tmp0", "") .
-        assemble("vpxor           $tmp1, $tmp0, $tmp0", "") .
-        assemble("vpclmulqdq      \$0x10, $h_pow2_xored, $tmp0, $tmp0", "") .
-        assemble("vpxor           $tmp0, $mi, $mi", "")
-        );
+        return <<___;
+        # Second vector
+        vmovdqu         1*32($ghashdata_ptr), $tmp1
+        vpshufb         $bswap_mask, $tmp1, $tmp1
+        vmovdqu         1*32($htable), $tmp2
+        vpclmulqdq      \$0x00, $tmp2, $tmp1, $tmp0
+        vpxor           $tmp0, $lo, $lo
+        vpclmulqdq      \$0x11, $tmp2, $tmp1, $tmp0
+        vpxor           $tmp0, $hi, $hi
+        vpunpckhqdq     $tmp1, $tmp1, $tmp0
+        vpxor           $tmp1, $tmp0, $tmp0
+        vpclmulqdq      \$0x10, $h_pow2_xored, $tmp0, $tmp0
+        vpxor           $tmp0, $mi, $mi
+___
     }
     elsif ( $i == 3 ) {
         return <<___;
@@ -420,60 +364,60 @@ ___
 ___
     }
     elsif ( $i == 4 ) {
-        return (
-        assemble("vpclmulqdq      \$0x00, $tmp2, $tmp1, $tmp0", "") .
-        assemble("vpxor           $tmp0, $lo, $lo", "") .
-        assemble("vpclmulqdq      \$0x11, $tmp2, $tmp1, $tmp0", "") .
-        assemble("vpxor           $tmp0, $hi, $hi", "")
-);
+        return <<___;
+        vpclmulqdq      \$0x00, $tmp2, $tmp1, $tmp0
+        vpxor           $tmp0, $lo, $lo
+        vpclmulqdq      \$0x11, $tmp2, $tmp1, $tmp0
+        vpxor           $tmp0, $hi, $hi
+___
     }
     elsif ( $i == 5 ) {
-        return (
-        assemble("vpunpckhqdq     $tmp1, $tmp1, $tmp0", "") .
-        assemble("vpxor           $tmp1, $tmp0, $tmp0", "") .
-        assemble("vpclmulqdq      \$0x00, $h_pow1_xored, $tmp0, $tmp0", "") .
-        assemble("vpxor           $tmp0, $mi, $mi", "") .
-        assemble("", "") .
-        assemble("", "# Fourth vector") .
-        assemble("vmovdqu         3*32($ghashdata_ptr), $tmp1", "") .
-        assemble("vpshufb         $bswap_mask, $tmp1, $tmp1", "")
-        );
+        return <<___;
+        vpunpckhqdq     $tmp1, $tmp1, $tmp0
+        vpxor           $tmp1, $tmp0, $tmp0
+        vpclmulqdq      \$0x00, $h_pow1_xored, $tmp0, $tmp0
+        vpxor           $tmp0, $mi, $mi
+
+        # Fourth vector
+        vmovdqu         3*32($ghashdata_ptr), $tmp1
+        vpshufb         $bswap_mask, $tmp1, $tmp1
+___
     }
     elsif ( $i == 6 ) {
-        return (
-        assemble("vmovdqu         3*32($htable), $tmp2", "") .
-        assemble("vpclmulqdq      \$0x00, $tmp2, $tmp1, $tmp0", "") .
-        assemble("vpxor           $tmp0, $lo, $lo", "") .
-        assemble("vpclmulqdq      \$0x11, $tmp2, $tmp1, $tmp0", "") .
-        assemble("vpxor           $tmp0, $hi, $hi", "") .
-        assemble("vpunpckhqdq     $tmp1, $tmp1, $tmp0", "") .
-        assemble("vpxor           $tmp1, $tmp0, $tmp0", "") .
-        assemble("vpclmulqdq      \$0x10, $h_pow1_xored, $tmp0, $tmp0", "") .
-        assemble("vpxor           $tmp0, $mi, $mi", "")
-        );
+        return <<___;
+        vmovdqu         3*32($htable), $tmp2
+        vpclmulqdq      \$0x00, $tmp2, $tmp1, $tmp0
+        vpxor           $tmp0, $lo, $lo
+        vpclmulqdq      \$0x11, $tmp2, $tmp1, $tmp0
+        vpxor           $tmp0, $hi, $hi
+        vpunpckhqdq     $tmp1, $tmp1, $tmp0
+        vpxor           $tmp1, $tmp0, $tmp0
+        vpclmulqdq      \$0x10, $h_pow1_xored, $tmp0, $tmp0
+        vpxor           $tmp0, $mi, $mi
+___
     }
     elsif ( $i == 7 ) {
-        return (
-        assemble("", "# Finalize 'mi' following Karatsuba multiplication.") .
-        assemble("vpxor           $lo, $mi, $mi", "") .
-        assemble("vpxor           $hi, $mi, $mi", "") .
-        assemble("", "") .
-        assemble("", "# Fold lo into mi.") .
-        assemble("vbroadcasti128  .Lgfpoly(%rip), $tmp2", "") .
-        assemble("vpclmulqdq      \$0x01, $lo, $tmp2, $tmp0", "") .
-        assemble("vpshufd         \$0x4e, $lo, $lo", "") .
-        assemble("vpxor           $lo, $mi, $mi", "") .
-        assemble("vpxor           $tmp0, $mi, $mi", "")
-        );
+        return <<___;
+        # Finalize 'mi' following Karatsuba multiplication.
+        vpxor           $lo, $mi, $mi
+        vpxor           $hi, $mi, $mi
+
+        # Fold lo into mi.
+        vbroadcasti128  .Lgfpoly(%rip), $tmp2
+        vpclmulqdq      \$0x01, $lo, $tmp2, $tmp0
+        vpshufd         \$0x4e, $lo, $lo
+        vpxor           $lo, $mi, $mi
+        vpxor           $tmp0, $mi, $mi
+___
     }
     elsif ( $i == 8 ) {
-        return (
-        assemble("", "# Fold mi into hi.") .
-        assemble("vpclmulqdq      \$0x01, $mi, $tmp2, $tmp0", "") .
-        assemble("vpshufd         \$0x4e, $mi, $mi", "") .
-        assemble("vpxor           $mi, $hi, $hi", "") .
-        assemble("vpxor           $tmp0, $hi, $hi", "")
-        );
+        return <<___;
+        # Fold mi into hi.
+        vpclmulqdq      \$0x01, $mi, $tmp2, $tmp0
+        vpshufd         \$0x4e, $mi, $mi
+        vpxor           $mi, $hi, $hi
+        vpxor           $tmp0, $hi, $hi
+___
     }
     elsif ( $i == 9 ) {
         return <<___;
@@ -541,12 +485,12 @@ $code .= _end_func;
 
 sub _vaesenc_4x {
     my ( $round_key, $aesdata0, $aesdata1, $aesdata2, $aesdata3 ) = @_;
-    return (
-    assemble("vaesenc         $round_key, $aesdata0, $aesdata0", "") .
-    assemble("vaesenc         $round_key, $aesdata1, $aesdata1", "") .
-    assemble("vaesenc         $round_key, $aesdata2, $aesdata2", "") .
-    assemble("vaesenc         $round_key, $aesdata3, $aesdata3", "")
-    );
+    return <<___;
+    vaesenc         $round_key, $aesdata0, $aesdata0
+    vaesenc         $round_key, $aesdata1, $aesdata1
+    vaesenc         $round_key, $aesdata2, $aesdata2
+    vaesenc         $round_key, $aesdata3, $aesdata3
+___
 }
 
 sub _ctr_begin_4x {
@@ -586,20 +530,20 @@ sub _aesenclast_and_xor_4x {
         $aesdata1, $aesdata2, $aesdata3,   $t0,
         $t1,       $t2,       $t3
     ) = @_;
-    return (
-    assemble("vpxor           0*32($src), $rndkeylast, $t0", "") .
-    assemble("vpxor           1*32($src), $rndkeylast, $t1", "") .
-    assemble("vpxor           2*32($src), $rndkeylast, $t2", "") .
-    assemble("vpxor           3*32($src), $rndkeylast, $t3", "") .
-    assemble("vaesenclast     $t0, $aesdata0, $aesdata0", "") .
-    assemble("vaesenclast     $t1, $aesdata1, $aesdata1", "") .
-    assemble("vaesenclast     $t2, $aesdata2, $aesdata2", "") .
-    assemble("vaesenclast     $t3, $aesdata3, $aesdata3", "") .
-    assemble("vmovdqu         $aesdata0, 0*32($dst)", "") .
-    assemble("vmovdqu         $aesdata1, 1*32($dst)", "") .
-    assemble("vmovdqu         $aesdata2, 2*32($dst)", "") .
-    assemble("vmovdqu         $aesdata3, 3*32($dst)", "")
-    );
+    return <<___;
+    vpxor           0*32($src), $rndkeylast, $t0
+    vpxor           1*32($src), $rndkeylast, $t1
+    vpxor           2*32($src), $rndkeylast, $t2
+    vpxor           3*32($src), $rndkeylast, $t3
+    vaesenclast     $t0, $aesdata0, $aesdata0
+    vaesenclast     $t1, $aesdata1, $aesdata1
+    vaesenclast     $t2, $aesdata2, $aesdata2
+    vaesenclast     $t3, $aesdata3, $aesdata3
+    vmovdqu         $aesdata0, 0*32($dst)
+    vmovdqu         $aesdata1, 1*32($dst)
+    vmovdqu         $aesdata2, 2*32($dst)
+    vmovdqu         $aesdata3, 3*32($dst)
+___
 }
 
 my $g_update_macro_expansion_count = 0;
@@ -862,19 +806,15 @@ ___
     vpxor           $RNDKEY0, $AESDATA1, $AESDATA1
     lea             16($AESKEY), %rax
 .Lvaesenc_loop_tail_1$local_label_suffix:
-___
-    $code .= (
-    assemble("vbroadcasti128  (%rax), $TMP0", "") .
-    assemble("vaesenc         $TMP0, $AESDATA0, $AESDATA0", "") .
-    assemble("vaesenc         $TMP0, $AESDATA1, $AESDATA1", "") .
-    assemble("add             \$16, %rax", "") .
-    assemble("cmp             %rax, $RNDKEYLAST_PTR", "") .
-    assemble("jne             .Lvaesenc_loop_tail_1$local_label_suffix", "") .
-    assemble("vaesenclast     $RNDKEYLAST, $AESDATA0, $AESDATA0", "") .
-    assemble("vaesenclast     $RNDKEYLAST, $AESDATA1, $AESDATA1", "") .
-    assemble("", "")
-    );
-    $code .= <<___;
+    vbroadcasti128  (%rax), $TMP0
+    vaesenc         $TMP0, $AESDATA0, $AESDATA0
+    vaesenc         $TMP0, $AESDATA1, $AESDATA1
+    add             \$16, %rax
+    cmp             %rax, $RNDKEYLAST_PTR
+    jne             .Lvaesenc_loop_tail_1$local_label_suffix
+    vaesenclast     $RNDKEYLAST, $AESDATA0, $AESDATA0
+    vaesenclast     $RNDKEYLAST, $AESDATA1, $AESDATA1
+
     # XOR the data with the two vectors of keystream blocks.
     vmovdqu         0($SRC), $TMP0
     vmovdqu         32($SRC), $TMP1
@@ -882,32 +822,27 @@ ___
     vpxor           $TMP1, $AESDATA1, $AESDATA1
     vmovdqu         $AESDATA0, 0($DST)
     vmovdqu         $AESDATA1, 32($DST)
-___
-    $code .= (
-    assemble("", "") .
-    assemble("", "# Update GHASH with two vectors of ciphertext blocks, without reducing.") .
-    assemble("vpshufb         $BSWAP_MASK, @{[ $enc ? $AESDATA0 : $TMP0 ]}, $AESDATA0", "") .
-    assemble("vpshufb         $BSWAP_MASK, @{[ $enc ? $AESDATA1 : $TMP1 ]}, $AESDATA1", "") .
-    assemble("vpxor           $GHASH_ACC, $AESDATA0, $AESDATA0", "") .
-    assemble("vmovdqu         ($POWERS_PTR), $TMP0", "") .
-    assemble("vmovdqu         32($POWERS_PTR), $TMP1", "") .
-    assemble("vpclmulqdq      \$0x00, $TMP0, $AESDATA0, $LO", "") .
-    assemble("vpclmulqdq      \$0x01, $TMP0, $AESDATA0, $MI", "") .
-    assemble("vpclmulqdq      \$0x10, $TMP0, $AESDATA0, $TMP2", "") .
-    assemble("vpxor           $TMP2, $MI, $MI", "") .
-    assemble("vpclmulqdq      \$0x11, $TMP0, $AESDATA0, $HI", "") .
-    assemble("vpclmulqdq      \$0x00, $TMP1, $AESDATA1, $TMP2", "") .
-    assemble("vpxor           $TMP2, $LO, $LO", "") .
-    assemble("vpclmulqdq      \$0x01, $TMP1, $AESDATA1, $TMP2", "") .
-    assemble("vpxor           $TMP2, $MI, $MI", "") .
-    assemble("vpclmulqdq      \$0x10, $TMP1, $AESDATA1, $TMP2", "") .
-    assemble("vpxor           $TMP2, $MI, $MI", "") .
-    assemble("vpclmulqdq      \$0x11, $TMP1, $AESDATA1, $TMP2", "") .
-    assemble("vpxor           $TMP2, $HI, $HI", "") .
-    assemble("", "")
-    );
 
-    $code .= <<___;
+    # Update GHASH with two vectors of ciphertext blocks, without reducing.
+    vpshufb         $BSWAP_MASK, @{[ $enc ? $AESDATA0 : $TMP0 ]}, $AESDATA0
+    vpshufb         $BSWAP_MASK, @{[ $enc ? $AESDATA1 : $TMP1 ]}, $AESDATA1
+    vpxor           $GHASH_ACC, $AESDATA0, $AESDATA0
+    vmovdqu         ($POWERS_PTR), $TMP0
+    vmovdqu         32($POWERS_PTR), $TMP1
+    vpclmulqdq      \$0x00, $TMP0, $AESDATA0, $LO
+    vpclmulqdq      \$0x01, $TMP0, $AESDATA0, $MI
+    vpclmulqdq      \$0x10, $TMP0, $AESDATA0, $TMP2
+    vpxor           $TMP2, $MI, $MI
+    vpclmulqdq      \$0x11, $TMP0, $AESDATA0, $HI
+    vpclmulqdq      \$0x00, $TMP1, $AESDATA1, $TMP2
+    vpxor           $TMP2, $LO, $LO
+    vpclmulqdq      \$0x01, $TMP1, $AESDATA1, $TMP2
+    vpxor           $TMP2, $MI, $MI
+    vpclmulqdq      \$0x10, $TMP1, $AESDATA1, $TMP2
+    vpxor           $TMP2, $MI, $MI
+    vpclmulqdq      \$0x11, $TMP1, $AESDATA1, $TMP2
+    vpxor           $TMP2, $HI, $HI
+
     add             \$64, $POWERS_PTR
     add             \$64, $SRC
     add             \$64, $DST
@@ -925,19 +860,15 @@ ___
     vpxor           $RNDKEY0, $AESDATA1, $AESDATA1
     lea             16($AESKEY), %rax
 .Lvaesenc_loop_tail_2$local_label_suffix:
-___
-    $code .= (
-    assemble("vbroadcasti128  (%rax), $TMP0", "") .
-    assemble("vaesenc         $TMP0, $AESDATA0, $AESDATA0", "") .
-    assemble("vaesenc         $TMP0, $AESDATA1, $AESDATA1", "") .
-    assemble("add             \$16, %rax", "") .
-    assemble("cmp             %rax, $RNDKEYLAST_PTR", "") .
-    assemble("jne             .Lvaesenc_loop_tail_2$local_label_suffix", "") .
-    assemble("vaesenclast     $RNDKEYLAST, $AESDATA0, $AESDATA0", "") .
-    assemble("vaesenclast     $RNDKEYLAST, $AESDATA1, $AESDATA1", "") .
-    assemble("", "")
-    );
-    $code .= <<___;
+    vbroadcasti128  (%rax), $TMP0
+    vaesenc         $TMP0, $AESDATA0, $AESDATA0
+    vaesenc         $TMP0, $AESDATA1, $AESDATA1
+    add             \$16, %rax
+    cmp             %rax, $RNDKEYLAST_PTR
+    jne             .Lvaesenc_loop_tail_2$local_label_suffix
+    vaesenclast     $RNDKEYLAST, $AESDATA0, $AESDATA0
+    vaesenclast     $RNDKEYLAST, $AESDATA1, $AESDATA1
+
     # XOR the remaining data with the keystream blocks, and update GHASH with
     # the remaining ciphertext blocks without reducing.
 
@@ -952,27 +883,22 @@ ___
     vpxor           $TMP1_XMM, $AESDATA1_XMM, $AESDATA1_XMM
     vmovdqu         $AESDATA0, 0($DST)
     vmovdqu         $AESDATA1_XMM, 32($DST)
-___
-    $code .= (
-    assemble("", "") .
-    assemble("vpshufb         $BSWAP_MASK, @{[ $enc ? $AESDATA0 : $TMP0 ]}, $AESDATA0", "") .
-    assemble("vpshufb         $BSWAP_MASK_XMM, @{[ $enc ? $AESDATA1_XMM : $TMP1_XMM ]}, $AESDATA1_XMM", "") .
-    assemble("vpxor           $GHASH_ACC, $AESDATA0, $AESDATA0", "") .
-    assemble("vmovdqu         ($POWERS_PTR), $TMP0", "") .
-    assemble("vmovdqu         32($POWERS_PTR), $TMP1_XMM", "") .
-    assemble("vpclmulqdq      \$0x00, $TMP1_XMM, $AESDATA1_XMM, $TMP2_XMM", "") .
-    assemble("vpxor           $TMP2, $LO, $LO", "") .
-    assemble("vpclmulqdq      \$0x01, $TMP1_XMM, $AESDATA1_XMM, $TMP2_XMM", "") .
-    assemble("vpxor           $TMP2, $MI, $MI", "") .
-    assemble("vpclmulqdq      \$0x10, $TMP1_XMM, $AESDATA1_XMM, $TMP2_XMM", "") .
-    assemble("vpxor           $TMP2, $MI, $MI", "") .
-    assemble("vpclmulqdq      \$0x11, $TMP1_XMM, $AESDATA1_XMM, $TMP2_XMM", "") .
-    assemble("vpxor           $TMP2, $HI, $HI", "") .
-    assemble("jmp             .Lghash_mul_one_vec_unreduced$local_label_suffix", "") .
-    assemble("", "")
-    );
 
-    $code .= <<___;
+    vpshufb         $BSWAP_MASK, @{[ $enc ? $AESDATA0 : $TMP0 ]}, $AESDATA0
+    vpshufb         $BSWAP_MASK_XMM, @{[ $enc ? $AESDATA1_XMM : $TMP1_XMM ]}, $AESDATA1_XMM
+    vpxor           $GHASH_ACC, $AESDATA0, $AESDATA0
+    vmovdqu         ($POWERS_PTR), $TMP0
+    vmovdqu         32($POWERS_PTR), $TMP1_XMM
+    vpclmulqdq      \$0x00, $TMP1_XMM, $AESDATA1_XMM, $TMP2_XMM
+    vpxor           $TMP2, $LO, $LO
+    vpclmulqdq      \$0x01, $TMP1_XMM, $AESDATA1_XMM, $TMP2_XMM
+    vpxor           $TMP2, $MI, $MI
+    vpclmulqdq      \$0x10, $TMP1_XMM, $AESDATA1_XMM, $TMP2_XMM
+    vpxor           $TMP2, $MI, $MI
+    vpclmulqdq      \$0x11, $TMP1_XMM, $AESDATA1_XMM, $TMP2_XMM
+    vpxor           $TMP2, $HI, $HI
+    jmp             .Lghash_mul_one_vec_unreduced$local_label_suffix
+
 .Lxor_two_blocks$local_label_suffix:
     vmovdqu         ($SRC), $TMP0
     vpxor           $TMP0, $AESDATA0, $AESDATA0
@@ -991,37 +917,29 @@ ___
     vmovdqu         ($POWERS_PTR), $TMP0_XMM
 
 .Lghash_mul_one_vec_unreduced$local_label_suffix:
-___
-    $code .= (
-    assemble("vpclmulqdq      \$0x00, $TMP0, $AESDATA0, $TMP2", "") .
-    assemble("vpxor           $TMP2, $LO, $LO", "") .
-    assemble("vpclmulqdq      \$0x01, $TMP0, $AESDATA0, $TMP2", "") .
-    assemble("vpxor           $TMP2, $MI, $MI", "") .
-    assemble("vpclmulqdq      \$0x10, $TMP0, $AESDATA0, $TMP2", "") .
-    assemble("vpxor           $TMP2, $MI, $MI", "") .
-    assemble("vpclmulqdq      \$0x11, $TMP0, $AESDATA0, $TMP2", "") .
-    assemble("vpxor           $TMP2, $HI, $HI", "") .
-    assemble("", "")
-    );
-    $code .= <<___;
+    vpclmulqdq      \$0x00, $TMP0, $AESDATA0, $TMP2
+    vpxor           $TMP2, $LO, $LO
+    vpclmulqdq      \$0x01, $TMP0, $AESDATA0, $TMP2
+    vpxor           $TMP2, $MI, $MI
+    vpclmulqdq      \$0x10, $TMP0, $AESDATA0, $TMP2
+    vpxor           $TMP2, $MI, $MI
+    vpclmulqdq      \$0x11, $TMP0, $AESDATA0, $TMP2
+    vpxor           $TMP2, $HI, $HI
+
 .Lreduce$local_label_suffix:
     # Finally, do the GHASH reduction.
-___
-    $code .= (
-    assemble("vbroadcasti128  .Lgfpoly(%rip), $TMP0", "") .
-    assemble("vpclmulqdq      \$0x01, $LO, $TMP0, $TMP1", "") .
-    assemble("vpshufd         \$0x4e, $LO, $LO", "") .
-    assemble("vpxor           $LO, $MI, $MI", "") .
-    assemble("vpxor           $TMP1, $MI, $MI", "") .
-    assemble("vpclmulqdq      \$0x01, $MI, $TMP0, $TMP1", "") .
-    assemble("vpshufd         \$0x4e, $MI, $MI", "") .
-    assemble("vpxor           $MI, $HI, $HI", "") .
-    assemble("vpxor           $TMP1, $HI, $HI", "") .
-    assemble("vextracti128    \$1, $HI, $GHASH_ACC_XMM", "") .
-    assemble("vpxor           $HI_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM", "") .
-    assemble("", "")
-    );
-    $code .= <<___;
+    vbroadcasti128  .Lgfpoly(%rip), $TMP0
+    vpclmulqdq      \$0x01, $LO, $TMP0, $TMP1
+    vpshufd         \$0x4e, $LO, $LO
+    vpxor           $LO, $MI, $MI
+    vpxor           $TMP1, $MI, $MI
+    vpclmulqdq      \$0x01, $MI, $TMP0, $TMP1
+    vpshufd         \$0x4e, $MI, $MI
+    vpxor           $MI, $HI, $HI
+    vpxor           $TMP1, $HI, $HI
+    vextracti128    \$1, $HI, $GHASH_ACC_XMM
+    vpxor           $HI_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
+
 .Ldone$local_label_suffix:
     # Store the updated GHASH accumulator back to memory.
     vpshufb         $BSWAP_MASK_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
@@ -1040,6 +958,66 @@ $code .= _begin_func "aes_gcm_dec_update_vaes_avx2", 1;
 $code .= _aes_gcm_update 0;
 $code .= _end_func;
 
-print $code;
+sub filter_and_print {
+        my %asmMap = (
+'vaesenc         %ymm2, %ymm12, %ymm12' => '.byte 0xc4,0x62,0x1d,0xdc,0xe2',
+'vaesenc         %ymm2, %ymm13, %ymm13' => '.byte 0xc4,0x62,0x15,0xdc,0xea',
+'vaesenc         %ymm2, %ymm14, %ymm14' => '.byte 0xc4,0x62,0x0d,0xdc,0xf2',
+'vaesenc         %ymm2, %ymm15, %ymm15' => '.byte 0xc4,0x62,0x05,0xdc,0xfa',
+'vaesenclast     %ymm10, %ymm12, %ymm12' => '.byte 0xc4,0x42,0x1d,0xdd,0xe2',
+'vaesenclast     %ymm10, %ymm13, %ymm13' => '.byte 0xc4,0x42,0x15,0xdd,0xea',
+'vaesenclast     %ymm2, %ymm12, %ymm12' => '.byte 0xc4,0x62,0x1d,0xdd,0xe2',
+'vaesenclast     %ymm3, %ymm13, %ymm13' => '.byte 0xc4,0x62,0x15,0xdd,0xeb',
+'vaesenclast     %ymm5, %ymm14, %ymm14' => '.byte 0xc4,0x62,0x0d,0xdd,0xf5',
+'vaesenclast     %ymm6, %ymm15, %ymm15' => '.byte 0xc4,0x62,0x05,0xdd,0xfe',
+'vpclmulqdq      $0x00, %ymm2, %ymm12, %ymm4' => '.byte 0xc4,0xe3,0x1d,0x44,0xe2,0x00',
+'vpclmulqdq      $0x00, %ymm2, %ymm12, %ymm5' => '.byte 0xc4,0xe3,0x1d,0x44,0xea,0x00',
+'vpclmulqdq      $0x00, %ymm3, %ymm13, %ymm4' => '.byte 0xc4,0xe3,0x15,0x44,0xe3,0x00',
+'vpclmulqdq      $0x00, %ymm4, %ymm3, %ymm2' => '.byte 0xc4,0xe3,0x65,0x44,0xd4,0x00',
+'vpclmulqdq      $0x00, %ymm4, %ymm3, %ymm5' => '.byte 0xc4,0xe3,0x65,0x44,0xec,0x00',
+'vpclmulqdq      $0x00, %ymm5, %ymm3, %ymm0' => '.byte 0xc4,0xe3,0x65,0x44,0xc5,0x00',
+'vpclmulqdq      $0x00, %ymm5, %ymm4, %ymm0' => '.byte 0xc4,0xe3,0x5d,0x44,0xc5,0x00',
+'vpclmulqdq      $0x00, %ymm7, %ymm2, %ymm6' => '.byte 0xc4,0xe3,0x6d,0x44,0xf7,0x00',
+'vpclmulqdq      $0x00, %ymm8, %ymm2, %ymm2' => '.byte 0xc4,0xc3,0x6d,0x44,0xd0,0x00',
+'vpclmulqdq      $0x01, %ymm0, %ymm6, %ymm2' => '.byte 0xc4,0xe3,0x4d,0x44,0xd0,0x01',
+'vpclmulqdq      $0x01, %ymm1, %ymm6, %ymm0' => '.byte 0xc4,0xe3,0x4d,0x44,0xc1,0x01',
+'vpclmulqdq      $0x01, %ymm2, %ymm12, %ymm4' => '.byte 0xc4,0xe3,0x1d,0x44,0xe2,0x01',
+'vpclmulqdq      $0x01, %ymm2, %ymm12, %ymm6' => '.byte 0xc4,0xe3,0x1d,0x44,0xf2,0x01',
+'vpclmulqdq      $0x01, %ymm3, %ymm13, %ymm4' => '.byte 0xc4,0xe3,0x15,0x44,0xe3,0x01',
+'vpclmulqdq      $0x01, %ymm5, %ymm2, %ymm3' =>  '.byte 0xc4,0xe3,0x6d,0x44,0xdd,0x01',
+'vpclmulqdq      $0x01, %ymm5, %ymm3, %ymm1' => '.byte 0xc4,0xe3,0x65,0x44,0xcd,0x01',
+'vpclmulqdq      $0x01, %ymm5, %ymm4, %ymm1' => '.byte 0xc4,0xe3,0x5d,0x44,0xcd,0x01',
+'vpclmulqdq      $0x01, %ymm5, %ymm4, %ymm2' => '.byte 0xc4,0xe3,0x5d,0x44,0xd5,0x01',
+'vpclmulqdq      $0x01, %ymm6, %ymm2, %ymm3' => '.byte 0xc4,0xe3,0x6d,0x44,0xde,0x01',
+'vpclmulqdq      $0x01, %ymm6, %ymm4, %ymm2' => '.byte 0xc4,0xe3,0x5d,0x44,0xd6,0x01',
+'vpclmulqdq      $0x10, %ymm2, %ymm12, %ymm4' => '.byte 0xc4,0xe3,0x1d,0x44,0xe2,0x10',
+'vpclmulqdq      $0x10, %ymm3, %ymm13, %ymm4' => '.byte 0xc4,0xe3,0x15,0x44,0xe3,0x10',
+'vpclmulqdq      $0x10, %ymm5, %ymm3, %ymm2' => '.byte 0xc4,0xe3,0x65,0x44,0xd5,0x10',
+'vpclmulqdq      $0x10, %ymm5, %ymm4, %ymm2' => '.byte 0xc4,0xe3,0x5d,0x44,0xd5,0x10',
+'vpclmulqdq      $0x10, %ymm7, %ymm2, %ymm2' => '.byte 0xc4,0xe3,0x6d,0x44,0xd7,0x10',
+'vpclmulqdq      $0x10, %ymm8, %ymm2, %ymm2' => '.byte 0xc4,0xc3,0x6d,0x44,0xd0,0x10',
+'vpclmulqdq      $0x11, %ymm2, %ymm12, %ymm4' => '.byte 0xc4,0xe3,0x1d,0x44,0xe2,0x11',
+'vpclmulqdq      $0x11, %ymm2, %ymm12, %ymm7' => '.byte 0xc4,0xe3,0x1d,0x44,0xfa,0x11',
+'vpclmulqdq      $0x11, %ymm3, %ymm13, %ymm4' => '.byte 0xc4,0xe3,0x15,0x44,0xe3,0x11',
+'vpclmulqdq      $0x11, %ymm4, %ymm3, %ymm1' => '.byte 0xc4,0xe3,0x65,0x44,0xcc,0x11',
+'vpclmulqdq      $0x11, %ymm4, %ymm3, %ymm2' => '.byte 0xc4,0xe3,0x65,0x44,0xd4,0x11',
+'vpclmulqdq      $0x11, %ymm5, %ymm3, %ymm4' => '.byte 0xc4,0xe3,0x65,0x44,0xe5,0x11',
+'vpclmulqdq      $0x11, %ymm5, %ymm4, %ymm3' => '.byte 0xc4,0xe3,0x5d,0x44,0xdd,0x11',
+    );
+    for my $line (split("\n",$code)) {
+        
+        my $trimmed;
+        $trimmed = $line;
+        $trimmed =~ s/^\s+//;
+        $trimmed =~ s/\s+(#.*)?$//;
+        if (exists $asmMap{$trimmed}) {
+            $line = $asmMap{$trimmed};
+        }
+        print $line,"\n";
+    }
+}
+
+filter_and_print();
+
 close STDOUT or die "error closing STDOUT: $!";
 exit 0;
