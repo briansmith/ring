@@ -786,9 +786,6 @@ sub _ghash_update {
     jae             .Laad_loop_1x$local_label_suffix
 
 .Laad_large_done$local_label_suffix:
-    # Issue the vzeroupper that is needed after using ymm or zmm registers.
-    # Do it here instead of at the end, to minimize overhead for small AADLEN.
-    vzeroupper
 
     # GHASH the remaining data 16 bytes at a time, using xmm registers only.
 .Laad_blockbyblock$local_label_suffix:
@@ -809,6 +806,8 @@ sub _ghash_update {
     # Store the updated GHASH accumulator back to memory.
     vpshufb         $BSWAP_MASK_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
     vmovdqu         $GHASH_ACC_XMM, ($GHASH_ACC_PTR)
+
+    vzeroupper      # This is needed after using ymm or zmm registers.
 ___
     return $code;
 }
