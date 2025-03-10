@@ -159,7 +159,7 @@ sub _save_xmmregs {
         for my $i ( 0 .. $num_xmmregs - 1 ) {
             my $reg_num = $xmmregs[$i];
             my $pos     = 16 * $i;
-            $code .= "movdqa %xmm$reg_num, $pos(%rsp)\n";
+            $code .= "vmovdqa %xmm$reg_num, $pos(%rsp)\n";
             $code .= ".seh_savexmm %xmm$reg_num, $pos\n";
         }
     }
@@ -177,7 +177,7 @@ sub _end_func {
         for my $i ( 0 .. $num_xmmregs - 1 ) {
             my $reg_num = $g_cur_func_saved_xmmregs[$i];
             my $pos     = 16 * $i;
-            $code .= "movdqa $pos(%rsp), %xmm$reg_num\n";
+            $code .= "vmovdqa $pos(%rsp), %xmm$reg_num\n";
         }
         $code .= "add \$$alloc_size, %rsp\n";
     }
