@@ -737,59 +737,6 @@ sub _ghash_update {
     vmovdqu         ($GHASH_ACC_PTR), $GHASH_ACC_XMM
     vpshufb         $BSWAP_MASK_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
 
-    # Optimize for AADLEN < VL by checking for AADLEN < VL before AADLEN < 4*VL.
-    cmp             \$$VL, $AADLEN
-    jb              .Laad_blockbyblock$local_label_suffix
-
-    # AADLEN >= VL, so we'll operate on full vectors.  Broadcast bswap_mask and
-    # gfpoly to all 128-bit lanes.
-    vshufi64x2      \$0, $BSWAP_MASK, $BSWAP_MASK, $BSWAP_MASK
-    vshufi64x2      \$0, $GFPOLY, $GFPOLY, $GFPOLY
-
-    # Load the lowest set of key powers.
-    vmovdqu8        $OFFSETOFEND_H_POWERS-1*$VL($H_POWERS), $H_POW1
-
-    cmp             \$4*$VL-1, $AADLEN
-    jbe             .Laad_loop_1x$local_label_suffix
-
-    # AADLEN >= 4*VL.  Load the higher key powers.
-    vmovdqu8        $OFFSETOFEND_H_POWERS-4*$VL($H_POWERS), $H_POW4
-    vmovdqu8        $OFFSETOFEND_H_POWERS-3*$VL($H_POWERS), $H_POW3
-    vmovdqu8        $OFFSETOFEND_H_POWERS-2*$VL($H_POWERS), $H_POW2
-
-    # Update GHASH with 4*VL bytes of AAD at a time.
-.Laad_loop_4x$local_label_suffix:
-    vmovdqu8        0*$VL($AAD), $GHASHDATA0
-    vmovdqu8        1*$VL($AAD), $GHASHDATA1
-    vmovdqu8        2*$VL($AAD), $GHASHDATA2
-    vmovdqu8        3*$VL($AAD), $GHASHDATA3
-    @{[ _ghash_4x ]}
-    sub             \$-4*$VL, $AAD  # shorter than 'add 4*VL' when VL=32
-    add             \$-4*$VL, $AADLEN
-    cmp             \$4*$VL-1, $AADLEN
-    ja              .Laad_loop_4x$local_label_suffix
-
-    # Update GHASH with VL bytes of AAD at a time.
-    cmp             \$$VL, $AADLEN
-    jb              .Laad_large_done$local_label_suffix
-.Laad_loop_1x$local_label_suffix:
-    vmovdqu8        ($AAD), $GHASHDATA0
-    vpshufb         $BSWAP_MASK, $GHASHDATA0, $GHASHDATA0
-    vpxord          $GHASHDATA0, $GHASH_ACC, $GHASH_ACC
-    @{[ _ghash_mul  $H_POW1, $GHASH_ACC, $GHASH_ACC, $GFPOLY,
-                    $GHASHDATA0, $GHASHDATA1, $GHASHDATA2 ]}
-    @{[ _horizontal_xor $GHASH_ACC, $GHASH_ACC_XMM, $GHASH_ACC_XMM,
-                        $GHASHDATA0_XMM, $GHASHDATA1_XMM, $GHASHDATA2_XMM ]}
-    add             \$$VL, $AAD
-    sub             \$$VL, $AADLEN
-    cmp             \$$VL, $AADLEN
-    jae             .Laad_loop_1x$local_label_suffix
-
-.Laad_large_done$local_label_suffix:
-    # Issue the vzeroupper that is needed after using ymm or zmm registers.
-    # Do it here instead of at the end, to minimize overhead for small AADLEN.
-    vzeroupper
-
     # GHASH the remaining data 16 bytes at a time, using xmm registers only.
 .Laad_blockbyblock$local_label_suffix:
     test            $AADLEN, $AADLEN
@@ -801,9 +748,6 @@ sub _ghash_update {
     vpxor           $GHASHDATA0_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
     @{[ _ghash_mul  $H_POW1_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM, $GFPOLY_XMM,
                     $GHASHDATA0_XMM, $GHASHDATA1_XMM, $GHASHDATA2_XMM ]}
-    add             \$16, $AAD
-    sub             \$16, $AADLEN
-    jnz             .Laad_loop_blockbyblock$local_label_suffix
 
 .Laad_done$local_label_suffix:
     # Store the updated GHASH accumulator back to memory.
@@ -1303,31 +1247,6 @@ ___
     return $code;
 }
 
-# void gcm_gmult_vpclmulqdq_avx10(uint8_t Xi[16], const u128 Htable[16]);
-$code .= _begin_func "gcm_gmult_vpclmulqdq_avx10", 1;
-{
-    my ( $GHASH_ACC_PTR, $H_POWERS ) = @argregs[ 0 .. 1 ];
-    my ( $GHASH_ACC, $BSWAP_MASK, $H_POW1, $GFPOLY, $T0, $T1, $T2 ) =
-      map( "%xmm$_", ( 0 .. 6 ) );
-
-    $code .= <<___;
-    @{[ _save_xmmregs (6) ]}
-    .seh_endprologue
-
-    vmovdqu         ($GHASH_ACC_PTR), $GHASH_ACC
-    vmovdqu         .Lbswap_mask(%rip), $BSWAP_MASK
-    vmovdqu         $OFFSETOFEND_H_POWERS-16($H_POWERS), $H_POW1
-    vmovdqu         .Lgfpoly(%rip), $GFPOLY
-    vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
-
-    @{[ _ghash_mul  $H_POW1, $GHASH_ACC, $GHASH_ACC, $GFPOLY, $T0, $T1, $T2 ]}
-
-    vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
-    vmovdqu         $GHASH_ACC, ($GHASH_ACC_PTR)
-___
-}
-$code .= _end_func;
-
 # Disabled until significant deployment of AVX10/256 is seen.  The separate
 # *_vaes_avx2 implementation provides the only 256-bit support for now.
 #
@@ -1353,7 +1272,7 @@ $code .= _begin_func "gcm_init_vpclmulqdq_avx10_512", 0;
 $code .= _aes_gcm_init;
 $code .= _end_func;
 
-$code .= _begin_func "gcm_ghash_vpclmulqdq_avx10_512", 1;
+$code .= _begin_func "gcm_ghash_vpclmulqdq_avx10_512_1", 1;
 $code .= _ghash_update;
 $code .= _end_func;
 
