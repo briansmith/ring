@@ -1319,13 +1319,6 @@ ____
     }
 }
 
-# Intel Control-flow Enforcement Technology extension. All functions and
-# indirect branch targets will have to start with this instruction...
-
-my $endbranch = sub {
-    (0xf3,0x0f,0x1e,0xfa);
-};
-
 ########################################################################
 
 {
