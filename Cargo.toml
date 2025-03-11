@@ -14,14 +14,14 @@ repository = "https://github.com/briansmith/ring"
 rust-version = "1.66.0"
 
 # Keep in sync with `links` below.
-version = "0.17.13"
+version = "0.17.14"
 
 # Keep in sync with `version` above.
 #
 # build.rs verifies that this equals "ring_core_{major}_{minor}_{patch}_{pre}"
 # as keeping this in sync with the symbol prefixing is crucial for ensuring
 # the safety of multiple versions of *ring* being used in a program.
-links = "ring_core_0_17_13_"
+links = "ring_core_0_17_14_"
 
 include = [
     "LICENSE",
