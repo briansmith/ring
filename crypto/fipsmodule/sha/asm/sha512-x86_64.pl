@@ -1628,27 +1628,8 @@ $code.=<<___ if ($avx);
 ___
 }
 
-sub sha256op38 {
-    my $instr = shift;
-    my %opcodelet = (
-		"sha256rnds2" => 0xcb,
-  		"sha256msg1"  => 0xcc,
-		"sha256msg2"  => 0xcd	);
-
-    if (defined($opcodelet{$instr}) && @_[0] =~ /%xmm([0-7]),\s*%xmm([0-7])/) {
-      my @opcode=(0x0f,0x38);
-	push @opcode,$opcodelet{$instr};
-	push @opcode,0xc0|($1&7)|(($2&7)<<3);		# ModR/M
-	return ".byte\t".join(',',@opcode);
-    } else {
-	return $instr."\t".@_[0];
-    }
-}
-
 foreach (split("\n",$code)) {
 	s/\`([^\`]*)\`/eval $1/geo;
-
-	s/\b(sha256[^\s]*)\s+(.*)/sha256op38($1,$2)/geo;
 
 	print $_,"\n";
 }
