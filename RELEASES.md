@@ -1,3 +1,13 @@
+Version 0.17.14 (2025-03-11)
+============================
+Fixed a performance bug in the AVX2-based AES-GCM implementation added in
+*ring* 0.17.13. This will be another notable performance improvement for most
+newish x86-64 systems. The performance issue impacted not just AES-GCM.
+
+Compatibility with GNU binutils 2.29 (used on Amazon Linux 2), and probably
+even earlier versions, was restored. It is expected that *ring* 0.17.14 will
+build on all the systems that 0.17.12 would build on.
+
 Version 0.17.13 (2025-03-06)
 ============================
 Increased MSRV to 1.66.0 to avoid bugs in earlier versions so that we can
