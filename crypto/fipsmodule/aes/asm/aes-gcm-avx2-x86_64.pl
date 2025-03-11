@@ -987,7 +987,7 @@ sub filter_and_print {
         'vpclmulqdq      $0x01, %ymm2, %ymm12, %ymm4' => '.byte 0xc4,0xe3,0x1d,0x44,0xe2,0x01',
         'vpclmulqdq      $0x01, %ymm2, %ymm12, %ymm6' => '.byte 0xc4,0xe3,0x1d,0x44,0xf2,0x01',
         'vpclmulqdq      $0x01, %ymm3, %ymm13, %ymm4' => '.byte 0xc4,0xe3,0x15,0x44,0xe3,0x01',
-        'vpclmulqdq      $0x01, %ymm5, %ymm2, %ymm3' =>  '.byte 0xc4,0xe3,0x6d,0x44,0xdd,0x01',
+        'vpclmulqdq      $0x01, %ymm5, %ymm2, %ymm3' => '.byte 0xc4,0xe3,0x6d,0x44,0xdd,0x01',
         'vpclmulqdq      $0x01, %ymm5, %ymm3, %ymm1' => '.byte 0xc4,0xe3,0x65,0x44,0xcd,0x01',
         'vpclmulqdq      $0x01, %ymm5, %ymm4, %ymm1' => '.byte 0xc4,0xe3,0x5d,0x44,0xcd,0x01',
         'vpclmulqdq      $0x01, %ymm5, %ymm4, %ymm2' => '.byte 0xc4,0xe3,0x5d,0x44,0xd5,0x01',
@@ -1014,6 +1014,11 @@ sub filter_and_print {
         $trimmed =~ s/\s+(#.*)?$//;
         if (exists $asmMap{$trimmed}) {
             $line = $asmMap{$trimmed};
+        } else {
+            if($trimmed =~ /(vpclmulqdq|vaes).*%[yz]mm/) {
+                die ("found instruction not supported under old binutils, please update asmMap with the results of running\n" .
+                     'find target -name "*aes-gcm-avx2*.o" -exec python3 crypto/fipsmodule/aes/asm/make-avx-map-for-old-binutils.py \{\} \; | LC_ALL=C sort | uniq');
+            }
         }
         print $line,"\n";
     }
