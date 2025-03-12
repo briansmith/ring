@@ -12,11 +12,5 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-mod fallback;
-mod reduce_once;
-
-pub(super) mod aarch64;
-pub(super) mod x86_64;
-
-pub(crate) use self::reduce_once::limbs_reduce_once;
-use fallback::{cmov::limbs_cmov, sub::limbs_sub};
+pub(super) mod cmov;
+pub(super) mod sub;
