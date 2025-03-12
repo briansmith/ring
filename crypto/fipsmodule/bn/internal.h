@@ -60,11 +60,15 @@ typedef crypto_word_t BN_ULONG;
 
 
 
-// BN_MONTGOMERY_MAX_WORDS is the maximum numer of words allowed in a |BIGNUM|
+// BN_MONTGOMERY_MAX_WORDS is the maximum number of words allowed in a |BIGNUM|
 // used with Montgomery reduction. Ideally this limit would be applied to all
 // |BIGNUM|s, in |bn_wexpand|, but the exactfloat library needs to create 8 MiB
 // values for other operations.
-// #define BN_MONTGOMERY_MAX_WORDS (8 * 1024 / sizeof(BN_ULONG))
+//
+// TODO(crbug.com/402677800): This is not quite tight enough to limit the
+// |bn_mul_mont| allocation to under a page. Lower the maximum RSA key and then
+// lower this to match.
+#define BN_MONTGOMERY_MAX_WORDS (16384 / BN_BITS2)
 
 // bn_mul_mont writes |ap| * |bp| mod |np| to |rp|, each |num| words
 // long. Inputs and outputs are in Montgomery form. |n0| is a pointer to
@@ -73,9 +77,9 @@ typedef crypto_word_t BN_ULONG;
 // If at least one of |ap| or |bp| is fully reduced, |rp| will be fully reduced.
 // If neither is fully-reduced, the output may not be either.
 //
-// This function allocates |num| words on the stack, so |num| should be at most
-// |BN_MONTGOMERY_MAX_WORDS|. Additionally, |num| must be at least 128 /
-// |BN_BITS2|.
+// This function allocates up to 2 * |num| words (plus a constant allocation) on
+// the stack, so |num| should be at most |BN_MONTGOMERY_MAX_WORDS|.
+// Additionally, |num| must be at least 128 / |BN_BITS2|.
 //
 // TODO(davidben): The x86_64 implementation expects a 32-bit input and masks
 // off upper bits. The aarch64 implementation expects a 64-bit input and does
