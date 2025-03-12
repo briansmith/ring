@@ -17,8 +17,8 @@ use crate::{c, limb::Limb, polyfill::usize_from_u32};
 use core::{mem::size_of, num::NonZeroUsize};
 
 const _MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
-    // BoringSSL's limit: 8 kiloBYTES.
-    const BN_MONTGOMERY_MAX_WORDS: usize = (8 * 1024) / size_of::<Limb>();
+    // BoringSSL's limit from bn/internal.h.
+    const BN_MONTGOMERY_MAX_WORDS: usize = 16384 / size_of::<Limb>();
     assert!(MAX_LIMBS <= BN_MONTGOMERY_MAX_WORDS);
 
     // Some 64-bit assembly implementations were written to take `len` as a
