@@ -41,6 +41,6 @@ impl Key {
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
         let input: AsChunks<u8, BLOCK_LEN> = (&a).into();
-        unsafe { ghash!(gcm_ghash_vpclmulqdq_avx2_1, xi, &self.h_table, input) }
+        unsafe { ghash!(gcm_ghash_vpclmulqdq_avx2_16, xi, &self.h_table, input) }
     }
 }

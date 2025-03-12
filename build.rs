@@ -949,7 +949,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "gcm_ghash_avx",
         "gcm_ghash_clmul",
         "gcm_ghash_neon",
-        "gcm_ghash_vpclmulqdq_avx2_1",
+        "gcm_ghash_vpclmulqdq_avx2_16",
         "gcm_gmult_clmul",
         "gcm_gmult_neon",
         "gcm_init_avx",
