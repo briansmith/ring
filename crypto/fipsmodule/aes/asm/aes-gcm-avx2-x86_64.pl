@@ -446,19 +446,16 @@ $code .= _begin_func "gcm_ghash_vpclmulqdq_avx2_1", 1;
     my ( $GHASH_ACC_PTR, $HTABLE, $AAD, $AADLEN ) = @argregs[ 0 .. 3 ];
 
     # Additional local variables
-    my ( $TMP0,       $TMP0_XMM )       = ( "%ymm0", "%xmm0" );
-    my ( $TMP1,       $TMP1_XMM )       = ( "%ymm1", "%xmm1" );
-    my ( $TMP2,       $TMP2_XMM )       = ( "%ymm2", "%xmm2" );
-    my ( $LO,         $LO_XMM )         = ( "%ymm3", "%xmm3" );
-    my ( $MI,         $MI_XMM )         = ( "%ymm4", "%xmm4" );
-    my ( $GHASH_ACC,  $GHASH_ACC_XMM )  = ( "%ymm5", "%xmm5" );
-    my ( $BSWAP_MASK, $BSWAP_MASK_XMM ) = ( "%ymm6", "%xmm6" );
-    my ( $GFPOLY,     $GFPOLY_XMM )     = ( "%ymm7", "%xmm7" );
-    my $H_POW2_XORED = "%ymm8";
-    my $H_POW1_XORED = "%ymm9";
+    my $TMP0_XMM       = "%xmm0";
+    my $TMP1_XMM       = "%xmm1";
+    my $TMP2_XMM       = "%xmm2";
+    my $LO_XMM         = "%xmm3";
+    my $GHASH_ACC_XMM  = "%xmm4"; # Different than upsream
+    my $BSWAP_MASK_XMM = "%xmm5"; # Different than upsream
+    my $GFPOLY_XMM     = "%xmm6"; # Different than upsream
 
     $code .= <<___;
-    @{[ _save_xmmregs (6 .. 9) ]}
+    @{[ _save_xmmregs (6) ]} # Less than upstream
     .seh_endprologue
 
     # Load the bswap_mask and gfpoly constants.  Since AADLEN is usually small,
@@ -471,8 +468,7 @@ $code .= _begin_func "gcm_ghash_vpclmulqdq_avx2_1", 1;
     vmovdqu         ($GHASH_ACC_PTR), $GHASH_ACC_XMM
     vpshufb         $BSWAP_MASK_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
 
-
-    # Update GHASH with the remaining 16-byte block if any.
+    # Update GHASH with the sinle 16-byte block.
 .Lghash_lastblock:
     vmovdqu         ($AAD), $TMP0_XMM
     vpshufb         $BSWAP_MASK_XMM, $TMP0_XMM, $TMP0_XMM
@@ -485,8 +481,6 @@ $code .= _begin_func "gcm_ghash_vpclmulqdq_avx2_1", 1;
     # Store the updated GHASH accumulator back to memory.
     vpshufb         $BSWAP_MASK_XMM, $GHASH_ACC_XMM, $GHASH_ACC_XMM
     vmovdqu         $GHASH_ACC_XMM, ($GHASH_ACC_PTR)
-
-    vzeroupper
 ___
 }
 $code .= _end_func;
