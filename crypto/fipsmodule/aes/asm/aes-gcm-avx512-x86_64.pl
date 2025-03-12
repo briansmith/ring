@@ -1268,6 +1268,42 @@ $code .= _begin_func "aes_gcm_dec_update_vaes_avx512", 1;
 $code .= _aes_gcm_update 0;
 $code .= _end_func;
 
-print $code;
+
+sub filter_and_print {
+    # This function replaces VAES and VPCLMULQDQ assembly instructions with their
+    # assembled forms, to allow the code to work on versions of binutils older than
+    # 2.30 that do not support these instructions.
+    # vaesenc/vaesenclast/vpclmulqdq instructions that use XMM registers are NOT
+    # using the VAES/VPCLMULQDQ features and do not require this workaround.
+    my %asmMap = (
+        # Currently empty, will contain content once we get AVX-512 support
+    );
+    for my $line (split("\n",$code)) {
+        if ( $line =~ /^
+            (?<prespace>\s*)
+            (?<instruction>[a-z0-9]+)
+            \s+
+            (?<args>([^#]*[^ #])?)
+            (?<postspace>\s*([#].*)?)
+            $/x
+        ) {
+            my $trimmed = $+{instruction} . " " . $+{args};
+            my $prespace = $+{prespace};
+            my $postspace = $+{postspace};
+            if (exists $asmMap{$trimmed}) {
+                $line = ${prespace} . $asmMap{$trimmed} . ${postspace};
+            } else {
+                if($trimmed =~ /(vpclmulqdq|vaes).*%[yz]mm/) {
+                    die ("found instruction not supported under old binutils, please update asmMap with the results of running\n" .
+                         'find target -name "*aes-gcm-avx512*.o" -exec python3 crypto/fipsmodule/aes/asm/make-avx-map-for-old-binutils.py \{\} \; | LC_ALL=C sort | uniq');
+                }
+            }
+        }
+        print $line,"\n";
+    }
+}
+
+filter_and_print();
+
 close STDOUT or die "error closing STDOUT: $!";
 exit 0;
