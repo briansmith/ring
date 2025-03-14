@@ -218,20 +218,6 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
         set(&mut caps, Shift::Avx);
     }
 
-    #[cfg(target_arch = "x86_64")]
-    if avx_available {
-        // The Intel docs don't seem to document the detection. The instruction
-        // definitions of the VEX.256 instructions reference the
-        // VAES/VPCLMULQDQ features and the documentation for the extended
-        // features gives the values. We combine these into one feature because
-        // we never use them independently.
-        let vaes_available = check(extended_features_ecx, 9);
-        let vclmul_available = check(extended_features_ecx, 10);
-        if vaes_available && vclmul_available {
-            set(&mut caps, Shift::VAesClmul);
-        }
-    }
-
     // "14.7.1 Detection of Intel AVX2 Hardware support"
     // XXX: We don't condition AVX2 on AVX. TODO: Address this.
     // `OPENSSL_cpuid_setup` clears this bit when it detects the OS doesn't
@@ -262,21 +248,43 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     // assume that those supporting instructions' prerequisites (e.g. OS
     // support for AVX or SSE state, respectively) are the only prerequisites
     // for these features.
-    if check(leaf1_ecx, 1) {
+    let clmul_available = check(leaf1_ecx, 1);
+    if clmul_available {
         set(&mut caps, Shift::ClMul);
     }
-    if check(leaf1_ecx, 25) {
+    let aesni_available = check(leaf1_ecx, 25);
+    if aesni_available {
         set(&mut caps, Shift::Aes);
-    }
-    // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
-    // static feature detection for this.
-    #[cfg(target_arch = "x86_64")]
-    if check(extended_features_ebx, 29) {
-        set(&mut caps, Shift::Sha);
     }
 
     #[cfg(target_arch = "x86_64")]
     {
+        // 14.3.1 Detection of VEX-Encoded AES and VPCLMULQDQ.
+        // vaesenc/vaesenclast with XMM registers is NOT using the VAES feature.
+        // vpclmulqdq with XMM registers is NOT using the VPCLMULQDQ feature.
+        let vex_aesni_clmul_available = avx_available && clmul_available && aesni_available;
+
+        // The Intel docs don't seem to document the detection. The instruction
+        // definitions of the VEX.256 instructions reference the
+        // VAES/VPCLMULQDQ features and the documentation for the extended
+        // features gives the values. We combine these into one feature because
+        // we never use them independently.
+        let vaes_available = check(extended_features_ecx, 9);
+        let vclmul_available = check(extended_features_ecx, 10);
+
+        // Our code that uses the VAES and VPCLMULQDQ features also uses the XMM
+        // form, so make this feature conditional on it being available. Combine
+        // this all into one feature since we never use the features separately.
+        if vex_aesni_clmul_available && vaes_available && vclmul_available {
+            set(&mut caps, Shift::VAesClmul);
+        }
+
+        // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
+        // static feature detection for this.
+        if check(extended_features_ebx, 29) {
+            set(&mut caps, Shift::Sha);
+        }
+
         if is_intel {
             set(&mut caps, Shift::IntelCpu);
         }
