@@ -72,14 +72,12 @@ pub(super) mod featureflags {
         // SAFETY: Since only `get_or_init()` could have created
         // `_cpu_features`, and it only does so after `FEATURES.get_or_init()`,
         // we know we are reading from `FEATURES` after initializing it.
-        //
-        // Also, 0 means "no features detected" to users, which is designed to
-        // be a safe configuration.
-        let features = FEATURES.get().map(NonZeroUsize::get).unwrap_or(0);
+        // The `get_or_init()` also did the synchronization.
+        let features = unsafe { FEATURES.get_unchecked() };
 
         // The truncation is lossless, as we set the value with a u32.
         #[allow(clippy::cast_possible_truncation)]
-        let features = features as u32;
+        let features = features.get() as u32;
 
         features
     }
