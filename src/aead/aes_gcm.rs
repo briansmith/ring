@@ -82,7 +82,6 @@ impl DynKey {
 
         #[cfg(target_arch = "x86_64")]
         if let Some((aes, gcm)) = cpu.get_feature() {
-            // 14.3.1 Detection of VEX-Encoded AES and VPCLMULQDQ
             let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature())?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             let combo = if let Some(cpu) = cpu.get_feature() {
