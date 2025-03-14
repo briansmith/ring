@@ -967,9 +967,11 @@ $code .= _aes_gcm_update 0;
 $code .= _end_func;
 
 sub filter_and_print {
-    # This function replaces AVX2 assembly instructions with their assembled forms,
-    # to allow the code to work on old versions of binutils (older than 2.30) that do
-    # not support these instructions.
+    # This function replaces VAES and VPCLMULQDQ assembly instructions with their
+    # assembled forms, to allow the code to work on versions of binutils older than
+    # 2.30 that do not support these instructions.
+    # vaesenc/vaesenclast/vpclmulqdq instructions that use XMM registers are NOT
+    # using the VAES/VPCLMULQDQ features and do not require this workaround.
     my %asmMap = (
         'vaesenc         %ymm2, %ymm12, %ymm12' => '.byte 0xc4,0x62,0x1d,0xdc,0xe2',
         'vaesenc         %ymm2, %ymm13, %ymm13' => '.byte 0xc4,0x62,0x15,0xdc,0xea',
