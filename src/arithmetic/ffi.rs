@@ -18,7 +18,7 @@ use core::{mem::size_of, num::NonZeroUsize};
 
 const _MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
     // BoringSSL's limit: 8 kiloBYTES.
-    const BN_MONTGOMERY_MAX_WORDS: usize = (8 * 1092) / size_of::<Limb>();
+    const BN_MONTGOMERY_MAX_WORDS: usize = (8 * 1024) / size_of::<Limb>();
     assert!(MAX_LIMBS <= BN_MONTGOMERY_MAX_WORDS);
 
     // Some 64-bit assembly implementations were written to take `len` as a
@@ -83,7 +83,9 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const LEN_MIN: usize, const LEN_MOD: u
         unreachable!()
     });
 
-    // Avoid stack overflow from the alloca inside.
+    // Avoid stack overflow from the alloca inside. The alloca could be
+    // `2*len` + a non-trivial fixed amount.
+
     if len.get() > MAX_LIMBS {
         return Err(LimbSliceError::too_long(n.len()));
     }
