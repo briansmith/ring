@@ -90,8 +90,8 @@ ${PREFIX}_set_encrypt_key_alt:
 .cfi_adjust_cfa_offset	8
 .seh_stackalloc	8
 .seh_endprologue
-	movups	($inp),%xmm0		# pull first 128 bits of *userKey
-	xorps	%xmm4,%xmm4		# low dword of xmm4 is assumed 0
+	vmovups	($inp),%xmm0		# pull first 128 bits of *userKey
+	vxorps	%xmm4,%xmm4		# low dword of xmm4 is assumed 0
 	lea	16($key),%rax		# %rax is used as modifiable copy of $key
 	cmp	\$256,$bits
 	je	.L14rounds_alt
@@ -100,66 +100,66 @@ ${PREFIX}_set_encrypt_key_alt:
 	jne	.Lbad_keybits_alt
 
 	mov	\$9,$bits			# 10 rounds for 128-bit key
-	movdqa	.Lkey_rotate(%rip),%xmm5
+	vmovdqa	.Lkey_rotate(%rip),%xmm5
 	mov	\$8,%r10d
-	movdqa	.Lkey_rcon1(%rip),%xmm4
-	movdqa	%xmm0,%xmm2
-	movdqu	%xmm0,($key)
+	vmovdqa	.Lkey_rcon1(%rip),%xmm4
+	vmovdqa	%xmm0,%xmm2
+	vmovdqu	%xmm0,($key)
 	jmp	.Loop_key128
 
 .align	16
 .Loop_key128:
-	pshufb		%xmm5,%xmm0
-	aesenclast	%xmm4,%xmm0
-	pslld		\$1,%xmm4
+	vpshufb		%xmm5,%xmm0
+	vaesenclast	%xmm4,%xmm0
+	vpslld		\$1,%xmm4
 	lea		16(%rax),%rax
 
-	movdqa		%xmm2,%xmm3
-	pslldq		\$4,%xmm2
-	pxor		%xmm2,%xmm3
-	pslldq		\$4,%xmm2
-	pxor		%xmm2,%xmm3
-	pslldq		\$4,%xmm2
-	pxor		%xmm3,%xmm2
+	vmovdqa		%xmm2,%xmm3
+	vpslldq		\$4,%xmm2
+	vpxor		%xmm2,%xmm3
+	vpslldq		\$4,%xmm2
+	vpxor		%xmm2,%xmm3
+	vpslldq		\$4,%xmm2
+	vpxor		%xmm3,%xmm2
 
-	pxor		%xmm2,%xmm0
-	movdqu		%xmm0,-16(%rax)
-	movdqa		%xmm0,%xmm2
+	vpxor		%xmm2,%xmm0
+	vmovdqu		%xmm0,-16(%rax)
+	vmovdqa		%xmm0,%xmm2
 
 	dec	%r10d
 	jnz	.Loop_key128
 
-	movdqa		.Lkey_rcon1b(%rip),%xmm4
+	vmovdqa		.Lkey_rcon1b(%rip),%xmm4
 
-	pshufb		%xmm5,%xmm0
-	aesenclast	%xmm4,%xmm0
-	pslld		\$1,%xmm4
+	vpshufb		%xmm5,%xmm0
+	vaesenclast	%xmm4,%xmm0
+	vpslld		\$1,%xmm4
 
-	movdqa		%xmm2,%xmm3
-	pslldq		\$4,%xmm2
-	pxor		%xmm2,%xmm3
-	pslldq		\$4,%xmm2
-	pxor		%xmm2,%xmm3
-	pslldq		\$4,%xmm2
-	pxor		%xmm3,%xmm2
+	vmovdqa		%xmm2,%xmm3
+	vpslldq		\$4,%xmm2
+	vpxor		%xmm2,%xmm3
+	vpslldq		\$4,%xmm2
+	vpxor		%xmm2,%xmm3
+	vpslldq		\$4,%xmm2
+	vpxor		%xmm3,%xmm2
 
-	pxor		%xmm2,%xmm0
-	movdqu		%xmm0,(%rax)
+	vpxor		%xmm2,%xmm0
+	vmovdqu		%xmm0,(%rax)
 
-	movdqa		%xmm0,%xmm2
-	pshufb		%xmm5,%xmm0
-	aesenclast	%xmm4,%xmm0
+	vmovdqa		%xmm0,%xmm2
+	vpshufb		%xmm5,%xmm0
+	vaesenclast	%xmm4,%xmm0
 
-	movdqa		%xmm2,%xmm3
-	pslldq		\$4,%xmm2
-	pxor		%xmm2,%xmm3
-	pslldq		\$4,%xmm2
-	pxor		%xmm2,%xmm3
-	pslldq		\$4,%xmm2
-	pxor		%xmm3,%xmm2
+	vmovdqa		%xmm2,%xmm3
+	vpslldq		\$4,%xmm2
+	vpxor		%xmm2,%xmm3
+	vpslldq		\$4,%xmm2
+	vpxor		%xmm2,%xmm3
+	vpslldq		\$4,%xmm2
+	vpxor		%xmm3,%xmm2
 
-	pxor		%xmm2,%xmm0
-	movdqu		%xmm0,16(%rax)
+	vpxor		%xmm2,%xmm0
+	vmovdqu		%xmm0,16(%rax)
 
 	mov	$bits,96(%rax)	# 240($key)
 	xor	%eax,%eax
@@ -169,53 +169,53 @@ ${PREFIX}_set_encrypt_key_alt:
 
 .align	16
 .L14rounds_alt:
-	movups	16($inp),%xmm2			# remaining half of *userKey
+	vmovups	16($inp),%xmm2			# remaining half of *userKey
 	mov	\$13,$bits			# 14 rounds for 256
 	lea	16(%rax),%rax
-	movdqa	.Lkey_rotate(%rip),%xmm5
-	movdqa	.Lkey_rcon1(%rip),%xmm4
+	vmovdqa	.Lkey_rotate(%rip),%xmm5
+	vmovdqa	.Lkey_rcon1(%rip),%xmm4
 	mov	\$7,%r10d
-	movdqu	%xmm0,0($key)
-	movdqa	%xmm2,%xmm1
-	movdqu	%xmm2,16($key)
+	vmovdqu	%xmm0,0($key)
+	vmovdqa	%xmm2,%xmm1
+	vmovdqu	%xmm2,16($key)
 	jmp	.Loop_key256
 
 .align	16
 .Loop_key256:
-	pshufb		%xmm5,%xmm2
-	aesenclast	%xmm4,%xmm2
+	vpshufb		%xmm5,%xmm2
+	vaesenclast	%xmm4,%xmm2
 
-	movdqa		%xmm0,%xmm3
-	pslldq		\$4,%xmm0
-	pxor		%xmm0,%xmm3
-	pslldq		\$4,%xmm0
-	pxor		%xmm0,%xmm3
-	pslldq		\$4,%xmm0
-	pxor		%xmm3,%xmm0
-	pslld		\$1,%xmm4
+	vmovdqa		%xmm0,%xmm3
+	vpslldq		\$4,%xmm0
+	vpxor		%xmm0,%xmm3
+	vpslldq		\$4,%xmm0
+	vpxor		%xmm0,%xmm3
+	vpslldq		\$4,%xmm0
+	vpxor		%xmm3,%xmm0
+	vpslld		\$1,%xmm4
 
-	pxor		%xmm2,%xmm0
-	movdqu		%xmm0,(%rax)
+	vpxor		%xmm2,%xmm0
+	vmovdqu		%xmm0,(%rax)
 
 	dec	%r10d
 	jz	.Ldone_key256
 
-	pshufd		\$0xff,%xmm0,%xmm2
-	pxor		%xmm3,%xmm3
-	aesenclast	%xmm3,%xmm2
+	vpshufd		\$0xff,%xmm0,%xmm2
+	vpxor		%xmm3,%xmm3
+	vaesenclast	%xmm3,%xmm2
 
-	movdqa		%xmm1,%xmm3
-	pslldq		\$4,%xmm1
-	pxor		%xmm1,%xmm3
-	pslldq		\$4,%xmm1
-	pxor		%xmm1,%xmm3
-	pslldq		\$4,%xmm1
-	pxor		%xmm3,%xmm1
+	vmovdqa		%xmm1,%xmm3
+	vpslldq		\$4,%xmm1
+	vpxor		%xmm1,%xmm3
+	vpslldq		\$4,%xmm1
+	vpxor		%xmm1,%xmm3
+	vpslldq		\$4,%xmm1
+	vpxor		%xmm3,%xmm1
 
-	pxor		%xmm1,%xmm2
-	movdqu		%xmm2,16(%rax)
+	vpxor		%xmm1,%xmm2
+	vmovdqu		%xmm2,16(%rax)
 	lea		32(%rax),%rax
-	movdqa		%xmm2,%xmm1
+	vmovdqa		%xmm2,%xmm1
 
 	jmp	.Loop_key256
 
@@ -228,12 +228,12 @@ ${PREFIX}_set_encrypt_key_alt:
 .Lbad_keybits_alt:
 	mov	\$-2,%rax
 .Lenc_key_ret_alt:
-	pxor	%xmm0,%xmm0
-	pxor	%xmm1,%xmm1
-	pxor	%xmm2,%xmm2
-	pxor	%xmm3,%xmm3
-	pxor	%xmm4,%xmm4
-	pxor	%xmm5,%xmm5
+	vpxor	%xmm0,%xmm0
+	vpxor	%xmm1,%xmm1
+	vpxor	%xmm2,%xmm2
+	vpxor	%xmm3,%xmm3
+	vpxor	%xmm4,%xmm4
+	vpxor	%xmm5,%xmm5
 	add	\$8,%rsp
 .cfi_adjust_cfa_offset	-8
 	ret
