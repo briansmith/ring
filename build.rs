@@ -78,6 +78,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86_64], "crypto/curve25519/curve25519_64_adx.c"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/aes-gcm-avx2-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-gcm-x86_64.pl"),
+    (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-avx-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/ghash-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl"),
