@@ -63,15 +63,15 @@ pub(super) fn seal(
         )
     };
 
-    let remaining = match in_out.get_mut(processed..) {
-        Some(remaining) => remaining,
+    let remainder = match in_out.get_mut(processed..) {
+        Some(remainder) => remainder,
         None => {
             // This can't happen. If it did, then the assembly already
             // caused a buffer overflow.
             unreachable!()
         }
     };
-    let (mut whole, remainder) = slice::as_chunks_mut(remaining);
+    let (mut whole, remainder) = slice::as_chunks_mut(remainder);
     aes_key.ctr32_encrypt_within(whole.as_flattened_mut().into(), &mut ctr);
     auth.update_blocks(whole.as_ref());
     let remainder = OverlappingPartialBlock::new(remainder.into())
