@@ -63,7 +63,7 @@ pub(super) fn seal(
         )
     };
 
-    let ramaining = match in_out.get_mut(processed..) {
+    let remaining = match in_out.get_mut(processed..) {
         Some(remaining) => remaining,
         None => {
             // This can't happen. If it did, then the assembly already
@@ -71,7 +71,7 @@ pub(super) fn seal(
             unreachable!()
         }
     };
-    let (mut whole, remainder) = slice::as_chunks_mut(ramaining);
+    let (mut whole, remainder) = slice::as_chunks_mut(remaining);
     aes_key.ctr32_encrypt_within(whole.as_flattened_mut().into(), &mut ctr);
     auth.update_blocks(whole.as_ref());
     let remainder = OverlappingPartialBlock::new(remainder.into())
