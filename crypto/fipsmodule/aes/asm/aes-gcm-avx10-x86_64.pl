@@ -708,6 +708,33 @@ sub _ghash_4x {
     return $code;
 }
 
+# void gcm_gmult_vpclmulqdq_avx10(uint8_t Xi[16], const u128 Htable[16]);
+$code .= _begin_func "gcm_gmult_vpclmulqdq_avx10", 1;
+{
+    my ( $GHASH_ACC_PTR, $HTABLE ) = @argregs[ 0 .. 1 ];
+    my ( $GHASH_ACC, $BSWAP_MASK, $H_POW1, $GFPOLY, $T0, $T1, $T2 ) =
+      map( "%xmm$_", ( 0 .. 6 ) );
+
+    $code .= <<___;
+    @{[ _save_xmmregs (6) ]}
+    .seh_endprologue
+
+    vmovdqu         ($GHASH_ACC_PTR), $GHASH_ACC
+    vmovdqu         .Lbswap_mask(%rip), $BSWAP_MASK
+    vmovdqu         $OFFSETOFEND_H_POWERS-16($HTABLE), $H_POW1
+    vmovdqu         .Lgfpoly(%rip), $GFPOLY
+    vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
+
+    @{[ _ghash_mul  $H_POW1, $GHASH_ACC, $GHASH_ACC, $GFPOLY, $T0, $T1, $T2 ]}
+
+    vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
+    vmovdqu         $GHASH_ACC, ($GHASH_ACC_PTR)
+
+    # No need for vzeroupper, since only xmm registers were used.
+___
+}
+$code .= _end_func;
+
 my $g_ghash_macro_expansion_count = 0;
 
 # void gcm_ghash_##suffix(uint8_t Xi[16], const u128 Htable[16],
@@ -1357,31 +1384,6 @@ ___
 ___
     return $code;
 }
-
-# void gcm_gmult_vpclmulqdq_avx10(uint8_t Xi[16], const u128 Htable[16]);
-$code .= _begin_func "gcm_gmult_vpclmulqdq_avx10", 1;
-{
-    my ( $GHASH_ACC_PTR, $HTABLE ) = @argregs[ 0 .. 1 ];
-    my ( $GHASH_ACC, $BSWAP_MASK, $H_POW1, $GFPOLY, $T0, $T1, $T2 ) =
-      map( "%xmm$_", ( 0 .. 6 ) );
-
-    $code .= <<___;
-    @{[ _save_xmmregs (6) ]}
-    .seh_endprologue
-
-    vmovdqu         ($GHASH_ACC_PTR), $GHASH_ACC
-    vmovdqu         .Lbswap_mask(%rip), $BSWAP_MASK
-    vmovdqu         $OFFSETOFEND_H_POWERS-16($HTABLE), $H_POW1
-    vmovdqu         .Lgfpoly(%rip), $GFPOLY
-    vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
-
-    @{[ _ghash_mul  $H_POW1, $GHASH_ACC, $GHASH_ACC, $GFPOLY, $T0, $T1, $T2 ]}
-
-    vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
-    vmovdqu         $GHASH_ACC, ($GHASH_ACC_PTR)
-___
-}
-$code .= _end_func;
 
 # Disabled until significant deployment of AVX10/256 is seen.  The separate
 # *_vaes_avx2 implementation provides the only 256-bit support for now.
