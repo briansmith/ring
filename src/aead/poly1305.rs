@@ -54,8 +54,8 @@ impl Context {
         ffi_fallback::State::new_context(key)
     }
 
-    pub fn update_block(&mut self, input: [u8; BLOCK_LEN]) {
-        self.update(AsChunks::from_ref(&input))
+    pub fn update_block(&mut self, input: &[u8; BLOCK_LEN]) {
+        self.update(AsChunks::from_ref(input))
     }
 
     pub fn update(&mut self, input: AsChunks<u8, BLOCK_LEN>) {

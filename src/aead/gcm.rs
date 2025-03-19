@@ -17,7 +17,11 @@ use super::{aes_gcm, Aad};
 use crate::{
     bits::{BitLength, FromByteLen as _},
     error::{self, InputTooLongError},
-    polyfill::{slice::AsChunks, sliceutil::overwrite_at_start, NotSend},
+    polyfill::{
+        slice::{self, AsChunks},
+        sliceutil::overwrite_at_start,
+        NotSend,
+    },
 };
 use cfg_if::cfg_if;
 
@@ -48,7 +52,7 @@ pub(super) struct Context<'key, K> {
     _not_send: NotSend,
 }
 
-impl<'key, K: UpdateBlock> Context<'key, K> {
+impl<'key, K: UpdateBlock + UpdateBlocks> Context<'key, K> {
     #[inline(always)]
     pub(crate) fn new(
         key: &'key K,
@@ -75,10 +79,14 @@ impl<'key, K: UpdateBlock> Context<'key, K> {
             _not_send: NotSend::VALUE,
         };
 
-        for ad in aad.0.chunks(BLOCK_LEN) {
+        let (whole, remainder) = slice::as_chunks(&aad.0);
+        if !whole.is_empty() {
+            ctx.update_blocks(whole);
+        }
+        if !remainder.is_empty() {
             let mut block = ZERO_BLOCK;
-            overwrite_at_start(&mut block, ad);
-            ctx.update_block(block);
+            overwrite_at_start(&mut block, remainder);
+            ctx.update_block(&block);
         }
 
         Ok(ctx)
@@ -136,7 +144,7 @@ impl<K: UpdateBlocks> Context<'_, K> {
 }
 
 impl<K: UpdateBlock> Context<'_, K> {
-    pub fn update_block(&mut self, a: Block) {
+    pub fn update_block(&mut self, a: &Block) {
         self.key.update_block(&mut self.Xi, a);
     }
 
@@ -149,13 +157,13 @@ impl<K: UpdateBlock> Context<'_, K> {
         let (alen, clen) = block.split_at_mut(BLOCK_LEN / 2);
         alen.copy_from_slice(&BitLength::<u64>::to_be_bytes(self.aad_len));
         clen.copy_from_slice(&BitLength::<u64>::to_be_bytes(self.in_out_len));
-        self.update_block(block);
+        self.update_block(&block);
         f(self.Xi.0)
     }
 }
 
 pub(super) trait UpdateBlock {
-    fn update_block(&self, xi: &mut Xi, a: Block);
+    fn update_block(&self, xi: &mut Xi, a: &Block);
 }
 
 pub(super) trait UpdateBlocks {
