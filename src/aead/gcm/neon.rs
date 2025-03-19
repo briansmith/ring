@@ -36,11 +36,11 @@ impl Key {
 }
 
 impl UpdateBlock for Key {
-    fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
+    fn update_block(&self, xi: &mut Xi, a: &[u8; BLOCK_LEN]) {
         prefixed_extern! {
             fn gcm_gmult_neon(xi: &mut Xi, Htable: &HTable);
         }
-        xi.bitxor_assign(a);
+        xi.bitxor_assign(*a);
         unsafe { self.h_table.gmult(gcm_gmult_neon, xi) };
     }
 }

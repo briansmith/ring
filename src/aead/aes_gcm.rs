@@ -292,7 +292,7 @@ fn seal_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
         overwrite_at_start(&mut input, remainder.input());
         let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input);
         output[remainder_len..].fill(0);
-        auth.update_block(output);
+        auth.update_block(&output);
         remainder.overwrite_at_start(output);
     }
 
@@ -470,7 +470,7 @@ fn open_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     if remainder.len() > 0 {
         let mut input = ZERO_BLOCK;
         overwrite_at_start(&mut input, remainder.input());
-        auth.update_block(input);
+        auth.update_block(&input);
         remainder.overwrite_at_start(aes_key.encrypt_iv_xor_block(ctr.into(), input));
     }
     Ok(finish(aes_key, auth, tag_iv))

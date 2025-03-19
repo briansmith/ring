@@ -51,17 +51,17 @@ impl Key {
 
 impl UpdateBlock for Key {
     #[cfg(target_arch = "aarch64")]
-    fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
+    fn update_block(&self, xi: &mut Xi, a: &[u8; BLOCK_LEN]) {
         prefixed_extern! {
             fn gcm_gmult_clmul(xi: &mut Xi, Htable: &HTable);
         }
-        xi.bitxor_assign(a);
+        xi.bitxor_assign(*a);
         unsafe { self.h_table.gmult(gcm_gmult_clmul, xi) };
     }
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
-        self.update_blocks(xi, (&a).into())
+    fn update_block(&self, xi: &mut Xi, a: &[u8; BLOCK_LEN]) {
+        self.update_blocks(xi, a.into())
     }
 }
 

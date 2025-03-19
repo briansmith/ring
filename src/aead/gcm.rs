@@ -136,7 +136,7 @@ impl<K: UpdateBlocks> Context<'_, K> {
 }
 
 impl<K: UpdateBlock> Context<'_, K> {
-    pub fn update_block(&mut self, a: Block) {
+    pub fn update_block(&mut self, a: &Block) {
         self.key.update_block(&mut self.Xi, a);
     }
 
@@ -149,13 +149,13 @@ impl<K: UpdateBlock> Context<'_, K> {
         let (alen, clen) = block.split_at_mut(BLOCK_LEN / 2);
         alen.copy_from_slice(&BitLength::<u64>::to_be_bytes(self.aad_len));
         clen.copy_from_slice(&BitLength::<u64>::to_be_bytes(self.in_out_len));
-        self.update_block(block);
+        self.update_block(&block);
         f(self.Xi.0)
     }
 }
 
 pub(super) trait UpdateBlock {
-    fn update_block(&self, xi: &mut Xi, a: Block);
+    fn update_block(&self, xi: &mut Xi, a: &Block);
 }
 
 pub(super) trait UpdateBlocks {

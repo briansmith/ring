@@ -162,6 +162,6 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
     if !remainder.is_empty() {
         let mut block = [0u8; poly1305::BLOCK_LEN];
         sliceutil::overwrite_at_start(&mut block, remainder);
-        ctx.update_block(block);
+        ctx.update_block(&block);
     }
 }

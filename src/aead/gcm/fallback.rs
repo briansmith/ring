@@ -37,8 +37,8 @@ impl Key {
 }
 
 impl UpdateBlock for Key {
-    fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
-        xi.bitxor_assign(a);
+    fn update_block(&self, xi: &mut Xi, a: &[u8; BLOCK_LEN]) {
+        xi.bitxor_assign(*a);
         gmult(xi, self.h);
     }
 }

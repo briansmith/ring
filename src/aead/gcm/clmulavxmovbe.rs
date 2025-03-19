@@ -39,8 +39,8 @@ impl Key {
 }
 
 impl UpdateBlock for Key {
-    fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
-        self.update_blocks(xi, (&a).into())
+    fn update_block(&self, xi: &mut Xi, a: &[u8; BLOCK_LEN]) {
+        self.update_blocks(xi, a.into())
     }
 }
 
