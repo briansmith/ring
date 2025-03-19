@@ -198,10 +198,13 @@ ___
 
 # We use Htable[0..7] to store H^8 through H^1, and Htable[8..11] to store the
 # 64-bit halves of the key powers XOR'd together (for Karatsuba multiplication)
-# in the order 8,6,7,5,4,2,3,1.  We do not use Htable[12..15].
+# in the order 8,6,7,5,4,2,3,1.
+# We use HTable[12] to store H^1 * x^64.
+# We do not use Htable[13..15].
 my $NUM_H_POWERS            = 8;
 my $OFFSETOFEND_H_POWERS    = $NUM_H_POWERS * 16;
 my $OFFSETOF_H_POWERS_XORED = $OFFSETOFEND_H_POWERS;
+my $OFFSETOF_H_TIMES_X64    = $OFFSETOF_H_POWERS_XORED + ($NUM_H_POWERS * 8);
 
 # Offset to 'rounds' in AES_KEY struct
 my $OFFSETOF_AES_ROUNDS = 240;
@@ -224,6 +227,45 @@ sub _ghash_mul {
     vpshufd         \$0x4e, $t1, $t1           # Swap halves of MI
     vpxor           $t1, $dst, $dst            # Fold MI into HI (part 1)
     vpxor           $t0, $dst, $dst            # Fold MI into HI (part 2)
+___
+}
+
+# $b *= $a.
+#
+# This is the "potential optimization" of |_ghash_mul| mentioned in
+# aes-gcm-avx10-x86_64.pl.
+#
+# This is copied from |_ghash_mul| in Linux's aes-gcm-aesni-x86_64.S as of
+# commit 81e4f8d68c66da301bb881862735bd74c6241a19, with the following changes:
+# * PerlAsm syntax instead of macro syntax.
+# * AVX instead of SSE.
+# * |_ghash_mul_step| is inlined into this.
+# * |b| is the first paraneter, instead of the third, to be consistent with
+#   "mul_assign" ordering.
+# * The upper half of |gfpoly| is used instead of the lower half, because
+#   |.Lgfpoly| is 128 bits here instead of 64 bits.
+#
+# This optimization is only done for single-block multiplications because it is
+# incompatible with Karatsuba multiplication (according to
+# aes-gcm-aesni-x86_64.S).
+sub _ghash_mul_assign {
+    my ( $b, $a, $a_times_x64, $gfpoly, $t0, $t1 ) = @_;
+    return <<___;
+    # MI = (a_L * b_H) + ((a*x^64)_L * b_L)
+    vpclmulqdq      \$0x01, $a, $b, $t0
+    vpclmulqdq      \$0x00, $a_times_x64, $b, $t1
+    vpxor           $t1, $t0, $t0
+
+    # HI = (a_H * b_H) + ((a*x^64)_H * b_L)
+    vpclmulqdq      \$0x11, $a, $b, $t1
+    vpclmulqdq      \$0x10, $a_times_x64, $b, $b
+    vpxor           $t1, $b, $b
+
+    # Fold MI into HI.
+    vpshufd         \$0x4e, $t0, $t1            # Swap halves of MI
+    vpclmulqdq      \$0x10, $gfpoly, $t0, $t0   # MI_L*(x^63 + x^62 + x^57)
+    vpxor           $t1, $b, $b
+    vpxor           $t0, $b, $b
 ___
 }
 
@@ -265,9 +307,16 @@ $code .= _begin_func "gcm_init_vpclmulqdq_avx2", 1;
 
     vbroadcasti128  .Lgfpoly(%rip), $GFPOLY
 
+    # Compute and store H^1 * x^64.
+    vpshufd         \$0x4e, $H_CUR_XMM, $TMP0_XMM
+    vpclmulqdq      \$0x01, $H_CUR_XMM, $GFPOLY_XMM, $TMP1_XMM
+    vpxor           $TMP0_XMM, $TMP1_XMM, $TMP2_XMM
+    vmovdqu         $TMP2_XMM, $OFFSETOF_H_TIMES_X64($HTABLE)
+
     # Square H^1 to get H^2.
-    @{[ _ghash_mul  $H_CUR_XMM, $H_CUR_XMM, $H_INC_XMM, $GFPOLY_XMM,
-                    $TMP0_XMM, $TMP1_XMM, $TMP2_XMM ]}
+    vmovdqu         $H_CUR_XMM, $H_INC_XMM
+    @{[ _ghash_mul_assign $H_INC_XMM, $H_CUR_XMM, $TMP2_XMM, $GFPOLY_XMM,
+                    $TMP0_XMM, $TMP1_XMM ]}
 
     # Create H_CUR = [H^2, H^1] and H_INC = [H^2, H^2].
     vinserti128     \$1, $H_CUR_XMM, $H_INC, $H_CUR
@@ -447,7 +496,7 @@ sub _ghash_4x {
 $code .= _begin_func "gcm_ghash_vpclmulqdq_avx2_16", 1;
 {
     my ( $GHASH_ACC_PTR, $HTABLE, $AAD, $AAD_LEN_16 ) = @argregs[ 0 .. 3 ];
-    my ( $GHASH_ACC, $BSWAP_MASK, $H_POW1, $GFPOLY, $T0, $T1, $T2 ) =
+    my ( $GHASH_ACC, $BSWAP_MASK, $H_POW1, $H_POW1_TIMES_X64, $GFPOLY, $T0, $T1 ) =
       map( "%xmm$_", ( 0 .. 6 ) );
 
     $code .= <<___;
@@ -461,10 +510,11 @@ $code .= _begin_func "gcm_ghash_vpclmulqdq_avx2_16", 1;
 
     vmovdqu         .Lbswap_mask(%rip), $BSWAP_MASK
     vmovdqu         $OFFSETOFEND_H_POWERS-16($HTABLE), $H_POW1
+    vmovdqu         $OFFSETOF_H_TIMES_X64($HTABLE), $H_POW1_TIMES_X64
     vmovdqu         .Lgfpoly(%rip), $GFPOLY
     vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
 
-    @{[ _ghash_mul  $H_POW1, $GHASH_ACC, $GHASH_ACC, $GFPOLY, $T0, $T1, $T2 ]}
+    @{[ _ghash_mul_assign $GHASH_ACC, $H_POW1, $H_POW1_TIMES_X64, $GFPOLY, $T0, $T1 ]}
 
     vpshufb         $BSWAP_MASK, $GHASH_ACC, $GHASH_ACC
     vmovdqu         $GHASH_ACC, ($GHASH_ACC_PTR)
