@@ -15,14 +15,15 @@
 #
 #------------------------------------------------------------------------------
 #
-# VAES and VPCLMULQDQ optimized AES-GCM for x86_64 (AVX2 version)
+# This is an AES-GCM implementation for x86_64 CPUs that support the following
+# CPU features: VAES && VPCLMULQDQ && AVX2.
 #
-# This is similar to aes-gcm-avx10-x86_64.pl, but it uses AVX2 instead of AVX512
-# / AVX10.  This means it can only use 16 vector registers instead of 32, the
+# This is similar to aes-gcm-avx512-x86_64.pl, but it uses AVX2 instead of
+# AVX512.  This means it can only use 16 vector registers instead of 32, the
 # maximum vector length is 32 bytes, and some instructions such as vpternlogd
 # and masked loads/stores are unavailable.  However, it is able to run on CPUs
-# that have VAES without AVX512 / AVX10, namely AMD Zen 3 (including "Milan"
-# server processors) and some Intel client CPUs such as Alder Lake.
+# that have VAES without AVX512, namely AMD Zen 3 (including "Milan" server
+# processors) and some Intel client CPUs such as Alder Lake.
 #
 # This implementation also uses Karatsuba multiplication instead of schoolbook
 # multiplication for GHASH in its main loop.  This does not help much on Intel,
