@@ -144,10 +144,6 @@ void OPENSSL_cpuid_setup(uint32_t OPENSSL_ia32cap_P[4]) {
     // 128-bit or 256-bit vectors, and also volume 2a section 2.7.11 ("#UD
     // Equations for EVEX") which says that all EVEX-coded instructions raise an
     // undefined-instruction exception if any of these XCR0 bits is zero.
-    //
-    // AVX10 fixes this by reorganizing the features that used to be part of
-    // "AVX512" and allowing them to be used independently of 512-bit support.
-    // TODO: add AVX10 detection.
     extended_features[0] &= ~(1u << 16);  // AVX512F
     extended_features[0] &= ~(1u << 17);  // AVX512DQ
     extended_features[0] &= ~(1u << 21);  // AVX512IFMA

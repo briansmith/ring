@@ -15,7 +15,8 @@
 #
 #------------------------------------------------------------------------------
 #
-# VAES and VPCLMULQDQ optimized AES-GCM for x86_64
+# This is an AES-GCM implementation for x86_64 CPUs that support the following
+# CPU features: VAES && VPCLMULQDQ && AVX512BW && AVX512VL && BMI2.
 #
 # This file is based on aes-gcm-avx10-x86_64.S from the Linux kernel
 # (https://git.kernel.org/linus/b06affb1cb580e13).  The following notable
@@ -38,38 +39,7 @@
 #
 # - Added optimization for large amounts of AAD.
 #
-#------------------------------------------------------------------------------
-#
-# This file implements AES-GCM (Galois/Counter Mode) for x86_64 CPUs that
-# support VAES (vector AES), VPCLMULQDQ (vector carryless multiplication), and
-# either AVX512 or AVX10.  Some of the functions, notably the encryption and
-# decryption update functions which are the most performance-critical, are
-# provided in two variants generated from a macro: one using 256-bit vectors
-# (suffix: vaes_avx10_256) and one using 512-bit vectors (vaes_avx10_512).  The
-# other, "shared" functions (vaes_avx10) use at most 256-bit vectors.
-#
-# The functions that use 512-bit vectors are intended for CPUs that support
-# 512-bit vectors *and* where using them doesn't cause significant
-# downclocking.  They require the following CPU features:
-#
-#       VAES && VPCLMULQDQ && BMI2 && ((AVX512BW && AVX512VL) || AVX10/512)
-#
-# The other functions require the following CPU features:
-#
-#       VAES && VPCLMULQDQ && BMI2 && ((AVX512BW && AVX512VL) || AVX10/256)
-#
-# Note that we use "avx10" in the names of the functions as a shorthand to
-# really mean "AVX10 or a certain set of AVX512 features".  Due to Intel's
-# introduction of AVX512 and then its replacement by AVX10, there doesn't seem
-# to be a simple way to name things that makes sense on all CPUs.
-#
-# Note that the macros that support both 256-bit and 512-bit vectors could
-# fairly easily be changed to support 128-bit too.  However, this would *not*
-# be sufficient to allow the code to run on CPUs without AVX512 or AVX10,
-# because the code heavily uses several features of these extensions other than
-# the vector length: the increase in the number of SIMD registers from 16 to
-# 32, masking support, and new instructions such as vpternlogd (which can do a
-# three-argument XOR).  These features are very useful for AES-GCM.
+# - Removed support for maximum vector lengths other than 512 bits.
 
 use strict;
 
@@ -708,8 +678,8 @@ sub _ghash_4x {
     return $code;
 }
 
-# void gcm_gmult_vpclmulqdq_avx10(uint8_t Xi[16], const u128 Htable[16]);
-$code .= _begin_func "gcm_gmult_vpclmulqdq_avx10", 1;
+# void gcm_gmult_vpclmulqdq_avx512(uint8_t Xi[16], const u128 Htable[16]);
+$code .= _begin_func "gcm_gmult_vpclmulqdq_avx512", 1;
 {
     my ( $GHASH_ACC_PTR, $HTABLE ) = @argregs[ 0 .. 1 ];
     my ( $GHASH_ACC, $BSWAP_MASK, $H_POW1, $GFPOLY, $T0, $T1, $T2 ) =
@@ -1406,19 +1376,19 @@ ___
 
 _set_veclen 64;
 
-$code .= _begin_func "gcm_init_vpclmulqdq_avx10_512", 0;
+$code .= _begin_func "gcm_init_vpclmulqdq_avx512", 0;
 $code .= _aes_gcm_init;
 $code .= _end_func;
 
-$code .= _begin_func "gcm_ghash_vpclmulqdq_avx10_512", 1;
+$code .= _begin_func "gcm_ghash_vpclmulqdq_avx512", 1;
 $code .= _ghash_update;
 $code .= _end_func;
 
-$code .= _begin_func "aes_gcm_enc_update_vaes_avx10_512", 1;
+$code .= _begin_func "aes_gcm_enc_update_vaes_avx512", 1;
 $code .= _aes_gcm_update 1;
 $code .= _end_func;
 
-$code .= _begin_func "aes_gcm_dec_update_vaes_avx10_512", 1;
+$code .= _begin_func "aes_gcm_dec_update_vaes_avx512", 1;
 $code .= _aes_gcm_update 0;
 $code .= _end_func;
 
