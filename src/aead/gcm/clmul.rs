@@ -18,11 +18,9 @@
     target_arch = "x86_64"
 ))]
 
-use super::{ffi::KeyValue, HTable, UpdateBlock, Xi};
+use super::{ffi::KeyValue, HTable, UpdateBlock, UpdateBlocks, Xi};
 use crate::aead::gcm::ffi::BLOCK_LEN;
-use crate::cpu;
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use {super::UpdateBlocks, crate::polyfill::slice::AsChunks};
+use crate::{cpu, polyfill::slice::AsChunks};
 
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 pub(in super::super) type RequiredCpuFeatures = cpu::arm::PMull;
@@ -65,8 +63,15 @@ impl UpdateBlock for Key {
     }
 }
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 impl UpdateBlocks for Key {
+    // This is only used for large AAD, so optimize it for size.
+    #[cfg(target_arch = "aarch64")]
+    #[inline(never)]
+    fn update_blocks(&self, xi: &mut Xi, a: AsChunks<u8, BLOCK_LEN>) {
+        a.into_iter().for_each(|a| self.update_block(xi, a));
+    }
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, { BLOCK_LEN }>) {
         unsafe { ghash!(gcm_ghash_clmul, xi, &self.h_table, input) }
     }

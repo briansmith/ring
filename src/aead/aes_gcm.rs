@@ -223,7 +223,7 @@ pub(super) fn seal(
     all(target_arch = "aarch64", target_endian = "little"),
     target_arch = "x86_64"
 ))]
-fn seal_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
+fn seal_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock + gcm::UpdateBlocks>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
@@ -351,7 +351,7 @@ pub(super) fn open(
     all(target_arch = "aarch64", target_endian = "little"),
     target_arch = "x86_64"
 ))]
-fn open_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
+fn open_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock + gcm::UpdateBlocks>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
     in_out_slice: &mut [u8],

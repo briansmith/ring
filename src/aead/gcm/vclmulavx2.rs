@@ -14,7 +14,7 @@
 
 #![cfg(target_arch = "x86_64")]
 
-use super::{ffi::KeyValue, HTable, UpdateBlock, Xi};
+use super::{ffi::KeyValue, HTable, UpdateBlock, UpdateBlocks, Xi};
 use crate::{
     aead::gcm::ffi::BLOCK_LEN,
     cpu::intel::{Avx2, VAesClmul},
@@ -42,5 +42,13 @@ impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: &[u8; BLOCK_LEN]) {
         let input: AsChunks<u8, BLOCK_LEN> = a.into();
         unsafe { ghash!(gcm_ghash_vpclmulqdq_avx2_1, xi, &self.h_table, input) }
+    }
+}
+
+impl UpdateBlocks for Key {
+    // This is only used for large AAD, so optimize it for size.
+    #[inline(never)]
+    fn update_blocks(&self, xi: &mut Xi, a: AsChunks<u8, BLOCK_LEN>) {
+        a.into_iter().for_each(|a| self.update_block(xi, a));
     }
 }

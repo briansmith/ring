@@ -17,7 +17,11 @@ use super::{aes_gcm, Aad};
 use crate::{
     bits::{BitLength, FromByteLen as _},
     error::{self, InputTooLongError},
-    polyfill::{slice::AsChunks, sliceutil::overwrite_at_start, NotSend},
+    polyfill::{
+        slice::{self, AsChunks},
+        sliceutil::overwrite_at_start,
+        NotSend,
+    },
 };
 use cfg_if::cfg_if;
 
@@ -48,7 +52,7 @@ pub(super) struct Context<'key, K> {
     _not_send: NotSend,
 }
 
-impl<'key, K: UpdateBlock> Context<'key, K> {
+impl<'key, K: UpdateBlock + UpdateBlocks> Context<'key, K> {
     #[inline(always)]
     pub(crate) fn new(
         key: &'key K,
@@ -75,10 +79,14 @@ impl<'key, K: UpdateBlock> Context<'key, K> {
             _not_send: NotSend::VALUE,
         };
 
-        for ad in aad.0.chunks(BLOCK_LEN) {
+        let (whole, remainder) = slice::as_chunks(&aad.0);
+        if !whole.is_empty() {
+            ctx.update_blocks(whole);
+        }
+        if !remainder.is_empty() {
             let mut block = ZERO_BLOCK;
-            overwrite_at_start(&mut block, ad);
-            ctx.update_block(block);
+            overwrite_at_start(&mut block, remainder);
+            ctx.update_block(&block);
         }
 
         Ok(ctx)
