@@ -662,7 +662,7 @@ ___
         $code .= <<___;
 #ifdef BORINGSSL_DISPATCH_TEST
         .extern BORINGSSL_function_hit
-        movb \$1,BORINGSSL_function_hit+8(%rip)
+        movb \$1,BORINGSSL_function_hit+6(%rip)
 #endif
 ___
     }
