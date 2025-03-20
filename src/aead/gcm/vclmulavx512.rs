@@ -17,7 +17,7 @@
 use super::{ffi::KeyValue, HTable, UpdateBlock, Xi};
 use crate::{
     aead::gcm::ffi::BLOCK_LEN,
-    cpu::intel::{Avx2, VAesClmul},
+    cpu::intel::{Avx2, Avx512_BW_VL_ZMM, Bmi2, VAesClmul},
     polyfill::slice::AsChunks,
 };
 
@@ -27,10 +27,12 @@ pub struct Key {
 }
 
 impl Key {
-    #[inline(never)]
-    pub(in super::super) fn new(value: KeyValue, _cpu: (Avx2, VAesClmul)) -> Self {
+    pub(in super::super) fn new(
+        value: KeyValue,
+        _cpu: (Avx2, Avx512_BW_VL_ZMM, Bmi2, VAesClmul),
+    ) -> Self {
         Self {
-            h_table: unsafe { htable_new!(gcm_init_vpclmulqdq_avx2, value) },
+            h_table: unsafe { htable_new!(gcm_init_vpclmulqdq_avx512, value) },
         }
     }
 
@@ -42,6 +44,6 @@ impl Key {
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
         let input: AsChunks<u8, BLOCK_LEN> = (&a).into();
-        unsafe { ghash!(gcm_ghash_vpclmulqdq_avx2_16, xi, &self.h_table, input) }
+        unsafe { ghash!(gcm_ghash_vpclmulqdq_avx512_16, xi, &self.h_table, input) }
     }
 }

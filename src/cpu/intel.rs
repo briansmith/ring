@@ -139,6 +139,11 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
     #[cfg(target_arch = "x86_64")]
     let (extended_features_ebx, extended_features_ecx) = (cpuid[2], cpuid[3]);
 
+    // `OPENSSL_cpuid_setup` synthesizes this bit when it detects an Intel
+    // CPU family that is known to downclock when ZMM registers are used.
+    #[cfg(target_arch = "x86_64")]
+    let avoid_zmm = check(cpuid[2], 14);
+
     let mut caps = 0;
 
     // AMD: "Collectively the SSE1, [...] are referred to as the legacy SSE
@@ -236,6 +241,35 @@ fn cpuid_to_caps_and_set_c_flags(cpuid: &[u32; 4]) -> u32 {
         // calling into the C code.
         let flag = unsafe { &avx2_available };
         flag.store(1, core::sync::atomic::Ordering::Relaxed);
+
+        // AVX-512.
+        // Initial releases of macOS 12 had a serious bug w.r.t. AVX-512
+        // support; see https://go-review.googlesource.com/c/sys/+/620256.
+        // Given that, plus Apple's transition to ARM, AVX-512 isn't worth
+        // supporting for their targets.
+        #[cfg(not(target_vendor = "apple"))]
+        {
+            // Intel: "15.3 DETECTION OF 512-BIT INSTRUCTION GROUPS OF THE INTEL
+            // AVX-512 FAMILY".
+            // `OPENSSL_cpuid_setup` clears these bits when XCR0[7:5] isn't 0b111.
+            // doesn't AVX-512  state.
+            let f = check(extended_features_ebx, 16);
+            let bw = check(extended_features_ebx, 30);
+
+            // Intel: "15.4 DETECTION OF INTEL AVX-512 INSTRUCTION GROUPS
+            // OPERATING AT 256 AND 128-BIT VECTOR LENGTHS"
+            let vl = check(extended_features_ebx, 31);
+
+            // Intel: "15.4 DETECTION OF INTEL AVX-512 INSTRUCTION GROUPS
+            // OPERATING AT 256 AND 128-BIT VECTOR LENGTHS."
+            if !avoid_zmm && f {
+                // Intel: "Table 15-2. Feature Flag Collection Required of
+                // 256/128 Bit Vector Lengths for Each Instruction Group."
+                if bw && vl {
+                    set(&mut caps, Shift::Avx512_BW_VL_ZMM)
+                }
+            }
+        }
     }
 
     // Intel: "12.13.4 Checking for Intel AES-NI Support"
@@ -348,6 +382,11 @@ impl_get_feature! {
         { ("x86", "x86_64") => Aes },
         { ("x86", "x86_64") => Avx },
         { ("x86_64") => Bmi1 },
+
+        // AVX512BW + AVX512VL + AND using ZMM registers isn't expected to caus
+        // downclocking.
+        { ("x86_64") => Avx512_BW_VL_ZMM },
+
         { ("x86_64") => Avx2 },
         { ("x86_64") => Bmi2 },
         { ("x86_64") => Adx },

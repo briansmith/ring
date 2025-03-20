@@ -588,10 +588,11 @@ sub _ghash_4x {
     return $code;
 }
 
-# void gcm_gmult_vpclmulqdq_avx512(uint8_t Xi[16], const u128 Htable[16]);
-$code .= _begin_func "gcm_gmult_vpclmulqdq_avx512", 1;
+# void gcm_ghash_vpclmulqdq_avx512_16(uint8_t Xi[16], const u128 Htable[16],
+#                                     const uint8_t aad[16], size_t aad_len_16););
+$code .= _begin_func "gcm_ghash_vpclmulqdq_avx512_16", 1;
 {
-    my ( $GHASH_ACC_PTR, $HTABLE ) = @argregs[ 0 .. 1 ];
+    my ( $GHASH_ACC_PTR, $HTABLE, $AAD, $AAD_LEN_16 ) = @argregs[ 0 .. 3 ];
     my ( $GHASH_ACC, $BSWAP_MASK, $H_POW1, $GFPOLY, $T0, $T1, $T2 ) =
       map( "%xmm$_", ( 0 .. 6 ) );
 
@@ -599,7 +600,12 @@ $code .= _begin_func "gcm_gmult_vpclmulqdq_avx512", 1;
     @{[ _save_xmmregs (6) ]}
     .seh_endprologue
 
+    # Load the GHASH accumulator.
     vmovdqu         ($GHASH_ACC_PTR), $GHASH_ACC
+
+    # XOR the AAD into the accumulator.
+    vpxor           ($AAD), $GHASH_ACC, $GHASH_ACC
+
     vmovdqu         .Lbswap_mask(%rip), $BSWAP_MASK
     vmovdqu         $OFFSETOFEND_H_POWERS-16($HTABLE), $H_POW1
     vmovdqu         .Lgfpoly(%rip), $GFPOLY
