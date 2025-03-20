@@ -309,7 +309,10 @@ my $OFFSETOF_AES_ROUNDS = 240;
 # This would eliminate the LO part of the intermediate product, which would
 # eliminate the need to fold LO into MI.  This would save two instructions,
 # including a vpclmulqdq.  However, we currently don't use this optimization
-# because it would require twice as many per-key precomputed values.
+# because it would require twice as many per-key precomputed values, or a 17th
+# precomputed value if we were to do it for only the single-block case. The
+# optimization is done in aes-gcm-aesni-x86_64.S (in Linux) and in
+# aes-gcm-avx2-x86_64.pl.
 #
 # Using Karatsuba multiplication instead of "schoolbook" multiplication
 # similarly would save a vpclmulqdq but does not seem to be worth it.
