@@ -30,18 +30,95 @@ use std::{
 mod env {
     use std::ffi::OsString;
 
-    /// Read an environment variable and tell Cargo that we depend on it.
-    ///
-    /// The name is static since we intend to only read a static set of environment
-    /// variables.
-    pub fn var_os(name: &'static str) -> Option<OsString> {
-        println!("cargo:rerun-if-env-changed={}", name);
-        std::env::var_os(name)
+    enum EnvVarTy {
+        RerunIfChanged,
+        SetByCargo,
     }
 
-    pub fn var(name: &'static str) -> Option<String> {
-        var_os(name).and_then(|value| value.into_string().ok())
+    pub struct EnvVar {
+        pub name: &'static str,
+        ty: EnvVarTy,
     }
+
+    /// Read an environment variable and optionally tell Cargo that we depend on it.
+    ///
+    /// The env var is static since we intend to only read a static set of environment
+    /// variables.
+    pub fn var_os(env_var: &'static EnvVar) -> Option<OsString> {
+        match env_var.ty {
+            EnvVarTy::RerunIfChanged => {
+                println!("cargo:rerun-if-env-changed={}", env_var.name);
+            }
+            EnvVarTy::SetByCargo => {}
+        }
+        std::env::var_os(env_var.name)
+    }
+
+    pub fn var(env_var: &'static EnvVar) -> Option<String> {
+        var_os(env_var).and_then(|value| value.into_string().ok())
+    }
+
+    // In alphabetical order
+    pub const CARGO_CFG_TARGET_ARCH: EnvVar = EnvVar {
+        name: "CARGO_CFG_TARGET_ARCH",
+        ty: EnvVarTy::RerunIfChanged,
+    };
+    pub const CARGO_CFG_TARGET_ENDIAN: EnvVar = EnvVar {
+        name: "CARGO_CFG_TARGET_ENDIAN",
+        ty: EnvVarTy::RerunIfChanged,
+    };
+    pub const CARGO_CFG_TARGET_ENV: EnvVar = EnvVar {
+        name: "CARGO_CFG_TARGET_ENV",
+        ty: EnvVarTy::RerunIfChanged,
+    };
+    pub const CARGO_CFG_TARGET_OS: EnvVar = EnvVar {
+        name: "CARGO_CFG_TARGET_OS",
+        ty: EnvVarTy::RerunIfChanged,
+    };
+    pub const CARGO_MANIFEST_DIR: EnvVar = EnvVar {
+        name: "CARGO_MANIFEST_DIR",
+        ty: EnvVarTy::SetByCargo,
+    };
+    pub const CARGO_MANIFEST_LINKS: EnvVar = EnvVar {
+        name: "CARGO_MANIFEST_LINKS",
+        ty: EnvVarTy::RerunIfChanged,
+    };
+    pub const CARGO_PKG_NAME: EnvVar = EnvVar {
+        name: "CARGO_PKG_NAME",
+        ty: EnvVarTy::SetByCargo,
+    };
+    pub const CARGO_PKG_VERSION_MAJOR: EnvVar = EnvVar {
+        name: "CARGO_PKG_VERSION_MAJOR",
+        ty: EnvVarTy::SetByCargo,
+    };
+    pub const CARGO_PKG_VERSION_MINOR: EnvVar = EnvVar {
+        name: "CARGO_PKG_VERSION_MINOR",
+        ty: EnvVarTy::SetByCargo,
+    };
+    pub const CARGO_PKG_VERSION_PATCH: EnvVar = EnvVar {
+        name: "CARGO_PKG_VERSION_PATCH",
+        ty: EnvVarTy::SetByCargo,
+    };
+    pub const CARGO_PKG_VERSION_PRE: EnvVar = EnvVar {
+        name: "CARGO_PKG_VERSION_PRE",
+        ty: EnvVarTy::SetByCargo,
+    };
+    pub const DEBUG: EnvVar = EnvVar {
+        name: "DEBUG",
+        ty: EnvVarTy::RerunIfChanged,
+    };
+    pub const OUT_DIR: EnvVar = EnvVar {
+        name: "OUT_DIR",
+        ty: EnvVarTy::SetByCargo,
+    };
+    pub const PERL_EXECUTABLE: EnvVar = EnvVar {
+        name: "PERL_EXECUTABLE",
+        ty: EnvVarTy::RerunIfChanged,
+    };
+    pub const RING_PREGENERATE_ASM: EnvVar = EnvVar {
+        name: "RING_PREGENERATE_ASM",
+        ty: EnvVarTy::RerunIfChanged,
+    };
 }
 
 const X86: &str = "x86";
@@ -269,51 +346,50 @@ fn main() {
     // Avoid assuming the working directory is the same is the $CARGO_MANIFEST_DIR so that toolchains
     // which may assume other working directories can still build this code.
     let c_root_dir = PathBuf::from(
-        env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should always be set"),
+        env::var_os(&env::CARGO_MANIFEST_DIR).expect("CARGO_MANIFEST_DIR should always be set"),
     );
 
     // Keep in sync with `core_name_and_version!` in prefixed.rs.
     let core_name_and_version = [
-        &env::var("CARGO_PKG_NAME").unwrap(),
+        &env::var(&env::CARGO_PKG_NAME).unwrap(),
         "core",
-        &env::var("CARGO_PKG_VERSION_MAJOR").unwrap(),
-        &env::var("CARGO_PKG_VERSION_MINOR").unwrap(),
-        &env::var("CARGO_PKG_VERSION_PATCH").unwrap(),
-        &env::var("CARGO_PKG_VERSION_PRE").unwrap(), // Often empty
+        &env::var(&env::CARGO_PKG_VERSION_MAJOR).unwrap(),
+        &env::var(&env::CARGO_PKG_VERSION_MINOR).unwrap(),
+        &env::var(&env::CARGO_PKG_VERSION_PATCH).unwrap(),
+        &env::var(&env::CARGO_PKG_VERSION_PRE).unwrap(), // Often empty
     ]
     .join("_");
     // Ensure `links` in Cargo.toml is consistent with the version.
     assert_eq!(
-        &env::var("CARGO_MANIFEST_LINKS").unwrap(),
+        &env::var(&env::CARGO_MANIFEST_LINKS).unwrap(),
         &core_name_and_version
     );
 
-    const RING_PREGENERATE_ASM: &str = "RING_PREGENERATE_ASM";
-    match env::var_os(RING_PREGENERATE_ASM).as_deref() {
+    match env::var_os(&env::RING_PREGENERATE_ASM).as_deref() {
         Some(s) if s == "1" => {
             pregenerate_asm_main(&c_root_dir, &core_name_and_version);
         }
         None => ring_build_rs_main(&c_root_dir, &core_name_and_version),
         _ => {
-            panic!("${} has an invalid value", RING_PREGENERATE_ASM);
+            panic!("${} has an invalid value", &env::RING_PREGENERATE_ASM.name);
         }
     }
 }
 
 fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
-    let out_dir = env::var_os("OUT_DIR").unwrap();
+    let out_dir = env::var_os(&env::OUT_DIR).unwrap();
     let out_dir = PathBuf::from(out_dir);
 
-    let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-    let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-    let endian = env::var("CARGO_CFG_TARGET_ENDIAN").unwrap();
+    let arch = env::var(&env::CARGO_CFG_TARGET_ARCH).unwrap();
+    let os = env::var(&env::CARGO_CFG_TARGET_OS).unwrap();
+    let env = env::var(&env::CARGO_CFG_TARGET_ENV).unwrap();
+    let endian = env::var(&env::CARGO_CFG_TARGET_ENDIAN).unwrap();
     let is_little_endian = endian == "little";
 
     let is_git = fs::metadata(c_root_dir.join(".git")).is_ok();
 
     // Published builds are always built in release mode.
-    let is_debug = is_git && env::var("DEBUG").unwrap() != "false";
+    let is_debug = is_git && env::var(&env::DEBUG).unwrap() != "false";
 
     // During local development, force warnings in non-Rust code to be treated
     // as errors. Since warnings are highly compiler-dependent and compilers
@@ -736,10 +812,10 @@ fn join_components_with_forward_slashes(path: &Path) -> OsString {
 }
 
 fn get_perl_exe() -> PathBuf {
-    get_command("PERL_EXECUTABLE", "perl")
+    get_command(&env::PERL_EXECUTABLE, "perl")
 }
 
-fn get_command(var: &'static str, default: &str) -> PathBuf {
+fn get_command(var: &'static env::EnvVar, default: &str) -> PathBuf {
     PathBuf::from(env::var_os(var).unwrap_or_else(|| default.into()))
 }
 
