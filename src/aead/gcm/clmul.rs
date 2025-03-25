@@ -18,8 +18,11 @@
     target_arch = "x86_64"
 ))]
 
-use super::{ffi::{BLOCK_LEN, KeyValue}, HTable, UpdateBlock, Xi};
-use crate::cpu;
+use super::{
+    ffi::{KeyValue, BLOCK_LEN},
+    HTable, UpdateBlock, Xi,
+};
+use crate::{c, cpu};
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 use {super::UpdateBlocks, crate::polyfill::slice::AsChunks};
 
@@ -70,6 +73,15 @@ impl UpdateBlock for Key {
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 impl UpdateBlocks for Key {
     fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, { BLOCK_LEN }>) {
-        unsafe { ghash!(gcm_ghash_clmul, xi, &self.h_table, input) }
+        prefixed_extern! {
+            fn gcm_ghash_clmul(
+                xi: &mut Xi,
+                Htable: &HTable,
+                inp: *const u8,
+                len: c::NonZero_size_t,
+            );
+        }
+        let htable = &self.h_table;
+        unsafe { htable.ghash(gcm_ghash_clmul, xi, input) }
     }
 }

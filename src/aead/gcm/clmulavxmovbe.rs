@@ -15,7 +15,7 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::{HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
-use crate::{cpu::intel, polyfill::slice::AsChunks};
+use crate::{c, cpu::intel, polyfill::slice::AsChunks};
 
 #[derive(Clone)]
 pub struct Key {
@@ -49,6 +49,15 @@ impl UpdateBlock for Key {
 
 impl UpdateBlocks for Key {
     fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, BLOCK_LEN>) {
-        unsafe { ghash!(gcm_ghash_avx, xi, self.inner(), input) }
+        prefixed_extern! {
+            fn gcm_ghash_avx(
+                xi: &mut Xi,
+                Htable: &HTable,
+                inp: *const u8,
+                len: c::NonZero_size_t,
+            );
+        }
+        let htable = self.inner();
+        unsafe { htable.ghash(gcm_ghash_avx, xi, input) }
     }
 }
