@@ -31,8 +31,9 @@
 # this implementation.  Other factors weighing slightly in favor of Karatsuba
 # multiplication in this implementation are the lower maximum vector length
 # (which means there is space left in the Htable array to cache the halves of
-# the key powers XOR'd together) and the unavailability of the vpternlogd
-# instruction (which helped schoolbook a bit more than Karatsuba).
+# the key powers XOR'd together, though we don't do this, unlikey upstream) and
+# the unavailability of the vpternlogd instruction (which helped schoolbook a
+# bit more than Karatsuba).
 
 use strict;
 
@@ -196,12 +197,9 @@ my $code = <<___;
 .text
 ___
 
-# We use Htable[0..7] to store H^8 through H^1, and Htable[8..11] to store the
-# 64-bit halves of the key powers XOR'd together (for Karatsuba multiplication)
-# in the order 8,6,7,5,4,2,3,1.  We do not use Htable[12..15].
+# We use Htable[0..7] to store H^8 through H^1. We do not use Htable[8..15].
 my $NUM_H_POWERS            = 8;
 my $OFFSETOFEND_H_POWERS    = $NUM_H_POWERS * 16;
-my $OFFSETOF_H_POWERS_XORED = $OFFSETOFEND_H_POWERS;
 
 # Offset to 'rounds' in AES_KEY struct
 my $OFFSETOF_AES_ROUNDS = 240;
@@ -230,10 +228,6 @@ ___
 # void gcm_init_vpclmulqdq_avx2(u128 Htable[16], const uint64_t H[2]);
 #
 # Initialize |Htable| with powers of the GHASH subkey |H|.
-#
-# We use Htable[0..7] to store H^8 through H^1, and Htable[8..11] to store the
-# 64-bit halves of the key powers XOR'd together (for Karatsuba multiplication)
-# in the order 8,6,7,5,4,2,3,1.  We do not use Htable[12..15].
 $code .= _begin_func "gcm_init_vpclmulqdq_avx2", 1;
 {
     my ( $HTABLE, $H_PTR ) = @argregs[ 0 .. 1 ];
@@ -280,25 +274,11 @@ $code .= _begin_func "gcm_init_vpclmulqdq_avx2", 1;
     vmovdqu         $H_CUR, 3*32($HTABLE)
     vmovdqu         $H_CUR2, 2*32($HTABLE)
 
-    # For Karatsuba multiplication: compute and store the two 64-bit halves of
-    # each key power XOR'd together.  Order is 4,2,3,1.
-    vpunpcklqdq     $H_CUR, $H_CUR2, $TMP0
-    vpunpckhqdq     $H_CUR, $H_CUR2, $TMP1
-    vpxor           $TMP1, $TMP0, $TMP0
-    vmovdqu         $TMP0, $OFFSETOF_H_POWERS_XORED+32($HTABLE)
-
     # Compute and store H_CUR = [H^6, H^5] and H_CUR2 = [H^8, H^7].
     @{[ _ghash_mul  $H_INC, $H_CUR2, $H_CUR, $GFPOLY, $TMP0, $TMP1, $TMP2 ]}
     @{[ _ghash_mul  $H_INC, $H_CUR, $H_CUR2, $GFPOLY, $TMP0, $TMP1, $TMP2 ]}
     vmovdqu         $H_CUR, 1*32($HTABLE)
     vmovdqu         $H_CUR2, 0*32($HTABLE)
-
-    # Again, compute and store the two 64-bit halves of each key power XOR'd
-    # together.  Order is 8,6,7,5.
-    vpunpcklqdq     $H_CUR, $H_CUR2, $TMP0
-    vpunpckhqdq     $H_CUR, $H_CUR2, $TMP1
-    vpxor           $TMP1, $TMP0, $TMP0
-    vmovdqu         $TMP0, $OFFSETOF_H_POWERS_XORED($HTABLE)
 
     vzeroupper
 ___
@@ -678,8 +658,17 @@ ___
     cmp             \$127, $DATALEN
     jbe             .Lcrypt_loop_4x_done$local_label_suffix
 
-    vmovdqu         $OFFSETOF_H_POWERS_XORED($HTABLE), $H_POW2_XORED
-    vmovdqu         $OFFSETOF_H_POWERS_XORED+32($HTABLE), $H_POW1_XORED
+    # Compute the two 64-bit halves of each key power XOR'd together.
+    vmovdqu         0*32($HTABLE), $TMP2    # [H^8, H^7]
+    vmovdqu         1*32($HTABLE), $TMP1    # [H^6, H^5]
+    vpunpcklqdq     $TMP1, $TMP2, $TMP0     # [H^8 lo, H^6 lo, H^7 lo, H^5 hi]
+    vpunpckhqdq     $TMP1, $TMP2, $TMP1     # [H^8 hi, H^6 hi, H^7 hi, H^5 hi]
+    vpxor           $TMP1, $TMP0, $H_POW2_XORED
+    vmovdqu         2*32($HTABLE), $TMP2    # [H^4, H^3]
+    vmovdqu         3*32($HTABLE), $TMP1    # [H^2, H^1]
+    vpunpcklqdq     $TMP1, $TMP2, $TMP0     # [H^4 lo, H^2 lo, H^3 lo, H^1 lo]
+    vpunpckhqdq     $TMP1, $TMP2, $TMP1     # [H^4 hi, H^2 hi, H^3 lo, H^1 hi]
+    vpxor           $TMP1, $TMP0, $H_POW1_XORED
 ___
 
     # Main loop: en/decrypt and hash 4 vectors (128 bytes) at a time.
