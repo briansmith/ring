@@ -21,30 +21,6 @@ pub(in super::super) const BLOCK_LEN: usize = 16;
 pub(in super::super) type Block = [u8; BLOCK_LEN];
 pub(super) const ZERO_BLOCK: Block = [0u8; BLOCK_LEN];
 
-/// SAFETY:
-///  * The function `$name` must meet the contract of the `f` paramweter of
-///    `ghash()`.
-#[cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86",
-    target_arch = "x86_64"
-))]
-macro_rules! ghash {
-    ( $name:ident, $xi:expr, $h_table:expr, $input:expr $(,)? ) => {{
-        use crate::aead::gcm::ffi::{HTable, Xi};
-        prefixed_extern! {
-            fn $name(
-                xi: &mut Xi,
-                Htable: &HTable,
-                inp: *const u8,
-                len: crate::c::NonZero_size_t,
-            );
-        }
-        $h_table.ghash($name, $xi, $input)
-    }};
-}
-
 #[repr(transparent)]
 pub(in super::super) struct KeyValue([u64; 2]);
 
@@ -88,36 +64,24 @@ impl HTable {
     ) {
         unsafe { f(xi, self) }
     }
+}
 
-    pub(super) unsafe fn ghash(
-        &self,
-        f: unsafe extern "C" fn(
-            xi: &mut Xi,
-            Htable: &HTable,
-            inp: *const u8,
-            len: crate::c::NonZero_size_t,
-        ),
-        xi: &mut Xi,
-        input: AsChunks<u8, BLOCK_LEN>,
-    ) {
-        use core::num::NonZeroUsize;
+pub(super) fn with_non_dangling_ptr(
+    input: AsChunks<u8, BLOCK_LEN>,
+    f: impl FnOnce(*const u8, crate::c::NonZero_size_t),
+) {
+    use core::num::NonZeroUsize;
 
-        let input = input.as_flattened();
+    let input = input.as_flattened();
 
-        let input_len = match NonZeroUsize::new(input.len()) {
-            Some(len) => len,
-            None => {
-                return;
-            }
-        };
-
-        // SAFETY:
-        //  * There are `input_len: NonZeroUsize` bytes available at `input` for
-        //    `f` to read.
-        unsafe {
-            f(xi, self, input.as_ptr(), input_len);
+    let input_len = match NonZeroUsize::new(input.len()) {
+        Some(len) => len,
+        None => {
+            return;
         }
-    }
+    };
+
+    f(input.as_ptr(), input_len);
 }
 
 // The alignment is required by some assembly code, such as `ghash-ssse3-*`.

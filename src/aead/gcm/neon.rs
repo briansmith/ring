@@ -17,8 +17,8 @@
     all(target_arch = "arm", target_endian = "little")
 ))]
 
-use super::{HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
-use crate::{cpu, polyfill::slice::AsChunks};
+use super::{ffi, HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
+use crate::{c, cpu, polyfill::slice::AsChunks};
 
 #[derive(Clone)]
 pub struct Key {
@@ -59,6 +59,17 @@ impl UpdateBlock for Key {
 
 impl UpdateBlocks for Key {
     fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, BLOCK_LEN>) {
-        unsafe { ghash!(gcm_ghash_neon, xi, &self.h_table, input) }
+        prefixed_extern! {
+            fn gcm_ghash_neon(
+                xi: &mut Xi,
+                Htable: &HTable,
+                inp: *const u8,
+                len: c::NonZero_size_t,
+            );
+        }
+        let htable = &self.h_table;
+        ffi::with_non_dangling_ptr(input, |input, len| unsafe {
+            gcm_ghash_neon(xi, htable, input, len)
+        });
     }
 }
