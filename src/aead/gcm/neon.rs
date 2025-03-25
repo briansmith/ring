@@ -28,15 +28,21 @@ pub struct Key {
 impl Key {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     pub(in super::super) fn new(value: KeyValue, _cpu: cpu::aarch64::Neon) -> Self {
+        prefixed_extern! {
+            fn gcm_init_neon(HTable: *mut HTable, h: &KeyValue);
+        }
         Self {
-            h_table: unsafe { htable_new!(gcm_init_neon, value) },
+            h_table: HTable::new(|table| unsafe { gcm_init_neon(table, &value) }),
         }
     }
 
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
     pub(in super::super) fn new(value: KeyValue, _cpu: cpu::arm::Neon) -> Self {
+        prefixed_extern! {
+            fn gcm_init_neon(HTable: *mut HTable, h: &KeyValue);
+        }
         Self {
-            h_table: unsafe { htable_new!(gcm_init_neon, value) },
+            h_table: HTable::new(|table| unsafe { gcm_init_neon(table, &value) }),
         }
     }
 }
