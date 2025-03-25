@@ -28,8 +28,11 @@ impl Key {
         value: KeyValue,
         _required_cpu_features: (intel::ClMul, intel::Avx, intel::Movbe),
     ) -> Self {
+        prefixed_extern! {
+            fn gcm_init_avx(HTable: *mut HTable, h: &[u64; 2]);
+        }
         Self {
-            h_table: unsafe { htable_new!(gcm_init_avx, value) },
+            h_table: unsafe { HTable::new(gcm_init_avx, value) },
         }
     }
 

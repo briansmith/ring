@@ -29,8 +29,11 @@ pub struct Key {
 
 impl Key {
     pub(in super::super) fn new(value: KeyValue, _cpu: RequiredCpuFeatures) -> Self {
+        prefixed_extern! {
+            fn gcm_init_neon(HTable: *mut HTable, h: &[u64; 2]);
+        }
         Self {
-            h_table: unsafe { htable_new!(gcm_init_neon, value) },
+            h_table: unsafe { HTable::new(gcm_init_neon, value) },
         }
     }
 }
