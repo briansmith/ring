@@ -18,8 +18,7 @@
     target_arch = "x86_64"
 ))]
 
-use super::{ffi::KeyValue, HTable, UpdateBlock, Xi};
-use crate::aead::gcm::ffi::BLOCK_LEN;
+use super::{ffi::{BLOCK_LEN, KeyValue}, HTable, UpdateBlock, Xi};
 use crate::cpu;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 use {super::UpdateBlocks, crate::polyfill::slice::AsChunks};
