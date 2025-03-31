@@ -183,10 +183,8 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
         NON_MSVC_FLAGS
     } else {
         static MSVC_FLAGS: &[&str] = &[
-            "/std:c11",
-            "/Gy", // Enable function-level linking.
-            // Warnings.
-            "/Wall",
+            "/std:c11", "/Gy",     // Enable function-level linking.
+            "/Wall",   // Warnings
             "/wd4127", // C4127: conditional expression is constant
             "/wd4464", // C4464: relative include path contains '..'
             "/wd4514", // C4514: <name>: unreferenced inline function has be
@@ -195,11 +193,6 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
             "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
                         * /Qspectre switch specified */
-            "-Wno-declaration-after-statement",
-            // "-Wno-pre-c11-compat", // Not available in ring CI
-            "-Wno-reserved-macro-identifier", // Stuff in asm_base.h
-            "-Wno-switch-default",
-            "-Wno-unsafe-buffer-usage",
         ];
         MSVC_FLAGS
     }
