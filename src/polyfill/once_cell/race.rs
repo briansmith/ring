@@ -46,6 +46,13 @@ impl OnceNonZeroUsize {
         }
     }
 
+    /// Gets the underlying value.
+    #[inline]
+    pub fn get(&self) -> Option<NonZeroUsize> {
+        let val = self.inner.load(Ordering::Acquire);
+        NonZeroUsize::new(val)
+    }
+
     /// Get the reference to the underlying value, without checking if the cell
     /// is initialized.
     ///
@@ -97,8 +104,7 @@ impl OnceNonZeroUsize {
     where
         F: FnOnce() -> NonZeroUsize,
     {
-        let val = self.inner.load(Ordering::Acquire);
-        match NonZeroUsize::new(val) {
+        match self.get() {
             Some(it) => it,
             None => self.init(f),
         }
