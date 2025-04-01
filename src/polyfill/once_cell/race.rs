@@ -19,6 +19,14 @@
 //! `Acquire` and `Release` have very little performance overhead on most
 //! architectures versus `Relaxed`.
 
+// The "atomic orderings" section of the documentation above promises
+// "happens-before" semantics. This drives the choice of orderings in the uses
+// of `compare_exchange` below. On success, the value was zero/null, so there
+// was nothing to acquire (there is never any `Ordering::Release` store of 0).
+// On failure, the value was nonzero, so it was initialized previously (perhaps
+// on another thread) using `Ordering::Release`, so we must use
+// `Ordering::Acquire` to ensure that store "happens-before" this load.
+
 use core::sync::atomic;
 
 use atomic::{AtomicUsize, Ordering};
@@ -102,7 +110,7 @@ impl OnceNonZeroUsize {
         let mut val = f().get();
         let exchange = self
             .inner
-            .compare_exchange(0, val, Ordering::AcqRel, Ordering::Acquire);
+            .compare_exchange(0, val, Ordering::Release, Ordering::Acquire);
         if let Err(old) = exchange {
             val = old;
         }
