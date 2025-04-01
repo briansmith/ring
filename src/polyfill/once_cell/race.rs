@@ -40,8 +40,8 @@ pub struct OnceNonZeroUsize {
 impl OnceNonZeroUsize {
     /// Creates a new empty cell.
     #[inline]
-    pub const fn new() -> OnceNonZeroUsize {
-        OnceNonZeroUsize {
+    pub const fn new() -> Self {
+        Self {
             inner: AtomicUsize::new(0),
         }
     }
