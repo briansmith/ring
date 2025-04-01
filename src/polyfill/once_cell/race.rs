@@ -107,13 +107,17 @@ impl OnceNonZeroUsize {
     #[cold]
     #[inline(never)]
     fn init(&self, f: impl FnOnce() -> NonZeroUsize) -> NonZeroUsize {
-        let mut val = f().get();
-        let exchange = self
-            .inner
-            .compare_exchange(0, val, Ordering::Release, Ordering::Acquire);
-        if let Err(old) = exchange {
+        let nz = f();
+        let mut val = nz.get();
+        if let Err(old) = self.compare_exchange(nz) {
             val = old;
         }
         unsafe { NonZeroUsize::new_unchecked(val) }
+    }
+
+    #[inline(always)]
+    fn compare_exchange(&self, val: NonZeroUsize) -> Result<usize, usize> {
+        self.inner
+            .compare_exchange(0, val.get(), Ordering::Release, Ordering::Acquire)
     }
 }
