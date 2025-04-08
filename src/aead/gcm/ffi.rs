@@ -21,46 +21,6 @@ pub(in super::super) const BLOCK_LEN: usize = 16;
 pub(in super::super) type Block = [u8; BLOCK_LEN];
 pub(super) const ZERO_BLOCK: Block = [0u8; BLOCK_LEN];
 
-#[cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86",
-    target_arch = "x86_64"
-))]
-macro_rules! htable_new {
-    ( $name:ident, $value:expr $(,)? ) => {{
-        use crate::aead::gcm::ffi::HTable;
-        prefixed_extern! {
-            fn $name(HTable: &mut HTable, h: &[u64; 2]);
-        }
-        HTable::new($name, $value)
-    }};
-}
-
-/// SAFETY:
-///  * The function `$name` must meet the contract of the `f` paramweter of
-///    `ghash()`.
-#[cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86",
-    target_arch = "x86_64"
-))]
-macro_rules! ghash {
-    ( $name:ident, $xi:expr, $h_table:expr, $input:expr $(,)? ) => {{
-        use crate::aead::gcm::ffi::{HTable, Xi};
-        prefixed_extern! {
-            fn $name(
-                xi: &mut Xi,
-                Htable: &HTable,
-                inp: *const u8,
-                len: crate::c::NonZero_size_t,
-            );
-        }
-        $h_table.ghash($name, $xi, $input)
-    }};
-}
-
 pub(in super::super) struct KeyValue([u64; 2]);
 
 impl KeyValue {
@@ -85,7 +45,7 @@ impl KeyValue {
 ))]
 impl HTable {
     pub(super) unsafe fn new(
-        init: unsafe extern "C" fn(HTable: &mut HTable, &[u64; 2]),
+        init: unsafe extern "C" fn(HTable: *mut HTable, &[u64; 2]),
         value: KeyValue,
     ) -> Self {
         let mut r = Self {

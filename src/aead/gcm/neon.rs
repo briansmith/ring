@@ -18,7 +18,7 @@
 ))]
 
 use super::{HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
-use crate::{cpu, polyfill::slice::AsChunks};
+use crate::{c, cpu, polyfill::slice::AsChunks};
 
 pub(in super::super) type RequiredCpuFeatures = cpu::arm::Neon;
 
@@ -29,8 +29,11 @@ pub struct Key {
 
 impl Key {
     pub(in super::super) fn new(value: KeyValue, _cpu: RequiredCpuFeatures) -> Self {
+        prefixed_extern! {
+            fn gcm_init_neon(HTable: *mut HTable, h: &[u64; 2]);
+        }
         Self {
-            h_table: unsafe { htable_new!(gcm_init_neon, value) },
+            h_table: unsafe { HTable::new(gcm_init_neon, value) },
         }
     }
 }
@@ -47,6 +50,14 @@ impl UpdateBlock for Key {
 
 impl UpdateBlocks for Key {
     fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, BLOCK_LEN>) {
-        unsafe { ghash!(gcm_ghash_neon, xi, &self.h_table, input) }
+        prefixed_extern! {
+            fn gcm_ghash_neon(
+                xi: &mut Xi,
+                Htable: &HTable,
+                inp: *const u8,
+                len: c::NonZero_size_t,
+            );
+        }
+        unsafe { self.h_table.ghash(gcm_ghash_neon, xi, input) }
     }
 }
