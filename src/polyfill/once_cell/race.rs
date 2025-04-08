@@ -27,29 +27,61 @@
 // on another thread) using `Ordering::Release`, so we must use
 // `Ordering::Acquire` to ensure that store "happens-before" this load.
 
-use core::sync::atomic;
-
-use atomic::{AtomicUsize, Ordering};
+use cfg_if::cfg_if;
+use core::marker::PhantomData;
 use core::num::NonZeroUsize;
+use core::sync::atomic::{self, AtomicUsize};
 
-/// A thread-safe cell which can be written to only once.
-pub struct OnceNonZeroUsize {
-    inner: AtomicUsize,
+pub trait Ordering {
+    const ACQUIRE: atomic::Ordering;
+    const RELEASE: atomic::Ordering;
 }
 
-impl OnceNonZeroUsize {
+cfg_if! {
+    if #[cfg(any(all(target_arch = "arm", target_endian = "little"),
+                 target_arch = "x86",
+                 target_arch = "x86_64"))]
+    {
+        pub struct AcquireRelease(());
+
+        impl Ordering for AcquireRelease {
+            const ACQUIRE: atomic::Ordering = atomic::Ordering::Acquire;
+            const RELEASE: atomic::Ordering = atomic::Ordering::Release;
+        }
+    }
+}
+
+cfg_if! {
+    if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
+        pub struct Relaxed(());
+
+        impl Ordering for Relaxed {
+            const ACQUIRE: atomic::Ordering = atomic::Ordering::Relaxed;
+            const RELEASE: atomic::Ordering = atomic::Ordering::Relaxed;
+        }
+    }
+}
+
+/// A thread-safe cell which can be written to only once.
+pub struct OnceNonZeroUsize<O> {
+    inner: AtomicUsize,
+    ordering: PhantomData<O>,
+}
+
+impl<O: Ordering> OnceNonZeroUsize<O> {
     /// Creates a new empty cell.
     #[inline]
     pub const fn new() -> Self {
         Self {
             inner: AtomicUsize::new(0),
+            ordering: PhantomData,
         }
     }
 
     /// Gets the underlying value.
     #[inline]
     pub fn get(&self) -> Option<NonZeroUsize> {
-        let val = self.inner.load(Ordering::Acquire);
+        let val = self.inner.load(O::ACQUIRE);
         NonZeroUsize::new(val)
     }
 
@@ -124,6 +156,6 @@ impl OnceNonZeroUsize {
     #[inline(always)]
     fn compare_exchange(&self, val: NonZeroUsize) -> Result<usize, usize> {
         self.inner
-            .compare_exchange(0, val.get(), Ordering::Release, Ordering::Acquire)
+            .compare_exchange(0, val.get(), O::RELEASE, O::ACQUIRE)
     }
 }

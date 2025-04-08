@@ -94,6 +94,7 @@ pub(super) mod featureflags {
         cpu,
         polyfill::{once_cell::race, usize_from_u32},
     };
+    use cfg_if::cfg_if;
     use core::num::NonZeroUsize;
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
     use core::sync::atomic::{AtomicU32, Ordering};
@@ -158,7 +159,17 @@ pub(super) mod featureflags {
         features
     }
 
-    static FEATURES: race::OnceNonZeroUsize = race::OnceNonZeroUsize::new();
+    cfg_if! {
+        if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
+            // On AArch64, we store all feature flags in `FEATURES`.
+            type FeaturesOrdering = race::Relaxed;
+        } else if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
+            // On 32-bit ARM, we also have a separate flag for NEON.
+            type FeaturesOrdering = race::AcquireRelease;
+        }
+    }
+
+    static FEATURES: race::OnceNonZeroUsize<FeaturesOrdering> = race::OnceNonZeroUsize::new();
 
     // TODO(MSRV): There is no "pmull" feature listed from
     // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
