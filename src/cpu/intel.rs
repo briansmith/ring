@@ -82,7 +82,7 @@ pub(super) mod featureflags {
         features
     }
 
-    static FEATURES: race::OnceNonZeroUsize = race::OnceNonZeroUsize::new();
+    static FEATURES: race::OnceNonZeroUsize<race::AcquireRelease> = race::OnceNonZeroUsize::new();
 
     #[cfg(target_arch = "x86")]
     #[rustfmt::skip]
