@@ -36,6 +36,7 @@ use cpu::GetFeature as _;
 mod aarch64;
 mod aeshwclmulmovbe;
 mod vaesclmulavx2;
+mod vaesclmulavx512;
 
 #[derive(Clone)]
 pub(super) struct Key(DynKey);
@@ -51,6 +52,9 @@ impl Key {
 
 #[derive(Clone)]
 enum DynKey {
+    #[cfg(target_arch = "x86_64")]
+    VAesClMulAvx512(Combo<aes::hw::Key, gcm::vclmulavx512::Key>),
+
     #[cfg(target_arch = "x86_64")]
     VAesClMulAvx2(Combo<aes::hw::Key, gcm::vclmulavx2::Key>),
 
@@ -85,6 +89,9 @@ impl DynKey {
             let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature())?;
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             let combo = if let Some(cpu) = cpu.get_feature() {
+                let gcm_key = gcm::vclmulavx512::Key::new(gcm_key_value, cpu);
+                Self::VAesClMulAvx512(Combo { aes_key, gcm_key })
+            } else if let Some(cpu) = cpu.get_feature() {
                 let gcm_key = gcm::vclmulavx2::Key::new(gcm_key_value, cpu);
                 Self::VAesClMulAvx2(Combo { aes_key, gcm_key })
             } else if let Some(cpu) = cpu.get_feature() {
@@ -187,6 +194,11 @@ pub(super) fn seal(
         #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
         DynKey::AesHwClMul(c) => {
             seal_whole_partial(c, aad, in_out, ctr, tag_iv, aarch64::seal_whole)
+        }
+
+        #[cfg(target_arch = "x86_64")]
+        DynKey::VAesClMulAvx512(c) => {
+            seal_whole_partial(c, aad, in_out, ctr, tag_iv, vaesclmulavx512::seal_whole)
         }
 
         #[cfg(target_arch = "x86_64")]
@@ -315,6 +327,17 @@ pub(super) fn open(
         DynKey::AesHwClMul(c) => {
             open_whole_partial(c, aad, in_out_slice, src, ctr, tag_iv, aarch64::open_whole)
         }
+
+        #[cfg(target_arch = "x86_64")]
+        DynKey::VAesClMulAvx512(c) => open_whole_partial(
+            c,
+            aad,
+            in_out_slice,
+            src,
+            ctr,
+            tag_iv,
+            vaesclmulavx512::open_whole,
+        ),
 
         #[cfg(target_arch = "x86_64")]
         DynKey::VAesClMulAvx2(c) => open_whole_partial(
