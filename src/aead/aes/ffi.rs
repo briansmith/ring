@@ -159,7 +159,7 @@ impl AES_KEY {
     ///     with any nonnegative offset `n` (i.e. `input == output.add(n)`);
     ///     `f` does NOT need to support the cases where input < output.
     ///   * `key` must have been initialized with the `set_encrypt_key!` invocation
-    ///      that corresponds to `f`.
+    ///     that corresponds to `f`.
     ///   * `f` may inspect CPU features.
     #[inline]
     pub(super) unsafe fn ctr32_encrypt_blocks(
