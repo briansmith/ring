@@ -30,6 +30,15 @@ use std::{
 mod env {
     use std::ffi::OsString;
 
+    macro_rules! define_env {
+        { $vis:vis $NAME:ident : $ty:ident } => {
+            $vis const $NAME: EnvVar = EnvVar {
+                name: stringify!($NAME),
+                ty: EnvVarTy::$ty,
+            };
+        };
+    }
+
     enum EnvVarTy {
         RerunIfChanged,
         SetByCargo,
@@ -59,66 +68,21 @@ mod env {
     }
 
     // In alphabetical order
-    pub const CARGO_CFG_TARGET_ARCH: EnvVar = EnvVar {
-        name: "CARGO_CFG_TARGET_ARCH",
-        ty: EnvVarTy::RerunIfChanged,
-    };
-    pub const CARGO_CFG_TARGET_ENDIAN: EnvVar = EnvVar {
-        name: "CARGO_CFG_TARGET_ENDIAN",
-        ty: EnvVarTy::RerunIfChanged,
-    };
-    pub const CARGO_CFG_TARGET_ENV: EnvVar = EnvVar {
-        name: "CARGO_CFG_TARGET_ENV",
-        ty: EnvVarTy::RerunIfChanged,
-    };
-    pub const CARGO_CFG_TARGET_OS: EnvVar = EnvVar {
-        name: "CARGO_CFG_TARGET_OS",
-        ty: EnvVarTy::RerunIfChanged,
-    };
-    pub const CARGO_MANIFEST_DIR: EnvVar = EnvVar {
-        name: "CARGO_MANIFEST_DIR",
-        ty: EnvVarTy::SetByCargo,
-    };
-    pub const CARGO_MANIFEST_LINKS: EnvVar = EnvVar {
-        name: "CARGO_MANIFEST_LINKS",
-        ty: EnvVarTy::RerunIfChanged,
-    };
-    pub const CARGO_PKG_NAME: EnvVar = EnvVar {
-        name: "CARGO_PKG_NAME",
-        ty: EnvVarTy::SetByCargo,
-    };
-    pub const CARGO_PKG_VERSION_MAJOR: EnvVar = EnvVar {
-        name: "CARGO_PKG_VERSION_MAJOR",
-        ty: EnvVarTy::SetByCargo,
-    };
-    pub const CARGO_PKG_VERSION_MINOR: EnvVar = EnvVar {
-        name: "CARGO_PKG_VERSION_MINOR",
-        ty: EnvVarTy::SetByCargo,
-    };
-    pub const CARGO_PKG_VERSION_PATCH: EnvVar = EnvVar {
-        name: "CARGO_PKG_VERSION_PATCH",
-        ty: EnvVarTy::SetByCargo,
-    };
-    pub const CARGO_PKG_VERSION_PRE: EnvVar = EnvVar {
-        name: "CARGO_PKG_VERSION_PRE",
-        ty: EnvVarTy::SetByCargo,
-    };
-    pub const DEBUG: EnvVar = EnvVar {
-        name: "DEBUG",
-        ty: EnvVarTy::RerunIfChanged,
-    };
-    pub const OUT_DIR: EnvVar = EnvVar {
-        name: "OUT_DIR",
-        ty: EnvVarTy::SetByCargo,
-    };
-    pub const PERL_EXECUTABLE: EnvVar = EnvVar {
-        name: "PERL_EXECUTABLE",
-        ty: EnvVarTy::RerunIfChanged,
-    };
-    pub const RING_PREGENERATE_ASM: EnvVar = EnvVar {
-        name: "RING_PREGENERATE_ASM",
-        ty: EnvVarTy::RerunIfChanged,
-    };
+    define_env! { pub CARGO_CFG_TARGET_ARCH: RerunIfChanged }
+    define_env! { pub CARGO_CFG_TARGET_ENDIAN: RerunIfChanged }
+    define_env! { pub CARGO_CFG_TARGET_ENV: RerunIfChanged }
+    define_env! { pub CARGO_CFG_TARGET_OS: RerunIfChanged }
+    define_env! { pub CARGO_MANIFEST_DIR: SetByCargo }
+    define_env! { pub CARGO_MANIFEST_LINKS: RerunIfChanged }
+    define_env! { pub CARGO_PKG_NAME: SetByCargo }
+    define_env! { pub CARGO_PKG_VERSION_MAJOR: SetByCargo }
+    define_env! { pub CARGO_PKG_VERSION_MINOR: SetByCargo }
+    define_env! { pub CARGO_PKG_VERSION_PATCH: SetByCargo }
+    define_env! { pub CARGO_PKG_VERSION_PRE: SetByCargo }
+    define_env! { pub DEBUG: RerunIfChanged }
+    define_env! { pub OUT_DIR: SetByCargo }
+    define_env! { pub PERL_EXECUTABLE: RerunIfChanged }
+    define_env! { pub RING_PREGENERATE_ASM: RerunIfChanged }
 }
 
 const X86: &str = "x86";
