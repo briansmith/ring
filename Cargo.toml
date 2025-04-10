@@ -203,6 +203,7 @@ rpath = false
 lto = false
 debug-assertions = false
 codegen-units = 1
+overflow-checks = true
 
 [profile.release]
 opt-level = 3
@@ -211,6 +212,7 @@ rpath = false
 lto = true
 debug-assertions = false
 codegen-units = 1
+overflow-checks = true
 
 [workspace]
 members = [
