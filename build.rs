@@ -68,18 +68,18 @@ mod env {
     }
 
     // In alphabetical order
-    define_env! { pub CARGO_CFG_TARGET_ARCH: RerunIfChanged }
-    define_env! { pub CARGO_CFG_TARGET_ENDIAN: RerunIfChanged }
-    define_env! { pub CARGO_CFG_TARGET_ENV: RerunIfChanged }
-    define_env! { pub CARGO_CFG_TARGET_OS: RerunIfChanged }
+    define_env! { pub CARGO_CFG_TARGET_ARCH: SetByCargo }
+    define_env! { pub CARGO_CFG_TARGET_ENDIAN: SetByCargo }
+    define_env! { pub CARGO_CFG_TARGET_ENV: SetByCargo }
+    define_env! { pub CARGO_CFG_TARGET_OS: SetByCargo }
     define_env! { pub CARGO_MANIFEST_DIR: SetByCargo }
-    define_env! { pub CARGO_MANIFEST_LINKS: RerunIfChanged }
+    define_env! { pub CARGO_MANIFEST_LINKS: SetByCargo }
     define_env! { pub CARGO_PKG_NAME: SetByCargo }
     define_env! { pub CARGO_PKG_VERSION_MAJOR: SetByCargo }
     define_env! { pub CARGO_PKG_VERSION_MINOR: SetByCargo }
     define_env! { pub CARGO_PKG_VERSION_PATCH: SetByCargo }
     define_env! { pub CARGO_PKG_VERSION_PRE: SetByCargo }
-    define_env! { pub DEBUG: RerunIfChanged }
+    define_env! { pub DEBUG: SetByCargo }
     define_env! { pub OUT_DIR: SetByCargo }
     define_env! { pub PERL_EXECUTABLE: RerunIfChanged }
     define_env! { pub RING_PREGENERATE_ASM: RerunIfChanged }
