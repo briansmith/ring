@@ -33,14 +33,6 @@ mod abi_assumptions {
     const _ASSUMED_ENDIANNESS: () = assert!(cfg!(target_endian = "little"));
 }
 
-// uclibc: When linked statically, uclibc doesn't provide getauxval.
-// When linked dynamically, recent versions do provide it, but we
-// want to support older versions too. Assume that if uclibc is being
-// used, this is an embedded target where the user cares a lot about
-// minimizing code size and also that they know in advance exactly
-// what target features are supported, so rely only on static feature
-// detection.
-
 cfg_if::cfg_if! {
     if #[cfg(all(all(target_arch = "aarch64", target_endian = "little"),
                  any(target_os = "ios", target_os = "macos", target_os = "tvos", target_os = "visionos", target_os = "watchos")))] {

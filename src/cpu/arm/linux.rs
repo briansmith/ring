@@ -35,17 +35,7 @@ use super::Neon;
 // have correctly-modeled feature sets, so it should be removed.
 pub const FORCE_DYNAMIC_DETECTION: u32 = !Neon::mask();
 
-// `uclibc` does not provide `getauxval` so just use static feature detection
-// for it.
-#[cfg(target_env = "uclibc")]
-pub fn detect_features() -> u32 {
-    0
-}
-
-#[cfg(all(
-    not(target_env = "uclibc"),
-    all(target_arch = "aarch64", target_endian = "little")
-))]
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 pub fn detect_features() -> u32 {
     use super::{Aes, PMull, Sha256, Sha512, CAPS_STATIC};
     use libc::{getauxval, AT_HWCAP, HWCAP_AES, HWCAP_PMULL, HWCAP_SHA2, HWCAP_SHA512};
@@ -73,33 +63,39 @@ pub fn detect_features() -> u32 {
     features
 }
 
-#[cfg(all(
-    not(target_env = "uclibc"),
-    all(target_arch = "arm", target_endian = "little")
-))]
+#[cfg(all(target_arch = "arm", target_endian = "little"))]
 pub fn detect_features() -> u32 {
-    use super::CAPS_STATIC;
-
-    // The `libc` crate doesn't provide this functionality on all
-    // 32-bit Linux targets, like Android or -musl. Use this polyfill
-    // for all 32-bit ARM targets so that testing on one of them will
-    // be more meaningful to the others.
-    use libc::c_ulong;
-    extern "C" {
-        pub fn getauxval(type_: c_ulong) -> c_ulong;
-    }
-    const AT_HWCAP: c_ulong = 16;
-    const HWCAP_NEON: c_ulong = 1 << 12;
-
     let mut features = 0;
 
-    if CAPS_STATIC & Neon::mask() != Neon::mask() {
-        let caps = unsafe { getauxval(AT_HWCAP) };
+    // When linked statically, uclibc doesn't provide getauxval. When linked
+    // dynamically, recent versions do provide it, but we want to support older
+    // versions too. Assume that if uclibc is being used, this is an embedded
+    // target where the user cares a lot about minimizing code size and also
+    // that they know in advance exactly what target features are supported, so
+    // rely only on static feature detection.
+    #[cfg(not(target_env = "uclibc"))]
+    {
+        use super::CAPS_STATIC;
 
-        // OpenSSL and BoringSSL don't enable any other features if NEON isn't
-        // available. We don't enable any hardware implementations for 32-bit ARM.
-        if caps & HWCAP_NEON == HWCAP_NEON {
-            features |= Neon::mask();
+        // The `libc` crate doesn't provide this functionality on all
+        // 32-bit Linux targets, like Android or -musl. Use this polyfill
+        // for all 32-bit ARM targets so that testing on one of them will
+        // be more meaningful to the others.
+        use libc::c_ulong;
+        extern "C" {
+            pub fn getauxval(type_: c_ulong) -> c_ulong;
+        }
+        const AT_HWCAP: c_ulong = 16;
+        const HWCAP_NEON: c_ulong = 1 << 12;
+
+        if CAPS_STATIC & Neon::mask() != Neon::mask() {
+            let caps = unsafe { getauxval(AT_HWCAP) };
+
+            // OpenSSL and BoringSSL don't enable any other features if NEON isn't
+            // available. We don't enable any hardware implementations for 32-bit ARM.
+            if caps & HWCAP_NEON == HWCAP_NEON {
+                features |= Neon::mask();
+            }
         }
     }
 
