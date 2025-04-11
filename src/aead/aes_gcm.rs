@@ -143,12 +143,18 @@ impl DynKey {
         Ok(Self::Simd(Combo { aes_key, gcm_key }))
     }
 
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    #[cfg(target_arch = "x86")]
     #[inline(never)]
-    fn new_ssse3(
-        key: aes::KeyBytes,
-        cpu: aes::vp::RequiredCpuFeatures,
-    ) -> Result<Self, error::Unspecified> {
+    fn new_ssse3(key: aes::KeyBytes, cpu: cpu::intel::Ssse3) -> Result<Self, error::Unspecified> {
+        let aes_key = aes::vp::Key::new(key, cpu)?;
+        let gcm_key_value = derive_gcm_key_value(&aes_key);
+        let gcm_key = gcm::fallback::Key::new(gcm_key_value);
+        Ok(Self::Simd(Combo { aes_key, gcm_key }))
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    #[inline(never)]
+    fn new_ssse3(key: aes::KeyBytes, cpu: cpu::intel::Ssse3) -> Result<Self, error::Unspecified> {
         let aes_key = aes::vp::Key::new(key, cpu)?;
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::fallback::Key::new(gcm_key_value);
