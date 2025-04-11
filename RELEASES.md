@@ -1,3 +1,8 @@
+Version 0.17.15 (TBD)
+============================
+Support for aarch64-*-linux-uclibc targets was removed, as there do not seem to
+be any such targets.
+
 Version 0.17.14 (2025-03-11)
 ============================
 Fixed a performance bug in the AVX2-based AES-GCM implementation added in
