@@ -22,24 +22,43 @@
 use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
 use crate::{cpu, error};
 
-#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-type RequiredCpuFeatures = cpu::aarch64::Neon;
-
-#[cfg(all(target_arch = "arm", target_endian = "little"))]
-type RequiredCpuFeatures = cpu::arm::Neon;
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-pub(in super::super) type RequiredCpuFeatures = cpu::intel::Ssse3;
-
 #[derive(Clone)]
 pub(in super::super) struct Key {
     inner: AES_KEY,
 }
 
 impl Key {
+    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     pub(in super::super) fn new(
         bytes: KeyBytes<'_>,
-        _cpu: RequiredCpuFeatures,
+        _cpu: cpu::aarch64::Neon,
+    ) -> Result<Self, error::Unspecified> {
+        let inner = unsafe { set_encrypt_key!(vpaes_set_encrypt_key, bytes) }?;
+        Ok(Self { inner })
+    }
+
+    #[cfg(all(target_arch = "arm", target_endian = "little"))]
+    pub(in super::super) fn new(
+        bytes: KeyBytes<'_>,
+        _cpu: cpu::arm::Neon,
+    ) -> Result<Self, error::Unspecified> {
+        let inner = unsafe { set_encrypt_key!(vpaes_set_encrypt_key, bytes) }?;
+        Ok(Self { inner })
+    }
+
+    #[cfg(target_arch = "x86")]
+    pub(in super::super) fn new(
+        bytes: KeyBytes<'_>,
+        _cpu: cpu::intel::Ssse3,
+    ) -> Result<Self, error::Unspecified> {
+        let inner = unsafe { set_encrypt_key!(vpaes_set_encrypt_key, bytes) }?;
+        Ok(Self { inner })
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub(in super::super) fn new(
+        bytes: KeyBytes<'_>,
+        _cpu: cpu::intel::Ssse3,
     ) -> Result<Self, error::Unspecified> {
         let inner = unsafe { set_encrypt_key!(vpaes_set_encrypt_key, bytes) }?;
         Ok(Self { inner })

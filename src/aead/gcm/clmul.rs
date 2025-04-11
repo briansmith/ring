@@ -24,20 +24,35 @@ use crate::cpu;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 use {super::UpdateBlocks, crate::polyfill::slice::AsChunks};
 
-#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-pub(in super::super) type RequiredCpuFeatures = cpu::aarch64::PMull;
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-pub(in super::super) type RequiredCpuFeatures = (cpu::intel::ClMul, cpu::intel::Ssse3);
-
 #[derive(Clone)]
 pub struct Key {
     h_table: HTable,
 }
 
 impl Key {
-    #[cfg_attr(target_arch = "x86_64", inline(never))]
-    pub(in super::super) fn new(value: KeyValue, _cpu: RequiredCpuFeatures) -> Self {
+    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+    pub(in super::super) fn new(value: KeyValue, _cpu: cpu::aarch64::PMull) -> Self {
+        Self {
+            h_table: unsafe { htable_new!(gcm_init_clmul, value) },
+        }
+    }
+
+    #[cfg(target_arch = "x86")]
+    pub(in super::super) fn new(
+        value: KeyValue,
+        _cpu: (cpu::intel::ClMul, cpu::intel::Ssse3),
+    ) -> Self {
+        Self {
+            h_table: unsafe { htable_new!(gcm_init_clmul, value) },
+        }
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    #[inline(never)]
+    pub(in super::super) fn new(
+        value: KeyValue,
+        _cpu: (cpu::intel::ClMul, cpu::intel::Ssse3),
+    ) -> Self {
         Self {
             h_table: unsafe { htable_new!(gcm_init_clmul, value) },
         }
