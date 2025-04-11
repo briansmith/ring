@@ -22,10 +22,10 @@
 use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
 use crate::{cpu, error};
 
-#[cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little")
-))]
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+type RequiredCpuFeatures = cpu::aarch64::Neon;
+
+#[cfg(all(target_arch = "arm", target_endian = "little"))]
 type RequiredCpuFeatures = cpu::arm::Neon;
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]

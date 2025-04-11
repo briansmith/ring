@@ -186,7 +186,10 @@ mod features {
 const _: () = assert!(size_of::<Features>() == 0);
 
 cfg_if::cfg_if! {
-    if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")))] {
+    if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
+        pub mod aarch64;
+        use aarch64::featureflags;
+    } else if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
         pub mod arm;
         use arm::featureflags;
     } else if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {

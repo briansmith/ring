@@ -25,7 +25,7 @@ use crate::cpu;
 use {super::UpdateBlocks, crate::polyfill::slice::AsChunks};
 
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-pub(in super::super) type RequiredCpuFeatures = cpu::arm::PMull;
+pub(in super::super) type RequiredCpuFeatures = cpu::aarch64::PMull;
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub(in super::super) type RequiredCpuFeatures = (cpu::intel::ClMul, cpu::intel::Ssse3);
