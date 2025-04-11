@@ -28,7 +28,7 @@ pub(crate) fn block_data_order_32(
 ) {
     cfg_if! {
         if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
-            use cpu::{GetFeature as _, arm::Sha256};
+            use cpu::{GetFeature as _, aarch64::Sha256};
             if let Some(cpu) = cpu.get_feature() {
                 sha2_32_ffi!(unsafe { Sha256 => sha256_block_data_order_hw }, state, data, cpu)
             } else {

@@ -20,6 +20,10 @@
 use super::{HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::{cpu, polyfill::slice::AsChunks};
 
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+pub(in super::super) type RequiredCpuFeatures = cpu::aarch64::Neon;
+
+#[cfg(all(target_arch = "arm", target_endian = "little"))]
 pub(in super::super) type RequiredCpuFeatures = cpu::arm::Neon;
 
 #[derive(Clone)]

@@ -12,14 +12,18 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(target_arch = "arm")]
+#![cfg(target_arch = "aarch64")]
 
 use super::CAPS_STATIC;
 
 mod abi_assumptions {
     use core::mem::size_of;
 
-    const _ASSUMED_POINTER_SIZE: usize = 4;
+    // TODO: Support ARM64_32; see
+    // https://github.com/briansmith/ring/issues/1832#issuecomment-1892928147. This also requires
+    // replacing all `cfg(target_pointer_width)` logic for non-pointer/reference things
+    // (`N0`, `Limb`, `LimbMask`, `crypto_word_t` etc.).
+    const _ASSUMED_POINTER_SIZE: usize = 8;
     const _ASSUMED_USIZE_SIZE: () = assert!(size_of::<usize>() == _ASSUMED_POINTER_SIZE);
     const _ASSUMED_REF_SIZE: () = assert!(size_of::<&'static u8>() == _ASSUMED_POINTER_SIZE);
 
@@ -29,9 +33,18 @@ mod abi_assumptions {
 }
 
 cfg_if::cfg_if! {
-    if #[cfg(any(target_os = "android", target_os = "linux"))] {
+    if #[cfg(any(target_os = "ios", target_os = "macos", target_os = "tvos", target_os = "visionos", target_os = "watchos"))] {
+        mod darwin;
+        use darwin as detect;
+    } else if #[cfg(target_os = "fuchsia")] {
+        mod fuchsia;
+        use fuchsia as detect;
+    } else if #[cfg(any(target_os = "android", target_os = "linux"))] {
         mod linux;
         use linux as detect;
+    } else if #[cfg(target_os = "windows")] {
+        mod windows;
+        use windows as detect;
     } else {
         mod detect {
             pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
@@ -42,8 +55,24 @@ cfg_if::cfg_if! {
 
 impl_get_feature! {
     features: [
-        // TODO(MSRV): 32-bit ARM doesn't have `target_feature = "neon"` yet.
-        { ("arm") => Neon },
+        { ("aarch64") => Neon },
+
+        // TODO(MSRV): There is no "pmull" feature listed from
+        // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
+        // PMULL detection into AES detection, but later versions split it; see
+        // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
+        // "Features introduced prior to 2020." Change this to use "pmull" when
+        // that is supported.
+        { ("aarch64") => PMull },
+
+        { ("aarch64") => Aes },
+
+        { ("aarch64") => Sha256 },
+
+        // Keep in sync with `ARMV8_SHA512`.
+
+        // "sha3" is overloaded for both SHA-3 and SHA-512.
+        { ("aarch64") => Sha512 },
     ],
 }
 
@@ -70,24 +99,6 @@ pub(super) mod featureflags {
             });
             let detected = detected & !filtered;
             let merged = CAPS_STATIC | detected;
-
-            #[cfg(target_has_atomic = "32")]
-            if (merged & Neon::mask()) == Neon::mask() {
-                use core::sync::atomic::{AtomicU32, Ordering};
-
-                // `neon_available` is declared as `alignas(4) uint32_t` in the C code.
-                // AtomicU32 is `#[repr(C, align(4))]`.
-                prefixed_extern! {
-                    static neon_available: AtomicU32;
-                }
-                // SAFETY: The C code only reads `neon_available`, and its
-                // reads are synchronized through the `OnceNonZeroUsize`
-                // Acquire/Release semantics as we ensure we have a
-                // `cpu::Features` instance before calling into the C code.
-                let p = unsafe { &neon_available };
-                p.store(1, Ordering::Relaxed);
-            }
-
             let merged = usize_from_u32(merged) | (1 << (Shift::Initialized as u32));
             NonZeroUsize::new(merged).unwrap() // Can't fail because we just set a bit.
         }
@@ -114,9 +125,27 @@ pub(super) mod featureflags {
         features
     }
 
-    // We have a separate flag for NEON, so we need Acquire/Release ordering.
-    static FEATURES: race::OnceNonZeroUsize<race::AcquireRelease> = race::OnceNonZeroUsize::new();
+    // On AArch64, we store all feature flags in `FEATURES`, so we dnn't need
+    // Acquire/Release semantics.
+    static FEATURES: race::OnceNonZeroUsize<race::Relaxed> = race::OnceNonZeroUsize::new();
 
-    // TODO(MSRV): 32-bit ARM doesn't support any static feature detection yet.
-    pub(in super::super) const STATIC_DETECTED: u32 = 0;
+    // TODO(MSRV): There is no "pmull" feature listed from
+    // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
+    // PMULL detection into AES detection, but later versions split it; see
+    // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
+    // "Features introduced prior to 2020." Change this to use "pmull" when
+    // that is supported.
+    //
+    // "sha3" is overloaded for both SHA-3 and SHA-512.
+    #[rustfmt::skip]
+    pub(in super::super) const STATIC_DETECTED: u32 = 0
+        | (if cfg!(target_feature = "neon") { Neon::mask() } else { 0 })
+        | (if cfg!(target_feature = "aes") { Aes::mask() } else { 0 })
+        | (if cfg!(target_feature = "aes") { PMull::mask() } else { 0 })
+        | (if cfg!(target_feature = "sha2") { Sha256::mask() } else { 0 })
+        | (if cfg!(target_feature = "sha3") { Sha512::mask() } else { 0 })
+        ;
 }
+
+#[allow(clippy::assertions_on_constants)]
+const _AARCH64_HAS_NEON: () = assert!((CAPS_STATIC & Neon::mask()) == Neon::mask());

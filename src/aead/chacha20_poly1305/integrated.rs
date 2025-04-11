@@ -51,7 +51,7 @@ macro_rules! declare_seal {
 
 cfg_if! {
     if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
-        use crate::cpu::arm::Neon;
+        use crate::cpu::aarch64::Neon;
         type RequiredCpuFeatures = Neon;
         type OptionalCpuFeatures = ();
     } else {

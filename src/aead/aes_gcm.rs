@@ -126,11 +126,16 @@ impl DynKey {
         Self::new_fallback(key)
     }
 
-    #[cfg(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        all(target_arch = "arm", target_endian = "little")
-    ))]
-    #[cfg_attr(target_arch = "aarch64", inline(never))]
+    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+    #[inline(never)]
+    fn new_neon(key: aes::KeyBytes, cpu: cpu::aarch64::Neon) -> Result<Self, error::Unspecified> {
+        let aes_key = aes::vp::Key::new(key, cpu)?;
+        let gcm_key_value = derive_gcm_key_value(&aes_key);
+        let gcm_key = gcm::neon::Key::new(gcm_key_value, cpu);
+        Ok(Self::Simd(Combo { aes_key, gcm_key }))
+    }
+
+    #[cfg(all(target_arch = "arm", target_endian = "little"))]
     fn new_neon(key: aes::KeyBytes, cpu: cpu::arm::Neon) -> Result<Self, error::Unspecified> {
         let aes_key = aes::vp::Key::new(key, cpu)?;
         let gcm_key_value = derive_gcm_key_value(&aes_key);

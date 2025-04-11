@@ -83,7 +83,7 @@ impl Key {
     pub(super) fn encrypt(&self, counter: Counter, in_out: Overlapping<'_>, cpu: cpu::Features) {
         cfg_if! {
             if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
-                use cpu::{GetFeature as _, arm::Neon};
+                use cpu::{GetFeature as _, aarch64::Neon};
                 const NEON_MIN_LEN: usize = 192 + 1;
                 if in_out.len() >= NEON_MIN_LEN {
                     if let Some(cpu) = cpu.get_feature() {

@@ -100,7 +100,8 @@ mod tests {
         const _SHA512_NOT_STATICALLY_DETECTED: () = assert!((CAPS_STATIC & Sha512::mask()) == 0);
 
         if cfg!(target_os = "macos") {
-            use crate::cpu::{arm::Sha512, GetFeature as _};
+            use super::Sha512;
+            use crate::cpu::GetFeature as _;
 
             // All aarch64-apple-darwin targets have SHA3 enabled statically...
             assert!(cfg!(target_feature = "sha3"));
