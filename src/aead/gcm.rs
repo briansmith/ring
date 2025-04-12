@@ -25,9 +25,9 @@ pub(super) use ffi::KeyValue;
 
 cfg_if! {
     if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"), target_arch = "x86_64"))] {
-        pub(super) use self::ffi::{HTable, Xi};
+        pub(super) use self::ffi::Xi;
     } else {
-        use self::ffi::{HTable, Xi};
+        use self::ffi::Xi;
     }
 }
 
@@ -105,7 +105,7 @@ impl<K> Context<'_, K> {
 /// Access to `inner` for the integrated AES-GCM implementations only.
 impl Context<'_, clmul::Key> {
     #[inline]
-    pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
+    pub(super) fn inner(&mut self) -> (&clmul::HTable, &mut Xi) {
         (&self.key.inner(), &mut self.Xi)
     }
 }
@@ -114,7 +114,7 @@ impl Context<'_, clmul::Key> {
 impl Context<'_, clmulavxmovbe::Key> {
     /// Access to `inner` for the integrated AES-GCM implementations only.
     #[inline]
-    pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
+    pub(super) fn inner(&mut self) -> (&clmulavxmovbe::HTable, &mut Xi) {
         (self.key.inner(), &mut self.Xi)
     }
 }
@@ -123,7 +123,7 @@ impl Context<'_, clmulavxmovbe::Key> {
 impl Context<'_, vclmulavx2::Key> {
     /// Access to `inner` for the integrated AES-GCM implementations only.
     #[inline]
-    pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
+    pub(super) fn inner(&mut self) -> (&vclmulavx2::HTable, &mut Xi) {
         (self.key.inner(), &mut self.Xi)
     }
 }

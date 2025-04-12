@@ -16,7 +16,7 @@
 
 use super::{
     ffi::{self, KeyValue},
-    HTable, UpdateBlock, Xi,
+    UpdateBlock, Xi,
 };
 use crate::{
     aead::gcm::ffi::BLOCK_LEN,
@@ -24,6 +24,8 @@ use crate::{
     cpu::intel::{Avx2, VAesClmul},
     polyfill::slice::AsChunks,
 };
+
+pub(in super::super) type HTable = ffi::HTable<16>;
 
 #[derive(Clone)]
 pub struct Key {

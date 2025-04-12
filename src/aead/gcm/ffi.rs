@@ -44,10 +44,10 @@ impl KeyValue {
     target_arch = "x86",
     target_arch = "x86_64"
 ))]
-impl HTable {
-    pub(super) fn new(init: impl FnOnce(&mut HTable)) -> Self {
+impl<const N: usize> HTable<N> {
+    pub(super) fn new(init: impl FnOnce(&mut HTable<N>)) -> Self {
         let mut r = Self {
-            Htable: [U128 { hi: 0, lo: 0 }; HTABLE_LEN],
+            Htable: [U128 { hi: 0, lo: 0 }; N],
         };
         init(&mut r);
         r
@@ -59,7 +59,7 @@ impl HTable {
     ))]
     pub(super) unsafe fn gmult(
         &self,
-        f: unsafe extern "C" fn(xi: &mut Xi, h_table: &HTable),
+        f: unsafe extern "C" fn(xi: &mut Xi, h_table: &HTable<N>),
         xi: &mut Xi,
     ) {
         unsafe { f(xi, self) }
@@ -87,8 +87,8 @@ pub(super) fn with_non_dangling_ptr(
 // The alignment is required by some assembly code, such as `ghash-ssse3-*`.
 #[derive(Clone)]
 #[repr(C, align(16))]
-pub(in super::super) struct HTable {
-    Htable: [U128; HTABLE_LEN],
+pub(in super::super) struct HTable<const N: usize> {
+    Htable: [U128; N],
 }
 
 #[derive(Clone, Copy)]
@@ -97,8 +97,6 @@ pub(super) struct U128 {
     pub(super) hi: u64,
     pub(super) lo: u64,
 }
-
-const HTABLE_LEN: usize = 16;
 
 #[repr(transparent)]
 pub(in super::super) struct Xi(pub(super) Block);

@@ -19,12 +19,14 @@
 ))]
 
 use super::{
-    ffi::{KeyValue, BLOCK_LEN},
-    HTable, UpdateBlock, Xi,
+    ffi::{self, KeyValue, BLOCK_LEN},
+    UpdateBlock, Xi,
 };
 use crate::cpu;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 use {super::UpdateBlocks, crate::polyfill::slice::AsChunks};
+
+pub(in super::super) type HTable = ffi::HTable<16>;
 
 #[derive(Clone)]
 pub struct Key {
@@ -103,7 +105,7 @@ impl UpdateBlocks for Key {
             );
         }
         let htable = &self.h_table;
-        super::ffi::with_non_dangling_ptr(input, |input, len| unsafe {
+        ffi::with_non_dangling_ptr(input, |input, len| unsafe {
             gcm_ghash_clmul(xi, htable, input, len)
         })
     }

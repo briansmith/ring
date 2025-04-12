@@ -44,7 +44,7 @@ pub(super) fn seal(
             len: c::size_t,
             key: &aes::AES_KEY,
             ivec: &mut Counter,
-            Htable: &gcm::HTable,
+            Htable: &gcm::clmulavxmovbe::HTable,
             Xi: &mut gcm::Xi) -> c::size_t;
     }
 
@@ -99,7 +99,7 @@ pub(super) fn open(
             len: c::size_t,
             key: &aes::AES_KEY,
             ivec: &mut Counter,
-            Htable: &gcm::HTable,
+            Htable: &gcm::clmulavxmovbe::HTable,
             Xi: &mut gcm::Xi) -> c::size_t;
     }
 
