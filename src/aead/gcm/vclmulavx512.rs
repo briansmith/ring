@@ -14,14 +14,10 @@
 
 #![cfg(target_arch = "x86_64")]
 
-use super::{
-    ffi::{self, KeyValue},
-    HTable, UpdateBlock, Xi,
-};
+use super::{ffi::KeyValue, HTable, UpdateBlock, Xi};
 use crate::{
     aead::gcm::ffi::BLOCK_LEN,
-    c,
-    cpu::intel::{Avx2, VAesClmul},
+    cpu::intel::{Avx2, Avx512_BW_VL_ZMM, Bmi2, VAesClmul},
     polyfill::slice::AsChunks,
 };
 
@@ -31,13 +27,12 @@ pub struct Key {
 }
 
 impl Key {
-    #[inline(never)]
-    pub(in super::super) fn new(value: KeyValue, _cpu: (Avx2, VAesClmul)) -> Self {
-        prefixed_extern! {
-            fn gcm_init_vpclmulqdq_avx2(HTable: *mut HTable, h: &KeyValue);
-        }
+    pub(in super::super) fn new(
+        value: KeyValue,
+        _cpu: (Avx2, Avx512_BW_VL_ZMM, Bmi2, VAesClmul),
+    ) -> Self {
         Self {
-            h_table: HTable::new(|table| unsafe { gcm_init_vpclmulqdq_avx2(table, &value) }),
+            h_table: unsafe { htable_new!(gcm_init_vpclmulqdq_avx512, value) },
         }
     }
 
@@ -48,18 +43,7 @@ impl Key {
 
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
-        prefixed_extern! {
-            fn gcm_ghash_vpclmulqdq_avx2_16(
-                xi: &mut Xi,
-                Htable: &HTable,
-                inp: *const u8,
-                len: c::NonZero_size_t,
-            );
-        }
         let input: AsChunks<u8, BLOCK_LEN> = (&a).into();
-        let htable = self.inner();
-        ffi::with_non_dangling_ptr(input, |input, len| unsafe {
-            gcm_ghash_vpclmulqdq_avx2_16(xi, htable, input, len)
-        })
+        unsafe { ghash!(gcm_ghash_vpclmulqdq_avx512_16, xi, &self.h_table, input) }
     }
 }
