@@ -227,7 +227,7 @@ sub _ghash_mul {
 ___
 }
 
-# void gcm_init_vpclmulqdq_avx2(u128 Htable[16], const uint64_t H[2]);
+# fn gcm_init_vpclmulqdq_avx2(H: &[u64; 2]) -> [U128; 12];
 #
 # Initialize |Htable| with powers of the GHASH subkey |H|.
 #

@@ -24,8 +24,9 @@ use crate::{
     cpu::intel::{Avx2, VAesClmul},
     polyfill::slice::AsChunks,
 };
+use core::mem::size_of;
 
-pub(in super::super) type HTable = ffi::HTable<16>;
+pub(in super::super) type HTable = ffi::HTable<12>;
 
 #[derive(Clone)]
 pub struct Key {
@@ -34,11 +35,14 @@ pub struct Key {
 
 impl Key {
     pub(in super::super) fn new(value: KeyValue, _cpu: (Avx2, VAesClmul)) -> Self {
+        // See the documentation of `ffi::HTable`.
+        const _HTABLE_RETURN_VALUE_AS_FIRST_PARAMETER: () = assert!(size_of::<HTable>() > 4 * 8);
+
         prefixed_extern! {
-            fn gcm_init_vpclmulqdq_avx2(HTable: *mut HTable, h: &KeyValue);
+            fn gcm_init_vpclmulqdq_avx2(h: &KeyValue) -> HTable;
         }
         Self {
-            h_table: HTable::new(|table| unsafe { gcm_init_vpclmulqdq_avx2(table, &value) }),
+            h_table: unsafe { gcm_init_vpclmulqdq_avx2(&value) },
         }
     }
 

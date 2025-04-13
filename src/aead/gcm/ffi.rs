@@ -45,6 +45,8 @@ impl KeyValue {
     target_arch = "x86_64"
 ))]
 impl<const N: usize> HTable<N> {
+    // Besides this constructor, `HTable` is also constructed directly by some
+    // assembly language code.
     pub(super) fn new(init: impl FnOnce(&mut HTable<N>)) -> Self {
         let mut r = Self {
             Htable: [U128 { hi: 0, lo: 0 }; N],
@@ -85,6 +87,13 @@ pub(super) fn with_non_dangling_ptr(
 }
 
 // The alignment is required by some assembly code, such as `ghash-ssse3-*`.
+//
+// This is constructed directly by some assembly-language code, where the ABI
+// says that the caller allocates memory for the return value and passes a
+// pointer to it before the first argument. The System V ABI (AMD64) says this
+// happens for MEMORY objects, and this will be a MEMORY object if it is
+// "larger than four eightbytes." The Windows x64 ABI uses this convention
+// when the object is larger than 64 bits.
 #[derive(Clone)]
 #[repr(C, align(16))]
 pub(in super::super) struct HTable<const N: usize> {
