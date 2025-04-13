@@ -17,8 +17,10 @@
     all(target_arch = "arm", target_endian = "little")
 ))]
 
-use super::{ffi, HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
+use super::{ffi, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::{c, cpu, polyfill::slice::AsChunks};
+
+type HTable = ffi::HTable<16>;
 
 #[derive(Clone)]
 pub struct Key {

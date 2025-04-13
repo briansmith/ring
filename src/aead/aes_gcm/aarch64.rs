@@ -37,7 +37,7 @@ pub(super) fn seal_whole(
                 Xi: &mut gcm::Xi,
                 ivec: &mut Counter,
                 key: &aes::AES_KEY,
-                Htable: &gcm::HTable);
+                Htable: &gcm::clmul::HTable);
         }
 
         unsafe {
@@ -76,7 +76,7 @@ pub(super) fn open_whole(
                     Xi: &mut gcm::Xi,
                     ivec: &mut Counter,
                     key: &aes::AES_KEY,
-                    Htable: &gcm::HTable);
+                    Htable: &gcm::clmul::HTable);
             }
 
             unsafe {
