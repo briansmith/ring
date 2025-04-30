@@ -215,51 +215,61 @@ const ASM_TARGETS: &[AsmTarget] = &[
         oss: LINUX_ABI,
         arch: AARCH64,
         perlasm_format: "linux64",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: ARM,
         perlasm_format: "linux32",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: X86,
         perlasm_format: "elf",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: X86_64,
         perlasm_format: "elf",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: &["horizon"],
         arch: ARM,
         perlasm_format: "linux32",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: APPLE_ABI,
         arch: AARCH64,
         perlasm_format: "ios64",
+        extern_prefix: "_",
     },
     AsmTarget {
         oss: APPLE_ABI,
         arch: X86_64,
         perlasm_format: "macosx",
+        extern_prefix: "_",
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: X86,
         perlasm_format: WIN32N,
+        extern_prefix: "_",
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: X86_64,
         perlasm_format: NASM,
+        extern_prefix: "",
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: AARCH64,
         perlasm_format: "win64",
+        extern_prefix: "",
     },
 ];
 
@@ -272,6 +282,9 @@ struct AsmTarget {
 
     /// The PerlAsm format name.
     perlasm_format: &'static str,
+
+    /// What prefix do exrern symbols get?
+    extern_prefix: &'static str,
 }
 
 impl AsmTarget {
@@ -459,6 +472,12 @@ struct Target {
     force_warnings_into_errors: bool,
 }
 
+impl Target {
+    fn is_apple(&self) -> bool {
+        APPLE_ABI.contains(&self.os.as_str())
+    }
+}
+
 fn build_c_code(
     asm_target: Option<&AsmTarget>,
     target: &Target,
@@ -527,7 +546,7 @@ fn build_c_code(
     libs.iter()
         .for_each(|&(lib_name, srcs, asm_srcs, obj_srcs)| {
             let srcs = srcs.iter().chain(asm_srcs);
-            build_library(
+            let lib_path = &build_library(
                 target,
                 c_root_dir,
                 out_dir,
@@ -535,7 +554,8 @@ fn build_c_code(
                 srcs,
                 generated_dir,
                 obj_srcs,
-            )
+            );
+            check_library_prefixes(asm_target, target, lib_path, core_name_and_version);
         });
 
     println!(
@@ -550,6 +570,7 @@ fn new_build(target: &Target, c_root_dir: &Path, include_dir: &Path) -> cc::Buil
     b
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_library<'a>(
     target: &Target,
     c_root_dir: &Path,
@@ -558,7 +579,7 @@ fn build_library<'a>(
     srcs: impl Iterator<Item = &'a PathBuf>,
     include_dir: &Path,
     preassembled_objs: &[PathBuf],
-) {
+) -> PathBuf {
     let mut c = new_build(target, c_root_dir, include_dir);
 
     // Compile all the (dirty) source files into object files.
@@ -586,6 +607,8 @@ fn build_library<'a>(
     // Link the library. This works even when the library doesn't need to be
     // rebuilt.
     println!("cargo:rustc-link-lib=static={}", lib_name);
+
+    lib_path
 }
 
 fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
@@ -613,7 +636,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
         let _ = c.flag(f);
     }
 
-    if APPLE_ABI.contains(&target.os.as_str()) {
+    if target.is_apple() {
         // ``-gfull`` is required for Darwin's |-dead_strip|.
         let _ = c.flag("-gfull");
     } else if !compiler.is_like_msvc() {
@@ -815,6 +838,10 @@ fn walk_dir(dir: &Path, cb: &impl Fn(&DirEntry)) {
     }
 }
 
+fn symbol_prefix(core_name_and_version: &str) -> String {
+    String::from(core_name_and_version) + "_"
+}
+
 /// Creates the necessary header files for symbol renaming.
 ///
 /// For simplicity, both non-Nasm- and Nasm- style headers are always
@@ -823,7 +850,7 @@ fn generate_prefix_symbols_headers(
     out_dir: &Path,
     core_name_and_version: &str,
 ) -> Result<(), std::io::Error> {
-    let prefix = &(String::from(core_name_and_version) + "_");
+    let prefix = &symbol_prefix(core_name_and_version);
 
     generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, prefix)?;
 
@@ -1081,4 +1108,122 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     }
 
     out
+}
+
+fn check_library_prefixes(
+    asm_target: Option<&AsmTarget>,
+    target: &Target,
+    lib_path: &Path,
+    core_name_and_version: &str,
+) {
+    let path_str = &lib_path.display().to_string();
+
+    // If we support assembly language for the target, symbol prefix checking
+    // errors are fatal.
+    if let Some(asm_target) = asm_target {
+        match check_library_prefixes_(
+            target,
+            lib_path,
+            path_str,
+            asm_target.extern_prefix,
+            core_name_and_version,
+        ) {
+            Ok(()) => (),
+            Err(e) => panic!("error: {path_str}: symbol checking failed: {:?}", e),
+        }
+    } else {
+        // TODO: Perhaps do the symbol prefix checking in a more lenient way.
+    }
+}
+
+fn check_library_prefixes_(
+    target: &Target,
+    lib_path: &Path,
+    path_str: &str,
+    extern_prefix: &str,
+    core_name_and_version: &str,
+) -> Result<(), LibraryPrefixError> {
+    let prefix = String::from(extern_prefix) + &symbol_prefix(core_name_and_version);
+
+    let contents = fs::read(lib_path).map_err(LibraryPrefixError::FailedToReadArchiveFile)?;
+    let file = object::read::archive::ArchiveFile::parse(&*contents)
+        .map_err(LibraryPrefixError::FailedToParseArchiveFile)?;
+    let symbols = file
+        .symbols()
+        .map_err(LibraryPrefixError::FailedToReadSymbols)?
+        .ok_or(LibraryPrefixError::NoSymbols)?;
+    let ok = symbols.fold(true, |ok, symbol| {
+        check_symbol_prefix(&symbol, path_str, &prefix, target) && ok
+    });
+    if !ok {
+        return Err(LibraryPrefixError::AtLeastOneFailure);
+    }
+    Ok(())
+}
+
+fn check_symbol_prefix<E: core::fmt::Debug>(
+    symbol: &Result<object::read::archive::ArchiveSymbol, E>,
+    path_str: &str,
+    expected_prefix: &str,
+    target: &Target,
+) -> bool {
+    fn contains<T: Eq>(haystack: &[T], needle: &[T]) -> bool {
+        haystack
+            .windows(needle.len())
+            .any(|window| window == needle)
+    }
+
+    let symbol = match symbol {
+        Ok(symbol) => symbol,
+        Err(e) => {
+            eprintln!("error: {path_str}: symbol error: {e:?}");
+            return false;
+        }
+    };
+    let name_approx = &String::from_utf8_lossy(symbol.name());
+
+    // Use `contains()` instead of `name.starts_with()` to handle cases like
+    // `.refptr.ring_core_0_17_14__adx_bmi2_available`.
+    if contains(symbol.name(), expected_prefix.as_bytes()) {
+        eprintln!("info: {path_str}: prefixed symbol found: {name_approx}");
+        true
+    } else if symbol.name().starts_with(b"__covrec_") {
+        // TODO: Will these be unique?
+        eprintln!(
+            "info: {path_str}: symbol not prefixed; allowed LLVM code coverage symbol: {name_approx}"
+        );
+        true
+    } else if target.os == WINDOWS
+        && (symbol.name().starts_with(b"__xmm@") || symbol.name().starts_with(b"__real@"))
+    {
+        // TODO: Are these common symbols that are merged together so that they
+        // are safe to allow?
+        eprintln!(
+            "info: {path_str}: symbol not prefixed; allowed Windows FP/SIMD constant: {name_approx}"
+        );
+        true
+    } else if matches!(symbol.name(), [_, _, b'_', b'C', b'@', ..]) && target.os == WINDOWS {
+        // XXX: What is this?
+        eprintln!(
+            "warning: {path_str}: symbol not prefixed; weird MSVC-generated thing: {name_approx}, {:x?}", name_approx.as_bytes());
+        true
+    } else if matches!(symbol.name(), [b'_', b'_', ..]) {
+        eprintln!("warning: {path_str}: symbol not prefixed; assumed-safe compiler-generated symbol: {name_approx}, {:x?}", name_approx.as_bytes());
+        true
+    } else {
+        eprintln!("error: {path_str}: symbol not prefixed as expected: {name_approx}");
+        false
+    }
+}
+
+#[derive(Debug)]
+enum LibraryPrefixError {
+    #[allow(dead_code)] // Used via `Debug`
+    FailedToReadArchiveFile(std::io::Error),
+    #[allow(dead_code)] // Used via `Debug`
+    FailedToParseArchiveFile(object::Error),
+    #[allow(dead_code)] // Used via `Debug`
+    FailedToReadSymbols(object::Error),
+    NoSymbols,
+    AtLeastOneFailure,
 }
