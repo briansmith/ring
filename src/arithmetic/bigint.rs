@@ -602,10 +602,10 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let (acc, _) = limb::fold_5_bit_windows(
         exponent.limbs(),
         |initial_window| {
-            gather(&table, &mut acc, initial_window);
+            gather(table, &mut acc, initial_window);
             (acc, tmp)
         },
-        |(acc, tmp), window| power(&table, acc, m, window, tmp),
+        |(acc, tmp), window| power(table, acc, m, window, tmp),
     );
 
     Ok(acc.into_unencoded(m))
