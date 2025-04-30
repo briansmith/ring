@@ -459,6 +459,12 @@ struct Target {
     force_warnings_into_errors: bool,
 }
 
+impl Target {
+    fn is_apple(&self) -> bool {
+        APPLE_ABI.contains(&self.os.as_str())
+    }
+}
+
 fn build_c_code(
     asm_target: Option<&AsmTarget>,
     target: &Target,
@@ -535,6 +541,7 @@ fn build_c_code(
                 srcs,
                 generated_dir,
                 obj_srcs,
+                core_name_and_version,
             )
         });
 
@@ -550,6 +557,7 @@ fn new_build(target: &Target, c_root_dir: &Path, include_dir: &Path) -> cc::Buil
     b
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_library<'a>(
     target: &Target,
     c_root_dir: &Path,
@@ -558,6 +566,7 @@ fn build_library<'a>(
     srcs: impl Iterator<Item = &'a PathBuf>,
     include_dir: &Path,
     preassembled_objs: &[PathBuf],
+    core_name_and_version: &str,
 ) {
     let mut c = new_build(target, c_root_dir, include_dir);
 
@@ -572,6 +581,7 @@ fn build_library<'a>(
 
     // Rebuild the library if necessary.
     let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
+    let path_str = &lib_path.display().to_string();
 
     // Handled below.
     let _ = c.cargo_metadata(false);
@@ -582,6 +592,35 @@ fn build_library<'a>(
             .and_then(|f| f.to_str())
             .expect("No filename"),
     );
+
+    let mut prefix = symbol_prefix(core_name_and_version);
+    if target.is_apple() || (target.os == WINDOWS && target.arch == X86) {
+        prefix.insert(0, '_');
+    };
+
+    let contents = fs::read(lib_path).unwrap_or_else(|e| {
+        panic!("{path_str}: error reading file: {e:?}");
+    });
+    let file = object::read::archive::ArchiveFile::parse(&*contents).unwrap_or_else(|e| {
+        panic!("{path_str}: error parsing file: {e:?}");
+    });
+    let symbols = file
+        .symbols()
+        .unwrap_or_else(|e| {
+            panic!("{path_str}: error retrieving members: {e:?}");
+        })
+        .unwrap_or_else(|| {
+            panic!("{path_str}: no symbols");
+        });
+    // We do NOT want short-circuiting; see
+    // https://github.com/rust-lang/rust-clippy/issues/3351
+    #[allow(clippy::unnecessary_fold)]
+    let ok = symbols.fold(true, |ok, symbol| {
+        check_symbol_prefix(&symbol, path_str, &prefix, target) && ok
+    });
+    if !ok {
+        panic!("{path_str}: symbol prefix checking failed");
+    }
 
     // Link the library. This works even when the library doesn't need to be
     // rebuilt.
@@ -613,7 +652,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
         let _ = c.flag(f);
     }
 
-    if APPLE_ABI.contains(&target.os.as_str()) {
+    if target.is_apple() {
         // ``-gfull`` is required for Darwin's |-dead_strip|.
         let _ = c.flag("-gfull");
     } else if !compiler.is_like_msvc() {
@@ -815,6 +854,10 @@ fn walk_dir(dir: &Path, cb: &impl Fn(&DirEntry)) {
     }
 }
 
+fn symbol_prefix(core_name_and_version: &str) -> String {
+    String::from(core_name_and_version) + "_"
+}
+
 /// Creates the necessary header files for symbol renaming.
 ///
 /// For simplicity, both non-Nasm- and Nasm- style headers are always
@@ -823,7 +866,7 @@ fn generate_prefix_symbols_headers(
     out_dir: &Path,
     core_name_and_version: &str,
 ) -> Result<(), std::io::Error> {
-    let prefix = &(String::from(core_name_and_version) + "_");
+    let prefix = &symbol_prefix(core_name_and_version);
 
     generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, prefix)?;
 
@@ -1081,4 +1124,51 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     }
 
     out
+}
+
+fn check_symbol_prefix<E: core::fmt::Debug>(
+    symbol: &Result<object::read::archive::ArchiveSymbol, E>,
+    path_str: &str,
+    expected_prefix: &str,
+    target: &Target,
+) -> bool {
+    let symbol = match symbol {
+        Ok(symbol) => symbol,
+        Err(e) => {
+            eprintln!("{path_str}: symbol error: {e:?}");
+            return false;
+        }
+    };
+    let name_approx = &String::from_utf8_lossy(symbol.name());
+
+    if symbol.name().starts_with(expected_prefix.as_bytes()) {
+        eprintln!("{path_str}: prefixed symbol found: {name_approx}");
+        true
+    } else if symbol.name().starts_with(b"__covrec_") {
+        // LLVM code coverage adds these symbols.
+        // TODO: Will these be unique?
+        eprintln!(
+            "{path_str}: symbol not prefixed as expected but temporarily allowed: {name_approx}"
+        );
+        true
+    } else if target.os == WINDOWS
+        && (symbol.name().starts_with(b"__xmm@") || symbol.name().starts_with(b"__real@"))
+    {
+        // Floating point and SIMD literal constants.
+        // TODO: Are these common symbols that are merged together so that they
+        // are safe to allow?
+        eprintln!(
+            "{path_str}: symbol not prefixed as expected but temporarily allowed: {name_approx}"
+        );
+        true
+    } else if matches!(symbol.name(), [_, _, b'_', b'C', b'@', ..]) && target.os == WINDOWS {
+        // XXX: What is this?
+        eprintln!(
+            "{path_str}: symbol not prefixed as expected but temporarily allowed: {name_approx}"
+        );
+        true
+    } else {
+        eprintln!("{path_str}: symbol not prefixed as expected: {name_approx}");
+        false
+    }
 }
