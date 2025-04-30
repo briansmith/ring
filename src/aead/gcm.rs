@@ -106,7 +106,7 @@ impl<K> Context<'_, K> {
 impl Context<'_, clmul::Key> {
     #[inline]
     pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
-        (&self.key.inner(), &mut self.Xi)
+        (self.key.inner(), &mut self.Xi)
     }
 }
 
