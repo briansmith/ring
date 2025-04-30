@@ -53,11 +53,11 @@ const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () =
 pub fn detect_features() -> u32 {
     fn detect_feature(name: cstr::Ref) -> bool {
         use crate::polyfill;
-        use core::mem;
+        use core::mem::size_of_val;
         use libc::{c_int, c_void};
 
         let mut value: c_int = 0;
-        let mut len = mem::size_of_val(&value);
+        let mut len = size_of_val(&value);
         let value_ptr = polyfill::ptr::from_mut(&mut value).cast::<c_void>();
         // SAFETY: `value_ptr` is a valid pointer to `value` and `len` is the size of `value`.
         let rc = unsafe {
@@ -67,8 +67,8 @@ pub fn detect_features() -> u32 {
         if rc != 0 {
             return false;
         }
-        debug_assert_eq!(len, mem::size_of_val(&value));
-        if len != mem::size_of_val(&value) {
+        debug_assert_eq!(len, size_of_val(&value));
+        if len != size_of_val(&value) {
             return false;
         }
         value != 0
