@@ -265,6 +265,7 @@ impl EcdsaKeyPair {
             // Step 4 is done by the caller.
 
             // Step 5.
+            #[allow(clippy::needless_borrow)]
             let e = digest_scalar(n, &h);
 
             // Step 6.
