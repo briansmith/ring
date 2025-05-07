@@ -1208,9 +1208,6 @@ fn check_symbol_prefix<E: core::fmt::Debug>(
             "warning: {path_str}: symbol not prefixed; weird MSVC-generated thing: {name_approx}"
         );
         true
-    } else if matches!(symbol.name(), [b'_', b'_', ..]) {
-        eprintln!("warning: {path_str}: symbol not prefixed; assumed-safe compiler-generated symbol: {name_approx}");
-        false
     } else {
         eprintln!("error: {path_str}: symbol not prefixed as expected: {name_approx}");
         false
