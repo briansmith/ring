@@ -25,9 +25,9 @@ mod abi_assumptions {
     const _ASSUMES_SSE2: () =
         assert!(cfg!(target_feature = "sse") && cfg!(target_feature = "sse2"));
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
     const _ASSUMED_POINTER_SIZE: usize = 8;
-    #[cfg(target_arch = "x86")]
+    #[cfg(any(target_arch = "x86", all(target_arch = "x86_64", target_pointer_width = "32")))]
     const _ASSUMED_POINTER_SIZE: usize = 4;
     const _ASSUMED_USIZE_SIZE: () = assert!(size_of::<usize>() == _ASSUMED_POINTER_SIZE);
     const _ASSUMED_REF_SIZE: () = assert!(size_of::<&'static u8>() == _ASSUMED_POINTER_SIZE);
