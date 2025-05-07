@@ -1205,6 +1205,7 @@ fn check_symbol_prefix<E: core::fmt::Debug>(
         false
     } else {
         eprintln!("error: {path_str}: symbol not prefixed as expected: {name_approx}");
+        false
     }
 }
 
