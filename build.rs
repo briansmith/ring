@@ -215,51 +215,61 @@ const ASM_TARGETS: &[AsmTarget] = &[
         oss: LINUX_ABI,
         arch: AARCH64,
         perlasm_format: "linux64",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: ARM,
         perlasm_format: "linux32",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: X86,
         perlasm_format: "elf",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: X86_64,
         perlasm_format: "elf",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: &["horizon"],
         arch: ARM,
         perlasm_format: "linux32",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: APPLE_ABI,
         arch: AARCH64,
         perlasm_format: "ios64",
+        extern_prefix: "_",
     },
     AsmTarget {
         oss: APPLE_ABI,
         arch: X86_64,
         perlasm_format: "macosx",
+        extern_prefix: "",
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: X86,
         perlasm_format: WIN32N,
+        extern_prefix: "_",
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: X86_64,
         perlasm_format: NASM,
+        extern_prefix: "",
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: AARCH64,
         perlasm_format: "win64",
+        extern_prefix: "",
     },
 ];
 
@@ -272,6 +282,9 @@ struct AsmTarget {
 
     /// The PerlAsm format name.
     perlasm_format: &'static str,
+
+    /// What prefix do exrern symbols get?
+    extern_prefix: &'static str,
 }
 
 impl AsmTarget {
@@ -533,7 +546,7 @@ fn build_c_code(
     libs.iter()
         .for_each(|&(lib_name, srcs, asm_srcs, obj_srcs)| {
             let srcs = srcs.iter().chain(asm_srcs);
-            build_library(
+            let lib_path = &build_library(
                 target,
                 c_root_dir,
                 out_dir,
@@ -541,8 +554,8 @@ fn build_c_code(
                 srcs,
                 generated_dir,
                 obj_srcs,
-                core_name_and_version,
-            )
+            );
+            check_library_prefixes(asm_target, target, lib_path, core_name_and_version);
         });
 
     println!(
@@ -566,8 +579,7 @@ fn build_library<'a>(
     srcs: impl Iterator<Item = &'a PathBuf>,
     include_dir: &Path,
     preassembled_objs: &[PathBuf],
-    core_name_and_version: &str,
-) {
+) -> PathBuf {
     let mut c = new_build(target, c_root_dir, include_dir);
 
     // Compile all the (dirty) source files into object files.
@@ -581,7 +593,6 @@ fn build_library<'a>(
 
     // Rebuild the library if necessary.
     let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
-    let path_str = &lib_path.display().to_string();
 
     // Handled below.
     let _ = c.cargo_metadata(false);
@@ -593,38 +604,11 @@ fn build_library<'a>(
             .expect("No filename"),
     );
 
-    let mut prefix = symbol_prefix(core_name_and_version);
-    if target.is_apple() || (target.os == WINDOWS && target.arch == X86) {
-        prefix.insert(0, '_');
-    };
-
-    let contents = fs::read(lib_path).unwrap_or_else(|e| {
-        panic!("{path_str}: error reading file: {e:?}");
-    });
-    let file = object::read::archive::ArchiveFile::parse(&*contents).unwrap_or_else(|e| {
-        panic!("{path_str}: error parsing file: {e:?}");
-    });
-    let symbols = file
-        .symbols()
-        .unwrap_or_else(|e| {
-            panic!("{path_str}: error retrieving members: {e:?}");
-        })
-        .unwrap_or_else(|| {
-            panic!("{path_str}: no symbols");
-        });
-    // We do NOT want short-circuiting; see
-    // https://github.com/rust-lang/rust-clippy/issues/3351
-    #[allow(clippy::unnecessary_fold)]
-    let ok = symbols.fold(true, |ok, symbol| {
-        check_symbol_prefix(&symbol, path_str, &prefix, target) && ok
-    });
-    if !ok {
-        panic!("{path_str}: symbol prefix checking failed");
-    }
-
     // Link the library. This works even when the library doesn't need to be
     // rebuilt.
     println!("cargo:rustc-link-lib=static={}", lib_name);
+
+    lib_path
 }
 
 fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
@@ -1126,6 +1110,60 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     out
 }
 
+fn check_library_prefixes(
+    asm_target: Option<&AsmTarget>,
+    target: &Target,
+    lib_path: &Path,
+    core_name_and_version: &str,
+) {
+    let path_str = &lib_path.display().to_string();
+
+    // If we support assembly language for the target, symbol prefix checking
+    // errors are fatal.
+    if let Some(asm_target) = asm_target {
+        match check_library_prefixes_(
+            target,
+            lib_path,
+            path_str,
+            asm_target.extern_prefix,
+            core_name_and_version,
+        ) {
+            Ok(()) => (),
+            Err(e) => panic!("{path_str}: symbol checking failed: {:?}", e),
+        }
+    } else {
+        // TODO: Perhaps do the symbol prefix checking in a more lenient way.
+    }
+}
+
+fn check_library_prefixes_(
+    target: &Target,
+    lib_path: &Path,
+    path_str: &str,
+    extern_prefix: &str,
+    core_name_and_version: &str,
+) -> Result<(), LibraryPrefixError> {
+    let prefix = String::from(extern_prefix) + &symbol_prefix(core_name_and_version);
+
+    let contents = fs::read(lib_path).map_err(LibraryPrefixError::FailedToReadArchiveFile)?;
+    let file = object::read::archive::ArchiveFile::parse(&*contents)
+        .map_err(LibraryPrefixError::FailedToParseArchiveFile)?;
+    let symbols = file
+        .symbols()
+        .map_err(LibraryPrefixError::FailedToReadSymbols)?
+        .ok_or(LibraryPrefixError::NoSymbols)?;
+    // We do NOT want short-circuiting; see
+    // https://github.com/rust-lang/rust-clippy/issues/3351
+    #[allow(clippy::unnecessary_fold)]
+    let ok = symbols.fold(true, |ok, symbol| {
+        check_symbol_prefix(&symbol, path_str, &prefix, target) && ok
+    });
+    if !ok {
+        return Err(LibraryPrefixError::AtLeastOneFailure);
+    }
+    Ok(())
+}
+
 fn check_symbol_prefix<E: core::fmt::Debug>(
     symbol: &Result<object::read::archive::ArchiveSymbol, E>,
     path_str: &str,
@@ -1171,4 +1209,16 @@ fn check_symbol_prefix<E: core::fmt::Debug>(
         eprintln!("{path_str}: symbol not prefixed as expected: {name_approx}");
         false
     }
+}
+
+#[derive(Debug)]
+enum LibraryPrefixError {
+    #[allow(dead_code)] // Used via `Debug`
+    FailedToReadArchiveFile(std::io::Error),
+    #[allow(dead_code)] // Used via `Debug`
+    FailedToParseArchiveFile(object::Error),
+    #[allow(dead_code)] // Used via `Debug`
+    FailedToReadSymbols(object::Error),
+    NoSymbols,
+    AtLeastOneFailure,
 }
