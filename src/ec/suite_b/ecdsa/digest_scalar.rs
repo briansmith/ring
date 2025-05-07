@@ -42,7 +42,7 @@ use crate::{digest, ec::suite_b::ops::*};
 /// right will give a value less than 2**255, which is less than `n`. The
 /// analogous argument applies for P-384. However, it does *not* apply in
 /// general; for example, it doesn't apply to P-521.
-pub(super) fn digest_scalar(n: &Modulus<N>, msg: digest::Digest) -> Scalar {
+pub(super) fn digest_scalar(n: &Modulus<N>, msg: &digest::Digest) -> Scalar {
     digest_scalar_(n, msg.as_ref())
 }
 

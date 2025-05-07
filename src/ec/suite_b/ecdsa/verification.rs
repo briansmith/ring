@@ -65,7 +65,7 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
             // NSA Guide Step 3: "Convert the bit string H to an integer e as
             // described in Appendix B.2."
             let n = &self.ops.scalar_ops.scalar_modulus(cpu);
-            digest_scalar(n, h)
+            digest_scalar(n, &h)
         };
 
         self.verify_digest(public_key, e, signature)
