@@ -1152,9 +1152,6 @@ fn check_library_prefixes_(
         .symbols()
         .map_err(LibraryPrefixError::FailedToReadSymbols)?
         .ok_or(LibraryPrefixError::NoSymbols)?;
-    // We do NOT want short-circuiting; see
-    // https://github.com/rust-lang/rust-clippy/issues/3351
-    #[allow(clippy::unnecessary_fold)]
     let ok = symbols.fold(true, |ok, symbol| {
         check_symbol_prefix(&symbol, path_str, &prefix, target) && ok
     });
