@@ -33,7 +33,7 @@ qemu_riscv64="qemu-riscv64 -L /usr/riscv64-linux-gnu"
 qemu_s390x="qemu-s390x -L /usr/s390x-linux-gnu"
 qemu_sparc64="qemu-sparc64 -L /usr/sparc64-linux-gnu"
 qemu_x86="qemu-i386"
-qemu_x86_64="qemu-x86_64"
+qemu_x86_64="$PWD/target/tools/linux-x86_64/qemu/bin/qemu-x86_64"
 
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may
