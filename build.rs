@@ -251,7 +251,7 @@ const ASM_TARGETS: &[AsmTarget] = &[
         oss: APPLE_ABI,
         arch: X86_64,
         perlasm_format: "macosx",
-        extern_prefix: "",
+        extern_prefix: "_",
     },
     AsmTarget {
         oss: &[WINDOWS],
