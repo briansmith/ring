@@ -1129,7 +1129,7 @@ fn check_library_prefixes(
             core_name_and_version,
         ) {
             Ok(()) => (),
-            Err(e) => panic!("{path_str}: symbol checking failed: {:?}", e),
+            Err(e) => panic!("error: {path_str}: symbol checking failed: {:?}", e),
         }
     } else {
         // TODO: Perhaps do the symbol prefix checking in a more lenient way.
@@ -1170,41 +1170,41 @@ fn check_symbol_prefix<E: core::fmt::Debug>(
     let symbol = match symbol {
         Ok(symbol) => symbol,
         Err(e) => {
-            eprintln!("{path_str}: symbol error: {e:?}");
+            eprintln!("error: {path_str}: symbol error: {e:?}");
             return false;
         }
     };
     let name_approx = &String::from_utf8_lossy(symbol.name());
 
     if symbol.name().starts_with(expected_prefix.as_bytes()) {
-        eprintln!("{path_str}: prefixed symbol found: {name_approx}");
+        eprintln!("info: {path_str}: prefixed symbol found: {name_approx}");
         true
     } else if symbol.name().starts_with(b"__covrec_") {
-        // LLVM code coverage adds these symbols.
         // TODO: Will these be unique?
         eprintln!(
-            "{path_str}: symbol not prefixed as expected but temporarily allowed: {name_approx}"
+            "info: {path_str}: symbol not prefixed; allowed LLVM code coverage symbol: {name_approx}"
         );
         true
     } else if target.os == WINDOWS
         && (symbol.name().starts_with(b"__xmm@") || symbol.name().starts_with(b"__real@"))
     {
-        // Floating point and SIMD literal constants.
         // TODO: Are these common symbols that are merged together so that they
         // are safe to allow?
         eprintln!(
-            "{path_str}: symbol not prefixed as expected but temporarily allowed: {name_approx}"
+            "info: {path_str}: symbol not prefixed; allowed Windows FP/SIMD constant: {name_approx}"
         );
         true
     } else if matches!(symbol.name(), [_, _, b'_', b'C', b'@', ..]) && target.os == WINDOWS {
         // XXX: What is this?
         eprintln!(
-            "{path_str}: symbol not prefixed as expected but temporarily allowed: {name_approx}"
+            "warning: {path_str}: symbol not prefixed; weird MSVC-generated thing: {name_approx}"
         );
         true
-    } else {
-        eprintln!("{path_str}: symbol not prefixed as expected: {name_approx}");
+    } else if matches!(symbol.name(), [b'_', b'_', ..]) {
+        eprintln!("warning: {path_str}: symbol not prefixed; assumed-safe compiler-generated symbol: {name_approx}");
         false
+    } else {
+        eprintln!("error: {path_str}: symbol not prefixed as expected: {name_approx}");
     }
 }
 
