@@ -1167,6 +1167,12 @@ fn check_symbol_prefix<E: core::fmt::Debug>(
     expected_prefix: &str,
     target: &Target,
 ) -> bool {
+    fn contains<T: Eq>(haystack: &[T], needle: &[T]) -> bool {
+        haystack
+            .windows(needle.len())
+            .any(|window| window == needle)
+    }
+
     let symbol = match symbol {
         Ok(symbol) => symbol,
         Err(e) => {
@@ -1176,7 +1182,9 @@ fn check_symbol_prefix<E: core::fmt::Debug>(
     };
     let name_approx = &String::from_utf8_lossy(symbol.name());
 
-    if symbol.name().starts_with(expected_prefix.as_bytes()) {
+    // Use `contains()` instead of `name.starts_with()` to handle cases like
+    // `.refptr.ring_core_0_17_14__adx_bmi2_available`.
+    if contains(symbol.name(), expected_prefix.as_bytes()) {
         eprintln!("info: {path_str}: prefixed symbol found: {name_approx}");
         true
     } else if symbol.name().starts_with(b"__covrec_") {
