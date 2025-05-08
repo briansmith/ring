@@ -215,61 +215,51 @@ const ASM_TARGETS: &[AsmTarget] = &[
         oss: LINUX_ABI,
         arch: AARCH64,
         perlasm_format: "linux64",
-        extern_prefix: "",
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: ARM,
         perlasm_format: "linux32",
-        extern_prefix: "",
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: X86,
         perlasm_format: "elf",
-        extern_prefix: "",
     },
     AsmTarget {
         oss: LINUX_ABI,
         arch: X86_64,
         perlasm_format: "elf",
-        extern_prefix: "",
     },
     AsmTarget {
         oss: &["horizon"],
         arch: ARM,
         perlasm_format: "linux32",
-        extern_prefix: "",
     },
     AsmTarget {
         oss: APPLE_ABI,
         arch: AARCH64,
         perlasm_format: "ios64",
-        extern_prefix: "_",
     },
     AsmTarget {
         oss: APPLE_ABI,
         arch: X86_64,
         perlasm_format: "macosx",
-        extern_prefix: "_",
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: X86,
         perlasm_format: WIN32N,
-        extern_prefix: "_",
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: X86_64,
         perlasm_format: NASM,
-        extern_prefix: "",
     },
     AsmTarget {
         oss: &[WINDOWS],
         arch: AARCH64,
         perlasm_format: "win64",
-        extern_prefix: "",
     },
 ];
 
@@ -282,9 +272,6 @@ struct AsmTarget {
 
     /// The PerlAsm format name.
     perlasm_format: &'static str,
-
-    /// What prefix do exrern symbols get?
-    extern_prefix: &'static str,
 }
 
 impl AsmTarget {
