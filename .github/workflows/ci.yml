@@ -173,7 +173,6 @@ jobs:
           # - aarch64-apple-watchos   Tier 3; handled below
           - aarch64-linux-android
           - aarch64-pc-windows-msvc
-          - aarch64-unknown-linux-gnu
           - aarch64-unknown-linux-musl
           - arm-unknown-linux-gnueabi
           - armv7-linux-androideabi
@@ -255,9 +254,6 @@ jobs:
             host_os: windows-latest
             # GitHub Actions doesn't have a way to run this target yet.
             cargo_options: --no-run
-
-          - target: aarch64-unknown-linux-gnu
-            host_os: ubuntu-22.04
 
           - target: aarch64-unknown-linux-musl
             host_os: ubuntu-22.04
@@ -597,7 +593,6 @@ jobs:
         # TODO: targets
         target:
           - aarch64-apple-darwin           # Has assembly
-          - aarch64-unknown-linux-gnu      # Has assembly
           - arm-unknown-linux-gnueabi      # Has assembly
           - armv7-unknown-linux-gnueabihf  # Has assembly
           # - i686-unknown-linux-gnu       # Has assembly; handled specially below.
@@ -625,18 +620,6 @@ jobs:
 
           - target: aarch64-apple-darwin
             host_os: macos-14
-
-          # TODO: Use the -musl target after
-          # https://github.com/rust-lang/rust/issues/79556 and
-          # https://github.com/rust-lang/rust/issues/79555 are fixed.
-          - target: aarch64-unknown-linux-gnu
-            host_os: ubuntu-24.04
-
-          - features: --features=unstable-testing-arm-no-hw,std
-            target: aarch64-unknown-linux-gnu
-            mode: --release
-            rust_channel: nightly
-            host_os: ubuntu-24.04
 
           - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-24.04
