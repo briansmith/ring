@@ -492,17 +492,11 @@ jobs:
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
-          mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          mk/cargo.sh +${{ matrix.rust_channel }} test --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: |
-          cargo +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
-
-      # --all-targets doesn't run doctests: https://github.com/rust-lang/cargo/issues/6669
-      # Run doctests only on x86_64 to avoid cross-compilation hassles with `--no-run`.
-      - if: ${{ !contains(matrix.host_os, 'windows') && contains(matrix.target, 'x86_64') }}
-        run: |
-          mk/cargo.sh +${{ matrix.rust_channel }} test -vv --doc --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          cargo +${{ matrix.rust_channel }} test --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
