@@ -47,16 +47,8 @@ pub fn detect_features() -> u32 {
     #[cfg(not(target_env = "uclibc"))]
     {
         use super::CAPS_STATIC;
+        use libc::{c_ulong, getauxval, AT_HWCAP};
 
-        // The `libc` crate doesn't provide this functionality on all
-        // 32-bit Linux targets, like Android or -musl. Use this polyfill
-        // for all 32-bit ARM targets so that testing on one of them will
-        // be more meaningful to the others.
-        use libc::c_ulong;
-        extern "C" {
-            pub fn getauxval(type_: c_ulong) -> c_ulong;
-        }
-        const AT_HWCAP: c_ulong = 16;
         const HWCAP_NEON: c_ulong = 1 << 12;
 
         if CAPS_STATIC & Neon::mask() != Neon::mask() {

@@ -163,10 +163,10 @@ getrandom = { version = "0.2.10" }
 untrusted = { version = "0.9" }
 
 [target.'cfg(all(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")), any(target_os = "android", target_os = "linux")))'.dependencies]
-libc = { version = "0.2.148", default-features = false }
+libc = { version = "0.2.172", default-features = false }
 
 [target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_vendor = "apple", any(target_os = "ios", target_os = "macos", target_os = "tvos", target_os = "visionos", target_os = "watchos")))'.dependencies]
-libc = { version = "0.2.155", default-features = false }
+libc = { version = "0.2.172", default-features = false }
 
 [target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_os = "windows"))'.dependencies]
 windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Threading"] }
@@ -175,7 +175,7 @@ windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_
 wasm-bindgen-test = { version = "0.3.37", default-features = false, features = ["std"] }
 
 [target.'cfg(any(unix, windows, target_os = "wasi"))'.dev-dependencies]
-libc = { version = "0.2.148", default-features = false }
+libc = { version = "0.2.172", default-features = false }
 
 [build-dependencies]
 cc = { version = "1.2.8", default-features = false }
