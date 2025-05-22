@@ -13,7 +13,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
-use crate::error;
 
 #[derive(Clone)]
 pub struct Key {
@@ -21,9 +20,10 @@ pub struct Key {
 }
 
 impl Key {
-    pub(in super::super) fn new(bytes: KeyBytes<'_>) -> Result<Self, error::Unspecified> {
-        let inner = unsafe { set_encrypt_key!(aes_nohw_set_encrypt_key, bytes) }?;
-        Ok(Self { inner })
+    pub(in super::super) fn new(bytes: KeyBytes<'_>) -> Self {
+        Self {
+            inner: unsafe { set_encrypt_key!(aes_nohw_set_encrypt_key, bytes) },
+        }
     }
 }
 

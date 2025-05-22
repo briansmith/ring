@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Block, KeyBytes, Overlapping, BLOCK_LEN};
-use crate::{bits::BitLength, c, error};
+use crate::{bits::BitLength, c};
 use core::{
     ffi::{c_int, c_uint},
     num::{NonZeroU32, NonZeroUsize},
@@ -39,7 +39,7 @@ impl AES_KEY {
     pub(super) unsafe fn new(
         f: unsafe extern "C" fn(*const u8, BitLength<c_int>, *mut AES_KEY) -> c_int,
         bytes: KeyBytes<'_>,
-    ) -> Result<Self, error::Unspecified> {
+    ) -> Self {
         let mut key = Self {
             rd_key: [0; 4 * (MAX_ROUNDS + 1)],
             rounds: 0,
@@ -51,12 +51,9 @@ impl AES_KEY {
         };
 
         // Unusually, in this case zero means success and non-zero means failure.
-        if 0 == unsafe { f(bytes.as_ptr(), key_bits, &mut key) } {
-            debug_assert_ne!(key.rounds, 0); // Sanity check initialization.
-            Ok(key)
-        } else {
-            Err(error::Unspecified)
-        }
+        let r = unsafe { f(bytes.as_ptr(), key_bits, &mut key) };
+        assert_eq!(r, 0);
+        key
     }
 }
 
@@ -83,9 +80,8 @@ impl AES_KEY {
 //  * The function `$name` must read `bits` bits from `user_key`; `bits` will
 //    always be a valid AES key length, i.e. a whole number of bytes.
 //  * `$name` must set `key.rounds` to the value expected by the corresponding
-//    encryption/decryption functions and return 0, or otherwise must return
-//    non-zero to indicate failure.
-//  * `$name` may inspect CPU features.
+//    encryption/decryption functions.
+//  * `$name` must return 1 when given 128 or 256 for `bits`.
 //
 // In BoringSSL, the C prototypes for these are in
 // crypto/fipsmodule/aes/internal.h.
