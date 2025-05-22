@@ -45,7 +45,7 @@ impl Key {
         key: aes::KeyBytes,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
-        Ok(Self(DynKey::new(key, cpu_features)?))
+        Ok(Self(DynKey::new(key, cpu_features)))
     }
 }
 
@@ -77,14 +77,14 @@ enum DynKey {
 }
 
 impl DynKey {
-    fn new(key: aes::KeyBytes, cpu: cpu::Features) -> Result<Self, error::Unspecified> {
+    fn new(key: aes::KeyBytes, cpu: cpu::Features) -> Self {
         let cpu = cpu.values();
 
         #[cfg(target_arch = "x86_64")]
         if let Some((aes, gcm)) = cpu.get_feature() {
-            let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature())?;
+            let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature());
             let gcm_key_value = derive_gcm_key_value(&aes_key);
-            let combo = if let Some(cpu) = cpu.get_feature() {
+            return if let Some(cpu) = cpu.get_feature() {
                 let gcm_key = gcm::vclmulavx2::Key::new(gcm_key_value, cpu);
                 Self::VAesClMulAvx2(Combo { aes_key, gcm_key })
             } else if let Some(cpu) = cpu.get_feature() {
@@ -94,7 +94,6 @@ impl DynKey {
                 let gcm_key = gcm::clmul::Key::new(gcm_key_value, gcm);
                 Self::AesHwClMul(Combo { aes_key, gcm_key })
             };
-            return Ok(combo);
         }
 
         // x86_64 is handled above.
@@ -103,10 +102,10 @@ impl DynKey {
             target_arch = "x86"
         ))]
         if let (Some(aes), Some(gcm)) = (cpu.get_feature(), cpu.get_feature()) {
-            let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature())?;
+            let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature());
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             let gcm_key = gcm::clmul::Key::new(gcm_key_value, gcm);
-            return Ok(Self::AesHwClMul(Combo { aes_key, gcm_key }));
+            return Self::AesHwClMul(Combo { aes_key, gcm_key });
         }
 
         #[cfg(any(
@@ -128,37 +127,37 @@ impl DynKey {
 
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     #[inline(never)]
-    fn new_neon(key: aes::KeyBytes, cpu: cpu::aarch64::Neon) -> Result<Self, error::Unspecified> {
-        let aes_key = aes::vp::Key::new(key, cpu)?;
+    fn new_neon(key: aes::KeyBytes, cpu: cpu::aarch64::Neon) -> Self {
+        let aes_key = aes::vp::Key::new(key, cpu);
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::neon::Key::new(gcm_key_value, cpu);
-        Ok(Self::Simd(Combo { aes_key, gcm_key }))
+        Self::Simd(Combo { aes_key, gcm_key })
     }
 
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
-    fn new_neon(key: aes::KeyBytes, cpu: cpu::arm::Neon) -> Result<Self, error::Unspecified> {
-        let aes_key = aes::vp::Key::new(key, cpu)?;
+    fn new_neon(key: aes::KeyBytes, cpu: cpu::arm::Neon) -> Self {
+        let aes_key = aes::vp::Key::new(key, cpu);
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::neon::Key::new(gcm_key_value, cpu);
-        Ok(Self::Simd(Combo { aes_key, gcm_key }))
+        Self::Simd(Combo { aes_key, gcm_key })
     }
 
     #[cfg(target_arch = "x86")]
     #[inline(never)]
-    fn new_ssse3(key: aes::KeyBytes, cpu: cpu::intel::Ssse3) -> Result<Self, error::Unspecified> {
-        let aes_key = aes::vp::Key::new(key, cpu)?;
+    fn new_ssse3(key: aes::KeyBytes, cpu: cpu::intel::Ssse3) -> Self {
+        let aes_key = aes::vp::Key::new(key, cpu);
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::fallback::Key::new(gcm_key_value);
-        Ok(Self::Simd(Combo { aes_key, gcm_key }))
+        Self::Simd(Combo { aes_key, gcm_key })
     }
 
     #[cfg(target_arch = "x86_64")]
     #[inline(never)]
-    fn new_ssse3(key: aes::KeyBytes, cpu: cpu::intel::Ssse3) -> Result<Self, error::Unspecified> {
-        let aes_key = aes::vp::Key::new(key, cpu)?;
+    fn new_ssse3(key: aes::KeyBytes, cpu: cpu::intel::Ssse3) -> Self {
+        let aes_key = aes::vp::Key::new(key, cpu);
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::fallback::Key::new(gcm_key_value);
-        Ok(Self::Simd(Combo { aes_key, gcm_key }))
+        Self::Simd(Combo { aes_key, gcm_key })
     }
 
     #[cfg_attr(
@@ -170,11 +169,11 @@ impl DynKey {
         ),
         inline(never)
     )]
-    fn new_fallback(key: aes::KeyBytes) -> Result<Self, error::Unspecified> {
-        let aes_key = aes::fallback::Key::new(key)?;
+    fn new_fallback(key: aes::KeyBytes) -> Self {
+        let aes_key = aes::fallback::Key::new(key);
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::fallback::Key::new(gcm_key_value);
-        Ok(Self::Fallback(Combo { aes_key, gcm_key }))
+        Self::Fallback(Combo { aes_key, gcm_key })
     }
 }
 

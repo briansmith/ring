@@ -16,7 +16,6 @@ use super::{nonce::Nonce, overlapping, quic::Sample, NONCE_LEN};
 use crate::{
     bb,
     cpu::{self, GetFeature as _},
-    error,
     polyfill::unwrap_const,
 };
 use cfg_if::cfg_if;
@@ -65,21 +64,14 @@ pub(super) enum Key {
 
 impl Key {
     #[inline]
-    pub fn new(
-        bytes: KeyBytes<'_>,
-        cpu_features: cpu::Features,
-    ) -> Result<Self, error::Unspecified> {
+    pub fn new(bytes: KeyBytes<'_>, cpu_features: cpu::Features) -> Self {
         #[cfg(any(
             all(target_arch = "aarch64", target_endian = "little"),
             target_arch = "x86",
             target_arch = "x86_64"
         ))]
         if let Some(hw_features) = cpu_features.get_feature() {
-            return Ok(Self::Hw(hw::Key::new(
-                bytes,
-                hw_features,
-                cpu_features.get_feature(),
-            )?));
+            return Self::Hw(hw::Key::new(bytes, hw_features, cpu_features.get_feature()));
         }
 
         #[cfg(any(
@@ -89,12 +81,12 @@ impl Key {
             target_arch = "x86"
         ))]
         if let Some(vp_features) = cpu_features.get_feature() {
-            return Ok(Self::Vp(vp::Key::new(bytes, vp_features)?));
+            return Self::Vp(vp::Key::new(bytes, vp_features));
         }
 
         let _ = cpu_features;
 
-        Ok(Self::Fallback(fallback::Key::new(bytes)?))
+        Self::Fallback(fallback::Key::new(bytes))
     }
 
     #[inline]
@@ -233,7 +225,7 @@ mod tests {
             32 => KeyBytes::AES_256(key.try_into().unwrap()),
             _ => unreachable!(),
         };
-        Key::new(key, cpu::features()).unwrap()
+        Key::new(key, cpu::features())
     }
 }
 

@@ -19,7 +19,7 @@
 ))]
 
 use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
-use crate::{cpu, error};
+use crate::cpu;
 
 #[derive(Clone)]
 pub struct Key {
@@ -32,9 +32,10 @@ impl Key {
         bytes: KeyBytes<'_>,
         _required_cpu_features: cpu::aarch64::Aes,
         _optional_cpu_features: Option<()>,
-    ) -> Result<Self, error::Unspecified> {
-        let inner = unsafe { set_encrypt_key!(aes_hw_set_encrypt_key, bytes) }?;
-        Ok(Self { inner })
+    ) -> Self {
+        Self {
+            inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key, bytes) },
+        }
     }
 
     #[cfg(target_arch = "x86")]
@@ -45,12 +46,15 @@ impl Key {
     ) -> Result<Self, error::Unspecified> {
         // Ssse3 is required, but upstream only uses this if there is also Avx;
         // presumably the base version is faster on pre-AVX CPUs.
-        let inner = if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
-            unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_alt, bytes) }?
+        if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
+            Self {
+                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_alt, bytes) },
+            }
         } else {
-            unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_base, bytes) }?
-        };
-        Ok(Self { inner })
+            Self {
+                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_base, bytes) },
+            }
+        }
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -58,15 +62,18 @@ impl Key {
         bytes: KeyBytes<'_>,
         _required_cpu_features: (cpu::intel::Aes, cpu::intel::Ssse3),
         optional_cpu_features: Option<cpu::intel::Avx>,
-    ) -> Result<Self, error::Unspecified> {
+    ) -> Self {
         // Ssse3 is required, but upstream only uses this if there is also Avx;
         // presumably the base version is faster on pre-AVX CPUs.
-        let inner = if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
-            unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_alt, bytes) }?
+        if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
+            Self {
+                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_alt, bytes) },
+            }
         } else {
-            unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_base, bytes) }?
-        };
-        Ok(Self { inner })
+            Self {
+                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_base, bytes) },
+            }
+        }
     }
 
     #[cfg(any(
