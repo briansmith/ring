@@ -22,33 +22,9 @@ jobs:
           - # Default
 
         target:
-          - aarch64-apple-darwin
-          - aarch64-apple-ios
-          # - aarch64-apple-tvos      Tier 3; handled below
-          # - aarch64-apple-visionos  Tier 3; handled below
-          # - aarch64-apple-watchos   Tier 3; handled below
-          - aarch64-linux-android
           - aarch64-pc-windows-msvc
-          - aarch64-unknown-linux-gnu
-          - aarch64-unknown-linux-musl
-          - arm-unknown-linux-gnueabi
-          - armv7-linux-androideabi
-          - armv7-unknown-linux-musleabihf
-          - i686-pc-windows-msvc
-          - i686-unknown-linux-gnu
-          - i686-unknown-linux-musl
-          - riscv64gc-unknown-linux-gnu
-          - wasm32-wasi
-          - wasm32-wasip1
-          - wasm32-wasip2
-          - x86_64-pc-windows-gnu
-          - x86_64-pc-windows-msvc
-          - x86_64-apple-darwin
-          - x86_64-unknown-linux-musl
-          - x86_64-unknown-linux-gnu
 
         mode:
-          - # debug
           - --release
 
         rust_channel:
