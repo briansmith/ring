@@ -97,33 +97,6 @@ macro_rules! set_encrypt_key {
     }};
 }
 
-#[cfg(target_arch = "x86")]
-macro_rules! encrypt_block {
-    ($name:ident, $block:expr, $key:expr) => {{
-        use crate::aead::aes::{ffi::AES_KEY, Block};
-        prefixed_extern! {
-            fn $name(a: &Block, r: *mut Block, key: &AES_KEY);
-        }
-        $key.encrypt_block($name, $block)
-    }};
-}
-
-impl AES_KEY {
-    #[cfg(target_arch = "x86")]
-    #[inline]
-    pub(super) unsafe fn encrypt_block(
-        &self,
-        f: unsafe extern "C" fn(&super::Block, *mut super::Block, &AES_KEY),
-        a: super::Block,
-    ) -> super::Block {
-        let mut result = core::mem::MaybeUninit::uninit();
-        unsafe {
-            f(&a, result.as_mut_ptr(), self);
-            result.assume_init()
-        }
-    }
-}
-
 /// SAFETY:
 ///   * The caller must ensure that `$key` was initialized with the
 ///     `set_encrypt_key!` invocation that `$name` requires.
