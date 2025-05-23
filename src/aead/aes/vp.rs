@@ -131,8 +131,16 @@ impl EncryptCtr32 for Key {
 
 #[cfg(target_arch = "x86")]
 impl EncryptBlock for Key {
-    fn encrypt_block(&self, block: Block) -> Block {
-        unsafe { encrypt_block!(vpaes_encrypt, block, &self.inner) }
+    fn encrypt_block(&self, mut block: Block) -> Block {
+        prefixed_extern! {
+            // `a` and `r` may alias.
+            fn vpaes_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
+        }
+        let block_out: *mut Block = &mut block;
+        unsafe {
+            vpaes_encrypt(block_out.cast_const(), block_out, &self.inner);
+        }
+        block
     }
 
     fn encrypt_iv_xor_block(&self, iv: Iv, block: Block) -> Block {
