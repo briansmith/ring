@@ -152,6 +152,7 @@ impl<M> Modulus<'_, M> {
         limb::limbs_negative_odd(out, self.limbs);
 
         let lg_m = self.len_bits().as_bits();
+        assert!(r >= lg_m, "{r} >= {lg_m}");
         let leading_zero_bits_in_m = r - lg_m;
 
         // When m's length is a multiple of LIMB_BITS, which is the case we
