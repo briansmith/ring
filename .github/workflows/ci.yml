@@ -254,6 +254,12 @@ jobs:
           - target: aarch64-pc-windows-msvc
             host_os: windows-11-arm
 
+          - target: aarch64-pc-windows-msvc
+            host_os: windows-11-arm
+            rust_channel: 1.66.0
+            mode: --release
+            cargo_options: --no-run
+
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-22.04
 
