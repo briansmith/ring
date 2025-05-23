@@ -28,11 +28,8 @@ jobs:
           - --release
 
         rust_channel:
-          - stable
-          # Keep in sync with Cargo.toml and similar `rust_channel` sections.
-          - 1.67.0 # MSRV
-          - 1.68.0 # MSRV
-
+          - 1.66.0 # MSRV
+          
         include:
           - target: aarch64-pc-windows-msvc
             host_os: windows-11-arm
