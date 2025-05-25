@@ -64,7 +64,7 @@ pub(crate) fn xor_assign<'a>(a: impl IntoIterator<Item = &'a mut u8>, b: u8) {
 /// XORs the first N bytes of `b` into `a`, where N is
 /// `core::cmp::min(a.len(), b.len())`.
 #[inline(always)]
-pub(crate) fn xor_assign_at_start<'a>(
+pub(crate) fn xor_assign_at_start_bytes<'a>(
     a: impl IntoIterator<Item = &'a mut u8>,
     b: impl IntoIterator<Item = &'a u8>,
 ) {
@@ -131,7 +131,7 @@ mod tests {
             let ref_in = input;
             let mut ref_out = out;
             if b {
-                xor_assign_at_start(&mut ref_out, &ref_in)
+                xor_assign_at_start_bytes(&mut ref_out, &ref_in)
             };
 
             prefixed_extern! {

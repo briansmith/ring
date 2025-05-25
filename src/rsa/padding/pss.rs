@@ -159,7 +159,7 @@ impl Verification for PSS {
             // Step 8.
             let db_rest = &mut db[1..];
             let masked_bytes = masked_bytes.read_bytes(db_rest.len())?;
-            bb::xor_assign_at_start(db_rest, masked_bytes.as_slice_less_safe());
+            bb::xor_assign_at_start_bytes(db_rest, masked_bytes.as_slice_less_safe());
             Ok(())
         })?;
 

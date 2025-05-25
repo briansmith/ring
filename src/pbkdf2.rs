@@ -229,7 +229,7 @@ fn derive_block(
 
     let mut remaining: u32 = iterations.into();
     loop {
-        bb::xor_assign_at_start(&mut out[..], u.as_ref());
+        bb::xor_assign_at_start_bytes(&mut out[..], u.as_ref());
 
         if remaining == 1 {
             break;

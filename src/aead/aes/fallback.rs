@@ -224,6 +224,12 @@ fn setup_key_128(key: &mut AES_KEY, input: &[u8; 128 / 8]) {
         });
 }
 
+fn encrypt_block(key: &AES_KEY, in_out: &mut [u8; BLOCK_LEN]) {
+    let sched = Schedule::expand_round_keys(key);
+    let batch = Batch::from_bytes(core::slice::from_ref(in_out));
+    batch.encrypt(&sched, usize_from_u32(key.rounds), array::from_mut(in_out));
+}
+
 fn setup_key_256(key: &mut AES_KEY, input: &[u8; 32]) {
     key.rounds = 14;
 
@@ -362,7 +368,7 @@ impl EncryptCtr32 for Key {
             for enc_iv in enc_ivs {
                 in_out = in_out
                     .split_first_chunk::<BLOCK_LEN>(|in_out| {
-                        bb::xor_assign_at_start(enc_iv.as_mut(), in_out.input());
+                        bb::xor_assign_at_start_bytes(enc_iv.as_mut(), in_out.input());
                         in_out.into_unwritten_output().copy_from_slice(enc_iv);
                     })
                     .unwrap_or_else(|_: IndexError| unreachable!());
