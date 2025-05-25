@@ -368,7 +368,7 @@ fn ctr32_encrypt_within(key: &AES_KEY, mut in_out: Overlapping, ctr: &mut Counte
         for enc_iv in enc_ivs {
             in_out = in_out
                 .split_first_chunk::<BLOCK_LEN>(|in_out| {
-                    bb::xor_assign_at_start(enc_iv.as_mut(), in_out.input());
+                    bb::xor_assign_at_start_bytes(enc_iv.as_mut(), in_out.input());
                     in_out.into_unwritten_output().copy_from_slice(enc_iv);
                 })
                 .unwrap_or_else(|_: IndexError| unreachable!());
