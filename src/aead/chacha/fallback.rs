@@ -49,7 +49,7 @@ pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, mut in_out: Overlappin
         if in_out_len >= BLOCK_LEN {
             in_out = in_out
                 .split_first_chunk::<BLOCK_LEN>(|in_out| {
-                    bb::xor_assign_at_start(&mut buf, in_out.input());
+                    bb::xor_assign_at_start_bytes(&mut buf, in_out.input());
                     sliceutil::overwrite_at_start(in_out.into_unwritten_output(), &buf);
                 })
                 .unwrap_or_else(|IndexError { .. }| {
@@ -57,7 +57,7 @@ pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, mut in_out: Overlappin
                     unreachable!()
                 });
         } else {
-            bb::xor_assign_at_start(&mut buf, in_out.input());
+            bb::xor_assign_at_start_bytes(&mut buf, in_out.input());
             sliceutil::overwrite_at_start(in_out.into_unwritten_output(), &buf);
             break;
         }
