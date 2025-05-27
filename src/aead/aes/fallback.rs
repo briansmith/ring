@@ -679,56 +679,58 @@ fn rcon_slice(rcon: u8, i: usize) -> Word {
 }
 
 fn setup_key_128(input: &[u8; 128 / 8]) -> AES_KEY {
-    let mut key = AES_KEY::invalid_zero();
-    key.rounds = 10;
-
     let mut block = compact_block(input);
-    key.rd_key[0] = words_to_u32s(block);
 
-    key.rd_key[1..=10]
-        .iter_mut()
-        .zip(RCON)
-        .for_each(|(rd_key, rcon)| {
-            let sub = sub_block(&block);
-            *rd_key = derive_round_key(&mut block, sub, rcon);
-        });
-    key
+    AES_KEY {
+        rd_key: array::from_fn(|i| {
+            if i == 0 {
+                words_to_u32s(block)
+            } else if i <= 10 {
+                let rcon = RCON[i - 1];
+                let sub = sub_block(&block);
+                derive_round_key(&mut block, sub, rcon)
+            } else {
+                Default::default()
+            }
+        }),
+        rounds: 10,
+    }
 }
 
 fn setup_key_256(input: &[u8; 32]) -> AES_KEY {
-    let mut key = AES_KEY::invalid_zero();
-    key.rounds = 14;
-
     // Each key schedule iteration produces two round keys.
     let (input, _) = polyfill::slice::as_chunks(input);
     let mut block1 = compact_block(&input[0]);
-    key.rd_key[0] = words_to_u32s(block1);
     let mut block2 = compact_block(&input[1]);
-    key.rd_key[1] = words_to_u32s(block2);
 
-    key.rd_key[2..=14]
-        .chunks_mut(2)
-        .zip(RCON)
-        .for_each(|(rd_key_pair, rcon)| {
-            let sub = sub_block(&block2);
-            rd_key_pair[0] = derive_round_key(&mut block1, sub, rcon);
-
-            if let Some(rd_key_2) = rd_key_pair.get_mut(1) {
-                let sub = sub_block(&block1);
-                block2.iter_mut().zip(sub).for_each(|(w, sub)| {
-                    // Incorporate the transformed word into the first word.
-                    *w ^= shift_right::<12>(sub);
-                    // Propagate to the remaining words.
-                    let v = *w;
-                    *w ^= shift_left::<4>(v);
-                    *w ^= shift_left::<8>(v);
-                    *w ^= shift_left::<12>(v);
-                });
-                *rd_key_2 = words_to_u32s(block2);
+    AES_KEY {
+        rd_key: array::from_fn(|i| {
+            if i == 0 {
+                words_to_u32s(block1)
+            } else if i == 1 {
+                words_to_u32s(block2)
+            } else {
+                let rcon = RCON[(i / 2) - 1];
+                if i % 2 == 0 {
+                    let sub = sub_block(&block2);
+                    derive_round_key(&mut block1, sub, rcon)
+                } else {
+                    let sub = sub_block(&block1);
+                    block2.iter_mut().zip(sub).for_each(|(w, sub)| {
+                        // Incorporate the transformed word into the first word.
+                        *w ^= shift_right::<12>(sub);
+                        // Propagate to the remaining words.
+                        let v = *w;
+                        *w ^= shift_left::<4>(v);
+                        *w ^= shift_left::<8>(v);
+                        *w ^= shift_left::<12>(v);
+                    });
+                    words_to_u32s(block2)
+                }
             }
-        });
-
-    key
+        }),
+        rounds: 14,
+    }
 }
 
 fn derive_round_key(
