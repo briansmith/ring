@@ -88,36 +88,38 @@ impl EncryptCtr32 for Key {
         use super::{super::overlapping::IndexError, bs, BLOCK_LEN};
 
         let in_out = {
-            let (in_out, src) = in_out.into_slice_src_mut();
-            let blocks = in_out[src.clone()].len() / BLOCK_LEN;
+            let blocks = in_out.len() / BLOCK_LEN;
 
             // bsaes operates in batches of 8 blocks.
-            let bsaes_blocks = if blocks >= 8 && (blocks % 8) < 6 {
-                // It's faster to use bsaes for all the full batches and then
-                // switch to vpaes for the last partial batch (if any).
-                blocks - (blocks % 8)
-            } else if blocks >= 8 {
-                // It's faster to let bsaes handle everything including
-                // the last partial batch.
-                blocks
+            if blocks >= 8 {
+                let vpaes_blocks = if (blocks % 8) < 6 {
+                    // It's faster to use bsaes for all the full batches and then
+                    // switch to vpaes for the last partial batch (if any).
+                    blocks % 8
+                } else {
+                    // It's faster to let bsaes handle everything including
+                    // the last partial batch.
+                    0
+                };
+                let bsaes_blocks = blocks - vpaes_blocks;
+                let bsaes_in_out_len = bsaes_blocks * BLOCK_LEN;
+                in_out
+                    .split_at(bsaes_in_out_len, |bsaes_in_out| {
+                        // SAFETY:
+                        //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
+                        //    as required by `bsaes_ctr32_encrypt_blocks_with_vpaes_key`.
+                        unsafe {
+                            bs::ctr32_encrypt_blocks_with_vpaes_key(bsaes_in_out, &self.inner, ctr);
+                        }
+                    })
+                    .unwrap_or_else(|_: IndexError| {
+                        // `bsaes_in_out_len` is never larger than `in_out.len()`.
+                        unreachable!()
+                    })
             } else {
                 // It's faster to let vpaes handle everything.
-                0
-            };
-            let bsaes_in_out_len = bsaes_blocks * BLOCK_LEN;
-            let bs_in_out =
-                Overlapping::new(&mut in_out[..(src.start + bsaes_in_out_len)], src.clone())
-                    .unwrap_or_else(|IndexError { .. }| unreachable!());
-
-            // SAFETY:
-            //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
-            //    as required by `bsaes_ctr32_encrypt_blocks_with_vpaes_key`.
-            unsafe {
-                bs::ctr32_encrypt_blocks_with_vpaes_key(bs_in_out, &self.inner, ctr);
+                in_out
             }
-
-            Overlapping::new(&mut in_out[bsaes_in_out_len..], src)
-                .unwrap_or_else(|IndexError { .. }| unreachable!())
         };
 
         // SAFETY:
