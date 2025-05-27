@@ -673,17 +673,7 @@ void aes_nohw_encrypt_batch(const AES_NOHW_SCHEDULE *key,
 
 // Key schedule.
 
-static const uint8_t aes_nohw_rcon[10] = {0x01, 0x02, 0x04, 0x08, 0x10,
-                                          0x20, 0x40, 0x80, 0x1b, 0x36};
-
-// aes_nohw_rcon_slice returns the |i|th group of |AES_NOHW_BATCH_SIZE| bits in
-// |rcon|, stored in a |aes_word_t|.
-static inline aes_word_t aes_nohw_rcon_slice(uint8_t rcon, size_t i) {
-  rcon = (rcon >> (i * AES_NOHW_BATCH_SIZE)) & ((1 << AES_NOHW_BATCH_SIZE) - 1);
-  return ((aes_word_t)rcon);
-}
-
-static void aes_nohw_sub_block(aes_word_t out[AES_NOHW_BLOCK_WORDS],
+void aes_nohw_sub_block(aes_word_t out[AES_NOHW_BLOCK_WORDS],
                                const aes_word_t in[AES_NOHW_BLOCK_WORDS]) {
   AES_NOHW_BATCH batch;
   OPENSSL_memset(&batch, 0, sizeof(batch));
@@ -692,79 +682,4 @@ static void aes_nohw_sub_block(aes_word_t out[AES_NOHW_BLOCK_WORDS],
   aes_nohw_sub_bytes(&batch);
   aes_nohw_transpose(&batch);
   aes_nohw_batch_get(&batch, out, 0);
-}
-
-void aes_nohw_setup_key_128(AES_KEY *key, const uint8_t in[16]) {
-  key->rounds = 10;
-
-  aes_word_t block[AES_NOHW_BLOCK_WORDS];
-  aes_nohw_compact_block(block, in);
-  OPENSSL_memcpy(key->rd_key, block, 16);
-
-  for (size_t i = 1; i <= 10; i++) {
-    aes_word_t sub[AES_NOHW_BLOCK_WORDS];
-    aes_nohw_sub_block(sub, block);
-    uint8_t rcon = aes_nohw_rcon[i - 1];
-    for (size_t j = 0; j < AES_NOHW_BLOCK_WORDS; j++) {
-      // Incorporate |rcon| and the transformed word into the first word.
-      block[j] = aes_nohw_xor(block[j], aes_nohw_rcon_slice(rcon, j));
-      block[j] = aes_nohw_xor(
-          block[j],
-          aes_nohw_shift_right(aes_nohw_rotate_rows_down(sub[j]), 12));
-      // Propagate to the remaining words. Note this is reordered from the usual
-      // formulation to avoid needing masks.
-      aes_word_t v = block[j];
-      block[j] = aes_nohw_xor(block[j], aes_nohw_shift_left(v, 4));
-      block[j] = aes_nohw_xor(block[j], aes_nohw_shift_left(v, 8));
-      block[j] = aes_nohw_xor(block[j], aes_nohw_shift_left(v, 12));
-    }
-    OPENSSL_memcpy(key->rd_key + 4 * i, block, 16);
-  }
-}
-
-void aes_nohw_setup_key_256(AES_KEY *key, const uint8_t in[32]) {
-  key->rounds = 14;
-
-  // Each key schedule iteration produces two round keys.
-  aes_word_t block1[AES_NOHW_BLOCK_WORDS], block2[AES_NOHW_BLOCK_WORDS];
-  aes_nohw_compact_block(block1, in);
-  OPENSSL_memcpy(key->rd_key, block1, 16);
-
-  aes_nohw_compact_block(block2, in + 16);
-  OPENSSL_memcpy(key->rd_key + 4, block2, 16);
-
-  for (size_t i = 2; i <= 14; i += 2) {
-    aes_word_t sub[AES_NOHW_BLOCK_WORDS];
-    aes_nohw_sub_block(sub, block2);
-    uint8_t rcon = aes_nohw_rcon[i / 2 - 1];
-    for (size_t j = 0; j < AES_NOHW_BLOCK_WORDS; j++) {
-      // Incorporate |rcon| and the transformed word into the first word.
-      block1[j] = aes_nohw_xor(block1[j], aes_nohw_rcon_slice(rcon, j));
-      block1[j] = aes_nohw_xor(
-          block1[j],
-          aes_nohw_shift_right(aes_nohw_rotate_rows_down(sub[j]), 12));
-      // Propagate to the remaining words.
-      aes_word_t v = block1[j];
-      block1[j] = aes_nohw_xor(block1[j], aes_nohw_shift_left(v, 4));
-      block1[j] = aes_nohw_xor(block1[j], aes_nohw_shift_left(v, 8));
-      block1[j] = aes_nohw_xor(block1[j], aes_nohw_shift_left(v, 12));
-    }
-    OPENSSL_memcpy(key->rd_key + 4 * i, block1, 16);
-
-    if (i == 14) {
-      break;
-    }
-
-    aes_nohw_sub_block(sub, block1);
-    for (size_t j = 0; j < AES_NOHW_BLOCK_WORDS; j++) {
-      // Incorporate the transformed word into the first word.
-      block2[j] = aes_nohw_xor(block2[j], aes_nohw_shift_right(sub[j], 12));
-      // Propagate to the remaining words.
-      aes_word_t v = block2[j];
-      block2[j] = aes_nohw_xor(block2[j], aes_nohw_shift_left(v, 4));
-      block2[j] = aes_nohw_xor(block2[j], aes_nohw_shift_left(v, 8));
-      block2[j] = aes_nohw_xor(block2[j], aes_nohw_shift_left(v, 12));
-    }
-    OPENSSL_memcpy(key->rd_key + 4 * (i + 1), block2, 16);
-  }
 }
