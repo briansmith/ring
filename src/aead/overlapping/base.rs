@@ -54,11 +54,6 @@ impl<'o, T> Overlapping<'o, T> {
         }
     }
 
-    #[cfg(all(target_arch = "arm", target_endian = "little"))]
-    pub fn into_slice_src_mut(self) -> (&'o mut [T], RangeFrom<usize>) {
-        (self.in_out, self.src)
-    }
-
     pub fn into_unwritten_output(self) -> &'o mut [T] {
         let len = self.len();
         self.in_out.get_mut(..len).unwrap_or_else(|| {
@@ -116,7 +111,7 @@ impl<T> Overlapping<'_, T> {
         })
     }
 
-    fn split_at(
+    pub fn split_at(
         mut self,
         mid: usize,
         f: impl for<'a> FnOnce(Overlapping<'a, T>),
