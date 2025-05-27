@@ -14,7 +14,6 @@
 
 use super::{nonce::Nonce, overlapping, quic::Sample, NONCE_LEN};
 use crate::{
-    bb,
     cpu::{self, GetFeature as _},
     polyfill::unwrap_const,
 };
@@ -182,15 +181,6 @@ pub(super) trait EncryptCtr32 {
 #[allow(dead_code)]
 fn encrypt_block_using_encrypt_iv_xor_block(key: &impl EncryptBlock, block: Block) -> Block {
     key.encrypt_iv_xor_block(Iv(block), ZERO_BLOCK)
-}
-
-fn encrypt_iv_xor_block_using_encrypt_block(
-    key: &impl EncryptBlock,
-    iv: Iv,
-    block: Block,
-) -> Block {
-    let encrypted_iv = key.encrypt_block(iv.0);
-    bb::xor_16(encrypted_iv, block)
 }
 
 #[allow(dead_code)]
