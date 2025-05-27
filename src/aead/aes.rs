@@ -20,7 +20,6 @@ use crate::{
 };
 use cfg_if::cfg_if;
 use core::num::NonZeroU32;
-use ffi::MAX_ROUNDS;
 
 pub(super) use ffi::Counter;
 

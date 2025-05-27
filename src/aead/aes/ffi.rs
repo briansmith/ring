@@ -32,7 +32,7 @@ pub(in super::super) struct AES_KEY {
 }
 
 // `AES_MAXNR` in BoringSSL's aes.h.
-pub(crate) const MAX_ROUNDS: usize = 14;
+const MAX_ROUNDS: usize = 14;
 
 impl AES_KEY {
     #[inline]
