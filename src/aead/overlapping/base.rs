@@ -107,37 +107,46 @@ impl<T> Overlapping<'_, T> {
     // was written then the result will not be `Err`.
     #[cfg_attr(not(test), allow(dead_code))]
     pub fn split_first_chunk<const N: usize>(
-        mut self,
+        self,
         f: impl for<'a> FnOnce(Array<'a, T, N>),
+    ) -> Result<Self, IndexError> {
+        self.split_at(N, |first| {
+            let first = Array::new(first).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+            f(first);
+        })
+    }
+
+    fn split_at(
+        mut self,
+        mid: usize,
+        f: impl for<'a> FnOnce(Overlapping<'a, T>),
     ) -> Result<Self, IndexError> {
         let src = self.src.clone();
         let end = self
             .src
             .start
-            .checked_add(N)
-            .ok_or_else(|| IndexError::new(N))?;
-        let first = self
+            .checked_add(mid)
+            .ok_or_else(|| IndexError::new(mid))?;
+        let before = self
             .in_out
             .get_mut(..end)
-            .ok_or_else(|| IndexError::new(N))?;
-        let first = Overlapping::new(first, src).unwrap_or_else(|IndexError { .. }| {
-            // Since `end == src.start + N`.
-            unreachable!()
-        });
-        let first = Array::new(first).unwrap_or_else(|LenMismatchError { .. }| {
-            // Since `end == src.start + N`.
+            .ok_or_else(|| IndexError::new(mid))?;
+        let before = Overlapping::new(before, src).unwrap_or_else(|IndexError { .. }| {
+            // Since `end == src.start + mid`.
             unreachable!()
         });
         // Once we call `f`, we must return `Ok` because `f` may have written
         // over (part of) the input.
         Ok({
-            f(first);
-            let tail = mem::take(&mut self.in_out).get_mut(N..).unwrap_or_else(|| {
-                // There are at least `N` elements since `end == src.start + N`.
-                unreachable!()
-            });
+            f(before);
+            let tail = mem::take(&mut self.in_out)
+                .get_mut(mid..)
+                .unwrap_or_else(|| {
+                    // There are at least `N` elements since `end == src.start + mid`.
+                    unreachable!()
+                });
             Self::new(tail, self.src).unwrap_or_else(|IndexError { .. }| {
-                // Follows from `end == src.start + N`.
+                // Follows from `end == src.start + mid`.
                 unreachable!()
             })
         })
