@@ -182,5 +182,4 @@ mod overlapping;
 mod poly1305;
 pub mod quic;
 mod sealing_key;
-mod shift;
 mod unbound_key;
