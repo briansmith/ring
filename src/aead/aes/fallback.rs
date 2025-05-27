@@ -22,7 +22,7 @@ use crate::{
     polyfill::{self, usize_from_u32},
 };
 use cfg_if::cfg_if;
-use core::{array, cmp, mem::size_of, num::NonZeroU32, slice};
+use core::{array, cmp, mem::size_of, num::NonZeroU32};
 
 #[derive(Clone)]
 pub struct Key {
@@ -779,19 +779,17 @@ fn sub_block(input: &[Word; BLOCK_WORDS]) -> [Word; BLOCK_WORDS] {
 }
 
 impl EncryptBlock for Key {
-    fn encrypt_block(&self, mut block: Block) -> Block {
-        let sched = Schedule::expand_round_keys(self);
-        let batch = Batch::from_bytes(slice::from_ref(&block));
-        batch.encrypt(&sched, slice::from_mut(&mut block));
-        block
+    fn encrypt_block(&self, block: Block) -> Block {
+        super::encrypt_block_using_encrypt_iv_xor_block(self, block)
     }
 
     fn encrypt_iv_xor_block(&self, iv: Iv, block: Block) -> Block {
-        super::encrypt_iv_xor_block_using_encrypt_block(self, iv, block)
+        super::encrypt_iv_xor_block_using_ctr32(self, iv, block)
     }
 }
 
 impl EncryptCtr32 for Key {
+    #[inline(never)]
     fn ctr32_encrypt_within(&self, mut in_out: Overlapping<'_>, ctr: &mut Counter) {
         assert_eq!(in_out.len() % BLOCK_LEN, 0);
 

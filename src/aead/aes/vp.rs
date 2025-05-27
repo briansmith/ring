@@ -144,7 +144,8 @@ impl EncryptBlock for Key {
     }
 
     fn encrypt_iv_xor_block(&self, iv: Iv, block: Block) -> Block {
-        super::encrypt_iv_xor_block_using_encrypt_block(self, iv, block)
+        let encrypted_iv = self.encrypt_block(iv.0);
+        crate::bb::xor_16(encrypted_iv, block)
     }
 }
 
