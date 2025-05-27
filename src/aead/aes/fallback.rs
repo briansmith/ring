@@ -15,7 +15,7 @@
 
 use super::{
     super::overlapping::IndexError, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes,
-    Overlapping, AES_KEY, BLOCK_LEN, MAX_ROUNDS,
+    Overlapping, BLOCK_LEN, MAX_ROUNDS,
 };
 use crate::{
     bb,
@@ -31,8 +31,18 @@ use core::{
 
 #[derive(Clone)]
 pub struct Key {
-    inner: AES_KEY,
+    rd_key_storage: [[Word; BLOCK_WORDS]; MAX_ROUNDS + 1],
+    rounds: Rounds,
 }
+
+#[derive(Clone)]
+enum Rounds {
+    Aes128,
+    Aes256,
+}
+
+const AES_128_ROUNDS: usize = 10;
+const AES_256_ROUNDS: usize = 14;
 
 type Word = bb::Word;
 const WORD_SIZE: usize = size_of::<Word>();
@@ -84,16 +94,6 @@ fn shift_left<const I: u32>(a: Word) -> Word {
 #[inline(always)]
 fn shift_right<const I: u32>(a: Word) -> Word {
     a >> (I * BATCH_SIZE_U32)
-}
-
-#[inline(always)]
-fn words_to_u32s(words: [Word; BLOCK_WORDS]) -> [u32; 4] {
-    unsafe { mem::transmute(words) }
-}
-
-#[inline(always)]
-fn u32s_to_words(u32s: [u32; 4]) -> [Word; BLOCK_WORDS] {
-    unsafe { mem::transmute(u32s) }
 }
 
 // aes_nohw_delta_swap returns |a| with bits |a & mask| and
@@ -565,10 +565,10 @@ impl Batch {
         });
     }
 
-    fn encrypt(mut self, key: &Schedule, rounds: usize, out: &mut [[u8; BLOCK_LEN]]) {
+    fn encrypt(mut self, key: &Schedule, out: &mut [[u8; BLOCK_LEN]]) {
         assert!(out.len() <= BATCH_SIZE);
         self.add_round_key(&key.keys[0]);
-        key.keys[1..rounds].iter().for_each(|key| {
+        key.keys[1..key.rounds].iter().for_each(|key| {
             self.sub_bytes();
             self.shift_rows();
             self.mix_columns();
@@ -576,7 +576,7 @@ impl Batch {
         });
         self.sub_bytes();
         self.shift_rows();
-        self.add_round_key(&key.keys[rounds]);
+        self.add_round_key(&key.keys[key.rounds]);
         self.into_bytes(out);
     }
 
@@ -639,22 +639,33 @@ struct Schedule {
     // keys is an array of batches, one for each round key. Each batch stores
     // |AES_NOHW_BATCH_SIZE| copies of the round key in bitsliced form.
     keys: [Batch; MAX_ROUNDS + 1],
+    rounds: usize,
 }
 
 impl Schedule {
-    fn expand_round_keys(key: &AES_KEY) -> Self {
+    fn expand_round_keys(key: &Key) -> Self {
+        let rounds = match key.rounds {
+            Rounds::Aes128 => AES_128_ROUNDS,
+            Rounds::Aes256 => AES_256_ROUNDS,
+        };
+
         Self {
             keys: array::from_fn(|i| {
-                let tmp: [Word; BLOCK_WORDS] = u32s_to_words(key.rd_key[i]);
+                if i <= rounds {
+                    let tmp: [Word; BLOCK_WORDS] = key.rd_key_storage[i];
 
-                let mut r = Batch { w: [0; 8] };
-                // Copy the round key into each block in the batch.
-                for j in 0..BATCH_SIZE {
-                    r.set(&tmp, j);
+                    let mut r = Batch { w: [0; 8] };
+                    // Copy the round key into each block in the batch.
+                    for j in 0..BATCH_SIZE {
+                        r.set(&tmp, j);
+                    }
+                    r.transpose();
+                    r
+                } else {
+                    Batch { w: [0; 8] }
                 }
-                r.transpose();
-                r
             }),
+            rounds,
         }
     }
 }
@@ -662,12 +673,8 @@ impl Schedule {
 impl Key {
     pub(in super::super) fn new(bytes: KeyBytes<'_>) -> Self {
         match bytes {
-            KeyBytes::AES_128(bytes) => Self {
-                inner: setup_key_128(bytes),
-            },
-            KeyBytes::AES_256(bytes) => Self {
-                inner: setup_key_256(bytes),
-            },
+            KeyBytes::AES_128(bytes) => setup_key_128(bytes),
+            KeyBytes::AES_256(bytes) => setup_key_256(bytes),
         }
     }
 }
@@ -682,14 +689,14 @@ fn rcon_slice(rcon: u8, i: usize) -> Word {
     rcon.into()
 }
 
-fn setup_key_128(input: &[u8; 128 / 8]) -> AES_KEY {
+fn setup_key_128(input: &[u8; 128 / 8]) -> Key {
     let mut block = compact_block(input);
 
-    AES_KEY {
-        rd_key: array::from_fn(|i| {
+    Key {
+        rd_key_storage: array::from_fn(|i| {
             if i == 0 {
-                words_to_u32s(block)
-            } else if i <= 10 {
+                block
+            } else if i <= AES_128_ROUNDS {
                 let rcon = RCON[i - 1];
                 let sub = sub_block(&block);
                 derive_round_key(&mut block, sub, rcon)
@@ -697,22 +704,22 @@ fn setup_key_128(input: &[u8; 128 / 8]) -> AES_KEY {
                 Default::default()
             }
         }),
-        rounds: 10,
+        rounds: Rounds::Aes128,
     }
 }
 
-fn setup_key_256(input: &[u8; 32]) -> AES_KEY {
+fn setup_key_256(input: &[u8; 32]) -> Key {
     // Each key schedule iteration produces two round keys.
     let (input, _) = polyfill::slice::as_chunks(input);
     let mut block1 = compact_block(&input[0]);
     let mut block2 = compact_block(&input[1]);
 
-    AES_KEY {
-        rd_key: array::from_fn(|i| {
+    Key {
+        rd_key_storage: array::from_fn(|i| {
             if i == 0 {
-                words_to_u32s(block1)
+                block1
             } else if i == 1 {
-                words_to_u32s(block2)
+                block2
             } else {
                 let rcon = RCON[(i / 2) - 1];
                 if i % 2 == 0 {
@@ -729,11 +736,11 @@ fn setup_key_256(input: &[u8; 32]) -> AES_KEY {
                         *w ^= shift_left::<8>(v);
                         *w ^= shift_left::<12>(v);
                     });
-                    words_to_u32s(block2)
+                    block2
                 }
             }
         }),
-        rounds: 14,
+        rounds: Rounds::Aes256,
     }
 }
 
@@ -741,7 +748,7 @@ fn derive_round_key(
     block: &mut [Word; BLOCK_WORDS],
     sub: [Word; BLOCK_WORDS],
     rcon: u8,
-) -> [u32; 4] {
+) -> [Word; BLOCK_WORDS] {
     block
         .iter_mut()
         .zip(sub)
@@ -756,7 +763,7 @@ fn derive_round_key(
             *w ^= shift_left::<8>(v);
             *w ^= shift_left::<12>(v);
         });
-    words_to_u32s(*block)
+    *block
 }
 
 fn sub_block(input: &[Word; BLOCK_WORDS]) -> [Word; BLOCK_WORDS] {
@@ -772,13 +779,9 @@ fn sub_block(input: &[Word; BLOCK_WORDS]) -> [Word; BLOCK_WORDS] {
 
 impl EncryptBlock for Key {
     fn encrypt_block(&self, mut block: Block) -> Block {
-        let sched = Schedule::expand_round_keys(&self.inner);
+        let sched = Schedule::expand_round_keys(self);
         let batch = Batch::from_bytes(slice::from_ref(&block));
-        batch.encrypt(
-            &sched,
-            usize_from_u32(self.inner.rounds),
-            slice::from_mut(&mut block),
-        );
+        batch.encrypt(&sched, slice::from_mut(&mut block));
         block
     }
 
@@ -798,7 +801,7 @@ impl EncryptCtr32 for Key {
             None => return,
         };
 
-        let sched = Schedule::expand_round_keys(&self.inner);
+        let sched = Schedule::expand_round_keys(self);
 
         let initial_iv = *ctr.as_bytes_less_safe();
         // XXX(overflow): The caller is responsible to ensure this doesn't
@@ -837,7 +840,7 @@ impl EncryptCtr32 for Key {
             let todo = cmp::min(BATCH_SIZE, blocks);
             let batch = Batch::from_bytes(&ivs.0[..todo]);
             let enc_ivs = &mut enc_ivs.0[..todo];
-            batch.encrypt(&sched, usize_from_u32(self.inner.rounds), enc_ivs);
+            batch.encrypt(&sched, enc_ivs);
 
             for enc_iv in enc_ivs {
                 in_out = in_out
