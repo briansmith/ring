@@ -657,14 +657,14 @@ impl Schedule {
 
 impl Key {
     pub(in super::super) fn new(bytes: KeyBytes<'_>) -> Self {
-        let mut r = Self {
-            inner: AES_KEY::invalid_zero(),
-        };
         match bytes {
-            KeyBytes::AES_128(bytes) => setup_key_128(&mut r.inner, bytes),
-            KeyBytes::AES_256(bytes) => setup_key_256(&mut r.inner, bytes),
+            KeyBytes::AES_128(bytes) => Self {
+                inner: setup_key_128(bytes),
+            },
+            KeyBytes::AES_256(bytes) => Self {
+                inner: setup_key_256(bytes),
+            },
         }
-        r
     }
 }
 
@@ -678,7 +678,8 @@ fn rcon_slice(rcon: u8, i: usize) -> Word {
     rcon.into()
 }
 
-fn setup_key_128(key: &mut AES_KEY, input: &[u8; 128 / 8]) {
+fn setup_key_128(input: &[u8; 128 / 8]) -> AES_KEY {
+    let mut key = AES_KEY::invalid_zero();
     key.rounds = 10;
 
     let mut block = compact_block(input);
@@ -691,15 +692,11 @@ fn setup_key_128(key: &mut AES_KEY, input: &[u8; 128 / 8]) {
             let sub = sub_block(&block);
             *rd_key = derive_round_key(&mut block, sub, rcon);
         });
+    key
 }
 
-fn encrypt_block(key: &AES_KEY, in_out: &mut [u8; BLOCK_LEN]) {
-    let sched = Schedule::expand_round_keys(key);
-    let batch = Batch::from_bytes(core::slice::from_ref(in_out));
-    batch.encrypt(&sched, usize_from_u32(key.rounds), array::from_mut(in_out));
-}
-
-fn setup_key_256(key: &mut AES_KEY, input: &[u8; 32]) {
+fn setup_key_256(input: &[u8; 32]) -> AES_KEY {
+    let mut key = AES_KEY::invalid_zero();
     key.rounds = 14;
 
     // Each key schedule iteration produces two round keys.
@@ -730,6 +727,8 @@ fn setup_key_256(key: &mut AES_KEY, input: &[u8; 32]) {
                 *rd_key_2 = words_to_u32s(block2);
             }
         });
+
+    key
 }
 
 fn derive_round_key(
