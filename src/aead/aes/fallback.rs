@@ -300,12 +300,6 @@ fn setup_key_128(key: &mut AES_KEY, input: &[u8; 128 / 8]) {
         });
 }
 
-fn encrypt_block(key: &AES_KEY, in_out: &mut [u8; BLOCK_LEN]) {
-    let sched = Schedule::expand_round_keys(key);
-    let batch = Batch::from_bytes(core::slice::from_ref(in_out));
-    batch.encrypt(&sched, usize_from_u32(key.rounds), array::from_mut(in_out));
-}
-
 fn setup_key_256(key: &mut AES_KEY, input: &[u8; 32]) {
     key.rounds = 14;
 
