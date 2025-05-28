@@ -82,10 +82,3 @@ jobs:
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
           RING_CPU_MODEL=${{ matrix.cpu_model }} RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test --lib --tests GCM -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
-
-      - uses: briansmith/codecov-codecov-action@v4
-        with:
-          directory: ./target/${{ matrix.target }}/debug/coverage/reports
-          fail_ci_if_error: true
-          token: ${{ secrets.CODECOV_TOKEN }}
-          verbose: true
