@@ -332,10 +332,7 @@ impl Batch {
             self.w[i + (j * STRIDE)]
         })
     }
-}
 
-// AES round steps.
-impl Batch {
     fn sub_bytes(&mut self) {
         // See https://eprint.iacr.org/2009/191.pdf, Appendix C.
         let x0 = self.w[7];
@@ -482,77 +479,18 @@ impl Batch {
         bb::xor_assign_at_start(&mut self.w, &key.w)
     }
 
-    #[inline(always)]
-    fn rotate_cols_right<const N_TIMES_4: u32, const BLOCK_LEN_MINUS_N_TIMES_4: u32>(
-        v: Word,
-    ) -> Word {
-        or(
-            shift_right::<N_TIMES_4>(v),
-            shift_left::<BLOCK_LEN_MINUS_N_TIMES_4>(v),
-        )
-    }
-}
-
-// aes_nohw_rotate_cols_right returns |v| with the columns in each row rotated
-// to the right by |n|. This is a macro because |aes_nohw_shift_*| require
-// constant shift counts in the SSE2 implementation.
-// TODO(MSRV feature(generic_const_exprs)): Replace this.
-macro_rules! rotate_cols_right {
-    ( Self::rotate_cols_right::<$N:literal>($v:expr) ) => {
-        Self::rotate_cols_right::<{ $N * 4 }, { 16 - ($N * 4) }>($v)
-    };
-}
-
-impl Batch {
     fn shift_rows(&mut self) {
-        self.w.iter_mut().for_each(|w| {
-            let row0 = and(*w, ROW0_MASK);
-            let row1 = and(*w, ROW1_MASK);
-            let row2 = and(*w, ROW2_MASK);
-            let row3 = and(*w, ROW3_MASK);
-            let row1 = rotate_cols_right!(Self::rotate_cols_right::<1>(row1));
-            let row2 = rotate_cols_right!(Self::rotate_cols_right::<2>(row2));
-            let row3 = rotate_cols_right!(Self::rotate_cols_right::<3>(row3));
-            *w = or(or(row0, row1), or(row2, row3));
-        });
+        prefixed_extern! {
+            fn aes_nohw_shift_rows(batch: &mut Batch);
+        }
+        unsafe { aes_nohw_shift_rows(self) };
     }
 
     fn mix_columns(&mut self) {
-        // See https://eprint.iacr.org/2009/129.pdf, section 4.4 and appendix A.
-        let a0 = self.w[0];
-        let a1 = self.w[1];
-        let a2 = self.w[2];
-        let a3 = self.w[3];
-        let a4 = self.w[4];
-        let a5 = self.w[5];
-        let a6 = self.w[6];
-        let a7 = self.w[7];
-
-        let r0 = rotate_rows_down(a0);
-        let a0_r0 = xor(a0, r0);
-        let r1 = rotate_rows_down(a1);
-        let a1_r1 = xor(a1, r1);
-        let r2 = rotate_rows_down(a2);
-        let a2_r2 = xor(a2, r2);
-        let r3 = rotate_rows_down(a3);
-        let a3_r3 = xor(a3, r3);
-        let r4 = rotate_rows_down(a4);
-        let a4_r4 = xor(a4, r4);
-        let r5 = rotate_rows_down(a5);
-        let a5_r5 = xor(a5, r5);
-        let r6 = rotate_rows_down(a6);
-        let a6_r6 = xor(a6, r6);
-        let r7 = rotate_rows_down(a7);
-        let a7_r7 = xor(a7, r7);
-
-        self.w[0] = xor(xor(a7_r7, r0), rotate_rows_twice(a0_r0));
-        self.w[1] = xor(xor(a0_r0, a7_r7), xor(r1, rotate_rows_twice(a1_r1)));
-        self.w[2] = xor(xor(a1_r1, r2), rotate_rows_twice(a2_r2));
-        self.w[3] = xor(xor(a2_r2, a7_r7), xor(r3, rotate_rows_twice(a3_r3)));
-        self.w[4] = xor(xor(a3_r3, a7_r7), xor(r4, rotate_rows_twice(a4_r4)));
-        self.w[5] = xor(xor(a4_r4, r5), rotate_rows_twice(a5_r5));
-        self.w[6] = xor(xor(a5_r5, r6), rotate_rows_twice(a6_r6));
-        self.w[7] = xor(xor(a6_r6, r7), rotate_rows_twice(a7_r7));
+        prefixed_extern! {
+            fn aes_nohw_mix_columns(batch: &mut Batch);
+        }
+        unsafe { aes_nohw_mix_columns(self) };
     }
 
     // aes_nohw_from_batch writes the first |num_blocks| blocks in |batch| to |out|.
