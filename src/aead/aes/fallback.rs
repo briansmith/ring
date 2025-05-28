@@ -333,6 +333,7 @@ impl Batch {
         })
     }
 
+    #[inline(never)]
     fn sub_bytes(&mut self) {
         // See https://eprint.iacr.org/2009/191.pdf, Appendix C.
         let x0 = self.w[7];
