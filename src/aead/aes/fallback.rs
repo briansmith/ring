@@ -281,6 +281,7 @@ struct Batch {
 impl Batch {
     // aes_nohw_to_batch initializes |out| with the |num_blocks| blocks from |in|.
     // |num_blocks| must be at most |AES_NOHW_BATCH|.
+    #[inline(never)]
     fn from_bytes(input: &[[u8; BLOCK_LEN]]) -> Self {
         let mut r = Self {
             w: Default::default(),
@@ -509,8 +510,7 @@ impl Batch {
     }
 
     #[inline(never)]
-    fn encrypt(mut self, key: &Schedule, out: &mut [[u8; BLOCK_LEN]]) {
-        assert!(out.len() <= BATCH_SIZE);
+    fn encrypt(&mut self, key: &Schedule) {
         self.add_round_key(&key.keys[0]);
         key.keys[1..key.rounds].iter().for_each(|key| {
             self.sub_bytes();
@@ -521,7 +521,6 @@ impl Batch {
         self.sub_bytes();
         self.shift_rows();
         self.add_round_key(&key.keys[key.rounds]);
-        self.into_bytes(out);
     }
 
     // aes_nohw_transpose converts |batch| to and from bitsliced form. It divides
@@ -777,9 +776,10 @@ impl EncryptCtr32 for Key {
             }
 
             let todo = cmp::min(BATCH_SIZE, blocks);
-            let batch = Batch::from_bytes(&ivs.0[..todo]);
+            let mut batch = Batch::from_bytes(&ivs.0[..todo]);
             let enc_ivs = &mut enc_ivs.0[..todo];
-            batch.encrypt(&sched, enc_ivs);
+            batch.encrypt(&sched);
+            batch.into_bytes(enc_ivs);
 
             for enc_iv in enc_ivs {
                 in_out = in_out
