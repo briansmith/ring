@@ -507,6 +507,7 @@ impl Batch {
         });
     }
 
+    #[inline(never)]
     fn encrypt(mut self, key: &Schedule, out: &mut [[u8; BLOCK_LEN]]) {
         assert!(out.len() <= BATCH_SIZE);
         self.add_round_key(&key.keys[0]);
