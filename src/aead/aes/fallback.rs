@@ -101,7 +101,7 @@ fn shift_right<const I: u32>(a: Word) -> Word {
 
 // aes_nohw_delta_swap returns |a| with bits |a & mask| and
 // |a & (mask << shift)| swapped. |mask| and |mask << shift| may not overlap.
-#[inline(always)]
+#[inline]
 fn delta_swap<const MASK: Word, const SHIFT: u8>(a: Word) -> Word {
     // See
     // https://reflectionsonsecurity.wordpress.com/2014/05/11/efficient-bit-permutation-using-delta-swaps/
@@ -116,7 +116,7 @@ fn delta_swap<const MASK: Word, const SHIFT: u8>(a: Word) -> Word {
 //
 // These transformations are generalizations of the output of
 // http://programming.sirrida.de/calcperm.php on smaller inputs.
-#[inline(always)]
+#[inline]
 fn compact_word(a: Word) -> Word {
     let a = Word::from_le(a);
     cfg_if! {
@@ -152,7 +152,7 @@ fn compact_word(a: Word) -> Word {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn uncompact_word(a: Word) -> Word {
     #[cfg(target_pointer_width = "64")]
     let r = {
@@ -171,6 +171,7 @@ fn uncompact_word(a: Word) -> Word {
     Word::to_le(r)
 }
 
+#[inline]
 fn compact_block(input: &[u8; 16]) -> [Word; BLOCK_WORDS] {
     let (input, _) = polyfill::slice::as_chunks(input);
     let out: [Word; BLOCK_WORDS] = array::from_fn(|i| Word::from_ne_bytes(input[i]));
@@ -203,6 +204,7 @@ fn compact_block(input: &[u8; 16]) -> [Word; BLOCK_WORDS] {
     r
 }
 
+#[inline]
 fn uncompact_block(out: &mut [u8; BLOCK_LEN], input: &[Word; BLOCK_WORDS]) {
     let a0 = input[0];
     let a1 = input[1];
@@ -259,6 +261,7 @@ fn lo(w: Word) -> u8 {
 // |*a & (mask << shift)| with the bits in |*b & mask|. |mask| and
 // |mask << shift| must not overlap. |mask| is specified as a |uint32_t|, but it
 // is repeated to the full width of |aes_word_t|.
+#[inline(always)]
 fn swap_bits<const A: usize, const B: usize, const MASK_BYTE: u8, const SHIFT: u8>(
     w: &mut [Word; 8],
 ) {
@@ -281,8 +284,6 @@ struct Batch {
 impl Batch {
     // aes_nohw_to_batch initializes |out| with the |num_blocks| blocks from |in|.
     // |num_blocks| must be at most |AES_NOHW_BATCH|.
-    #[inline(never)]
-    #[no_mangle]
     fn from_bytes(input: &[[u8; BLOCK_LEN]]) -> Self {
         let mut r = Self {
             w: Default::default(),
@@ -297,6 +298,7 @@ impl Batch {
 
     // aes_nohw_batch_set sets the |i|th block of |batch| to |in|. |batch| is in
     // compact form.
+    #[inline]
     fn set(&mut self, input: &[Word; BLOCK_WORDS], i: usize) {
         assert!(i < self.w.len());
 
@@ -323,6 +325,7 @@ impl Batch {
 
     // aes_nohw_batch_get writes the |i|th block of |batch| to |out|. |batch| is in
     // compact form.
+    #[inline]
     fn get(&self, i: usize) -> [Word; BLOCK_WORDS] {
         assert!(i < self.w.len());
         array::from_fn(|j| {
@@ -559,8 +562,6 @@ impl Batch {
 
     // aes_nohw_from_batch writes the first |num_blocks| blocks in |batch| to |out|.
     // |num_blocks| must be at most |AES_NOHW_BATCH|.
-    #[inline(never)]
-    #[no_mangle]
     pub fn into_bytes(self, out: &mut [[u8; BLOCK_LEN]]) {
         assert!(out.len() <= BATCH_SIZE);
 
@@ -573,8 +574,6 @@ impl Batch {
         });
     }
 
-    #[inline(never)]
-    #[no_mangle]
     fn encrypt(&mut self, key: &Schedule) {
         self.add_round_key(&key.keys[0]);
         key.keys[1..key.rounds].iter().for_each(|key| {
