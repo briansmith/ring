@@ -22,7 +22,12 @@ use crate::{
     polyfill::{self, usize_from_u32},
 };
 use cfg_if::cfg_if;
-use core::{array, cmp, mem::size_of, num::NonZeroU32, slice};
+use core::{
+    array, cmp,
+    mem::{self, size_of},
+    num::NonZeroU32,
+    slice,
+};
 
 #[derive(Clone)]
 pub struct Key {
