@@ -84,6 +84,7 @@ fn xor(a: Word, b: Word) -> Word {
     a ^ b
 }
 
+#[allow(dead_code)]
 #[inline(always)]
 fn not(a: Word) -> Word {
     !a
