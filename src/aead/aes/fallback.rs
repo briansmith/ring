@@ -506,16 +506,10 @@ macro_rules! rotate_cols_right {
 
 impl Batch {
     fn shift_rows(&mut self) {
-        self.w.iter_mut().for_each(|w| {
-            let row0 = and(*w, ROW0_MASK);
-            let row1 = and(*w, ROW1_MASK);
-            let row2 = and(*w, ROW2_MASK);
-            let row3 = and(*w, ROW3_MASK);
-            let row1 = rotate_cols_right!(Self::rotate_cols_right::<1>(row1));
-            let row2 = rotate_cols_right!(Self::rotate_cols_right::<2>(row2));
-            let row3 = rotate_cols_right!(Self::rotate_cols_right::<3>(row3));
-            *w = or(or(row0, row1), or(row2, row3));
-        });
+        prefixed_extern! {
+            fn aes_nohw_shift_rows(batch: &mut Batch);
+        }
+        unsafe { aes_nohw_shift_rows(self) }
     }
 
     fn mix_columns(&mut self) {
