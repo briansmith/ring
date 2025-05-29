@@ -21,6 +21,8 @@ use super::{
 };
 use crate::{c, error::InputTooLongError, polyfill::slice};
 
+const STRIDE_LEN: usize = 96;
+
 #[inline(never)]
 pub(super) fn seal(
     aes_key: &aes::hw::Key,
@@ -85,6 +87,12 @@ pub(super) fn open(
     in_out: Overlapping<'_>,
 ) -> Result<Tag, InputTooLongError> {
     prefixed_extern! {
+        // Requires `len % STRIDE_LEN == 0 && len != 0`.
+        //
+        // The upstream version has a different calling convention where it
+        // accepts any `len` and returns the number of bytes processed
+        // according to the above.
+        //
         // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
         // assembly says it needs just nine values in that array.
         fn aesni_gcm_decrypt(
@@ -94,42 +102,38 @@ pub(super) fn open(
             key: &aes::AES_KEY,
             ivec: &mut Counter,
             Htable: &gcm::HTable,
-            Xi: &mut gcm::Xi) -> c::size_t;
+            Xi: &mut gcm::Xi);
     }
 
-    let (in_out_slice, src) = in_out.into_slice_src_mut();
-    let in_out =
-        Overlapping::new(in_out_slice, src.clone()).unwrap_or_else(|IndexError { .. }| {
-            // Guaranteed by `in_out.into_slice_src_mut`
-            unreachable!()
-        });
+    let in_out_len = in_out.len();
+    let mut auth = gcm::Context::new(gcm_key, aad, in_out_len)?;
 
-    let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
-    let processed = in_out.with_input_output_len(|input, output, len| {
-        let (htable, xi) = auth.inner();
-        unsafe {
-            aesni_gcm_decrypt(
-                input,
-                output,
-                len,
-                aes_key.inner_less_safe(),
-                &mut ctr,
-                htable,
-                xi,
-            )
-        }
-    });
-    let in_out_slice = in_out_slice.get_mut(processed..).unwrap_or_else(|| {
-        // This can't happen. If it did, then the assembly already
-        // caused a buffer overflow.
-        unreachable!()
-    });
-    let in_out =
-        Overlapping::new(in_out_slice, src.clone()).unwrap_or_else(|IndexError { .. }| {
-            // This can't happen. If it did, then the assembly already
-            // overwrote part of the remaining input.
-            unreachable!()
-        });
+    let in_out = if in_out_len >= STRIDE_LEN {
+        let leftover = in_out_len % STRIDE_LEN;
+        in_out
+            .split_at(in_out_len - leftover, |strides| {
+                debug_assert!(strides.len() >= STRIDE_LEN);
+                debug_assert_eq!(strides.len() % STRIDE_LEN, 0);
+                strides.with_input_output_len(|input, output, len| {
+                    let (htable, xi) = auth.inner();
+                    unsafe {
+                        aesni_gcm_decrypt(
+                            input,
+                            output,
+                            len,
+                            aes_key.inner_less_safe(),
+                            &mut ctr,
+                            htable,
+                            xi,
+                        )
+                    }
+                })
+            })
+            .unwrap_or_else(|IndexError { .. }| unreachable!())
+    } else {
+        in_out
+    };
+
     Ok(open_whole_partial_tail(
         aes_key,
         auth,
