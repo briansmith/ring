@@ -45,7 +45,7 @@ pub fn split_at_checked<T>(slice: &[T], mid: usize) -> Option<(&[T], &[T])> {
 
 // TODO(MSRV-1.80): Use `slice::split_at_checked`.
 #[inline]
-fn split_at_mut_checked<T>(slice: &mut [T], mid: usize) -> Option<(&mut [T], &mut [T])> {
+pub fn split_at_mut_checked<T>(slice: &mut [T], mid: usize) -> Option<(&mut [T], &mut [T])> {
     if slice.len() >= mid {
         Some(slice.split_at_mut(mid))
     } else {

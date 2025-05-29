@@ -17,11 +17,11 @@
 use super::{
     super::overlapping::IndexError,
     aes::{self, Counter, EncryptCtr32, Overlapping, OverlappingPartialBlock},
-    gcm, open_whole_partial_tail, Aad, Tag,
+    gcm, open_whole_partial_tail, Aad, Tag, BLOCK_LEN,
 };
 use crate::{c, error::InputTooLongError, polyfill::slice};
 
-const STRIDE_LEN: usize = 96;
+const STRIDE_LEN: usize = 6 * BLOCK_LEN;
 
 #[inline(never)]
 pub(super) fn seal(
@@ -33,6 +33,12 @@ pub(super) fn seal(
     in_out: &mut [u8],
 ) -> Result<Tag, InputTooLongError> {
     prefixed_extern! {
+        // Requires `len % STRIDE_LEN == 0 && len >= 3 * STRIDE_LEN`.
+        //
+        // The upstream version has a different calling convention where it
+        // accepts any `len` and returns the number of bytes processed
+        // according to the above.
+        //
         // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
         // assembly says it needs just nine values in that array.
         fn aesni_gcm_encrypt(
@@ -42,33 +48,38 @@ pub(super) fn seal(
             key: &aes::AES_KEY,
             ivec: &mut Counter,
             Htable: &gcm::HTable,
-            Xi: &mut gcm::Xi) -> c::size_t;
+            Xi: &mut gcm::Xi);
     }
 
-    let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
-    let (htable, xi) = auth.inner();
+    let in_out_len = in_out.len();
+    let mut auth = gcm::Context::new(gcm_key, aad, in_out_len)?;
 
-    let processed = unsafe {
-        aesni_gcm_encrypt(
-            in_out.as_ptr(),
-            in_out.as_mut_ptr(),
-            in_out.len(),
-            aes_key.inner_less_safe(),
-            &mut ctr,
-            htable,
-            xi,
-        )
+    let remainder = if in_out_len >= 3 * STRIDE_LEN {
+        let leftover = in_out_len % STRIDE_LEN;
+        let (integrated, remainder) = slice::split_at_mut_checked(in_out, in_out_len - leftover)
+            .unwrap_or_else(|| {
+                // Since `leftover <= in_out_len`
+                unreachable!()
+            });
+        debug_assert!(integrated.len() >= 3 * STRIDE_LEN);
+        let (htable, xi) = auth.inner();
+        unsafe {
+            aesni_gcm_encrypt(
+                integrated.as_ptr(),
+                integrated.as_mut_ptr(),
+                integrated.len(),
+                aes_key.inner_less_safe(),
+                &mut ctr,
+                htable,
+                xi,
+            )
+        };
+        remainder
+    } else {
+        in_out
     };
 
-    let remaining = match in_out.get_mut(processed..) {
-        Some(remaining) => remaining,
-        None => {
-            // This can't happen. If it did, then the assembly already
-            // caused a buffer overflow.
-            unreachable!()
-        }
-    };
-    let (mut whole, remainder) = slice::as_chunks_mut(remaining);
+    let (mut whole, remainder) = slice::as_chunks_mut(remainder);
     aes_key.ctr32_encrypt_within(whole.as_flattened_mut().into(), &mut ctr);
     auth.update_blocks(whole.as_ref());
     let remainder = OverlappingPartialBlock::new(remainder.into())
