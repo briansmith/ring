@@ -23,7 +23,7 @@ use crate::{
     error::{self, InputTooLongError},
     polyfill::{slice, sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
-use core::ops::RangeFrom;
+use core::{cmp, ops::RangeFrom};
 
 #[cfg(any(
     all(target_arch = "aarch64", target_endian = "little"),
@@ -424,46 +424,29 @@ fn open_strided<
     mut ctr: Counter,
     tag_iv: aes::Iv,
 ) -> Result<Tag, error::Unspecified> {
-    let in_out = Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
-    let input = in_out.input();
-    let input_len = input.len();
+    let mut in_out =
+        Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
+    let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
 
-    let mut auth = gcm::Context::new(gcm_key, aad, input_len)?;
-
-    let remainder_len = input_len % BLOCK_LEN;
-    let whole_len = input_len - remainder_len;
-    let in_prefix_len = src.start;
-
-    {
-        let mut chunk_len = CHUNK_BLOCKS * BLOCK_LEN;
-        let mut output = 0;
-        let mut input = in_prefix_len;
-        loop {
-            if whole_len - output < chunk_len {
-                chunk_len = whole_len - output;
-            }
-
-            let ciphertext = &in_out_slice[input..][..chunk_len];
-            let (ciphertext, leftover) = slice::as_chunks(ciphertext);
-            debug_assert_eq!(leftover.len(), 0);
-            if ciphertext.is_empty() {
-                break;
-            }
-            auth.update_blocks(ciphertext);
-
-            let chunk = Overlapping::new(
-                &mut in_out_slice[output..][..(chunk_len + in_prefix_len)],
-                in_prefix_len..,
-            )
-            .map_err(error::erase::<IndexError>)?;
-            aes_key.ctr32_encrypt_within(chunk, &mut ctr);
-            output += chunk_len;
-            input += chunk_len;
+    loop {
+        let remaining = in_out.len();
+        let whole_remaining = remaining - (remaining % BLOCK_LEN);
+        if whole_remaining == 0 {
+            break;
         }
+        let chunk_len = cmp::min(CHUNK_BLOCKS * BLOCK_LEN, whole_remaining);
+        in_out = in_out
+            .split_at(chunk_len, |chunk| {
+                let (input, _) = slice::as_chunks(chunk.input());
+                auth.update_blocks(input);
+                aes_key.ctr32_encrypt_within(chunk, &mut ctr);
+            })
+            .unwrap_or_else(|IndexError { .. }| {
+                // Assuming `whole_remaining` is correct.
+                unreachable!()
+            });
     }
 
-    let in_out = Overlapping::new(&mut in_out_slice[whole_len..], src)
-        .unwrap_or_else(|IndexError { .. }| unreachable!());
     let in_out = OverlappingPartialBlock::new(in_out)
         .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
 
