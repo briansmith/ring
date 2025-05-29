@@ -366,16 +366,28 @@ fn open_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     aad: Aad<&[u8]>,
     in_out_slice: &mut [u8],
     src: RangeFrom<usize>,
-    mut ctr: Counter,
+    ctr: Counter,
     tag_iv: aes::Iv,
     open_whole: impl FnOnce(&A, &mut gcm::Context<G>, Overlapping, &mut Counter),
 ) -> Result<Tag, error::Unspecified> {
     let in_out = Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
     let in_out_len = in_out.len();
 
-    let mut auth = gcm::Context::new(gcm_key, aad, in_out_len)?;
+    let auth = gcm::Context::new(gcm_key, aad, in_out_len)?;
+    open_whole_partial_tail(aes_key, auth, in_out, ctr, tag_iv, open_whole)
+}
 
-    let remainder_len = in_out.len() % BLOCK_LEN;
+#[inline]
+fn open_whole_partial_tail<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
+    aes_key: &A,
+    mut auth: gcm::Context<G>,
+    in_out: Overlapping,
+    mut ctr: Counter,
+    tag_iv: aes::Iv,
+    open_whole: impl FnOnce(&A, &mut gcm::Context<G>, Overlapping, &mut Counter),
+) -> Result<Tag, error::Unspecified> {
+    let in_out_len = in_out.len();
+    let remainder_len = in_out_len % BLOCK_LEN;
     let whole_len = in_out_len - remainder_len;
 
     let remainder = in_out
