@@ -253,7 +253,6 @@ fn swap_bits<const A: usize, const B: usize, const MASK_BYTE: u8, const SHIFT: u
 
 // An AES_NOHW_BATCH stores |AES_NOHW_BATCH_SIZE| blocks. Unless otherwise
 // specified, it is in bitsliced form.
-#[repr(C)]
 struct Batch {
     w: [Word; 8],
 }
