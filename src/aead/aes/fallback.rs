@@ -316,6 +316,7 @@ impl Batch {
 
 // AES round steps.
 impl Batch {
+    #[inline(never)]
     fn sub_bytes(&mut self) {
         // See https://eprint.iacr.org/2009/191.pdf, Appendix C.
         let x0 = self.w[7];
@@ -481,6 +482,7 @@ macro_rules! rotate_cols_right {
 }
 
 impl Batch {
+    #[inline(never)]
     fn shift_rows(&mut self) {
         self.w.iter_mut().for_each(|w| {
             let row0 = *w & ROW0_MASK;
