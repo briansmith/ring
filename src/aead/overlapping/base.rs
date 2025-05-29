@@ -54,6 +54,11 @@ impl<'o, T> Overlapping<'o, T> {
         }
     }
 
+    #[cfg(target_arch = "x86_64")]
+    pub fn into_slice_src_mut(self) -> (&'o mut [T], RangeFrom<usize>) {
+        (self.in_out, self.src)
+    }
+
     pub fn into_unwritten_output(self) -> &'o mut [T] {
         let len = self.len();
         self.in_out.get_mut(..len).unwrap_or_else(|| {
