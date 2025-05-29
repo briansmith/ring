@@ -1091,26 +1091,6 @@ $code.=<<___;
 .align	64
 .text
 ___
-}}} else {{{
-$code=<<___;	# assembler is too old
-.text
-
-.globl	aesni_gcm_encrypt
-.type	aesni_gcm_encrypt,\@abi-omnipotent
-aesni_gcm_encrypt:
-	_CET_ENDBR
-	xor	%eax,%eax
-	ret
-.size	aesni_gcm_encrypt,.-aesni_gcm_encrypt
-
-.globl	aesni_gcm_decrypt
-.type	aesni_gcm_decrypt,\@abi-omnipotent
-aesni_gcm_decrypt:
-	_CET_ENDBR
-	xor	%eax,%eax
-	ret
-.size	aesni_gcm_decrypt,.-aesni_gcm_decrypt
-___
 }}}
 
 $code =~ s/\`([^\`]*)\`/eval($1)/gem;
