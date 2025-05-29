@@ -43,15 +43,21 @@ pub fn split_at_checked<T>(slice: &[T], mid: usize) -> Option<(&[T], &[T])> {
     }
 }
 
+// TODO(MSRV-1.80): Use `slice::split_at_checked`.
+#[inline]
+fn split_at_mut_checked<T>(slice: &mut [T], mid: usize) -> Option<(&mut [T], &mut [T])> {
+    if slice.len() >= mid {
+        Some(slice.split_at_mut(mid))
+    } else {
+        None
+    }
+}
+
 // TODO(MSRV-1.77): Use `slice::split_first_chunk_mut`.
 #[inline]
 pub fn split_first_chunk_mut<T, const N: usize>(
     slice: &mut [T],
 ) -> Option<(&mut [T; N], &mut [T])> {
-    if slice.len() >= N {
-        let (head, tail) = slice.split_at_mut(N);
-        head.try_into().ok().map(|head| (head, tail))
-    } else {
-        None
-    }
+    let (head, tail) = split_at_mut_checked(slice, N)?;
+    head.try_into().ok().map(|head| (head, tail))
 }
