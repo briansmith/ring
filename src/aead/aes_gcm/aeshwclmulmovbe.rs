@@ -19,11 +19,7 @@ use super::{
     aes::{self, Counter, EncryptCtr32, Overlapping, OverlappingPartialBlock},
     gcm, open_whole_partial_tail, Aad, Tag,
 };
-use crate::{
-    c,
-    error::{self, InputTooLongError},
-    polyfill::slice,
-};
+use crate::{c, error::InputTooLongError, polyfill::slice};
 
 #[inline(never)]
 pub(super) fn seal(
@@ -33,7 +29,7 @@ pub(super) fn seal(
     tag_iv: aes::Iv,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     prefixed_extern! {
         // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
         // assembly says it needs just nine values in that array.
@@ -76,7 +72,7 @@ pub(super) fn seal(
     let remainder = OverlappingPartialBlock::new(remainder.into())
         .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
 
-    super::seal_finish(aes_key, auth, remainder, ctr, tag_iv)
+    Ok(super::seal_finish(aes_key, auth, remainder, ctr, tag_iv))
 }
 
 #[inline(never)]
@@ -87,7 +83,7 @@ pub(super) fn open(
     tag_iv: aes::Iv,
     aad: Aad<&[u8]>,
     in_out: Overlapping<'_>,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     prefixed_extern! {
         // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
         // assembly says it needs just nine values in that array.
@@ -134,7 +130,7 @@ pub(super) fn open(
             // overwrote part of the remaining input.
             unreachable!()
         });
-    open_whole_partial_tail(
+    Ok(open_whole_partial_tail(
         aes_key,
         auth,
         in_out,
@@ -145,5 +141,5 @@ pub(super) fn open(
             auth.update_blocks(whole_input);
             aes_key.ctr32_encrypt_within(whole, ctr);
         },
-    )
+    ))
 }
