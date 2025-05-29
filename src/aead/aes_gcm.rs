@@ -189,7 +189,7 @@ pub(super) fn seal(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
 
@@ -240,13 +240,13 @@ fn seal_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     mut ctr: Counter,
     tag_iv: aes::Iv,
     seal_whole: impl FnOnce(&A, &mut gcm::Context<G>, &mut Counter, slice::AsChunksMut<u8, BLOCK_LEN>),
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
     let (whole, remainder) = slice::as_chunks_mut(in_out);
     seal_whole(aes_key, &mut auth, &mut ctr, whole);
     let remainder = OverlappingPartialBlock::new(remainder.into())
         .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
-    seal_finish(aes_key, auth, remainder, ctr, tag_iv)
+    Ok(seal_finish(aes_key, auth, remainder, ctr, tag_iv))
 }
 
 #[cfg_attr(
@@ -274,7 +274,7 @@ fn seal_strided<
     in_out: &mut [u8],
     mut ctr: Counter,
     tag_iv: aes::Iv,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
 
     let (mut whole, remainder) = slice::as_chunks_mut(in_out);
@@ -286,7 +286,7 @@ fn seal_strided<
 
     let remainder = OverlappingPartialBlock::new(remainder.into())
         .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
-    seal_finish(aes_key, auth, remainder, ctr, tag_iv)
+    Ok(seal_finish(aes_key, auth, remainder, ctr, tag_iv))
 }
 
 fn seal_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
@@ -295,7 +295,7 @@ fn seal_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     remainder: OverlappingPartialBlock<'_>,
     ctr: Counter,
     tag_iv: aes::Iv,
-) -> Result<Tag, error::Unspecified> {
+) -> Tag {
     let remainder_len = remainder.len();
     if remainder_len > 0 {
         let mut input = ZERO_BLOCK;
@@ -306,7 +306,7 @@ fn seal_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
         remainder.overwrite_at_start(output);
     }
 
-    Ok(finish(aes_key, auth, tag_iv))
+    finish(aes_key, auth, tag_iv)
 }
 
 #[inline(never)]
@@ -315,7 +315,7 @@ pub(super) fn open(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: Overlapping<'_>,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
 
@@ -366,11 +366,13 @@ fn open_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     ctr: Counter,
     tag_iv: aes::Iv,
     open_whole: impl FnOnce(&A, &mut gcm::Context<G>, Overlapping, &mut Counter),
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let in_out_len = in_out.len();
 
     let auth = gcm::Context::new(gcm_key, aad, in_out_len)?;
-    open_whole_partial_tail(aes_key, auth, in_out, ctr, tag_iv, open_whole)
+    Ok(open_whole_partial_tail(
+        aes_key, auth, in_out, ctr, tag_iv, open_whole,
+    ))
 }
 
 #[inline]
@@ -381,7 +383,7 @@ fn open_whole_partial_tail<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     mut ctr: Counter,
     tag_iv: aes::Iv,
     open_whole: impl FnOnce(&A, &mut gcm::Context<G>, Overlapping, &mut Counter),
-) -> Result<Tag, error::Unspecified> {
+) -> Tag {
     let in_out_len = in_out.len();
     let remainder_len = in_out_len % BLOCK_LEN;
     let whole_len = in_out_len - remainder_len;
@@ -432,7 +434,7 @@ fn open_strided<
     mut in_out: Overlapping<'_>,
     mut ctr: Counter,
     tag_iv: aes::Iv,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
 
     loop {
@@ -457,7 +459,7 @@ fn open_strided<
     let in_out = OverlappingPartialBlock::new(in_out)
         .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
 
-    open_finish(aes_key, auth, in_out, ctr, tag_iv)
+    Ok(open_finish(aes_key, auth, in_out, ctr, tag_iv))
 }
 
 fn open_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
@@ -466,14 +468,14 @@ fn open_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     remainder: OverlappingPartialBlock<'_>,
     ctr: Counter,
     tag_iv: aes::Iv,
-) -> Result<Tag, error::Unspecified> {
+) -> Tag {
     if remainder.len() > 0 {
         let mut input = ZERO_BLOCK;
         overwrite_at_start(&mut input, remainder.input());
         auth.update_block(input);
         remainder.overwrite_at_start(aes_key.encrypt_iv_xor_block(ctr.into(), input));
     }
-    Ok(finish(aes_key, auth, tag_iv))
+    finish(aes_key, auth, tag_iv)
 }
 
 fn finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(

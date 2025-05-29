@@ -13,7 +13,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Aad, Algorithm, KeyInner, Nonce, Tag, UnboundKey, TAG_LEN};
-use crate::{cpu, error};
+use crate::{
+    cpu,
+    error::{self, InputTooLongError},
+};
 use core::ops::RangeFrom;
 
 /// Immutable keys for use in situations where `OpeningKey`/`SealingKey` and
@@ -148,13 +151,15 @@ impl LessSafeKey {
     where
         A: AsRef<[u8]>,
     {
-        self.algorithm.seal(
-            &self.inner,
-            nonce,
-            Aad::from(aad.as_ref()),
-            in_out,
-            cpu::features(),
-        )
+        self.algorithm
+            .seal(
+                &self.inner,
+                nonce,
+                Aad::from(aad.as_ref()),
+                in_out,
+                cpu::features(),
+            )
+            .map_err(error::erase::<InputTooLongError>)
     }
 
     /// The key's AEAD algorithm.

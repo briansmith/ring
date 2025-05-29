@@ -42,14 +42,14 @@ pub struct Algorithm {
         aad: Aad<&[u8]>,
         in_out: &mut [u8],
         cpu_features: cpu::Features,
-    ) -> Result<Tag, error::Unspecified>,
+    ) -> Result<Tag, InputTooLongError>,
     open: fn(
         key: &KeyInner,
         nonce: Nonce,
         aad: Aad<&[u8]>,
         in_out: Overlapping<'_, u8>,
         cpu_features: cpu::Features,
-    ) -> Result<Tag, error::Unspecified>,
+    ) -> Result<Tag, InputTooLongError>,
 
     key_len: usize,
     id: AlgorithmID,
@@ -96,7 +96,8 @@ impl Algorithm {
     ) -> Result<&'io mut [u8], error::Unspecified> {
         let in_out = Overlapping::new(in_out_slice, src).map_err(error::erase::<IndexError>)?;
         let ciphertext_len = in_out.len();
-        let Tag(calculated_tag) = (self.open)(key, nonce, aad, in_out, cpu_features)?;
+        let Tag(calculated_tag) = (self.open)(key, nonce, aad, in_out, cpu_features)
+            .map_err(error::erase::<InputTooLongError>)?;
 
         if bb::verify_slices_are_equal(calculated_tag.as_ref(), received_tag.as_ref()).is_err() {
             // Zero out the plaintext so that it isn't accidentally leaked or used
@@ -121,7 +122,7 @@ impl Algorithm {
         aad: Aad<&[u8]>,
         in_out: &mut [u8],
         cpu_features: cpu::Features,
-    ) -> Result<Tag, error::Unspecified> {
+    ) -> Result<Tag, InputTooLongError> {
         (self.seal)(key, nonce, aad, in_out, cpu_features)
     }
 }
@@ -189,7 +190,7 @@ fn aes_gcm_seal(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     _cpu_features: cpu::Features,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let key = match key {
         KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
@@ -203,7 +204,7 @@ pub(super) fn aes_gcm_open(
     aad: Aad<&[u8]>,
     in_out: Overlapping<'_, u8>,
     _cpu_features: cpu::Features,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let key = match key {
         KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
@@ -239,13 +240,12 @@ fn chacha20_poly1305_seal(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     cpu_features: cpu::Features,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let key = match key {
         KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
     chacha20_poly1305::seal(key, nonce, aad, in_out, cpu_features)
-        .map_err(error::erase::<InputTooLongError>)
 }
 
 fn chacha20_poly1305_open(
@@ -254,11 +254,10 @@ fn chacha20_poly1305_open(
     aad: Aad<&[u8]>,
     in_out: Overlapping<'_, u8>,
     cpu_features: cpu::Features,
-) -> Result<Tag, error::Unspecified> {
+) -> Result<Tag, InputTooLongError> {
     let key = match key {
         KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
     chacha20_poly1305::open(key, nonce, aad, in_out, cpu_features)
-        .map_err(error::erase::<InputTooLongError>)
 }
