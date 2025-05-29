@@ -17,7 +17,7 @@
 use super::{
     super::overlapping::IndexError,
     aes::{self, Counter, EncryptCtr32, Overlapping, OverlappingPartialBlock},
-    gcm, Aad, Tag,
+    gcm, open_whole_partial_tail, Aad, Tag,
 };
 use crate::{
     c,
@@ -124,31 +124,22 @@ pub(super) fn open(
         // caused a buffer overflow.
         unreachable!()
     });
-    // Authenticate any remaining whole blocks.
     let in_out =
         Overlapping::new(in_out_slice, src.clone()).unwrap_or_else(|IndexError { .. }| {
             // This can't happen. If it did, then the assembly already
             // overwrote part of the remaining input.
             unreachable!()
         });
-    let (whole, _) = slice::as_chunks(in_out.input());
-    auth.update_blocks(whole);
-
-    let whole_len = whole.as_flattened().len();
-
-    // Decrypt any remaining whole blocks.
-    let whole = Overlapping::new(&mut in_out_slice[..(src.start + whole_len)], src.clone())
-        .map_err(error::erase::<IndexError>)?;
-    aes_key.ctr32_encrypt_within(whole, &mut ctr);
-
-    let in_out_slice = match in_out_slice.get_mut(whole_len..) {
-        Some(partial) => partial,
-        None => unreachable!(),
-    };
-    let in_out =
-        Overlapping::new(in_out_slice, src).unwrap_or_else(|IndexError { .. }| unreachable!());
-    let in_out = OverlappingPartialBlock::new(in_out)
-        .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
-
-    super::open_finish(aes_key, auth, in_out, ctr, tag_iv)
+    open_whole_partial_tail(
+        aes_key,
+        auth,
+        in_out,
+        ctr,
+        tag_iv,
+        |aes_key, auth, whole, ctr| {
+            let (whole_input, _) = slice::as_chunks(whole.input());
+            auth.update_blocks(whole_input);
+            aes_key.ctr32_encrypt_within(whole, ctr);
+        },
+    )
 }
