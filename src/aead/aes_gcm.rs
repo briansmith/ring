@@ -371,20 +371,22 @@ fn open_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     open_whole: impl FnOnce(&A, &mut gcm::Context<G>, Overlapping, &mut Counter),
 ) -> Result<Tag, error::Unspecified> {
     let in_out = Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
-    let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
+    let in_out_len = in_out.len();
+
+    let mut auth = gcm::Context::new(gcm_key, aad, in_out_len)?;
 
     let remainder_len = in_out.len() % BLOCK_LEN;
+    let whole_len = in_out_len - remainder_len;
 
-    let in_out_slice_len = in_out_slice.len();
-    let whole_in_out_slice = &mut in_out_slice[..(in_out_slice_len - remainder_len)];
-    let whole = Overlapping::new(whole_in_out_slice, src.clone())
-        .unwrap_or_else(|IndexError { .. }| unreachable!());
-    let whole_len = whole.len();
-    open_whole(aes_key, &mut auth, whole, &mut ctr);
+    let remainder = in_out
+        .split_at(whole_len, |whole| {
+            open_whole(aes_key, &mut auth, whole, &mut ctr);
+        })
+        .unwrap_or_else(|IndexError { .. }| {
+            // Assuming `whole_len` is correct.
+            unreachable!()
+        });
 
-    let remainder = &mut in_out_slice[whole_len..];
-    let remainder =
-        Overlapping::new(remainder, src).unwrap_or_else(|IndexError { .. }| unreachable!());
     let remainder = OverlappingPartialBlock::new(remainder)
         .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
     open_finish(aes_key, auth, remainder, ctr, tag_iv)
