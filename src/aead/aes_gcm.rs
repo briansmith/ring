@@ -23,7 +23,7 @@ use crate::{
     error::{self, InputTooLongError},
     polyfill::{slice, sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
-use core::{cmp, ops::RangeFrom};
+use core::cmp;
 
 #[cfg(any(
     all(target_arch = "aarch64", target_endian = "little"),
@@ -314,8 +314,7 @@ pub(super) fn open(
     Key(key): &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,
-    in_out_slice: &mut [u8],
-    src: RangeFrom<usize>,
+    in_out: Overlapping<'_>,
 ) -> Result<Tag, error::Unspecified> {
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
@@ -323,15 +322,14 @@ pub(super) fn open(
     match key {
         #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
         DynKey::AesHwClMul(c) => {
-            open_whole_partial(c, aad, in_out_slice, src, ctr, tag_iv, aarch64::open_whole)
+            open_whole_partial(c, aad, in_out, ctr, tag_iv, aarch64::open_whole)
         }
 
         #[cfg(target_arch = "x86_64")]
         DynKey::VAesClMulAvx2(c) => open_whole_partial(
             c,
             aad,
-            in_out_slice,
-            src,
+            in_out,
             ctr,
             tag_iv,
             vaesclmulavx2::open_whole_vaes_clmul_avx2,
@@ -339,11 +337,11 @@ pub(super) fn open(
 
         #[cfg(target_arch = "x86_64")]
         DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
-            aeshwclmulmovbe::open(aes_key, gcm_key, ctr, tag_iv, aad, in_out_slice, src)
+            aeshwclmulmovbe::open(aes_key, gcm_key, ctr, tag_iv, aad, in_out)
         }
 
         #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-        DynKey::AesHwClMul(c) => open_strided(c, aad, in_out_slice, src, ctr, tag_iv),
+        DynKey::AesHwClMul(c) => open_strided(c, aad, in_out, ctr, tag_iv),
 
         #[cfg(any(
             all(target_arch = "aarch64", target_endian = "little"),
@@ -351,9 +349,9 @@ pub(super) fn open(
             target_arch = "x86_64",
             target_arch = "x86"
         ))]
-        DynKey::Simd(c) => open_strided(c, aad, in_out_slice, src, ctr, tag_iv),
+        DynKey::Simd(c) => open_strided(c, aad, in_out, ctr, tag_iv),
 
-        DynKey::Fallback(c) => open_strided(c, aad, in_out_slice, src, ctr, tag_iv),
+        DynKey::Fallback(c) => open_strided(c, aad, in_out, ctr, tag_iv),
     }
 }
 
@@ -364,13 +362,11 @@ pub(super) fn open(
 fn open_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
-    in_out_slice: &mut [u8],
-    src: RangeFrom<usize>,
+    in_out: Overlapping<'_>,
     ctr: Counter,
     tag_iv: aes::Iv,
     open_whole: impl FnOnce(&A, &mut gcm::Context<G>, Overlapping, &mut Counter),
 ) -> Result<Tag, error::Unspecified> {
-    let in_out = Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
     let in_out_len = in_out.len();
 
     let auth = gcm::Context::new(gcm_key, aad, in_out_len)?;
@@ -433,13 +429,10 @@ fn open_strided<
 >(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
-    in_out_slice: &mut [u8],
-    src: RangeFrom<usize>,
+    mut in_out: Overlapping<'_>,
     mut ctr: Counter,
     tag_iv: aes::Iv,
 ) -> Result<Tag, error::Unspecified> {
-    let mut in_out =
-        Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
     let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
 
     loop {

@@ -24,7 +24,6 @@ use crate::{
     error::{self, InputTooLongError},
     polyfill::slice,
 };
-use core::ops::RangeFrom;
 
 #[inline(never)]
 pub(super) fn seal(
@@ -87,8 +86,7 @@ pub(super) fn open(
     mut ctr: Counter,
     tag_iv: aes::Iv,
     aad: Aad<&[u8]>,
-    in_out_slice: &mut [u8],
-    src: RangeFrom<usize>,
+    in_out: Overlapping<'_>,
 ) -> Result<Tag, error::Unspecified> {
     prefixed_extern! {
         // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
@@ -103,7 +101,13 @@ pub(super) fn open(
             Xi: &mut gcm::Xi) -> c::size_t;
     }
 
-    let in_out = Overlapping::new(in_out_slice, src.clone()).map_err(error::erase::<IndexError>)?;
+    let (in_out_slice, src) = in_out.into_slice_src_mut();
+    let in_out =
+        Overlapping::new(in_out_slice, src.clone()).unwrap_or_else(|IndexError { .. }| {
+            // Guaranteed by `in_out.into_slice_src_mut`
+            unreachable!()
+        });
+
     let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
     let processed = in_out.with_input_output_len(|input, output, len| {
         let (htable, xi) = auth.inner();
