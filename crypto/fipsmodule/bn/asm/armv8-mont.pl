@@ -270,7 +270,7 @@ bn_mul_mont_nohw:
 	ldr	x29,[sp],#64
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	bn_mul_mont,.-bn_mul_mont
+.size	bn_mul_mont_nohw,.-bn_mul_mont_nohw
 ___
 {
 ########################################################################
