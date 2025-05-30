@@ -19,8 +19,9 @@ assembly language code (ARM, Aarch64, i686, x86-64).
 
 For Windows targets, “Build Tools for Visual Studio 2022” (or a higher
 edition of Visual Studio, like Community, Standard, or Enterprise). The
-“Desktop development with C++” workflow must be installed. Visual Studio
-2022 Version 17.5 is supported; earlier versions of Visual Studio may work.
+“Desktop development with C++” workflow must be installed. The Visual Studio
+version used by default in GitHub Actions is the one that is primarily
+supported.
 
 For Windows ARM64 targets (aarch64-pc-windows-msvc), the Visual Studio Build
 Tools “VS 2022 C++ ARM64 build tools” and "clang" components must be installed.
@@ -33,14 +34,10 @@ If you (locally) have “Build Tools for Visual Studio 2022” instead, use:
 ```
 $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\Llvm\x64\bin"
 ```
-
 Alternatively, if the host machine is already a Windows ARM64 then use:
-
 ```
 $env:Path += ";C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\ARM64\bin"
 ```
-
-# Windows ARM64
 
 Packaged Builds
 ---------------
@@ -63,8 +60,16 @@ apply when building from crates.io:
   installed. Perl must be in `$PATH` or `$PERL_EXECUTABLE` must be set.
 
 * For Windows x86 and x86-64 targets only, `target/tools/windows/nasm/nasm[.exe]`
-  is used as the assembler. The version to use and how to download it is
-  documented in [mk/install-build-tools.ps1](mk/install-build-tools.ps1).
+  is used as the assembler. The version to use, how to download it, and where
+  to put it, is all documented in [mk/install-build-tools.ps1](mk/install-build-tools.ps1).
+
+For Windows hosts, it is easiest to work in a Git Bash prompt as this will
+make Perl available automatically. You should not need to mess with
+VCVARSALL/etc since cc-rs will find MSVC. When targeting
+aarch64-pc-windows-msvc, just add the Visual-Studio-supplied LLVM directory
+to the PATH by transliterating the relevant PowerShell commands into Bash
+syntax; this copy of clang will be be able to find all the headers, etc. 
+
 
 Additional Features that are Useful for Development
 ---------------------------------------------------
