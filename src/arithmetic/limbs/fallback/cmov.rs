@@ -12,11 +12,27 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-mod fallback;
-mod reduce_once;
+use super::super::super::inout::AliasingSlices3;
+use crate::{c, error::LenMismatchError, limb::*};
+use core::num::NonZeroUsize;
 
-pub(super) mod aarch64;
-pub(super) mod x86_64;
-
-pub(crate) use self::reduce_once::limbs_reduce_once;
-use fallback::{cmov::limbs_cmov, sub::limbs_sub};
+// `if cond { r = a; }`, assuming `cond` is 0 (false) or 0xff..ff (true).
+pub fn limbs_cmov(
+    cond: Limb,
+    r: &mut [Limb],
+    a: &[Limb],
+    num_limbs: NonZeroUsize,
+) -> Result<(), LenMismatchError> {
+    prefixed_extern! {
+        // r, a, and/or b may alias.
+        fn LIMBS_select(
+            cond: Limb,
+            r: *mut Limb,
+            a: *const Limb,
+            b: *const Limb,
+            num_limbs: c::NonZero_size_t);
+    }
+    (r, a).with_non_dangling_non_null_pointers_rab(num_limbs, |r, a, b| unsafe {
+        LIMBS_select(cond, r, b, a, num_limbs)
+    })
+}
