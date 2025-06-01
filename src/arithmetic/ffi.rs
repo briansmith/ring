@@ -34,6 +34,7 @@ const _MIN_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
 
 const _MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
     // BoringSSL's limit from bn/internal.h.
+    // (See https://issues.chromium.org/issues/402677800.)
     const BN_MONTGOMERY_MAX_WORDS: usize = 16384 / size_of::<Limb>();
     assert!(MAX_LIMBS <= BN_MONTGOMERY_MAX_WORDS);
 
