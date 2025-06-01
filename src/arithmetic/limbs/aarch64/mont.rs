@@ -14,13 +14,33 @@
 
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
-use super::super::super::{inout::AliasingSlices3 as _, n0::N0, LimbSliceError, MAX_LIMBS};
+use super::super::super::{inout::AliasingSlices3, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
 use crate::{
     c,
     limb::Limb,
     polyfill::slice::{AsChunks, AsChunksMut},
 };
 use core::num::NonZeroUsize;
+
+#[inline]
+pub(in super::super::super) fn mul_mont(
+    in_out: impl AliasingSlices3<Limb>,
+    n: &[Limb],
+    n0: &N0,
+) -> Result<(), LimbSliceError> {
+    const MIN_4X: usize = 4;
+    const MOD_4X: usize = 4;
+    const MOD_FALLBACK: usize = 1;
+    if n.len() >= MIN_4X && n.len() % MOD_4X == 0 {
+        bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
+            (MIN_4X, MOD_4X, ()) => bn_mul4x_mont
+        })
+    } else {
+        bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
+            (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
+        })
+    }
+}
 
 #[inline]
 pub(in super::super::super) fn sqr_mont5(

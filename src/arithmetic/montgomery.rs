@@ -13,7 +13,9 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub use super::n0::N0;
-use super::{inout::AliasingSlices3, LimbSliceError, MIN_LIMBS};
+#[allow(unused_imports)]
+use super::MIN_LIMBS;
+use super::{inout::AliasingSlices3, LimbSliceError};
 use crate::cpu;
 use cfg_if::cfg_if;
 
@@ -121,21 +123,12 @@ pub(super) fn limbs_mul_mont(
     n0: &N0,
     cpu: cpu::Features,
 ) -> Result<(), LimbSliceError> {
+    #[allow(dead_code)]
     const MOD_FALLBACK: usize = 1; // No restriction.
     cfg_if! {
         if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
             let _: cpu::Features = cpu;
-            const MIN_4X: usize = 4;
-            const MOD_4X: usize = 4;
-            if n.len() >= MIN_4X && n.len() % MOD_4X == 0 {
-                bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
-                    (MIN_4X, MOD_4X, ()) => bn_mul4x_mont
-                })
-            } else {
-                bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
-                    (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
-                })
-            }
+            super::limbs::aarch64::mul_mont(in_out, n, n0)
         } else if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
             const MIN_8X: usize = 8;
             const MOD_8X: usize = 8;
@@ -324,7 +317,7 @@ pub(super) fn limbs_square_mont(
         use super::limbs::aarch64;
         use crate::polyfill::slice;
         if let ((r, []), (n, [])) = (slice::as_chunks_mut(r), slice::as_chunks(n)) {
-            return aarch64::mont::sqr_mont5(r, n, n0);
+            return aarch64::sqr_mont5(r, n, n0);
         }
     }
 
