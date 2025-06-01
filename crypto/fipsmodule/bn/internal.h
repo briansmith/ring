@@ -60,16 +60,6 @@ typedef crypto_word_t BN_ULONG;
 
 
 
-// BN_MONTGOMERY_MAX_WORDS is the maximum number of words allowed in a |BIGNUM|
-// used with Montgomery reduction. Ideally this limit would be applied to all
-// |BIGNUM|s, in |bn_wexpand|, but the exactfloat library needs to create 8 MiB
-// values for other operations.
-//
-// TODO(crbug.com/402677800): This is not quite tight enough to limit the
-// |bn_mul_mont| allocation to under a page. Lower the maximum RSA key and then
-// lower this to match.
-#define BN_MONTGOMERY_MAX_WORDS (16384 / BN_BITS2)
-
 // bn_mul_mont writes |ap| * |bp| mod |np| to |rp|, each |num| words
 // long. Inputs and outputs are in Montgomery form. |n0| is a pointer to
 // an |N0|.
