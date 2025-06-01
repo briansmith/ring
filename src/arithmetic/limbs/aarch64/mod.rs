@@ -14,4 +14,6 @@
 
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
-pub(in super::super) mod mont;
+pub(in super::super) use self::mont::{mul_mont, sqr_mont5};
+
+mod mont;
