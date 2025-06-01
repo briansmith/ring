@@ -17,10 +17,15 @@
 use super::super::super::{inout::AliasingSlices3, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
 use crate::{
     c,
-    limb::Limb,
+    limb::{Limb, LIMB_BYTES},
     polyfill::slice::{AsChunks, AsChunksMut},
 };
 use core::num::NonZeroUsize;
+
+// On Windows, at least, if a function stack allocates 4KB then it
+// must call `__chkstk` or do equivalent work. We check 3KB instead so
+// that we don't have to precisely audit the code.
+const _TWICE_MAX_LIMBS_LE_3KB: () = assert!((2 * MAX_LIMBS) * LIMB_BYTES <= 3 * 1024);
 
 #[inline]
 pub(in super::super::super) fn mul_mont(
@@ -31,11 +36,14 @@ pub(in super::super::super) fn mul_mont(
     const MIN_4X: usize = 4;
     const MOD_4X: usize = 4;
     const MOD_FALLBACK: usize = 1;
+
     if n.len() >= MIN_4X && n.len() % MOD_4X == 0 {
+        const _CHKSTK_NOT_NEEDED: () = _TWICE_MAX_LIMBS_LE_3KB;
         bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
             (MIN_4X, MOD_4X, ()) => bn_mul4x_mont
         })
     } else {
+        const _CHKSTK_NOT_NEEDED: () = _TWICE_MAX_LIMBS_LE_3KB;
         bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
             (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
         })
@@ -66,6 +74,11 @@ pub(in super::super::super) fn sqr_mont5(
     let num_limbs = NonZeroUsize::new(n.len()).ok_or_else(|| LimbSliceError::too_short(n.len()))?;
 
     // Avoid stack overflow from the alloca inside.
+    //
+    // On Windows, at least, if a function stack allocates 4KB then it
+    // must call `__chkstk` or do equivalent work. We check 3KB instead so
+    // that we don't have to precisely audit the code.
+    const _CHKSTK_NOT_NEEDED: () = _TWICE_MAX_LIMBS_LE_3KB;
     if num_limbs.get() > MAX_LIMBS {
         return Err(LimbSliceError::too_long(num_limbs.get()));
     }
