@@ -27,6 +27,8 @@ use std::{
     process::{Command, Stdio},
 };
 
+mod build_settings;
+
 mod env {
     use std::ffi::OsString;
 
@@ -79,7 +81,6 @@ mod env {
     define_env! { pub CARGO_PKG_VERSION_MINOR: SetByCargo }
     define_env! { pub CARGO_PKG_VERSION_PATCH: SetByCargo }
     define_env! { pub CARGO_PKG_VERSION_PRE: SetByCargo }
-    define_env! { pub DEBUG: SetByCargo }
     define_env! { pub OUT_DIR: SetByCargo }
     define_env! { pub PERL_EXECUTABLE: RerunIfChanged }
     define_env! { pub RING_PREGENERATE_ASM: RerunIfChanged }
@@ -347,24 +348,7 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     let endian = env::var(&env::CARGO_CFG_TARGET_ENDIAN).unwrap();
     let is_little_endian = endian == "little";
 
-    let is_git = fs::metadata(c_root_dir.join(".git")).is_ok();
-
-    // Published builds are always built in release mode.
-    let is_debug = is_git && env::var(&env::DEBUG).unwrap() != "false";
-
-    // During local development, force warnings in non-Rust code to be treated
-    // as errors. Since warnings are highly compiler-dependent and compilers
-    // don't maintain backward compatibility w.r.t. which warnings they issue,
-    // don't do this for packaged builds.
-    let force_warnings_into_errors = is_git;
-
-    let target = Target {
-        arch,
-        os,
-        env,
-        is_debug,
-        force_warnings_into_errors,
-    };
+    let target = Target { arch, os, env };
 
     let asm_target = if is_little_endian {
         ASM_TARGETS.iter().find(|asm_target| {
@@ -382,7 +366,7 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     // If `.git` doesn't exist then assume that this is a packaged build where
     // we want to optimize for minimizing the build tools required: No Perl,
     // no nasm, etc.
-    let generated_dir = if !is_git {
+    let generated_dir = if !build_settings::NO_PREGENERATED {
         c_root_dir.join(PREGENERATED)
     } else {
         generate_sources_and_preassemble(
@@ -446,14 +430,6 @@ struct Target {
     arch: String,
     os: String,
     env: String,
-
-    /// Is this a debug build? This affects whether assertions might be enabled
-    /// in the C code. For packaged builds, this should always be `false`.
-    is_debug: bool,
-
-    /// true: Force warnings to be treated as errors.
-    /// false: Use the default behavior (perhaps determined by `$CFLAGS`, etc.)
-    force_warnings_into_errors: bool,
 }
 
 fn build_c_code(
@@ -617,9 +593,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
         let _ = c.flag("-g3");
     };
 
-    if !target.is_debug {
-        let _ = c.define("NDEBUG", None);
-    }
+    let _ = c.define("NDEBUG", None);
 
     if target.arch == X86 {
         let is_msvc_not_clang_cl = compiler.is_like_msvc() && !compiler.is_like_clang_cl();
@@ -639,7 +613,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
         }
     }
 
-    if target.force_warnings_into_errors {
+    if build_settings::FORCE_WARNINGS_INTO_ERRORS {
         c.warnings_into_errors(true);
     }
 }

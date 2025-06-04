@@ -35,7 +35,9 @@ include = [
     "pregenerated/*",
 
     "benches/*.rs",
+
     "build.rs",
+    "build_settings.rs",
 
     "crypto/chacha/asm/chacha-armv4.pl",
     "crypto/chacha/asm/chacha-armv8.pl",
