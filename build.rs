@@ -351,11 +351,10 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     // Published builds are always built in release mode.
     let is_debug = cfg!(ring_build_less_safe_debug);
 
-    // During local development, force warnings in non-Rust code to be treated
-    // as errors. Since warnings are highly compiler-dependent and compilers
-    // don't maintain backward compatibility w.r.t. which warnings they issue,
-    // don't do this for packaged builds.
-    let force_warnings_into_errors = is_git;
+    // Since warnings are highly compiler-dependent and compilers don't
+    // maintain backward compatibility w.r.t. which warnings they issue,
+    // don't do this by default.
+    let force_warnings_into_errors = cfg!(ring_build_warnings_into_errors);
 
     let target = Target {
         arch,

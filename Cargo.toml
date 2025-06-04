@@ -193,7 +193,7 @@ test_logging = []
 wasm32_unknown_unknown_js = ["getrandom/js"]
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(ring_build_less_safe_debug, values(none()))'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(ring_build_less_safe_debug, values(none()))', 'cfg(ring_build_warnings_into_errors, values(none()))'] }
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 
