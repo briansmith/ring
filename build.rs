@@ -79,7 +79,6 @@ mod env {
     define_env! { pub CARGO_PKG_VERSION_MINOR: SetByCargo }
     define_env! { pub CARGO_PKG_VERSION_PATCH: SetByCargo }
     define_env! { pub CARGO_PKG_VERSION_PRE: SetByCargo }
-    define_env! { pub DEBUG: SetByCargo }
     define_env! { pub OUT_DIR: SetByCargo }
     define_env! { pub PERL_EXECUTABLE: RerunIfChanged }
     define_env! { pub RING_PREGENERATE_ASM: RerunIfChanged }
@@ -350,7 +349,7 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     let is_git = fs::metadata(c_root_dir.join(".git")).is_ok();
 
     // Published builds are always built in release mode.
-    let is_debug = is_git && env::var(&env::DEBUG).unwrap() != "false";
+    let is_debug = cfg!(ring_build_less_safe_debug);
 
     // During local development, force warnings in non-Rust code to be treated
     // as errors. Since warnings are highly compiler-dependent and compilers
