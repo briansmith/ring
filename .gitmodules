@@ -1,0 +1,3 @@
+[submodule "ring-pregenerated"]
+	path = pregenerated
+	url = https://github.com/briansmith/ring-pregenerated.git
