@@ -391,7 +391,7 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
 
 fn pregenerate_asm_main(c_root_dir: &Path, core_name_and_version: &str) {
     let pregenerated = c_root_dir.join(PREGENERATED);
-    fs::create_dir(&pregenerated).unwrap();
+    //fs::create_dir(&pregenerated).unwrap();
     generate_sources_and_preassemble(
         &pregenerated,
         ASM_TARGETS.iter(),
