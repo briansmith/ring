@@ -420,7 +420,7 @@ fn generate_sources_and_preassemble<'a>(
             // to install the assembler.
             let srcs = asm_srcs(perlasm_src_dsts);
             for src in srcs {
-                nasm(&src, asm_target.arch, out_dir, out_dir, c_root_dir);
+                //nasm(&src, asm_target.arch, out_dir, out_dir, c_root_dir);
             }
         }
     }
