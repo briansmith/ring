@@ -24,7 +24,7 @@ mod constant;
 pub mod bigint;
 
 pub(crate) mod inout;
-mod limbs;
+pub mod limbs;
 mod limbs512;
 pub mod montgomery;
 
