@@ -346,8 +346,6 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     let endian = env::var(&env::CARGO_CFG_TARGET_ENDIAN).unwrap();
     let is_little_endian = endian == "little";
 
-    let is_git = fs::metadata(c_root_dir.join(".git")).is_ok();
-
     // Published builds are always built in release mode.
     let is_debug = cfg!(ring_build_less_safe_debug);
 
@@ -372,15 +370,7 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
         None
     };
 
-    // If `.git` exists then assume this is the "local hacking" case where
-    // we want to make it easy to build *ring* using `cargo build`/`cargo test`
-    // without a prerequisite `package` step, at the cost of needing additional
-    // tools like `Perl` and/or `nasm`.
-    //
-    // If `.git` doesn't exist then assume that this is a packaged build where
-    // we want to optimize for minimizing the build tools required: No Perl,
-    // no nasm, etc.
-    let generated_dir = if !is_git {
+    let generated_dir = if !cfg!(ring_build_no_pregenerated) {
         c_root_dir.join(PREGENERATED)
     } else {
         generate_sources_and_preassemble(

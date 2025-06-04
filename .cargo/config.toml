@@ -1,4 +1,4 @@
 # Work around https://github.com/rust-lang/cargo/issues/5376
 [target.'cfg(all())']
 # Do NOT use `ring_build_less_safe_debug` in a production build.
-rustflags = "--cfg ring_build_less_safe_debug --cfg ring_build_warnings_into_errors"
+rustflags = "--cfg ring_build_less_safe_debug --cfg ring_build_warnings_into_errors --cfg ring_build_no_pregenerated"
