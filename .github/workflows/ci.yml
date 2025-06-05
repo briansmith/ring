@@ -146,6 +146,8 @@ jobs:
       - run: echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
         shell: bash
 
+      - run: git submodule update
+
       - run: sh mk/package.sh
         shell: bash
 
