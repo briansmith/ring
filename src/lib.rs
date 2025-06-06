@@ -153,6 +153,8 @@ pub mod signature;
 #[cfg(test)]
 mod tests;
 
+mod window5;
+
 mod sealed {
     /// Traits that are designed to only be implemented internally in *ring*.
     //

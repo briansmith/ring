@@ -23,8 +23,9 @@ use crate::{
     c,
     cpu::intel::{Adx, Bmi1, Bmi2},
     error::LenMismatchError,
-    limb::{LeakyWindow, Limb, Window},
+    limb::Limb,
     polyfill::slice::{AsChunks, AsChunksMut},
+    window5::{LeakyWindow5, Window5},
 };
 use core::num::NonZeroUsize;
 
@@ -115,7 +116,7 @@ pub(in super::super::super) fn sqr_mont5(
 pub(in super::super::super) fn scatter5(
     a: AsChunks<Limb, 8>,
     mut table: AsChunksMut<Limb, 8>,
-    power: LeakyWindow,
+    power: LeakyWindow5,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
         // Upstream uses `num: c::size_t` too, and `power: c::size_t`; see
@@ -124,23 +125,21 @@ pub(in super::super::super) fn scatter5(
             inp: *const Limb,
             num: c::NonZero_size_t,
             table: *mut Limb,
-            power: LeakyWindow,
+            power: LeakyWindow5,
         );
     }
     let num_limbs = check_common(a, table.as_ref())?;
     let a = a.as_flattened();
     let table = table.as_flattened_mut();
-    assert!(power < 32);
     unsafe { bn_scatter5(a.as_ptr(), num_limbs, table.as_mut_ptr(), power) };
     Ok(())
 }
 
-// SAFETY: `power` must be less than 32.
 #[inline(always)]
-pub(in super::super::super) unsafe fn gather5(
+pub(in super::super::super) fn gather5(
     mut r: AsChunksMut<Limb, 8>,
     table: AsChunks<Limb, 8>,
-    power: Window,
+    power: Window5,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
         // Upstream uses `num: c::size_t` too, and `power: c::size_t`; see
@@ -149,26 +148,23 @@ pub(in super::super::super) unsafe fn gather5(
             out: *mut Limb,
             num: c::NonZero_size_t,
             table: *const Limb,
-            power: Window);
+            power: Window5);
     }
     let num_limbs = check_common(r.as_ref(), table)?;
     let r = r.as_flattened_mut();
     let table = table.as_flattened();
-    // SAFETY: We cannot assert that `power` is in range because it is secret.
-    // TODO: Create a `Window5` type that is guaranteed to be in range.
     unsafe { bn_gather5(r.as_mut_ptr(), num_limbs, table.as_ptr(), power) };
     Ok(())
 }
 
-// SAFETY: `power` must be less than 32.
 #[inline(always)]
-pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
+pub(in super::super::super) fn mul_mont_gather5_amm(
     mut r: AsChunksMut<Limb, 8>,
     a: AsChunks<Limb, 8>,
     table: AsChunks<Limb, 8>,
     n: AsChunks<Limb, 8>,
     n0: &N0,
-    power: Window,
+    power: Window5,
     maybe_adx_bmi1_bmi2: Option<(Adx, Bmi1, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
@@ -181,7 +177,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
             np: *const Limb,
             n0: &N0,
             num: c::NonZero_size_t,
-            power: Window,
+            power: Window5,
         );
         // Upstream has `num: c_int` and `power: c_int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
@@ -192,7 +188,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
             np: *const Limb,
             n0: &N0,
             num: c::NonZero_size_t,
-            power: Window,
+            power: Window5,
         );
     }
     let num_limbs = check_common_with_n(r.as_ref(), table, n)?;
@@ -207,8 +203,6 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
     let table = table.as_ptr();
     let n = n.as_flattened();
     let n = n.as_ptr();
-    // SAFETY: We cannot assert that `power` is in range because it is secret.
-    // TODO: Create a `Window5` type that is guaranteed to be in range.
     if maybe_adx_bmi1_bmi2.is_some() {
         unsafe { bn_mulx4x_mont_gather5(r, a, table, n, n0, num_limbs, power) }
     } else {
@@ -219,12 +213,12 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
 
 // SAFETY: `power` must be less than 32.
 #[inline(always)]
-pub(in super::super::super) unsafe fn power5_amm(
+pub(in super::super::super) fn power5_amm(
     mut in_out: AsChunksMut<Limb, 8>,
     table: AsChunks<Limb, 8>,
     n: AsChunks<Limb, 8>,
     n0: &N0,
-    power: Window,
+    power: Window5,
     maybe_adx_bmi1_bmi2: Option<(Adx, Bmi1, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
@@ -237,7 +231,7 @@ pub(in super::super::super) unsafe fn power5_amm(
             np: *const Limb,
             n0: &N0,
             num: c::NonZero_size_t,
-            power: Window,
+            power: Window5,
         );
         // Upstream has `num: c_int` and `power: c_int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
@@ -248,7 +242,7 @@ pub(in super::super::super) unsafe fn power5_amm(
             np: *const Limb,
             n0: &N0,
             num: c::NonZero_size_t,
-            power: Window,
+            power: Window5,
         );
     }
     let num_limbs = check_common_with_n(in_out.as_ref(), table, n)?;
@@ -259,8 +253,6 @@ pub(in super::super::super) unsafe fn power5_amm(
     let table = table.as_ptr();
     let n = n.as_flattened();
     let n = n.as_ptr();
-    // SAFETY: We cannot assert that `power` is in range because it is secret.
-    // TODO: Create a `Window5` type that is guaranteed to be in range.
     if maybe_adx_bmi1_bmi2.is_some() {
         unsafe { bn_powerx5(r, a, table, n, n0, num_limbs, power) }
     } else {
