@@ -23,6 +23,7 @@ use crate::{
     bb, c,
     error::{self, LenMismatchError},
     polyfill::{sliceutil, usize_from_u32, ArrayFlatMap},
+    window5::Window5,
 };
 use core::{iter, num::NonZeroUsize};
 
@@ -239,12 +240,6 @@ pub fn unstripped_be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> 
     ArrayFlatMap::new(limbs.iter().rev().copied(), Limb::to_be_bytes).unwrap()
 }
 
-// Used in FFI
-pub type Window = bb::Word;
-
-// Used in FFI
-pub type LeakyWindow = bb::LeakyWord;
-
 /// Processes `limbs` as a sequence of 5-bit windows, folding the windows from
 /// most significant to least significant and returning the accumulated result.
 /// The first window will be mapped by `init` to produce the initial value for
@@ -258,7 +253,7 @@ pub type LeakyWindow = bb::LeakyWord;
 ///
 /// Panics if `limbs` is empty.
 #[cfg(feature = "alloc")]
-pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
+pub fn fold_5_bit_windows<R, I: FnOnce(Window5) -> R, F: Fn(R, Window5) -> R>(
     limbs: &[Limb],
     init: I,
     fold: F,
@@ -274,8 +269,8 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
             lower_limb: Limb,
             higher_limb: Limb,
             index_within_word: BitIndex,
-        ) -> Window;
-        fn LIMBS_window5_unsplit_window(limb: Limb, index_within_word: BitIndex) -> Window;
+        ) -> Window5;
+        fn LIMBS_window5_unsplit_window(limb: Limb, index_within_word: BitIndex) -> Window5;
     }
 
     let num_limbs = limbs.len();
@@ -295,7 +290,7 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
         init(leading_partial_window)
     };
 
-    let mut low_limb = Limb::from(0 as LeakyWindow);
+    let mut low_limb = 0;
     limbs.iter().fold(initial_value, |mut acc, current_limb| {
         let higher_limb = low_limb;
         low_limb = *current_limb;
