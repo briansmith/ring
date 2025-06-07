@@ -15,7 +15,10 @@
 pub use super::n0::N0;
 #[allow(unused_imports)]
 use super::MIN_LIMBS;
-use super::{inout::AliasingSlices3, LimbSliceError};
+use super::{
+    inout::{AliasSrc, AliasingSlices2, AliasingSlices3},
+    LimbSliceError,
+};
 use crate::cpu;
 use cfg_if::cfg_if;
 
@@ -307,7 +310,7 @@ prefixed_extern! {
 
 /// r = r**2
 pub(super) fn limbs_square_mont(
-    r: &mut [Limb],
+    in_out: impl AliasingSlices2<Limb> + AliasSrc<Limb>,
     n: &[Limb],
     n0: &N0,
     cpu: cpu::Features,
@@ -316,8 +319,8 @@ pub(super) fn limbs_square_mont(
     {
         use super::limbs::aarch64;
         use crate::polyfill::slice;
-        if let ((r, []), (n, [])) = (slice::as_chunks_mut(r), slice::as_chunks(n)) {
-            return aarch64::sqr_mont5(r, n, n0);
+        if let (n, []) = slice::as_chunks(n) {
+            return aarch64::sqr_mont5(in_out, n, n0);
         }
     }
 
@@ -325,12 +328,12 @@ pub(super) fn limbs_square_mont(
     {
         use super::limbs::x86_64;
         use crate::{cpu::GetFeature as _, polyfill::slice};
-        if let ((r, []), (n, [])) = (slice::as_chunks_mut(r), slice::as_chunks(n)) {
-            return x86_64::mont::sqr_mont5(r, n, n0, cpu.get_feature());
+        if let (n, []) = slice::as_chunks(n) {
+            return x86_64::mont::sqr_mont5(in_out, n, n0, cpu.get_feature());
         }
     }
 
-    limbs_mul_mont(r, n, n0, cpu)
+    limbs_mul_mont(in_out.raa(), n, n0, cpu)
 }
 
 #[cfg(test)]

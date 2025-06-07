@@ -261,7 +261,7 @@ fn elem_squared<M, E>(
 where
     (E, E): ProductEncoding,
 {
-    limbs_square_mont(&mut a.limbs, m.limbs(), m.n0(), m.cpu_features())
+    limbs_square_mont(&mut a.limbs[..], m.limbs(), m.n0(), m.cpu_features())
         .unwrap_or_else(unwrap_impossible_limb_slice_error);
     Elem {
         limbs: a.limbs,
@@ -583,16 +583,20 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         m.cpu_features(),
     )?;
     for i in 2..TABLE_ENTRIES {
-        let (src1, src2) = if i % 2 == 0 {
-            (i / 2, i / 2)
+        let (square, src1, src2) = if i % 2 == 0 {
+            (true, i / 2, i / 2)
         } else {
-            (i - 1, 1)
+            (false, i - 1, 1)
         };
         let (previous, rest) = table.split_at_mut(num_limbs * i);
-        let src1 = entry(previous, src1, num_limbs);
-        let src2 = entry(previous, src2, num_limbs);
         let dst = entry_mut(rest, 0, num_limbs);
-        limbs_mul_mont((dst, src1, src2), m.limbs(), m.n0(), m.cpu_features())?;
+        let src1 = entry(previous, src1, num_limbs);
+        if square {
+            limbs_square_mont((dst, src1), m.limbs(), m.n0(), m.cpu_features())?;
+        } else {
+            let src2 = entry(previous, src2, num_limbs);
+            limbs_mul_mont((dst, src1, src2), m.limbs(), m.n0(), m.cpu_features())?;
+        }
     }
 
     let mut acc = Elem {
@@ -739,7 +743,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             if i >= TABLE_ENTRIES as LeakyWindow {
                 break;
             }
-            sqr_mont5(acc.as_mut(), m_cached, n0, cpu)?;
+            sqr_mont5(acc.as_flattened_mut(), m_cached, n0, cpu)?;
         }
         Ok(())
     }

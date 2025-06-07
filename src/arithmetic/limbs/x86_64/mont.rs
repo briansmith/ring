@@ -71,7 +71,7 @@ pub(in super::super::super) fn mul_mont5_4x(
 
 #[inline]
 pub(in super::super::super) fn sqr_mont5(
-    mut in_out: AsChunksMut<Limb, 8>,
+    in_out: impl AliasingSlices2<Limb>,
     n: AsChunks<Limb, 8>,
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
@@ -89,7 +89,6 @@ pub(in super::super::super) fn sqr_mont5(
             num: c::NonZero_size_t);
     }
 
-    let in_out = in_out.as_flattened_mut();
     let n = n.as_flattened();
     let num_limbs = NonZeroUsize::new(n.len()).ok_or_else(|| LimbSliceError::too_short(n.len()))?;
 

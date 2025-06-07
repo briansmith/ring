@@ -164,6 +164,60 @@ impl<T> AliasingSlices3<T> for (&mut [T], &[T], &[T]) {
     }
 }
 
+pub(crate) trait AliasSrc<T> {
+    type RAA: AliasingSlices3<T>;
+    fn raa(self) -> Self::RAA;
+}
+
+impl<'a, T> AliasSrc<T> for &'a mut [T]
+where
+    &'a mut [T]: AliasingSlices3<T>,
+{
+    type RAA = Self;
+    fn raa(self) -> Self::RAA {
+        self
+    }
+}
+
+impl<'a, T> AliasSrc<T> for (&'a mut [T], &'a [T])
+where
+    (&'a mut [T], &'a [T], &'a [T]): AliasingSlices3<T>,
+{
+    type RAA = (&'a mut [T], &'a [T], &'a [T]);
+    fn raa(self) -> Self::RAA {
+        let (r, a) = self;
+        (r, a, a)
+    }
+}
+
+// Currently unused:
+//
+// pub(crate) trait AliasDst<T> {
+//     type RRA: AliasingSlices3<T>;
+//     fn rra(self) -> Self::RRA;
+// }
+//
+// impl<'a, T> AliasDst<T> for &'a mut T
+// where
+//     &'a mut T: AliasingSlices3<T>,
+// {
+//     type RRA = Self;
+//     fn rra(self) -> Self::RRA {
+//         self
+//     }
+// }
+//
+// impl<'a, T> AliasDst<T> for (&'a mut T, &'a T)
+// where
+//     (InOut<&'a mut T>, &'a T): AliasingSlices3<T>,
+// {
+//     type RRA = (InOut<&'a mut T>, &'a T);
+//     fn rra(self) -> Self::RRA {
+//         let (r, a) = self;
+//         (InOut(r), a)
+//     }
+// }
+
 pub struct InOut<T>(pub T);
 
 impl<'a, T> AliasingSlices3<T> for (InOut<&'a mut [T]>, &[T])
