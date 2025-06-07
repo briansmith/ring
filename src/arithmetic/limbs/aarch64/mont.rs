@@ -14,11 +14,15 @@
 
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
-use super::super::super::{inout::AliasingSlices3, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
+use super::super::super::{
+    inout::{AliasingSlices2, AliasingSlices3},
+    n0::N0,
+    LimbSliceError, MAX_LIMBS, MIN_LIMBS,
+};
 use crate::{
     c,
     limb::{Limb, LIMB_BYTES},
-    polyfill::slice::{AsChunks, AsChunksMut},
+    polyfill::slice::AsChunks,
 };
 use core::num::NonZeroUsize;
 
@@ -52,7 +56,7 @@ pub(in super::super::super) fn mul_mont(
 
 #[inline]
 pub(in super::super::super) fn sqr_mont5(
-    mut in_out: AsChunksMut<Limb, 8>,
+    in_out: impl AliasingSlices2<Limb>,
     n: AsChunks<Limb, 8>,
     n0: &N0,
 ) -> Result<(), LimbSliceError> {
@@ -69,7 +73,6 @@ pub(in super::super::super) fn sqr_mont5(
             num: c::NonZero_size_t);
     }
 
-    let in_out = in_out.as_flattened_mut();
     let n = n.as_flattened();
     let num_limbs = NonZeroUsize::new(n.len()).ok_or_else(|| LimbSliceError::too_short(n.len()))?;
 
@@ -84,9 +87,9 @@ pub(in super::super::super) fn sqr_mont5(
     }
 
     in_out
-        .with_non_dangling_non_null_pointers_rab(num_limbs, |r, a, a_again| {
+        .with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
             let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
-            unsafe { bn_sqr8x_mont(r, a, a_again, n, n0, num_limbs) };
+            unsafe { bn_sqr8x_mont(r, a, a, n, n0, num_limbs) };
         })
         .map_err(LimbSliceError::len_mismatch)
 }
