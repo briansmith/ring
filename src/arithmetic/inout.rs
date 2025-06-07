@@ -155,20 +155,27 @@ impl<T> AliasingSlices3<T> for (&mut [T], &[T], &[T]) {
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
         let (r, a, b) = self;
-        ((r, a), b).with_potentially_dangling_non_null_pointers_rab(expected_len, f)
+        if b.len() != expected_len {
+            return Err(LenMismatchError::new(b.len()));
+        }
+        (r, a).with_potentially_dangling_non_null_pointers_ra(expected_len, |r, a| {
+            f(r, a, b.as_ptr())
+        })
     }
 }
 
-impl<RA, T> AliasingSlices3<T> for (RA, &[T])
+pub struct InOut<T>(pub T);
+
+impl<'a, T> AliasingSlices3<T> for (InOut<&'a mut [T]>, &[T])
 where
-    RA: AliasingSlices2<T>,
+    &'a mut [T]: AliasingSlices2<T>,
 {
     fn with_potentially_dangling_non_null_pointers_rab<R>(
         self,
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
-        let (ra, b) = self;
+        let (InOut(ra), b) = self;
         if b.len() != expected_len {
             return Err(LenMismatchError::new(b.len()));
         }

@@ -42,7 +42,12 @@ pub(crate) use self::{
     modulusvalue::OwnedModulusValue,
     private_exponent::PrivateExponent,
 };
-use super::{inout::AliasingSlices3, limbs512, montgomery::*, LimbSliceError, MAX_LIMBS};
+use super::{
+    inout::{AliasingSlices3, InOut},
+    limbs512,
+    montgomery::*,
+    LimbSliceError, MAX_LIMBS,
+};
 use crate::{
     bits::BitLength,
     c,
@@ -115,7 +120,7 @@ fn from_montgomery_amm<M>(mut in_out: Storage<M>, m: &Modulus<M>) -> Elem<M, Une
     one[0] = 1;
     let one = &one[..m.limbs().len()];
     limbs_mul_mont(
-        (&mut in_out.limbs[..], one),
+        (InOut(&mut in_out.limbs[..]), one),
         m.limbs(),
         m.n0(),
         m.cpu_features(),
@@ -184,7 +189,7 @@ where
     (AF, BF): ProductEncoding,
 {
     limbs_mul_mont(
-        (&mut b.limbs[..], &a.limbs[..]),
+        (InOut(&mut b.limbs[..]), &a.limbs[..]),
         m.limbs(),
         m.n0(),
         m.cpu_features(),
@@ -302,7 +307,7 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem
         );
     }
     let num_limbs = NonZeroUsize::new(m.limbs().len()).unwrap();
-    (a.limbs.as_mut(), b.limbs.as_ref())
+    (InOut(a.limbs.as_mut()), b.limbs.as_ref())
         .with_non_dangling_non_null_pointers_rab(num_limbs, |r, a, b| {
             let m = m.limbs().as_ptr(); // Also non-dangling because num_limbs is non-zero.
             unsafe { LIMBS_sub_mod(r, a, b, m, num_limbs) }

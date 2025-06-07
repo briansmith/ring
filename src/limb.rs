@@ -19,7 +19,7 @@
 //! limbs use the native endianness.
 
 use crate::{
-    arithmetic::inout::{AliasingSlices2, AliasingSlices3},
+    arithmetic::inout::{AliasingSlices2, AliasingSlices3, InOut},
     bb, c,
     error::{self, LenMismatchError},
     polyfill::{sliceutil, usize_from_u32, ArrayFlatMap},
@@ -336,7 +336,7 @@ pub(crate) fn limbs_add_assign_mod(
         );
     }
     let num_limbs = NonZeroUsize::new(m.len()).ok_or_else(|| LenMismatchError::new(m.len()))?;
-    (a, b).with_non_dangling_non_null_pointers_rab(num_limbs, |r, a, b| {
+    (InOut(a), b).with_non_dangling_non_null_pointers_rab(num_limbs, |r, a, b| {
         let m = m.as_ptr(); // Also non-dangling because `num_limbs` is non-zero.
         unsafe { LIMBS_add_mod(r, a, b, m, num_limbs) }
     })
