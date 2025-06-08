@@ -12,6 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-mod storage;
+#[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
+mod scatter;
 
+pub(super) mod storage;
+
+#[cfg(target_arch = "x86_64")]
+pub(super) use self::scatter::scatter5;
 pub(super) use self::storage::{AlignedStorage, LIMBS_PER_CHUNK};

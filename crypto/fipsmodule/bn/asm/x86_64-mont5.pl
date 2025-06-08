@@ -3032,36 +3032,6 @@ my $STRIDE=2**5*8;
 my $N=$STRIDE/4;
 
 $code.=<<___;
-.globl	bn_scatter5
-.type	bn_scatter5,\@abi-omnipotent
-.align	16
-bn_scatter5:
-.cfi_startproc
-	_CET_ENDBR
-	cmp	\$0, $num
-	jz	.Lscatter_epilogue
-
-	# $tbl stores 32 entries, t0 through t31. Each entry has $num words.
-	# They are interleaved in memory as follows:
-	#
-	#  t0[0]      t1[0]      t2[0]      ... t31[0]
-	#  t0[1]      t1[1]      t2[1]      ... t31[1]
-	#  ...
-	#  t0[$num-1] t1[$num-1] t2[$num-1] ... t31[$num-1]
-
-	lea	($tbl,$idx,8),$tbl
-.Lscatter:
-	mov	($inp),%rax
-	lea	8($inp),$inp
-	mov	%rax,($tbl)
-	lea	32*8($tbl),$tbl
-	sub	\$1,$num
-	jnz	.Lscatter
-.Lscatter_epilogue:
-	ret
-.cfi_endproc
-.size	bn_scatter5,.-bn_scatter5
-
 .globl	bn_gather5
 .type	bn_gather5,\@abi-omnipotent
 .align	32
