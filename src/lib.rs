@@ -98,6 +98,9 @@ extern crate alloc;
 mod debug;
 
 #[macro_use]
+mod match_target_word_bits;
+
+#[macro_use]
 mod prefixed;
 
 #[doc(hidden)]
