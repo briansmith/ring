@@ -16,6 +16,7 @@
 
 use super::super::super::{
     inout::{AliasingSlices2, AliasingSlices3},
+    limbs512::storage::{check_common, check_common_with_n},
     n0::N0,
     LimbSliceError, MAX_LIMBS,
 };
@@ -25,7 +26,7 @@ use crate::{
     error::LenMismatchError,
     limb::Limb,
     polyfill::slice::{AsChunks, AsChunksMut},
-    window5::{LeakyWindow5, Window5},
+    window5::Window5,
 };
 use core::num::NonZeroUsize;
 
@@ -110,29 +111,6 @@ pub(in super::super::super) fn sqr_mont5(
             unsafe { bn_sqr8x_mont(r, a, mulx_adx_capable, n, n0, num_limbs) };
         })
         .map_err(LimbSliceError::len_mismatch)
-}
-
-#[inline(always)]
-pub(in super::super::super) fn scatter5(
-    a: AsChunks<Limb, 8>,
-    mut table: AsChunksMut<Limb, 8>,
-    power: LeakyWindow5,
-) -> Result<(), LimbSliceError> {
-    prefixed_extern! {
-        // Upstream uses `num: c::size_t` too, and `power: c::size_t`; see
-        // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        fn bn_scatter5(
-            inp: *const Limb,
-            num: c::NonZero_size_t,
-            table: *mut Limb,
-            power: LeakyWindow5,
-        );
-    }
-    let num_limbs = check_common(a, table.as_ref())?;
-    let a = a.as_flattened();
-    let table = table.as_flattened_mut();
-    unsafe { bn_scatter5(a.as_ptr(), num_limbs, table.as_mut_ptr(), power) };
-    Ok(())
 }
 
 #[inline(always)]
@@ -259,45 +237,4 @@ pub(in super::super::super) fn power5_amm(
         unsafe { bn_power5_nohw(r, a, table, n, n0, num_limbs, power) }
     };
     Ok(())
-}
-
-// Helps the compiler will be able to hoist all of these checks out of the
-// loops in the caller. Try to help the compiler by doing the checks
-// consistently in each function and also by inlining this function and all the
-// callers.
-#[inline(always)]
-fn check_common(
-    a: AsChunks<Limb, 8>,
-    table: AsChunks<Limb, 8>,
-) -> Result<NonZeroUsize, LimbSliceError> {
-    assert_eq!((table.as_ptr() as usize) % 16, 0); // According to BoringSSL.
-    let a = a.as_flattened();
-    let table = table.as_flattened();
-    let num_limbs = NonZeroUsize::new(a.len()).ok_or_else(|| LimbSliceError::too_short(a.len()))?;
-    if num_limbs.get() > MAX_LIMBS {
-        return Err(LimbSliceError::too_long(a.len()));
-    }
-    if num_limbs.get() * 32 != table.len() {
-        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
-            table.len(),
-        )));
-    };
-    Ok(num_limbs)
-}
-
-#[inline(always)]
-fn check_common_with_n(
-    a: AsChunks<Limb, 8>,
-    table: AsChunks<Limb, 8>,
-    n: AsChunks<Limb, 8>,
-) -> Result<NonZeroUsize, LimbSliceError> {
-    // Choose `a` instead of `n` so that every function starts with
-    // `check_common` passing the exact same arguments, so that the compiler
-    // can easily de-dupe the checks.
-    let num_limbs = check_common(a, table)?;
-    let n = n.as_flattened();
-    if n.len() != num_limbs.get() {
-        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(n.len())));
-    }
-    Ok(num_limbs)
 }

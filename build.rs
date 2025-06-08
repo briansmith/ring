@@ -932,7 +932,6 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "bn_neg_inv_mod_r_u64",
         "bn_power5_nohw",
         "bn_powerx5",
-        "bn_scatter5",
         "bn_sqr8x_internal",
         "bn_sqr8x_mont",
         "bn_sqrx8x_internal",
