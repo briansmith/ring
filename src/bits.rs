@@ -112,11 +112,14 @@ impl BitLength<u64> {
     }
 }
 
-#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
-impl From<BitLength<usize>> for BitLength<u64> {
-    fn from(BitLength(value): BitLength<usize>) -> Self {
-        BitLength(polyfill::u64_from_usize(value))
-    }
+match_target_word_bits! {
+    64|32 => {
+        impl From<BitLength<usize>> for BitLength<u64> {
+            fn from(BitLength(value): BitLength<usize>) -> Self {
+                BitLength(polyfill::u64_from_usize(value))
+            }
+        }
+    },
 }
 
 impl TryFrom<BitLength<u64>> for BitLength<core::num::NonZeroU64> {
