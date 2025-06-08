@@ -35,12 +35,7 @@ impl<T, const N: usize> AsChunksMut<'_, T, N> {
         self.0
     }
 
-    #[cfg(target_arch = "aarch64")]
-    pub fn as_ptr(&self) -> *const [T; N] {
-        self.0.as_ptr().cast()
-    }
-
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     pub fn as_ptr(&self) -> *const [T; N] {
         self.0.as_ptr().cast()
     }
