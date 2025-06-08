@@ -58,6 +58,7 @@ use crate::{
 };
 use core::{
     marker::PhantomData,
+    mem::size_of,
     num::{NonZeroU64, NonZeroUsize},
 };
 
@@ -382,12 +383,10 @@ impl<M> One<M, RR> {
         //   = lg(2**b)
         //   = b
         // TODO(MSRV:1.67): const B: u32 = LIMB_BITS.ilog2();
-        const B: u32 = if cfg!(target_pointer_width = "64") {
-            6
-        } else if cfg!(target_pointer_width = "32") {
-            5
-        } else {
-            panic!("unsupported target_pointer_width")
+        const B: u32 = match size_of::<Limb>() {
+            8 => 6,
+            4 => 5,
+            _ => panic!("unsupported limb size"),
         };
         #[allow(clippy::assertions_on_constants)]
         const _LIMB_BITS_IS_2_POW_B: () = assert!(LIMB_BITS == 1 << B);
