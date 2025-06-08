@@ -15,14 +15,16 @@
 //! Polyfills for functionality that will (hopefully) be added to Rust's
 //! standard library soon.
 
-#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
 #[inline(always)]
 pub const fn u64_from_usize(x: usize) -> u64 {
+    #[allow(clippy::cast_possible_truncation)]
+    const _LOSSLESS: () = assert!(usize::MAX == ((usize::MAX) as u64) as usize);
     x as u64
 }
 
-#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
 pub const fn usize_from_u32(x: u32) -> usize {
+    #[allow(clippy::cast_possible_truncation)]
+    const _LOSSLESS: () = assert!(u32::MAX == ((u32::MAX) as usize) as u32);
     x as usize
 }
 
