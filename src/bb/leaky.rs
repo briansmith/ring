@@ -12,11 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[cfg(target_pointer_width = "64")]
-type CompilerWord = u64;
-
-#[cfg(target_pointer_width = "32")]
-type CompilerWord = u32;
+match_target_word_bits! {
+    64 => {
+        type CompilerWord = u64;
+    },
+    32 => {
+        type CompilerWord = u32;
+    },
+}
 
 /// A native word that isn't secret.
 ///

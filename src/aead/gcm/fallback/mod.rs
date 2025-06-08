@@ -24,7 +24,6 @@
 
 use super::{ffi::U128, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::polyfill::{slice::AsChunks, ArraySplitMap as _};
-use cfg_if::cfg_if;
 
 #[derive(Clone)]
 pub struct Key {
@@ -50,14 +49,15 @@ impl UpdateBlocks for Key {
     }
 }
 
-cfg_if! {
-    if #[cfg(target_pointer_width = "64")] {
+match_target_word_bits! {
+    64 => {
         mod w64;
         use w64::gcm_mul64_nohw;
-    } else if #[cfg(target_pointer_width = "32")] {
+    },
+    32 => {
         mod w32;
         use w32::gcm_mul64_nohw;
-    }
+    },
 }
 
 fn init(value: KeyValue) -> U128 {
