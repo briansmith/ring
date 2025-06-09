@@ -34,6 +34,8 @@
 #elif defined(__ARMEL__) || defined(_M_ARM)
 #define OPENSSL_32_BIT
 #define OPENSSL_ARM
+#elif defined(__wasm__)
+#define OPENSSL_64_BIT // Different from BoringSSL.
 // All of following architectures are only supported when `__BYTE_ORDER__` can be used to detect
 // endianness (in crypto/internal.h).
 #elif !defined(__BYTE_ORDER__)
