@@ -303,11 +303,7 @@ impl Batch {
     fn get(&self, i: usize) -> [Word; BLOCK_WORDS] {
         assert!(i < self.w.len());
         array::from_fn(|j| {
-            #[cfg(target_pointer_width = "64")]
-            const STRIDE: usize = 4;
-            #[cfg(target_pointer_width = "32")]
-            const STRIDE: usize = 2;
-
+            const STRIDE: usize = BATCH_SIZE;
             self.w[i + (j * STRIDE)]
         })
     }
