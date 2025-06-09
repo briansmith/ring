@@ -127,7 +127,7 @@ fn compact_word(a: Word) -> Word {
             // Note: 0x0000_f0f0 << 12 = 0x0f0f_0000
             delta_swap::<0x0000f0f0, 12>(a)
         } else {
-            unimplemented!()
+            compile_error("unimplemented!")
         }
     }
 }
@@ -293,7 +293,7 @@ impl Batch {
                 self.w[i + 4] = input[2];
                 self.w[i + 6] = input[3];
             } else {
-                todo!()
+                compile_error("unimplemented!")
             }
         }
     }
