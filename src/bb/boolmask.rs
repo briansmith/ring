@@ -20,7 +20,6 @@ use core::ops;
 pub struct BoolMask(Word);
 
 impl BoolMask {
-    #[cfg(test)]
     pub(crate) const TRUE: Self = Self(Word::MAX);
     pub(crate) const FALSE: Self = Self(0);
 
@@ -36,5 +35,11 @@ impl ops::BitAnd for BoolMask {
 
     fn bitand(self, rhs: Self) -> Self {
         Self(self.0 & rhs.0)
+    }
+}
+
+impl ops::BitAndAssign for BoolMask {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
     }
 }

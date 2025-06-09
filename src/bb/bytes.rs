@@ -27,7 +27,7 @@ pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecif
 }
 
 #[must_use]
-fn bytes_are_equal(a: &[u8], b: &[u8]) -> BoolMask {
+pub fn bytes_are_equal(a: &[u8], b: &[u8]) -> BoolMask {
     let len = a.len(); // Arbitrary choice.
     if b.len() != len {
         return BoolMask::FALSE;
