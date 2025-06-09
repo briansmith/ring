@@ -309,7 +309,7 @@ fn try_verify(
         hmac::Key::try_new(algorithm.0, secret, cpu).map_err(VerifyError::secret_too_long)?;
     let mut idx: u32 = 0;
 
-    let mut matches = 1;
+    let mut matches = bb::BoolMask::TRUE;
 
     for previously_derived_chunk in previously_derived.chunks(output_len) {
         idx = idx.checked_add(1).ok_or_else(|| {
@@ -324,19 +324,11 @@ fn try_verify(
         derive_block(&secret, iterations, salt, idx, derived_chunk, cpu)
             .map_err(VerifyError::salt_too_long)?;
 
-        // XXX: This isn't fully constant-time-safe. TODO: Fix that.
-        #[allow(clippy::bool_to_int_with_if)]
-        let current_block_matches =
-            if bb::verify_slices_are_equal(derived_chunk, previously_derived_chunk).is_ok() {
-                1
-            } else {
-                0
-            };
-
+        let current_block_matches = bb::bytes_are_equal(derived_chunk, previously_derived_chunk);
         matches &= current_block_matches;
     }
 
-    if matches == 0 {
+    if !matches.leak() {
         return Err(VerifyError::mismatch(()));
     }
 
