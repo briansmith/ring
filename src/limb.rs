@@ -379,7 +379,6 @@ prefixed_extern! {
 mod tests {
     use super::*;
     use alloc::vec::Vec;
-    use cfg_if::cfg_if;
 
     const MAX: LeakyLimb = LeakyLimb::MAX;
 
@@ -528,8 +527,8 @@ mod tests {
             assert_eq!(&[0xbeeff00d, 0, 0, 0], &result);
         }
 
-        cfg_if! {
-            if #[cfg(target_pointer_width = "64")] {
+        match_target_word_bits! {
+            64 => {
                 static TEST_CASES: &[(&[u8], &[Limb])] = &[
                     (&[1], &[1, 0]),
                     (&[1, 2], &[0x102, 0]),
@@ -549,7 +548,8 @@ mod tests {
                         .unwrap();
                     assert_eq!(limbs, &buf, "({be_bytes:x?}, {limbs:x?}");
                 }
-            } else if #[cfg(target_pointer_width = "32")] {
+            },
+            32 => {
                 static TEST_CASES: &[(&[u8], &[Limb])] = &[
                     (&[1], &[1, 0, 0]),
                     (&[1, 2], &[0x102, 0, 0]),
@@ -569,29 +569,35 @@ mod tests {
                         .unwrap();
                     assert_eq!(limbs, &buf, "({be_bytes:x?}, {limbs:x?}");
                 }
-            } else {
-                panic!("Unsupported target_pointer_width");
+            },
+            _ => {
+                const UNSUPPORTED_TARGET: () = panic!("Unsupported target due to word size.");
             }
-
-            // XXX: This is a weak set of tests. TODO: expand it.
         }
+        // XXX: This is a weak set of tests. TODO: expand it.
     }
 
     #[test]
     fn test_big_endian_from_limbs_same_length() {
-        #[cfg(target_pointer_width = "32")]
-        let limbs = [
-            0xbccddeef, 0x89900aab, 0x45566778, 0x01122334, 0xddeeff00, 0x99aabbcc, 0x55667788,
-            0x11223344,
-        ];
-
-        #[cfg(target_pointer_width = "64")]
-        let limbs = [
-            0x8990_0aab_bccd_deef,
-            0x0112_2334_4556_6778,
-            0x99aa_bbcc_ddee_ff00,
-            0x1122_3344_5566_7788,
-        ];
+        match_target_word_bits!(
+            64 => {
+                let limbs = [
+                    0x8990_0aab_bccd_deef,
+                    0x0112_2334_4556_6778,
+                    0x99aa_bbcc_ddee_ff00,
+                    0x1122_3344_5566_7788,
+                ];
+            },
+            32 => {
+                let limbs = [
+                    0xbccddeef, 0x89900aab, 0x45566778, 0x01122334,
+                    0xddeeff00, 0x99aabbcc, 0x55667788, 0x11223344,
+                ];
+            },
+            _ => {
+                const UNSUPPORTED_TARGET: () = panic!("Unsupported target due to word size.");
+            }
+        );
 
         let limbs = limbs.map(From::<LeakyLimb>::from);
 
@@ -609,19 +615,27 @@ mod tests {
     #[should_panic]
     #[test]
     fn test_big_endian_from_limbs_fewer_limbs() {
-        #[cfg(target_pointer_width = "32")]
-        // Two fewer limbs.
-        let limbs = [
-            0xbccddeef, 0x89900aab, 0x45566778, 0x01122334, 0xddeeff00, 0x99aabbcc,
-        ];
-
-        // One fewer limb.
-        #[cfg(target_pointer_width = "64")]
-        let limbs = [
-            0x8990_0aab_bccd_deef,
-            0x0112_2334_4556_6778,
-            0x99aa_bbcc_ddee_ff00,
-        ];
+        match_target_word_bits! {
+            64 => {
+                // One fewer limb.
+                let limbs = [
+                    0x8990_0aab_bccd_deef,
+                    0x0112_2334_4556_6778,
+                    0x99aa_bbcc_ddee_ff00,
+                ];
+            },
+            32 => {
+                // Two fewer limbs.
+                let limbs = [
+                    0xbccddeef, 0x89900aab,
+                    0x45566778, 0x01122334,
+                    0xddeeff00, 0x99aabbcc,
+                ];
+            },
+            _ => {
+                const UNSUPPORTED_TARGET: () = panic!("Unsupported target due to word size.");
+            }
+        }
 
         let limbs = limbs.map(From::<LeakyLimb>::from);
 
