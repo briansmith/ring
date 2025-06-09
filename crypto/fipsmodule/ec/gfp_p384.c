@@ -222,7 +222,8 @@ void p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
 /* TODO(perf): Optimize this. */
 
 static void p384_point_select_w5(P384_POINT *out,
-                                     const P384_POINT table[16], size_t index) {
+                                 const P384_POINT table[16],
+                                 crypto_word_t index) {
   Elem x; limbs_zero(x, P384_LIMBS);
   Elem y; limbs_zero(y, P384_LIMBS);
   Elem z; limbs_zero(z, P384_LIMBS);
