@@ -51,7 +51,7 @@ struct fe1305x2 {
 }
 
 impl State {
-    pub(super) fn new_context(Key { key_and_nonce }: Key, neon: Neon) -> super::Context {
+    pub(super) fn new_context(Key { key }: Key, neon: Neon) -> super::Context {
         prefixed_extern! {
             fn CRYPTO_poly1305_init_neon(state: &mut poly1305_state_st, key: &[u8; KEY_LEN]);
         }
@@ -69,7 +69,7 @@ impl State {
             },
             neon,
         };
-        unsafe { CRYPTO_poly1305_init_neon(&mut r.state, &key_and_nonce) }
+        unsafe { CRYPTO_poly1305_init_neon(&mut r.state, &key) }
         super::Context::ArmNeon(r)
     }
 

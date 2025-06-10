@@ -43,7 +43,7 @@ struct poly1305_state_st {
 }
 
 impl State {
-    pub(super) fn new_context(Key { key_and_nonce }: Key) -> super::Context {
+    pub(super) fn new_context(Key { key }: Key) -> super::Context {
         prefixed_extern! {
             fn CRYPTO_poly1305_init(state: &mut poly1305_state_st, key: &[u8; KEY_LEN]);
         }
@@ -66,7 +66,7 @@ impl State {
                 key: [0u8; 16],
             },
         };
-        unsafe { CRYPTO_poly1305_init(&mut r.state, &key_and_nonce) }
+        unsafe { CRYPTO_poly1305_init(&mut r.state, &key) }
         super::Context::Fallback(r)
     }
 

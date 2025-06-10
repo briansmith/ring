@@ -24,7 +24,7 @@ mod ffi_fallback;
 
 /// A Poly1305 key.
 pub(super) struct Key {
-    key_and_nonce: [u8; KEY_LEN],
+    key: [u8; KEY_LEN],
 }
 
 pub(super) const BLOCK_LEN: usize = 16;
@@ -32,8 +32,8 @@ pub(super) const KEY_LEN: usize = 2 * BLOCK_LEN;
 
 impl Key {
     #[inline]
-    pub(super) fn new(key_and_nonce: [u8; KEY_LEN]) -> Self {
-        Self { key_and_nonce }
+    pub(super) fn new(key: [u8; KEY_LEN]) -> Self {
+        Self { key }
     }
 }
 
