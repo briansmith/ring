@@ -136,45 +136,6 @@ poly1305_donna_atmost15bytes:
   goto poly1305_donna_mul;
 }
 
-void CRYPTO_poly1305_init(struct poly1305_state_st *state, const uint8_t key[32]) {
-  debug_assert_nonsecret((uintptr_t)state % 64 == 0);
-
-  uint32_t t0, t1, t2, t3;
-
-  t0 = CRYPTO_load_u32_le(key + 0);
-  t1 = CRYPTO_load_u32_le(key + 4);
-  t2 = CRYPTO_load_u32_le(key + 8);
-  t3 = CRYPTO_load_u32_le(key + 12);
-
-  // precompute multipliers
-  state->r0 = t0 & 0x3ffffff;
-  t0 >>= 26;
-  t0 |= t1 << 6;
-  state->r1 = t0 & 0x3ffff03;
-  t1 >>= 20;
-  t1 |= t2 << 12;
-  state->r2 = t1 & 0x3ffc0ff;
-  t2 >>= 14;
-  t2 |= t3 << 18;
-  state->r3 = t2 & 0x3f03fff;
-  t3 >>= 8;
-  state->r4 = t3 & 0x00fffff;
-
-  state->s1 = state->r1 * 5;
-  state->s2 = state->r2 * 5;
-  state->s3 = state->r3 * 5;
-  state->s4 = state->r4 * 5;
-
-  // init state
-  state->h0 = 0;
-  state->h1 = 0;
-  state->h2 = 0;
-  state->h3 = 0;
-  state->h4 = 0;
-
-  OPENSSL_memcpy(state->key, key + 16, sizeof(state->key));
-}
-
 void CRYPTO_poly1305_update(struct poly1305_state_st *state, const uint8_t *in,
                             size_t in_len) {
   // Work around a C language bug. See https://crbug.com/1019588.
