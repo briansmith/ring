@@ -68,7 +68,7 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
             digest_scalar(n, &h)
         };
 
-        self.verify_digest(public_key, e, signature)
+        self.verify_digest(public_key, e, signature, cpu)
     }
 }
 
@@ -79,9 +79,8 @@ impl EcdsaVerificationAlgorithm {
         public_key: untrusted::Input,
         e: Scalar,
         signature: untrusted::Input,
+        cpu: cpu::Features,
     ) -> Result<(), error::Unspecified> {
-        let cpu = cpu::features();
-
         // NSA Suite B Implementer's Guide to ECDSA Section 3.4.2.
 
         let public_key_ops = self.ops.public_key_ops;
@@ -322,6 +321,7 @@ mod tests {
                     untrusted::Input::from(&public_key[..]),
                     digest,
                     untrusted::Input::from(&sig[..]),
+                    cpu,
                 );
                 assert_eq!(actual_result.is_ok(), invalid.is_none());
 
