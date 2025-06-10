@@ -18,6 +18,13 @@ use crate::{c, polyfill};
 use core::num::{NonZeroUsize, Wrapping};
 
 type W32 = Wrapping<u32>;
+type W64 = Wrapping<u64>;
+
+#[inline(always)]
+fn lo(a: W64) -> W32 {
+    #[allow(clippy::cast_possible_truncation)]
+    Wrapping(a.0 as u32)
+}
 
 const _5: W32 = Wrapping(5);
 
@@ -109,11 +116,79 @@ impl State {
     }
 
     pub(super) fn finish(mut self) -> Tag {
-        prefixed_extern! {
-            fn CRYPTO_poly1305_finish(statep: &mut poly1305_state_st, mac: &mut [u8; TAG_LEN]);
+        #[allow(non_upper_case_globals)]
+        const _0x3ffffff: W32 = Wrapping(0x3ffffff);
+
+        let state = &mut self.state;
+
+        let mut b = state.h0 >> 26;
+        state.h0 &= _0x3ffffff;
+        state.h1 += b;
+        b = state.h1 >> 26;
+        state.h1 &= _0x3ffffff;
+        state.h2 += b;
+        b = state.h2 >> 26;
+        state.h2 &= _0x3ffffff;
+        state.h3 += b;
+        b = state.h3 >> 26;
+        state.h3 &= _0x3ffffff;
+        state.h4 += b;
+        b = state.h4 >> 26;
+        state.h4 &= _0x3ffffff;
+        state.h0 += b * _5;
+
+        let mut g0 = state.h0 + _5;
+        b = g0 >> 26;
+        g0 &= _0x3ffffff;
+        let mut g1 = state.h1 + b;
+        b = g1 >> 26;
+        g1 &= _0x3ffffff;
+        let mut g2 = state.h2 + b;
+        b = g2 >> 26;
+        g2 &= _0x3ffffff;
+        let mut g3 = state.h3 + b;
+        b = g3 >> 26;
+        g3 &= _0x3ffffff;
+        let g4 = state.h4 + b - Wrapping(1 << 26);
+
+        b = (g4 >> 31) - Wrapping(1);
+        let nb = !b;
+        state.h0 = (state.h0 & nb) | (g0 & b);
+        state.h1 = (state.h1 & nb) | (g1 & b);
+        state.h2 = (state.h2 & nb) | (g2 & b);
+        state.h3 = (state.h3 & nb) | (g3 & b);
+        state.h4 = (state.h4 & nb) | (g4 & b);
+
+        #[inline(always)]
+        fn f<const H0: u8, const H1: u8, const I: usize>(
+            h0: W32,
+            h1: W32,
+            key: &[u8; BLOCK_LEN],
+        ) -> W64 {
+            let h = (h0.0 >> H0) | (h1.0 << H1);
+            let key: &[u8; 4] = (&key[(I * 4)..][..4]).try_into().unwrap();
+            let key = u32::from_le_bytes(*key);
+            Wrapping(u64::from(h)) + Wrapping(u64::from(key))
+        }
+        let f0 = f::<0, 26, 0>(state.h0, state.h1, &state.key);
+        let mut f1 = f::<6, 20, 1>(state.h1, state.h2, &state.key);
+        let mut f2 = f::<12, 14, 2>(state.h2, state.h3, &state.key);
+        let mut f3 = f::<18, 8, 3>(state.h3, state.h4, &state.key);
+
+        #[inline(always)]
+        fn store_le_lo_bytes<const I: usize>(tag: &mut Tag, a: W64) {
+            let out: &mut [u8; 4] = (&mut tag.0[(I * 4)..][..4]).try_into().unwrap();
+            *out = lo(a).0.to_le_bytes();
         }
         let mut tag = Tag([0u8; TAG_LEN]);
-        unsafe { CRYPTO_poly1305_finish(&mut self.state, &mut tag.0) }
+        store_le_lo_bytes::<0>(&mut tag, f0);
+        f1 += f0 >> 32;
+        store_le_lo_bytes::<1>(&mut tag, f1);
+        f2 += f1 >> 32;
+        store_le_lo_bytes::<2>(&mut tag, f2);
+        f3 += f2 >> 32;
+        store_le_lo_bytes::<3>(&mut tag, f3);
+
         tag
     }
 }
