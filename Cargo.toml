@@ -105,7 +105,6 @@ include = [
     "crypto/perlasm/x86gas.pl",
     "crypto/perlasm/x86nasm.pl",
     "crypto/perlasm/x86_64-xlate.pl",
-    "crypto/poly1305/poly1305.c",
     "crypto/poly1305/poly1305_arm.c",
     "crypto/poly1305/poly1305_arm_asm.S",
     "crypto/cipher/asm/chacha20_poly1305_armv8.pl",

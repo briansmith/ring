@@ -14,8 +14,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Key, Tag, BLOCK_LEN, TAG_LEN};
-use crate::{c, polyfill};
-use core::num::{NonZeroUsize, Wrapping};
+use crate::polyfill::{self, slice::AsChunks, sliceutil};
+use core::num::Wrapping;
 
 type W32 = Wrapping<u32>;
 type W64 = Wrapping<u64>;
@@ -26,14 +26,30 @@ fn lo(a: W64) -> W32 {
     Wrapping(a.0 as u32)
 }
 
+#[inline(always)]
+fn widen(a: W32) -> W64 {
+    Wrapping(u64::from(a.0))
+}
+
+#[inline(always)]
+fn w64(hi: W32, lo: W32) -> W64 {
+    (widen(hi) << 32) | widen(lo)
+}
+
+#[inline(always)]
+fn widening_mul(a: W32, b: W32) -> W64 {
+    widen(a) * widen(b)
+}
+
 const _5: W32 = Wrapping(5);
+#[allow(non_upper_case_globals)]
+const _0x3ffffff: W32 = Wrapping(0x3ffffff);
 
 // XXX/TODO(MSRV): change to `pub(super)`.
 pub(in super::super) struct State {
     state: poly1305_state_st,
 }
 
-// Keep in sync with `poly1305_state_st` in poly1305.c
 #[repr(C, align(64))]
 struct poly1305_state_st {
     r0: W32,
@@ -103,22 +119,95 @@ impl State {
     // `input.len % BLOCK_LEN == 0` must be true for every call except the
     // final one.
     pub(super) fn update_internal(&mut self, input: &[u8]) {
-        prefixed_extern! {
-            fn CRYPTO_poly1305_update(
-                state: &mut poly1305_state_st,
-                input: *const u8,
-                in_len: c::NonZero_size_t);
-        }
-        if let Some(len) = NonZeroUsize::new(input.len()) {
-            let input = input.as_ptr();
-            unsafe { CRYPTO_poly1305_update(&mut self.state, input, len) }
+        let state = &mut self.state;
+
+        let (whole, remainder): (AsChunks<u8, BLOCK_LEN>, _) = polyfill::slice::as_chunks(input);
+
+        whole.into_iter().for_each(|input| {
+            let (input, _) = polyfill::slice::as_chunks(input);
+            let t0 = Wrapping(u32::from_le_bytes(input[0]));
+            let t1 = Wrapping(u32::from_le_bytes(input[1]));
+            let t2 = Wrapping(u32::from_le_bytes(input[2]));
+            let t3 = Wrapping(u32::from_le_bytes(input[3]));
+
+            state.h0 += t0 & _0x3ffffff;
+            state.h1 += lo(w64(t1, t0) >> 26) & _0x3ffffff;
+            state.h2 += lo(w64(t2, t1) >> 20) & _0x3ffffff;
+            state.h3 += lo(w64(t3, t2) >> 14) & _0x3ffffff;
+            state.h4 += (t3 >> 8) | Wrapping(1 << 24);
+
+            Self::mul(state);
+        });
+
+        if !remainder.is_empty() {
+            let mut mp = [0; BLOCK_LEN];
+            sliceutil::overwrite_at_start(&mut mp, remainder);
+            mp[remainder.len()] = 1;
+
+            let (input, _) = polyfill::slice::as_chunks(&mp);
+            let t0 = Wrapping(u32::from_le_bytes(input[0]));
+            let t1 = Wrapping(u32::from_le_bytes(input[1]));
+            let t2 = Wrapping(u32::from_le_bytes(input[2]));
+            let t3 = Wrapping(u32::from_le_bytes(input[3]));
+
+            state.h0 += t0 & _0x3ffffff;
+            state.h1 += lo(w64(t1, t0) >> 26) & _0x3ffffff;
+            state.h2 += lo(w64(t2, t1) >> 20) & _0x3ffffff;
+            state.h3 += lo(w64(t3, t2) >> 14) & _0x3ffffff;
+            state.h4 += t3 >> 8;
+
+            Self::mul(state);
         }
     }
 
-    pub(super) fn finish(mut self) -> Tag {
-        #[allow(non_upper_case_globals)]
-        const _0x3ffffff: W32 = Wrapping(0x3ffffff);
+    #[inline(always)]
+    fn mul(state: &mut poly1305_state_st) {
+        let mut t: [W64; 5] = [
+            widening_mul(state.h0, state.r0)
+                + widening_mul(state.h1, state.s4)
+                + widening_mul(state.h2, state.s3)
+                + widening_mul(state.h3, state.s2)
+                + widening_mul(state.h4, state.s1),
+            widening_mul(state.h0, state.r1)
+                + widening_mul(state.h1, state.r0)
+                + widening_mul(state.h2, state.s4)
+                + widening_mul(state.h3, state.s3)
+                + widening_mul(state.h4, state.s2),
+            widening_mul(state.h0, state.r2)
+                + widening_mul(state.h1, state.r1)
+                + widening_mul(state.h2, state.r0)
+                + widening_mul(state.h3, state.s4)
+                + widening_mul(state.h4, state.s3),
+            widening_mul(state.h0, state.r3)
+                + widening_mul(state.h1, state.r2)
+                + widening_mul(state.h2, state.r1)
+                + widening_mul(state.h3, state.r0)
+                + widening_mul(state.h4, state.s4),
+            widening_mul(state.h0, state.r4)
+                + widening_mul(state.h1, state.r3)
+                + widening_mul(state.h2, state.r2)
+                + widening_mul(state.h3, state.r1)
+                + widening_mul(state.h4, state.r0),
+        ];
 
+        state.h0 = lo(t[0]) & _0x3ffffff;
+        let c = t[0] >> 26;
+        t[1] += c;
+        state.h1 = lo(t[1]) & _0x3ffffff;
+        let b = lo(t[1] >> 26);
+        t[2] += widen(b);
+        state.h2 = lo(t[2]) & _0x3ffffff;
+        let b = lo(t[2] >> 26);
+        t[3] += widen(b);
+        state.h3 = lo(t[3]) & _0x3ffffff;
+        let b = lo(t[3] >> 26);
+        t[4] += widen(b);
+        state.h4 = lo(t[4]) & _0x3ffffff;
+        let b = lo(t[4] >> 26);
+        state.h0 += b * _5;
+    }
+
+    pub(super) fn finish(mut self) -> Tag {
         let state = &mut self.state;
 
         let mut b = state.h0 >> 26;
