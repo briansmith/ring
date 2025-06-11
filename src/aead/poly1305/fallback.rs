@@ -46,12 +46,8 @@ const _5: W32 = Wrapping(5);
 const _0x3ffffff: W32 = Wrapping(0x3ffffff);
 
 // XXX/TODO(MSRV): change to `pub(super)`.
+#[repr(align(64))]
 pub(in super::super) struct State {
-    state: poly1305_state_st,
-}
-
-#[repr(C, align(64))]
-struct poly1305_state_st {
     r0: W32,
     r1: W32,
     r2: W32,
@@ -96,31 +92,27 @@ impl State {
         let r4 = t3 & Wrapping(0x00fffff);
 
         super::Context::Fallback(Self {
-            state: poly1305_state_st {
-                r0,
-                r1,
-                r2,
-                r3,
-                r4,
-                s1: r1 * _5,
-                s2: r2 * _5,
-                s3: r3 * _5,
-                s4: r4 * _5,
-                h1: Wrapping(0),
-                h2: Wrapping(0),
-                h3: Wrapping(0),
-                h4: Wrapping(0),
-                h0: Wrapping(0),
-                key: *key,
-            },
+            r0,
+            r1,
+            r2,
+            r3,
+            r4,
+            s1: r1 * _5,
+            s2: r2 * _5,
+            s3: r3 * _5,
+            s4: r4 * _5,
+            h1: Wrapping(0),
+            h2: Wrapping(0),
+            h3: Wrapping(0),
+            h4: Wrapping(0),
+            h0: Wrapping(0),
+            key: *key,
         })
     }
 
     // `input.len % BLOCK_LEN == 0` must be true for every call except the
     // final one.
     pub(super) fn update_internal(&mut self, input: &[u8]) {
-        let state = &mut self.state;
-
         let (whole, remainder): (AsChunks<u8, BLOCK_LEN>, _) = polyfill::slice::as_chunks(input);
 
         whole.into_iter().for_each(|input| {
@@ -130,13 +122,13 @@ impl State {
             let t2 = Wrapping(u32::from_le_bytes(input[2]));
             let t3 = Wrapping(u32::from_le_bytes(input[3]));
 
-            state.h0 += t0 & _0x3ffffff;
-            state.h1 += lo(w64(t1, t0) >> 26) & _0x3ffffff;
-            state.h2 += lo(w64(t2, t1) >> 20) & _0x3ffffff;
-            state.h3 += lo(w64(t3, t2) >> 14) & _0x3ffffff;
-            state.h4 += (t3 >> 8) | Wrapping(1 << 24);
+            self.h0 += t0 & _0x3ffffff;
+            self.h1 += lo(w64(t1, t0) >> 26) & _0x3ffffff;
+            self.h2 += lo(w64(t2, t1) >> 20) & _0x3ffffff;
+            self.h3 += lo(w64(t3, t2) >> 14) & _0x3ffffff;
+            self.h4 += (t3 >> 8) | Wrapping(1 << 24);
 
-            Self::mul(state);
+            self.mul()
         });
 
         if !remainder.is_empty() {
@@ -150,103 +142,101 @@ impl State {
             let t2 = Wrapping(u32::from_le_bytes(input[2]));
             let t3 = Wrapping(u32::from_le_bytes(input[3]));
 
-            state.h0 += t0 & _0x3ffffff;
-            state.h1 += lo(w64(t1, t0) >> 26) & _0x3ffffff;
-            state.h2 += lo(w64(t2, t1) >> 20) & _0x3ffffff;
-            state.h3 += lo(w64(t3, t2) >> 14) & _0x3ffffff;
-            state.h4 += t3 >> 8;
+            self.h0 += t0 & _0x3ffffff;
+            self.h1 += lo(w64(t1, t0) >> 26) & _0x3ffffff;
+            self.h2 += lo(w64(t2, t1) >> 20) & _0x3ffffff;
+            self.h3 += lo(w64(t3, t2) >> 14) & _0x3ffffff;
+            self.h4 += t3 >> 8;
 
-            Self::mul(state);
+            self.mul();
         }
     }
 
     #[inline(always)]
-    fn mul(state: &mut poly1305_state_st) {
+    fn mul(&mut self) {
         let mut t: [W64; 5] = [
-            widening_mul(state.h0, state.r0)
-                + widening_mul(state.h1, state.s4)
-                + widening_mul(state.h2, state.s3)
-                + widening_mul(state.h3, state.s2)
-                + widening_mul(state.h4, state.s1),
-            widening_mul(state.h0, state.r1)
-                + widening_mul(state.h1, state.r0)
-                + widening_mul(state.h2, state.s4)
-                + widening_mul(state.h3, state.s3)
-                + widening_mul(state.h4, state.s2),
-            widening_mul(state.h0, state.r2)
-                + widening_mul(state.h1, state.r1)
-                + widening_mul(state.h2, state.r0)
-                + widening_mul(state.h3, state.s4)
-                + widening_mul(state.h4, state.s3),
-            widening_mul(state.h0, state.r3)
-                + widening_mul(state.h1, state.r2)
-                + widening_mul(state.h2, state.r1)
-                + widening_mul(state.h3, state.r0)
-                + widening_mul(state.h4, state.s4),
-            widening_mul(state.h0, state.r4)
-                + widening_mul(state.h1, state.r3)
-                + widening_mul(state.h2, state.r2)
-                + widening_mul(state.h3, state.r1)
-                + widening_mul(state.h4, state.r0),
+            widening_mul(self.h0, self.r0)
+                + widening_mul(self.h1, self.s4)
+                + widening_mul(self.h2, self.s3)
+                + widening_mul(self.h3, self.s2)
+                + widening_mul(self.h4, self.s1),
+            widening_mul(self.h0, self.r1)
+                + widening_mul(self.h1, self.r0)
+                + widening_mul(self.h2, self.s4)
+                + widening_mul(self.h3, self.s3)
+                + widening_mul(self.h4, self.s2),
+            widening_mul(self.h0, self.r2)
+                + widening_mul(self.h1, self.r1)
+                + widening_mul(self.h2, self.r0)
+                + widening_mul(self.h3, self.s4)
+                + widening_mul(self.h4, self.s3),
+            widening_mul(self.h0, self.r3)
+                + widening_mul(self.h1, self.r2)
+                + widening_mul(self.h2, self.r1)
+                + widening_mul(self.h3, self.r0)
+                + widening_mul(self.h4, self.s4),
+            widening_mul(self.h0, self.r4)
+                + widening_mul(self.h1, self.r3)
+                + widening_mul(self.h2, self.r2)
+                + widening_mul(self.h3, self.r1)
+                + widening_mul(self.h4, self.r0),
         ];
 
-        state.h0 = lo(t[0]) & _0x3ffffff;
+        self.h0 = lo(t[0]) & _0x3ffffff;
         let c = t[0] >> 26;
         t[1] += c;
-        state.h1 = lo(t[1]) & _0x3ffffff;
+        self.h1 = lo(t[1]) & _0x3ffffff;
         let b = lo(t[1] >> 26);
         t[2] += widen(b);
-        state.h2 = lo(t[2]) & _0x3ffffff;
+        self.h2 = lo(t[2]) & _0x3ffffff;
         let b = lo(t[2] >> 26);
         t[3] += widen(b);
-        state.h3 = lo(t[3]) & _0x3ffffff;
+        self.h3 = lo(t[3]) & _0x3ffffff;
         let b = lo(t[3] >> 26);
         t[4] += widen(b);
-        state.h4 = lo(t[4]) & _0x3ffffff;
+        self.h4 = lo(t[4]) & _0x3ffffff;
         let b = lo(t[4] >> 26);
-        state.h0 += b * _5;
+        self.h0 += b * _5;
     }
 
     pub(super) fn finish(mut self) -> Tag {
-        let state = &mut self.state;
+        let mut b = self.h0 >> 26;
+        self.h0 &= _0x3ffffff;
+        self.h1 += b;
+        b = self.h1 >> 26;
+        self.h1 &= _0x3ffffff;
+        self.h2 += b;
+        b = self.h2 >> 26;
+        self.h2 &= _0x3ffffff;
+        self.h3 += b;
+        b = self.h3 >> 26;
+        self.h3 &= _0x3ffffff;
+        self.h4 += b;
+        b = self.h4 >> 26;
+        self.h4 &= _0x3ffffff;
+        self.h0 += b * _5;
 
-        let mut b = state.h0 >> 26;
-        state.h0 &= _0x3ffffff;
-        state.h1 += b;
-        b = state.h1 >> 26;
-        state.h1 &= _0x3ffffff;
-        state.h2 += b;
-        b = state.h2 >> 26;
-        state.h2 &= _0x3ffffff;
-        state.h3 += b;
-        b = state.h3 >> 26;
-        state.h3 &= _0x3ffffff;
-        state.h4 += b;
-        b = state.h4 >> 26;
-        state.h4 &= _0x3ffffff;
-        state.h0 += b * _5;
-
-        let mut g0 = state.h0 + _5;
+        let mut g0 = self.h0 + _5;
         b = g0 >> 26;
         g0 &= _0x3ffffff;
-        let mut g1 = state.h1 + b;
+        let mut g1 = self.h1 + b;
         b = g1 >> 26;
         g1 &= _0x3ffffff;
-        let mut g2 = state.h2 + b;
+        let mut g2 = self.h2 + b;
         b = g2 >> 26;
         g2 &= _0x3ffffff;
-        let mut g3 = state.h3 + b;
+        let mut g3 = self.h3 + b;
         b = g3 >> 26;
         g3 &= _0x3ffffff;
-        let g4 = state.h4 + b - Wrapping(1 << 26);
+        let g4 = self.h4 + b - Wrapping(1 << 26);
 
         b = (g4 >> 31) - Wrapping(1);
         let nb = !b;
-        state.h0 = (state.h0 & nb) | (g0 & b);
-        state.h1 = (state.h1 & nb) | (g1 & b);
-        state.h2 = (state.h2 & nb) | (g2 & b);
-        state.h3 = (state.h3 & nb) | (g3 & b);
-        state.h4 = (state.h4 & nb) | (g4 & b);
+        self.h0 = (self.h0 & nb) | (g0 & b);
+        self.h1 = (self.h1 & nb) | (g1 & b);
+        self.h2 = (self.h2 & nb) | (g2 & b);
+        self.h3 = (self.h3 & nb) | (g3 & b);
+        self.h4 = (self.h4 & nb) | (g4 & b);
 
         #[inline(always)]
         fn f<const H0: u8, const H1: u8, const I: usize>(
@@ -259,10 +249,10 @@ impl State {
             let key = u32::from_le_bytes(*key);
             Wrapping(u64::from(h)) + Wrapping(u64::from(key))
         }
-        let f0 = f::<0, 26, 0>(state.h0, state.h1, &state.key);
-        let mut f1 = f::<6, 20, 1>(state.h1, state.h2, &state.key);
-        let mut f2 = f::<12, 14, 2>(state.h2, state.h3, &state.key);
-        let mut f3 = f::<18, 8, 3>(state.h3, state.h4, &state.key);
+        let f0 = f::<0, 26, 0>(self.h0, self.h1, &self.key);
+        let mut f1 = f::<6, 20, 1>(self.h1, self.h2, &self.key);
+        let mut f2 = f::<12, 14, 2>(self.h2, self.h3, &self.key);
+        let mut f3 = f::<18, 8, 3>(self.h3, self.h4, &self.key);
 
         #[inline(always)]
         fn store_le_lo_bytes<const I: usize>(tag: &mut Tag, a: W64) {
