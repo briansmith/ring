@@ -43,8 +43,8 @@ cfg_if::cfg_if! {
         mod linux;
         use linux as detect;
     } else if #[cfg(target_os = "windows")] {
-        mod windows;
-        use windows as detect;
+        mod std_detect;
+        use std_detect as detect;
     } else {
         mod detect {
             pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
