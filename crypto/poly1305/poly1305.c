@@ -37,40 +37,42 @@ struct poly1305_state_st {
   uint8_t key[16];
 };
 
-// poly1305_blocks updates |state| given some amount of input data. This
-// function may only be called with a |len| that is not a multiple of 16 at the
-// end of the data. Otherwise the input must be buffered into 16 byte blocks.
-static void poly1305_update(struct poly1305_state_st *state, const uint8_t *in,
-                            size_t len) {
+static inline void poly1305_mul(struct poly1305_state_st *state);
+
+// poly1305_blocks updates |state| given some amount of input data.
+static void poly1305_update_16(
+    struct poly1305_state_st *state, const uint8_t *in,
+    size_t len) {
+  debug_assert_nonsecret(len >= 16);
+  debug_assert_nonsecret(len % 16 == 0);
   debug_assert_nonsecret((uintptr_t)state % 64 == 0);
 
   uint32_t t0, t1, t2, t3;
+
+  do {
+    t0 = CRYPTO_load_u32_le(in);
+    t1 = CRYPTO_load_u32_le(in + 4);
+    t2 = CRYPTO_load_u32_le(in + 8);
+    t3 = CRYPTO_load_u32_le(in + 12);
+
+    in += 16;
+    len -= 16;
+
+    state->h0 += t0 & 0x3ffffff;
+    state->h1 += ((((uint64_t)t1 << 32) | t0) >> 26) & 0x3ffffff;
+    state->h2 += ((((uint64_t)t2 << 32) | t1) >> 20) & 0x3ffffff;
+    state->h3 += ((((uint64_t)t3 << 32) | t2) >> 14) & 0x3ffffff;
+    state->h4 += (t3 >> 8) | (1 << 24);
+
+    poly1305_mul(state);
+  } while (len > 0);
+}
+
+static inline void poly1305_mul(struct poly1305_state_st *state) {
   uint64_t t[5];
   uint32_t b;
   uint64_t c;
-  size_t j;
-  uint8_t mp[16];
 
-  if (len < 16) {
-    goto poly1305_donna_atmost15bytes;
-  }
-
-poly1305_donna_16bytes:
-  t0 = CRYPTO_load_u32_le(in);
-  t1 = CRYPTO_load_u32_le(in + 4);
-  t2 = CRYPTO_load_u32_le(in + 8);
-  t3 = CRYPTO_load_u32_le(in + 12);
-
-  in += 16;
-  len -= 16;
-
-  state->h0 += t0 & 0x3ffffff;
-  state->h1 += ((((uint64_t)t1 << 32) | t0) >> 26) & 0x3ffffff;
-  state->h2 += ((((uint64_t)t2 << 32) | t1) >> 20) & 0x3ffffff;
-  state->h3 += ((((uint64_t)t3 << 32) | t2) >> 14) & 0x3ffffff;
-  state->h4 += (t3 >> 8) | (1 << 24);
-
-poly1305_donna_mul:
   t[0] = mul32x32_64(state->h0, state->r0) + mul32x32_64(state->h1, state->s4) +
          mul32x32_64(state->h2, state->s3) + mul32x32_64(state->h3, state->s2) +
          mul32x32_64(state->h4, state->s1);
@@ -102,13 +104,18 @@ poly1305_donna_mul:
   state->h4 = (uint32_t)t[4] & 0x3ffffff;
   b = (uint32_t)(t[4] >> 26);
   state->h0 += b * 5;
-
-  if (len >= 16) {
-    goto poly1305_donna_16bytes;
-  }
+}
 
 // final bytes
-poly1305_donna_atmost15bytes:
+static void poly1305_update_final_atmost15bytes(
+    struct poly1305_state_st *state, const uint8_t *in,
+    size_t len) {
+  debug_assert_nonsecret(len < 16);
+
+  size_t j;
+  uint32_t t0, t1, t2, t3;
+  uint8_t mp[16];
+
   if (!len) {
     return;
   }
@@ -133,15 +140,17 @@ poly1305_donna_atmost15bytes:
   state->h3 += ((((uint64_t)t3 << 32) | t2) >> 14) & 0x3ffffff;
   state->h4 += (t3 >> 8);
 
-  goto poly1305_donna_mul;
+  poly1305_mul(state);
 }
 
 void CRYPTO_poly1305_update(struct poly1305_state_st *state, const uint8_t *in,
                             size_t in_len) {
-  // Work around a C language bug. See https://crbug.com/1019588.
-  if (in_len == 0) {
-    return;
+  size_t remainder_len = in_len % 16;
+  size_t whole_len = in_len - remainder_len;
+  if (whole_len > 0) {
+    poly1305_update_16(state, in, whole_len);
   }
-
-  poly1305_update(state, in, in_len);
+  if (remainder_len > 0) {
+    poly1305_update_final_atmost15bytes(state, in + whole_len, remainder_len);
+  }
 }
