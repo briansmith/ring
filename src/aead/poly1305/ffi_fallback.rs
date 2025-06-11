@@ -13,7 +13,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Key, Tag, KEY_LEN, TAG_LEN};
+use super::{Key, Tag, BLOCK_LEN, KEY_LEN, TAG_LEN};
 use crate::c;
 use core::num::NonZeroUsize;
 
@@ -39,7 +39,7 @@ struct poly1305_state_st {
     h2: u32,
     h3: u32,
     h4: u32,
-    key: [u8; 16],
+    key: [u8; BLOCK_LEN],
 }
 
 impl State {
@@ -63,7 +63,7 @@ impl State {
                 h2: 0,
                 h3: 0,
                 h4: 0,
-                key: [0u8; 16],
+                key: [0u8; BLOCK_LEN],
             },
         };
         unsafe { CRYPTO_poly1305_init(&mut r.state, &key) }
