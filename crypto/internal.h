@@ -337,14 +337,6 @@ static inline int constant_time_declassify_int(int v) {
 // were secret.
 #define declassify_assert(expr) dev_assert_secret(constant_time_declassify_int(expr))
 
-// Endianness conversions.
-
-#if defined(__GNUC__) && __GNUC__ >= 2
-static inline uint32_t CRYPTO_bswap4(uint32_t x) {
-  return __builtin_bswap32(x);
-}
-#endif
-
 #if !defined(RING_CORE_NOSTDLIBINC)
 #include <string.h>
 #endif
@@ -380,28 +372,6 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
 #endif
 }
 
-
-// Loads and stores.
-//
-// The following functions load and store sized integers with the specified
-// endianness. They use |memcpy|, and so avoid alignment or strict aliasing
-// requirements on the input and output pointers.
-
-#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define RING_BIG_ENDIAN
-#endif
-#endif
-
-static inline uint32_t CRYPTO_load_u32_le(const void *in) {
-  uint32_t v;
-  OPENSSL_memcpy(&v, in, sizeof(v));
-#if defined(RING_BIG_ENDIAN)
-  return CRYPTO_bswap4(v);
-#else
-  return v;
-#endif
-}
 
 // Runtime CPU feature support
 

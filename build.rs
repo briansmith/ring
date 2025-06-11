@@ -102,7 +102,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/fipsmodule/ec/p256.c"),
     (&[], "crypto/limbs/limbs.c"),
     (&[], "crypto/mem.c"),
-    (&[], "crypto/poly1305/poly1305.c"),
 
     (&[ARM, X86_64, X86], "crypto/crypto.c"),
 
