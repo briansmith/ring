@@ -14,33 +14,46 @@
 
 //! Building blocks.
 
-use crate::{c, error};
-use core::{ffi::c_int, num::NonZeroUsize};
+use super::{BoolMask, Word, WordOps};
+use crate::{error, polyfill};
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
 pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecified> {
-    let len = a.len(); // Arbitrary choice.
-    if b.len() != len {
-        return Err(error::Unspecified);
-    }
-    match NonZeroUsize::new(len) {
-        Some(len) => {
-            let a = a.as_ptr();
-            let b = b.as_ptr();
-            // SAFETY: `a` and `b` are valid non-null non-dangling pointers to `len`
-            // bytes.
-            let result = unsafe { CRYPTO_memcmp(a, b, len) };
-            match result {
-                0 => Ok(()),
-                _ => Err(error::Unspecified),
-            }
-        }
-        None => Ok(()), // Empty slices are equal.
+    if bytes_are_equal(a, b).leak() {
+        Ok(())
+    } else {
+        Err(error::Unspecified)
     }
 }
 
-prefixed_extern! {
-    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::NonZero_size_t) -> c_int;
+#[must_use]
+fn bytes_are_equal(a: &[u8], b: &[u8]) -> BoolMask {
+    let len = a.len(); // Arbitrary choice.
+    if b.len() != len {
+        return BoolMask::FALSE;
+    }
+    let (a, a_rem) = polyfill::slice::as_chunks(a);
+    let (b, b_rem) = polyfill::slice::as_chunks(b);
+
+    let mut acc = a
+        .into_iter()
+        .copied()
+        .map(Word::from_le_bytes)
+        .zip(b.into_iter().copied().map(Word::from_le_bytes))
+        .fold(0, |acc, (a, b)| acc | (a ^ b));
+
+    if !a_rem.is_empty() {
+        #[allow(clippy::into_iter_on_ref)]
+        let rem = a_rem
+            .into_iter()
+            .copied()
+            .map(Word::from)
+            .zip(b_rem.into_iter().copied().map(Word::from))
+            .fold(0, |acc, (a, b)| acc | (a ^ b));
+        acc |= rem;
+    }
+
+    WordOps::is_zero(acc)
 }
 
 pub(crate) fn xor_16(a: [u8; 16], b: [u8; 16]) -> [u8; 16] {
