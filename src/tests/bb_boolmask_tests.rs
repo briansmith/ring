@@ -12,26 +12,16 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Building blocks.
+use crate::bb::BoolMask;
 
-mod boolmask;
-mod bytes;
-mod leaky;
-mod word;
+fn leak_in_test(a: BoolMask) -> bool {
+    a.leak()
+}
 
-pub(crate) use self::{
-    boolmask::BoolMask,
-    bytes::{verify_slices_are_equal, xor_16, xor_assign, xor_assign_at_start_bytes},
-    leaky::LeakyWord,
-    word::Word,
-};
-
-/// XORs the first N words of `b` into `a`, where N is
-/// `core::cmp::min(a.len(), b.len())`.
-#[inline(always)]
-pub(crate) fn xor_assign_at_start<'a>(
-    a: impl IntoIterator<Item = &'a mut Word>,
-    b: impl IntoIterator<Item = &'a Word>,
-) {
-    a.into_iter().zip(b).for_each(|(a, b)| *a ^= *b);
+#[test]
+fn test_bool_mask_bitwise_and_is_logical_and() {
+    assert!(leak_in_test(BoolMask::TRUE & BoolMask::TRUE));
+    assert!(!leak_in_test(BoolMask::TRUE & BoolMask::FALSE));
+    assert!(!leak_in_test(BoolMask::FALSE & BoolMask::TRUE));
+    assert!(!leak_in_test(BoolMask::FALSE & BoolMask::FALSE));
 }

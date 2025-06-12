@@ -14,4 +14,6 @@
 
 //! Integration tests for non-public APIs.
 
+mod bb_boolmask_tests;
+mod bb_bytes_tests;
 mod bits_tests;
