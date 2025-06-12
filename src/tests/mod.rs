@@ -17,3 +17,4 @@
 mod bb_boolmask_tests;
 mod bb_bytes_tests;
 mod bits_tests;
+mod c_constant_time_tests;
