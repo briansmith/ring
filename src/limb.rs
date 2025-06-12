@@ -88,10 +88,7 @@ pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> Result<bool, Len
 
 #[inline]
 fn limb_is_zero(limb: Limb) -> LimbMask {
-    prefixed_extern! {
-        fn LIMB_is_zero(limb: Limb) -> LimbMask;
-    }
-    unsafe { LIMB_is_zero(limb) }
+    bb::WordOps::is_zero(limb)
 }
 
 #[inline]
