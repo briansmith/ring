@@ -23,7 +23,7 @@ pub(crate) use self::{
     boolmask::BoolMask,
     bytes::{verify_slices_are_equal, xor_16, xor_assign, xor_assign_at_start_bytes},
     leaky::LeakyWord,
-    word::Word,
+    word::{Word, WordOps},
 };
 
 /// XORs the first N words of `b` into `a`, where N is

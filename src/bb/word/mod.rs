@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::LeakyWord;
+use super::{BoolMask, LeakyWord};
 
 /// A native word that may hold a secret.
 ///
@@ -26,6 +26,10 @@ use super::LeakyWord;
 /// XXX: Over time, we'll evolve Word into a newtype with an API that minimizes
 /// leaks and makes all leaks explicit, like so:
 pub(crate) type Word = LeakyWord;
+
+pub(crate) trait WordOps: Copy {
+    fn is_zero(self) -> BoolMask;
+}
 
 /* TODO:
 #[repr(transparent)]
@@ -42,3 +46,5 @@ impl From<LeakyWord> for Word {
     }
 }
 */
+
+mod fallback;
