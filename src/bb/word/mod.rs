@@ -29,6 +29,7 @@ use cfg_if::cfg_if;
 pub(crate) type Word = LeakyWord;
 
 pub(crate) trait WordOps: Copy {
+    fn from_u8(a: &u8) -> Self;
     fn is_zero(self) -> BoolMask;
 }
 
