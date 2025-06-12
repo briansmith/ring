@@ -13,9 +13,9 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Aes, Neon, PMull, Sha256, CAPS_STATIC};
-use windows_sys::Win32::System::Threading::{
-    IsProcessorFeaturePresent, PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE,
-};
+
+extern crate std;
+use std::arch::is_aarch64_feature_detected;
 
 pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
 
@@ -25,12 +25,13 @@ pub fn detect_features() -> u32 {
 
     let mut features = 0;
 
-    let result = unsafe { IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE) };
-
-    if result != 0 {
-        // These are all covered by one call in Windows
+    if is_aarch64_feature_detected!("aes") {
         features |= Aes::mask();
+    }
+    if is_aarch64_feature_detected!("pmull") {
         features |= PMull::mask();
+    }
+    if is_aarch64_feature_detected!("sha2") {
         features |= Sha256::mask();
     }
 
