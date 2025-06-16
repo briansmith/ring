@@ -1209,7 +1209,7 @@ S = 520784e6290d04d9b61993ee5ebc6fa8ff527fb0777c43cdefc7586701e60edb399005a5648f
 
 # The following tests are intended to stress the final comparison in ECDSA.
 # ECDSA verification computes some curve point (x, y), picking the fully-reduced
-# representive of x mod p, and checking that x mod n is r. (n is the order of
+# representative of x mod p, and checking that x mod n is r. (n is the order of
 # the group and p defines the underlying prime field.)
 #
 # This makes the computation sensitive to values near n and p, and which of n or
