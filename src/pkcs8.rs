@@ -53,7 +53,7 @@ pub(crate) struct Template {
 
 impl Template {
     #[inline]
-    fn alg_id_value(&self) -> untrusted::Input {
+    fn alg_id_value(&self) -> untrusted::Input<'_> {
         untrusted::Input::from(self.alg_id_value_())
     }
 
@@ -62,7 +62,7 @@ impl Template {
     }
 
     #[inline]
-    pub fn curve_oid(&self) -> untrusted::Input {
+    pub fn curve_oid(&self) -> untrusted::Input<'_> {
         untrusted::Input::from(&self.alg_id_value_()[self.curve_id_index..])
     }
 }

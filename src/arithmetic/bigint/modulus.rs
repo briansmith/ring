@@ -113,7 +113,7 @@ impl<M> OwnedModulus<M> {
         })
     }
 
-    pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Modulus<M> {
+    pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Modulus<'_, M> {
         Modulus {
             limbs: self.inner.limbs(),
             n0: self.n0,

@@ -45,7 +45,7 @@ impl<const N: usize> AlignedStorage<N> {
         &mut self,
         num_entries: usize,
         chunks_per_entry: usize,
-    ) -> Result<AsChunksMut<Limb, LIMBS_PER_CHUNK>, LenMismatchError> {
+    ) -> Result<AsChunksMut<'_, Limb, LIMBS_PER_CHUNK>, LenMismatchError> {
         let total_limbs = num_entries * chunks_per_entry * LIMBS_PER_CHUNK;
         let len = self.0.len();
         let flattened = self
