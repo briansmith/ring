@@ -16,7 +16,7 @@ use super::AsChunksMut;
 use core::ops;
 
 #[inline(always)]
-pub fn as_chunks<T, const N: usize>(slice: &[T]) -> (AsChunks<T, N>, &[T]) {
+pub fn as_chunks<T, const N: usize>(slice: &[T]) -> (AsChunks<'_, T, N>, &[T]) {
     assert!(N != 0, "chunk size must be non-zero");
     let len = slice.len() / N;
     let (multiple_of_n, remainder) = slice.split_at(len * N);

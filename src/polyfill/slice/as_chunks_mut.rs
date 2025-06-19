@@ -15,7 +15,7 @@
 use super::AsChunks;
 
 #[inline(always)]
-pub fn as_chunks_mut<T, const N: usize>(slice: &mut [T]) -> (AsChunksMut<T, N>, &mut [T]) {
+pub fn as_chunks_mut<T, const N: usize>(slice: &mut [T]) -> (AsChunksMut<'_, T, N>, &mut [T]) {
     assert!(N != 0, "chunk size must be non-zero");
     let len = slice.len() / N;
     let (multiple_of_n, remainder) = slice.split_at_mut(len * N);
@@ -52,14 +52,14 @@ impl<T, const N: usize> AsChunksMut<'_, T, N> {
     }
 
     #[inline(always)]
-    pub fn as_ref(&self) -> AsChunks<T, N> {
+    pub fn as_ref(&self) -> AsChunks<'_, T, N> {
         AsChunks::<T, N>::from(self)
     }
 
     // Argument moved from runtime argument to `const` argument so that
     // `CHUNK_LEN * N` is checked at compile time for overflow.
     #[inline(always)]
-    pub fn chunks_mut<const CHUNK_LEN: usize>(&mut self) -> AsChunksMutChunksMutIter<T, N> {
+    pub fn chunks_mut<const CHUNK_LEN: usize>(&mut self) -> AsChunksMutChunksMutIter<'_, T, N> {
         AsChunksMutChunksMutIter(self.0.chunks_mut(CHUNK_LEN * N))
     }
 

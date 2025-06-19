@@ -88,7 +88,7 @@ impl PublicModulus {
         self.value.len_bits()
     }
 
-    pub(super) fn value(&self, cpu_features: cpu::Features) -> bigint::Modulus<N> {
+    pub(super) fn value(&self, cpu_features: cpu::Features) -> bigint::Modulus<'_, N> {
         self.value.modulus(cpu_features)
     }
 
