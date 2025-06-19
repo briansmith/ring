@@ -566,7 +566,7 @@ fn build_library<'a>(
     });
 
     // Rebuild the library if necessary.
-    let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
+    let lib_path = PathBuf::from(out_dir).join(format!("lib{lib_name}.a"));
 
     // Handled below.
     let _ = c.cargo_metadata(false);
@@ -580,7 +580,7 @@ fn build_library<'a>(
 
     // Link the library. This works even when the library doesn't need to be
     // rebuilt.
-    println!("cargo:rustc-link-lib=static={}", lib_name);
+    println!("cargo:rustc-link-lib=static={lib_name}");
 }
 
 fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
@@ -647,7 +647,7 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir:
     let oformat = match arch {
         x if x == X86_64 => "win64",
         x if x == X86 => "win32",
-        _ => panic!("unsupported arch: {}", arch),
+        _ => panic!("unsupported arch: {arch}"),
     };
 
     // Nasm requires that the path end in a path separator.
@@ -677,10 +677,10 @@ fn run_command_with_args(command_name: &Path, args: &[OsString]) {
 }
 
 fn run_command(mut cmd: Command) {
-    eprintln!("running {:?}", cmd);
+    eprintln!("running {cmd:?}");
     cmd.stderr(Stdio::inherit());
     let status = cmd.status().unwrap_or_else(|e| {
-        panic!("failed to execute [{:?}]: {}", cmd, e);
+        panic!("failed to execute [{cmd:?}]: {e}");
     });
     if !status.success() {
         panic!("execution failed");
@@ -860,22 +860,20 @@ fn generate_prefix_symbols_header(
         r#"
 {pp}ifndef ring_core_generated_{filename_ident}
 {pp}define ring_core_generated_{filename_ident}
-"#,
-        pp = pp,
-        filename_ident = filename_ident
+"#
     )?;
 
     if let Some(prefix_condition) = prefix_condition {
-        writeln!(file, "{}", prefix_condition)?;
+        writeln!(file, "{prefix_condition}")?;
         writeln!(file, "{}", prefix_all_symbols(pp, "_", prefix))?;
-        writeln!(file, "{pp}else", pp = pp)?;
+        writeln!(file, "{pp}else")?;
     };
     writeln!(file, "{}", prefix_all_symbols(pp, "", prefix))?;
     if prefix_condition.is_some() {
-        writeln!(file, "{pp}endif", pp = pp)?
+        writeln!(file, "{pp}endif")?
     }
 
-    writeln!(file, "{pp}endif", pp = pp)?;
+    writeln!(file, "{pp}endif")?;
 
     Ok(())
 }
@@ -1049,24 +1047,12 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     let mut out = String::new();
 
     for (old, new) in SYMBOLS_TO_RENAME {
-        let line = format!(
-            "{pp}define {prefix_prefix}{old} {prefix_prefix}{new}\n",
-            pp = pp,
-            prefix_prefix = prefix_prefix,
-            old = old,
-            new = new
-        );
+        let line = format!("{pp}define {prefix_prefix}{old} {prefix_prefix}{new}\n");
         out += &line;
     }
 
     for symbol in SYMBOLS_TO_PREFIX {
-        let line = format!(
-            "{pp}define {prefix_prefix}{symbol} {prefix_prefix}{prefix}{symbol}\n",
-            pp = pp,
-            prefix_prefix = prefix_prefix,
-            prefix = prefix,
-            symbol = symbol
-        );
+        let line = format!("{pp}define {prefix_prefix}{symbol} {prefix_prefix}{prefix}{symbol}\n");
         out += &line;
     }
 

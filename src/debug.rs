@@ -78,7 +78,7 @@ pub(crate) fn write_hex_bytes(
     bytes: &[u8],
 ) -> Result<(), ::core::fmt::Error> {
     for byte in bytes {
-        write!(fmt, "{:02x}", byte)?;
+        write!(fmt, "{byte:02x}")?;
     }
     Ok(())
 }
