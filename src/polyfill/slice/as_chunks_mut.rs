@@ -24,7 +24,7 @@ pub fn as_chunks_mut<T, const N: usize>(slice: &mut [T]) -> (AsChunksMut<'_, T, 
 
 pub struct AsChunksMut<'a, T, const N: usize>(&'a mut [T]);
 
-impl<T, const N: usize> AsChunksMut<'_, T, N> {
+impl<'a, T, const N: usize> AsChunksMut<'a, T, N> {
     #[inline(always)]
     pub fn as_flattened(&self) -> &[T] {
         self.0
@@ -47,7 +47,7 @@ impl<T, const N: usize> AsChunksMut<'_, T, N> {
 
     #[cfg(target_arch = "x86_64")]
     #[inline(always)]
-    pub fn as_mut(&mut self) -> AsChunksMut<T, N> {
+    pub fn as_mut(&mut self) -> AsChunksMut<'_, T, N> {
         AsChunksMut(self.0)
     }
 
@@ -65,7 +65,7 @@ impl<T, const N: usize> AsChunksMut<'_, T, N> {
 
     #[cfg(target_arch = "x86_64")]
     #[inline(always)]
-    pub fn split_at_mut(&mut self, mid: usize) -> (AsChunksMut<T, N>, AsChunksMut<T, N>) {
+    pub fn split_at_mut(&mut self, mid: usize) -> (AsChunksMut<'_, T, N>, AsChunksMut<'_, T, N>) {
         let (before, after) = self.0.split_at_mut(mid * N);
         (AsChunksMut(before), AsChunksMut(after))
     }
