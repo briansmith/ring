@@ -64,8 +64,8 @@ where
 }
 
 impl<'a, T, const N: usize> IntoIterator for AsChunks<'a, T, N> {
+    type Item = <Self::IntoIter as Iterator>::Item;
     type IntoIter = AsChunksIter<'a, T, N>;
-    type Item = &'a [T; N];
 
     #[inline(always)]
     fn into_iter(self) -> Self::IntoIter {
