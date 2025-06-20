@@ -120,29 +120,21 @@ pub fn verify_limbs_equal_1_leak_bit(a: &[Limb]) -> Result<(), error::Unspecifie
     Err(error::Unspecified)
 }
 
-/// Returns the number of bits in `a`.
-//
 // This strives to be constant-time with respect to the values of all bits
 // except the most significant bit. This does not attempt to be constant-time
 // with respect to `a.len()` or the value of the result or the value of the
 // most significant bit (It's 1, unless the input is zero, in which case it's
 // zero.)
 #[cfg(any(test, feature = "alloc"))]
-pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
-    for num_limbs in (1..=a.len()).rev() {
-        let high_limb = a[num_limbs - 1];
-
-        // Find the number of set bits in |high_limb| by a linear scan from the
-        // most significant bit to the least significant bit. This works great
-        // for the most common inputs because usually the most significant bit
-        // it set.
-        for high_limb_num_bits in (1..=LIMB_BITS).rev() {
-            let shifted = unsafe { LIMB_shr(high_limb, high_limb_num_bits - 1) };
-            if shifted != 0 {
-                return bits::BitLength::from_bits(
-                    ((num_limbs - 1) * LIMB_BITS) + high_limb_num_bits,
-                );
-            }
+pub fn limb_minimal_bits(a: Limb) -> bits::BitLength {
+    // Find the number of set bits in |high_limb| by a linear scan from the
+    // most significant bit to the least significant bit. This works great
+    // for the most common inputs because usually the most significant bit
+    // it set.
+    for high_limb_num_bits in (1..=LIMB_BITS).rev() {
+        let shifted = unsafe { LIMB_shr(a, high_limb_num_bits - 1) };
+        if shifted != 0 {
+            return bits::BitLength::from_bits(high_limb_num_bits);
         }
     }
 
@@ -642,27 +634,19 @@ mod tests {
     }
 
     #[test]
-    fn test_limbs_minimal_bits() {
+    fn test_limb_minimal_bits() {
         const ALL_ONES: LeakyLimb = LeakyLimb::MAX;
-        static CASES: &[(&[LeakyLimb], usize)] = &[
-            (&[], 0),
-            (&[0], 0),
-            (&[ALL_ONES], LIMB_BITS),
-            (&[ALL_ONES, 0], LIMB_BITS),
-            (&[ALL_ONES, 1], LIMB_BITS + 1),
-            (&[0, 0], 0),
-            (&[1, 0], 1),
-            (&[0, 1], LIMB_BITS + 1),
-            (&[0, ALL_ONES], 2 * LIMB_BITS),
-            (&[ALL_ONES, ALL_ONES], 2 * LIMB_BITS),
-            (&[ALL_ONES, ALL_ONES >> 1], 2 * LIMB_BITS - 1),
-            (&[ALL_ONES, 0b100_0000], LIMB_BITS + 7),
-            (&[ALL_ONES, 0b101_0000], LIMB_BITS + 7),
-            (&[ALL_ONES, ALL_ONES >> 1], LIMB_BITS + (LIMB_BITS) - 1),
+        static CASES: &[(LeakyLimb, usize)] = &[
+            (0, 0),
+            (ALL_ONES, LIMB_BITS),
+            (1, 1),
+            (0b100_0000, 7),
+            (0b101_0000, 7),
+            (ALL_ONES >> 1, LIMB_BITS - 1),
         ];
-        for (limbs, bits) in CASES {
-            let limbs = &Vec::from_iter(limbs.iter().copied().map(Limb::from));
-            assert_eq!(limbs_minimal_bits(limbs).as_bits(), *bits);
+        for &(limb, bits) in CASES {
+            let limb = Limb::from(limb);
+            assert_eq!(limb_minimal_bits(limb).as_bits(), bits);
         }
     }
 }

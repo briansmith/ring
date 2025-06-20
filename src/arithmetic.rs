@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub(crate) use self::{constant::limbs_from_hex, limb_slice_error::LimbSliceError};
-use crate::{error::LenMismatchError, limb::LIMB_BITS};
+use crate::{bits::BitLength, error::LenMismatchError, limb::LIMB_BITS};
 
 #[macro_use]
 mod ffi;
@@ -37,6 +37,8 @@ pub const MIN_LIMBS: usize = 4;
 
 // The maximum number of limbs allowed for any `&[Limb]` operation.
 pub const MAX_LIMBS: usize = 8192 / LIMB_BITS;
+
+pub const _MAX_LIMBS_AS_BIT_LENGTH: BitLength = BitLength::from_bits(MAX_LIMBS * LIMB_BITS);
 
 cold_exhaustive_error! {
     enum limb_slice_error::LimbSliceError {

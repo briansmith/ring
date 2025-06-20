@@ -13,13 +13,13 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    super::{MAX_LIMBS, MIN_LIMBS},
+    super::{MAX_LIMBS, MIN_LIMBS, _MAX_LIMBS_AS_BIT_LENGTH},
     BoxedLimbs, Modulus, PublicModulus,
 };
 use crate::{
     bits::BitLength,
     error,
-    limb::{self, Limb, LIMB_BYTES},
+    limb::{self, Limb, LIMB_BITS, LIMB_BYTES},
 };
 
 /// `OwnedModulus`, without the overhead of Montgomery multiplication support.
@@ -62,7 +62,28 @@ impl<M> OwnedModulusValue<M> {
         limb::limbs_reject_even_leak_bit(&limbs)
             .map_err(|_: error::Unspecified| error::KeyRejected::invalid_component())?;
 
-        let len_bits = limb::limbs_minimal_bits(&limbs);
+        let (&hi, rest) = limbs.split_last().unwrap_or_else(|| {
+            // `num_limbs >= MIN_LIMBS` and `MIN_LIMBS >= 2`.
+            const _: () = _MODULUS_MIN_LIMBS_AT_LEAST_2;
+            unreachable!()
+        });
+
+        let hi_bits = limb::limb_minimal_bits(hi);
+        if hi_bits.as_bits() == 0 {
+            // Unreachable since we rejected leading zeros and set `num_limbs`
+            // to the minimal size required.
+            unreachable!()
+        }
+        let len_bits: BitLength = rest
+            .len()
+            .checked_mul(LIMB_BITS)
+            .and_then(|rest_bits| hi_bits.checked_add(BitLength::from_bits(rest_bits)))
+            .unwrap_or_else(|| {
+                const _: BitLength = _MAX_LIMBS_AS_BIT_LENGTH;
+                // Unreachable since we verified `num_limbs <= MAX_LIMBS` and
+                // `MAX_LIMBS * LIMB_BITS` doesn't overflow.
+                unreachable!()
+            });
 
         Ok(Self { limbs, len_bits })
     }
