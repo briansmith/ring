@@ -917,7 +917,6 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "LIMBS_sub_mod",
         "LIMBS_window5_split_window",
         "LIMBS_window5_unsplit_window",
-        "LIMB_shr",
         "aes_gcm_dec_kernel",
         "aes_gcm_dec_update_vaes_avx2",
         "aes_gcm_enc_kernel",
