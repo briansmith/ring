@@ -43,7 +43,7 @@ impl<M> OwnedModulusValue<M> {
         let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
         const _MODULUS_MIN_LIMBS_AT_LEAST_2: () = assert!(MIN_LIMBS >= 2);
         if num_limbs < MIN_LIMBS {
-            return Err(error::KeyRejected::unexpected_error());
+            return Err(error::KeyRejected::too_small());
         }
         if num_limbs > MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
