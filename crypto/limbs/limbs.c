@@ -147,10 +147,6 @@ crypto_word_t LIMBS_window5_unsplit_window(Limb limb, size_t index_within_word) 
   return (limb >> index_within_word) & FIVE_BITS_MASK;
 }
 
-Limb LIMB_shr(Limb a, size_t shift) {
-  return a >> shift;
-}
-
 Limb limbs_mul_add_limb(Limb r[], const Limb a[], Limb b, size_t num_limbs) {
   Limb carried = 0;
   for (size_t i = 0; i < num_limbs; ++i) {
