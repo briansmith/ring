@@ -74,7 +74,7 @@ impl KeyRejected {
     }
 
     #[cfg(feature = "alloc")]
-    pub(crate) fn too_small() -> Self {
+    pub(crate) const fn too_small() -> Self {
         Self("TooSmall")
     }
 
@@ -98,6 +98,11 @@ impl KeyRejected {
 
     pub(crate) fn unexpected_error() -> Self {
         Self("UnexpectedError")
+    }
+
+    #[cfg(test)]
+    pub(crate) fn eq(&self, other: Self) -> bool {
+        self.0 == other.0
     }
 }
 
