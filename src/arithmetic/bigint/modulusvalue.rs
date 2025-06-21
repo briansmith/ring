@@ -48,13 +48,14 @@ impl<M> OwnedModulusValue<M> {
         if num_limbs > MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
-        // The above implies n >= 3, so we don't need to check that.
 
         // Reject leading zeros. Also reject the value zero ([0]) because zero
         // isn't positive.
         if untrusted::Reader::new(input).peek(0) {
             return Err(error::KeyRejected::invalid_encoding());
         }
+
+        // The above implies n >= 3, so we don't need to check that.
 
         let mut limbs = BoxedLimbs::zero(num_limbs);
         limb::parse_big_endian_and_pad_consttime(input, &mut limbs)
