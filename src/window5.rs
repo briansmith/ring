@@ -19,6 +19,8 @@ pub struct LeakyWindow5(bb::LeakyWord);
 impl LeakyWindow5 {
     pub const _0: Self = Self(0);
     pub const _1: Self = Self(1);
+    #[allow(dead_code)]
+    const MAX: Self = Self(31);
 
     #[cfg(target_arch = "x86_64")]
     pub fn checked_double(self) -> Option<Self> {
@@ -33,8 +35,15 @@ impl LeakyWindow5 {
         self.0.checked_sub(1).map(Self)
     }
 
+    #[inline]
+    pub fn leak_usize(self) -> usize {
+        #[allow(clippy::cast_possible_truncation)]
+        const _LOSSLESS_CONVERSION: () = assert!(LeakyWindow5::MAX.0 as usize == 31);
+        usize::try_from(self.0).unwrap_or_else(|_| unreachable!())
+    }
+
     #[cfg(target_arch = "x86_64")]
     pub fn range() -> impl Iterator<Item = Self> {
-        (0..=31).map(Self)
+        (0..=(Self::MAX.0)).map(Self)
     }
 }
