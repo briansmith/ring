@@ -17,9 +17,11 @@ use super::{
     BoxedLimbs, Modulus, PublicModulus,
 };
 use crate::{
-    bits::BitLength,
-    error,
-    limb::{self, Limb, LIMB_BYTES},
+    bb,
+    bits::{BitLength, FromByteLen as _},
+    error::{self, InputTooLongError},
+    limb::{self, Limb, LIMB_BITS, LIMB_BYTES},
+    polyfill::usize_from_u32,
 };
 
 /// `OwnedModulus`, without the overhead of Montgomery multiplication support.
@@ -49,21 +51,42 @@ impl<M> OwnedModulusValue<M> {
             return Err(error::KeyRejected::too_large());
         }
 
-        // Reject leading zeros. Also reject the value zero ([0]) because zero
-        // isn't positive.
-        if untrusted::Reader::new(input).peek(0) {
+        const _MAX_LIMBS_TIMES_LIMB_BITS_DOES_NOT_OVERFLOW: usize = MAX_LIMBS * LIMB_BITS;
+        let len_bits_plus_leading_zeros = BitLength::<usize>::from_byte_len(input.len())
+            .unwrap_or_else(|InputTooLongError { .. }| {
+                // `num_limbs <= MAX_LIMBS` and `MAX_LIMBS * LIMB_BITS` doesn't overflow.
+                unreachable!()
+            });
+
+        let hi = input.as_slice_less_safe().first().unwrap_or_else(|| {
+            // We know num_limbs >= 2 so there is at least one byte.
+            const _: () = _MODULUS_MIN_LIMBS_AT_LEAST_2;
+            unreachable!();
+        });
+        // XXX: Variable-time operation on potentially-secret data. TODO: fix this.
+        let leading_zeros = bb::byte_leading_zeros_vartime(hi);
+
+        // Reject leading zero bytes.
+        // XXX: Variable-time operation on potentially-secret data. TODO: fix this.
+        if leading_zeros.as_bits() == usize_from_u32(u8::BITS) {
             return Err(error::KeyRejected::invalid_encoding());
         }
 
-        // The above implies n >= 3, so we don't need to check that.
+        let len_bits = len_bits_plus_leading_zeros
+            .checked_sub(leading_zeros)
+            .unwrap_or_else(|| {
+                // Impossible because `len_bits_plus_leading_zeros >= leading_zeros`.
+                unreachable!()
+            });
+
+        // Having at least 2 limbs where the high-order limb is nonzero implies
+        // M >= 3 as required.
 
         let mut limbs = BoxedLimbs::zero(num_limbs);
         limb::parse_big_endian_and_pad_consttime(input, &mut limbs)
             .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
         limb::limbs_reject_even_leak_bit(&limbs)
             .map_err(|_: error::Unspecified| error::KeyRejected::invalid_component())?;
-
-        let len_bits = limb::limbs_minimal_bits(&limbs);
 
         Ok(Self { limbs, len_bits })
     }
