@@ -46,8 +46,7 @@ pub fn bytes_are_equal(a: &[u8], b: &[u8]) -> BoolMask {
         #[allow(clippy::into_iter_on_ref)]
         let rem = a_rem
             .into_iter()
-            .copied()
-            .map(Word::from)
+            .map(Word::from_u8)
             .zip(b_rem.into_iter().copied().map(Word::from))
             .fold(0, |acc, (a, b)| acc | (a ^ b));
         acc |= rem;
