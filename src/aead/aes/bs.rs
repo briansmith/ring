@@ -34,15 +34,18 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
     prefixed_extern! {
         // bsaes_ctr32_encrypt_blocks requires transformation of an existing
         // VPAES key; there is no `bsaes_set_encrypt_key`.
-        fn vpaes_encrypt_key_to_bsaes(bsaes_key: *mut AES_KEY, vpaes_key: &AES_KEY);
+        // `bsaes_key` will be initialized when this returns.
+        fn vpaes_encrypt_key_to_bsaes(bsaes_key: &mut MaybeUninit<AES_KEY>, vpaes_key: &AES_KEY);
     }
 
-    // SAFETY:
-    //   * The caller ensures `vpaes_key` was initialized by
-    //     `vpaes_set_encrypt_key`.
-    //   * `bsaes_key was zeroed above, and `vpaes_encrypt_key_to_bsaes`
-    //     is assumed to initialize `bsaes_key`.
-    let bsaes_key = unsafe { AES_KEY::derive(vpaes_encrypt_key_to_bsaes, vpaes_key) };
+    let bsaes_key = {
+        let mut uninit = AES_KEY::invalid_zero();
+        // SAFETY: The caller ensures `vpaes_key` was initialized by
+        // `vpaes_set_encrypt_key`.
+        unsafe { vpaes_encrypt_key_to_bsaes(&mut uninit, vpaes_key) };
+        // SAFETY: `vpaes_encrypt_key_to_bsaes` initialized `uninit`.
+        uninit
+    };
 
     // The code for `vpaes_encrypt_key_to_bsaes` notes "vpaes stores one
     // fewer round count than bsaes, but the number of keys is the same,"

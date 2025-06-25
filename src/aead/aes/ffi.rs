@@ -59,19 +59,8 @@ impl AES_KEY {
             rounds: 0,
         }
     }
-}
 
-#[cfg(all(target_arch = "arm", target_endian = "little"))]
-impl AES_KEY {
-    pub(super) unsafe fn derive(
-        f: for<'a> unsafe extern "C" fn(*mut AES_KEY, &'a AES_KEY),
-        src: &Self,
-    ) -> Self {
-        let mut r = Self::invalid_zero();
-        unsafe { f(&mut r, src) };
-        r
-    }
-
+    #[cfg(all(target_arch = "arm", target_endian = "little"))]
     pub(super) fn rounds(&self) -> u32 {
         self.rounds
     }
