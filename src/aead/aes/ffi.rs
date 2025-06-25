@@ -27,8 +27,8 @@ pub(in super::super) struct Counter(pub(super) [u8; BLOCK_LEN]);
 #[repr(C)]
 #[derive(Clone)]
 pub(in super::super) struct AES_KEY {
-    pub rd_key: [[u32; 4]; MAX_ROUNDS + 1],
-    pub rounds: c_uint,
+    rd_key: [[u32; 4]; MAX_ROUNDS + 1],
+    rounds: c_uint,
 }
 
 // `AES_MAXNR` in BoringSSL's aes.h.
