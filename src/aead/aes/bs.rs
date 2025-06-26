@@ -14,7 +14,7 @@
 
 #![cfg(all(target_arch = "arm", target_endian = "little"))]
 
-use super::{Counter, Overlapping, AES_KEY};
+use super::{ffi, Counter, Overlapping, AES_KEY};
 
 /// SAFETY:
 ///   * The caller must ensure that if blocks > 0 then either `input` and
@@ -54,7 +54,8 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
     //    `vpaes_encrypt_key_to_bsaes`.
     //  * `bsaes_ctr32_encrypt_blocks` satisfies the contract for
     //    `ctr32_encrypt_blocks`.
-    unsafe {
-        ctr32_encrypt_blocks!(bsaes_ctr32_encrypt_blocks, in_out, &bsaes_key, ctr);
-    }
+    declare_ctr32_encrypt_blocks! { bsaes_ctr32_encrypt_blocks }
+    ffi::ctr32_encrypt_blocks(in_out, ctr, |input, output, blocks, ivec| unsafe {
+        bsaes_ctr32_encrypt_blocks(input, output, blocks, &bsaes_key, ivec)
+    })
 }

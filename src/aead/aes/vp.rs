@@ -19,7 +19,7 @@
     target_arch = "x86_64"
 ))]
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
+use super::{ffi, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
 use crate::cpu;
 
 #[derive(Clone)]
@@ -78,7 +78,10 @@ impl EncryptBlock for Key {
 ))]
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
+        declare_ctr32_encrypt_blocks! { vpaes_ctr32_encrypt_blocks }
+        ffi::ctr32_encrypt_blocks(in_out, ctr, |input, output, blocks, ivec| unsafe {
+            vpaes_ctr32_encrypt_blocks(input, output, blocks, &self.inner, ivec)
+        })
     }
 }
 
@@ -127,7 +130,10 @@ impl EncryptCtr32 for Key {
         //    as required by `vpaes_ctr32_encrypt_blocks`.
         //  * `vpaes_ctr32_encrypt_blocks` satisfies the contract for
         //    `ctr32_encrypt_blocks`.
-        unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
+        declare_ctr32_encrypt_blocks! { vpaes_ctr32_encrypt_blocks }
+        ffi::ctr32_encrypt_blocks(in_out, ctr, |input, output, blocks, ivec| unsafe {
+            vpaes_ctr32_encrypt_blocks(input, output, blocks, &self.inner, ivec)
+        })
     }
 }
 

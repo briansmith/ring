@@ -98,80 +98,56 @@ macro_rules! set_encrypt_key {
 }
 
 /// SAFETY:
-///   * The caller must ensure that `$key` was initialized with the
-///     `set_encrypt_key!` invocation that `$name` requires.
-///   * The caller must ensure that fhe function `$name` satisfies the conditions
-///     for the `f` parameter to `ctr32_encrypt_blocks`.
-macro_rules! ctr32_encrypt_blocks {
-    ($name:ident, $in_out:expr, $key:expr, $ctr:expr $(,)? ) => {{
-        use crate::{
-            aead::aes::{ffi::AES_KEY, Counter, BLOCK_LEN},
-            c,
-        };
+///   * `f` must not read more than `blocks` blocks from `input`.
+///   * `f` must write exactly `block` blocks to `output`.
+///   * In particular, `f` must handle blocks == 0 without reading from `input`
+///     or writing to `output`.
+///   * `f` must support the input overlapping with the output exactly or
+///     with any nonnegative offset `n` (i.e. `input == output.add(n)`);
+///     `f` does NOT need to support the cases where input < output.
+///   * `key` must have been initialized with the `set_encrypt_key!` invocation
+///     that corresponds to `f`.
+macro_rules! declare_ctr32_encrypt_blocks {
+    ($f:ident ) => {
         prefixed_extern! {
-            fn $name(
-                input: *const [u8; BLOCK_LEN],
-                output: *mut [u8; BLOCK_LEN],
-                blocks: c::NonZero_size_t,
-                key: &AES_KEY,
-                ivec: &Counter,
+            fn $f(
+                input: *const [u8; $crate::aead::aes::BLOCK_LEN],
+                output: *mut [u8; $crate::aead::aes::BLOCK_LEN],
+                blocks: crate::c::NonZero_size_t,
+                key: &$crate::aead::aes::ffi::AES_KEY,
+                ivec: &$crate::aead::aes::Counter,
             );
         }
-        $key.ctr32_encrypt_blocks($name, $in_out, $ctr)
-    }};
+    };
 }
 
-impl AES_KEY {
-    /// SAFETY:
-    ///   * `f` must not read more than `blocks` blocks from `input`.
-    ///   * `f` must write exactly `block` blocks to `output`.
-    ///   * In particular, `f` must handle blocks == 0 without reading from `input`
-    ///     or writing to `output`.
-    ///   * `f` must support the input overlapping with the output exactly or
-    ///     with any nonnegative offset `n` (i.e. `input == output.add(n)`);
-    ///     `f` does NOT need to support the cases where input < output.
-    ///   * `key` must have been initialized with the `set_encrypt_key!` invocation
-    ///     that corresponds to `f`.
-    #[inline]
-    pub(super) unsafe fn ctr32_encrypt_blocks(
-        &self,
-        f: unsafe extern "C" fn(
-            input: *const [u8; BLOCK_LEN],
-            output: *mut [u8; BLOCK_LEN],
-            blocks: c::NonZero_size_t,
-            key: &AES_KEY,
-            ivec: &Counter,
-        ),
-        in_out: Overlapping<'_>,
-        ctr: &mut Counter,
-    ) {
-        in_out.with_input_output_len(|input, output, len| {
-            debug_assert_eq!(len % BLOCK_LEN, 0);
+#[inline]
+pub(super) fn ctr32_encrypt_blocks(
+    in_out: Overlapping<'_>,
+    ctr: &mut Counter,
+    f: impl FnOnce(
+        /*input: */ *const [u8; BLOCK_LEN],
+        /*output: */ *mut [u8; BLOCK_LEN],
+        /*blocks: */ c::NonZero_size_t,
+        /*ivec: */ &Counter,
+    ),
+) {
+    in_out.with_input_output_len(|input, output, len| {
+        debug_assert_eq!(len % BLOCK_LEN, 0);
 
-            let blocks = match NonZeroUsize::new(len / BLOCK_LEN) {
-                Some(blocks) => blocks,
-                None => {
-                    return;
-                }
-            };
-
-            let input: *const [u8; BLOCK_LEN] = input.cast();
-            let output: *mut [u8; BLOCK_LEN] = output.cast();
-            let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
-
-            // SAFETY:
-            //  * `input` points to `blocks` blocks.
-            //  * `output` points to space for `blocks` blocks to be written.
-            //  * input == output.add(n), where n == src.start, and the caller is
-            //    responsible for ensuing this sufficient for `f` to work correctly.
-            //  * `blocks` is non-zero so `f` doesn't have to work for empty slices.
-            //  * The caller is responsible for ensuring `key` was initialized by the
-            //    `set_encrypt_key!` invocation required by `f`.
-            unsafe {
-                f(input, output, blocks, self, ctr);
+        let blocks = match NonZeroUsize::new(len / BLOCK_LEN) {
+            Some(blocks) => blocks,
+            None => {
+                return;
             }
+        };
 
-            ctr.increment_by_less_safe(blocks_u32);
-        });
-    }
+        let input: *const [u8; BLOCK_LEN] = input.cast();
+        let output: *mut [u8; BLOCK_LEN] = output.cast();
+        let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
+
+        f(input, output, blocks, ctr);
+
+        ctr.increment_by_less_safe(blocks_u32);
+    });
 }
