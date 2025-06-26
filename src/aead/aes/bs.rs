@@ -14,7 +14,11 @@
 
 #![cfg(all(target_arch = "arm", target_endian = "little"))]
 
-use super::{ffi, Counter, Overlapping, AES_KEY};
+use super::{ffi, vp, Counter, Overlapping};
+
+define_key_bssl! {
+    Key
+}
 
 /// SAFETY:
 ///   * The caller must ensure that if blocks > 0 then either `input` and
@@ -26,20 +30,20 @@ use super::{ffi, Counter, Overlapping, AES_KEY};
 ///     `vpaes_set_encrypt_key`.
 ///   * Upon returning, `blocks` blocks will have been read from `input` and
 ///     written to `output`.
-pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
+pub(super) fn ctr32_encrypt_blocks_with_vpaes_key(
     in_out: Overlapping<'_>,
-    vpaes_key: &AES_KEY,
+    vpaes_key: &vp::Key,
     ctr: &mut Counter,
 ) {
     prefixed_extern! {
         // bsaes_ctr32_encrypt_blocks requires transformation of an existing
         // VPAES key; there is no `bsaes_set_encrypt_key`.
         // `bsaes_key` will be initialized when this returns.
-        fn vpaes_encrypt_key_to_bsaes(bsaes_key: &mut MaybeUninit<AES_KEY>, vpaes_key: &AES_KEY);
+        fn vpaes_encrypt_key_to_bsaes(bsaes_key: *mut Key, vpaes_key: &vp::Key);
     }
 
     let bsaes_key = {
-        let mut uninit = AES_KEY::invalid_zero();
+        let mut uninit = Key::invalid_zero();
         // SAFETY: The caller ensures `vpaes_key` was initialized by
         // `vpaes_set_encrypt_key`.
         unsafe { vpaes_encrypt_key_to_bsaes(&mut uninit, vpaes_key) };
@@ -50,14 +54,14 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
     // The code for `vpaes_encrypt_key_to_bsaes` notes "vpaes stores one
     // fewer round count than bsaes, but the number of keys is the same,"
     // so use this as a sanity check.
-    debug_assert_eq!(bsaes_key.rounds(), vpaes_key.rounds() + 1);
+    debug_assert_eq!(bsaes_key.rounds, vpaes_key.rounds() + 1);
 
     // SAFETY:
     //  * `bsaes_key` is in bsaes format after calling
     //    `vpaes_encrypt_key_to_bsaes`.
     //  * `bsaes_ctr32_encrypt_blocks` satisfies the contract for
     //    `ctr32_encrypt_blocks`.
-    declare_ctr32_encrypt_blocks! { bsaes_ctr32_encrypt_blocks }
+    declare_ctr32_encrypt_blocks! { Key, bsaes_ctr32_encrypt_blocks }
     ffi::ctr32_encrypt_blocks(in_out, ctr, |input, output, blocks, ivec| unsafe {
         bsaes_ctr32_encrypt_blocks(input, output, blocks, &bsaes_key, ivec)
     })

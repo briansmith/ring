@@ -12,59 +12,66 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{KeyBytes, Overlapping, BLOCK_LEN};
-use crate::{bits::BitLength, c};
-use core::{
-    ffi::{c_int, c_uint},
-    num::{NonZeroU32, NonZeroUsize},
-};
+use super::{Overlapping, BLOCK_LEN};
+use crate::c;
+use core::num::{NonZeroU32, NonZeroUsize};
 
 /// nonce || big-endian counter.
 #[repr(transparent)]
 pub(in super::super) struct Counter(pub(super) [u8; BLOCK_LEN]);
 
-// `AES_KEY` in BoringSSL's aes.h.
-#[repr(C)]
-#[derive(Clone)]
-pub(in super::super) struct AES_KEY {
-    rd_key: [[u32; 4]; MAX_ROUNDS + 1],
-    rounds: c_uint,
+macro_rules! define_key_bssl {
+    {
+        $( #[$t_attr:meta] )*
+        $t_vis:vis $T:ident
+    } => {
+        // Upstream uses a single `AES_KEY` struct with this shape for every
+        // representation, but where the values in `rd_key` and `rounds` are
+        // specific to the implementation that created the key. Instead we
+        // define a new type `$T` for each representation.
+        #[repr(C)]
+        $( #[$t_attr] )*
+        $t_vis struct $T {
+            rd_key: [[u32; 4]; $crate::aead::aes::ffi::MAX_ROUNDS + 1],
+            rounds: core::ffi::c_uint,
+        }
+
+        impl $T {
+            #[inline]
+            unsafe fn new_with_set_encrypt_key(
+                f: unsafe extern "C" fn(
+                    *const u8,
+                    $crate::bits::BitLength<core::ffi::c_int>,
+                    *mut Self
+                ) -> core::ffi::c_int,
+                bytes: KeyBytes<'_>,
+            ) -> Self {
+                use $crate::{aead::aes::KeyBytes, bits::BitLength};
+                let mut key = Self::invalid_zero();
+
+                let (bytes, key_bits) = match bytes {
+                    KeyBytes::AES_128(bytes) => (&bytes[..], BitLength::from_bits(128)),
+                    KeyBytes::AES_256(bytes) => (&bytes[..], BitLength::from_bits(256)),
+                };
+
+                // Unusually, in this case zero means success and non-zero means failure.
+                let r = unsafe { f(bytes.as_ptr(), key_bits, &mut key) };
+                assert_eq!(r, 0);
+                key
+            }
+
+            fn invalid_zero() -> Self {
+                Self {
+                    rd_key: [[0; 4]; $crate::aead::aes::ffi::MAX_ROUNDS + 1],
+                    rounds: 0,
+                }
+            }
+        }
+    }
 }
 
 // `AES_MAXNR` in BoringSSL's aes.h.
-const MAX_ROUNDS: usize = 14;
-
-impl AES_KEY {
-    #[inline]
-    pub(super) unsafe fn new(
-        f: unsafe extern "C" fn(*const u8, BitLength<c_int>, *mut AES_KEY) -> c_int,
-        bytes: KeyBytes<'_>,
-    ) -> Self {
-        let mut key = Self::invalid_zero();
-
-        let (bytes, key_bits) = match bytes {
-            KeyBytes::AES_128(bytes) => (&bytes[..], BitLength::from_bits(128)),
-            KeyBytes::AES_256(bytes) => (&bytes[..], BitLength::from_bits(256)),
-        };
-
-        // Unusually, in this case zero means success and non-zero means failure.
-        let r = unsafe { f(bytes.as_ptr(), key_bits, &mut key) };
-        assert_eq!(r, 0);
-        key
-    }
-
-    pub(super) fn invalid_zero() -> Self {
-        Self {
-            rd_key: [[0; 4]; MAX_ROUNDS + 1],
-            rounds: 0,
-        }
-    }
-
-    #[cfg(all(target_arch = "arm", target_endian = "little"))]
-    pub(super) fn rounds(&self) -> u32 {
-        self.rounds
-    }
-}
+pub(super) const MAX_ROUNDS: usize = 14;
 
 // SAFETY:
 //  * The function `$name` must read `bits` bits from `user_key`; `bits` will
@@ -76,13 +83,13 @@ impl AES_KEY {
 // In BoringSSL, the C prototypes for these are in
 // crypto/fipsmodule/aes/internal.h.
 macro_rules! set_encrypt_key {
-    ( $name:ident, $key_bytes:expr $(,)? ) => {{
+    ( $Key:ty, $name:ident, $key_bytes:expr $(,)? ) => {{
         use crate::bits::BitLength;
         use core::ffi::c_int;
         prefixed_extern! {
-            fn $name(user_key: *const u8, bits: BitLength<c_int>, key: *mut AES_KEY) -> c_int;
+            fn $name(user_key: *const u8, bits: BitLength<c_int>, key: *mut $Key) -> c_int;
         }
-        $crate::aead::aes::ffi::AES_KEY::new($name, $key_bytes)
+        <$Key>::new_with_set_encrypt_key($name, $key_bytes)
     }};
 }
 
@@ -97,13 +104,13 @@ macro_rules! set_encrypt_key {
 ///   * `key` must have been initialized with the `set_encrypt_key!` invocation
 ///     that corresponds to `f`.
 macro_rules! declare_ctr32_encrypt_blocks {
-    ($f:ident ) => {
+    { $K:ty, $f:ident } => {
         prefixed_extern! {
             fn $f(
                 input: *const [u8; $crate::aead::aes::BLOCK_LEN],
                 output: *mut [u8; $crate::aead::aes::BLOCK_LEN],
                 blocks: crate::c::NonZero_size_t,
-                key: &$crate::aead::aes::ffi::AES_KEY,
+                key: &$K,
                 ivec: &$crate::aead::aes::Counter,
             );
         }

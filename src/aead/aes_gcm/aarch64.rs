@@ -36,7 +36,7 @@ pub(super) fn seal_whole(
                 output: *mut [u8; BLOCK_LEN],
                 Xi: &mut gcm::Xi,
                 ivec: &mut Counter,
-                key: &aes::AES_KEY,
+                key: &aes::hw::Key,
                 Htable: &gcm::HTable);
         }
 
@@ -47,7 +47,7 @@ pub(super) fn seal_whole(
                 in_out.as_mut_ptr(),
                 xi,
                 ctr,
-                aes_key.inner_less_safe(),
+                aes_key,
                 htable,
             )
         }
@@ -75,21 +75,11 @@ pub(super) fn open_whole(
                     output: *mut u8,
                     Xi: &mut gcm::Xi,
                     ivec: &mut Counter,
-                    key: &aes::AES_KEY,
+                    key: &aes::hw::Key,
                     Htable: &gcm::HTable);
             }
 
-            unsafe {
-                aes_gcm_dec_kernel(
-                    input,
-                    whole_block_bits,
-                    output,
-                    xi,
-                    ctr,
-                    aes_key.inner_less_safe(),
-                    htable,
-                )
-            }
+            unsafe { aes_gcm_dec_kernel(input, whole_block_bits, output, xi, ctr, aes_key, htable) }
         }
     })
 }

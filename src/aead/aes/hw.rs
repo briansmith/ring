@@ -18,12 +18,12 @@
     target_arch = "x86_64"
 ))]
 
-use super::{ffi, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
+use super::{ffi, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
 use crate::cpu;
 
-#[derive(Clone)]
-pub struct Key {
-    inner: AES_KEY,
+define_key_bssl! {
+    #[derive(Clone)]
+    pub(in super::super) Key
 }
 
 impl Key {
@@ -33,9 +33,7 @@ impl Key {
         _required_cpu_features: cpu::aarch64::Aes,
         _optional_cpu_features: Option<()>,
     ) -> Self {
-        Self {
-            inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key, bytes) },
-        }
+        unsafe { set_encrypt_key!(Key, aes_hw_set_encrypt_key, bytes) }
     }
 
     #[cfg(target_arch = "x86")]
@@ -47,13 +45,9 @@ impl Key {
         // Ssse3 is required, but upstream only uses this if there is also Avx;
         // presumably the base version is faster on pre-AVX CPUs.
         if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
-            Self {
-                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_alt, bytes) },
-            }
+            unsafe { set_encrypt_key!(Key, aes_hw_set_encrypt_key_alt, bytes) }
         } else {
-            Self {
-                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_base, bytes) },
-            }
+            unsafe { set_encrypt_key!(Key, aes_hw_set_encrypt_key_base, bytes) }
         }
     }
 
@@ -66,23 +60,10 @@ impl Key {
         // Ssse3 is required, but upstream only uses this if there is also Avx;
         // presumably the base version is faster on pre-AVX CPUs.
         if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
-            Self {
-                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_alt, bytes) },
-            }
+            unsafe { set_encrypt_key!(Key, aes_hw_set_encrypt_key_alt, bytes) }
         } else {
-            Self {
-                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_base, bytes) },
-            }
+            unsafe { set_encrypt_key!(Key, aes_hw_set_encrypt_key_base, bytes) }
         }
-    }
-
-    #[cfg(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        target_arch = "x86_64"
-    ))]
-    #[must_use]
-    pub(in super::super) fn inner_less_safe(&self) -> &AES_KEY {
-        &self.inner
     }
 }
 
@@ -98,9 +79,9 @@ impl EncryptBlock for Key {
 
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        declare_ctr32_encrypt_blocks! { aes_hw_ctr32_encrypt_blocks }
+        declare_ctr32_encrypt_blocks! { Key, aes_hw_ctr32_encrypt_blocks }
         ffi::ctr32_encrypt_blocks(in_out, ctr, |input, output, blocks, ivec| unsafe {
-            aes_hw_ctr32_encrypt_blocks(input, output, blocks, &self.inner, ivec)
+            aes_hw_ctr32_encrypt_blocks(input, output, blocks, self, ivec)
         })
     }
 }
