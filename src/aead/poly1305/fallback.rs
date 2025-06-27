@@ -14,7 +14,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Key, Tag, BLOCK_LEN, TAG_LEN};
-use crate::polyfill::{self, slice::AsChunks, sliceutil};
+use crate::polyfill::{self, sliceutil};
 use core::num::Wrapping;
 
 type W32 = Wrapping<u32>;
@@ -113,7 +113,7 @@ impl State {
     // `input.len % BLOCK_LEN == 0` must be true for every call except the
     // final one.
     pub(super) fn update_internal(&mut self, input: &[u8]) {
-        let (whole, remainder): (AsChunks<u8, BLOCK_LEN>, _) = polyfill::slice::as_chunks(input);
+        let (whole, remainder) = polyfill::slice::as_chunks::<_, BLOCK_LEN>(input);
 
         whole.into_iter().for_each(|input| {
             let (input, _) = polyfill::slice::as_chunks(input);

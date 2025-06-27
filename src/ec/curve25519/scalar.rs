@@ -12,11 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{
-    arithmetic::limbs_from_hex,
-    digest, error, limb,
-    polyfill::slice::{self, AsChunks},
-};
+use crate::{arithmetic::limbs_from_hex, digest, error, limb, polyfill::slice};
 use core::array;
 
 #[repr(transparent)]
@@ -32,8 +28,7 @@ impl Scalar {
             limbs_from_hex("1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed");
         let order = ORDER.map(limb::Limb::from);
 
-        let (limbs_as_bytes, _empty): (AsChunks<u8, { limb::LIMB_BYTES }>, _) =
-            slice::as_chunks(&bytes);
+        let (limbs_as_bytes, _empty) = slice::as_chunks::<_, { limb::LIMB_BYTES }>(&bytes);
         debug_assert!(_empty.is_empty());
         let limbs: [limb::Limb; SCALAR_LEN / limb::LIMB_BYTES] =
             array::from_fn(|i| limb::Limb::from_le_bytes(limbs_as_bytes[i]));
