@@ -36,7 +36,7 @@ where
     for<'a> &'a S::InputBytes: From<&'a [u8; BYTES_LEN]>,
 {
     for M in M {
-        let (M, remainder): (AsChunks<u8, BYTES_LEN>, &[u8]) = slice::as_chunks(M);
+        let (M, remainder) = slice::as_chunks::<_, BYTES_LEN>(M);
         debug_assert!(remainder.is_empty());
 
         // FIPS 180-4 {6.2.2, 6.4.2} Step 1
