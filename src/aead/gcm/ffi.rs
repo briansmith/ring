@@ -74,11 +74,8 @@ pub(super) fn with_non_dangling_ptr(
 
     let input = input.as_flattened();
 
-    let input_len = match NonZeroUsize::new(input.len()) {
-        Some(len) => len,
-        None => {
-            return;
-        }
+    let Some(input_len) = NonZeroUsize::new(input.len()) else {
+        return;
     };
 
     f(input.as_ptr(), input_len);
