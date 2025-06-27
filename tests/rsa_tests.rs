@@ -42,9 +42,9 @@ fn rsa_from_pkcs8_test() {
 
             match (rsa::KeyPair::from_pkcs8(&input), error) {
                 (Ok(_), None) => {}
-                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
-                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+                (Err(e), None) => panic!("Failed with error \"{e}\", but expected to succeed"),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{e}\""),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{actual}"), expected),
             };
 
             Ok(())
@@ -66,7 +66,7 @@ fn test_signature_rsa_pkcs1_sign() {
                 "SHA256" => &signature::RSA_PKCS1_SHA256,
                 "SHA384" => &signature::RSA_PKCS1_SHA384,
                 "SHA512" => &signature::RSA_PKCS1_SHA512,
-                _ => panic!("Unsupported digest: {}", digest_name),
+                _ => panic!("Unsupported digest: {digest_name}"),
             };
 
             let private_key = test_case.consume_bytes("Key");
@@ -106,7 +106,7 @@ fn test_signature_rsa_pss_sign() {
                 "SHA256" => &signature::RSA_PSS_SHA256,
                 "SHA384" => &signature::RSA_PSS_SHA384,
                 "SHA512" => &signature::RSA_PSS_SHA512,
-                _ => panic!("Unsupported digest: {}", digest_name),
+                _ => panic!("Unsupported digest: {digest_name}"),
             };
 
             let result = test_case.consume_string("Result");
@@ -201,7 +201,7 @@ fn test_signature_rsa_pkcs1_verify() {
                 "SHA256" => sha256_params,
                 "SHA384" => sha384_params,
                 "SHA512" => sha512_params,
-                _ => panic!("Unsupported digest: {}", digest_name),
+                _ => panic!("Unsupported digest: {digest_name}"),
             };
 
             let public_key = test_case.consume_bytes("Key");
@@ -253,7 +253,7 @@ fn test_signature_rsa_pss_verify() {
                 "SHA256" => &signature::RSA_PSS_2048_8192_SHA256,
                 "SHA384" => &signature::RSA_PSS_2048_8192_SHA384,
                 "SHA512" => &signature::RSA_PSS_2048_8192_SHA512,
-                _ => panic!("Unsupported digest: {}", digest_name),
+                _ => panic!("Unsupported digest: {digest_name}"),
             };
 
             let public_key = test_case.consume_bytes("Key");
@@ -338,7 +338,7 @@ fn test_public_key_coverage(key: &rsa::PublicKey) {
 
     // Test `Debug`.
     const PUBLIC_KEY_DEBUG: &str = include_str!("rsa_test_public_key_2048_debug.txt");
-    assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key));
+    assert_eq!(PUBLIC_KEY_DEBUG, format!("{key:?}"));
 
     let components = rsa::PublicKeyComponents::<Vec<_>>::from(key);
     const PUBLIC_KEY_MODULUS_BE_BYTES: &[u8] = include_bytes!("rsa_test_public_modulus.bin");

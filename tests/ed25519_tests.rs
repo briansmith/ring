@@ -85,7 +85,7 @@ fn test_signature_ed25519_verify() {
             let expected_result = match test_case.consume_string("Result").as_str() {
                 "P" => Ok(()),
                 "F" => Err(error::Unspecified),
-                s => panic!("{:?} is not a valid result", s),
+                s => panic!("{s:?} is not a valid result"),
             };
             test_signature_verification(&public_key, &msg, &sig, expected_result);
             Ok(())
@@ -181,7 +181,7 @@ fn test_ed25519_from_pkcs8_(
                     );
                 }
                 Err(actual_error) => {
-                    assert_eq!(expected_error, Some(format!("{}", actual_error)));
+                    assert_eq!(expected_error, Some(format!("{actual_error}")));
                     assert_eq!(expected_public, None);
                 }
             }

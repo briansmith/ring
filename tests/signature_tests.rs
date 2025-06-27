@@ -21,7 +21,7 @@ fn signature_impl_test() {
         signature::UnparsedPublicKey::new(&signature::ED25519, &[0x01, 0x02, 0x03]);
 
     assert_eq!(
-        format!("{:?}", unparsed_public_key),
+        format!("{unparsed_public_key:?}"),
         r#"UnparsedPublicKey { algorithm: ring::signature::ED25519, bytes: "010203" }"#
     );
 

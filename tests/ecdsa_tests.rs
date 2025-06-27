@@ -66,9 +66,9 @@ fn ecdsa_from_pkcs8_test() {
                 error.clone(),
             ) {
                 (Ok(_), None) => (),
-                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
-                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+                (Err(e), None) => panic!("Failed with error \"{e}\", but expected to succeed"),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{e}\""),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{actual}"), expected),
             };
 
             match (
@@ -76,9 +76,9 @@ fn ecdsa_from_pkcs8_test() {
                 error,
             ) {
                 (Ok(_), None) => (),
-                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
-                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+                (Err(e), None) => panic!("Failed with error \"{e}\", but expected to succeed"),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{e}\""),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{actual}"), expected),
             };
 
             assert!(signature::EcdsaKeyPair::from_pkcs8(other_fixed, &input, &rng).is_err());
@@ -133,7 +133,7 @@ fn signature_ecdsa_verify_asn1_test() {
                 ("P-384", "SHA256") => &signature::ECDSA_P384_SHA256_ASN1,
                 ("P-384", "SHA384") => &signature::ECDSA_P384_SHA384_ASN1,
                 _ => {
-                    panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
+                    panic!("Unsupported curve+digest: {curve_name}+{digest_name}");
                 }
             };
 
@@ -165,7 +165,7 @@ fn signature_ecdsa_verify_fixed_test() {
                 ("P-256", "SHA256") => &signature::ECDSA_P256_SHA256_FIXED,
                 ("P-384", "SHA384") => &signature::ECDSA_P384_SHA384_FIXED,
                 _ => {
-                    panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
+                    panic!("Unsupported curve+digest: {curve_name}+{digest_name}");
                 }
             };
 
@@ -248,7 +248,7 @@ fn signature_ecdsa_sign_fixed_sign_and_verify_test() {
                     &signature::ECDSA_P384_SHA384_FIXED,
                 ),
                 _ => {
-                    panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
+                    panic!("Unsupported curve+digest: {curve_name}+{digest_name}");
                 }
             };
 
@@ -302,7 +302,7 @@ fn signature_ecdsa_sign_asn1_test() {
                     &signature::ECDSA_P384_SHA384_ASN1,
                 ),
                 _ => {
-                    panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
+                    panic!("Unsupported curve+digest: {curve_name}+{digest_name}");
                 }
             };
 

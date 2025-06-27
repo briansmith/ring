@@ -369,7 +369,7 @@ mod tests {
             assert_eq!(r.len(), a.len()); // Sanity check
             let actual_retval =
                 unsafe { limbs_mul_add_limb(r.as_mut_ptr(), a.as_ptr(), *w, a.len()) };
-            assert_eq!(&r, expected_r, "{}: {:x?} != {:x?}", i, r, expected_r);
+            assert_eq!(&r, expected_r, "{i}: {r:x?} != {expected_r:x?}");
             assert_eq!(
                 actual_retval, *expected_retval,
                 "{}: {:x?} != {:x?}",
