@@ -221,12 +221,9 @@ impl Context {
         let to_digest = if self.num_pending == 0 {
             data
         } else {
-            let buffer_to_fill = match buffer.get_mut(self.num_pending..) {
-                Some(buffer_to_fill) => buffer_to_fill,
-                None => {
-                    // Impossible because of the invariant.
-                    unreachable!();
-                }
+            let Some(buffer_to_fill) = buffer.get_mut(self.num_pending..) else {
+                // Impossible because of the invariant.
+                unreachable!();
             };
             sliceutil::overwrite_at_start(buffer_to_fill, data);
             match slice::split_at_checked(data, buffer_to_fill.len()) {

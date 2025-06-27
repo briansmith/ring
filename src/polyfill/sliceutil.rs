@@ -14,20 +14,10 @@
 
 //! Utilities to make dealing with slices less tediuous.
 
-use super::slice::AsChunks;
-
 /// Replaces the first N elements of `a` with the first N elements of `b`, where
 /// N is `core::cmp::min(a.len(), b.len())`, leaving the rest unchanged.
 pub fn overwrite_at_start<T: Copy>(a: &mut [T], b: &[T]) {
     a.iter_mut().zip(b).for_each(|(a, b)| {
         *a = *b;
     });
-}
-
-#[inline]
-pub fn as_chunks_exact<T, const N: usize>(slice: &[T]) -> Option<AsChunks<'_, T, N>> {
-    match super::slice::as_chunks(slice) {
-        (w, []) => Some(w),
-        _ => None,
-    }
 }
