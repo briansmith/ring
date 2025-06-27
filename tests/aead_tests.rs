@@ -540,10 +540,7 @@ fn test_aead_key_debug() {
     let nonce = [0; aead::NONCE_LEN];
 
     let key = aead::UnboundKey::new(&aead::AES_256_GCM, &key_bytes).unwrap();
-    assert_eq!(
-        "UnboundKey { algorithm: AES_256_GCM }",
-        format!("{:?}", key)
-    );
+    assert_eq!("UnboundKey { algorithm: AES_256_GCM }", format!("{key:?}"));
 
     let sealing_key: aead::SealingKey<OneNonceSequence> = make_key(
         &aead::AES_256_GCM,
@@ -552,7 +549,7 @@ fn test_aead_key_debug() {
     );
     assert_eq!(
         "SealingKey { algorithm: AES_256_GCM }",
-        format!("{:?}", sealing_key)
+        format!("{sealing_key:?}")
     );
 
     let opening_key: aead::OpeningKey<OneNonceSequence> = make_key(
@@ -562,14 +559,11 @@ fn test_aead_key_debug() {
     );
     assert_eq!(
         "OpeningKey { algorithm: AES_256_GCM }",
-        format!("{:?}", opening_key)
+        format!("{opening_key:?}")
     );
 
     let key: aead::LessSafeKey = make_less_safe_key(&aead::AES_256_GCM, &key_bytes);
-    assert_eq!(
-        "LessSafeKey { algorithm: AES_256_GCM }",
-        format!("{:?}", key)
-    );
+    assert_eq!("LessSafeKey { algorithm: AES_256_GCM }", format!("{key:?}"));
 }
 
 fn test_aead_lesssafekey_clone_for_algorithm(algorithm: &'static aead::Algorithm) {

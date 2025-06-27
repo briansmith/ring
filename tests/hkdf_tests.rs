@@ -36,7 +36,7 @@ fn hkdf_tests() {
                 hkdf::HKDF_SHA256
             } else {
                 // TODO: add test vectors for other algorithms
-                panic!("unsupported algorithm: {:?}", digest_alg);
+                panic!("unsupported algorithm: {digest_alg:?}");
             }
         };
         let secret = test_case.consume_bytes("IKM");

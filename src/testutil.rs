@@ -350,7 +350,7 @@ where
 
             for (name, value, consumed) in test_case.attributes {
                 let consumed_str = if consumed { "" } else { " (unconsumed)" };
-                std::println!("{}{} = {}", name, consumed_str, value);
+                std::println!("{name}{consumed_str} = {value}");
             }
         };
     }
@@ -403,7 +403,7 @@ fn parse_test_case(
 
         #[cfg(feature = "test_logging")]
         if let Some(text) = &line {
-            std::println!("Line: {}", text);
+            std::println!("Line: {text}");
         }
 
         match line {

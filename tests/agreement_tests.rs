@@ -64,7 +64,7 @@ fn agreement_traits() {
         agreement::UnparsedPublicKey::new(&agreement::X25519, &[0x01, 0x02, 0x03]);
 
     assert_eq!(
-        format!("{:?}", unparsed_public_key),
+        format!("{unparsed_public_key:?}"),
         r#"UnparsedPublicKey { algorithm: Algorithm { curve: Curve25519 }, bytes: "010203" }"#
     );
 
@@ -200,7 +200,7 @@ fn h(s: &str) -> Vec<u8> {
     match test::from_hex(s) {
         Ok(v) => v,
         Err(msg) => {
-            panic!("{} in {}", msg, s);
+            panic!("{msg} in {s}");
         }
     }
 }
@@ -213,6 +213,6 @@ fn alg_from_curve_name(curve_name: &str) -> &'static agreement::Algorithm {
     } else if curve_name == "X25519" {
         &agreement::X25519
     } else {
-        panic!("Unsupported curve: {}", curve_name);
+        panic!("Unsupported curve: {curve_name}");
     }
 }
