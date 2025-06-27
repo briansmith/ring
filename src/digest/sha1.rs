@@ -56,7 +56,7 @@ fn block_data_order(
 ) -> [W32; CHAINING_WORDS]
 {
     for M in M {
-        let (M, remainder): (AsChunks<u8, {size_of::<W32>()}>, &[u8]) = slice::as_chunks(M);
+        let (M, remainder) = slice::as_chunks::<_, {size_of::<W32>()}>(M);
         debug_assert!(remainder.is_empty());
 
         // FIPS 180-4 6.1.2 Step 1

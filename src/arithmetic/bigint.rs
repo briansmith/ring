@@ -53,7 +53,7 @@ use crate::{
     c,
     error::{self, LenMismatchError},
     limb::{self, Limb, LIMB_BITS},
-    polyfill::slice::{self, AsChunks},
+    polyfill,
     window5::Window5,
 };
 use core::{
@@ -509,7 +509,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let base_rinverse: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
 
     let num_limbs = m.limbs().len();
-    let m_chunked: AsChunks<Limb, { limbs512::LIMBS_PER_CHUNK }> = match slice::as_chunks(m.limbs())
+    let m_chunked = match polyfill::slice::as_chunks::<_, { limbs512::LIMBS_PER_CHUNK }>(m.limbs())
     {
         (m, []) => m,
         _ => {
@@ -637,7 +637,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             intel::{Adx, Bmi2},
             GetFeature as _,
         },
-        polyfill::slice::AsChunksMut,
+        polyfill::slice::{AsChunks, AsChunksMut},
         window5::LeakyWindow5,
     };
 
@@ -652,14 +652,15 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         )));
     }
 
-    let m_original: AsChunks<Limb, 8> = match slice::as_chunks(m.limbs()) {
+    let m_original = match polyfill::slice::as_chunks::<_, { limbs512::LIMBS_PER_CHUNK }>(m.limbs())
+    {
         (m, []) => m,
         _ => return Err(LimbSliceError::len_mismatch(LenMismatchError::new(8))),
     };
     let cpe = m_original.len(); // 512-bit chunks per entry
 
     let oneRRR = &oneRRR.as_ref().limbs;
-    let oneRRR = match slice::as_chunks(oneRRR) {
+    let oneRRR = match polyfill::slice::as_chunks(oneRRR) {
         (c, []) => c,
         _ => {
             return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
@@ -706,7 +707,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let m_cached = m_cached.as_ref();
 
     let out: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
-    let base_rinverse = match slice::as_chunks(&out.limbs) {
+    let base_rinverse = match polyfill::slice::as_chunks(&out.limbs) {
         (c, []) => c,
         _ => {
             return Err(LimbSliceError::len_mismatch(LenMismatchError::new(

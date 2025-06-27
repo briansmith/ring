@@ -36,7 +36,7 @@ use super::{
 use crate::{
     bb,
     error::{self, InputTooLongError},
-    polyfill::slice,
+    polyfill,
 };
 
 /// A key for sealing packets.
@@ -74,8 +74,11 @@ impl SealingKey {
         tag_out: &mut [u8; TAG_LEN],
     ) {
         // XXX/TODO(SemVer): Refactor API to return an error.
-        let (len_in_out, data_and_padding_in_out): (&mut [u8; PACKET_LENGTH_LEN], _) =
-            slice::split_first_chunk_mut(plaintext_in_ciphertext_out).unwrap();
+        let (len_in_out, data_and_padding_in_out) = polyfill::slice::split_first_chunk_mut::<
+            _,
+            PACKET_LENGTH_LEN,
+        >(plaintext_in_ciphertext_out)
+        .unwrap();
 
         let cpu = cpu::features();
         // XXX/TODO(SemVer): Refactor API to return an error.
@@ -150,8 +153,11 @@ impl OpeningKey {
         ciphertext_in_plaintext_out: &'a mut [u8],
         tag: &[u8; TAG_LEN],
     ) -> Result<&'a [u8], error::Unspecified> {
-        let (packet_length, after_packet_length): (&mut [u8; PACKET_LENGTH_LEN], _) =
-            slice::split_first_chunk_mut(ciphertext_in_plaintext_out).ok_or(error::Unspecified)?;
+        let (packet_length, after_packet_length) = polyfill::slice::split_first_chunk_mut::<
+            _,
+            PACKET_LENGTH_LEN,
+        >(ciphertext_in_plaintext_out)
+        .ok_or(error::Unspecified)?;
 
         let cpu = cpu::features();
         let (counter, poly_key) = chacha20_poly1305::begin(
