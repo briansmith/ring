@@ -53,7 +53,7 @@ use crate::{
     c,
     error::{self, LenMismatchError},
     limb::{self, Limb, LIMB_BITS},
-    polyfill::sliceutil::as_chunks_exact,
+    polyfill::slice,
     window5::Window5,
 };
 use core::{
@@ -509,8 +509,11 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let base_rinverse: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
 
     let num_limbs = m.limbs().len();
-    let m_chunked = as_chunks_exact::<_, { limbs512::LIMBS_PER_CHUNK }>(m.limbs())
-        .ok_or_else(|| LimbSliceError::len_mismatch(LenMismatchError::new(num_limbs)))?;
+    let (m_chunked, []) = slice::as_chunks::<_, { limbs512::LIMBS_PER_CHUNK }>(m.limbs()) else {
+        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
+            num_limbs,
+        )));
+    };
     let cpe = m_chunked.len(); // 512-bit chunks per entry.
 
     // This code doesn't have the strict alignment requirements that the x86_64
@@ -645,13 +648,17 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         )));
     }
 
-    let m_original = as_chunks_exact::<_, { limbs512::LIMBS_PER_CHUNK }>(m.limbs())
-        .ok_or_else(|| LimbSliceError::len_mismatch(LenMismatchError::new(8)))?;
+    let (m_original, []) = slice::as_chunks::<_, 8>(m.limbs()) else {
+        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(8)));
+    };
     let cpe = m_original.len(); // 512-bit chunks per entry
 
     let oneRRR = &oneRRR.as_ref().limbs;
-    let oneRRR = as_chunks_exact(oneRRR)
-        .ok_or_else(|| LimbSliceError::len_mismatch(LenMismatchError::new(oneRRR.len())))?;
+    let (oneRRR, []) = slice::as_chunks(oneRRR) else {
+        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
+            oneRRR.len(),
+        )));
+    };
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.
@@ -691,8 +698,11 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let m_cached = m_cached.as_ref();
 
     let out: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
-    let base_rinverse = as_chunks_exact(&out.limbs)
-        .ok_or_else(|| LimbSliceError::len_mismatch(LenMismatchError::new(out.limbs.len())))?;
+    let (base_rinverse, []) = slice::as_chunks(&out.limbs) else {
+        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
+            out.limbs.len(),
+        )));
+    };
 
     // base_cached = base*R == (base/R * RRR)/R
     mul_mont5(
