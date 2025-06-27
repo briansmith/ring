@@ -156,11 +156,9 @@ fn aes_init_256(key: &[u8], cpu_features: cpu::Features) -> Result<KeyInner, err
 }
 
 fn aes_new_mask(key: &KeyInner, sample: Sample) -> [u8; 5] {
-    let aes_key = match key {
-        KeyInner::Aes(key) => key,
-        _ => unreachable!(),
+    let KeyInner::Aes(aes_key) = key else {
+        unreachable!()
     };
-
     aes_key.new_mask(sample)
 }
 
@@ -178,10 +176,8 @@ fn chacha20_init(key: &[u8], _cpu_features: cpu::Features) -> Result<KeyInner, e
 }
 
 fn chacha20_new_mask(key: &KeyInner, sample: Sample) -> [u8; 5] {
-    let chacha20_key = match key {
-        KeyInner::ChaCha20(key) => key,
-        _ => unreachable!(),
+    let KeyInner::ChaCha20(chacha20_key) = key else {
+        unreachable!()
     };
-
     chacha20_key.new_mask(sample)
 }

@@ -191,9 +191,8 @@ fn aes_gcm_seal(
     in_out: &mut [u8],
     _cpu_features: cpu::Features,
 ) -> Result<Tag, InputTooLongError> {
-    let key = match key {
-        KeyInner::AesGcm(key) => key,
-        _ => unreachable!(),
+    let KeyInner::AesGcm(key) = key else {
+        unreachable!()
     };
     aes_gcm::seal(key, nonce, aad, in_out)
 }
@@ -205,9 +204,8 @@ pub(super) fn aes_gcm_open(
     in_out: Overlapping<'_, u8>,
     _cpu_features: cpu::Features,
 ) -> Result<Tag, InputTooLongError> {
-    let key = match key {
-        KeyInner::AesGcm(key) => key,
-        _ => unreachable!(),
+    let KeyInner::AesGcm(key) = key else {
+        unreachable!()
     };
     aes_gcm::open(key, nonce, aad, in_out)
 }
@@ -241,9 +239,8 @@ fn chacha20_poly1305_seal(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Result<Tag, InputTooLongError> {
-    let key = match key {
-        KeyInner::ChaCha20Poly1305(key) => key,
-        _ => unreachable!(),
+    let KeyInner::ChaCha20Poly1305(key) = key else {
+        unreachable!()
     };
     chacha20_poly1305::seal(key, nonce, aad, in_out, cpu_features)
 }
@@ -255,9 +252,8 @@ fn chacha20_poly1305_open(
     in_out: Overlapping<'_, u8>,
     cpu_features: cpu::Features,
 ) -> Result<Tag, InputTooLongError> {
-    let key = match key {
-        KeyInner::ChaCha20Poly1305(key) => key,
-        _ => unreachable!(),
+    let KeyInner::ChaCha20Poly1305(key) = key else {
+        unreachable!()
     };
     chacha20_poly1305::open(key, nonce, aad, in_out, cpu_features)
 }

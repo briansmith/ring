@@ -51,13 +51,9 @@ pub(super) fn sha1_block_data_order<'d>(
     data: &'d [u8],
     _cpu_features: cpu::Features,
 ) -> (usize, &'d [u8]) {
-    let state = match state {
-        DynState::As32(state) => state,
-        _ => {
-            unreachable!();
-        }
+    let DynState::As32(state) = state else {
+        unreachable!();
     };
-
     let (full_blocks, leftover) = slice::as_chunks(data);
     sha1::sha1_block_data_order(state, full_blocks);
     (full_blocks.as_flattened().len(), leftover)
@@ -68,13 +64,9 @@ pub(super) fn sha256_block_data_order<'d>(
     data: &'d [u8],
     cpu_features: cpu::Features,
 ) -> (usize, &'d [u8]) {
-    let state = match state {
-        DynState::As32(state) => state,
-        _ => {
-            unreachable!();
-        }
+    let DynState::As32(state) = state else {
+        unreachable!();
     };
-
     let (full_blocks, leftover) = slice::as_chunks(data);
     sha2::block_data_order_32(state, full_blocks, cpu_features);
     (full_blocks.len() * sha2::SHA256_BLOCK_LEN.into(), leftover)
@@ -85,13 +77,9 @@ pub(super) fn sha512_block_data_order<'d>(
     data: &'d [u8],
     cpu_features: cpu::Features,
 ) -> (usize, &'d [u8]) {
-    let state = match state {
-        DynState::As64(state) => state,
-        _ => {
-            unreachable!();
-        }
+    let DynState::As64(state) = state else {
+        unreachable!();
     };
-
     let (full_blocks, leftover) = slice::as_chunks(data);
     sha2::block_data_order_64(state, full_blocks, cpu_features);
     (full_blocks.len() * sha2::SHA512_BLOCK_LEN.into(), leftover)
