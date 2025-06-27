@@ -786,9 +786,9 @@ impl EncryptCtr32 for Key {
 
         // XXX(unwrap): The caller is responsible for ensuring that the input is
         // short enough to avoid overflow.
-        let blocks = match NonZeroU32::new(u32::try_from(in_out.len() / 16).unwrap()) {
-            Some(n) => n,
-            None => return,
+        let blocks = u32::try_from(in_out.len() / BLOCK_LEN).unwrap();
+        let Some(blocks) = NonZeroU32::new(blocks) else {
+            return;
         };
 
         let sched = Schedule::expand_round_keys(self);

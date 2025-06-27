@@ -149,9 +149,8 @@ impl AES_KEY {
         in_out.with_input_output_len(|input, output, len| {
             debug_assert_eq!(len % BLOCK_LEN, 0);
 
-            let blocks = match NonZeroUsize::new(len / BLOCK_LEN) {
-                Some(blocks) => blocks,
-                None => return,
+            let Some(blocks) = NonZeroUsize::new(len / BLOCK_LEN) else {
+                return;
             };
 
             let input: *const [u8; BLOCK_LEN] = input.cast();
