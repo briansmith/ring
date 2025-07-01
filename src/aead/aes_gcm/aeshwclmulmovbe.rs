@@ -16,8 +16,8 @@
 
 use super::{
     super::overlapping::IndexError,
-    aes::{self, Counter, EncryptCtr32, Overlapping, OverlappingPartialBlock},
-    gcm, open_whole_partial_tail, Aad, Tag, BLOCK_LEN,
+    aes::{self, Counter, EncryptCtr32, OverlappingPartialBlock},
+    gcm, open_whole_partial_tail, Aad, Overlapping, Tag, BLOCK_LEN,
 };
 use crate::{c, error::InputTooLongError, polyfill::slice};
 

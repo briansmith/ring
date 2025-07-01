@@ -21,8 +21,10 @@
 //! [AEAD]: https://eprint.iacr.org/2000/025.pdf
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
+use self::auth_error::AuthError;
 use crate::{
-    cpu, error,
+    bb, cpu,
+    error::{self, InputTooLongError},
     polyfill::{u64_from_usize, usize_from_u64_saturated},
 };
 
@@ -167,6 +169,44 @@ const TAG_LEN: usize = 16;
 
 /// The maximum length of a tag for the algorithms in this module.
 pub const MAX_TAG_LEN: usize = TAG_LEN;
+
+cold_exhaustive_error! {
+    struct auth_error::AuthError {
+        len: usize
+    }
+}
+
+type Overlapping<'o> = overlapping::Overlapping<'o, u8>;
+
+enum ForgedPlaintext {
+    /// Zero out the plaintext so that it isn't accidentally leaked or used
+    /// after verification fails. It would be safest if we could check the
+    /// tag before decrypting, but some `open` implementations interleave
+    /// authentication with decryption for performance.
+    Zero,
+}
+
+fn open_within<'o>(
+    in_out: Overlapping<'o>,
+    Tag(received_tag): &Tag,
+    forged_plaintext: ForgedPlaintext,
+    open: impl FnOnce(Overlapping) -> Result<Tag, InputTooLongError>,
+) -> Result<&'o mut [u8], AuthError> {
+    let in_out_len = in_out.len();
+    let (plaintext, calculated_tag) = in_out
+        .assume_entire_output_written_on_success(open)
+        .map_err(|InputTooLongError { .. }| AuthError::new(in_out_len))?;
+    // Assume nothing was written to `in_out` if the input was too long.
+    match bb::verify_slices_are_equal(calculated_tag.as_ref(), received_tag.as_ref()) {
+        Ok(()) => Ok(plaintext),
+        Err(_) => {
+            match forged_plaintext {
+                ForgedPlaintext::Zero => plaintext.fill(0),
+            }
+            Err(AuthError::new(in_out_len))
+        }
+    }
+}
 
 mod aes;
 mod aes_gcm;
