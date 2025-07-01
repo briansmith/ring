@@ -14,8 +14,8 @@
 
 #![cfg(target_arch = "x86_64")]
 
-use super::{aes, gcm, Counter, BLOCK_LEN};
-use crate::{aead::aes::Overlapping, c, polyfill::slice::AsChunksMut};
+use super::{aes, gcm, Counter, Overlapping, BLOCK_LEN};
+use crate::{c, polyfill::slice::AsChunksMut};
 use core::num::NonZeroU32;
 
 pub(super) fn seal_whole_vaes_clmul_avx2(

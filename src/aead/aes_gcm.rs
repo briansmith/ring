@@ -13,10 +13,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    aes::{self, Counter, Overlapping, OverlappingPartialBlock, BLOCK_LEN, ZERO_BLOCK},
+    aes::{self, Counter, OverlappingPartialBlock, BLOCK_LEN, ZERO_BLOCK},
     gcm,
     overlapping::IndexError,
-    Aad, Nonce, Tag,
+    Aad, AuthError, ForgedPlaintext, Nonce, Overlapping, Tag,
 };
 use crate::{
     cpu,
@@ -45,6 +45,20 @@ impl Key {
         cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
         Ok(Self(DynKey::new(key, cpu_features)))
+    }
+
+    #[inline(never)]
+    pub(super) fn open_within<'o>(
+        &self,
+        nonce: Nonce,
+        aad: Aad<&[u8]>,
+        in_out: Overlapping<'o>,
+        received_tag: &Tag,
+        forged_plaintext: ForgedPlaintext,
+    ) -> Result<&'o mut [u8], AuthError> {
+        super::open_within(in_out, received_tag, forged_plaintext, |in_out| {
+            open(self, nonce, aad, in_out)
+        })
     }
 }
 
@@ -311,8 +325,7 @@ fn seal_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     finish(aes_key, auth, tag_iv)
 }
 
-#[inline(never)]
-pub(super) fn open(
+fn open(
     Key(key): &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,

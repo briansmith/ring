@@ -16,10 +16,10 @@ use super::{
     aes, aes_gcm, chacha20_poly1305,
     nonce::{Nonce, NONCE_LEN},
     overlapping::{IndexError, Overlapping},
-    Aad, KeyInner, Tag, TAG_LEN,
+    Aad, AuthError, ForgedPlaintext, KeyInner, Tag, TAG_LEN,
 };
 use crate::{
-    bb, cpu,
+    cpu,
     error::{self, InputTooLongError},
     hkdf,
 };
@@ -43,13 +43,14 @@ pub struct Algorithm {
         in_out: &mut [u8],
         cpu_features: cpu::Features,
     ) -> Result<Tag, InputTooLongError>,
-    open: fn(
+    open: for<'o> fn(
         key: &KeyInner,
         nonce: Nonce,
         aad: Aad<&[u8]>,
-        in_out: Overlapping<'_, u8>,
+        in_out: Overlapping<'o, u8>,
+        received_tag: &Tag,
         cpu_features: cpu::Features,
-    ) -> Result<Tag, InputTooLongError>,
+    ) -> Result<&'o mut [u8], AuthError>,
 
     key_len: usize,
     id: AlgorithmID,
@@ -95,23 +96,8 @@ impl Algorithm {
         cpu_features: cpu::Features,
     ) -> Result<&'io mut [u8], error::Unspecified> {
         let in_out = Overlapping::new(in_out_slice, src).map_err(error::erase::<IndexError>)?;
-        let ciphertext_len = in_out.len();
-        let Tag(calculated_tag) = (self.open)(key, nonce, aad, in_out, cpu_features)
-            .map_err(error::erase::<InputTooLongError>)?;
-
-        if bb::verify_slices_are_equal(calculated_tag.as_ref(), received_tag.as_ref()).is_err() {
-            // Zero out the plaintext so that it isn't accidentally leaked or used
-            // after verification fails. It would be safest if we could check the
-            // tag before decrypting, but some `open` implementations interleave
-            // authentication with decryption for performance.
-            for b in &mut in_out_slice[..ciphertext_len] {
-                *b = 0;
-            }
-            return Err(error::Unspecified);
-        }
-
-        // `ciphertext_len` is also the plaintext length.
-        Ok(&mut in_out_slice[..ciphertext_len])
+        (self.open)(key, nonce, aad, in_out, &received_tag, cpu_features)
+            .map_err(error::erase::<AuthError>)
     }
 
     #[inline]
@@ -198,18 +184,19 @@ fn aes_gcm_seal(
     aes_gcm::seal(key, nonce, aad, in_out)
 }
 
-pub(super) fn aes_gcm_open(
+pub(super) fn aes_gcm_open<'o>(
     key: &KeyInner,
     nonce: Nonce,
     aad: Aad<&[u8]>,
-    in_out: Overlapping<'_, u8>,
+    in_out: Overlapping<'o, u8>,
+    received_tag: &Tag,
     _cpu_features: cpu::Features,
-) -> Result<Tag, InputTooLongError> {
+) -> Result<&'o mut [u8], AuthError> {
     let key = match key {
         KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
     };
-    aes_gcm::open(key, nonce, aad, in_out)
+    key.open_within(nonce, aad, in_out, received_tag, ForgedPlaintext::Zero)
 }
 
 /// ChaCha20-Poly1305 as described in [RFC 8439].
@@ -248,16 +235,24 @@ fn chacha20_poly1305_seal(
     chacha20_poly1305::seal(key, nonce, aad, in_out, cpu_features)
 }
 
-fn chacha20_poly1305_open(
+fn chacha20_poly1305_open<'o>(
     key: &KeyInner,
     nonce: Nonce,
     aad: Aad<&[u8]>,
-    in_out: Overlapping<'_, u8>,
+    in_out: Overlapping<'o, u8>,
+    received_tag: &Tag,
     cpu_features: cpu::Features,
-) -> Result<Tag, InputTooLongError> {
+) -> Result<&'o mut [u8], AuthError> {
     let key = match key {
         KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
-    chacha20_poly1305::open(key, nonce, aad, in_out, cpu_features)
+    key.open_within(
+        nonce,
+        aad,
+        in_out,
+        received_tag,
+        ForgedPlaintext::Zero,
+        cpu_features,
+    )
 }
