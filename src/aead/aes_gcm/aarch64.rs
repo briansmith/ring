@@ -14,8 +14,8 @@
 
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
-use super::{aes, gcm, Counter, BLOCK_LEN};
-use crate::{aead::aes::Overlapping, bits::BitLength, polyfill::slice::AsChunksMut};
+use super::{aes, gcm, Counter, Overlapping, BLOCK_LEN};
+use crate::{bits::BitLength, polyfill::slice::AsChunksMut};
 use core::num::NonZeroU64;
 
 pub(super) fn seal_whole(

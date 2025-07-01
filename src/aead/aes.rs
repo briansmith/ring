@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{nonce::Nonce, overlapping, quic::Sample, NONCE_LEN};
+use super::{nonce::Nonce, overlapping, quic::Sample, Overlapping, NONCE_LEN};
 use crate::{
     cpu::{self, GetFeature as _},
     polyfill::unwrap_const,
@@ -30,7 +30,6 @@ pub(super) mod fallback;
 pub(super) mod hw;
 pub(super) mod vp;
 
-pub type Overlapping<'o> = overlapping::Overlapping<'o, u8>;
 pub type OverlappingPartialBlock<'o> = overlapping::PartialBlock<'o, u8, BLOCK_LEN>;
 
 cfg_if! {
