@@ -19,7 +19,7 @@
 //! multiple steps using `Context`.
 
 use self::{
-    dynstate::DynState,
+    dynstate::{DynInitialState, DynState},
     sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
 };
 use crate::{
@@ -43,18 +43,19 @@ pub(crate) struct BlockContext {
     // implementation only supports up to 2^64-1 input bits for all algorithms,
     // so a 64-bit counter is more than sufficient.
     completed_bytes: u64,
-
-    /// The context's algorithm.
-    pub algorithm: &'static Algorithm,
 }
 
 impl BlockContext {
     pub(crate) fn new(algorithm: &'static Algorithm) -> Self {
         Self {
-            state: algorithm.initial_state.clone(),
+            state: DynState::new(algorithm),
             completed_bytes: 0,
-            algorithm,
         }
+    }
+
+    #[inline(always)]
+    pub(crate) fn algorithm(&self) -> &'static Algorithm {
+        self.state.algorithm()
     }
 
     /// Processes all the full blocks in `input`, returning the partial block
@@ -92,7 +93,8 @@ impl BlockContext {
             .and_then(BitLength::from_byte_len)
             .map_err(FinishError::input_too_long)?;
 
-        let block_len = self.algorithm.block_len();
+        let algorithm = self.state.algorithm();
+        let block_len = algorithm.block_len();
         let block = &mut block[..block_len];
 
         let padding = match block.get_mut(num_pending..) {
@@ -108,10 +110,7 @@ impl BlockContext {
             }
         };
 
-        let padding = match padding
-            .len()
-            .checked_sub(self.algorithm.block_len.len_len())
-        {
+        let padding = match padding.len().checked_sub(algorithm.block_len.len_len()) {
             Some(_) => padding,
             None => {
                 padding.fill(0);
@@ -131,7 +130,7 @@ impl BlockContext {
         debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
 
         Ok(Digest {
-            algorithm: self.algorithm,
+            algorithm,
             value: self.state.format_output(),
         })
     }
@@ -142,7 +141,7 @@ impl BlockContext {
         data: &'d [u8],
         cpu_features: cpu::Features,
     ) -> (usize, &'d [u8]) {
-        (self.algorithm.block_data_order)(&mut self.state, data, cpu_features)
+        (self.algorithm().block_data_order)(&mut self.state, data, cpu_features)
     }
 }
 
@@ -215,7 +214,7 @@ impl Context {
     pub fn update(&mut self, data: &[u8]) {
         let cpu_features = cpu::features();
 
-        let block_len = self.block.algorithm.block_len();
+        let block_len = self.block.algorithm().block_len();
         let buffer = &mut self.pending[..block_len];
 
         let to_digest = if self.num_pending == 0 {
@@ -282,7 +281,7 @@ impl Context {
     /// The algorithm that this context is using.
     #[inline(always)]
     pub fn algorithm(&self) -> &'static Algorithm {
-        self.block.algorithm
+        self.block.algorithm()
     }
 }
 
@@ -350,7 +349,7 @@ pub struct Algorithm {
         cpu_features: cpu::Features,
     ) -> (usize, &'d [u8]),
 
-    initial_state: DynState,
+    initial_state: DynInitialState,
 
     id: AlgorithmID,
 }
@@ -405,7 +404,7 @@ pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
     chaining_len: sha1::CHAINING_LEN,
     block_len: sha1::BLOCK_LEN,
     block_data_order: dynstate::sha1_block_data_order,
-    initial_state: DynState::new32([
+    initial_state: DynInitialState::new32([
         Wrapping(0x67452301u32),
         Wrapping(0xefcdab89u32),
         Wrapping(0x98badcfeu32),
@@ -426,7 +425,7 @@ pub static SHA256: Algorithm = Algorithm {
     chaining_len: SHA256_OUTPUT_LEN,
     block_len: SHA256_BLOCK_LEN,
     block_data_order: dynstate::sha256_block_data_order,
-    initial_state: DynState::new32([
+    initial_state: DynInitialState::new32([
         Wrapping(0x6a09e667u32),
         Wrapping(0xbb67ae85u32),
         Wrapping(0x3c6ef372u32),
@@ -447,7 +446,7 @@ pub static SHA384: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     block_data_order: dynstate::sha512_block_data_order,
-    initial_state: DynState::new64([
+    initial_state: DynInitialState::new64([
         Wrapping(0xcbbb9d5dc1059ed8),
         Wrapping(0x629a292a367cd507),
         Wrapping(0x9159015a3070dd17),
@@ -468,7 +467,7 @@ pub static SHA512: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     block_data_order: dynstate::sha512_block_data_order,
-    initial_state: DynState::new64([
+    initial_state: DynInitialState::new64([
         Wrapping(0x6a09e667f3bcc908),
         Wrapping(0xbb67ae8584caa73b),
         Wrapping(0x3c6ef372fe94f82b),
@@ -493,7 +492,7 @@ pub static SHA512_256: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     block_data_order: dynstate::sha512_block_data_order,
-    initial_state: DynState::new64([
+    initial_state: DynInitialState::new64([
         Wrapping(0x22312194fc2bf72c),
         Wrapping(0x9f555fa3c84c64c2),
         Wrapping(0x2393b86b6f53b151),
@@ -663,9 +662,8 @@ mod tests {
             let completed_bytes = (max_blocks - 1) * u64_from_usize(alg.block_len());
             digest::Context {
                 block: digest::BlockContext {
-                    state: alg.initial_state.clone(),
+                    state: super::super::DynState::new(alg),
                     completed_bytes,
-                    algorithm: alg,
                 },
                 pending: [0u8; digest::MAX_BLOCK_LEN],
                 num_pending: 0,

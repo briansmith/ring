@@ -12,34 +12,68 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{format_output, sha1, sha2, Output};
+use super::{format_output, sha1, sha2, Algorithm, Output};
 use crate::{cpu, polyfill::slice};
 use core::mem::size_of;
 
-// Invariant: When constructed with `new32` (resp. `new64`), `As32` (resp.
-// `As64`) is the active variant.
-// Invariant: The active variant never changes after initialization.
-#[derive(Clone)]
-pub(super) enum DynState {
+pub(super) enum DynInitialState {
     As64(sha2::State64),
     As32(sha2::State32),
 }
 
-impl DynState {
-    pub const fn new32(initial_state: sha2::State32) -> Self {
-        Self::As32(initial_state)
+impl DynInitialState {
+    pub const fn new32(state: sha2::State32) -> Self {
+        Self::As32(state)
     }
 
-    pub const fn new64(initial_state: sha2::State64) -> Self {
-        Self::As64(initial_state)
+    pub const fn new64(state: sha2::State64) -> Self {
+        Self::As64(state)
+    }
+}
+
+// `algorithm` is stored "redundantly" in each variant so that the tag will be
+// stored in its niche.
+//
+// Invariant: The active variant never changes after initialization.
+#[derive(Clone)]
+pub(super) enum DynState {
+    As64 {
+        state: sha2::State64,
+        algorithm: &'static Algorithm,
+    },
+    As32 {
+        state: sha2::State32,
+        algorithm: &'static Algorithm,
+    },
+}
+
+impl DynState {
+    pub fn new(algorithm: &'static Algorithm) -> Self {
+        match &algorithm.initial_state {
+            DynInitialState::As32(state) => Self::As32 {
+                state: *state,
+                algorithm,
+            },
+            DynInitialState::As64(state) => Self::As64 {
+                state: *state,
+                algorithm,
+            },
+        }
+    }
+
+    #[inline(always)]
+    pub fn algorithm(&self) -> &'static Algorithm {
+        match self {
+            DynState::As64 { algorithm, .. } | DynState::As32 { algorithm, .. } => algorithm,
+        }
     }
 
     pub fn format_output(self) -> Output {
         match self {
-            Self::As64(state) => {
+            Self::As64 { state, .. } => {
                 format_output::<_, _, { size_of::<u64>() }>(state, u64::to_be_bytes)
             }
-            Self::As32(state) => {
+            Self::As32 { state, .. } => {
                 format_output::<_, _, { size_of::<u32>() }>(state, u32::to_be_bytes)
             }
         }
@@ -52,7 +86,7 @@ pub(super) fn sha1_block_data_order<'d>(
     _cpu_features: cpu::Features,
 ) -> (usize, &'d [u8]) {
     let state = match state {
-        DynState::As32(state) => state,
+        DynState::As32 { state, .. } => state,
         _ => {
             unreachable!();
         }
@@ -69,7 +103,7 @@ pub(super) fn sha256_block_data_order<'d>(
     cpu_features: cpu::Features,
 ) -> (usize, &'d [u8]) {
     let state = match state {
-        DynState::As32(state) => state,
+        DynState::As32 { state, .. } => state,
         _ => {
             unreachable!();
         }
@@ -86,7 +120,7 @@ pub(super) fn sha512_block_data_order<'d>(
     cpu_features: cpu::Features,
 ) -> (usize, &'d [u8]) {
     let state = match state {
-        DynState::As64(state) => state,
+        DynState::As64 { state, .. } => state,
         _ => {
             unreachable!();
         }
