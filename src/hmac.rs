@@ -267,7 +267,7 @@ impl Key {
     /// The digest algorithm for the key.
     #[inline]
     pub fn algorithm(&self) -> Algorithm {
-        Algorithm(self.inner.algorithm)
+        Algorithm(self.inner.algorithm())
     }
 
     pub(crate) fn sign(&self, data: &[u8], cpu: cpu::Features) -> Result<Tag, InputTooLongError> {
@@ -345,8 +345,9 @@ impl Context {
 
     pub(crate) fn try_sign(self, cpu_features: cpu::Features) -> Result<Tag, InputTooLongError> {
         // Consequently, `num_pending` is valid.
-        debug_assert_eq!(self.inner.algorithm(), self.outer.algorithm);
-        debug_assert!(self.inner.algorithm().output_len() < self.outer.algorithm.block_len());
+        let algorithm = self.outer.algorithm();
+        debug_assert_eq!(self.inner.algorithm(), algorithm);
+        debug_assert!(self.inner.algorithm().output_len() < algorithm.block_len());
 
         let inner = self.inner.try_finish(cpu_features)?;
         let inner = inner.as_ref();
