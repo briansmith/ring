@@ -58,6 +58,7 @@ mod array_split_map;
 
 pub mod cstr;
 
+pub mod partial_buffer;
 pub mod sliceutil;
 
 #[cfg(feature = "alloc")]

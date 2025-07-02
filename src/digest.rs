@@ -25,7 +25,7 @@ use self::{
 use crate::{
     bits::{BitLength, FromByteLen as _},
     cpu, debug, error,
-    polyfill::{self, slice, sliceutil},
+    polyfill::{self, partial_buffer::PartialBuffer, slice, sliceutil},
 };
 use core::num::Wrapping;
 
@@ -184,12 +184,9 @@ impl FinishError {
 /// ```
 #[derive(Clone)]
 pub struct Context {
+    // invariant: `self.pending.len() < self.block.algorithm.block_len()`.
     block: BlockContext,
-    // TODO: More explicitly force 64-bit alignment for |pending|.
-    pending: [u8; MAX_BLOCK_LEN],
-
-    // Invariant: `self.num_pending < self.block.algorithm.block_len`.
-    num_pending: usize,
+    pending: PartialBuffer<{ BlockLen::MAX.into() }>,
 }
 
 impl Context {
@@ -197,59 +194,76 @@ impl Context {
     pub fn new(algorithm: &'static Algorithm) -> Self {
         Self {
             block: BlockContext::new(algorithm),
-            pending: [0u8; MAX_BLOCK_LEN],
-            num_pending: 0,
+            pending: PartialBuffer::new_zeroed(),
         }
     }
 
     pub(crate) fn clone_from(block: &BlockContext) -> Self {
         Self {
             block: block.clone(),
-            pending: [0u8; MAX_BLOCK_LEN],
-            num_pending: 0,
+            pending: PartialBuffer::new_zeroed(),
         }
     }
 
     /// Updates the digest with all the data in `data`.
     pub fn update(&mut self, data: &[u8]) {
+        let block_len = self.block.algorithm().block_len;
+        let num_pending: usize = self.pending.len().into();
+        let invariant = num_pending < block_len.into();
+        debug_assert!(invariant);
+
         let cpu_features = cpu::features();
 
-        let block_len = self.block.algorithm().block_len();
-        let buffer = &mut self.pending[..block_len];
+        let Self { block, pending } = self;
+        pending.temporarily_use_whole_buffer_less_safe_not_panic_safe(|buffer| {
+            // Can't panic because the buffer is as large as the largest block size.
+            let buffer = &mut buffer[..block_len.into()];
 
-        let to_digest = if self.num_pending == 0 {
-            data
-        } else {
-            let buffer_to_fill = match buffer.get_mut(self.num_pending..) {
-                Some(buffer_to_fill) => buffer_to_fill,
-                None => {
-                    // Impossible because of the invariant.
-                    unreachable!();
+            let to_digest = if num_pending == 0 {
+                data
+            } else {
+                let buffer_to_fill = match buffer.get_mut(num_pending..) {
+                    Some(buffer_to_fill) => buffer_to_fill,
+                    None => {
+                        let _impossible_because = invariant;
+                        unreachable!();
+                    }
+                };
+                sliceutil::overwrite_at_start(buffer_to_fill, data);
+                match slice::split_at_checked(data, buffer_to_fill.len()) {
+                    Some((just_copied, to_digest)) => {
+                        debug_assert_eq!(buffer_to_fill.len(), just_copied.len());
+                        debug_assert_eq!(num_pending + just_copied.len(), block_len.into());
+                        let leftover = block.update(buffer, cpu_features);
+                        debug_assert_eq!(leftover.len(), 0);
+                        to_digest
+                    }
+                    None => {
+                        // If `data` isn't enough to complete a block, buffer it and stop.
+                        return Self::debug_checked_invariant(num_pending + data.len(), block_len);
+                    }
                 }
             };
-            sliceutil::overwrite_at_start(buffer_to_fill, data);
-            match slice::split_at_checked(data, buffer_to_fill.len()) {
-                Some((just_copied, to_digest)) => {
-                    debug_assert_eq!(buffer_to_fill.len(), just_copied.len());
-                    debug_assert_eq!(self.num_pending + just_copied.len(), block_len);
-                    let leftover = self.block.update(buffer, cpu_features);
-                    debug_assert_eq!(leftover.len(), 0);
-                    self.num_pending = 0;
-                    to_digest
-                }
-                None => {
-                    self.num_pending += data.len();
-                    // If `data` isn't enough to complete a block, buffer it and stop.
-                    debug_assert!(self.num_pending < block_len);
-                    return;
-                }
-            }
-        };
 
-        let leftover = self.block.update(to_digest, cpu_features);
-        sliceutil::overwrite_at_start(buffer, leftover);
-        self.num_pending = leftover.len();
-        debug_assert!(self.num_pending < block_len);
+            let leftover = block.update(to_digest, cpu_features);
+            sliceutil::overwrite_at_start(buffer, leftover);
+            Self::debug_checked_invariant(leftover.len(), block_len)
+        })
+    }
+
+    #[inline]
+    fn debug_checked_invariant(
+        num_pending: usize,
+        block_len: BlockLen,
+    ) -> PurportedLen<{ BlockLen::MAX.into() }> {
+        let invariant = num_pending < block_len.into();
+        debug_assert!(invariant);
+        num_pending
+            .try_into()
+            .unwrap_or_else(|error::InputTooLongError { .. }| {
+                let _impossible_because = invariant;
+                unreachable!()
+            })
     }
 
     /// Finalizes the digest calculation and returns the digest value.
@@ -267,12 +281,20 @@ impl Context {
         mut self,
         cpu_features: cpu::Features,
     ) -> Result<Digest, InputTooLongError> {
+        let block_len = self.block.algorithm().block_len;
+        let num_pending: usize = self.pending.len().into();
+        let invariant = num_pending < block_len.into();
+        debug_assert!(invariant);
+
+        let num_pending = self.pending.len();
+        // It is OK to break `PartialBuffer`'s invariant since we're throwing it away.
+        let pending = self.pending.buffer_breaking_invariant_less_safe();
         self.block
-            .try_finish(&mut self.pending, self.num_pending, cpu_features)
+            .try_finish(pending, num_pending.into(), cpu_features)
             .map_err(|err| match err {
                 FinishError::InputTooLong(i) => i,
                 FinishError::PendingNotAPartialBlock(_) => {
-                    // Due to invariant.
+                    let _impossible_because = invariant;
                     unreachable!()
                 }
             })
@@ -665,8 +687,7 @@ mod tests {
                     state: super::super::DynState::new(alg),
                     completed_bytes,
                 },
-                pending: [0u8; digest::MAX_BLOCK_LEN],
-                num_pending: 0,
+                pending: super::super::PartialBuffer::new_zeroed(),
             }
         }
 
