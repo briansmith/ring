@@ -25,7 +25,11 @@ use self::{
 use crate::{
     bits::{BitLength, FromByteLen as _},
     cpu, debug, error,
-    polyfill::{self, partial_buffer::PartialBuffer, slice, sliceutil},
+    polyfill::{
+        self,
+        partial_buffer::{PartialBuffer, PurportedLen},
+        slice, sliceutil,
+    },
 };
 use core::num::Wrapping;
 
@@ -79,10 +83,10 @@ impl BlockContext {
     // `block` may be arbitrarily overwritten.
     pub(crate) fn try_finish(
         mut self,
-        block: &mut [u8; MAX_BLOCK_LEN],
-        num_pending: usize,
+        pending: &mut PartialBuffer<{ BlockLen::MAX.into() }>,
         cpu_features: cpu::Features,
     ) -> Result<Digest, FinishError> {
+        let num_pending = pending.len().into();
         let completed_bits = self
             .completed_bytes
             .checked_add(polyfill::u64_from_usize(num_pending))
@@ -95,39 +99,45 @@ impl BlockContext {
 
         let algorithm = self.state.algorithm();
         let block_len = algorithm.block_len();
-        let block = &mut block[..block_len];
+        let is_partial_wrt_block_len = num_pending < block_len;
+        if !is_partial_wrt_block_len {
+            return Err(FinishError::pending_not_a_partial_block(num_pending));
+        }
 
-        let padding = match block.get_mut(num_pending..) {
-            Some([separator, padding @ ..]) => {
-                *separator = 0x80;
-                padding
-            }
-            // Precondition violated.
-            unreachable => {
-                return Err(FinishError::pending_not_a_partial_block(
-                    unreachable.as_deref(),
-                ));
-            }
-        };
+        pending.temporarily_use_whole_buffer_less_safe_not_panic_safe(|buffer| {
+            // Can't panic because the buffer is as large as the largest block.
+            let block = &mut buffer[..block_len];
+            let padding = match block.get_mut(num_pending..) {
+                Some([separator, padding @ ..]) => {
+                    *separator = 0x80;
+                    padding
+                }
+                Some([]) | None => {
+                    let _impossible_bacause = is_partial_wrt_block_len;
+                    unreachable!()
+                }
+            };
 
-        let padding = match padding.len().checked_sub(algorithm.block_len.len_len()) {
-            Some(_) => padding,
-            None => {
-                padding.fill(0);
-                let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
-                debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
-                // We don't increase |self.completed_bytes| because the padding
-                // isn't data, and so it isn't included in the data length.
-                &mut block[..]
-            }
-        };
+            let padding = match padding.len().checked_sub(algorithm.block_len.len_len()) {
+                Some(_) => padding,
+                None => {
+                    padding.fill(0);
+                    let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
+                    debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
+                    // We don't increase |self.completed_bytes| because the padding
+                    // isn't data, and so it isn't included in the data length.
+                    &mut block[..]
+                }
+            };
 
-        let (to_zero, len) = padding.split_at_mut(padding.len() - 8);
-        to_zero.fill(0);
-        len.copy_from_slice(&completed_bits.to_be_bytes());
+            let (to_zero, len) = padding.split_at_mut(padding.len() - 8);
+            to_zero.fill(0);
+            len.copy_from_slice(&completed_bits.to_be_bytes());
 
-        let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
-        debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
+            let (completed_bytes, leftover) = self.block_data_order(block, cpu_features);
+            debug_assert_eq!((completed_bytes, leftover.len()), (block_len, 0));
+            PurportedLen::ZERO
+        });
 
         Ok(Digest {
             algorithm,
@@ -150,18 +160,7 @@ pub(crate) type InputTooLongError = error::InputTooLongError<u64>;
 cold_exhaustive_error! {
     enum finish_error::FinishError {
         input_too_long => InputTooLong(InputTooLongError),
-        pending_not_a_partial_block_inner => PendingNotAPartialBlock(usize),
-    }
-}
-
-impl FinishError {
-    #[cold]
-    #[inline(never)]
-    fn pending_not_a_partial_block(padding: Option<&[u8]>) -> Self {
-        match padding {
-            None => Self::pending_not_a_partial_block_inner(0),
-            Some(padding) => Self::pending_not_a_partial_block_inner(padding.len()),
-        }
+        pending_not_a_partial_block => PendingNotAPartialBlock(usize),
     }
 }
 
@@ -286,11 +285,8 @@ impl Context {
         let invariant = num_pending < block_len.into();
         debug_assert!(invariant);
 
-        let num_pending = self.pending.len();
-        // It is OK to break `PartialBuffer`'s invariant since we're throwing it away.
-        let pending = self.pending.buffer_breaking_invariant_less_safe();
         self.block
-            .try_finish(pending, num_pending.into(), cpu_features)
+            .try_finish(&mut self.pending, cpu_features)
             .map_err(|err| match err {
                 FinishError::InputTooLong(i) => i,
                 FinishError::PendingNotAPartialBlock(_) => {

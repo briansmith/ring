@@ -108,7 +108,9 @@
 use crate::{
     bb, cpu,
     digest::{self, Digest, FinishError},
-    error, hkdf, rand,
+    error, hkdf,
+    polyfill::partial_buffer::PartialBuffer,
+    rand,
 };
 
 pub(crate) use crate::digest::InputTooLongError;
@@ -351,14 +353,18 @@ impl Context {
 
         let inner = self.inner.try_finish(cpu_features)?;
         let inner = inner.as_ref();
-        let num_pending = inner.len();
-        let buffer = &mut [0u8; digest::MAX_BLOCK_LEN];
+        let mut buffer = PartialBuffer::<{ digest::MAX_BLOCK_LEN }>::new_zeroed();
         const _BUFFER_IS_LARGE_ENOUGH_TO_HOLD_INNER: () =
             assert!(digest::MAX_OUTPUT_LEN < digest::MAX_BLOCK_LEN);
-        buffer[..num_pending].copy_from_slice(inner);
+        buffer.overwrite_at_start_partial(inner).unwrap_or_else(
+            |error::InputTooLongError { .. }| {
+                const _IMPOSSIBLE_BECAUSE: () = _BUFFER_IS_LARGE_ENOUGH_TO_HOLD_INNER;
+                unreachable!()
+            },
+        );
 
         self.outer
-            .try_finish(buffer, num_pending, cpu_features)
+            .try_finish(&mut buffer, cpu_features)
             .map(Tag)
             .map_err(|err| match err {
                 FinishError::InputTooLong(i) => {

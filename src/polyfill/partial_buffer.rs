@@ -1,4 +1,4 @@
-use crate::error::InputTooLongError;
+use crate::{error::InputTooLongError, polyfill::sliceutil};
 
 /// A buffer that is *almost* never full, but which can transiently be full.
 ///
@@ -45,29 +45,38 @@ impl<const LEN_MAX_PLUS_1: usize> PartialBuffer<LEN_MAX_PLUS_1> {
     }
 
     #[inline]
+    pub fn overwrite_at_start_partial(
+        &mut self,
+        buffer: &[u8],
+    ) -> Result<(), InputTooLongError<usize>> {
+        let len = buffer.len().try_into()?;
+        sliceutil::overwrite_at_start(&mut self.buffer_and_len, buffer);
+        self.set_purported_len(len);
+        Ok(())
+    }
+
+    #[inline]
     pub fn temporarily_use_whole_buffer_less_safe_not_panic_safe(
         &mut self,
         f: impl FnOnce(&mut [u8; LEN_MAX_PLUS_1]) -> PurportedLen<LEN_MAX_PLUS_1>,
     ) {
-        let buffer = self.buffer_breaking_invariant_less_safe();
         // XXX: If `f` writes to the last byte of the buffer and then panics,
         // then things go pretty badly as we'll interpret that byte as the
         // length going forward.
-        let new_purported_len = f(buffer);
+        let new_purported_len = f(&mut self.buffer_and_len);
         // If `f` doesn't panic then the invariant is restored here. We don't
         // care whether `f` actually wrote anything to the buffer to ensure
         // that `new_purported_len` makes sense, as we've ensured in the
         // constructor that at least every byte was written once.
         self.set_purported_len(new_purported_len);
     }
-
-    #[inline]
-    pub fn buffer_breaking_invariant_less_safe(&mut self) -> &mut [u8; LEN_MAX_PLUS_1] {
-        &mut self.buffer_and_len
-    }
 }
 
 pub struct PurportedLen<const LEN_MAX_PLUS_1: usize>(u8);
+
+impl<const LEN_MAX_PLUS_1: usize> PurportedLen<LEN_MAX_PLUS_1> {
+    pub const ZERO: Self = Self(0);
+}
 
 impl<const LEN_MAX_PLUS_1: usize> From<PurportedLen<LEN_MAX_PLUS_1>> for usize {
     #[inline]
