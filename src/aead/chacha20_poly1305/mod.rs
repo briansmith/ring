@@ -14,7 +14,7 @@
 
 use super::{
     chacha::{self, Counter, Overlapping},
-    poly1305, Aad, Nonce, Tag,
+    poly1305, Aad, AuthError, ForgedPlaintext, Nonce, Tag,
 };
 use crate::{
     cpu,
@@ -45,6 +45,21 @@ pub(super) struct Key(chacha::Key);
 impl Key {
     pub(super) fn new(value: [u8; KEY_LEN]) -> Self {
         Self(chacha::Key::new(value))
+    }
+
+    #[inline(never)]
+    pub(super) fn open_within<'o>(
+        &self,
+        nonce: Nonce,
+        aad: Aad<&[u8]>,
+        in_out: Overlapping<'o>,
+        received_tag: &Tag,
+        forged_plaintext: ForgedPlaintext,
+        cpu_features: cpu::Features,
+    ) -> Result<&'o mut [u8], AuthError> {
+        super::open_within(in_out, received_tag, forged_plaintext, |in_out| {
+            open(self, nonce, aad, in_out, cpu_features)
+        })
     }
 }
 
@@ -82,7 +97,7 @@ pub(super) fn seal_fallback(
     Ok(finish(auth, aad.as_ref().len(), in_out.len()))
 }
 
-pub(super) fn open(
+fn open(
     key: &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,

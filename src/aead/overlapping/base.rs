@@ -54,6 +54,19 @@ impl<'o, T> Overlapping<'o, T> {
         }
     }
 
+    pub fn assume_entire_output_written_on_success<R, E>(
+        self,
+        f: impl for<'b> FnOnce(Overlapping<'b, T>) -> Result<R, E>,
+    ) -> Result<(&'o mut [T], R), E> {
+        let len = self.len();
+        let reborrowed = Overlapping {
+            in_out: &mut self.in_out[..],
+            src: self.src.clone(),
+        };
+        let r = f(reborrowed)?;
+        Ok((&mut self.in_out[..len], r))
+    }
+
     pub fn into_unwritten_output(self) -> &'o mut [T] {
         let len = self.len();
         self.in_out.get_mut(..len).unwrap_or_else(|| {
