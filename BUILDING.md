@@ -68,7 +68,7 @@ make Perl available automatically. You should not need to mess with
 VCVARSALL/etc since cc-rs will find MSVC. When targeting
 aarch64-pc-windows-msvc, just add the Visual-Studio-supplied LLVM directory
 to the PATH by transliterating the relevant PowerShell commands into Bash
-syntax; this copy of clang will be be able to find all the headers, etc. 
+syntax; this copy of clang will be able to find all the headers, etc.
 
 
 Additional Features that are Useful for Development
