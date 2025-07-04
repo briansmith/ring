@@ -84,7 +84,7 @@ impl<'a, T, const N: usize> Iterator for AsChunksIter<'a, T, N> {
     }
 }
 
-// `&mut [[T; N]]` is implicitly convertable to `&[[T; N]]` but our types can't
+// `&mut [[T; N]]` is implicitly convertible to `&[[T; N]]` but our types can't
 // do that.
 impl<'a, T, const N: usize> From<&'a AsChunksMut<'_, T, N>> for AsChunks<'a, T, N> {
     #[inline(always)]
