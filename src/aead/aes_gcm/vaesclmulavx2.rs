@@ -15,11 +15,7 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::{aes, gcm, Counter, BLOCK_LEN};
-use crate::{
-    aead::aes::OverlappingBlocks,
-    c,
-    polyfill::{slice::AsChunksMut, usize_from_u32},
-};
+use crate::{aead::aes::OverlappingBlocks, c, polyfill::slice::AsChunksMut};
 use core::num::NonZeroU32;
 
 pub(super) fn seal_whole_vaes_clmul_avx2(
@@ -76,8 +72,9 @@ pub(super) fn open_whole_vaes_clmul_avx2(
     let aes_key = aes_key.inner_less_safe();
     let (htable, xi) = auth.inner();
     in_out.with_input_output_blocks(|input, output, blocks| {
-        if let Some(blocks) = NonZeroU32::new(blocks) {
-            let len = usize_from_u32(blocks.get()) * BLOCK_LEN;
+        let blocks_u32 = u32::try_from(blocks).unwrap();
+        let len = blocks * BLOCK_LEN; // Can't overflow
+        if let Some(blocks_u32) = NonZeroU32::new(blocks_u32) {
             unsafe {
                 aes_gcm_dec_update_vaes_avx2(
                     input.cast::<u8>(),
@@ -89,7 +86,7 @@ pub(super) fn open_whole_vaes_clmul_avx2(
                     xi,
                 )
             }
-            ctr.increment_by_less_safe(blocks);
+            ctr.increment_by_less_safe(blocks_u32);
         }
     });
 }

@@ -31,7 +31,7 @@ pub(super) mod hw;
 pub(super) mod vp;
 
 pub type Overlapping<'o> = overlapping::Overlapping<'o, u8>;
-pub type OverlappingBlocks<'o> = overlapping::Blocks<'o, u8, u32, BLOCK_LEN>;
+pub type OverlappingBlocks<'o> = overlapping::Blocks<'o, u8, BLOCK_LEN>;
 pub type OverlappingPartialBlock<'o> = overlapping::PartialBlock<'o, u8, BLOCK_LEN>;
 
 cfg_if! {
@@ -176,11 +176,7 @@ pub(super) trait EncryptBlock {
 }
 
 pub(super) trait EncryptCtr32 {
-    fn ctr32_encrypt_within(
-        &self,
-        in_out: overlapping::Blocks<'_, u8, u32, BLOCK_LEN>,
-        ctr: &mut Counter,
-    );
+    fn ctr32_encrypt_within(&self, in_out: OverlappingBlocks<'_>, ctr: &mut Counter);
 }
 
 #[allow(dead_code)]

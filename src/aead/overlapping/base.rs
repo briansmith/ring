@@ -153,20 +153,16 @@ impl<T> Overlapping<'_, T> {
 }
 
 impl<'o, T> Overlapping<'o, T> {
-    pub fn split_whole_blocks<Len: TryFrom<usize>, const BLOCK_LEN: usize>(
+    pub fn split_whole_blocks<const BLOCK_LEN: usize>(
         self,
-        f: impl for<'a> FnOnce(Blocks<'a, T, Len, BLOCK_LEN>),
+        f: impl for<'a> FnOnce(Blocks<'a, T, BLOCK_LEN>),
     ) -> Result<PartialBlock<'o, T, BLOCK_LEN>, InputTooLongError> {
         let in_out_len = self.len();
-        let checked_remainder_len = Blocks::<'o, T, Len, BLOCK_LEN>::checked_remainder(in_out_len)?;
+        let checked_remainder_len = in_out_len % BLOCK_LEN;
         let whole_len = in_out_len - checked_remainder_len;
         let remainder = self
             .split_at(whole_len, |whole| {
                 let blocks = Blocks::try_from(whole).unwrap_or_else(|err| match err {
-                    BlocksError::InputTooLong(_) => {
-                        let _impossible_because = checked_remainder_len;
-                        unreachable!();
-                    }
                     BlocksError::NotAMultipleOfBlockLen(_) => {
                         let _impossible_because = checked_remainder_len;
                         unreachable!();

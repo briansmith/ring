@@ -16,97 +16,69 @@
 
 pub(crate) use self::error::BlocksError;
 use super::{Array, IndexError, Overlapping};
-use crate::{
-    error::InputTooLongError,
-    polyfill::{
-        self,
-        slice::{AsChunks, AsChunksMut},
-    },
+use crate::polyfill::{
+    self,
+    slice::{AsChunks, AsChunksMut},
 };
-use core::marker::PhantomData;
 
-pub struct Blocks<'o, T, NumBlocks, const BLOCK_LEN: usize> {
+pub struct Blocks<'o, T, const BLOCK_LEN: usize> {
     // Invariant: BLOCK_LEN != 0.
     // Invariant: `self.in_out.len() % BLOCK_LEN == 0`.
     // Invariant: `NumBlocks::try_from(self.in_out.len() / BLOCK_LEN).is_ok()`.
     in_out: Overlapping<'o, T>,
-    _num_blocks: PhantomData<NumBlocks>,
 }
 
-impl<'o, T, const BLOCK_LEN: usize> From<AsChunksMut<'o, T, BLOCK_LEN>>
-    for Blocks<'o, T, u32, BLOCK_LEN>
+impl<'o, T, const BLOCK_LEN: usize> From<AsChunksMut<'o, T, BLOCK_LEN>> for Blocks<'o, T, BLOCK_LEN>
 where
     Overlapping<'o, T>: From<&'o mut [T]>,
 {
     fn from(in_out: AsChunksMut<'o, T, BLOCK_LEN>) -> Self {
         Self {
             in_out: Overlapping::from(in_out.into_flattened_mut()),
-            _num_blocks: PhantomData,
         }
     }
 }
 
-impl<'o, T, const BLOCK_LEN: usize> From<&'o mut [T; BLOCK_LEN]> for Blocks<'o, T, u32, BLOCK_LEN>
+impl<'o, T, const BLOCK_LEN: usize> From<&'o mut [T; BLOCK_LEN]> for Blocks<'o, T, BLOCK_LEN>
 where
     Overlapping<'o, T>: From<&'o mut [T]>,
 {
     fn from(value: &'o mut [T; BLOCK_LEN]) -> Self {
         Self {
             in_out: Overlapping::from(value.as_mut()),
-            _num_blocks: PhantomData,
         }
     }
 }
 
-impl<'o, T, NumBlocks: TryFrom<usize>, const BLOCK_LEN: usize> TryFrom<Overlapping<'o, T>>
-    for Blocks<'o, T, NumBlocks, BLOCK_LEN>
-{
+impl<'o, T, const BLOCK_LEN: usize> TryFrom<Overlapping<'o, T>> for Blocks<'o, T, BLOCK_LEN> {
     type Error = BlocksError;
 
     fn try_from(in_out: Overlapping<'o, T>) -> Result<Self, Self::Error> {
         assert_ne!(BLOCK_LEN, 0);
-        let remainder =
-            Self::checked_remainder(in_out.len()).map_err(BlocksError::input_too_long)?;
+        let remainder = in_out.len() % BLOCK_LEN;
         if remainder != 0 {
             return Err(BlocksError::not_a_multiple_of_block_len(remainder));
         }
-        Ok(Self {
-            in_out,
-            _num_blocks: PhantomData,
-        })
+        Ok(Self { in_out })
     }
 }
 
-impl<'o, T, NumBlocks: TryFrom<usize>, const BLOCK_LEN: usize> Blocks<'o, T, NumBlocks, BLOCK_LEN> {
-    pub(super) fn checked_remainder(len: usize) -> Result<usize, InputTooLongError> {
-        let blocks = len / BLOCK_LEN;
-        let leftover = len % BLOCK_LEN;
-        if NumBlocks::try_from(blocks).is_err() {
-            return Err(InputTooLongError::new(blocks));
-        }
-        Ok(leftover)
-    }
-}
-
-impl<'o, T, const BLOCK_LEN: usize> Blocks<'o, T, u32, BLOCK_LEN> {
+impl<'o, T, const BLOCK_LEN: usize> Blocks<'o, T, BLOCK_LEN> {
     pub fn with_input_output_blocks<R>(
         self,
-        f: impl FnOnce(*const [T; BLOCK_LEN], *mut [T; BLOCK_LEN], u32) -> R,
+        f: impl FnOnce(*const [T; BLOCK_LEN], *mut [T; BLOCK_LEN], usize) -> R,
     ) -> R {
         self.in_out.with_input_output_len(|input, output, len| {
-            let nun_blocks = len / BLOCK_LEN;
-            #[allow(clippy::cast_possible_truncation)] // lossless due to invariant.
-            let num_blocks = nun_blocks as u32;
             f(
                 input.cast::<[T; BLOCK_LEN]>(),
                 output.cast::<[T; BLOCK_LEN]>(),
-                num_blocks,
+                len / BLOCK_LEN,
             )
         })
     }
 }
 
-impl<'o, T, Len, const BLOCK_LEN: usize> Blocks<'o, T, Len, BLOCK_LEN> {
+impl<T, const BLOCK_LEN: usize> Blocks<'_, T, BLOCK_LEN> {
     pub fn is_empty(&self) -> bool {
         self.in_out.is_empty()
     }
@@ -123,34 +95,25 @@ impl<'o, T, Len, const BLOCK_LEN: usize> Blocks<'o, T, Len, BLOCK_LEN> {
     ) -> Result<Self, IndexError> {
         self.in_out
             .split_first_chunk::<BLOCK_LEN>(f)
-            .map(|in_out| Self {
-                in_out,
-                _num_blocks: PhantomData,
-            })
+            .map(|in_out| Self { in_out })
     }
 
     pub fn split_at_most<const CHUNKS: usize>(
         self,
-        f: impl for<'a> FnOnce(Blocks<'a, T, Len, BLOCK_LEN>),
+        f: impl for<'a> FnOnce(Blocks<'a, T, BLOCK_LEN>),
     ) -> Self {
         let num_blocks = self.in_out.len() / BLOCK_LEN;
         let first_chunk_blocks = num_blocks.min(CHUNKS);
         let in_out = self
             .in_out
             .split_at(first_chunk_blocks * BLOCK_LEN, |in_out| {
-                let blocks = Blocks {
-                    in_out,
-                    _num_blocks: PhantomData,
-                };
+                let blocks = Blocks { in_out };
                 f(blocks);
             })
             .unwrap_or_else(|IndexError { .. }| {
                 unreachable!();
             });
-        Self {
-            in_out,
-            _num_blocks: PhantomData,
-        }
+        Self { in_out }
     }
 
     pub fn num_blocks(&self) -> u32 {
@@ -163,7 +126,6 @@ impl<'o, T, Len, const BLOCK_LEN: usize> Blocks<'o, T, Len, BLOCK_LEN> {
 
 cold_exhaustive_error! {
     enum error::BlocksError {
-        input_too_long => InputTooLong(InputTooLongError),
         not_a_multiple_of_block_len => NotAMultipleOfBlockLen(usize),
     }
 }

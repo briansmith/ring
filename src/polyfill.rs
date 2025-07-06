@@ -28,8 +28,8 @@ pub const fn usize_from_u32(x: u32) -> usize {
     x as usize
 }
 
-pub fn nonzero_usize_from_u32(x: NonZeroU32) -> NonZeroUsize {
-    x.try_into().unwrap()
+pub fn nonzero_u32_try_from_nonzero_usize(x: NonZeroUsize) -> Option<NonZeroU32> {
+    u32::try_from(x.get()).ok().and_then(NonZeroU32::new)
 }
 
 #[cfg(all(
