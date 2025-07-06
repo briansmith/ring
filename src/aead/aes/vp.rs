@@ -153,15 +153,13 @@ impl EncryptBlock for Key {
 
 #[cfg(target_arch = "x86")]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, mut in_out: Overlapping<'_>, ctr: &mut Counter) {
-        use super::{overlapping::IndexError, BLOCK_LEN};
+    fn ctr32_encrypt_within(&self, mut in_out: OverlappingBlocks<'_>, ctr: &mut Counter) {
+        use super::overlapping::IndexError;
         use crate::polyfill::sliceutil;
 
-        assert_eq!(in_out.len() % BLOCK_LEN, 0);
-        let blocks = in_out.len() / BLOCK_LEN;
-        for _ in 0..blocks {
+        while !in_out.is_empty() {
             in_out = in_out
-                .split_first_chunk(|in_out| {
+                .split_first_block(|in_out| {
                     let out = self.encrypt_iv_xor_block(ctr.increment(), *in_out.input());
                     sliceutil::overwrite_at_start(in_out.into_unwritten_output(), &out);
                 })
