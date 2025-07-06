@@ -76,9 +76,7 @@ pub(super) fn with_non_dangling_ptr(
 
     let input_len = match NonZeroUsize::new(input.len()) {
         Some(len) => len,
-        None => {
-            return;
-        }
+        None => return,
     };
 
     f(input.as_ptr(), input_len);

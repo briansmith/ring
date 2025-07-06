@@ -151,9 +151,7 @@ impl AES_KEY {
 
             let blocks = match NonZeroUsize::new(len / BLOCK_LEN) {
                 Some(blocks) => blocks,
-                None => {
-                    return;
-                }
+                None => return,
             };
 
             let input: *const [u8; BLOCK_LEN] = input.cast();
