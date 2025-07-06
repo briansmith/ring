@@ -132,7 +132,7 @@ fn open_in_place(c: &mut Criterion) {
                             .unwrap();
                         in_out
                     };
-                    let num_batches = (core::cmp::max(1, 8192 / ciphertext.len()) * 10) as u64;
+                    let num_batches = 1.max(8192 / (ciphertext.len() as u64) * 10);
 
                     b.iter_batched(
                         || ciphertext.clone(),

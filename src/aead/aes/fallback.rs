@@ -21,7 +21,7 @@ use crate::{
     bb,
     polyfill::{self, usize_from_u32},
 };
-use core::{array, cmp, mem::size_of, num::NonZeroU32};
+use core::{array, mem::size_of, num::NonZeroU32};
 
 #[derive(Clone)]
 pub struct Key {
@@ -827,7 +827,7 @@ impl EncryptCtr32 for Key {
                 *iv_ctr = ctr.wrapping_add(i).to_be_bytes();
             }
 
-            let todo = cmp::min(BATCH_SIZE, blocks);
+            let todo = blocks.min(BATCH_SIZE);
             let batch = Batch::from_bytes(&ivs.0[..todo]);
             let enc_ivs = &mut enc_ivs.0[..todo];
             batch.encrypt(&sched, enc_ivs);
