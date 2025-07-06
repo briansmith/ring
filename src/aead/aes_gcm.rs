@@ -50,18 +50,17 @@ impl Key {
 
 #[derive(Clone)]
 enum DynKey {
+    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+    AesHwClMul(Combo<aes::hw::Key, gcm::clmul_aarch64::Key>),
+
     #[cfg(target_arch = "x86_64")]
     VAesClMulAvx2(Combo<aes::hw::Key, gcm::vclmulavx2::Key>),
 
     #[cfg(target_arch = "x86_64")]
     AesHwClMulAvxMovbe(Combo<aes::hw::Key, gcm::clmulavxmovbe::Key>),
 
-    #[cfg(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        target_arch = "x86",
-        target_arch = "x86_64"
-    ))]
-    AesHwClMul(Combo<aes::hw::Key, gcm::clmul::Key>),
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    AesHwClMul(Combo<aes::hw::Key, gcm::clmul_x86_x86_64::Key>),
 
     #[cfg(any(
         all(target_arch = "aarch64", target_endian = "little"),
@@ -79,6 +78,14 @@ impl DynKey {
     fn new(key: aes::KeyBytes, cpu: cpu::Features) -> Self {
         let cpu = cpu.values();
 
+        #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+        if let (Some(aes), Some(gcm)) = (cpu.get_feature(), cpu.get_feature()) {
+            let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature());
+            let gcm_key_value = derive_gcm_key_value(&aes_key);
+            let gcm_key = gcm::clmul_aarch64::Key::new(gcm_key_value, gcm);
+            return Self::AesHwClMul(Combo { aes_key, gcm_key });
+        }
+
         #[cfg(target_arch = "x86_64")]
         if let Some((aes, gcm)) = cpu.get_feature() {
             let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature());
@@ -90,20 +97,16 @@ impl DynKey {
                 let gcm_key = gcm::clmulavxmovbe::Key::new(gcm_key_value, cpu);
                 Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key })
             } else {
-                let gcm_key = gcm::clmul::Key::new(gcm_key_value, gcm);
+                let gcm_key = gcm::clmul_x86_x86_64::Key::new(gcm_key_value, gcm);
                 Self::AesHwClMul(Combo { aes_key, gcm_key })
             };
         }
 
-        // x86_64 is handled above.
-        #[cfg(any(
-            all(target_arch = "aarch64", target_endian = "little"),
-            target_arch = "x86"
-        ))]
+        #[cfg(target_arch = "x86")]
         if let (Some(aes), Some(gcm)) = (cpu.get_feature(), cpu.get_feature()) {
             let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature());
             let gcm_key_value = derive_gcm_key_value(&aes_key);
-            let gcm_key = gcm::clmul::Key::new(gcm_key_value, gcm);
+            let gcm_key = gcm::clmul_x86_x86_64::Key::new(gcm_key_value, gcm);
             return Self::AesHwClMul(Combo { aes_key, gcm_key });
         }
 

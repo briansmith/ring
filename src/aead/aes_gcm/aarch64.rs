@@ -20,7 +20,7 @@ use core::num::NonZeroU64;
 
 pub(super) fn seal_whole(
     aes_key: &aes::hw::Key,
-    auth: &mut gcm::Context<gcm::clmul::Key>,
+    auth: &mut gcm::Context<gcm::clmul_aarch64::Key>,
     ctr: &mut Counter,
     mut in_out: AsChunksMut<u8, BLOCK_LEN>,
 ) {
@@ -56,7 +56,7 @@ pub(super) fn seal_whole(
 
 pub(super) fn open_whole(
     aes_key: &aes::hw::Key,
-    auth: &mut gcm::Context<gcm::clmul::Key>,
+    auth: &mut gcm::Context<gcm::clmul_aarch64::Key>,
     in_out: Overlapping,
     ctr: &mut Counter,
 ) {
