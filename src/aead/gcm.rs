@@ -104,8 +104,8 @@ impl<K> Context<'_, K> {
 /// Access to `inner` for the integrated AES-GCM implementations only.
 impl Context<'_, clmul_aarch64::Key> {
     #[inline]
-    pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
-        (self.key.inner(), &mut self.Xi)
+    pub(super) fn inner(&mut self) -> (&clmul_aarch64::Key, &mut Xi) {
+        (self.key, &mut self.Xi)
     }
 }
 
