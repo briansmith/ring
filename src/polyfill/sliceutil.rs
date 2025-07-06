@@ -17,7 +17,7 @@
 use super::slice::AsChunks;
 
 /// Replaces the first N elements of `a` with the first N elements of `b`, where
-/// N is `core::cmp::min(a.len(), b.len())`, leaving the rest unchanged.
+/// N is `a.len().min(b.len())`, leaving the rest unchanged.
 pub fn overwrite_at_start<T: Copy>(a: &mut [T], b: &[T]) {
     a.iter_mut().zip(b).for_each(|(a, b)| {
         *a = *b;

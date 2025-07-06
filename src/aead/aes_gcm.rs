@@ -23,7 +23,6 @@ use crate::{
     error::{self, InputTooLongError},
     polyfill::{slice, sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
-use core::cmp;
 
 #[cfg(any(
     all(target_arch = "aarch64", target_endian = "little"),
@@ -443,7 +442,7 @@ fn open_strided<
         if whole_remaining == 0 {
             break;
         }
-        let chunk_len = cmp::min(CHUNK_BLOCKS * BLOCK_LEN, whole_remaining);
+        let chunk_len = whole_remaining.min(CHUNK_BLOCKS * BLOCK_LEN);
         in_out = in_out
             .split_at(chunk_len, |chunk| {
                 let (input, _) = slice::as_chunks(chunk.input());

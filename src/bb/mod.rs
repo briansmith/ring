@@ -30,7 +30,7 @@ pub(crate) use self::{
 };
 
 /// XORs the first N words of `b` into `a`, where N is
-/// `core::cmp::min(a.len(), b.len())`.
+/// `a.len().min(b.len())`.
 #[inline(always)]
 pub(crate) fn xor_assign_at_start<'a>(
     a: impl IntoIterator<Item = &'a mut Word>,

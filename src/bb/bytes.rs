@@ -76,8 +76,7 @@ pub(crate) fn xor_assign<'a>(a: impl IntoIterator<Item = &'a mut u8>, b: u8) {
     a.into_iter().for_each(|a| *a ^= b);
 }
 
-/// XORs the first N bytes of `b` into `a`, where N is
-/// `core::cmp::min(a.len(), b.len())`.
+/// XORs the first N bytes of `b` into `a`, where N is `a.len().min(b.len())`.
 #[inline(always)]
 pub(crate) fn xor_assign_at_start_bytes<'a>(
     a: impl IntoIterator<Item = &'a mut u8>,
