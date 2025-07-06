@@ -84,7 +84,7 @@ impl EncryptCtr32 for Key {
 
 #[cfg(all(target_arch = "arm", target_endian = "little"))]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(&self, in_out: OverlappingBlocks<'_>, ctr: &mut Counter) {
         use super::{super::overlapping::IndexError, bs, BLOCK_LEN};
 
         let in_out = {

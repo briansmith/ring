@@ -80,7 +80,7 @@ pub(super) fn seal(
     };
 
     let (mut whole, remainder) = slice::as_chunks_mut(remainder);
-    aes_key.ctr32_encrypt_within(whole.as_flattened_mut().into(), &mut ctr);
+    aes_key.ctr32_encrypt_within(whole.as_mut().into(), &mut ctr);
     auth.update_blocks(whole.as_ref());
     let remainder = OverlappingPartialBlock::new(remainder.into())
         .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
@@ -152,8 +152,7 @@ pub(super) fn open(
         ctr,
         tag_iv,
         |aes_key, auth, whole, ctr| {
-            let (whole_input, _) = slice::as_chunks(whole.input());
-            auth.update_blocks(whole_input);
+            auth.update_blocks(whole.input());
             aes_key.ctr32_encrypt_within(whole, ctr);
         },
     ))

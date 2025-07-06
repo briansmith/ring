@@ -92,7 +92,7 @@ impl Key {
                             self, counter, in_out, cpu);
                     }
                 }
-                if in_out.len() >= 1 {
+                if !in_out.is_empty() {
                     chacha20_ctr32_ffi!(
                         unsafe { (1, (), Overlapping<'_>) => ChaCha20_ctr32_nohw },
                         self, counter, in_out, ())
