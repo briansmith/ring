@@ -16,36 +16,32 @@
 
 use super::{
     ffi::{KeyValue, BLOCK_LEN},
-    HTable, UpdateBlock, Xi,
+    UpdateBlock, Xi,
 };
 use crate::cpu;
+use core::mem::MaybeUninit;
 
 #[derive(Clone)]
-pub struct Key {
-    h_table: HTable,
-}
+#[repr(transparent)] // Used in FFI
+pub struct Key([[u64; 2]; 6]);
 
 impl Key {
     pub(in super::super) fn new(value: KeyValue, _cpu: cpu::aarch64::PMull) -> Self {
         prefixed_extern! {
-            fn gcm_init_clmul(HTable: *mut HTable, h: &KeyValue);
+            fn gcm_init_clmul(HTable: *mut Key, h: &KeyValue);
         }
-        Self {
-            h_table: HTable::new(|table| unsafe { gcm_init_clmul(table, &value) }),
-        }
-    }
-
-    pub(super) fn inner(&self) -> &HTable {
-        &self.h_table
+        let mut uninit = MaybeUninit::uninit();
+        unsafe { gcm_init_clmul(uninit.as_mut_ptr(), &value) };
+        unsafe { uninit.assume_init() }
     }
 }
 
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
         prefixed_extern! {
-            fn gcm_gmult_clmul(xi: &mut Xi, Htable: &HTable);
+            fn gcm_gmult_clmul(xi: &mut Xi, Htable: &Key);
         }
         xi.bitxor_assign(a);
-        unsafe { self.h_table.gmult(gcm_gmult_clmul, xi) };
+        unsafe { gcm_gmult_clmul(xi, self) };
     }
 }
