@@ -12,19 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    target_arch = "x86",
-    target_arch = "x86_64"
-))]
+#![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 
 use super::{
     ffi::{KeyValue, BLOCK_LEN},
-    HTable, UpdateBlock, Xi,
+    HTable, UpdateBlock, UpdateBlocks, Xi,
 };
-use crate::cpu;
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use {super::UpdateBlocks, crate::polyfill::slice::AsChunks};
+use crate::{cpu, polyfill::slice::AsChunks};
 
 #[derive(Clone)]
 pub struct Key {
@@ -32,16 +26,6 @@ pub struct Key {
 }
 
 impl Key {
-    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-    pub(in super::super) fn new(value: KeyValue, _cpu: cpu::aarch64::PMull) -> Self {
-        prefixed_extern! {
-            fn gcm_init_clmul(HTable: *mut HTable, h: &KeyValue);
-        }
-        Self {
-            h_table: HTable::new(|table| unsafe { gcm_init_clmul(table, &value) }),
-        }
-    }
-
     #[cfg(target_arch = "x86")]
     pub(in super::super) fn new(
         value: KeyValue,
@@ -68,30 +52,14 @@ impl Key {
             h_table: HTable::new(|table| unsafe { gcm_init_clmul(table, &value) }),
         }
     }
-
-    #[cfg(target_arch = "aarch64")]
-    pub(super) fn inner(&self) -> &HTable {
-        &self.h_table
-    }
 }
 
 impl UpdateBlock for Key {
-    #[cfg(target_arch = "aarch64")]
-    fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
-        prefixed_extern! {
-            fn gcm_gmult_clmul(xi: &mut Xi, Htable: &HTable);
-        }
-        xi.bitxor_assign(a);
-        unsafe { self.h_table.gmult(gcm_gmult_clmul, xi) };
-    }
-
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
         self.update_blocks(xi, (&a).into())
     }
 }
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 impl UpdateBlocks for Key {
     fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, { BLOCK_LEN }>) {
         prefixed_extern! {

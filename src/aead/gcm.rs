@@ -34,7 +34,8 @@ cfg_if! {
 #[macro_use]
 mod ffi;
 
-pub(super) mod clmul;
+pub(super) mod clmul_aarch64;
+pub(super) mod clmul_x86_x86_64;
 pub(super) mod clmulavxmovbe;
 pub(super) mod fallback;
 pub(super) mod neon;
@@ -101,7 +102,7 @@ impl<K> Context<'_, K> {
 
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 /// Access to `inner` for the integrated AES-GCM implementations only.
-impl Context<'_, clmul::Key> {
+impl Context<'_, clmul_aarch64::Key> {
     #[inline]
     pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
         (self.key.inner(), &mut self.Xi)
