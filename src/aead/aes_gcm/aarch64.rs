@@ -14,8 +14,11 @@
 
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
-use super::{aes, gcm, Counter, BLOCK_LEN};
-use crate::{aead::aes::Overlapping, bits::BitLength, polyfill::slice::AsChunksMut};
+use super::{
+    aes::{self, OverlappingBlocks},
+    gcm, Counter, BLOCK_LEN,
+};
+use crate::{bits::BitLength, polyfill::slice::AsChunksMut};
 use core::num::NonZeroU64;
 
 pub(super) fn seal_whole(
@@ -57,13 +60,10 @@ pub(super) fn seal_whole(
 pub(super) fn open_whole(
     aes_key: &aes::hw::Key,
     auth: &mut gcm::Context<gcm::clmul::Key>,
-    in_out: Overlapping,
+    in_out: OverlappingBlocks<'_>,
     ctr: &mut Counter,
 ) {
-    // Precondition. TODO: Create an overlapping::AsChunks for this.
-    assert_eq!(in_out.len() % BLOCK_LEN, 0);
-
-    in_out.with_input_output_len(|input, output, _len| {
+    in_out.with_input_output_blocks(|input, output, _blocks_32| {
         let whole_block_bits = auth.in_out_whole_block_bits();
         let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
         if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
@@ -81,9 +81,9 @@ pub(super) fn open_whole(
 
             unsafe {
                 aes_gcm_dec_kernel(
-                    input,
+                    input.cast::<u8>(),
                     whole_block_bits,
-                    output,
+                    output.cast::<u8>(),
                     xi,
                     ctr,
                     aes_key.inner_less_safe(),

@@ -19,7 +19,7 @@
     target_arch = "x86_64"
 ))]
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
+use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, OverlappingBlocks, AES_KEY};
 use crate::cpu;
 
 #[derive(Clone)]
@@ -77,7 +77,7 @@ impl EncryptBlock for Key {
     target_arch = "x86_64"
 ))]
 impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
+    fn ctr32_encrypt_within(&self, in_out: OverlappingBlocks<'_>, ctr: &mut Counter) {
         unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
     }
 }

@@ -13,8 +13,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub use self::index_error::IndexError;
-use super::Array;
-use crate::error::LenMismatchError;
+use super::{Array, Blocks, PartialBlock};
+use crate::aead::aes::{OverlappingPartialBlock, BLOCK_LEN};
+use crate::aead::overlapping::arrays::BlocksError;
+use crate::error::{InputTooLongError, LenMismatchError};
 use core::{mem, ops::RangeFrom};
 
 pub struct Overlapping<'o, T> {
@@ -144,6 +146,39 @@ impl<T> Overlapping<'_, T> {
                 // Follows from `end == src.start + mid`.
                 unreachable!()
             })
+        })
+    }
+}
+
+impl<'o, T> Overlapping<'o, T> {
+    pub fn split_whole_blocks<Len: TryFrom<usize>, const BLOCK_LEN: usize>(
+        self,
+        f: impl for<'a> FnOnce(Blocks<'a, T, Len, BLOCK_LEN>),
+    ) -> PartialBlock<'o, T, BLOCK_LEN> {
+        let in_out_len = self.len();
+        let checked_remainder_len = Blocks::checked_remainder(in_out_len)?;
+        let whole_len = in_out_len - checked_remainder_len;
+        let remainder = self
+            .split_at(whole_len, |whole| {
+                let blocks = Blocks::try_from(whole).unwrap_or_else(|err| match err {
+                    BlocksError::InputTooLong(_) => {
+                        let _impossible_because = checked_remainder_len;
+                        unreachable!();
+                    }
+                    BlocksError::NotAMultipleOfBlockLen(_) => {
+                        let _impossible_because = checked_remainder_len;
+                        unreachable!();
+                    }
+                });
+                f(blocks);
+            })
+            .unwrap_or_else(|IndexError { .. }| {
+                let _impossible_because = whole_len;
+                unreachable!();
+            });
+        PartialBlock::new(remainder).unwrap_or_else(|InputTooLongError { .. }| {
+            let _impossible_because = checked_remainder_len;
+            unreachable!()
         })
     }
 }

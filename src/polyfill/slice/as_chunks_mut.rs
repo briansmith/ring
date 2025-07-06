@@ -35,6 +35,11 @@ impl<'a, T, const N: usize> AsChunksMut<'a, T, N> {
         self.0
     }
 
+    #[inline(always)]
+    pub fn into_flattened_mut(self) -> &'a mut [T] {
+        self.0
+    }
+
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     pub fn as_ptr(&self) -> *const [T; N] {
         self.0.as_ptr().cast()
@@ -45,7 +50,6 @@ impl<'a, T, const N: usize> AsChunksMut<'a, T, N> {
         self.0.as_mut_ptr().cast()
     }
 
-    #[cfg(target_arch = "x86_64")]
     #[inline(always)]
     pub fn as_mut(&mut self) -> AsChunksMut<'_, T, N> {
         AsChunksMut(self.0)

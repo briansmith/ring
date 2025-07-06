@@ -13,7 +13,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    aes::{self, Counter, Overlapping, OverlappingPartialBlock, BLOCK_LEN, ZERO_BLOCK},
+    aes::{
+        self, Counter, Overlapping, OverlappingBlocks, OverlappingPartialBlock, BLOCK_LEN,
+        ZERO_BLOCK,
+    },
     gcm,
     overlapping::IndexError,
     Aad, Nonce, Tag,
@@ -280,7 +283,7 @@ fn seal_strided<
     let (mut whole, remainder) = slice::as_chunks_mut(in_out);
 
     for mut chunk in whole.chunks_mut::<CHUNK_BLOCKS>() {
-        aes_key.ctr32_encrypt_within(chunk.as_flattened_mut().into(), &mut ctr);
+        aes_key.ctr32_encrypt_within(OverlappingBlocks::from(chunk.as_mut()), &mut ctr);
         auth.update_blocks(chunk.as_ref());
     }
 
@@ -365,7 +368,7 @@ fn open_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     in_out: Overlapping<'_>,
     ctr: Counter,
     tag_iv: aes::Iv,
-    open_whole: impl FnOnce(&A, &mut gcm::Context<G>, Overlapping, &mut Counter),
+    open_whole: impl FnOnce(&A, &mut gcm::Context<G>, OverlappingBlocks, &mut Counter),
 ) -> Result<Tag, InputTooLongError> {
     let in_out_len = in_out.len();
 
@@ -382,23 +385,11 @@ fn open_whole_partial_tail<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     in_out: Overlapping,
     mut ctr: Counter,
     tag_iv: aes::Iv,
-    open_whole: impl FnOnce(&A, &mut gcm::Context<G>, Overlapping, &mut Counter),
+    open_whole: impl FnOnce(&A, &mut gcm::Context<G>, OverlappingBlocks, &mut Counter),
 ) -> Tag {
-    let in_out_len = in_out.len();
-    let remainder_len = in_out_len % BLOCK_LEN;
-    let whole_len = in_out_len - remainder_len;
-
-    let remainder = in_out
-        .split_at(whole_len, |whole| {
-            open_whole(aes_key, &mut auth, whole, &mut ctr);
-        })
-        .unwrap_or_else(|IndexError { .. }| {
-            // Assuming `whole_len` is correct.
-            unreachable!()
-        });
-
-    let remainder = OverlappingPartialBlock::new(remainder)
-        .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
+    let remainder = in_out.split_whole_blocks(|whole| {
+        open_whole(aes_key, &mut auth, whole, &mut ctr);
+    });
     open_finish(aes_key, auth, remainder, ctr, tag_iv)
 }
 

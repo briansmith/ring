@@ -31,6 +31,7 @@ pub(super) mod hw;
 pub(super) mod vp;
 
 pub type Overlapping<'o> = overlapping::Overlapping<'o, u8>;
+pub type OverlappingBlocks<'o> = overlapping::Blocks<'o, u8, u32, BLOCK_LEN>;
 pub type OverlappingPartialBlock<'o> = overlapping::PartialBlock<'o, u8, BLOCK_LEN>;
 
 cfg_if! {
@@ -175,7 +176,11 @@ pub(super) trait EncryptBlock {
 }
 
 pub(super) trait EncryptCtr32 {
-    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter);
+    fn ctr32_encrypt_within(
+        &self,
+        in_out: overlapping::Blocks<'_, u8, u32, BLOCK_LEN>,
+        ctr: &mut Counter,
+    );
 }
 
 #[allow(dead_code)]
@@ -186,7 +191,7 @@ fn encrypt_block_using_encrypt_iv_xor_block(key: &impl EncryptBlock, block: Bloc
 #[allow(dead_code)]
 fn encrypt_iv_xor_block_using_ctr32(key: &impl EncryptCtr32, iv: Iv, mut block: Block) -> Block {
     let mut ctr = Counter(iv.0); // This is OK because we're only encrypting one block.
-    key.ctr32_encrypt_within(block.as_mut().into(), &mut ctr);
+    key.ctr32_encrypt_within(OverlappingBlocks::from(&mut block), &mut ctr);
     block
 }
 

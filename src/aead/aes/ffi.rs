@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{KeyBytes, Overlapping, BLOCK_LEN};
+use super::{overlapping, KeyBytes, BLOCK_LEN};
+use crate::polyfill::{nonzero_usize_from_u32, usize_from_u32};
 use crate::{bits::BitLength, c};
 use core::{
     ffi::{c_int, c_uint},
@@ -143,20 +144,16 @@ impl AES_KEY {
             key: &AES_KEY,
             ivec: &Counter,
         ),
-        in_out: Overlapping<'_>,
+        in_out: overlapping::Blocks<'_, u8, u32, BLOCK_LEN>,
         ctr: &mut Counter,
     ) {
-        in_out.with_input_output_len(|input, output, len| {
-            debug_assert_eq!(len % BLOCK_LEN, 0);
-
-            let blocks = match NonZeroUsize::new(len / BLOCK_LEN) {
-                Some(blocks) => blocks,
-                None => return,
+        in_out.with_input_output_blocks(|input, output, blocks| {
+            let Some(blocks_u32) = NonZeroU32::new(blocks) else {
+                return;
             };
-
             let input: *const [u8; BLOCK_LEN] = input.cast();
             let output: *mut [u8; BLOCK_LEN] = output.cast();
-            let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
+            let blocks = nonzero_usize_from_u32(blocks_u32);
 
             // SAFETY:
             //  * `input` points to `blocks` blocks.

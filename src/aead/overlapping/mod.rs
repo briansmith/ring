@@ -14,10 +14,12 @@
 
 pub use self::{
     array::Array,
+    arrays::Blocks,
     base::{IndexError, Overlapping},
     partial_block::PartialBlock,
 };
 
 mod array;
+mod arrays;
 mod base;
 mod partial_block;

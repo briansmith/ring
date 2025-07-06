@@ -28,6 +28,10 @@ pub const fn usize_from_u32(x: u32) -> usize {
     x as usize
 }
 
+pub fn nonzero_usize_from_u32(x: NonZeroU32) -> NonZeroUsize {
+    x.try_into().unwrap()
+}
+
 #[cfg(all(
     target_arch = "aarch64",
     target_endian = "little",
@@ -88,6 +92,7 @@ pub use self::{
     array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, notsend::NotSend,
     unwrap_const::unwrap_const,
 };
+use core::num::{NonZeroU32, NonZeroUsize};
 
 #[cfg(feature = "alloc")]
 pub use leading_zeros_skipped::LeadingZerosStripped;

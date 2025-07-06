@@ -14,8 +14,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    super::overlapping::IndexError, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes,
-    Overlapping, BLOCK_LEN,
+    super::overlapping::{Blocks, IndexError},
+    Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, OverlappingBlocks, BLOCK_LEN,
 };
 use crate::{
     bb,
@@ -781,14 +781,11 @@ impl EncryptBlock for Key {
 
 impl EncryptCtr32 for Key {
     #[inline(never)]
-    fn ctr32_encrypt_within(&self, mut in_out: Overlapping<'_>, ctr: &mut Counter) {
-        assert_eq!(in_out.len() % BLOCK_LEN, 0);
-
+    fn ctr32_encrypt_within(&self, mut in_out: OverlappingBlocks<'_>, ctr: &mut Counter) {
         // XXX(unwrap): The caller is responsible for ensuring that the input is
         // short enough to avoid overflow.
-        let blocks = match NonZeroU32::new(u32::try_from(in_out.len() / 16).unwrap()) {
-            Some(n) => n,
-            None => return,
+        let Some(blocks) = NonZeroU32::new(in_out.num_blocks()) else {
+            return;
         };
 
         let sched = Schedule::expand_round_keys(self);
@@ -834,7 +831,7 @@ impl EncryptCtr32 for Key {
 
             for enc_iv in enc_ivs {
                 in_out = in_out
-                    .split_first_chunk::<BLOCK_LEN>(|in_out| {
+                    .split_first_block(|in_out| {
                         bb::xor_assign_at_start_bytes(enc_iv.as_mut(), in_out.input());
                         in_out.into_unwritten_output().copy_from_slice(enc_iv);
                     })
