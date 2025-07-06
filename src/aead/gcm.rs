@@ -24,10 +24,12 @@ use cfg_if::cfg_if;
 pub(super) use ffi::KeyValue;
 
 cfg_if! {
-    if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"), target_arch = "x86_64"))] {
+    if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
+        pub(super) use self::ffi::Xi;
+    } else if #[cfg(any(target_arch = "x86_64", target_arch = "x86"))] {
         pub(super) use self::ffi::{HTable, Xi};
     } else {
-        use self::ffi::{HTable, Xi};
+        use self::ffi::Xi;
     }
 }
 

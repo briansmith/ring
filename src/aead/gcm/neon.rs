@@ -17,43 +17,43 @@
     all(target_arch = "arm", target_endian = "little")
 ))]
 
-use super::{ffi, HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
+use super::{ffi, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::{c, cpu, polyfill::slice::AsChunks};
+use core::mem::MaybeUninit;
 
 #[derive(Clone)]
-pub struct Key {
-    h_table: HTable,
-}
+#[repr(transparent)]
+pub struct Key([[u64; 2]; 1]);
 
 impl Key {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     pub(in super::super) fn new(value: KeyValue, _cpu: cpu::aarch64::Neon) -> Self {
         prefixed_extern! {
-            fn gcm_init_neon(HTable: *mut HTable, h: &KeyValue);
+            fn gcm_init_neon(HTable: *mut Key, h: &KeyValue);
         }
-        Self {
-            h_table: HTable::new(|table| unsafe { gcm_init_neon(table, &value) }),
-        }
+        let mut uninit = MaybeUninit::uninit();
+        unsafe { gcm_init_neon(uninit.as_mut_ptr(), &value) };
+        unsafe { uninit.assume_init() }
     }
 
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
     pub(in super::super) fn new(value: KeyValue, _cpu: cpu::arm::Neon) -> Self {
         prefixed_extern! {
-            fn gcm_init_neon(HTable: *mut HTable, h: &KeyValue);
+            fn gcm_init_neon(HTable: *mut Key, h: &KeyValue);
         }
-        Self {
-            h_table: HTable::new(|table| unsafe { gcm_init_neon(table, &value) }),
-        }
+        let mut uninit = MaybeUninit::uninit();
+        unsafe { gcm_init_neon(uninit.as_mut_ptr(), &value) };
+        unsafe { uninit.assume_init() }
     }
 }
 
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
         prefixed_extern! {
-            fn gcm_gmult_neon(xi: &mut Xi, Htable: &HTable);
+            fn gcm_gmult_neon(xi: &mut Xi, Htable: &Key);
         }
         xi.bitxor_assign(a);
-        unsafe { self.h_table.gmult(gcm_gmult_neon, xi) };
+        unsafe { gcm_gmult_neon(xi, self) };
     }
 }
 
@@ -62,14 +62,13 @@ impl UpdateBlocks for Key {
         prefixed_extern! {
             fn gcm_ghash_neon(
                 xi: &mut Xi,
-                Htable: &HTable,
+                Htable: &Key,
                 inp: *const u8,
                 len: c::NonZero_size_t,
             );
         }
-        let htable = &self.h_table;
         ffi::with_non_dangling_ptr(input, |input, len| unsafe {
-            gcm_ghash_neon(xi, htable, input, len)
+            gcm_ghash_neon(xi, self, input, len)
         });
     }
 }
