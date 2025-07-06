@@ -14,8 +14,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    super::overlapping::{Blocks, IndexError},
-    Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, OverlappingBlocks, BLOCK_LEN,
+    super::overlapping::IndexError, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes,
+    OverlappingBlocks, BLOCK_LEN,
 };
 use crate::{
     bb,

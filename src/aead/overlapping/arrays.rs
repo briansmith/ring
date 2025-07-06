@@ -16,11 +16,14 @@
 
 pub(crate) use self::error::BlocksError;
 use super::{Array, IndexError, Overlapping};
-use crate::error::InputTooLongError;
-use crate::polyfill::slice::AsChunksMut;
+use crate::{
+    error::InputTooLongError,
+    polyfill::{
+        self,
+        slice::{AsChunks, AsChunksMut},
+    },
+};
 use core::marker::PhantomData;
-use core::num::NonZeroU32;
-use untrusted::Input;
 
 pub struct Blocks<'o, T, NumBlocks, const BLOCK_LEN: usize> {
     // Invariant: BLOCK_LEN != 0.
@@ -37,7 +40,7 @@ where
 {
     fn from(in_out: AsChunksMut<'o, T, BLOCK_LEN>) -> Self {
         Self {
-            in_out: Overlapping::from(in_out.as_flattened_mut()),
+            in_out: Overlapping::from(in_out.into_flattened_mut()),
             _num_blocks: PhantomData,
         }
     }
@@ -62,9 +65,8 @@ impl<'o, T, NumBlocks: TryFrom<usize>, const BLOCK_LEN: usize> TryFrom<Overlappi
 
     fn try_from(in_out: Overlapping<'o, T>) -> Result<Self, Self::Error> {
         assert_ne!(BLOCK_LEN, 0);
-        let len = in_out.len();
         let remainder =
-            Self::check_num_blocks(in_out.len()).map_err(BlocksError::input_too_long)?;
+            Self::checked_remainder(in_out.len()).map_err(BlocksError::input_too_long)?;
         if remainder != 0 {
             return Err(BlocksError::not_a_multiple_of_block_len(remainder));
         }
@@ -102,6 +104,17 @@ impl<'o, T, const BLOCK_LEN: usize> Blocks<'o, T, u32, BLOCK_LEN> {
             )
         })
     }
+}
+
+impl<'o, T, Len, const BLOCK_LEN: usize> Blocks<'o, T, Len, BLOCK_LEN> {
+    pub fn is_empty(&self) -> bool {
+        self.in_out.is_empty()
+    }
+
+    pub fn input(&self) -> AsChunks<'_, T, BLOCK_LEN> {
+        let (r, _) = polyfill::slice::as_chunks(self.in_out.input());
+        r
+    }
 
     // TODO: `IndexError` is perhaps not the best error to return
     pub fn split_first_block(
@@ -114,6 +127,30 @@ impl<'o, T, const BLOCK_LEN: usize> Blocks<'o, T, u32, BLOCK_LEN> {
                 in_out,
                 _num_blocks: PhantomData,
             })
+    }
+
+    pub fn split_at_most<const CHUNKS: usize>(
+        self,
+        f: impl for<'a> FnOnce(Blocks<'a, T, Len, BLOCK_LEN>),
+    ) -> Self {
+        let num_blocks = self.in_out.len() / BLOCK_LEN;
+        let first_chunk_blocks = num_blocks.min(CHUNKS);
+        let in_out = self
+            .in_out
+            .split_at(first_chunk_blocks * BLOCK_LEN, |in_out| {
+                let blocks = Blocks {
+                    in_out,
+                    _num_blocks: PhantomData,
+                };
+                f(blocks);
+            })
+            .unwrap_or_else(|IndexError { .. }| {
+                unreachable!();
+            });
+        Self {
+            in_out,
+            _num_blocks: PhantomData,
+        }
     }
 
     pub fn num_blocks(&self) -> u32 {

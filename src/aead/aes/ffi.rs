@@ -13,11 +13,11 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{overlapping, KeyBytes, BLOCK_LEN};
-use crate::polyfill::{nonzero_usize_from_u32, usize_from_u32};
+use crate::polyfill::nonzero_usize_from_u32;
 use crate::{bits::BitLength, c};
 use core::{
     ffi::{c_int, c_uint},
-    num::{NonZeroU32, NonZeroUsize},
+    num::NonZeroU32,
 };
 
 /// nonce || big-endian counter.

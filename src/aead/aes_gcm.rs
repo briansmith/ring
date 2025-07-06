@@ -17,16 +17,13 @@ use super::{
         self, Counter, Overlapping, OverlappingBlocks, OverlappingPartialBlock, BLOCK_LEN,
         ZERO_BLOCK,
     },
-    gcm,
-    overlapping::IndexError,
-    Aad, Nonce, Tag,
+    gcm, Aad, Nonce, Tag,
 };
 use crate::{
     cpu,
     error::{self, InputTooLongError},
     polyfill::{slice, sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
-use core::cmp;
 
 #[cfg(any(
     all(target_arch = "aarch64", target_endian = "little"),
@@ -387,9 +384,14 @@ fn open_whole_partial_tail<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     tag_iv: aes::Iv,
     open_whole: impl FnOnce(&A, &mut gcm::Context<G>, OverlappingBlocks, &mut Counter),
 ) -> Tag {
-    let remainder = in_out.split_whole_blocks(|whole| {
-        open_whole(aes_key, &mut auth, whole, &mut ctr);
-    });
+    let remainder = in_out
+        .split_whole_blocks(|whole| {
+            open_whole(aes_key, &mut auth, whole, &mut ctr);
+        })
+        .unwrap_or_else(|InputTooLongError { .. }| {
+            let _impossible_because = &auth;
+            unreachable!()
+        });
     open_finish(aes_key, auth, remainder, ctr, tag_iv)
 }
 
@@ -422,35 +424,25 @@ fn open_strided<
 >(
     Combo { aes_key, gcm_key }: &Combo<A, G>,
     aad: Aad<&[u8]>,
-    mut in_out: Overlapping<'_>,
+    in_out: Overlapping<'_>,
     mut ctr: Counter,
     tag_iv: aes::Iv,
 ) -> Result<Tag, InputTooLongError> {
     let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
-
-    loop {
-        let remaining = in_out.len();
-        let whole_remaining = remaining - (remaining % BLOCK_LEN);
-        if whole_remaining == 0 {
-            break;
-        }
-        let chunk_len = cmp::min(CHUNK_BLOCKS * BLOCK_LEN, whole_remaining);
-        in_out = in_out
-            .split_at(chunk_len, |chunk| {
-                let (input, _) = slice::as_chunks(chunk.input());
-                auth.update_blocks(input);
-                aes_key.ctr32_encrypt_within(chunk, &mut ctr);
-            })
-            .unwrap_or_else(|IndexError { .. }| {
-                // Assuming `whole_remaining` is correct.
-                unreachable!()
-            });
-    }
-
-    let in_out = OverlappingPartialBlock::new(in_out)
-        .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
-
-    Ok(open_finish(aes_key, auth, in_out, ctr, tag_iv))
+    let partial = in_out
+        .split_whole_blocks(|mut whole| {
+            while !whole.is_empty() {
+                whole = whole.split_at_most::<CHUNK_BLOCKS>(|blocks| {
+                    auth.update_blocks(blocks.input());
+                    aes_key.ctr32_encrypt_within(blocks, &mut ctr);
+                });
+            }
+        })
+        .unwrap_or_else(|InputTooLongError { .. }| {
+            let _impossible_because = &auth;
+            unreachable!()
+        });
+    Ok(open_finish(aes_key, auth, partial, ctr, tag_iv))
 }
 
 fn open_finish<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
