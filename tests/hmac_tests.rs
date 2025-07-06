@@ -36,9 +36,7 @@ fn hmac_tests() {
         let algorithm = {
             let digest_alg = match digest_alg {
                 Some(digest_alg) => digest_alg,
-                None => {
-                    return Ok(());
-                } // Unsupported digest algorithm
+                None => return Ok(()), // Unsupported digest algorithm
             };
             if digest_alg == &digest::SHA1_FOR_LEGACY_USE_ONLY {
                 hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY
