@@ -221,13 +221,10 @@ impl Context {
             let to_digest = if num_pending == 0 {
                 data
             } else {
-                let buffer_to_fill = match buffer.get_mut(num_pending..) {
-                    Some(buffer_to_fill) => buffer_to_fill,
-                    None => {
-                        let _impossible_because = invariant;
-                        unreachable!();
-                    }
-                };
+                let buffer_to_fill = buffer.get_mut(num_pending..).unwrap_or_else(|| {
+                    let _impossible_because = invariant;
+                    unreachable!();
+                });
                 sliceutil::overwrite_at_start(buffer_to_fill, data);
                 match slice::split_at_checked(data, buffer_to_fill.len()) {
                     Some((just_copied, to_digest)) => {
