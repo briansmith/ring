@@ -177,18 +177,38 @@ fn test_open_in_place<OpenInPlace>(
     open_in_place: OpenInPlace,
 ) -> Result<(), error::Unspecified>
 where
-    OpenInPlace:
-        for<'a> FnOnce(aead::Nonce, &'a mut [u8]) -> Result<&'a mut [u8], error::Unspecified>,
+    OpenInPlace: for<'a> Fn(aead::Nonce, &'a mut [u8]) -> Result<&'a mut [u8], error::Unspecified>,
 {
-    let nonce = aead::Nonce::assume_unique_for_key(tc.nonce);
+    {
+        let nonce = aead::Nonce::assume_unique_for_key(tc.nonce);
+        let mut in_out = Vec::from(tc.ciphertext);
+        in_out.extend_from_slice(tc.tag);
 
-    let mut in_out = Vec::from(tc.ciphertext);
-    in_out.extend_from_slice(tc.tag);
+        let actual_plaintext = open_in_place(nonce, &mut in_out)?;
 
-    let actual_plaintext = open_in_place(nonce, &mut in_out)?;
+        assert_eq!(actual_plaintext, tc.plaintext);
+        assert_eq!(&in_out[..tc.plaintext.len()], tc.plaintext);
+    }
 
-    assert_eq!(actual_plaintext, tc.plaintext);
-    assert_eq!(&in_out[..tc.plaintext.len()], tc.plaintext);
+    // test that tampering with the tag causes opening to...
+    {
+        let nonce = aead::Nonce::assume_unique_for_key(tc.nonce);
+        let mut in_out = Vec::from(tc.ciphertext);
+        in_out.extend_from_slice(tc.tag);
+
+        *in_out.last_mut().unwrap() ^= 1; // tamper
+
+        // ... fail and ...
+        assert!(matches!(
+            open_in_place(nonce, &mut in_out),
+            Err(error::Unspecified)
+        ));
+        // .. overwrite the plaintext with zero ...
+        in_out[..tc.plaintext.len()]
+            .iter()
+            .for_each(|&x| assert_eq!(x, 0));
+    }
+
     Ok(())
 }
 
