@@ -181,7 +181,7 @@ fn aes_gcm_seal(
         KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
     };
-    aes_gcm::seal(key, nonce, aad, in_out)
+    key.seal(nonce, aad, in_out)
 }
 
 pub(super) fn aes_gcm_open<'o>(
@@ -232,7 +232,7 @@ fn chacha20_poly1305_seal(
         KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
-    chacha20_poly1305::seal(key, nonce, aad, in_out, cpu_features)
+    key.seal(nonce, aad, in_out, cpu_features)
 }
 
 fn chacha20_poly1305_open<'o>(
