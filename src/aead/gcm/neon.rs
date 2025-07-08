@@ -23,7 +23,7 @@ use core::mem::MaybeUninit;
 
 #[derive(Clone)]
 #[repr(transparent)]
-pub struct Key([[u64; 2]; 1]);
+pub struct Key([ffi::U128; 1]);
 
 impl Key {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
