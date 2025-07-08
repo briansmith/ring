@@ -38,16 +38,13 @@ pub(super) fn seal(
         // The upstream version has a different calling convention where it
         // accepts any `len` and returns the number of bytes processed
         // according to the above.
-        //
-        // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
-        // assembly says it needs just nine values in that array.
         fn aesni_gcm_encrypt(
             input: *const u8,
             output: *mut u8,
             len: c::size_t,
             key: &aes::AES_KEY,
             ivec: &mut Counter,
-            Htable: &gcm::HTable,
+            Htable: &gcm::clmulavxmovbe::Key,
             Xi: &mut gcm::Xi);
     }
 
@@ -103,16 +100,13 @@ pub(super) fn open(
         // The upstream version has a different calling convention where it
         // accepts any `len` and returns the number of bytes processed
         // according to the above.
-        //
-        // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
-        // assembly says it needs just nine values in that array.
         fn aesni_gcm_decrypt(
             input: *const u8,
             output: *mut u8,
             len: c::size_t,
             key: &aes::AES_KEY,
             ivec: &mut Counter,
-            Htable: &gcm::HTable,
+            Htable: &gcm::clmulavxmovbe::Key,
             Xi: &mut gcm::Xi);
     }
 
