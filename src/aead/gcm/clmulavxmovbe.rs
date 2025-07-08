@@ -14,13 +14,13 @@
 
 #![cfg(target_arch = "x86_64")]
 
-use super::{ffi, HTable, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
+use super::{ffi, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::{c, cpu::intel, polyfill::slice::AsChunks};
+use core::mem::MaybeUninit;
 
 #[derive(Clone)]
-pub struct Key {
-    h_table: HTable,
-}
+#[repr(transparent)]
+pub struct Key([ffi::U128; 12]);
 
 impl Key {
     #[inline(never)]
@@ -29,15 +29,13 @@ impl Key {
         _required_cpu_features: (intel::ClMul, intel::Avx, intel::Movbe),
     ) -> Self {
         prefixed_extern! {
-            fn gcm_init_avx(HTable: *mut HTable, h: &KeyValue);
+            fn gcm_init_avx(HTable: *mut Key, h: &KeyValue);
         }
-        Self {
-            h_table: HTable::new(|table| unsafe { gcm_init_avx(table, &value) }),
+        let mut uninit = MaybeUninit::<Key>::uninit();
+        unsafe {
+            gcm_init_avx(uninit.as_mut_ptr(), &value);
         }
-    }
-
-    pub(super) fn inner(&self) -> &HTable {
-        &self.h_table
+        unsafe { uninit.assume_init() }
     }
 }
 
@@ -52,14 +50,13 @@ impl UpdateBlocks for Key {
         prefixed_extern! {
             fn gcm_ghash_avx(
                 xi: &mut Xi,
-                Htable: &HTable,
+                Htable: &Key,
                 inp: *const u8,
                 len: c::NonZero_size_t,
             );
         }
-        let htable = self.inner();
         ffi::with_non_dangling_ptr(input, |input, len| unsafe {
-            gcm_ghash_avx(xi, htable, input, len)
+            gcm_ghash_avx(xi, self, input, len)
         })
     }
 }
