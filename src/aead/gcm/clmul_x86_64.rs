@@ -15,28 +15,29 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::{
-    ffi::{KeyValue, BLOCK_LEN},
-    HTable, UpdateBlock, UpdateBlocks, Xi,
+    ffi::{self, KeyValue, BLOCK_LEN},
+    UpdateBlock, UpdateBlocks, Xi,
 };
 use crate::{cpu, polyfill::slice::AsChunks};
+use core::mem::MaybeUninit;
 
 #[derive(Clone)]
-pub struct Key {
-    h_table: HTable,
-}
+#[repr(transparent)]
+pub struct Key([ffi::U128; 6]);
 
 impl Key {
-    #[inline(never)]
     pub(in super::super) fn new(
         value: KeyValue,
         _cpu: (cpu::intel::ClMul, cpu::intel::Ssse3),
     ) -> Self {
         prefixed_extern! {
-            fn gcm_init_clmul(HTable: *mut HTable, h: &KeyValue);
+            fn gcm_init_clmul(HTable: *mut Key, h: &KeyValue);
         }
-        Self {
-            h_table: HTable::new(|table| unsafe { gcm_init_clmul(table, &value) }),
+        let mut uninit = MaybeUninit::<Key>::uninit();
+        unsafe {
+            gcm_init_clmul(uninit.as_mut_ptr(), &value);
         }
+        unsafe { uninit.assume_init() }
     }
 }
 
@@ -51,14 +52,13 @@ impl UpdateBlocks for Key {
         prefixed_extern! {
             fn gcm_ghash_clmul(
                 xi: &mut Xi,
-                Htable: &HTable,
+                Htable: &Key,
                 inp: *const u8,
                 len: crate::c::NonZero_size_t,
             );
         }
-        let htable = &self.h_table;
-        super::ffi::with_non_dangling_ptr(input, |input, len| unsafe {
-            gcm_ghash_clmul(xi, htable, input, len)
+        ffi::with_non_dangling_ptr(input, |input, len| unsafe {
+            gcm_ghash_clmul(xi, self, input, len)
         })
     }
 }

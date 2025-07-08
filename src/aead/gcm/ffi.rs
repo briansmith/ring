@@ -34,33 +34,6 @@ impl KeyValue {
     }
 }
 
-/// SAFETY:
-///   * `f` must read `len` bytes from `inp`; it may assume
-///     that `len` is a (non-zero) multiple of `BLOCK_LEN`.
-///   * `f` may inspect CPU features.
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-impl HTable {
-    pub(super) fn new(init: impl FnOnce(&mut HTable)) -> Self {
-        let mut r = Self {
-            Htable: [U128 { hi: 0, lo: 0 }; HTABLE_LEN],
-        };
-        init(&mut r);
-        r
-    }
-
-    #[cfg(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        all(target_arch = "arm", target_endian = "little")
-    ))]
-    pub(super) unsafe fn gmult(
-        &self,
-        f: unsafe extern "C" fn(xi: &mut Xi, h_table: &HTable),
-        xi: &mut Xi,
-    ) {
-        unsafe { f(xi, self) }
-    }
-}
-
 pub(super) fn with_non_dangling_ptr(
     input: AsChunks<u8, BLOCK_LEN>,
     f: impl FnOnce(*const u8, crate::c::NonZero_size_t),
@@ -76,23 +49,12 @@ pub(super) fn with_non_dangling_ptr(
     f(input.as_ptr(), input_len);
 }
 
-// The alignment is required by some assembly code, such as `ghash-ssse3-*`.
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[derive(Clone)]
-#[repr(C, align(16))]
-pub(in super::super) struct HTable {
-    Htable: [U128; HTABLE_LEN],
-}
-
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub(super) struct U128 {
     pub(super) hi: u64,
     pub(super) lo: u64,
 }
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-const HTABLE_LEN: usize = 16;
 
 #[repr(transparent)]
 pub(in super::super) struct Xi(pub(super) Block);
