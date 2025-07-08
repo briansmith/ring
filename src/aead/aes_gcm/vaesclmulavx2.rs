@@ -31,7 +31,7 @@ pub(super) fn seal_whole_vaes_clmul_avx2(
             len: c::size_t,
             key: &aes::AES_KEY,
             ivec: &Counter,
-            Htable: &gcm::HTable,
+            Htable: &gcm::vclmulavx2::Key,
             Xi: &mut gcm::Xi);
     }
 
@@ -65,7 +65,7 @@ pub(super) fn open_whole_vaes_clmul_avx2(
             len: c::size_t,
             key: &aes::AES_KEY,
             ivec: &mut Counter,
-            Htable: &gcm::HTable,
+            Htable: &gcm::vclmulavx2::Key,
             Xi: &mut gcm::Xi);
     }
 

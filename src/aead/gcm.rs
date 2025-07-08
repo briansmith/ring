@@ -124,8 +124,8 @@ impl Context<'_, clmulavxmovbe::Key> {
 impl Context<'_, vclmulavx2::Key> {
     /// Access to `inner` for the integrated AES-GCM implementations only.
     #[inline]
-    pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
-        (self.key.inner(), &mut self.Xi)
+    pub(super) fn inner(&mut self) -> (&vclmulavx2::Key, &mut Xi) {
+        (self.key, &mut self.Xi)
     }
 }
 

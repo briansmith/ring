@@ -15,33 +15,30 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::{
-    ffi::{self, KeyValue},
-    HTable, UpdateBlock, Xi,
+    ffi::{self, KeyValue, BLOCK_LEN},
+    UpdateBlock, Xi,
 };
 use crate::{
-    aead::gcm::ffi::BLOCK_LEN,
     c,
     cpu::intel::{Avx2, VAesClmul},
     polyfill::slice::AsChunks,
 };
+use core::mem::MaybeUninit;
 
 #[derive(Clone)]
-pub struct Key {
-    h_table: HTable,
-}
+#[repr(transparent)]
+pub struct Key([ffi::U128; 12]);
 
 impl Key {
     pub(in super::super) fn new(value: KeyValue, _cpu: (Avx2, VAesClmul)) -> Self {
         prefixed_extern! {
-            fn gcm_init_vpclmulqdq_avx2(HTable: *mut HTable, h: &KeyValue);
+            fn gcm_init_vpclmulqdq_avx2(HTable: *mut Key, h: &KeyValue);
         }
-        Self {
-            h_table: HTable::new(|table| unsafe { gcm_init_vpclmulqdq_avx2(table, &value) }),
+        let mut uninit = MaybeUninit::<Key>::uninit();
+        unsafe {
+            gcm_init_vpclmulqdq_avx2(uninit.as_mut_ptr(), &value);
         }
-    }
-
-    pub(super) fn inner(&self) -> &HTable {
-        &self.h_table
+        unsafe { uninit.assume_init() }
     }
 }
 
@@ -50,15 +47,14 @@ impl UpdateBlock for Key {
         prefixed_extern! {
             fn gcm_ghash_vpclmulqdq_avx2_16(
                 xi: &mut Xi,
-                Htable: &HTable,
+                Htable: &Key,
                 inp: *const u8,
                 len: c::NonZero_size_t,
             );
         }
         let input: AsChunks<u8, BLOCK_LEN> = (&a).into();
-        let htable = self.inner();
         ffi::with_non_dangling_ptr(input, |input, len| unsafe {
-            gcm_ghash_vpclmulqdq_avx2_16(xi, htable, input, len)
+            gcm_ghash_vpclmulqdq_avx2_16(xi, self, input, len)
         })
     }
 }
