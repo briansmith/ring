@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#![cfg(target_arch = "x86_64")]
 
 use super::{
     ffi::{KeyValue, BLOCK_LEN},
@@ -26,20 +26,6 @@ pub struct Key {
 }
 
 impl Key {
-    #[cfg(target_arch = "x86")]
-    pub(in super::super) fn new(
-        value: KeyValue,
-        _cpu: (cpu::intel::ClMul, cpu::intel::Ssse3),
-    ) -> Self {
-        prefixed_extern! {
-            fn gcm_init_clmul(HTable: *mut HTable, h: &KeyValue);
-        }
-        Self {
-            h_table: HTable::new(|htable| unsafe { gcm_init_clmul(htable, &value) }),
-        }
-    }
-
-    #[cfg(target_arch = "x86_64")]
     #[inline(never)]
     pub(in super::super) fn new(
         value: KeyValue,
