@@ -37,7 +37,8 @@ cfg_if! {
 mod ffi;
 
 pub(super) mod clmul_aarch64;
-pub(super) mod clmul_x86_x86_64;
+pub(super) mod clmul_x86;
+pub(super) mod clmul_x86_64;
 pub(super) mod clmulavxmovbe;
 pub(super) mod fallback;
 pub(super) mod neon;
