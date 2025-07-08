@@ -60,6 +60,16 @@ impl Key {
             open(self, nonce, aad, in_out)
         })
     }
+
+    #[inline(never)]
+    pub(super) fn seal(
+        &self,
+        nonce: Nonce,
+        aad: Aad<&[u8]>,
+        in_out: &mut [u8],
+    ) -> Result<Tag, InputTooLongError> {
+        seal(self, nonce, aad, in_out)
+    }
 }
 
 #[derive(Clone)]
@@ -199,8 +209,7 @@ fn derive_gcm_key_value(aes_key: &impl aes::EncryptBlock) -> gcm::KeyValue {
 
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
-#[inline(never)]
-pub(super) fn seal(
+fn seal(
     Key(key): &Key,
     nonce: Nonce,
     aad: Aad<&[u8]>,

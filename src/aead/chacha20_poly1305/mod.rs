@@ -61,24 +61,25 @@ impl Key {
             open(self, nonce, aad, in_out, cpu_features)
         })
     }
-}
 
-pub(super) fn seal(
-    key: &Key,
-    nonce: Nonce,
-    aad: Aad<&[u8]>,
-    in_out: &mut [u8],
-    cpu: cpu::Features,
-) -> Result<Tag, InputTooLongError> {
-    #[cfg(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        target_arch = "x86_64"
-    ))]
-    if let Some(required) = cpu.get_feature() {
-        return integrated::seal(key, nonce, aad, in_out, required, cpu.get_feature());
+    #[inline(never)]
+    pub(super) fn seal(
+        &self,
+        nonce: Nonce,
+        aad: Aad<&[u8]>,
+        in_out: &mut [u8],
+        cpu: cpu::Features,
+    ) -> Result<Tag, InputTooLongError> {
+        #[cfg(any(
+            all(target_arch = "aarch64", target_endian = "little"),
+            target_arch = "x86_64"
+        ))]
+        if let Some(required) = cpu.get_feature() {
+            return integrated::seal(self, nonce, aad, in_out, required, cpu.get_feature());
+        }
+
+        seal_fallback(self, nonce, aad, in_out, cpu)
     }
-
-    seal_fallback(key, nonce, aad, in_out, cpu)
 }
 
 pub(super) fn seal_fallback(
