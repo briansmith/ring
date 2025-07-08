@@ -15,7 +15,7 @@
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
 use super::{
-    ffi::{KeyValue, BLOCK_LEN},
+    ffi::{self, KeyValue, BLOCK_LEN},
     UpdateBlock, Xi,
 };
 use crate::cpu;
@@ -23,7 +23,7 @@ use core::mem::MaybeUninit;
 
 #[derive(Clone)]
 #[repr(transparent)] // Used in FFI
-pub struct Key([[u64; 2]; 6]);
+pub struct Key([ffi::U128; 6]);
 
 impl Key {
     pub(in super::super) fn new(value: KeyValue, _cpu: cpu::aarch64::PMull) -> Self {
