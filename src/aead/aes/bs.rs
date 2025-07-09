@@ -15,6 +15,7 @@
 #![cfg(all(target_arch = "arm", target_endian = "little"))]
 
 use super::{Counter, Overlapping, AES_KEY};
+use core::mem::MaybeUninit;
 
 /// SAFETY:
 ///   * The caller must ensure that if blocks > 0 then either `input` and
@@ -42,7 +43,11 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
     //     `vpaes_set_encrypt_key`.
     //   * `bsaes_key was zeroed above, and `vpaes_encrypt_key_to_bsaes`
     //     is assumed to initialize `bsaes_key`.
-    let bsaes_key = unsafe { AES_KEY::derive(vpaes_encrypt_key_to_bsaes, vpaes_key) };
+    let bsaes_key = {
+        let mut uninit = MaybeUninit::<AES_KEY>::uninit();
+        unsafe { vpaes_encrypt_key_to_bsaes(uninit.as_mut_ptr(), vpaes_key) };
+        unsafe { uninit.assume_init() }
+    };
 
     // The code for `vpaes_encrypt_key_to_bsaes` notes "vpaes stores one
     // fewer round count than bsaes, but the number of keys is the same,"
