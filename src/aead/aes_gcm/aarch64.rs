@@ -24,22 +24,21 @@ pub(super) fn seal_whole(
     ctr: &mut Counter,
     mut in_out: AsChunksMut<u8, BLOCK_LEN>,
 ) {
+    prefixed_extern! {
+        fn aes_gcm_enc_kernel(
+            input: *const [u8; BLOCK_LEN],
+            in_bits: BitLength<NonZeroU64>,
+            output: *mut [u8; BLOCK_LEN],
+            Xi: &mut gcm::Xi,
+            ivec: &mut Counter,
+            key: &aes::AES_KEY,
+            Htable: &gcm::clmul_aarch64::Key);
+    }
+
     let whole_block_bits = auth.in_out_whole_block_bits();
     let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
     if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
         let (htable, xi) = auth.inner();
-
-        prefixed_extern! {
-            fn aes_gcm_enc_kernel(
-                input: *const [u8; BLOCK_LEN],
-                in_bits: BitLength<NonZeroU64>,
-                output: *mut [u8; BLOCK_LEN],
-                Xi: &mut gcm::Xi,
-                ivec: &mut Counter,
-                key: &aes::AES_KEY,
-                Htable: &gcm::clmul_aarch64::Key);
-        }
-
         unsafe {
             aes_gcm_enc_kernel(
                 in_out.as_ptr(),
@@ -60,6 +59,17 @@ pub(super) fn open_whole(
     in_out: Overlapping,
     ctr: &mut Counter,
 ) {
+    prefixed_extern! {
+        fn aes_gcm_dec_kernel(
+            input: *const u8,
+            in_bits: BitLength<NonZeroU64>,
+            output: *mut u8,
+            Xi: &mut gcm::Xi,
+            ivec: &mut Counter,
+            key: &aes::AES_KEY,
+            Htable: &gcm::clmul_aarch64::Key);
+    }
+
     // Precondition. TODO: Create an overlapping::AsChunks for this.
     assert_eq!(in_out.len() % BLOCK_LEN, 0);
 
@@ -68,17 +78,6 @@ pub(super) fn open_whole(
         let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
         if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
             let (htable, xi) = auth.inner();
-            prefixed_extern! {
-                fn aes_gcm_dec_kernel(
-                    input: *const u8,
-                    in_bits: BitLength<NonZeroU64>,
-                    output: *mut u8,
-                    Xi: &mut gcm::Xi,
-                    ivec: &mut Counter,
-                    key: &aes::AES_KEY,
-                    Htable: &gcm::clmul_aarch64::Key);
-            }
-
             unsafe {
                 aes_gcm_dec_kernel(
                     input,
