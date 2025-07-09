@@ -49,9 +49,9 @@ const AES_256_ROUNDS_PLUS_1: usize = 14 + 1;
 
 impl AES_KEY {
     #[inline]
-    pub(super) unsafe fn new(
-        f: unsafe extern "C" fn(*const u8, BitLength<c_int>, *mut AES_KEY) -> c_int,
+    pub(super) unsafe fn new_using_set_encrypt_key(
         bytes: KeyBytes<'_>,
+        f: unsafe extern "C" fn(*const u8, BitLength<c_int>, *mut AES_KEY) -> c_int,
     ) -> Self {
         let (bytes, key_bits) = match bytes {
             KeyBytes::AES_128(bytes) => (&bytes[..], BitLength::from_bits(128)),
@@ -81,20 +81,19 @@ impl AES_KEY {
 //
 // In BoringSSL, the C prototypes for these are in
 // crypto/fipsmodule/aes/internal.h.
-macro_rules! set_encrypt_key {
-    ( $name:ident, $key_bytes:expr $(,)? ) => {{
-        use crate::bits::BitLength;
-        use core::ffi::c_int;
+macro_rules! prefixed_extern_set_encrypt_key {
+    { $name:ident } => {
         prefixed_extern! {
-            fn $name(user_key: *const u8, bits: BitLength<c_int>, key: *mut AES_KEY) -> c_int;
+            fn $name(user_key: *const u8,
+                     bits: $crate::bits::BitLength<core::ffi::c_int>,
+                     key: *mut crate::aead::aes::ffi::AES_KEY) -> core::ffi::c_int;
         }
-        $crate::aead::aes::ffi::AES_KEY::new($name, $key_bytes)
-    }};
+    }
 }
 
 /// SAFETY:
 ///   * The caller must ensure that `$key` was initialized with the
-///     `set_encrypt_key!` invocation that `$name` requires.
+///     `set_encrypt_key` function corresponding to `$name`.
 ///   * The caller must ensure that fhe function `$name` satisfies the conditions
 ///     for the `f` parameter to `ctr32_encrypt_blocks`.
 macro_rules! ctr32_encrypt_blocks {
@@ -125,9 +124,8 @@ impl AES_KEY {
     ///   * `f` must support the input overlapping with the output exactly or
     ///     with any nonnegative offset `n` (i.e. `input == output.add(n)`);
     ///     `f` does NOT need to support the cases where input < output.
-    ///   * `key` must have been initialized with the `set_encrypt_key!` invocation
-    ///     that corresponds to `f`.
-    ///   * `f` may inspect CPU features.
+    ///   * `key` must have been initialized with the `set_encrypt_key`
+    ///     function that corresponds to `f`.
     #[inline]
     pub(super) unsafe fn ctr32_encrypt_blocks(
         &self,
@@ -159,7 +157,7 @@ impl AES_KEY {
             //    responsible for ensuing this sufficient for `f` to work correctly.
             //  * `blocks` is non-zero so `f` doesn't have to work for empty slices.
             //  * The caller is responsible for ensuring `key` was initialized by the
-            //    `set_encrypt_key!` invocation required by `f`.
+            //    `set_encrypt_key` function that corresponds to `f`.
             unsafe {
                 f(input, output, blocks, self, ctr);
             }

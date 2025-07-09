@@ -30,29 +30,33 @@ pub(in super::super) struct Key {
 impl Key {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     pub(in super::super) fn new(bytes: KeyBytes<'_>, _cpu: cpu::aarch64::Neon) -> Self {
+        prefixed_extern_set_encrypt_key! { vpaes_set_encrypt_key }
         Self {
-            inner: unsafe { set_encrypt_key!(vpaes_set_encrypt_key, bytes) },
+            inner: unsafe { AES_KEY::new_using_set_encrypt_key(bytes, vpaes_set_encrypt_key) },
         }
     }
 
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
     pub(in super::super) fn new(bytes: KeyBytes<'_>, _cpu: cpu::arm::Neon) -> Self {
+        prefixed_extern_set_encrypt_key! { vpaes_set_encrypt_key }
         Self {
-            inner: unsafe { set_encrypt_key!(vpaes_set_encrypt_key, bytes) },
+            inner: unsafe { AES_KEY::new_using_set_encrypt_key(bytes, vpaes_set_encrypt_key) },
         }
     }
 
     #[cfg(target_arch = "x86")]
     pub(in super::super) fn new(bytes: KeyBytes<'_>, _cpu: cpu::intel::Ssse3) -> Self {
+        prefixed_extern_set_encrypt_key! { vpaes_set_encrypt_key }
         Self {
-            inner: unsafe { set_encrypt_key!(vpaes_set_encrypt_key, bytes) },
+            inner: unsafe { AES_KEY::new_using_set_encrypt_key(bytes, vpaes_set_encrypt_key) },
         }
     }
 
     #[cfg(target_arch = "x86_64")]
     pub(in super::super) fn new(bytes: KeyBytes<'_>, _cpu: cpu::intel::Ssse3) -> Self {
+        prefixed_extern_set_encrypt_key! { vpaes_set_encrypt_key }
         Self {
-            inner: unsafe { set_encrypt_key!(vpaes_set_encrypt_key, bytes) },
+            inner: unsafe { AES_KEY::new_using_set_encrypt_key(bytes, vpaes_set_encrypt_key) },
         }
     }
 }
