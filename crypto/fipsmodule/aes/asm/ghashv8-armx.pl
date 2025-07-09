@@ -84,7 +84,7 @@ $code.=<<___				if ($flavour !~ /64/);
 ___
 
 ################################################################################
-# void gcm_init_clmul(u128 Htable[16],const u64 H[2]);
+# void gcm_init_v8(u128 Htable[16],const u64 H[2]);
 #
 # input:	128-bit H - secret parameter E(K,0^128)
 # output:	precomputed table filled with degrees of twisted H;
@@ -94,10 +94,10 @@ ___
 #		optimize the code independently);
 #
 $code.=<<___;
-.global	gcm_init_clmul
-.type	gcm_init_clmul,%function
+.global	gcm_init_v8
+.type	gcm_init_v8,%function
 .align	4
-gcm_init_clmul:
+gcm_init_v8:
 	AARCH64_VALID_CALL_TARGET
 	vld1.64		{$t1},[x1]		@ load input H
 	vmov.i8		$xC2,#0xe1
@@ -192,20 +192,20 @@ ___
 }
 $code.=<<___;
 	ret
-.size	gcm_init_clmul,.-gcm_init_clmul
+.size	gcm_init_v8,.-gcm_init_v8
 ___
 ################################################################################
-# void gcm_gmult_clmul(u64 Xi[2],const u128 Htable[16]);
+# void gcm_gmult_v8(u64 Xi[2],const u128 Htable[16]);
 #
 # input:	Xi - current hash value;
-#		Htable - table precomputed in gcm_init_clmul;
+#		Htable - table precomputed in gcm_init_v8;
 # output:	Xi - next hash value Xi;
 #
 $code.=<<___;
-.global	gcm_gmult_clmul
-.type	gcm_gmult_clmul,%function
+.global	gcm_gmult_v8
+.type	gcm_gmult_v8,%function
 .align	4
-gcm_gmult_clmul:
+gcm_gmult_v8:
 	AARCH64_VALID_CALL_TARGET
 	vld1.64		{$t1},[$Xi]		@ load Xi
 	vmov.i8		$xC2,#0xe1
@@ -243,7 +243,7 @@ gcm_gmult_clmul:
 	vst1.64		{$Xl},[$Xi]		@ write out Xi
 
 	ret
-.size	gcm_gmult_clmul,.-gcm_gmult_clmul
+.size	gcm_gmult_v8,.-gcm_gmult_v8
 ___
 }
 

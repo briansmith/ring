@@ -28,10 +28,10 @@ pub struct Key([ffi::U128; 6]);
 impl Key {
     pub(in super::super) fn new(value: KeyValue, _cpu: cpu::aarch64::PMull) -> Self {
         prefixed_extern! {
-            fn gcm_init_clmul(HTable: *mut Key, h: &KeyValue);
+            fn gcm_init_v8(HTable: *mut Key, h: &KeyValue);
         }
         let mut uninit = MaybeUninit::uninit();
-        unsafe { gcm_init_clmul(uninit.as_mut_ptr(), &value) };
+        unsafe { gcm_init_v8(uninit.as_mut_ptr(), &value) };
         unsafe { uninit.assume_init() }
     }
 }
@@ -39,9 +39,9 @@ impl Key {
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
         prefixed_extern! {
-            fn gcm_gmult_clmul(xi: &mut Xi, Htable: &Key);
+            fn gcm_gmult_v8(xi: &mut Xi, Htable: &Key);
         }
         xi.bitxor_assign(a);
-        unsafe { gcm_gmult_clmul(xi, self) };
+        unsafe { gcm_gmult_v8(xi, self) };
     }
 }
