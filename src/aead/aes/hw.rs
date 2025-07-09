@@ -33,8 +33,9 @@ impl Key {
         _required_cpu_features: cpu::aarch64::Aes,
         _optional_cpu_features: Option<()>,
     ) -> Self {
+        prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key }
         Self {
-            inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key, bytes) },
+            inner: unsafe { AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key) },
         }
     }
 
@@ -44,16 +45,16 @@ impl Key {
         _required_cpu_features: (cpu::intel::Aes, cpu::intel::Ssse3),
         optional_cpu_features: Option<cpu::intel::Avx>,
     ) -> Self {
-        // Ssse3 is required, but upstream only uses this if there is also Avx;
-        // presumably the base version is faster on pre-AVX CPUs.
-        if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
-            Self {
-                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_alt, bytes) },
-            }
-        } else {
-            Self {
-                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_base, bytes) },
-            }
+        prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key_alt };
+        prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key_base };
+        Self {
+            inner: if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
+                // Ssse3 is required, but upstream only uses this if there is also Avx;
+                // presumably the base version is faster on pre-AVX CPUs.
+                unsafe { AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key_alt) }
+            } else {
+                unsafe { AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key_base) }
+            },
         }
     }
 
@@ -63,16 +64,16 @@ impl Key {
         _required_cpu_features: (cpu::intel::Aes, cpu::intel::Ssse3),
         optional_cpu_features: Option<cpu::intel::Avx>,
     ) -> Self {
-        // Ssse3 is required, but upstream only uses this if there is also Avx;
-        // presumably the base version is faster on pre-AVX CPUs.
-        if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
-            Self {
-                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_alt, bytes) },
-            }
-        } else {
-            Self {
-                inner: unsafe { set_encrypt_key!(aes_hw_set_encrypt_key_base, bytes) },
-            }
+        prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key_alt };
+        prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key_base };
+        Self {
+            inner: if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
+                // Ssse3 is required, but upstream only uses this if there is also Avx;
+                // presumably the base version is faster on pre-AVX CPUs.
+                unsafe { AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key_alt) }
+            } else {
+                unsafe { AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key_base) }
+            },
         }
     }
 
