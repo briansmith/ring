@@ -16,6 +16,7 @@ use super::{KeyBytes, Overlapping, BLOCK_LEN};
 use crate::{bits::BitLength, c};
 use core::{
     ffi::{c_int, c_uint},
+    mem::MaybeUninit,
     num::{NonZeroU32, NonZeroUsize},
 };
 
@@ -25,14 +26,26 @@ pub(in super::super) struct Counter(pub(super) [u8; BLOCK_LEN]);
 
 // `AES_KEY` in BoringSSL's aes.h.
 #[repr(C)]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub(in super::super) struct AES_KEY {
-    rd_key: [[u32; 4]; MAX_ROUNDS + 1],
+    rd_key: RdKeys,
     rounds: c_uint,
 }
 
-// `AES_MAXNR` in BoringSSL's aes.h.
-const MAX_ROUNDS: usize = 14;
+#[derive(Clone, Copy)]
+#[repr(C)]
+union RdKeys {
+    aes128: Aes128RoundKeys,
+    aes256: Aes256RoundKeys,
+}
+
+type Aes128RoundKeys = [RdKey; AES_128_ROUNDS_PLUS_1];
+type Aes256RoundKeys = [RdKey; AES_256_ROUNDS_PLUS_1];
+
+type RdKey = [u32; 4];
+
+const AES_128_ROUNDS_PLUS_1: usize = 10 + 1;
+const AES_256_ROUNDS_PLUS_1: usize = 14 + 1;
 
 impl AES_KEY {
     #[inline]
@@ -40,38 +53,20 @@ impl AES_KEY {
         f: unsafe extern "C" fn(*const u8, BitLength<c_int>, *mut AES_KEY) -> c_int,
         bytes: KeyBytes<'_>,
     ) -> Self {
-        let mut key = Self::invalid_zero();
-
         let (bytes, key_bits) = match bytes {
             KeyBytes::AES_128(bytes) => (&bytes[..], BitLength::from_bits(128)),
             KeyBytes::AES_256(bytes) => (&bytes[..], BitLength::from_bits(256)),
         };
-
+        let mut uninit = MaybeUninit::<AES_KEY>::uninit();
         // Unusually, in this case zero means success and non-zero means failure.
-        let r = unsafe { f(bytes.as_ptr(), key_bits, &mut key) };
+        let r = unsafe { f(bytes.as_ptr(), key_bits, uninit.as_mut_ptr()) };
         assert_eq!(r, 0);
-        key
-    }
-
-    pub(super) fn invalid_zero() -> Self {
-        Self {
-            rd_key: [[0; 4]; MAX_ROUNDS + 1],
-            rounds: 0,
-        }
+        unsafe { uninit.assume_init() }
     }
 }
 
 #[cfg(all(target_arch = "arm", target_endian = "little"))]
 impl AES_KEY {
-    pub(super) unsafe fn derive(
-        f: for<'a> unsafe extern "C" fn(*mut AES_KEY, &'a AES_KEY),
-        src: &Self,
-    ) -> Self {
-        let mut r = Self::invalid_zero();
-        unsafe { f(&mut r, src) };
-        r
-    }
-
     pub(super) fn rounds(&self) -> u32 {
         self.rounds
     }
