@@ -37,6 +37,7 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
         // VPAES key; there is no `bsaes_set_encrypt_key`.
         fn vpaes_encrypt_key_to_bsaes(bsaes_key: *mut AES_KEY, vpaes_key: &AES_KEY);
     }
+    prefixed_extern_ctr32_encrypt_blocks! { bsaes_ctr32_encrypt_blocks }
 
     // SAFETY:
     //   * The caller ensures `vpaes_key` was initialized by
@@ -59,7 +60,5 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
     //    `vpaes_encrypt_key_to_bsaes`.
     //  * `bsaes_ctr32_encrypt_blocks` satisfies the contract for
     //    `ctr32_encrypt_blocks`.
-    unsafe {
-        ctr32_encrypt_blocks!(bsaes_ctr32_encrypt_blocks, in_out, &bsaes_key, ctr);
-    }
+    unsafe { bsaes_key.ctr32_encrypt_blocks(in_out, ctr, bsaes_ctr32_encrypt_blocks) }
 }
