@@ -91,32 +91,24 @@ macro_rules! prefixed_extern_set_encrypt_key {
     }
 }
 
-/// SAFETY:
-///   * The caller must ensure that `$key` was initialized with the
-///     `set_encrypt_key` function corresponding to `$name`.
-///   * The caller must ensure that fhe function `$name` satisfies the conditions
-///     for the `f` parameter to `ctr32_encrypt_blocks`.
-macro_rules! ctr32_encrypt_blocks {
-    ($name:ident, $in_out:expr, $key:expr, $ctr:expr $(,)? ) => {{
-        use crate::{
-            aead::aes::{ffi::AES_KEY, Counter, BLOCK_LEN},
-            c,
-        };
+macro_rules! prefixed_extern_ctr32_encrypt_blocks {
+    { $name:ident } => {
         prefixed_extern! {
             fn $name(
-                input: *const [u8; BLOCK_LEN],
-                output: *mut [u8; BLOCK_LEN],
-                blocks: c::NonZero_size_t,
-                key: &AES_KEY,
-                ivec: &Counter,
+                input: *const [u8; $crate::aead::aes::BLOCK_LEN],
+                output: *mut [u8; $crate::aead::aes::BLOCK_LEN],
+                blocks: $crate::c::NonZero_size_t,
+                key: &$crate::aead::aes::ffi::AES_KEY,
+                ivec: &$crate::aead::aes::ffi::Counter,
             );
         }
-        $key.ctr32_encrypt_blocks($name, $in_out, $ctr)
-    }};
+    }
 }
 
 impl AES_KEY {
     /// SAFETY:
+    ///   * The caller must ensure that `self` was initialized with the
+    ///     `set_encrypt_key` function corresponding to `f`.
     ///   * `f` must not read more than `blocks` blocks from `input`.
     ///   * `f` must write exactly `block` blocks to `output`.
     ///   * In particular, `f` must handle blocks == 0 without reading from `input`
@@ -129,6 +121,8 @@ impl AES_KEY {
     #[inline]
     pub(super) unsafe fn ctr32_encrypt_blocks(
         &self,
+        in_out: Overlapping<'_>,
+        ctr: &mut Counter,
         f: unsafe extern "C" fn(
             input: *const [u8; BLOCK_LEN],
             output: *mut [u8; BLOCK_LEN],
@@ -136,8 +130,6 @@ impl AES_KEY {
             key: &AES_KEY,
             ivec: &Counter,
         ),
-        in_out: Overlapping<'_>,
-        ctr: &mut Counter,
     ) {
         in_out.with_input_output_len(|input, output, len| {
             debug_assert_eq!(len % BLOCK_LEN, 0);

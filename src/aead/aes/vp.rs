@@ -82,7 +82,11 @@ impl EncryptBlock for Key {
 ))]
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
+        prefixed_extern_ctr32_encrypt_blocks! { vpaes_ctr32_encrypt_blocks }
+        unsafe {
+            self.inner
+                .ctr32_encrypt_blocks(in_out, ctr, vpaes_ctr32_encrypt_blocks)
+        }
     }
 }
 
@@ -90,6 +94,7 @@ impl EncryptCtr32 for Key {
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
         use super::{super::overlapping::IndexError, bs, BLOCK_LEN};
+        prefixed_extern_ctr32_encrypt_blocks! { vpaes_ctr32_encrypt_blocks }
 
         let in_out = {
             let blocks = in_out.len() / BLOCK_LEN;
@@ -131,7 +136,10 @@ impl EncryptCtr32 for Key {
         //    as required by `vpaes_ctr32_encrypt_blocks`.
         //  * `vpaes_ctr32_encrypt_blocks` satisfies the contract for
         //    `ctr32_encrypt_blocks`.
-        unsafe { ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, &self.inner, ctr) }
+        unsafe {
+            self.inner
+                .ctr32_encrypt_blocks(in_out, ctr, vpaes_ctr32_encrypt_blocks)
+        }
     }
 }
 
