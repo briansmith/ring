@@ -18,9 +18,24 @@
     target_arch = "x86_64"
 ))]
 
-use super::{ffi::AES_KEY, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
-use crate::cpu;
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+use super::ffi::AES_KEY;
+use super::{cpu, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+use {
+    super::{ffi, AES_128_KEY_LEN, AES_256_KEY_LEN},
+    crate::bits::BitLength,
+    core::ffi::c_int,
+};
 
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+#[derive(Clone)]
+pub enum Key {
+    Aes128(ffi::Aes128RoundKeys),
+    Aes256(ffi::Aes256RoundKeys),
+}
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct Key {
@@ -34,12 +49,53 @@ impl Key {
         _required_cpu_features: cpu::aarch64::Aes,
         _optional_cpu_features: Option<()>,
     ) -> Self {
-        prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key }
-        Self {
-            inner: unsafe { AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key) },
+        match bytes {
+            KeyBytes::AES_128(user_key) => Self::Aes128(unsafe {
+                ffi::new_using_set_encrypt_key(user_key, Self::set_encrypt_key_128)
+            }),
+            KeyBytes::AES_256(user_key) => Self::Aes256(unsafe {
+                ffi::new_using_set_encrypt_key(user_key, Self::set_encrypt_key_256)
+            }),
         }
     }
 
+    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+    pub(in super::super) fn rd_keys_and_rounds(&self) -> (*const ffi::RdKey, ffi::Rounds) {
+        match self {
+            Key::Aes128(rd_keys) => (rd_keys.as_ptr(), ffi::AES_128_ROUNDS),
+            Key::Aes256(rd_keys) => (rd_keys.as_ptr(), ffi::AES_256_ROUNDS),
+        }
+    }
+}
+
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+impl Key {
+    unsafe fn set_encrypt_key_128(
+        user_key: &[u8; AES_128_KEY_LEN],
+        key: *mut ffi::Aes128RoundKeys,
+    ) {
+        prefixed_extern! {
+            fn aes_hw_set_encrypt_key_128(
+                user_key: &[u8; AES_128_KEY_LEN], ignored: BitLength<c_int>,
+                key: *mut ffi::Aes128RoundKeys);
+        }
+        unsafe { aes_hw_set_encrypt_key_128(user_key, BitLength::from_bits(0), key) };
+    }
+
+    unsafe fn set_encrypt_key_256(
+        user_key: &[u8; AES_256_KEY_LEN],
+        key: *mut ffi::Aes256RoundKeys,
+    ) {
+        prefixed_extern! {
+            fn aes_hw_set_encrypt_key_256(
+                user_key: &[u8; AES_256_KEY_LEN], ignored: BitLength<c_int>,
+                key: *mut ffi::Aes256RoundKeys);
+        }
+        unsafe { aes_hw_set_encrypt_key_256(user_key, BitLength::from_bits(0), key) };
+    }
+}
+
+impl Key {
     #[cfg(target_arch = "x86")]
     pub(in super::super) fn new(
         bytes: KeyBytes<'_>,
@@ -84,6 +140,18 @@ impl EncryptBlock for Key {
     }
 }
 
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+impl EncryptCtr32 for Key {
+    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
+        prefixed_extern_ctr32_encrypt_blocks_with_rd_keys! { aes_hw_ctr32_encrypt_blocks }
+        let (rd_keys, rounds) = self.rd_keys_and_rounds();
+        unsafe {
+            ffi::ctr32_encrypt_blocks(in_out, ctr, rd_keys, rounds, aes_hw_ctr32_encrypt_blocks)
+        }
+    }
+}
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
         prefixed_extern_ctr32_encrypt_blocks! { aes_hw_ctr32_encrypt_blocks }

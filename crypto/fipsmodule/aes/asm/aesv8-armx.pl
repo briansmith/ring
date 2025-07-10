@@ -75,7 +75,7 @@ ___
 # transliterate common code to either flavour with regex vodoo.
 #
 {{{
-my ($inp,$bits,$out,$ptr,$rounds)=("x0","w1","x2","x3","w12");
+my ($inp,$bits,$out,$ptr)=("x0","w1","x2","x3");
 my ($zero,$rcon,$mask,$in0,$in1,$tmp,$key)=
 	$flavour=~/64/? map("q$_",(0..6)) : map("q$_",(0..3,8..10));
 
@@ -92,11 +92,10 @@ $code.=<<___;
 
 .text
 
-.globl	${prefix}_set_encrypt_key
-.type	${prefix}_set_encrypt_key,%function
+.globl	${prefix}_set_encrypt_key_128
+.type	${prefix}_set_encrypt_key_128,%function
 .align	5
-${prefix}_set_encrypt_key:
-.Lenc_key:
+${prefix}_set_encrypt_key_128:
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
@@ -106,13 +105,6 @@ $code.=<<___	if ($flavour =~ /64/);
 ___
 $code.=<<___;
 	mov	$ptr,#-2
-	cmp	$bits,#128
-	b.lt	.Lenc_key_abort
-	cmp	$bits,#256
-	b.gt	.Lenc_key_abort
-	tst	$bits,#0x3f
-	b.ne	.Lenc_key_abort
-
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	adrp	$ptr,:pg_hi21:.Lrcon
@@ -122,16 +114,10 @@ $code.=<<___	if ($flavour !~ /64/);
 	adr	$ptr,.Lrcon
 ___
 $code.=<<___;
-	cmp	$bits,#192
-
 	veor	$zero,$zero,$zero
 	vld1.8	{$in0},[$inp],#16
 	mov	$bits,#8		// reuse $bits
 	vld1.32	{$rcon,$mask},[$ptr],#32
-
-	b.lt	.Loop128
-	// 192-bit key support was removed.
-	b	.L256
 
 .align	4
 .Loop128:
@@ -180,20 +166,41 @@ $code.=<<___;
 	veor	$in0,$in0,$tmp
 	veor	$in0,$in0,$key
 	vst1.32	{$in0},[$out]
-	add	$out,$out,#0x50
 
-	mov	$rounds,#10
-	b	.Ldone
+	`"ldr	x29,[sp],#16"		if ($flavour =~ /64/)`
+	ret
+.size	${prefix}_set_encrypt_key_128,.-${prefix}_set_encrypt_key_128
 
-// 192-bit key support was removed.
-
-.align	4
-.L256:
+.globl	${prefix}_set_encrypt_key_256
+.type	${prefix}_set_encrypt_key_256,%function
+.align	5
+${prefix}_set_encrypt_key_256:
+___
+$code.=<<___	if ($flavour =~ /64/);
+	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
+	AARCH64_VALID_CALL_TARGET
+	stp	x29,x30,[sp,#-16]!
+	add	x29,sp,#0
+___
+$code.=<<___;
+	mov	$ptr,#-2
+___
+$code.=<<___	if ($flavour =~ /64/);
+	adrp	$ptr,:pg_hi21:.Lrcon
+	add	$ptr,$ptr,:lo12:.Lrcon
+___
+$code.=<<___	if ($flavour !~ /64/);
+	adr	$ptr,.Lrcon
+___
+$code.=<<___;
+	veor	$zero,$zero,$zero
+	vld1.8	{$in0},[$inp],#16
+	vld1.32	{$rcon,$mask},[$ptr],#32
 	vld1.8	{$in1},[$inp]
 	mov	$bits,#7
-	mov	$rounds,#14
 	vst1.32	{$in0},[$out],#16
 
+.align	4
 .Loop256:
 	vtbl.8	$key,{$in1},$mask
 	vext.8	$tmp,$zero,$in0,#12
@@ -210,7 +217,7 @@ $code.=<<___;
 	vshl.u8	$rcon,$rcon,#1
 	veor	$in0,$in0,$key
 	vst1.32	{$in0},[$out],#16
-	b.eq	.Ldone
+	b.eq	.Ldone256
 
 	vdup.32	$key,${in0}[3]		// just splat
 	vext.8	$tmp,$zero,$in1,#12
@@ -225,20 +232,16 @@ $code.=<<___;
 	veor	$in1,$in1,$key
 	b	.Loop256
 
-.Ldone:
-	str	$rounds,[$out]
-	mov	$ptr,#0
-
-.Lenc_key_abort:
-	mov	x0,$ptr			// return value
+.Ldone256:
 	`"ldr	x29,[sp],#16"		if ($flavour =~ /64/)`
 	ret
-.size	${prefix}_set_encrypt_key,.-${prefix}_set_encrypt_key
+.size	${prefix}_set_encrypt_key_256,.-${prefix}_set_encrypt_key_256
 ___
 }}}
 {{{
 my ($inp,$out,$len,$key,$ivp)=map("x$_",(0..4));
-my ($rounds,$cnt,$key_)=("w5","w6","x7");
+my $rounds="w5";
+my ($cnt,$key_)=("w6","x7");
 my ($ctr,$tctr0,$tctr1,$tctr2)=map("w$_",(8..10,12));
 my $step="x12";		# aliases with $tctr2
 
@@ -268,7 +271,7 @@ $code.=<<___	if ($flavour !~ /64/);
 	ldr		r4, [ip]		@ load remaining arg
 ___
 $code.=<<___;
-	ldr		$rounds,[$key,#240]
+	mov		$rounds,$rounds // Zero extend.
 
 	ldr		$ctr, [$ivp, #12]
 	vld1.32		{$dat0},[$ivp]

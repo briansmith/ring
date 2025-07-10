@@ -31,8 +31,9 @@ pub(super) fn seal_whole(
             output: *mut [u8; BLOCK_LEN],
             Xi: &mut gcm::Xi,
             ivec: &mut Counter,
-            key: &aes::hw::Key,
-            Htable: &gcm::clmul_aarch64::Key);
+            rd_keys: *const aes::RdKey,
+            Htable: &gcm::clmul_aarch64::Key,
+            rounds: aes::Rounds);
     }
 
     let whole_block_bits = auth.in_out_whole_block_bits();
@@ -40,6 +41,7 @@ pub(super) fn seal_whole(
     if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
         let (htable, xi) = auth.inner();
         let in_out = in_out.as_mut_ptr();
+        let (rd_keys, rounds) = aes_key.rd_keys_and_rounds();
         unsafe {
             aes_gcm_enc_kernel(
                 in_out.cast_const(),
@@ -47,8 +49,9 @@ pub(super) fn seal_whole(
                 in_out,
                 xi,
                 ctr,
-                aes_key,
+                rd_keys,
                 htable,
+                rounds,
             )
         }
     }
@@ -67,8 +70,9 @@ pub(super) fn open_whole(
             output: *mut u8,
             Xi: &mut gcm::Xi,
             ivec: &mut Counter,
-            key: &aes::hw::Key,
-            Htable: &gcm::clmul_aarch64::Key);
+            key: *const aes::RdKey,
+            Htable: &gcm::clmul_aarch64::Key,
+            rounds: aes::Rounds);
     }
 
     // Precondition. TODO: Create an overlapping::AsChunks for this.
@@ -79,7 +83,19 @@ pub(super) fn open_whole(
         let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
         if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
             let (htable, xi) = auth.inner();
-            unsafe { aes_gcm_dec_kernel(input, whole_block_bits, output, xi, ctr, aes_key, htable) }
+            let (rd_keys, rounds) = aes_key.rd_keys_and_rounds();
+            unsafe {
+                aes_gcm_dec_kernel(
+                    input,
+                    whole_block_bits,
+                    output,
+                    xi,
+                    ctr,
+                    rd_keys,
+                    htable,
+                    rounds,
+                )
+            }
         }
     })
 }
