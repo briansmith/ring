@@ -29,7 +29,7 @@ pub(in super::super) struct Counter(pub(super) [u8; BLOCK_LEN]);
 #[derive(Clone, Copy)]
 pub(super) struct AES_KEY {
     rd_key: RdKeys,
-    rounds: c_uint,
+    rounds: Rounds,
 }
 
 #[derive(Clone, Copy)]
@@ -39,13 +39,36 @@ union RdKeys {
     aes256: Aes256RoundKeys,
 }
 
-type Aes128RoundKeys = [RdKey; AES_128_ROUNDS_PLUS_1];
-type Aes256RoundKeys = [RdKey; AES_256_ROUNDS_PLUS_1];
+pub(super) type Aes128RoundKeys = [RdKey; AES_128_ROUNDS_PLUS_1];
+pub(super) type Aes256RoundKeys = [RdKey; AES_256_ROUNDS_PLUS_1];
 
-type RdKey = [u32; 4];
+pub type RdKey = [u32; 4];
 
-const AES_128_ROUNDS_PLUS_1: usize = 10 + 1;
-const AES_256_ROUNDS_PLUS_1: usize = 14 + 1;
+pub type Rounds = c_uint;
+
+const AES_128_ROUNDS_PLUS_1: usize = (AES_128_ROUNDS as usize) + 1;
+const AES_256_ROUNDS_PLUS_1: usize = (AES_256_ROUNDS as usize) + 1;
+
+pub const AES_128_ROUNDS: Rounds = 10;
+pub const AES_256_ROUNDS: Rounds = 14;
+
+#[allow(dead_code)]
+pub(super) unsafe fn new_using_set_encrypt_key<
+    const USER_KEY_LEN: usize,
+    const ROUNDS_PLUS_1: usize,
+>(
+    user_key: &[u8; USER_KEY_LEN],
+    set_encrypt_key: unsafe fn(
+        /*user_key:*/ &[u8; USER_KEY_LEN],
+        /*rd_keys:*/ *mut [RdKey; ROUNDS_PLUS_1],
+    ),
+) -> [RdKey; ROUNDS_PLUS_1] {
+    let mut uninit = MaybeUninit::<[RdKey; ROUNDS_PLUS_1]>::uninit();
+    unsafe {
+        set_encrypt_key(user_key, uninit.as_mut_ptr());
+        uninit.assume_init()
+    }
+}
 
 impl AES_KEY {
     #[inline]
@@ -91,6 +114,7 @@ macro_rules! prefixed_extern_set_encrypt_key {
     }
 }
 
+#[allow(unused_macros)]
 macro_rules! prefixed_extern_ctr32_encrypt_blocks {
     { $name:ident } => {
         prefixed_extern! {
@@ -100,6 +124,22 @@ macro_rules! prefixed_extern_ctr32_encrypt_blocks {
                 blocks: $crate::c::NonZero_size_t,
                 key: &$crate::aead::aes::ffi::AES_KEY,
                 ivec: &$crate::aead::aes::ffi::Counter,
+            );
+        }
+    }
+}
+
+#[allow(unused_macros)]
+macro_rules! prefixed_extern_ctr32_encrypt_blocks_with_rd_keys {
+    { $name:ident } => {
+        prefixed_extern! {
+            fn $name(
+                input: *const [u8; $crate::aead::aes::BLOCK_LEN],
+                output: *mut [u8; $crate::aead::aes::BLOCK_LEN],
+                blocks: $crate::c::NonZero_size_t,
+                key: *const $crate::aead::aes::ffi::RdKey,
+                ivec: &$crate::aead::aes::ffi::Counter,
+                rounds: $crate::aead::aes::ffi::Rounds,
             );
         }
     }
@@ -157,4 +197,49 @@ impl AES_KEY {
             ctr.increment_by_less_safe(blocks_u32);
         });
     }
+}
+
+// SAFETY: Like `AES_KEY::ctr32_encrypt_blocks`, except `rd_keys` must point to
+// the round keys and `rounds` must be the number of rounds.
+#[allow(dead_code)]
+#[inline]
+pub(super) unsafe fn ctr32_encrypt_blocks(
+    in_out: Overlapping<'_>,
+    ctr: &mut Counter,
+    rd_keys: *const RdKey,
+    rounds: Rounds,
+    f: unsafe extern "C" fn(
+        input: *const [u8; BLOCK_LEN],
+        output: *mut [u8; BLOCK_LEN],
+        blocks: c::NonZero_size_t,
+        rd_keys: *const RdKey,
+        ivec: &Counter,
+        rounds: Rounds,
+    ),
+) {
+    in_out.with_input_output_len(|input, output, len| {
+        debug_assert_eq!(len % BLOCK_LEN, 0);
+
+        let Some(blocks) = NonZeroUsize::new(len / BLOCK_LEN) else {
+            return;
+        };
+
+        let input: *const [u8; BLOCK_LEN] = input.cast();
+        let output: *mut [u8; BLOCK_LEN] = output.cast();
+        let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
+
+        // SAFETY:
+        //  * `input` points to `blocks` blocks.
+        //  * `output` points to space for `blocks` blocks to be written.
+        //  * input == output.add(n), where n == src.start, and the caller is
+        //    responsible for ensuing this sufficient for `f` to work correctly.
+        //  * `blocks` is non-zero so `f` doesn't have to work for empty slices.
+        //  * The caller is responsible for ensuring `rd_keys` points to
+        //    `rounds` round keys in the representation that `f` requires.
+        unsafe {
+            f(input, output, blocks, rd_keys, ctr, rounds);
+        }
+
+        ctr.increment_by_less_safe(blocks_u32);
+    });
 }

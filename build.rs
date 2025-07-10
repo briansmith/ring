@@ -916,6 +916,8 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "aes_gcm_enc_update_vaes_avx2",
         "aes_hw_ctr32_encrypt_blocks",
         "aes_hw_set_encrypt_key",
+        "aes_hw_set_encrypt_key_128",
+        "aes_hw_set_encrypt_key_256",
         "aes_hw_set_encrypt_key_alt",
         "aes_hw_set_encrypt_key_base",
         "aesni_gcm_decrypt",

@@ -19,6 +19,9 @@ use crate::{
 };
 use core::num::NonZeroU32;
 
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+pub(super) use self::ffi::{RdKey, Rounds};
+
 pub(super) use ffi::Counter;
 
 #[macro_use]

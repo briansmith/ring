@@ -282,7 +282,8 @@ my $rk4d="d22";
 #                           u64 *Xi,
 #                           uint8_t ivec[16],
 #                           const void *key,
-#                           const void *Htable);
+#                           const void *Htable,
+#                           unsigned rounds);
 #
 $code.=<<___;
 .global aes_gcm_enc_kernel
@@ -295,13 +296,13 @@ aes_gcm_enc_kernel:
 	stp     x19, x20, [sp, #16]
 	mov     $counter, x4
 	mov     $cc, x5
+	mov     $roundsw, w7
 	stp     x21, x22, [sp, #32]
 	stp     x23, x24, [sp, #48]
 	stp     d8, d9, [sp, #64]
 	stp     d10, d11, [sp, #80]
 	stp     d12, d13, [sp, #96]
 	stp     d14, d15, [sp, #112]
-	ldr	$roundsw, [$cc, #240]
 	add	$input_l1, $cc, $rounds, lsl #4                   // borrow input_l1 for last key
 	ldp     $rkN_l, $rkN_h, [$input_l1]                       // load round N keys
 	ldr     $rkNm1q, [$input_l1, #-16]                        // load round N-1 keys
@@ -909,7 +910,9 @@ my $t9d="d6";
 #                           uint8_t *out,
 #                           u64 *Xi,
 #                           uint8_t ivec[16],
-#                           const void *key);
+#                           const void *key,
+#                           const void *Htable,
+#                           unsigned rounds);
 #
 $code.=<<___;
 .global aes_gcm_dec_kernel
@@ -922,13 +925,13 @@ aes_gcm_dec_kernel:
 	stp     x19, x20, [sp, #16]
 	mov     $counter, x4
 	mov     $cc, x5
+	mov     $roundsw, w7
 	stp     x21, x22, [sp, #32]
 	stp     x23, x24, [sp, #48]
 	stp     d8, d9, [sp, #64]
 	stp     d10, d11, [sp, #80]
 	stp     d12, d13, [sp, #96]
 	stp     d14, d15, [sp, #112]
-	ldr	$roundsw, [$cc, #240]
 	add	$input_l1, $cc, $rounds, lsl #4                   // borrow input_l1 for last key
 	ldp     $rkN_l, $rkN_h, [$input_l1]                       // load round N keys
 	ldr     $rkNm1q, [$input_l1, #-16]                        // load round N-1 keys
