@@ -72,27 +72,48 @@ impl Key {
 #[derive(Clone)]
 enum DynKey {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-    AesHwClMul(Combo<aes::hw::Key, gcm::clmul_aarch64::Key>),
+    AesHwClMul {
+        aes_key: aes::hw::Key,
+        gcm_key: gcm::clmul_aarch64::Key,
+    },
 
     #[cfg(target_arch = "x86_64")]
-    VAesClMulAvx2(Combo<aes::hw::Key, gcm::vclmulavx2::Key>),
+    VAesClMulAvx2 {
+        aes_key: aes::hw::Key,
+        gcm_key: gcm::vclmulavx2::Key,
+    },
 
     #[cfg(target_arch = "x86_64")]
-    AesHwClMulAvxMovbe(Combo<aes::hw::Key, gcm::clmulavxmovbe::Key>),
+    AesHwClMulAvxMovbe {
+        aes_key: aes::hw::Key,
+        gcm_key: gcm::clmulavxmovbe::Key,
+    },
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    AesHwClMul(Combo<aes::hw::Key, gcm::clmul_x86_x86_64::Key>),
+    AesHwClMul {
+        aes_key: aes::hw::Key,
+        gcm_key: gcm::clmul_x86_x86_64::Key,
+    },
 
     #[cfg(any(
         all(target_arch = "aarch64", target_endian = "little"),
         all(target_arch = "arm", target_endian = "little")
     ))]
-    Simd(Combo<aes::vp::Key, gcm::neon::Key>),
+    Simd {
+        aes_key: aes::vp::Key,
+        gcm_key: gcm::neon::Key,
+    },
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    Simd(Combo<aes::vp::Key, gcm::fallback::Key>),
+    Simd {
+        aes_key: aes::vp::Key,
+        gcm_key: gcm::fallback::Key,
+    },
 
-    Fallback(Combo<aes::fallback::Key, gcm::fallback::Key>),
+    Fallback {
+        aes_key: aes::fallback::Key,
+        gcm_key: gcm::fallback::Key,
+    },
 }
 
 impl DynKey {
@@ -104,7 +125,7 @@ impl DynKey {
             let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature());
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             let gcm_key = gcm::clmul_aarch64::Key::new(gcm_key_value, gcm);
-            return Self::AesHwClMul(Combo { aes_key, gcm_key });
+            return Self::AesHwClMul { aes_key, gcm_key };
         }
 
         #[cfg(target_arch = "x86_64")]
@@ -113,13 +134,13 @@ impl DynKey {
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             return if let Some(cpu) = cpu.get_feature() {
                 let gcm_key = gcm::vclmulavx2::Key::new(gcm_key_value, cpu);
-                Self::VAesClMulAvx2(Combo { aes_key, gcm_key })
+                Self::VAesClMulAvx2 { aes_key, gcm_key }
             } else if let Some(cpu) = cpu.get_feature() {
                 let gcm_key = gcm::clmulavxmovbe::Key::new(gcm_key_value, cpu);
-                Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key })
+                Self::AesHwClMulAvxMovbe { aes_key, gcm_key }
             } else {
                 let gcm_key = gcm::clmul_x86_x86_64::Key::new(gcm_key_value, gcm);
-                Self::AesHwClMul(Combo { aes_key, gcm_key })
+                Self::AesHwClMul { aes_key, gcm_key }
             };
         }
 
@@ -128,7 +149,7 @@ impl DynKey {
             let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature());
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             let gcm_key = gcm::clmul_x86_x86_64::Key::new(gcm_key_value, gcm);
-            return Self::AesHwClMul(Combo { aes_key, gcm_key });
+            return Self::AesHwClMul { aes_key, gcm_key };
         }
 
         #[cfg(any(
@@ -154,7 +175,7 @@ impl DynKey {
         let aes_key = aes::vp::Key::new(key, cpu);
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::neon::Key::new(gcm_key_value, cpu);
-        Self::Simd(Combo { aes_key, gcm_key })
+        Self::Simd { aes_key, gcm_key }
     }
 
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
@@ -162,7 +183,7 @@ impl DynKey {
         let aes_key = aes::vp::Key::new(key, cpu);
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::neon::Key::new(gcm_key_value, cpu);
-        Self::Simd(Combo { aes_key, gcm_key })
+        Self::Simd { aes_key, gcm_key }
     }
 
     #[cfg(target_arch = "x86")]
@@ -171,7 +192,7 @@ impl DynKey {
         let aes_key = aes::vp::Key::new(key, cpu);
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::fallback::Key::new(gcm_key_value);
-        Self::Simd(Combo { aes_key, gcm_key })
+        Self::Simd { aes_key, gcm_key }
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -180,7 +201,7 @@ impl DynKey {
         let aes_key = aes::vp::Key::new(key, cpu);
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::fallback::Key::new(gcm_key_value);
-        Self::Simd(Combo { aes_key, gcm_key })
+        Self::Simd { aes_key, gcm_key }
     }
 
     #[cfg_attr(
@@ -196,7 +217,7 @@ impl DynKey {
         let aes_key = aes::fallback::Key::new(key);
         let gcm_key_value = derive_gcm_key_value(&aes_key);
         let gcm_key = gcm::fallback::Key::new(gcm_key_value);
-        Self::Fallback(Combo { aes_key, gcm_key })
+        Self::Fallback { aes_key, gcm_key }
     }
 }
 
@@ -217,13 +238,20 @@ fn seal(
 
     match key {
         #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-        DynKey::AesHwClMul(c) => {
-            seal_whole_partial(c, aad, in_out, ctr, tag_iv, aarch64::seal_whole)
-        }
+        DynKey::AesHwClMul { aes_key, gcm_key } => seal_whole_partial(
+            aes_key,
+            gcm_key,
+            aad,
+            in_out,
+            ctr,
+            tag_iv,
+            aarch64::seal_whole,
+        ),
 
         #[cfg(target_arch = "x86_64")]
-        DynKey::VAesClMulAvx2(c) => seal_whole_partial(
-            c,
+        DynKey::VAesClMulAvx2 { aes_key, gcm_key } => seal_whole_partial(
+            aes_key,
+            gcm_key,
             aad,
             in_out,
             ctr,
@@ -232,12 +260,14 @@ fn seal(
         ),
 
         #[cfg(target_arch = "x86_64")]
-        DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
+        DynKey::AesHwClMulAvxMovbe { aes_key, gcm_key } => {
             aeshwclmulmovbe::seal(aes_key, gcm_key, ctr, tag_iv, aad, in_out)
         }
 
         #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-        DynKey::AesHwClMul(c) => seal_strided(c, aad, in_out, ctr, tag_iv),
+        DynKey::AesHwClMul { aes_key, gcm_key } => {
+            seal_strided(aes_key, gcm_key, aad, in_out, ctr, tag_iv)
+        }
 
         #[cfg(any(
             all(target_arch = "aarch64", target_endian = "little"),
@@ -245,9 +275,13 @@ fn seal(
             target_arch = "x86_64",
             target_arch = "x86"
         ))]
-        DynKey::Simd(c) => seal_strided(c, aad, in_out, ctr, tag_iv),
+        DynKey::Simd { aes_key, gcm_key } => {
+            seal_strided(aes_key, gcm_key, aad, in_out, ctr, tag_iv)
+        }
 
-        DynKey::Fallback(c) => seal_strided(c, aad, in_out, ctr, tag_iv),
+        DynKey::Fallback { aes_key, gcm_key } => {
+            seal_strided(aes_key, gcm_key, aad, in_out, ctr, tag_iv)
+        }
     }
 }
 
@@ -256,7 +290,8 @@ fn seal(
     target_arch = "x86_64"
 ))]
 fn seal_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
-    Combo { aes_key, gcm_key }: &Combo<A, G>,
+    aes_key: &A,
+    gcm_key: &G,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     mut ctr: Counter,
@@ -291,7 +326,8 @@ fn seal_strided<
     A: aes::EncryptBlock + aes::EncryptCtr32,
     G: gcm::UpdateBlock + gcm::UpdateBlocks,
 >(
-    Combo { aes_key, gcm_key }: &Combo<A, G>,
+    aes_key: &A,
+    gcm_key: &G,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     mut ctr: Counter,
@@ -342,13 +378,20 @@ fn open(
 
     match key {
         #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-        DynKey::AesHwClMul(c) => {
-            open_whole_partial(c, aad, in_out, ctr, tag_iv, aarch64::open_whole)
-        }
+        DynKey::AesHwClMul { aes_key, gcm_key } => open_whole_partial(
+            aes_key,
+            gcm_key,
+            aad,
+            in_out,
+            ctr,
+            tag_iv,
+            aarch64::open_whole,
+        ),
 
         #[cfg(target_arch = "x86_64")]
-        DynKey::VAesClMulAvx2(c) => open_whole_partial(
-            c,
+        DynKey::VAesClMulAvx2 { aes_key, gcm_key } => open_whole_partial(
+            aes_key,
+            gcm_key,
             aad,
             in_out,
             ctr,
@@ -357,12 +400,14 @@ fn open(
         ),
 
         #[cfg(target_arch = "x86_64")]
-        DynKey::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key }) => {
+        DynKey::AesHwClMulAvxMovbe { aes_key, gcm_key } => {
             aeshwclmulmovbe::open(aes_key, gcm_key, ctr, tag_iv, aad, in_out)
         }
 
         #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-        DynKey::AesHwClMul(c) => open_strided(c, aad, in_out, ctr, tag_iv),
+        DynKey::AesHwClMul { aes_key, gcm_key } => {
+            open_strided(aes_key, gcm_key, aad, in_out, ctr, tag_iv)
+        }
 
         #[cfg(any(
             all(target_arch = "aarch64", target_endian = "little"),
@@ -370,9 +415,13 @@ fn open(
             target_arch = "x86_64",
             target_arch = "x86"
         ))]
-        DynKey::Simd(c) => open_strided(c, aad, in_out, ctr, tag_iv),
+        DynKey::Simd { aes_key, gcm_key } => {
+            open_strided(aes_key, gcm_key, aad, in_out, ctr, tag_iv)
+        }
 
-        DynKey::Fallback(c) => open_strided(c, aad, in_out, ctr, tag_iv),
+        DynKey::Fallback { aes_key, gcm_key } => {
+            open_strided(aes_key, gcm_key, aad, in_out, ctr, tag_iv)
+        }
     }
 }
 
@@ -381,7 +430,8 @@ fn open(
     target_arch = "x86_64"
 ))]
 fn open_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
-    Combo { aes_key, gcm_key }: &Combo<A, G>,
+    aes_key: &A,
+    gcm_key: &G,
     aad: Aad<&[u8]>,
     in_out: Overlapping<'_>,
     ctr: Counter,
@@ -450,7 +500,8 @@ fn open_strided<
     A: aes::EncryptBlock + aes::EncryptCtr32,
     G: gcm::UpdateBlock + gcm::UpdateBlocks,
 >(
-    Combo { aes_key, gcm_key }: &Combo<A, G>,
+    aes_key: &A,
+    gcm_key: &G,
     aad: Aad<&[u8]>,
     mut in_out: Overlapping<'_>,
     mut ctr: Counter,
@@ -519,9 +570,3 @@ pub(super) const MAX_IN_OUT_LEN: usize = super::max_input_len(BLOCK_LEN, 2);
 // [RFC 5116 Section 5.2]: https://tools.ietf.org/html/rfc5116#section-5.2
 const _MAX_INPUT_LEN_BOUNDED_BY_NIST: () =
     assert!(MAX_IN_OUT_LEN == usize_from_u64_saturated(((1u64 << 39) - 256) / 8));
-
-#[derive(Copy, Clone)]
-pub(super) struct Combo<Aes, Gcm> {
-    pub(super) aes_key: Aes,
-    pub(super) gcm_key: Gcm,
-}
