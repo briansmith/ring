@@ -20,7 +20,7 @@ use super::{
 };
 use crate::{
     cpu,
-    error::{self, InputTooLongError},
+    error::InputTooLongError,
     polyfill::{slice, sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
 
@@ -40,11 +40,8 @@ mod vaesclmulavx2;
 pub(super) struct Key(DynKey);
 
 impl Key {
-    pub(super) fn new(
-        key: aes::KeyBytes,
-        cpu_features: cpu::Features,
-    ) -> Result<Self, error::Unspecified> {
-        Ok(Self(DynKey::new(key, cpu_features)))
+    pub(super) fn new(key: aes::KeyBytes, cpu_features: cpu::Features) -> Self {
+        Self(DynKey::new(key, cpu_features))
     }
 
     #[inline(never)]

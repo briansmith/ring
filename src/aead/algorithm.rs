@@ -156,7 +156,7 @@ fn aes_gcm_init_128(
     Ok(KeyInner::AesGcm(aes_gcm::Key::new(
         aes::KeyBytes::AES_128(key),
         cpu_features,
-    )?))
+    )))
 }
 
 fn aes_gcm_init_256(
@@ -167,7 +167,7 @@ fn aes_gcm_init_256(
     Ok(KeyInner::AesGcm(aes_gcm::Key::new(
         aes::KeyBytes::AES_256(key),
         cpu_features,
-    )?))
+    )))
 }
 
 fn aes_gcm_seal(
