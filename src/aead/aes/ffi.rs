@@ -60,7 +60,7 @@ impl AES_KEY {
         let mut uninit = MaybeUninit::<AES_KEY>::uninit();
         // Unusually, in this case zero means success and non-zero means failure.
         let r = unsafe { f(bytes.as_ptr(), key_bits, uninit.as_mut_ptr()) };
-        assert_eq!(r, 0);
+        debug_assert_eq!(r, 0);
         unsafe { uninit.assume_init() }
     }
 }
