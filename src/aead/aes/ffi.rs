@@ -28,6 +28,7 @@ use core::{
 pub(in super::super) struct Counter(pub(super) [u8; BLOCK_LEN]);
 
 // `AES_KEY` in BoringSSL's aes.h.
+#[allow(dead_code)]
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(super) struct AES_KEY {
@@ -49,11 +50,27 @@ pub type RdKey = [u32; 4];
 
 pub type Rounds = c_uint;
 
-const AES_128_ROUNDS_PLUS_1: usize = (AES_128_ROUNDS as usize) + 1;
-const AES_256_ROUNDS_PLUS_1: usize = (AES_256_ROUNDS as usize) + 1;
+pub(super) const AES_128_ROUNDS_PLUS_1: usize = (AES_128_ROUNDS as usize) + 1;
+pub(super) const AES_256_ROUNDS_PLUS_1: usize = (AES_256_ROUNDS as usize) + 1;
 
 pub const AES_128_ROUNDS: Rounds = 10;
 pub const AES_256_ROUNDS: Rounds = 14;
+
+impl KeyBytes<'_> {
+    pub(super) fn as_user_key_and_bits(&self) -> (*const u8, KeyBitLength) {
+        match self {
+            KeyBytes::AES_128(bytes) => (bytes.as_ptr(), KeyBitLength::_128),
+            KeyBytes::AES_256(bytes) => (bytes.as_ptr(), KeyBitLength::_256),
+        }
+    }
+}
+#[repr(transparent)]
+pub struct KeyBitLength(BitLength<c_int>);
+
+impl KeyBitLength {
+    pub const _128: Self = Self(BitLength::from_bits(128));
+    pub const _256: Self = Self(BitLength::from_bits(256));
+}
 
 #[allow(dead_code)]
 pub(super) unsafe fn new_using_set_encrypt_key<
@@ -74,18 +91,16 @@ pub(super) unsafe fn new_using_set_encrypt_key<
 }
 
 impl AES_KEY {
+    #[allow(dead_code)]
     #[inline]
     pub(super) unsafe fn new_using_set_encrypt_key(
         bytes: KeyBytes<'_>,
-        f: unsafe extern "C" fn(*const u8, BitLength<c_int>, *mut AES_KEY) -> c_int,
+        f: unsafe extern "C" fn(*const u8, KeyBitLength, *mut AES_KEY) -> c_int,
     ) -> Self {
-        let (bytes, key_bits) = match bytes {
-            KeyBytes::AES_128(bytes) => (&bytes[..], BitLength::from_bits(128)),
-            KeyBytes::AES_256(bytes) => (&bytes[..], BitLength::from_bits(256)),
-        };
+        let (user_key, bits) = bytes.as_user_key_and_bits();
         let mut uninit = MaybeUninit::<AES_KEY>::uninit();
         // Unusually, in this case zero means success and non-zero means failure.
-        let r = unsafe { f(bytes.as_ptr(), key_bits, uninit.as_mut_ptr()) };
+        let r = unsafe { f(user_key, bits, uninit.as_mut_ptr()) };
         debug_assert_eq!(r, 0);
         unsafe { uninit.assume_init() }
     }
@@ -107,11 +122,12 @@ impl AES_KEY {
 //
 // In BoringSSL, the C prototypes for these are in
 // crypto/fipsmodule/aes/internal.h.
+#[allow(unused_macros)]
 macro_rules! prefixed_extern_set_encrypt_key {
     { $name:ident } => {
         prefixed_extern! {
             fn $name(user_key: *const u8,
-                     bits: $crate::bits::BitLength<core::ffi::c_int>,
+                     bits: $crate::aead::aes::ffi::KeyBitLength,
                      key: *mut crate::aead::aes::ffi::AES_KEY) -> core::ffi::c_int;
         }
     }
@@ -161,6 +177,7 @@ impl AES_KEY {
     ///     `f` does NOT need to support the cases where input < output.
     ///   * `key` must have been initialized with the `set_encrypt_key`
     ///     function that corresponds to `f`.
+    #[allow(dead_code)]
     #[inline]
     pub(super) unsafe fn ctr32_encrypt_blocks(
         &self,

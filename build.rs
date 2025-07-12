@@ -1021,6 +1021,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "vpaes_encrypt",
         "vpaes_encrypt_key_to_bsaes",
         "vpaes_set_encrypt_key",
+        "vpaes_set_encrypt_key",
         "x25519_NEON",
         "x25519_fe_invert",
         "x25519_fe_isnegative",
