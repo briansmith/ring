@@ -131,6 +131,7 @@ ___
 
 {
 my ($inp,$out,$key) = map("x$_",(0..2));
+my ($rounds_minus_1) = ("w3");
 
 my ($invlo,$invhi,$iptlo,$ipthi,$sbou,$sbot) = map("v$_.16b",(18..23));
 my ($sb1u,$sb1t,$sb2u,$sb2t) = map("v$_.16b",(24..27));
@@ -174,7 +175,7 @@ _vpaes_encrypt_preheat:
 .align 4
 _vpaes_encrypt_core:
 	mov	x9, $key
-	ldr	w8, [$key,#240]			// pull rounds
+	mov	w8, $rounds_minus_1
 	adrp	x11, :pg_hi21:.Lk_mc_forward+16
 	add	x11, x11, :lo12:.Lk_mc_forward+16
 						// vmovdqa	.Lk_ipt(%rip),	%xmm2	# iptlo
@@ -244,7 +245,7 @@ _vpaes_encrypt_core:
 .align 4
 _vpaes_encrypt_2x:
 	mov	x9, $key
-	ldr	w8, [$key,#240]			// pull rounds
+	mov	w8, $rounds_minus_1
 	adrp	x11, :pg_hi21:.Lk_mc_forward+16
 	add	x11, x11, :lo12:.Lk_mc_forward+16
 						// vmovdqa	.Lk_ipt(%rip),	%xmm2	# iptlo
@@ -648,13 +649,8 @@ vpaes_set_encrypt_key:
 	add	x29,sp,#0
 	stp	d8,d9,[sp,#-16]!	// ABI spec says so
 
-	lsr	w9, $bits, #5		// shr	\$5,%eax
-	add	w9, w9, #5		// \$5,%eax
-	str	w9, [$out,#240]		// mov	%eax,240(%rdx)	# AES_KEY->rounds = nbits/32+5;
-
 	mov	x8, #0x30		// mov	\$0x30,%r8d
 	bl	_vpaes_schedule_core
-	eor	x0, x0, x0
 
 	ldp	d8,d9,[sp],#16
 	ldp	x29,x30,[sp],#16
@@ -665,6 +661,7 @@ ___
 }
 {
 my ($inp,$out,$len,$key,$ivec) = map("x$_",(0..4));
+my ($rounds) = ("w5");
 my ($ctr, $ctr_tmp) = ("w6", "w7");
 
 # void vpaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
@@ -688,6 +685,7 @@ vpaes_ctr32_encrypt_blocks:
 	// not bytes.
 	mov	x17, $len
 	mov	x2,  $key
+	sub	w3,  $rounds, 1 // Overwrites $len
 
 	// Load the IV and counter portion.
 	ldr	$ctr, [$ivec, #12]
