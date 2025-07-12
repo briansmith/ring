@@ -13,11 +13,15 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::{
+    arithmetic::{LimbSliceError, MAX_LIMBS},
     error::LenMismatchError,
     limb::{Limb, LIMB_BITS},
-    polyfill::slice::{self, AsChunksMut},
+    polyfill::slice::{self, AsChunks, AsChunksMut},
 };
-use core::mem::{align_of, size_of};
+use core::{
+    mem::{align_of, size_of},
+    num::NonZeroUsize,
+};
 
 // Some x86_64 assembly is written under the assumption that some of its
 // input data and/or temporary storage is aligned to `MOD_EXP_CTIME_ALIGN`
@@ -57,4 +61,46 @@ impl<const N: usize> AlignedStorage<N> {
             (_, r) => Err(LenMismatchError::new(r.len())),
         }
     }
+}
+
+// Helps the compiler will be able to hoist all of these checks out of the
+// loops in the caller. Try to help the compiler by doing the checks
+// consistently in each function and also by inlining this function and all the
+// callers.
+#[inline(always)]
+pub(crate) fn check_common(
+    a: AsChunks<Limb, LIMBS_PER_CHUNK>,
+    table: AsChunks<Limb, LIMBS_PER_CHUNK>,
+) -> Result<NonZeroUsize, LimbSliceError> {
+    assert_eq!((table.as_ptr() as usize) % 16, 0); // According to BoringSSL.
+    let a = a.as_flattened();
+    let table = table.as_flattened();
+    let num_limbs = NonZeroUsize::new(a.len()).ok_or_else(|| LimbSliceError::too_short(a.len()))?;
+    if num_limbs.get() > MAX_LIMBS {
+        return Err(LimbSliceError::too_long(a.len()));
+    }
+    if num_limbs.get() * 32 != table.len() {
+        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
+            table.len(),
+        )));
+    };
+    Ok(num_limbs)
+}
+
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+pub(crate) fn check_common_with_n(
+    a: AsChunks<Limb, LIMBS_PER_CHUNK>,
+    table: AsChunks<Limb, LIMBS_PER_CHUNK>,
+    n: AsChunks<Limb, LIMBS_PER_CHUNK>,
+) -> Result<NonZeroUsize, LimbSliceError> {
+    // Choose `a` instead of `n` so that every function starts with
+    // `check_common` passing the exact same arguments, so that the compiler
+    // can easily de-dupe the checks.
+    let num_limbs = check_common(a, table)?;
+    let n = n.as_flattened();
+    if n.len() != num_limbs.get() {
+        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(n.len())));
+    }
+    Ok(num_limbs)
 }
