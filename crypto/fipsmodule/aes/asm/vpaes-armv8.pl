@@ -348,7 +348,7 @@ _vpaes_encrypt_2x:
 ___
 }
 {
-my ($inp,$bits,$out,$dir)=("x0","w1","x2","w3");
+my ($inp,$bits,$out)=("x0","w1","x2");
 my ($invlo,$invhi,$iptlo,$ipthi,$rcon) = map("v$_.16b",(18..21,8));
 
 $code.=<<___;
@@ -478,8 +478,6 @@ _vpaes_schedule_core:
 	adrp	x11, :pg_hi21:.Lk_deskew	// lea	.Lk_deskew(%rip),%r11	# prepare to deskew
 	add	x11, x11, :lo12:.Lk_deskew
 
-	cbnz	$dir, .Lschedule_mangle_last_dec
-
 	// encrypting
 	ld1	{v1.2d}, [x8]			// vmovdqa	(%r8,%r10),%xmm1
 	adrp	x11, :pg_hi21:.Lk_opt		// lea	.Lk_opt(%rip),	%r11		# prepare to output transform
@@ -487,7 +485,6 @@ _vpaes_schedule_core:
 	add	$out, $out, #32			// add	\$32,	%rdx
 	tbl	v0.16b, {v0.16b}, v1.16b	// vpshufb	%xmm1,	%xmm0,	%xmm0		# output permute
 
-.Lschedule_mangle_last_dec:
 	ld1	{v20.2d-v21.2d}, [x11]		// reload constants
 	sub	$out, $out, #16			// add	\$-16,	%rdx
 	eor	v0.16b, v0.16b, v16.16b		// vpxor	.Lk_s63(%rip),	%xmm0,	%xmm0
@@ -655,7 +652,6 @@ vpaes_set_encrypt_key:
 	add	w9, w9, #5		// \$5,%eax
 	str	w9, [$out,#240]		// mov	%eax,240(%rdx)	# AES_KEY->rounds = nbits/32+5;
 
-	mov	$dir, #0		// mov	\$0,%ecx
 	mov	x8, #0x30		// mov	\$0x30,%r8d
 	bl	_vpaes_schedule_core
 	eor	x0, x0, x0
