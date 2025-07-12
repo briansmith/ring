@@ -405,7 +405,7 @@ _vpaes_schedule_core:
 
 	cmp	$bits, #192			// cmp	\$192,	%esi
 	b.hi	.Lschedule_256
-	b.eq	.Lschedule_192
+	// 192-bit key support was removed
 	// 128: fall though
 
 ##
@@ -425,44 +425,6 @@ _vpaes_schedule_core:
 	cbz 	$inp, .Lschedule_mangle_last
 	bl	_vpaes_schedule_mangle		// write output
 	b 	.Loop_schedule_128
-
-##
-##  .aes_schedule_192
-##
-##  192-bit specific part of key schedule.
-##
-##  The main body of this schedule is the same as the 128-bit
-##  schedule, but with more smearing.  The long, high side is
-##  stored in %xmm7 as before, and the short, low side is in
-##  the high bits of %xmm6.
-##
-##  This schedule is somewhat nastier, however, because each
-##  round produces 192 bits of key material, or 1.5 round keys.
-##  Therefore, on each cycle we do 2 rounds and produce 3 round
-##  keys.
-##
-.align	4
-.Lschedule_192:
-	sub	$inp, $inp, #8
-	ld1	{v0.16b}, [$inp]		// vmovdqu	8(%rdi),%xmm0		# load key part 2 (very unaligned)
-	bl	_vpaes_schedule_transform	// input transform
-	mov	v6.16b, v0.16b			// vmovdqa	%xmm0,	%xmm6		# save short part
-	eor	v4.16b, v4.16b, v4.16b		// vpxor	%xmm4,	%xmm4, %xmm4	# clear 4
-	ins	v6.d[0], v4.d[0]		// vmovhlps	%xmm4,	%xmm6,	%xmm6		# clobber low side with zeros
-	mov	$inp, #4			// mov	\$4,	%esi
-
-.Loop_schedule_192:
-	sub	$inp, $inp, #1			// dec	%esi
-	bl	_vpaes_schedule_round
-	ext	v0.16b, v6.16b, v0.16b, #8	// vpalignr	\$8,%xmm6,%xmm0,%xmm0
-	bl	_vpaes_schedule_mangle		// save key n
-	bl	_vpaes_schedule_192_smear
-	bl	_vpaes_schedule_mangle		// save key n+1
-	bl	_vpaes_schedule_round
-	cbz 	$inp, .Lschedule_mangle_last
-	bl	_vpaes_schedule_mangle		// save key n+2
-	bl	_vpaes_schedule_192_smear
-	b	.Loop_schedule_192
 
 ##
 ##  .aes_schedule_256
@@ -545,35 +507,6 @@ _vpaes_schedule_core:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	_vpaes_schedule_core,.-_vpaes_schedule_core
-
-##
-##  .aes_schedule_192_smear
-##
-##  Smear the short, low side in the 192-bit key schedule.
-##
-##  Inputs:
-##    %xmm7: high side, b  a  x  y
-##    %xmm6:  low side, d  c  0  0
-##    %xmm13: 0
-##
-##  Outputs:
-##    %xmm6: b+c+d  b+c  0  0
-##    %xmm0: b+c+d  b+c  b  a
-##
-.type	_vpaes_schedule_192_smear,%function
-.align	4
-_vpaes_schedule_192_smear:
-	movi	v1.16b, #0
-	dup	v0.4s, v7.s[3]
-	ins	v1.s[3], v6.s[2]	// vpshufd	\$0x80,	%xmm6,	%xmm1	# d c 0 0 -> c 0 0 0
-	ins	v0.s[0], v7.s[2]	// vpshufd	\$0xFE,	%xmm7,	%xmm0	# b a _ _ -> b b b a
-	eor	v6.16b, v6.16b, v1.16b	// vpxor	%xmm1,	%xmm6,	%xmm6	# -> c+d c 0 0
-	eor	v1.16b, v1.16b, v1.16b	// vpxor	%xmm1,	%xmm1,	%xmm1
-	eor	v6.16b, v6.16b, v0.16b	// vpxor	%xmm0,	%xmm6,	%xmm6	# -> b+c+d b+c b a
-	mov	v0.16b, v6.16b		// vmovdqa	%xmm6,	%xmm0
-	ins	v6.d[0], v1.d[0]	// vmovhlps	%xmm1,	%xmm6,	%xmm6	# clobber low side with zeros
-	ret
-.size	_vpaes_schedule_192_smear,.-_vpaes_schedule_192_smear
 
 ##
 ##  .aes_schedule_round
