@@ -66,17 +66,14 @@ pub(in super::super) struct State {
 }
 
 impl State {
-    pub(super) fn new_context(Key { key }: Key) -> super::Context {
-        let (t, key) = key.split_at(BLOCK_LEN);
-        let t: &[u8; BLOCK_LEN] = t.try_into().unwrap();
-        let key: &[u8; BLOCK_LEN] = key.try_into().unwrap();
-
+    pub(super) fn new_context(key: Key) -> super::Context {
+        let (t, key) = key.split();
         let (t, _) = polyfill::slice::as_chunks(&t[..]);
 
+        let mut t0 = Wrapping(u32::from_le_bytes(t[0]));
         let mut t1 = Wrapping(u32::from_le_bytes(t[1]));
         let mut t2 = Wrapping(u32::from_le_bytes(t[2]));
         let mut t3 = Wrapping(u32::from_le_bytes(t[3]));
-        let mut t0 = Wrapping(u32::from_le_bytes(t[0]));
 
         let r0 = t0 & Wrapping(0x3ffffff);
         t0 >>= 26;

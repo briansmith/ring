@@ -40,6 +40,11 @@ impl Key {
     pub(super) fn new(key: [u8; KEY_LEN]) -> Self {
         Self { key }
     }
+
+    fn split(&self) -> (&[u8; BLOCK_LEN], &[u8; BLOCK_LEN]) {
+        let (a, b) = self.key.split_at(BLOCK_LEN);
+        (a.try_into().unwrap(), b.try_into().unwrap())
+    }
 }
 
 pub(super) enum Context {

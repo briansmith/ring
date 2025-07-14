@@ -189,28 +189,6 @@ struct poly1305_state_st {
 
 OPENSSL_STATIC_ASSERT(sizeof(fe1305x2) == 48, "fe1305x2 size is different than expected");
 
-void CRYPTO_poly1305_init_neon(struct poly1305_state_st *st, const uint8_t key[32]) {
-  fe1305x2 *const r = &st->r;
-  fe1305x2 *const h = &st->h;
-  fe1305x2 *const precomp = &st->precomp[0];
-
-  r->v[1] = r->v[0] = 0x3ffffff & load32(key);
-  r->v[3] = r->v[2] = 0x3ffff03 & (load32(key + 3) >> 2);
-  r->v[5] = r->v[4] = 0x3ffc0ff & (load32(key + 6) >> 4);
-  r->v[7] = r->v[6] = 0x3f03fff & (load32(key + 9) >> 6);
-  r->v[9] = r->v[8] = 0x00fffff & (load32(key + 12) >> 8);
-
-  for (size_t j = 0; j < 10; j++) {
-    h->v[j] = 0;  // XXX: should fast-forward a bit
-  }
-
-  addmulmod(precomp, r, r, &zero);                  // precompute r^2
-  addmulmod(precomp + 1, precomp, precomp, &zero);  // precompute r^4
-
-  OPENSSL_memcpy(st->key, key + 16, 16);
-  st->buf_used = 0;
-}
-
 void CRYPTO_poly1305_update_neon(struct poly1305_state_st *st, const uint8_t *in,
                                  size_t in_len) {
   fe1305x2 *const h = &st->h;

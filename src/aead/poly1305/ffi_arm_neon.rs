@@ -1,5 +1,5 @@
-// Copyright 2015-2025 Brian Smith.
-// Portions Copyright (c) 2014, 2015, Google Inc.
+// Copyright (c) 2014, Google Inc.
+// Portions Copyright 2015-2025 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -13,11 +13,19 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+// This implementation was taken from the public domain, neon2 version in
+// SUPERCOP by D. J. Bernstein and Peter Schwabe.
+
 #![cfg(all(target_arch = "arm", target_endian = "little"))]
 
-use super::{Key, Tag, KEY_LEN, TAG_LEN};
+use super::{Key, Tag, BLOCK_LEN, TAG_LEN};
 use crate::{c, cpu::arm::Neon};
-use core::num::NonZeroUsize;
+use core::num::{NonZeroUsize, Wrapping};
+
+type W32 = Wrapping<u32>;
+const ZERO: W32 = Wrapping(0);
+#[allow(non_upper_case_globals)]
+const _3ffffff: W32 = Wrapping(0x3ffffff);
 
 // XXX/TODO(MSRV): change to `pub(super)`.
 pub(in super::super) struct State {
@@ -26,9 +34,25 @@ pub(in super::super) struct State {
 }
 
 #[derive(Clone, Copy)]
-#[repr(C)]
+#[repr(C, align(16))]
 struct fe1305x2 {
-    v: [u32; 12], // for alignment; only using 10
+    v: [W32; 12], // for alignment; only using 10
+}
+
+impl fe1305x2 {
+    const ZERO: Self = Self { v: [ZERO; 12] };
+}
+
+#[inline]
+fn addmulmod(r: &mut fe1305x2, x: &fe1305x2, y: &fe1305x2, c: &fe1305x2, _: Neon) {
+    prefixed_extern! {
+        // HAZARD: We haven't checked whether the trailing padding elements of
+        // `r` are written, so `r` should be initialized (zeroed) first. We
+        // assume this has happened since we take `r` by reference.
+        fn openssl_poly1305_neon2_addmulmod(r: &mut fe1305x2, x: &fe1305x2, y: &fe1305x2,
+                                            c: &fe1305x2);
+    }
+    unsafe { openssl_poly1305_neon2_addmulmod(r, x, y, c) }
 }
 
 // TODO: Is 16 enough?
@@ -38,12 +62,47 @@ struct poly1305_state_st {
     h: fe1305x2,
     c: fe1305x2,
     precomp: [fe1305x2; 2],
-
     data: [u8; data_len()],
 
     buf: [u8; 32],
     buf_used: c::size_t,
+
     key: [u8; 16],
+}
+
+impl poly1305_state_st {
+    // CRYPTO_poly1305_init_neon
+    fn new(key: Key, neon: Neon) -> Self {
+        let (t, key) = key.split();
+        let rv_0_1 = _3ffffff & load32(t, 0);
+        let rv_2_3 = Wrapping(0x3ffff03) & (load32(t, 3) >> 2);
+        let rv_4_5 = Wrapping(0x3ffc0ff) & (load32(t, 6) >> 4);
+        let rv_6_7 = Wrapping(0x3f03fff) & (load32(t, 9) >> 6);
+        let rv_8_9 = Wrapping(0x00fffff) & (load32(t, 12) >> 8);
+        let rv_10_11 = ZERO;
+
+        let mut st = Self {
+            r: fe1305x2 {
+                v: [
+                    rv_0_1, rv_0_1, rv_2_3, rv_2_3, rv_4_5, rv_4_5, rv_6_7, rv_6_7, rv_8_9, rv_8_9,
+                    rv_10_11, rv_10_11,
+                ],
+            },
+            h: fe1305x2 { v: [ZERO; 12] },
+            c: fe1305x2 { v: [ZERO; 12] },
+            precomp: [fe1305x2 { v: [ZERO; 12] }; 2],
+            data: [0u8; data_len()],
+
+            buf: Default::default(),
+            buf_used: 0,
+
+            key: *key,
+        };
+        let [precomp0, precomp1] = &mut st.precomp;
+        addmulmod(precomp0, &st.r, &st.r, &fe1305x2::ZERO, neon); // precompute r^2
+        addmulmod(precomp1, precomp0, precomp0, &fe1305x2::ZERO, neon); // precompute r^4
+        st
+    }
 }
 
 const fn data_len() -> usize {
@@ -51,26 +110,11 @@ const fn data_len() -> usize {
 }
 
 impl State {
-    pub(super) fn new_context(Key { key }: Key, neon: Neon) -> super::Context {
-        prefixed_extern! {
-            fn CRYPTO_poly1305_init_neon(state: &mut poly1305_state_st, key: &[u8; KEY_LEN]);
-        }
-        let mut r = Self {
-            state: poly1305_state_st {
-                r: fe1305x2 { v: [0; 12] },
-                h: fe1305x2 { v: [0; 12] },
-                c: fe1305x2 { v: [0; 12] },
-                precomp: [fe1305x2 { v: [0; 12] }; 2],
-
-                data: [0u8; data_len()],
-                buf: Default::default(),
-                buf_used: 0,
-                key: [0u8; 16],
-            },
+    pub(super) fn new_context(key: Key, neon: Neon) -> super::Context {
+        super::Context::ArmNeon(Self {
+            state: poly1305_state_st::new(key, neon),
             neon,
-        };
-        unsafe { CRYPTO_poly1305_init_neon(&mut r.state, &key) }
-        super::Context::ArmNeon(r)
+        })
     }
 
     pub(super) fn update_internal(&mut self, input: &[u8]) {
@@ -95,4 +139,10 @@ impl State {
         unsafe { CRYPTO_poly1305_finish_neon(&mut self.state, &mut tag.0) }
         tag
     }
+}
+
+#[inline]
+fn load32<'i>(t: &'i [u8; BLOCK_LEN], i: usize) -> W32 {
+    let t: &'i [u8; 4] = (&t[i..][..4]).try_into().unwrap();
+    Wrapping(u32::from_le_bytes(*t))
 }
