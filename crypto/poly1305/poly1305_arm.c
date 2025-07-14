@@ -28,13 +28,9 @@ typedef struct {
 } fe1305x2;
 
 #define addmulmod openssl_poly1305_neon2_addmulmod
-#define blocks openssl_poly1305_neon2_blocks
 
 extern void addmulmod(fe1305x2 *r, const fe1305x2 *x, const fe1305x2 *y,
                       const fe1305x2 *c);
-
-extern int blocks(fe1305x2 *h, const fe1305x2 *precomp, const uint8_t *in,
-                  size_t inlen);
 
 static void freeze(fe1305x2 *r) {
   int i;
@@ -188,52 +184,6 @@ struct poly1305_state_st {
 };
 
 OPENSSL_STATIC_ASSERT(sizeof(fe1305x2) == 48, "fe1305x2 size is different than expected");
-
-void CRYPTO_poly1305_update_neon(struct poly1305_state_st *st, const uint8_t *in,
-                                 size_t in_len) {
-  fe1305x2 *const h = &st->h;
-  fe1305x2 *const c = &st->c;
-  fe1305x2 *const precomp = &st->precomp[0];
-
-  if (st->buf_used) {
-    size_t todo = 32 - st->buf_used;
-    if (todo > in_len) {
-      todo = in_len;
-    }
-    for (size_t i = 0; i < todo; i++) {
-      st->buf[st->buf_used + i] = in[i];
-    }
-    st->buf_used += todo;
-    in_len -= todo;
-    in += todo;
-
-    if (st->buf_used == sizeof(st->buf) && in_len) {
-      addmulmod(h, h, precomp, &zero);
-      fe1305x2_frombytearray(c, st->buf, sizeof(st->buf));
-      for (size_t i = 0; i < 10; i++) {
-        h->v[i] += c->v[i];
-      }
-      st->buf_used = 0;
-    }
-  }
-
-  while (in_len > 32) {
-    size_t tlen = 1048576;
-    if (in_len < tlen) {
-      tlen = in_len;
-    }
-    tlen -= blocks(h, precomp, in, tlen);
-    in_len -= tlen;
-    in += tlen;
-  }
-
-  if (in_len) {
-    for (size_t i = 0; i < in_len; i++) {
-      st->buf[i] = in[i];
-    }
-    st->buf_used = in_len;
-  }
-}
 
 void CRYPTO_poly1305_finish_neon(struct poly1305_state_st *st, uint8_t mac[16]) {
   fe1305x2 *const r = &st->r;
