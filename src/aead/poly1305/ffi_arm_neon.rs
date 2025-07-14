@@ -18,12 +18,14 @@
 
 #![cfg(all(target_arch = "arm", target_endian = "little"))]
 
-use super::{Key, Tag, BLOCK_LEN, TAG_LEN};
+use super::{Key, Tag, BLOCK_LEN};
 use crate::{c, cpu::arm::Neon, polyfill::sliceutil};
 use core::{ffi::c_int, num::Wrapping};
 
 type W32 = Wrapping<u32>;
 const ZERO: W32 = Wrapping(0);
+const _1: W32 = Wrapping(1);
+const _5: W32 = Wrapping(5);
 #[allow(non_upper_case_globals)]
 const _3ffffff: W32 = Wrapping(0x3ffffff);
 
@@ -74,6 +76,25 @@ fn blocks(r: &mut fe1305x2, precomp: &[fe1305x2; 2], input: &[u8], _: Neon) -> u
 }
 
 impl fe1305x2 {
+    fn freeze(&mut self) {
+        prefixed_extern! {
+            fn CRYPTO_poly1305_freeze(x: &mut fe1305x2);
+        }
+        unsafe {
+            CRYPTO_poly1305_freeze(self);
+        }
+    }
+
+    // fe1305x2_tobytearray
+    fn to_bytes(&self) -> [u8; BLOCK_LEN] {
+        prefixed_extern! {
+            fn CRYPTO_poly1305_fe1305x2_tobytearray(r: *mut [u8; 16], x: &fe1305x2);
+        }
+        let mut r = [0u8; BLOCK_LEN];
+        unsafe { CRYPTO_poly1305_fe1305x2_tobytearray(&mut r, self) };
+        r
+    }
+
     // fe1305x2_frombytearray
     fn assign_bytes(&mut self, mut x: &[u8]) {
         let mut t = [0u8; BLOCK_LEN + 1];
@@ -190,6 +211,51 @@ impl poly1305_state_st {
             self.buf_used = input.len();
         }
     }
+
+    // CRYPTO_poly1305_finish_neon
+    fn finish(mut self, neon: Neon) -> [u8; BLOCK_LEN] {
+        let r = &mut self.r;
+        let h = &mut self.h;
+        let c = &mut self.c;
+        let precomp = &mut self.precomp[0];
+
+        addmulmod_assign(h, precomp, &fe1305x2::ZERO, neon);
+
+        if self.buf_used > BLOCK_LEN {
+            c.assign_bytes(&self.buf[..self.buf_used]);
+            precomp.v[1] = r.v[1];
+            precomp.v[3] = r.v[3];
+            precomp.v[5] = r.v[5];
+            precomp.v[7] = r.v[7];
+            precomp.v[9] = r.v[9];
+            addmulmod_assign(h, precomp, c, neon);
+        } else if self.buf_used > 0 {
+            c.assign_bytes(&self.buf[..self.buf_used]);
+            r.v[1] = _1;
+            r.v[3] = ZERO;
+            r.v[5] = ZERO;
+            r.v[7] = ZERO;
+            r.v[9] = ZERO;
+            addmulmod_assign(h, r, c, neon);
+        }
+
+        h.v[0] += h.v[1];
+        h.v[2] += h.v[3];
+        h.v[4] += h.v[5];
+        h.v[6] += h.v[7];
+        h.v[8] += h.v[9];
+        h.freeze();
+
+        c.assign_bytes(&self.key);
+        c.v[8] ^= _1 << 24;
+
+        h.v[0] += c.v[0];
+        h.v[2] += c.v[2];
+        h.v[4] += c.v[4];
+        h.v[6] += c.v[6];
+        h.v[8] += c.v[8];
+        h.to_bytes()
+    }
 }
 
 const fn data_len() -> usize {
@@ -208,13 +274,8 @@ impl State {
         self.state.update(input, self.neon);
     }
 
-    pub(super) fn finish(mut self) -> Tag {
-        prefixed_extern! {
-            fn CRYPTO_poly1305_finish_neon(st: &mut poly1305_state_st, mac: &mut [u8; TAG_LEN]);
-        }
-        let mut tag = Tag([0u8; TAG_LEN]);
-        unsafe { CRYPTO_poly1305_finish_neon(&mut self.state, &mut tag.0) }
-        tag
+    pub(super) fn finish(self) -> Tag {
+        Tag(self.state.finish(self.neon))
     }
 }
 
