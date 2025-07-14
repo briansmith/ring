@@ -894,9 +894,8 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     static SYMBOLS_TO_PREFIX: &[&str] = &[
         "adx_bmi2_available",
         "avx2_available",
-        "CRYPTO_poly1305_finish_neon",
-        "CRYPTO_poly1305_init_neon",
-        "CRYPTO_poly1305_update_neon",
+        "CRYPTO_poly1305_fe1305x2_tobytearray",
+        "CRYPTO_poly1305_freeze",
         "ChaCha20_ctr32",
         "ChaCha20_ctr32_avx2",
         "ChaCha20_ctr32_neon",
