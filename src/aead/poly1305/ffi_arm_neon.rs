@@ -25,6 +25,12 @@ pub(in super::super) struct State {
     neon: Neon,
 }
 
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct fe1305x2 {
+    v: [u32; 12], // for alignment; only using 10
+}
+
 // TODO: Is 16 enough?
 #[repr(C, align(16))]
 struct poly1305_state_st {
@@ -42,12 +48,6 @@ struct poly1305_state_st {
 
 const fn data_len() -> usize {
     128
-}
-
-#[derive(Clone, Copy)]
-#[repr(C)]
-struct fe1305x2 {
-    v: [u32; 12], // for alignment; only using 10
 }
 
 impl State {
