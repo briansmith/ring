@@ -29,12 +29,6 @@ const _5: W32 = Wrapping(5);
 #[allow(non_upper_case_globals)]
 const _3ffffff: W32 = Wrapping(0x3ffffff);
 
-// XXX/TODO(MSRV): change to `pub(super)`.
-pub(in super::super) struct State {
-    state: poly1305_state_st,
-    neon: Neon,
-}
-
 #[derive(Clone, Copy)]
 #[repr(C, align(16))]
 struct fe1305x2 {
@@ -194,24 +188,31 @@ impl fe1305x2 {
     }
 }
 
-// TODO: Is 16 enough?
+// TODO: Does this really need to be `#[repr(C)]` or `#[repr(align(16))`]? We
+// need to read the assembly code and see what assumptions it makes on the
+// layout of its inputs. We've already made `fe1305x2` 16-byte aligned and that
+// might be all we need.
+//
+// XXX/TODO(MSRV): change to `pub(super)`.
 #[repr(C, align(16))]
-struct poly1305_state_st {
+pub(in super::super) struct State {
     r: fe1305x2,
     h: fe1305x2,
     c: fe1305x2,
     precomp: [fe1305x2; 2],
-    data: [u8; data_len()],
+    data: [u8; data_len()], // TODO: Does the assembly code use this?
 
     buf: [u8; 2 * BLOCK_LEN],
     buf_used: c::size_t,
 
     key: [u8; BLOCK_LEN],
+
+    neon: Neon,
 }
 
-impl poly1305_state_st {
+impl State {
     // CRYPTO_poly1305_init_neon
-    fn new(key: Key, neon: Neon) -> Self {
+    pub(super) fn new_context(key: Key, neon: Neon) -> super::Context {
         let (t, key) = key.split();
         let rv_0_1 = _3ffffff & load32(t, 0);
         let rv_2_3 = Wrapping(0x3ffff03) & (load32(t, 3) >> 2);
@@ -220,7 +221,7 @@ impl poly1305_state_st {
         let rv_8_9 = Wrapping(0x00fffff) & (load32(t, 12) >> 8);
         let rv_10_11 = ZERO;
 
-        let mut st = Self {
+        let mut result = super::Context::ArmNeon(Self {
             r: fe1305x2 {
                 v: [
                     rv_0_1, rv_0_1, rv_2_3, rv_2_3, rv_4_5, rv_4_5, rv_6_7, rv_6_7, rv_8_9, rv_8_9,
@@ -236,15 +237,27 @@ impl poly1305_state_st {
             buf_used: 0,
 
             key: *key,
+
+            neon,
+        });
+        match &mut result {
+            super::Context::ArmNeon(State {
+                r,
+                precomp: [precomp0, precomp1],
+                ..
+            }) => {
+                addmulmod(precomp0, r, r, &fe1305x2::ZERO, neon); // precompute r^2
+                addmulmod(precomp1, precomp0, precomp0, &fe1305x2::ZERO, neon); // precompute r^4
+            }
+            _ => unreachable!(),
         };
-        let [precomp0, precomp1] = &mut st.precomp;
-        addmulmod(precomp0, &st.r, &st.r, &fe1305x2::ZERO, neon); // precompute r^2
-        addmulmod(precomp1, precomp0, precomp0, &fe1305x2::ZERO, neon); // precompute r^4
-        st
+        result
     }
 
     // CRYPTO_poly1305_update_neon
-    fn update(&mut self, mut input: &[u8], neon: Neon) {
+    pub(super) fn update_internal(&mut self, mut input: &[u8]) {
+        let neon = self.neon;
+
         if self.buf_used > 0 {
             let available = &mut self.buf[self.buf_used..];
             let todo = available.len().min(input.len());
@@ -276,7 +289,9 @@ impl poly1305_state_st {
     }
 
     // CRYPTO_poly1305_finish_neon
-    fn finish(mut self, neon: Neon) -> [u8; BLOCK_LEN] {
+    pub(super) fn finish(mut self) -> Tag {
+        let neon = self.neon;
+
         let r = &mut self.r;
         let h = &mut self.h;
         let c = &mut self.c;
@@ -317,29 +332,12 @@ impl poly1305_state_st {
         h.v[4] += c.v[4];
         h.v[6] += c.v[6];
         h.v[8] += c.v[8];
-        h.to_bytes()
+        Tag(h.to_bytes())
     }
 }
 
 const fn data_len() -> usize {
     128
-}
-
-impl State {
-    pub(super) fn new_context(key: Key, neon: Neon) -> super::Context {
-        super::Context::ArmNeon(Self {
-            state: poly1305_state_st::new(key, neon),
-            neon,
-        })
-    }
-
-    pub(super) fn update_internal(&mut self, input: &[u8]) {
-        self.state.update(input, self.neon);
-    }
-
-    pub(super) fn finish(self) -> Tag {
-        Tag(self.state.finish(self.neon))
-    }
 }
 
 fn store32<'o>(output: &'o mut [u8; BLOCK_LEN], i: usize, value: W32) {
