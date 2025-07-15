@@ -77,12 +77,60 @@ fn blocks(r: &mut fe1305x2, precomp: &[fe1305x2; 2], input: &[u8], _: Neon) -> u
 
 impl fe1305x2 {
     fn freeze(&mut self) {
-        prefixed_extern! {
-            fn CRYPTO_poly1305_freeze(x: &mut fe1305x2);
+        let mut x0 = self.v[0];
+        let mut x1 = self.v[2];
+        let mut x2 = self.v[4];
+        let mut x3 = self.v[6];
+        let mut x4 = self.v[8];
+
+        for _ in 0..3 {
+            x1 += x0 >> 26;
+            x0 &= _3ffffff;
+            x2 += x1 >> 26;
+            x1 &= _3ffffff;
+            x3 += x2 >> 26;
+            x2 &= _3ffffff;
+            x4 += x3 >> 26;
+            x3 &= _3ffffff;
+            x0 += _5 * (x4 >> 26);
+            x4 &= _3ffffff;
         }
-        unsafe {
-            CRYPTO_poly1305_freeze(self);
-        }
+
+        let mut y0 = x0 + _5;
+        let mut y1 = x1 + (y0 >> 26);
+        y0 &= _3ffffff;
+        let mut y2 = x2 + (y1 >> 26);
+        y1 &= _3ffffff;
+        let mut y3 = x3 + (y2 >> 26);
+        y2 &= _3ffffff;
+        let mut y4 = x4 + (y3 >> 26);
+        y3 &= _3ffffff;
+        let swap = -(y4 >> 26);
+        y4 &= _3ffffff;
+
+        y0 ^= x0;
+        y1 ^= x1;
+        y2 ^= x2;
+        y3 ^= x3;
+        y4 ^= x4;
+
+        y0 &= swap;
+        y1 &= swap;
+        y2 &= swap;
+        y3 &= swap;
+        y4 &= swap;
+
+        y0 ^= x0;
+        y1 ^= x1;
+        y2 ^= x2;
+        y3 ^= x3;
+        y4 ^= x4;
+
+        self.v[0] = y0;
+        self.v[2] = y1;
+        self.v[4] = y2;
+        self.v[6] = y3;
+        self.v[8] = y4;
     }
 
     // fe1305x2_tobytearray

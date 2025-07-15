@@ -133,7 +133,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[ARM], "crypto/fipsmodule/bn/asm/armv4-mont.pl"),
     (&[ARM], "crypto/chacha/asm/chacha-armv4.pl"),
     (&[ARM], "crypto/curve25519/asm/x25519-asm-arm.S"),
-    (&[ARM], "crypto/poly1305/poly1305_arm.c"),
     (&[ARM], "crypto/poly1305/poly1305_arm_asm.S"),
     (&[ARM], "crypto/fipsmodule/sha/asm/sha256-armv4.pl"),
     (&[ARM], "crypto/fipsmodule/sha/asm/sha512-armv4.pl"),
@@ -894,8 +893,6 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     static SYMBOLS_TO_PREFIX: &[&str] = &[
         "adx_bmi2_available",
         "avx2_available",
-        "CRYPTO_poly1305_fe1305x2_tobytearray",
-        "CRYPTO_poly1305_freeze",
         "ChaCha20_ctr32",
         "ChaCha20_ctr32_avx2",
         "ChaCha20_ctr32_neon",
