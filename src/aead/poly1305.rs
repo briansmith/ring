@@ -24,8 +24,8 @@ use super::{Tag, TAG_LEN};
 use crate::cpu::GetFeature as _;
 use crate::{cpu, polyfill::slice::AsChunks};
 
+mod arm_neon;
 mod fallback;
-mod ffi_arm_neon;
 
 /// A Poly1305 key.
 pub(super) struct Key {
@@ -49,7 +49,7 @@ impl Key {
 
 pub(super) enum Context {
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
-    ArmNeon(ffi_arm_neon::State),
+    ArmNeon(arm_neon::State),
     Fallback(fallback::State),
 }
 
@@ -58,7 +58,7 @@ impl Context {
     pub(super) fn from_key(key: Key, cpu: cpu::Features) -> Self {
         #[cfg(all(target_arch = "arm", target_endian = "little"))]
         if let Some(cpu) = cpu.get_feature() {
-            return ffi_arm_neon::State::new_context(key, cpu);
+            return arm_neon::State::new_context(key, cpu);
         }
         let _: cpu::Features = cpu;
         fallback::State::new_context(key)
