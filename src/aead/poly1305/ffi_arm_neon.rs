@@ -87,11 +87,26 @@ impl fe1305x2 {
 
     // fe1305x2_tobytearray
     fn to_bytes(&self) -> [u8; BLOCK_LEN] {
-        prefixed_extern! {
-            fn CRYPTO_poly1305_fe1305x2_tobytearray(r: *mut [u8; 16], x: &fe1305x2);
-        }
-        let mut r = [0u8; BLOCK_LEN];
-        unsafe { CRYPTO_poly1305_fe1305x2_tobytearray(&mut r, self) };
+        let mut x0 = self.v[0];
+        let mut x1 = self.v[2];
+        let mut x2 = self.v[4];
+        let mut x3 = self.v[6];
+        let mut x4 = self.v[8];
+
+        x1 += x0 >> 26;
+        x0 &= _3ffffff;
+        x2 += x1 >> 26;
+        x1 &= _3ffffff;
+        x3 += x2 >> 26;
+        x2 &= _3ffffff;
+        x4 += x3 >> 26;
+        x3 &= _3ffffff;
+
+        let mut r = [0u8; 16];
+        store32(&mut r, 0, x0 + (x1 << 26));
+        store32(&mut r, 4, (x1 >> 6) + (x2 << 20));
+        store32(&mut r, 8, (x2 >> 12) + (x3 << 14));
+        store32(&mut r, 12, (x3 >> 18) + (x4 << 8));
         r
     }
 
@@ -277,6 +292,11 @@ impl State {
     pub(super) fn finish(self) -> Tag {
         Tag(self.state.finish(self.neon))
     }
+}
+
+fn store32<'o>(output: &'o mut [u8; BLOCK_LEN], i: usize, value: W32) {
+    let output: &'o mut [u8; 4] = (&mut output[i..][..4]).try_into().unwrap();
+    *output = u32::to_le_bytes(value.0);
 }
 
 #[inline]

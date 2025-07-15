@@ -91,27 +91,3 @@ void CRYPTO_poly1305_freeze(fe1305x2 *r) {
   r->v[6] = y3;
   r->v[8] = y4;
 }
-
-static void store32(uint8_t out[4], uint32_t v) { OPENSSL_memcpy(out, &v, 4); }
-
-void CRYPTO_poly1305_fe1305x2_tobytearray(uint8_t r[16], fe1305x2 *x) {
-  uint32_t x0 = x->v[0];
-  uint32_t x1 = x->v[2];
-  uint32_t x2 = x->v[4];
-  uint32_t x3 = x->v[6];
-  uint32_t x4 = x->v[8];
-
-  x1 += x0 >> 26;
-  x0 &= 0x3ffffff;
-  x2 += x1 >> 26;
-  x1 &= 0x3ffffff;
-  x3 += x2 >> 26;
-  x2 &= 0x3ffffff;
-  x4 += x3 >> 26;
-  x3 &= 0x3ffffff;
-
-  store32(r, x0 + (x1 << 26));
-  store32(r + 4, (x1 >> 6) + (x2 << 20));
-  store32(r + 8, (x2 >> 12) + (x3 << 14));
-  store32(r + 12, (x3 >> 18) + (x4 << 8));
-}
