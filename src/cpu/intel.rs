@@ -18,6 +18,7 @@
 // Programmer’s Manual, Volumes 1-5" Revision 4.08 April 2024.
 
 use cfg_if::cfg_if;
+use core::ops::{BitAnd, Shl};
 
 mod abi_assumptions {
     use core::mem::size_of;
@@ -282,9 +283,9 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
     // AMD: "The extended SSE instructions include [...]."
 
     // Intel: "14.3 DETECTION OF INTEL AVX INSTRUCTIONS"
-    let os_supports_xmm_and_ymm = (xcr0 & 6) == 6;
+    let os_supports_ymm_xmm = check(xcr0, 2) && check(xcr0, 1);
     let cpu_supports_avx = check(leaf1_ecx, 28);
-    let avx_available = os_supports_xmm_and_ymm && cpu_supports_avx;
+    let avx_available = os_supports_ymm_xmm && cpu_supports_avx;
     if avx_available {
         set(&mut caps, Shift::Avx);
     }
@@ -406,8 +407,11 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
     caps
 }
 
-fn check(leaf: u32, bit: u32) -> bool {
-    let shifted = 1 << bit;
+fn check<T: BitAnd<Output = T> + Copy + Eq + From<u8> + Shl<u32, Output = T>>(
+    leaf: T,
+    index: u32,
+) -> bool {
+    let shifted: T = T::from(1u8) << index;
     (leaf & shifted) == shifted
 }
 
