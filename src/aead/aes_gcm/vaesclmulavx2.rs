@@ -29,7 +29,7 @@ pub(super) fn seal_whole_vaes_clmul_avx2(
             input: *const u8,
             output: *mut u8,
             len: c::size_t,
-            key: &aes::AES_KEY,
+            key: &aes::hw::Key,
             ivec: &Counter,
             Htable: &gcm::vclmulavx2::Key,
             Xi: &mut gcm::Xi);
@@ -42,7 +42,6 @@ pub(super) fn seal_whole_vaes_clmul_avx2(
     let blocks = u32::try_from(in_out.len() / BLOCK_LEN).unwrap();
 
     if let Some(blocks) = NonZeroU32::new(blocks) {
-        let aes_key = aes_key.inner_less_safe();
         let (htable, xi) = auth.inner();
         let input = in_out.as_ptr();
         let output = in_out.as_mut_ptr();
@@ -63,7 +62,7 @@ pub(super) fn open_whole_vaes_clmul_avx2(
             input: *const u8,
             output: *mut u8,
             len: c::size_t,
-            key: &aes::AES_KEY,
+            key: &aes::hw::Key,
             ivec: &mut Counter,
             Htable: &gcm::vclmulavx2::Key,
             Xi: &mut gcm::Xi);
@@ -76,7 +75,6 @@ pub(super) fn open_whole_vaes_clmul_avx2(
     let blocks = u32::try_from(in_out.len() / BLOCK_LEN).unwrap();
 
     if let Some(blocks) = NonZeroU32::new(blocks) {
-        let aes_key = aes_key.inner_less_safe();
         let (htable, xi) = auth.inner();
         in_out.with_input_output_len(|input, output, len| unsafe {
             aes_gcm_dec_update_vaes_avx2(input, output, len, aes_key, ctr, htable, xi)

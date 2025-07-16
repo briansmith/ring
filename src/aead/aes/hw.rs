@@ -22,6 +22,7 @@ use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlappin
 use crate::cpu;
 
 #[derive(Clone)]
+#[repr(transparent)]
 pub struct Key {
     inner: AES_KEY,
 }
@@ -75,15 +76,6 @@ impl Key {
                 unsafe { AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key_base) }
             },
         }
-    }
-
-    #[cfg(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        target_arch = "x86_64"
-    ))]
-    #[must_use]
-    pub(in super::super) fn inner_less_safe(&self) -> &AES_KEY {
-        &self.inner
     }
 }
 

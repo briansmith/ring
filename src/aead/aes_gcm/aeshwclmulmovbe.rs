@@ -42,7 +42,7 @@ pub(super) fn seal(
             input: *const u8,
             output: *mut u8,
             len: c::size_t,
-            key: &aes::AES_KEY,
+            key: &aes::hw::Key,
             ivec: &mut Counter,
             Htable: &gcm::clmulavxmovbe::Key,
             Xi: &mut gcm::Xi);
@@ -65,7 +65,7 @@ pub(super) fn seal(
                 integrated.as_ptr(),
                 integrated.as_mut_ptr(),
                 integrated.len(),
-                aes_key.inner_less_safe(),
+                aes_key,
                 &mut ctr,
                 htable,
                 xi,
@@ -104,7 +104,7 @@ pub(super) fn open(
             input: *const u8,
             output: *mut u8,
             len: c::size_t,
-            key: &aes::AES_KEY,
+            key: &aes::hw::Key,
             ivec: &mut Counter,
             Htable: &gcm::clmulavxmovbe::Key,
             Xi: &mut gcm::Xi);
@@ -121,17 +121,7 @@ pub(super) fn open(
                 debug_assert_eq!(strides.len() % STRIDE_LEN, 0);
                 strides.with_input_output_len(|input, output, len| {
                     let (htable, xi) = auth.inner();
-                    unsafe {
-                        aesni_gcm_decrypt(
-                            input,
-                            output,
-                            len,
-                            aes_key.inner_less_safe(),
-                            &mut ctr,
-                            htable,
-                            xi,
-                        )
-                    }
+                    unsafe { aesni_gcm_decrypt(input, output, len, aes_key, &mut ctr, htable, xi) }
                 })
             })
             .unwrap_or_else(|IndexError { .. }| unreachable!())
