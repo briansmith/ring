@@ -18,7 +18,7 @@
     target_arch = "x86_64"
 ))]
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
+use super::{ffi::AES_KEY, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
 use crate::cpu;
 
 #[derive(Clone)]

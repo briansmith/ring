@@ -19,10 +19,12 @@
     target_arch = "x86_64"
 ))]
 
-use super::{Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping, AES_KEY};
+use super::{ffi::AES_KEY, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
 use crate::cpu;
 
 #[derive(Clone)]
+// `bs::ctr32_encrypt_blocks_with_vpaes_key` also relies on this representation.
+#[repr(transparent)]
 pub(in super::super) struct Key {
     inner: AES_KEY,
 }
@@ -42,6 +44,11 @@ impl Key {
         Self {
             inner: unsafe { AES_KEY::new_using_set_encrypt_key(bytes, vpaes_set_encrypt_key) },
         }
+    }
+
+    #[cfg(all(target_arch = "arm", target_endian = "little"))]
+    pub(super) fn rounds(&self) -> core::ffi::c_uint {
+        self.inner.rounds()
     }
 
     #[cfg(target_arch = "x86")]
@@ -114,12 +121,7 @@ impl EncryptCtr32 for Key {
                 let bsaes_in_out_len = bsaes_blocks * BLOCK_LEN;
                 in_out
                     .split_at(bsaes_in_out_len, |bsaes_in_out| {
-                        // SAFETY:
-                        //  * self.inner was initialized with `vpaes_set_encrypt_key` above,
-                        //    as required by `bsaes_ctr32_encrypt_blocks_with_vpaes_key`.
-                        unsafe {
-                            bs::ctr32_encrypt_blocks_with_vpaes_key(bsaes_in_out, &self.inner, ctr);
-                        }
+                        bs::ctr32_encrypt_blocks_with_vpaes_key(bsaes_in_out, &self, ctr)
                     })
                     .unwrap_or_else(|_: IndexError| {
                         // `bsaes_in_out_len` is never larger than `in_out.len()`.

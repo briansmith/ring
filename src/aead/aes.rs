@@ -17,7 +17,6 @@ use crate::{
     cpu::{self, GetFeature as _},
     polyfill::unwrap_const,
 };
-use cfg_if::cfg_if;
 use core::num::NonZeroU32;
 
 pub(super) use ffi::Counter;
@@ -31,14 +30,6 @@ pub(super) mod hw;
 pub(super) mod vp;
 
 pub type OverlappingPartialBlock<'o> = overlapping::PartialBlock<'o, u8, BLOCK_LEN>;
-
-cfg_if! {
-    if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"), target_arch = "x86_64"))] {
-        pub(super) use ffi::AES_KEY;
-    } else {
-        use ffi::AES_KEY;
-    }
-}
 
 #[derive(Clone)]
 pub(super) enum Key {

@@ -14,28 +14,21 @@
 
 #![cfg(all(target_arch = "arm", target_endian = "little"))]
 
-use super::{Counter, Overlapping, AES_KEY};
+use super::{ffi::AES_KEY, vp, Counter, Overlapping};
 use core::mem::MaybeUninit;
 
-/// SAFETY:
-///   * The caller must ensure that if blocks > 0 then either `input` and
-///     `output` do not overlap at all, or input == output.add(n) for some
-///     (nonnegative) n.
-///   * if blocks > 0, The caller must ensure `input` points to `blocks` blocks
-///     and that `output` points to writable space for `blocks` blocks.
-///   * The caller must ensure that `vpaes_key` was initialized with
-///     `vpaes_set_encrypt_key`.
-///   * Upon returning, `blocks` blocks will have been read from `input` and
-///     written to `output`.
-pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
+#[repr(transparent)]
+struct Key(AES_KEY);
+
+pub(super) fn ctr32_encrypt_blocks_with_vpaes_key(
     in_out: Overlapping<'_>,
-    vpaes_key: &AES_KEY,
+    vpaes_key: &vp::Key,
     ctr: &mut Counter,
 ) {
     prefixed_extern! {
         // bsaes_ctr32_encrypt_blocks requires transformation of an existing
         // VPAES key; there is no `bsaes_set_encrypt_key`.
-        fn vpaes_encrypt_key_to_bsaes(bsaes_key: *mut AES_KEY, vpaes_key: &AES_KEY);
+        fn vpaes_encrypt_key_to_bsaes(bsaes_key: *mut Key, vpaes_key: &vp::Key);
     }
     prefixed_extern_ctr32_encrypt_blocks! { bsaes_ctr32_encrypt_blocks }
 
@@ -45,7 +38,7 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
     //   * `bsaes_key was zeroed above, and `vpaes_encrypt_key_to_bsaes`
     //     is assumed to initialize `bsaes_key`.
     let bsaes_key = {
-        let mut uninit = MaybeUninit::<AES_KEY>::uninit();
+        let mut uninit = MaybeUninit::<Key>::uninit();
         unsafe { vpaes_encrypt_key_to_bsaes(uninit.as_mut_ptr(), vpaes_key) };
         unsafe { uninit.assume_init() }
     };
@@ -53,12 +46,16 @@ pub(super) unsafe fn ctr32_encrypt_blocks_with_vpaes_key(
     // The code for `vpaes_encrypt_key_to_bsaes` notes "vpaes stores one
     // fewer round count than bsaes, but the number of keys is the same,"
     // so use this as a sanity check.
-    debug_assert_eq!(bsaes_key.rounds(), vpaes_key.rounds() + 1);
+    debug_assert_eq!(bsaes_key.0.rounds(), vpaes_key.rounds() + 1);
 
     // SAFETY:
     //  * `bsaes_key` is in bsaes format after calling
     //    `vpaes_encrypt_key_to_bsaes`.
     //  * `bsaes_ctr32_encrypt_blocks` satisfies the contract for
     //    `ctr32_encrypt_blocks`.
-    unsafe { bsaes_key.ctr32_encrypt_blocks(in_out, ctr, bsaes_ctr32_encrypt_blocks) }
+    unsafe {
+        bsaes_key
+            .0
+            .ctr32_encrypt_blocks(in_out, ctr, bsaes_ctr32_encrypt_blocks)
+    }
 }
