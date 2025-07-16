@@ -27,7 +27,7 @@ pub(in super::super) struct Counter(pub(super) [u8; BLOCK_LEN]);
 // `AES_KEY` in BoringSSL's aes.h.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub(in super::super) struct AES_KEY {
+pub(super) struct AES_KEY {
     rd_key: RdKeys,
     rounds: c_uint,
 }
