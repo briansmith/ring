@@ -276,8 +276,8 @@ my $rk4v="v22";
 my $rk4d="d22";
 
 ################################################################################
-# size_t aes_gcm_enc_kernel(const uint8_t *in,
-#                           size_t len_bits,
+# uint64_t aes_gcm_enc_kernel(const uint8_t *in,
+#                           uint64_t len_bits,
 #                           uint8_t *out,
 #                           u64 *Xi,
 #                           uint8_t ivec[16],
@@ -905,8 +905,8 @@ my $t8d="d4";
 my $t9="v6";
 my $t9d="d6";
 ################################################################################
-# size_t aes_gcm_dec_kernel(const uint8_t *in,
-#                           size_t len_bits,
+# uint64_t aes_gcm_dec_kernel(const uint8_t *in,
+#                           uint64_t len_bits,
 #                           uint8_t *out,
 #                           u64 *Xi,
 #                           uint8_t ivec[16],

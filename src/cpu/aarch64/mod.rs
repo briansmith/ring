@@ -19,11 +19,26 @@ use super::CAPS_STATIC;
 mod abi_assumptions {
     use core::mem::size_of;
 
-    // TODO: Support ARM64_32; see
-    // https://github.com/briansmith/ring/issues/1832#issuecomment-1892928147. This also requires
-    // replacing all `cfg(target_pointer_width)` logic for non-pointer/reference things
-    // (`N0`, `Limb`, `LimbMask`, `crypto_word_t` etc.).
-    const _ASSUMED_POINTER_SIZE: usize = 8;
+    // arm64_32-apple-darwin code can call aarch64-apple-darwin assembly
+    // functions, but aarch64-*_ilp32 functions CANNOT call
+    // aarch64-* functions.
+    //
+    // In the arm64_32-apple-watchos "C" ABI, the caller zero-extends 32-bit
+    // argument values to 64-bits and truncates return values to 32-bits. No
+    // work needed to be done to adapt aarch64 to Apple's arm64_32.
+    //
+    // The standard AArch64-ILP32 ABI requires the callee to ignore garbage in
+    // the upper half of 64-bit registers; i.e. the callee does the zero
+    // extension instead of the caller. In order to support this, we'd need to
+    // audit all the `prefixed_extern!`s for AArch64 and change every pointer
+    // to a not-yet-existing 64-bit "zero-extended pointer" type, and change
+    // every other <64-bit parameter type to the corresponding 64-bit type.
+    const _ASSUMED_POINTER_SIZE: usize =
+        if cfg!(all(target_os = "watchos", target_pointer_width = "32")) {
+            4
+        } else {
+            8
+        };
     const _ASSUMED_USIZE_SIZE: () = assert!(size_of::<usize>() == _ASSUMED_POINTER_SIZE);
     const _ASSUMED_REF_SIZE: () = assert!(size_of::<&'static u8>() == _ASSUMED_POINTER_SIZE);
 
@@ -48,6 +63,7 @@ cfg_if::cfg_if! {
     } else {
         mod detect {
             pub const FORCE_DYNAMIC_DETECTION: u32 = 0;
+            #[inline(always)]
             pub fn detect_features() -> u32 { 0 }
         }
     }

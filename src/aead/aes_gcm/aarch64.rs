@@ -15,7 +15,10 @@
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
 use super::{aes, gcm, Counter, Overlapping, BLOCK_LEN};
-use crate::{bits::BitLength, polyfill::slice::AsChunksMut};
+use crate::{
+    bits::BitLength,
+    polyfill::{slice::AsChunksMut, u64_from_usize},
+};
 use core::num::NonZeroU64;
 
 pub(super) fn seal_whole(
@@ -33,16 +36,16 @@ pub(super) fn seal_whole(
             ivec: &mut Counter,
             rd_keys: *const aes::RdKey,
             Htable: &gcm::clmul_aarch64::Key,
-            rounds: aes::Rounds);
+            rounds: aes::Rounds) -> u64;
     }
 
     let whole_block_bits = auth.in_out_whole_block_bits();
-    let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
-    if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
+    if let Ok(whole_block_bits) = whole_block_bits.try_into() {
         let (htable, xi) = auth.inner();
+        let in_out_len_bytes = in_out.as_flattened().len();
         let in_out = in_out.as_mut_ptr();
         let (rd_keys, rounds) = aes_key.rd_keys_and_rounds();
-        unsafe {
+        let processed_bytes = unsafe {
             aes_gcm_enc_kernel(
                 in_out.cast_const(),
                 whole_block_bits,
@@ -53,7 +56,8 @@ pub(super) fn seal_whole(
                 htable,
                 rounds,
             )
-        }
+        };
+        debug_assert_eq!(u64_from_usize(in_out_len_bytes), processed_bytes);
     }
 }
 
@@ -72,19 +76,18 @@ pub(super) fn open_whole(
             ivec: &mut Counter,
             key: *const aes::RdKey,
             Htable: &gcm::clmul_aarch64::Key,
-            rounds: aes::Rounds);
+            rounds: aes::Rounds) -> u64;
     }
 
     // Precondition. TODO: Create an overlapping::AsChunks for this.
     assert_eq!(in_out.len() % BLOCK_LEN, 0);
 
-    in_out.with_input_output_len(|input, output, _len| {
+    in_out.with_input_output_len(|input, output, in_out_len_bytes| {
         let whole_block_bits = auth.in_out_whole_block_bits();
-        let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
-        if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
+        if let Ok(whole_block_bits) = whole_block_bits.try_into() {
             let (htable, xi) = auth.inner();
             let (rd_keys, rounds) = aes_key.rd_keys_and_rounds();
-            unsafe {
+            let processed_bytes = unsafe {
                 aes_gcm_dec_kernel(
                     input,
                     whole_block_bits,
@@ -95,7 +98,8 @@ pub(super) fn open_whole(
                     htable,
                     rounds,
                 )
-            }
+            };
+            debug_assert_eq!(u64_from_usize(in_out_len_bytes), processed_bytes);
         }
     })
 }

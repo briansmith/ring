@@ -12,8 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Aes, Neon, PMull, Sha256, Sha512, CAPS_STATIC};
-use core::ffi::CStr;
+use super::{Aes, Neon, PMull, Sha256, CAPS_STATIC};
+#[cfg(all(target_pointer_width = "64", not(target_os = "watchos")))]
+use {super::Sha512, core::ffi::CStr};
 
 // ```
 // $ rustc +1.61.0 --print cfg --target=aarch64-apple-ios | grep -E "neon|aes|sha|pmull"
@@ -32,6 +33,9 @@ use core::ffi::CStr;
 // the other targets yet, we wouldn't have a way of testing the dynamic detection if we statically
 // enabled `Sha512` for -darwin. So instead, temporarily, we statically ignore the static
 // availability of the feature on -darwin so that it runs the dynamic detection.
+//
+// This is particularly important because we haven't tested the ABI validity of any
+// fallback implementations, especially for ARM64_32.
 pub const MIN_STATIC_FEATURES: u32 = Neon::mask() | Aes::mask() | Sha256::mask() | PMull::mask();
 pub const FORCE_DYNAMIC_DETECTION: u32 = !MIN_STATIC_FEATURES;
 
@@ -51,6 +55,7 @@ const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () =
     assert!(CAPS_STATIC == MIN_STATIC_FEATURES);
 
 pub fn detect_features() -> u32 {
+    #[cfg(all(target_pointer_width = "64", not(target_os = "watchos")))]
     fn detect_feature(name: &CStr) -> bool {
         use crate::polyfill;
         use core::mem::size_of_val;
@@ -77,15 +82,23 @@ pub fn detect_features() -> u32 {
     // We do not need to check for the presence of NEON, as Armv8-A always has it
     const _ASSERT_NEON_DETECTED: () = assert!((CAPS_STATIC & Neon::mask()) == Neon::mask());
 
+    #[cfg_attr(
+        any(not(target_pointer_width = "64"), target_os = "watchos"),
+        allow(unused_mut)
+    )]
     let mut features = 0;
 
-    // TODO(MSRV-1.77): Use c"..." literal.
-    // TODO(MSRV-1.72): Use `CStr::from_bytes_with_nul`.
-    // TODO(MSRV-1.69): Use `CStr::from_bytes_until_nul`.
-    const SHA512_NAME: &CStr =
-        unsafe { CStr::from_bytes_with_nul_unchecked(b"hw.optional.armv8_2_sha512\0") };
-    if detect_feature(SHA512_NAME) {
-        features |= Sha512::mask();
+    #[cfg(all(target_pointer_width = "64", not(target_os = "watchos")))]
+    {
+        // TODO(MSRV-1.77): Use c"..." literal.
+        // TODO(MSRV-1.72): Use `CStr::from_bytes_with_nul`.
+        // TODO(MSRV-1.69): Use `CStr::from_bytes_until_nul`.
+        const SHA512_NAME: &CStr =
+            unsafe { CStr::from_bytes_with_nul_unchecked(b"hw.optional.armv8_2_sha512\0") };
+
+        if detect_feature(SHA512_NAME) {
+            features |= Sha512::mask();
+        }
     }
 
     features
@@ -93,24 +106,25 @@ pub fn detect_features() -> u32 {
 
 #[cfg(test)]
 mod tests {
+    use super::super::Sha512;
     use super::*;
-    use crate::cpu;
+    use crate::cpu::{self, GetFeature};
 
     #[test]
     fn sha512_detection() {
         // We intentionally disable static feature detection for SHA-512.
         const _SHA512_NOT_STATICALLY_DETECTED: () = assert!((CAPS_STATIC & Sha512::mask()) == 0);
 
-        if cfg!(target_os = "macos") {
-            use super::Sha512;
-            use crate::cpu::GetFeature as _;
+        let maybe_sha512: Option<Sha512> = cpu::features().get_feature();
+        let has_sha512 = maybe_sha512.is_some();
 
+        if cfg!(all(target_os = "macos", target_pointer_width = "64")) {
             // All aarch64-apple-darwin targets have SHA3 enabled statically...
             assert!(cfg!(target_feature = "sha3"));
-
-            // ...so we should detect it.
-            let cpu = cpu::features();
-            assert!(matches!(cpu.get_feature(), Some(Sha512 { .. })));
+            assert_eq!(has_sha512, cfg!(target_pointer_width = "64"));
+        }
+        if cfg!(any(not(target_pointer_width = "64"), target_os = "watchos")) {
+            assert!(!has_sha512);
         }
     }
 }

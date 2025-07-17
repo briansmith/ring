@@ -116,16 +116,6 @@ impl BitLength<u64> {
     }
 }
 
-match_target_word_bits! {
-    64|32 => {
-        impl From<BitLength<usize>> for BitLength<u64> {
-            fn from(BitLength(value): BitLength<usize>) -> Self {
-                BitLength(polyfill::u64_from_usize(value))
-            }
-        }
-    },
-}
-
 impl TryFrom<BitLength<u64>> for BitLength<core::num::NonZeroU64> {
     type Error = <core::num::NonZeroU64 as TryFrom<u64>>::Error;
 

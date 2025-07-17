@@ -388,7 +388,7 @@ void p256_point_mul_base_vartime(Limb r[3][P256_LIMBS],
 
   // First window
   size_t index = 0;
-  size_t wvalue = calc_first_wvalue(&index, p_str);
+  size_t wvalue = (size_t)calc_first_wvalue(&index, p_str);
 
   // Convert |p| from affine to Jacobian coordinates. We set Z to zero if |p|
   // is infinity and |ONE_MONT| otherwise. |p| was computed from the table, so
@@ -410,7 +410,7 @@ void p256_point_mul_base_vartime(Limb r[3][P256_LIMBS],
   }
 
   for (int i = 1; i < 37; i++) {
-    wvalue = calc_wvalue(&index, p_str);
+    wvalue = (size_t)calc_wvalue(&index, p_str);
     if ((wvalue >> 1) == 0) {
       continue;
     }
