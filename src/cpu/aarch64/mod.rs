@@ -54,26 +54,22 @@ cfg_if::cfg_if! {
 }
 
 impl_get_feature! {
-    features: [
-        { ("aarch64") => Neon },
+    Neon,
 
-        // TODO(MSRV): There is no "pmull" feature listed from
-        // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
-        // PMULL detection into AES detection, but later versions split it; see
-        // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
-        // "Features introduced prior to 2020." Change this to use "pmull" when
-        // that is supported.
-        { ("aarch64") => PMull },
+    // TODO(MSRV): There is no "pmull" feature listed from
+    // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
+    // PMULL detection into AES detection, but later versions split it; see
+    // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
+    // "Features introduced prior to 2020." Change this to use "pmull" when
+    // that is supported.
+    PMull,
 
-        { ("aarch64") => Aes },
+    Aes,
 
-        { ("aarch64") => Sha256 },
+    Sha256,
 
-        // Keep in sync with `ARMV8_SHA512`.
-
-        // "sha3" is overloaded for both SHA-3 and SHA-512.
-        { ("aarch64") => Sha512 },
-    ],
+    // "sha3" is overloaded for both SHA-3 and SHA-512.
+    Sha512,
 }
 
 pub(super) mod featureflags {

@@ -41,10 +41,8 @@ cfg_if::cfg_if! {
 }
 
 impl_get_feature! {
-    features: [
-        // TODO(MSRV): 32-bit ARM doesn't have `target_feature = "neon"` yet.
-        { ("arm") => Neon },
-    ],
+    // TODO(MSRV): 32-bit ARM doesn't have `target_feature = "neon"` yet.
+    Neon,
 }
 
 pub(super) mod featureflags {

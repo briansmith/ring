@@ -17,23 +17,21 @@ use core::mem::size_of;
 
 macro_rules! impl_get_feature {
     {
-      features: [
-          $( { ( $( $arch:expr ),+ ) => $Name:ident }, )+
-      ],
+          $( $( #[$meta:meta] )* $Name:ident , )+
     } => {
         $(
-            #[cfg(any( $( target_arch = $arch ),+ ))]
+            $( #[$meta] )*
             #[derive(Clone, Copy)]
             pub(crate) struct $Name(crate::cpu::Features);
 
-            #[cfg(any( $( target_arch = $arch ),+ ))]
+            $( #[$meta] )*
             impl $Name {
                 const fn mask() -> u32 {
                     1 << (Shift::$Name as u32)
                 }
             }
 
-            #[cfg(any( $( target_arch = $arch ),+ ))]
+            $( #[$meta] )*
             impl crate::cpu::GetFeature<$Name> for super::features::Values {
                 #[inline(always)]
                 fn get_feature(&self) -> Option<$Name> {
@@ -55,7 +53,7 @@ macro_rules! impl_get_feature {
         #[repr(u32)]
         enum Shift {
             $(
-                #[cfg(any( $( target_arch = $arch ),+ ))]
+                $( #[$meta] )*
                 $Name,
             )+
 

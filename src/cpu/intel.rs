@@ -416,24 +416,47 @@ fn check<T: BitAnd<Output = T> + Copy + Eq + From<u8> + Shl<u32, Output = T>>(
 }
 
 impl_get_feature! {
-    features: [
-        { ("x86_64") => VAesClmul },
-        { ("x86", "x86_64") => ClMul },
-        { ("x86", "x86_64") => Ssse3 },
-        { ("x86_64") => Sse41 },
-        { ("x86_64") => Movbe },
-        { ("x86", "x86_64") => Aes },
-        { ("x86", "x86_64") => Avx },
-        { ("x86_64") => Bmi1 },
-        { ("x86_64") => Avx2 },
-        { ("x86_64") => Bmi2 },
-        { ("x86_64") => Adx },
-        // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
-        // static feature detection for this.
-        { ("x86_64") => Sha },
-        // x86_64 can just assume SSE2 is available.
-        { ("x86") => Sse2 },
-    ],
+    #[cfg(target_arch = "x86_64")]
+    VAesClmul,
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    ClMul,
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    Ssse3,
+
+    #[cfg(target_arch = "x86_64")]
+    Sse41,
+
+    #[cfg(target_arch = "x86_64")]
+    Movbe,
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    Aes,
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    Avx,
+
+    #[cfg(target_arch = "x86_64")]
+    Bmi1,
+
+    #[cfg(target_arch = "x86_64")]
+    Avx2,
+
+    #[cfg(target_arch = "x86_64")]
+    Bmi2,
+
+    #[cfg(target_arch = "x86_64")]
+    Adx,
+
+    // See BoringSSL 69c26de93c82ad98daecaec6e0c8644cdf74b03f before enabling
+    // static feature detection for this.
+    #[cfg(target_arch = "x86_64")]
+    Sha,
+
+    // x86_64 can just assume SSE2 is available.
+    #[cfg(target_arch = "x86")]
+    Sse2,
 }
 
 cfg_if! {
