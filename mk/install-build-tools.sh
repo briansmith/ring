@@ -69,9 +69,10 @@ case ${target-} in
 esac
 
 case ${target-} in
-aarch64-apple-tvos | aarch64-apple-tvos-sim | \
-aarch64-apple-visionos | aarch64-apple-visionos-sim | \
-aarch64-apple-watchos | aarch64-apple-watchos-sim)
+*-tvos | *-tvos-sim | \
+*-visionos | *-visionos-sim | \
+*-watchos | *-watchos-sim \
+)
   build_std=1
   ;;
 aarch64-unknown-linux-gnu)
