@@ -178,6 +178,7 @@ jobs:
           - arm-unknown-linux-gnueabi
           - armv7-linux-androideabi
           - armv7-unknown-linux-musleabihf
+          # - armv7k-apple-watchos   Tier 3; handled below
           - i686-pc-windows-msvc
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
@@ -277,6 +278,13 @@ jobs:
 
           - target: armv7-unknown-linux-musleabihf
             host_os: ubuntu-22.04
+
+          - target: armv7k-apple-watchos
+            host_os: macos-14
+            rust_channel: nightly
+            mode: --release
+            # TODO: Run in the emulator.
+            cargo_options: --no-run -Z build-std
 
           - target: i686-pc-windows-msvc
             host_os: windows-latest

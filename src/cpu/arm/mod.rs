@@ -115,6 +115,28 @@ pub(super) mod featureflags {
     // We have a separate flag for NEON, so we need Acquire/Release ordering.
     static FEATURES: race::OnceNonZeroUsize<race::AcquireRelease> = race::OnceNonZeroUsize::new();
 
-    // TODO(MSRV): 32-bit ARM doesn't support any static feature detection yet.
-    pub(in super::super) const STATIC_DETECTED: u32 = 0;
+    // TODO(MSRV): Stable Rust doesn't support static feature detection for
+    // 32-bit ARM but Nightly does. It is important to enable NEON statically
+    // for armv7k-*-watchos in particular, regardless of whether it is compiled
+    // with Nightly or not.
+    //
+    // ```sh
+    // $ rustc +nightly --print cfg --target=armv7k-apple-watchos | grep neon
+    // target_feature="neon"
+    // ```
+    pub(in super::super) const STATIC_DETECTED: u32 = if cfg!(target_os = "watchos") {
+        Neon::mask()
+    } else {
+        0
+    };
 }
+
+const MIN_STATIC_FEATURES: u32 = if cfg!(target_os = "watchos") {
+    Neon::mask()
+} else {
+    0
+};
+
+#[allow(clippy::assertions_on_constants)]
+const _ARM_TARGETS_EXPECTED_FEATURES: () =
+    assert!((CAPS_STATIC & MIN_STATIC_FEATURES) == MIN_STATIC_FEATURES);
