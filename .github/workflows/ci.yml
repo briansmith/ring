@@ -171,6 +171,7 @@ jobs:
           # - aarch64-apple-tvos      Tier 3; handled below
           # - aarch64-apple-visionos  Tier 3; handled below
           # - aarch64-apple-watchos   Tier 3; handled below
+          # - arm64_32-apple-watchos  Tier 3; handled below.
           - aarch64-linux-android
           - aarch64-pc-windows-msvc
           - aarch64-unknown-linux-gnu
@@ -269,6 +270,13 @@ jobs:
 
           - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-22.04
+
+          - target: arm64_32-apple-watchos
+            host_os: macos-14
+            rust_channel: nightly
+            mode: --release
+            # TODO: Run in the emulator.
+            cargo_options: --no-run -Z build-std
 
           - target: armv7-linux-androideabi
             host_os: ubuntu-22.04
