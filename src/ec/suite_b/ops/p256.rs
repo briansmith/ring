@@ -16,6 +16,7 @@ use super::{
     elem::{binary_op, binary_op_assign},
     elem_sqr_mul, elem_sqr_mul_acc, PublicModulus, *,
 };
+use cfg_if::cfg_if;
 
 pub(super) const NUM_LIMBS: usize = 256 / LIMB_BITS;
 
@@ -122,19 +123,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_ops: &SCALAR_OPS,
     public_key_ops: &PUBLIC_KEY_OPS,
 
-    #[cfg(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        target_arch = "x86_64"
-    ))]
-    twin_mul: twin_mul_nistz256,
-
-    #[cfg(not(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        target_arch = "x86_64"
-    )))]
-    twin_mul: |g_scalar, p_scalar, p_xy, cpu| {
-        twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy, cpu)
-    },
+    twin_mul,
 
     q_minus_n: PublicElem::from_hex("4319055358e8617b0c46353d039cdaae"),
 
@@ -142,36 +131,41 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_inv_to_mont_vartime: |s, cpu| PRIVATE_SCALAR_OPS.scalar_inv_to_mont(s, cpu),
 };
 
-#[cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    target_arch = "x86_64"
-))]
-fn twin_mul_nistz256(
+fn point_mul_base_vartime(g_scalar: &Scalar, cpu: cpu::Features) -> Point {
+    cfg_if! {
+        if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"),
+                         target_arch = "x86_64"))] {
+            prefixed_extern! {
+                fn p256_point_mul_base_vartime(
+                    r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
+                    g_scalar: *const Limb, // [COMMON_OPS.num_limbs]
+                );
+            }
+            let mut scaled_g = Point::new_at_infinity();
+            let _ = cpu;
+            unsafe {
+                p256_point_mul_base_vartime(
+                    scaled_g.xyz.as_mut_ptr(),
+                    g_scalar.limbs.as_ptr());
+            }
+            scaled_g
+        } else {
+            p256_point_mul_base_impl(g_scalar, cpu)
+        }
+    }
+}
+
+fn twin_mul(
     g_scalar: &Scalar,
     p_scalar: &Scalar,
     p_xy: &(Elem<R>, Elem<R>),
     cpu: cpu::Features,
 ) -> Point {
+    // XXX: This is inefficient for the same reason as `twin_mul_inefficient`
+    // when we don't have `p256_point_mul_base_vartime`.
     let scaled_g = point_mul_base_vartime(g_scalar, cpu);
     let scaled_p = PRIVATE_KEY_OPS.point_mul(p_scalar, p_xy, cpu::features());
     PRIVATE_KEY_OPS.point_sum(&scaled_g, &scaled_p, cpu)
-}
-
-#[cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    target_arch = "x86_64"
-))]
-fn point_mul_base_vartime(g_scalar: &Scalar, _cpu: cpu::Features) -> Point {
-    prefixed_extern! {
-        fn p256_point_mul_base_vartime(r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
-                                       g_scalar: *const Limb, // [COMMON_OPS.num_limbs]
-        );
-    }
-    let mut scaled_g = Point::new_at_infinity();
-    unsafe {
-        p256_point_mul_base_vartime(scaled_g.xyz.as_mut_ptr(), g_scalar.limbs.as_ptr());
-    }
-    scaled_g
 }
 
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
@@ -318,10 +312,6 @@ prefixed_extern! {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        target_arch = "x86_64"
-    ))]
     #[test]
     fn p256_point_mul_base_vartime_test() {
         use super::{super::tests::point_mul_base_tests, *};
