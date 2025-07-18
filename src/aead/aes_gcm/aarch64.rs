@@ -36,8 +36,7 @@ pub(super) fn seal_whole(
     }
 
     let whole_block_bits = auth.in_out_whole_block_bits();
-    let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
-    if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
+    if let Ok(whole_block_bits) = whole_block_bits.try_into() {
         let (htable, xi) = auth.inner();
         unsafe {
             aes_gcm_enc_kernel(
@@ -75,8 +74,7 @@ pub(super) fn open_whole(
 
     in_out.with_input_output_len(|input, output, _len| {
         let whole_block_bits = auth.in_out_whole_block_bits();
-        let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
-        if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
+        if let Ok(whole_block_bits) = whole_block_bits.try_into() {
             let (htable, xi) = auth.inner();
             unsafe { aes_gcm_dec_kernel(input, whole_block_bits, output, xi, ctr, aes_key, htable) }
         }
