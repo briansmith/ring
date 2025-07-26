@@ -89,7 +89,6 @@ pub(super) mod featureflags {
 struct CpuidSummary {
     leaf1_edx: u32,
     leaf1_ecx: u32,
-    xcr0: u64,
 }
 
 // SAFETY: This unconditionally uses CPUID because we don't have a good
@@ -122,16 +121,9 @@ unsafe fn cpuid_all() -> CpuidSummary {
         leaf1_ecx = 0;
     }
 
-    let xcr0 = if check(leaf1_ecx, 27) {
-        unsafe { arch::_xgetbv(0) }
-    } else {
-        0
-    };
-
     CpuidSummary {
         leaf1_edx,
         leaf1_ecx,
-        xcr0,
     }
 }
 
@@ -139,7 +131,6 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
     let CpuidSummary {
         leaf1_edx,
         leaf1_ecx,
-        xcr0,
     } = r;
 
     fn set(out: &mut u32, shift: Shift) {
@@ -197,16 +188,6 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
     // TODO: Make this conditional on SSE3.
     if check(leaf1_ecx, 9) {
         set(&mut caps, Shift::Ssse3);
-    }
-
-    // AMD: "The extended SSE instructions include [...]."
-
-    // Intel: "14.3 DETECTION OF INTEL AVX INSTRUCTIONS"
-    let os_supports_ymm_xmm = check(xcr0, 2) && check(xcr0, 1);
-    let cpu_supports_avx = check(leaf1_ecx, 28);
-    let avx_available = os_supports_ymm_xmm && cpu_supports_avx;
-    if avx_available {
-        set(&mut caps, Shift::Avx);
     }
 
     // Intel: "12.13.4 Checking for Intel AES-NI Support"
