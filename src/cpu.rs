@@ -190,9 +190,14 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_arch = "arm")] {
         pub mod arm;
         use arm::featureflags;
-    } else if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-        pub mod intel;
-        use intel::featureflags;
+    } else if #[cfg(target_arch = "x86")] {
+        pub mod x86;
+        use x86::featureflags;
+        pub use x86 as intel;
+    } else if #[cfg(target_arch = "x86_64")] {
+        pub mod x86_64;
+        use x86_64::featureflags;
+        pub use x86_64 as intel;
     } else {
         mod featureflags {
             use super::Features;
