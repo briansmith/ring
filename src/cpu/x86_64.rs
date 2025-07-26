@@ -111,35 +111,28 @@ unsafe fn cpuid_all() -> CpuidSummary {
     // see https://github.com/rust-lang/rust/pull/101861.
 
     // Intel: "21.1.1 Notes on Where to Start".
-    let r = unsafe { arch::__cpuid(0) };
+    let leaf0 = unsafe { arch::__cpuid(0) };
 
-    let leaf1_ecx;
+    let is_intel =
+        (leaf0.ebx == 0x756e6547) && (leaf0.edx == 0x49656e69) && (leaf0.ecx == 0x6c65746e);
 
-    let is_intel = (r.ebx == 0x756e6547) && (r.edx == 0x49656e69) && (r.ecx == 0x6c65746e);
-
-    let (extended_features_ecx, extended_features_ebx);
-
-    if r.eax >= 1 {
-        // SAFETY: `r.eax >= 1` indicates leaf 1 is available.
-        let r = unsafe { arch::__cpuid(1) };
-        leaf1_ecx = r.ecx;
-
-        if r.eax >= 7 {
-            // SAFETY: `r.eax >= 7` implies we can execute this.
-            let r = unsafe { arch::__cpuid(7) };
-            extended_features_ecx = r.ecx;
-            extended_features_ebx = r.ebx;
-        } else {
-            extended_features_ecx = 0;
-            extended_features_ebx = 0;
-        }
+    let leaf1_ecx = if leaf0.eax >= 1 {
+        // SAFETY: `leaf0.eax >= 1` indicates leaf 1 is available.
+        let leaf1 = unsafe { arch::__cpuid(1) };
+        leaf1.ecx
     } else {
         // Expected to be unreachable on any environment we currently
         // support.
-        leaf1_ecx = 0;
-        extended_features_ecx = 0;
-        extended_features_ebx = 0;
-    }
+        0
+    };
+
+    let (extended_features_ecx, extended_features_ebx) = if leaf0.eax >= 7 {
+        // SAFETY: `leaf0.eax >= 7` indicates leaf 7 is available.
+        let leaf7 = unsafe { arch::__cpuid(7) };
+        (leaf7.ecx, leaf7.ebx)
+    } else {
+        (0, 0)
+    };
 
     let xcr0 = if check(leaf1_ecx, 27) {
         unsafe { arch::_xgetbv(0) }

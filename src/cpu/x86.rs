@@ -104,22 +104,17 @@ unsafe fn cpuid_all() -> CpuidSummary {
     // see https://github.com/rust-lang/rust/pull/101861.
 
     // Intel: "21.1.1 Notes on Where to Start".
-    let r = unsafe { arch::__cpuid(0) };
+    let leaf0 = unsafe { arch::__cpuid(0) };
 
-    let leaf1_edx;
-    let leaf1_ecx;
-
-    if r.eax >= 1 {
-        // SAFETY: `r.eax >= 1` indicates leaf 1 is available.
-        let r = unsafe { arch::__cpuid(1) };
-        leaf1_edx = r.edx;
-        leaf1_ecx = r.ecx;
+    let (leaf1_edx, leaf1_ecx) = if leaf0.eax >= 1 {
+        // SAFETY: `leaf0.eax >= 1` indicates leaf 1 is available.
+        let leaf1 = unsafe { arch::__cpuid(1) };
+        (leaf1.edx, leaf1.ecx)
     } else {
         // Expected to be unreachable on any environment we currently
         // support.
-        leaf1_edx = 0;
-        leaf1_ecx = 0;
-    }
+        (0, 0)
+    };
 
     CpuidSummary {
         leaf1_edx,
