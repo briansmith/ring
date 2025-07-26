@@ -44,17 +44,12 @@ impl Key {
     pub(in super::super) fn new(
         bytes: KeyBytes<'_>,
         _required_cpu_features: (cpu::intel::Aes, cpu::intel::Ssse3),
-        optional_cpu_features: Option<cpu::intel::Avx>,
+        _optional_cpu_features: Option<()>,
     ) -> Self {
-        prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key_alt };
         prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key_base };
         Self {
-            inner: if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
-                // Ssse3 is required, but upstream only uses this if there is also Avx;
-                // presumably the base version is faster on pre-AVX CPUs.
-                unsafe { AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key_alt) }
-            } else {
-                unsafe { AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key_base) }
+            inner: unsafe {
+                AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key_base)
             },
         }
     }
