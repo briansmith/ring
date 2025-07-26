@@ -44,7 +44,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-cache@v3
+      - uses: briansmith/actions-cache@v4
         with:
           path: |
             ~/.cargo/bin/cargo-audit
@@ -68,7 +68,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-cache@v3
+      - uses: briansmith/actions-cache@v4
         with:
           path: |
             ~/.cargo/bin/cargo-semver-checks
@@ -93,7 +93,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-cache@v3
+      - uses: briansmith/actions-cache@v4
         with:
           path: |
             ~/.cargo/bin/cargo-deny
