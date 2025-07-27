@@ -616,7 +616,7 @@ jobs:
 
         # Coverage collection is Nightly-only
         rust_channel:
-          - nightly
+          - nightly-2025-07-15
 
         # TODO: targets
         include:
