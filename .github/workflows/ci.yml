@@ -652,6 +652,13 @@ jobs:
             rust_channel: nightly
             host_os: ubuntu-24.04
 
+          - target: i586-unknown-linux-gnu
+            cpu_model: pentium-v3
+            features: --features=std
+            mode: # debug
+            rust_channel: nightly
+            host_os: ubuntu-24.04
+
           # TODO: Use the -musl target after
           # https://github.com/rust-lang/rust/issues/79556 and
           # https://github.com/rust-lang/rust/issues/79555 are fixed.
