@@ -812,7 +812,7 @@ jobs:
         run: |
           RING_CPU_MODEL=${{ matrix.cpu_model }} RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
 
-      - uses: briansmith/codecov-codecov-action@v5
+      - uses: briansmith/codecov-codecov-action@v4
         with:
           directory: ./target/${{ matrix.target }}/debug/coverage/reports
           fail_ci_if_error: true
