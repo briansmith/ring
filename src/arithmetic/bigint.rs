@@ -533,15 +533,9 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                 i: Window5,
             ) -> bssl::Result;
         }
-        Result::from(unsafe {
-            LIMBS_select_512_32(
-                acc.limbs.as_mut().as_mut_ptr(),
-                table.as_ptr(),
-                acc.limbs.len(),
-                i,
-            )
-        })
-        .unwrap();
+        let acc_len = acc.limbs.len();
+        let acc = acc.limbs.as_mut().as_mut_ptr();
+        Result::from(unsafe { LIMBS_select_512_32(acc, table.as_ptr(), acc_len, i) }).unwrap();
     }
 
     fn power<M>(
