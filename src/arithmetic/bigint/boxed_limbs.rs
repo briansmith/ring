@@ -18,10 +18,7 @@ use crate::{
     limb::{self, Limb},
 };
 use alloc::{boxed::Box, vec};
-use core::{
-    marker::PhantomData,
-    ops::{Deref, DerefMut},
-};
+use core::marker::PhantomData;
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
 pub(super) struct BoxedLimbs<M> {
@@ -29,21 +26,6 @@ pub(super) struct BoxedLimbs<M> {
 
     /// The modulus *m* that determines the size of `limbx`.
     m: PhantomData<M>,
-}
-
-impl<M> Deref for BoxedLimbs<M> {
-    type Target = [Limb];
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.limbs
-    }
-}
-
-impl<M> DerefMut for BoxedLimbs<M> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.limbs
-    }
 }
 
 // TODO: `derive(Clone)` after https://github.com/rust-lang/rust/issues/26925
@@ -63,8 +45,8 @@ impl<M> BoxedLimbs<M> {
         m: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
         let mut r = Self::zero(m.limbs().len());
-        limb::parse_big_endian_and_pad_consttime(input, &mut r)?;
-        limb::verify_limbs_less_than_limbs_leak_bit(&r, m.limbs())?;
+        limb::parse_big_endian_and_pad_consttime(input, r.as_mut())?;
+        limb::verify_limbs_less_than_limbs_leak_bit(r.as_ref(), m.limbs())?;
         Ok(r)
     }
 
@@ -75,7 +57,22 @@ impl<M> BoxedLimbs<M> {
         }
     }
 
+    #[inline(always)]
+    pub(super) fn as_ref(&self) -> &[Limb] {
+        self.limbs.as_ref()
+    }
+
+    #[inline(always)]
+    pub(super) fn as_mut(&mut self) -> &mut [Limb] {
+        self.limbs.as_mut()
+    }
+
     pub(super) fn into_limbs(self) -> Box<[Limb]> {
         self.limbs
+    }
+
+    #[inline(always)]
+    pub(super) fn len(&self) -> usize {
+        self.limbs.len()
     }
 }

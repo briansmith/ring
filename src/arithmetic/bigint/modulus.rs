@@ -106,7 +106,7 @@ impl<M> OwnedModulus<M> {
     pub fn to_elem<L>(&self, l: &Modulus<L>) -> Result<Elem<L, Unencoded>, error::Unspecified> {
         self.inner.verify_less_than(l)?;
         let mut limbs = BoxedLimbs::zero(l.limbs().len());
-        limbs[..self.inner.limbs().len()].copy_from_slice(self.inner.limbs());
+        limbs.as_mut()[..self.inner.limbs().len()].copy_from_slice(self.inner.limbs());
         Ok(Elem {
             limbs,
             encoding: PhantomData,

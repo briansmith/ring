@@ -38,8 +38,8 @@ impl PrivateExponent {
         // `p - 1` and so we know `dP < p - 1`.
         //
         // Further we know `dP != 0` because `dP` is not even.
-        limb::limbs_reject_even_leak_bit(&dP)?;
-        dP.reverse();
+        limb::limbs_reject_even_leak_bit(dP.as_ref())?;
+        dP.as_mut().reverse();
 
         Ok(Self {
             limbs: dP.into_limbs(),
@@ -62,9 +62,9 @@ impl PrivateExponent {
 
         let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
         let mut limbs = BoxedLimbs::<M>::zero(num_limbs);
-        limb::parse_big_endian_and_pad_consttime(input, &mut limbs)
+        limb::parse_big_endian_and_pad_consttime(input, limbs.as_mut())
             .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-        limbs.reverse();
+        limbs.as_mut().reverse();
         Ok(Self {
             limbs: limbs.into_limbs(),
         })
