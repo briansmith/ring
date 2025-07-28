@@ -91,8 +91,6 @@ impl<T> Overlapping<'_, T> {
     pub fn with_input_output_len<R>(self, f: impl FnOnce(*const T, *mut T, usize) -> R) -> R {
         let len = self.len();
         let output = self.in_out.as_mut_ptr();
-        // TODO: MSRV(1.65): use `output.cast_const()`
-        let output_const: *const T = output;
         // SAFETY: The constructor ensures that `src` is a valid range.
         // Equivalent to `self.in_out[src.clone()].as_ptr()` but without
         // worries about compatibility with the stacked borrows model.
@@ -100,9 +98,9 @@ impl<T> Overlapping<'_, T> {
         // https://github.com/rust-lang/rust/pull/117329
         // https://github.com/rust-lang/rustc_codegen_gcc/issues/516
         let input = if self.src.start == 0 {
-            output_const
+            output.cast_const()
         } else {
-            unsafe { output_const.add(self.src.start) }
+            unsafe { output.cast_const().add(self.src.start) }
         };
         f(input, output, len)
     }
