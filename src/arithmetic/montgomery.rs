@@ -262,16 +262,12 @@ pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Li
             n0: &N0,
         ) -> bssl::Result;
     }
+    let r_len = r.len();
+    let r = r.as_mut_ptr();
+    let tmp_len = tmp.len();
+    let tmp = tmp.as_mut_ptr();
     Result::from(unsafe {
-        bn_from_montgomery_in_place(
-            r.as_mut_ptr(),
-            r.len(),
-            tmp.as_mut_ptr(),
-            tmp.len(),
-            m.as_ptr(),
-            m.len(),
-            n0,
-        )
+        bn_from_montgomery_in_place(r, r_len, tmp, tmp_len, m.as_ptr(), m.len(), n0)
     })
     .unwrap()
 }

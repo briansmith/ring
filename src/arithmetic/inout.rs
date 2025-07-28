@@ -69,7 +69,8 @@ impl<T> AliasingSlices2<T> for &mut [T] {
         if r.len() != expected_len {
             return Err(LenMismatchError::new(r.len()));
         }
-        Ok(f(r.as_mut_ptr(), r.as_ptr()))
+        let r = r.as_mut_ptr();
+        Ok(f(r, r.cast_const()))
     }
 }
 
