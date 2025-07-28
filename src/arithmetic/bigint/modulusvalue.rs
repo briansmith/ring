@@ -83,9 +83,9 @@ impl<M> OwnedModulusValue<M> {
         // M >= 3 as required.
 
         let mut limbs = BoxedLimbs::zero(num_limbs);
-        limb::parse_big_endian_and_pad_consttime(input, &mut limbs)
+        limb::parse_big_endian_and_pad_consttime(input, limbs.as_mut())
             .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-        limb::limbs_reject_even_leak_bit(&limbs)
+        limb::limbs_reject_even_leak_bit(limbs.as_ref())
             .map_err(|_: error::Unspecified| error::KeyRejected::invalid_component())?;
 
         Ok(Self { limbs, len_bits })
@@ -96,7 +96,7 @@ impl<M> OwnedModulusValue<M> {
             return Err(error::Unspecified);
         }
         if self.limbs.len() == l.limbs().len() {
-            limb::verify_limbs_less_than_limbs_leak_bit(&self.limbs, l.limbs())?;
+            limb::verify_limbs_less_than_limbs_leak_bit(self.limbs.as_ref(), l.limbs())?;
         }
         Ok(())
     }
@@ -107,6 +107,6 @@ impl<M> OwnedModulusValue<M> {
 
     #[inline]
     pub(super) fn limbs(&self) -> &[Limb] {
-        &self.limbs
+        self.limbs.as_ref()
     }
 }
