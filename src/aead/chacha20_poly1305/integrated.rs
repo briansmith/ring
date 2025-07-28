@@ -99,9 +99,8 @@ pub(super) fn seal(
 
     // Encrypts `plaintext_len` bytes from `plaintext` and writes them to `out_ciphertext`.
 
-    let output = in_out.as_mut_ptr();
-    let input = in_out.as_ptr();
     let len = in_out.len();
+    let in_out = in_out.as_mut_ptr();
     let ad = aad.as_ref().as_ptr();
     let ad_len = aad.as_ref().len();
 
@@ -114,7 +113,7 @@ pub(super) fn seal(
             let _: Neon = required_cpu_features;
             let _: Option<()> = optional_cpu_features;
             tag = unsafe {
-                chacha20_poly1305_seal(output, input, len, ad, ad_len, &mut data);
+                chacha20_poly1305_seal(in_out, in_out.cast_const(), len, ad, ad_len, &mut data);
                 &data.out.tag
             };
         } else {
@@ -122,13 +121,13 @@ pub(super) fn seal(
             if matches!(optional_cpu_features, Some((Avx2 { .. }, Bmi2 { .. }))) {
                 declare_seal! { chacha20_poly1305_seal_avx2 }
                 tag = unsafe {
-                    chacha20_poly1305_seal_avx2(output, input, len, ad, ad_len, &mut data);
+                    chacha20_poly1305_seal_avx2(in_out, in_out.cast_const(), len, ad, ad_len, &mut data);
                     &data.out.tag
                 };
             } else {
                 declare_seal! { chacha20_poly1305_seal_sse41 }
                 tag = unsafe {
-                    chacha20_poly1305_seal_sse41(output, input, len, ad, ad_len, &mut data);
+                    chacha20_poly1305_seal_sse41(in_out, in_out.cast_const(), len, ad, ad_len, &mut data);
                     &data.out.tag
                 };
             }

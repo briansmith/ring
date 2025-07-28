@@ -60,11 +60,13 @@ pub(super) fn seal(
             });
         debug_assert!(integrated.len() >= 3 * STRIDE_LEN);
         let (htable, xi) = auth.inner();
+        let integrated_len = integrated.len();
+        let integrated = integrated.as_mut_ptr();
         unsafe {
             aesni_gcm_encrypt(
-                integrated.as_ptr(),
-                integrated.as_mut_ptr(),
-                integrated.len(),
+                integrated.cast_const(),
+                integrated,
+                integrated_len,
                 aes_key,
                 &mut ctr,
                 htable,
