@@ -39,11 +39,12 @@ pub(super) fn seal_whole(
     let whole_block_bits_u64: BitLength<u64> = whole_block_bits.into();
     if let Ok(whole_block_bits) = whole_block_bits_u64.try_into() {
         let (htable, xi) = auth.inner();
+        let in_out = in_out.as_mut_ptr();
         unsafe {
             aes_gcm_enc_kernel(
-                in_out.as_ptr(),
+                in_out.cast_const(),
                 whole_block_bits,
-                in_out.as_mut_ptr(),
+                in_out,
                 xi,
                 ctr,
                 aes_key,

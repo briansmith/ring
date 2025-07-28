@@ -43,10 +43,11 @@ pub(super) fn seal_whole_vaes_clmul_avx2(
 
     if let Some(blocks) = NonZeroU32::new(blocks) {
         let (htable, xi) = auth.inner();
-        let input = in_out.as_ptr();
-        let output = in_out.as_mut_ptr();
         let len = in_out.len();
-        unsafe { aes_gcm_enc_update_vaes_avx2(input, output, len, aes_key, ctr, htable, xi) };
+        let in_out = in_out.as_mut_ptr();
+        unsafe {
+            aes_gcm_enc_update_vaes_avx2(in_out.cast_const(), in_out, len, aes_key, ctr, htable, xi)
+        };
         ctr.increment_by_less_safe(blocks);
     }
 }
