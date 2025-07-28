@@ -211,7 +211,10 @@ fn p256_scalar_inv_to_mont(a: Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
     // Sets `acc` = (`acc` squared `squarings` times) * `b`.
     fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: LeakyWord, b: &Scalar<R>) {
         debug_assert!(squarings >= 1);
-        unsafe { p256_scalar_sqr_rep_mont(acc.limbs.as_mut_ptr(), acc.limbs.as_ptr(), squarings) }
+        {
+            let acc = acc.limbs.as_mut_ptr();
+            unsafe { p256_scalar_sqr_rep_mont(acc, acc.cast_const(), squarings) }
+        }
         binary_op_assign(p256_scalar_mul_mont, acc, b);
     }
 

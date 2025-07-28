@@ -131,10 +131,11 @@ pub fn binary_op<M, EA: Encoding, EB: Encoding, ER: Encoding>(
 #[inline]
 pub fn binary_op_assign<M, EA: Encoding, EB: Encoding>(
     f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
-    a: &mut Elem<M, EA>,
+    ra: &mut Elem<M, EA>,
     b: &Elem<M, EB>,
 ) {
-    unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr()) }
+    let ra = ra.limbs.as_mut_ptr();
+    unsafe { f(ra, ra.cast_const(), b.limbs.as_ptr()) }
 }
 
 // let r = f(a); return r;
@@ -152,16 +153,18 @@ pub fn unary_op<M, E: Encoding>(
 #[inline]
 pub fn unary_op_assign<M, E: Encoding>(
     f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
-    a: &mut Elem<M, E>,
+    ra: &mut Elem<M, E>,
 ) {
-    unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr()) }
+    let ra = ra.limbs.as_mut_ptr();
+    unsafe { f(ra, ra.cast_const()) }
 }
 
 // a := f(a, a);
 #[inline]
 pub fn unary_op_from_binary_op_assign<M, E: Encoding>(
     f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
-    a: &mut Elem<M, E>,
+    rab: &mut Elem<M, E>,
 ) {
-    unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr(), a.limbs.as_ptr()) }
+    let rab = rab.limbs.as_mut_ptr();
+    unsafe { f(rab, rab.cast_const(), rab.cast_const()) }
 }
