@@ -56,8 +56,6 @@ mod cold_error;
 mod array_flat_map;
 mod array_split_map;
 
-pub mod cstr;
-
 pub mod partial_buffer;
 pub mod sliceutil;
 
