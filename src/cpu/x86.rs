@@ -39,22 +39,19 @@ mod abi_assumptions {
 
 pub(super) mod featureflags {
     use super::{super::CAPS_STATIC, *};
-    use crate::{
-        cpu,
-        polyfill::{once_cell::race, usize_from_u32},
-    };
-    use core::num::NonZeroUsize;
+    use crate::{cpu, polyfill::once_cell::race};
+    use core::num::NonZeroU32;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
-        let _: NonZeroUsize = FEATURES.get_or_init(|| {
+        let _: NonZeroU32 = FEATURES.get_or_init(|| {
             // SAFETY: `cpuid_all` assumes CPUID is available and that it is
             // compatible with Intel.
             let cpuid_results = unsafe { cpuid_all() };
             let detected = cpuid_to_caps_and_set_c_flags(cpuid_results);
             let merged = CAPS_STATIC | detected;
 
-            let merged = usize_from_u32(merged) | (1 << (Shift::Initialized as u32));
-            NonZeroUsize::new(merged).unwrap() // Can't fail because we just set a bit.
+            let merged = merged | (1 << (Shift::Initialized as u32));
+            NonZeroU32::new(merged).unwrap() // Can't fail because we just set a bit.
         });
 
         // SAFETY: We initialized the CPU features as required.
@@ -68,15 +65,10 @@ pub(super) mod featureflags {
         // we know we are reading from `FEATURES` after initializing it.
         // The `get_or_init()` also did the synchronization.
         let features = unsafe { FEATURES.get_unchecked() };
-
-        // The truncation is lossless, as we set the value with a u32.
-        #[allow(clippy::cast_possible_truncation)]
-        let features = features.get() as u32;
-
-        features
+        features.get()
     }
 
-    static FEATURES: race::OnceNonZeroUsize<race::AcquireRelease> = race::OnceNonZeroUsize::new();
+    static FEATURES: race::OnceNonZeroU32<race::AcquireRelease> = race::OnceNonZeroU32::new();
 
     #[rustfmt::skip]
     pub const STATIC_DETECTED: u32 = 0
