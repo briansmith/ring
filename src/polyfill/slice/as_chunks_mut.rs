@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::AsChunks;
 
 #[inline(always)]
@@ -37,12 +40,12 @@ impl<'a, T, const N: usize> AsChunksMut<'a, T, N> {
 
     #[cfg(target_arch = "x86_64")]
     pub fn as_ptr(&self) -> *const [T; N] {
-        self.0.as_ptr().cast()
+        self.0.as_ptr().cast_array::<N>()
     }
 
     #[cfg(target_arch = "aarch64")]
     pub fn as_mut_ptr(&mut self) -> *mut [T; N] {
-        self.0.as_mut_ptr().cast()
+        self.0.as_mut_ptr().cast_array::<N>()
     }
 
     #[cfg(target_arch = "x86_64")]

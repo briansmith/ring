@@ -72,6 +72,10 @@ pub mod once_cell {
     pub mod race;
 }
 
+pub mod prelude {
+    pub use super::ptr::PointerPolyfills;
+}
+
 mod notsend;
 pub mod ptr;
 

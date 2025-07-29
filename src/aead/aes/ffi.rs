@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{KeyBytes, Overlapping, BLOCK_LEN};
 use crate::{bits::BitLength, c};
 use core::{
@@ -138,8 +141,8 @@ impl AES_KEY {
                 return;
             };
 
-            let input: *const [u8; BLOCK_LEN] = input.cast();
-            let output: *mut [u8; BLOCK_LEN] = output.cast();
+            let input = input.cast_array::<BLOCK_LEN>();
+            let output = output.cast_array::<BLOCK_LEN>();
             let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
 
             // SAFETY:

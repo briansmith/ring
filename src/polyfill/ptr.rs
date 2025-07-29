@@ -12,6 +12,32 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+// TODO(MSRV feature(ptr_cast_array)): Use `p.cast_array::<N>()`.
+#[allow(dead_code)]
+pub trait PointerPolyfills<T> {
+    type ArrayPointer<const N: usize>;
+
+    fn cast_array<const N: usize>(self) -> Self::ArrayPointer<N>;
+}
+
+impl<T> PointerPolyfills<T> for *const T {
+    type ArrayPointer<const N: usize> = *const [T; N];
+
+    #[inline(always)]
+    fn cast_array<const N: usize>(self) -> Self::ArrayPointer<N> {
+        self.cast::<[T; N]>()
+    }
+}
+
+impl<T> PointerPolyfills<T> for *mut T {
+    type ArrayPointer<const N: usize> = *mut [T; N];
+
+    #[inline(always)]
+    fn cast_array<const N: usize>(self) -> Self::ArrayPointer<N> {
+        self.cast::<[T; N]>()
+    }
+}
+
 // TODO(MSRV 1.76): Replace with `core::ptr::from_mut`.
 #[allow(dead_code)]
 #[inline(always)]
