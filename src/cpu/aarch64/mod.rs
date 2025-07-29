@@ -92,8 +92,7 @@ pub(super) mod featureflags {
             });
             let detected = detected & !filtered;
             let merged = CAPS_STATIC | detected;
-            let merged = merged | (1 << (Shift::Initialized as u32));
-            NonZeroU32::new(merged).unwrap() // Can't fail because we just set a bit.
+            Shift::INITIALIZED_MASK | merged
         }
 
         // SAFETY: This is the only caller. Any concurrent reading doesn't
