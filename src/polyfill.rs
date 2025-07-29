@@ -56,6 +56,8 @@ mod cold_error;
 mod array_flat_map;
 mod array_split_map;
 
+mod atomic;
+
 pub mod partial_buffer;
 pub mod sliceutil;
 
@@ -73,7 +75,7 @@ pub mod once_cell {
 }
 
 pub mod prelude {
-    pub use super::ptr::PointerPolyfills;
+    pub use super::{atomic::AtomicPolyfills, ptr::PointerPolyfills};
 }
 
 mod notsend;
