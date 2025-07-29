@@ -44,17 +44,17 @@ pub struct Key {
 
 impl Key {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-    pub(in super::super) fn new(
-        bytes: KeyBytes<'_>,
-        _required_cpu_features: cpu::aarch64::Aes,
-        _optional_cpu_features: Option<()>,
-    ) -> Self {
+    pub(in super::super) fn new(bytes: KeyBytes<'_>, cpu: cpu::aarch64::Aes) -> Self {
         match bytes {
             KeyBytes::AES_128(user_key) => Self::Aes128(unsafe {
-                ffi::new_using_set_encrypt_key(user_key, Self::set_encrypt_key_128)
+                ffi::new_using_set_encrypt_key(user_key, |user_key, key| {
+                    Self::set_encrypt_key_128(user_key, key, cpu)
+                })
             }),
             KeyBytes::AES_256(user_key) => Self::Aes256(unsafe {
-                ffi::new_using_set_encrypt_key(user_key, Self::set_encrypt_key_256)
+                ffi::new_using_set_encrypt_key(user_key, |user_key, key| {
+                    Self::set_encrypt_key_256(user_key, key, cpu)
+                })
             }),
         }
     }
@@ -73,6 +73,7 @@ impl Key {
     unsafe fn set_encrypt_key_128(
         user_key: &[u8; AES_128_KEY_LEN],
         key: *mut ffi::Aes128RoundKeys,
+        _cpu: cpu::aarch64::Aes,
     ) {
         prefixed_extern! {
             fn aes_hw_set_encrypt_key_128(
@@ -85,6 +86,7 @@ impl Key {
     unsafe fn set_encrypt_key_256(
         user_key: &[u8; AES_256_KEY_LEN],
         key: *mut ffi::Aes256RoundKeys,
+        _cpu: cpu::aarch64::Aes,
     ) {
         prefixed_extern! {
             fn aes_hw_set_encrypt_key_256(

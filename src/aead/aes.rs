@@ -57,11 +57,12 @@ pub(super) enum Key {
 impl Key {
     #[inline]
     pub fn new(bytes: KeyBytes<'_>, cpu_features: cpu::Features) -> Self {
-        #[cfg(any(
-            all(target_arch = "aarch64", target_endian = "little"),
-            target_arch = "x86",
-            target_arch = "x86_64"
-        ))]
+        #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+        if let Some(hw_features) = cpu_features.get_feature() {
+            return Self::Hw(hw::Key::new(bytes, hw_features));
+        }
+
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         if let Some(hw_features) = cpu_features.get_feature() {
             return Self::Hw(hw::Key::new(bytes, hw_features, cpu_features.get_feature()));
         }
