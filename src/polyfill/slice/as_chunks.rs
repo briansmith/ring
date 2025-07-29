@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::AsChunksMut;
 use core::ops;
 
@@ -39,7 +42,7 @@ impl<'a, T, const N: usize> AsChunks<'a, T, N> {
 
     #[inline(always)]
     pub fn as_ptr(&self) -> *const [T; N] {
-        self.0.as_ptr().cast()
+        self.0.as_ptr().cast_array::<N>()
     }
 
     #[inline(always)]
