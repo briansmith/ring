@@ -61,7 +61,7 @@ pub(super) unsafe fn new_using_set_encrypt_key<
     const ROUNDS_PLUS_1: usize,
 >(
     user_key: &[u8; USER_KEY_LEN],
-    set_encrypt_key: unsafe fn(
+    set_encrypt_key: impl FnOnce(
         /*user_key:*/ &[u8; USER_KEY_LEN],
         /*rd_keys:*/ *mut [RdKey; ROUNDS_PLUS_1],
     ),

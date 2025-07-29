@@ -104,7 +104,7 @@ impl DynKey {
 
         #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
         if let (Some(aes), Some(gcm)) = (cpu.get_feature(), cpu.get_feature()) {
-            let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature());
+            let aes_key = aes::hw::Key::new(key, aes);
             let gcm_key_value = derive_gcm_key_value(&aes_key);
             let gcm_key = gcm::clmul_aarch64::Key::new(gcm_key_value, gcm);
             return Self::AesHwClMul(Combo { aes_key, gcm_key });
