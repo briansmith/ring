@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Aes, Neon, PMull, Sha256, Sha512, CAPS_STATIC};
-use crate::polyfill::cstr;
+use core::ffi::CStr;
 
 // ```
 // $ rustc +1.61.0 --print cfg --target=aarch64-apple-ios | grep -E "neon|aes|sha|pmull"
@@ -51,7 +51,7 @@ const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () =
     assert!(CAPS_STATIC == MIN_STATIC_FEATURES);
 
 pub fn detect_features() -> u32 {
-    fn detect_feature(name: cstr::Ref) -> bool {
+    fn detect_feature(name: &CStr) -> bool {
         use crate::polyfill;
         use core::mem::size_of_val;
         use libc::{c_int, c_void};
@@ -79,9 +79,11 @@ pub fn detect_features() -> u32 {
 
     let mut features = 0;
 
-    // TODO(MSRV 1.77): Use c"..." literal.
-    const SHA512_NAME: cstr::Ref =
-        cstr::unwrap_const_from_bytes_with_nul(b"hw.optional.armv8_2_sha512\0");
+    // TODO(MSRV-1.77): Use c"..." literal.
+    // TODO(MSRV-1.72): Use `CStr::from_bytes_with_nul`.
+    // TODO(MSRV-1.69): Use `CStr::from_bytes_until_nul`.
+    const SHA512_NAME: &CStr =
+        unsafe { CStr::from_bytes_with_nul_unchecked(b"hw.optional.armv8_2_sha512\0") };
     if detect_feature(SHA512_NAME) {
         features |= Sha512::mask();
     }
