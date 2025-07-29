@@ -75,14 +75,11 @@ impl_get_feature! {
 pub(super) mod featureflags {
     pub(in super::super) use super::detect::FORCE_DYNAMIC_DETECTION;
     use super::*;
-    use crate::{
-        cpu,
-        polyfill::{once_cell::race, usize_from_u32},
-    };
-    use core::num::NonZeroUsize;
+    use crate::{cpu, polyfill::once_cell::race};
+    use core::num::NonZeroU32;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
-        fn init() -> NonZeroUsize {
+        fn init() -> NonZeroU32 {
             let detected = detect::detect_features();
             let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
                 !Neon::mask()
@@ -95,13 +92,13 @@ pub(super) mod featureflags {
             });
             let detected = detected & !filtered;
             let merged = CAPS_STATIC | detected;
-            let merged = usize_from_u32(merged) | (1 << (Shift::Initialized as u32));
-            NonZeroUsize::new(merged).unwrap() // Can't fail because we just set a bit.
+            let merged = merged | (1 << (Shift::Initialized as u32));
+            NonZeroU32::new(merged).unwrap() // Can't fail because we just set a bit.
         }
 
         // SAFETY: This is the only caller. Any concurrent reading doesn't
         // affect the safety of the writing.
-        let _: NonZeroUsize = FEATURES.get_or_init(init);
+        let _: NonZeroU32 = FEATURES.get_or_init(init);
 
         // SAFETY: We initialized the CPU features as required.
         unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }
@@ -113,17 +110,12 @@ pub(super) mod featureflags {
         // we know we are reading from `FEATURES` after initializing it.
         // The `get_or_init()` also did the synchronization.
         let features = unsafe { FEATURES.get_unchecked() };
-
-        // The truncation is lossless, as we set the value with a u32.
-        #[allow(clippy::cast_possible_truncation)]
-        let features = features.get() as u32;
-
-        features
+        features.get()
     }
 
     // On AArch64, we store all feature flags in `FEATURES`, so we dnn't need
     // Acquire/Release semantics.
-    static FEATURES: race::OnceNonZeroUsize<race::Relaxed> = race::OnceNonZeroUsize::new();
+    static FEATURES: race::OnceNonZeroU32<race::Relaxed> = race::OnceNonZeroU32::new();
 
     // TODO(MSRV): There is no "pmull" feature listed from
     // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied

@@ -27,13 +27,18 @@
 // on another thread) using `Ordering::Release`, so we must use
 // `Ordering::Acquire` to ensure that store "happens-before" this load.
 
+// We always use 32-bit values so that there is no difference in behavior
+// for targets with different `target_pointer_width`, e.g. ARM64_32 vs. ILP64.
+
+#![cfg(target_has_atomic = "32")]
+
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
 use cfg_if::cfg_if;
 use core::marker::PhantomData;
-use core::num::NonZeroUsize;
-use core::sync::atomic::{self, AtomicUsize};
+use core::num::NonZeroU32;
+use core::sync::atomic::{self, AtomicU32};
 
 pub trait Ordering {
     const ACQUIRE: atomic::Ordering;
@@ -66,26 +71,26 @@ cfg_if! {
 }
 
 /// A thread-safe cell which can be written to only once.
-pub struct OnceNonZeroUsize<O> {
-    inner: AtomicUsize,
+pub struct OnceNonZeroU32<O> {
+    inner: AtomicU32,
     ordering: PhantomData<O>,
 }
 
-impl<O: Ordering> OnceNonZeroUsize<O> {
+impl<O: Ordering> OnceNonZeroU32<O> {
     /// Creates a new empty cell.
     #[inline]
     pub const fn new() -> Self {
         Self {
-            inner: AtomicUsize::new(0),
+            inner: AtomicU32::new(0),
             ordering: PhantomData,
         }
     }
 
     /// Gets the underlying value.
     #[inline]
-    pub fn get(&self) -> Option<NonZeroUsize> {
+    pub fn get(&self) -> Option<NonZeroU32> {
         let val = self.inner.load(O::ACQUIRE);
-        NonZeroUsize::new(val)
+        NonZeroU32::new(val)
     }
 
     /// Get the reference to the underlying value, without checking if the cell
@@ -95,7 +100,7 @@ impl<O: Ordering> OnceNonZeroUsize<O> {
     ///
     /// Caller must ensure that the cell is in initialized state, and that
     /// the contents are acquired by (synchronized to) this thread.
-    pub unsafe fn get_unchecked(&self) -> NonZeroUsize {
+    pub unsafe fn get_unchecked(&self) -> NonZeroU32 {
         // SAFETY: The caller is responsible for ensuring that the value
         // was initialized and that the contents have been acquired by
         // this thread. Assuming that, we can assume there will be no
@@ -106,13 +111,13 @@ impl<O: Ordering> OnceNonZeroUsize<O> {
         // succeed is not considered a write." See
         // https://github.com/rust-lang/rust/issues/138246.
         let val = {
-            let p: *const usize = self.inner.as_ptr().cast_const();
+            let p: *const u32 = self.inner.as_ptr().cast_const();
             unsafe { p.read() }
         };
 
         // SAFETY: The caller is responsible for ensuring the value is
         // initialized and thus not zero.
-        unsafe { NonZeroUsize::new_unchecked(val) }
+        unsafe { NonZeroU32::new_unchecked(val) }
     }
 
     /// Gets the contents of the cell, initializing it with `f` if the cell was
@@ -121,9 +126,9 @@ impl<O: Ordering> OnceNonZeroUsize<O> {
     /// If several threads concurrently run `get_or_init`, more than one `f` can
     /// be called. However, all threads will return the same value, produced by
     /// some `f`.
-    pub fn get_or_init<F>(&self, f: F) -> NonZeroUsize
+    pub fn get_or_init<F>(&self, f: F) -> NonZeroU32
     where
-        F: FnOnce() -> NonZeroUsize,
+        F: FnOnce() -> NonZeroU32,
     {
         match self.get() {
             Some(it) => it,
@@ -133,17 +138,17 @@ impl<O: Ordering> OnceNonZeroUsize<O> {
 
     #[cold]
     #[inline(never)]
-    fn init(&self, f: impl FnOnce() -> NonZeroUsize) -> NonZeroUsize {
+    fn init(&self, f: impl FnOnce() -> NonZeroU32) -> NonZeroU32 {
         let nz = f();
         let mut val = nz.get();
         if let Err(old) = self.compare_exchange(nz) {
             val = old;
         }
-        unsafe { NonZeroUsize::new_unchecked(val) }
+        unsafe { NonZeroU32::new_unchecked(val) }
     }
 
     #[inline(always)]
-    fn compare_exchange(&self, val: NonZeroUsize) -> Result<usize, usize> {
+    fn compare_exchange(&self, val: NonZeroU32) -> Result<u32, u32> {
         self.inner
             .compare_exchange(0, val.get(), O::RELEASE, O::ACQUIRE)
     }

@@ -39,22 +39,19 @@ mod abi_assumptions {
 
 pub(super) mod featureflags {
     use super::{super::CAPS_STATIC, *};
-    use crate::{
-        cpu,
-        polyfill::{once_cell::race, usize_from_u32},
-    };
-    use core::num::NonZeroUsize;
+    use crate::{cpu, polyfill::once_cell::race};
+    use core::num::NonZeroU32;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
-        let _: NonZeroUsize = FEATURES.get_or_init(|| {
+        let _: NonZeroU32 = FEATURES.get_or_init(|| {
             // SAFETY: `cpuid_all` assumes CPUID is available and that it is
             // compatible with Intel.
             let cpuid_results = unsafe { cpuid_all() };
             let detected = cpuid_to_caps_and_set_c_flags(cpuid_results);
             let merged = CAPS_STATIC | detected;
 
-            let merged = usize_from_u32(merged) | (1 << (Shift::Initialized as u32));
-            NonZeroUsize::new(merged).unwrap() // Can't fail because we just set a bit.
+            let merged = merged | (1 << (Shift::Initialized as u32));
+            NonZeroU32::new(merged).unwrap() // Can't fail because we just set a bit.
         });
 
         // SAFETY: We initialized the CPU features as required.
@@ -68,15 +65,10 @@ pub(super) mod featureflags {
         // we know we are reading from `FEATURES` after initializing it.
         // The `get_or_init()` also did the synchronization.
         let features = unsafe { FEATURES.get_unchecked() };
-
-        // The truncation is lossless, as we set the value with a u32.
-        #[allow(clippy::cast_possible_truncation)]
-        let features = features.get() as u32;
-
-        features
+        features.get()
     }
 
-    static FEATURES: race::OnceNonZeroUsize<race::AcquireRelease> = race::OnceNonZeroUsize::new();
+    static FEATURES: race::OnceNonZeroU32<race::AcquireRelease> = race::OnceNonZeroU32::new();
 
     // Limited to x86_64-v2 features.
     // TODO: Add missing x86-64-v3 features if we find real-world use of x86-64-v3.
@@ -223,7 +215,7 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
             static avx2_available: AtomicU32;
         }
         // SAFETY: The C code only reads `avx2_available`, and its reads are
-        // synchronized through the `OnceNonZeroUsize` Acquire/Release
+        // synchronized through the `OnceNonZeroU32` Acquire/Release
         // semantics as we ensure we have a `cpu::Features` instance before
         // calling into the C code.
         let flag = unsafe { &avx2_available };
@@ -317,7 +309,7 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
             static adx_bmi2_available: AtomicU32;
         }
         // SAFETY: The C code only reads `adx_bmi2_available`, and its
-        // reads are synchronized through the `OnceNonZeroUsize`
+        // reads are synchronized through the `OnceNonZeroU32`
         // Acquire/Release semantics as we ensure we have a
         // `cpu::Features` instance before calling into the C code.
         let flag = unsafe { &adx_bmi2_available };

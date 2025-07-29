@@ -1,4 +1,4 @@
-use core::{mem::align_of, sync::atomic::AtomicUsize};
+use core::{mem::align_of, sync::atomic::AtomicU32};
 
 pub trait AtomicPolyfills {
     type NonAtomic: Sized + Copy;
@@ -7,8 +7,8 @@ pub trait AtomicPolyfills {
     fn as_ptr(&self) -> *mut Self::NonAtomic;
 }
 
-impl AtomicPolyfills for AtomicUsize {
-    type NonAtomic = usize;
+impl AtomicPolyfills for AtomicU32 {
+    type NonAtomic = u32;
 
     #[inline(always)]
     fn as_ptr(&self) -> *mut Self::NonAtomic {
@@ -16,8 +16,7 @@ impl AtomicPolyfills for AtomicUsize {
         // the underlying integer type, usize. However, the alignment of
         // this type is always equal to its size, even on targets where
         // usize has a lesser alignment."
-        const _ALIGNMENT_COMPATIBLE: () =
-            assert!(align_of::<AtomicUsize>() % align_of::<usize>() == 0);
-        super::ptr::from_ref(self).cast_mut().cast::<usize>()
+        const _ALIGNMENT_COMPATIBLE: () = assert!(align_of::<AtomicU32>() % align_of::<u32>() == 0);
+        super::ptr::from_ref(self).cast_mut().cast::<u32>()
     }
 }
