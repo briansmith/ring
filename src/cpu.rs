@@ -65,6 +65,12 @@ macro_rules! impl_get_feature {
             // Keep this at the end as it is never checked except during init.
             Initialized,
         }
+
+        impl Shift {
+            const INITIALIZED_MASK: core::num::NonZeroU32 =
+                $crate::polyfill::unwrap_const(
+                    core::num::NonZeroU32::new(1 << (Self::Initialized as u32)));
+        }
     }
 }
 

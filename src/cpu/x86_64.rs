@@ -49,9 +49,7 @@ pub(super) mod featureflags {
             let cpuid_results = unsafe { cpuid_all() };
             let detected = cpuid_to_caps_and_set_c_flags(cpuid_results);
             let merged = CAPS_STATIC | detected;
-
-            let merged = merged | (1 << (Shift::Initialized as u32));
-            NonZeroU32::new(merged).unwrap() // Can't fail because we just set a bit.
+            Shift::INITIALIZED_MASK | merged
         });
 
         // SAFETY: We initialized the CPU features as required.
