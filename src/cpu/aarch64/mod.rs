@@ -35,6 +35,7 @@ mod abi_assumptions {
     // every other <64-bit parameter type to the corresponding 64-bit type.
     const _ASSUMED_POINTER_SIZE: usize =
         if cfg!(all(target_os = "watchos", target_pointer_width = "32")) {
+            todo!(); // Need to run tests for this ABI.
             4
         } else {
             8
