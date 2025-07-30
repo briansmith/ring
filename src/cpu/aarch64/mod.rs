@@ -36,7 +36,10 @@ mod abi_assumptions {
     const _ASSUMED_POINTER_SIZE: usize =
         if cfg!(all(target_os = "watchos", target_pointer_width = "32")) {
             todo!(); // Need to run tests for this ABI.
-            4
+            #[allow(unreachable_code)]
+            {
+                4
+            }
         } else {
             8
         };
