@@ -219,15 +219,15 @@ jobs:
 
         include:
           - target: aarch64-apple-darwin
-            host_os: macos-14
+            host_os: macos-15
 
           - target: aarch64-apple-ios
-            host_os: macos-14
+            host_os: macos-15
             # TODO: Run in the emulator.
             cargo_options: --no-run
 
           - target: aarch64-apple-tvos
-            host_os: macos-14
+            host_os: macos-15
             rust_channel: nightly
             mode: --release
             # TODO: Run in the emulator.
@@ -241,7 +241,7 @@ jobs:
             cargo_options: --no-run -Z build-std
 
           - target: aarch64-apple-watchos
-            host_os: macos-14
+            host_os: macos-15
             rust_channel: nightly
             mode: --release
             # TODO: Run in the emulator.
@@ -272,7 +272,7 @@ jobs:
             host_os: ubuntu-22.04
 
           # - target: arm64_32-apple-watchos
-          #   host_os: macos-14
+          #   host_os: macos-15
           #   rust_channel: nightly
           #   mode: --release
           #   # TODO: Run in the emulator.
@@ -634,7 +634,7 @@ jobs:
             host_os: ubuntu-24.04
 
           - target: aarch64-apple-darwin
-            host_os: macos-14
+            host_os: macos-15
 
           # TODO: Use the -musl target after
           # https://github.com/rust-lang/rust/issues/79556 and
