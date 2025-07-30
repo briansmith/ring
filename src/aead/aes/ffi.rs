@@ -244,8 +244,8 @@ pub(super) unsafe fn ctr32_encrypt_blocks(
             return;
         };
 
-        let input: *const [u8; BLOCK_LEN] = input.cast();
-        let output: *mut [u8; BLOCK_LEN] = output.cast();
+        let input = input.cast_array::<BLOCK_LEN>();
+        let output = output.cast_array::<BLOCK_LEN>();
         let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
 
         // SAFETY:
