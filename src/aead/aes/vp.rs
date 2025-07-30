@@ -19,6 +19,9 @@
     target_arch = "x86_64"
 ))]
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{ffi, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
 #[cfg(any(
     all(target_arch = "arm", target_endian = "little"),
@@ -32,7 +35,7 @@ use {
     core::mem::MaybeUninit,
 };
 
-use crate::{cpu, polyfill};
+use crate::cpu;
 
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 #[derive(Clone)]
@@ -87,7 +90,7 @@ impl Key {
             vpaes_set_encrypt_key(
                 user_key.as_ptr(),
                 bits,
-                polyfill::ptr::start_mut_ptr(uninit.as_mut_ptr()),
+                uninit.as_mut_ptr().start_mut_ptr_(),
             );
             uninit.assume_init()
         }

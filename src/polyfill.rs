@@ -72,7 +72,11 @@ pub mod prelude {
     // of Rust. If the polyfill is for a not-yet-stable API, or if its API
     // isn't exactly the same, or if its semantics differ, give it a different
     // name.
-    pub(crate) use super::{atomic::AtomicPolyfills, ptr::PointerPolyfills, slice::SlicePolyfills};
+    pub(crate) use super::{
+        atomic::AtomicPolyfills,
+        ptr::{ArraySlicePointerMutPolyfills, PointerPolyfills},
+        slice::SlicePolyfills,
+    };
 }
 
 mod notsend;
