@@ -198,8 +198,8 @@ impl AES_KEY {
                 return;
             };
 
-            let input = input.cast_array::<BLOCK_LEN>();
-            let output = output.cast_array::<BLOCK_LEN>();
+            let input = input.cast_array_::<BLOCK_LEN>();
+            let output = output.cast_array_::<BLOCK_LEN>();
             let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
 
             // SAFETY:

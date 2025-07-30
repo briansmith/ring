@@ -66,6 +66,12 @@ pub mod once_cell {
 
 #[allow(unused_imports)]
 pub mod prelude {
+    // If a polyfill is for an **already-stable** API, and it has the same
+    // API and semantics as that stable API, then give it the same name so that
+    // the standard library implementation will be used except for old versions
+    // of Rust. If the polyfill is for a not-yet-stable API, or if its API
+    // isn't exactly the same, or if its semantics differ, give it a different
+    // name.
     pub(crate) use super::{atomic::AtomicPolyfills, ptr::PointerPolyfills, slice::SlicePolyfills};
 }
 
