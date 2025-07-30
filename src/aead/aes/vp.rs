@@ -32,7 +32,7 @@ use {
     core::mem::MaybeUninit,
 };
 
-use crate::cpu;
+use crate::{cpu, polyfill};
 
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 #[derive(Clone)]
@@ -87,7 +87,7 @@ impl Key {
             vpaes_set_encrypt_key(
                 user_key.as_ptr(),
                 bits,
-                uninit.as_mut_ptr().cast::<ffi::RdKey>(),
+                polyfill::ptr::start_mut_ptr(uninit.as_mut_ptr()),
             );
             uninit.assume_init()
         }

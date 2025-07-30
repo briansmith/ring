@@ -38,6 +38,14 @@ impl<T> PointerPolyfills<T> for *mut T {
     }
 }
 
+// TODO(MSRV feature(array_ptr_get)): Considering dropping this, depending on
+// how https://github.com/rust-lang/rust/issues/119834#issuecomment-3137563829
+// is resolved.
+#[inline(always)]
+pub fn start_mut_ptr<T, const N: usize>(p: *mut [T; N]) -> *mut T {
+    p.cast::<T>()
+}
+
 // TODO(MSRV 1.76): Replace with `core::ptr::from_mut`.
 #[allow(dead_code)]
 #[inline(always)]
