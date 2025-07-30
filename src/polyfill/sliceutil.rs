@@ -14,6 +14,8 @@
 
 //! Utilities to make dealing with slices less tediuous.
 
+use super::prelude::*;
+
 use super::slice::AsChunks;
 
 /// Replaces the first N elements of `a` with the first N elements of `b`, where
@@ -26,7 +28,7 @@ pub fn overwrite_at_start<T: Copy>(a: &mut [T], b: &[T]) {
 
 #[inline]
 pub fn as_chunks_exact<T, const N: usize>(slice: &[T]) -> Option<AsChunks<'_, T, N>> {
-    match super::slice::as_chunks(slice) {
+    match slice.as_chunks_::<N>() {
         (w, []) => Some(w),
         _ => None,
     }

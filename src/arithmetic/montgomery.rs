@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 pub use super::n0::N0;
 #[allow(unused_imports)]
 use super::MIN_LIMBS;
@@ -164,10 +167,10 @@ pub(super) fn limbs_mul_mont(
                 }
             }
         } else if #[cfg(target_arch = "x86_64")] {
-            use crate::{cpu::GetFeature as _, polyfill::slice};
+            use crate::{cpu::GetFeature as _};
             use super::limbs::x86_64;
             if n.len() >= x86_64::mont::MIN_4X {
-                if let (n, []) = slice::as_chunks(n) {
+                if let (n, []) = n.as_chunks_() {
                     return x86_64::mont::mul_mont5_4x(in_out, n, n0, cpu.get_feature());
                 }
             }
@@ -314,8 +317,7 @@ pub(super) fn limbs_square_mont(
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     {
         use super::limbs::aarch64;
-        use crate::polyfill::slice;
-        if let (n, []) = slice::as_chunks(n) {
+        if let (n, []) = n.as_chunks_() {
             return aarch64::sqr_mont5(in_out, n, n0);
         }
     }
@@ -323,8 +325,8 @@ pub(super) fn limbs_square_mont(
     #[cfg(target_arch = "x86_64")]
     {
         use super::limbs::x86_64;
-        use crate::{cpu::GetFeature as _, polyfill::slice};
-        if let (n, []) = slice::as_chunks(n) {
+        use crate::cpu::GetFeature as _;
+        if let (n, []) = n.as_chunks_() {
             return x86_64::mont::sqr_mont5(in_out, n, n0, cpu.get_feature());
         }
     }

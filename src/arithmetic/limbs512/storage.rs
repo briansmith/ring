@@ -12,11 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use crate::{
     arithmetic::{LimbSliceError, MAX_LIMBS},
     error::LenMismatchError,
     limb::{Limb, LIMB_BITS},
-    polyfill::slice::{self, AsChunks, AsChunksMut},
+    polyfill::slice::{AsChunks, AsChunksMut},
 };
 use core::{
     mem::{align_of, size_of},
@@ -56,7 +59,7 @@ impl<const N: usize> AlignedStorage<N> {
             .0
             .get_mut(..total_limbs)
             .ok_or_else(|| LenMismatchError::new(len))?;
-        match slice::as_chunks_mut(flattened) {
+        match flattened.as_chunks_mut_() {
             (chunks, []) => Ok(chunks),
             (_, r) => Err(LenMismatchError::new(r.len())),
         }

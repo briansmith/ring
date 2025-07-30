@@ -12,8 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::CHAINING_WORDS;
-use crate::polyfill::slice::{self, AsChunks};
+use crate::polyfill::slice::AsChunks;
 use core::{
     num::Wrapping,
     ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Not, Shr},
@@ -36,7 +39,7 @@ where
     for<'a> &'a S::InputBytes: From<&'a [u8; BYTES_LEN]>,
 {
     for M in M {
-        let (M, remainder) = slice::as_chunks::<_, BYTES_LEN>(M);
+        let (M, remainder) = M.as_chunks_::<BYTES_LEN>();
         debug_assert!(remainder.is_empty());
 
         // FIPS 180-4 {6.2.2, 6.4.2} Step 1

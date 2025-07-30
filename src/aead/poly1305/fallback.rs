@@ -13,8 +13,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{Key, Tag, BLOCK_LEN, TAG_LEN};
-use crate::polyfill::{self, sliceutil};
+use crate::polyfill::sliceutil;
 use core::num::Wrapping;
 
 type W32 = Wrapping<u32>;
@@ -68,7 +71,7 @@ pub(in super::super) struct State {
 impl State {
     pub(super) fn new_context(key: Key) -> super::Context {
         let (t, key) = key.split();
-        let (t, _) = polyfill::slice::as_chunks(&t[..]);
+        let (t, _) = t[..].as_chunks_();
 
         let mut t0 = Wrapping(u32::from_le_bytes(t[0]));
         let mut t1 = Wrapping(u32::from_le_bytes(t[1]));
@@ -110,10 +113,10 @@ impl State {
     // `input.len % BLOCK_LEN == 0` must be true for every call except the
     // final one.
     pub(super) fn update_internal(&mut self, input: &[u8]) {
-        let (whole, remainder) = polyfill::slice::as_chunks::<_, BLOCK_LEN>(input);
+        let (whole, remainder) = input.as_chunks_::<BLOCK_LEN>();
 
         whole.into_iter().for_each(|input| {
-            let (input, _) = polyfill::slice::as_chunks(input);
+            let (input, _) = input.as_chunks_();
             let t0 = Wrapping(u32::from_le_bytes(input[0]));
             let t1 = Wrapping(u32::from_le_bytes(input[1]));
             let t2 = Wrapping(u32::from_le_bytes(input[2]));
@@ -133,7 +136,7 @@ impl State {
             sliceutil::overwrite_at_start(&mut mp, remainder);
             mp[remainder.len()] = 1;
 
-            let (input, _) = polyfill::slice::as_chunks(&mp);
+            let (input, _) = mp.as_chunks_();
             let t0 = Wrapping(u32::from_le_bytes(input[0]));
             let t1 = Wrapping(u32::from_le_bytes(input[1]));
             let t2 = Wrapping(u32::from_le_bytes(input[2]));

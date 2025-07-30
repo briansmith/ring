@@ -22,6 +22,9 @@
 //
 // Unlike the BearSSL notes, we use u128 in the 64-bit implementation.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{ffi::U128, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::polyfill::{slice::AsChunks, ArraySplitMap as _};
 

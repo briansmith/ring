@@ -25,18 +25,28 @@
 mod as_chunks;
 mod as_chunks_mut;
 
-pub use as_chunks::{as_chunks, AsChunks};
-pub use as_chunks_mut::{as_chunks_mut, AsChunksMut};
+pub(crate) use self::{as_chunks::AsChunks, as_chunks_mut::AsChunksMut};
 
 #[allow(dead_code)]
-pub trait SlicePolyfills<T> {
+pub(crate) trait SlicePolyfills<T> {
+    fn as_chunks_<const N: usize>(&self) -> (AsChunks<T, N>, &[T]);
+    fn as_chunks_mut_<const N: usize>(&mut self) -> (AsChunksMut<T, N>, &mut [T]);
     fn split_at_checked(&self, mid: usize) -> Option<(&[T], &[T])>;
     fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut [T], &mut [T])>;
     fn split_first_chunk_mut<const N: usize>(&mut self) -> Option<(&mut [T; N], &mut [T])>;
 }
 
 impl<T> SlicePolyfills<T> for [T] {
-    //
+    #[inline(always)]
+    fn as_chunks_<const N: usize>(&self) -> (AsChunks<T, N>, &[T]) {
+        as_chunks::as_chunks::<T, N>(self)
+    }
+
+    #[inline(always)]
+    fn as_chunks_mut_<const N: usize>(&mut self) -> (AsChunksMut<T, N>, &mut [T]) {
+        as_chunks_mut::as_chunks_mut::<T, N>(self)
+    }
+
     // Note that the libcore version is implemented in terms of
     // `slice::split_at_unchecked()`, and `slice::split_at()` was changed to be
     // implemented in terms of `split_at_checked`. For now, we implement this in
