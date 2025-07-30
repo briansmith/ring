@@ -13,6 +13,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{
     sha2::{
         fallback::{ch, maj, Word},
@@ -20,7 +23,7 @@ use super::{
     },
     BlockLen, OutputLen,
 };
-use crate::polyfill::slice::{self, AsChunks};
+use crate::polyfill::slice::AsChunks;
 use core::{mem::size_of, num::Wrapping};
 
 pub(super) const BLOCK_LEN: BlockLen = BlockLen::_512;
@@ -56,7 +59,7 @@ fn block_data_order(
 ) -> [W32; CHAINING_WORDS]
 {
     for M in M {
-        let (M, remainder) = slice::as_chunks::<_, {size_of::<W32>()}>(M);
+        let (M, remainder) = M.as_chunks_::<{size_of::<W32>()}>();
         debug_assert!(remainder.is_empty());
 
         // FIPS 180-4 6.1.2 Step 1

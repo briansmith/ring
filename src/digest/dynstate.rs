@@ -12,8 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{format_output, sha1, sha2, Algorithm, Output};
-use crate::{cpu, polyfill::slice};
+use crate::cpu;
 use core::mem::size_of;
 
 pub(super) enum DynInitialState {
@@ -92,7 +95,7 @@ pub(super) fn sha1_block_data_order<'d>(
         }
     };
 
-    let (full_blocks, leftover) = slice::as_chunks(data);
+    let (full_blocks, leftover) = data.as_chunks_();
     sha1::sha1_block_data_order(state, full_blocks);
     (full_blocks.as_flattened().len(), leftover)
 }
@@ -109,7 +112,7 @@ pub(super) fn sha256_block_data_order<'d>(
         }
     };
 
-    let (full_blocks, leftover) = slice::as_chunks(data);
+    let (full_blocks, leftover) = data.as_chunks_();
     sha2::block_data_order_32(state, full_blocks, cpu_features);
     (full_blocks.len() * sha2::SHA256_BLOCK_LEN.into(), leftover)
 }
@@ -126,7 +129,7 @@ pub(super) fn sha512_block_data_order<'d>(
         }
     };
 
-    let (full_blocks, leftover) = slice::as_chunks(data);
+    let (full_blocks, leftover) = data.as_chunks_();
     sha2::block_data_order_64(state, full_blocks, cpu_features);
     (full_blocks.len() * sha2::SHA512_BLOCK_LEN.into(), leftover)
 }

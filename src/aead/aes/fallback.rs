@@ -13,14 +13,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{
     super::overlapping::IndexError, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes,
     Overlapping, BLOCK_LEN,
 };
-use crate::{
-    bb,
-    polyfill::{self, usize_from_u32},
-};
+use crate::{bb, polyfill::usize_from_u32};
 use core::{array, mem::size_of, num::NonZeroU32};
 
 #[derive(Clone)]
@@ -156,7 +156,7 @@ fn uncompact_word(a: Word) -> Word {
 }
 
 fn compact_block(input: &[u8; 16]) -> [Word; BLOCK_WORDS] {
-    let (input, _) = polyfill::slice::as_chunks(input);
+    let (input, _) = input.as_chunks_();
     let out: [Word; BLOCK_WORDS] = array::from_fn(|i| Word::from_ne_bytes(input[i]));
     let a0 = compact_word(out[0]);
     let a1 = compact_word(out[1]);
@@ -702,7 +702,7 @@ fn setup_key_128(input: &[u8; 128 / 8]) -> Key {
 
 fn setup_key_256(input: &[u8; 32]) -> Key {
     // Each key schedule iteration produces two round keys.
-    let (input, _) = polyfill::slice::as_chunks(input);
+    let (input, _) = input.as_chunks_();
     let mut block1 = compact_block(&input[0]);
     let mut block2 = compact_block(&input[1]);
 

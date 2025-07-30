@@ -14,12 +14,15 @@
 
 #![cfg(target_arch = "x86_64")]
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{
     super::overlapping::IndexError,
     aes::{self, Counter, EncryptCtr32, OverlappingPartialBlock},
     gcm, open_whole_partial_tail, Aad, Overlapping, Tag, BLOCK_LEN,
 };
-use crate::{c, error::InputTooLongError, polyfill::slice};
+use crate::{c, error::InputTooLongError};
 
 const STRIDE_LEN: usize = 6 * BLOCK_LEN;
 
@@ -79,7 +82,7 @@ pub(super) fn seal(
         in_out
     };
 
-    let (mut whole, remainder) = slice::as_chunks_mut(remainder);
+    let (mut whole, remainder) = remainder.as_chunks_mut_();
     aes_key.ctr32_encrypt_within(whole.as_flattened_mut().into(), &mut ctr);
     auth.update_blocks(whole.as_ref());
     let remainder = OverlappingPartialBlock::new(remainder.into())
@@ -139,7 +142,7 @@ pub(super) fn open(
         ctr,
         tag_iv,
         |aes_key, auth, whole, ctr| {
-            let (whole_input, _) = slice::as_chunks(whole.input());
+            let (whole_input, _) = whole.input().as_chunks_();
             auth.update_blocks(whole_input);
             aes_key.ctr32_encrypt_within(whole, ctr);
         },

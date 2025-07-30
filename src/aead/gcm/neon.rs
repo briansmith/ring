@@ -17,6 +17,9 @@
     all(target_arch = "arm", target_endian = "little")
 ))]
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{ffi, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::{c, cpu, polyfill::slice::AsChunks};
 use core::mem::MaybeUninit;

@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{
     chacha::{self, Counter, Overlapping},
     poly1305, Aad, AuthError, ForgedPlaintext, Nonce, Tag,
@@ -19,7 +22,7 @@ use super::{
 use crate::{
     cpu,
     error::InputTooLongError,
-    polyfill::{slice, sliceutil, u64_from_usize, usize_from_u64_saturated},
+    polyfill::{sliceutil, u64_from_usize, usize_from_u64_saturated},
 };
 use cfg_if::cfg_if;
 
@@ -173,7 +176,7 @@ fn finish(auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
 
 #[inline]
 fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
-    let (whole, remainder) = slice::as_chunks(input);
+    let (whole, remainder) = input.as_chunks_();
     ctx.update(whole);
     if !remainder.is_empty() {
         let mut block = [0u8; poly1305::BLOCK_LEN];

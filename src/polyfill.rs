@@ -64,15 +64,15 @@ pub mod once_cell {
     pub mod race;
 }
 
-#[allow(unused_imports, dead_code)]
+#[allow(unused_imports)]
 pub mod prelude {
-    pub use super::{atomic::AtomicPolyfills, ptr::PointerPolyfills, slice::SlicePolyfills};
+    pub(crate) use super::{atomic::AtomicPolyfills, ptr::PointerPolyfills, slice::SlicePolyfills};
 }
 
 mod notsend;
 pub mod ptr;
 
-pub mod slice;
+pub(crate) mod slice;
 
 #[cfg(test)]
 mod test;

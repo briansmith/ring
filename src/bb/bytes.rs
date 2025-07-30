@@ -14,12 +14,11 @@
 
 //! Building blocks.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{BoolMask, Word, WordOps};
-use crate::{
-    bits::BitLength,
-    error,
-    polyfill::{self, usize_from_u32},
-};
+use crate::{bits::BitLength, error, polyfill::usize_from_u32};
 
 pub fn byte_leading_zeros_vartime(a: &u8) -> BitLength<usize> {
     BitLength::from_bits(usize_from_u32(a.leading_zeros()))
@@ -40,8 +39,8 @@ pub fn bytes_are_equal(a: &[u8], b: &[u8]) -> BoolMask {
     if b.len() != len {
         return BoolMask::FALSE;
     }
-    let (a, a_rem) = polyfill::slice::as_chunks(a);
-    let (b, b_rem) = polyfill::slice::as_chunks(b);
+    let (a, a_rem) = a.as_chunks_();
+    let (b, b_rem) = b.as_chunks_();
 
     let mut acc = a
         .into_iter()

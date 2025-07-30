@@ -14,6 +14,9 @@
 
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{aes, gcm, Counter, Overlapping, BLOCK_LEN};
 use crate::{
     bits::BitLength,
