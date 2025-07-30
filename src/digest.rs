@@ -18,6 +18,9 @@
 //! function should be used. Otherwise, the digest can be calculated in
 //! multiple steps using `Context`.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use self::{
     dynstate::{DynInitialState, DynState},
     sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
@@ -28,7 +31,7 @@ use crate::{
     polyfill::{
         self,
         partial_buffer::{PartialBuffer, PurportedLen},
-        slice, sliceutil,
+        sliceutil,
     },
 };
 use core::num::Wrapping;
@@ -226,7 +229,7 @@ impl Context {
                     unreachable!();
                 });
                 sliceutil::overwrite_at_start(buffer_to_fill, data);
-                match slice::split_at_checked(data, buffer_to_fill.len()) {
+                match data.split_at_checked(buffer_to_fill.len()) {
                     Some((just_copied, to_digest)) => {
                         debug_assert_eq!(buffer_to_fill.len(), just_copied.len());
                         debug_assert_eq!(num_pending + just_copied.len(), block_len.into());

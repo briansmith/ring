@@ -64,8 +64,9 @@ pub mod once_cell {
     pub mod race;
 }
 
+#[allow(unused_imports, dead_code)]
 pub mod prelude {
-    pub use super::{atomic::AtomicPolyfills, ptr::PointerPolyfills};
+    pub use super::{atomic::AtomicPolyfills, ptr::PointerPolyfills, slice::SlicePolyfills};
 }
 
 mod notsend;

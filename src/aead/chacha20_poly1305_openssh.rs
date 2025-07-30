@@ -29,6 +29,9 @@
 //!    http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.chacha20poly1305?annotate=HEAD
 //! [RFC 4253]: https://tools.ietf.org/html/rfc4253
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{
     chacha::{self, *},
     chacha20_poly1305, cpu, poly1305, Aad, Nonce, Tag,
@@ -36,7 +39,6 @@ use super::{
 use crate::{
     bb,
     error::{self, InputTooLongError},
-    polyfill,
 };
 
 /// A key for sealing packets.
@@ -74,11 +76,9 @@ impl SealingKey {
         tag_out: &mut [u8; TAG_LEN],
     ) {
         // XXX/TODO(SemVer): Refactor API to return an error.
-        let (len_in_out, data_and_padding_in_out) = polyfill::slice::split_first_chunk_mut::<
-            _,
-            PACKET_LENGTH_LEN,
-        >(plaintext_in_ciphertext_out)
-        .unwrap();
+        let (len_in_out, data_and_padding_in_out) = plaintext_in_ciphertext_out
+            .split_first_chunk_mut::<PACKET_LENGTH_LEN>()
+            .unwrap();
 
         let cpu = cpu::features();
         // XXX/TODO(SemVer): Refactor API to return an error.
@@ -153,11 +153,9 @@ impl OpeningKey {
         ciphertext_in_plaintext_out: &'a mut [u8],
         tag: &[u8; TAG_LEN],
     ) -> Result<&'a [u8], error::Unspecified> {
-        let (packet_length, after_packet_length) = polyfill::slice::split_first_chunk_mut::<
-            _,
-            PACKET_LENGTH_LEN,
-        >(ciphertext_in_plaintext_out)
-        .ok_or(error::Unspecified)?;
+        let (packet_length, after_packet_length) = ciphertext_in_plaintext_out
+            .split_first_chunk_mut::<PACKET_LENGTH_LEN>()
+            .ok_or(error::Unspecified)?;
 
         let cpu = cpu::features();
         let (counter, poly_key) = chacha20_poly1305::begin(
