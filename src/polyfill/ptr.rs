@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #[allow(dead_code)]
-pub trait PointerPolyfills<T> {
+pub(crate) trait PointerPolyfills<T> {
     type ArrayPointer<const N: usize>;
 
     // TODO(MSRV feature(ptr_cast_array)): Drop this.
@@ -38,12 +38,19 @@ impl<T> PointerPolyfills<T> for *mut T {
     }
 }
 
-// TODO(MSRV feature(array_ptr_get)): Considering dropping this, depending on
-// how https://github.com/rust-lang/rust/issues/119834#issuecomment-3137563829
-// is resolved.
-#[inline(always)]
-pub fn start_mut_ptr<T, const N: usize>(p: *mut [T; N]) -> *mut T {
-    p.cast::<T>()
+#[allow(dead_code)]
+pub(crate) trait ArraySlicePointerMutPolyfills<T> {
+    // TODO(MSRV feature(array_ptr_get)): Considering dropping this, depending on
+    // how https://github.com/rust-lang/rust/issues/119834#issuecomment-3137563829
+    // is resolved.
+    fn start_mut_ptr_(self) -> *mut T;
+}
+
+impl<T, const N: usize> ArraySlicePointerMutPolyfills<T> for *mut [T; N] {
+    #[inline(always)]
+    fn start_mut_ptr_(self) -> *mut T {
+        self.cast::<T>()
+    }
 }
 
 // TODO(MSRV 1.76): Replace with `core::ptr::from_mut`.
