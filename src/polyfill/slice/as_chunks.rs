@@ -42,7 +42,7 @@ impl<'a, T, const N: usize> AsChunks<'a, T, N> {
 
     #[inline(always)]
     pub fn as_ptr(&self) -> *const [T; N] {
-        self.0.as_ptr().cast_array::<N>()
+        self.0.as_ptr().cast_array_::<N>()
     }
 
     #[inline(always)]
