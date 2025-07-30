@@ -53,7 +53,8 @@ pub(super) fn seal(
 
     let remainder = if in_out_len >= 3 * STRIDE_LEN {
         let leftover = in_out_len % STRIDE_LEN;
-        let (integrated, remainder) = slice::split_at_mut_checked(in_out, in_out_len - leftover)
+        let (integrated, remainder) = in_out
+            .split_at_mut_checked(in_out_len - leftover)
             .unwrap_or_else(|| {
                 // Since `leftover <= in_out_len`
                 unreachable!()
