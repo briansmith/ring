@@ -15,7 +15,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::{KeyBytes, Overlapping, BLOCK_LEN};
+use super::{KeyBytes, Overlapping, AES_128_KEY_LEN, AES_256_KEY_LEN, BLOCK_LEN};
 use crate::{bits::BitLength, c};
 use core::{
     ffi::{c_int, c_uint},
@@ -73,19 +73,27 @@ impl KeyBitLength {
 }
 
 #[allow(dead_code)]
-pub(super) unsafe fn new_using_set_encrypt_key<
-    const USER_KEY_LEN: usize,
-    const ROUNDS_PLUS_1: usize,
->(
-    user_key: &[u8; USER_KEY_LEN],
-    set_encrypt_key: impl FnOnce(
-        /*user_key:*/ &[u8; USER_KEY_LEN],
-        /*rd_keys:*/ *mut [RdKey; ROUNDS_PLUS_1],
-    ),
-) -> [RdKey; ROUNDS_PLUS_1] {
-    let mut uninit = MaybeUninit::<[RdKey; ROUNDS_PLUS_1]>::uninit();
+pub(super) trait RoundKeys: AsMut<[RdKey]> + Sized {
+    const USER_KEY_BITS: KeyBitLength;
+    type UserKey: AsRef<[u8]>;
+}
+
+impl RoundKeys for Aes128RoundKeys {
+    const USER_KEY_BITS: KeyBitLength = KeyBitLength::_128;
+    type UserKey = [u8; AES_128_KEY_LEN];
+}
+
+impl RoundKeys for Aes256RoundKeys {
+    const USER_KEY_BITS: KeyBitLength = KeyBitLength::_256;
+    type UserKey = [u8; AES_256_KEY_LEN];
+}
+
+#[allow(dead_code)]
+#[inline(always)]
+pub(super) unsafe fn assume_init<T>(f: impl FnOnce(*mut T)) -> T {
+    let mut uninit = MaybeUninit::<T>::uninit();
     unsafe {
-        set_encrypt_key(user_key, uninit.as_mut_ptr());
+        f(uninit.as_mut_ptr());
         uninit.assume_init()
     }
 }

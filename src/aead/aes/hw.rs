@@ -22,11 +22,7 @@
 use super::ffi::AES_KEY;
 use super::{cpu, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-use {
-    super::{ffi, AES_128_KEY_LEN, AES_256_KEY_LEN},
-    crate::bits::BitLength,
-    core::ffi::c_int,
-};
+use {super::ffi, crate::bits::BitLength, core::ffi::c_int};
 
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 #[derive(Clone)]
@@ -47,14 +43,10 @@ impl Key {
     pub(in super::super) fn new(bytes: KeyBytes<'_>, cpu: cpu::aarch64::Aes) -> Self {
         match bytes {
             KeyBytes::AES_128(user_key) => Self::Aes128(unsafe {
-                ffi::new_using_set_encrypt_key(user_key, |user_key, key| {
-                    Self::set_encrypt_key_128(user_key, key, cpu)
-                })
+                ffi::assume_init(|key| Self::set_encrypt_key_128(user_key, key, cpu))
             }),
             KeyBytes::AES_256(user_key) => Self::Aes256(unsafe {
-                ffi::new_using_set_encrypt_key(user_key, |user_key, key| {
-                    Self::set_encrypt_key_256(user_key, key, cpu)
-                })
+                ffi::assume_init(|key| Self::set_encrypt_key_256(user_key, key, cpu))
             }),
         }
     }
@@ -71,26 +63,28 @@ impl Key {
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 impl Key {
     unsafe fn set_encrypt_key_128(
-        user_key: &[u8; AES_128_KEY_LEN],
+        user_key: &<ffi::Aes128RoundKeys as ffi::RoundKeys>::UserKey,
         key: *mut ffi::Aes128RoundKeys,
         _cpu: cpu::aarch64::Aes,
     ) {
         prefixed_extern! {
             fn aes_hw_set_encrypt_key_128(
-                user_key: &[u8; AES_128_KEY_LEN], ignored: BitLength<c_int>,
+                user_key: &<ffi::Aes128RoundKeys as ffi::RoundKeys>::UserKey,
+                ignored: BitLength<c_int>,
                 key: *mut ffi::Aes128RoundKeys);
         }
         unsafe { aes_hw_set_encrypt_key_128(user_key, BitLength::from_bits(0), key) };
     }
 
     unsafe fn set_encrypt_key_256(
-        user_key: &[u8; AES_256_KEY_LEN],
+        user_key: &<ffi::Aes256RoundKeys as ffi::RoundKeys>::UserKey,
         key: *mut ffi::Aes256RoundKeys,
         _cpu: cpu::aarch64::Aes,
     ) {
         prefixed_extern! {
             fn aes_hw_set_encrypt_key_256(
-                user_key: &[u8; AES_256_KEY_LEN], ignored: BitLength<c_int>,
+                user_key: &<ffi::Aes256RoundKeys as ffi::RoundKeys>::UserKey,
+                ignored: BitLength<c_int>,
                 key: *mut ffi::Aes256RoundKeys);
         }
         unsafe { aes_hw_set_encrypt_key_256(user_key, BitLength::from_bits(0), key) };
