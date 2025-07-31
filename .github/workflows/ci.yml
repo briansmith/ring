@@ -358,9 +358,6 @@ jobs:
             host_os: ubuntu-22.04
 
     steps:
-      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
-        run: sudo apt-get update -y
-
       - uses: briansmith/actions-checkout@v4
         with:
           persist-credentials: false
@@ -408,8 +405,6 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - run: sudo apt-get update -y
-
       - uses: briansmith/actions-checkout@v4
         with:
           persist-credentials: false
@@ -434,8 +429,6 @@ jobs:
           - nightly
 
     steps:
-      - run: sudo apt-get update -y
-
       - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }}
 
       - uses: briansmith/actions-checkout@v4
@@ -488,9 +481,6 @@ jobs:
             host_os: ubuntu-22.04
 
     steps:
-      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
-        run: sudo apt-get update -y
-
       - uses: briansmith/actions-checkout@v4
         with:
           persist-credentials: false
@@ -561,9 +551,6 @@ jobs:
           - CHROMEDRIVER=$CHROMEWEBDRIVER/chromedriver
 
     steps:
-      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
-        run: sudo apt-get update -y
-
       - uses: briansmith/actions-checkout@v4
         with:
           persist-credentials: false
@@ -810,9 +797,6 @@ jobs:
             host_os: ubuntu-24.04
 
     steps:
-      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
-        run: sudo apt-get update -y
-
       - uses: briansmith/actions-checkout@v4
         with:
           persist-credentials: false
