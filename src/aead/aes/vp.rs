@@ -23,19 +23,15 @@
 use crate::polyfill::prelude::*;
 
 use super::{ffi, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
+use crate::cpu;
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+use crate::polyfill::ptr::StartPtrMut;
 #[cfg(any(
     all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
     target_arch = "x86_64"
 ))]
 use ffi::AES_KEY;
-#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-use {
-    super::{AES_128_KEY_LEN, AES_256_KEY_LEN},
-    core::mem::MaybeUninit,
-};
-
-use crate::cpu;
 
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 #[derive(Clone)]
@@ -60,39 +56,33 @@ impl Key {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     pub(in super::super) fn new(bytes: KeyBytes<'_>, cpu: cpu::aarch64::Neon) -> Self {
         match bytes {
-            KeyBytes::AES_128(user_key) => Self::Aes128(Self::set_encrypt_key(user_key, cpu)),
-            KeyBytes::AES_256(user_key) => Self::Aes256(Self::set_encrypt_key(user_key, cpu)),
+            KeyBytes::AES_128(user_key) => Self::Aes128(unsafe {
+                ffi::assume_init(|key| Self::set_encrypt_key(user_key, key, cpu))
+            }),
+            KeyBytes::AES_256(user_key) => Self::Aes256(unsafe {
+                ffi::assume_init(|key| Self::set_encrypt_key(user_key, key, cpu))
+            }),
         }
     }
 
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-    fn set_encrypt_key<const USER_KEY_LEN: usize, const ROUND_KEYS_PLUS_1: usize>(
-        user_key: &[u8; USER_KEY_LEN],
+    fn set_encrypt_key<R: ffi::RoundKeys>(
+        user_key: &R::UserKey,
+        key: *mut R,
         _cpu: cpu::aarch64::Neon,
-    ) -> [ffi::RdKey; ROUND_KEYS_PLUS_1] {
+    ) where
+        *mut R: StartPtrMut<ffi::RdKey>,
+    {
         prefixed_extern! {
             fn vpaes_set_encrypt_key(user_key: *const u8, bits: ffi::KeyBitLength,
                                      rd_keys: *mut ffi::RdKey);
         }
-        let bits = match USER_KEY_LEN {
-            AES_128_KEY_LEN => {
-                assert_eq!(ROUND_KEYS_PLUS_1, ffi::AES_128_ROUNDS_PLUS_1);
-                ffi::KeyBitLength::_128
-            }
-            AES_256_KEY_LEN => {
-                assert_eq!(ROUND_KEYS_PLUS_1, ffi::AES_256_ROUNDS_PLUS_1);
-                ffi::KeyBitLength::_256
-            }
-            _ => unreachable!(),
-        };
-        let mut uninit = MaybeUninit::<[ffi::RdKey; ROUND_KEYS_PLUS_1]>::uninit();
         unsafe {
             vpaes_set_encrypt_key(
-                user_key.as_ptr(),
-                bits,
-                uninit.as_mut_ptr().start_mut_ptr_(),
-            );
-            uninit.assume_init()
+                user_key.as_ref().as_ptr(),
+                R::USER_KEY_BITS,
+                key.start_mut_ptr_(),
+            )
         }
     }
 
