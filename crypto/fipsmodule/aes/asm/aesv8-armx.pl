@@ -62,12 +62,6 @@ $code=<<___;
 .text
 ___
 $code.=".arch	armv8-a+crypto\n"			if ($flavour =~ /64/);
-$code.=<<___						if ($flavour !~ /64/);
-.arch	armv7-a	// don't confuse not-so-latest binutils with argv8 :-)
-.fpu	neon
-.code	32
-#undef	__thumb2__
-___
 
 # Assembler mnemonics are an eclectic mix of 32- and 64-bit syntax,
 # NEON is mostly 32-bit mnemonics, integer - mostly 64. Goal is to
@@ -76,13 +70,12 @@ ___
 #
 {{{
 my ($inp,$bits,$out,$ptr)=("x0","w1","x2","x3");
-my ($zero,$rcon,$mask,$in0,$in1,$tmp,$key)=
-	$flavour=~/64/? map("q$_",(0..6)) : map("q$_",(0..3,8..10));
+my ($zero,$rcon,$mask,$in0,$in1,$tmp,$key)=map("q$_",(0..6));
 
 
 # On AArch64, put the data .rodata and use adrp + add for compatibility with
 # execute-only memory. On AArch32, put it in .text and use adr.
-$code.= ".section .rodata\n" if ($flavour =~ /64/);
+$code.= ".section .rodata\n";
 $code.=<<___;
 .align	5
 .Lrcon:
@@ -96,24 +89,14 @@ $code.=<<___;
 .type	${prefix}_set_encrypt_key_128,%function
 .align	5
 ${prefix}_set_encrypt_key_128:
-___
-$code.=<<___	if ($flavour =~ /64/);
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
-___
-$code.=<<___;
 	mov	$ptr,#-2
-___
-$code.=<<___	if ($flavour =~ /64/);
 	adrp	$ptr,:pg_hi21:.Lrcon
 	add	$ptr,$ptr,:lo12:.Lrcon
-___
-$code.=<<___	if ($flavour !~ /64/);
-	adr	$ptr,.Lrcon
-___
-$code.=<<___;
+
 	veor	$zero,$zero,$zero
 	vld1.8	{$in0},[$inp],#16
 	mov	$bits,#8		// reuse $bits
@@ -167,7 +150,7 @@ $code.=<<___;
 	veor	$in0,$in0,$key
 	vst1.32	{$in0},[$out]
 
-	`"ldr	x29,[sp],#16"		if ($flavour =~ /64/)`
+	ldr	x29,[sp],#16
 	ret
 .size	${prefix}_set_encrypt_key_128,.-${prefix}_set_encrypt_key_128
 
@@ -175,24 +158,14 @@ $code.=<<___;
 .type	${prefix}_set_encrypt_key_256,%function
 .align	5
 ${prefix}_set_encrypt_key_256:
-___
-$code.=<<___	if ($flavour =~ /64/);
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
-___
-$code.=<<___;
 	mov	$ptr,#-2
-___
-$code.=<<___	if ($flavour =~ /64/);
 	adrp	$ptr,:pg_hi21:.Lrcon
 	add	$ptr,$ptr,:lo12:.Lrcon
-___
-$code.=<<___	if ($flavour !~ /64/);
-	adr	$ptr,.Lrcon
-___
-$code.=<<___;
+
 	veor	$zero,$zero,$zero
 	vld1.8	{$in0},[$inp],#16
 	vld1.32	{$rcon,$mask},[$ptr],#32
@@ -233,7 +206,7 @@ $code.=<<___;
 	b	.Loop256
 
 .Ldone256:
-	`"ldr	x29,[sp],#16"		if ($flavour =~ /64/)`
+	ldr	x29,[sp],#16
 	ret
 .size	${prefix}_set_encrypt_key_256,.-${prefix}_set_encrypt_key_256
 ___
@@ -257,20 +230,10 @@ $code.=<<___;
 .type	${prefix}_ctr32_encrypt_blocks,%function
 .align	5
 ${prefix}_ctr32_encrypt_blocks:
-___
-$code.=<<___	if ($flavour =~ /64/);
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp		x29,x30,[sp,#-16]!
 	add		x29,sp,#0
-___
-$code.=<<___	if ($flavour !~ /64/);
-	mov		ip,sp
-	stmdb		sp!,{r4-r10,lr}
-	vstmdb		sp!,{d8-d15}            @ ABI specification says so
-	ldr		r4, [ip]		@ load remaining arg
-___
-$code.=<<___;
 	mov		$rounds,$rounds // Zero extend.
 
 	ldr		$ctr, [$ivp, #12]
@@ -460,12 +423,6 @@ $code.=<<___;
 	vst1.8		{$in1},[$out]
 
 .Lctr32_done:
-___
-$code.=<<___	if ($flavour !~ /64/);
-	vldmia		sp!,{d8-d15}
-	ldmia		sp!,{r4-r10,pc}
-___
-$code.=<<___	if ($flavour =~ /64/);
 	ldr		x29,[sp],#16
 	ret
 ___
@@ -477,7 +434,7 @@ $code.=<<___;
 #endif
 ___
 ########################################
-if ($flavour =~ /64/) {			######## 64-bit code
+if (1) {
     my %opcode = (
 	"aesd"	=>	0x4e285800,	"aese"	=>	0x4e284800,
 	"aesimc"=>	0x4e287800,	"aesmc"	=>	0x4e286800	);
@@ -517,71 +474,6 @@ if ($flavour =~ /64/) {			######## 64-bit code
 
 	# Switch preprocessor checks to aarch64 versions.
 	s/__ARME([BL])__/__AARCH64E$1__/go;
-
-	print $_,"\n";
-    }
-} else {				######## 32-bit code
-    my %opcode = (
-	"aesd"	=>	0xf3b00340,	"aese"	=>	0xf3b00300,
-	"aesimc"=>	0xf3b003c0,	"aesmc"	=>	0xf3b00380	);
-
-    local *unaes = sub {
-	my ($mnemonic,$arg)=@_;
-
-	if ($arg =~ m/[qv]([0-9]+)[^,]*,\s*[qv]([0-9]+)/o) {
-	    my $word = $opcode{$mnemonic}|(($1&7)<<13)|(($1&8)<<19)
-					 |(($2&7)<<1) |(($2&8)<<2);
-	    # since ARMv7 instructions are always encoded little-endian.
-	    # correct solution is to use .inst directive, but older
-	    # assemblers don't implement it:-(
-	    sprintf ".byte\t0x%02x,0x%02x,0x%02x,0x%02x\t@ %s %s",
-			$word&0xff,($word>>8)&0xff,
-			($word>>16)&0xff,($word>>24)&0xff,
-			$mnemonic,$arg;
-	}
-    };
-
-    sub unvtbl {
-	my $arg=shift;
-
-	$arg =~ m/q([0-9]+),\s*\{q([0-9]+)\},\s*q([0-9]+)/o &&
-	sprintf	"vtbl.8	d%d,{q%d},d%d\n\t".
-		"vtbl.8	d%d,{q%d},d%d", 2*$1,$2,2*$3, 2*$1+1,$2,2*$3+1;
-    }
-
-    sub unvdup32 {
-	my $arg=shift;
-
-	$arg =~ m/q([0-9]+),\s*q([0-9]+)\[([0-3])\]/o &&
-	sprintf	"vdup.32	q%d,d%d[%d]",$1,2*$2+($3>>1),$3&1;
-    }
-
-    sub unvmov32 {
-	my $arg=shift;
-
-	$arg =~ m/q([0-9]+)\[([0-3])\],(.*)/o &&
-	sprintf	"vmov.32	d%d[%d],%s",2*$1+($2>>1),$2&1,$3;
-    }
-
-    foreach(split("\n",$code)) {
-	s/\`([^\`]*)\`/eval($1)/geo;
-
-	s/\b[wx]([0-9]+)\b/r$1/go;		# new->old registers
-	s/\bv([0-9])\.[12468]+[bsd]\b/q$1/go;	# new->old registers
-	s/\/\/\s?/@ /o;				# new->old style commentary
-
-	# fix up remaining new-style suffixes
-	s/\{q([0-9]+)\},\s*\[(.+)\],#8/sprintf "{d%d},[$2]!",2*$1/eo	or
-	s/\],#[0-9]+/]!/o;
-
-	s/[v]?(aes\w+)\s+([qv].*)/unaes($1,$2)/geo	or
-	s/cclr\s+([^,]+),\s*([a-z]+)/mov$2	$1,#0/o	or
-	s/vtbl\.8\s+(.*)/unvtbl($1)/geo			or
-	s/vdup\.32\s+(.*)/unvdup32($1)/geo		or
-	s/vmov\.32\s+(.*)/unvmov32($1)/geo		or
-	s/^(\s+)b\./$1b/o				or
-	s/^(\s+)mov\./$1mov/o				or
-	s/^(\s+)ret/$1bx\tlr/o;
 
 	print $_,"\n";
     }
