@@ -17,34 +17,19 @@
 use crate::polyfill::prelude::*;
 
 use super::{
-    super::overlapping::IndexError, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes,
+    super::overlapping::IndexError, ffi, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes,
     Overlapping, BLOCK_LEN,
 };
 use crate::{bb, polyfill::usize_from_u32};
 use core::{array, mem::size_of, num::NonZeroU32};
 
 #[derive(Clone)]
-pub struct Key {
-    rd_key_storage: [[Word; BLOCK_WORDS]; Rounds::MAX.into() + 1],
-    rounds: Rounds,
+pub enum Key {
+    Aes128([RdKey; ffi::Rounds::Aes128.into_usize() + 1]),
+    Aes256([RdKey; ffi::Rounds::Aes256.into_usize() + 1]),
 }
 
-#[derive(Clone, Copy)]
-enum Rounds {
-    Aes128,
-    Aes256,
-}
-
-impl Rounds {
-    const MAX: Self = Self::Aes256;
-
-    const fn into(self) -> usize {
-        match self {
-            Self::Aes128 => 10,
-            Self::Aes256 => 14,
-        }
-    }
-}
+type RdKey = [Word; BLOCK_WORDS];
 
 type Word = bb::Word;
 const WORD_SIZE: usize = size_of::<Word>();
@@ -559,7 +544,7 @@ impl Batch {
     fn encrypt(mut self, key: &Schedule, out: &mut [[u8; BLOCK_LEN]]) {
         assert!(out.len() <= BATCH_SIZE);
         self.add_round_key(&key.keys[0]);
-        key.keys[1..key.rounds].iter().for_each(|key| {
+        key.keys[1..key.rounds.into_usize()].iter().for_each(|key| {
             self.sub_bytes();
             self.shift_rows();
             self.mix_columns();
@@ -567,7 +552,7 @@ impl Batch {
         });
         self.sub_bytes();
         self.shift_rows();
-        self.add_round_key(&key.keys[key.rounds]);
+        self.add_round_key(&key.keys[key.rounds.into_usize()]);
         self.into_bytes(out);
     }
 
@@ -633,18 +618,21 @@ fn rotate_rows_twice(v: Word) -> Word {
 struct Schedule {
     // keys is an array of batches, one for each round key. Each batch stores
     // |AES_NOHW_BATCH_SIZE| copies of the round key in bitsliced form.
-    keys: [Batch; Rounds::MAX.into() + 1],
-    rounds: usize,
+    keys: [Batch; ffi::Rounds::MAX.into_usize() + 1],
+    rounds: ffi::Rounds,
 }
 
 impl Schedule {
     fn expand_round_keys(key: &Key) -> Self {
-        let rounds = key.rounds.into();
+        let (rd_keys, rounds) = match key {
+            Key::Aes128(rd_keys) => (&rd_keys[..], ffi::Rounds::Aes128),
+            Key::Aes256(rd_keys) => (&rd_keys[..], ffi::Rounds::Aes256),
+        };
 
         Self {
             keys: array::from_fn(|i| {
-                if i <= rounds {
-                    let tmp: [Word; BLOCK_WORDS] = key.rd_key_storage[i];
+                if i <= rounds.into_usize() {
+                    let tmp: [Word; BLOCK_WORDS] = rd_keys[i];
 
                     let mut r = Batch { w: [0; 8] };
                     // Copy the round key into each block in the batch.
@@ -684,20 +672,15 @@ fn rcon_slice(rcon: u8, i: usize) -> Word {
 fn setup_key_128(input: &[u8; 128 / 8]) -> Key {
     let mut block = compact_block(input);
 
-    Key {
-        rd_key_storage: array::from_fn(|i| {
-            if i == 0 {
-                block
-            } else if i <= Rounds::Aes128.into() {
-                let rcon = RCON[i - 1];
-                let sub = sub_block(&block);
-                derive_round_key(&mut block, sub, rcon)
-            } else {
-                Default::default()
-            }
-        }),
-        rounds: Rounds::Aes128,
-    }
+    Key::Aes128(array::from_fn(|i| {
+        if i == 0 {
+            block
+        } else {
+            let rcon = RCON[i - 1];
+            let sub = sub_block(&block);
+            derive_round_key(&mut block, sub, rcon)
+        }
+    }))
 }
 
 fn setup_key_256(input: &[u8; 32]) -> Key {
@@ -706,34 +689,31 @@ fn setup_key_256(input: &[u8; 32]) -> Key {
     let mut block1 = compact_block(&input[0]);
     let mut block2 = compact_block(&input[1]);
 
-    Key {
-        rd_key_storage: array::from_fn(|i| {
-            if i == 0 {
-                block1
-            } else if i == 1 {
-                block2
+    Key::Aes256(array::from_fn(|i| {
+        if i == 0 {
+            block1
+        } else if i == 1 {
+            block2
+        } else {
+            let rcon = RCON[(i / 2) - 1];
+            if i % 2 == 0 {
+                let sub = sub_block(&block2);
+                derive_round_key(&mut block1, sub, rcon)
             } else {
-                let rcon = RCON[(i / 2) - 1];
-                if i % 2 == 0 {
-                    let sub = sub_block(&block2);
-                    derive_round_key(&mut block1, sub, rcon)
-                } else {
-                    let sub = sub_block(&block1);
-                    block2.iter_mut().zip(sub).for_each(|(w, sub)| {
-                        // Incorporate the transformed word into the first word.
-                        *w ^= shift_right::<12>(sub);
-                        // Propagate to the remaining words.
-                        let v = *w;
-                        *w ^= shift_left::<4>(v);
-                        *w ^= shift_left::<8>(v);
-                        *w ^= shift_left::<12>(v);
-                    });
-                    block2
-                }
+                let sub = sub_block(&block1);
+                block2.iter_mut().zip(sub).for_each(|(w, sub)| {
+                    // Incorporate the transformed word into the first word.
+                    *w ^= shift_right::<12>(sub);
+                    // Propagate to the remaining words.
+                    let v = *w;
+                    *w ^= shift_left::<4>(v);
+                    *w ^= shift_left::<8>(v);
+                    *w ^= shift_left::<12>(v);
+                });
+                block2
             }
-        }),
-        rounds: Rounds::Aes256,
-    }
+        }
+    }))
 }
 
 fn derive_round_key(

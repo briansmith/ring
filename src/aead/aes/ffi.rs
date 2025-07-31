@@ -48,6 +48,7 @@ pub(super) type Aes256RoundKeys = [RdKey; Rounds::Aes256.into_usize() + 1];
 
 pub type RdKey = [u32; 4];
 
+#[derive(Clone, Copy)]
 #[repr(u32)]
 pub enum Rounds {
     Aes128 = 10,
@@ -55,7 +56,9 @@ pub enum Rounds {
 }
 
 impl Rounds {
-    const fn into_usize(self) -> usize {
+    pub(super) const MAX: Self = Self::Aes256;
+
+    pub(super) const fn into_usize(self) -> usize {
         self as usize
     }
 }
