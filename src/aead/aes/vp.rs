@@ -136,8 +136,8 @@ impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
         prefixed_extern_ctr32_encrypt_blocks_with_rd_keys! { vpaes_ctr32_encrypt_blocks }
         let (rd_keys, rounds) = match self {
-            Self::Aes128(rd_keys) => (rd_keys.as_ptr(), ffi::AES_128_ROUNDS),
-            Self::Aes256(rd_keys) => (rd_keys.as_ptr(), ffi::AES_256_ROUNDS),
+            Self::Aes128(rd_keys) => (rd_keys.as_ptr(), ffi::Rounds::Aes128),
+            Self::Aes256(rd_keys) => (rd_keys.as_ptr(), ffi::Rounds::Aes256),
         };
         unsafe {
             ffi::ctr32_encrypt_blocks(in_out, ctr, rd_keys, rounds, vpaes_ctr32_encrypt_blocks)

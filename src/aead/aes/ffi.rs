@@ -33,7 +33,7 @@ pub(in super::super) struct Counter(pub(super) [u8; BLOCK_LEN]);
 #[derive(Clone, Copy)]
 pub(super) struct AES_KEY {
     rd_key: RdKeys,
-    rounds: Rounds,
+    rounds: c_uint,
 }
 
 #[derive(Clone, Copy)]
@@ -43,18 +43,22 @@ union RdKeys {
     aes256: Aes256RoundKeys,
 }
 
-pub(super) type Aes128RoundKeys = [RdKey; AES_128_ROUNDS_PLUS_1];
-pub(super) type Aes256RoundKeys = [RdKey; AES_256_ROUNDS_PLUS_1];
+pub(super) type Aes128RoundKeys = [RdKey; Rounds::Aes128.into_usize() + 1];
+pub(super) type Aes256RoundKeys = [RdKey; Rounds::Aes256.into_usize() + 1];
 
 pub type RdKey = [u32; 4];
 
-pub type Rounds = c_uint;
+#[repr(u32)]
+pub enum Rounds {
+    Aes128 = 10,
+    Aes256 = 14,
+}
 
-pub(super) const AES_128_ROUNDS_PLUS_1: usize = (AES_128_ROUNDS as usize) + 1;
-pub(super) const AES_256_ROUNDS_PLUS_1: usize = (AES_256_ROUNDS as usize) + 1;
-
-pub const AES_128_ROUNDS: Rounds = 10;
-pub const AES_256_ROUNDS: Rounds = 14;
+impl Rounds {
+    const fn into_usize(self) -> usize {
+        self as usize
+    }
+}
 
 impl KeyBytes<'_> {
     pub(super) fn as_user_key_and_bits(&self) -> (*const u8, KeyBitLength) {

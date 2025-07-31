@@ -54,8 +54,8 @@ impl Key {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     pub(in super::super) fn rd_keys_and_rounds(&self) -> (*const ffi::RdKey, ffi::Rounds) {
         match self {
-            Key::Aes128(rd_keys) => (rd_keys.as_ptr(), ffi::AES_128_ROUNDS),
-            Key::Aes256(rd_keys) => (rd_keys.as_ptr(), ffi::AES_256_ROUNDS),
+            Key::Aes128(rd_keys) => (rd_keys.as_ptr(), ffi::Rounds::Aes128),
+            Key::Aes256(rd_keys) => (rd_keys.as_ptr(), ffi::Rounds::Aes256),
         }
     }
 }
