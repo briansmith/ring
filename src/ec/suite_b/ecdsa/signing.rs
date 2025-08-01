@@ -300,7 +300,7 @@ impl core::fmt::Debug for NonceRandom<'_> {
 }
 
 impl rand::sealed::SecureRandom for NonceRandom<'_> {
-    fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    fn fill_impl(&self, dest: &mut [u8], _: crate::sealed::Arg) -> Result<(), error::Unspecified> {
         // Use the same digest algorithm that will be used to digest the
         // message. The digest algorithm's output is exactly the right size;
         // this is checked below.
