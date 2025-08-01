@@ -24,13 +24,13 @@ use crate::{
     sealed, signature,
 };
 
-impl signature::VerificationAlgorithm for RsaParameters {}
-impl signature::VerificationAlgorithm_ for RsaParameters {
+impl signature::VerificationAlgorithm for RsaParameters {
     fn verify_(
         &self,
         public_key: untrusted::Input,
         msg: untrusted::Input,
         signature: untrusted::Input,
+        _: sealed::Arg,
     ) -> Result<(), error::Unspecified> {
         let (n, e) = parse_public_key(public_key)?;
         verify_rsa_(
@@ -45,8 +45,6 @@ impl signature::VerificationAlgorithm_ for RsaParameters {
         )
     }
 }
-
-impl sealed::Sealed for RsaParameters {}
 
 macro_rules! rsa_params {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $PADDING_ALGORITHM:expr,
@@ -225,7 +223,10 @@ pub(crate) fn verify_rsa_(
     let decoded = key.exponentiate(signature, &mut decoded, cpu_features)?;
 
     // Verify the padded message is correct.
-    let m_hash = digest::digest(params.padding_alg.digest_alg(), msg.as_slice_less_safe());
+    let m_hash = digest::digest(
+        params.padding_alg.digest_alg_(sealed::Arg),
+        msg.as_slice_less_safe(),
+    );
     untrusted::Input::from(decoded).read_all(error::Unspecified, |m| {
         params.padding_alg.verify(m_hash, m, key.n().len_bits())
     })

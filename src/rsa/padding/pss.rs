@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, mgf1, Padding, RsaEncoding, Verification};
-use crate::{bb, bits, digest, error, rand};
+use crate::{bb, bits, digest, error, rand, sealed};
 
 /// RSA PSS padding as described in [RFC 3447 Section 8.1].
 ///
@@ -27,10 +27,8 @@ pub struct PSS {
     digest_alg: &'static digest::Algorithm,
 }
 
-impl crate::sealed::Sealed for PSS {}
-
 impl Padding for PSS {
-    fn digest_alg(&self) -> &'static digest::Algorithm {
+    fn digest_alg_(&self, _: sealed::Arg) -> &'static digest::Algorithm {
         self.digest_alg
     }
 }
@@ -38,12 +36,13 @@ impl Padding for PSS {
 impl RsaEncoding for PSS {
     // Implement padding procedure per EMSA-PSS,
     // https://tools.ietf.org/html/rfc3447#section-9.1.
-    fn encode(
+    fn encode_(
         &self,
         m_hash: digest::Digest,
         m_out: &mut [u8],
         mod_bits: bits::BitLength,
         rng: &dyn rand::SecureRandom,
+        _: sealed::Arg,
     ) -> Result<(), error::Unspecified> {
         let metrics = PSSMetrics::new(self.digest_alg, mod_bits)?;
 

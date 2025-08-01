@@ -49,13 +49,13 @@ enum AlgorithmID {
 
 derive_debug_via_id!(EcdsaVerificationAlgorithm);
 
-impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {}
-impl signature::VerificationAlgorithm_ for EcdsaVerificationAlgorithm {
+impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
     fn verify_(
         &self,
         public_key: untrusted::Input,
         msg: untrusted::Input,
         signature: untrusted::Input,
+        _: sealed::Arg,
     ) -> Result<(), error::Unspecified> {
         let cpu = cpu::features();
         let e = {
@@ -167,8 +167,6 @@ impl EcdsaVerificationAlgorithm {
         Err(error::Unspecified)
     }
 }
-
-impl sealed::Sealed for EcdsaVerificationAlgorithm {}
 
 fn split_rs_fixed<'a>(
     ops: &'static ScalarOps,

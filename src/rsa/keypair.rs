@@ -28,7 +28,7 @@ use crate::{
     cpu, digest,
     error::{self, KeyRejected},
     io::der,
-    pkcs8, rand, signature,
+    pkcs8, rand, sealed, signature,
 };
 
 /// An RSA key pair, used for signing.
@@ -543,7 +543,7 @@ impl KeyPair {
             return Err(error::Unspecified);
         }
 
-        let m_hash = digest::digest(padding_alg.digest_alg(), msg);
+        let m_hash = digest::digest(padding_alg.digest_alg_(sealed::Arg), msg);
 
         // Use the output buffer as the scratch space for the signature to
         // reduce the required stack space.

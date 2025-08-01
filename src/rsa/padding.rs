@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{bb, bits, digest, error, rand};
+use crate::{bb, bits, digest, error, rand, sealed};
 
 mod pkcs1;
 mod pss;
@@ -24,10 +24,17 @@ pub use self::{
 pub(super) use pkcs1::RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY;
 
 /// Common features of both RSA padding encoding and RSA padding verification.
-pub trait Padding: 'static + Sync + crate::sealed::Sealed + core::fmt::Debug {
+pub trait Padding: 'static + Sync + core::fmt::Debug {
+    #[doc(hidden)]
+    fn digest_alg_(&self, _: sealed::Arg) -> &'static digest::Algorithm;
+
     // The digest algorithm used for digesting the message (and maybe for
     // other things).
-    fn digest_alg(&self) -> &'static digest::Algorithm;
+    #[deprecated(note = "Internal API not intended for external use.")]
+    #[doc(hidden)]
+    fn digest_alg(&self) -> &'static digest::Algorithm {
+        self.digest_alg_(sealed::Arg)
+    }
 }
 
 pub(super) fn encode(
@@ -37,8 +44,7 @@ pub(super) fn encode(
     mod_bits: bits::BitLength,
     rng: &dyn rand::SecureRandom,
 ) -> Result<(), error::Unspecified> {
-    #[allow(deprecated)]
-    encoding.encode(m_hash, m_out, mod_bits, rng)
+    encoding.encode_(m_hash, m_out, mod_bits, rng, sealed::Arg)
 }
 
 /// An RSA signature encoding as described in [RFC 3447 Section 8].
@@ -46,6 +52,16 @@ pub(super) fn encode(
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
 #[cfg(feature = "alloc")]
 pub trait RsaEncoding: Padding {
+    #[doc(hidden)]
+    fn encode_(
+        &self,
+        m_hash: digest::Digest,
+        m_out: &mut [u8],
+        mod_bits: bits::BitLength,
+        rng: &dyn rand::SecureRandom,
+        _: sealed::Arg,
+    ) -> Result<(), error::Unspecified>;
+
     #[deprecated(note = "internal API that will be removed")]
     #[doc(hidden)]
     fn encode(
@@ -54,7 +70,9 @@ pub trait RsaEncoding: Padding {
         m_out: &mut [u8],
         mod_bits: bits::BitLength,
         rng: &dyn rand::SecureRandom,
-    ) -> Result<(), error::Unspecified>;
+    ) -> Result<(), error::Unspecified> {
+        self.encode_(m_hash, m_out, mod_bits, rng, sealed::Arg)
+    }
 }
 
 /// Verification of an RSA signature encoding as described in
@@ -114,7 +132,7 @@ mod test {
 
                 let msg = test_case.consume_bytes("Msg");
                 let msg = untrusted::Input::from(&msg);
-                let m_hash = digest::digest(alg.digest_alg(), msg.as_slice_less_safe());
+                let m_hash = digest::digest(alg.digest_alg_(sealed::Arg), msg.as_slice_less_safe());
 
                 let encoded = test_case.consume_bytes("EM");
                 let encoded = untrusted::Input::from(&encoded);
@@ -165,9 +183,9 @@ mod test {
                 let rng = test::rand::FixedSliceRandom { bytes: &salt };
 
                 let mut m_out = vec![0u8; bit_len.as_usize_bytes_rounded_up()];
-                let digest = digest::digest(alg.digest_alg(), &msg);
-                #[allow(deprecated)]
-                alg.encode(digest, &mut m_out, bit_len, &rng).unwrap();
+                let digest = digest::digest(alg.digest_alg_(sealed::Arg), &msg);
+                alg.encode_(digest, &mut m_out, bit_len, &rng, sealed::Arg)
+                    .unwrap();
                 assert_eq!(m_out, encoded);
 
                 Ok(())
