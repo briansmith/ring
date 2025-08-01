@@ -130,7 +130,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: windows-latest
+    runs-on: windows-2025
 
     steps:
       - run: rustup --version
@@ -287,7 +287,7 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: i686-pc-windows-msvc
-            host_os: windows-latest
+            host_os: windows-2025
 
           - target: i686-unknown-linux-gnu
             host_os: ubuntu-22.04
@@ -343,10 +343,10 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: x86_64-pc-windows-gnu
-            host_os: windows-latest
+            host_os: windows-2025
 
           - target: x86_64-pc-windows-msvc
-            host_os: windows-latest
+            host_os: windows-2025
 
           - target: x86_64-apple-darwin
             host_os: macos-13
@@ -475,7 +475,7 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: i686-pc-windows-msvc
-            host_os: windows-latest
+            host_os: windows-2025
 
           - target: x86_64-unknown-linux-gnu
             host_os: ubuntu-22.04
