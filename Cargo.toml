@@ -188,6 +188,22 @@ unstable-testing-arm-no-neon = []
 test_logging = []
 wasm32_unknown_unknown_js = ["getrandom/js"]
 
+[package.metadata.cargo-semver-checks.lints]
+trait_marked_deprecated = { level = "warn" }
+function_marked_deprecated = { level = "warn" }
+global_value_marked_deprecated = { level = "warn" }
+trait_method_marked_deprecated = { level = "warn" }
+type_method_marked_deprecated = { level = "warn" }
+ype_associated_const_deprecated = { level = "warn" }
+trait_associated_type_marked_deprecated = { level = "warn" }
+trait_associated_const_marked_deprecated = { level = "warn" }
+enum_variant_marked_deprecated = { level = "warn" }
+enum_struct_variant_field_marked_deprecated = { level = "warn" }
+enum_tuple_variant_field_marked_deprecated = { level = "warn" }
+struct_field_marked_deprecated = { level = "warn" }
+macro_marked_deprecated = { level = "warn" }
+proc_macro_marked_deprecated = { level = "warn" }
+
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 
 [profile.bench]
