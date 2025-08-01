@@ -160,19 +160,7 @@ mod tests;
 mod window5;
 
 mod sealed {
-    /// Traits that are designed to only be implemented internally in *ring*.
-    //
-    // Usage:
-    // ```
-    // use crate::sealed;
-    //
-    // pub trait MyType: sealed::Sealed {
-    //     // [...]
-    // }
-    //
-    // impl sealed::Sealed for MyType {}
-    // ```
-    pub trait Sealed {}
+    pub struct Arg;
 }
 
 #[deprecated(note = "internal API that will be removed")]

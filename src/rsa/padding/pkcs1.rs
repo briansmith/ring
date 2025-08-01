@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, Padding, RsaEncoding, Verification};
-use crate::{bits, digest, error, io::der, rand};
+use crate::{bits, digest, error, io::der, rand, sealed};
 
 /// PKCS#1 1.5 padding as described in [RFC 3447 Section 8.2].
 ///
@@ -27,21 +27,20 @@ pub struct PKCS1 {
     digestinfo_prefix: &'static [u8],
 }
 
-impl crate::sealed::Sealed for PKCS1 {}
-
 impl Padding for PKCS1 {
-    fn digest_alg(&self) -> &'static digest::Algorithm {
+    fn digest_alg_(&self, _: sealed::Arg) -> &'static digest::Algorithm {
         self.digest_alg
     }
 }
 
 impl RsaEncoding for PKCS1 {
-    fn encode(
+    fn encode_(
         &self,
         m_hash: digest::Digest,
         m_out: &mut [u8],
         _mod_bits: bits::BitLength,
         _rng: &dyn rand::SecureRandom,
+        _: sealed::Arg,
     ) -> Result<(), error::Unspecified> {
         pkcs1_encode(self, m_hash, m_out);
         Ok(())

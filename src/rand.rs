@@ -116,8 +116,6 @@ impl SystemRandom {
     }
 }
 
-impl crate::sealed::Sealed for SystemRandom {}
-
 // Use the `getrandom` crate whenever it is using the environment's (operating
 // system's) CSPRNG. Avoid using it on targets where it uses the `rdrand`
 // implementation.

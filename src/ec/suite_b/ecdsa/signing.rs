@@ -24,7 +24,7 @@ use crate::{
     },
     error,
     io::der,
-    limb, pkcs8, rand, sealed, signature,
+    limb, pkcs8, rand, signature,
 };
 /// An ECDSA signing algorithm.
 pub struct EcdsaSigningAlgorithm {
@@ -54,8 +54,6 @@ impl PartialEq for EcdsaSigningAlgorithm {
 }
 
 impl Eq for EcdsaSigningAlgorithm {}
-
-impl sealed::Sealed for EcdsaSigningAlgorithm {}
 
 /// An ECDSA key pair, used for signing.
 pub struct EcdsaKeyPair {
@@ -340,8 +338,6 @@ impl rand::sealed::SecureRandom for NonceRandom<'_> {
         Ok(())
     }
 }
-
-impl sealed::Sealed for NonceRandom<'_> {}
 
 struct NonceRandomKey(digest::Digest);
 
