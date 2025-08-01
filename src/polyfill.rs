@@ -72,13 +72,19 @@ pub mod prelude {
     // of Rust. If the polyfill is for a not-yet-stable API, or if its API
     // isn't exactly the same, or if its semantics differ, give it a different
     // name.
-    pub(crate) use super::{atomic::AtomicPolyfills, ptr::PointerPolyfills, slice::SlicePolyfills};
+    pub(crate) use super::{
+        atomic::AtomicPolyfills,
+        ptr::PointerPolyfills,
+        slice::{SliceOfArraysPolyfills, SlicePolyfills},
+    };
 }
 
 mod notsend;
 pub mod ptr;
 
 pub(crate) mod slice;
+
+mod smaller_chunks;
 
 #[cfg(test)]
 mod test;
@@ -89,6 +95,9 @@ pub use self::{
     array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, notsend::NotSend,
     unwrap_const::unwrap_const,
 };
+
+#[allow(unused_imports)]
+pub use self::smaller_chunks::SmallerChunks;
 
 #[cfg(feature = "alloc")]
 pub use leading_zeros_skipped::LeadingZerosStripped;

@@ -14,15 +14,18 @@
 
 #![cfg(target_arch = "x86_64")]
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{aes, gcm, Counter, Overlapping, BLOCK_LEN};
-use crate::{c, polyfill::slice::AsChunksMut};
+use crate::c;
 use core::num::NonZeroU32;
 
 pub(super) fn seal_whole_vaes_clmul_avx2(
     aes_key: &aes::hw::Key,
     auth: &mut gcm::Context<gcm::vclmulavx2::Key>,
     ctr: &mut Counter,
-    mut in_out: AsChunksMut<u8, BLOCK_LEN>,
+    in_out: &mut [[u8; BLOCK_LEN]],
 ) {
     prefixed_extern! {
         fn aes_gcm_enc_update_vaes_avx2(

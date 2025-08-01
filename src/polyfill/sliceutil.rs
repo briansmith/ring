@@ -14,9 +14,8 @@
 
 //! Utilities to make dealing with slices less tediuous.
 
+#[allow(unused_imports)]
 use super::prelude::*;
-
-use super::slice::AsChunks;
 
 /// Replaces the first N elements of `a` with the first N elements of `b`, where
 /// N is `a.len().min(b.len())`, leaving the rest unchanged.
@@ -27,8 +26,8 @@ pub fn overwrite_at_start<T: Copy>(a: &mut [T], b: &[T]) {
 }
 
 #[inline]
-pub fn as_chunks_exact<T, const N: usize>(slice: &[T]) -> Option<AsChunks<'_, T, N>> {
-    match slice.as_chunks_::<N>() {
+pub fn as_chunks_exact<T, const N: usize>(slice: &[T]) -> Option<&[[T; N]]> {
+    match slice.as_chunks::<N>() {
         (w, []) => Some(w),
         _ => None,
     }

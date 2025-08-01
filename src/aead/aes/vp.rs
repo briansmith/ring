@@ -71,7 +71,7 @@ impl Key {
         key: *mut R,
         _cpu: cpu::aarch64::Neon,
     ) where
-        *mut R: StartPtrMut<ffi::RdKey>,
+        *mut R: StartPtrMut<Elem = ffi::RdKey>,
     {
         prefixed_extern! {
             fn vpaes_set_encrypt_key(user_key: *const u8, bits: ffi::KeyBitLength,

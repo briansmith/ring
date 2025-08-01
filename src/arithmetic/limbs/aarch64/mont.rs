@@ -14,6 +14,9 @@
 
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::super::super::{
     inout::{AliasingSlices2, AliasingSlices3},
     n0::N0,
@@ -22,7 +25,6 @@ use super::super::super::{
 use crate::{
     c,
     limb::{Limb, LIMB_BYTES},
-    polyfill::slice::AsChunks,
 };
 use core::num::NonZeroUsize;
 
@@ -57,7 +59,7 @@ pub(in super::super::super) fn mul_mont(
 #[inline]
 pub(in super::super::super) fn sqr_mont5(
     in_out: impl AliasingSlices2<Limb>,
-    n: AsChunks<Limb, 8>,
+    n: &[[Limb; 8]],
     n0: &N0,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
