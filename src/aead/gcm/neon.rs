@@ -21,7 +21,7 @@
 use crate::polyfill::prelude::*;
 
 use super::{ffi, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
-use crate::{c, cpu, polyfill::slice::AsChunks};
+use crate::{c, cpu};
 use core::mem::MaybeUninit;
 
 #[derive(Clone)]
@@ -61,7 +61,7 @@ impl UpdateBlock for Key {
 }
 
 impl UpdateBlocks for Key {
-    fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, BLOCK_LEN>) {
+    fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]) {
         prefixed_extern! {
             fn gcm_ghash_neon(
                 xi: &mut Xi,

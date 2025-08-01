@@ -15,8 +15,8 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::{ffi, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
-use crate::{c, cpu::intel, polyfill::slice::AsChunks};
-use core::mem::MaybeUninit;
+use crate::{c, cpu::intel};
+use core::{mem::MaybeUninit, slice};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -41,12 +41,12 @@ impl Key {
 
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
-        self.update_blocks(xi, (&a).into())
+        self.update_blocks(xi, slice::from_ref(&a))
     }
 }
 
 impl UpdateBlocks for Key {
-    fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, BLOCK_LEN>) {
+    fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]) {
         prefixed_extern! {
             fn gcm_ghash_avx(
                 xi: &mut Xi,

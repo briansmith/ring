@@ -16,7 +16,6 @@
 use crate::polyfill::prelude::*;
 
 use super::CHAINING_WORDS;
-use crate::polyfill::slice::AsChunks;
 use core::{
     num::Wrapping,
     ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Not, Shr},
@@ -33,13 +32,13 @@ use core::{
 #[inline]
 pub(super) fn block_data_order<S: Sha2, const BLOCK_LEN: usize, const BYTES_LEN: usize>(
     mut H: [S; CHAINING_WORDS],
-    M: AsChunks<u8, BLOCK_LEN>,
+    M: &[[u8; BLOCK_LEN]],
 ) -> [S; CHAINING_WORDS]
 where
     for<'a> &'a S::InputBytes: From<&'a [u8; BYTES_LEN]>,
 {
     for M in M {
-        let (M, remainder) = M.as_chunks_::<BYTES_LEN>();
+        let (M, remainder) = M.as_chunks::<BYTES_LEN>();
         debug_assert!(remainder.is_empty());
 
         // FIPS 180-4 {6.2.2, 6.4.2} Step 1

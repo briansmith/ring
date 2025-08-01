@@ -24,7 +24,7 @@ use super::{
 use crate::{
     cpu,
     error::InputTooLongError,
-    polyfill::{slice::AsChunksMut, sliceutil::overwrite_at_start, usize_from_u64_saturated},
+    polyfill::{sliceutil::overwrite_at_start, usize_from_u64_saturated},
 };
 
 #[cfg(any(
@@ -267,10 +267,10 @@ fn seal_whole_partial<A: aes::EncryptBlock, G: gcm::UpdateBlock>(
     in_out: &mut [u8],
     mut ctr: Counter,
     tag_iv: aes::Iv,
-    seal_whole: impl FnOnce(&A, &mut gcm::Context<G>, &mut Counter, AsChunksMut<u8, BLOCK_LEN>),
+    seal_whole: impl FnOnce(&A, &mut gcm::Context<G>, &mut Counter, &mut [[u8; BLOCK_LEN]]),
 ) -> Result<Tag, InputTooLongError> {
     let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
-    let (whole, remainder) = in_out.as_chunks_mut_();
+    let (whole, remainder) = in_out.as_chunks_mut();
     seal_whole(aes_key, &mut auth, &mut ctr, whole);
     let remainder = OverlappingPartialBlock::new(remainder.into())
         .unwrap_or_else(|InputTooLongError { .. }| unreachable!());
@@ -305,9 +305,9 @@ fn seal_strided<
 ) -> Result<Tag, InputTooLongError> {
     let mut auth = gcm::Context::new(gcm_key, aad, in_out.len())?;
 
-    let (mut whole, remainder) = in_out.as_chunks_mut_();
+    let (whole, remainder) = in_out.as_chunks_mut();
 
-    for mut chunk in whole.chunks_mut::<CHUNK_BLOCKS>() {
+    for chunk in whole.chunks_mut(CHUNK_BLOCKS) {
         aes_key.ctr32_encrypt_within(chunk.as_flattened_mut().into(), &mut ctr);
         auth.update_blocks(chunk.as_ref());
     }
@@ -473,7 +473,7 @@ fn open_strided<
         let chunk_len = whole_remaining.min(CHUNK_BLOCKS * BLOCK_LEN);
         in_out = in_out
             .split_at(chunk_len, |chunk| {
-                let (input, _) = chunk.input().as_chunks_();
+                let (input, _) = chunk.input().as_chunks();
                 auth.update_blocks(input);
                 aes_key.ctr32_encrypt_within(chunk, &mut ctr);
             })

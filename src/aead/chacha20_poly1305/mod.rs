@@ -176,7 +176,7 @@ fn finish(auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
 
 #[inline]
 fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
-    let (whole, remainder) = input.as_chunks_();
+    let (whole, remainder) = input.as_chunks();
     ctx.update(whole);
     if !remainder.is_empty() {
         let mut block = [0u8; poly1305::BLOCK_LEN];
