@@ -141,7 +141,7 @@ fn uncompact_word(a: Word) -> Word {
 }
 
 fn compact_block(input: &[u8; 16]) -> [Word; BLOCK_WORDS] {
-    let (input, _) = input.as_chunks_();
+    let (input, _) = input.as_chunks();
     let out: [Word; BLOCK_WORDS] = array::from_fn(|i| Word::from_ne_bytes(input[i]));
     let a0 = compact_word(out[0]);
     let a1 = compact_word(out[1]);
@@ -685,7 +685,7 @@ fn setup_key_128(input: &[u8; 128 / 8]) -> Key {
 
 fn setup_key_256(input: &[u8; 32]) -> Key {
     // Each key schedule iteration produces two round keys.
-    let (input, _) = input.as_chunks_();
+    let (input, _) = input.as_chunks();
     let mut block1 = compact_block(&input[0]);
     let mut block2 = compact_block(&input[1]);
 

@@ -15,10 +15,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use crate::{
-    bb,
-    polyfill::{slice::AsChunks, ArraySplitMap},
-};
+use crate::{bb, polyfill::ArraySplitMap};
 
 pub(in super::super) const BLOCK_LEN: usize = 16;
 pub(in super::super) type Block = [u8; BLOCK_LEN];
@@ -38,7 +35,7 @@ impl KeyValue {
 }
 
 pub(super) fn with_non_dangling_ptr(
-    input: AsChunks<u8, BLOCK_LEN>,
+    input: &[[u8; BLOCK_LEN]],
     f: impl FnOnce(*const u8, crate::c::NonZero_size_t),
 ) {
     use core::num::NonZeroUsize;

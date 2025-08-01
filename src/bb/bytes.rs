@@ -39,14 +39,14 @@ pub fn bytes_are_equal(a: &[u8], b: &[u8]) -> BoolMask {
     if b.len() != len {
         return BoolMask::FALSE;
     }
-    let (a, a_rem) = a.as_chunks_();
-    let (b, b_rem) = b.as_chunks_();
+    let (a, a_rem) = a.as_chunks();
+    let (b, b_rem) = b.as_chunks();
 
     let mut acc = a
-        .into_iter()
+        .iter()
         .copied()
         .map(Word::from_le_bytes)
-        .zip(b.into_iter().copied().map(Word::from_le_bytes))
+        .zip(b.iter().copied().map(Word::from_le_bytes))
         .fold(0, |acc, (a, b)| acc | (a ^ b));
 
     if !a_rem.is_empty() {

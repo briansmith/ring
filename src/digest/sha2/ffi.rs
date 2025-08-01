@@ -13,7 +13,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::CHAINING_WORDS;
-use crate::polyfill::slice::AsChunks;
 use core::num::{NonZeroUsize, Wrapping};
 
 /// `unsafe { T => f }` means it is safe to call `f` iff we can construct
@@ -50,7 +49,7 @@ macro_rules! sha2_64_ffi {
 
 pub(super) unsafe fn sha2_ffi<U, Cpu, const BLOCK_LEN: usize>(
     state: &mut [Wrapping<U>; CHAINING_WORDS],
-    data: AsChunks<u8, BLOCK_LEN>,
+    data: &[[u8; BLOCK_LEN]],
     cpu: Cpu,
     f: unsafe extern "C" fn(
         *mut [Wrapping<U>; CHAINING_WORDS],

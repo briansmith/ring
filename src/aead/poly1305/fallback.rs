@@ -71,7 +71,7 @@ pub(in super::super) struct State {
 impl State {
     pub(super) fn new_context(key: Key) -> super::Context {
         let (t, key) = key.split();
-        let (t, _) = t[..].as_chunks_();
+        let (t, _) = t[..].as_chunks();
 
         let mut t0 = Wrapping(u32::from_le_bytes(t[0]));
         let mut t1 = Wrapping(u32::from_le_bytes(t[1]));
@@ -113,10 +113,10 @@ impl State {
     // `input.len % BLOCK_LEN == 0` must be true for every call except the
     // final one.
     pub(super) fn update_internal(&mut self, input: &[u8]) {
-        let (whole, remainder) = input.as_chunks_::<BLOCK_LEN>();
+        let (whole, remainder) = input.as_chunks::<BLOCK_LEN>();
 
-        whole.into_iter().for_each(|input| {
-            let (input, _) = input.as_chunks_();
+        whole.iter().for_each(|input| {
+            let (input, _) = input.as_chunks();
             let t0 = Wrapping(u32::from_le_bytes(input[0]));
             let t1 = Wrapping(u32::from_le_bytes(input[1]));
             let t2 = Wrapping(u32::from_le_bytes(input[2]));
@@ -136,7 +136,7 @@ impl State {
             sliceutil::overwrite_at_start(&mut mp, remainder);
             mp[remainder.len()] = 1;
 
-            let (input, _) = mp.as_chunks_();
+            let (input, _) = mp.as_chunks();
             let t0 = Wrapping(u32::from_le_bytes(input[0]));
             let t1 = Wrapping(u32::from_le_bytes(input[1]));
             let t2 = Wrapping(u32::from_le_bytes(input[2]));

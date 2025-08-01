@@ -42,14 +42,33 @@ impl<T> PointerPolyfills<T> for *mut T {
 // how https://github.com/rust-lang/rust/issues/119834#issuecomment-3137563829
 // is resolved.
 #[allow(dead_code)]
-pub(crate) trait StartPtrMut<T> {
-    fn start_mut_ptr_(self) -> *mut T;
+pub(crate) trait StartPtr {
+    type Elem;
+    fn start_ptr_(self) -> *const Self::Elem;
 }
 
-impl<T, const N: usize> StartPtrMut<T> for *mut [T; N] {
+impl<T, const N: usize> StartPtr for *const [T; N] {
+    type Elem = T;
     #[inline(always)]
-    fn start_mut_ptr_(self) -> *mut T {
-        self.cast::<T>()
+    fn start_ptr_(self) -> *const Self::Elem {
+        self.cast::<Self::Elem>()
+    }
+}
+
+// TODO(MSRV feature(array_ptr_get)): Considering dropping this, depending on
+// how https://github.com/rust-lang/rust/issues/119834#issuecomment-3137563829
+// is resolved.
+#[allow(dead_code)]
+pub(crate) trait StartPtrMut {
+    type Elem;
+    fn start_mut_ptr_(self) -> *mut Self::Elem;
+}
+
+impl<T, const N: usize> StartPtrMut for *mut [T; N] {
+    type Elem = T;
+    #[inline(always)]
+    fn start_mut_ptr_(self) -> *mut Self::Elem {
+        self.cast::<Self::Elem>()
     }
 }
 

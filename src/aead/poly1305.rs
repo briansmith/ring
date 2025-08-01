@@ -19,10 +19,14 @@
 
 // TODO: enforce maximum input length.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{Tag, TAG_LEN};
+use crate::cpu;
 #[cfg(all(target_arch = "arm", target_endian = "little"))]
 use crate::cpu::GetFeature as _;
-use crate::{cpu, polyfill::slice::AsChunks};
+use core::slice;
 
 mod arm_neon;
 mod fallback;
@@ -65,10 +69,10 @@ impl Context {
     }
 
     pub fn update_block(&mut self, input: [u8; BLOCK_LEN]) {
-        self.update(AsChunks::from_ref(&input))
+        self.update(slice::from_ref(&input))
     }
 
-    pub fn update(&mut self, input: AsChunks<u8, BLOCK_LEN>) {
+    pub fn update(&mut self, input: &[[u8; BLOCK_LEN]]) {
         self.update_internal(input.as_flattened());
     }
 
