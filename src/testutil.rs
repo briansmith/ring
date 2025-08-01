@@ -478,7 +478,11 @@ pub mod rand {
     }
 
     impl rand::sealed::SecureRandom for FixedByteRandom {
-        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        fn fill_impl(
+            &self,
+            dest: &mut [u8],
+            _: crate::sealed::Arg,
+        ) -> Result<(), error::Unspecified> {
             dest.fill(self.byte);
             Ok(())
         }
@@ -493,7 +497,11 @@ pub mod rand {
     }
 
     impl rand::sealed::SecureRandom for FixedSliceRandom<'_> {
-        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        fn fill_impl(
+            &self,
+            dest: &mut [u8],
+            _: crate::sealed::Arg,
+        ) -> Result<(), error::Unspecified> {
             dest.copy_from_slice(self.bytes);
             Ok(())
         }
@@ -516,7 +524,11 @@ pub mod rand {
     }
 
     impl rand::sealed::SecureRandom for FixedSliceSequenceRandom<'_> {
-        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        fn fill_impl(
+            &self,
+            dest: &mut [u8],
+            _: crate::sealed::Arg,
+        ) -> Result<(), error::Unspecified> {
             let current = unsafe { *self.current.get() };
             let bytes = self.bytes[current];
             dest.copy_from_slice(bytes);

@@ -31,7 +31,7 @@ where
 {
     #[inline(always)]
     fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        self.fill_impl(dest)
+        self.fill_impl(dest, crate::sealed::Arg)
     }
 }
 
@@ -64,7 +64,11 @@ pub(crate) mod sealed {
 
     pub trait SecureRandom: core::fmt::Debug {
         /// Fills `dest` with random bytes.
-        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified>;
+        fn fill_impl(
+            &self,
+            dest: &mut [u8],
+            _: crate::sealed::Arg,
+        ) -> Result<(), error::Unspecified>;
     }
 
     pub trait RandomlyConstructable: Sized {
@@ -159,7 +163,7 @@ impl SystemRandom {
 ))]
 impl sealed::SecureRandom for SystemRandom {
     #[inline(always)]
-    fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    fn fill_impl(&self, dest: &mut [u8], _: crate::sealed::Arg) -> Result<(), error::Unspecified> {
         getrandom::getrandom(dest).map_err(|_| error::Unspecified)
     }
 }
