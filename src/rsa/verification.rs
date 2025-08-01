@@ -24,8 +24,9 @@ use crate::{
     sealed, signature,
 };
 
-impl signature::VerificationAlgorithm for RsaParameters {
-    fn verify(
+impl signature::VerificationAlgorithm for RsaParameters {}
+impl signature::VerificationAlgorithm_ for RsaParameters {
+    fn verify_(
         &self,
         public_key: untrusted::Input,
         msg: untrusted::Input,

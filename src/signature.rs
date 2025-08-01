@@ -342,16 +342,31 @@ pub trait KeyPair: core::fmt::Debug + Send + Sized + Sync {
 pub(crate) const MAX_LEN: usize = 1/*tag:SEQUENCE*/ + 2/*len*/ +
     (2 * (1/*tag:INTEGER*/ + 1/*len*/ + 1/*zero*/ + ec::SCALAR_MAX_BYTES));
 
-/// A signature verification algorithm.
-pub trait VerificationAlgorithm: core::fmt::Debug + Sync + sealed::Sealed {
-    /// Verify the signature `signature` of message `msg` with the public key
-    /// `public_key`.
-    fn verify(
+pub(super) trait VerificationAlgorithm_: core::fmt::Debug + Sync + sealed::Sealed {
+    fn verify_(
         &self,
         public_key: untrusted::Input,
         msg: untrusted::Input,
         signature: untrusted::Input,
     ) -> Result<(), error::Unspecified>;
+}
+
+/// A signature verification algorithm.
+#[allow(private_bounds)]
+pub trait VerificationAlgorithm:
+    VerificationAlgorithm_ + core::fmt::Debug + Sync + sealed::Sealed
+{
+    /// Verify the signature `signature` of message `msg` with the public key
+    /// `public_key`.
+    #[deprecated(note = "Internal API not intended for external use.")]
+    fn verify(
+        &self,
+        public_key: untrusted::Input,
+        msg: untrusted::Input,
+        signature: untrusted::Input,
+    ) -> Result<(), error::Unspecified> {
+        self.verify_(public_key, msg, signature)
+    }
 }
 
 /// An unparsed, possibly malformed, public key for signature verification.
@@ -400,7 +415,7 @@ impl<B> UnparsedPublicKey<B> {
         B: AsRef<[u8]>,
     {
         let _ = cpu::features();
-        self.algorithm.verify(
+        self.algorithm.verify_(
             untrusted::Input::from(self.bytes.as_ref()),
             untrusted::Input::from(message),
             untrusted::Input::from(signature),

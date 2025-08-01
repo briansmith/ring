@@ -33,8 +33,9 @@ impl core::fmt::Debug for EdDSAParameters {
 /// [Ed25519]: https://ed25519.cr.yp.to/
 pub static ED25519: EdDSAParameters = EdDSAParameters {};
 
-impl signature::VerificationAlgorithm for EdDSAParameters {
-    fn verify(
+impl signature::VerificationAlgorithm for EdDSAParameters {}
+impl signature::VerificationAlgorithm_ for EdDSAParameters {
+    fn verify_(
         &self,
         public_key: untrusted::Input,
         msg: untrusted::Input,

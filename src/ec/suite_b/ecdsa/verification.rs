@@ -49,8 +49,9 @@ enum AlgorithmID {
 
 derive_debug_via_id!(EcdsaVerificationAlgorithm);
 
-impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
-    fn verify(
+impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {}
+impl signature::VerificationAlgorithm_ for EcdsaVerificationAlgorithm {
+    fn verify_(
         &self,
         public_key: untrusted::Input,
         msg: untrusted::Input,
