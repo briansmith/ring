@@ -25,35 +25,43 @@
 use crate::polyfill::{StartMutPtr, StartPtr};
 
 #[allow(dead_code)]
-pub(crate) trait SlicePolyfills<T> {
-    fn as_chunks<const N: usize>(&self) -> (&[[T; N]], &[T]);
-    fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[T; N]], &mut [T]);
-    fn split_at_checked(&self, mid: usize) -> Option<(&[T], &[T])>;
-    fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut [T], &mut [T])>;
-    fn split_first_chunk_mut<const N: usize>(&mut self) -> Option<(&mut [T; N], &mut [T])>;
+pub(crate) trait SlicePolyfills {
+    type Elem;
+    fn as_chunks<const N: usize>(&self) -> (&[[Self::Elem; N]], &[Self::Elem]);
+    fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[Self::Elem; N]], &mut [Self::Elem]);
+    fn split_at_checked(&self, mid: usize) -> Option<(&[Self::Elem], &[Self::Elem])>;
+    fn split_at_mut_checked(
+        &mut self,
+        mid: usize,
+    ) -> Option<(&mut [Self::Elem], &mut [Self::Elem])>;
+    fn split_first_chunk_mut<const N: usize>(
+        &mut self,
+    ) -> Option<(&mut [Self::Elem; N], &mut [Self::Elem])>;
 }
 
-impl<T> SlicePolyfills<T> for [T] {
+impl<T> SlicePolyfills for [T] {
+    type Elem = T;
+
     // TODO(MSRV-1.88): Use `slice::as_chunks`.
     #[inline]
-    fn as_chunks<const N: usize>(&self) -> (&[[T; N]], &[T]) {
+    fn as_chunks<const N: usize>(&self) -> (&[[Self::Elem; N]], &[Self::Elem]) {
         assert!(N != 0);
         let len = self.len();
         let remainder_len = len % N;
         let (chunks, remainder) = self.split_at(len - remainder_len);
-        let chunks = <*const T>::cast::<[T; N]>(chunks.as_ptr());
+        let chunks = <*const Self::Elem>::cast::<[Self::Elem; N]>(chunks.as_ptr());
         let chunks = unsafe { core::slice::from_raw_parts(chunks, len / N) };
         (chunks, remainder)
     }
 
     // TODO(MSRV-1.88): Use `slice::as_chunks_mut`.
     #[inline]
-    fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[T; N]], &mut [T]) {
+    fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[Self::Elem; N]], &mut [Self::Elem]) {
         assert!(N != 0);
         let len = self.len();
         let remainder_len = len % N;
         let (chunks, remainder) = self.split_at_mut(len - remainder_len);
-        let chunks = <*mut T>::cast::<[T; N]>(chunks.as_mut_ptr());
+        let chunks = <*mut Self::Elem>::cast::<[Self::Elem; N]>(chunks.as_mut_ptr());
         let chunks = unsafe { core::slice::from_raw_parts_mut(chunks, len / N) };
         (chunks, remainder)
     }
@@ -64,7 +72,7 @@ impl<T> SlicePolyfills<T> for [T] {
     // terms of `split_at` and rely on the optimizer to eliminate the panic.
     // TODO(MSRV-1.80): Use `slice::split_at_checked`.
     #[inline]
-    fn split_at_checked(&self, mid: usize) -> Option<(&[T], &[T])> {
+    fn split_at_checked(&self, mid: usize) -> Option<(&[Self::Elem], &[Self::Elem])> {
         if self.len() >= mid {
             Some(self.split_at(mid))
         } else {
@@ -74,7 +82,10 @@ impl<T> SlicePolyfills<T> for [T] {
 
     // TODO(MSRV-1.80): Use `slice::split_at_checked`.
     #[inline]
-    fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut [T], &mut [T])> {
+    fn split_at_mut_checked(
+        &mut self,
+        mid: usize,
+    ) -> Option<(&mut [Self::Elem], &mut [Self::Elem])> {
         if self.len() >= mid {
             Some(self.split_at_mut(mid))
         } else {
@@ -84,32 +95,38 @@ impl<T> SlicePolyfills<T> for [T] {
 
     // TODO(MSRV-1.77): Use `slice::split_first_chunk_mut`.
     #[inline]
-    fn split_first_chunk_mut<const N: usize>(&mut self) -> Option<(&mut [T; N], &mut [T])> {
+    fn split_first_chunk_mut<const N: usize>(
+        &mut self,
+    ) -> Option<(&mut [Self::Elem; N], &mut [Self::Elem])> {
         let (head, tail) = self.split_at_mut_checked(N)?;
         head.try_into().ok().map(|head| (head, tail))
     }
 }
 
 #[allow(dead_code)]
-pub(crate) trait SliceOfArraysPolyfills<T> {
-    fn as_flattened(&self) -> &[T];
-    fn as_flattened_mut(&mut self) -> &mut [T];
+pub(crate) trait SliceOfArraysPolyfills: SlicePolyfills {
+    type ElemElem;
+
+    fn as_flattened(&self) -> &[Self::ElemElem];
+    fn as_flattened_mut(&mut self) -> &mut [Self::ElemElem];
 }
 
-impl<T, const N: usize> SliceOfArraysPolyfills<T> for [[T; N]] {
+impl<T, const N: usize> SliceOfArraysPolyfills for [[T; N]] {
+    type ElemElem = T;
+    
     #[inline]
-    fn as_flattened(&self) -> &[T] {
+    fn as_flattened(&self) -> &[Self::ElemElem] {
         let total_len = self.len() * N;
-        let p: *const [T; N] = self.as_ptr();
-        let p: *const T = StartPtr::start_ptr(p);
+        let p: *const [Self::ElemElem; N] = self.as_ptr();
+        let p: *const Self::ElemElem = StartPtr::start_ptr(p);
         unsafe { core::slice::from_raw_parts(p, total_len) }
     }
 
     #[inline]
-    fn as_flattened_mut(&mut self) -> &mut [T] {
+    fn as_flattened_mut(&mut self) -> &mut [Self::ElemElem] {
         let total_len = self.len() * N;
-        let p: *mut [T; N] = self.as_mut_ptr();
-        let p: *mut T = StartMutPtr::start_mut_ptr(p);
+        let p: *mut [Self::ElemElem; N] = self.as_mut_ptr();
+        let p: *mut Self::ElemElem = StartMutPtr::start_mut_ptr(p);
         unsafe { core::slice::from_raw_parts_mut(p, total_len) }
     }
 }
