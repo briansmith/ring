@@ -38,6 +38,7 @@ use cpu::GetFeature as _;
 mod aarch64;
 mod aeshwclmulmovbe;
 mod vaesclmulavx2;
+mod vaesclmulavx512;
 
 #[derive(Clone)]
 pub(super) struct Key(DynKey);
@@ -76,6 +77,12 @@ impl Key {
 enum DynKey {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     AesHwClMul(Combo<aes::hw::Key, gcm::clmul_aarch64::Key>),
+
+    #[cfg(all(
+        target_arch = "x86_64",
+        not(any(target_os = "macos", target_vendor = "apple"))
+    ))]
+    VAesClMulAvx512(Combo<aes::hw::Key, gcm::vclmulavx512::Key>),
 
     #[cfg(target_arch = "x86_64")]
     VAesClMulAvx2(Combo<aes::hw::Key, gcm::vclmulavx2::Key>),
@@ -117,16 +124,25 @@ impl DynKey {
         if let Some((aes, gcm)) = cpu.get_feature() {
             let aes_key = aes::hw::Key::new(key, aes, cpu.get_feature());
             let gcm_key_value = derive_gcm_key_value(&aes_key);
-            return if let Some(cpu) = cpu.get_feature() {
+
+            #[cfg(not(any(target_os = "macos", target_vendor = "apple")))]
+            if let Some(cpu) = cpu.get_feature() {
+                let gcm_key = gcm::vclmulavx512::Key::new(gcm_key_value, cpu);
+                return Self::VAesClMulAvx512(Combo { aes_key, gcm_key });
+            }
+
+            if let Some(cpu) = cpu.get_feature() {
                 let gcm_key = gcm::vclmulavx2::Key::new(gcm_key_value, cpu);
-                Self::VAesClMulAvx2(Combo { aes_key, gcm_key })
-            } else if let Some(cpu) = cpu.get_feature() {
+                return Self::VAesClMulAvx2(Combo { aes_key, gcm_key });
+            }
+
+            if let Some(cpu) = cpu.get_feature() {
                 let gcm_key = gcm::clmulavxmovbe::Key::new(gcm_key_value, cpu);
-                Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key })
-            } else {
-                let gcm_key = gcm::clmul_x86_64::Key::new(gcm_key_value, gcm);
-                Self::AesHwClMul(Combo { aes_key, gcm_key })
-            };
+                return Self::AesHwClMulAvxMovbe(Combo { aes_key, gcm_key });
+            }
+
+            let gcm_key = gcm::clmul_x86_64::Key::new(gcm_key_value, gcm);
+            return Self::AesHwClMul(Combo { aes_key, gcm_key });
         }
 
         #[cfg(target_arch = "x86")]
@@ -225,6 +241,12 @@ fn seal(
         #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
         DynKey::AesHwClMul(c) => {
             seal_whole_partial(c, aad, in_out, ctr, tag_iv, aarch64::seal_whole)
+        }
+
+        #[cfg(target_arch = "x86_64")]
+        #[cfg(not(any(target_os = "macos", target_vendor = "apple")))]
+        DynKey::VAesClMulAvx512(c) => {
+            seal_whole_partial(c, aad, in_out, ctr, tag_iv, vaesclmulavx512::seal_whole)
         }
 
         #[cfg(target_arch = "x86_64")]
@@ -350,6 +372,12 @@ fn open(
         #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
         DynKey::AesHwClMul(c) => {
             open_whole_partial(c, aad, in_out, ctr, tag_iv, aarch64::open_whole)
+        }
+
+        #[cfg(target_arch = "x86_64")]
+        #[cfg(not(any(target_os = "macos", target_vendor = "apple")))]
+        DynKey::VAesClMulAvx512(c) => {
+            open_whole_partial(c, aad, in_out, ctr, tag_iv, vaesclmulavx512::open_whole)
         }
 
         #[cfg(target_arch = "x86_64")]
