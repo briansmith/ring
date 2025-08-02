@@ -13,14 +13,14 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #[allow(dead_code)]
-pub(crate) trait PointerPolyfills<T> {
+pub(crate) trait PointerPolyfills {
     type ArrayPointer<const N: usize>;
 
     // TODO(MSRV feature(ptr_cast_array)): Drop this.
     fn cast_array_<const N: usize>(self) -> Self::ArrayPointer<N>;
 }
 
-impl<T> PointerPolyfills<T> for *const T {
+impl<T> PointerPolyfills for *const T {
     type ArrayPointer<const N: usize> = *const [T; N];
 
     #[inline(always)]
@@ -29,7 +29,7 @@ impl<T> PointerPolyfills<T> for *const T {
     }
 }
 
-impl<T> PointerPolyfills<T> for *mut T {
+impl<T> PointerPolyfills for *mut T {
     type ArrayPointer<const N: usize> = *mut [T; N];
 
     #[inline(always)]
