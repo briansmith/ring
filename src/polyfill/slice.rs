@@ -22,7 +22,7 @@
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-use crate::polyfill::ptr::{StartPtr, StartPtrMut};
+use crate::polyfill::{StartMutPtr, StartPtr};
 
 #[allow(dead_code)]
 pub(crate) trait SlicePolyfills<T> {
@@ -101,7 +101,7 @@ impl<T, const N: usize> SliceOfArraysPolyfills<T> for [[T; N]] {
     fn as_flattened(&self) -> &[T] {
         let total_len = self.len() * N;
         let p: *const [T; N] = self.as_ptr();
-        let p: *const T = p.start_ptr_();
+        let p: *const T = StartPtr::start_ptr(p);
         unsafe { core::slice::from_raw_parts(p, total_len) }
     }
 
@@ -109,7 +109,7 @@ impl<T, const N: usize> SliceOfArraysPolyfills<T> for [[T; N]] {
     fn as_flattened_mut(&mut self) -> &mut [T] {
         let total_len = self.len() * N;
         let p: *mut [T; N] = self.as_mut_ptr();
-        let p: *mut T = p.start_mut_ptr_();
+        let p: *mut T = StartMutPtr::start_mut_ptr(p);
         unsafe { core::slice::from_raw_parts_mut(p, total_len) }
     }
 }

@@ -25,7 +25,7 @@ use crate::polyfill::prelude::*;
 use super::{ffi, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
 use crate::cpu;
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-use crate::polyfill::ptr::StartPtrMut;
+use crate::polyfill::StartMutPtr;
 #[cfg(any(
     all(target_arch = "arm", target_endian = "little"),
     target_arch = "x86",
@@ -71,7 +71,7 @@ impl Key {
         key: *mut R,
         _cpu: cpu::aarch64::Neon,
     ) where
-        *mut R: StartPtrMut<Elem = ffi::RdKey>,
+        *mut R: StartMutPtr<Elem = ffi::RdKey>,
     {
         prefixed_extern! {
             fn vpaes_set_encrypt_key(user_key: *const u8, bits: ffi::KeyBitLength,
@@ -81,7 +81,7 @@ impl Key {
             vpaes_set_encrypt_key(
                 user_key.as_ref().as_ptr(),
                 R::USER_KEY_BITS,
-                key.start_mut_ptr_(),
+                StartMutPtr::start_mut_ptr(key),
             )
         }
     }
