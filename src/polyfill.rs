@@ -69,9 +69,13 @@ pub mod prelude {
     // If a polyfill is for an **already-stable** API, and it has the same
     // API and semantics as that stable API, then give it the same name so that
     // the standard library implementation will be used except for old versions
-    // of Rust. If the polyfill is for a not-yet-stable API, or if its API
-    // isn't exactly the same, or if its semantics differ, give it a different
-    // name.
+    // of Rust.
+    //
+    // If the polyfill is for a not-yet-stable API, or if its API isn't exactly
+    // the same, or if its semantics differ, implement it in a trait outside
+    // these modules and always use it with fully-qualified syntax. This is
+    // particularly important to do since code coverage testing is done on
+    // using Rust Nightly.
     pub(crate) use super::{
         atomic::AtomicPolyfills,
         ptr::PointerPolyfills,
