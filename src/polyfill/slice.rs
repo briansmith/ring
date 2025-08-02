@@ -117,7 +117,7 @@ impl<T, const N: usize> SliceOfArraysPolyfills for [[T; N]] {
     #[inline]
     fn as_flattened(&self) -> &[Self::ElemElem] {
         let total_len = self.len() * N;
-        let p: *const [Self::ElemElem; N] = self.as_ptr();
+        let p: *const Self::Elem = self.as_ptr();
         let p: *const Self::ElemElem = StartPtr::start_ptr(p);
         unsafe { core::slice::from_raw_parts(p, total_len) }
     }
@@ -125,7 +125,7 @@ impl<T, const N: usize> SliceOfArraysPolyfills for [[T; N]] {
     #[inline]
     fn as_flattened_mut(&mut self) -> &mut [Self::ElemElem] {
         let total_len = self.len() * N;
-        let p: *mut [Self::ElemElem; N] = self.as_mut_ptr();
+        let p: *mut Self::Elem = self.as_mut_ptr();
         let p: *mut Self::ElemElem = StartMutPtr::start_mut_ptr(p);
         unsafe { core::slice::from_raw_parts_mut(p, total_len) }
     }
