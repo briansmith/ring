@@ -1,0 +1,5 @@
+# We only test code coverage in CI on Nightly, so ignore polyfills.
+ignore:
+  - "src/polyfill/atomic.rs"
+  - "src/polyfill/ptr.rs"
+  - "src/polyfill/slice.rs"
