@@ -19,7 +19,6 @@ use crate::{
     arithmetic::{LimbSliceError, MAX_LIMBS},
     error::LenMismatchError,
     limb::{Limb, LIMB_BITS},
-    polyfill::slice::{AsChunks, AsChunksMut},
 };
 use core::{
     mem::{align_of, size_of},
@@ -52,14 +51,14 @@ impl<const N: usize> AlignedStorage<N> {
         &mut self,
         num_entries: usize,
         chunks_per_entry: usize,
-    ) -> Result<AsChunksMut<'_, Limb, LIMBS_PER_CHUNK>, LenMismatchError> {
+    ) -> Result<&'_ mut [[Limb; LIMBS_PER_CHUNK]], LenMismatchError> {
         let total_limbs = num_entries * chunks_per_entry * LIMBS_PER_CHUNK;
         let len = self.0.len();
         let flattened = self
             .0
             .get_mut(..total_limbs)
             .ok_or_else(|| LenMismatchError::new(len))?;
-        match flattened.as_chunks_mut_() {
+        match flattened.as_chunks_mut() {
             (chunks, []) => Ok(chunks),
             (_, r) => Err(LenMismatchError::new(r.len())),
         }
@@ -72,8 +71,8 @@ impl<const N: usize> AlignedStorage<N> {
 // callers.
 #[inline(always)]
 pub(crate) fn check_common(
-    a: AsChunks<Limb, LIMBS_PER_CHUNK>,
-    table: AsChunks<Limb, LIMBS_PER_CHUNK>,
+    a: &[[Limb; LIMBS_PER_CHUNK]],
+    table: &[[Limb; LIMBS_PER_CHUNK]],
 ) -> Result<NonZeroUsize, LimbSliceError> {
     assert_eq!((table.as_ptr() as usize) % 16, 0); // According to BoringSSL.
     let a = a.as_flattened();
@@ -93,9 +92,9 @@ pub(crate) fn check_common(
 #[cfg(target_arch = "x86_64")]
 #[inline(always)]
 pub(crate) fn check_common_with_n(
-    a: AsChunks<Limb, LIMBS_PER_CHUNK>,
-    table: AsChunks<Limb, LIMBS_PER_CHUNK>,
-    n: AsChunks<Limb, LIMBS_PER_CHUNK>,
+    a: &[[Limb; LIMBS_PER_CHUNK]],
+    table: &[[Limb; LIMBS_PER_CHUNK]],
+    n: &[[Limb; LIMBS_PER_CHUNK]],
 ) -> Result<NonZeroUsize, LimbSliceError> {
     // Choose `a` instead of `n` so that every function starts with
     // `check_common` passing the exact same arguments, so that the compiler

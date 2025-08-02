@@ -95,7 +95,7 @@ pub(super) fn sha1_block_data_order<'d>(
         }
     };
 
-    let (full_blocks, leftover) = data.as_chunks_();
+    let (full_blocks, leftover) = data.as_chunks();
     sha1::sha1_block_data_order(state, full_blocks);
     (full_blocks.as_flattened().len(), leftover)
 }
@@ -112,7 +112,7 @@ pub(super) fn sha256_block_data_order<'d>(
         }
     };
 
-    let (full_blocks, leftover) = data.as_chunks_();
+    let (full_blocks, leftover) = data.as_chunks();
     sha2::block_data_order_32(state, full_blocks, cpu_features);
     (full_blocks.len() * sha2::SHA256_BLOCK_LEN.into(), leftover)
 }
@@ -129,7 +129,7 @@ pub(super) fn sha512_block_data_order<'d>(
         }
     };
 
-    let (full_blocks, leftover) = data.as_chunks_();
+    let (full_blocks, leftover) = data.as_chunks();
     sha2::block_data_order_64(state, full_blocks, cpu_features);
     (full_blocks.len() * sha2::SHA512_BLOCK_LEN.into(), leftover)
 }

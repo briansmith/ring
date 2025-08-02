@@ -14,6 +14,11 @@
 
 #![cfg(target_arch = "x86_64")]
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
+use crate::polyfill::SmallerChunks;
+
 use super::super::super::{
     inout::{AliasingSlices2, AliasingSlices3},
     limbs512::storage::{check_common, check_common_with_n},
@@ -25,7 +30,6 @@ use crate::{
     cpu::intel::{Adx, Bmi1, Bmi2},
     error::LenMismatchError,
     limb::Limb,
-    polyfill::slice::{AsChunks, AsChunksMut},
     window5::Window5,
 };
 use core::num::NonZeroUsize;
@@ -34,16 +38,16 @@ const _512_IS_LIMB_BITS_TIMES_8: () = assert!(8 * Limb::BITS == 512);
 
 #[inline]
 pub(in super::super::super) fn mul_mont5(
-    mut r: AsChunksMut<Limb, 8>,
-    a: AsChunks<Limb, 8>,
-    b: AsChunks<Limb, 8>,
-    m: AsChunks<Limb, 8>,
+    r: &mut [[Limb; 8]],
+    a: &[[Limb; 8]],
+    b: &[[Limb; 8]],
+    m: &[[Limb; 8]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
     mul_mont5_4x(
         (r.as_flattened_mut(), a.as_flattened(), b.as_flattened()),
-        m.into(),
+        SmallerChunks::as_smaller_chunks(m),
         n0,
         maybe_adx_bmi2,
     )
@@ -54,7 +58,7 @@ pub const MIN_4X: usize = 8;
 #[inline]
 pub(in super::super::super) fn mul_mont5_4x(
     in_out: impl AliasingSlices3<Limb>,
-    n: AsChunks<Limb, 4>,
+    n: &[[Limb; 4]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
@@ -74,7 +78,7 @@ pub(in super::super::super) fn mul_mont5_4x(
 #[inline]
 pub(in super::super::super) fn sqr_mont5(
     in_out: impl AliasingSlices2<Limb>,
-    n: AsChunks<Limb, 8>,
+    n: &[[Limb; 8]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
@@ -115,8 +119,8 @@ pub(in super::super::super) fn sqr_mont5(
 
 #[inline(always)]
 pub(in super::super::super) fn gather5(
-    mut r: AsChunksMut<Limb, 8>,
-    table: AsChunks<Limb, 8>,
+    r: &mut [[Limb; 8]],
+    table: &[[Limb; 8]],
     power: Window5,
 ) -> Result<(), LimbSliceError> {
     prefixed_extern! {
@@ -128,7 +132,7 @@ pub(in super::super::super) fn gather5(
             table: *const Limb,
             power: Window5);
     }
-    let num_limbs = check_common(r.as_ref(), table)?;
+    let num_limbs = check_common(r, table)?;
     let r = r.as_flattened_mut();
     let table = table.as_flattened();
     unsafe { bn_gather5(r.as_mut_ptr(), num_limbs, table.as_ptr(), power) };
@@ -137,10 +141,10 @@ pub(in super::super::super) fn gather5(
 
 #[inline(always)]
 pub(in super::super::super) fn mul_mont_gather5_amm(
-    mut r: AsChunksMut<Limb, 8>,
-    a: AsChunks<Limb, 8>,
-    table: AsChunks<Limb, 8>,
-    n: AsChunks<Limb, 8>,
+    r: &mut [[Limb; 8]],
+    a: &[[Limb; 8]],
+    table: &[[Limb; 8]],
+    n: &[[Limb; 8]],
     n0: &N0,
     power: Window5,
     maybe_adx_bmi1_bmi2: Option<(Adx, Bmi1, Bmi2)>,
@@ -169,7 +173,7 @@ pub(in super::super::super) fn mul_mont_gather5_amm(
             power: Window5,
         );
     }
-    let num_limbs = check_common_with_n(r.as_ref(), table, n)?;
+    let num_limbs = check_common_with_n(r, table, n)?;
     let a = a.as_flattened();
     if a.len() != num_limbs.get() {
         return Err(LimbSliceError::len_mismatch(LenMismatchError::new(a.len())));
@@ -192,9 +196,9 @@ pub(in super::super::super) fn mul_mont_gather5_amm(
 // SAFETY: `power` must be less than 32.
 #[inline(always)]
 pub(in super::super::super) fn power5_amm(
-    mut in_out: AsChunksMut<Limb, 8>,
-    table: AsChunks<Limb, 8>,
-    n: AsChunks<Limb, 8>,
+    in_out: &mut [[Limb; 8]],
+    table: &[[Limb; 8]],
+    n: &[[Limb; 8]],
     n0: &N0,
     power: Window5,
     maybe_adx_bmi1_bmi2: Option<(Adx, Bmi1, Bmi2)>,
@@ -223,7 +227,7 @@ pub(in super::super::super) fn power5_amm(
             power: Window5,
         );
     }
-    let num_limbs = check_common_with_n(in_out.as_ref(), table, n)?;
+    let num_limbs = check_common_with_n(in_out, table, n)?;
     let in_out = in_out.as_flattened_mut();
     let r = in_out.as_mut_ptr();
     let a = in_out.as_ptr();

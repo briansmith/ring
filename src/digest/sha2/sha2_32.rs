@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{BlockLen, CHAINING_WORDS};
-use crate::{cpu, polyfill::slice::AsChunks};
+use crate::cpu;
 use cfg_if::cfg_if;
 use core::num::Wrapping;
 
@@ -23,7 +23,7 @@ pub type State32 = [Wrapping<u32>; CHAINING_WORDS];
 
 pub(crate) fn block_data_order_32(
     state: &mut State32,
-    data: AsChunks<u8, { SHA256_BLOCK_LEN.into() }>,
+    data: &[[u8; SHA256_BLOCK_LEN.into()]],
     cpu: cpu::Features,
 ) {
     cfg_if! {

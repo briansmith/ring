@@ -36,6 +36,9 @@
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use self::boxed_limbs::BoxedLimbs;
 pub(crate) use self::{
     modulus::{Modulus, OwnedModulus},
@@ -517,11 +520,11 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     // version does, but uses the same aligned storage for convenience.
     assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
     let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::zeroed();
-    let mut table = table
+    let table = table
         .aligned_chunks_mut(TABLE_ENTRIES, cpe)
         .map_err(LimbSliceError::len_mismatch)?;
 
-    // TODO: Rewrite the below in terms of `AsChunks`.
+    // TODO: Rewrite the below in terms of `as_chunks`.
     let table = table.as_flattened_mut();
 
     fn gather<M>(table: &[Limb], acc: &mut Elem<M, R>, i: Window5) {
@@ -630,7 +633,6 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             intel::{Adx, Bmi2},
             GetFeature as _,
         },
-        polyfill::slice::{AsChunks, AsChunksMut},
         window5::LeakyWindow5,
     };
 
@@ -674,50 +676,41 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
     assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
     let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::zeroed();
-    let mut table = table
+    let table = table
         .aligned_chunks_mut(STORAGE_ENTRIES, cpe)
         .map_err(LimbSliceError::len_mismatch)?;
-    let (mut table, mut state) = table.split_at_mut(TABLE_ENTRIES * cpe);
+    let (table, state) = table.split_at_mut(TABLE_ENTRIES * cpe);
     assert_eq!((table.as_ptr() as usize) % MOD_EXP_CTIME_ALIGN, 0);
 
     // These are named `(tmp, am, np)` in BoringSSL.
-    let (mut acc, mut rest) = state.split_at_mut(cpe);
-    let (mut base_cached, mut m_cached) = rest.split_at_mut(cpe);
+    let (acc, rest) = state.split_at_mut(cpe);
+    let (base_cached, m_cached) = rest.split_at_mut(cpe);
 
     // "To improve cache locality" according to upstream.
     m_cached
         .as_flattened_mut()
         .copy_from_slice(m_original.as_flattened());
-    let m_cached = m_cached.as_ref();
 
     let out: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
     let base_rinverse = as_chunks_exact(out.limbs.as_ref())
         .ok_or_else(|| LimbSliceError::len_mismatch(LenMismatchError::new(out.limbs.len())))?;
 
     // base_cached = base*R == (base/R * RRR)/R
-    mul_mont5(
-        base_cached.as_mut(),
-        base_rinverse,
-        oneRRR,
-        m_cached,
-        n0,
-        cpu2,
-    )?;
-    let base_cached = base_cached.as_ref();
+    mul_mont5(base_cached, base_rinverse, oneRRR, m_cached, n0, cpu2)?;
     let mut out = Storage::from(out); // recycle.
 
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
     // gathering, storing the last calculated power into `acc`.
     fn scatter_powers_of_2(
-        mut table: AsChunksMut<Limb, 8>,
-        mut acc: AsChunksMut<Limb, 8>,
-        m_cached: AsChunks<Limb, 8>,
+        table: &mut [[Limb; 8]],
+        acc: &mut [[Limb; 8]],
+        m_cached: &[[Limb; 8]],
         n0: &N0,
         mut i: LeakyWindow5,
         cpu: Option<(Adx, Bmi2)>,
     ) -> Result<(), LimbSliceError> {
         loop {
-            scatter5(acc.as_ref(), table.as_mut(), i)?;
+            scatter5(acc, table, i)?;
             i = match i.checked_double() {
                 Some(i) => i,
                 None => break,
@@ -731,21 +724,14 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
     // acc = table[0] = base**0 (i.e. 1).
     m.oneR(acc.as_flattened_mut());
-    scatter5(acc.as_ref(), table.as_mut(), LeakyWindow5::_0)?;
+    scatter5(acc, table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
     acc.as_flattened_mut()
         .copy_from_slice(base_cached.as_flattened());
 
     // Fill in entries 1, 2, 4, 8, 16.
-    scatter_powers_of_2(
-        table.as_mut(),
-        acc.as_mut(),
-        m_cached,
-        n0,
-        LeakyWindow5::_1,
-        cpu2,
-    )?;
+    scatter_powers_of_2(table, acc, m_cached, n0, LeakyWindow5::_1, cpu2)?;
     // Fill in entries 3, 6, 12, 24; 5, 10, 20, 30; 7, 14, 28; 9, 18; 11, 22; 13, 26; 15, 30;
     // 17; 19; 21; 23; 25; 27; 29; 31.
     for i in LeakyWindow5::range().skip(3).step_by(2) {
@@ -753,29 +739,18 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             // Since i >= 3.
             unreachable!()
         }));
-        mul_mont_gather5_amm(
-            acc.as_mut(),
-            base_cached,
-            table.as_ref(),
-            m_cached,
-            n0,
-            power,
-            cpu3,
-        )?;
-        scatter_powers_of_2(table.as_mut(), acc.as_mut(), m_cached, n0, i, cpu2)?;
+        mul_mont_gather5_amm(acc, base_cached, table, m_cached, n0, power, cpu3)?;
+        scatter_powers_of_2(table, acc, m_cached, n0, i, cpu2)?;
     }
-
-    let table = table.as_ref();
 
     let acc = limb::fold_5_bit_windows(
         exponent.limbs(),
         |initial_window| {
-            gather5(acc.as_mut(), table, initial_window)
-                .unwrap_or_else(unwrap_impossible_limb_slice_error);
+            gather5(acc, table, initial_window).unwrap_or_else(unwrap_impossible_limb_slice_error);
             acc
         },
-        |mut acc, window| {
-            power5_amm(acc.as_mut(), table, m_cached, n0, window, cpu3)
+        |acc, window| {
+            power5_amm(acc, table, m_cached, n0, window, cpu3)
                 .unwrap_or_else(unwrap_impossible_limb_slice_error);
             acc
         },

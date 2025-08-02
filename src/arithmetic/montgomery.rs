@@ -170,7 +170,7 @@ pub(super) fn limbs_mul_mont(
             use crate::{cpu::GetFeature as _};
             use super::limbs::x86_64;
             if n.len() >= x86_64::mont::MIN_4X {
-                if let (n, []) = n.as_chunks_() {
+                if let (n, []) = n.as_chunks() {
                     return x86_64::mont::mul_mont5_4x(in_out, n, n0, cpu.get_feature());
                 }
             }
@@ -317,7 +317,7 @@ pub(super) fn limbs_square_mont(
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     {
         use super::limbs::aarch64;
-        if let (n, []) = n.as_chunks_() {
+        if let (n, []) = n.as_chunks() {
             return aarch64::sqr_mont5(in_out, n, n0);
         }
     }
@@ -326,7 +326,7 @@ pub(super) fn limbs_square_mont(
     {
         use super::limbs::x86_64;
         use crate::cpu::GetFeature as _;
-        if let (n, []) = n.as_chunks_() {
+        if let (n, []) = n.as_chunks() {
             return x86_64::mont::sqr_mont5(in_out, n, n0, cpu.get_feature());
         }
     }

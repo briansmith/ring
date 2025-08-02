@@ -18,17 +18,14 @@
 use crate::polyfill::prelude::*;
 
 use super::{aes, gcm, Counter, Overlapping, BLOCK_LEN};
-use crate::{
-    bits::BitLength,
-    polyfill::{slice::AsChunksMut, u64_from_usize},
-};
+use crate::{bits::BitLength, polyfill::u64_from_usize};
 use core::num::NonZeroU64;
 
 pub(super) fn seal_whole(
     aes_key: &aes::hw::Key,
     auth: &mut gcm::Context<gcm::clmul_aarch64::Key>,
     ctr: &mut Counter,
-    mut in_out: AsChunksMut<u8, BLOCK_LEN>,
+    in_out: &mut [[u8; BLOCK_LEN]],
 ) {
     prefixed_extern! {
         fn aes_gcm_enc_kernel(

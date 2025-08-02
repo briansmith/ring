@@ -18,8 +18,8 @@ use super::{
     ffi::{self, KeyValue, BLOCK_LEN},
     UpdateBlock, UpdateBlocks, Xi,
 };
-use crate::{cpu, polyfill::slice::AsChunks};
-use core::mem::MaybeUninit;
+use crate::cpu;
+use core::{mem::MaybeUninit, slice};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -43,12 +43,12 @@ impl Key {
 
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
-        self.update_blocks(xi, (&a).into())
+        self.update_blocks(xi, slice::from_ref(&a))
     }
 }
 
 impl UpdateBlocks for Key {
-    fn update_blocks(&self, xi: &mut Xi, input: AsChunks<u8, { BLOCK_LEN }>) {
+    fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]) {
         prefixed_extern! {
             fn gcm_ghash_clmul(
                 xi: &mut Xi,

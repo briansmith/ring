@@ -21,9 +21,8 @@ use super::{
 use crate::{
     c,
     cpu::intel::{Avx2, VAesClmul},
-    polyfill::slice::AsChunks,
 };
-use core::mem::MaybeUninit;
+use core::{mem::MaybeUninit, slice};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -52,7 +51,7 @@ impl UpdateBlock for Key {
                 len: c::NonZero_size_t,
             );
         }
-        let input: AsChunks<u8, BLOCK_LEN> = (&a).into();
+        let input = slice::from_ref(&a);
         ffi::with_non_dangling_ptr(input, |input, len| unsafe {
             gcm_ghash_vpclmulqdq_avx2_16(xi, self, input, len)
         })
