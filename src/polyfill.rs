@@ -86,6 +86,8 @@ pub(crate) mod slice;
 
 mod smaller_chunks;
 
+mod start_ptr;
+
 #[cfg(test)]
 mod test;
 
@@ -97,7 +99,10 @@ pub use self::{
 };
 
 #[allow(unused_imports)]
-pub use self::smaller_chunks::SmallerChunks;
+pub use self::{
+    smaller_chunks::SmallerChunks,
+    start_ptr::{StartMutPtr, StartPtr},
+};
 
 #[cfg(feature = "alloc")]
 pub use leading_zeros_skipped::LeadingZerosStripped;
