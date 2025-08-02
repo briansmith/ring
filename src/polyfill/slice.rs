@@ -113,7 +113,7 @@ pub(crate) trait SliceOfArraysPolyfills: SlicePolyfills {
 
 impl<T, const N: usize> SliceOfArraysPolyfills for [[T; N]] {
     type ElemElem = T;
-    
+
     #[inline]
     fn as_flattened(&self) -> &[Self::ElemElem] {
         let total_len = self.len() * N;
