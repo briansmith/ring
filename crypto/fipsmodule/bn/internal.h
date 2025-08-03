@@ -18,11 +18,15 @@
 
 #include <ring-core/base.h>
 
-#if defined(OPENSSL_X86_64) && defined(_MSC_VER) && !defined(__clang__)
+#if defined(_MSC_VER) && defined(OPENSSL_64_BIT) && !defined(__clang__)
 #pragma warning(push, 3)
 #include <intrin.h>
 #pragma warning(pop)
+#if defined(OPENSSL_X86_64)
 #pragma intrinsic(_umul128)
+#elif defined(OPENSSL_AARCH64)
+#pragma intrinsic(__umulh)
+#endif
 #endif
 
 #include "../../internal.h"
@@ -132,6 +136,10 @@ static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
                                  BN_ULONG a, BN_ULONG b) {
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER) && !defined(__clang__)
   *low_out = _umul128(a, b, high_out);
+#elif defined(OPENSSL_AARCH64) && defined(_MSC_VER) && !defined(__clang__)
+  /* Use __umulh intrinsic for 64x64->128 bit multiplication on MSVC ARM64 */
+  *low_out = a * b;
+  *high_out = __umulh(a, b);
 #else
   BN_ULLONG result = (BN_ULLONG)a * b;
   *low_out = (BN_ULONG)result;

@@ -34,7 +34,7 @@
 #error "MSVC 2015 Update 2 or later is required."
 #endif
 typedef uint8_t Carry;
-#if LIMB_BITS == 64
+#if LIMB_BITS == 64 && defined(OPENSSL_X86_64)
 #pragma intrinsic(_addcarry_u64, _subborrow_u64)
 #define RING_CORE_ADDCARRY_INTRINSIC _addcarry_u64
 #define RING_CORE_SUBBORROW_INTRINSIC _subborrow_u64
@@ -60,6 +60,13 @@ static inline Carry limb_adc(Limb *r, Limb a, Limb b, Carry carry_in) {
   Carry ret;
 #if defined(RING_CORE_ADDCARRY_INTRINSIC)
   ret = RING_CORE_ADDCARRY_INTRINSIC(carry_in, a, b, r);
+#elif defined(OPENSSL_AARCH64) && defined(_MSC_VER) && !defined(__clang__)
+  /* Manual 64-bit addition for MSVC ARM64 (no __uint128_t) */
+  Limb sum = a + carry_in;
+  Carry carry1 = (sum < a) ? 1 : 0;  /* carry from a + carry_in */
+  *r = sum + b;
+  Carry carry2 = (*r < sum) ? 1 : 0;  /* carry from sum + b */
+  ret = carry1 | carry2;
 #else
   DoubleLimb x = (DoubleLimb)a + b + carry_in;
   *r = (Limb)x;
@@ -74,6 +81,10 @@ static inline Carry limb_add(Limb *r, Limb a, Limb b) {
   Carry ret;
 #if defined(RING_CORE_ADDCARRY_INTRINSIC)
   ret = RING_CORE_ADDCARRY_INTRINSIC(0, a, b, r);
+#elif defined(OPENSSL_AARCH64) && defined(_MSC_VER) && !defined(__clang__)
+  /* Manual 64-bit addition for MSVC ARM64 (no __uint128_t) */
+  *r = a + b;
+  ret = (*r < a) ? 1 : 0;  /* carry if result overflowed */
 #else
   DoubleLimb x = (DoubleLimb)a + b;
   *r = (Limb)x;
@@ -90,6 +101,13 @@ static inline Carry limb_sbb(Limb *r, Limb a, Limb b, Carry borrow_in) {
   Carry ret;
 #if defined(RING_CORE_SUBBORROW_INTRINSIC)
   ret = RING_CORE_SUBBORROW_INTRINSIC(borrow_in, a, b, r);
+#elif defined(OPENSSL_AARCH64) && defined(_MSC_VER) && !defined(__clang__)
+  /* Manual 64-bit subtraction for MSVC ARM64 (no __uint128_t) */
+  Limb temp = a - borrow_in;
+  Carry borrow1 = (temp > a) ? 1 : 0;  /* borrow from a - borrow_in */
+  *r = temp - b;
+  Carry borrow2 = (*r > temp) ? 1 : 0;  /* borrow from temp - b */
+  ret = borrow1 | borrow2;
 #else
   DoubleLimb x = (DoubleLimb)a - b - borrow_in;
   *r = (Limb)x;
@@ -104,6 +122,10 @@ static inline Carry limb_sub(Limb *r, Limb a, Limb b) {
   Carry ret;
 #if defined(RING_CORE_SUBBORROW_INTRINSIC)
   ret = RING_CORE_SUBBORROW_INTRINSIC(0, a, b, r);
+#elif defined(OPENSSL_AARCH64) && defined(_MSC_VER) && !defined(__clang__)
+  /* Manual 64-bit subtraction for MSVC ARM64 (no __uint128_t) */
+  *r = a - b;
+  ret = (*r > a) ? 1 : 0;  /* borrow if result underflowed */
 #else
   DoubleLimb x = (DoubleLimb)a - b;
   *r = (Limb)x;

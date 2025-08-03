@@ -83,6 +83,7 @@ mod env {
     define_env! { pub OUT_DIR: SetByCargo }
     define_env! { pub PERL_EXECUTABLE: RerunIfChanged }
     define_env! { pub RING_PREGENERATE_ASM: RerunIfChanged }
+    define_env! { pub VSINSTALLDIR: RerunIfChanged }
 }
 
 const X86: &str = "x86";
@@ -272,6 +273,9 @@ impl AsmTarget {
     fn use_nasm(&self) -> bool {
         [WIN32N, NASM].contains(&self.perlasm_format)
     }
+    fn use_clang_win(&self) -> bool {
+        self.perlasm_format == "win64"
+    }
 }
 
 /// Operating systems that have the same ABI as Linux on every architecture
@@ -427,13 +431,17 @@ fn generate_sources_and_preassemble<'a>(
         let perlasm_src_dsts = perlasm_src_dsts(out_dir, asm_target);
         perlasm(&perl_exe, &perlasm_src_dsts, asm_target, c_root_dir);
 
-        if asm_target.use_nasm() {
-            // Package pregenerated object files in addition to pregenerated
-            // assembly language source files, so that the user doesn't need
-            // to install the assembler.
+        // Package pregenerated object files in addition to pregenerated
+        // assembly language source files, so that the user doesn't need
+        // to install the assembler (NASM on x64/86 Windows and MSVC's Clang on arm64 Windows).
+        if asm_target.use_nasm() || asm_target.use_clang_win() {
             let srcs = asm_srcs(perlasm_src_dsts);
             for src in srcs {
-                nasm(&src, asm_target.arch, out_dir, out_dir, c_root_dir);
+                if asm_target.use_nasm() {
+                    nasm(&src, asm_target.arch, out_dir, out_dir, c_root_dir);
+                } else {
+                    clang_win(&src, asm_target.arch, out_dir, out_dir);
+                }
             }
         }
     }
@@ -466,8 +474,8 @@ fn build_c_code(
 
         let asm_srcs = asm_srcs(perlasm_src_dsts);
 
-        if asm_target.use_nasm() {
-            // Nasm was already used to generate the object files, so use them instead of
+        if asm_target.use_nasm() || asm_target.use_clang_win() {
+            // Nasm or Clang was already used to generate the object files, so use them instead of
             // assembling.
             let obj_srcs = asm_srcs
                 .iter()
@@ -489,7 +497,7 @@ fn build_c_code(
                 // We don't (and can't) use any .S on Windows since MSVC and NASM can't assemble
                 // them.
                 if extension == "S"
-                    && (target.arch == X86_64 || target.arch == X86)
+                    && (target.arch == X86_64 || target.arch == X86 || target.arch == AARCH64)
                     && target.os == WINDOWS
                 {
                     return false;
@@ -593,13 +601,6 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
 
 fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_dir: &Path) {
     let compiler = c.get_compiler();
-    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
-    let compiler = if target.os == WINDOWS && target.arch == AARCH64 && !compiler.is_like_clang() {
-        let _ = c.compiler("clang");
-        c.get_compiler()
-    } else {
-        compiler
-    };
 
     let _ = c.include(c_root_dir.join("include"));
     let _ = c.include(include_dir);
@@ -666,6 +667,45 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir:
         .arg("-Xgnu")
         .arg("-gcv8")
         .arg(c_root_dir.join(file));
+    run_command(c);
+}
+
+fn clang_win(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path) {
+    // TODO use the CC API instead of the hardcoded path below.
+    // Needs https://github.com/rust-lang/cc-rs/pull/1506 to be merged.
+    // cc::windows_registry::find(asm_target, "clang.exe");
+
+    let out_file = obj_path(out_dir, file);
+    // Use Clang that's bundled with MSVC explicitly.
+    // This is necessary because the `cc` crate uses the system Clang by default,
+    // which is not compatible with MSVC.
+    let vs_path = env::var_os(&env::VSINSTALLDIR).unwrap();
+    let clang_path = PathBuf::from(vs_path)
+        .join("VC")
+        .join("Tools")
+        .join("Llvm")
+        .join("bin");
+
+    // Check if path exists
+    if !clang_path.exists() {
+        panic!("Clang path does not exist: {}", clang_path.display());
+    }
+
+    let mut c = Command::new(clang_path.join("clang.exe"));
+
+    // Should be called like this:
+    // clang -target aarch64-windows -c chacha-armv8-win64.S -o chacha-armv8-win64.o -I../include -I./
+    let _ = c
+        .arg("-target")
+        .arg(format!("{arch}-pc-windows-msvc"))
+        .arg("-c")
+        .arg(file)
+        .arg("-o")
+        .arg(out_file.to_str().expect("Invalid path"))
+        .arg("-I")
+        .arg("include/")
+        .arg("-I")
+        .arg(include_dir);
     run_command(c);
 }
 
