@@ -18,9 +18,9 @@
     target_arch = "x86_64"
 ))]
 
+use super::{cpu, Block, Counter, EncryptBlock, Iv, KeyBytes};
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use super::ffi::AES_KEY;
-use super::{cpu, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
+use super::{ffi::AES_KEY, EncryptCtr32, Overlapping};
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 use {super::ffi, crate::bits::BitLength, core::ffi::c_int};
 
@@ -126,6 +126,34 @@ impl Key {
     }
 }
 
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+impl EncryptBlock for Key {
+    fn encrypt_block(&self, block: Block) -> Block {
+        super::encrypt_block_using_encrypt_iv_xor_block(self, block)
+    }
+
+    fn encrypt_iv_xor_block(&self, iv: Iv, mut block: Block) -> Block {
+        use crate::{c, polyfill};
+
+        // This function only accepts `len==1`.
+        prefixed_extern_ctr32_encrypt_blocks_with_rd_keys! { aes_hw_ctr32_encrypt_block_1 }
+
+        // See `encrypt_iv_xor_block_using_ctr32`
+        let ctr = Counter(iv.0); // This is OK because we're only encrypting one block.
+
+        let output: *mut Block = polyfill::ptr::from_mut(&mut block);
+        let input: *const Block = output;
+        let (rd_keys, rounds) = self.rd_keys_and_rounds();
+        const ONE: c::NonZero_size_t = polyfill::unwrap_const(c::NonZero_size_t::new(1));
+
+        unsafe {
+            aes_hw_ctr32_encrypt_block_1(input, output, ONE, rd_keys, &ctr, rounds);
+        }
+        block
+    }
+}
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 impl EncryptBlock for Key {
     fn encrypt_block(&self, block: Block) -> Block {
         super::encrypt_block_using_encrypt_iv_xor_block(self, block)
@@ -133,17 +161,6 @@ impl EncryptBlock for Key {
 
     fn encrypt_iv_xor_block(&self, iv: Iv, block: Block) -> Block {
         super::encrypt_iv_xor_block_using_ctr32(self, iv, block)
-    }
-}
-
-#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        prefixed_extern_ctr32_encrypt_blocks_with_rd_keys! { aes_hw_ctr32_encrypt_blocks }
-        let (rd_keys, rounds) = self.rd_keys_and_rounds();
-        unsafe {
-            ffi::ctr32_encrypt_blocks(in_out, ctr, rd_keys, rounds, aes_hw_ctr32_encrypt_blocks)
-        }
     }
 }
 

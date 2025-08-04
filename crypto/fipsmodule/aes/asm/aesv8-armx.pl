@@ -226,10 +226,10 @@ my ($dat,$tmp)=($dat0,$tmp0);
 ### q8-q15	preloaded key schedule
 
 $code.=<<___;
-.globl	${prefix}_ctr32_encrypt_blocks
-.type	${prefix}_ctr32_encrypt_blocks,%function
+.globl	${prefix}_ctr32_encrypt_block_1
+.type	${prefix}_ctr32_encrypt_block_1,%function
 .align	5
-${prefix}_ctr32_encrypt_blocks:
+${prefix}_ctr32_encrypt_block_1:
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp		x29,x30,[sp,#-16]!
@@ -242,7 +242,6 @@ ${prefix}_ctr32_encrypt_blocks:
 	vld1.32		{q8-q9},[$key]		// load key schedule...
 	sub		$rounds,$rounds,#4
 	mov		$step,#16
-	cmp		$len,#2
 	add		$key_,$key,x5,lsl#4	// pointer to last 5 round keys
 	sub		$rounds,$rounds,#2
 	vld1.32		{q12-q13},[$key_],#32
@@ -274,105 +273,6 @@ ${prefix}_ctr32_encrypt_blocks:
 	vmov.32		${ivec}[3],$tctr1
 	add		$ctr, $ctr, #2
 	vorr		$dat1,$ivec,$ivec
-	b.ls		.Lctr32_tail
-	rev		$tctr2, $ctr
-	vmov.32		${ivec}[3],$tctr2
-	sub		$len,$len,#3		// bias
-	vorr		$dat2,$ivec,$ivec
-	b		.Loop3x_ctr32
-
-.align	4
-.Loop3x_ctr32:
-	aese		$dat0,q8
-	aesmc		$dat0,$dat0
-	aese		$dat1,q8
-	aesmc		$dat1,$dat1
-	aese		$dat2,q8
-	aesmc		$dat2,$dat2
-	vld1.32		{q8},[$key_],#16
-	subs		$cnt,$cnt,#2
-	aese		$dat0,q9
-	aesmc		$dat0,$dat0
-	aese		$dat1,q9
-	aesmc		$dat1,$dat1
-	aese		$dat2,q9
-	aesmc		$dat2,$dat2
-	vld1.32		{q9},[$key_],#16
-	b.gt		.Loop3x_ctr32
-
-	aese		$dat0,q8
-	aesmc		$tmp0,$dat0
-	aese		$dat1,q8
-	aesmc		$tmp1,$dat1
-	 vld1.8		{$in0},[$inp],#16
-	 add		$tctr0,$ctr,#1
-	aese		$dat2,q8
-	aesmc		$dat2,$dat2
-	 vld1.8		{$in1},[$inp],#16
-	 rev		$tctr0,$tctr0
-	aese		$tmp0,q9
-	aesmc		$tmp0,$tmp0
-	aese		$tmp1,q9
-	aesmc		$tmp1,$tmp1
-	 vld1.8		{$in2},[$inp],#16
-	 mov		$key_,$key
-	aese		$dat2,q9
-	aesmc		$tmp2,$dat2
-	aese		$tmp0,q12
-	aesmc		$tmp0,$tmp0
-	aese		$tmp1,q12
-	aesmc		$tmp1,$tmp1
-	 veor		$in0,$in0,$rndlast
-	 add		$tctr1,$ctr,#2
-	aese		$tmp2,q12
-	aesmc		$tmp2,$tmp2
-	 veor		$in1,$in1,$rndlast
-	 add		$ctr,$ctr,#3
-	aese		$tmp0,q13
-	aesmc		$tmp0,$tmp0
-	aese		$tmp1,q13
-	aesmc		$tmp1,$tmp1
-	 // Note the logic to update $dat0, $dat1, and $dat1 is written to work
-	 // around a bug in ARM Cortex-A57 and Cortex-A72 cores running in
-	 // 32-bit mode. See the comment above.
-	 veor		$in2,$in2,$rndlast
-	 vmov.32	${ivec}[3], $tctr0
-	aese		$tmp2,q13
-	aesmc		$tmp2,$tmp2
-	 vorr		$dat0,$ivec,$ivec
-	 rev		$tctr1,$tctr1
-	aese		$tmp0,q14
-	aesmc		$tmp0,$tmp0
-	 vmov.32	${ivec}[3], $tctr1
-	 rev		$tctr2,$ctr
-	aese		$tmp1,q14
-	aesmc		$tmp1,$tmp1
-	 vorr		$dat1,$ivec,$ivec
-	 vmov.32	${ivec}[3], $tctr2
-	aese		$tmp2,q14
-	aesmc		$tmp2,$tmp2
-	 vorr		$dat2,$ivec,$ivec
-	 subs		$len,$len,#3
-	aese		$tmp0,q15
-	aese		$tmp1,q15
-	aese		$tmp2,q15
-
-	veor		$in0,$in0,$tmp0
-	 vld1.32	 {q8},[$key_],#16	// re-pre-load rndkey[0]
-	vst1.8		{$in0},[$out],#16
-	veor		$in1,$in1,$tmp1
-	 mov		$cnt,$rounds
-	vst1.8		{$in1},[$out],#16
-	veor		$in2,$in2,$tmp2
-	 vld1.32	 {q9},[$key_],#16	// re-pre-load rndkey[1]
-	vst1.8		{$in2},[$out],#16
-	b.hs		.Loop3x_ctr32
-
-	adds		$len,$len,#3
-	b.eq		.Lctr32_done
-	cmp		$len,#1
-	mov		$step,#16
-	cclr		$step,eq
 
 .Lctr32_tail:
 	aese		$dat0,q8
@@ -415,19 +315,15 @@ ${prefix}_ctr32_encrypt_blocks:
 	aese		$dat0,q15
 	aese		$dat1,q15
 
-	cmp		$len,#1
 	veor		$in0,$in0,$dat0
 	veor		$in1,$in1,$dat1
 	vst1.8		{$in0},[$out],#16
-	b.eq		.Lctr32_done
-	vst1.8		{$in1},[$out]
 
-.Lctr32_done:
 	ldr		x29,[sp],#16
 	ret
 ___
 $code.=<<___;
-.size	${prefix}_ctr32_encrypt_blocks,.-${prefix}_ctr32_encrypt_blocks
+.size	${prefix}_ctr32_encrypt_block_1,.-${prefix}_ctr32_encrypt_block_1
 ___
 }}}
 $code.=<<___;
