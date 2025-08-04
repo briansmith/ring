@@ -362,14 +362,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # From https://github.com/actions/partner-runner-images/issues/77
-      - if: ${{ contains(matrix.host_os, 'windows') && contains(matrix.host_os, 'arm') }}
-        run: |
-          curl -LOs https://static.rust-lang.org/rustup/dist/aarch64-pc-windows-msvc/rustup-init.exe
-            ./rustup-init.exe -y --default-toolchain none --no-modify-path
-          echo "$USERPROFILE/.cargo/bin" >> "$GITHUB_PATH"
-        shell: sh
-
       - run: mk/install-build-tools.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
         shell: sh
 
