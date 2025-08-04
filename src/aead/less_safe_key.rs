@@ -47,10 +47,27 @@ impl LessSafeKey {
         })
     }
 
-    /// Like [open_in_place](Self::open_in_place), except the authentication tag is
-    /// passed separately.
+    /// [open_within_separate_tag](Self::open_within_separate_tag), but with
+    /// the wrong name.
+    #[deprecated(note = "Use `open_within_separate_tag` instead")]
     #[inline]
     pub fn open_in_place_separate_tag<'in_out, A>(
+        &self,
+        nonce: Nonce,
+        aad: Aad<A>,
+        tag: Tag,
+        in_out: &'in_out mut [u8],
+        ciphertext: RangeFrom<usize>,
+    ) -> Result<&'in_out mut [u8], error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
+        self.open_within_separate_tag(nonce, aad, tag, in_out, ciphertext)
+    }
+
+    /// Like [`super::OpeningKey::open_within_separate_tag()`], except it
+    /// accepts an arbitrary nonce.
+    pub fn open_within_separate_tag<'in_out, A>(
         &self,
         nonce: Nonce,
         aad: Aad<A>,
@@ -115,7 +132,7 @@ impl LessSafeKey {
         let received_tag = (*received_tag).try_into()?;
         let ciphertext = ciphertext_and_tag;
 
-        self.open_in_place_separate_tag(nonce, aad, received_tag, in_out, ciphertext)
+        self.open_within_separate_tag(nonce, aad, received_tag, in_out, ciphertext)
     }
 
     /// Like [`super::SealingKey::seal_in_place_append_tag()`], except it
