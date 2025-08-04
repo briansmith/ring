@@ -21,7 +21,7 @@
 //! [AEAD]: https://eprint.iacr.org/2000/025.pdf
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use super::{Aad, Algorithm, BoundKey, LessSafeKey, NonceSequence, UnboundKey};
+use super::{Aad, Algorithm, BoundKey, LessSafeKey, NonceSequence, Tag, UnboundKey};
 use crate::error;
 use core::ops::RangeFrom;
 
@@ -138,6 +138,28 @@ impl<N: NonceSequence> OpeningKey<N> {
             aad,
             in_out,
             ciphertext_and_tag,
+        )
+    }
+
+    /// Like [open_within](Self::open_within), except the authentication tag is
+    /// passed separately.
+    #[inline]
+    pub fn open_within_separate_tag<'in_out, A>(
+        &mut self,
+        aad: Aad<A>,
+        tag: Tag,
+        in_out: &'in_out mut [u8],
+        ciphertext: RangeFrom<usize>,
+    ) -> Result<&'in_out mut [u8], error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
+        self.key.open_within_separate_tag(
+            self.nonce_sequence.advance()?,
+            aad,
+            tag,
+            in_out,
+            ciphertext,
         )
     }
 }
