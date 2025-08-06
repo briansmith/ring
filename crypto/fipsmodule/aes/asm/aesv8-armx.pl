@@ -215,21 +215,20 @@ ___
 sub gen_block () {
 my $dir = shift;
 my ($e,$mc) = $dir eq "en" ? ("e","mc") : ("d","imc");
-my ($inp,$out,$key)=map("x$_",(0..2));
-my $rounds="w3";
-my ($rndkey0,$rndkey1,$inout)=map("q$_",(0..3));
+my ($iv,$blockp,$key,$rounds)=("x0","x1","x2","w3");
+my ($rndkey0,$rndkey1,$inout,$block)=map("q$_",(0..3));
 
 $code.=<<___;
-.globl	${prefix}_${dir}crypt
-.type	${prefix}_${dir}crypt,%function
+.globl	${prefix}_encrypt_xor_block
+.type	${prefix}_encrypt_xor_block,%function
 .align	5
-${prefix}_${dir}crypt:
+${prefix}_encrypt_xor_block:
 	AARCH64_VALID_CALL_TARGET
-	ldr	$rounds,[$key,#240]
 	vld1.32	{$rndkey0},[$key],#16
-	vld1.8	{$inout},[$inp]
+	vld1.8	{$inout},[$iv]
 	sub	$rounds,$rounds,#2
 	vld1.32	{$rndkey1},[$key],#16
+	vld1.8	{$block},[$blockp]
 
 .Loop_${dir}c:
 	aes$e	$inout,$rndkey0
@@ -245,235 +244,17 @@ ${prefix}_${dir}crypt:
 	aes$mc	$inout,$inout
 	vld1.32	{$rndkey0},[$key]
 	aes$e	$inout,$rndkey1
-	veor	$inout,$inout,$rndkey0
+	veor	$block,$block,$rndkey0
+	veor	$inout,$inout,$block
 
-	vst1.8	{$inout},[$out]
+	vst1.8	{$inout},[$blockp]
 	ret
-.size	${prefix}_${dir}crypt,.-${prefix}_${dir}crypt
+.size	${prefix}_encrypt_xor_block,.-${prefix}_encrypt_xor_block
 ___
 }
 &gen_block("en");
 # Decryption removed in *ring*.
 # &gen_block("de");
-}}}
-{{{
-my ($inp,$out,$len,$key,$ivp)=map("x$_",(0..4));
-my $rounds="w5";
-my ($cnt,$key_)=("w6","x7");
-my ($ctr,$tctr0,$tctr1,$tctr2)=map("w$_",(8..10,12));
-my $step="x12";		# aliases with $tctr2
-
-my ($dat0,$dat1,$in0,$in1,$tmp0,$tmp1,$ivec,$rndlast)=map("q$_",(0..7));
-my ($dat2,$in2,$tmp2)=map("q$_",(10,11,9));
-
-my ($dat,$tmp)=($dat0,$tmp0);
-
-### q8-q15	preloaded key schedule
-
-$code.=<<___;
-.globl	${prefix}_ctr32_encrypt_blocks
-.type	${prefix}_ctr32_encrypt_blocks,%function
-.align	5
-${prefix}_ctr32_encrypt_blocks:
-	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
-	AARCH64_VALID_CALL_TARGET
-	stp		x29,x30,[sp,#-16]!
-	add		x29,sp,#0
-	mov		$rounds,$rounds // Zero extend.
-
-	ldr		$ctr, [$ivp, #12]
-	vld1.32		{$dat0},[$ivp]
-
-	vld1.32		{q8-q9},[$key]		// load key schedule...
-	sub		$rounds,$rounds,#4
-	mov		$step,#16
-	cmp		$len,#2
-	add		$key_,$key,x5,lsl#4	// pointer to last 5 round keys
-	sub		$rounds,$rounds,#2
-	vld1.32		{q12-q13},[$key_],#32
-	vld1.32		{q14-q15},[$key_],#32
-	vld1.32		{$rndlast},[$key_]
-	add		$key_,$key,#32
-	mov		$cnt,$rounds
-	cclr		$step,lo
-
-	// ARM Cortex-A57 and Cortex-A72 cores running in 32-bit mode are
-	// affected by silicon errata #1742098 [0] and #1655431 [1],
-	// respectively, where the second instruction of an aese/aesmc
-	// instruction pair may execute twice if an interrupt is taken right
-	// after the first instruction consumes an input register of which a
-	// single 32-bit lane has been updated the last time it was modified.
-	//
-	// This function uses a counter in one 32-bit lane. The vmov.32 lines
-	// could write to $dat1 and $dat2 directly, but that trips this bugs.
-	// We write to $ivec and copy to the final register as a workaround.
-	//
-	// [0] ARM-EPM-049219 v23 Cortex-A57 MPCore Software Developers Errata Notice
-	// [1] ARM-EPM-012079 v11.0 Cortex-A72 MPCore Software Developers Errata Notice
-#ifndef __ARMEB__
-	rev		$ctr, $ctr
-#endif
-	add		$tctr1, $ctr, #1
-	vorr		$ivec,$dat0,$dat0
-	rev		$tctr1, $tctr1
-	vmov.32		${ivec}[3],$tctr1
-	add		$ctr, $ctr, #2
-	vorr		$dat1,$ivec,$ivec
-	b.ls		.Lctr32_tail
-	rev		$tctr2, $ctr
-	vmov.32		${ivec}[3],$tctr2
-	sub		$len,$len,#3		// bias
-	vorr		$dat2,$ivec,$ivec
-	b		.Loop3x_ctr32
-
-.align	4
-.Loop3x_ctr32:
-	aese		$dat0,q8
-	aesmc		$dat0,$dat0
-	aese		$dat1,q8
-	aesmc		$dat1,$dat1
-	aese		$dat2,q8
-	aesmc		$dat2,$dat2
-	vld1.32		{q8},[$key_],#16
-	subs		$cnt,$cnt,#2
-	aese		$dat0,q9
-	aesmc		$dat0,$dat0
-	aese		$dat1,q9
-	aesmc		$dat1,$dat1
-	aese		$dat2,q9
-	aesmc		$dat2,$dat2
-	vld1.32		{q9},[$key_],#16
-	b.gt		.Loop3x_ctr32
-
-	aese		$dat0,q8
-	aesmc		$tmp0,$dat0
-	aese		$dat1,q8
-	aesmc		$tmp1,$dat1
-	 vld1.8		{$in0},[$inp],#16
-	 add		$tctr0,$ctr,#1
-	aese		$dat2,q8
-	aesmc		$dat2,$dat2
-	 vld1.8		{$in1},[$inp],#16
-	 rev		$tctr0,$tctr0
-	aese		$tmp0,q9
-	aesmc		$tmp0,$tmp0
-	aese		$tmp1,q9
-	aesmc		$tmp1,$tmp1
-	 vld1.8		{$in2},[$inp],#16
-	 mov		$key_,$key
-	aese		$dat2,q9
-	aesmc		$tmp2,$dat2
-	aese		$tmp0,q12
-	aesmc		$tmp0,$tmp0
-	aese		$tmp1,q12
-	aesmc		$tmp1,$tmp1
-	 veor		$in0,$in0,$rndlast
-	 add		$tctr1,$ctr,#2
-	aese		$tmp2,q12
-	aesmc		$tmp2,$tmp2
-	 veor		$in1,$in1,$rndlast
-	 add		$ctr,$ctr,#3
-	aese		$tmp0,q13
-	aesmc		$tmp0,$tmp0
-	aese		$tmp1,q13
-	aesmc		$tmp1,$tmp1
-	 // Note the logic to update $dat0, $dat1, and $dat1 is written to work
-	 // around a bug in ARM Cortex-A57 and Cortex-A72 cores running in
-	 // 32-bit mode. See the comment above.
-	 veor		$in2,$in2,$rndlast
-	 vmov.32	${ivec}[3], $tctr0
-	aese		$tmp2,q13
-	aesmc		$tmp2,$tmp2
-	 vorr		$dat0,$ivec,$ivec
-	 rev		$tctr1,$tctr1
-	aese		$tmp0,q14
-	aesmc		$tmp0,$tmp0
-	 vmov.32	${ivec}[3], $tctr1
-	 rev		$tctr2,$ctr
-	aese		$tmp1,q14
-	aesmc		$tmp1,$tmp1
-	 vorr		$dat1,$ivec,$ivec
-	 vmov.32	${ivec}[3], $tctr2
-	aese		$tmp2,q14
-	aesmc		$tmp2,$tmp2
-	 vorr		$dat2,$ivec,$ivec
-	 subs		$len,$len,#3
-	aese		$tmp0,q15
-	aese		$tmp1,q15
-	aese		$tmp2,q15
-
-	veor		$in0,$in0,$tmp0
-	 vld1.32	 {q8},[$key_],#16	// re-pre-load rndkey[0]
-	vst1.8		{$in0},[$out],#16
-	veor		$in1,$in1,$tmp1
-	 mov		$cnt,$rounds
-	vst1.8		{$in1},[$out],#16
-	veor		$in2,$in2,$tmp2
-	 vld1.32	 {q9},[$key_],#16	// re-pre-load rndkey[1]
-	vst1.8		{$in2},[$out],#16
-	b.hs		.Loop3x_ctr32
-
-	adds		$len,$len,#3
-	b.eq		.Lctr32_done
-	cmp		$len,#1
-	mov		$step,#16
-	cclr		$step,eq
-
-.Lctr32_tail:
-	aese		$dat0,q8
-	aesmc		$dat0,$dat0
-	aese		$dat1,q8
-	aesmc		$dat1,$dat1
-	vld1.32		{q8},[$key_],#16
-	subs		$cnt,$cnt,#2
-	aese		$dat0,q9
-	aesmc		$dat0,$dat0
-	aese		$dat1,q9
-	aesmc		$dat1,$dat1
-	vld1.32		{q9},[$key_],#16
-	b.gt		.Lctr32_tail
-
-	aese		$dat0,q8
-	aesmc		$dat0,$dat0
-	aese		$dat1,q8
-	aesmc		$dat1,$dat1
-	aese		$dat0,q9
-	aesmc		$dat0,$dat0
-	aese		$dat1,q9
-	aesmc		$dat1,$dat1
-	 vld1.8		{$in0},[$inp],$step
-	aese		$dat0,q12
-	aesmc		$dat0,$dat0
-	aese		$dat1,q12
-	aesmc		$dat1,$dat1
-	 vld1.8		{$in1},[$inp]
-	aese		$dat0,q13
-	aesmc		$dat0,$dat0
-	aese		$dat1,q13
-	aesmc		$dat1,$dat1
-	 veor		$in0,$in0,$rndlast
-	aese		$dat0,q14
-	aesmc		$dat0,$dat0
-	aese		$dat1,q14
-	aesmc		$dat1,$dat1
-	 veor		$in1,$in1,$rndlast
-	aese		$dat0,q15
-	aese		$dat1,q15
-
-	cmp		$len,#1
-	veor		$in0,$in0,$dat0
-	veor		$in1,$in1,$dat1
-	vst1.8		{$in0},[$out],#16
-	b.eq		.Lctr32_done
-	vst1.8		{$in1},[$out]
-
-.Lctr32_done:
-	ldr		x29,[sp],#16
-	ret
-___
-$code.=<<___;
-.size	${prefix}_ctr32_encrypt_blocks,.-${prefix}_ctr32_encrypt_blocks
-___
 }}}
 $code.=<<___;
 #endif
