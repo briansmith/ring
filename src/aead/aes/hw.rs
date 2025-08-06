@@ -18,9 +18,9 @@
     target_arch = "x86_64"
 ))]
 
+use super::{cpu, Block, EncryptBlock, Iv, KeyBytes};
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use super::ffi::AES_KEY;
-use super::{cpu, Block, Counter, EncryptBlock, EncryptCtr32, Iv, KeyBytes, Overlapping};
+use super::{ffi::AES_KEY, Counter, EncryptCtr32, Overlapping};
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 use {super::ffi, crate::bits::BitLength, core::ffi::c_int};
 
@@ -131,19 +131,22 @@ impl EncryptBlock for Key {
         super::encrypt_block_using_encrypt_iv_xor_block(self, block)
     }
 
-    fn encrypt_iv_xor_block(&self, iv: Iv, block: Block) -> Block {
-        super::encrypt_iv_xor_block_using_ctr32(self, iv, block)
-    }
-}
-
-#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-impl EncryptCtr32 for Key {
-    fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        prefixed_extern_ctr32_encrypt_blocks_with_rd_keys! { aes_hw_ctr32_encrypt_blocks }
+    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+    fn encrypt_iv_xor_block(&self, iv: Iv, mut block: Block) -> Block {
+        prefixed_extern! {
+            fn aes_hw_encrypt_xor_block(iv: &Block, in_out: &mut Block,
+                rd_keys: *const ffi::RdKey, rounds: ffi::Rounds);
+        }
         let (rd_keys, rounds) = self.rd_keys_and_rounds();
         unsafe {
-            ffi::ctr32_encrypt_blocks(in_out, ctr, rd_keys, rounds, aes_hw_ctr32_encrypt_blocks)
+            aes_hw_encrypt_xor_block(iv.as_ref(), &mut block, rd_keys, rounds);
         }
+        block
+    }
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    fn encrypt_iv_xor_block(&self, iv: Iv, block: Block) -> Block {
+        super::encrypt_iv_xor_block_using_ctr32(self, iv, block)
     }
 }
 

@@ -159,6 +159,12 @@ impl From<Counter> for Iv {
     }
 }
 
+impl AsRef<Block> for Iv {
+    fn as_ref(&self) -> &Block {
+        &self.0
+    }
+}
+
 pub(super) type Block = [u8; BLOCK_LEN];
 pub(super) const BLOCK_LEN: usize = 16;
 pub(super) const ZERO_BLOCK: Block = [0u8; BLOCK_LEN];
