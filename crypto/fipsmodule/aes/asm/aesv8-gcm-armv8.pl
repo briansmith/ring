@@ -195,8 +195,6 @@ open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT=*OUT;
 
 $code=<<___;
-#if __ARM_MAX_ARCH__ >= 8
-
 .arch armv8-a+crypto
 .text
 ___
@@ -1535,10 +1533,6 @@ aes_gcm_dec_kernel:
 ___
 }
 }
-
-$code.=<<___;
-#endif
-___
 
 print $code;
 close STDOUT or die "error closing STDOUT: $!"; # enforce flush
