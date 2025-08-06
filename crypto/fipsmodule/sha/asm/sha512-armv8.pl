@@ -175,9 +175,6 @@ ___
 }
 
 $code.=<<___;
-#ifndef	__KERNEL__
-#endif
-
 .text
 
 .globl	$func
@@ -334,7 +331,6 @@ my ($ABCD_SAVE,$EFGH_SAVE)=("v18.16b","v19.16b");
 
 $code.=<<___;
 .text
-#ifndef	__KERNEL__
 .globl	sha256_block_data_order_hw
 .type	sha256_block_data_order_hw,%function
 .align	6
@@ -406,7 +402,6 @@ $code.=<<___;
 	ldr		x29,[sp],#16
 	ret
 .size	sha256_block_data_order_hw,.-sha256_block_data_order_hw
-#endif
 ___
 }
 

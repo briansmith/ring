@@ -58,7 +58,6 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 $prefix="aes_hw";
 
 $code=<<___;
-#if __ARM_MAX_ARCH__>=7
 .text
 ___
 $code.=".arch	armv8-a+crypto\n"			if ($flavour =~ /64/);
@@ -257,7 +256,6 @@ ___
 # &gen_block("de");
 }}}
 $code.=<<___;
-#endif
 ___
 ########################################
 if (1) {

@@ -73,7 +73,6 @@ my ($Xl,$Xm,$Xh,$IN)=map("q$_",(0..3));
 my ($t0,$t1,$t2,$xC2,$H,$Hhl,$H2)=map("q$_",(8..14));
 
 $code=<<___;
-#if __ARM_MAX_ARCH__>=7
 .text
 ___
 $code.=".arch	armv8-a+crypto\n"	if ($flavour =~ /64/);
@@ -250,7 +249,6 @@ ___
 $code.=<<___;
 .asciz  "GHASH for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 .align  2
-#endif
 ___
 
 if ($flavour =~ /64/) {			######## 64-bit code
