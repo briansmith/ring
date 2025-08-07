@@ -6,4 +6,5 @@ if [[ -n "$(git status --porcelain -- ':(exclude)pregenerated/')" ]]; then
   echo Repository is dirty.
   exit 1
 fi
-cargo publish -p ring --allow-dirty
+msrv=1.66.0
+cargo +${msrv} publish -p ring --allow-dirty
