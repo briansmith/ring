@@ -143,6 +143,7 @@ impl SystemRandom {
     target_os = "solaris",
     target_os = "vita",
     target_os = "windows",
+    target_os = "nto",
     all(
         target_vendor = "apple",
         any(
