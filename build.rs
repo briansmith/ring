@@ -206,29 +206,29 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
 // taken.
 const ASM_TARGETS: &[AsmTarget] = &[
     AsmTarget {
-        oss: LINUX_ABI,
+        oss: &[
+            ANDROID, FREEBSD, FUCHSIA, ILLUMOS, LINUX, NETBSD, OPENBSD, REDOX,
+        ],
         arch: AARCH64,
         perlasm_format: "linux64",
     },
     AsmTarget {
-        oss: LINUX_ABI,
+        oss: &[ANDROID, FREEBSD, HORIZON, LINUX, NETBSD],
         arch: ARM,
         perlasm_format: "linux32",
     },
     AsmTarget {
-        oss: LINUX_ABI,
+        oss: &[ANDROID, FREEBSD, HAIKU, HURD, LINUX, NETBSD, OPENBSD, REDOX],
         arch: X86,
         perlasm_format: "elf",
     },
     AsmTarget {
-        oss: LINUX_ABI,
+        oss: &[
+            ANDROID, DRAGONFLY, FREEBSD, FUCHSIA, HAIKU, HURD, ILLUMOS, LINUX, NETBSD, OPENBSD,
+            REDOX, SOLARIS,
+        ],
         arch: X86_64,
         perlasm_format: "elf",
-    },
-    AsmTarget {
-        oss: &["horizon"],
-        arch: ARM,
-        perlasm_format: "linux32",
     },
     AsmTarget {
         oss: APPLE_ABI,
@@ -274,22 +274,19 @@ impl AsmTarget {
     }
 }
 
-/// Operating systems that have the same ABI as Linux on every architecture
-/// mentioned in `ASM_TARGETS`.
-const LINUX_ABI: &[&str] = &[
-    "android",
-    "dragonfly",
-    "freebsd",
-    "fuchsia",
-    "haiku",
-    "hurd",
-    "illumos",
-    "netbsd",
-    "openbsd",
-    "linux",
-    "redox",
-    "solaris",
-];
+const ANDROID: &str = "android";
+const DRAGONFLY: &str = "dragonfly";
+const FREEBSD: &str = "freebsd";
+const FUCHSIA: &str = "fuchsia";
+const HAIKU: &str = "haiku";
+const HORIZON: &str = "horizon";
+const HURD: &str = "hurd";
+const ILLUMOS: &str = "illumos";
+const LINUX: &str = "linux";
+const NETBSD: &str = "netbsd";
+const OPENBSD: &str = "openbsd";
+const REDOX: &str = "redox";
+const SOLARIS: &str = "solaris";
 
 const WIN32N: &str = "win32n";
 const NASM: &str = "nasm";
