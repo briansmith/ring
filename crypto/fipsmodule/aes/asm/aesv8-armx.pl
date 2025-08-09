@@ -211,9 +211,6 @@ ${prefix}_set_encrypt_key_256:
 ___
 }}}
 {{{
-sub gen_block () {
-my $dir = shift;
-my ($e,$mc) = $dir eq "en" ? ("e","mc") : ("d","imc");
 my ($iv,$blockp,$key,$rounds)=("x0","x1","x2","w3");
 my ($rndkey0,$rndkey1,$inout,$block)=map("q$_",(0..3));
 
@@ -229,20 +226,20 @@ ${prefix}_encrypt_xor_block:
 	vld1.32	{$rndkey1},[$key],#16
 	vld1.8	{$block},[$blockp]
 
-.Loop_${dir}c:
-	aes$e	$inout,$rndkey0
-	aes$mc	$inout,$inout
+.Loop_enc:
+	aese	$inout,$rndkey0
+	aesmc	$inout,$inout
 	vld1.32	{$rndkey0},[$key],#16
 	subs	$rounds,$rounds,#2
-	aes$e	$inout,$rndkey1
-	aes$mc	$inout,$inout
+	aese	$inout,$rndkey1
+	aesmc	$inout,$inout
 	vld1.32	{$rndkey1},[$key],#16
-	b.gt	.Loop_${dir}c
+	b.gt	.Loop_enc
 
-	aes$e	$inout,$rndkey0
-	aes$mc	$inout,$inout
+	aese	$inout,$rndkey0
+	aesmc	$inout,$inout
 	vld1.32	{$rndkey0},[$key]
-	aes$e	$inout,$rndkey1
+	aese	$inout,$rndkey1
 	veor	$block,$block,$rndkey0
 	veor	$inout,$inout,$block
 
@@ -250,10 +247,6 @@ ${prefix}_encrypt_xor_block:
 	ret
 .size	${prefix}_encrypt_xor_block,.-${prefix}_encrypt_xor_block
 ___
-}
-&gen_block("en");
-# Decryption removed in *ring*.
-# &gen_block("de");
 }}}
 $code.=<<___;
 ___
