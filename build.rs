@@ -207,7 +207,7 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
 const ASM_TARGETS: &[AsmTarget] = &[
     AsmTarget {
         oss: &[
-            ANDROID, FREEBSD, FUCHSIA, ILLUMOS, LINUX, NETBSD, OPENBSD, REDOX,
+            ANDROID, FREEBSD, FUCHSIA, ILLUMOS, LINUX, NETBSD, NTO, OPENBSD, REDOX,
         ],
         arch: AARCH64,
         perlasm_format: "linux64",
@@ -224,8 +224,8 @@ const ASM_TARGETS: &[AsmTarget] = &[
     },
     AsmTarget {
         oss: &[
-            ANDROID, DRAGONFLY, FREEBSD, FUCHSIA, HAIKU, HURD, ILLUMOS, LINUX, NETBSD, OPENBSD,
-            REDOX, SOLARIS,
+            ANDROID, DRAGONFLY, FREEBSD, FUCHSIA, HAIKU, HURD, ILLUMOS, LINUX, NETBSD, NTO,
+            OPENBSD, REDOX, SOLARIS,
         ],
         arch: X86_64,
         perlasm_format: "elf",
@@ -284,6 +284,7 @@ const HURD: &str = "hurd";
 const ILLUMOS: &str = "illumos";
 const LINUX: &str = "linux";
 const NETBSD: &str = "netbsd";
+const NTO: &str = "nto";
 const OPENBSD: &str = "openbsd";
 const REDOX: &str = "redox";
 const SOLARIS: &str = "solaris";
