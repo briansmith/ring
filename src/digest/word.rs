@@ -25,6 +25,8 @@ pub trait Word:
     + BitOr<Output = Self>
     + Not<Output = Self>
 {
+    type Leaky: Copy;
+
     fn zero() -> Self;
 
     type Bytes: Copy;

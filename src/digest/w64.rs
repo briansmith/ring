@@ -18,6 +18,8 @@ use core::num::Wrapping;
 pub type W64 = Wrapping<u64>;
 
 impl Word for W64 {
+    type Leaky = u64;
+
     #[inline(always)]
     fn zero() -> Self {
         Wrapping(0)
