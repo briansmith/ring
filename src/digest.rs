@@ -41,6 +41,9 @@ pub(crate) use self::finish_error::FinishError;
 mod dynstate;
 mod sha1;
 mod sha2;
+mod w32;
+mod w64;
+mod word;
 
 #[derive(Clone)]
 pub(crate) struct BlockContext {

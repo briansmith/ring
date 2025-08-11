@@ -15,11 +15,11 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::CHAINING_WORDS;
-use core::{
-    num::Wrapping,
-    ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Not, Shr},
+use super::{
+    super::{w32::W32, w64::W64, word::Word},
+    CHAINING_WORDS,
 };
+use core::ops::{BitXor, Shr};
 
 #[cfg_attr(
     any(
@@ -122,26 +122,6 @@ fn sigma_1<S: Sha2>(x: S) -> S {
     x.rotr(S::SMALL_SIGMA_1.0) ^ x.rotr(S::SMALL_SIGMA_1.1) ^ (x >> S::SMALL_SIGMA_1.2)
 }
 
-// Commonality between SHA-1 and SHA-2 words.
-pub(in super::super) trait Word:
-    'static
-    + Sized
-    + Copy
-    + Add<Output = Self>
-    + AddAssign
-    + BitAnd<Output = Self>
-    + BitOr<Output = Self>
-    + Not<Output = Self>
-{
-    const ZERO: Self;
-
-    type InputBytes: Copy;
-
-    fn from_be_bytes(input: Self::InputBytes) -> Self;
-
-    fn rotr(self, count: u32) -> Self;
-}
-
 /// A SHA-2 input word.
 pub(super) trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> {
     const BIG_SIGMA_0: (u32, u32, u32);
@@ -157,23 +137,8 @@ pub(super) trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> 
     const K: &'static Self::W;
 }
 
-impl Word for Wrapping<u32> {
-    const ZERO: Self = Self(0);
-    type InputBytes = [u8; 4];
-
-    #[inline(always)]
-    fn from_be_bytes(input: Self::InputBytes) -> Self {
-        Self(u32::from_be_bytes(input))
-    }
-
-    #[inline(always)]
-    fn rotr(self, count: u32) -> Self {
-        Self(self.0.rotate_right(count))
-    }
-}
-
 // SHA-256
-impl Sha2 for Wrapping<u32> {
+impl Sha2 for W32 {
     // FIPS 180-4 4.1.2
     const BIG_SIGMA_0: (u32, u32, u32) = (2, 13, 22);
     const BIG_SIGMA_1: (u32, u32, u32) = (6, 11, 25);
@@ -257,23 +222,8 @@ impl Sha2 for Wrapping<u32> {
     ];
 }
 
-impl Word for Wrapping<u64> {
-    const ZERO: Self = Self(0);
-    type InputBytes = [u8; 8];
-
-    #[inline(always)]
-    fn from_be_bytes(input: Self::InputBytes) -> Self {
-        Self(u64::from_be_bytes(input))
-    }
-
-    #[inline(always)]
-    fn rotr(self, count: u32) -> Self {
-        Self(self.0.rotate_right(count))
-    }
-}
-
 // SHA-384 and SHA-512
-impl Sha2 for Wrapping<u64> {
+impl Sha2 for W64 {
     // FIPS 180-4 4.1.3
     const BIG_SIGMA_0: (u32, u32, u32) = (28, 34, 39);
     const BIG_SIGMA_1: (u32, u32, u32) = (14, 18, 41);

@@ -18,9 +18,11 @@ use crate::polyfill::prelude::*;
 
 use super::{
     sha2::{
-        fallback::{ch, maj, Word},
+        fallback::{ch, maj},
         State32,
     },
+    w32::W32,
+    word::Word,
     BlockLen, OutputLen,
 };
 use core::{mem::size_of, num::Wrapping};
@@ -29,8 +31,6 @@ pub(super) const BLOCK_LEN: BlockLen = BlockLen::_512;
 pub const CHAINING_LEN: usize = 160 / 8;
 pub(super) const OUTPUT_LEN: OutputLen = OutputLen::_160;
 const CHAINING_WORDS: usize = CHAINING_LEN / 4;
-
-type W32 = Wrapping<u32>;
 
 // FIPS 180-4 4.1.1
 #[inline]
