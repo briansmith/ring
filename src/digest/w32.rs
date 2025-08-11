@@ -20,10 +20,10 @@ pub type W32 = Wrapping<u32>;
 impl Word for W32 {
     const ZERO: Self = Wrapping(0);
 
-    type InputBytes = [u8; 4];
+    type Bytes = [u8; 4];
 
     #[inline(always)]
-    fn from_be_bytes(input: Self::InputBytes) -> Self {
+    fn from_be_bytes(input: Self::Bytes) -> Self {
         Self(u32::from_be_bytes(input))
     }
 

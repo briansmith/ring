@@ -35,7 +35,7 @@ pub(super) fn block_data_order<S: Sha2, const BLOCK_LEN: usize, const BYTES_LEN:
     M: &[[u8; BLOCK_LEN]],
 ) -> [S; CHAINING_WORDS]
 where
-    for<'a> &'a S::InputBytes: From<&'a [u8; BYTES_LEN]>,
+    for<'a> &'a S::Bytes: From<&'a [u8; BYTES_LEN]>,
 {
     for M in M {
         let (M, remainder) = M.as_chunks::<BYTES_LEN>();
@@ -48,7 +48,7 @@ where
         let mut W = S::zero_w();
         let W = W.as_mut();
         W.iter_mut().zip(M).for_each(|(Wt, Mt)| {
-            let Mt: &S::InputBytes = Mt.into();
+            let Mt: &S::Bytes = Mt.into();
             *Wt = S::from_be_bytes(*Mt);
         });
         for t in 16..S::ROUNDS {

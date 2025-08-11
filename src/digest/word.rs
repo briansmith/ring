@@ -27,9 +27,9 @@ pub trait Word:
 {
     const ZERO: Self;
 
-    type InputBytes: Copy;
+    type Bytes: Copy;
 
-    fn from_be_bytes(input: Self::InputBytes) -> Self;
+    fn from_be_bytes(input: Self::Bytes) -> Self;
 
     fn rotr(self, count: u32) -> Self;
 }

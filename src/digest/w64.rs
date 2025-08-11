@@ -19,10 +19,10 @@ pub type W64 = Wrapping<u64>;
 
 impl Word for W64 {
     const ZERO: Self = Self(0);
-    type InputBytes = [u8; 8];
+    type Bytes = [u8; 8];
 
     #[inline(always)]
-    fn from_be_bytes(input: Self::InputBytes) -> Self {
+    fn from_be_bytes(input: Self::Bytes) -> Self {
         Self(u64::from_be_bytes(input))
     }
 
