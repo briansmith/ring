@@ -14,7 +14,7 @@
 
 use super::{super::w64::W64, BlockLen, CHAINING_WORDS};
 use crate::cpu;
-use crate::digest::sha2::k::K;
+use crate::digest::sha2::k::KTable;
 use cfg_if::cfg_if;
 
 pub(in super::super) const SHA512_BLOCK_LEN: BlockLen = BlockLen::_1024;
@@ -60,7 +60,7 @@ pub(crate) fn block_data_order_64(
     }
 }
 
-pub(in super::super) const K_64: K<u64, { 80 + 1 }> = K::new_zero_terminated([
+pub(in super::super) const K_64: KTable<u64, { 80 + 1 }> = KTable::new_zero_terminated([
     0x428a2f98d728ae22,
     0x7137449123ef65cd,
     0xb5c0fbcfec4d3b2f,

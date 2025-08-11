@@ -13,22 +13,22 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #[cfg_attr(target_arch = "aarch64", repr(C, align(64)))]
-pub(super) struct K<T, const ROUNDS_PLUS_1: usize>([T; ROUNDS_PLUS_1]);
+pub(super) struct KTable<T, const ROUNDS_PLUS_1: usize>([T; ROUNDS_PLUS_1]);
 
-impl<T, const ROUNDS_PLUS_1: usize> K<T, ROUNDS_PLUS_1> {
+impl<T, const ROUNDS_PLUS_1: usize> KTable<T, ROUNDS_PLUS_1> {
     pub(super) const fn new_zero_terminated(values_zero_terminated: [T; ROUNDS_PLUS_1]) -> Self {
         Self(values_zero_terminated)
     }
 }
 
-impl<T> AsRef<[T; 64]> for K<T, { 64 + 1 }> {
+impl<T> AsRef<[T; 64]> for KTable<T, { 64 + 1 }> {
     #[inline(always)]
     fn as_ref(&self) -> &[T; 64] {
         self.0.split_first_chunk::<64>().unwrap().0
     }
 }
 
-impl<T> AsRef<[T; 80]> for K<T, { 80 + 1 }> {
+impl<T> AsRef<[T; 80]> for KTable<T, { 80 + 1 }> {
     #[inline(always)]
     fn as_ref(&self) -> &[T; 80] {
         self.0.split_first_chunk::<80>().unwrap().0

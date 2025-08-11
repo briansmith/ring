@@ -15,7 +15,7 @@
 #![allow(unused_macros, dead_code)]
 
 use super::CHAINING_WORDS;
-use crate::digest::sha2::k::K;
+use crate::digest::sha2::k::KTable;
 use core::num::{NonZeroUsize, Wrapping};
 
 /// `unsafe { T => f }` means it is safe to call `f` iff we can construct
@@ -45,7 +45,7 @@ macro_rules! sha2_k_ffi {
                 state: *mut [core::num::Wrapping<$U>; crate::digest::sha2::CHAINING_WORDS],
                 data: *const [u8; $BLOCK_LEN],
                 num: crate::c::NonZero_size_t,
-                ktbl: &K<$U, $ROUNDS_PLUS_1>);
+                ktbl: &KTable<$U, $ROUNDS_PLUS_1>);
         }
         // SAFETY: The user asserts that $f has the signature above and is safe
         // to call if additionally we have a value of type `$Cpu`, which we do.
@@ -109,13 +109,13 @@ pub(super) unsafe fn sha2_ffi<U, Cpu, const BLOCK_LEN: usize>(
 pub(super) unsafe fn sha2_k_ffi<U, Cpu, const BLOCK_LEN: usize, const ROUNDS_PLUS_1: usize>(
     state: &mut [Wrapping<U>; CHAINING_WORDS],
     data: &[[u8; BLOCK_LEN]],
-    k: &K<U, ROUNDS_PLUS_1>,
+    k: &KTable<U, ROUNDS_PLUS_1>,
     cpu: Cpu,
     f: unsafe extern "C" fn(
         *mut [Wrapping<U>; CHAINING_WORDS],
         *const [u8; BLOCK_LEN],
         crate::c::NonZero_size_t,
-        &K<U, ROUNDS_PLUS_1>,
+        &KTable<U, ROUNDS_PLUS_1>,
     ),
 ) {
     if let Some(blocks) = NonZeroUsize::new(data.len()) {
