@@ -1,4 +1,4 @@
-// Copyright 2019-2024 Brian Smith.
+// Copyright 2019-2025 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,24 +12,17 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::BlockLen;
+pub(super) struct K<T, const ROUNDS: usize>([T; ROUNDS]);
 
-pub(super) use self::{
-    sha2_32::{block_data_order_32, State32, SHA256_BLOCK_LEN},
-    sha2_64::{block_data_order_64, State64, SHA512_BLOCK_LEN},
-};
+impl<T, const ROUNDS: usize> K<T, ROUNDS> {
+    pub(super) const fn new(values: [T; ROUNDS]) -> Self {
+        Self(values)
+    }
+}
 
-pub(super) const CHAINING_WORDS: usize = 8;
-
-#[cfg(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86_64"
-))]
-#[macro_use]
-mod ffi;
-
-pub(super) mod fallback;
-mod k;
-mod sha2_32;
-mod sha2_64;
+impl<T, const ROUNDS: usize> AsRef<[T]> for K<T, ROUNDS> {
+    #[inline(always)]
+    fn as_ref(&self) -> &[T] {
+        &self.0
+    }
+}
