@@ -30,9 +30,10 @@ pub(crate) fn block_data_order_64(
         if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
             use cpu::{GetFeature as _, aarch64::Sha512};
             if let Some(cpu) = cpu.get_feature() {
-                sha2_64_ffi!(unsafe { Sha512 => sha512_block_data_order_hw }, state, data, cpu)
+                sha2_64_k_ffi!(unsafe { Sha512 => sha512_block_data_order_hw }, state, data,
+                    &K_64, cpu)
             } else {
-                sha2_64_ffi!(unsafe { () => sha512_block_data_order_nohw }, state, data, ())
+                sha2_64_k_ffi!(unsafe { () => sha512_block_data_order_nohw }, state, data, &K_64, ())
             }
         } else if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
             use cpu::{GetFeature as _, arm::Neon};
@@ -59,7 +60,7 @@ pub(crate) fn block_data_order_64(
     }
 }
 
-pub(in super::super) const K_64: K<u64, 80> = K::new([
+pub(in super::super) const K_64: K<u64, { 80 + 1 }> = K::new_zero_terminated([
     0x428a2f98d728ae22,
     0x7137449123ef65cd,
     0xb5c0fbcfec4d3b2f,
@@ -140,4 +141,5 @@ pub(in super::super) const K_64: K<u64, 80> = K::new([
     0x597f299cfc657e2a,
     0x5fcb6fab3ad6faec,
     0x6c44198c4a475817,
+    0,
 ]);

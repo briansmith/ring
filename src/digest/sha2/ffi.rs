@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#![allow(unused_macros, dead_code)]
+
 use super::CHAINING_WORDS;
+use crate::digest::sha2::k::K;
 use core::num::{NonZeroUsize, Wrapping};
 
 /// `unsafe { T => f }` means it is safe to call `f` iff we can construct
@@ -34,6 +37,26 @@ macro_rules! sha2_ffi {
     }};
 }
 
+macro_rules! sha2_k_ffi {
+    ( $U:ty, ($BLOCK_LEN:expr, $ROUNDS_PLUS_1:expr), unsafe { $Cpu:ty => $f:ident },
+      $state:expr, $data:expr, $k:expr, $cpu:expr $(,)? ) => {{
+        prefixed_extern! {
+            fn $f(
+                state: *mut [core::num::Wrapping<$U>; crate::digest::sha2::CHAINING_WORDS],
+                data: *const [u8; $BLOCK_LEN],
+                num: crate::c::NonZero_size_t,
+                ktbl: &K<$U, $ROUNDS_PLUS_1>);
+        }
+        // SAFETY: The user asserts that $f has the signature above and is safe
+        // to call if additionally we have a value of type `$Cpu`, which we do.
+        unsafe {
+            crate::digest::sha2::ffi::sha2_k_ffi::<$U, $Cpu, { $BLOCK_LEN }, { $ROUNDS_PLUS_1 }>(
+                $state, $data, $k, $cpu, $f,
+            )
+        }
+    }};
+}
+
 macro_rules! sha2_32_ffi {
     ( unsafe { $Cpu:ty => $f:ident }, $state:expr, $data:expr, $cpu:expr $(,)? ) => {
         sha2_ffi!(u32, crate::digest::sha2::SHA256_BLOCK_LEN.into(),
@@ -41,9 +64,23 @@ macro_rules! sha2_32_ffi {
     }
 }
 
+macro_rules! sha2_32_k_ffi {
+    ( unsafe { $Cpu:ty => $f:ident }, $state:expr, $data:expr, $k:expr, $cpu:expr $(,)? ) => {
+        sha2_k_ffi!(u32, (crate::digest::sha2::SHA256_BLOCK_LEN.into(), {64 + 1}),
+            unsafe { $Cpu => $f }, $state, $data, $k, $cpu)
+    }
+}
+
 macro_rules! sha2_64_ffi {
     ( unsafe { $Cpu:ty => $f:ident }, $state:expr, $data:expr, $cpu:expr $(,)? ) => {
         sha2_ffi!(u64, SHA512_BLOCK_LEN.into(), unsafe { $Cpu => $f }, $state, $data, $cpu)
+    }
+}
+
+macro_rules! sha2_64_k_ffi {
+    ( unsafe { $Cpu:ty => $f:ident }, $state:expr, $data:expr, $k:expr, $cpu:expr $(,)? ) => {
+        sha2_k_ffi!(u64, (SHA512_BLOCK_LEN.into(), {80 + 1}),
+            unsafe { $Cpu => $f }, $state, $data, $k, $cpu)
     }
 }
 
@@ -66,5 +103,29 @@ pub(super) unsafe fn sha2_ffi<U, Cpu, const BLOCK_LEN: usize>(
         //   * The caller asserted that `f` meets this contract if we have
         //     an instance of `Cpu`.
         unsafe { f(state, data, blocks) }
+    }
+}
+
+pub(super) unsafe fn sha2_k_ffi<U, Cpu, const BLOCK_LEN: usize, const ROUNDS_PLUS_1: usize>(
+    state: &mut [Wrapping<U>; CHAINING_WORDS],
+    data: &[[u8; BLOCK_LEN]],
+    k: &K<U, ROUNDS_PLUS_1>,
+    cpu: Cpu,
+    f: unsafe extern "C" fn(
+        *mut [Wrapping<U>; CHAINING_WORDS],
+        *const [u8; BLOCK_LEN],
+        crate::c::NonZero_size_t,
+        &K<U, ROUNDS_PLUS_1>,
+    ),
+) {
+    if let Some(blocks) = NonZeroUsize::new(data.len()) {
+        let data = data.as_ptr();
+        let _: Cpu = cpu;
+        // SAFETY:
+        //   * `blocks` is non-zero.
+        //   * `data` is non-NULL and points to `blocks` blocks.
+        //   * The caller asserted that `f` meets this contract if we have
+        //     an instance of `Cpu`.
+        unsafe { f(state, data, blocks, k) }
     }
 }

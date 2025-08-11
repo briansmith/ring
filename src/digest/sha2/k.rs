@@ -12,17 +12,18 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-pub(super) struct K<T, const ROUNDS: usize>([T; ROUNDS]);
+#[cfg_attr(target_arch = "aarch64", repr(C, align(64)))]
+pub(super) struct K<T, const ROUNDS_PLUS_1: usize>([T; ROUNDS_PLUS_1]);
 
-impl<T, const ROUNDS: usize> K<T, ROUNDS> {
-    pub(super) const fn new(values: [T; ROUNDS]) -> Self {
-        Self(values)
+impl<T, const ROUNDS_PLUS_1: usize> K<T, ROUNDS_PLUS_1> {
+    pub(super) const fn new_zero_terminated(values_zero_terminated: [T; ROUNDS_PLUS_1]) -> Self {
+        Self(values_zero_terminated)
     }
 }
 
-impl<T, const ROUNDS: usize> AsRef<[T]> for K<T, ROUNDS> {
+impl<T, const ROUNDS_PLUS_1: usize> AsRef<[T]> for K<T, ROUNDS_PLUS_1> {
     #[inline(always)]
     fn as_ref(&self) -> &[T] {
-        &self.0
+        &self.0[..(ROUNDS_PLUS_1 - 1)]
     }
 }

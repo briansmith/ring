@@ -197,8 +197,7 @@ $func:
 	ldp	$E,$F,[$ctx,#4*$SZ]
 	add	$num,$inp,$num,lsl#`log(16*$SZ)/log(2)`	// end of input
 	ldp	$G,$H,[$ctx,#6*$SZ]
-	adrp	$Ktbl,:pg_hi21:.LK$BITS
-	add	$Ktbl,$Ktbl,:lo12:.LK$BITS
+	mov	$Ktbl,x3
 	stp	$ctx,$num,[x29,#96]
 
 .Loop:
@@ -249,11 +248,11 @@ $code.=<<___;
 .size	$func,.-$func
 
 .section .rodata
+___
+$code.=<<___ if ($SZ==8);
 .align	6
 .type	.LK$BITS,%object
 .LK$BITS:
-___
-$code.=<<___ if ($SZ==8);
 	.quad	0x428a2f98d728ae22,0x7137449123ef65cd
 	.quad	0xb5c0fbcfec4d3b2f,0xe9b5dba58189dbbc
 	.quad	0x3956c25bf348b538,0x59f111f1b605d019
@@ -295,28 +294,9 @@ $code.=<<___ if ($SZ==8);
 	.quad	0x4cc5d4becb3e42b6,0x597f299cfc657e2a
 	.quad	0x5fcb6fab3ad6faec,0x6c44198c4a475817
 	.quad	0	// terminator
-___
-$code.=<<___ if ($SZ==4);
-	.long	0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5
-	.long	0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5
-	.long	0xd807aa98,0x12835b01,0x243185be,0x550c7dc3
-	.long	0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174
-	.long	0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc
-	.long	0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da
-	.long	0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7
-	.long	0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967
-	.long	0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13
-	.long	0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85
-	.long	0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3
-	.long	0xd192e819,0xd6990624,0xf40e3585,0x106aa070
-	.long	0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5
-	.long	0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3
-	.long	0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208
-	.long	0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
-	.long	0	//terminator
+.size	.LK$BITS,.-.LK$BITS
 ___
 $code.=<<___;
-.size	.LK$BITS,.-.LK$BITS
 .asciz	"SHA$BITS block transform for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
 ___
@@ -341,8 +321,6 @@ sha256_block_data_order_hw:
 	add		x29,sp,#0
 
 	ld1.32		{$ABCD,$EFGH},[$ctx]
-	adrp		$Ktbl,:pg_hi21:.LK256
-	add		$Ktbl,$Ktbl,:lo12:.LK256
 
 .Loop_hw:
 	ld1		{@MSG[0]-@MSG[3]},[$inp],#64
@@ -430,8 +408,6 @@ sha512_block_data_order_hw:
 	ld1		{@MSG[4]-@MSG[7]},[$inp],#64
 
 	ld1.64		{@H[0]-@H[3]},[$ctx]		// load context
-	adrp		$Ktbl,:pg_hi21:.LK512
-	add		$Ktbl,$Ktbl,:lo12:.LK512
 
 	rev64		@MSG[0],@MSG[0]
 	rev64		@MSG[1],@MSG[1]
