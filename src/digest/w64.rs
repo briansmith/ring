@@ -18,7 +18,11 @@ use core::num::Wrapping;
 pub type W64 = Wrapping<u64>;
 
 impl Word for W64 {
-    const ZERO: Self = Self(0);
+    #[inline(always)]
+    fn zero() -> Self {
+        Wrapping(0)
+    }
+
     type Bytes = [u8; 8];
 
     #[inline(always)]

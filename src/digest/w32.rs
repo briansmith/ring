@@ -18,7 +18,10 @@ use core::num::Wrapping;
 pub type W32 = Wrapping<u32>;
 
 impl Word for W32 {
-    const ZERO: Self = Wrapping(0);
+    #[inline(always)]
+    fn zero() -> Self {
+        Wrapping(0)
+    }
 
     type Bytes = [u8; 4];
 

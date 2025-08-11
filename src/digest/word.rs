@@ -25,7 +25,7 @@ pub trait Word:
     + BitOr<Output = Self>
     + Not<Output = Self>
 {
-    const ZERO: Self;
+    fn zero() -> Self;
 
     type Bytes: Copy;
 

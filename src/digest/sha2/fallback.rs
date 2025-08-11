@@ -150,7 +150,7 @@ impl Sha2 for W32 {
 
     type W = [Self; Self::ROUNDS];
     fn zero_w() -> Self::W {
-        [Self::ZERO; Self::ROUNDS]
+        [Self::zero(); Self::ROUNDS]
     }
 
     // FIPS 180-4 4.2.2
@@ -235,7 +235,7 @@ impl Sha2 for W64 {
 
     type W = [Self; Self::ROUNDS];
     fn zero_w() -> Self::W {
-        [Self::ZERO; Self::ROUNDS]
+        [Self::zero(); Self::ROUNDS]
     }
 
     // FIPS 180-4 4.2.3
