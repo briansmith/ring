@@ -61,7 +61,7 @@ where
         let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h] = H;
 
         // FIPS 180-4 {6.2.2, 6.4.2} Step 3
-        for (Kt, Wt) in S::k().as_ref().iter().zip(W.iter()) {
+        for (Kt, Wt) in S::k_table().as_ref().iter().zip(W.iter()) {
             let Kt = S::from(*Kt);
             let T1 = h + SIGMA_1(e) + ch(e, f, g) + Kt + *Wt;
             let T2 = SIGMA_0(a) + maj(a, b, c);
@@ -137,7 +137,8 @@ pub(super) trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> 
     type W: AsRef<[Self]> + AsMut<[Self]>;
     fn zero_w() -> Self::W;
 
-    fn k() -> &'static [Self::Leaky];
+    type KTable: AsRef<[Self::Leaky]> + Sized;
+    fn k_table() -> &'static Self::KTable;
 }
 
 // SHA-256
@@ -157,7 +158,7 @@ impl Sha2 for W32 {
     }
 
     // FIPS 180-4 4.2.2
-    fn k() -> &'static [Self::Leaky] {
+    fn k_table() -> &'static [Self::Leaky] {
         K_32.as_ref()
     }
 }
@@ -179,7 +180,6 @@ impl Sha2 for W64 {
     }
 
     // FIPS 180-4 4.2.3
-    fn k() -> &'static [Self::Leaky] {
-        K_64.as_ref()
-    }
+    type KTable = [Self::Leaky; Self::ROUNDS];
+    fn k_table() -> &'static Self::KTable { }
 }

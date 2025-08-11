@@ -21,9 +21,16 @@ impl<T, const ROUNDS_PLUS_1: usize> K<T, ROUNDS_PLUS_1> {
     }
 }
 
-impl<T, const ROUNDS_PLUS_1: usize> AsRef<[T]> for K<T, ROUNDS_PLUS_1> {
+impl<T> AsRef<[T; 64]> for K<T, { 64 + 1 }> {
     #[inline(always)]
-    fn as_ref(&self) -> &[T] {
-        &self.0[..(ROUNDS_PLUS_1 - 1)]
+    fn as_ref(&self) -> &[T; 64] {
+        &self.0[..64]
+    }
+}
+
+impl<T> AsRef<[T; 80]> for K<T, { 80 + 1 }> {
+    #[inline(always)]
+    fn as_ref(&self) -> &[T; 80] {
+        &self.0[..80]
     }
 }
