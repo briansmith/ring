@@ -60,7 +60,7 @@ pub(crate) fn block_data_order_64(
     }
 }
 
-pub(in super::super) const K_64: KTable<u64, { 80 + 1 }> = KTable::new_zero_terminated([
+pub(super) const K_64: KTable<u64, { 80 + 1 }> = KTable::new_zero_terminated([
     0x428a2f98d728ae22,
     0x7137449123ef65cd,
     0xb5c0fbcfec4d3b2f,
