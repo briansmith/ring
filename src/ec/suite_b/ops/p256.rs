@@ -16,9 +16,11 @@ use super::{
     elem::{binary_op, binary_op_assign},
     elem_sqr_mul, elem_sqr_mul_acc, PublicModulus, *,
 };
+use crate::polyfill::unwrap_const;
 use cfg_if::cfg_if;
+use core::num::NonZeroUsize;
 
-pub(super) const NUM_LIMBS: usize = 256 / LIMB_BITS;
+pub(super) const NUM_LIMBS: NonZeroUsize = unwrap_const(NonZeroUsize::new(256 / LIMB_BITS));
 
 pub static COMMON_OPS: CommonOps = CommonOps {
     num_limbs: elem::NumLimbs::P256,
