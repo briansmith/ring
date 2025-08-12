@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{BlockLen, CHAINING_WORDS};
 use crate::cpu;
 use crate::digest::sha2::k::KTable;
