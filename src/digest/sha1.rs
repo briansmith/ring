@@ -62,7 +62,7 @@ fn block_data_order(
         debug_assert!(remainder.is_empty());
 
         // FIPS 180-4 6.1.2 Step 1
-        let mut W: [W32; ROUNDS] = [W32::zero(); ROUNDS];
+        let mut W: [W32; ROUNDS] = [Word::from(W32::ZERO); ROUNDS];
         W.iter_mut().zip(M).for_each(|(Wt, Mt)| {
             *Wt = W32::from_be_bytes(*Mt);
         });

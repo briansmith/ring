@@ -26,8 +26,10 @@ pub trait Word:
     + Not<Output = Self>
 {
     type Leaky: Copy;
+    const ZERO: Self::Leaky;
 
-    fn zero() -> Self;
+    // XXX: Wrapping<T> doesn't implement From<T>!.
+    fn from(value: Self::Leaky) -> Self;
 
     type Bytes: Copy;
 

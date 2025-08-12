@@ -37,7 +37,7 @@ pub(super) fn block_data_order<S, const BLOCK_LEN: usize, const BYTES_LEN: usize
 ) -> [S; CHAINING_WORDS]
 where
     for<'a> &'a S::Bytes: From<&'a [u8; BYTES_LEN]>,
-    S: Sha2 + From<S::Leaky>,
+    S: Sha2,
 {
     for M in M {
         let (M, remainder) = M.as_chunks::<BYTES_LEN>();
@@ -62,7 +62,7 @@ where
 
         // FIPS 180-4 {6.2.2, 6.4.2} Step 3
         for (Kt, Wt) in S::k_table().as_ref().iter().zip(W.iter()) {
-            let Kt = S::from(*Kt);
+            let Kt = Word::from(*Kt);
             let T1 = h + SIGMA_1(e) + ch(e, f, g) + Kt + *Wt;
             let T2 = SIGMA_0(a) + maj(a, b, c);
             h = g;
@@ -154,7 +154,7 @@ impl Sha2 for W32 {
 
     type W = [Self; Self::ROUNDS];
     fn zero_w() -> Self::W {
-        [Self::zero(); Self::ROUNDS]
+        [Word::from(Self::ZERO); Self::ROUNDS]
     }
 
     // FIPS 180-4 4.2.2
@@ -177,7 +177,7 @@ impl Sha2 for W64 {
 
     type W = [Self; Self::ROUNDS];
     fn zero_w() -> Self::W {
-        [Self::zero(); Self::ROUNDS]
+        [Word::from(Self::ZERO); Self::ROUNDS]
     }
 
     // FIPS 180-4 4.2.3

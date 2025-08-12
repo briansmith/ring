@@ -19,10 +19,11 @@ pub type W64 = Wrapping<u64>;
 
 impl Word for W64 {
     type Leaky = u64;
+    const ZERO: Self::Leaky = 0;
 
     #[inline(always)]
-    fn zero() -> Self {
-        Wrapping(0)
+    fn from(value: Self::Leaky) -> Self {
+        Wrapping(value)
     }
 
     type Bytes = [u8; 8];
