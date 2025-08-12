@@ -16,7 +16,10 @@ use super::{
     elem::{binary_op, binary_op_assign},
     elem_sqr_mul, elem_sqr_mul_acc, PublicModulus, *,
 };
-use crate::polyfill::unwrap_const;
+use crate::{
+    arithmetic::{inout::AliasingSlices3FromRawParts, LimbSliceError},
+    polyfill::unwrap_const,
+};
 use core::num::NonZeroUsize;
 
 pub(super) const NUM_LIMBS: NonZeroUsize = unwrap_const(NonZeroUsize::new(384 / LIMB_BITS));
@@ -121,6 +124,25 @@ pub static SCALAR_OPS: ScalarOps = ScalarOps {
     common: &COMMON_OPS,
     scalar_mul_mont: p384_scalar_mul_mont,
 };
+
+static N_N0: N0 = N0::precalculated(0x6ed46089_e88fdc45);
+
+unsafe extern "C" fn p384_scalar_mul_mont(
+    r: *mut Limb,   // [COMMON_OPS.num_limbs]
+    a: *const Limb, // [COMMON_OPS.num_limbs]
+    b: *const Limb, // [COMMON_OPS.num_limbs]
+) {
+    // XXX: Inefficient. TODO: optimize with dedicated multiplication routine
+    // TODO: Caller should pass in an `impl AliasingSlices3`.
+    let in_out = unsafe { AliasingSlices3FromRawParts::new_rab_unchecked(r, a, b, NUM_LIMBS) };
+    let n = &COMMON_OPS.n.limbs[..NUM_LIMBS.get()];
+    let cpu = cpu::features(); // TODO: caller should supply this
+    limbs_mul_mont(in_out, n, &N_N0, cpu).unwrap_or_else(|e| match e {
+        LimbSliceError::LenMismatch(_)
+        | LimbSliceError::TooShort(_)
+        | LimbSliceError::TooLong(_) => unreachable!(),
+    })
+}
 
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_ops: &SCALAR_OPS,
@@ -312,11 +334,5 @@ prefixed_extern! {
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
-    );
-
-    fn p384_scalar_mul_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        b: *const Limb, // [COMMON_OPS.num_limbs]
     );
 }

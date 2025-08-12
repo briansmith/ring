@@ -121,6 +121,54 @@ pub static SCALAR_OPS: ScalarOps = ScalarOps {
     scalar_mul_mont: p256_scalar_mul_mont,
 };
 
+cfg_if! {
+    if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"),
+                 target_arch = "x86_64"))] {
+        prefixed_extern! {
+            fn p256_scalar_mul_mont(
+                r: *mut Limb,    // [COMMON_OPS.num_limbs]
+                a: *const Limb,  // [COMMON_OPS.num_limbs]
+                b: *const Limb); // [COMMON_OPS.num_limbs]
+            pub(super) fn p256_scalar_sqr_rep_mont(
+                r: *mut Limb,   // [COMMON_OPS.num_limbs]
+                a: *const Limb, // [COMMON_OPS.num_limbs]
+                rep: LeakyWord);
+        }
+    } else {
+        use crate::arithmetic::{inout::AliasingSlices3FromRawParts, LimbSliceError};
+
+        static N_N0: N0 = N0::precalculated(0xccd1c8aa_ee00bc4f);
+
+        unsafe extern "C" fn p256_scalar_mul_mont(
+            r: *mut Limb,   // [COMMON_OPS.num_limbs]
+            a: *const Limb, // [COMMON_OPS.num_limbs]
+            b: *const Limb, // [COMMON_OPS.num_limbs]
+        ) {
+            // XXX: Inefficient. TODO: optimize with dedicated multiplication routine
+            // TODO: Caller should pass in an `impl AliasingSlices3`.
+            let in_out = unsafe { AliasingSlices3FromRawParts::new_rab_unchecked(r, a, b, NUM_LIMBS) };
+            let n = &COMMON_OPS.n.limbs[..NUM_LIMBS.get()];
+            let cpu = cpu::features(); // TODO: caller should supply this
+            limbs_mul_mont(in_out, n, &N_N0, cpu).unwrap_or_else(|e| match e {
+                LimbSliceError::LenMismatch(_)
+                | LimbSliceError::TooShort(_)
+                | LimbSliceError::TooLong(_) => unreachable!(),
+            })
+        }
+
+        pub(super) unsafe extern "C" fn p256_scalar_sqr_rep_mont(
+            r: *mut Limb,   // [COMMON_OPS.num_limbs]
+            a: *const Limb, // [COMMON_OPS.num_limbs]
+            rep: LeakyWord) {
+            debug_assert!(rep >= 1);
+            unsafe { p256_scalar_mul_mont(r, a, a); }
+            for _ in 1..rep {
+                unsafe { p256_scalar_mul_mont(r, r, r); }
+            }
+        }
+    }
+}
+
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_ops: &SCALAR_OPS,
     public_key_ops: &PUBLIC_KEY_OPS,
@@ -308,17 +356,6 @@ prefixed_extern! {
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
-    );
-
-    fn p256_scalar_mul_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        b: *const Limb, // [COMMON_OPS.num_limbs]
-    );
-    fn p256_scalar_sqr_rep_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        rep: LeakyWord,
     );
 }
 

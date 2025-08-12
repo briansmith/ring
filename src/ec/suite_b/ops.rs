@@ -908,9 +908,7 @@ mod tests {
 
     #[test]
     fn p256_scalar_square_test() {
-        prefixed_extern! {
-            fn p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: LeakyWord);
-        }
+        use super::p256::p256_scalar_sqr_rep_mont;
         scalar_square_test(
             &p256::SCALAR_OPS,
             p256_scalar_sqr_rep_mont,
