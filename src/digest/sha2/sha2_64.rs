@@ -141,5 +141,5 @@ pub(in super::super) const K_64: KTable<u64, { 80 + 1 }> = KTable::new_zero_term
     0x597f299cfc657e2a,
     0x5fcb6fab3ad6faec,
     0x6c44198c4a475817,
-    0,
+    0, // 0 terminator required by some implementations.
 ]);
