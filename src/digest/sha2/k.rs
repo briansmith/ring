@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #[cfg_attr(target_arch = "aarch64", repr(C, align(64)))]
+#[cfg_attr(target_arch = "arm", repr(C, align(32)))]
 pub(super) struct KTable<T, const ROUNDS_PLUS_1: usize>([T; ROUNDS_PLUS_1]);
 
 impl<T, const ROUNDS_PLUS_1: usize> KTable<T, ROUNDS_PLUS_1> {
