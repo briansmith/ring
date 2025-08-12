@@ -160,7 +160,11 @@ impl Sha2 for W32 {
     // FIPS 180-4 4.2.2
     type KTable = [Self::Leaky; Self::ROUNDS];
     fn k_table() -> &'static Self::KTable {
-        K_32.as_ref()
+        &K_32
+            .as_ref()
+            .split_first_chunk::<{ Self::ROUNDS }>()
+            .unwrap()
+            .0
     }
 }
 
@@ -183,6 +187,10 @@ impl Sha2 for W64 {
     // FIPS 180-4 4.2.3
     type KTable = [Self::Leaky; Self::ROUNDS];
     fn k_table() -> &'static Self::KTable {
-        K_64.as_ref()
+        &K_64
+            .as_ref()
+            .split_first_chunk::<{ Self::ROUNDS }>()
+            .unwrap()
+            .0
     }
 }
