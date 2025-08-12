@@ -181,7 +181,6 @@ $framesz="16*$SZ+4*8";
 sub ROUND_00_15()
 { my ($i,$a,$b,$c,$d,$e,$f,$g,$h) = @_;
   my $STRIDE=$SZ;
-     $STRIDE += 16 if ($i%(16/$SZ)==(16/$SZ-1));
 
 $code.=<<___;
 	ror	\$`$Sigma1[2]-$Sigma1[1]`,$a0
@@ -385,43 +384,24 @@ $code.=<<___;
 .type	$TABLE,\@object
 $TABLE:
 	.long	0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5
-	.long	0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5
-	.long	0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5
 	.long	0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5
 	.long	0xd807aa98,0x12835b01,0x243185be,0x550c7dc3
-	.long	0xd807aa98,0x12835b01,0x243185be,0x550c7dc3
-	.long	0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174
 	.long	0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174
 	.long	0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc
-	.long	0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc
-	.long	0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da
 	.long	0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da
 	.long	0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7
-	.long	0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7
-	.long	0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967
 	.long	0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967
 	.long	0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13
-	.long	0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13
-	.long	0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85
 	.long	0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85
 	.long	0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3
-	.long	0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3
-	.long	0xd192e819,0xd6990624,0xf40e3585,0x106aa070
 	.long	0xd192e819,0xd6990624,0xf40e3585,0x106aa070
 	.long	0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5
-	.long	0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5
-	.long	0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3
 	.long	0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3
 	.long	0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208
-	.long	0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208
-	.long	0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 	.long	0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 
 	.long	0x00010203,0x04050607,0x08090a0b,0x0c0d0e0f
-	.long	0x00010203,0x04050607,0x08090a0b,0x0c0d0e0f
 	.long	0x03020100,0x0b0a0908,0xffffffff,0xffffffff
-	.long	0x03020100,0x0b0a0908,0xffffffff,0xffffffff
-	.long	0xffffffff,0xffffffff,0x03020100,0x0b0a0908
 	.long	0xffffffff,0xffffffff,0x03020100,0x0b0a0908
 	.asciz	"SHA256 block transform for x86_64, CRYPTOGAMS by <appro\@openssl.org>"
 .text
@@ -433,87 +413,46 @@ $code.=<<___;
 .type	$TABLE,\@object
 $TABLE:
 	.quad	0x428a2f98d728ae22,0x7137449123ef65cd
-	.quad	0x428a2f98d728ae22,0x7137449123ef65cd
-	.quad	0xb5c0fbcfec4d3b2f,0xe9b5dba58189dbbc
 	.quad	0xb5c0fbcfec4d3b2f,0xe9b5dba58189dbbc
 	.quad	0x3956c25bf348b538,0x59f111f1b605d019
-	.quad	0x3956c25bf348b538,0x59f111f1b605d019
-	.quad	0x923f82a4af194f9b,0xab1c5ed5da6d8118
 	.quad	0x923f82a4af194f9b,0xab1c5ed5da6d8118
 	.quad	0xd807aa98a3030242,0x12835b0145706fbe
-	.quad	0xd807aa98a3030242,0x12835b0145706fbe
-	.quad	0x243185be4ee4b28c,0x550c7dc3d5ffb4e2
 	.quad	0x243185be4ee4b28c,0x550c7dc3d5ffb4e2
 	.quad	0x72be5d74f27b896f,0x80deb1fe3b1696b1
-	.quad	0x72be5d74f27b896f,0x80deb1fe3b1696b1
-	.quad	0x9bdc06a725c71235,0xc19bf174cf692694
 	.quad	0x9bdc06a725c71235,0xc19bf174cf692694
 	.quad	0xe49b69c19ef14ad2,0xefbe4786384f25e3
-	.quad	0xe49b69c19ef14ad2,0xefbe4786384f25e3
-	.quad	0x0fc19dc68b8cd5b5,0x240ca1cc77ac9c65
 	.quad	0x0fc19dc68b8cd5b5,0x240ca1cc77ac9c65
 	.quad	0x2de92c6f592b0275,0x4a7484aa6ea6e483
-	.quad	0x2de92c6f592b0275,0x4a7484aa6ea6e483
-	.quad	0x5cb0a9dcbd41fbd4,0x76f988da831153b5
 	.quad	0x5cb0a9dcbd41fbd4,0x76f988da831153b5
 	.quad	0x983e5152ee66dfab,0xa831c66d2db43210
-	.quad	0x983e5152ee66dfab,0xa831c66d2db43210
-	.quad	0xb00327c898fb213f,0xbf597fc7beef0ee4
 	.quad	0xb00327c898fb213f,0xbf597fc7beef0ee4
 	.quad	0xc6e00bf33da88fc2,0xd5a79147930aa725
-	.quad	0xc6e00bf33da88fc2,0xd5a79147930aa725
-	.quad	0x06ca6351e003826f,0x142929670a0e6e70
 	.quad	0x06ca6351e003826f,0x142929670a0e6e70
 	.quad	0x27b70a8546d22ffc,0x2e1b21385c26c926
-	.quad	0x27b70a8546d22ffc,0x2e1b21385c26c926
-	.quad	0x4d2c6dfc5ac42aed,0x53380d139d95b3df
 	.quad	0x4d2c6dfc5ac42aed,0x53380d139d95b3df
 	.quad	0x650a73548baf63de,0x766a0abb3c77b2a8
-	.quad	0x650a73548baf63de,0x766a0abb3c77b2a8
-	.quad	0x81c2c92e47edaee6,0x92722c851482353b
 	.quad	0x81c2c92e47edaee6,0x92722c851482353b
 	.quad	0xa2bfe8a14cf10364,0xa81a664bbc423001
-	.quad	0xa2bfe8a14cf10364,0xa81a664bbc423001
-	.quad	0xc24b8b70d0f89791,0xc76c51a30654be30
 	.quad	0xc24b8b70d0f89791,0xc76c51a30654be30
 	.quad	0xd192e819d6ef5218,0xd69906245565a910
-	.quad	0xd192e819d6ef5218,0xd69906245565a910
-	.quad	0xf40e35855771202a,0x106aa07032bbd1b8
 	.quad	0xf40e35855771202a,0x106aa07032bbd1b8
 	.quad	0x19a4c116b8d2d0c8,0x1e376c085141ab53
-	.quad	0x19a4c116b8d2d0c8,0x1e376c085141ab53
-	.quad	0x2748774cdf8eeb99,0x34b0bcb5e19b48a8
 	.quad	0x2748774cdf8eeb99,0x34b0bcb5e19b48a8
 	.quad	0x391c0cb3c5c95a63,0x4ed8aa4ae3418acb
-	.quad	0x391c0cb3c5c95a63,0x4ed8aa4ae3418acb
-	.quad	0x5b9cca4f7763e373,0x682e6ff3d6b2b8a3
 	.quad	0x5b9cca4f7763e373,0x682e6ff3d6b2b8a3
 	.quad	0x748f82ee5defb2fc,0x78a5636f43172f60
-	.quad	0x748f82ee5defb2fc,0x78a5636f43172f60
-	.quad	0x84c87814a1f0ab72,0x8cc702081a6439ec
 	.quad	0x84c87814a1f0ab72,0x8cc702081a6439ec
 	.quad	0x90befffa23631e28,0xa4506cebde82bde9
-	.quad	0x90befffa23631e28,0xa4506cebde82bde9
-	.quad	0xbef9a3f7b2c67915,0xc67178f2e372532b
 	.quad	0xbef9a3f7b2c67915,0xc67178f2e372532b
 	.quad	0xca273eceea26619c,0xd186b8c721c0c207
-	.quad	0xca273eceea26619c,0xd186b8c721c0c207
-	.quad	0xeada7dd6cde0eb1e,0xf57d4f7fee6ed178
 	.quad	0xeada7dd6cde0eb1e,0xf57d4f7fee6ed178
 	.quad	0x06f067aa72176fba,0x0a637dc5a2c898a6
-	.quad	0x06f067aa72176fba,0x0a637dc5a2c898a6
-	.quad	0x113f9804bef90dae,0x1b710b35131c471b
 	.quad	0x113f9804bef90dae,0x1b710b35131c471b
 	.quad	0x28db77f523047d84,0x32caab7b40c72493
-	.quad	0x28db77f523047d84,0x32caab7b40c72493
-	.quad	0x3c9ebe0a15c9bebc,0x431d67c49c100d4c
 	.quad	0x3c9ebe0a15c9bebc,0x431d67c49c100d4c
 	.quad	0x4cc5d4becb3e42b6,0x597f299cfc657e2a
-	.quad	0x4cc5d4becb3e42b6,0x597f299cfc657e2a
-	.quad	0x5fcb6fab3ad6faec,0x6c44198c4a475817
 	.quad	0x5fcb6fab3ad6faec,0x6c44198c4a475817
 
-	.quad	0x0001020304050607,0x08090a0b0c0d0e0f
 	.quad	0x0001020304050607,0x08090a0b0c0d0e0f
 	.asciz	"SHA512 block transform for x86_64, CRYPTOGAMS by <appro\@openssl.org>"
 .text
@@ -553,7 +492,7 @@ $code.=<<___;
 	lea		K256+0x80(%rip),$Tbl
 	movdqu		($ctx),$ABEF		# DCBA
 	movdqu		16($ctx),$CDGH		# HGFE
-	movdqa		0x200-0x80($Tbl),$TMP	# byte swap mask
+	movdqa		0x100-0x80($Tbl),$TMP	# byte swap mask
 
 	pshufd		\$0x1b,$ABEF,$Wi	# ABCD
 	pshufd		\$0xb1,$ABEF,$ABEF	# CDAB
@@ -571,7 +510,7 @@ $code.=<<___;
 	pshufb		$TMP,@MSG[0]
 	movdqu		0x30($inp),@MSG[3]
 
-	movdqa		0*32-0x80($Tbl),$Wi
+	movdqa		0*16-0x80($Tbl),$Wi
 	paddd		@MSG[0],$Wi
 	pshufb		$TMP,@MSG[1]
 	movdqa		$CDGH,$CDGH_SAVE	# offload
@@ -581,7 +520,7 @@ $code.=<<___;
 	movdqa		$ABEF,$ABEF_SAVE	# offload
 	sha256rnds2	$CDGH,$ABEF
 
-	movdqa		1*32-0x80($Tbl),$Wi
+	movdqa		1*16-0x80($Tbl),$Wi
 	paddd		@MSG[1],$Wi
 	pshufb		$TMP,@MSG[2]
 	sha256rnds2	$ABEF,$CDGH		# 4-7
@@ -590,7 +529,7 @@ $code.=<<___;
 	sha256msg1	@MSG[1],@MSG[0]
 	sha256rnds2	$CDGH,$ABEF
 
-	movdqa		2*32-0x80($Tbl),$Wi
+	movdqa		2*16-0x80($Tbl),$Wi
 	paddd		@MSG[2],$Wi
 	pshufb		$TMP,@MSG[3]
 	sha256rnds2	$ABEF,$CDGH		# 8-11
@@ -602,7 +541,7 @@ $code.=<<___;
 	sha256msg1	@MSG[2],@MSG[1]
 	sha256rnds2	$CDGH,$ABEF
 
-	movdqa		3*32-0x80($Tbl),$Wi
+	movdqa		3*16-0x80($Tbl),$Wi
 	paddd		@MSG[3],$Wi
 	sha256msg2	@MSG[3],@MSG[0]
 	sha256rnds2	$ABEF,$CDGH		# 12-15
@@ -616,7 +555,7 @@ $code.=<<___;
 ___
 for($i=4;$i<16-3;$i++) {
 $code.=<<___;
-	movdqa		$i*32-0x80($Tbl),$Wi
+	movdqa		$i*16-0x80($Tbl),$Wi
 	paddd		@MSG[0],$Wi
 	sha256msg2	@MSG[0],@MSG[1]
 	sha256rnds2	$ABEF,$CDGH		# 16-19...
@@ -631,7 +570,7 @@ ___
 	push(@MSG,shift(@MSG));
 }
 $code.=<<___;
-	movdqa		13*32-0x80($Tbl),$Wi
+	movdqa		13*16-0x80($Tbl),$Wi
 	paddd		@MSG[0],$Wi
 	sha256msg2	@MSG[0],@MSG[1]
 	sha256rnds2	$ABEF,$CDGH		# 52-55
@@ -641,7 +580,7 @@ $code.=<<___;
 	sha256rnds2	$CDGH,$ABEF
 	paddd		$TMP,@MSG[2]
 
-	movdqa		14*32-0x80($Tbl),$Wi
+	movdqa		14*16-0x80($Tbl),$Wi
 	paddd		@MSG[1],$Wi
 	sha256rnds2	$ABEF,$CDGH		# 56-59
 	pshufd		\$0x0e,$Wi,$Wi
@@ -649,7 +588,7 @@ $code.=<<___;
 	movdqa		$BSWAP,$TMP
 	sha256rnds2	$CDGH,$ABEF
 
-	movdqa		15*32-0x80($Tbl),$Wi
+	movdqa		15*16-0x80($Tbl),$Wi
 	paddd		@MSG[2],$Wi
 	nop
 	sha256rnds2	$ABEF,$CDGH		# 60-63
@@ -798,12 +737,10 @@ $code.=<<___;
 ___
 
 $code.=<<___;
-	#movdqa	$TABLE+`$SZ*2*$rounds`+32(%rip),$t4
-	#movdqa	$TABLE+`$SZ*2*$rounds`+64(%rip),$t5
 	jmp	.Lloop_ssse3
 .align	16
 .Lloop_ssse3:
-	movdqa	$TABLE+`$SZ*2*$rounds`(%rip),$t3
+	movdqa	$TABLE+`$SZ*$rounds`(%rip),$t3
 	movdqu	0x00($inp),@X[0]
 	movdqu	0x10($inp),@X[1]
 	movdqu	0x20($inp),@X[2]
@@ -812,12 +749,12 @@ $code.=<<___;
 	lea	$TABLE(%rip),$Tbl
 	pshufb	$t3,@X[1]
 	movdqa	0x00($Tbl),$t0
-	movdqa	0x20($Tbl),$t1
+	movdqa	0x10($Tbl),$t1
 	pshufb	$t3,@X[2]
 	paddd	@X[0],$t0
-	movdqa	0x40($Tbl),$t2
+	movdqa	0x20($Tbl),$t2
 	pshufb	$t3,@X[3]
-	movdqa	0x60($Tbl),$t3
+	movdqa	0x30($Tbl),$t3
 	paddd	@X[1],$t1
 	paddd	@X[2],$t2
 	paddd	@X[3],$t3
@@ -833,7 +770,7 @@ $code.=<<___;
 
 .align	16
 .Lssse3_00_47:
-	sub	\$`-16*2*$SZ`,$Tbl	# size optimization
+	sub	\$`-16*$SZ`,$Tbl	# size optimization
 ___
 sub Xupdate_256_SSSE3 () {
 	(
@@ -870,7 +807,7 @@ sub Xupdate_256_SSSE3 () {
 	 '&pxor		($t3,$t2);',
 	 '&psrlq	($t2,$sigma1[1]-$sigma1[0])',
 	 '&pxor		($t3,$t2);',
-	'&movdqa	($t2,16*2*$j."($Tbl)")',
+	'&movdqa	($t2,16*$j."($Tbl)")',
 	 '&pshufb	($t3,$t5)',
 	'&paddd		(@X[0],$t3)'		# X[2..3] += sigma1(X[16..17])
 	);
@@ -1021,7 +958,7 @@ my @insns = (&$body,&$body,&$body,&$body);	# 104 instructions
 	 &pshufd	($t3,$t3,0b00001000);
 	  eval(shift(@insns));
 	  eval(shift(@insns));
-	&movdqa		($t2,16*2*$j."($Tbl)");
+	&movdqa		($t2,16*$j."($Tbl)");
 	  eval(shift(@insns));	#@
 	  eval(shift(@insns));
 	 &pslldq	($t3,8);
@@ -1042,7 +979,7 @@ my @insns = (&$body,&$body,&$body,&$body);	# 104 instructions
 	&SSSE3_256_00_47($j,\&body_00_15,@X);
 	push(@X,shift(@X));			# rotate(@X)
     }
-	&cmpb	($SZ-1+16*2*$SZ."($Tbl)",0);
+	&cmpb	($SZ-1+16*$SZ."($Tbl)",0);
 	&jne	(".Lssse3_00_47");
 
     for ($i=0; $i<16; ) {
@@ -1170,12 +1107,12 @@ ___
     my ($t0,$t1,$t2,$t3, $t4,$t5) = map("%xmm$_",(4..9));
 
 $code.=<<___;
-	vmovdqa	$TABLE+`$SZ*2*$rounds`+32(%rip),$t4
-	vmovdqa	$TABLE+`$SZ*2*$rounds`+64(%rip),$t5
+	vmovdqa	$TABLE+`$SZ*$rounds`+16(%rip),$t4
+	vmovdqa	$TABLE+`$SZ*$rounds`+32(%rip),$t5
 	jmp	.Lloop_avx
 .align	16
 .Lloop_avx:
-	vmovdqa	$TABLE+`$SZ*2*$rounds`(%rip),$t3
+	vmovdqa	$TABLE+`$SZ*$rounds`(%rip),$t3
 	vmovdqu	0x00($inp),@X[0]
 	vmovdqu	0x10($inp),@X[1]
 	vmovdqu	0x20($inp),@X[2]
@@ -1186,9 +1123,9 @@ $code.=<<___;
 	vpshufb	$t3,@X[2],@X[2]
 	vpaddd	0x00($Tbl),@X[0],$t0
 	vpshufb	$t3,@X[3],@X[3]
-	vpaddd	0x20($Tbl),@X[1],$t1
-	vpaddd	0x40($Tbl),@X[2],$t2
-	vpaddd	0x60($Tbl),@X[3],$t3
+	vpaddd	0x10($Tbl),@X[1],$t1
+	vpaddd	0x20($Tbl),@X[2],$t2
+	vpaddd	0x30($Tbl),@X[3],$t3
 	vmovdqa	$t0,0x00(%rsp)
 	mov	$A,$a1
 	vmovdqa	$t1,0x10(%rsp)
@@ -1201,7 +1138,7 @@ $code.=<<___;
 
 .align	16
 .Lavx_00_47:
-	sub	\$`-16*2*$SZ`,$Tbl	# size optimization
+	sub	\$`-16*$SZ`,$Tbl	# size optimization
 ___
 sub Xupdate_256_AVX () {
 	(
@@ -1249,7 +1186,7 @@ my @insns = (&$body,&$body,&$body,&$body);	# 104 instructions
 	    eval(shift(@insns));
 	    eval(shift(@insns));
 	}
-	&vpaddd		($t2,@X[0],16*2*$j."($Tbl)");
+	&vpaddd		($t2,@X[0],16*$j."($Tbl)");
 	  foreach (@insns) { eval; }		# remaining instructions
 	&vmovdqa	(16*$j."(%rsp)",$t2);
 }
@@ -1258,7 +1195,7 @@ my @insns = (&$body,&$body,&$body,&$body);	# 104 instructions
 	&AVX_256_00_47($j,\&body_00_15,@X);
 	push(@X,shift(@X));			# rotate(@X)
     }
-	&cmpb	($SZ-1+16*2*$SZ."($Tbl)",0);
+	&cmpb	($SZ-1+16*$SZ."($Tbl)",0);
 	&jne	(".Lavx_00_47");
 
     for ($i=0; $i<16; ) {
@@ -1273,7 +1210,7 @@ $code.=<<___;
 	jmp	.Lloop_avx
 .align	16
 .Lloop_avx:
-	vmovdqa	$TABLE+`$SZ*2*$rounds`(%rip),$t3
+	vmovdqa	$TABLE+`$SZ*$rounds`(%rip),$t3
 	vmovdqu	0x00($inp),@X[0]
 	lea	$TABLE+0x80(%rip),$Tbl	# size optimization
 	vmovdqu	0x10($inp),@X[1]
@@ -1289,20 +1226,20 @@ $code.=<<___;
 	vpshufb	$t3,@X[4],@X[4]
 	vmovdqu	0x70($inp),@X[7]
 	vpshufb	$t3,@X[5],@X[5]
-	vpaddq	-0x80($Tbl),@X[0],$t0
+	vpaddq	0x00-0x80($Tbl),@X[0],$t0
 	vpshufb	$t3,@X[6],@X[6]
-	vpaddq	-0x60($Tbl),@X[1],$t1
+	vpaddq	0x10-0x80($Tbl),@X[1],$t1
 	vpshufb	$t3,@X[7],@X[7]
-	vpaddq	-0x40($Tbl),@X[2],$t2
-	vpaddq	-0x20($Tbl),@X[3],$t3
+	vpaddq	0x20-0x80($Tbl),@X[2],$t2
+	vpaddq	0x30-0x80($Tbl),@X[3],$t3
 	vmovdqa	$t0,0x00(%rsp)
-	vpaddq	0x00($Tbl),@X[4],$t0
+	vpaddq	0x40-0x80($Tbl),@X[4],$t0
 	vmovdqa	$t1,0x10(%rsp)
-	vpaddq	0x20($Tbl),@X[5],$t1
+	vpaddq	0x50-0x80($Tbl),@X[5],$t1
 	vmovdqa	$t2,0x20(%rsp)
-	vpaddq	0x40($Tbl),@X[6],$t2
+	vpaddq	0x60-0x80($Tbl),@X[6],$t2
 	vmovdqa	$t3,0x30(%rsp)
-	vpaddq	0x60($Tbl),@X[7],$t3
+	vpaddq	0x70-0x80($Tbl),@X[7],$t3
 	vmovdqa	$t0,0x40(%rsp)
 	mov	$A,$a1
 	vmovdqa	$t1,0x50(%rsp)
@@ -1315,7 +1252,7 @@ $code.=<<___;
 
 .align	16
 .Lavx_00_47:
-	add	\$`16*2*$SZ`,$Tbl
+	add	\$`16*$SZ`,$Tbl
 ___
 sub Xupdate_512_AVX () {
 	(
@@ -1356,7 +1293,7 @@ my @insns = (&$body,&$body);			# 52 instructions
 	    eval(shift(@insns));
 	    eval(shift(@insns));
 	}
-	&vpaddq		($t2,@X[0],16*2*$j-0x80."($Tbl)");
+	&vpaddq		($t2,@X[0],16*$j-0x80."($Tbl)");
 	  foreach (@insns) { eval; }		# remaining instructions
 	&vmovdqa	(16*$j."(%rsp)",$t2);
 }
@@ -1365,7 +1302,7 @@ my @insns = (&$body,&$body);			# 52 instructions
 	&AVX_512_00_47($j,\&body_00_15,@X);
 	push(@X,shift(@X));			# rotate(@X)
     }
-	&cmpb	($SZ-1+16*2*$SZ-0x80."($Tbl)",0);
+	&cmpb	($SZ-1+16*$SZ-0x80."($Tbl)",0);
 	&jne	(".Lavx_00_47");
 
     for ($i=0; $i<16; ) {
