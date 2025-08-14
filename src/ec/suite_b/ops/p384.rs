@@ -140,7 +140,7 @@ pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_inv_to_mont: p384_scalar_inv_to_mont,
 };
 
-fn p384_scalar_inv_to_mont(a: Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
+fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:
     //
@@ -151,34 +151,40 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
     //    0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf\
     //      581a0db248b0a77aecec196accc52971
 
-    fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> {
+    fn mul(a: &Scalar<R>, b: &Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
         binary_op(p384_scalar_mul_mont, a, b)
     }
 
-    fn sqr(a: &Scalar<R>) -> Scalar<R> {
+    fn sqr(a: &Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
         binary_op(p384_scalar_mul_mont, a, a)
     }
 
-    fn sqr_mut(a: &mut Scalar<R>) {
+    fn sqr_mut(a: &mut Scalar<R>, _cpu: cpu::Features) {
         unary_op_from_binary_op_assign(p384_scalar_mul_mont, a);
     }
 
     // Returns (`a` squared `squarings` times) * `b`.
-    fn sqr_mul(a: &Scalar<R>, squarings: LeakyWord, b: &Scalar<R>) -> Scalar<R> {
+    fn sqr_mul(
+        a: &Scalar<R>,
+        squarings: LeakyWord,
+        b: &Scalar<R>,
+        cpu: cpu::Features,
+    ) -> Scalar<R> {
         debug_assert!(squarings >= 1);
-        let mut tmp = sqr(a);
+        let mut tmp = sqr(a, cpu);
         for _ in 1..squarings {
-            sqr_mut(&mut tmp);
+            sqr_mut(&mut tmp, cpu);
         }
-        mul(&tmp, b)
+        mul(&tmp, b, cpu)
     }
 
     // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: LeakyWord, b: &Scalar<R>) {
+    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: LeakyWord, b: &Scalar<R>, cpu: cpu::Features) {
         debug_assert!(squarings >= 1);
         for _ in 0..squarings {
-            sqr_mut(acc);
+            sqr_mut(acc, cpu);
         }
+        let _: cpu::Features = cpu;
         binary_op_assign(p384_scalar_mul_mont, acc, b)
     }
 
@@ -195,21 +201,26 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
 
     let mut d = [Scalar::zero(); DIGIT_COUNT];
     d[B_1] = a;
-    let b_10 = sqr(&d[B_1]);
+    let b_10 = sqr(&d[B_1], cpu);
     for i in B_11..DIGIT_COUNT {
-        d[i] = mul(&d[i - 1], &b_10);
+        d[i] = mul(&d[i - 1], &b_10, cpu);
     }
 
-    let ff = sqr_mul(&d[B_1111], 0 + 4, &d[B_1111]);
-    let ffff = sqr_mul(&ff, 0 + 8, &ff);
-    let ffffffff = sqr_mul(&ffff, 0 + 16, &ffff);
+    let ff = sqr_mul(&d[B_1111], 0 + 4, &d[B_1111], cpu);
+    let ffff = sqr_mul(&ff, 0 + 8, &ff, cpu);
+    let ffffffff = sqr_mul(&ffff, 0 + 16, &ffff, cpu);
 
-    let ffffffffffffffff = sqr_mul(&ffffffff, 0 + 32, &ffffffff);
+    let ffffffffffffffff = sqr_mul(&ffffffff, 0 + 32, &ffffffff, cpu);
 
-    let ffffffffffffffffffffffff = sqr_mul(&ffffffffffffffff, 0 + 32, &ffffffff);
+    let ffffffffffffffffffffffff = sqr_mul(&ffffffffffffffff, 0 + 32, &ffffffff, cpu);
 
     // ffffffffffffffffffffffffffffffffffffffffffffffff
-    let mut acc = sqr_mul(&ffffffffffffffffffffffff, 0 + 96, &ffffffffffffffffffffffff);
+    let mut acc = sqr_mul(
+        &ffffffffffffffffffffffff,
+        0 + 96,
+        &ffffffffffffffffffffffff,
+        cpu,
+    );
 
     // The rest of the exponent, in binary, is:
     //
@@ -261,7 +272,12 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
     ];
 
     for &(squarings, digit) in &REMAINING_WINDOWS[..] {
-        sqr_mul_acc(&mut acc, LeakyWord::from(squarings), &d[usize::from(digit)]);
+        sqr_mul_acc(
+            &mut acc,
+            LeakyWord::from(squarings),
+            &d[usize::from(digit)],
+            cpu,
+        );
     }
 
     acc
