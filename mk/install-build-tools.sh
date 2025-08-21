@@ -32,7 +32,10 @@ for arg in $*; do
 done
 
 function install_packages {
-  sudo apt-get -yq --no-install-suggests --no-install-recommends install "$@"
+    # Sometimes GitHub Actions requires this `update` for the `install` to
+    # work; sometimes it is unnecessary but other times it is required.
+    sudo apt-get update
+    sudo apt-get -yq --no-install-suggests --no-install-recommends install "$@"
 }
 
 use_clang=
@@ -222,7 +225,7 @@ linux*)
     llvm_version=20
     sudo apt-key add mk/llvm-snapshot.gpg.key
     sudo add-apt-repository "deb http://apt.llvm.org/$ubuntu_codename/ llvm-toolchain-$ubuntu_codename-$llvm_version main"
-    sudo apt-get update
+    # `install_packages` does the `apt-get update`.
     install_packages clang-$llvm_version llvm-$llvm_version
   fi
   ;;
