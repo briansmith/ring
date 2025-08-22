@@ -61,6 +61,10 @@ pub(crate) trait AliasingSlices2<T> {
     // TODO(MSRV-1.75): Use `-> impl AliasingSlices3<T>`.
     type RAA: AliasingSlices3<T>;
     fn raa(self) -> Self::RAA;
+
+    // TODO(MSRV-1.75): Use `-> impl AliasingSlices3<T>`.
+    type RRA: AliasingSlices3<T>;
+    fn rra(self) -> Self::RRA;
 }
 
 impl<T> AliasingSlices2<T> for &mut [T] {
@@ -81,6 +85,13 @@ impl<T> AliasingSlices2<T> for &mut [T] {
 
     #[inline]
     fn raa(self) -> Self::RAA {
+        self
+    }
+
+    type RRA = Self;
+
+    #[inline]
+    fn rra(self) -> Self::RRA {
         self
     }
 }
@@ -107,6 +118,14 @@ impl<'a, T> AliasingSlices2<T> for (&'a mut [T], &'a [T]) {
     fn raa(self) -> Self::RAA {
         let (r, a) = self;
         (r, a, a)
+    }
+
+    type RRA = Rra<'a, T>;
+
+    #[inline]
+    fn rra(self) -> Self::RRA {
+        let (ra, b) = self;
+        Rra { ra, b }
     }
 }
 
@@ -184,37 +203,13 @@ impl<T> AliasingSlices3<T> for (&mut [T], &[T], &[T]) {
     }
 }
 
-// Currently unused:
-//
-// pub(crate) trait AliasDst<T> {
-//     type RRA: AliasingSlices3<T>;
-//     fn rra(self) -> Self::RRA;
-// }
-//
-// impl<'a, T> AliasDst<T> for &'a mut T
-// where
-//     &'a mut T: AliasingSlices3<T>,
-// {
-//     type RRA = Self;
-//     fn rra(self) -> Self::RRA {
-//         self
-//     }
-// }
-//
-// impl<'a, T> AliasDst<T> for (&'a mut T, &'a T)
-// where
-//     (InOut<&'a mut T>, &'a T): AliasingSlices3<T>,
-// {
-//     type RRA = (InOut<&'a mut T>, &'a T);
-//     fn rra(self) -> Self::RRA {
-//         let (r, a) = self;
-//         (InOut(r), a)
-//     }
-// }
+// TODO(MSRV): Use `-> impl AliasingSlices3<T>` in `rra()`.
+pub struct Rra<'a, T> {
+    ra: &'a mut [T],
+    b: &'a [T],
+}
 
-pub struct InOut<T>(pub T);
-
-impl<'a, T> AliasingSlices3<T> for (InOut<&'a mut [T]>, &[T])
+impl<'a, T> AliasingSlices3<T> for Rra<'a, T>
 where
     &'a mut [T]: AliasingSlices2<T>,
 {
@@ -223,7 +218,7 @@ where
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
-        let (InOut(ra), b) = self;
+        let Self { ra, b } = self;
         if b.len() != expected_len {
             return Err(LenMismatchError::new(b.len()));
         }
