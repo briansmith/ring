@@ -57,6 +57,10 @@ pub(crate) trait AliasingSlices2<T> {
         expected_len: usize,
         f: impl FnOnce(*mut T, *const T) -> R,
     ) -> Result<R, LenMismatchError>;
+
+    // TODO(MSRV-1.75): Use `-> impl AliasingSlices3<T>`.
+    type RAA: AliasingSlices3<T>;
+    fn raa(self) -> Self::RAA;
 }
 
 impl<T> AliasingSlices2<T> for &mut [T] {
@@ -72,9 +76,16 @@ impl<T> AliasingSlices2<T> for &mut [T] {
         let r = r.as_mut_ptr();
         Ok(f(r, r.cast_const()))
     }
+
+    type RAA = Self;
+
+    #[inline]
+    fn raa(self) -> Self::RAA {
+        self
+    }
 }
 
-impl<T> AliasingSlices2<T> for (&mut [T], &[T]) {
+impl<'a, T> AliasingSlices2<T> for (&'a mut [T], &'a [T]) {
     fn with_potentially_dangling_non_null_pointers_ra<R>(
         self,
         expected_len: usize,
@@ -88,6 +99,14 @@ impl<T> AliasingSlices2<T> for (&mut [T], &[T]) {
             return Err(LenMismatchError::new(a.len()));
         }
         Ok(f(r.as_mut_ptr(), a.as_ptr()))
+    }
+
+    type RAA = (&'a mut [T], &'a [T], &'a [T]);
+
+    #[inline]
+    fn raa(self) -> Self::RAA {
+        let (r, a) = self;
+        (r, a, a)
     }
 }
 
@@ -162,29 +181,6 @@ impl<T> AliasingSlices3<T> for (&mut [T], &[T], &[T]) {
         (r, a).with_potentially_dangling_non_null_pointers_ra(expected_len, |r, a| {
             f(r, a, b.as_ptr())
         })
-    }
-}
-
-pub(crate) trait AliasSrc<T> {
-    type RAA: AliasingSlices3<T>;
-    fn raa(self) -> Self::RAA;
-}
-
-impl<T> AliasSrc<T> for &mut [T] {
-    type RAA = Self;
-    fn raa(self) -> Self::RAA {
-        self
-    }
-}
-
-impl<'a, T> AliasSrc<T> for (&'a mut [T], &'a [T])
-where
-    (&'a mut [T], &'a [T], &'a [T]): AliasingSlices3<T>,
-{
-    type RAA = (&'a mut [T], &'a [T], &'a [T]);
-    fn raa(self) -> Self::RAA {
-        let (r, a) = self;
-        (r, a, a)
     }
 }
 

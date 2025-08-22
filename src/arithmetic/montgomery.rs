@@ -19,7 +19,7 @@ pub use super::n0::N0;
 #[allow(unused_imports)]
 use super::MIN_LIMBS;
 use super::{
-    inout::{AliasSrc, AliasingSlices2, AliasingSlices3},
+    inout::{AliasingSlices2, AliasingSlices3},
     LimbSliceError,
 };
 use crate::cpu;
@@ -309,7 +309,7 @@ prefixed_extern! {
 
 /// r = r**2
 pub(super) fn limbs_square_mont(
-    in_out: impl AliasingSlices2<Limb> + AliasSrc<Limb>,
+    in_out: impl AliasingSlices2<Limb>,
     n: &[Limb],
     n0: &N0,
     cpu: cpu::Features,
