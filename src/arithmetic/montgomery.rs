@@ -123,7 +123,7 @@ impl ProductEncoding for (RRR, RInverse) {
 use crate::{bssl, c, limb::Limb};
 
 #[inline(always)]
-pub(super) fn limbs_mul_mont(
+pub(crate) fn limbs_mul_mont(
     in_out: impl AliasingSlices3<Limb>,
     n: &[Limb],
     n0: &N0,
