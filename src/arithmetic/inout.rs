@@ -170,10 +170,7 @@ pub(crate) trait AliasSrc<T> {
     fn raa(self) -> Self::RAA;
 }
 
-impl<'a, T> AliasSrc<T> for &'a mut [T]
-where
-    &'a mut [T]: AliasingSlices3<T>,
-{
+impl<T> AliasSrc<T> for &mut [T] {
     type RAA = Self;
     fn raa(self) -> Self::RAA {
         self
