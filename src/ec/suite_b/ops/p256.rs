@@ -164,7 +164,7 @@ fn twin_mul(
     // XXX: This is inefficient for the same reason as `twin_mul_inefficient`
     // when we don't have `p256_point_mul_base_vartime`.
     let scaled_g = point_mul_base_vartime(g_scalar, cpu);
-    let scaled_p = PRIVATE_KEY_OPS.point_mul(p_scalar, p_xy, cpu::features());
+    let scaled_p = PRIVATE_KEY_OPS.point_mul(p_scalar, p_xy, cpu);
     PRIVATE_KEY_OPS.point_sum(&scaled_g, &scaled_p, cpu)
 }
 
