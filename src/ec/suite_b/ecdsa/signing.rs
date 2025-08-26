@@ -242,7 +242,7 @@ impl EcdsaKeyPair {
         let n = &scalar_ops.scalar_modulus(cpu);
 
         for _ in 0..100 {
-            // XXX: iteration conut?
+            // XXX: iteration count?
             // Step 1.
             let k = private_key::random_scalar(self.alg.private_key_ops, n, rng)?;
             let k_inv = ops.scalar_inv_to_mont(&k, cpu);
