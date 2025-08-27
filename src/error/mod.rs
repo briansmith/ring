@@ -28,6 +28,12 @@ mod unspecified;
 
 #[cold]
 #[inline(never)]
+pub fn cold_none<T>() -> Option<T> {
+    None
+}
+
+#[cold]
+#[inline(never)]
 pub(crate) fn erase<T>(_: T) -> Unspecified {
     Unspecified
 }
