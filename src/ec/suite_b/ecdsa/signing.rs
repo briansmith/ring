@@ -26,6 +26,8 @@ use crate::{
     io::der,
     limb, pkcs8, rand, signature,
 };
+use core::borrow::Borrow;
+
 /// An ECDSA signing algorithm.
 pub struct EcdsaSigningAlgorithm {
     curve: &'static ec::Curve,
@@ -33,7 +35,12 @@ pub struct EcdsaSigningAlgorithm {
     private_key_ops: &'static PrivateKeyOps,
     digest_alg: &'static digest::Algorithm,
     pkcs8_template: &'static pkcs8::Template,
-    format_rs: fn(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8]) -> usize,
+    format_rs: fn(
+        ops: &'static ScalarOps,
+        r: NonZeroScalarRef<'_>,
+        s: NonZeroScalarRef<'_>,
+        out: &mut [u8],
+    ) -> usize,
     id: AlgorithmID,
 }
 
@@ -245,10 +252,14 @@ impl EcdsaKeyPair {
             // XXX: iteration count?
             // Step 1.
             let k = private_key::random_scalar(self.alg.private_key_ops, n, rng)?;
-            let k_inv = ops.scalar_inv_to_mont(&k, cpu);
+            let k = match n.nonzero_scalar_leak_nonzero(&k) {
+                Some(k) => k,
+                None => continue,
+            };
+            let k_inv = ops.scalar_inv_to_mont(k, cpu);
 
             // Step 2.
-            let r = private_key_ops.point_mul_base(&k, cpu);
+            let r = private_key_ops.point_mul_base(k.borrow(), cpu);
 
             // Step 3.
             let r = {
@@ -256,9 +267,10 @@ impl EcdsaKeyPair {
                 let x = q.elem_unencoded(&x);
                 n.elem_reduced_to_scalar(&x)
             };
-            if n.is_zero(&r) {
-                continue;
-            }
+            let r = match n.nonzero_scalar_leak_nonzero(&r) {
+                Some(r) => r,
+                None => continue,
+            };
 
             // Step 4 is done by the caller.
 
@@ -267,17 +279,18 @@ impl EcdsaKeyPair {
 
             // Step 6.
             let s = {
-                let mut e_plus_dr = scalar_ops.scalar_product(&self.d, &r, cpu);
+                let mut e_plus_dr = scalar_ops.scalar_product(&self.d, r.borrow(), cpu);
                 n.add_assign(&mut e_plus_dr, &e);
                 scalar_ops.scalar_product(&k_inv, &e_plus_dr, cpu)
             };
-            if n.is_zero(&s) {
-                continue;
-            }
+            let s = match n.nonzero_scalar_leak_nonzero(&s) {
+                Some(s) => s,
+                None => continue,
+            };
 
             // Step 7 with encoding.
             return Ok(signature::Signature::new(|sig_bytes| {
-                (self.alg.format_rs)(scalar_ops, &r, &s, sig_bytes)
+                (self.alg.format_rs)(scalar_ops, r, s, sig_bytes)
             }));
         }
 
@@ -382,25 +395,33 @@ impl AsRef<[u8]> for PublicKey {
     }
 }
 
-fn format_rs_fixed(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8]) -> usize {
+fn format_rs_fixed(
+    ops: &'static ScalarOps,
+    r: NonZeroScalarRef<'_>,
+    s: NonZeroScalarRef<'_>,
+    out: &mut [u8],
+) -> usize {
     let scalar_len = ops.scalar_bytes_len();
 
     let (r_out, rest) = out.split_at_mut(scalar_len);
-    limb::big_endian_from_limbs(ops.leak_limbs(r), r_out);
+    limb::big_endian_from_limbs(ops.leak_limbs(r.borrow()), r_out);
 
     let (s_out, _) = rest.split_at_mut(scalar_len);
-    limb::big_endian_from_limbs(ops.leak_limbs(s), s_out);
+    limb::big_endian_from_limbs(ops.leak_limbs(s.borrow()), s_out);
 
     2 * scalar_len
 }
 
-fn format_rs_asn1(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8]) -> usize {
-    // This assumes `a` is not zero since neither `r` or `s` is allowed to be
-    // zero.
-    fn format_integer_tlv(ops: &ScalarOps, a: &Scalar, out: &mut [u8]) -> usize {
+fn format_rs_asn1(
+    ops: &'static ScalarOps,
+    r: NonZeroScalarRef<'_>,
+    s: NonZeroScalarRef<'_>,
+    out: &mut [u8],
+) -> usize {
+    fn format_integer_tlv(ops: &ScalarOps, a: NonZeroScalarRef<'_>, out: &mut [u8]) -> usize {
         let mut fixed = [0u8; ec::SCALAR_MAX_BYTES + 1];
         let fixed = &mut fixed[..(ops.scalar_bytes_len() + 1)];
-        limb::big_endian_from_limbs(ops.leak_limbs(a), &mut fixed[1..]);
+        limb::big_endian_from_limbs(ops.leak_limbs(a.borrow()), &mut fixed[1..]);
 
         // Since `a_fixed_out` is an extra byte long, it is guaranteed to start
         // with a zero.
