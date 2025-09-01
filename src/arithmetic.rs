@@ -15,9 +15,6 @@
 pub(crate) use self::{constant::limbs_from_hex, limb_slice_error::LimbSliceError};
 use crate::{error::LenMismatchError, limb::LIMB_BITS};
 
-#[macro_use]
-mod ffi;
-
 mod constant;
 
 #[cfg(feature = "alloc")]
@@ -27,8 +24,6 @@ pub(crate) mod inout;
 mod limbs;
 mod limbs512;
 pub mod montgomery;
-
-mod n0;
 
 // The minimum number of limbs allowed for any `&[Limb]` operation.
 //

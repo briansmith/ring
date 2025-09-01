@@ -17,10 +17,12 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::super::super::{
-    inout::{AliasingSlices2, AliasingSlices3},
-    n0::N0,
-    LimbSliceError, MAX_LIMBS, MIN_LIMBS,
+use super::super::{
+    super::{
+        inout::{AliasingSlices2, AliasingSlices3},
+        LimbSliceError, MAX_LIMBS, MIN_LIMBS,
+    },
+    N0,
 };
 use crate::{
     c,

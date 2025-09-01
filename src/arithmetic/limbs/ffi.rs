@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{inout::AliasingSlices3, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
+use super::{
+    super::{inout::AliasingSlices3, LimbSliceError, MAX_LIMBS, MIN_LIMBS},
+    N0,
+};
 use crate::{
     c,
     limb::{Limb, LIMB_BITS},
@@ -60,7 +63,7 @@ macro_rules! bn_mul_mont_ffi {
             );
         }
         unsafe {
-            crate::arithmetic::ffi::bn_mul_mont_ffi::<$Cpu, { $MIN_LEN }, { $MOD_LEN }>(
+            crate::arithmetic::limbs::ffi::bn_mul_mont_ffi::<$Cpu, { $MIN_LEN }, { $MOD_LEN }>(
                 $in_out, $n, $n0, $cpu, $f,
             )
         }

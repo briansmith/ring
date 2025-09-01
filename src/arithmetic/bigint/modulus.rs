@@ -13,8 +13,9 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    super::montgomery::Unencoded, unwrap_impossible_len_mismatch_error, BoxedLimbs, Elem,
-    OwnedModulusValue, PublicModulus, Storage, N0,
+    super::{limbs::N0, montgomery::Unencoded},
+    unwrap_impossible_len_mismatch_error, BoxedLimbs, Elem, OwnedModulusValue, PublicModulus,
+    Storage,
 };
 use crate::{
     bits::BitLength,

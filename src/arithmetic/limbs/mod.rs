@@ -12,5 +12,15 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-pub(super) mod aarch64;
+#[macro_use]
+mod ffi;
+mod montgomery;
+mod n0;
+
+mod aarch64;
 pub(super) mod x86_64;
+
+pub(super) use self::{
+    montgomery::{limbs_from_mont_in_place, limbs_mul_mont, limbs_square_mont},
+    n0::N0,
+};

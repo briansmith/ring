@@ -21,7 +21,7 @@ pub struct N0([Limb; N0::LIMBS_USED]);
 match_target_word_bits! {
     64 => {
         impl N0 {
-            pub(super) const LIMBS_USED: usize = 1;
+            pub(in super::super) const LIMBS_USED: usize = 1;
 
             #[inline]
             pub const fn precalculated(n0: u64) -> Self {

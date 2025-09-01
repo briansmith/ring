@@ -19,11 +19,13 @@ use crate::polyfill::prelude::*;
 
 use crate::polyfill::SmallerChunks;
 
-use super::super::super::{
-    inout::{AliasingSlices2, AliasingSlices3},
-    limbs512::storage::{check_common, check_common_with_n},
-    n0::N0,
-    LimbSliceError, MAX_LIMBS,
+use super::super::{
+    super::{
+        inout::{AliasingSlices2, AliasingSlices3},
+        limbs512::storage::{check_common, check_common_with_n},
+        LimbSliceError, MAX_LIMBS,
+    },
+    N0,
 };
 use crate::{
     c,

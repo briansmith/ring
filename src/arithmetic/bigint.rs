@@ -47,6 +47,7 @@ pub(crate) use self::{
 };
 use super::{
     inout::{AliasingSlices3, InOut},
+    limbs::{limbs_from_mont_in_place, limbs_mul_mont, limbs_square_mont},
     limbs512,
     montgomery::*,
     LimbSliceError, MAX_LIMBS,
@@ -625,7 +626,10 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
     use super::{
-        limbs::x86_64::mont::{gather5, mul_mont5, mul_mont_gather5_amm, power5_amm, sqr_mont5},
+        limbs::{
+            x86_64::mont::{gather5, mul_mont5, mul_mont_gather5_amm, power5_amm, sqr_mont5},
+            N0,
+        },
         limbs512::scatter5,
     };
     use crate::{
