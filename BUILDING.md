@@ -25,19 +25,6 @@ supported.
 
 For Windows ARM64 targets (aarch64-pc-windows-msvc), the Visual Studio Build
 Tools “VS 2022 C++ ARM64 build tools” and "clang" components must be installed.
-Add Microsoft's provided version of `clang` to `%PATH%`, which will allow the
-build to work in GitHub Actions without installing anything:
-```
-$env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin"
-```
-If you (locally) have “Build Tools for Visual Studio 2022” instead, use:
-```
-$env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\Llvm\x64\bin"
-```
-Alternatively, if the host machine is already a Windows ARM64 then use:
-```
-$env:Path += ";C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\ARM64\bin"
-```
 
 Packaged Builds
 ---------------

@@ -172,7 +172,7 @@ wasm-bindgen-test = { version = "0.3.37", default-features = false, features = [
 libc = { version = "0.2.172", default-features = false }
 
 [build-dependencies]
-cc = { version = "1.2.8", default-features = false }
+cc = { version = "1.2.36", default-features = false }
 
 [features]
 # These features are documented in the top-level module's documentation.
