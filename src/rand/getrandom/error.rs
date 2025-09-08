@@ -1,6 +1,3 @@
-#[cfg(feature = "std")]
-extern crate std;
-
 use cfg_if::cfg_if;
 use core::fmt;
 
