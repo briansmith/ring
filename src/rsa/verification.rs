@@ -33,7 +33,7 @@ impl signature::VerificationAlgorithm for RsaParameters {
         _: sealed::Arg,
     ) -> Result<(), error::Unspecified> {
         let (n, e) = parse_public_key(public_key)?;
-        verify_rsa_(
+        verify(
             self,
             (
                 n.big_endian_without_leading_zero_as_input(),
@@ -181,7 +181,7 @@ where
         message: &[u8],
         signature: &[u8],
     ) -> Result<(), error::Unspecified> {
-        verify_rsa_(
+        verify(
             params,
             (
                 untrusted::Input::from(self.n.as_ref()),
@@ -194,7 +194,7 @@ where
     }
 }
 
-pub(crate) fn verify_rsa_(
+fn verify(
     params: &RsaParameters,
     (n, e): (untrusted::Input, untrusted::Input),
     msg: untrusted::Input,
