@@ -53,7 +53,7 @@ impl PublicModulus {
         const MIN_BITS: bits::BitLength = bits::BitLength::from_bits(1024);
 
         // Step 3 / Step c for `n` (out of order).
-        let value = bigint::OwnedModulusValue::from_be_bytes(n)?;
+        let value = bigint::modulus::ValidatedInput::try_from_be_bytes(n)?;
         let bits = value.len_bits();
 
         // Step 1 / Step a. XXX: SP800-56Br1 and SP800-89 require the length of
@@ -69,7 +69,7 @@ impl PublicModulus {
         if bits > max_bits {
             return Err(error::KeyRejected::too_large());
         }
-        let value = bigint::OwnedModulus::from(value);
+        let value = value.build_value().into_modulus();
         let m = value.modulus(cpu_features);
         let oneRR = bigint::One::newRR(m.alloc_uninit(), &m)
             .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;

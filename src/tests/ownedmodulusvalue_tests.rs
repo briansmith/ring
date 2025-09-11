@@ -1,5 +1,5 @@
 use crate::{
-    arithmetic::{bigint::OwnedModulusValue, MIN_LIMBS},
+    arithmetic::{bigint::modulus::ValidatedInput, MIN_LIMBS},
     error::KeyRejected,
     limb::{LIMB_BITS, LIMB_BYTES},
 };
@@ -46,10 +46,9 @@ fn ownedmodulusvalue_from_be_bytes_test() {
             Err(KeyRejected::invalid_component()), // Even
         ),
     ];
-    struct M {}
     for (i, &(input, expected)) in CASES.iter().chain(cases).enumerate() {
-        let actual = OwnedModulusValue::<M>::from_be_bytes(untrusted::Input::from(input))
-            .map(|m| m.len_bits().as_bits());
+        let actual = ValidatedInput::try_from_be_bytes(untrusted::Input::from(input))
+            .map(|v| v.len_bits().as_bits());
         match (expected, actual) {
             (Ok(expected), Ok(actual)) if expected == actual => {} // passed
             (Err(expected), Err(actual)) if expected.eq(actual) => {} // passed

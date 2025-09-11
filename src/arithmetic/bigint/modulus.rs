@@ -22,6 +22,8 @@ use crate::{
 };
 use core::marker::PhantomData;
 
+pub(crate) use super::modulusvalue::ValidatedInput;
+
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
@@ -76,8 +78,8 @@ impl<M: PublicModulus> Clone for OwnedModulus<M> {
     }
 }
 
-impl<M> OwnedModulus<M> {
-    pub(crate) fn from(n: OwnedModulusValue<M>) -> Self {
+impl<M> OwnedModulusValue<M> {
+    pub fn into_modulus(self) -> OwnedModulus<M> {
         // n_mod_r = n % r. As explained in the documentation for `n0`, this is
         // done by taking the lowest `N0::LIMBS_USED` limbs of `n`.
         #[allow(clippy::useless_conversion)]
@@ -87,20 +89,22 @@ impl<M> OwnedModulus<M> {
             }
 
             // XXX: u64::from isn't guaranteed to be constant time.
-            let mut n_mod_r: u64 = u64::from(n.limbs()[0]);
+            let mut n_mod_r: u64 = u64::from(self.limbs()[0]);
 
             if N0::LIMBS_USED == 2 {
                 // XXX: If we use `<< LIMB_BITS` here then 64-bit builds
                 // fail to compile because of `deny(exceeding_bitshifts)`.
                 debug_assert_eq!(LIMB_BITS, 32);
-                n_mod_r |= u64::from(n.limbs()[1]) << 32;
+                n_mod_r |= u64::from(self.limbs()[1]) << 32;
             }
             N0::precalculated(unsafe { bn_neg_inv_mod_r_u64(n_mod_r) })
         };
 
-        Self { inner: n, n0 }
+        OwnedModulus { inner: self, n0 }
     }
+}
 
+impl<M> OwnedModulus<M> {
     pub fn to_elem<L>(&self, l: &Modulus<L>) -> Result<Elem<L, Unencoded>, error::Unspecified> {
         self.inner.verify_less_than(l)?;
         let limbs = Uninit::new_less_safe(l.limbs.len())

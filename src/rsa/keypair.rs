@@ -340,11 +340,14 @@ impl KeyPair {
         // First, validate `2**half_n_bits < d`. Since 2**half_n_bits has a bit
         // length of half_n_bits + 1, this check gives us 2**half_n_bits <= d,
         // and knowing d is odd makes the inequality strict.
-        let d = bigint::OwnedModulusValue::<D>::from_be_bytes(d)
+        let d = bigint::modulus::ValidatedInput::try_from_be_bytes(d)
             .map_err(|_| KeyRejected::invalid_component())?;
         if !(n_bits.half_rounded_up() < d.len_bits()) {
             return Err(KeyRejected::inconsistent_components());
         }
+
+        let d = d.build_value::<D>();
+
         // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we don't have
         // a good way of calculating LCM, so it is omitted, as explained above.
         d.verify_less_than(n)
@@ -418,7 +421,9 @@ impl<M> PrivatePrime<M> {
         n_bits: BitLength,
         cpu_features: cpu::Features,
     ) -> Result<Self, KeyRejected> {
-        let p = bigint::OwnedModulusValue::from_be_bytes(p)?;
+        // TODO: Move this validation earlier.
+        let p = bigint::modulus::ValidatedInput::try_from_be_bytes(p)
+            .map_err(|_| KeyRejected::invalid_component())?;
 
         // 5.c / 5.g:
         //
@@ -439,7 +444,7 @@ impl<M> PrivatePrime<M> {
         // TODO: Step 5.h: Verify GCD(q - 1, e) == 1.
 
         // Steps 5.e and 5.f are omitted as explained above.
-        let p = bigint::OwnedModulus::from(p);
+        let p = p.build_value().into_modulus();
         let pm = p.modulus(cpu_features);
         let oneRR = bigint::One::newRR(pm.alloc_uninit(), &pm)
             .map_err(|LenMismatchError { .. }| KeyRejected::unexpected_error())?;
