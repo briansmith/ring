@@ -40,8 +40,14 @@ impl<M: PublicModulus> Clone for OwnedModulusValue<M> {
     }
 }
 
-impl<M> OwnedModulusValue<M> {
-    pub(crate) fn from_be_bytes(input: untrusted::Input) -> Result<Self, error::KeyRejected> {
+pub struct ValidatedInput<'a> {
+    input: untrusted::Input<'a>,
+    num_limbs: usize,
+    len_bits: BitLength,
+}
+
+impl<'a> ValidatedInput<'a> {
+    pub fn try_from_be_bytes(input: untrusted::Input<'a>) -> Result<Self, error::KeyRejected> {
         let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
         const _MODULUS_MIN_LIMBS_AT_LEAST_2: () = assert!(MIN_LIMBS >= 2);
         if num_limbs < MIN_LIMBS {
@@ -91,16 +97,29 @@ impl<M> OwnedModulusValue<M> {
 
         // Having at least 2 limbs where the high-order limb is nonzero implies
         // M >= 3 as required.
-
-        let limbs = Uninit::new_less_safe(num_limbs)
-            .write_from_be_byes_padded(input)
-            .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;
-        limb::limbs_reject_even_leak_bit(limbs.as_ref())
-            .map_err(|_: error::Unspecified| error::KeyRejected::invalid_component())?;
-
-        Ok(Self { limbs, len_bits })
+        Ok(Self {
+            input,
+            num_limbs,
+            len_bits,
+        })
     }
 
+    pub fn len_bits(&self) -> BitLength {
+        self.len_bits
+    }
+
+    pub(crate) fn build_value<M>(self) -> OwnedModulusValue<M> {
+        let limbs = Uninit::new_less_safe(self.num_limbs)
+            .write_from_be_byes_padded(self.input)
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        OwnedModulusValue {
+            limbs,
+            len_bits: self.len_bits,
+        }
+    }
+}
+
+impl<M> OwnedModulusValue<M> {
     pub fn verify_less_than<L>(&self, l: &Modulus<L>) -> Result<(), error::Unspecified> {
         if self.len_bits() > l.len_bits() {
             return Err(error::Unspecified);

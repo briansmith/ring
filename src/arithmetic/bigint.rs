@@ -65,7 +65,7 @@ pub(crate) use {
 mod boxed_limbs;
 mod elem;
 mod exp;
-mod modulus;
+pub mod modulus;
 mod modulusvalue;
 mod one;
 mod private_exponent;
@@ -229,8 +229,9 @@ mod testutil {
         name: &str,
     ) -> OwnedModulus<M> {
         let value = test_case.consume_bytes(name);
-        OwnedModulus::from(
-            OwnedModulusValue::from_be_bytes(untrusted::Input::from(&value)).unwrap(),
-        )
+        modulus::ValidatedInput::try_from_be_bytes(untrusted::Input::from(&value))
+            .unwrap()
+            .build_value()
+            .into_modulus()
     }
 }
