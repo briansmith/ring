@@ -12,7 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{PublicExponent, PublicModulus, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
+use super::{
+    PublicExponent, PublicKeyComponents, PublicModulus, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
+};
 use crate::{
     arithmetic::bigint,
     bits, cpu,
@@ -33,25 +35,23 @@ pub struct PublicKey {
 derive_debug_self_as_ref_hex_bytes!(PublicKey);
 
 impl PublicKey {
-    pub(super) fn from_modulus_and_exponent(
-        n: untrusted::Input,
-        e: untrusted::Input,
+    pub(super) fn new(
+        components: PublicKeyComponents<&[u8]>,
         n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength,
         e_min_value: PublicExponent,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
-        let inner = Inner::from_modulus_and_exponent(
-            n,
-            e,
+        let inner = Inner::new(
+            components,
             n_min_bits,
             n_max_bits,
             e_min_value,
             cpu_features,
         )?;
 
-        let n_bytes = n;
-        let e_bytes = e;
+        let n_bytes = untrusted::Input::from(components.n);
+        let e_bytes = untrusted::Input::from(components.e);
 
         // TODO: Remove this re-parsing, and stop allocating this here.
         // Instead we should serialize on demand without allocation, from
@@ -92,9 +92,8 @@ pub(crate) struct Inner {
 }
 
 impl Inner {
-    pub(super) fn from_modulus_and_exponent(
-        n: untrusted::Input,
-        e: untrusted::Input,
+    pub(super) fn new(
+        components: PublicKeyComponents<&[u8]>,
         n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength,
         e_min_value: PublicExponent,
@@ -109,9 +108,13 @@ impl Inner {
         // and one set lettered. TODO: Document this in the end-user
         // documentation for RSA keys.
 
-        let n = PublicModulus::from_be_bytes(n, n_min_bits..=n_max_bits, cpu_features)?;
+        let n = PublicModulus::from_be_bytes(
+            components.n.into(),
+            n_min_bits..=n_max_bits,
+            cpu_features,
+        )?;
 
-        let e = PublicExponent::from_be_bytes(e, e_min_value)?;
+        let e = PublicExponent::from_be_bytes(components.e.into(), e_min_value)?;
 
         // If `n` is less than `e` then somebody has probably accidentally swapped
         // them. The largest acceptable `e` is smaller than the smallest acceptable

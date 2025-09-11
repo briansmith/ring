@@ -275,11 +275,8 @@ impl KeyPair {
         // Also, this limit might help with memory management decisions later.
 
         // Step 1.c. We validate e >= 65537.
-        let n = untrusted::Input::from(public_key.n);
-        let e = untrusted::Input::from(public_key.e);
-        let public_key = PublicKey::from_modulus_and_exponent(
-            n,
-            e,
+        let public_key = PublicKey::new(
+            public_key,
             BitLength::from_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
             PublicExponent::_65537,
