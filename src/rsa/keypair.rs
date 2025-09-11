@@ -302,33 +302,12 @@ impl KeyPair {
 
         let n_bits = public_key.inner().n().len_bits();
 
-        let p = PrivatePrime::new(p, n_bits, cpu_features)?;
-        let q = PrivatePrime::new(q, n_bits, cpu_features)?;
+        let p = ValidatedPrivatePrimeInput::new(p, n_bits)?;
+        let q = ValidatedPrivatePrimeInput::new(q, n_bits)?;
 
         // TODO: Step 5.i
         //
         // 3.b is unneeded since `n_bits` is derived here from `n`.
-
-        // 6.4.1.4.3 - Step 3.a (out of order).
-        //
-        // Verify that p * q == n. We restrict ourselves to modular
-        // multiplication. We rely on the fact that we've verified
-        // 0 < q < p < n. We check that q and p are close to sqrt(n) and then
-        // assume that these preconditions are enough to let us assume that
-        // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
-        let q_mod_n = q
-            .modulus
-            .to_elem(n)
-            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
-        let p_mod_n = p
-            .modulus
-            .to_elem(n)
-            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
-        let p_mod_n = bigint::elem_mul(n_one, p_mod_n, n);
-        let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, n);
-        if !pq_mod_n.is_zero() {
-            return Err(KeyRejected::inconsistent_components());
-        }
 
         // 6.4.1.4.3/6.4.1.2.1 - Step 6.
 
@@ -340,6 +319,29 @@ impl KeyPair {
         let d = bigint::modulus::ValidatedInput::try_from_be_bytes(d)
             .map_err(|_| KeyRejected::invalid_component())?;
         if !(n_bits.half_rounded_up() < d.len_bits()) {
+            return Err(KeyRejected::inconsistent_components());
+        }
+
+        // 6.4.1.4.3 - Step 3.a (out of order).
+        //
+        // Verify that p * q == n. We restrict ourselves to modular
+        // multiplication. We rely on the fact that we've verified
+        // 0 < q < p < n. We check that q and p are close to sqrt(n) and then
+        // assume that these preconditions are enough to let us assume that
+        // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
+        let q = q.build(cpu_features);
+        let q_mod_n = q
+            .modulus
+            .to_elem(n)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
+        let p = p.build(cpu_features);
+        let p_mod_n = p
+            .modulus
+            .to_elem(n)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
+        let p_mod_n = bigint::elem_mul(n_one, p_mod_n, n);
+        let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, n);
+        if !pq_mod_n.is_zero() {
             return Err(KeyRejected::inconsistent_components());
         }
 
@@ -407,17 +409,20 @@ impl signature::KeyPair for KeyPair {
     }
 }
 
+struct ValidatedPrivatePrimeInput<'a> {
+    inner: bigint::modulus::ValidatedInput<'a>,
+}
+
 struct PrivatePrime<M> {
     modulus: bigint::OwnedModulus<M>,
     oneRR: bigint::One<M, RR>,
 }
 
-impl<M> PrivatePrime<M> {
+impl ValidatedPrivatePrimeInput<'_> {
     fn new(
-        p: untrusted::Input,
+        p: untrusted::Input<'_>,
         n_bits: BitLength,
-        cpu_features: cpu::Features,
-    ) -> Result<Self, KeyRejected> {
+    ) -> Result<ValidatedPrivatePrimeInput<'_>, KeyRejected> {
         // TODO: Move this validation earlier.
         let p = bigint::modulus::ValidatedInput::try_from_be_bytes(p)
             .map_err(|_| KeyRejected::invalid_component())?;
@@ -437,16 +442,20 @@ impl<M> PrivatePrime<M> {
             return Err(KeyRejected::private_modulus_len_not_multiple_of_512_bits());
         }
 
+        Ok(ValidatedPrivatePrimeInput { inner: p })
+    }
+
+    fn build<M>(self, cpu_features: cpu::Features) -> PrivatePrime<M> {
         // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
         // TODO: Step 5.h: Verify GCD(q - 1, e) == 1.
 
         // Steps 5.e and 5.f are omitted as explained above.
-        let p = p.build_value().into_modulus();
+        let p = self.inner.build_value().into_modulus();
         let pm = p.modulus(cpu_features);
         let oneRR = bigint::One::newRR(pm.alloc_uninit(), &pm)
-            .map_err(|LenMismatchError { .. }| KeyRejected::unexpected_error())?;
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
 
-        Ok(Self { modulus: p, oneRR })
+        PrivatePrime { modulus: p, oneRR }
     }
 }
 
