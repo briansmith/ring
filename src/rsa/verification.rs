@@ -15,7 +15,8 @@
 //! Verification of RSA signatures.
 
 use super::{
-    parse_public_key, public_key, PublicExponent, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
+    parse_public_key, public_key, PublicExponent, PublicKeyComponents, RsaParameters,
+    PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
 };
 use crate::{
     bits::{self, FromByteLen as _},
@@ -32,17 +33,8 @@ impl signature::VerificationAlgorithm for RsaParameters {
         signature: untrusted::Input,
         _: sealed::Arg,
     ) -> Result<(), error::Unspecified> {
-        let (n, e) = parse_public_key(public_key)?;
-        verify(
-            self,
-            (
-                n.big_endian_without_leading_zero_as_input(),
-                e.big_endian_without_leading_zero_as_input(),
-            ),
-            msg,
-            signature,
-            cpu::features(),
-        )
+        let components = parse_public_key(public_key)?;
+        verify(self, components, msg, signature, cpu::features())
     }
 }
 
@@ -151,7 +143,7 @@ rsa_params!(
 
 pub use super::PublicKeyComponents as RsaPublicKeyComponents;
 
-impl<B> super::PublicKeyComponents<B>
+impl<B> PublicKeyComponents<B>
 where
     B: AsRef<[u8]>,
 {
@@ -183,10 +175,10 @@ where
     ) -> Result<(), error::Unspecified> {
         verify(
             params,
-            (
-                untrusted::Input::from(self.n.as_ref()),
-                untrusted::Input::from(self.e.as_ref()),
-            ),
+            PublicKeyComponents {
+                n: self.n.as_ref(),
+                e: self.e.as_ref(),
+            },
             untrusted::Input::from(message),
             untrusted::Input::from(signature),
             cpu::features(),
@@ -196,7 +188,7 @@ where
 
 fn verify(
     params: &RsaParameters,
-    (n, e): (untrusted::Input, untrusted::Input),
+    components: PublicKeyComponents<&[u8]>,
     msg: untrusted::Input,
     signature: untrusted::Input,
     cpu_features: cpu::Features,
@@ -209,9 +201,8 @@ fn verify(
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let key = public_key::Inner::from_modulus_and_exponent(
-        n,
-        e,
+    let key = public_key::Inner::new(
+        components,
         params.min_bits,
         max_bits,
         PublicExponent::_3,
