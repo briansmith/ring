@@ -63,6 +63,7 @@ impl<M> OwnedModulusValue<M> {
             const _: () = _MODULUS_MIN_LIMBS_AT_LEAST_2;
             unreachable!();
         });
+
         // XXX: Variable-time operation on potentially-secret data. TODO: fix this.
         let leading_zeros = bb::byte_leading_zeros_vartime(hi);
 
@@ -78,6 +79,15 @@ impl<M> OwnedModulusValue<M> {
                 // Impossible because `len_bits_plus_leading_zeros >= leading_zeros`.
                 unreachable!()
             });
+
+        let lo = input.as_slice_less_safe().last().unwrap_or_else(|| {
+            // We know num_limbs >= 2 so there is at least one byte.
+            const _: () = _MODULUS_MIN_LIMBS_AT_LEAST_2;
+            unreachable!();
+        });
+        if bb::byte_is_even(lo).leak() {
+            return Err(error::KeyRejected::invalid_component());
+        };
 
         // Having at least 2 limbs where the high-order limb is nonzero implies
         // M >= 3 as required.

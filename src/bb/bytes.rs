@@ -17,11 +17,17 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::{BoolMask, Word, WordOps};
+use super::{BoolMask, LeakyWord, Word, WordOps};
 use crate::{bits::BitLength, error, polyfill::usize_from_u32};
 
 pub fn byte_leading_zeros_vartime(a: &u8) -> BitLength<usize> {
     BitLength::from_bits(usize_from_u32(a.leading_zeros()))
+}
+
+pub fn byte_is_even(a: &u8) -> BoolMask {
+    const _1: LeakyWord = 1;
+    let a = Word::from(*a);
+    (a & Word::from(_1)).is_zero()
 }
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.

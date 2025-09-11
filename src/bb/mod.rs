@@ -22,8 +22,8 @@ mod word;
 pub(crate) use self::{
     boolmask::BoolMask,
     bytes::{
-        byte_leading_zeros_vartime, bytes_are_equal, verify_slices_are_equal, xor_16, xor_assign,
-        xor_assign_at_start_bytes,
+        byte_is_even, byte_leading_zeros_vartime, bytes_are_equal, verify_slices_are_equal, xor_16,
+        xor_assign, xor_assign_at_start_bytes,
     },
     leaky::LeakyWord,
     word::{Word, WordOps},
