@@ -320,7 +320,9 @@ pub mod testutil {
         m: &Modulus<M>,
     ) -> Elem<M, Unencoded> {
         let value = test_case.consume_bytes(name);
-        Elem::from_be_bytes_padded(untrusted::Input::from(&value), m).unwrap()
+        m.alloc_uninit()
+            .into_elem_from_be_bytes_padded(untrusted::Input::from(&value), m)
+            .unwrap()
     }
 
     pub fn consume_elem_unchecked<M>(

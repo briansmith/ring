@@ -332,14 +332,16 @@ impl KeyPair {
         // assume that these preconditions are enough to let us assume that
         // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
         let q = q.build(cpu_features);
+        let q_mod_n_storage = n.alloc_uninit();
         let q_mod_n = q
             .modulus
-            .to_elem(n)
+            .to_elem(q_mod_n_storage, n)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
         let p = p.build(cpu_features);
+        let p_mod_n_storage = n.alloc_uninit();
         let p_mod_n = p
             .modulus
-            .to_elem(n)
+            .to_elem(p_mod_n_storage, n)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
         let p_mod_n = bigint::elem_mul(n_one, p_mod_n, n);
         let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, n);
@@ -352,7 +354,9 @@ impl KeyPair {
         // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we don't have
         // a good way of calculating LCM, so just check the less strict condition
         // that `d < n`.
-        let _d = bigint::Elem::from_be_bytes_padded(d, n)
+        let _d = n
+            .alloc_uninit()
+            .into_elem_from_be_bytes_padded(d, n)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // Step 6.b is omitted as explained above.
@@ -362,7 +366,10 @@ impl KeyPair {
         // 6.4.1.4.3 - Step 7.
 
         // Step 7.c.
-        let qInv = bigint::Elem::from_be_bytes_padded(qInv, pm)
+
+        let qInv = pm
+            .alloc_uninit()
+            .into_elem_from_be_bytes_padded(qInv, pm)
             .map_err(|error::Unspecified| KeyRejected::invalid_component())?;
 
         // Steps 7.d and 7.e are omitted per the documentation above, and
@@ -455,8 +462,9 @@ impl ValidatedPrivatePrimeInput<'_> {
         // Steps 5.e and 5.f are omitted as explained above.
         let p = self.inner.build_value().into_modulus();
         let pm = p.modulus(cpu_features);
-        let oneRR = bigint::One::newRR(pm.alloc_uninit(), &pm)
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        let oneRR = pm.alloc_uninit();
+        let oneRR =
+            bigint::One::newRR(oneRR, &pm).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
 
         PrivatePrime { modulus: p, oneRR }
     }
@@ -593,6 +601,7 @@ impl KeyPair {
         cpu_features: cpu::Features,
     ) -> Result<bigint::Elem<N>, error::Unspecified> {
         assert_eq!(base.len(), self.public().modulus_len());
+        let base = untrusted::Input::from(base);
 
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
@@ -601,7 +610,7 @@ impl KeyPair {
         let n_one = self.public.inner().n().oneRR();
 
         // Step 1. The value zero is also rejected.
-        let base = bigint::Elem::from_be_bytes_padded(untrusted::Input::from(base), n)?;
+        let base = n.alloc_uninit().into_elem_from_be_bytes_padded(base, n)?;
 
         // Step 2
         let c = base;
@@ -626,8 +635,11 @@ impl KeyPair {
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
         let p_bits = self.p.modulus.len_bits();
+        // The old `h` isn't used beyond this point, so its storage could be
+        // reused.
         let h = bigint::elem_widen(n.alloc_uninit(), h, n, p_bits)?;
-        let q_mod_n = self.q.modulus.to_elem(n)?;
+        let q_mod_n_storage = n.alloc_uninit();
+        let q_mod_n = self.q.modulus.to_elem(q_mod_n_storage, n)?;
         let q_mod_n = bigint::elem_mul(n_one, q_mod_n, n);
         let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
         let m_2 = bigint::elem_widen(n.alloc_uninit(), m_2, n, q_bits)?;

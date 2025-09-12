@@ -105,14 +105,14 @@ impl<M> OwnedModulusValue<M> {
 }
 
 impl<M> OwnedModulus<M> {
-    pub fn to_elem<L>(&self, l: &Modulus<L>) -> Result<Elem<L, Unencoded>, error::Unspecified> {
-        self.inner.verify_less_than(l)?;
-        let limbs = Uninit::new_less_safe(l.limbs.len())
-            .write_copy_of_slice_padded(self.inner.limbs())
-            .map_err(error::erase::<LenMismatchError>)?;
-        Ok(Elem::<L, Unencoded>::assume_in_range_and_encoded_less_safe(
-            limbs,
-        ))
+    pub fn to_elem<L>(
+        &self,
+        out: Uninit<L>,
+        l: &Modulus<L>,
+    ) -> Result<Elem<L, Unencoded>, error::Unspecified> {
+        out.write_copy_of_slice_padded(self.inner.limbs())
+            .map_err(error::erase::<LenMismatchError>)
+            .and_then(|out| Elem::from_limbs(out, l))
     }
 
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Modulus<'_, M> {

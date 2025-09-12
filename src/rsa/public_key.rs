@@ -162,7 +162,7 @@ impl Inner {
         // RFC 8017 Section 5.2.2: RSAVP1.
 
         // Step 1.
-        let s = bigint::Elem::from_be_bytes_padded(base, n)?;
+        let s = n.alloc_uninit().into_elem_from_be_bytes_padded(base, n)?;
         if s.is_zero() {
             return Err(error::Unspecified);
         }
