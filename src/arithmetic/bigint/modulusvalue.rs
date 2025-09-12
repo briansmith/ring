@@ -14,13 +14,13 @@
 
 use super::{
     super::{MAX_LIMBS, MIN_LIMBS},
-    BoxedLimbs, Modulus, PublicModulus, Uninit,
+    BoxedLimbs, PublicModulus, Uninit,
 };
 use crate::{
     bb,
     bits::{BitLength, FromByteLen as _},
     error::{self, InputTooLongError, LenMismatchError},
-    limb::{self, Limb, LIMB_BITS, LIMB_BYTES},
+    limb::{Limb, LIMB_BITS, LIMB_BYTES},
     polyfill::usize_from_u32,
 };
 
@@ -120,16 +120,6 @@ impl<'a> ValidatedInput<'a> {
 }
 
 impl<M> OwnedModulusValue<M> {
-    pub fn verify_less_than<L>(&self, l: &Modulus<L>) -> Result<(), error::Unspecified> {
-        if self.len_bits() > l.len_bits() {
-            return Err(error::Unspecified);
-        }
-        if self.limbs.len() == l.limbs().len() {
-            limb::verify_limbs_less_than_limbs_leak_bit(self.limbs.as_ref(), l.limbs())?;
-        }
-        Ok(())
-    }
-
     pub fn len_bits(&self) -> BitLength {
         self.len_bits
     }

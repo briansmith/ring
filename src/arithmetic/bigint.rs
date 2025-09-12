@@ -72,16 +72,25 @@ mod private_exponent;
 
 pub trait PublicModulus {}
 
-impl<M> Elem<M, Unencoded> {
-    pub fn from_be_bytes_padded(
-        input: untrusted::Input,
+impl<M> Uninit<M> {
+    pub fn into_elem_from_be_bytes_padded(
+        self,
+        input: untrusted::Input<'_>,
         m: &Modulus<M>,
-    ) -> Result<Self, error::Unspecified> {
-        let limbs = Uninit::new_less_safe(m.limbs().len())
-            .write_from_be_byes_padded(input)
-            .map_err(error::erase::<LenMismatchError>)?;
-        limb::verify_limbs_less_than_limbs_leak_bit(limbs.as_ref(), m.limbs())?;
-        Ok(Self::assume_in_range_and_encoded_less_safe(limbs))
+    ) -> Result<Elem<M>, error::Unspecified> {
+        self.write_from_be_byes_padded(input)
+            .map_err(error::erase::<LenMismatchError>)
+            .and_then(|out| Elem::from_limbs(out, m))
+    }
+}
+
+impl<M> Elem<M, Unencoded> {
+    fn from_limbs(
+        out: BoxedLimbs<M>,
+        m: &Modulus<M>,
+    ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+        limb::verify_limbs_less_than_limbs_leak_bit(out.as_ref(), m.limbs())?;
+        Ok(Elem::assume_in_range_and_encoded_less_safe(out))
     }
 }
 

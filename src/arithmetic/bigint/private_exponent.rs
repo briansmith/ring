@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{limb, Elem, Limb, Modulus};
+use super::{limb, Limb, Modulus};
 use crate::error;
 use alloc::boxed::Box;
 
@@ -28,7 +28,10 @@ impl PrivateExponent {
         input: untrusted::Input,
         p: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
-        let mut dP = Elem::<M>::from_be_bytes_padded(input, p)?.leak_limbs_into_box_less_safe();
+        let mut dP = p
+            .alloc_uninit()
+            .into_elem_from_be_bytes_padded(input, p)?
+            .leak_limbs_into_box_less_safe();
 
         // Proof that `dP < p - 1`:
         //

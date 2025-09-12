@@ -71,7 +71,8 @@ impl PublicModulus {
         }
         let value = value.build_value().into_modulus();
         let m = value.modulus(cpu_features);
-        let oneRR = bigint::One::newRR(m.alloc_uninit(), &m)
+        let oneRR = m.alloc_uninit();
+        let oneRR = bigint::One::newRR(oneRR, &m)
             .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;
 
         Ok(Self { value, oneRR })
