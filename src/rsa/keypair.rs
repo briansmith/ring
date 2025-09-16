@@ -274,18 +274,13 @@ impl KeyPair {
         // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
         // Also, this limit might help with memory management decisions later.
 
+        // Step 1.c. We validate e >= 65537.
         let public_key = public_key::ValidatedInput::try_from_be_bytes(
             public_key,
             BitLength::from_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
             PublicExponent::_65537,
         )?;
-
-        // Step 1.c. We validate e >= 65537.
-        let public_key = PublicKey::new(public_key, cpu_features)?;
-
-        let n_one = public_key.inner().n().oneRR();
-        let n = &public_key.inner().n().value(cpu_features);
 
         // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
 
@@ -301,7 +296,7 @@ impl KeyPair {
 
         // Steps 5.a and 5.b are omitted, as explained above.
 
-        let n_bits = public_key.inner().n().len_bits();
+        let n_bits = public_key.n().len_bits();
 
         let p = ValidatedPrivatePrimeInput::new(p, n_bits)?;
         let q = ValidatedPrivatePrimeInput::new(q, n_bits)?;
@@ -332,6 +327,11 @@ impl KeyPair {
         // 0 < q < p < n. We check that q and p are close to sqrt(n) and then
         // assume that these preconditions are enough to let us assume that
         // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
+        let public_key = PublicKey::new(public_key, cpu_features)?;
+
+        let n_one = public_key.inner().n().oneRR();
+        let n = &public_key.inner().n().value(cpu_features);
+
         let q = q.build(cpu_features);
         let q_mod_n_storage = n.alloc_uninit();
         let q_mod_n = q
