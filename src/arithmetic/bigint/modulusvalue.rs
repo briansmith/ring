@@ -108,7 +108,11 @@ impl<'a> ValidatedInput<'a> {
         self.len_bits
     }
 
-    pub(crate) fn build_value<M>(self) -> OwnedModulusValue<M> {
+    pub fn input(&self) -> untrusted::Input<'_> {
+        self.input
+    }
+
+    pub(crate) fn build_value<M>(&self) -> OwnedModulusValue<M> {
         let limbs = Uninit::new_less_safe(self.num_limbs)
             .write_from_be_byes_padded(self.input)
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
