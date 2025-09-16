@@ -103,6 +103,10 @@ impl<'a> ValidatedInput<'a> {
         Ok(Self { n, e, e_input })
     }
 
+    pub fn n(&self) -> &public_modulus::ValidatedInput<'_> {
+        &self.n
+    }
+
     pub(super) fn build(&self, cpu_features: cpu::Features) -> Inner {
         // This is an incomplete implementation of NIST SP800-56Br1 Section
         // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers

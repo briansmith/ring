@@ -79,6 +79,10 @@ impl<'a> ValidatedInput<'a> {
         self.input.input()
     }
 
+    pub fn len_bits(&self) -> bits::BitLength {
+        self.input.len_bits()
+    }
+
     pub(super) fn build(&self, cpu_features: cpu::Features) -> PublicModulus {
         let value = self.input.build_value().into_modulus();
         let m = value.modulus(cpu_features);
