@@ -37,22 +37,13 @@ derive_debug_self_as_ref_hex_bytes!(PublicKey);
 
 impl PublicKey {
     pub(super) fn new(
-        components: PublicKeyComponents<&[u8]>,
-        n_min_bits: bits::BitLength,
-        n_max_bits: bits::BitLength,
-        e_min_value: PublicExponent,
+        input: ValidatedInput<'_>,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
-        let inner = Inner::new(
-            components,
-            n_min_bits,
-            n_max_bits,
-            e_min_value,
-            cpu_features,
-        )?;
+        let inner = input.build(cpu_features);
 
-        let n_bytes = untrusted::Input::from(components.n);
-        let e_bytes = untrusted::Input::from(components.e);
+        let n_bytes = input.n.input();
+        let e_bytes = input.e_input;
 
         // TODO: Remove this re-parsing, and stop allocating this here.
         // Instead we should serialize on demand without allocation, from
@@ -92,14 +83,27 @@ pub(crate) struct Inner {
     e: PublicExponent,
 }
 
-impl Inner {
-    pub(super) fn new(
-        components: PublicKeyComponents<&[u8]>,
+pub struct ValidatedInput<'a> {
+    n: public_modulus::ValidatedInput<'a>,
+    e: PublicExponent,
+    e_input: untrusted::Input<'a>,
+}
+
+impl<'a> ValidatedInput<'a> {
+    pub(super) fn try_from_be_bytes(
+        components: PublicKeyComponents<&'a [u8]>,
         n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength,
         e_min_value: PublicExponent,
-        cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
+        let n =
+            public_modulus::ValidatedInput::from_be_bytes(components.n, n_min_bits..=n_max_bits)?;
+        let e_input = components.e.into();
+        let e = PublicExponent::from_be_bytes(e_input, e_min_value)?;
+        Ok(Self { n, e, e_input })
+    }
+
+    pub(super) fn build(&self, cpu_features: cpu::Features) -> Inner {
         // This is an incomplete implementation of NIST SP800-56Br1 Section
         // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
         // to NIST SP800-89 Section 5.3.3, "(Explicit) Partial Public Key
@@ -109,13 +113,7 @@ impl Inner {
         // and one set lettered. TODO: Document this in the end-user
         // documentation for RSA keys.
 
-        let n = public_modulus::ValidatedInput::from_be_bytes(
-            components.n.into(),
-            n_min_bits..=n_max_bits,
-        )?;
-        let e = PublicExponent::from_be_bytes(components.e.into(), e_min_value)?;
-
-        let n = n.build(cpu_features);
+        let n = self.n.build(cpu_features);
 
         // If `n` is less than `e` then somebody has probably accidentally swapped
         // them. The largest acceptable `e` is smaller than the smallest acceptable
@@ -124,9 +122,11 @@ impl Inner {
         // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
         // case in most other commonly-used crypto libraries.
 
-        Ok(Self { n, e })
+        Inner { n, e: self.e }
     }
+}
 
+impl Inner {
     /// The public modulus.
     #[inline]
     pub(super) fn n(&self) -> &PublicModulus {

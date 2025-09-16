@@ -41,7 +41,7 @@ pub struct ValidatedInput<'a> {
 
 impl<'a> ValidatedInput<'a> {
     pub fn from_be_bytes(
-        n: untrusted::Input<'a>,
+        n: &'a [u8],
         allowed_bit_lengths: RangeInclusive<bits::BitLength>,
     ) -> Result<Self, error::KeyRejected> {
         // See `PublicKey::from_modulus_and_exponent` for background on the step
@@ -56,7 +56,7 @@ impl<'a> ValidatedInput<'a> {
         const MIN_BITS: bits::BitLength = bits::BitLength::from_bits(1024);
 
         // Step 3 / Step c for `n` (out of order).
-        let input = bigint::modulus::ValidatedInput::try_from_be_bytes(n)?;
+        let input = bigint::modulus::ValidatedInput::try_from_be_bytes(n.into())?;
         let bits = input.len_bits();
 
         // Step 1 / Step a. XXX: SP800-56Br1 and SP800-89 require the length of
@@ -75,7 +75,11 @@ impl<'a> ValidatedInput<'a> {
         Ok(Self { input })
     }
 
-    pub(super) fn build(self, cpu_features: cpu::Features) -> PublicModulus {
+    pub fn input(&self) -> untrusted::Input<'_> {
+        self.input.input()
+    }
+
+    pub(super) fn build(&self, cpu_features: cpu::Features) -> PublicModulus {
         let value = self.input.build_value().into_modulus();
         let m = value.modulus(cpu_features);
         let oneRR = m.alloc_uninit();

@@ -14,7 +14,7 @@
 
 use super::{
     padding::{self, RsaEncoding},
-    KeyPairComponents, PublicExponent, PublicKey, PublicKeyComponents, N,
+    public_key, KeyPairComponents, PublicExponent, PublicKey, PublicKeyComponents, N,
 };
 
 /// RSA PKCS#1 1.5 signatures.
@@ -274,14 +274,15 @@ impl KeyPair {
         // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
         // Also, this limit might help with memory management decisions later.
 
-        // Step 1.c. We validate e >= 65537.
-        let public_key = PublicKey::new(
+        let public_key = public_key::ValidatedInput::try_from_be_bytes(
             public_key,
             BitLength::from_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
             PublicExponent::_65537,
-            cpu_features,
         )?;
+
+        // Step 1.c. We validate e >= 65537.
+        let public_key = PublicKey::new(public_key, cpu_features)?;
 
         let n_one = public_key.inner().n().oneRR();
         let n = &public_key.inner().n().value(cpu_features);
