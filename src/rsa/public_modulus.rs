@@ -35,11 +35,14 @@ impl core::fmt::Debug for PublicModulus {
     }
 }*/
 
-impl PublicModulus {
-    pub(super) fn from_be_bytes(
-        n: untrusted::Input,
+pub struct ValidatedInput<'a> {
+    input: bigint::modulus::ValidatedInput<'a>,
+}
+
+impl<'a> ValidatedInput<'a> {
+    pub fn from_be_bytes(
+        n: untrusted::Input<'a>,
         allowed_bit_lengths: RangeInclusive<bits::BitLength>,
-        cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
         // See `PublicKey::from_modulus_and_exponent` for background on the step
         // numbering.
@@ -53,8 +56,8 @@ impl PublicModulus {
         const MIN_BITS: bits::BitLength = bits::BitLength::from_bits(1024);
 
         // Step 3 / Step c for `n` (out of order).
-        let value = bigint::modulus::ValidatedInput::try_from_be_bytes(n)?;
-        let bits = value.len_bits();
+        let input = bigint::modulus::ValidatedInput::try_from_be_bytes(n)?;
+        let bits = input.len_bits();
 
         // Step 1 / Step a. XXX: SP800-56Br1 and SP800-89 require the length of
         // the public modulus to be exactly 2048 or 3072 bits, but we are more
@@ -69,15 +72,20 @@ impl PublicModulus {
         if bits > max_bits {
             return Err(error::KeyRejected::too_large());
         }
-        let value = value.build_value().into_modulus();
-        let m = value.modulus(cpu_features);
-        let oneRR = m.alloc_uninit();
-        let oneRR = bigint::One::newRR(oneRR, &m)
-            .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;
-
-        Ok(Self { value, oneRR })
+        Ok(Self { input })
     }
 
+    pub(super) fn build(self, cpu_features: cpu::Features) -> PublicModulus {
+        let value = self.input.build_value().into_modulus();
+        let m = value.modulus(cpu_features);
+        let oneRR = m.alloc_uninit();
+        let oneRR =
+            bigint::One::newRR(oneRR, &m).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        PublicModulus { value, oneRR }
+    }
+}
+
+impl PublicModulus {
     /// The big-endian encoding of the modulus.
     ///
     /// There are no leading zeros.
