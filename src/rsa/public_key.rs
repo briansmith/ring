@@ -13,7 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    PublicExponent, PublicKeyComponents, PublicModulus, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
+    public_modulus, PublicExponent, PublicKeyComponents, PublicModulus, N,
+    PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
 };
 use crate::{
     arithmetic::bigint,
@@ -108,13 +109,13 @@ impl Inner {
         // and one set lettered. TODO: Document this in the end-user
         // documentation for RSA keys.
 
-        let n = PublicModulus::from_be_bytes(
+        let n = public_modulus::ValidatedInput::from_be_bytes(
             components.n.into(),
             n_min_bits..=n_max_bits,
-            cpu_features,
         )?;
-
         let e = PublicExponent::from_be_bytes(components.e.into(), e_min_value)?;
+
+        let n = n.build(cpu_features);
 
         // If `n` is less than `e` then somebody has probably accidentally swapped
         // them. The largest acceptable `e` is smaller than the smallest acceptable
