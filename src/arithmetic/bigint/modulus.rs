@@ -29,7 +29,7 @@ pub(crate) use super::modulusvalue::ValidatedInput;
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
 /// the modular inversion code.
 pub struct OwnedModulus<M> {
-    inner: OwnedModulusValue<M>,
+    value: OwnedModulusValue<M>,
 
     // n0 * N == -1 (mod r).
     //
@@ -72,7 +72,7 @@ pub struct OwnedModulus<M> {
 impl<M: PublicModulus> Clone for OwnedModulus<M> {
     fn clone(&self) -> Self {
         Self {
-            inner: self.inner.clone(),
+            value: self.value.clone(),
             n0: self.n0,
         }
     }
@@ -100,7 +100,7 @@ impl<M> OwnedModulusValue<M> {
             N0::precalculated(unsafe { bn_neg_inv_mod_r_u64(n_mod_r) })
         };
 
-        OwnedModulus { inner: self, n0 }
+        OwnedModulus { value: self, n0 }
     }
 }
 
@@ -110,14 +110,14 @@ impl<M> OwnedModulus<M> {
         out: Uninit<L>,
         l: &Modulus<L>,
     ) -> Result<Elem<L, Unencoded>, error::Unspecified> {
-        out.write_copy_of_slice_padded(self.inner.limbs())
+        out.write_copy_of_slice_padded(self.value.limbs())
             .map_err(error::erase::<LenMismatchError>)
             .and_then(|out| Elem::from_limbs(out, l))
     }
 
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Modulus<'_, M> {
         Modulus {
-            limbs: self.inner.limbs(),
+            limbs: self.value.limbs(),
             n0: self.n0,
             len_bits: self.len_bits(),
             m: PhantomData,
@@ -126,13 +126,13 @@ impl<M> OwnedModulus<M> {
     }
 
     pub fn len_bits(&self) -> BitLength {
-        self.inner.len_bits()
+        self.value.len_bits()
     }
 }
 
 impl<M: PublicModulus> OwnedModulus<M> {
     pub fn be_bytes(&self) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + '_> {
-        LeadingZerosStripped::new(limb::unstripped_be_bytes(self.inner.limbs()))
+        LeadingZerosStripped::new(limb::unstripped_be_bytes(self.value.limbs()))
     }
 }
 
