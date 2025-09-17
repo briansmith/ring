@@ -49,28 +49,33 @@ use super::{
 };
 use crate::{
     bits::BitLength,
+    cpu,
     error::LenMismatchError,
     limb::{self, Limb, LIMB_BITS},
+    mont512,
     window5::Window5,
 };
 use core::mem::MaybeUninit;
 
 pub fn elem_exp_consttime<N, P>(
-    out: Uninit<P>,
     base: &Elem<N>,
-    oneRRR: &One<P, RRR>,
     exponent: &PrivateExponent,
-    p: &Modulus<P>,
+    m: &mont512::modulus::Modulus<P, RRR>,
     other_prime_len_bits: BitLength,
+    cpu: cpu::Features,
 ) -> Result<Elem<P, Unencoded>, LimbSliceError> {
+    let oneRRR = m.one();
+    let m = &m.value().modulus(cpu);
+    let out = m.alloc_uninit();
+
     // `elem_exp_consttime_inner` is parameterized on `STORAGE_LIMBS` only so
     // we can run tests with larger-than-supported-in-operation test vectors.
-    elem_exp_consttime_inner::<N, P, { ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS * STORAGE_ENTRIES }>(
+    elem_exp_consttime_inner::<N, P, DEFAULT_STORAGE_LIMBS>(
         out,
         base,
         oneRRR,
         exponent,
-        p,
+        m,
         other_prime_len_bits,
     )
 }
@@ -83,6 +88,7 @@ const _LIMBS_PER_CHUNK_DIVIDES_ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS: () =
 const WINDOW_BITS: u32 = 5;
 const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
 const STORAGE_ENTRIES: usize = TABLE_ENTRIES + if cfg!(target_arch = "x86_64") { 3 } else { 0 };
+const DEFAULT_STORAGE_LIMBS: usize = ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS * STORAGE_ENTRIES;
 
 #[cfg(not(target_arch = "x86_64"))]
 fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
@@ -363,13 +369,13 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
 #[cfg(test)]
 mod tests {
-    use super::super::PublicModulus;
-    use super::{
-        super::{testutil::*, *},
-        *,
-    };
+    use super::super::testutil::*;
     use crate::testutil as test;
-    use crate::{cpu, error};
+    use crate::{
+        cpu,
+        error::{self, KeyRejected, LenMismatchError},
+    };
+    use {super::super::*, super::*};
 
     // Type-level representation of an arbitrary modulus.
     struct M {}
@@ -384,7 +390,11 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m = consume_modulus::<M>(test_case, "M");
+                let m_input = test_case.consume_bytes("M");
+                let m_input =
+                    modulus::ValidatedInput::try_from_be_bytes(untrusted::Input::from(&m_input))
+                        .unwrap();
+                let m = m_input.build_value::<M>().into_modulus();
                 let m = m.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModExp", &m);
                 let base = consume_elem(test_case, "A", &m);
@@ -393,11 +403,6 @@ mod tests {
                     PrivateExponent::from_be_bytes_for_test_only(untrusted::Input::from(&bytes), &m)
                         .expect("valid exponent")
                 };
-
-                let oneRR = One::newRR(m.alloc_uninit(), &m)
-                    .map_err(error::erase::<LenMismatchError>)
-                    .unwrap();
-                let oneRRR = One::newRRR(oneRR, &m);
 
                 // `base` in the test vectors is reduced (mod M) already but
                 // the API expects the bsae to be (mod N) where N = M * P for
@@ -413,27 +418,39 @@ mod tests {
                 };
 
                 let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
+
+                let actual_result = match m_input.try_into_mont512() {
+                    Ok(m) => {
+                        let m = m.build(cpu_features).for_exponentiation(cpu_features);
+                        elem_exp_consttime(&base, &e, &m, other_modulus_len_bits, cpu_features)
+                    }
+                    Err(KeyRejected { .. }) => {
+                        let oneRR = m.alloc_uninit();
+                        let oneRR = One::newRR(oneRR, &m)
+                            .map_err(error::erase::<LenMismatchError>)
+                            .unwrap();
+                        let oneRRR = One::newRRR(oneRR, &m);
+                        elem_exp_consttime_inner::<_, _, DEFAULT_STORAGE_LIMBS>(
+                            m.alloc_uninit(),
+                            &base,
+                            &oneRRR,
+                            &e,
+                            &m,
+                            other_modulus_len_bits,
+                        )
+                    }
+                };
                 let actual_result = if !too_big {
-                    elem_exp_consttime(
-                        m.alloc_uninit(),
-                        &base,
-                        &oneRRR,
-                        &e,
-                        &m,
-                        other_modulus_len_bits,
-                    )
+                    actual_result
                 } else {
-                    let actual_result = elem_exp_consttime(
-                        m.alloc_uninit(),
-                        &base,
-                        &oneRRR,
-                        &e,
-                        &m,
-                        other_modulus_len_bits,
-                    );
                     // TODO: Be more specific with which error we expect?
                     assert!(actual_result.is_err());
                     // Try again with a larger-than-normally-supported limit
+                    let oneRR = m.alloc_uninit();
+                    let oneRR = One::newRR(oneRR, &m)
+                        .map_err(error::erase::<LenMismatchError>)
+                        .unwrap();
+                    let oneRRR = One::newRRR(oneRR, &m);
                     elem_exp_consttime_inner::<_, _, { (4096 / LIMB_BITS) * STORAGE_ENTRIES }>(
                         m.alloc_uninit(),
                         &base,

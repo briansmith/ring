@@ -89,6 +89,7 @@ impl<'a> ValidatedInput<'a> {
         let oneRR = m.alloc_uninit();
         let oneRR =
             bigint::One::newRR(oneRR, &m).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+
         PublicModulus { value, oneRR }
     }
 }

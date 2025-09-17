@@ -145,6 +145,8 @@ pub mod error;
 pub mod hkdf;
 pub mod hmac;
 mod limb;
+#[cfg(feature = "alloc")]
+mod mont512;
 pub mod pbkdf2;
 pub mod pkcs8;
 pub mod rand;
