@@ -6,8 +6,4 @@ pub(super) mod testutil;
 mod value;
 
 pub(super) use self::one::One;
-pub(crate) use self::{
-    into_mont::IntoMont,
-    mont::Mont,
-    value::{ValidatedInput, Value},
-};
+pub(crate) use self::{into_mont::IntoMont, mont::Mont, value::ValidatedInput};

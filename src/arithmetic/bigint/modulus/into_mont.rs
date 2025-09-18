@@ -17,7 +17,8 @@ use super::{
         super::montgomery::{Unencoded, RR, RRR},
         Elem, Mont, PublicModulus, Uninit, N0,
     },
-    One, Value,
+    value::Value,
+    One, ValidatedInput,
 };
 use crate::{
     bits::BitLength,
@@ -83,14 +84,17 @@ impl<M: PublicModulus, E> Clone for IntoMont<M, E> {
     }
 }
 
-impl<M> Value<M> {
-    pub fn into_mont(self, cpu: cpu::Features) -> IntoMont<M, RR> {
-        let out = self.alloc_uninit();
+impl ValidatedInput<'_> {
+    pub fn to_into_mont<M>(&self, cpu: cpu::Features) -> IntoMont<M, RR> {
+        let value = self.build_value();
+        let out = value.alloc_uninit();
         let one =
-            One::newRR(out, &self, cpu).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
-        IntoMont { value: self, one }
+            One::newRR(out, &value, cpu).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        IntoMont { value, one }
     }
+}
 
+impl<M> Value<M> {
     #[allow(clippy::useless_conversion)]
     pub(super) fn calculate_n0(&self) -> N0 {
         let m = self.limbs();

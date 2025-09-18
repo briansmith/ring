@@ -14,7 +14,7 @@
 
 use super::{
     super::{Uninit, N0},
-    Value,
+    value::Value,
 };
 use crate::{bits::BitLength, cpu, limb::Limb};
 use core::{marker::PhantomData, num::NonZeroUsize};

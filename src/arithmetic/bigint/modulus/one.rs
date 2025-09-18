@@ -15,10 +15,14 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::super::{
-    super::montgomery::{N0, R, RR, RRR},
-    elem::{elem_double, elem_squared},
-    modulus, Elem, Limb, Mont, PublicModulus, Uninit,
+use super::{
+    super::{
+        super::montgomery::{N0, R, RR, RRR},
+        elem::{elem_double, elem_squared},
+        Elem, Limb, PublicModulus, Uninit,
+    },
+    value::Value,
+    Mont,
 };
 use crate::{
     cpu,
@@ -82,9 +86,9 @@ impl<M> One<M, RR> {
     // values, using `LIMB_BITS` here, rather than `N0::LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0::LIMBS_USED` is either one or two.
-    pub(crate) fn newRR(
+    pub(super) fn newRR(
         out: Uninit<M>,
-        m: &modulus::Value<M>,
+        m: &Value<M>,
         cpu: cpu::Features,
     ) -> Result<Self, LenMismatchError> {
         // The number of limbs in the numbers involved.
@@ -161,11 +165,7 @@ impl<M> One<M, RR> {
 }
 
 impl<M> One<M, RRR> {
-    pub(crate) fn newRRR(
-        One { value, n0 }: One<M, RR>,
-        m: &modulus::Value<M>,
-        cpu: cpu::Features,
-    ) -> Self {
+    pub(super) fn newRRR(One { value, n0 }: One<M, RR>, m: &Value<M>, cpu: cpu::Features) -> Self {
         let m = &Mont::from_parts_unchecked_less_safe(m, &n0, cpu);
         let value = elem_squared(value, m);
         Self { value, n0 }

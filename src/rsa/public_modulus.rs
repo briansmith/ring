@@ -69,8 +69,9 @@ impl<'a> ValidatedInput<'a> {
     }
 
     pub(super) fn build(&self, cpu_features: cpu::Features) -> PublicModulus {
-        let value = self.input.build_value().into_mont(cpu_features);
-        PublicModulus { value }
+        PublicModulus {
+            value: self.input.to_into_mont(cpu_features),
+        }
     }
 }
 

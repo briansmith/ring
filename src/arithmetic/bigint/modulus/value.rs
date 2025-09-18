@@ -112,7 +112,7 @@ impl<'a> ValidatedInput<'a> {
         self.input
     }
 
-    pub fn build_value<M>(&self) -> Value<M> {
+    pub(super) fn build_value<M>(&self) -> Value<M> {
         let limbs = Uninit::new_less_safe(self.num_limbs)
             .write_from_be_byes_padded(self.input)
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
@@ -133,7 +133,7 @@ impl<M> Value<M> {
         self.limbs.as_ref()
     }
 
-    pub fn alloc_uninit(&self) -> Uninit<M> {
+    pub(super) fn alloc_uninit(&self) -> Uninit<M> {
         Uninit::new_less_safe(self.limbs().len())
     }
 }

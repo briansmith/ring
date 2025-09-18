@@ -393,8 +393,9 @@ mod tests {
                 let m_input =
                     modulus::ValidatedInput::try_from_be_bytes(untrusted::Input::from(&m_input))
                         .unwrap();
-                let m_owned = m_input.build_value::<M>().into_mont(cpu_features);
-                let m_owned = m_owned.into_rrr(cpu_features);
+                let m_owned = m_input
+                    .to_into_mont::<M>(cpu_features)
+                    .into_rrr(cpu_features);
                 let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModExp", &m);
                 let base = consume_elem(test_case, "A", &m);
