@@ -310,8 +310,9 @@ pub fn elem_verify_equal_consttime<M, E>(
 
 #[cfg(test)]
 pub mod testutil {
-    use super::super::One;
+    use super::super::modulus;
     use super::*;
+    use crate::cpu;
 
     pub fn consume_elem<M>(
         test_case: &mut crate::testutil::TestCase,
@@ -342,10 +343,9 @@ pub mod testutil {
         }
     }
 
-    pub fn into_encoded<M>(out: Uninit<M>, a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
-        let oneRR = One::newRR(out, m)
-            .map_err(error::erase::<LenMismatchError>)
-            .unwrap();
+    pub fn into_encoded<M>(a: Elem<M, Unencoded>, m: &modulus::IntoMont<M, RR>) -> Elem<M, R> {
+        let oneRR = m.one();
+        let m = &m.modulus(cpu::features());
         elem_mul(oneRR.as_ref(), a, m)
     }
 }
