@@ -19,7 +19,7 @@ use super::{
 use crate::{bits::BitLength, cpu, limb::Limb};
 use core::{marker::PhantomData, num::NonZeroUsize};
 
-pub struct Modulus<'a, M> {
+pub struct Mont<'a, M> {
     limbs: &'a [Limb],
     n0: &'a N0,
     len_bits: BitLength,
@@ -27,9 +27,9 @@ pub struct Modulus<'a, M> {
     cpu_features: cpu::Features,
 }
 
-impl<'a, M> Modulus<'a, M> {
+impl<'a, M> Mont<'a, M> {
     pub(super) fn from_parts(value: &'a Value<M>, n0: &'a N0, cpu: cpu::Features) -> Self {
-        Modulus {
+        Self {
             limbs: value.limbs(),
             n0,
             len_bits: value.len_bits(),
@@ -39,7 +39,7 @@ impl<'a, M> Modulus<'a, M> {
     }
 }
 
-impl<M> Modulus<'_, M> {
+impl<M> Mont<'_, M> {
     pub fn alloc_uninit(&self) -> Uninit<M> {
         Uninit::new_less_safe(self.limbs.len())
     }

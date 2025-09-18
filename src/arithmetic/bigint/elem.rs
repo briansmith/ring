@@ -21,8 +21,8 @@ use super::{
         montgomery::*,
         MAX_LIMBS,
     },
-    boxed_limbs::BoxedLimbs,
-    unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error, Modulus, Uninit,
+    unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error, BoxedLimbs, Mont,
+    Uninit,
 };
 use crate::{
     bits::BitLength,
@@ -99,10 +99,7 @@ impl<M, E> Elem<M, E> {
 /// fully reduced mod `m`.
 ///
 /// WARNING: Takes a `Storage` as an in/out value.
-pub(super) fn from_montgomery_amm<M>(
-    mut in_out: BoxedLimbs<M>,
-    m: &Modulus<M>,
-) -> Elem<M, Unencoded> {
+pub(super) fn from_montgomery_amm<M>(mut in_out: BoxedLimbs<M>, m: &Mont<M>) -> Elem<M, Unencoded> {
     let mut one = [0; MAX_LIMBS];
     one[0] = 1;
     let one = &one[..m.limbs().len()];
@@ -119,7 +116,7 @@ pub(super) fn from_montgomery_amm<M>(
 #[cfg(any(test, not(target_arch = "x86_64")))]
 impl<M> Elem<M, R> {
     #[inline]
-    pub fn into_unencoded(self, m: &Modulus<M>) -> Elem<M, Unencoded> {
+    pub fn into_unencoded(self, m: &Mont<M>) -> Elem<M, Unencoded> {
         from_montgomery_amm(self.limbs, m)
     }
 }
@@ -136,7 +133,7 @@ pub fn elem_mul_into<M, AF, BF>(
     out: Uninit<M>,
     a: &Elem<M, AF>,
     b: &Elem<M, BF>,
-    m: &Modulus<M>,
+    m: &Mont<M>,
 ) -> Result<Elem<M, <(AF, BF) as ProductEncoding>::Output>, LenMismatchError>
 where
     (AF, BF): ProductEncoding,
@@ -157,7 +154,7 @@ where
 pub fn elem_mul<M, AF, BF>(
     a: &Elem<M, AF>,
     b: Elem<M, BF>,
-    m: &Modulus<M>,
+    m: &Mont<M>,
 ) -> Elem<M, <(AF, BF) as ProductEncoding>::Output>
 where
     (AF, BF): ProductEncoding,
@@ -174,7 +171,7 @@ where
 }
 
 // r *= 2.
-pub fn elem_double<M, AF>(r: &mut Elem<M, AF>, m: &Modulus<M>) {
+pub fn elem_double<M, AF>(r: &mut Elem<M, AF>, m: &Mont<M>) {
     limb::limbs_double_mod(r.limbs.as_mut(), m.limbs())
         .unwrap_or_else(unwrap_impossible_len_mismatch_error)
 }
@@ -186,7 +183,7 @@ pub fn elem_double<M, AF>(r: &mut Elem<M, AF>, m: &Modulus<M>) {
 pub fn elem_reduced_once<A, M>(
     r: Uninit<M>,
     a: &Elem<A, Unencoded>,
-    m: &Modulus<M>,
+    m: &Mont<M>,
     other_modulus_len_bits: BitLength,
 ) -> Elem<M, Unencoded> {
     assert_eq!(m.len_bits(), other_modulus_len_bits);
@@ -204,7 +201,7 @@ pub fn elem_reduced_once<A, M>(
 pub fn elem_reduced<Larger, Smaller>(
     r: Uninit<Smaller>,
     a: &Elem<Larger, Unencoded>,
-    m: &Modulus<Smaller>,
+    m: &Mont<Smaller>,
     other_prime_len_bits: BitLength,
 ) -> Elem<Smaller, RInverse> {
     // This is stricter than required mathematically but this is what we
@@ -228,7 +225,7 @@ pub fn elem_reduced<Larger, Smaller>(
 #[inline]
 pub fn elem_squared<M, E>(
     a: Elem<M, E>,
-    m: &Modulus<M>,
+    m: &Mont<M>,
 ) -> Elem<M, <(E, E) as ProductEncoding>::Output>
 where
     (E, E): ProductEncoding,
@@ -241,8 +238,8 @@ where
 
 pub fn elem_widen<Larger, Smaller>(
     r: Uninit<Larger>,
-    a: Elem<Smaller, Unencoded>,
-    m: &Modulus<Larger>,
+    a: &Elem<Smaller, Unencoded>,
+    m: &Mont<Larger>,
     smaller_modulus_bits: BitLength,
 ) -> Result<Elem<Larger, Unencoded>, error::Unspecified> {
     if smaller_modulus_bits >= m.len_bits() {
@@ -255,14 +252,14 @@ pub fn elem_widen<Larger, Smaller>(
 }
 
 // TODO: Document why this works for all Montgomery factors.
-pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
+pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Mont<M>) -> Elem<M, E> {
     limb::limbs_add_assign_mod(a.limbs.as_mut(), b.limbs.as_ref(), m.limbs())
         .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     a
 }
 
 // TODO: Document why this works for all Montgomery factors.
-pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
+pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Mont<M>) -> Elem<M, E> {
     prefixed_extern! {
         // `r` and `a` may alias.
         fn LIMBS_sub_mod(
@@ -290,7 +287,7 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem
 pub fn verify_inverses_consttime<M>(
     a: &Elem<M, R>,
     b: Elem<M, Unencoded>,
-    m: &Modulus<M>,
+    m: &Mont<M>,
 ) -> Result<(), error::Unspecified> {
     let r = elem_mul(a, b, m);
     limb::verify_limbs_equal_1_leak_bit(r.limbs.as_ref())
@@ -318,7 +315,7 @@ pub mod testutil {
     pub fn consume_elem<M>(
         test_case: &mut crate::testutil::TestCase,
         name: &str,
-        m: &Modulus<M>,
+        m: &Mont<M>,
     ) -> Elem<M, Unencoded> {
         let value = test_case.consume_bytes(name);
         m.alloc_uninit()

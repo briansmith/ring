@@ -611,12 +611,12 @@ impl KeyPair {
         let p_bits = self.p.modulus.value().len_bits();
         // The old `h` isn't used beyond this point, so its storage could be
         // reused.
-        let h = bigint::elem_widen(n.alloc_uninit(), h, n, p_bits)?;
+        let h = bigint::elem_widen(n.alloc_uninit(), &h, n, p_bits)?;
         let q_mod_n_storage = n.alloc_uninit();
         let q_mod_n = self.q.modulus.value().to_elem(q_mod_n_storage, n)?;
         let q_mod_n = bigint::elem_mul(n_one.as_ref(), q_mod_n, n);
         let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
-        let m_2 = bigint::elem_widen(n.alloc_uninit(), m_2, n, q_bits)?;
+        let m_2 = bigint::elem_widen(n.alloc_uninit(), &m_2, n, q_bits)?;
         let m = bigint::elem_add(m_2, q_times_h, n);
 
         // Step 2.b.v isn't needed since there are only two primes.

@@ -17,7 +17,7 @@ use super::{
         super::montgomery::{Unencoded, RR, RRR},
         Elem, One, PublicModulus, Uninit, N0,
     },
-    Modulus, Value,
+    Mont, Value,
 };
 use crate::{
     bits::BitLength,
@@ -120,15 +120,15 @@ impl<M, E> IntoMont<M, E> {
     pub fn to_elem<L>(
         &self,
         out: Uninit<L>,
-        l: &Modulus<L>,
+        l: &Mont<L>,
     ) -> Result<Elem<L, Unencoded>, error::Unspecified> {
         out.write_copy_of_slice_padded(self.value.limbs())
             .map_err(error::erase::<LenMismatchError>)
             .and_then(|out| Elem::from_limbs(out, l))
     }
 
-    pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Modulus<'_, M> {
-        Modulus::from_parts(&self.value, self.one.n0(), cpu_features)
+    pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Mont<'_, M> {
+        Mont::from_parts(&self.value, self.one.n0(), cpu_features)
     }
 
     pub fn len_bits(&self) -> BitLength {
