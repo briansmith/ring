@@ -93,7 +93,7 @@ impl<M> One<M, RR> {
         // The length of the numbers involved, in bits. R = 2**r.
         let r = w * LIMB_BITS;
 
-        let n0 = N0::calculate_from(m);
+        let n0 = m.calculate_n0();
         let m = &Mont::from_parts(m, &n0, cpu);
 
         let mut acc = out

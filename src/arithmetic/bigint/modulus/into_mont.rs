@@ -90,12 +90,10 @@ impl<M> Value<M> {
             One::newRR(out, &self, cpu).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
         IntoMont { value: self, one }
     }
-}
 
-impl N0 {
     #[allow(clippy::useless_conversion)]
-    pub(super) fn calculate_from<M>(value: &Value<M>) -> Self {
-        let m = value.limbs();
+    pub(super) fn calculate_n0(&self) -> N0 {
+        let m = self.limbs();
 
         // n_mod_r = n % r. As explained in the documentation for `n0`, this is
         // done by taking the lowest `N0::LIMBS_USED` limbs of `n`.
