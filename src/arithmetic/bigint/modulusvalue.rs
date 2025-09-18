@@ -132,4 +132,8 @@ impl<M> OwnedModulusValue<M> {
     pub(super) fn limbs(&self) -> &[Limb] {
         self.limbs.as_ref()
     }
+
+    pub fn alloc_uninit(&self) -> Uninit<M> {
+        Uninit::new_less_safe(self.limbs().len())
+    }
 }

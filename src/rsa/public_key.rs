@@ -18,8 +18,7 @@ use super::{
 };
 use crate::{
     arithmetic::bigint,
-    bits, cpu,
-    error::{self, LenMismatchError},
+    bits, cpu, error,
     io::{self, der, der_writer},
     limb::LIMB_BYTES,
 };
@@ -156,7 +155,7 @@ impl Inner {
         out_buffer: &'out mut [u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN],
         cpu_features: cpu::Features,
     ) -> Result<&'out [u8], error::Unspecified> {
-        let n = &self.n.value(cpu_features);
+        let n = &self.n.value().modulus(cpu_features);
 
         // The encoded value of the base must be the same length as the modulus,
         // in bytes.
@@ -194,11 +193,13 @@ impl Inner {
         // The exponent was already checked to be odd.
         debug_assert_ne!(exponent_without_low_bit, self.e.value());
 
-        let n = &self.n.value(cpu_features);
+        let n = &self.n.value();
+        let n_one = n.one();
+        let n = &n.modulus(cpu_features);
 
         let tmp = n.alloc_uninit();
-        let base_r = bigint::elem_mul_into(tmp, self.n.oneRR(), base, n)
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        let base_r =
+            bigint::elem_mul_into(tmp, n_one.as_ref(), base, n).unwrap_or_else(|_| unreachable!());
 
         // During RSA public key operations the exponent is almost always either
         // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
