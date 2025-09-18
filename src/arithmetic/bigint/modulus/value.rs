@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
+use super::super::{
     super::{MAX_LIMBS, MIN_LIMBS},
     BoxedLimbs, PublicModulus, Uninit,
 };
@@ -25,13 +25,13 @@ use crate::{
 };
 
 /// `OwnedModulus`, without the overhead of Montgomery multiplication support.
-pub(crate) struct OwnedModulusValue<M> {
+pub(crate) struct Value<M> {
     limbs: BoxedLimbs<M>, // Also `value >= 3`.
 
     len_bits: BitLength,
 }
 
-impl<M: PublicModulus> Clone for OwnedModulusValue<M> {
+impl<M: PublicModulus> Clone for Value<M> {
     fn clone(&self) -> Self {
         Self {
             limbs: self.limbs.clone(),
@@ -112,18 +112,18 @@ impl<'a> ValidatedInput<'a> {
         self.input
     }
 
-    pub(crate) fn build_value<M>(&self) -> OwnedModulusValue<M> {
+    pub(crate) fn build_value<M>(&self) -> Value<M> {
         let limbs = Uninit::new_less_safe(self.num_limbs)
             .write_from_be_byes_padded(self.input)
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
-        OwnedModulusValue {
+        Value {
             limbs,
             len_bits: self.len_bits,
         }
     }
 }
 
-impl<M> OwnedModulusValue<M> {
+impl<M> Value<M> {
     pub fn len_bits(&self) -> BitLength {
         self.len_bits
     }
