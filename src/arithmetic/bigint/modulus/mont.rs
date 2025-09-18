@@ -12,8 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
+use super::super::{
     super::montgomery::{Unencoded, RR, RRR},
+    modulus::value::Value,
     Elem, One, PublicModulus, Uninit, N0,
 };
 use crate::{
@@ -25,39 +26,37 @@ use crate::{
 };
 use core::{marker::PhantomData, num::NonZeroUsize};
 
-pub(crate) use super::modulusvalue::{OwnedModulusValue, ValidatedInput};
-
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
 /// the modular inversion code.
 pub struct IntoMont<M, E> {
-    inner: OwnedModulusValue<M>,
+    value: Value<M>,
     one: One<M, E>,
 }
 
 impl<M: PublicModulus, E> Clone for IntoMont<M, E> {
     fn clone(&self) -> Self {
-        let zero = self.inner.alloc_uninit();
+        let one_out = self.value.alloc_uninit();
         Self {
-            inner: self.inner.clone(),
-            one: self.one.clone_into(zero),
+            value: self.value.clone(),
+            one: self.one.clone_into(one_out),
         }
     }
 }
 
-impl<M> OwnedModulusValue<M> {
+impl<M> Value<M> {
     pub fn into_into_mont(self, cpu: cpu::Features) -> IntoMont<M, RR> {
         let out = self.alloc_uninit();
         let one =
             One::newRR(out, &self, cpu).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
-        IntoMont { inner: self, one }
+        IntoMont { value: self, one }
     }
 }
 
 impl N0 {
     #[allow(clippy::useless_conversion)]
-    pub(super) fn calculate_from<M>(value: &OwnedModulusValue<M>) -> Self {
+    pub(super) fn calculate_from<M>(value: &Value<M>) -> Self {
         let m = value.limbs();
 
         // n_mod_r = n % r. As explained in the documentation for `n0`, this is
@@ -73,7 +72,7 @@ impl N0 {
             // XXX: If we use `<< LIMB_BITS` here then 64-bit builds
             // fail to compile because of `deny(exceeding_bitshifts)`.
             debug_assert_eq!(LIMB_BITS, 32);
-            n_mod_r |= u64::from(m[1]) << 32;
+            n_mod_r |= u64::from(value.limbs()[1]) << 32;
         }
         N0::precalculated(unsafe { bn_neg_inv_mod_r_u64(n_mod_r) })
     }
@@ -85,35 +84,35 @@ impl<M, E> IntoMont<M, E> {
         out: Uninit<L>,
         l: &Modulus<L>,
     ) -> Result<Elem<L, Unencoded>, error::Unspecified> {
-        out.write_copy_of_slice_padded(self.inner.limbs())
+        out.write_copy_of_slice_padded(self.value.limbs())
             .map_err(error::erase::<LenMismatchError>)
             .and_then(|out| Elem::from_limbs(out, l))
     }
 
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Modulus<'_, M> {
-        Modulus::from_parts_unchecked_less_safe(&self.inner, self.one.n0(), cpu_features)
+        Modulus::from_parts_unchecked_less_safe(&self.value, self.one.n0(), cpu_features)
+    }
+
+    pub(crate) fn one(&self) -> &One<M, E> {
+        &self.one
     }
 
     pub fn len_bits(&self) -> BitLength {
-        self.inner.len_bits()
-    }
-
-    pub fn one(&self) -> &One<M, E> {
-        &self.one
+        self.value.len_bits()
     }
 }
 
 impl<M> IntoMont<M, RR> {
     pub(crate) fn intoRRR(self, cpu: cpu::Features) -> IntoMont<M, RRR> {
-        let Self { inner, one } = self;
-        let one = One::newRRR(one, &inner, cpu);
-        IntoMont { inner, one }
+        let Self { value, one } = self;
+        let one = One::newRRR(one, &value, cpu);
+        IntoMont { value, one }
     }
 }
 
 impl<M: PublicModulus, E> IntoMont<M, E> {
     pub fn be_bytes(&self) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + '_> {
-        LeadingZerosStripped::new(limb::unstripped_be_bytes(self.inner.limbs()))
+        LeadingZerosStripped::new(limb::unstripped_be_bytes(self.value.limbs()))
     }
 }
 
@@ -127,7 +126,7 @@ pub struct Modulus<'a, M> {
 
 impl<'a, M> Modulus<'a, M> {
     pub(super) fn from_parts_unchecked_less_safe(
-        value: &'a OwnedModulusValue<M>,
+        value: &'a Value<M>,
         n0: &'a N0,
         cpu: cpu::Features,
     ) -> Self {
@@ -147,12 +146,12 @@ impl<M> Modulus<'_, M> {
     }
 
     #[inline]
-    pub(super) fn limbs(&self) -> &[Limb] {
+    pub(in super::super) fn limbs(&self) -> &[Limb] {
         self.limbs
     }
 
     #[inline]
-    pub(super) fn n0(&self) -> &N0 {
+    pub(in super::super) fn n0(&self) -> &N0 {
         self.n0
     }
 
@@ -167,24 +166,5 @@ impl<M> Modulus<'_, M> {
     #[inline]
     pub(crate) fn cpu_features(&self) -> cpu::Features {
         self.cpu_features
-    }
-}
-
-#[cfg(test)]
-pub mod testutil {
-    use super::*;
-    use crate::cpu;
-    use crate::error::KeyRejected;
-
-    pub fn consume_modulus<M>(
-        test_case: &mut crate::testutil::TestCase,
-        name: &str,
-    ) -> IntoMont<M, RR> {
-        let value = test_case.consume_bytes(name);
-        ValidatedInput::try_from_be_bytes(value.as_slice().into())
-            .map_err(error::erase::<KeyRejected>)
-            .unwrap()
-            .build_value()
-            .into_into_mont(cpu::features())
     }
 }
