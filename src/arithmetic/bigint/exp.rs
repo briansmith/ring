@@ -12,30 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Multi-precision integers.
-//!
-//! # Modular Arithmetic.
-//!
-//! Modular arithmetic is done in finite commutative rings ℤ/mℤ for some
-//! modulus *m*. We work in finite commutative rings instead of finite fields
-//! because the RSA public modulus *n* is not prime, which means ℤ/nℤ contains
-//! nonzero elements that have no multiplicative inverse, so ℤ/nℤ is not a
-//! finite field.
-//!
-//! In some calculations we need to deal with multiple rings at once. For
-//! example, RSA private key operations operate in the rings ℤ/nℤ, ℤ/pℤ, and
-//! ℤ/qℤ. Types and functions dealing with such rings are all parameterized
-//! over a type `M` to ensure that we don't wrongly mix up the math, e.g. by
-//! multiplying an element of ℤ/pℤ by an element of ℤ/qℤ modulo q. This follows
-//! the "unit" pattern described in [Static checking of units in Servo].
-//!
-//! `Elem` also uses the static unit checking pattern to statically track the
-//! Montgomery factors that need to be canceled out in each value using it's
-//! `E` parameter.
-//!
-//! [Static checking of units in Servo]:
-//!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
-
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
@@ -161,7 +137,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                     (
                         uninit,
                         base_rinverse.leak_limbs_less_safe(),
-                        oneRRR.as_ref().leak_limbs_less_safe(),
+                        oneRRR.as_elem().leak_limbs_less_safe(),
                     ),
                     m.limbs(),
                     m.n0(),
@@ -254,7 +230,9 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .ok_or_else(|| LenMismatchError::new(m_len))?
         .len();
 
-    let oneRRR = oneRRR.as_ref().leak_limbs_less_safe();
+    let oneRRR = &oneRRR.as_elem().leak_limbs_less_safe();
+    let _: &[_] = as_chunks_exact::<_, { limbs512::LIMBS_PER_CHUNK }>(oneRRR.as_ref())
+        .ok_or_else(|| LimbSliceError::len_mismatch(LenMismatchError::new(oneRRR.len())))?;
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.

@@ -132,11 +132,8 @@ mod tests {
                 let m_owned = consume_modulus::<M>(test_case, "M");
                 let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModMul", &m);
-                let a = consume_elem(test_case, "A", &m);
-                let b = consume_elem(test_case, "B", &m);
-
-                let b = into_encoded(b, &m_owned);
-                let a = into_encoded(a, &m_owned);
+                let a = consume_elem(test_case, "A", &m).into_mont(&m_owned, &m);
+                let b = consume_elem(test_case, "B", &m).into_mont(&m_owned, &m);
                 let actual_result = elem_mul(&a, b, &m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
@@ -157,9 +154,7 @@ mod tests {
                 let m_owned = consume_modulus::<M>(test_case, "M");
                 let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModSquare", &m);
-                let a = consume_elem(test_case, "A", &m);
-
-                let a = into_encoded(a, &m_owned);
+                let a = consume_elem(test_case, "A", &m).into_mont(&m_owned, &m);
                 let actual_result = elem_squared(a, &m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
@@ -186,8 +181,8 @@ mod tests {
                     consume_elem_unchecked::<M>(test_case, "A", expected_result.num_limbs() * 2);
                 let other_modulus_len_bits = m_.len_bits();
 
-                let actual_result = elem_reduced(m.alloc_uninit(), &a, &m, other_modulus_len_bits);
-                let actual_result = elem_mul(m_.one().as_ref(), actual_result, &m);
+                let actual_result = elem_reduced(m.alloc_uninit(), &a, &m, other_modulus_len_bits)
+                    .into_mont(&m_, &m);
                 assert_elem_eq(&actual_result, &expected_result);
 
                 Ok(())

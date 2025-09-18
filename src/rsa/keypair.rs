@@ -333,23 +333,22 @@ impl KeyPair {
         let public_key = PublicKey::new(public_key, cpu_features)?;
 
         let n = public_key.inner().n().value();
-        let n_one = n.one();
-        let n = &n.modulus(cpu_features);
+        let nm = &n.modulus(cpu_features);
 
         let q = q.build(cpu_features);
-        let q_mod_n_storage = n.alloc_uninit();
+        let q_mod_n_storage = nm.alloc_uninit();
         let q_mod_n = q
             .value()
-            .to_elem(q_mod_n_storage, n)
+            .to_elem(q_mod_n_storage, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
         let p = p.build(cpu_features);
-        let p_mod_n_storage = n.alloc_uninit();
+        let p_mod_n_storage = nm.alloc_uninit();
         let p_mod_n = p
             .value()
-            .to_elem(p_mod_n_storage, n)
-            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
-        let p_mod_n = bigint::elem_mul(n_one.as_ref(), p_mod_n, n);
-        let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, n);
+            .to_elem(p_mod_n_storage, nm)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
+            .into_mont(n, nm);
+        let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, nm);
         if !pq_mod_n.is_zero() {
             return Err(KeyRejected::inconsistent_components());
         }
@@ -359,9 +358,9 @@ impl KeyPair {
         // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we don't have
         // a good way of calculating LCM, so just check the less strict condition
         // that `d < n`.
-        let _d = n
+        let _d = nm
             .alloc_uninit()
-            .into_elem_from_be_bytes_padded(d, n)
+            .into_elem_from_be_bytes_padded(d, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // Step 6.b is omitted as explained above.
@@ -375,17 +374,16 @@ impl KeyPair {
         let qInv = pm
             .alloc_uninit()
             .into_elem_from_be_bytes_padded(qInv, pm)
-            .map_err(|error::Unspecified| KeyRejected::invalid_component())?;
+            .map_err(|error::Unspecified| KeyRejected::invalid_component())?
+            .into_mont(p.value(), pm);
 
         // Steps 7.d and 7.e are omitted per the documentation above, and
         // because we don't (in the long term) have a good way to do modulo
         // with an even modulus.
 
         // Step 7.f.
-        let p_oneRR = p.value().one().as_ref();
-        let qInv = bigint::elem_mul(p_oneRR, qInv, pm);
-        let q_mod_p = bigint::elem_reduced(pm.alloc_uninit(), &q_mod_n, pm, q.value().len_bits());
-        let q_mod_p = bigint::elem_mul(p_oneRR, q_mod_p, pm);
+        let q_mod_p = bigint::elem_reduced(pm.alloc_uninit(), &q_mod_n, pm, q.value().len_bits())
+            .into_mont(p.value(), pm);
         bigint::verify_inverses_consttime(&qInv, q_mod_p, pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
@@ -580,11 +578,10 @@ impl KeyPair {
         // with Garner's algorithm.
 
         let n = &self.public.inner().n().value();
-        let n_one = n.one();
-        let n = &n.modulus(cpu_features);
+        let nm = &n.modulus(cpu_features);
 
         // Step 1. The value zero is also rejected.
-        let base = n.alloc_uninit().into_elem_from_be_bytes_padded(base, n)?;
+        let base = nm.alloc_uninit().into_elem_from_be_bytes_padded(base, nm)?;
 
         // Step 2
         let c = base;
@@ -611,13 +608,19 @@ impl KeyPair {
         let p_bits = self.p.modulus.value().len_bits();
         // The old `h` isn't used beyond this point, so its storage could be
         // reused.
-        let h = bigint::elem_widen(n.alloc_uninit(), &h, n, p_bits)?;
-        let q_mod_n_storage = n.alloc_uninit();
-        let q_mod_n = self.q.modulus.value().to_elem(q_mod_n_storage, n)?;
-        let q_mod_n = bigint::elem_mul(n_one.as_ref(), q_mod_n, n);
-        let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
-        let m_2 = bigint::elem_widen(n.alloc_uninit(), &m_2, n, q_bits)?;
-        let m = bigint::elem_add(m_2, q_times_h, n);
+        let h = bigint::elem_widen(nm.alloc_uninit(), &h, nm, p_bits)?;
+        let q_mod_n_storage = nm.alloc_uninit();
+        let q_mod_n = self
+            .q
+            .modulus
+            .value()
+            .to_elem(q_mod_n_storage, nm)?
+            .into_mont(n, nm);
+        let q_times_h = bigint::elem_mul(&q_mod_n, h, nm);
+        // The old `m_2` isn't used beyond this point, so its storage could be
+        // reused.
+        let m_2 = bigint::elem_widen(nm.alloc_uninit(), &m_2, nm, q_bits)?;
+        let m = bigint::elem_add(m_2, q_times_h, nm);
 
         // Step 2.b.v isn't needed since there are only two primes.
 
@@ -630,7 +633,7 @@ impl KeyPair {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = n.alloc_uninit();
+            let verify = nm.alloc_uninit();
             let verify = self
                 .public
                 .inner()

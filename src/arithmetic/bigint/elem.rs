@@ -308,9 +308,7 @@ pub fn elem_verify_equal_consttime<M, E>(
 
 #[cfg(test)]
 pub mod testutil {
-    use super::super::modulus;
     use super::*;
-    use crate::cpu;
 
     pub fn consume_elem<M>(
         test_case: &mut crate::testutil::TestCase,
@@ -339,11 +337,5 @@ pub mod testutil {
         if elem_verify_equal_consttime(a, b).is_err() {
             panic!("{:x?} != {:x?}", a.limbs.as_ref(), b.limbs.as_ref());
         }
-    }
-
-    pub fn into_encoded<M>(a: Elem<M, Unencoded>, m: &modulus::IntoMont<M, RR>) -> Elem<M, R> {
-        let oneRR = m.one();
-        let m = &m.modulus(cpu::features());
-        elem_mul(oneRR.as_ref(), a, m)
     }
 }

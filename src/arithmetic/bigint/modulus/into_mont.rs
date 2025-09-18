@@ -14,8 +14,9 @@
 
 use super::{
     super::{
-        super::montgomery::{Unencoded, RR, RRR},
-        Elem, Mont, PublicModulus, Uninit, N0,
+        super::montgomery::{ProductEncoding, Unencoded, RR, RRR},
+        elem_mul, elem_mul_into, unwrap_impossible_len_mismatch_error, Elem, Mont, PublicModulus,
+        Uninit, N0,
     },
     value::Value,
     One, ValidatedInput,
@@ -85,7 +86,7 @@ impl<M: PublicModulus, E> Clone for IntoMont<M, E> {
 }
 
 impl ValidatedInput<'_> {
-    pub fn to_into_mont<M>(&self, cpu: cpu::Features) -> IntoMont<M, RR> {
+    pub(crate) fn to_into_mont<M>(&self, cpu: cpu::Features) -> IntoMont<M, RR> {
         let value = self.build_value();
         let out = value.alloc_uninit();
         let one =
@@ -153,5 +154,31 @@ impl<M> IntoMont<M, RR> {
 impl<M: PublicModulus, E> IntoMont<M, E> {
     pub fn be_bytes(&self) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + '_> {
         LeadingZerosStripped::new(limb::unstripped_be_bytes(self.value.limbs()))
+    }
+}
+
+impl<M, EE> Elem<M, EE> {
+    pub fn to_mont<ME>(
+        &self,
+        out: Uninit<M>,
+        im: &IntoMont<M, ME>,
+        m: &Mont<M>,
+    ) -> Elem<M, <(ME, EE) as ProductEncoding>::Output>
+    where
+        (ME, EE): ProductEncoding,
+    {
+        elem_mul_into(out, im.one.as_elem(), self, m)
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error)
+    }
+
+    pub fn into_mont<ME>(
+        self,
+        im: &IntoMont<M, ME>,
+        m: &Mont<M>,
+    ) -> Elem<M, <(ME, EE) as ProductEncoding>::Output>
+    where
+        (ME, EE): ProductEncoding,
+    {
+        elem_mul(im.one.as_elem(), self, m)
     }
 }
