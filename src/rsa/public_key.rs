@@ -197,7 +197,7 @@ impl Inner {
         let nm = &n.modulus(cpu_features);
 
         let tmp = nm.alloc_uninit();
-        let base_r = base.to_mont(tmp, n, nm);
+        let base_r = base.to_mont(n, nm, tmp);
 
         // During RSA public key operations the exponent is almost always either
         // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming

@@ -160,9 +160,9 @@ impl<M: PublicModulus, E> IntoMont<M, E> {
 impl<M, EE> Elem<M, EE> {
     pub fn to_mont<ME>(
         &self,
-        out: Uninit<M>,
         im: &IntoMont<M, ME>,
         m: &Mont<M>,
+        out: Uninit<M>,
     ) -> Elem<M, <(ME, EE) as ProductEncoding>::Output>
     where
         (ME, EE): ProductEncoding,
