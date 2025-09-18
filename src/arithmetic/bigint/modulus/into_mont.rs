@@ -31,7 +31,7 @@ use crate::{
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
 /// the modular inversion code.
-pub struct OwnedModulus<M, E> {
+pub struct IntoMont<M, E> {
     value: Value<M>,
 
     // n0 * N == -1 (mod r).
@@ -73,7 +73,7 @@ pub struct OwnedModulus<M, E> {
     one: One<M, E>,
 }
 
-impl<M: PublicModulus, E> Clone for OwnedModulus<M, E> {
+impl<M: PublicModulus, E> Clone for IntoMont<M, E> {
     fn clone(&self) -> Self {
         let zero = self.value.alloc_uninit();
         Self {
@@ -84,11 +84,11 @@ impl<M: PublicModulus, E> Clone for OwnedModulus<M, E> {
 }
 
 impl<M> Value<M> {
-    pub fn into_modulus(self, cpu: cpu::Features) -> OwnedModulus<M, RR> {
+    pub fn into_modulus(self, cpu: cpu::Features) -> IntoMont<M, RR> {
         let out = self.alloc_uninit();
         let one =
             One::newRR(out, &self, cpu).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
-        OwnedModulus { value: self, one }
+        IntoMont { value: self, one }
     }
 }
 
@@ -116,7 +116,7 @@ impl N0 {
     }
 }
 
-impl<M, E> OwnedModulus<M, E> {
+impl<M, E> IntoMont<M, E> {
     pub fn to_elem<L>(
         &self,
         out: Uninit<L>,
@@ -140,15 +140,15 @@ impl<M, E> OwnedModulus<M, E> {
     }
 }
 
-impl<M> OwnedModulus<M, RR> {
-    pub(crate) fn into_rrr(self, cpu: cpu::Features) -> OwnedModulus<M, RRR> {
+impl<M> IntoMont<M, RR> {
+    pub(crate) fn into_rrr(self, cpu: cpu::Features) -> IntoMont<M, RRR> {
         let Self { value, one } = self;
         let one = One::newRRR(one, &value, cpu);
-        OwnedModulus { value, one }
+        IntoMont { value, one }
     }
 }
 
-impl<M: PublicModulus, E> OwnedModulus<M, E> {
+impl<M: PublicModulus, E> IntoMont<M, E> {
     pub fn be_bytes(&self) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + '_> {
         LeadingZerosStripped::new(limb::unstripped_be_bytes(self.value.limbs()))
     }

@@ -344,7 +344,7 @@ pub mod testutil {
         }
     }
 
-    pub fn into_encoded<M>(a: Elem<M, Unencoded>, m: &modulus::OwnedModulus<M, RR>) -> Elem<M, R> {
+    pub fn into_encoded<M>(a: Elem<M, Unencoded>, m: &modulus::IntoMont<M, RR>) -> Elem<M, R> {
         let oneRR = m.one();
         let m = &m.modulus(cpu::features());
         elem_mul(oneRR.as_ref(), a, m)

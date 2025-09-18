@@ -26,7 +26,7 @@ pub struct ValidatedInput<'a> {
 }
 
 pub struct Modulus<M, E> {
-    value: modulus::OwnedModulus<M, E>,
+    value: modulus::IntoMont<M, E>,
 }
 
 impl<'a> modulus::ValidatedInput<'a> {
@@ -52,7 +52,7 @@ impl ValidatedInput<'_> {
 }
 
 impl<M, E> Modulus<M, E> {
-    pub(crate) fn value(&self) -> &modulus::OwnedModulus<M, E> {
+    pub(crate) fn value(&self) -> &modulus::IntoMont<M, E> {
         &self.value
     }
 }

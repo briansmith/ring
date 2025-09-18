@@ -10,7 +10,7 @@ use core::ops::RangeInclusive;
 /// The modulus (n) of an RSA public key.
 #[derive(Clone)]
 pub struct PublicModulus {
-    value: bigint::OwnedModulus<N, RR>,
+    value: bigint::IntoMont<N, RR>,
 }
 
 /*
@@ -87,7 +87,7 @@ impl PublicModulus {
         self.value.len_bits()
     }
 
-    pub(super) fn value(&self) -> &bigint::OwnedModulus<N, RR> {
+    pub(super) fn value(&self) -> &bigint::IntoMont<N, RR> {
         &self.value
     }
 }
