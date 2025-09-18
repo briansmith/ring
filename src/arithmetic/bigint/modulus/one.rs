@@ -19,7 +19,7 @@ use super::{
     super::{
         super::montgomery::{N0, R, RR, RRR},
         elem::{elem_double, elem_squared},
-        Elem, Limb, PublicModulus, Uninit,
+        Elem, PublicModulus, Uninit,
     },
     value::Value,
     Mont,
@@ -27,7 +27,7 @@ use super::{
 use crate::{
     cpu,
     error::LenMismatchError,
-    limb::{self, LIMB_BITS},
+    limb::{self, Limb, LIMB_BITS},
     polyfill,
 };
 use core::mem::size_of;
