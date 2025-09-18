@@ -94,7 +94,7 @@ impl<M> One<M, RR> {
         let r = w * LIMB_BITS;
 
         let n0 = m.calculate_n0();
-        let m = &Mont::from_parts(m, &n0, cpu);
+        let m = &Mont::from_parts_unchecked_less_safe(m, &n0, cpu);
 
         let mut acc = out
             .write_fully_with(|out| One::fillR(out, m))
@@ -166,7 +166,7 @@ impl<M> One<M, RRR> {
         m: &modulus::Value<M>,
         cpu: cpu::Features,
     ) -> Self {
-        let m = &Mont::from_parts(m, &n0, cpu);
+        let m = &Mont::from_parts_unchecked_less_safe(m, &n0, cpu);
         let value = elem_squared(value, m);
         Self { value, n0 }
     }

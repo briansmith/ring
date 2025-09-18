@@ -28,7 +28,11 @@ pub struct Mont<'a, M> {
 }
 
 impl<'a, M> Mont<'a, M> {
-    pub(super) fn from_parts(value: &'a Value<M>, n0: &'a N0, cpu: cpu::Features) -> Self {
+    pub(super) fn from_parts_unchecked_less_safe(
+        value: &'a Value<M>,
+        n0: &'a N0,
+        cpu: cpu::Features,
+    ) -> Self {
         Mont {
             limbs: value.limbs(),
             n0,

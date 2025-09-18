@@ -126,7 +126,7 @@ impl<M, E> IntoMont<M, E> {
     }
 
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Mont<'_, M> {
-        Mont::from_parts(&self.value, self.one.n0(), cpu_features)
+        Mont::from_parts_unchecked_less_safe(&self.value, self.one.n0(), cpu_features)
     }
 
     pub fn len_bits(&self) -> BitLength {
