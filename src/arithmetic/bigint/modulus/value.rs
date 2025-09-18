@@ -129,7 +129,7 @@ impl<M> Value<M> {
     }
 
     #[inline]
-    pub(in super::super) fn limbs(&self) -> &[Limb] {
+    pub(super) fn limbs(&self) -> &[Limb] {
         self.limbs.as_ref()
     }
 

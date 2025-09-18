@@ -94,7 +94,7 @@ impl<M> Value<M> {
 
 impl N0 {
     #[allow(clippy::useless_conversion)]
-    pub(in super::super) fn calculate_from<M>(value: &Value<M>) -> Self {
+    pub(super) fn calculate_from<M>(value: &Value<M>) -> Self {
         let m = value.limbs();
 
         // n_mod_r = n % r. As explained in the documentation for `n0`, this is
