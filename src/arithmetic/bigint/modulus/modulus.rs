@@ -12,8 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
+use super::super::{
     super::montgomery::{Unencoded, RR, RRR},
+    modulus::value::Value,
     Elem, One, PublicModulus, Uninit, N0,
 };
 use crate::{
@@ -25,14 +26,12 @@ use crate::{
 };
 use core::{marker::PhantomData, num::NonZeroUsize};
 
-pub(crate) use super::modulusvalue::{OwnedModulusValue, ValidatedInput};
-
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
 /// the modular inversion code.
 pub struct OwnedModulus<M, E> {
-    value: OwnedModulusValue<M>,
+    value: Value<M>,
 
     // n0 * N == -1 (mod r).
     //
@@ -83,7 +82,7 @@ impl<M: PublicModulus, E> Clone for OwnedModulus<M, E> {
     }
 }
 
-impl<M> OwnedModulusValue<M> {
+impl<M> Value<M> {
     pub fn into_modulus(self, cpu: cpu::Features) -> OwnedModulus<M, RR> {
         let out = self.alloc_uninit();
         let one =
@@ -94,7 +93,7 @@ impl<M> OwnedModulusValue<M> {
 
 impl N0 {
     #[allow(clippy::useless_conversion)]
-    pub(super) fn calculate_from<M>(value: &OwnedModulusValue<M>) -> Self {
+    pub(in super::super) fn calculate_from<M>(value: &Value<M>) -> Self {
         let m = value.limbs();
 
         // n_mod_r = n % r. As explained in the documentation for `n0`, this is
@@ -141,7 +140,7 @@ impl<M, E> OwnedModulus<M, E> {
 }
 
 impl<M> OwnedModulus<M, RR> {
-    pub fn into_rrr(self, cpu: cpu::Features) -> OwnedModulus<M, RRR> {
+    pub(crate) fn into_rrr(self, cpu: cpu::Features) -> OwnedModulus<M, RRR> {
         let Self { value, one } = self;
         let one = One::newRRR(one, &value, cpu);
         OwnedModulus { value, one }
@@ -163,11 +162,7 @@ pub struct Modulus<'a, M> {
 }
 
 impl<'a, M> Modulus<'a, M> {
-    pub(super) fn from_parts(
-        value: &'a OwnedModulusValue<M>,
-        n0: &'a N0,
-        cpu: cpu::Features,
-    ) -> Self {
+    pub(super) fn from_parts(value: &'a Value<M>, n0: &'a N0, cpu: cpu::Features) -> Self {
         Modulus {
             limbs: value.limbs(),
             n0,
@@ -184,12 +179,12 @@ impl<M> Modulus<'_, M> {
     }
 
     #[inline]
-    pub(super) fn limbs(&self) -> &[Limb] {
+    pub(in super::super) fn limbs(&self) -> &[Limb] {
         self.limbs
     }
 
     #[inline]
-    pub(super) fn n0(&self) -> &N0 {
+    pub(in super::super) fn n0(&self) -> &N0 {
         self.n0
     }
 
@@ -204,24 +199,5 @@ impl<M> Modulus<'_, M> {
     #[inline]
     pub(crate) fn cpu_features(&self) -> cpu::Features {
         self.cpu_features
-    }
-}
-
-#[cfg(test)]
-pub mod testutil {
-    use super::*;
-    use crate::cpu;
-    use crate::error::KeyRejected;
-
-    pub fn consume_modulus<M>(
-        test_case: &mut crate::testutil::TestCase,
-        name: &str,
-    ) -> OwnedModulus<M, RR> {
-        let value = test_case.consume_bytes(name);
-        ValidatedInput::try_from_be_bytes(value.as_slice().into())
-            .map_err(error::erase::<KeyRejected>)
-            .unwrap()
-            .build_value()
-            .into_modulus(cpu::features())
     }
 }

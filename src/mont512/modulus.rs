@@ -40,7 +40,7 @@ impl<'a> modulus::ValidatedInput<'a> {
 }
 
 impl ValidatedInput<'_> {
-    pub fn build<M>(self, cpu: cpu::Features) -> Modulus<M, RR> {
+    pub(crate) fn build<M>(self, cpu: cpu::Features) -> Modulus<M, RR> {
         // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
         // TODO: Step 5.h: Verify GCD(q - 1, e) == 1.
 

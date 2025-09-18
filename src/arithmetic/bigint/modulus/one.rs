@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
+use super::super::{
     super::montgomery::{N0, R, RR, RRR},
     elem::{elem_double, elem_squared},
     modulus, Elem, Limb, Modulus, PublicModulus, Uninit,
@@ -38,7 +41,7 @@ impl<M, E> One<M, E> {
 }
 
 impl<M> One<M, R> {
-    pub(super) fn fillR<'r>(
+    pub(in super::super) fn fillR<'r>(
         out: polyfill::slice::Uninit<'r, Limb>,
         m: &Modulus<'_, M>,
     ) -> Result<&'r mut [Limb], LenMismatchError> {
@@ -81,7 +84,7 @@ impl<M> One<M, RR> {
     // `N0::LIMBS_USED` is either one or two.
     pub(crate) fn newRR(
         out: Uninit<M>,
-        m: &modulus::OwnedModulusValue<M>,
+        m: &modulus::Value<M>,
         cpu: cpu::Features,
     ) -> Result<Self, LenMismatchError> {
         // The number of limbs in the numbers involved.
@@ -160,7 +163,7 @@ impl<M> One<M, RR> {
 impl<M> One<M, RRR> {
     pub(crate) fn newRRR(
         One { value, n0 }: One<M, RR>,
-        m: &modulus::OwnedModulusValue<M>,
+        m: &modulus::Value<M>,
         cpu: cpu::Features,
     ) -> Self {
         let m = &Modulus::from_parts(m, &n0, cpu);

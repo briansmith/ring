@@ -57,7 +57,7 @@ use crate::{
 };
 use core::mem::MaybeUninit;
 
-pub fn elem_exp_consttime<N, P>(
+pub(crate) fn elem_exp_consttime<N, P>(
     base: &Elem<N>,
     exponent: &PrivateExponent,
     m: &mont512::modulus::Modulus<P, RRR>,

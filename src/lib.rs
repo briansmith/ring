@@ -55,6 +55,7 @@
     clippy::len_without_is_empty,
     clippy::let_unit_value,
     clippy::incompatible_msrv, // https://github.com/rust-lang/rust-clippy/issues/12280
+    clippy::module_inception,
     clippy::new_without_default,
     clippy::neg_cmp_op_on_partial_ord,
     clippy::too_many_arguments,
