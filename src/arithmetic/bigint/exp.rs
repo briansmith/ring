@@ -45,7 +45,9 @@ use super::{
         montgomery::{RInverse, Unencoded, RRR},
         LimbSliceError,
     },
-    elem_reduced, Elem, Mont, One, PrivateExponent, Uninit,
+    elem_reduced,
+    modulus::{Mont, One},
+    Elem, PrivateExponent, Uninit,
 };
 use crate::{
     bits::BitLength,

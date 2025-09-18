@@ -53,7 +53,7 @@ pub(crate) use {
             elem_sub, elem_verify_equal_consttime, elem_widen, verify_inverses_consttime, Elem,
         },
         exp::elem_exp_consttime,
-        modulus::{IntoMont, Mont, One},
+        modulus::{IntoMont, Mont},
         private_exponent::PrivateExponent,
     },
     super::exp_vartime::elem_exp_vartime,
