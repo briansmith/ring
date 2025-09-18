@@ -25,7 +25,7 @@ use crate::{
 };
 
 /// `OwnedModulus`, without the overhead of Montgomery multiplication support.
-pub(crate) struct Value<M> {
+pub struct Value<M> {
     limbs: BoxedLimbs<M>, // Also `value >= 3`.
 
     len_bits: BitLength,
