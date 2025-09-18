@@ -332,8 +332,9 @@ impl KeyPair {
         // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
         let public_key = PublicKey::new(public_key, cpu_features)?;
 
-        let n_one = public_key.inner().n().oneRR();
-        let n = &public_key.inner().n().value(cpu_features);
+        let n = public_key.inner().n().value();
+        let n_one = n.one();
+        let n = &n.modulus(cpu_features);
 
         let q = q.build(cpu_features);
         let q_mod_n_storage = n.alloc_uninit();
@@ -347,7 +348,7 @@ impl KeyPair {
             .value()
             .to_elem(p_mod_n_storage, n)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
-        let p_mod_n = bigint::elem_mul(n_one, p_mod_n, n);
+        let p_mod_n = bigint::elem_mul(n_one.as_ref(), p_mod_n, n);
         let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, n);
         if !pq_mod_n.is_zero() {
             return Err(KeyRejected::inconsistent_components());
@@ -381,7 +382,7 @@ impl KeyPair {
         // with an even modulus.
 
         // Step 7.f.
-        let p_oneRR = p.one().as_ref();
+        let p_oneRR = p.value().one().as_ref();
         let qInv = bigint::elem_mul(p_oneRR, qInv, pm);
         let q_mod_p = bigint::elem_reduced(pm.alloc_uninit(), &q_mod_n, pm, q.value().len_bits());
         let q_mod_p = bigint::elem_mul(p_oneRR, q_mod_p, pm);
@@ -578,8 +579,9 @@ impl KeyPair {
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
 
-        let n = &self.public.inner().n().value(cpu_features);
-        let n_one = self.public.inner().n().oneRR();
+        let n = &self.public.inner().n().value();
+        let n_one = n.one();
+        let n = &n.modulus(cpu_features);
 
         // Step 1. The value zero is also rejected.
         let base = n.alloc_uninit().into_elem_from_be_bytes_padded(base, n)?;
@@ -612,7 +614,7 @@ impl KeyPair {
         let h = bigint::elem_widen(n.alloc_uninit(), h, n, p_bits)?;
         let q_mod_n_storage = n.alloc_uninit();
         let q_mod_n = self.q.modulus.value().to_elem(q_mod_n_storage, n)?;
-        let q_mod_n = bigint::elem_mul(n_one, q_mod_n, n);
+        let q_mod_n = bigint::elem_mul(n_one.as_ref(), q_mod_n, n);
         let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
         let m_2 = bigint::elem_widen(n.alloc_uninit(), m_2, n, q_bits)?;
         let m = bigint::elem_add(m_2, q_times_h, n);

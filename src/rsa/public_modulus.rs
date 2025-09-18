@@ -2,30 +2,15 @@ use crate::{
     arithmetic::{bigint, montgomery::RR},
     bits::{self, FromByteLen as _},
     cpu,
-    error::{self, InputTooLongError, LenMismatchError},
+    error::{self, InputTooLongError},
     rsa::N,
 };
 use core::ops::RangeInclusive;
 
 /// The modulus (n) of an RSA public key.
+#[derive(Clone)]
 pub struct PublicModulus {
-    value: bigint::OwnedModulus<N>,
-    oneRR: bigint::One<N, RR>,
-}
-
-impl Clone for PublicModulus {
-    fn clone(&self) -> Self {
-        let PublicModulus { value, oneRR } = self;
-        let value = value.clone();
-
-        // XXX: Shouldn't really be needed just to call `alloc_zero()`,
-        // but not worth optimizing away.
-        let cpu = cpu::features();
-        let n = value.modulus(cpu);
-        let oneRR = oneRR.clone_into(n.alloc_uninit());
-
-        Self { value, oneRR }
-    }
+    value: bigint::OwnedModulus<N, RR>,
 }
 
 /*
@@ -84,13 +69,8 @@ impl<'a> ValidatedInput<'a> {
     }
 
     pub(super) fn build(&self, cpu_features: cpu::Features) -> PublicModulus {
-        let value = self.input.build_value().into_modulus();
-        let m = value.modulus(cpu_features);
-        let oneRR = m.alloc_uninit();
-        let oneRR =
-            bigint::One::newRR(oneRR, &m).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
-
-        PublicModulus { value, oneRR }
+        let value = self.input.build_value().into_modulus(cpu_features);
+        PublicModulus { value }
     }
 }
 
@@ -107,11 +87,7 @@ impl PublicModulus {
         self.value.len_bits()
     }
 
-    pub(super) fn value(&self, cpu_features: cpu::Features) -> bigint::Modulus<'_, N> {
-        self.value.modulus(cpu_features)
-    }
-
-    pub(super) fn oneRR(&self) -> &bigint::Elem<N, RR> {
-        self.oneRR.as_ref()
+    pub(super) fn value(&self) -> &bigint::OwnedModulus<N, RR> {
+        &self.value
     }
 }

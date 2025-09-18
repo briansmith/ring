@@ -13,19 +13,29 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    super::montgomery::{R, RR, RRR},
-    elem_double, elem_squared, Elem, Modulus, PublicModulus, Uninit,
+    super::montgomery::{N0, R, RR, RRR},
+    elem::{elem_double, elem_squared},
+    modulus, Elem, Limb, Modulus, PublicModulus, Uninit,
 };
 use crate::{
+    cpu,
     error::LenMismatchError,
-    limb,
-    limb::{Limb, LIMB_BITS},
+    limb::{self, LIMB_BITS},
     polyfill,
 };
 use core::mem::size_of;
 
 // The value 1, Montgomery-encoded some number of times.
-pub struct One<M, E>(Elem<M, E>);
+pub struct One<M, E> {
+    value: Elem<M, E>,
+    n0: N0,
+}
+
+impl<M, E> One<M, E> {
+    pub(super) fn n0(&self) -> &N0 {
+        &self.n0
+    }
+}
 
 impl<M> One<M, R> {
     pub(super) fn fillR<'r>(
@@ -69,12 +79,19 @@ impl<M> One<M, RR> {
     // values, using `LIMB_BITS` here, rather than `N0::LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0::LIMBS_USED` is either one or two.
-    pub(crate) fn newRR(out: Uninit<M>, m: &Modulus<M>) -> Result<Self, LenMismatchError> {
+    pub(crate) fn newRR(
+        out: Uninit<M>,
+        m: &modulus::OwnedModulusValue<M>,
+        cpu: cpu::Features,
+    ) -> Result<Self, LenMismatchError> {
         // The number of limbs in the numbers involved.
         let w = m.limbs().len();
 
         // The length of the numbers involved, in bits. R = 2**r.
         let r = w * LIMB_BITS;
+
+        let n0 = N0::calculate_from(m);
+        let m = &Modulus::from_parts(m, &n0, cpu);
 
         let mut acc = out
             .write_fully_with(|out| One::fillR(out, m))
@@ -133,24 +150,36 @@ impl<M> One<M, RR> {
             acc = elem_squared(acc, m);
         }
 
-        Ok(Self(acc.transmute_encoding_less_safe::<RR>()))
+        Ok(Self {
+            value: acc.transmute_encoding_less_safe::<RR>(),
+            n0,
+        })
     }
 }
 
 impl<M> One<M, RRR> {
-    pub(crate) fn newRRR(One(oneRR): One<M, RR>, m: &Modulus<M>) -> Self {
-        Self(elem_squared(oneRR, m))
+    pub(crate) fn newRRR(
+        One { value, n0 }: One<M, RR>,
+        m: &modulus::OwnedModulusValue<M>,
+        cpu: cpu::Features,
+    ) -> Self {
+        let m = &Modulus::from_parts(m, &n0, cpu);
+        let value = elem_squared(value, m);
+        Self { value, n0 }
     }
 }
 
 impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
     fn as_ref(&self) -> &Elem<M, E> {
-        &self.0
+        &self.value
     }
 }
 
 impl<M: PublicModulus, E> One<M, E> {
     pub fn clone_into(&self, out: Uninit<M>) -> Self {
-        Self(self.0.clone_into(out))
+        Self {
+            value: self.value.clone_into(out),
+            n0: self.n0,
+        }
     }
 }

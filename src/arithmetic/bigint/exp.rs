@@ -64,7 +64,7 @@ pub fn elem_exp_consttime<N, P>(
     other_prime_len_bits: BitLength,
     cpu: cpu::Features,
 ) -> Result<Elem<P, Unencoded>, LimbSliceError> {
-    let oneRRR = m.one();
+    let oneRRR = m.value().one();
     let m = &m.value().modulus(cpu);
     let out = m.alloc_uninit();
 
@@ -369,12 +369,9 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
 #[cfg(test)]
 mod tests {
-    use super::super::testutil::*;
+    use super::super::elem::testutil::*;
     use crate::testutil as test;
-    use crate::{
-        cpu,
-        error::{self, KeyRejected, LenMismatchError},
-    };
+    use crate::{cpu, error::KeyRejected};
     use {super::super::*, super::*};
 
     // Type-level representation of an arbitrary modulus.
@@ -394,8 +391,9 @@ mod tests {
                 let m_input =
                     modulus::ValidatedInput::try_from_be_bytes(untrusted::Input::from(&m_input))
                         .unwrap();
-                let m = m_input.build_value::<M>().into_modulus();
-                let m = m.modulus(cpu_features);
+                let m_owned = m_input.build_value::<M>().into_modulus(cpu_features);
+                let m_owned = m_owned.into_rrr(cpu_features);
+                let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModExp", &m);
                 let base = consume_elem(test_case, "A", &m);
                 let e = {
@@ -425,15 +423,10 @@ mod tests {
                         elem_exp_consttime(&base, &e, &m, other_modulus_len_bits, cpu_features)
                     }
                     Err(KeyRejected { .. }) => {
-                        let oneRR = m.alloc_uninit();
-                        let oneRR = One::newRR(oneRR, &m)
-                            .map_err(error::erase::<LenMismatchError>)
-                            .unwrap();
-                        let oneRRR = One::newRRR(oneRR, &m);
                         elem_exp_consttime_inner::<_, _, DEFAULT_STORAGE_LIMBS>(
                             m.alloc_uninit(),
                             &base,
-                            &oneRRR,
+                            m_owned.one(),
                             &e,
                             &m,
                             other_modulus_len_bits,
@@ -446,15 +439,10 @@ mod tests {
                     // TODO: Be more specific with which error we expect?
                     assert!(actual_result.is_err());
                     // Try again with a larger-than-normally-supported limit
-                    let oneRR = m.alloc_uninit();
-                    let oneRR = One::newRR(oneRR, &m)
-                        .map_err(error::erase::<LenMismatchError>)
-                        .unwrap();
-                    let oneRRR = One::newRRR(oneRR, &m);
                     elem_exp_consttime_inner::<_, _, { (4096 / LIMB_BITS) * STORAGE_ENTRIES }>(
                         m.alloc_uninit(),
                         &base,
-                        &oneRRR,
+                        m_owned.one(),
                         &e,
                         &m,
                         other_modulus_len_bits,

@@ -49,13 +49,11 @@ pub(crate) use {
     self::{
         boxed_limbs::Uninit,
         elem::{
-            elem_add, elem_double, elem_mul, elem_mul_into, elem_reduced, elem_reduced_once,
-            elem_squared, elem_sub, elem_verify_equal_consttime, elem_widen,
-            verify_inverses_consttime, Elem,
+            elem_add, elem_mul, elem_mul_into, elem_reduced, elem_reduced_once, elem_squared,
+            elem_sub, elem_verify_equal_consttime, elem_widen, verify_inverses_consttime, Elem,
         },
         exp::elem_exp_consttime,
         modulus::{Modulus, OwnedModulus},
-        modulusvalue::OwnedModulusValue,
         one::One,
         private_exponent::PrivateExponent,
     },
@@ -112,7 +110,8 @@ fn unwrap_impossible_limb_slice_error<T>(err: LimbSliceError) -> T {
 
 #[cfg(test)]
 mod tests {
-    use super::{testutil::*, *};
+    use super::*;
+    use super::{elem::testutil::*, modulus::testutil::*};
     use crate::cpu;
     use crate::testutil as test;
 
@@ -133,14 +132,14 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m = consume_modulus::<M>(test_case, "M");
-                let m = m.modulus(cpu_features);
+                let m_owned = consume_modulus::<M>(test_case, "M");
+                let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModMul", &m);
                 let a = consume_elem(test_case, "A", &m);
                 let b = consume_elem(test_case, "B", &m);
 
-                let b = into_encoded(m.alloc_uninit(), b, &m);
-                let a = into_encoded(m.alloc_uninit(), a, &m);
+                let b = into_encoded(b, &m_owned);
+                let a = into_encoded(a, &m_owned);
                 let actual_result = elem_mul(&a, b, &m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
@@ -158,12 +157,12 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m = consume_modulus::<M>(test_case, "M");
-                let m = m.modulus(cpu_features);
+                let m_owned = consume_modulus::<M>(test_case, "M");
+                let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModSquare", &m);
                 let a = consume_elem(test_case, "A", &m);
 
-                let a = into_encoded(m.alloc_uninit(), a, &m);
+                let a = into_encoded(a, &m_owned);
                 let actual_result = elem_squared(a, &m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
@@ -191,10 +190,7 @@ mod tests {
                 let other_modulus_len_bits = m_.len_bits();
 
                 let actual_result = elem_reduced(m.alloc_uninit(), &a, &m, other_modulus_len_bits);
-                let oneRR = One::newRR(m.alloc_uninit(), &m)
-                    .map_err(error::erase::<LenMismatchError>)
-                    .unwrap();
-                let actual_result = elem_mul(oneRR.as_ref(), actual_result, &m);
+                let actual_result = elem_mul(m_.one().as_ref(), actual_result, &m);
                 assert_elem_eq(&actual_result, &expected_result);
 
                 Ok(())
@@ -225,22 +221,5 @@ mod tests {
                 Ok(())
             },
         )
-    }
-}
-
-#[cfg(test)]
-mod testutil {
-    use super::*;
-    pub(crate) use elem::testutil::*;
-
-    pub fn consume_modulus<M>(
-        test_case: &mut crate::testutil::TestCase,
-        name: &str,
-    ) -> OwnedModulus<M> {
-        let value = test_case.consume_bytes(name);
-        modulus::ValidatedInput::try_from_be_bytes(untrusted::Input::from(&value))
-            .unwrap()
-            .build_value()
-            .into_modulus()
     }
 }

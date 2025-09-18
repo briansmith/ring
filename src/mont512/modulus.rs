@@ -12,10 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::error::LenMismatchError;
 use crate::{
     arithmetic::{
-        bigint::{modulus, One},
+        bigint::modulus,
         montgomery::{RR, RRR},
     },
     cpu,
@@ -27,8 +26,7 @@ pub struct ValidatedInput<'a> {
 }
 
 pub struct Modulus<M, E> {
-    value: modulus::OwnedModulus<M>,
-    one: One<M, E>,
+    value: modulus::OwnedModulus<M, E>,
 }
 
 impl<'a> modulus::ValidatedInput<'a> {
@@ -42,35 +40,27 @@ impl<'a> modulus::ValidatedInput<'a> {
 }
 
 impl ValidatedInput<'_> {
-    pub fn build<M>(self, cpu_features: cpu::Features) -> Modulus<M, RR> {
+    pub fn build<M>(self, cpu: cpu::Features) -> Modulus<M, RR> {
         // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
         // TODO: Step 5.h: Verify GCD(q - 1, e) == 1.
 
         // Steps 5.e and 5.f are omitted as explained above.
-        let p = self.value.build_value().into_modulus();
-        let pm = p.modulus(cpu_features);
-        let one = pm.alloc_uninit();
-        let one = One::newRR(one, &pm).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        let value = self.value.build_value().into_modulus(cpu);
 
-        Modulus { value: p, one }
+        Modulus { value }
     }
 }
 
 impl<M, E> Modulus<M, E> {
-    pub(crate) fn value(&self) -> &modulus::OwnedModulus<M> {
+    pub(crate) fn value(&self) -> &modulus::OwnedModulus<M, E> {
         &self.value
-    }
-
-    pub(crate) fn one(&self) -> &One<M, E> {
-        &self.one
     }
 }
 
 impl<M> Modulus<M, RR> {
     pub(crate) fn for_exponentiation(self, cpu: cpu::Features) -> Modulus<M, RRR> {
-        let Self { value, one } = self;
-        let m = &value.modulus(cpu);
-        let one = One::newRRR(one, m);
-        Modulus { value, one }
+        Modulus {
+            value: self.value.into_rrr(cpu),
+        }
     }
 }
