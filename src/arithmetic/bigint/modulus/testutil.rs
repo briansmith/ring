@@ -12,5 +12,5 @@ pub fn consume_modulus<M>(
         .map_err(error::erase::<KeyRejected>)
         .unwrap()
         .build_value()
-        .into_modulus(cpu::features())
+        .into_mont(cpu::features())
 }

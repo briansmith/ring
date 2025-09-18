@@ -15,9 +15,9 @@
 use super::{
     super::{
         super::montgomery::{Unencoded, RR, RRR},
-        Elem, One, PublicModulus, Uninit, N0,
+        Elem, Mont, One, PublicModulus, Uninit, N0,
     },
-    Mont, Value,
+    Value,
 };
 use crate::{
     bits::BitLength,
@@ -84,7 +84,7 @@ impl<M: PublicModulus, E> Clone for IntoMont<M, E> {
 }
 
 impl<M> Value<M> {
-    pub fn into_modulus(self, cpu: cpu::Features) -> IntoMont<M, RR> {
+    pub fn into_mont(self, cpu: cpu::Features) -> IntoMont<M, RR> {
         let out = self.alloc_uninit();
         let one =
             One::newRR(out, &self, cpu).unwrap_or_else(|LenMismatchError { .. }| unreachable!());

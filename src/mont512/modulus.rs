@@ -45,7 +45,7 @@ impl ValidatedInput<'_> {
         // TODO: Step 5.h: Verify GCD(q - 1, e) == 1.
 
         // Steps 5.e and 5.f are omitted as explained above.
-        let value = self.value.build_value().into_modulus(cpu);
+        let value = self.value.build_value().into_mont(cpu);
 
         Modulus { value }
     }
