@@ -284,6 +284,7 @@ const HURD: &str = "hurd";
 const ILLUMOS: &str = "illumos";
 const LINUX: &str = "linux";
 const NETBSD: &str = "netbsd";
+const NONE: &str = "none";
 const NTO: &str = "nto";
 const OPENBSD: &str = "openbsd";
 const REDOX: &str = "redox";
@@ -603,6 +604,12 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
     let _ = c.include(include_dir);
     for f in cpp_flags(&compiler) {
         let _ = c.flag(f);
+    }
+
+    if target.os == NONE {
+        let _ = c.flag("-ffreestanding");
+        let _ = c.flag("-nostdlib");
+        let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
     }
 
     if APPLE_ABI.contains(&target.os.as_str()) {
