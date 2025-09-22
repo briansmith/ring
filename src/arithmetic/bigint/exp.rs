@@ -49,10 +49,8 @@ use super::{
 };
 use crate::{
     bits::BitLength,
-    error,
     error::LenMismatchError,
     limb::{self, Limb, LIMB_BITS},
-    polyfill::sliceutil::as_chunks_exact,
     window5::Window5,
 };
 use core::mem::MaybeUninit;
@@ -99,23 +97,14 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         super::montgomery::{limbs_mul_mont, limbs_square_mont, R},
         elem_mul, elem_squared,
     };
-    use crate::{bssl, c, polyfill};
+    use crate::{bssl, c, error, polyfill::dynarray};
 
     let base_rinverse: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
 
-    let num_limbs = m.limbs().len();
-    let m_chunked = as_chunks_exact::<_, { limbs512::LIMBS_PER_CHUNK }>(m.limbs())
-        .ok_or_else(|| LenMismatchError::new(num_limbs))?;
-    let cpe = m_chunked.len(); // 512-bit chunks per entry.
-
-    // This code doesn't have the strict alignment requirements that the x86_64
-    // version does, but uses the same aligned storage for convenience.
-    assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
-    let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::uninit();
-    let table = table.aligned_chunks_mut(TABLE_ENTRIES, cpe)?;
-
-    // TODO: Rewrite the below in terms of `as_chunks`.
-    let table = table.as_flattened_mut();
+    let num_limbs = m.num_limbs();
+    if num_limbs.get() % limbs512::LIMBS_PER_CHUNK != 0 {
+        Err(LenMismatchError::new(num_limbs.get()))?
+    }
 
     fn gather<M>(table: &[Limb], acc: &mut Elem<M, R>, i: Window5) -> Result<(), LenMismatchError> {
         prefixed_extern! {
@@ -150,51 +139,48 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         Ok((acc, tmp))
     }
 
-    fn entry(table: &[Limb], i: usize, num_limbs: usize) -> &[Limb] {
-        &table[(i * num_limbs)..][..num_limbs]
-    }
-    fn entry_uninit(
-        table: &mut [MaybeUninit<Limb>],
-        i: usize,
-        num_limbs: usize,
-    ) -> polyfill::slice::Uninit<'_, Limb> {
-        polyfill::slice::Uninit::from(&mut table[(i * num_limbs)..][..num_limbs])
-    }
+    // TODO(MSRV): Use inline const: `[const { MaybeUniinit::uninit() }; ...]`.
+    let mut storage: [MaybeUninit<Limb>; STORAGE_LIMBS] =
+        unsafe { MaybeUninit::uninit().assume_init() };
+    let table = dynarray::Uninit::new(&mut storage, STORAGE_ENTRIES, num_limbs)?.init_fold(
+        |init, uninit| {
+            let r: Result<&mut [Limb], LimbSliceError> = match init.len() {
+                // table[0] = base**0 (i.e. 1).
+                0 => Ok(One::fillR(uninit, m)?),
 
-    // table[0] = base**0 (i.e. 1).
-    let _: &[Limb] = One::fillR(entry_uninit(table, 0, num_limbs), m)?;
+                // table[1] = base*R == (base/R * RRR)/R
+                1 => limbs_mul_mont(
+                    (
+                        uninit,
+                        base_rinverse.leak_limbs_less_safe(),
+                        oneRRR.as_ref().leak_limbs_less_safe(),
+                    ),
+                    m.limbs(),
+                    m.n0(),
+                    m.cpu_features(),
+                ),
 
-    // table[1] = base*R == (base/R * RRR)/R
-    let _: &[Limb] = limbs_mul_mont(
-        (
-            entry_uninit(table, 1, num_limbs),
-            base_rinverse.leak_limbs_less_safe(),
-            oneRRR.as_ref().leak_limbs_less_safe(),
-        ),
-        m.limbs(),
-        m.n0(),
-        m.cpu_features(),
+                // table[2*i] = (n**i)**2/R
+                i if i % 2 == 0 => {
+                    let sqrt = init.mid().unwrap_or_else(|| unreachable!());
+                    limbs_square_mont((uninit, sqrt), m.limbs(), m.n0(), m.cpu_features())
+                }
+
+                // table[i + 1] = n**1*n**i/R
+                _ => {
+                    let one = init.get(1).unwrap_or_else(|| unreachable!());
+                    let previous = init.last().unwrap_or_else(|| unreachable!());
+                    limbs_mul_mont((uninit, one, previous), m.limbs(), m.n0(), m.cpu_features())
+                }
+            };
+            r.map_err(|e| match e {
+                LimbSliceError::LenMismatch(e) => e, // Also unreachable.
+                LimbSliceError::TooLong(_) => unreachable!(),
+                LimbSliceError::TooShort(_) => unreachable!(),
+            })
+        },
     )?;
-    for i in 2..TABLE_ENTRIES {
-        let (square, src1, src2) = if i % 2 == 0 {
-            (true, i / 2, i / 2)
-        } else {
-            (false, i - 1, 1)
-        };
-        let (previous, rest) = table.split_at_mut(num_limbs * i);
-        let previous = polyfill::slice::Uninit::from(previous);
-        let previous = unsafe { previous.assume_init() };
-        let dst = entry_uninit(rest, 0, num_limbs);
-        let src1 = entry(previous, src1, num_limbs);
-        let _: &[Limb] = if square {
-            limbs_square_mont((dst, src1), m.limbs(), m.n0(), m.cpu_features())?
-        } else {
-            let src2 = entry(previous, src2, num_limbs);
-            limbs_mul_mont((dst, src1, src2), m.limbs(), m.n0(), m.cpu_features())?
-        };
-    }
-    let table = polyfill::slice::Uninit::from(table);
-    let table = unsafe { table.assume_init() };
+    let table: &[Limb] = table.as_flattened();
 
     // Recycle the storage; the value will get overwritten.
     let mut acc = base_rinverse.transmute_encoding_less_safe::<R>();
@@ -229,7 +215,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             limbs::x86_64::mont::{
                 gather5, mul_mont5, mul_mont_gather5_amm, power5_amm, sqr_mont5,
             },
-            limbs512::scatter5,
+            limbs512::scatter::scatter5,
             montgomery::N0,
         },
         elem::from_montgomery_amm,
@@ -240,7 +226,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             intel::{Adx, Bmi2},
             GetFeature as _,
         },
-        polyfill,
+        polyfill::{self, sliceutil::as_chunks_exact},
         window5::LeakyWindow5,
     };
 
@@ -249,7 +235,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let cpu2 = m.cpu_features().get_feature();
     let cpu3 = m.cpu_features().get_feature();
 
-    if base_mod_n.num_limbs() != m.limbs().len() * 2 {
+    let m_len = m.num_limbs();
+    if base_mod_n.num_limbs() != 2 * m_len.get() {
         Err(LenMismatchError::new(base_mod_n.num_limbs()))?;
     }
 
@@ -281,7 +268,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     const _STORAGE_ENTRIES_HAS_3_EXTRA: () = assert!(STORAGE_ENTRIES == TABLE_ENTRIES + 3);
 
     assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
-    let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::uninit();
+    let mut table = limbs512::storage::AlignedStorage::<STORAGE_LIMBS>::uninit();
     let table = table.aligned_chunks_mut(STORAGE_ENTRIES, cpe)?;
     let (table, state) = table.split_at_mut(TABLE_ENTRIES * cpe);
     assert_eq!((table.as_ptr() as usize) % MOD_EXP_CTIME_ALIGN, 0);

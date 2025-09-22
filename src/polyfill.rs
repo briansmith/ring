@@ -47,6 +47,7 @@ mod array_flat_map;
 mod array_split_map;
 mod atomic;
 mod boxed;
+pub mod dynarray;
 pub mod partial_buffer;
 pub mod sliceutil;
 

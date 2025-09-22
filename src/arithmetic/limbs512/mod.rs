@@ -12,11 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-mod scatter;
+use crate::limb::LIMB_BITS;
+use cfg_if::cfg_if;
 
-pub(super) mod storage;
+cfg_if! {
+    if #[cfg(target_arch = "x86_64")] {
+        pub(super) mod scatter;
+        pub(super) mod storage;
+    }
+}
 
-#[cfg(target_arch = "x86_64")]
-pub(super) use self::scatter::scatter5;
-pub(super) use self::storage::{AlignedStorage, LIMBS_PER_CHUNK};
+pub const LIMBS_PER_CHUNK: usize = 512 / LIMB_BITS;

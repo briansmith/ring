@@ -20,7 +20,7 @@ use crate::{
     limb::{self, Limb, LIMB_BITS},
     polyfill::LeadingZerosStripped,
 };
-use core::marker::PhantomData;
+use core::{marker::PhantomData, num::NonZeroUsize};
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
@@ -153,6 +153,10 @@ impl<M> Modulus<'_, M> {
     #[inline]
     pub(super) fn n0(&self) -> &N0 {
         &self.n0
+    }
+
+    pub fn num_limbs(&self) -> NonZeroUsize {
+        NonZeroUsize::new(self.limbs.len()).unwrap_or_else(|| unreachable!())
     }
 
     pub fn len_bits(&self) -> BitLength {
