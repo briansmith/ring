@@ -1,10 +1,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::{
-    super::LimbSliceError,
-    storage::{table_parts_uninit, LIMBS_PER_CHUNK},
-};
+use super::{super::LimbSliceError, storage::table_parts_uninit, LIMBS_PER_CHUNK};
 use crate::{limb::Limb, window5::LeakyWindow5};
 use core::mem::MaybeUninit;
 

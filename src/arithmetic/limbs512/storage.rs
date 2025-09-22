@@ -15,12 +15,12 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use crate::polyfill::StartPtr;
+use super::LIMBS_PER_CHUNK;
 use crate::{
     arithmetic::{LimbSliceError, MAX_LIMBS},
     error::LenMismatchError,
-    limb::{Limb, LIMB_BITS},
-    polyfill,
+    limb::Limb,
+    polyfill::{self, StartPtr},
 };
 use core::{
     mem::{align_of, size_of, MaybeUninit},
@@ -38,8 +38,6 @@ pub struct AlignedStorage<const N: usize>([MaybeUninit<Limb>; N]);
 
 const _LIMB_SIZE_DIVIDES_ALIGNMENT: () =
     assert!(align_of::<AlignedStorage<1>>() % size_of::<Limb>() == 0);
-
-pub const LIMBS_PER_CHUNK: usize = 512 / LIMB_BITS;
 
 impl<const N: usize> AlignedStorage<N> {
     pub fn uninit() -> Self {

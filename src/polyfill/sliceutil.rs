@@ -25,6 +25,7 @@ pub fn overwrite_at_start<T: Copy>(a: &mut [T], b: &[T]) {
     });
 }
 
+#[allow(dead_code)]
 #[inline]
 pub fn as_chunks_exact<T, const N: usize>(slice: &[T]) -> Option<&[[T; N]]> {
     match slice.as_chunks::<N>() {
