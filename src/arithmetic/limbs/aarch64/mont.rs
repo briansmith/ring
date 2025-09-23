@@ -88,10 +88,9 @@ pub(in super::super::super) fn sqr_mont5(
         return Err(LimbSliceError::too_long(num_limbs.get()));
     }
 
-    in_out
-        .with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
-            let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
-            unsafe { bn_sqr8x_mont(r, a, a, n, n0, num_limbs) };
-        })
-        .map_err(LimbSliceError::len_mismatch)
+    let r = in_out.with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
+        let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
+        unsafe { bn_sqr8x_mont(r, a, a, n, n0, num_limbs) };
+    })?;
+    Ok(r)
 }

@@ -99,11 +99,10 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const LEN_MIN: usize, const LEN_MOD: u
     if len.get() > MAX_LIMBS {
         return Err(LimbSliceError::too_long(n.len()));
     }
-    in_out
-        .with_non_dangling_non_null_pointers_rab(len, |r, a, b| {
-            let n = n.as_ptr();
-            let _: Cpu = cpu;
-            unsafe { f(r, a, b, n, n0, len) };
-        })
-        .map_err(LimbSliceError::len_mismatch)
+    let r = in_out.with_non_dangling_non_null_pointers_rab(len, |r, a, b| {
+        let n = n.as_ptr();
+        let _: Cpu = cpu;
+        unsafe { f(r, a, b, n, n0, len) };
+    })?;
+    Ok(r)
 }

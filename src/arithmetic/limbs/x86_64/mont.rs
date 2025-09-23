@@ -109,12 +109,11 @@ pub(in super::super::super) fn sqr_mont5(
         None => Limb::from(false),
     };
 
-    in_out
-        .with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
-            let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
-            unsafe { bn_sqr8x_mont(r, a, mulx_adx_capable, n, n0, num_limbs) };
-        })
-        .map_err(LimbSliceError::len_mismatch)
+    let r = in_out.with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
+        let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
+        unsafe { bn_sqr8x_mont(r, a, mulx_adx_capable, n, n0, num_limbs) };
+    })?;
+    Ok(r)
 }
 
 #[inline(always)]
@@ -176,7 +175,7 @@ pub(in super::super::super) fn mul_mont_gather5_amm(
     let num_limbs = check_common_with_n(r, table, n)?;
     let a = a.as_flattened();
     if a.len() != num_limbs.get() {
-        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(a.len())));
+        Err(LenMismatchError::new(a.len()))?;
     }
     let r = r.as_flattened_mut();
     let r = r.as_mut_ptr();

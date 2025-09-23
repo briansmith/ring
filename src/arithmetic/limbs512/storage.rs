@@ -82,9 +82,7 @@ pub(crate) fn check_common(
         return Err(LimbSliceError::too_long(a.len()));
     }
     if num_limbs.get() * 32 != table.len() {
-        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
-            table.len(),
-        )));
+        Err(LenMismatchError::new(table.len()))?;
     };
     Ok(num_limbs)
 }
@@ -102,7 +100,7 @@ pub(crate) fn check_common_with_n(
     let num_limbs = check_common(a, table)?;
     let n = n.as_flattened();
     if n.len() != num_limbs.get() {
-        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(n.len())));
+        Err(LenMismatchError::new(n.len()))?;
     }
     Ok(num_limbs)
 }

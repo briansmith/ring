@@ -513,16 +513,14 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
     let num_limbs = m.limbs().len();
     let m_chunked = as_chunks_exact::<_, { limbs512::LIMBS_PER_CHUNK }>(m.limbs())
-        .ok_or_else(|| LimbSliceError::len_mismatch(LenMismatchError::new(num_limbs)))?;
+        .ok_or_else(|| LenMismatchError::new(num_limbs))?;
     let cpe = m_chunked.len(); // 512-bit chunks per entry.
 
     // This code doesn't have the strict alignment requirements that the x86_64
     // version does, but uses the same aligned storage for convenience.
     assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
     let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::zeroed();
-    let table = table
-        .aligned_chunks_mut(TABLE_ENTRIES, cpe)
-        .map_err(LimbSliceError::len_mismatch)?;
+    let table = table.aligned_chunks_mut(TABLE_ENTRIES, cpe)?;
 
     // TODO: Rewrite the below in terms of `as_chunks`.
     let table = table.as_flattened_mut();
@@ -642,18 +640,16 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let cpu3 = m.cpu_features().get_feature();
 
     if base_mod_n.limbs.len() != m.limbs().len() * 2 {
-        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(
-            base_mod_n.limbs.len(),
-        )));
+        Err(LenMismatchError::new(base_mod_n.limbs.len()))?;
     }
 
     let m_original = as_chunks_exact::<_, { limbs512::LIMBS_PER_CHUNK }>(m.limbs())
-        .ok_or_else(|| LimbSliceError::len_mismatch(LenMismatchError::new(8)))?;
+        .ok_or_else(|| LenMismatchError::new(m.limbs().len()))?;
     let cpe = m_original.len(); // 512-bit chunks per entry
 
     let oneRRR = &oneRRR.as_ref().limbs;
-    let oneRRR = as_chunks_exact(oneRRR.as_ref())
-        .ok_or_else(|| LimbSliceError::len_mismatch(LenMismatchError::new(oneRRR.len())))?;
+    let oneRRR =
+        as_chunks_exact(oneRRR.as_ref()).ok_or_else(|| LenMismatchError::new(oneRRR.len()))?;
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.
@@ -676,9 +672,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
     assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
     let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::zeroed();
-    let table = table
-        .aligned_chunks_mut(STORAGE_ENTRIES, cpe)
-        .map_err(LimbSliceError::len_mismatch)?;
+    let table = table.aligned_chunks_mut(STORAGE_ENTRIES, cpe)?;
     let (table, state) = table.split_at_mut(TABLE_ENTRIES * cpe);
     assert_eq!((table.as_ptr() as usize) % MOD_EXP_CTIME_ALIGN, 0);
 
@@ -693,7 +687,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
     let out: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
     let base_rinverse = as_chunks_exact(out.limbs.as_ref())
-        .ok_or_else(|| LimbSliceError::len_mismatch(LenMismatchError::new(out.limbs.len())))?;
+        .ok_or_else(|| LenMismatchError::new(out.limbs.len()))?;
 
     // base_cached = base*R == (base/R * RRR)/R
     mul_mont5(base_cached, base_rinverse, oneRRR, m_cached, n0, cpu2)?;
