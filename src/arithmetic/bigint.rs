@@ -99,16 +99,27 @@ pub struct Elem<M, E = Unencoded> {
 }
 
 impl<M, E> Elem<M, E> {
-    pub fn clone_into(&self, mut out: Storage<M>) -> Self {
-        out.limbs.as_mut().copy_from_slice(self.limbs.as_ref());
+    #[inline]
+    fn assume_in_range_and_encoded_less_safe(limbs: BoxedLimbs<M>) -> Self {
         Self {
-            limbs: out.limbs,
-            encoding: self.encoding,
+            limbs,
+            encoding: PhantomData,
         }
     }
-}
 
-impl<M, E> Elem<M, E> {
+    #[inline]
+    fn transmute_encoding_less_safe<RE>(self) -> Elem<M, RE> {
+        Elem {
+            limbs: self.limbs,
+            encoding: PhantomData,
+        }
+    }
+
+    pub fn clone_into(&self, mut out: Storage<M>) -> Self {
+        out.limbs.as_mut().copy_from_slice(self.limbs.as_ref());
+        Self::assume_in_range_and_encoded_less_safe(out.limbs)
+    }
+
     #[inline]
     pub fn is_zero(&self) -> bool {
         limb::limbs_are_zero(self.limbs.as_ref()).leak()
@@ -131,10 +142,7 @@ fn from_montgomery_amm<M>(mut in_out: Storage<M>, m: &Modulus<M>) -> Elem<M, Une
         m.cpu_features(),
     )
     .unwrap_or_else(unwrap_impossible_limb_slice_error);
-    Elem {
-        limbs: in_out.limbs,
-        encoding: PhantomData,
-    }
+    Elem::assume_in_range_and_encoded_less_safe(in_out.limbs)
 }
 
 #[cfg(any(test, not(target_arch = "x86_64")))]
@@ -150,10 +158,8 @@ impl<M> Elem<M, Unencoded> {
         input: untrusted::Input,
         m: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
-        Ok(Self {
-            limbs: BoxedLimbs::from_be_bytes_padded_less_than(input, m)?,
-            encoding: PhantomData,
-        })
+        let out = BoxedLimbs::from_be_bytes_padded_less_than(input, m)?;
+        Ok(Self::assume_in_range_and_encoded_less_safe(out))
     }
 
     #[inline]
@@ -179,31 +185,26 @@ where
         m.cpu_features(),
     )
     .unwrap_or_else(unwrap_impossible_limb_slice_error);
-    Elem {
-        limbs: out.limbs,
-        encoding: PhantomData,
-    }
+    Elem::assume_in_range_and_encoded_less_safe(out.limbs)
 }
 
 pub fn elem_mul<M, AF, BF>(
     a: &Elem<M, AF>,
-    mut b: Elem<M, BF>,
+    b: Elem<M, BF>,
     m: &Modulus<M>,
 ) -> Elem<M, <(AF, BF) as ProductEncoding>::Output>
 where
     (AF, BF): ProductEncoding,
 {
+    let mut in_out = b.limbs;
     limbs_mul_mont(
-        (InOut(b.limbs.as_mut()), a.limbs.as_ref()),
+        (InOut(in_out.as_mut()), a.limbs.as_ref()),
         m.limbs(),
         m.n0(),
         m.cpu_features(),
     )
     .unwrap_or_else(unwrap_impossible_limb_slice_error);
-    Elem {
-        limbs: b.limbs,
-        encoding: PhantomData,
-    }
+    Elem::assume_in_range_and_encoded_less_safe(in_out)
 }
 
 // r *= 2.
@@ -217,19 +218,17 @@ fn elem_double<M, AF>(r: &mut Elem<M, AF>, m: &Modulus<M>) {
 // should update the testing so it is reflective of that usage, instead of
 // the old usage.
 pub fn elem_reduced_once<A, M>(
-    mut r: Storage<M>,
+    r: Storage<M>,
     a: &Elem<A, Unencoded>,
     m: &Modulus<M>,
     other_modulus_len_bits: BitLength,
 ) -> Elem<M, Unencoded> {
     assert_eq!(m.len_bits(), other_modulus_len_bits);
-    r.limbs.as_mut().copy_from_slice(a.limbs.as_ref());
-    limb::limbs_reduce_once(r.limbs.as_mut(), m.limbs())
+    let mut r = r.limbs;
+    r.as_mut().copy_from_slice(a.limbs.as_ref());
+    limb::limbs_reduce_once(r.as_mut(), m.limbs())
         .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-    Elem {
-        limbs: r.limbs,
-        encoding: PhantomData,
-    }
+    Elem::assume_in_range_and_encoded_less_safe(r)
 }
 
 #[inline]
@@ -252,26 +251,18 @@ pub fn elem_reduced<Larger, Smaller>(
     tmp.copy_from_slice(a.limbs.as_ref());
 
     limbs_from_mont_in_place(r.limbs.as_mut(), tmp, m.limbs(), m.n0());
-    Elem {
-        limbs: r.limbs,
-        encoding: PhantomData,
-    }
+    Elem::<Smaller, RInverse>::assume_in_range_and_encoded_less_safe(r.limbs)
 }
 
 #[inline]
-fn elem_squared<M, E>(
-    mut a: Elem<M, E>,
-    m: &Modulus<M>,
-) -> Elem<M, <(E, E) as ProductEncoding>::Output>
+fn elem_squared<M, E>(a: Elem<M, E>, m: &Modulus<M>) -> Elem<M, <(E, E) as ProductEncoding>::Output>
 where
     (E, E): ProductEncoding,
 {
-    limbs_square_mont(a.limbs.as_mut(), m.limbs(), m.n0(), m.cpu_features())
+    let mut in_out = a.limbs;
+    limbs_square_mont(in_out.as_mut(), m.limbs(), m.n0(), m.cpu_features())
         .unwrap_or_else(unwrap_impossible_limb_slice_error);
-    Elem {
-        limbs: a.limbs,
-        encoding: PhantomData,
-    }
+    Elem::assume_in_range_and_encoded_less_safe(in_out)
 }
 
 pub fn elem_widen<Larger, Smaller>(
@@ -286,10 +277,7 @@ pub fn elem_widen<Larger, Smaller>(
     let (to_copy, to_zero) = r.limbs.as_mut().split_at_mut(a.limbs.len());
     to_copy.copy_from_slice(a.limbs.as_ref());
     to_zero.fill(0);
-    Ok(Elem {
-        limbs: r.limbs,
-        encoding: PhantomData,
-    })
+    Ok(Elem::assume_in_range_and_encoded_less_safe(r.limbs))
 }
 
 // TODO: Document why this works for all Montgomery factors.
@@ -340,10 +328,7 @@ impl<M> One<M, RR> {
         let r = w * LIMB_BITS;
 
         m.oneR(out.limbs.as_mut());
-        let mut acc: Elem<M, R> = Elem {
-            limbs: out.limbs,
-            encoding: PhantomData,
-        };
+        let mut acc = Elem::<M, R>::assume_in_range_and_encoded_less_safe(out.limbs);
 
         // 2**t * R can be calculated by t doublings starting with R.
         //
@@ -398,10 +383,7 @@ impl<M> One<M, RR> {
             acc = elem_squared(acc, m);
         }
 
-        Self(Elem {
-            limbs: acc.limbs,
-            encoding: PhantomData, // PhantomData<RR>
-        })
+        Self(acc.transmute_encoding_less_safe::<RR>())
     }
 }
 
@@ -592,15 +574,12 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         }
     }
 
-    let mut acc = Elem {
-        limbs: base_rinverse.limbs,
-        encoding: PhantomData,
-    };
-    let tmp = m.alloc_zero();
-    let tmp = Elem {
-        limbs: tmp.limbs,
-        encoding: PhantomData,
-    };
+    // Recycle the storage; the value will get overwritten.
+    let mut acc = base_rinverse.transmute_encoding_less_safe::<R>();
+
+    let tmp = m.alloc_zero().limbs;
+    let tmp = Elem::<M, R>::assume_in_range_and_encoded_less_safe(tmp);
+
     let (acc, _) = limb::fold_5_bit_windows(
         exponent.limbs(),
         |initial_window| {
@@ -835,10 +814,7 @@ mod tests {
                 let base: Elem<N> = {
                     let mut limbs = BoxedLimbs::zero(base.limbs.len() * 2);
                     limbs.as_mut()[..base.limbs.len()].copy_from_slice(base.limbs.as_ref());
-                    Elem {
-                        limbs,
-                        encoding: PhantomData,
-                    }
+                    Elem::<N, Unencoded>::assume_in_range_and_encoded_less_safe(limbs)
                 };
 
                 let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
@@ -1006,10 +982,7 @@ mod tests {
         let mut limbs = BoxedLimbs::zero(num_limbs);
         limb::parse_big_endian_and_pad_consttime(untrusted::Input::from(&bytes), limbs.as_mut())
             .unwrap();
-        Elem {
-            limbs,
-            encoding: PhantomData,
-        }
+        Elem::assume_in_range_and_encoded_less_safe(limbs)
     }
 
     fn consume_modulus<M>(test_case: &mut test::TestCase, name: &str) -> OwnedModulus<M> {
