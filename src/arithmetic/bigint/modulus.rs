@@ -107,10 +107,9 @@ impl<M> OwnedModulus<M> {
         self.inner.verify_less_than(l)?;
         let mut limbs = BoxedLimbs::zero(l.limbs().len());
         limbs.as_mut()[..self.inner.limbs().len()].copy_from_slice(self.inner.limbs());
-        Ok(Elem {
+        Ok(Elem::<L, Unencoded>::assume_in_range_and_encoded_less_safe(
             limbs,
-            encoding: PhantomData,
-        })
+        ))
     }
 
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Modulus<'_, M> {
