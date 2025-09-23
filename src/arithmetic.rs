@@ -45,3 +45,9 @@ cold_exhaustive_error! {
         too_long => TooLong(usize),
     }
 }
+
+impl From<LenMismatchError> for LimbSliceError {
+    fn from(err: LenMismatchError) -> Self {
+        LimbSliceError::len_mismatch(err)
+    }
+}
