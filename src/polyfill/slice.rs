@@ -24,6 +24,8 @@
 
 use crate::polyfill::{StartMutPtr, StartPtr};
 
+pub use super::uninit_slice::Uninit;
+
 #[allow(dead_code)]
 pub(crate) trait SlicePolyfills {
     type Elem;

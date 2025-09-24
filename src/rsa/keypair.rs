@@ -26,7 +26,7 @@ use crate::{
     },
     bits::BitLength,
     cpu, digest,
-    error::{self, KeyRejected},
+    error::{self, KeyRejected, LenMismatchError},
     io::der,
     pkcs8, rand, sealed, signature,
 };
@@ -441,7 +441,8 @@ impl<M> PrivatePrime<M> {
         // Steps 5.e and 5.f are omitted as explained above.
         let p = bigint::OwnedModulus::from(p);
         let pm = p.modulus(cpu_features);
-        let oneRR = bigint::One::newRR(pm.alloc_uninit(), &pm);
+        let oneRR = bigint::One::newRR(pm.alloc_uninit(), &pm)
+            .map_err(|LenMismatchError { .. }| KeyRejected::unexpected_error())?;
 
         Ok(Self { modulus: p, oneRR })
     }

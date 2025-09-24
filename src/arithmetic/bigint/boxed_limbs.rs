@@ -15,6 +15,7 @@
 use crate::{
     error::LenMismatchError,
     limb::{self, Limb},
+    polyfill,
 };
 use alloc::{boxed::Box, vec::Vec};
 use core::{iter, marker::PhantomData};
@@ -134,5 +135,26 @@ impl<M> Uninit<M> {
             Vec::from_iter(input.chain(iter::repeat(Limb::from(limb::ZERO)).take(padding_len)))
                 .into_boxed_slice();
         Ok(BoxedLimbs { limbs, m: self.m })
+    }
+
+    pub(super) fn write_fully_with<EI>(
+        self,
+        f: impl for<'a> FnOnce(polyfill::slice::Uninit<'a, Limb>) -> Result<&'a mut [Limb], EI>,
+    ) -> Result<BoxedLimbs<M>, LenMismatchError>
+    where
+        LenMismatchError: From<EI>,
+    {
+        // let mut uninit = Box::new_uninit_slice(self.len);
+        let m = self.m;
+        let mut uninit = self.write_zeros().limbs;
+        let (ptr, len) = (uninit.as_mut_ptr(), uninit.len());
+        let written = polyfill::slice::Uninit::from_mut(uninit.as_mut()).write_fully_with(f)?;
+        // Postconditions of `polyfill::slice::Uninit::write_fully_with`.
+        debug_assert_eq!(written.len(), len);
+        debug_assert!(len == 0 || (written.as_ptr() == ptr));
+
+        // let limbs = unsafe { uninit.assume_init() };
+        let limbs = uninit;
+        Ok(BoxedLimbs { limbs, m })
     }
 }

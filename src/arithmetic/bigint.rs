@@ -319,17 +319,16 @@ impl<M> One<M, RR> {
     // values, using `LIMB_BITS` here, rather than `N0::LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0::LIMBS_USED` is either one or two.
-    pub(crate) fn newRR(out: Uninit<M>, m: &Modulus<M>) -> Self {
+    pub(crate) fn newRR(out: Uninit<M>, m: &Modulus<M>) -> Result<Self, LenMismatchError> {
         // The number of limbs in the numbers involved.
         let w = m.limbs().len();
 
         // The length of the numbers involved, in bits. R = 2**r.
         let r = w * LIMB_BITS;
 
-        // TODO: We shouldn't need to zeroize this here.
-        let mut out = out.write_zeros();
-        m.oneR(out.as_mut());
-        let mut acc = Elem::<M, R>::assume_in_range_and_encoded_less_safe(out);
+        let mut acc = out
+            .write_fully_with(|out| m.oneR(out))
+            .map(Elem::<M, R>::assume_in_range_and_encoded_less_safe)?;
 
         // 2**t * R can be calculated by t doublings starting with R.
         //
@@ -384,7 +383,7 @@ impl<M> One<M, RR> {
             acc = elem_squared(acc, m);
         }
 
-        Self(acc.transmute_encoding_less_safe::<RR>())
+        Ok(Self(acc.transmute_encoding_less_safe::<RR>()))
     }
 }
 
@@ -490,7 +489,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     m: &Modulus<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
-    use crate::bssl;
+    use crate::{bssl, polyfill};
 
     let base_rinverse: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
 
@@ -540,12 +539,20 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     fn entry(table: &[Limb], i: usize, num_limbs: usize) -> &[Limb] {
         &table[(i * num_limbs)..][..num_limbs]
     }
+    // TODO: Replace all uses of this with `entry_uninit`.
     fn entry_mut(table: &mut [Limb], i: usize, num_limbs: usize) -> &mut [Limb] {
         &mut table[(i * num_limbs)..][..num_limbs]
     }
+    fn entry_uninit(
+        table: &mut [Limb],
+        i: usize,
+        num_limbs: usize,
+    ) -> polyfill::slice::Uninit<'_, Limb> {
+        polyfill::slice::Uninit::from_mut(entry_mut(table, i, num_limbs))
+    }
 
     // table[0] = base**0 (i.e. 1).
-    m.oneR(entry_mut(table, 0, num_limbs));
+    let _: &[Limb] = m.oneR(entry_uninit(table, 0, num_limbs))?;
 
     // table[1] = base*R == (base/R * RRR)/R
     limbs_mul_mont(
@@ -612,6 +619,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             intel::{Adx, Bmi2},
             GetFeature as _,
         },
+        polyfill,
         window5::LeakyWindow5,
     };
 
@@ -698,7 +706,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     // All entries in `table` will be Montgomery encoded.
 
     // acc = table[0] = base**0 (i.e. 1).
-    m.oneR(acc.as_flattened_mut());
+    let _: &[Limb] = m.oneR(polyfill::slice::Uninit::from_mut(acc.as_flattened_mut()))?;
     scatter5(acc, table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
@@ -803,7 +811,9 @@ mod tests {
                         .expect("valid exponent")
                 };
 
-                let oneRR = One::newRR(m.alloc_uninit(), &m);
+                let oneRR = One::newRR(m.alloc_uninit(), &m)
+                    .map_err(error::erase::<LenMismatchError>)
+                    .unwrap();
                 let oneRRR = One::newRRR(oneRR, &m);
 
                 // `base` in the test vectors is reduced (mod M) already but
@@ -932,7 +942,9 @@ mod tests {
                 let other_modulus_len_bits = m_.len_bits();
 
                 let actual_result = elem_reduced(m.alloc_uninit(), &a, &m, other_modulus_len_bits);
-                let oneRR = One::newRR(m.alloc_uninit(), &m);
+                let oneRR = One::newRR(m.alloc_uninit(), &m)
+                    .map_err(error::erase::<LenMismatchError>)
+                    .unwrap();
                 let actual_result = elem_mul(oneRR.as_ref(), actual_result, &m);
                 assert_elem_eq(&actual_result, &expected_result);
 
@@ -1001,7 +1013,9 @@ mod tests {
     }
 
     fn into_encoded<M>(out: Uninit<M>, a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
-        let oneRR = One::newRR(out, m);
+        let oneRR = One::newRR(out, m)
+            .map_err(error::erase::<LenMismatchError>)
+            .unwrap();
         elem_mul(oneRR.as_ref(), a, m)
     }
 }

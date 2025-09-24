@@ -22,7 +22,7 @@ use crate::{
     arithmetic::inout::{AliasingSlices2, AliasingSlices3, InOut},
     bb, c,
     error::{self, LenMismatchError},
-    polyfill::{sliceutil, usize_from_u32, ArrayFlatMap},
+    polyfill::{slice::Uninit, sliceutil, usize_from_u32, ArrayFlatMap},
     window5::Window5,
 };
 use core::{iter, num::NonZeroUsize};
@@ -328,16 +328,20 @@ pub(crate) fn limbs_double_mod(r: &mut [Limb], m: &[Limb]) -> Result<(), LenMism
 }
 
 // *r = -a, assuming a is odd.
-pub(crate) fn limbs_negative_odd(r: &mut [Limb], a: &[Limb]) {
-    debug_assert_eq!(r.len(), a.len());
+pub(crate) fn limbs_negative_odd<'r>(
+    r: Uninit<'r, Limb>,
+    a: &[Limb],
+) -> Result<&'r mut [Limb], LenMismatchError> {
+    if r.len() != a.len() {
+        return Err(LenMismatchError::new(r.len()));
+    }
     // Two's complement step 1: flip all the bits.
     // The compiler should optimize this to vectorized (a ^ !0).
-    r.iter_mut().zip(a.iter()).for_each(|(r, &a)| {
-        *r = !a;
-    });
+    let r = r.write_iter_checked(a.iter().map(|&a| !a))?;
     // Two's complement step 2: Add one. Since `a` is odd, `r` is even. Thus we
     // can use a bitwise or for addition.
     r[0] |= 1;
+    Ok(r)
 }
 
 #[allow(clippy::useless_conversion)]

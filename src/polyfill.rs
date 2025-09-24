@@ -95,6 +95,7 @@ mod start_ptr;
 #[cfg(test)]
 mod test;
 
+mod uninit_slice;
 mod unwrap_const;
 
 pub use self::{
