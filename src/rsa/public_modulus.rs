@@ -2,7 +2,7 @@ use crate::{
     arithmetic::{bigint, montgomery::RR},
     bits::{self, FromByteLen as _},
     cpu,
-    error::{self, InputTooLongError},
+    error::{self, InputTooLongError, LenMismatchError},
     rsa::N,
 };
 use core::ops::RangeInclusive;
@@ -71,7 +71,8 @@ impl PublicModulus {
         }
         let value = bigint::OwnedModulus::from(value);
         let m = value.modulus(cpu_features);
-        let oneRR = bigint::One::newRR(m.alloc_uninit(), &m);
+        let oneRR = bigint::One::newRR(m.alloc_uninit(), &m)
+            .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;
 
         Ok(Self { value, oneRR })
     }

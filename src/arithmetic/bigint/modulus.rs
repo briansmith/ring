@@ -12,16 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    super::montgomery::Unencoded, unwrap_impossible_len_mismatch_error, Elem, OwnedModulusValue,
-    PublicModulus, Uninit, N0,
-};
+use super::{super::montgomery::Unencoded, Elem, OwnedModulusValue, PublicModulus, Uninit, N0};
 use crate::{
     bits::BitLength,
     cpu,
     error::{self, LenMismatchError},
     limb::{self, Limb, LIMB_BITS},
-    polyfill::LeadingZerosStripped,
+    polyfill::{self, LeadingZerosStripped},
 };
 use core::marker::PhantomData;
 
@@ -144,13 +141,14 @@ pub struct Modulus<'a, M> {
 }
 
 impl<M> Modulus<'_, M> {
-    pub(super) fn oneR(&self, out: &mut [Limb]) {
-        assert_eq!(self.limbs.len(), out.len());
-
+    pub(super) fn oneR<'r>(
+        &self,
+        out: polyfill::slice::Uninit<'r, Limb>,
+    ) -> Result<&'r mut [Limb], LenMismatchError> {
         let r = self.limbs.len() * LIMB_BITS;
 
         // out = 2**r - m where m = self.
-        limb::limbs_negative_odd(out, self.limbs);
+        let out = limb::limbs_negative_odd(out, self.limbs)?;
 
         let lg_m = self.len_bits().as_bits();
         let leading_zero_bits_in_m = r - lg_m;
@@ -167,12 +165,12 @@ impl<M> Modulus<'_, M> {
             // Now we have out == 2**(lg m) (mod m). Keep doubling until we get
             // to 2**r (mod m).
             for _ in 0..leading_zero_bits_in_m {
-                limb::limbs_double_mod(out, self.limbs)
-                    .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+                limb::limbs_double_mod(out, self.limbs)?;
             }
         }
 
         // Now out == 2**r (mod m) == 1*R.
+        Ok(out)
     }
 
     pub fn alloc_uninit(&self) -> Uninit<M> {
