@@ -155,17 +155,20 @@ pub(super) fn limbs_mul_mont(
             use crate::{cpu::GetFeature as _, cpu::intel::Sse2};
             // The X86 implementation of `bn_mul_mont_sse2` has a minimum of 4.
             const _MIN_LIMBS_AT_LEAST_4: () = assert!(MIN_LIMBS >= 4);
-            if let Some(cpu) = cpu.get_feature() {
-                bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
-                    (MIN_LIMBS, MOD_FALLBACK, Sse2) => bn_mul_mont_sse2
-                })
-            } else {
-                // This isn't really an FFI call; it's defined in Rust.
-                unsafe {
-                    super::ffi::bn_mul_mont_ffi::<(), {MIN_LIMBS}, 1>(in_out, n, n0, (),
-                        super::limbs::fallback::mont::bn_mul_mont_fallback_impl)
-                }
-            }
+
+
+            // The callback function is not even defined unless the SSE2 target
+            // feature has been disabled
+            #[cfg(not(target_feature = "sse2"))]
+            let Some(sse2) = cpu.get_feature() else {
+                return super::limbs::fallback::mont::limbs_mul_mont(in_out, n, n0);
+            };
+            #[cfg(target_feature = "sse2")]
+            let sse2 = Sse2::get();
+
+            bn_mul_mont_ffi!(in_out, n, n0, sse2, unsafe {
+                (MIN_LIMBS, MOD_FALLBACK, Sse2) => bn_mul_mont_sse2
+            })
         } else if #[cfg(target_arch = "x86_64")] {
             use crate::{cpu::GetFeature as _};
             use super::limbs::x86_64;
@@ -178,11 +181,7 @@ pub(super) fn limbs_mul_mont(
                 (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_sse2
             })
         } else {
-            // Use the fallback implementation through the FFI wrapper so that
-            // Rust and C code both go through `bn_mul_mont`.
-            bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
-                (MIN_LIMBS, MOD_FALLBACK, cpu::Features) => bn_mul_mont_fallback
-            })
+            super::limbs::fallback::mont::limbs_mul_mont(in_out, n, n0)
         }
     }
 }
