@@ -158,7 +158,9 @@ impl<M> Elem<M, Unencoded> {
         input: untrusted::Input,
         m: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
-        let out = BoxedLimbs::from_be_bytes_padded_less_than(input, m)?;
+        let mut out = BoxedLimbs::zero(m.limbs().len());
+        limb::parse_big_endian_and_pad_consttime(input, out.as_mut())?;
+        limb::verify_limbs_less_than_limbs_leak_bit(out.as_ref(), m.limbs())?;
         Ok(Self::assume_in_range_and_encoded_less_safe(out))
     }
 
