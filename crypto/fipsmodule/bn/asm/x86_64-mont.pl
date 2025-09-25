@@ -70,7 +70,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 # output, so this isn't useful anyway.
 $addx = 1;
 
-# void bn_mul_mont_nohw(
+# void bn_mul_mont_sse2(
 $rp="%rdi";	# BN_ULONG *rp,
 $ap="%rsi";	# const BN_ULONG *ap,
 $bp="%rdx";	# const BN_ULONG *bp,
@@ -90,10 +90,10 @@ $m1="%rbp";
 $code=<<___;
 .text
 
-.globl	bn_mul_mont_nohw
-.type	bn_mul_mont_nohw,\@function,6
+.globl	bn_mul_mont_sse2
+.type	bn_mul_mont_sse2,\@function,6
 .align	16
-bn_mul_mont_nohw:
+bn_mul_mont_sse2:
 .cfi_startproc
 	_CET_ENDBR
 	mov	${num}d,${num}d
@@ -333,7 +333,7 @@ $code.=<<___;
 .Lmul_epilogue:
 	ret
 .cfi_endproc
-.size	bn_mul_mont_nohw,.-bn_mul_mont_nohw
+.size	bn_mul_mont_sse2,.-bn_mul_mont_sse2
 ___
 {{{
 my @A=("%r10","%r11");
@@ -1514,9 +1514,9 @@ sqr_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_bn_mul_mont_nohw
-	.rva	.LSEH_end_bn_mul_mont_nohw
-	.rva	.LSEH_info_bn_mul_mont_nohw
+	.rva	.LSEH_begin_bn_mul_mont_sse2
+	.rva	.LSEH_end_bn_mul_mont_sse2
+	.rva	.LSEH_info_bn_mul_mont_sse2
 
 	.rva	.LSEH_begin_bn_mul4x_mont
 	.rva	.LSEH_end_bn_mul4x_mont
@@ -1534,7 +1534,7 @@ ___
 $code.=<<___;
 .section	.xdata
 .align	8
-.LSEH_info_bn_mul_mont_nohw:
+.LSEH_info_bn_mul_mont_sse2:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lmul_body,.Lmul_epilogue	# HandlerData[]

@@ -153,17 +153,17 @@ pub(super) fn limbs_mul_mont(
             })
         } else if #[cfg(target_arch = "x86")] {
             use crate::{cpu::GetFeature as _, cpu::intel::Sse2};
-            // The X86 implementation of `bn_mul_mont` has a minimum of 4.
+            // The X86 implementation of `bn_mul_mont_sse2` has a minimum of 4.
             const _MIN_LIMBS_AT_LEAST_4: () = assert!(MIN_LIMBS >= 4);
             if let Some(cpu) = cpu.get_feature() {
                 bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
-                    (MIN_LIMBS, MOD_FALLBACK, Sse2) => bn_mul_mont
+                    (MIN_LIMBS, MOD_FALLBACK, Sse2) => bn_mul_mont_sse2
                 })
             } else {
                 // This isn't really an FFI call; it's defined in Rust.
                 unsafe {
                     super::ffi::bn_mul_mont_ffi::<(), {MIN_LIMBS}, 1>(in_out, n, n0, (),
-                        super::limbs::fallback::mont::bn_mul_mont_fallback)
+                        super::limbs::fallback::mont::bn_mul_mont_fallback_impl)
                 }
             }
         } else if #[cfg(target_arch = "x86_64")] {
@@ -175,13 +175,13 @@ pub(super) fn limbs_mul_mont(
                 }
             }
             bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
-                (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
+                (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_sse2
             })
         } else {
             // Use the fallback implementation through the FFI wrapper so that
             // Rust and C code both go through `bn_mul_mont`.
             bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
-                (MIN_LIMBS, MOD_FALLBACK, cpu::Features) => bn_mul_mont
+                (MIN_LIMBS, MOD_FALLBACK, cpu::Features) => bn_mul_mont_fallback
             })
         }
     }

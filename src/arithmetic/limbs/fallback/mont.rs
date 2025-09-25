@@ -30,7 +30,7 @@ cfg_if! {
         // TODO: Stop calling this from C and un-export it.
         #[cfg(not(target_arch = "x86"))]
         prefixed_export! {
-            unsafe extern "C" fn bn_mul_mont(
+            unsafe extern "C" fn bn_mul_mont_fallback(
                 r: *mut Limb,
                 a: *const Limb,
                 b: *const Limb,
@@ -38,7 +38,7 @@ cfg_if! {
                 n0: &N0,
                 num_limbs: c::NonZero_size_t,
             ) {
-                unsafe { bn_mul_mont_fallback(r, a, b, n, n0, num_limbs) }
+                unsafe { bn_mul_mont_fallback_impl(r, a, b, n, n0, num_limbs) }
             }
         }
     }
@@ -47,7 +47,7 @@ cfg_if! {
 #[allow(dead_code)]
 #[cfg_attr(target_arch = "x86", cold)]
 #[cfg_attr(target_arch = "x86", inline(never))]
-pub unsafe extern "C" fn bn_mul_mont_fallback(
+pub unsafe extern "C" fn bn_mul_mont_fallback_impl(
     r: *mut Limb,
     a: *const Limb,
     b: *const Limb,

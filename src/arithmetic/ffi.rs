@@ -21,7 +21,7 @@ use crate::{
 use core::{mem::size_of, num::NonZeroUsize};
 
 const _MIN_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
-    // The x86 implementation of `bn_mul_mont`, at least, requires at least 4
+    // The x86 implementation of `bn_mul_mont_sse2` requires at least 4
     // limbs. Some other implementations seem to require at least two limbs.
     // This enforces the `|num| must be at least 128 / |BN_BITS2|` prerequisite
     // in bn/internal.h.

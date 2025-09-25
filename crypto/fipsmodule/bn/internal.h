@@ -81,13 +81,21 @@ typedef crypto_word_t BN_ULONG;
 OPENSSL_STATIC_ASSERT(sizeof(int) == sizeof(size_t) ||
                       (sizeof(int) == 4 && sizeof(size_t) == 8),
                       "int and size_t ABI mismatch");
-#if defined(OPENSSL_X86_64)
-void bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+#if defined(OPENSSL_X86)
+void bn_mul_mont_sse2(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                       const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 static inline void bn_mul_mont_small(
     BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
     const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
-    bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
+    bn_mul_mont_sse2(rp, ap, bp, np, n0, num);
+}
+#elif defined(OPENSSL_X86_64)
+void bn_mul_mont_sse2(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                      const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+static inline void bn_mul_mont_small(
+    BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+    const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
+    bn_mul_mont_sse2(rp, ap, bp, np, n0, num);
 }
 #elif defined(OPENSSL_AARCH64)
 void bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
@@ -119,12 +127,13 @@ static inline void bn_mul_mont_small(
     bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
 }
 #else
-void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                 const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+// Defined in Rust.
+void bn_mul_mont_fallback(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                          const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 static inline void bn_mul_mont_small(
     BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
     const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
-    bn_mul_mont(rp, ap, bp, np, n0, num);
+    bn_mul_mont_fallback(rp, ap, bp, np, n0, num);
 }
 #endif
 
