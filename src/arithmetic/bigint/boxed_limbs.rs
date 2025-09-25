@@ -12,11 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::Modulus;
-use crate::{
-    error,
-    limb::{self, Limb},
-};
+use crate::limb::Limb;
 use alloc::{boxed::Box, vec};
 use core::marker::PhantomData;
 
@@ -40,16 +36,6 @@ impl<M> Clone for BoxedLimbs<M> {
 }
 
 impl<M> BoxedLimbs<M> {
-    pub(super) fn from_be_bytes_padded_less_than(
-        input: untrusted::Input,
-        m: &Modulus<M>,
-    ) -> Result<Self, error::Unspecified> {
-        let mut r = Self::zero(m.limbs().len());
-        limb::parse_big_endian_and_pad_consttime(input, r.as_mut())?;
-        limb::verify_limbs_less_than_limbs_leak_bit(r.as_ref(), m.limbs())?;
-        Ok(r)
-    }
-
     pub(super) fn zero(len: usize) -> Self {
         Self {
             limbs: vec![0; len].into_boxed_slice(),

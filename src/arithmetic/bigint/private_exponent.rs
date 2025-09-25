@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{limb, BoxedLimbs, Limb, Modulus};
+use super::{limb, Elem, Limb, Modulus};
 use crate::error;
 use alloc::boxed::Box;
 
@@ -28,7 +28,7 @@ impl PrivateExponent {
         input: untrusted::Input,
         p: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
-        let mut dP = BoxedLimbs::from_be_bytes_padded_less_than(input, p)?;
+        let mut dP = Elem::<M>::from_be_bytes_padded(input, p)?.limbs;
 
         // Proof that `dP < p - 1`:
         //
@@ -53,6 +53,7 @@ impl PrivateExponent {
         input: untrusted::Input,
         p: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
+        use super::boxed_limbs::BoxedLimbs;
         use crate::limb::LIMB_BYTES;
 
         // Do exactly what `from_be_bytes_padded` does for any inputs it accepts.
