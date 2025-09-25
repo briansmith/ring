@@ -14,11 +14,12 @@
 
 use super::{
     super::montgomery::Unencoded, unwrap_impossible_len_mismatch_error, BoxedLimbs, Elem,
-    OwnedModulusValue, PublicModulus, Storage, N0,
+    OwnedModulusValue, PublicModulus, Storage, Uninit, N0,
 };
 use crate::{
     bits::BitLength,
-    cpu, error,
+    cpu,
+    error::{self, LenMismatchError},
     limb::{self, Limb, LIMB_BITS},
     polyfill::LeadingZerosStripped,
 };
@@ -105,8 +106,9 @@ impl<M> OwnedModulus<M> {
 
     pub fn to_elem<L>(&self, l: &Modulus<L>) -> Result<Elem<L, Unencoded>, error::Unspecified> {
         self.inner.verify_less_than(l)?;
-        let mut limbs = BoxedLimbs::zero(l.limbs().len());
-        limbs.as_mut()[..self.inner.limbs().len()].copy_from_slice(self.inner.limbs());
+        let limbs = Uninit::new_less_safe(l.limbs.len())
+            .write_copy_of_slice_padded(self.inner.limbs())
+            .map_err(error::erase::<LenMismatchError>)?;
         Ok(Elem::<L, Unencoded>::assume_in_range_and_encoded_less_safe(
             limbs,
         ))
@@ -176,7 +178,7 @@ impl<M> Modulus<'_, M> {
     // TODO: XXX Avoid duplication with `Modulus`.
     pub fn alloc_zero(&self) -> Storage<M> {
         Storage {
-            limbs: BoxedLimbs::zero(self.limbs.len()),
+            limbs: BoxedLimbs::zero_less_safe(self.limbs.len()),
         }
     }
 

@@ -39,7 +39,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use self::boxed_limbs::BoxedLimbs;
+use self::boxed_limbs::{BoxedLimbs, Uninit};
 pub(crate) use self::{
     modulus::{Modulus, OwnedModulus},
     modulusvalue::OwnedModulusValue,
@@ -158,11 +158,11 @@ impl<M> Elem<M, Unencoded> {
         input: untrusted::Input,
         m: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
-        let mut out = BoxedLimbs::zero(m.limbs().len());
-        limb::parse_big_endian_and_pad_consttime(input, out.as_mut())
+        let limbs = Uninit::new_less_safe(m.limbs().len())
+            .write_from_be_byes_padded(input)
             .map_err(error::erase::<LenMismatchError>)?;
-        limb::verify_limbs_less_than_limbs_leak_bit(out.as_ref(), m.limbs())?;
-        Ok(Self::assume_in_range_and_encoded_less_safe(out))
+        limb::verify_limbs_less_than_limbs_leak_bit(limbs.as_ref(), m.limbs())?;
+        Ok(Self::assume_in_range_and_encoded_less_safe(limbs))
     }
 
     #[inline]
@@ -815,8 +815,9 @@ mod tests {
                 struct N {}
                 let other_modulus_len_bits = m.len_bits();
                 let base: Elem<N> = {
-                    let mut limbs = BoxedLimbs::zero(base.limbs.len() * 2);
-                    limbs.as_mut()[..base.limbs.len()].copy_from_slice(base.limbs.as_ref());
+                    let limbs = Uninit::new_less_safe(base.limbs.len() * 2)
+                        .write_copy_of_slice_padded(base.limbs.as_ref())
+                        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
                     Elem::<N, Unencoded>::assume_in_range_and_encoded_less_safe(limbs)
                 };
 
@@ -982,8 +983,8 @@ mod tests {
         num_limbs: usize,
     ) -> Elem<M, Unencoded> {
         let bytes = test_case.consume_bytes(name);
-        let mut limbs = BoxedLimbs::zero(num_limbs);
-        limb::parse_big_endian_and_pad_consttime(untrusted::Input::from(&bytes), limbs.as_mut())
+        let limbs = Uninit::new_less_safe(num_limbs)
+            .write_from_be_byes_padded(untrusted::Input::from(&bytes))
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         Elem::assume_in_range_and_encoded_less_safe(limbs)
     }

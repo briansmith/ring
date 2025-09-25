@@ -12,9 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::limb::Limb;
-use alloc::{boxed::Box, vec};
-use core::marker::PhantomData;
+use crate::{
+    error::LenMismatchError,
+    limb::{self, Limb},
+};
+use alloc::{boxed::Box, vec, vec::Vec};
+use core::{iter, marker::PhantomData};
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
 pub(super) struct BoxedLimbs<M> {
@@ -36,7 +39,8 @@ impl<M> Clone for BoxedLimbs<M> {
 }
 
 impl<M> BoxedLimbs<M> {
-    pub(super) fn zero(len: usize) -> Self {
+    // "Less safe" because this is what binds `len` to `M`.
+    pub fn zero_less_safe(len: usize) -> Self {
         Self {
             limbs: vec![0; len].into_boxed_slice(),
             m: PhantomData,
@@ -60,5 +64,57 @@ impl<M> BoxedLimbs<M> {
     #[inline(always)]
     pub(super) fn len(&self) -> usize {
         self.limbs.len()
+    }
+}
+
+pub struct Uninit<M> {
+    len: usize,
+    m: PhantomData<M>,
+}
+
+impl<M> Uninit<M> {
+    // "Less safe" because this is what binds `len` to `M`.
+    pub fn new_less_safe(len: usize) -> Self {
+        Self {
+            len,
+            m: PhantomData,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn write_from_be_byes_padded(
+        self,
+        input: untrusted::Input,
+    ) -> Result<BoxedLimbs<M>, LenMismatchError> {
+        let input = limb::limbs_from_big_endian(input, 1..=self.len())?;
+        self.write_from_iter_padded(input)
+    }
+
+    pub fn write_copy_of_slice_padded(
+        self,
+        src: &[Limb],
+    ) -> Result<BoxedLimbs<M>, LenMismatchError> {
+        self.write_from_iter_padded(src.iter().copied())
+    }
+
+    pub fn write_from_iter_padded(
+        self,
+        input: impl ExactSizeIterator<Item = Limb>,
+    ) -> Result<BoxedLimbs<M>, LenMismatchError>
+    where
+        Limb: Copy,
+    {
+        let padding_len = self
+            .len()
+            .checked_sub(input.len())
+            .ok_or_else(|| LenMismatchError::new(input.len()))?;
+        // TODO(MSRV-1.82): Use `iter::repeat_n`.
+        let limbs =
+            Vec::from_iter(input.chain(iter::repeat(Limb::from(limb::ZERO)).take(padding_len)))
+                .into_boxed_slice();
+        Ok(BoxedLimbs { limbs, m: self.m })
     }
 }
