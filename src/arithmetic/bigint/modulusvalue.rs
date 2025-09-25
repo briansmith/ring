@@ -14,7 +14,7 @@
 
 use super::{
     super::{MAX_LIMBS, MIN_LIMBS},
-    BoxedLimbs, Modulus, PublicModulus,
+    BoxedLimbs, Modulus, PublicModulus, Uninit,
 };
 use crate::{
     bb,
@@ -82,8 +82,8 @@ impl<M> OwnedModulusValue<M> {
         // Having at least 2 limbs where the high-order limb is nonzero implies
         // M >= 3 as required.
 
-        let mut limbs = BoxedLimbs::zero(num_limbs);
-        limb::parse_big_endian_and_pad_consttime(input, limbs.as_mut())
+        let limbs = Uninit::new_less_safe(num_limbs)
+            .write_from_be_byes_padded(input)
             .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;
         limb::limbs_reject_even_leak_bit(limbs.as_ref())
             .map_err(|_: error::Unspecified| error::KeyRejected::invalid_component())?;
