@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![allow(unused_imports)] // Temporarily during refactoring
-
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
@@ -43,44 +41,40 @@ cfg_if! {
                 unsafe { bn_mul_mont_fallback(r, a, b, n, n0, num_limbs) }
             }
         }
-
-        #[cfg_attr(target_arch = "x86", cold)]
-        #[cfg_attr(target_arch = "x86", inline(never))]
-        pub unsafe extern "C" fn bn_mul_mont_fallback(
-            r: *mut Limb,
-            a: *const Limb,
-            b: *const Limb,
-            n: *const Limb,
-            n0: &N0,
-            num_limbs: c::NonZero_size_t,
-        ) {
-            let num_limbs = num_limbs.get();
-
-            // The mutable pointer `r` may alias `a` and/or `b`, so the lifetimes of
-            // any slices for `a` or `b` must not overlap with the lifetime of any
-            // mutable for `r`.
-
-            // Nothing aliases `n`
-            let n = unsafe { core::slice::from_raw_parts(n, num_limbs) };
-
-            let mut tmp = [0; 2 * MAX_LIMBS];
-            let tmp = &mut tmp[..(2 * num_limbs)];
-            {
-                let a: &[Limb] = unsafe { core::slice::from_raw_parts(a, num_limbs) };
-                let b: &[Limb] = unsafe { core::slice::from_raw_parts(b, num_limbs) };
-                limbs_mul(tmp, a, b);
-            }
-            let r: &mut [Limb] = unsafe { core::slice::from_raw_parts_mut(r, num_limbs) };
-            limbs_from_mont_in_place(r, tmp, n, n0);
-        }
     }
 }
 
-#[cfg(not(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86_64"
-)))]
+#[allow(dead_code)]
+#[cfg_attr(target_arch = "x86", cold)]
+#[cfg_attr(target_arch = "x86", inline(never))]
+pub unsafe extern "C" fn bn_mul_mont_fallback(
+    r: *mut Limb,
+    a: *const Limb,
+    b: *const Limb,
+    n: *const Limb,
+    n0: &N0,
+    num_limbs: c::NonZero_size_t,
+) {
+    let num_limbs = num_limbs.get();
+
+    // The mutable pointer `r` may alias `a` and/or `b`, so the lifetimes of
+    // any slices for `a` or `b` must not overlap with the lifetime of any
+    // mutable for `r`.
+
+    // Nothing aliases `n`
+    let n = unsafe { core::slice::from_raw_parts(n, num_limbs) };
+
+    let mut tmp = [0; 2 * MAX_LIMBS];
+    let tmp = &mut tmp[..(2 * num_limbs)];
+    {
+        let a: &[Limb] = unsafe { core::slice::from_raw_parts(a, num_limbs) };
+        let b: &[Limb] = unsafe { core::slice::from_raw_parts(b, num_limbs) };
+        limbs_mul(tmp, a, b);
+    }
+    let r: &mut [Limb] = unsafe { core::slice::from_raw_parts_mut(r, num_limbs) };
+    limbs_from_mont_in_place(r, tmp, n, n0);
+}
+
 fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
     debug_assert_eq!(r.len(), 2 * a.len());
     debug_assert_eq!(a.len(), b.len());
@@ -94,14 +88,6 @@ fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
     }
 }
 
-#[cfg(any(
-    test,
-    not(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        all(target_arch = "arm", target_endian = "little"),
-        target_arch = "x86_64",
-    ))
-))]
 prefixed_extern! {
     // `r` must not alias `a`
     #[must_use]
