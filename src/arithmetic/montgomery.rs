@@ -189,14 +189,6 @@ pub(super) fn limbs_mul_mont(
 
 // `bigint` needs then when the `alloc` feature is enabled. `bn_mul_mont` above needs this when
 // we are using the platforms for which we don't have `bn_mul_mont` in assembly.
-#[cfg(any(
-    feature = "alloc",
-    not(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        all(target_arch = "arm", target_endian = "little"),
-        target_arch = "x86_64"
-    ))
-))]
 pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N0) {
     prefixed_extern! {
         fn bn_from_montgomery_in_place(
