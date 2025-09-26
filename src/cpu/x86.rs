@@ -213,6 +213,15 @@ impl_get_feature! {
     Sse2,
 }
 
+// Sometimes we need an `Sse2` and we don't want to have to initialize feature
+// detection to do it.
+#[cfg(target_feature = "sse2")]
+impl Sse2 {
+    fn get() -> Self {
+        Self(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // This should always pass on any x86 system except very, very, old ones.
