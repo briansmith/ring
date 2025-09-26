@@ -13,7 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::start_ptr::{StartMutPtr, StartPtr};
-use crate::error::LenMismatchError;
+use crate::{error::LenMismatchError, polyfill};
+use core::{marker::PhantomData, ptr};
 
 pub struct Uninit<'a, E> {
     target: &'a mut [E],
@@ -81,11 +82,61 @@ impl<'s, E: Copy> Uninit<'s, E> {
         debug_assert!(len == 0 || (written.as_ptr() == ptr));
         Ok(written)
     }
+
+    pub unsafe fn assume_init(self) -> &'s mut [E] {
+        self.target
+    }
 }
 
 // TODO: From<&'a mut [MaybeUninit<E>]>
 impl<'a, E> Uninit<'a, E> {
     pub fn from_mut(target: &'a mut [E]) -> Self {
         Self { target }
+    }
+}
+
+// A pointer to an `Uninit` that remembers the `Uninit`'s lifetime.
+pub struct AliasedUninit<'a, E> {
+    target: *mut [E],
+    _a: PhantomData<&'a mut [E]>,
+}
+
+impl<E> StartPtr for &AliasedUninit<'_, E> {
+    type Elem = E;
+
+    fn start_ptr(self) -> *const Self::Elem {
+        <*mut [E]>::cast::<E>(self.target).cast_const()
+    }
+}
+
+impl<E> StartMutPtr for &mut AliasedUninit<'_, E> {
+    type Elem = E;
+
+    fn start_mut_ptr(self) -> *mut Self::Elem {
+        <*mut [E]>::cast::<E>(self.target)
+    }
+}
+
+impl<'a, E> From<Uninit<'a, E>> for AliasedUninit<'a, E> {
+    fn from(uninit: Uninit<'a, E>) -> Self {
+        Self {
+            target: polyfill::ptr::from_mut(uninit.target),
+            _a: PhantomData,
+        }
+    }
+}
+
+impl<'a, E> AliasedUninit<'a, E> {
+    pub unsafe fn from_raw_parts_mut(start_ptr: *mut E, len: usize) -> Self {
+        Self {
+            target: ptr::slice_from_raw_parts_mut(start_ptr, len),
+            _a: PhantomData,
+        }
+    }
+
+    pub unsafe fn deref_unchecked(self) -> Uninit<'a, E> {
+        let target: *mut [E] = self.target;
+        let target = unsafe { &mut *target };
+        Uninit { target }
     }
 }

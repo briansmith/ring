@@ -17,7 +17,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use crate::polyfill::SmallerChunks;
+use crate::polyfill::{slice::Uninit, SmallerChunks, StartMutPtr};
 
 use super::super::super::{
     inout::{AliasingSlices2, AliasingSlices3},
@@ -37,16 +37,20 @@ use core::num::NonZeroUsize;
 const _512_IS_LIMB_BITS_TIMES_8: () = assert!(8 * Limb::BITS == 512);
 
 #[inline]
-pub(in super::super::super) fn mul_mont5(
-    r: &mut [[Limb; 8]],
+pub(in super::super::super) fn mul_mont5<'o>(
+    r: &'o mut [[Limb; 8]],
     a: &[[Limb; 8]],
     b: &[[Limb; 8]],
     m: &[[Limb; 8]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     mul_mont5_4x(
-        (r.as_flattened_mut(), a.as_flattened(), b.as_flattened()),
+        (
+            Uninit::from_mut(r.as_flattened_mut()),
+            a.as_flattened(),
+            b.as_flattened(),
+        ),
         SmallerChunks::as_smaller_chunks(m),
         n0,
         maybe_adx_bmi2,
@@ -56,12 +60,12 @@ pub(in super::super::super) fn mul_mont5(
 pub const MIN_4X: usize = 8;
 
 #[inline]
-pub(in super::super::super) fn mul_mont5_4x(
-    in_out: impl AliasingSlices3<Limb>,
+pub(in super::super::super) fn mul_mont5_4x<'o>(
+    in_out: impl AliasingSlices3<'o, Limb>,
     n: &[[Limb; 4]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     const MOD_4X: usize = 4;
     let n = n.as_flattened();
     if let Some(cpu) = maybe_adx_bmi2 {
@@ -76,12 +80,12 @@ pub(in super::super::super) fn mul_mont5_4x(
 }
 
 #[inline]
-pub(in super::super::super) fn sqr_mont5(
-    in_out: impl AliasingSlices2<Limb>,
+pub(in super::super::super) fn sqr_mont5<'o>(
+    in_out: impl AliasingSlices2<'o, Limb>,
     n: &[[Limb; 8]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     prefixed_extern! {
         // `r` and/or 'a' may alias.
         // XXX: BoringSSL declares this to return `int`.
@@ -109,9 +113,12 @@ pub(in super::super::super) fn sqr_mont5(
         None => Limb::from(false),
     };
 
-    let r = in_out.with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
+    let r = in_out.with_non_dangling_non_null_pointers_ra(num_limbs, |mut r, a| {
         let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
-        unsafe { bn_sqr8x_mont(r, a, mulx_adx_capable, n, n0, num_limbs) };
+        unsafe {
+            bn_sqr8x_mont(r.start_mut_ptr(), a, mulx_adx_capable, n, n0, num_limbs);
+            r.deref_unchecked().assume_init()
+        }
     })?;
     Ok(r)
 }

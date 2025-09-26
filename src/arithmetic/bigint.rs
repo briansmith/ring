@@ -57,7 +57,7 @@ use crate::{
     c,
     error::{self, LenMismatchError},
     limb::{self, Limb, LIMB_BITS},
-    polyfill::sliceutil::as_chunks_exact,
+    polyfill::{sliceutil::as_chunks_exact, StartMutPtr},
     window5::Window5,
 };
 use core::{
@@ -125,7 +125,7 @@ fn from_montgomery_amm<M>(mut in_out: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, 
     let mut one = [0; MAX_LIMBS];
     one[0] = 1;
     let one = &one[..m.limbs().len()];
-    limbs_mul_mont(
+    let _: &[Limb] = limbs_mul_mont(
         (InOut(in_out.as_mut()), one),
         m.limbs(),
         m.n0(),
@@ -167,20 +167,21 @@ pub fn elem_mul_into<M, AF, BF>(
     a: &Elem<M, AF>,
     b: &Elem<M, BF>,
     m: &Modulus<M>,
-) -> Elem<M, <(AF, BF) as ProductEncoding>::Output>
+) -> Result<Elem<M, <(AF, BF) as ProductEncoding>::Output>, LenMismatchError>
 where
     (AF, BF): ProductEncoding,
 {
-    // TODO: We shouldn't need to zeroize `out` here.
-    let mut out = out.write_zeros();
-    limbs_mul_mont(
-        (out.as_mut(), b.limbs.as_ref(), a.limbs.as_ref()),
-        m.limbs(),
-        m.n0(),
-        m.cpu_features(),
-    )
-    .unwrap_or_else(unwrap_impossible_limb_slice_error);
-    Elem::assume_in_range_and_encoded_less_safe(out)
+    out.write_fully_with(|out| {
+        let r = limbs_mul_mont(
+            (out, b.limbs.as_ref(), a.limbs.as_ref()),
+            m.limbs(),
+            m.n0(),
+            m.cpu_features(),
+        )
+        .unwrap_or_else(unwrap_impossible_limb_slice_error);
+        Ok(r)
+    })
+    .map(Elem::assume_in_range_and_encoded_less_safe)
 }
 
 pub fn elem_mul<M, AF, BF>(
@@ -192,7 +193,7 @@ where
     (AF, BF): ProductEncoding,
 {
     let mut in_out = b.limbs;
-    limbs_mul_mont(
+    let _: &[Limb] = limbs_mul_mont(
         (InOut(in_out.as_mut()), a.limbs.as_ref()),
         m.limbs(),
         m.n0(),
@@ -248,8 +249,9 @@ pub fn elem_reduced<Larger, Smaller>(
     let tmp = &mut tmp[..a.limbs.len()];
     tmp.copy_from_slice(a.limbs.as_ref());
 
-    let mut r = r.write_zeros();
-    limbs_from_mont_in_place(r.as_mut(), tmp, m.limbs(), m.n0());
+    let r = r
+        .write_fully_with(|out| limbs_from_mont_in_place(out, tmp, m.limbs(), m.n0()))
+        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     Elem::<Smaller, RInverse>::assume_in_range_and_encoded_less_safe(r)
 }
 
@@ -259,7 +261,7 @@ where
     (E, E): ProductEncoding,
 {
     let mut in_out = a.limbs;
-    limbs_square_mont(in_out.as_mut(), m.limbs(), m.n0(), m.cpu_features())
+    let _: &[Limb] = limbs_square_mont(in_out.as_mut(), m.limbs(), m.n0(), m.cpu_features())
         .unwrap_or_else(unwrap_impossible_limb_slice_error);
     Elem::assume_in_range_and_encoded_less_safe(in_out)
 }
@@ -299,10 +301,13 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem
         );
     }
     let num_limbs = NonZeroUsize::new(m.limbs().len()).unwrap();
-    (InOut(a.limbs.as_mut()), b.limbs.as_ref())
-        .with_non_dangling_non_null_pointers_rab(num_limbs, |r, a, b| {
+    let _: &[Limb] = (InOut(a.limbs.as_mut()), b.limbs.as_ref())
+        .with_non_dangling_non_null_pointers_rab(num_limbs, |mut r, a, b| {
             let m = m.limbs().as_ptr(); // Also non-dangling because num_limbs is non-zero.
-            unsafe { LIMBS_sub_mod(r, a, b, m, num_limbs) }
+            unsafe {
+                LIMBS_sub_mod(r.start_mut_ptr(), a, b, m, num_limbs);
+                r.deref_unchecked().assume_init()
+            }
         })
         .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     a
@@ -539,25 +544,21 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     fn entry(table: &[Limb], i: usize, num_limbs: usize) -> &[Limb] {
         &table[(i * num_limbs)..][..num_limbs]
     }
-    // TODO: Replace all uses of this with `entry_uninit`.
-    fn entry_mut(table: &mut [Limb], i: usize, num_limbs: usize) -> &mut [Limb] {
-        &mut table[(i * num_limbs)..][..num_limbs]
-    }
     fn entry_uninit(
         table: &mut [Limb],
         i: usize,
         num_limbs: usize,
     ) -> polyfill::slice::Uninit<'_, Limb> {
-        polyfill::slice::Uninit::from_mut(entry_mut(table, i, num_limbs))
+        polyfill::slice::Uninit::from_mut(&mut table[(i * num_limbs)..][..num_limbs])
     }
 
     // table[0] = base**0 (i.e. 1).
     let _: &[Limb] = m.oneR(entry_uninit(table, 0, num_limbs))?;
 
     // table[1] = base*R == (base/R * RRR)/R
-    limbs_mul_mont(
+    let _: &[Limb] = limbs_mul_mont(
         (
-            entry_mut(table, 1, num_limbs),
+            entry_uninit(table, 1, num_limbs),
             base_rinverse.limbs.as_ref(),
             oneRRR.as_ref().limbs.as_ref(),
         ),
@@ -572,14 +573,14 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             (false, i - 1, 1)
         };
         let (previous, rest) = table.split_at_mut(num_limbs * i);
-        let dst = entry_mut(rest, 0, num_limbs);
+        let dst = entry_uninit(rest, 0, num_limbs);
         let src1 = entry(previous, src1, num_limbs);
-        if square {
-            limbs_square_mont((dst, src1), m.limbs(), m.n0(), m.cpu_features())?;
+        let _: &[Limb] = if square {
+            limbs_square_mont((dst, src1), m.limbs(), m.n0(), m.cpu_features())?
         } else {
             let src2 = entry(previous, src2, num_limbs);
-            limbs_mul_mont((dst, src1, src2), m.limbs(), m.n0(), m.cpu_features())?;
-        }
+            limbs_mul_mont((dst, src1, src2), m.limbs(), m.n0(), m.cpu_features())?
+        };
     }
 
     // Recycle the storage; the value will get overwritten.
@@ -679,7 +680,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .ok_or_else(|| LenMismatchError::new(out.limbs.len()))?;
 
     // base_cached = base*R == (base/R * RRR)/R
-    mul_mont5(base_cached, base_rinverse, oneRRR, m_cached, n0, cpu2)?;
+    let _: &[Limb] = mul_mont5(base_cached, base_rinverse, oneRRR, m_cached, n0, cpu2)?;
     let mut out = out.limbs; // recycle.
 
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
@@ -698,7 +699,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                 Some(i) => i,
                 None => break,
             };
-            sqr_mont5(acc.as_flattened_mut(), m_cached, n0, cpu)?;
+            let _: &[Limb] = sqr_mont5(acc.as_flattened_mut(), m_cached, n0, cpu)?;
         }
         Ok(())
     }
@@ -774,7 +775,7 @@ fn unwrap_impossible_len_mismatch_error<T>(LenMismatchError { .. }: LenMismatchE
 
 #[cold]
 #[inline(never)]
-fn unwrap_impossible_limb_slice_error(err: LimbSliceError) {
+fn unwrap_impossible_limb_slice_error<T>(err: LimbSliceError) -> T {
     match err {
         LimbSliceError::LenMismatch(_) => unreachable!(),
         LimbSliceError::TooShort(_) => unreachable!(),

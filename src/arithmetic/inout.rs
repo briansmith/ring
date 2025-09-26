@@ -13,9 +13,13 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub(crate) use crate::error::LenMismatchError;
+use crate::polyfill::{
+    slice::{AliasedUninit, Uninit},
+    StartPtr,
+};
 use core::num::NonZeroUsize;
 
-pub(crate) trait AliasingSlices2<T> {
+pub(crate) trait AliasingSlices2<'o, T> {
     /// The pointers passed to `f` will be valid and non-null, and will not
     /// be dangling, so they can be passed to C functions.
     ///
@@ -36,10 +40,11 @@ pub(crate) trait AliasingSlices2<T> {
     fn with_non_dangling_non_null_pointers_ra<R>(
         self,
         expected_len: NonZeroUsize,
-        f: impl FnOnce(*mut T, *const T) -> R,
+        f: impl FnOnce(AliasedUninit<'o, T>, *const T) -> R,
     ) -> Result<R, LenMismatchError>
     where
         Self: Sized,
+        T: 'o,
     {
         self.with_potentially_dangling_non_null_pointers_ra(expected_len.get(), f)
     }
@@ -55,30 +60,33 @@ pub(crate) trait AliasingSlices2<T> {
     fn with_potentially_dangling_non_null_pointers_ra<R>(
         self,
         expected_len: usize,
-        f: impl FnOnce(*mut T, *const T) -> R,
-    ) -> Result<R, LenMismatchError>;
+        f: impl FnOnce(AliasedUninit<'o, T>, *const T) -> R,
+    ) -> Result<R, LenMismatchError>
+    where
+        T: 'o;
 }
 
-impl<T> AliasingSlices2<T> for &mut [T] {
+impl<'o, T> AliasingSlices2<'o, T> for &'o mut [T] {
     fn with_potentially_dangling_non_null_pointers_ra<R>(
         self,
         expected_len: usize,
-        f: impl FnOnce(*mut T, *const T) -> R,
+        f: impl FnOnce(AliasedUninit<'o, T>, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
         let r = self;
         if r.len() != expected_len {
             return Err(LenMismatchError::new(r.len()));
         }
-        let r = r.as_mut_ptr();
-        Ok(f(r, r.cast_const()))
+        let r = AliasedUninit::from(Uninit::from_mut(r));
+        let a = r.start_ptr();
+        Ok(f(r, a))
     }
 }
 
-impl<T> AliasingSlices2<T> for (&mut [T], &[T]) {
+impl<'o, T> AliasingSlices2<'o, T> for (Uninit<'o, T>, &[T]) {
     fn with_potentially_dangling_non_null_pointers_ra<R>(
         self,
         expected_len: usize,
-        f: impl FnOnce(*mut T, *const T) -> R,
+        f: impl FnOnce(AliasedUninit<'o, T>, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
         let (r, a) = self;
         if r.len() != expected_len {
@@ -87,11 +95,11 @@ impl<T> AliasingSlices2<T> for (&mut [T], &[T]) {
         if a.len() != expected_len {
             return Err(LenMismatchError::new(a.len()));
         }
-        Ok(f(r.as_mut_ptr(), a.as_ptr()))
+        Ok(f(AliasedUninit::from(r), a.as_ptr()))
     }
 }
 
-pub(crate) trait AliasingSlices3<T> {
+pub(crate) trait AliasingSlices3<'o, T> {
     /// The pointers passed to `f` will all be non-null and properly aligned,
     /// and will not be dangling.
     ///
@@ -112,10 +120,11 @@ pub(crate) trait AliasingSlices3<T> {
     fn with_non_dangling_non_null_pointers_rab<R>(
         self,
         expected_len: NonZeroUsize,
-        f: impl FnOnce(*mut T, *const T, *const T) -> R,
+        f: impl FnOnce(AliasedUninit<'o, T>, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError>
     where
         Self: Sized,
+        T: 'o,
     {
         self.with_potentially_dangling_non_null_pointers_rab(expected_len.get(), f)
     }
@@ -131,29 +140,34 @@ pub(crate) trait AliasingSlices3<T> {
     fn with_potentially_dangling_non_null_pointers_rab<R>(
         self,
         expected_len: usize,
-        f: impl FnOnce(*mut T, *const T, *const T) -> R,
-    ) -> Result<R, LenMismatchError>;
+        f: impl FnOnce(AliasedUninit<'o, T>, *const T, *const T) -> R,
+    ) -> Result<R, LenMismatchError>
+    where
+        T: 'o;
 }
 
-impl<T> AliasingSlices3<T> for &mut [T] {
+impl<'o, T> AliasingSlices3<'o, T> for &'o mut [T] {
     fn with_potentially_dangling_non_null_pointers_rab<R>(
         self,
         expected_len: usize,
-        f: impl FnOnce(*mut T, *const T, *const T) -> R,
+        f: impl FnOnce(AliasedUninit<'o, T>, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
         <Self as AliasingSlices2<T>>::with_potentially_dangling_non_null_pointers_ra(
             self,
             expected_len,
-            |r, a| f(r, r, a),
+            |r, b| {
+                let a = r.start_ptr();
+                f(r, a, b)
+            },
         )
     }
 }
 
-impl<T> AliasingSlices3<T> for (&mut [T], &[T], &[T]) {
+impl<'o, T> AliasingSlices3<'o, T> for (Uninit<'o, T>, &[T], &[T]) {
     fn with_potentially_dangling_non_null_pointers_rab<R>(
         self,
         expected_len: usize,
-        f: impl FnOnce(*mut T, *const T, *const T) -> R,
+        f: impl FnOnce(AliasedUninit<'o, T>, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
         let (r, a, b) = self;
         if b.len() != expected_len {
@@ -165,14 +179,14 @@ impl<T> AliasingSlices3<T> for (&mut [T], &[T], &[T]) {
     }
 }
 
-pub(crate) trait AliasSrc<T> {
-    type RAA: AliasingSlices3<T>;
+pub(crate) trait AliasSrc<'o, T> {
+    type RAA: AliasingSlices3<'o, T>;
     fn raa(self) -> Self::RAA;
 }
 
-impl<'a, T> AliasSrc<T> for &'a mut [T]
+impl<'o, T> AliasSrc<'o, T> for &'o mut [T]
 where
-    &'a mut [T]: AliasingSlices3<T>,
+    &'o mut [T]: AliasingSlices3<'o, T>,
 {
     type RAA = Self;
     fn raa(self) -> Self::RAA {
@@ -180,11 +194,11 @@ where
     }
 }
 
-impl<'a, T> AliasSrc<T> for (&'a mut [T], &'a [T])
+impl<'o, 'a, O, T> AliasSrc<'o, T> for (O, &'a [T])
 where
-    (&'a mut [T], &'a [T], &'a [T]): AliasingSlices3<T>,
+    (O, &'a [T], &'a [T]): AliasingSlices3<'o, T>,
 {
-    type RAA = (&'a mut [T], &'a [T], &'a [T]);
+    type RAA = (O, &'a [T], &'a [T]);
     fn raa(self) -> Self::RAA {
         let (r, a) = self;
         (r, a, a)
@@ -221,14 +235,14 @@ where
 
 pub struct InOut<T>(pub T);
 
-impl<'a, T> AliasingSlices3<T> for (InOut<&'a mut [T]>, &[T])
+impl<'o, T> AliasingSlices3<'o, T> for (InOut<&'o mut [T]>, &[T])
 where
-    &'a mut [T]: AliasingSlices2<T>,
+    &'o mut [T]: AliasingSlices2<'o, T>,
 {
     fn with_potentially_dangling_non_null_pointers_rab<R>(
         self,
         expected_len: usize,
-        f: impl FnOnce(*mut T, *const T, *const T) -> R,
+        f: impl FnOnce(AliasedUninit<'o, T>, *const T, *const T) -> R,
     ) -> Result<R, LenMismatchError> {
         let (InOut(ra), b) = self;
         if b.len() != expected_len {
