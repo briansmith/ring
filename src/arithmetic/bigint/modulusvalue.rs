@@ -19,7 +19,7 @@ use super::{
 use crate::{
     bb,
     bits::{BitLength, FromByteLen as _},
-    error::{self, InputTooLongError},
+    error::{self, InputTooLongError, LenMismatchError},
     limb::{self, Limb, LIMB_BITS, LIMB_BYTES},
     polyfill::usize_from_u32,
 };
@@ -84,7 +84,7 @@ impl<M> OwnedModulusValue<M> {
 
         let mut limbs = BoxedLimbs::zero(num_limbs);
         limb::parse_big_endian_and_pad_consttime(input, limbs.as_mut())
-            .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
+            .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;
         limb::limbs_reject_even_leak_bit(limbs.as_ref())
             .map_err(|_: error::Unspecified| error::KeyRejected::invalid_component())?;
 

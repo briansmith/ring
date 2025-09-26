@@ -576,7 +576,7 @@ pub(super) fn scalar_parse_big_endian_partially_reduced_variable_consttime(
     let mut r = Scalar::zero();
     {
         let r = &mut r.limbs[..num_limbs];
-        parse_big_endian_and_pad_consttime(bytes, r)?;
+        parse_big_endian_and_pad_consttime(bytes, r).map_err(error::erase::<LenMismatchError>)?;
         limbs_reduce_once(r, &n.limbs[..num_limbs])
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     }

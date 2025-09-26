@@ -150,7 +150,7 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
     max_exclusive: &[Limb],
     result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
-    parse_big_endian_and_pad_consttime(input, result)?;
+    parse_big_endian_and_pad_consttime(input, result).map_err(error::erase::<LenMismatchError>)?;
     verify_limbs_less_than_limbs_leak_bit(result, max_exclusive)?;
     if allow_zero != AllowZero::Yes {
         if limbs_are_zero(result).leak() {
@@ -166,9 +166,9 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
 pub fn parse_big_endian_and_pad_consttime(
     input: untrusted::Input,
     result: &mut [Limb],
-) -> Result<(), error::Unspecified> {
+) -> Result<(), LenMismatchError> {
     if input.is_empty() {
-        return Err(error::Unspecified);
+        return Err(LenMismatchError::new(input.len()));
     }
     let input_limbs = input.as_slice_less_safe().rchunks(LIMB_BYTES).map(|chunk| {
         let mut padded = [0; LIMB_BYTES];
@@ -176,7 +176,7 @@ pub fn parse_big_endian_and_pad_consttime(
         Limb::from_be_bytes(padded)
     });
     if input_limbs.len() > result.len() {
-        return Err(error::Unspecified);
+        return Err(LenMismatchError::new(input.len()));
     }
 
     result
@@ -473,6 +473,7 @@ mod tests {
             assert_eq!(
                 Ok(()),
                 parse_big_endian_and_pad_consttime(inp, &mut result[..])
+                    .map_err(error::erase::<LenMismatchError>)
             );
             assert_eq!(&[0xfe, 0, 0, 0], &result);
         }
@@ -482,7 +483,11 @@ mod tests {
             let inp = [0xbe, 0xef, 0xf0, 0x0d];
             let inp = untrusted::Input::from(&inp);
             let mut result = [0; LIMBS].map(From::<LeakyLimb>::from);
-            assert_eq!(Ok(()), parse_big_endian_and_pad_consttime(inp, &mut result));
+            assert_eq!(
+                Ok(()),
+                parse_big_endian_and_pad_consttime(inp, &mut result)
+                    .map_err(error::erase::<LenMismatchError>)
+            );
             assert_eq!(&[0xbeeff00d, 0, 0, 0], &result);
         }
 
@@ -504,7 +509,7 @@ mod tests {
                 for (be_bytes, limbs) in TEST_CASES {
                     let mut buf = [0; 2];
                     parse_big_endian_and_pad_consttime(untrusted::Input::from(be_bytes), &mut buf)
-                        .unwrap();
+                        .map_err(error::erase::<LenMismatchError>).unwrap();
                     assert_eq!(limbs, &buf, "({be_bytes:x?}, {limbs:x?}");
                 }
             },
@@ -525,7 +530,7 @@ mod tests {
                 for (be_bytes, limbs) in TEST_CASES {
                     let mut buf = [0; 3];
                     parse_big_endian_and_pad_consttime(untrusted::Input::from(be_bytes), &mut buf)
-                        .unwrap();
+                        .map_err(error::erase::<LenMismatchError>).unwrap();
                     assert_eq!(limbs, &buf, "({be_bytes:x?}, {limbs:x?}");
                 }
             },
