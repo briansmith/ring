@@ -22,7 +22,7 @@ macro_rules! impl_get_feature {
         $(
             $( #[$meta] )*
             #[derive(Clone, Copy)]
-            pub(crate) struct $Name(());
+            pub(crate) struct $Name(crate::cpu::Features);
 
             $( #[$meta] )*
             impl $Name {
@@ -38,11 +38,11 @@ macro_rules! impl_get_feature {
                     const MASK: u32 = $Name::mask();
                     const STATICALLY_DETECTED: bool = (crate::cpu::CAPS_STATIC & MASK) == MASK;
                     if STATICALLY_DETECTED { // TODO: `const`
-                        return Some($Name(()));
+                        return Some($Name(self.cpu()));
                     }
 
                     if (self.values() & MASK) == MASK {
-                        Some($Name(()))
+                        Some($Name(self.cpu()))
                     } else {
                         None
                     }
@@ -177,7 +177,6 @@ mod features {
             self.values
         }
 
-        #[allow(dead_code)]
         #[inline(always)]
         pub(super) fn cpu(&self) -> Features {
             self.cpu

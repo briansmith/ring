@@ -155,20 +155,13 @@ pub(super) fn limbs_mul_mont(
             use crate::{cpu::GetFeature as _, cpu::intel::Sse2};
             // The X86 implementation of `bn_mul_mont_sse2` has a minimum of 4.
             const _MIN_LIMBS_AT_LEAST_4: () = assert!(MIN_LIMBS >= 4);
-
-
-            // The callback function is not even defined unless the SSE2 target
-            // feature has been disabled
-            #[cfg(not(target_feature = "sse2"))]
-            let Some(sse2) = cpu.get_feature() else {
-                return super::limbs::fallback::mont::limbs_mul_mont(in_out, n, n0);
-            };
-            #[cfg(target_feature = "sse2")]
-            let sse2 = Sse2::get();
-
-            bn_mul_mont_ffi!(in_out, n, n0, sse2, unsafe {
-                (MIN_LIMBS, MOD_FALLBACK, Sse2) => bn_mul_mont_sse2
-            })
+            if let Some(cpu) = cpu.get_feature() {
+                bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
+                    (MIN_LIMBS, MOD_FALLBACK, Sse2) => bn_mul_mont_sse2
+                })
+            } else {
+                super::limbs::fallback::mont::limbs_mul_mont(in_out, n, n0)
+            }
         } else if #[cfg(target_arch = "x86_64")] {
             use crate::{cpu::GetFeature as _};
             use super::limbs::x86_64;

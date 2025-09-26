@@ -16,11 +16,28 @@
 use crate::polyfill::prelude::*;
 
 use super::super::super::{
+    ffi::bn_mul_mont_ffi,
+    inout::AliasingSlices3,
     montgomery::{limbs_from_mont_in_place, N0},
-    MAX_LIMBS,
+    LimbSliceError, MAX_LIMBS, MIN_LIMBS,
 };
 use crate::{c, limb::Limb};
 use cfg_if::cfg_if;
+
+#[allow(dead_code)]
+#[inline]
+pub(crate) fn limbs_mul_mont(
+    in_out: impl AliasingSlices3<Limb>,
+    n: &[Limb],
+    n0: &N0,
+) -> Result<(), LimbSliceError> {
+    const MOD_FALLBACK: usize = 1;
+    // Use the fallback implementation through the FFI wrapper when it is defined
+    //so that Rust and C code both go through it.
+    unsafe {
+        bn_mul_mont_ffi::<(), MIN_LIMBS, MOD_FALLBACK>(in_out, n, n0, (), bn_mul_mont_fallback)
+    }
+}
 
 cfg_if! {
     if #[cfg(not(any(
@@ -28,28 +45,6 @@ cfg_if! {
             all(target_arch = "arm", target_endian = "little"),
             all(target_arch = "x86", target_feature = "sse2"),
             target_arch = "x86_64")))] {
-        use super::super::super::{
-            ffi::bn_mul_mont_ffi,
-            inout::AliasingSlices3,
-            LimbSliceError,
-            MIN_LIMBS,
-        };
-
-        #[inline]
-        pub fn limbs_mul_mont(
-            in_out: impl AliasingSlices3<Limb>,
-            n: &[Limb],
-            n0: &N0,
-        ) -> Result<(), LimbSliceError> {
-            const MOD_FALLBACK: usize = 1;
-            // Use the fallback implementation through the FFI wrapper so that
-            // Rust and C code both go through `bn_mul_mont`.
-            // This isn't really an FFI call; it's defined below.
-            bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
-                (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_fallback
-            })
-        }
-
         // TODO: Stop calling this from C and un-export it.
         prefixed_export! {
             #[cfg_attr(target_arch = "x86", cold)]
@@ -65,10 +60,11 @@ cfg_if! {
                 unsafe { bn_mul_mont_fallback_impl(r, a, b, n, n0, num_limbs) }
             }
         }
+    } else {
+        use bn_mul_mont_fallback_impl as bn_mul_mont_fallback;
     }
 }
 
-#[allow(dead_code)]
 #[inline]
 unsafe extern "C" fn bn_mul_mont_fallback_impl(
     r: *mut Limb,
