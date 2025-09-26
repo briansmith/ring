@@ -45,9 +45,8 @@ mod cold_error;
 
 mod array_flat_map;
 mod array_split_map;
-
 mod atomic;
-
+mod boxed;
 pub mod partial_buffer;
 pub mod sliceutil;
 
@@ -78,6 +77,7 @@ pub mod prelude {
     // using Rust Nightly.
     pub(crate) use super::{
         atomic::AtomicPolyfills,
+        boxed::BoxUninitPolyfills,
         ptr::PointerPolyfills,
         slice::{SliceOfArraysPolyfills, SlicePolyfills},
     };
