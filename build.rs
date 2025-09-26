@@ -188,7 +188,6 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "/Zc:forScope",
             "/Zc:inline",
             // Warnings.
-            "/Wall",
             "/wd4127", // C4127: conditional expression is constant
             "/wd4464", // C4464: relative include path contains '..'
             "/wd4514", // C4514: <name>: unreferenced inline function has be
@@ -591,13 +590,11 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
 
 fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_dir: &Path) {
     let compiler = c.get_compiler();
-    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
-    let compiler = if target.os == WINDOWS && target.arch == AARCH64 && !compiler.is_like_clang() {
-        let _ = c.compiler("clang");
-        c.get_compiler()
-    } else {
-        compiler
-    };
+    // On Windows AArch64 we currently must use Clang to compile C code.
+    // clang-cl.exe has support for MSVC-style command-line arguments.
+    if target.os == WINDOWS && target.arch == AARCH64 && !compiler.is_like_clang() {
+        c.prefer_clang_cl_over_msvc(true);
+    }
 
     let _ = c.include(c_root_dir.join("include"));
     let _ = c.include(include_dir);
