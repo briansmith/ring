@@ -13,8 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    super::montgomery::Unencoded, unwrap_impossible_len_mismatch_error, BoxedLimbs, Elem,
-    OwnedModulusValue, PublicModulus, Storage, Uninit, N0,
+    super::montgomery::Unencoded, unwrap_impossible_len_mismatch_error, Elem, OwnedModulusValue,
+    PublicModulus, Uninit, N0,
 };
 use crate::{
     bits::BitLength,
@@ -175,11 +175,8 @@ impl<M> Modulus<'_, M> {
         // Now out == 2**r (mod m) == 1*R.
     }
 
-    // TODO: XXX Avoid duplication with `Modulus`.
-    pub fn alloc_zero(&self) -> Storage<M> {
-        Storage {
-            limbs: BoxedLimbs::zero_less_safe(self.limbs.len()),
-        }
+    pub fn alloc_uninit(&self) -> Uninit<M> {
+        Uninit::new_less_safe(self.limbs.len())
     }
 
     #[inline]
