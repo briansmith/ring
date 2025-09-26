@@ -12,17 +12,30 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use super::start_ptr::{StartMutPtr, StartPtr};
 use crate::error::LenMismatchError;
 
 pub struct Uninit<'a, E> {
     target: &'a mut [E],
 }
 
-impl<E> Uninit<'_, E> {
-    fn as_ptr(&self) -> *const E {
-        self.target.as_ptr() // cast_uninit
-    }
+impl<E> StartPtr for &Uninit<'_, E> {
+    type Elem = E;
 
+    fn start_ptr(self) -> *const Self::Elem {
+        self.target.as_ptr()
+    }
+}
+
+impl<E> StartMutPtr for &mut Uninit<'_, E> {
+    type Elem = E;
+
+    fn start_mut_ptr(self) -> *mut Self::Elem {
+        self.target.as_mut_ptr()
+    }
+}
+
+impl<E> Uninit<'_, E> {
     pub fn len(&self) -> usize {
         self.target.len()
     }
@@ -60,7 +73,7 @@ impl<'s, E: Copy> Uninit<'s, E> {
     where
         LenMismatchError: From<EI>,
     {
-        let (len, ptr) = (self.len(), self.as_ptr());
+        let (len, ptr) = (self.len(), self.start_ptr());
         let written = f(self)?;
         if written.len() != len {
             Err(LenMismatchError::new(written.len()))?;
