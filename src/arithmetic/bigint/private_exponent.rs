@@ -54,7 +54,7 @@ impl PrivateExponent {
         p: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
         use super::boxed_limbs::BoxedLimbs;
-        use crate::limb::LIMB_BYTES;
+        use crate::{error::LenMismatchError, limb::LIMB_BYTES};
 
         // Do exactly what `from_be_bytes_padded` does for any inputs it accepts.
         if let r @ Ok(_) = Self::from_be_bytes_padded(input, p) {
@@ -64,7 +64,7 @@ impl PrivateExponent {
         let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
         let mut limbs = BoxedLimbs::<M>::zero(num_limbs);
         limb::parse_big_endian_and_pad_consttime(input, limbs.as_mut())
-            .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
+            .map_err(error::erase::<LenMismatchError>)?;
         limbs.as_mut().reverse();
         Ok(Self {
             limbs: limbs.into_limbs(),

@@ -159,7 +159,8 @@ impl<M> Elem<M, Unencoded> {
         m: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
         let mut out = BoxedLimbs::zero(m.limbs().len());
-        limb::parse_big_endian_and_pad_consttime(input, out.as_mut())?;
+        limb::parse_big_endian_and_pad_consttime(input, out.as_mut())
+            .map_err(error::erase::<LenMismatchError>)?;
         limb::verify_limbs_less_than_limbs_leak_bit(out.as_ref(), m.limbs())?;
         Ok(Self::assume_in_range_and_encoded_less_safe(out))
     }
@@ -983,7 +984,7 @@ mod tests {
         let bytes = test_case.consume_bytes(name);
         let mut limbs = BoxedLimbs::zero(num_limbs);
         limb::parse_big_endian_and_pad_consttime(untrusted::Input::from(&bytes), limbs.as_mut())
-            .unwrap();
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         Elem::assume_in_range_and_encoded_less_safe(limbs)
     }
 
