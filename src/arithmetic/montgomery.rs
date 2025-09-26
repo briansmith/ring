@@ -121,14 +121,18 @@ impl ProductEncoding for (RRR, RInverse) {
 
 #[allow(unused_imports)]
 use crate::{bssl, c, limb::Limb};
+use crate::{
+    error::LenMismatchError,
+    polyfill::{slice::Uninit, StartMutPtr},
+};
 
 #[inline(always)]
-pub(super) fn limbs_mul_mont(
-    in_out: impl AliasingSlices3<Limb>,
+pub(super) fn limbs_mul_mont<'o>(
+    in_out: impl AliasingSlices3<'o, Limb>,
     n: &[Limb],
     n0: &N0,
     cpu: cpu::Features,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     #[allow(dead_code)]
     const MOD_FALLBACK: usize = 1; // No restriction.
     cfg_if! {
@@ -181,7 +185,12 @@ pub(super) fn limbs_mul_mont(
 
 // `bigint` needs then when the `alloc` feature is enabled. `bn_mul_mont` above needs this when
 // we are using the platforms for which we don't have `bn_mul_mont` in assembly.
-pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N0) {
+pub(super) fn limbs_from_mont_in_place<'o>(
+    mut r: Uninit<'o, Limb>,
+    tmp: &mut [Limb],
+    m: &[Limb],
+    n0: &N0,
+) -> Result<&'o mut [Limb], LenMismatchError> {
     prefixed_extern! {
         fn bn_from_montgomery_in_place(
             r: *mut Limb,
@@ -194,22 +203,30 @@ pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Li
         ) -> bssl::Result;
     }
     let r_len = r.len();
-    let r = r.as_mut_ptr();
     let tmp_len = tmp.len();
     let tmp = tmp.as_mut_ptr();
     Result::from(unsafe {
-        bn_from_montgomery_in_place(r, r_len, tmp, tmp_len, m.as_ptr(), m.len(), n0)
+        bn_from_montgomery_in_place(
+            r.start_mut_ptr(),
+            r_len,
+            tmp,
+            tmp_len,
+            m.as_ptr(),
+            m.len(),
+            n0,
+        )
     })
-    .unwrap()
+    .map_err(|_| LenMismatchError::new(r_len))?;
+    Ok(unsafe { r.assume_init() })
 }
 
 /// r = r**2
-pub(super) fn limbs_square_mont(
-    in_out: impl AliasingSlices2<Limb> + AliasSrc<Limb>,
+pub(super) fn limbs_square_mont<'o>(
+    in_out: impl AliasingSlices2<'o, Limb> + AliasSrc<'o, Limb>,
     n: &[Limb],
     n0: &N0,
     cpu: cpu::Features,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     {
         use super::limbs::aarch64;

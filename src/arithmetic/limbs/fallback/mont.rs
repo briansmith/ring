@@ -21,16 +21,17 @@ use super::super::super::{
     montgomery::{limbs_from_mont_in_place, N0},
     LimbSliceError, MAX_LIMBS, MIN_LIMBS,
 };
-use crate::{c, limb::Limb};
+use crate::{c, error::LenMismatchError, limb::Limb, polyfill::slice::AliasedUninit};
 use cfg_if::cfg_if;
+use core::hint::unreachable_unchecked;
 
 #[allow(dead_code)]
 #[inline]
-pub(crate) fn limbs_mul_mont(
-    in_out: impl AliasingSlices3<Limb>,
+pub(crate) fn limbs_mul_mont<'o>(
+    in_out: impl AliasingSlices3<'o, Limb>,
     n: &[Limb],
     n0: &N0,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     const MOD_FALLBACK: usize = 1;
     // Use the fallback implementation through the FFI wrapper when it is defined
     //so that Rust and C code both go through it.
@@ -90,8 +91,15 @@ unsafe extern "C" fn bn_mul_mont_fallback_impl(
         let b: &[Limb] = unsafe { core::slice::from_raw_parts(b, num_limbs) };
         limbs_mul(tmp, a, b);
     }
-    let r: &mut [Limb] = unsafe { core::slice::from_raw_parts_mut(r, num_limbs) };
-    limbs_from_mont_in_place(r, tmp, n, n0);
+    let r = unsafe { AliasedUninit::from_raw_parts_mut(r, num_limbs).deref_unchecked() };
+    match limbs_from_mont_in_place(r, tmp, n, n0) {
+        Ok(_) => {}
+        Err(LenMismatchError { .. }) => {
+            // We can't return an error and we can't panic since we can't
+            // unwind as an `extern "C"` function.
+            unsafe { unreachable_unchecked() }
+        }
+    }
 }
 
 fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {

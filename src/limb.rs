@@ -22,7 +22,7 @@ use crate::{
     arithmetic::inout::{AliasingSlices2, AliasingSlices3, InOut},
     bb, c,
     error::{self, LenMismatchError},
-    polyfill::{slice::Uninit, sliceutil, usize_from_u32, ArrayFlatMap},
+    polyfill::{slice::Uninit, sliceutil, usize_from_u32, ArrayFlatMap, StartMutPtr},
     window5::Window5,
 };
 use core::{iter, num::NonZeroUsize};
@@ -302,9 +302,11 @@ pub(crate) fn limbs_add_assign_mod(
         );
     }
     let num_limbs = NonZeroUsize::new(m.len()).ok_or_else(|| LenMismatchError::new(m.len()))?;
-    (InOut(a), b).with_non_dangling_non_null_pointers_rab(num_limbs, |r, a, b| {
+    (InOut(a), b).with_non_dangling_non_null_pointers_rab(num_limbs, |mut r, a, b| {
         let m = m.as_ptr(); // Also non-dangling because `num_limbs` is non-zero.
-        unsafe { LIMBS_add_mod(r, a, b, m, num_limbs) }
+        unsafe {
+            LIMBS_add_mod(r.start_mut_ptr(), a, b, m, num_limbs);
+        }
     })
 }
 
@@ -319,12 +321,13 @@ pub(crate) fn limbs_double_mod(r: &mut [Limb], m: &[Limb]) -> Result<(), LenMism
             num_limbs: c::NonZero_size_t);
     }
     let num_limbs = NonZeroUsize::new(m.len()).ok_or_else(|| LenMismatchError::new(m.len()))?;
-    r.with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
+    r.with_non_dangling_non_null_pointers_ra(num_limbs, |mut r, a| {
         let m = m.as_ptr(); // Also non-dangling because num_limbs > 0.
         unsafe {
-            LIMBS_shl_mod(r, a, m, num_limbs);
+            LIMBS_shl_mod(r.start_mut_ptr(), a, m, num_limbs);
         }
     })
+    .map(|_| ())
 }
 
 // *r = -a, assuming a is odd.

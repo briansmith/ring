@@ -15,7 +15,8 @@
 use super::{PublicExponent, PublicModulus, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
 use crate::{
     arithmetic::bigint,
-    bits, cpu, error,
+    bits, cpu,
+    error::{self, LenMismatchError},
     io::{self, der, der_writer},
     limb::LIMB_BYTES,
 };
@@ -188,7 +189,8 @@ impl Inner {
         let n = &self.n.value(cpu_features);
 
         let tmp = n.alloc_uninit();
-        let base_r = bigint::elem_mul_into(tmp, self.n.oneRR(), base, n);
+        let base_r = bigint::elem_mul_into(tmp, self.n.oneRR(), base, n)
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
 
         // During RSA public key operations the exponent is almost always either
         // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
