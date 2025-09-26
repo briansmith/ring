@@ -35,8 +35,8 @@ impl NumLimbs {
 
     pub(super) const fn into(self) -> usize {
         match self {
-            NumLimbs::P256 => P256_NUM_LIMBS,
-            NumLimbs::P384 => P384_NUM_LIMBS,
+            NumLimbs::P256 => P256_NUM_LIMBS.get(),
+            NumLimbs::P384 => P384_NUM_LIMBS.get(),
         }
     }
 }
