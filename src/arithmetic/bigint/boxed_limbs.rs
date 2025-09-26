@@ -16,7 +16,7 @@ use crate::{
     error::LenMismatchError,
     limb::{self, Limb},
 };
-use alloc::{boxed::Box, vec, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 use core::{iter, marker::PhantomData};
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
@@ -39,14 +39,6 @@ impl<M> Clone for BoxedLimbs<M> {
 }
 
 impl<M> BoxedLimbs<M> {
-    // "Less safe" because this is what binds `len` to `M`.
-    pub fn zero_less_safe(len: usize) -> Self {
-        Self {
-            limbs: vec![0; len].into_boxed_slice(),
-            m: PhantomData,
-        }
-    }
-
     #[inline(always)]
     pub(super) fn as_ref(&self) -> &[Limb] {
         self.limbs.as_ref()
@@ -85,7 +77,12 @@ impl<M> Uninit<M> {
         self.len
     }
 
-    pub fn write_from_be_byes_padded(
+    pub(super) fn write_zeros(self) -> BoxedLimbs<M> {
+        self.write_from_iter_padded(iter::empty())
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
+    }
+
+    pub(super) fn write_from_be_byes_padded(
         self,
         input: untrusted::Input,
     ) -> Result<BoxedLimbs<M>, LenMismatchError> {
@@ -93,14 +90,35 @@ impl<M> Uninit<M> {
         self.write_from_iter_padded(input)
     }
 
-    pub fn write_copy_of_slice_padded(
+    pub(super) fn write_copy_of_slice_checked(
+        self,
+        src: &[Limb],
+    ) -> Result<BoxedLimbs<M>, LenMismatchError> {
+        self.write_from_iter_checked(src.iter().copied())
+    }
+
+    pub(super) fn write_copy_of_slice_padded(
         self,
         src: &[Limb],
     ) -> Result<BoxedLimbs<M>, LenMismatchError> {
         self.write_from_iter_padded(src.iter().copied())
     }
 
-    pub fn write_from_iter_padded(
+    pub(super) fn write_from_iter_checked(
+        self,
+        input: impl ExactSizeIterator<Item = Limb>,
+    ) -> Result<BoxedLimbs<M>, LenMismatchError>
+    where
+        Limb: Copy,
+    {
+        if input.len() != self.len() {
+            return Err(LenMismatchError::new(input.len()));
+        }
+        let limbs = Vec::from_iter(input).into_boxed_slice();
+        Ok(BoxedLimbs { limbs, m: self.m })
+    }
+
+    pub(super) fn write_from_iter_padded(
         self,
         input: impl ExactSizeIterator<Item = Limb>,
     ) -> Result<BoxedLimbs<M>, LenMismatchError>

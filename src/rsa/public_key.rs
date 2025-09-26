@@ -164,7 +164,7 @@ impl Inner {
         }
 
         // Step 2.
-        let m = n.alloc_zero();
+        let m = n.alloc_uninit();
         let m = self.exponentiate_elem(m, &s, cpu_features);
 
         // Step 3.
@@ -176,7 +176,7 @@ impl Inner {
     /// This is constant-time with respect to `base` only.
     pub(super) fn exponentiate_elem(
         &self,
-        out: bigint::Storage<N>,
+        out: bigint::Uninit<N>,
         base: &bigint::Elem<N>,
         cpu_features: cpu::Features,
     ) -> bigint::Elem<N> {
@@ -187,7 +187,7 @@ impl Inner {
 
         let n = &self.n.value(cpu_features);
 
-        let tmp = n.alloc_zero();
+        let tmp = n.alloc_uninit();
         let base_r = bigint::elem_mul_into(tmp, self.n.oneRR(), base, n);
 
         // During RSA public key operations the exponent is almost always either

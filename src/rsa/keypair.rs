@@ -366,7 +366,7 @@ impl KeyPair {
 
         // Step 7.f.
         let qInv = bigint::elem_mul(p.oneRR.as_ref(), qInv, pm);
-        let q_mod_p = bigint::elem_reduced(pm.alloc_zero(), &q_mod_n, pm, q.modulus.len_bits());
+        let q_mod_p = bigint::elem_reduced(pm.alloc_uninit(), &q_mod_n, pm, q.modulus.len_bits());
         let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(), q_mod_p, pm);
         bigint::verify_inverses_consttime(&qInv, q_mod_p, pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
@@ -441,7 +441,7 @@ impl<M> PrivatePrime<M> {
         // Steps 5.e and 5.f are omitted as explained above.
         let p = bigint::OwnedModulus::from(p);
         let pm = p.modulus(cpu_features);
-        let oneRR = bigint::One::newRR(pm.alloc_zero(), &pm);
+        let oneRR = bigint::One::newRR(pm.alloc_uninit(), &pm);
 
         Ok(Self { modulus: p, oneRR })
     }
@@ -493,7 +493,7 @@ fn elem_exp_consttime<M>(
 ) -> Result<bigint::Elem<M>, error::Unspecified> {
     let m = &p.modulus.modulus(cpu_features);
     bigint::elem_exp_consttime(
-        m.alloc_zero(),
+        m.alloc_uninit(),
         c,
         &p.oneRRR,
         &p.exponent,
@@ -603,7 +603,7 @@ impl KeyPair {
         // Step 2.b.iii.
         let h = {
             let p = &self.p.modulus.modulus(cpu_features);
-            let m_2 = bigint::elem_reduced_once(p.alloc_zero(), &m_2, p, q_bits);
+            let m_2 = bigint::elem_reduced_once(p.alloc_uninit(), &m_2, p, q_bits);
             let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, p);
             bigint::elem_mul(&self.qInv, m_1_minus_m_2, p)
         };
@@ -613,11 +613,11 @@ impl KeyPair {
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
         let p_bits = self.p.modulus.len_bits();
-        let h = bigint::elem_widen(n.alloc_zero(), h, n, p_bits)?;
+        let h = bigint::elem_widen(n.alloc_uninit(), h, n, p_bits)?;
         let q_mod_n = self.q.modulus.to_elem(n)?;
         let q_mod_n = bigint::elem_mul(n_one, q_mod_n, n);
         let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
-        let m_2 = bigint::elem_widen(n.alloc_zero(), m_2, n, q_bits)?;
+        let m_2 = bigint::elem_widen(n.alloc_uninit(), m_2, n, q_bits)?;
         let m = bigint::elem_add(m_2, q_times_h, n);
 
         // Step 2.b.v isn't needed since there are only two primes.
@@ -631,7 +631,7 @@ impl KeyPair {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = n.alloc_zero();
+            let verify = n.alloc_uninit();
             let verify = self
                 .public
                 .inner()

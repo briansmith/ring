@@ -22,7 +22,7 @@ impl Clone for PublicModulus {
         // but not worth optimizing away.
         let cpu = cpu::features();
         let n = value.modulus(cpu);
-        let oneRR = oneRR.clone_into(n.alloc_zero());
+        let oneRR = oneRR.clone_into(n.alloc_uninit());
 
         Self { value, oneRR }
     }
@@ -71,7 +71,7 @@ impl PublicModulus {
         }
         let value = bigint::OwnedModulus::from(value);
         let m = value.modulus(cpu_features);
-        let oneRR = bigint::One::newRR(m.alloc_zero(), &m);
+        let oneRR = bigint::One::newRR(m.alloc_uninit(), &m);
 
         Ok(Self { value, oneRR })
     }
