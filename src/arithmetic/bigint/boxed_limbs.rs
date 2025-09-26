@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use crate::{
     error::LenMismatchError,
     limb::{self, Limb},
@@ -78,6 +81,7 @@ impl<M> Uninit<M> {
         self.len
     }
 
+    #[cfg(not(target_arch = "x86_64"))]
     pub(super) fn write_zeros(self) -> BoxedLimbs<M> {
         self.write_from_iter_padded(iter::empty())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
@@ -95,7 +99,7 @@ impl<M> Uninit<M> {
         self,
         src: &[Limb],
     ) -> Result<BoxedLimbs<M>, LenMismatchError> {
-        self.write_from_iter_checked(src.iter().copied())
+        self.write_iter_checked(src.iter().copied())
     }
 
     pub(super) fn write_copy_of_slice_padded(
@@ -105,7 +109,7 @@ impl<M> Uninit<M> {
         self.write_from_iter_padded(src.iter().copied())
     }
 
-    pub(super) fn write_from_iter_checked(
+    pub(super) fn write_iter_checked(
         self,
         input: impl ExactSizeIterator<Item = Limb>,
     ) -> Result<BoxedLimbs<M>, LenMismatchError>
@@ -144,17 +148,14 @@ impl<M> Uninit<M> {
     where
         LenMismatchError: From<EI>,
     {
-        // let mut uninit = Box::new_uninit_slice(self.len);
         let m = self.m;
-        let mut uninit = self.write_zeros().limbs;
+        let mut uninit = Box::new_uninit_slice(self.len);
         let (ptr, len) = (uninit.as_mut_ptr(), uninit.len());
-        let written = polyfill::slice::Uninit::from_mut(uninit.as_mut()).write_fully_with(f)?;
+        let written = polyfill::slice::Uninit::from(uninit.as_mut()).write_fully_with(f)?;
         // Postconditions of `polyfill::slice::Uninit::write_fully_with`.
         debug_assert_eq!(written.len(), len);
-        debug_assert!(len == 0 || (written.as_ptr() == ptr));
-
-        // let limbs = unsafe { uninit.assume_init() };
-        let limbs = uninit;
+        debug_assert!(len == 0 || (written.as_ptr() == ptr.cast())); // cast_init
+        let limbs = unsafe { uninit.assume_init() };
         Ok(BoxedLimbs { limbs, m })
     }
 }

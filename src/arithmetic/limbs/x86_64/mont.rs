@@ -142,11 +142,6 @@ pub(in super::super::super) fn gather5(
 
 // SAFETY: Entry `power` must have been scattered into the table.
 //
-// (Note that currently it is safe because the table is `&[[Limb; 8]]`
-// and the whole table has been initialized prior to calling this, but it
-// would become unsafe if/when that changes to `&[[MaybeUninit<Limb>; 8]]`;
-// this is a prerequisite to that change.
-//
 // TODO: Have `scatter5` return a `ScatteredWindow5` that proves
 // that the window was scattered, and change this to take a
 // `ScatteredWindow5` instead of `(table, power)`, so that this

@@ -633,9 +633,11 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         Err(LenMismatchError::new(base_mod_n.limbs.len()))?;
     }
 
-    let m_original = as_chunks_exact::<_, { limbs512::LIMBS_PER_CHUNK }>(m.limbs())
-        .ok_or_else(|| LenMismatchError::new(m.limbs().len()))?;
-    let cpe = m_original.len(); // 512-bit chunks per entry
+    let m_len = m.limbs().len();
+    // 512-bit chunks per entry
+    let cpe = as_chunks_exact::<_, { limbs512::LIMBS_PER_CHUNK }>(m.limbs())
+        .ok_or_else(|| LenMismatchError::new(m_len))?
+        .len();
 
     let oneRRR = oneRRR.as_ref().limbs.as_ref();
 
@@ -665,21 +667,20 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     assert_eq!((table.as_ptr() as usize) % MOD_EXP_CTIME_ALIGN, 0);
 
     // These are named `(tmp, am, np)` in BoringSSL.
-    let (acc, rest) = state.split_at_mut(cpe);
-    let (base_cached, m_cached) = rest.split_at_mut(cpe);
-    let base_cached = base_cached.as_flattened_mut();
-    let acc = acc.as_flattened_mut();
+    let state = state.as_flattened_mut();
+    let (acc, rest) = state.split_at_mut(m_len);
+    let (base_cached, m_cached) = rest.split_at_mut(m_len);
 
     // "To improve cache locality" according to upstream.
-    m_cached
-        .as_flattened_mut()
-        .copy_from_slice(m_original.as_flattened());
+    let (m_cached, _) = polyfill::slice::Uninit::from_mut(m_cached)
+        .write_copy_of_slice_checked(m.limbs())?
+        .as_chunks();
 
     let out: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
     let base_rinverse = out.limbs.as_ref();
 
     // base_cached = base*R == (base/R * RRR)/R
-    let _: &[Limb] = mul_mont5(base_cached, base_rinverse, oneRRR, m_cached, n0, cpu2)?;
+    let base_cached: &[Limb] = mul_mont5(base_cached, base_rinverse, oneRRR, m_cached, n0, cpu2)?;
     let mut out = out.limbs; // recycle.
 
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
@@ -705,12 +706,12 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
     // All entries in `table` will be Montgomery encoded.
 
-    // acc = table[0] = base**0 (i.e. 1).
-    let _: &[Limb] = m.oneR(polyfill::slice::Uninit::from_mut(acc))?;
-    scatter5(acc, table, LeakyWindow5::_0)?;
+    // t0 = table[0] = base**0 (i.e. 1).
+    let t0 = m.oneR(polyfill::slice::Uninit::from_mut(acc))?;
+    scatter5(t0, table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
-    acc.copy_from_slice(base_cached);
+    let acc = polyfill::slice::Uninit::from_mut(acc).write_copy_of_slice_checked(base_cached)?;
 
     // Fill in entries 1, 2, 4, 8, 16.
     scatter_powers_of_2(table, acc, m_cached, n0, LeakyWindow5::_1, cpu2)?;
