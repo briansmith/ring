@@ -721,7 +721,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             // Since i >= 3.
             unreachable!()
         }));
-        mul_mont_gather5_amm(acc, base_cached, table, m_cached, n0, power, cpu3)?;
+        // SAFETY: Entry `power` was previously written; see the comments above.
+        unsafe { mul_mont_gather5_amm(acc, base_cached, table, m_cached, n0, power, cpu3) }?;
         scatter_powers_of_2(table, acc, m_cached, n0, i, cpu2)?;
     }
 
