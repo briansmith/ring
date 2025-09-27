@@ -62,7 +62,7 @@ use crate::{
 };
 use core::{
     marker::PhantomData,
-    mem::size_of,
+    mem::{size_of, MaybeUninit},
     num::{NonZeroU64, NonZeroUsize},
 };
 
@@ -506,7 +506,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     // This code doesn't have the strict alignment requirements that the x86_64
     // version does, but uses the same aligned storage for convenience.
     assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
-    let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::zeroed();
+    let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::uninit();
     let table = table.aligned_chunks_mut(TABLE_ENTRIES, cpe)?;
 
     // TODO: Rewrite the below in terms of `as_chunks`.
@@ -545,11 +545,11 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         &table[(i * num_limbs)..][..num_limbs]
     }
     fn entry_uninit(
-        table: &mut [Limb],
+        table: &mut [MaybeUninit<Limb>],
         i: usize,
         num_limbs: usize,
     ) -> polyfill::slice::Uninit<'_, Limb> {
-        polyfill::slice::Uninit::from_mut(&mut table[(i * num_limbs)..][..num_limbs])
+        polyfill::slice::Uninit::from(&mut table[(i * num_limbs)..][..num_limbs])
     }
 
     // table[0] = base**0 (i.e. 1).
@@ -573,6 +573,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             (false, i - 1, 1)
         };
         let (previous, rest) = table.split_at_mut(num_limbs * i);
+        let previous = polyfill::slice::Uninit::from(previous);
+        let previous = unsafe { previous.assume_init() };
         let dst = entry_uninit(rest, 0, num_limbs);
         let src1 = entry(previous, src1, num_limbs);
         let _: &[Limb] = if square {
@@ -582,6 +584,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             limbs_mul_mont((dst, src1, src2), m.limbs(), m.n0(), m.cpu_features())?
         };
     }
+    let table = polyfill::slice::Uninit::from(table);
+    let table = unsafe { table.assume_init() };
 
     // Recycle the storage; the value will get overwritten.
     let mut acc = base_rinverse.transmute_encoding_less_safe::<R>();
@@ -661,7 +665,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     const _STORAGE_ENTRIES_HAS_3_EXTRA: () = assert!(STORAGE_ENTRIES == TABLE_ENTRIES + 3);
 
     assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
-    let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::zeroed();
+    let mut table = limbs512::AlignedStorage::<STORAGE_LIMBS>::uninit();
     let table = table.aligned_chunks_mut(STORAGE_ENTRIES, cpe)?;
     let (table, state) = table.split_at_mut(TABLE_ENTRIES * cpe);
     assert_eq!((table.as_ptr() as usize) % MOD_EXP_CTIME_ALIGN, 0);
@@ -672,7 +676,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let (base_cached, m_cached) = rest.split_at_mut(m_len);
 
     // "To improve cache locality" according to upstream.
-    let (m_cached, _) = polyfill::slice::Uninit::from_mut(m_cached)
+    let (m_cached, _) = polyfill::slice::Uninit::from(m_cached)
         .write_copy_of_slice_checked(m.limbs())?
         .as_chunks();
 
@@ -680,13 +684,20 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let base_rinverse = out.limbs.as_ref();
 
     // base_cached = base*R == (base/R * RRR)/R
-    let base_cached: &[Limb] = mul_mont5(base_cached, base_rinverse, oneRRR, m_cached, n0, cpu2)?;
+    let base_cached: &[Limb] = mul_mont5(
+        base_cached.into(),
+        base_rinverse,
+        oneRRR,
+        m_cached,
+        n0,
+        cpu2,
+    )?;
     let mut out = out.limbs; // recycle.
 
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
     // gathering, storing the last calculated power into `acc`.
     fn scatter_powers_of_2(
-        table: &mut [[Limb; 8]],
+        table: &mut [[MaybeUninit<Limb>; 8]],
         mut acc: &mut [Limb],
         m_cached: &[[Limb; 8]],
         n0: &N0,
@@ -707,11 +718,11 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     // All entries in `table` will be Montgomery encoded.
 
     // t0 = table[0] = base**0 (i.e. 1).
-    let t0 = m.oneR(polyfill::slice::Uninit::from_mut(acc))?;
+    let t0 = m.oneR(acc.as_mut().into())?;
     scatter5(t0, table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
-    let acc = polyfill::slice::Uninit::from_mut(acc).write_copy_of_slice_checked(base_cached)?;
+    let acc = polyfill::slice::Uninit::from(acc).write_copy_of_slice_checked(base_cached)?;
 
     // Fill in entries 1, 2, 4, 8, 16.
     scatter_powers_of_2(table, acc, m_cached, n0, LeakyWindow5::_1, cpu2)?;
@@ -726,6 +737,9 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         unsafe { mul_mont_gather5_amm(acc, base_cached, table, m_cached, n0, power, cpu3) }?;
         scatter_powers_of_2(table, acc, m_cached, n0, i, cpu2)?;
     }
+    let table = polyfill::slice::Uninit::from(table.as_flattened_mut());
+    let table = unsafe { table.assume_init() };
+    let (table, _) = table.as_chunks();
 
     let acc = limb::fold_5_bit_windows(
         exponent.limbs(),
