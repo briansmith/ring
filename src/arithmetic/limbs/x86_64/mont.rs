@@ -140,8 +140,19 @@ pub(in super::super::super) fn gather5(
     Ok(())
 }
 
+// SAFETY: Entry `power` must have been scattered into the table.
+//
+// (Note that currently it is safe because the table is `&[[Limb; 8]]`
+// and the whole table has been initialized prior to calling this, but it
+// would become unsafe if/when that changes to `&[[MaybeUninit<Limb>; 8]]`;
+// this is a prerequisite to that change.
+//
+// TODO: Have `scatter5` return a `ScatteredWindow5` that proves
+// that the window was scattered, and change this to take a
+// `ScatteredWindow5` instead of `(table, power)`, so that this
+// becomes safe.
 #[inline(always)]
-pub(in super::super::super) fn mul_mont_gather5_amm(
+pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
     r: &mut [Limb],
     a: &[Limb],
     table: &[[Limb; 8]],
@@ -184,6 +195,7 @@ pub(in super::super::super) fn mul_mont_gather5_amm(
     let table = table.as_ptr();
     let n = n.as_flattened();
     let n = n.as_ptr();
+    // SAFETY: We assume entry `power` was previously scattered into the tamble.
     if maybe_adx_bmi1_bmi2.is_some() {
         unsafe { bn_mulx4x_mont_gather5(r, a, table, n, n0, num_limbs, power) }
     } else {
