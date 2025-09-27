@@ -10,7 +10,7 @@ use {
 // `table` has space for 32 entries the same size as `a`. Instead of storing
 // entries consecutively row-wise, instead store them column-wise.
 pub(in super::super::super) fn scatter5(
-    a: &[[Limb; LIMBS_PER_CHUNK]],
+    a: &[Limb],
     table: &mut [[Limb; LIMBS_PER_CHUNK]],
     i: LeakyWindow5,
 ) -> Result<(), LimbSliceError> {
@@ -22,7 +22,7 @@ pub(in super::super::super) fn scatter5(
         .iter_mut()
         .skip(i)
         .step_by(32)
-        .zip(a.as_flattened())
+        .zip(a)
         .for_each(|(t, &a)| {
             *t = a;
         });

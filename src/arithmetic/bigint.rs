@@ -637,9 +637,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .ok_or_else(|| LenMismatchError::new(m.limbs().len()))?;
     let cpe = m_original.len(); // 512-bit chunks per entry
 
-    let oneRRR = &oneRRR.as_ref().limbs;
-    let oneRRR =
-        as_chunks_exact(oneRRR.as_ref()).ok_or_else(|| LenMismatchError::new(oneRRR.len()))?;
+    let oneRRR = oneRRR.as_ref().limbs.as_ref();
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.
@@ -669,6 +667,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     // These are named `(tmp, am, np)` in BoringSSL.
     let (acc, rest) = state.split_at_mut(cpe);
     let (base_cached, m_cached) = rest.split_at_mut(cpe);
+    let base_cached = base_cached.as_flattened_mut();
+    let acc = acc.as_flattened_mut();
 
     // "To improve cache locality" according to upstream.
     m_cached
@@ -676,8 +676,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .copy_from_slice(m_original.as_flattened());
 
     let out: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
-    let base_rinverse = as_chunks_exact(out.limbs.as_ref())
-        .ok_or_else(|| LenMismatchError::new(out.limbs.len()))?;
+    let base_rinverse = out.limbs.as_ref();
 
     // base_cached = base*R == (base/R * RRR)/R
     let _: &[Limb] = mul_mont5(base_cached, base_rinverse, oneRRR, m_cached, n0, cpu2)?;
@@ -687,7 +686,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     // gathering, storing the last calculated power into `acc`.
     fn scatter_powers_of_2(
         table: &mut [[Limb; 8]],
-        acc: &mut [[Limb; 8]],
+        mut acc: &mut [Limb],
         m_cached: &[[Limb; 8]],
         n0: &N0,
         mut i: LeakyWindow5,
@@ -699,7 +698,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                 Some(i) => i,
                 None => break,
             };
-            let _: &[Limb] = sqr_mont5(acc.as_flattened_mut(), m_cached, n0, cpu)?;
+            acc = sqr_mont5(acc, m_cached, n0, cpu)?;
         }
         Ok(())
     }
@@ -707,12 +706,11 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     // All entries in `table` will be Montgomery encoded.
 
     // acc = table[0] = base**0 (i.e. 1).
-    let _: &[Limb] = m.oneR(polyfill::slice::Uninit::from_mut(acc.as_flattened_mut()))?;
+    let _: &[Limb] = m.oneR(polyfill::slice::Uninit::from_mut(acc))?;
     scatter5(acc, table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
-    acc.as_flattened_mut()
-        .copy_from_slice(base_cached.as_flattened());
+    acc.copy_from_slice(base_cached);
 
     // Fill in entries 1, 2, 4, 8, 16.
     scatter_powers_of_2(table, acc, m_cached, n0, LeakyWindow5::_1, cpu2)?;
@@ -740,7 +738,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         },
     );
 
-    out.as_mut().copy_from_slice(acc.as_flattened());
+    out.as_mut().copy_from_slice(acc);
     Ok(from_montgomery_amm(out, m))
 }
 
