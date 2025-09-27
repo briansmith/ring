@@ -38,19 +38,15 @@ const _512_IS_LIMB_BITS_TIMES_8: () = assert!(8 * Limb::BITS == 512);
 
 #[inline]
 pub(in super::super::super) fn mul_mont5<'o>(
-    r: &'o mut [[Limb; 8]],
-    a: &[[Limb; 8]],
-    b: &[[Limb; 8]],
+    r: &'o mut [Limb],
+    a: &[Limb],
+    b: &[Limb],
     m: &[[Limb; 8]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
     mul_mont5_4x(
-        (
-            Uninit::from_mut(r.as_flattened_mut()),
-            a.as_flattened(),
-            b.as_flattened(),
-        ),
+        (Uninit::from_mut(r), a, b),
         SmallerChunks::as_smaller_chunks(m),
         n0,
         maybe_adx_bmi2,
@@ -125,7 +121,7 @@ pub(in super::super::super) fn sqr_mont5<'o>(
 
 #[inline(always)]
 pub(in super::super::super) fn gather5(
-    r: &mut [[Limb; 8]],
+    r: &mut [Limb],
     table: &[[Limb; 8]],
     power: Window5,
 ) -> Result<(), LimbSliceError> {
@@ -139,7 +135,6 @@ pub(in super::super::super) fn gather5(
             power: Window5);
     }
     let num_limbs = check_common(r, table)?;
-    let r = r.as_flattened_mut();
     let table = table.as_flattened();
     unsafe { bn_gather5(r.as_mut_ptr(), num_limbs, table.as_ptr(), power) };
     Ok(())
@@ -147,8 +142,8 @@ pub(in super::super::super) fn gather5(
 
 #[inline(always)]
 pub(in super::super::super) fn mul_mont_gather5_amm(
-    r: &mut [[Limb; 8]],
-    a: &[[Limb; 8]],
+    r: &mut [Limb],
+    a: &[Limb],
     table: &[[Limb; 8]],
     n: &[[Limb; 8]],
     n0: &N0,
@@ -180,11 +175,9 @@ pub(in super::super::super) fn mul_mont_gather5_amm(
         );
     }
     let num_limbs = check_common_with_n(r, table, n)?;
-    let a = a.as_flattened();
     if a.len() != num_limbs.get() {
         Err(LenMismatchError::new(a.len()))?;
     }
-    let r = r.as_flattened_mut();
     let r = r.as_mut_ptr();
     let a = a.as_ptr();
     let table = table.as_flattened();
@@ -202,7 +195,7 @@ pub(in super::super::super) fn mul_mont_gather5_amm(
 // SAFETY: `power` must be less than 32.
 #[inline(always)]
 pub(in super::super::super) fn power5_amm(
-    in_out: &mut [[Limb; 8]],
+    in_out: &mut [Limb],
     table: &[[Limb; 8]],
     n: &[[Limb; 8]],
     n0: &N0,
@@ -234,7 +227,6 @@ pub(in super::super::super) fn power5_amm(
         );
     }
     let num_limbs = check_common_with_n(in_out, table, n)?;
-    let in_out = in_out.as_flattened_mut();
     let r = in_out.as_mut_ptr();
     let a = in_out.as_ptr();
     let table = table.as_flattened();

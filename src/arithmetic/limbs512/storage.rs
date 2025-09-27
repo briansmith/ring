@@ -71,11 +71,10 @@ impl<const N: usize> AlignedStorage<N> {
 // callers.
 #[inline(always)]
 pub(crate) fn check_common(
-    a: &[[Limb; LIMBS_PER_CHUNK]],
+    a: &[Limb],
     table: &[[Limb; LIMBS_PER_CHUNK]],
 ) -> Result<NonZeroUsize, LimbSliceError> {
     assert_eq!((table.as_ptr() as usize) % 16, 0); // According to BoringSSL.
-    let a = a.as_flattened();
     let table = table.as_flattened();
     let num_limbs = NonZeroUsize::new(a.len()).ok_or_else(|| LimbSliceError::too_short(a.len()))?;
     if num_limbs.get() > MAX_LIMBS {
@@ -90,7 +89,7 @@ pub(crate) fn check_common(
 #[cfg(target_arch = "x86_64")]
 #[inline(always)]
 pub(crate) fn check_common_with_n(
-    a: &[[Limb; LIMBS_PER_CHUNK]],
+    a: &[Limb],
     table: &[[Limb; LIMBS_PER_CHUNK]],
     n: &[[Limb; LIMBS_PER_CHUNK]],
 ) -> Result<NonZeroUsize, LimbSliceError> {
