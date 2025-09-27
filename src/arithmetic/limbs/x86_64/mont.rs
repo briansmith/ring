@@ -21,7 +21,7 @@ use crate::polyfill::{slice::Uninit, SmallerChunks, StartMutPtr};
 
 use super::super::super::{
     inout::{AliasingSlices2, AliasingSlices3},
-    limbs512::storage::{check_common, check_common_with_n},
+    limbs512::storage::{check_common, check_common_with_n, table_parts, table_parts_uninit},
     n0::N0,
     LimbSliceError, MAX_LIMBS,
 };
@@ -32,13 +32,13 @@ use crate::{
     limb::Limb,
     window5::Window5,
 };
-use core::num::NonZeroUsize;
+use core::{mem::MaybeUninit, num::NonZeroUsize};
 
 const _512_IS_LIMB_BITS_TIMES_8: () = assert!(8 * Limb::BITS == 512);
 
 #[inline]
 pub(in super::super::super) fn mul_mont5<'o>(
-    r: &'o mut [Limb],
+    r: Uninit<'o, Limb>,
     a: &[Limb],
     b: &[Limb],
     m: &[[Limb; 8]],
@@ -46,7 +46,7 @@ pub(in super::super::super) fn mul_mont5<'o>(
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
     mul_mont5_4x(
-        (Uninit::from_mut(r), a, b),
+        (r, a, b),
         SmallerChunks::as_smaller_chunks(m),
         n0,
         maybe_adx_bmi2,
@@ -134,7 +134,7 @@ pub(in super::super::super) fn gather5(
             table: *const Limb,
             power: Window5);
     }
-    let num_limbs = check_common(r, table)?;
+    let num_limbs = check_common(r, table_parts(table))?;
     let table = table.as_flattened();
     unsafe { bn_gather5(r.as_mut_ptr(), num_limbs, table.as_ptr(), power) };
     Ok(())
@@ -150,7 +150,7 @@ pub(in super::super::super) fn gather5(
 pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
     r: &mut [Limb],
     a: &[Limb],
-    table: &[[Limb; 8]],
+    table: &[[MaybeUninit<Limb>; 8]],
     n: &[[Limb; 8]],
     n0: &N0,
     power: Window5,
@@ -180,14 +180,14 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
             power: Window5,
         );
     }
-    let num_limbs = check_common_with_n(r, table, n)?;
+    let num_limbs = check_common_with_n(r, table_parts_uninit(table), n)?;
     if a.len() != num_limbs.get() {
         Err(LenMismatchError::new(a.len()))?;
     }
     let r = r.as_mut_ptr();
     let a = a.as_ptr();
     let table = table.as_flattened();
-    let table = table.as_ptr();
+    let table = table.as_ptr().cast();
     let n = n.as_flattened();
     let n = n.as_ptr();
     // SAFETY: We assume entry `power` was previously scattered into the tamble.
@@ -233,7 +233,7 @@ pub(in super::super::super) fn power5_amm(
             power: Window5,
         );
     }
-    let num_limbs = check_common_with_n(in_out, table, n)?;
+    let num_limbs = check_common_with_n(in_out, table_parts(table), n)?;
     let r = in_out.as_mut_ptr();
     let a = in_out.as_ptr();
     let table = table.as_flattened();
