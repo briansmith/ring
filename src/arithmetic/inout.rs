@@ -76,7 +76,7 @@ impl<'o, T> AliasingSlices2<'o, T> for &'o mut [T] {
         if r.len() != expected_len {
             return Err(LenMismatchError::new(r.len()));
         }
-        let r = AliasedUninit::from(Uninit::from_mut(r));
+        let r = AliasedUninit::from_mut(r);
         let a = r.start_ptr();
         Ok(f(r, a))
     }
