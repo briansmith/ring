@@ -18,12 +18,48 @@ use super::{
 };
 use crate::{
     error::LenMismatchError,
+    limb,
     limb::{Limb, LIMB_BITS},
+    polyfill,
 };
 use core::mem::size_of;
 
 // The value 1, Montgomery-encoded some number of times.
 pub struct One<M, E>(Elem<M, E>);
+
+impl<M> One<M, R> {
+    pub(super) fn fillR<'r>(
+        out: polyfill::slice::Uninit<'r, Limb>,
+        m: &Modulus<'_, M>,
+    ) -> Result<&'r mut [Limb], LenMismatchError> {
+        let r = m.limbs().len() * LIMB_BITS;
+
+        // out = 2**r - m where m = self.
+        let out = limb::limbs_negative_odd(out, m.limbs())?;
+
+        let lg_m = m.len_bits().as_bits();
+        let leading_zero_bits_in_m = r - lg_m;
+
+        // When m's length is a multiple of LIMB_BITS, which is the case we
+        // most want to optimize for, then we already have
+        // out == 2**r - m == 2**r (mod m).
+        if leading_zero_bits_in_m != 0 {
+            debug_assert!(leading_zero_bits_in_m < LIMB_BITS);
+            // Correct out to 2**(lg m) (mod m). `limbs_negative_odd` flipped
+            // all the leading zero bits to ones. Flip them back.
+            *out.last_mut().unwrap() &= (!0) >> leading_zero_bits_in_m;
+
+            // Now we have out == 2**(lg m) (mod m). Keep doubling until we get
+            // to 2**r (mod m).
+            for _ in 0..leading_zero_bits_in_m {
+                limb::limbs_double_mod(out, m.limbs())?;
+            }
+        }
+
+        // Now out == 2**r (mod m) == 1*R.
+        Ok(out)
+    }
+}
 
 impl<M> One<M, RR> {
     // Returns RR = = R**2 (mod n) where R = 2**r is the smallest power of
@@ -41,7 +77,7 @@ impl<M> One<M, RR> {
         let r = w * LIMB_BITS;
 
         let mut acc = out
-            .write_fully_with(|out| m.oneR(out))
+            .write_fully_with(|out| One::fillR(out, m))
             .map(Elem::<M, R>::assume_in_range_and_encoded_less_safe)?;
 
         // 2**t * R can be calculated by t doublings starting with R.
