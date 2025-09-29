@@ -23,6 +23,7 @@ mod constant;
 #[cfg(feature = "alloc")]
 pub mod bigint;
 
+mod exp_vartime;
 pub(crate) mod inout;
 mod limbs;
 mod limbs512;
