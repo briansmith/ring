@@ -20,8 +20,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::slice;
-use crate::{error::LenMismatchError, polyfill};
+use crate::error::LenMismatchError;
 use core::{mem::MaybeUninit, num::NonZeroUsize};
 
 /// An uninitialized array of slices.
@@ -73,7 +72,7 @@ impl<E: Copy> Uninit<'_, E> {
         self,
         mut f: impl for<'i, 'u> FnMut(
             &'i mut Array<'_, E>,
-            slice::Uninit<'u, E>,
+            super::slice::Uninit<'u, E>,
         ) -> Result<&'u mut [E], Error>,
     ) -> Result<Array<'r, E>, LenMismatchError>
     where
@@ -90,16 +89,16 @@ impl<E: Copy> Uninit<'_, E> {
             let (init, current) = init_and_current
                 .split_at_mut_checked(mid - self.elems_per_item.get())
                 .unwrap_or_else(|| unreachable!());
-            let init = polyfill::slice::Uninit::from(init);
+            let init = super::slice::Uninit::from(init);
             let mut init = Array {
                 storage: unsafe { init.assume_init() },
                 len: init_len,
                 elems_per_item: self.elems_per_item,
             };
-            let _: &mut [E] =
-                slice::Uninit::from(current).write_fully_with(|current| f(&mut init, current))?;
+            let _: &mut [E] = super::slice::Uninit::from(current)
+                .write_fully_with(|current| f(&mut init, current))?;
         }
-        let init = polyfill::slice::Uninit::from(self.storage);
+        let init = super::slice::Uninit::from(self.storage);
         Ok(Array {
             storage: unsafe { init.assume_init() },
             elems_per_item: self.elems_per_item,
