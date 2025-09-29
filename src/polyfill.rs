@@ -77,7 +77,7 @@ pub mod prelude {
     // using Rust Nightly.
     pub(crate) use super::{
         atomic::AtomicPolyfills,
-        boxed::BoxUninitPolyfills,
+        boxed::{BoxMaybeUninitSlicePolyfills, BoxSlicePolyfills},
         ptr::PointerPolyfills,
         slice::{SliceOfArraysPolyfills, SlicePolyfills},
     };
