@@ -125,8 +125,9 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                 i: Window5,
             ) -> bssl::Result;
         }
-        let acc_len = acc.limbs.len();
-        let acc = acc.limbs.as_mut().as_mut_ptr();
+        let acc = acc.leak_limbs_mut_less_safe();
+        let acc_len = acc.len();
+        let acc = acc.as_mut_ptr();
         Result::from(unsafe { LIMBS_select_512_32(acc, table.as_ptr(), acc_len, i) }).unwrap();
     }
 
@@ -163,8 +164,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let _: &[Limb] = limbs_mul_mont(
         (
             entry_uninit(table, 1, num_limbs),
-            base_rinverse.limbs.as_ref(),
-            oneRRR.as_ref().limbs.as_ref(),
+            base_rinverse.leak_limbs_less_safe(),
+            oneRRR.as_ref().leak_limbs_less_safe(),
         ),
         m.limbs(),
         m.n0(),
@@ -227,7 +228,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             limbs512::scatter5,
             montgomery::N0,
         },
-        from_montgomery_amm, unwrap_impossible_limb_slice_error,
+        elem::from_montgomery_amm,
+        unwrap_impossible_limb_slice_error,
     };
     use crate::{
         cpu::{
@@ -243,8 +245,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let cpu2 = m.cpu_features().get_feature();
     let cpu3 = m.cpu_features().get_feature();
 
-    if base_mod_n.limbs.len() != m.limbs().len() * 2 {
-        Err(LenMismatchError::new(base_mod_n.limbs.len()))?;
+    if base_mod_n.num_limbs() != m.limbs().len() * 2 {
+        Err(LenMismatchError::new(base_mod_n.num_limbs()))?;
     }
 
     let m_len = m.limbs().len();
@@ -253,7 +255,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .ok_or_else(|| LenMismatchError::new(m_len))?
         .len();
 
-    let oneRRR = oneRRR.as_ref().limbs.as_ref();
+    let oneRRR = oneRRR.as_ref().leak_limbs_less_safe();
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.
@@ -291,7 +293,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .as_chunks();
 
     let out: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
-    let base_rinverse = out.limbs.as_ref();
+    let base_rinverse = out.leak_limbs_less_safe();
 
     // base_cached = base*R == (base/R * RRR)/R
     let base_cached: &[Limb] = mul_mont5(
@@ -302,7 +304,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         n0,
         cpu2,
     )?;
-    let mut out = out.limbs; // recycle.
+    let mut out = out.leak_limbs_into_box_less_safe(); // recycle.
 
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
     // gathering, storing the last calculated power into `acc`.
@@ -413,8 +415,8 @@ mod tests {
                 struct N {}
                 let other_modulus_len_bits = m.len_bits();
                 let base: Elem<N> = {
-                    let limbs = Uninit::new_less_safe(base.limbs.len() * 2)
-                        .write_copy_of_slice_padded(base.limbs.as_ref())
+                    let limbs = Uninit::new_less_safe(base.num_limbs() * 2)
+                        .write_copy_of_slice_padded(base.leak_limbs_less_safe())
                         .unwrap_or_else(unwrap_impossible_len_mismatch_error);
                     Elem::<N, Unencoded>::assume_in_range_and_encoded_less_safe(limbs)
                 };
