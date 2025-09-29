@@ -458,7 +458,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     }
 
     // table[0] = base**0 (i.e. 1).
-    let _: &[Limb] = m.oneR(entry_uninit(table, 0, num_limbs))?;
+    let _: &[Limb] = One::fillR(entry_uninit(table, 0, num_limbs), m)?;
 
     // table[1] = base*R == (base/R * RRR)/R
     let _: &[Limb] = limbs_mul_mont(
@@ -623,7 +623,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     // All entries in `table` will be Montgomery encoded.
 
     // t0 = table[0] = base**0 (i.e. 1).
-    let t0 = m.oneR(acc.as_mut().into())?;
+    let t0 = One::fillR(acc.as_mut().into(), m)?;
     scatter5(t0, table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
