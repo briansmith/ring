@@ -28,7 +28,7 @@ impl PrivateExponent {
         input: untrusted::Input,
         p: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
-        let mut dP = Elem::<M>::from_be_bytes_padded(input, p)?.limbs;
+        let mut dP = Elem::<M>::from_be_bytes_padded(input, p)?.leak_limbs_into_box_less_safe();
 
         // Proof that `dP < p - 1`:
         //
