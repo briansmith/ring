@@ -49,6 +49,7 @@ use super::{
 };
 use crate::{
     bits::BitLength,
+    error,
     error::LenMismatchError,
     limb::{self, Limb, LIMB_BITS},
     polyfill::sliceutil::as_chunks_exact,
@@ -116,7 +117,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     // TODO: Rewrite the below in terms of `as_chunks`.
     let table = table.as_flattened_mut();
 
-    fn gather<M>(table: &[Limb], acc: &mut Elem<M, R>, i: Window5) {
+    fn gather<M>(table: &[Limb], acc: &mut Elem<M, R>, i: Window5) -> Result<(), LenMismatchError> {
         prefixed_extern! {
             fn LIMBS_select_512_32(
                 r: *mut Limb,
@@ -125,10 +126,13 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                 i: Window5,
             ) -> bssl::Result;
         }
+        if table.len() % 32 != 0 || acc.num_limbs() != table.len() / 32 {
+            return Err(LenMismatchError::new(acc.num_limbs()));
+        }
         let acc = acc.leak_limbs_mut_less_safe();
         let acc_len = acc.len();
-        let acc = acc.as_mut_ptr();
-        Result::from(unsafe { LIMBS_select_512_32(acc, table.as_ptr(), acc_len, i) }).unwrap();
+        Result::from(unsafe { LIMBS_select_512_32(acc.as_mut_ptr(), table.as_ptr(), acc_len, i) })
+            .map_err(|_: error::Unspecified| LenMismatchError::new(acc.len()))
     }
 
     fn power<M>(
@@ -137,13 +141,13 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         m: &Modulus<M>,
         i: Window5,
         mut tmp: Elem<M, R>,
-    ) -> (Elem<M, R>, Elem<M, R>) {
+    ) -> Result<(Elem<M, R>, Elem<M, R>), LenMismatchError> {
         for _ in 0..WINDOW_BITS {
             acc = elem_squared(acc, m);
         }
-        gather(table, &mut tmp, i);
+        gather(table, &mut tmp, i)?;
         let acc = elem_mul(&tmp, acc, m);
-        (acc, tmp)
+        Ok((acc, tmp))
     }
 
     fn entry(table: &[Limb], i: usize, num_limbs: usize) -> &[Limb] {
@@ -202,10 +206,10 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let (acc, _) = limb::fold_5_bit_windows(
         exponent.limbs(),
         |initial_window| {
-            gather(table, &mut acc, initial_window);
+            gather(table, &mut acc, initial_window).unwrap_or_else(|_| unreachable!());
             (acc, tmp)
         },
-        |(acc, tmp), window| power(table, acc, m, window, tmp),
+        |(acc, tmp), window| power(table, acc, m, window, tmp).unwrap_or_else(|_| unreachable!()),
     );
 
     Ok(acc.into_unencoded(m))
