@@ -1,0 +1,120 @@
+// Copyright 2015-2023 Brian Smith.
+//
+// Permission to use, copy, modify, and/or distribute this software for any
+// purpose with or without fee is hereby granted, provided that the above
+// copyright notice and this permission notice appear in all copies.
+//
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+use super::{
+    super::montgomery::{R, RR, RRR},
+    elem_double, elem_squared, Elem, Modulus, PublicModulus, Uninit,
+};
+use crate::{
+    error::LenMismatchError,
+    limb::{Limb, LIMB_BITS},
+};
+use core::mem::size_of;
+
+// The value 1, Montgomery-encoded some number of times.
+pub struct One<M, E>(Elem<M, E>);
+
+impl<M> One<M, RR> {
+    // Returns RR = = R**2 (mod n) where R = 2**r is the smallest power of
+    // 2**LIMB_BITS such that R > m.
+    //
+    // Even though the assembly on some 32-bit platforms works with 64-bit
+    // values, using `LIMB_BITS` here, rather than `N0::LIMBS_USED * LIMB_BITS`,
+    // is correct because R**2 will still be a multiple of the latter as
+    // `N0::LIMBS_USED` is either one or two.
+    pub(crate) fn newRR(out: Uninit<M>, m: &Modulus<M>) -> Result<Self, LenMismatchError> {
+        // The number of limbs in the numbers involved.
+        let w = m.limbs().len();
+
+        // The length of the numbers involved, in bits. R = 2**r.
+        let r = w * LIMB_BITS;
+
+        let mut acc = out
+            .write_fully_with(|out| m.oneR(out))
+            .map(Elem::<M, R>::assume_in_range_and_encoded_less_safe)?;
+
+        // 2**t * R can be calculated by t doublings starting with R.
+        //
+        // Choose a t that divides r and where t doublings are cheaper than 1 squaring.
+        //
+        // We could choose other values of t than w. But if t < d then the exponentiation that
+        // follows would require multiplications. Normally d is 1 (i.e. the modulus length is a
+        // power of two: RSA 1024, 2048, 4097, 8192) or 3 (RSA 1536, 3072).
+        //
+        // XXX(perf): Currently t = w / 2 is slightly faster. TODO(perf): Optimize `elem_double`
+        // and re-run benchmarks to rebalance this.
+        let t = w;
+        let z = w.trailing_zeros();
+        let d = w >> z;
+        debug_assert_eq!(w, d * (1 << z));
+        debug_assert!(d <= t);
+        debug_assert!(t < r);
+        for _ in 0..t {
+            elem_double(&mut acc, m);
+        }
+
+        // Because t | r:
+        //
+        //     MontExp(2**t * R, r / t)
+        //   = (2**t)**(r / t)   * R (mod m) by definition of MontExp.
+        //   = (2**t)**(1/t * r) * R (mod m)
+        //   = (2**(t * 1/t))**r * R (mod m)
+        //   = (2**1)**r         * R (mod m)
+        //   = 2**r              * R (mod m)
+        //   = R * R                 (mod m)
+        //   = RR
+        //
+        // Like BoringSSL, use t = w (`m.limbs.len()`) which ensures that the exponent is a power
+        // of two. Consequently, there will be no multiplications in the Montgomery exponentiation;
+        // there will only be lg(r / t) squarings.
+        //
+        //     lg(r / t)
+        //   = lg((w * 2**b) / t)
+        //   = lg((t * 2**b) / t)
+        //   = lg(2**b)
+        //   = b
+        // TODO(MSRV:1.67): const B: u32 = LIMB_BITS.ilog2();
+        const B: u32 = match size_of::<Limb>() {
+            8 => 6,
+            4 => 5,
+            _ => panic!("unsupported limb size"),
+        };
+        #[allow(clippy::assertions_on_constants)]
+        const _LIMB_BITS_IS_2_POW_B: () = assert!(LIMB_BITS == 1 << B);
+        debug_assert_eq!(r, t * (1 << B));
+        for _ in 0..B {
+            acc = elem_squared(acc, m);
+        }
+
+        Ok(Self(acc.transmute_encoding_less_safe::<RR>()))
+    }
+}
+
+impl<M> One<M, RRR> {
+    pub(crate) fn newRRR(One(oneRR): One<M, RR>, m: &Modulus<M>) -> Self {
+        Self(elem_squared(oneRR, m))
+    }
+}
+
+impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
+    fn as_ref(&self) -> &Elem<M, E> {
+        &self.0
+    }
+}
+
+impl<M: PublicModulus, E> One<M, E> {
+    pub fn clone_into(&self, out: Uninit<M>) -> Self {
+        Self(self.0.clone_into(out))
+    }
+}
