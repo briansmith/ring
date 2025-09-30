@@ -347,12 +347,11 @@ impl KeyPair {
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         let p_mod_n_storage = nm.alloc_uninit();
-        let p_mod_n = pim
+        let pq_mod_n = pim
             .to_elem(p_mod_n_storage, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
-            .encode_mont(n, cpu_features);
-
-        let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, nm);
+            .encode_mont(n, cpu_features)
+            .mul(&q_mod_n, nm);
         if !pq_mod_n.is_zero() {
             return Err(KeyRejected::inconsistent_components());
         }
@@ -625,8 +624,7 @@ impl KeyPair {
         let h = {
             let pm = &p.modulus(cpu_features);
             let m_2 = bigint::elem_reduced_once(pm.alloc_uninit(), &m_2, pm, q.len_bits());
-            let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, pm);
-            bigint::elem_mul(&self.qInv, m_1_minus_m_2, pm)
+            bigint::elem_sub(m_1, &m_2, pm).mul(&self.qInv, pm)
         };
 
         // Step 2.b.iv. The reduction in the modular multiplication isn't
@@ -637,11 +635,11 @@ impl KeyPair {
         // reused.
         let h = bigint::elem_widen(nm.alloc_uninit(), h, nm, p.len_bits())?;
         let q_mod_n_storage = nm.alloc_uninit();
-        let q_mod_n = q
+        let q_times_h = q
             .to_elem(q_mod_n_storage, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
-            .encode_mont(n, cpu_features);
-        let q_times_h = bigint::elem_mul(&q_mod_n, h, nm);
+            .encode_mont(n, cpu_features)
+            .mul(&h, nm);
         let m_2 = bigint::elem_widen(nm.alloc_uninit(), m_2, nm, q.len_bits())?;
         let m = bigint::elem_add(m_2, q_times_h, nm);
 

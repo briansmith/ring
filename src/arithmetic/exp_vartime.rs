@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    bigint::{elem_mul, elem_squared, Elem, Mont, Uninit},
+    bigint::{Elem, Mont, Uninit},
     montgomery::R,
 };
 use core::num::NonZeroU64;
@@ -56,9 +56,9 @@ pub(crate) fn elem_exp_vartime<M>(
     debug_assert!((exponent & bit) != 0);
     while bit > 1 {
         bit >>= 1;
-        acc = elem_squared(acc, m);
+        acc = acc.square(m);
         if (exponent & bit) != 0 {
-            acc = elem_mul(&base, acc, m);
+            acc = acc.mul(&base, m);
         }
     }
     acc

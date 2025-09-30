@@ -97,10 +97,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
-    use super::{
-        super::montgomery::{limbs_mul_mont, limbs_square_mont, R},
-        elem_mul, elem_squared,
-    };
+    use super::super::montgomery::{limbs_mul_mont, limbs_square_mont, R};
     use crate::{bssl, c, error, polyfill::dynarray};
 
     let base_rinverse: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
@@ -136,10 +133,10 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         mut tmp: Elem<M, R>,
     ) -> Result<(Elem<M, R>, Elem<M, R>), LenMismatchError> {
         for _ in 0..WINDOW_BITS {
-            acc = elem_squared(acc, m);
+            acc = acc.square(m);
         }
         gather(table, &mut tmp, i)?;
-        let acc = elem_mul(&tmp, acc, m);
+        let acc = acc.mul(&tmp, m);
         Ok((acc, tmp))
     }
 
