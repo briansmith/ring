@@ -626,7 +626,7 @@ impl KeyPair {
         let h = {
             let pm = &p.modulus(cpu_features);
             let m_2 = pm.alloc_uninit().elem_reduced_once(&m_2, pm, q.len_bits());
-            bigint::elem_sub(m_1, &m_2, pm).mul(&self.qInv, pm)
+            m_1.sub(&m_2, pm).mul(&self.qInv, pm)
         };
 
         // Step 2.b.iv. The reduction in the modular multiplication isn't
@@ -643,7 +643,7 @@ impl KeyPair {
             .encode_mont(n, cpu_features)
             .mul(&h, nm);
         let m_2 = nm.alloc_uninit().elem_widen(&m_2, nm, q.len_bits())?;
-        let m = bigint::elem_add(m_2, q_times_h, nm);
+        let m = m_2.add(&q_times_h, nm);
 
         // Step 2.b.v isn't needed since there are only two primes.
 

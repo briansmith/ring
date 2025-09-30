@@ -244,36 +244,36 @@ impl<M> Uninit<M> {
     }
 }
 
-// TODO: Document why this works for all Montgomery factors.
-pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Mont<M>) -> Elem<M, E> {
-    limb::limbs_add_assign_mod(a.limbs.as_mut(), b.limbs.as_ref(), m.limbs())
-        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-    a
-}
-
-// TODO: Document why this works for all Montgomery factors.
-pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Mont<M>) -> Elem<M, E> {
-    prefixed_extern! {
-        // `r` and `a` may alias.
-        fn LIMBS_sub_mod(
-            r: *mut Limb,
-            a: *const Limb,
-            b: *const Limb,
-            m: *const Limb,
-            num_limbs: c::NonZero_size_t,
-        );
+impl<M, E> Elem<M, E> {
+    pub fn add(mut self, b: &Elem<M, E>, m: &Mont<M>) -> Elem<M, E> {
+        limb::limbs_add_assign_mod(self.limbs.as_mut(), b.limbs.as_ref(), m.limbs())
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+        self
     }
-    let num_limbs = NonZeroUsize::new(m.limbs().len()).unwrap();
-    let _: &[Limb] = (InOut(a.limbs.as_mut()), b.limbs.as_ref())
-        .with_non_dangling_non_null_pointers(num_limbs, |mut r, [a, b]| {
-            let m = m.limbs().as_ptr(); // Also non-dangling because num_limbs is non-zero.
-            unsafe {
-                LIMBS_sub_mod(r.start_mut_ptr(), a, b, m, num_limbs);
-                r.deref_unchecked().assume_init()
-            }
-        })
-        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-    a
+
+    pub fn sub(mut self, b: &Elem<M, E>, m: &Mont<M>) -> Elem<M, E> {
+        prefixed_extern! {
+            // `r` and `a` may alias.
+            fn LIMBS_sub_mod(
+                r: *mut Limb,
+                a: *const Limb,
+                b: *const Limb,
+                m: *const Limb,
+                num_limbs: c::NonZero_size_t,
+            );
+        }
+        let num_limbs = NonZeroUsize::new(m.limbs().len()).unwrap();
+        let _: &[Limb] = (InOut(self.limbs.as_mut()), b.limbs.as_ref())
+            .with_non_dangling_non_null_pointers(num_limbs, |mut r, [a, b]| {
+                let m = m.limbs().as_ptr(); // Also non-dangling because num_limbs is non-zero.
+                unsafe {
+                    LIMBS_sub_mod(r.start_mut_ptr(), a, b, m, num_limbs);
+                    r.deref_unchecked().assume_init()
+                }
+            })
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+        self
+    }
 }
 
 /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
