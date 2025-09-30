@@ -183,7 +183,7 @@ impl PublicKey<bigint::IntoMont<'_, N, RR>> {
         let acc = bigint::elem_exp_vartime(out, base_r, exponent_without_low_bit, nm);
 
         // Now do the multiplication for the low bit and convert out of the Montgomery domain.
-        bigint::elem_mul(base, acc, nm)
+        acc.mul(base, nm)
     }
 }
 

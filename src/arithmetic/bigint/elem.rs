@@ -154,23 +154,36 @@ impl<M, E> Elem<M, E> {
     }
 }
 
-pub fn elem_mul<M, AF, BF>(
-    a: &Elem<M, AF>,
-    b: Elem<M, BF>,
-    m: &Mont<M>,
-) -> Elem<M, <(AF, BF) as ProductEncoding>::Output>
-where
-    (AF, BF): ProductEncoding,
-{
-    let mut in_out = b.limbs;
-    let _: &[Limb] = limbs_mul_mont(
-        (InOut(in_out.as_mut()), a.limbs.as_ref()),
-        m.limbs(),
-        m.n0(),
-        m.cpu_features(),
-    )
-    .unwrap_or_else(unwrap_impossible_limb_slice_error);
-    Elem::assume_in_range_and_encoded_less_safe(in_out)
+impl<M, E> Elem<M, E> {
+    pub fn mul<BE>(
+        self,
+        b: &Elem<M, BE>,
+        m: &Mont<M>,
+    ) -> Elem<M, <(E, BE) as ProductEncoding>::Output>
+    where
+        (E, BE): ProductEncoding,
+    {
+        let mut in_out = self.limbs;
+        let _: &[Limb] = limbs_mul_mont(
+            (InOut(in_out.as_mut()), b.limbs.as_ref()),
+            m.limbs(),
+            m.n0(),
+            m.cpu_features(),
+        )
+        .unwrap_or_else(unwrap_impossible_limb_slice_error);
+        Elem::assume_in_range_and_encoded_less_safe(in_out)
+    }
+
+    #[inline]
+    pub fn square(self, m: &Mont<M>) -> Elem<M, <(E, E) as ProductEncoding>::Output>
+    where
+        (E, E): ProductEncoding,
+    {
+        let mut in_out = self.limbs;
+        let _: &[Limb] = limbs_square_mont(in_out.as_mut(), m.limbs(), m.n0(), m.cpu_features())
+            .unwrap_or_else(unwrap_impossible_limb_slice_error);
+        Elem::assume_in_range_and_encoded_less_safe(in_out)
+    }
 }
 
 // TODO: This is currently unused, but we intend to eventually use this to
@@ -217,20 +230,6 @@ pub fn elem_reduced<Larger, Smaller>(
         .write_fully_with(|out| limbs_from_mont_in_place(out, tmp, m.limbs(), m.n0()))
         .unwrap_or_else(unwrap_impossible_len_mismatch_error);
     Elem::<Smaller, RInverse>::assume_in_range_and_encoded_less_safe(r)
-}
-
-#[inline]
-pub fn elem_squared<M, E>(
-    a: Elem<M, E>,
-    m: &Mont<M>,
-) -> Elem<M, <(E, E) as ProductEncoding>::Output>
-where
-    (E, E): ProductEncoding,
-{
-    let mut in_out = a.limbs;
-    let _: &[Limb] = limbs_square_mont(in_out.as_mut(), m.limbs(), m.n0(), m.cpu_features())
-        .unwrap_or_else(unwrap_impossible_limb_slice_error);
-    Elem::assume_in_range_and_encoded_less_safe(in_out)
 }
 
 pub fn elem_widen<Larger, Smaller>(
@@ -286,7 +285,7 @@ pub fn verify_inverses_consttime<M>(
     b: Elem<M, Unencoded>,
     m: &Mont<M>,
 ) -> Result<(), error::Unspecified> {
-    let r = elem_mul(a, b, m);
+    let r = b.mul(a, m);
     limb::verify_limbs_equal_1_leak_bit(r.limbs.as_ref())
 }
 

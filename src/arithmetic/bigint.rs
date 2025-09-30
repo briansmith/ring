@@ -49,8 +49,8 @@ pub(crate) use {
     self::{
         boxed_limbs::Uninit,
         elem::{
-            elem_add, elem_mul, elem_reduced, elem_reduced_once, elem_squared, elem_sub,
-            elem_verify_equal_consttime, elem_widen, verify_inverses_consttime, Elem,
+            elem_add, elem_reduced, elem_reduced_once, elem_sub, elem_verify_equal_consttime,
+            elem_widen, verify_inverses_consttime, Elem,
         },
         exp::elem_exp_consttime,
         modulus::{BoxedIntoMont, IntoMont, Mont, One},
@@ -137,7 +137,7 @@ mod tests {
                 let expected_result = consume_elem(test_case, "ModMul", &m);
                 let a = consume_elem(test_case, "A", &m).encode_mont(&m_owned, cpu_features);
                 let b = consume_elem(test_case, "B", &m).encode_mont(&m_owned, cpu_features);
-                let actual_result = elem_mul(&a, b, &m);
+                let actual_result = a.mul(&b, &m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
 
@@ -159,7 +159,7 @@ mod tests {
                 let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModSquare", &m);
                 let a = consume_elem(test_case, "A", &m).encode_mont(&m_owned, cpu_features);
-                let actual_result = elem_squared(a, &m);
+                let actual_result = a.square(&m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
 
