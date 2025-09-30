@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    bigint::{elem_mul, elem_squared, Elem, Modulus, Uninit},
+    bigint::{elem_mul, elem_squared, Elem, Mont, Uninit},
     montgomery::R,
 };
 use core::num::NonZeroU64;
@@ -31,7 +31,7 @@ pub(crate) fn elem_exp_vartime<M>(
     out: Uninit<M>,
     base: Elem<M, R>,
     exponent: NonZeroU64,
-    m: &Modulus<M>,
+    m: &Mont<M>,
 ) -> Elem<M, R> {
     // Use what [Knuth] calls the "S-and-X binary method", i.e. variable-time
     // square-and-multiply that scans the exponent from the most significant

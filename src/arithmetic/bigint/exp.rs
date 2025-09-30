@@ -45,7 +45,7 @@ use super::{
         montgomery::{RInverse, Unencoded, RRR},
         LimbSliceError,
     },
-    elem_reduced, Elem, IntoMont, Modulus, One, PrivateExponent, Uninit,
+    elem_reduced, Elem, IntoMont, Mont, One, PrivateExponent, Uninit,
 };
 use crate::{
     bits::BitLength,
@@ -94,7 +94,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     base_mod_n: &Elem<N>,
     oneRRR: &One<M, RRR>,
     exponent: &PrivateExponent,
-    m: &Modulus<M>,
+    m: &Mont<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
     use super::{
@@ -131,7 +131,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     fn power<M>(
         table: &[Limb],
         mut acc: Elem<M, R>,
-        m: &Modulus<M>,
+        m: &Mont<M>,
         i: Window5,
         mut tmp: Elem<M, R>,
     ) -> Result<(Elem<M, R>, Elem<M, R>), LenMismatchError> {
@@ -211,7 +211,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     base_mod_n: &Elem<N>,
     oneRRR: &One<M, RRR>,
     exponent: &PrivateExponent,
-    m: &Modulus<M>,
+    m: &Mont<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
     use super::{

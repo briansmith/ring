@@ -82,15 +82,15 @@ impl<M, E> IntoMont<M, E> {
     pub fn to_elem<L>(
         &self,
         out: Uninit<L>,
-        l: &Modulus<L>,
+        l: &Mont<L>,
     ) -> Result<Elem<L, Unencoded>, error::Unspecified> {
         out.write_copy_of_slice_padded(self.value.limbs())
             .map_err(error::erase::<LenMismatchError>)
             .and_then(|out| Elem::from_limbs(out, l))
     }
 
-    pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Modulus<'_, M> {
-        Modulus::from_parts_unchecked_less_safe(&self.value, self.one.n0(), cpu_features)
+    pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Mont<'_, M> {
+        Mont::from_parts_unchecked_less_safe(&self.value, self.one.n0(), cpu_features)
     }
 
     pub(crate) fn one(&self) -> &One<M, E> {
@@ -116,7 +116,7 @@ impl<M: PublicModulus, E> IntoMont<M, E> {
     }
 }
 
-pub struct Modulus<'a, M> {
+pub struct Mont<'a, M> {
     limbs: &'a [Limb],
     n0: &'a N0,
     len_bits: BitLength,
@@ -124,13 +124,13 @@ pub struct Modulus<'a, M> {
     cpu_features: cpu::Features,
 }
 
-impl<'a, M> Modulus<'a, M> {
+impl<'a, M> Mont<'a, M> {
     pub(super) fn from_parts_unchecked_less_safe(
         value: &'a Value<M>,
         n0: &'a N0,
         cpu: cpu::Features,
     ) -> Self {
-        Modulus {
+        Mont {
             limbs: value.limbs(),
             n0,
             len_bits: value.len_bits(),
@@ -140,7 +140,7 @@ impl<'a, M> Modulus<'a, M> {
     }
 }
 
-impl<M> Modulus<'_, M> {
+impl<M> Mont<'_, M> {
     pub fn alloc_uninit(&self) -> Uninit<M> {
         Uninit::new_less_safe(self.limbs.len())
     }

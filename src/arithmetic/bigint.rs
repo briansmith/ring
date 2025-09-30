@@ -53,7 +53,7 @@ pub(crate) use {
             elem_sub, elem_verify_equal_consttime, elem_widen, verify_inverses_consttime, Elem,
         },
         exp::elem_exp_consttime,
-        modulus::{IntoMont, Modulus, One},
+        modulus::{IntoMont, Mont, One},
         private_exponent::PrivateExponent,
     },
     super::exp_vartime::elem_exp_vartime,
@@ -71,7 +71,7 @@ impl<M> Uninit<M> {
     pub fn into_elem_from_be_bytes_padded(
         self,
         input: untrusted::Input<'_>,
-        m: &Modulus<M>,
+        m: &Mont<M>,
     ) -> Result<Elem<M>, error::Unspecified> {
         self.write_from_be_byes_padded(input)
             .map_err(error::erase::<LenMismatchError>)
@@ -82,7 +82,7 @@ impl<M> Uninit<M> {
 impl<M> Elem<M, Unencoded> {
     fn from_limbs(
         out: BoxedLimbs<M>,
-        m: &Modulus<M>,
+        m: &Mont<M>,
     ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
         limb::verify_limbs_less_than_limbs_leak_bit(out.as_ref(), m.limbs())?;
         Ok(Elem::assume_in_range_and_encoded_less_safe(out))

@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{limb, Limb, Modulus};
+use super::{limb, Limb, Mont};
 use crate::error;
 use alloc::boxed::Box;
 
@@ -26,7 +26,7 @@ impl PrivateExponent {
     // `p` is the modulus for which the exponent is in the interval [1, `p` - 1).
     pub fn from_be_bytes_padded<M>(
         input: untrusted::Input,
-        p: &Modulus<M>,
+        p: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
         let mut dP = p
             .alloc_uninit()
@@ -54,7 +54,7 @@ impl PrivateExponent {
     #[cfg(test)]
     pub fn from_be_bytes_for_test_only<M>(
         input: untrusted::Input,
-        p: &Modulus<M>,
+        p: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
         use super::boxed_limbs::Uninit;
         use crate::{error::LenMismatchError, limb::LIMB_BYTES};
