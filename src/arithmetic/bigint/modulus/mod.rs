@@ -5,7 +5,7 @@ pub(super) mod testutil;
 mod value;
 
 pub(crate) use self::{
-    mont::{IntoMont, Modulus},
+    mont::{IntoMont, Mont},
     one::One,
     value::{ValidatedInput, Value},
 };
