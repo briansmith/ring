@@ -48,7 +48,7 @@ use crate::{
 pub(crate) use {
     self::{
         boxed_limbs::Uninit,
-        elem::{elem_add, elem_sub, elem_verify_equal_consttime, verify_inverses_consttime, Elem},
+        elem::{elem_verify_equal_consttime, verify_inverses_consttime, Elem},
         exp::elem_exp_consttime,
         modulus::{BoxedIntoMont, IntoMont, Mont, One},
         oversized_uninit::OversizedUninit,
