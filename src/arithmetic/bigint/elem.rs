@@ -227,21 +227,21 @@ impl<M> Uninit<M> {
             .map(Elem::<M, RInverse>::assume_in_range_and_encoded_less_safe)
             .unwrap_or_else(unwrap_impossible_len_mismatch_error)
     }
-}
 
-pub fn elem_widen<Larger, Smaller>(
-    r: Uninit<Larger>,
-    a: Elem<Smaller, Unencoded>,
-    m: &Mont<Larger>,
-    smaller_modulus_bits: BitLength,
-) -> Result<Elem<Larger, Unencoded>, error::Unspecified> {
-    if smaller_modulus_bits >= m.len_bits() {
-        return Err(error::Unspecified);
+    pub fn elem_widen<Smaller>(
+        self,
+        a: &Elem<Smaller, Unencoded>,
+        m: &Mont<M>,
+        smaller_modulus_bits: BitLength,
+    ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+        if smaller_modulus_bits >= m.len_bits() {
+            return Err(error::Unspecified);
+        }
+        let r = self
+            .write_copy_of_slice_padded(a.limbs.as_ref())
+            .map_err(error::erase::<LenMismatchError>)?;
+        Ok(Elem::assume_in_range_and_encoded_less_safe(r))
     }
-    let r = r
-        .write_copy_of_slice_padded(a.limbs.as_ref())
-        .map_err(error::erase::<LenMismatchError>)?;
-    Ok(Elem::assume_in_range_and_encoded_less_safe(r))
 }
 
 // TODO: Document why this works for all Montgomery factors.
