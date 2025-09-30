@@ -186,28 +186,24 @@ impl<M, E> Elem<M, E> {
     }
 }
 
-// TODO: This is currently unused, but we intend to eventually use this to
-// reduce elements (x mod q) mod p in the RSA CRT. If/when we do so, we
-// should update the testing so it is reflective of that usage, instead of
-// the old usage.
-pub fn elem_reduced_once<A, M>(
-    r: Uninit<M>,
-    a: &Elem<A, Unencoded>,
-    m: &Mont<M>,
-    other_modulus_len_bits: BitLength,
-) -> Elem<M, Unencoded> {
-    assert_eq!(m.len_bits(), other_modulus_len_bits);
-    // TODO: We should add a variant of `limbs_reduced_once` that does the
-    // reduction out-of-place, to eliminate this copy.
-    let mut r = r
-        .write_copy_of_slice_checked(a.limbs.as_ref())
-        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-    limb::limbs_reduce_once(r.as_mut(), m.limbs())
-        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-    Elem::assume_in_range_and_encoded_less_safe(r)
-}
-
 impl<M> Uninit<M> {
+    pub fn elem_reduced_once<Larger>(
+        self,
+        a: &Elem<Larger>,
+        m: &Mont<M>,
+        other_modulus_len_bits: BitLength,
+    ) -> Elem<M, Unencoded> {
+        assert_eq!(m.len_bits(), other_modulus_len_bits);
+        // TODO: We should add a variant of `limbs_reduced_once` that does the
+        // reduction out-of-place, to eliminate this copy.
+        let mut r = self
+            .write_copy_of_slice_checked(a.limbs.as_ref())
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+        limb::limbs_reduce_once(r.as_mut(), m.limbs())
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+        Elem::<M, Unencoded>::assume_in_range_and_encoded_less_safe(r)
+    }
+
     #[inline]
     pub fn elem_reduce_mont<Larger>(
         self,

@@ -49,8 +49,8 @@ pub(crate) use {
     self::{
         boxed_limbs::Uninit,
         elem::{
-            elem_add, elem_reduced_once, elem_sub, elem_verify_equal_consttime, elem_widen,
-            verify_inverses_consttime, Elem,
+            elem_add, elem_sub, elem_verify_equal_consttime, elem_widen, verify_inverses_consttime,
+            Elem,
         },
         exp::elem_exp_consttime,
         modulus::{BoxedIntoMont, IntoMont, Mont, One},
@@ -215,7 +215,8 @@ mod tests {
                 let other_modulus_len_bits = m.len_bits();
 
                 let actual_result =
-                    elem_reduced_once(m.alloc_uninit(), &a, &m, other_modulus_len_bits);
+                    m.alloc_uninit()
+                        .elem_reduced_once(&a, &m, other_modulus_len_bits);
                 assert_elem_eq(&actual_result, &expected_result);
 
                 Ok(())

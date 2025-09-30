@@ -625,7 +625,7 @@ impl KeyPair {
         // Step 2.b.iii.
         let h = {
             let pm = &p.modulus(cpu_features);
-            let m_2 = bigint::elem_reduced_once(pm.alloc_uninit(), &m_2, pm, q.len_bits());
+            let m_2 = pm.alloc_uninit().elem_reduced_once(&m_2, pm, q.len_bits());
             bigint::elem_sub(m_1, &m_2, pm).mul(&self.qInv, pm)
         };
 
