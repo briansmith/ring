@@ -316,10 +316,12 @@ impl KeyPair {
         // First, validate `2**half_n_bits < d`. Since 2**half_n_bits has a bit
         // length of half_n_bits + 1, this check gives us 2**half_n_bits <= d,
         // and knowing d is odd makes the inequality strict.
-        let d = bigint::modulus::ValidatedInput::try_from_be_bytes(d)
-            .map_err(|_| KeyRejected::invalid_component())?;
-        if !(n_bits.half_rounded_up() < d.len_bits()) {
-            return Err(KeyRejected::inconsistent_components());
+        {
+            let d = bigint::modulus::ValidatedInput::try_from_be_bytes(d)
+                .map_err(|_| KeyRejected::invalid_component())?;
+            if !(n_bits.half_rounded_up() < d.len_bits()) {
+                return Err(KeyRejected::inconsistent_components());
+            }
         }
 
         // 6.4.1.4.3 - Step 3.a (out of order).
@@ -345,11 +347,12 @@ impl KeyPair {
             return Err(KeyRejected::inconsistent_components());
         }
 
-        let d = d.build_value::<D>();
+        // 6.4.1.4.3/6.4.1.2.1 - Step 6.
 
         // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we don't have
-        // a good way of calculating LCM, so it is omitted, as explained above.
-        d.verify_less_than(n)
+        // a good way of calculating LCM, so just check the less strict condition
+        // that `d < n`.
+        let _d = bigint::Elem::from_be_bytes_padded(d, n)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // Step 6.b is omitted as explained above.
@@ -521,8 +524,6 @@ fn elem_exp_consttime<M>(
 enum P {}
 
 enum Q {}
-
-enum D {}
 
 impl KeyPair {
     /// Computes the signature of `msg` and writes it into `signature`.
