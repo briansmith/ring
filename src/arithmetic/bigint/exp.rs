@@ -45,7 +45,7 @@ use super::{
         montgomery::{RInverse, Unencoded, RRR},
         LimbSliceError,
     },
-    elem_reduced, Elem, IntoMont, Mont, One, PrivateExponent, Uninit,
+    Elem, IntoMont, Mont, One, PrivateExponent, Uninit,
 };
 use crate::{
     bits::BitLength,
@@ -100,7 +100,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     use super::super::montgomery::{limbs_mul_mont, limbs_square_mont, R};
     use crate::{bssl, c, error, polyfill::dynarray};
 
-    let base_rinverse: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
+    let base_rinverse: Elem<M, RInverse> =
+        out.elem_reduce_mont(base_mod_n, m, other_prime_len_bits);
 
     let num_limbs = m.num_limbs();
     if num_limbs.get() % limbs512::LIMBS_PER_CHUNK != 0 {
@@ -288,7 +289,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .into_written()
         .as_chunks();
 
-    let out: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
+    let out: Elem<M, RInverse> = out.elem_reduce_mont(base_mod_n, m, other_prime_len_bits);
     let base_rinverse = out.leak_limbs_less_safe();
 
     // base_cached = base*R == (base/R * RRR)/R

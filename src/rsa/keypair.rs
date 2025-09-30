@@ -383,7 +383,9 @@ impl KeyPair {
         // with an even modulus.
 
         // Step 7.f.
-        let q_mod_p = bigint::elem_reduced(pm.alloc_uninit(), &q_mod_n, pm, qim.len_bits())
+        let q_mod_p = pm
+            .alloc_uninit()
+            .elem_reduce_mont(&q_mod_n, pm, qim.len_bits())
             .encode_mont(pim, cpu_features);
         bigint::verify_inverses_consttime(&qInv, q_mod_p, pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
