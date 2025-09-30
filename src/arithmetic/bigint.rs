@@ -49,8 +49,8 @@ pub(crate) use {
     self::{
         boxed_limbs::Uninit,
         elem::{
-            elem_add, elem_reduced, elem_reduced_once, elem_sub, elem_verify_equal_consttime,
-            elem_widen, verify_inverses_consttime, Elem,
+            elem_add, elem_reduced_once, elem_sub, elem_verify_equal_consttime, elem_widen,
+            verify_inverses_consttime, Elem,
         },
         exp::elem_exp_consttime,
         modulus::{BoxedIntoMont, IntoMont, Mont, One},
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn test_elem_reduced() {
+    fn test_elem_reduced_mont() {
         let cpu_features = cpu::features();
         test::run(
             test_vector_file!("bigint_elem_reduced_tests.txt"),
@@ -186,7 +186,9 @@ mod tests {
                     consume_elem_unchecked::<M>(test_case, "A", expected_result.num_limbs() * 2);
                 let other_modulus_len_bits = m_.len_bits();
 
-                let actual_result = elem_reduced(m.alloc_uninit(), &a, &m, other_modulus_len_bits)
+                let actual_result = m
+                    .alloc_uninit()
+                    .elem_reduce_mont(&a, &m, other_modulus_len_bits)
                     .encode_mont(&m_, cpu_features);
                 assert_elem_eq(&actual_result, &expected_result);
 

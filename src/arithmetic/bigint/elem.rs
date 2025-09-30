@@ -207,29 +207,30 @@ pub fn elem_reduced_once<A, M>(
     Elem::assume_in_range_and_encoded_less_safe(r)
 }
 
-#[inline]
-pub fn elem_reduced<Larger, Smaller>(
-    r: Uninit<Smaller>,
-    a: &Elem<Larger, Unencoded>,
-    m: &Mont<Smaller>,
-    other_prime_len_bits: BitLength,
-) -> Elem<Smaller, RInverse> {
-    // This is stricter than required mathematically but this is what we
-    // guarantee and this is easier to check. The real requirement is that
-    // that `a < m*R` where `R` is the Montgomery `R` for `m`.
-    assert_eq!(other_prime_len_bits, m.len_bits());
+impl<M> Uninit<M> {
+    #[inline]
+    pub fn elem_reduce_mont<Larger>(
+        self,
+        a: &Elem<Larger, Unencoded>,
+        m: &Mont<M>,
+        other_prime_len_bits: BitLength,
+    ) -> Elem<M, RInverse> {
+        // This is stricter than required mathematically but this is what we
+        // guarantee and this is easier to check. The real requirement is that
+        // that `a < m*R` where `R` is the Montgomery `R` for `m`.
+        assert_eq!(other_prime_len_bits, m.len_bits());
 
-    // `limbs_from_mont_in_place` requires this.
-    assert_eq!(a.limbs.len(), m.limbs().len() * 2);
+        // `limbs_from_mont_in_place` requires this.
+        assert_eq!(a.limbs.len(), m.limbs().len() * 2);
 
-    let mut tmp = [0; MAX_LIMBS];
-    let tmp = &mut tmp[..a.limbs.len()];
-    tmp.copy_from_slice(a.limbs.as_ref());
+        let mut tmp = [0; MAX_LIMBS];
+        let tmp = &mut tmp[..a.limbs.len()];
+        tmp.copy_from_slice(a.limbs.as_ref());
 
-    let r = r
-        .write_fully_with(|out| limbs_from_mont_in_place(out, tmp, m.limbs(), m.n0()))
-        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-    Elem::<Smaller, RInverse>::assume_in_range_and_encoded_less_safe(r)
+        self.write_fully_with(|out| limbs_from_mont_in_place(out, tmp, m.limbs(), m.n0()))
+            .map(Elem::<M, RInverse>::assume_in_range_and_encoded_less_safe)
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error)
+    }
 }
 
 pub fn elem_widen<Larger, Smaller>(
