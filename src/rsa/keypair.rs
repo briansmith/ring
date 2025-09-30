@@ -635,14 +635,14 @@ impl KeyPair {
         // non-modular arithmetic.
         // The old `h` isn't used beyond this point, so its storage could be
         // reused.
-        let h = bigint::elem_widen(nm.alloc_uninit(), h, nm, p.len_bits())?;
+        let h = nm.alloc_uninit().elem_widen(&h, nm, p.len_bits())?;
         let q_mod_n_storage = nm.alloc_uninit();
         let q_times_h = q
             .to_elem(q_mod_n_storage, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features)
             .mul(&h, nm);
-        let m_2 = bigint::elem_widen(nm.alloc_uninit(), m_2, nm, q.len_bits())?;
+        let m_2 = nm.alloc_uninit().elem_widen(&m_2, nm, q.len_bits())?;
         let m = bigint::elem_add(m_2, q_times_h, nm);
 
         // Step 2.b.v isn't needed since there are only two primes.
