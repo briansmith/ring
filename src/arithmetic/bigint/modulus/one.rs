@@ -18,7 +18,7 @@ use crate::polyfill::prelude::*;
 use super::super::{
     super::montgomery::{N0, R, RR, RRR},
     elem::{elem_double, elem_squared},
-    modulus, Elem, Limb, Modulus, PublicModulus, Uninit,
+    modulus, Elem, Limb, Mont, PublicModulus, Uninit,
 };
 use crate::{
     cpu,
@@ -43,7 +43,7 @@ impl<M, E> One<M, E> {
 impl<M> One<M, R> {
     pub(in super::super) fn fillR<'r>(
         out: polyfill::slice::Uninit<'r, Limb>,
-        m: &Modulus<'_, M>,
+        m: &Mont<'_, M>,
     ) -> Result<&'r mut [Limb], LenMismatchError> {
         let r = m.limbs().len() * LIMB_BITS;
 
@@ -94,7 +94,7 @@ impl<M> One<M, RR> {
         let r = w * LIMB_BITS;
 
         let n0 = N0::calculate_from(m);
-        let m = &Modulus::from_parts_unchecked_less_safe(m, &n0, cpu);
+        let m = &Mont::from_parts_unchecked_less_safe(m, &n0, cpu);
 
         let mut acc = out
             .write_fully_with(|out| One::fillR(out, m))
@@ -166,7 +166,7 @@ impl<M> One<M, RRR> {
         m: &modulus::Value<M>,
         cpu: cpu::Features,
     ) -> Self {
-        let m = &Modulus::from_parts_unchecked_less_safe(m, &n0, cpu);
+        let m = &Mont::from_parts_unchecked_less_safe(m, &n0, cpu);
         let value = elem_squared(value, m);
         Self { value, n0 }
     }
