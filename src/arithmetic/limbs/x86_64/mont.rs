@@ -29,7 +29,7 @@ use crate::{
     cpu::intel::{Adx, Bmi1, Bmi2},
     error::LenMismatchError,
     limb::Limb,
-    polyfill::slice::{AliasingSlices2, AliasingSlices3},
+    polyfill::slice::AliasingSlices,
     window5::Window5,
 };
 use core::{mem::MaybeUninit, num::NonZeroUsize};
@@ -57,7 +57,7 @@ pub const MIN_4X: usize = 8;
 
 #[inline]
 pub(in super::super::super) fn mul_mont5_4x<'o>(
-    in_out: impl AliasingSlices3<'o, Limb>,
+    in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[[Limb; 4]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
@@ -77,7 +77,7 @@ pub(in super::super::super) fn mul_mont5_4x<'o>(
 
 #[inline]
 pub(in super::super::super) fn sqr_mont5<'o>(
-    in_out: impl AliasingSlices2<'o, Limb>,
+    in_out: impl AliasingSlices<'o, Limb, 1>,
     n: &[[Limb; 8]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
@@ -109,7 +109,7 @@ pub(in super::super::super) fn sqr_mont5<'o>(
         None => Limb::from(false),
     };
 
-    let r = in_out.with_non_dangling_non_null_pointers_ra(num_limbs, |mut r, a| {
+    let r = in_out.with_non_dangling_non_null_pointers(num_limbs, |mut r, [a]| {
         let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
         unsafe {
             bn_sqr8x_mont(r.start_mut_ptr(), a, mulx_adx_capable, n, n0, num_limbs);

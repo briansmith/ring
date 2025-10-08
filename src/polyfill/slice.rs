@@ -25,7 +25,7 @@
 use crate::polyfill::{StartMutPtr, StartPtr};
 
 pub(crate) use super::{
-    aliasing_slices::{AliasSrc, AliasingSlices2, AliasingSlices3, InOut},
+    aliasing_slices::{AliasSrc, AliasingSlices, InOut},
     uninit_slice::{AliasedUninit, Uninit},
 };
 

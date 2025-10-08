@@ -26,7 +26,7 @@ use crate::{
     error::{self, LenMismatchError},
     limb::{self, Limb},
     polyfill::{
-        slice::{AliasingSlices3, InOut},
+        slice::{AliasingSlices, InOut},
         StartMutPtr,
     },
 };
@@ -274,7 +274,7 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem
     }
     let num_limbs = NonZeroUsize::new(m.limbs().len()).unwrap();
     let _: &[Limb] = (InOut(a.limbs.as_mut()), b.limbs.as_ref())
-        .with_non_dangling_non_null_pointers_rab(num_limbs, |mut r, a, b| {
+        .with_non_dangling_non_null_pointers(num_limbs, |mut r, [a, b]| {
             let m = m.limbs().as_ptr(); // Also non-dangling because num_limbs is non-zero.
             unsafe {
                 LIMBS_sub_mod(r.start_mut_ptr(), a, b, m, num_limbs);

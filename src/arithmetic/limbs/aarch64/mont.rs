@@ -21,10 +21,7 @@ use super::super::super::{n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
 use crate::{
     c,
     limb::{Limb, LIMB_BYTES},
-    polyfill::{
-        slice::{AliasingSlices2, AliasingSlices3},
-        StartMutPtr,
-    },
+    polyfill::{slice::AliasingSlices, StartMutPtr},
 };
 use core::num::NonZeroUsize;
 
@@ -35,7 +32,7 @@ const _TWICE_MAX_LIMBS_LE_3KB: () = assert!((2 * MAX_LIMBS) * LIMB_BYTES <= 3 * 
 
 #[inline]
 pub(in super::super::super) fn mul_mont<'o>(
-    in_out: impl AliasingSlices3<'o, Limb>,
+    in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
     n0: &N0,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
@@ -58,7 +55,7 @@ pub(in super::super::super) fn mul_mont<'o>(
 
 #[inline]
 pub(in super::super::super) fn sqr_mont5<'o>(
-    in_out: impl AliasingSlices2<'o, Limb>,
+    in_out: impl AliasingSlices<'o, Limb, 1>,
     n: &[[Limb; 8]],
     n0: &N0,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
@@ -88,7 +85,7 @@ pub(in super::super::super) fn sqr_mont5<'o>(
         return Err(LimbSliceError::too_long(num_limbs.get()));
     }
 
-    let r = in_out.with_non_dangling_non_null_pointers_ra(num_limbs, |mut r, a| {
+    let r = in_out.with_non_dangling_non_null_pointers(num_limbs, |mut r, [a]| {
         let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
         unsafe {
             bn_sqr8x_mont(r.start_mut_ptr(), a, a, n, n0, num_limbs);
