@@ -16,7 +16,7 @@ use super::{n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
 use crate::{
     c,
     limb::{Limb, LIMB_BITS},
-    polyfill::{slice::AliasingSlices3, usize_from_u32, StartMutPtr},
+    polyfill::{slice::AliasingSlices, usize_from_u32, StartMutPtr},
 };
 use core::{mem::size_of, num::NonZeroUsize};
 
@@ -69,7 +69,7 @@ macro_rules! bn_mul_mont_ffi {
 
 #[inline]
 pub(super) unsafe fn bn_mul_mont_ffi<'o, Cpu, const LEN_MIN: usize, const LEN_MOD: usize>(
-    in_out: impl AliasingSlices3<'o, Limb>,
+    in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
     n0: &N0,
     cpu: Cpu,
@@ -99,7 +99,7 @@ pub(super) unsafe fn bn_mul_mont_ffi<'o, Cpu, const LEN_MIN: usize, const LEN_MO
     if len.get() > MAX_LIMBS {
         return Err(LimbSliceError::too_long(n.len()));
     }
-    let r = in_out.with_non_dangling_non_null_pointers_rab(len, |mut r, a, b| {
+    let r = in_out.with_non_dangling_non_null_pointers(len, |mut r, [a, b]| {
         let n = n.as_ptr();
         let _: Cpu = cpu;
         unsafe {

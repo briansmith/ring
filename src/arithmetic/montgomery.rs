@@ -21,7 +21,7 @@ use super::LimbSliceError;
 use super::MIN_LIMBS;
 use crate::{
     cpu,
-    polyfill::slice::{AliasSrc, AliasingSlices2, AliasingSlices3},
+    polyfill::slice::{AliasSrc, AliasingSlices},
 };
 use cfg_if::cfg_if;
 
@@ -128,7 +128,7 @@ use crate::{
 
 #[inline(always)]
 pub(super) fn limbs_mul_mont<'o>(
-    in_out: impl AliasingSlices3<'o, Limb>,
+    in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
     n0: &N0,
     cpu: cpu::Features,
@@ -222,7 +222,7 @@ pub(super) fn limbs_from_mont_in_place<'o>(
 
 /// r = r**2
 pub(super) fn limbs_square_mont<'o>(
-    in_out: impl AliasingSlices2<'o, Limb> + AliasSrc<'o, Limb>,
+    in_out: impl AliasingSlices<'o, Limb, 1> + AliasSrc<'o, Limb>,
     n: &[Limb],
     n0: &N0,
     cpu: cpu::Features,

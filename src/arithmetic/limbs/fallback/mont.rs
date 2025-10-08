@@ -24,7 +24,7 @@ use crate::{
     c,
     error::LenMismatchError,
     limb::Limb,
-    polyfill::slice::{AliasedUninit, AliasingSlices3},
+    polyfill::slice::{AliasedUninit, AliasingSlices},
 };
 use cfg_if::cfg_if;
 use core::hint::unreachable_unchecked;
@@ -32,7 +32,7 @@ use core::hint::unreachable_unchecked;
 #[allow(dead_code)]
 #[inline]
 pub(crate) fn limbs_mul_mont<'o>(
-    in_out: impl AliasingSlices3<'o, Limb>,
+    in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
     n0: &N0,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
