@@ -205,34 +205,6 @@ where
     }
 }
 
-// Currently unused:
-//
-// pub(crate) trait AliasDst<T> {
-//     type RRA: AliasingSlices3<T>;
-//     fn rra(self) -> Self::RRA;
-// }
-//
-// impl<'a, T> AliasDst<T> for &'a mut T
-// where
-//     &'a mut T: AliasingSlices3<T>,
-// {
-//     type RRA = Self;
-//     fn rra(self) -> Self::RRA {
-//         self
-//     }
-// }
-//
-// impl<'a, T> AliasDst<T> for (&'a mut T, &'a T)
-// where
-//     (InOut<&'a mut T>, &'a T): AliasingSlices3<T>,
-// {
-//     type RRA = (InOut<&'a mut T>, &'a T);
-//     fn rra(self) -> Self::RRA {
-//         let (r, a) = self;
-//         (InOut(r), a)
-//     }
-// }
-
 pub struct InOut<T>(pub T);
 
 impl<'o, T> AliasingSlices3<'o, T> for (InOut<&'o mut [T]>, &[T])
