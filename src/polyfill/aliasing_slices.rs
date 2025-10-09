@@ -116,27 +116,27 @@ impl<'o, T> AliasingSlices<'o, T, 2> for (Uninit<'o, T>, &[T], &[T]) {
     }
 }
 
-pub(crate) trait AliasSrc<'o, T> {
-    type RAA: AliasingSlices<'o, T, 2>;
-    fn raa(self) -> Self::RAA;
+pub(crate) trait AliasSrc<const I: usize> {
+    type Output;
+    fn alias_src(self) -> Self::Output;
 }
 
-impl<'o, T> AliasSrc<'o, T> for &'o mut [T]
+impl<'o, T> AliasSrc<0> for &'o mut [T]
 where
-    &'o mut [T]: AliasingSlices<'o, T, 1>,
+    &'o mut [T]: AliasingSlices<'o, T, 2>,
 {
-    type RAA = Self;
-    fn raa(self) -> Self::RAA {
+    type Output = Self;
+    fn alias_src(self) -> Self::Output {
         self
     }
 }
 
-impl<'o, 'a, O, T> AliasSrc<'o, T> for (O, &'a [T])
+impl<'o, 'a, O, T> AliasSrc<0> for (O, &'a [T])
 where
     (O, &'a [T], &'a [T]): AliasingSlices<'o, T, 2>,
 {
-    type RAA = (O, &'a [T], &'a [T]);
-    fn raa(self) -> Self::RAA {
+    type Output = (O, &'a [T], &'a [T]);
+    fn alias_src(self) -> Self::Output {
         let (r, a) = self;
         (r, a, a)
     }
