@@ -221,12 +221,16 @@ pub(super) fn limbs_from_mont_in_place<'o>(
 }
 
 /// r = r**2
-pub(super) fn limbs_square_mont<'o>(
-    in_out: impl AliasingSlices<'o, Limb, 1> + AliasSrc<'o, Limb>,
+pub(super) fn limbs_square_mont<'o, InOut>(
+    in_out: InOut,
     n: &[Limb],
     n0: &N0,
     cpu: cpu::Features,
-) -> Result<&'o mut [Limb], LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError>
+where
+    InOut: AliasingSlices<'o, Limb, 1> + AliasSrc<0>,
+    <InOut as AliasSrc<0>>::Output: AliasingSlices<'o, Limb, 2>,
+{
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     {
         use super::limbs::aarch64;
@@ -244,5 +248,5 @@ pub(super) fn limbs_square_mont<'o>(
         }
     }
 
-    limbs_mul_mont(in_out.raa(), n, n0, cpu)
+    limbs_mul_mont(in_out.alias_src(), n, n0, cpu)
 }
