@@ -16,13 +16,13 @@
 use crate::polyfill::prelude::*;
 
 pub use super::n0::N0;
+use super::LimbSliceError;
 #[allow(unused_imports)]
 use super::MIN_LIMBS;
-use super::{
-    inout::{AliasSrc, AliasingSlices2, AliasingSlices3},
-    LimbSliceError,
+use crate::{
+    cpu,
+    polyfill::slice::{AliasSrc, AliasingSlices2, AliasingSlices3},
 };
-use crate::cpu;
 use cfg_if::cfg_if;
 
 // Indicates that the element is not encoded; there is no *R* factor

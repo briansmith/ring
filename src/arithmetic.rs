@@ -24,7 +24,6 @@ mod constant;
 pub mod bigint;
 
 mod exp_vartime;
-pub(crate) mod inout;
 mod limbs;
 mod limbs512;
 pub mod montgomery;

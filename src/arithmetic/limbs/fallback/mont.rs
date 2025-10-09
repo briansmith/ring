@@ -17,11 +17,15 @@ use crate::polyfill::prelude::*;
 
 use super::super::super::{
     ffi::bn_mul_mont_ffi,
-    inout::AliasingSlices3,
     montgomery::{limbs_from_mont_in_place, N0},
     LimbSliceError, MAX_LIMBS, MIN_LIMBS,
 };
-use crate::{c, error::LenMismatchError, limb::Limb, polyfill::slice::AliasedUninit};
+use crate::{
+    c,
+    error::LenMismatchError,
+    limb::Limb,
+    polyfill::slice::{AliasedUninit, AliasingSlices3},
+};
 use cfg_if::cfg_if;
 use core::hint::unreachable_unchecked;
 

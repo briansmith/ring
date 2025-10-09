@@ -24,7 +24,10 @@
 
 use crate::polyfill::{StartMutPtr, StartPtr};
 
-pub use super::uninit_slice::{AliasedUninit, Uninit};
+pub(crate) use super::{
+    aliasing_slices::{AliasSrc, AliasingSlices2, AliasingSlices3, InOut},
+    uninit_slice::{AliasedUninit, Uninit},
+};
 
 #[allow(dead_code)]
 pub(crate) trait SlicePolyfills {

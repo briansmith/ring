@@ -12,11 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{inout::AliasingSlices3, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
+use super::{n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
 use crate::{
     c,
     limb::{Limb, LIMB_BITS},
-    polyfill::{usize_from_u32, StartMutPtr},
+    polyfill::{slice::AliasingSlices3, usize_from_u32, StartMutPtr},
 };
 use core::{mem::size_of, num::NonZeroUsize};
 
