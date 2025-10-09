@@ -16,11 +16,7 @@
 use crate::polyfill::prelude::*;
 
 use super::{
-    super::{
-        inout::{AliasingSlices3, InOut},
-        montgomery::*,
-        MAX_LIMBS,
-    },
+    super::{montgomery::*, MAX_LIMBS},
     boxed_limbs::BoxedLimbs,
     unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error, Modulus, Uninit,
 };
@@ -29,7 +25,10 @@ use crate::{
     c,
     error::{self, LenMismatchError},
     limb::{self, Limb},
-    polyfill::StartMutPtr,
+    polyfill::{
+        slice::{AliasingSlices3, InOut},
+        StartMutPtr,
+    },
 };
 use core::{marker::PhantomData, num::NonZeroUsize};
 

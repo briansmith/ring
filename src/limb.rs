@@ -19,10 +19,12 @@
 //! limbs use the native endianness.
 
 use crate::{
-    arithmetic::inout::{AliasingSlices2, AliasingSlices3, InOut},
     bb, c,
     error::{self, LenMismatchError},
-    polyfill::{slice::Uninit, sliceutil, usize_from_u32, ArrayFlatMap, StartMutPtr},
+    polyfill::{
+        slice::{AliasingSlices2, AliasingSlices3, InOut, Uninit},
+        sliceutil, usize_from_u32, ArrayFlatMap, StartMutPtr,
+    },
     window5::Window5,
 };
 use core::{iter, num::NonZeroUsize};

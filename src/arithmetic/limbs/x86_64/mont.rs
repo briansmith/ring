@@ -20,7 +20,6 @@ use crate::polyfill::prelude::*;
 use crate::polyfill::{slice::Uninit, SmallerChunks, StartMutPtr};
 
 use super::super::super::{
-    inout::{AliasingSlices2, AliasingSlices3},
     limbs512::storage::{check_common, check_common_with_n, table_parts, table_parts_uninit},
     n0::N0,
     LimbSliceError, MAX_LIMBS,
@@ -30,6 +29,7 @@ use crate::{
     cpu::intel::{Adx, Bmi1, Bmi2},
     error::LenMismatchError,
     limb::Limb,
+    polyfill::slice::{AliasingSlices2, AliasingSlices3},
     window5::Window5,
 };
 use core::{mem::MaybeUninit, num::NonZeroUsize};
