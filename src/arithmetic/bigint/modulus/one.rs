@@ -38,6 +38,10 @@ impl<M, E> One<M, E> {
     pub(super) fn n0(&self) -> &N0 {
         &self.n0
     }
+
+    pub(in super::super) fn leak_limbs_less_safe(&self) -> &[Limb] {
+        self.value.leak_limbs_less_safe()
+    }
 }
 
 impl<M> One<M, R> {
@@ -169,12 +173,6 @@ impl<M> One<M, RRR> {
         let m = &Mont::from_parts_unchecked_less_safe(m, &n0, cpu);
         let value = elem_squared(value, m);
         Self { value, n0 }
-    }
-}
-
-impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
-    fn as_ref(&self) -> &Elem<M, E> {
-        &self.value
     }
 }
 
