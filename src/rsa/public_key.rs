@@ -193,22 +193,20 @@ impl Inner {
         // The exponent was already checked to be odd.
         debug_assert_ne!(exponent_without_low_bit, self.e.value());
 
-        let n = &self.n.value();
-        let n_one = n.one();
-        let n = &n.modulus(cpu_features);
+        let n = self.n.value();
+        let nm = &n.modulus(cpu_features);
 
-        let tmp = n.alloc_uninit();
-        let base_r =
-            bigint::elem_mul_into(tmp, n_one.as_ref(), base, n).unwrap_or_else(|_| unreachable!());
+        let tmp = nm.alloc_uninit();
+        let base_r = base.clone_into(tmp).encode_mont(n, cpu_features);
 
         // During RSA public key operations the exponent is almost always either
         // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
         // weight of 2. The maximum bit length and maximum Hamming weight of the
         // exponent is bounded by the value of `PublicExponent::MAX`.
-        let acc = bigint::elem_exp_vartime(out, base_r, exponent_without_low_bit, n);
+        let acc = bigint::elem_exp_vartime(out, base_r, exponent_without_low_bit, nm);
 
         // Now do the multiplication for the low bit and convert out of the Montgomery domain.
-        bigint::elem_mul(base, acc, n)
+        bigint::elem_mul(base, acc, nm)
     }
 }
 

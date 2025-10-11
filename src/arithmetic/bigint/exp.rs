@@ -157,7 +157,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                     (
                         uninit,
                         base_rinverse.leak_limbs_less_safe(),
-                        oneRRR.as_ref().leak_limbs_less_safe(),
+                        oneRRR.leak_limbs_less_safe(),
                     ),
                     m.limbs(),
                     m.n0(),
@@ -250,7 +250,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .ok_or_else(|| LenMismatchError::new(m_len))?
         .len();
 
-    let oneRRR = oneRRR.as_ref().leak_limbs_less_safe();
+    let oneRRR = oneRRR.leak_limbs_less_safe();
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.

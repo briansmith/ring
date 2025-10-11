@@ -18,11 +18,12 @@ use crate::polyfill::prelude::*;
 use super::{
     super::{montgomery::*, MAX_LIMBS},
     boxed_limbs::BoxedLimbs,
-    unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error, Mont, Uninit,
+    unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error, IntoMont, Mont,
+    Uninit,
 };
 use crate::{
     bits::BitLength,
-    c,
+    c, cpu,
     error::{self, LenMismatchError},
     limb::{self, Limb},
     polyfill::{
@@ -128,26 +129,28 @@ impl<M> Elem<M, Unencoded> {
     }
 }
 
-pub fn elem_mul_into<M, AF, BF>(
-    out: Uninit<M>,
-    a: &Elem<M, AF>,
-    b: &Elem<M, BF>,
-    m: &Mont<M>,
-) -> Result<Elem<M, <(AF, BF) as ProductEncoding>::Output>, LenMismatchError>
-where
-    (AF, BF): ProductEncoding,
-{
-    out.write_fully_with(|out| {
-        let r = limbs_mul_mont(
-            (out, b.limbs.as_ref(), a.limbs.as_ref()),
+impl<M, E> Elem<M, E> {
+    pub(crate) fn encode_mont<OE>(
+        self,
+        im: &IntoMont<M, OE>,
+        cpu: cpu::Features,
+    ) -> Elem<M, <(E, OE) as ProductEncoding>::Output>
+    where
+        (E, OE): ProductEncoding,
+    {
+        let oneRR = im.one();
+        let m = im.modulus(cpu);
+
+        let mut in_out = self.limbs;
+        let _: &[Limb] = limbs_mul_mont(
+            (InOut(in_out.as_mut()), oneRR.leak_limbs_less_safe()),
             m.limbs(),
             m.n0(),
             m.cpu_features(),
         )
         .unwrap_or_else(unwrap_impossible_limb_slice_error);
-        Ok(r)
-    })
-    .map(Elem::assume_in_range_and_encoded_less_safe)
+        Elem::assume_in_range_and_encoded_less_safe(in_out)
+    }
 }
 
 pub fn elem_mul<M, AF, BF>(
@@ -307,9 +310,7 @@ pub fn elem_verify_equal_consttime<M, E>(
 
 #[cfg(test)]
 pub mod testutil {
-    use super::super::modulus;
     use super::*;
-    use crate::cpu;
 
     pub fn consume_elem<M>(
         test_case: &mut crate::testutil::TestCase,
@@ -338,11 +339,5 @@ pub mod testutil {
         if elem_verify_equal_consttime(a, b).is_err() {
             panic!("{:x?} != {:x?}", a.limbs.as_ref(), b.limbs.as_ref());
         }
-    }
-
-    pub fn into_encoded<M>(a: Elem<M, Unencoded>, m: &modulus::IntoMont<M, RR>) -> Elem<M, R> {
-        let oneRR = m.one();
-        let m = &m.modulus(cpu::features());
-        elem_mul(oneRR.as_ref(), a, m)
     }
 }
