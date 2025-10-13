@@ -88,7 +88,7 @@ impl PublicModulus {
         self.value.reborrow().len_bits()
     }
 
-    pub(super) fn value(&self) -> bigint::IntoMont<'_, N, RR> {
+    pub(in super::super) fn value(&self) -> bigint::IntoMont<'_, N, RR> {
         self.value.reborrow()
     }
 }

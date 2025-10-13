@@ -15,8 +15,8 @@
 //! Verification of RSA signatures.
 
 use super::{
-    parse_public_key, public_key, PublicExponent, PublicKeyComponents, RsaParameters,
-    PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
+    base::{public_key, PublicExponent},
+    parse_public_key, PublicKeyComponents, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
 };
 use crate::{
     bits::{self, FromByteLen as _},

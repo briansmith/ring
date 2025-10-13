@@ -10,8 +10,8 @@ impl PublicExponent {
     #[cfg(test)]
     const ALL_CONSTANTS: [Self; 3] = [Self::_3, Self::_65537, Self::MAX];
 
-    pub(super) const _3: Self = Self(unwrap_const(NonZeroU64::new(3)));
-    pub(super) const _65537: Self = Self(unwrap_const(NonZeroU64::new(65537)));
+    pub(crate) const _3: Self = Self(unwrap_const(NonZeroU64::new(3)));
+    pub(crate) const _65537: Self = Self(unwrap_const(NonZeroU64::new(65537)));
 
     // This limit was chosen to bound the performance of the simple
     // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
