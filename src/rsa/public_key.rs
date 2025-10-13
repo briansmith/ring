@@ -12,8 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::base;
+use super::{base, N};
 use crate::{
+    arithmetic::{bigint, montgomery::RR},
     cpu, error,
     io::{self, der, der_writer},
 };
@@ -24,7 +25,7 @@ pub(super) use base::public_key::ValidatedInput;
 /// An RSA Public Key.
 #[derive(Clone)]
 pub struct PublicKey {
-    inner: base::PublicKey,
+    inner: base::public_key::PublicKey<bigint::BoxedIntoMont<N, RR>>,
     serialized: Box<[u8]>,
 }
 
@@ -35,7 +36,7 @@ impl PublicKey {
         input: ValidatedInput<'_>,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
-        let inner = input.build(cpu_features);
+        let inner = input.build_boxed(cpu_features);
 
         let n_bytes = input.n().input();
         let e_bytes = input.e_input();
@@ -62,11 +63,15 @@ impl PublicKey {
     /// The modulus length is rounded up to a whole number of bytes if its
     /// bit length isn't a multiple of 8.
     pub fn modulus_len(&self) -> usize {
-        self.inner.n().len_bits().as_usize_bytes_rounded_up()
+        self.inner
+            .reborrow()
+            .n()
+            .len_bits()
+            .as_usize_bytes_rounded_up()
     }
 
-    pub(super) fn inner(&self) -> &base::PublicKey {
-        &self.inner
+    pub(super) fn inner(&self) -> base::public_key::PublicKey<bigint::IntoMont<'_, N, RR>> {
+        self.inner.reborrow()
     }
 }
 

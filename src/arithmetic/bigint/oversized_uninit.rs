@@ -12,8 +12,23 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-mod public_exponent;
-pub(super) mod public_key;
-mod public_modulus;
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
 
-pub(super) use self::{public_exponent::PublicExponent, public_modulus::PublicModulus};
+use super::{Limb, MAX_LIMBS};
+use crate::polyfill;
+use core::mem::MaybeUninit;
+
+/// A buffer that has enough space to hold `N` values of the maximum size,
+/// hiding the representation of values from the user.
+pub struct OversizedUninit<const N: usize>([[MaybeUninit<Limb>; MAX_LIMBS]; N]);
+
+impl<const N: usize> OversizedUninit<N> {
+    pub fn new() -> Self {
+        Self(unsafe { MaybeUninit::uninit().assume_init() })
+    }
+
+    pub(super) fn as_uninit(&mut self) -> polyfill::slice::Uninit<'_, Limb> {
+        self.0.as_flattened_mut().into()
+    }
+}
