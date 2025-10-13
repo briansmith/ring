@@ -13,8 +13,9 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
+    base::PublicExponent,
     padding::{self, RsaEncoding},
-    public_key, KeyPairComponents, PublicExponent, PublicKey, PublicKeyComponents, N,
+    public_key, KeyPairComponents, PublicKey, PublicKeyComponents, N,
 };
 
 /// RSA PKCS#1 1.5 signatures.

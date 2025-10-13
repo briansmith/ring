@@ -55,16 +55,13 @@ enum N {}
 
 impl bigint::PublicModulus for N {}
 
+mod base;
 mod keypair;
 mod keypair_components;
-mod public_exponent;
 mod public_key;
 mod public_key_components;
-mod public_modulus;
 
 pub(crate) mod verification;
-
-use self::{public_exponent::PublicExponent, public_modulus::PublicModulus};
 
 pub use self::{
     keypair::KeyPair, keypair_components::KeyPairComponents, public_key::PublicKey,
