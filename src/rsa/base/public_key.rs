@@ -16,13 +16,17 @@ use super::{
     super::{PublicKeyComponents, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN},
     public_modulus, PublicExponent, PublicModulus,
 };
-use crate::{arithmetic::bigint, bits, cpu, error, limb::LIMB_BYTES};
+use crate::{
+    arithmetic::{bigint, montgomery::RR},
+    bits, cpu, error,
+    limb::LIMB_BYTES,
+};
 use core::num::NonZeroU64;
 
 /// An RSA Public Key.
 #[derive(Clone)]
-pub(crate) struct PublicKey {
-    n: PublicModulus,
+pub(crate) struct PublicKey<S> {
+    n: PublicModulus<S>,
     e: PublicExponent,
 }
 
@@ -70,18 +74,41 @@ impl<'a> ValidatedInput<'a> {
         self.e_input
     }
 
-    pub(in super::super) fn build(&self, cpu_features: cpu::Features) -> PublicKey {
+    pub(in super::super) fn build_boxed(
+        &self,
+        cpu: cpu::Features,
+    ) -> PublicKey<bigint::BoxedIntoMont<N, RR>> {
         PublicKey {
-            n: self.n.build(cpu_features),
+            n: self.n.build_boxed_into_mont(cpu),
+            e: self.e,
+        }
+    }
+
+    pub(in super::super) fn build<'o>(
+        &self,
+        out: &'o mut bigint::OversizedUninit<2>,
+        cpu: cpu::Features,
+    ) -> PublicKey<bigint::IntoMont<'o, N, RR>> {
+        PublicKey {
+            n: self.n.build(out, cpu),
             e: self.e,
         }
     }
 }
 
-impl PublicKey {
+impl PublicKey<bigint::BoxedIntoMont<N, RR>> {
+    pub fn reborrow(&self) -> PublicKey<bigint::IntoMont<'_, N, RR>> {
+        PublicKey {
+            n: self.n.reborrow(),
+            e: self.e,
+        }
+    }
+}
+
+impl PublicKey<bigint::IntoMont<'_, N, RR>> {
     /// The public modulus.
     #[inline]
-    pub(in super::super) fn n(&self) -> &PublicModulus {
+    pub(in super::super) fn n(&self) -> &PublicModulus<bigint::IntoMont<'_, N, RR>> {
         &self.n
     }
 

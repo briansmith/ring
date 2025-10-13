@@ -40,7 +40,7 @@
 use crate::polyfill::prelude::*;
 
 use self::boxed_limbs::BoxedLimbs;
-use super::{montgomery::*, LimbSliceError};
+use super::{montgomery::*, LimbSliceError, MAX_LIMBS};
 use crate::{
     error::{self, LenMismatchError},
     limb::{self, Limb},
@@ -54,6 +54,7 @@ pub(crate) use {
         },
         exp::elem_exp_consttime,
         modulus::{BoxedIntoMont, IntoMont, Mont, One},
+        oversized_uninit::OversizedUninit,
         private_exponent::PrivateExponent,
     },
     super::exp_vartime::elem_exp_vartime,
@@ -63,6 +64,7 @@ mod boxed_limbs;
 mod elem;
 mod exp;
 pub mod modulus;
+mod oversized_uninit;
 mod private_exponent;
 
 pub trait PublicModulus {}

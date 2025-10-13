@@ -19,6 +19,7 @@ use super::{
     parse_public_key, PublicKeyComponents, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
 };
 use crate::{
+    arithmetic::bigint,
     bits::{self, FromByteLen as _},
     cpu, digest,
     error::{self, InputTooLongError},
@@ -207,7 +208,8 @@ fn verify(
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let key = validated.build(cpu_features);
+    let mut out = bigint::OversizedUninit::<2>::new();
+    let key = validated.build(&mut out, cpu_features);
 
     // RFC 8017 Section 5.2.2: RSAVP1.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];

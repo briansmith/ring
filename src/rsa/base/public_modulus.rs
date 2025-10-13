@@ -9,8 +9,8 @@ use core::ops::RangeInclusive;
 
 /// The modulus (n) of an RSA public key.
 #[derive(Clone)]
-pub struct PublicModulus {
-    value: bigint::BoxedIntoMont<N, RR>,
+pub struct PublicModulus<S> {
+    value: S,
 }
 
 /*
@@ -68,27 +68,48 @@ impl<'a> ValidatedInput<'a> {
         self.input.len_bits()
     }
 
-    pub(super) fn build(&self, cpu_features: cpu::Features) -> PublicModulus {
+    pub(super) fn build_boxed_into_mont(
+        &self,
+        cpu_features: cpu::Features,
+    ) -> PublicModulus<bigint::BoxedIntoMont<N, RR>> {
         PublicModulus {
             value: self.input.build_boxed_into_mont(cpu_features),
         }
     }
+
+    pub(super) fn build<'o>(
+        &self,
+        out: &'o mut bigint::OversizedUninit<2>,
+        cpu_features: cpu::Features,
+    ) -> PublicModulus<bigint::IntoMont<'o, N, RR>> {
+        PublicModulus {
+            value: self.input.build_into_mont(out, cpu_features),
+        }
+    }
 }
 
-impl PublicModulus {
+impl PublicModulus<bigint::BoxedIntoMont<N, RR>> {
+    pub fn reborrow(&self) -> PublicModulus<bigint::IntoMont<'_, N, RR>> {
+        PublicModulus {
+            value: self.value.reborrow(),
+        }
+    }
+}
+
+impl PublicModulus<bigint::IntoMont<'_, N, RR>> {
     /// The big-endian encoding of the modulus.
     ///
     /// There are no leading zeros.
     pub fn be_bytes(&self) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
-        self.value.reborrow().be_bytes()
+        self.value.be_bytes()
     }
 
     /// The length of the modulus in bits.
     pub fn len_bits(&self) -> bits::BitLength {
-        self.value.reborrow().len_bits()
+        self.value.len_bits()
     }
 
-    pub(in super::super) fn value(&self) -> bigint::IntoMont<'_, N, RR> {
-        self.value.reborrow()
+    pub(in super::super) fn value(&self) -> &bigint::IntoMont<'_, N, RR> {
+        &self.value
     }
 }

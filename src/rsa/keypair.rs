@@ -330,7 +330,8 @@ impl KeyPair {
         // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
         let public_key = PublicKey::new(public_key, cpu_features)?;
 
-        let n = &public_key.inner().n().value();
+        let borrowed_public_key = public_key.inner();
+        let n = borrowed_public_key.n().value();
         let nm = &n.modulus(cpu_features);
 
         let q = q.build(cpu_features);
@@ -607,7 +608,8 @@ impl KeyPair {
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
 
-        let n = &self.public.inner().n().value();
+        let borrowed_public = self.public.inner();
+        let n = borrowed_public.n().value();
         let nm = &n.modulus(cpu_features);
 
         // Step 1. The value zero is also rejected.

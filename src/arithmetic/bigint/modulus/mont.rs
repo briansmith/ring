@@ -19,7 +19,7 @@ use super::{
     super::{
         super::montgomery::{limbs_square_mont, Unencoded, RR, RRR},
         modulus::value::Value,
-        unwrap_impossible_limb_slice_error, Elem, One, PublicModulus, Uninit, N0,
+        unwrap_impossible_limb_slice_error, Elem, One, OversizedUninit, PublicModulus, Uninit, N0,
     },
     ValidatedInput,
 };
@@ -104,6 +104,15 @@ impl ValidatedInput<'_> {
             m,
             encoding,
         }
+    }
+
+    pub(crate) fn build_into_mont<'o, M>(
+        &self,
+        uninit: &'o mut OversizedUninit<2>,
+        cpu: cpu::Features,
+    ) -> IntoMont<'o, M, RR> {
+        self.write_into_mont(&mut uninit.as_uninit().into_cursor(), cpu)
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
     }
 
     fn write_into_mont<'o, M>(
