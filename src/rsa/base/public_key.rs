@@ -39,6 +39,22 @@ impl<'a> ValidatedInput<'a> {
         n_max_bits: bits::BitLength,
         e_min_value: PublicExponent,
     ) -> Result<Self, error::KeyRejected> {
+        // This is an incomplete implementation of NIST SP800-56Br1 Section
+        // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
+        // to NIST SP800-89 Section 5.3.3, "(Explicit) Partial Public Key
+        // Validation for RSA," "with the caveat that the length of the modulus
+        // shall be a length that is specified in this Recommendation." In
+        // SP800-89, two different sets of steps are given, one set numbered,
+        // and one set lettered. TODO: Document this in the end-user
+        // documentation for RSA keys.
+
+        // If `n` is less than `e` then somebody has probably accidentally swapped
+        // them. The largest acceptable `e` is smaller than the smallest acceptable
+        // `n`, so no additional checks need to be done.
+
+        // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
+        // case in most other commonly-used crypto libraries.
+
         let n =
             public_modulus::ValidatedInput::from_be_bytes(components.n, n_min_bits..=n_max_bits)?;
         let e_input = components.e.into();
@@ -55,25 +71,10 @@ impl<'a> ValidatedInput<'a> {
     }
 
     pub(in super::super) fn build(&self, cpu_features: cpu::Features) -> PublicKey {
-        // This is an incomplete implementation of NIST SP800-56Br1 Section
-        // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
-        // to NIST SP800-89 Section 5.3.3, "(Explicit) Partial Public Key
-        // Validation for RSA," "with the caveat that the length of the modulus
-        // shall be a length that is specified in this Recommendation." In
-        // SP800-89, two different sets of steps are given, one set numbered,
-        // and one set lettered. TODO: Document this in the end-user
-        // documentation for RSA keys.
-
-        let n = self.n.build(cpu_features);
-
-        // If `n` is less than `e` then somebody has probably accidentally swapped
-        // them. The largest acceptable `e` is smaller than the smallest acceptable
-        // `n`, so no additional checks need to be done.
-
-        // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
-        // case in most other commonly-used crypto libraries.
-
-        PublicKey { n, e: self.e }
+        PublicKey {
+            n: self.n.build(cpu_features),
+            e: self.e,
+        }
     }
 }
 
