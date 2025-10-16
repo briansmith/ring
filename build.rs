@@ -181,9 +181,30 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "-Wuninitialized",
         ];
         NON_MSVC_FLAGS
+    } else if compiler.is_like_clang_cl() {
+        static MSVC_FLAGS: &[&str] = &[
+            "/Gy",      // Enable function-level linking.
+            "/std:c11", // Standard
+            "/Zc:wchar_t",
+            "/Zc:forScope",
+            "/Zc:inline",
+            // Default warnings.
+            "/W4", // /Wall defaults to -Weverything (https://github.com/llvm/llvm-project/commit/f9b08a382cc1e0669805991849ad69efbd4703e8), use original W4 instead
+            // Warnings.
+            "/wd4127", // C4127: conditional expression is constant
+            "/wd4464", // C4464: relative include path contains '..'
+            "/wd4514", // C4514: <name>: unreferenced inline function has be
+            "/wd4710", // C4710: function not inlined
+            "/wd4711", // C4711: function 'function' selected for inline expansion
+            "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
+            "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
+                        * /Qspectre switch specified */
+        ];
+        MSVC_FLAGS
     } else {
         static MSVC_FLAGS: &[&str] = &[
-            "/Gy", // Enable function-level linking.
+            "/Gy",      // Enable function-level linking.
+            "/std:c11", // Standard
             "/Zc:wchar_t",
             "/Zc:forScope",
             "/Zc:inline",
