@@ -26,6 +26,7 @@ use crate::error;
         all(target_os = "unknown", feature = "wasm32_unknown_unknown_js")
     )
 ))]
+#[path = "rand/getrandom/lib.rs"]
 mod getrandom;
 
 /// A secure random number generator.
