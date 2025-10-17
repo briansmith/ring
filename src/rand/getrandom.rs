@@ -1,6 +1,6 @@
 // This file, and all code in `rand/getrandom`, are vendored from
 // the `getrandom` project:
-// https://github.com/rust-random/getrandom/tree/78ef61a0e7a5dc876da0b496998464630a4c0bf0
+// https://github.com/rust-random/getrandom/blob/v0.3.3
 //
 // Copyright (c) 2018-2025 The rust-random Project Developers
 // Copyright (c) 2014 The Rust Project Developers
@@ -125,5 +125,11 @@ pub fn fill_uninit(dest: &mut [MaybeUninit<u8>]) -> Result<&mut [u8], Error> {
 
     // SAFETY: `dest` has been fully initialized by `imp::fill_inner`
     // since it returned `Ok`.
-    Ok(unsafe { util::slice_assume_init_mut(dest) })
+    Ok(unsafe {
+        #[cfg(getrandom_msan)]
+        __msan_unpoison(dest.as_mut_ptr().cast(), dest.len());
+
+        util::slice_assume_init_mut(dest)
+    })
 }
+
