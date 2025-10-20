@@ -72,7 +72,7 @@ pub(crate) fn elem_exp_consttime<N, P>(
     elem_exp_consttime_inner::<N, P, { ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS * STORAGE_ENTRIES }>(
         out,
         base,
-        oneRRR,
+        &oneRRR,
         exponent,
         p,
         other_prime_len_bits,
@@ -92,7 +92,7 @@ const STORAGE_ENTRIES: usize = TABLE_ENTRIES + if cfg!(target_arch = "x86_64") {
 fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     out: Uninit<M>,
     base_mod_n: &Elem<N>,
-    oneRRR: &One<M, RRR>,
+    oneRRR: &One<'_, M, RRR>,
     exponent: &PrivateExponent,
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
@@ -148,7 +148,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         unsafe { MaybeUninit::uninit().assume_init() };
     let table = dynarray::Uninit::new(&mut storage, STORAGE_ENTRIES, num_limbs)?.init_fold(
         |init, uninit| {
-            let r: Result<&mut [Limb], LimbSliceError> = match init.len() {
+            let r: Result<&'_ mut [Limb], LimbSliceError> = match init.len() {
                 // table[0] = base**0 (i.e. 1).
                 0 => Ok(One::write_mont_identity(&mut uninit.into_cursor(), m)?),
 
@@ -397,9 +397,10 @@ mod tests {
                 let m_input =
                     modulus::ValidatedInput::try_from_be_bytes(untrusted::Input::from(&m_input))
                         .unwrap();
-                let im = m_input
-                    .build_into_mont::<M>(cpu_features)
+                let im = &m_input
+                    .build_boxed_into_mont::<M>(cpu_features)
                     .intoRRR(cpu_features);
+                let im = &im.reborrow();
                 let m = im.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModExp", &m);
                 let base = consume_elem(test_case, "A", &m);
@@ -424,17 +425,17 @@ mod tests {
 
                 let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
                 let actual_result = if !too_big {
-                    elem_exp_consttime(&base, &e, &im, other_modulus_len_bits, cpu_features)
+                    elem_exp_consttime(&base, &e, im, other_modulus_len_bits, cpu_features)
                 } else {
                     let actual_result =
-                        elem_exp_consttime(&base, &e, &im, other_modulus_len_bits, cpu_features);
+                        elem_exp_consttime(&base, &e, im, other_modulus_len_bits, cpu_features);
                     // TODO: Be more specific with which error we expect?
                     assert!(actual_result.is_err());
                     // Try again with a larger-than-normally-supported limit
                     elem_exp_consttime_inner::<_, _, { (4096 / LIMB_BITS) * STORAGE_ENTRIES }>(
                         m.alloc_uninit(),
                         &base,
-                        im.one(),
+                        &im.one(),
                         &e,
                         &m,
                         other_modulus_len_bits,

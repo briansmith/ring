@@ -12,32 +12,22 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::super::{
-    super::{MAX_LIMBS, MIN_LIMBS},
-    BoxedLimbs, PublicModulus, Uninit,
-};
+use super::super::super::{MAX_LIMBS, MIN_LIMBS};
 use crate::{
     bb,
     bits::{BitLength, FromByteLen as _},
     error::{self, InputTooLongError, LenMismatchError},
+    limb,
     limb::{Limb, LIMB_BITS, LIMB_BYTES},
     polyfill::usize_from_u32,
 };
+use core::marker::PhantomData;
 
 /// `OwnedModulus`, without the overhead of Montgomery multiplication support.
-pub(crate) struct Value<M> {
-    limbs: BoxedLimbs<M>, // Also `value >= 3`.
-
+pub(crate) struct Value<'a, M> {
+    limbs: &'a [Limb], // Also `value >= 3`.
     len_bits: BitLength,
-}
-
-impl<M: PublicModulus> Clone for Value<M> {
-    fn clone(&self) -> Self {
-        Self {
-            limbs: self.limbs.clone(),
-            len_bits: self.len_bits,
-        }
-    }
+    m: PhantomData<M>,
 }
 
 pub struct ValidatedInput<'a> {
@@ -104,6 +94,11 @@ impl<'a> ValidatedInput<'a> {
         })
     }
 
+    pub(super) fn limbs(&self) -> impl ExactSizeIterator<Item = Limb> + '_ {
+        limb::limbs_from_big_endian(self.input(), self.num_limbs..=self.num_limbs)
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
+    }
+
     pub fn len_bits(&self) -> BitLength {
         self.len_bits
     }
@@ -111,29 +106,26 @@ impl<'a> ValidatedInput<'a> {
     pub fn input(&self) -> untrusted::Input<'_> {
         self.input
     }
-
-    pub(super) fn build_value<M>(&self) -> Value<M> {
-        let limbs = Uninit::new_less_safe(self.num_limbs)
-            .write_from_be_bytes_padded(self.input)
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
-        Value {
-            limbs,
-            len_bits: self.len_bits,
-        }
-    }
 }
 
-impl<M> Value<M> {
+impl<M> Value<'_, M> {
+    pub(super) fn from_limbs_unchecked_less_safe(
+        limbs: &[Limb],
+        len_bits: BitLength,
+    ) -> Value<'_, M> {
+        Value {
+            limbs,
+            len_bits,
+            m: PhantomData,
+        }
+    }
+
     pub fn len_bits(&self) -> BitLength {
         self.len_bits
     }
 
     #[inline]
     pub(super) fn limbs(&self) -> &[Limb] {
-        self.limbs.as_ref()
-    }
-
-    pub fn alloc_uninit(&self) -> Uninit<M> {
-        Uninit::new_less_safe(self.limbs().len())
+        self.limbs
     }
 }

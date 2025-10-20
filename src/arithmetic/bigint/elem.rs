@@ -55,6 +55,7 @@ impl<M, E> Elem<M, E> {
         }
     }
 
+    #[cfg(not(target_arch = "x86_64"))]
     #[inline]
     pub(super) fn transmute_encoding_less_safe<RE>(self) -> Elem<M, RE> {
         Elem {
@@ -170,12 +171,6 @@ where
     )
     .unwrap_or_else(unwrap_impossible_limb_slice_error);
     Elem::assume_in_range_and_encoded_less_safe(in_out)
-}
-
-// r *= 2.
-pub fn elem_double<M, AF>(r: &mut Elem<M, AF>, m: &Mont<M>) {
-    limb::limbs_double_mod(r.limbs.as_mut(), m.limbs())
-        .unwrap_or_else(unwrap_impossible_len_mismatch_error)
 }
 
 // TODO: This is currently unused, but we intend to eventually use this to

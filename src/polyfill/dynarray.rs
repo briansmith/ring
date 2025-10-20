@@ -95,8 +95,10 @@ impl<E: Copy> Uninit<'_, E> {
                 len: init_len,
                 elems_per_item: self.elems_per_item,
             };
-            let _: &mut [E] = super::slice::Uninit::from(current)
-                .write_fully_with(|current| f(&mut init, current))?;
+            let r = f(&mut init, super::slice::Uninit::from(current))?;
+            if r.len() != self.elems_per_item.get() {
+                return Err(LenMismatchError::new(r.len()));
+            }
         }
         let init = super::slice::Uninit::from(self.storage);
         Ok(Array {

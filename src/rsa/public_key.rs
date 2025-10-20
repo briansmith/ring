@@ -155,7 +155,8 @@ impl Inner {
         out_buffer: &'out mut [u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN],
         cpu_features: cpu::Features,
     ) -> Result<&'out [u8], error::Unspecified> {
-        let n = &self.n.value().modulus(cpu_features);
+        let n = &self.n.value();
+        let n = &n.modulus(cpu_features);
 
         // The encoded value of the base must be the same length as the modulus,
         // in bytes.
@@ -193,7 +194,7 @@ impl Inner {
         // The exponent was already checked to be odd.
         debug_assert_ne!(exponent_without_low_bit, self.e.value());
 
-        let n = self.n.value();
+        let n = &self.n.value();
         let nm = &n.modulus(cpu_features);
 
         let tmp = nm.alloc_uninit();
