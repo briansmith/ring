@@ -53,7 +53,7 @@ pub(crate) use {
             elem_verify_equal_consttime, elem_widen, verify_inverses_consttime, Elem,
         },
         exp::elem_exp_consttime,
-        modulus::{IntoMont, Mont, One},
+        modulus::{BoxedIntoMont, IntoMont, Mont, One},
         private_exponent::PrivateExponent,
     },
     super::exp_vartime::elem_exp_vartime,
@@ -130,6 +130,7 @@ mod tests {
                 assert_eq!(section, "");
 
                 let m_owned = consume_modulus::<M>(test_case, "M");
+                let m_owned = m_owned.reborrow();
                 let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModMul", &m);
                 let a = consume_elem(test_case, "A", &m).encode_mont(&m_owned, cpu_features);
@@ -152,6 +153,7 @@ mod tests {
                 assert_eq!(section, "");
 
                 let m_owned = consume_modulus::<M>(test_case, "M");
+                let m_owned = m_owned.reborrow();
                 let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModSquare", &m);
                 let a = consume_elem(test_case, "A", &m).encode_mont(&m_owned, cpu_features);
@@ -175,6 +177,7 @@ mod tests {
                 struct M {}
 
                 let m_ = consume_modulus::<M>(test_case, "M");
+                let m_ = m_.reborrow();
                 let m = m_.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "R", &m);
                 let a =
@@ -201,6 +204,7 @@ mod tests {
                 struct M {}
                 struct O {}
                 let m = consume_modulus::<M>(test_case, "m");
+                let m = m.reborrow();
                 let m = m.modulus(cpu_features);
                 let a = consume_elem_unchecked::<O>(test_case, "a", m.limbs().len());
                 let expected_result = consume_elem::<M>(test_case, "r", &m);

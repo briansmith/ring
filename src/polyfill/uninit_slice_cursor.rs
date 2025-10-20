@@ -16,6 +16,7 @@
 use crate::polyfill::prelude::*;
 
 use super::uninit_slice::{Uninit, WriteResult};
+use crate::error::LenMismatchError;
 use core::mem;
 
 pub struct Cursor<'buf, E> {
@@ -35,6 +36,38 @@ impl<'buf, E> Cursor<'buf, E> {
         let (res, uninit) = uninit.write_iter(src).take_uninit();
         self.uninit = uninit;
         res
+    }
+
+    pub fn try_write_with<R, EI>(
+        &mut self,
+        f: impl FnOnce(&mut Cursor<'_, E>) -> Result<R, EI>,
+    ) -> Result<(&'buf mut [E], R), LenMismatchError>
+    where
+        E: Clone + Copy,
+        LenMismatchError: From<EI>,
+    {
+        let len_before = self.uninit.len();
+        let mut cursor = Cursor {
+            uninit: self.uninit.reborrow_mut(),
+        };
+        let r = f(&mut cursor)?;
+        let len_after = cursor.uninit.len();
+        let init_len = len_before
+            .checked_sub(len_after)
+            .ok_or_else(|| LenMismatchError::new(len_after))?;
+        let init = self
+            .uninit
+            .split_off_mut(..init_len)
+            .unwrap_or_else(|| unreachable!());
+        let init = unsafe { init.assume_init() };
+        Ok((init, r))
+    }
+
+    pub fn check_at_end(&self) -> Result<(), LenMismatchError> {
+        if self.uninit.len() != 0 {
+            return Err(LenMismatchError::new(self.uninit.len()));
+        }
+        Ok(())
     }
 }
 

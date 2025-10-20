@@ -16,35 +16,38 @@
 use crate::polyfill::prelude::*;
 
 use super::super::{
-    super::montgomery::{N0, R, RR, RRR},
-    elem::{elem_double, elem_squared},
-    modulus, Elem, Limb, Mont, PublicModulus, Uninit,
+    super::montgomery::{limbs_square_mont, R, RR},
+    unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error, Limb, Mont,
 };
 use crate::{
-    cpu,
     error::LenMismatchError,
     limb::{self, LIMB_BITS},
     polyfill::slice::Cursor,
 };
-use core::mem::size_of;
+use core::{marker::PhantomData, mem::size_of};
 
 // The value 1, Montgomery-encoded some number of times.
-pub struct One<M, E> {
-    value: Elem<M, E>,
-    n0: N0,
+pub struct One<'a, M, E> {
+    value: &'a [Limb],
+    m: PhantomData<M>,
+    encoding: PhantomData<E>,
 }
 
-impl<M, E> One<M, E> {
-    pub(super) fn n0(&self) -> &N0 {
-        &self.n0
+impl<M, E> One<'_, M, E> {
+    pub(super) fn from_limbs_unchecked_less_safe(value: &[Limb]) -> One<'_, M, E> {
+        One {
+            value,
+            m: PhantomData,
+            encoding: PhantomData,
+        }
     }
 
     pub(in super::super) fn leak_limbs_less_safe(&self) -> &[Limb] {
-        self.value.leak_limbs_less_safe()
+        self.value
     }
 }
 
-impl<M> One<M, R> {
+impl<M> One<'_, M, R> {
     /// Writes the value of the Montgomery multiplication identity `R` for `m` to
     /// `out`.
     pub(in super::super) fn write_mont_identity<'r>(
@@ -75,36 +78,24 @@ impl<M> One<M, R> {
             }
         }
 
-        // Now out == 2**r (mod m) == 1*R.
         Ok(out)
     }
 }
 
-impl<M> One<M, RR> {
-    // Returns RR = = R**2 (mod n) where R = 2**r is the smallest power of
-    // 2**LIMB_BITS such that R > m.
+impl<M> One<'_, M, RR> {
+    // `in_out *= R (mod_m)`, where R is the Montgomery multiplication identity
+    // element (a * R / R = a).
     //
     // Even though the assembly on some 32-bit platforms works with 64-bit
     // values, using `LIMB_BITS` here, rather than `N0::LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0::LIMBS_USED` is either one or two.
-    pub(crate) fn newRR(
-        out: Uninit<M>,
-        m: &modulus::Value<M>,
-        cpu: cpu::Features,
-    ) -> Result<Self, LenMismatchError> {
+    pub(crate) fn mul_r(in_out: &mut [Limb], m: &Mont<'_, M>) -> Result<(), LenMismatchError> {
         // The number of limbs in the numbers involved.
         let w = m.limbs().len();
 
         // The length of the numbers involved, in bits. R = 2**r.
         let r = w * LIMB_BITS;
-
-        let n0 = N0::calculate_from(m);
-        let m = &Mont::from_parts_unchecked_less_safe(m, &n0, cpu);
-
-        let mut acc = out
-            .write_fully_with(|uninit| One::write_mont_identity(&mut uninit.into_cursor(), m))
-            .map(Elem::<M, R>::assume_in_range_and_encoded_less_safe)?;
 
         // 2**t * R can be calculated by t doublings starting with R.
         //
@@ -123,7 +114,8 @@ impl<M> One<M, RR> {
         debug_assert!(d <= t);
         debug_assert!(t < r);
         for _ in 0..t {
-            elem_double(&mut acc, m);
+            limb::limbs_double_mod(in_out, m.limbs())
+                .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         }
 
         // Because t | r:
@@ -156,33 +148,9 @@ impl<M> One<M, RR> {
         const _LIMB_BITS_IS_2_POW_B: () = assert!(LIMB_BITS == 1 << B);
         debug_assert_eq!(r, t * (1 << B));
         for _ in 0..B {
-            acc = elem_squared(acc, m);
+            let _: &[Limb] = limbs_square_mont(&mut *in_out, m.limbs(), m.n0(), m.cpu_features())
+                .unwrap_or_else(unwrap_impossible_limb_slice_error);
         }
-
-        Ok(Self {
-            value: acc.transmute_encoding_less_safe::<RR>(),
-            n0,
-        })
-    }
-}
-
-impl<M> One<M, RRR> {
-    pub(crate) fn newRRR(
-        One { value, n0 }: One<M, RR>,
-        m: &modulus::Value<M>,
-        cpu: cpu::Features,
-    ) -> Self {
-        let m = &Mont::from_parts_unchecked_less_safe(m, &n0, cpu);
-        let value = elem_squared(value, m);
-        Self { value, n0 }
-    }
-}
-
-impl<M: PublicModulus, E> One<M, E> {
-    pub fn clone_into(&self, out: Uninit<M>) -> Self {
-        Self {
-            value: self.value.clone_into(out),
-            n0: self.n0,
-        }
+        Ok(())
     }
 }

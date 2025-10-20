@@ -12,51 +12,121 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::super::{
-    super::montgomery::{Unencoded, RR, RRR},
-    modulus::{value::Value, ValidatedInput},
-    Elem, One, PublicModulus, Uninit, N0,
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
+use super::{
+    super::{
+        super::montgomery::{limbs_square_mont, Unencoded, RR, RRR},
+        modulus::value::Value,
+        unwrap_impossible_limb_slice_error, Elem, One, PublicModulus, Uninit, N0,
+    },
+    ValidatedInput,
 };
+use crate::polyfill::slice::Cursor;
 use crate::{
     bits::BitLength,
     cpu,
     error::{self, LenMismatchError},
     limb::{self, Limb, LIMB_BITS},
-    polyfill::LeadingZerosStripped,
+    polyfill::{self, LeadingZerosStripped},
 };
+use alloc::boxed::Box;
 use core::{marker::PhantomData, num::NonZeroUsize};
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
 /// the modular inversion code.
-pub struct IntoMont<M, E> {
-    value: Value<M>,
-    one: One<M, E>,
+pub struct IntoMont<'a, M, E> {
+    storage: &'a [Limb],
+    len_bits: BitLength,
+    n0: N0,
+    m: PhantomData<M>,
+    encoding: PhantomData<E>,
 }
 
-impl<M: PublicModulus, E> Clone for IntoMont<M, E> {
+pub struct BoxedIntoMont<M, E> {
+    storage: Box<[Limb]>,
+    len_bits: BitLength,
+    n0: N0,
+    m: PhantomData<M>,
+    encoding: PhantomData<E>,
+}
+
+impl<M: PublicModulus, E> Clone for BoxedIntoMont<M, E> {
     fn clone(&self) -> Self {
-        let one_out = self.value.alloc_uninit();
         Self {
-            value: self.value.clone(),
-            one: self.one.clone_into(one_out),
+            storage: self.storage.clone(),
+            n0: self.n0,
+            len_bits: self.len_bits,
+            m: self.m,
+            encoding: self.encoding,
+        }
+    }
+}
+
+impl<M, E> BoxedIntoMont<M, E> {
+    pub fn reborrow(&self) -> IntoMont<'_, M, E> {
+        IntoMont {
+            storage: &self.storage,
+            len_bits: self.len_bits,
+            n0: self.n0,
+            m: self.m,
+            encoding: PhantomData,
         }
     }
 }
 
 impl ValidatedInput<'_> {
-    pub(crate) fn build_into_mont<M>(&self, cpu: cpu::Features) -> IntoMont<M, RR> {
-        self.build_value().into_into_mont(cpu)
+    pub(crate) fn build_boxed_into_mont<M>(&self, cpu: cpu::Features) -> BoxedIntoMont<M, RR> {
+        let limbs = self.limbs();
+        let mut uninit = Box::new_uninit_slice(limbs.len() * 2);
+        let borrowed = polyfill::slice::Uninit::from(uninit.as_mut());
+        let mut cursor = borrowed.into_cursor();
+        let IntoMont {
+            storage: _,
+            len_bits,
+            n0,
+            m,
+            encoding,
+        } = self
+            .write_into_mont(&mut cursor, cpu)
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        cursor
+            .check_at_end()
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        let storage = unsafe { uninit.assume_init() };
+        BoxedIntoMont {
+            storage,
+            len_bits,
+            n0,
+            m,
+            encoding,
+        }
     }
-}
 
-impl<M> Value<M> {
-    pub(super) fn into_into_mont(self, cpu: cpu::Features) -> IntoMont<M, RR> {
-        let out = self.alloc_uninit();
-        let one =
-            One::newRR(out, &self, cpu).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
-        IntoMont { value: self, one }
+    fn write_into_mont<'o, M>(
+        &self,
+        out: &mut Cursor<'o, Limb>,
+        cpu: cpu::Features,
+    ) -> Result<IntoMont<'o, M, RR>, LenMismatchError> {
+        let (storage, n0) = out.try_write_with(|out| {
+            let value = out.write_iter(self.limbs()).src_empty()?.into_written();
+            let value = Value::<M>::from_limbs_unchecked_less_safe(value, self.len_bits());
+            let n0 = N0::calculate_from(&value);
+            let m = &Mont::from_parts_unchecked_less_safe(value, &n0, cpu);
+            let one = One::write_mont_identity(out, m)?;
+            One::mul_r(one, m)?;
+            Ok(n0)
+        })?;
+        Ok(IntoMont {
+            storage,
+            len_bits: self.len_bits(),
+            n0,
+            m: PhantomData,
+            encoding: PhantomData,
+        })
     }
 }
 
@@ -84,63 +154,95 @@ impl N0 {
     }
 }
 
-impl<M, E> IntoMont<M, E> {
+impl<'a, M, E> IntoMont<'a, M, E> {
+    fn value(&self) -> Value<'_, M> {
+        let (value, _) = self.parts();
+        Value::from_limbs_unchecked_less_safe(value, self.len_bits)
+    }
+
+    fn parts(&self) -> (&'a [Limb], &'a [Limb]) {
+        self.storage
+            .as_ref()
+            .split_at(self.storage.as_ref().len() / 2)
+    }
+
+    fn parts_mut(storage: &mut [Limb]) -> (&[Limb], &mut [Limb]) {
+        let (value, one) = storage.split_at_mut(storage.len() / 2);
+        (value, one)
+    }
+
     pub fn to_elem<L>(
         &self,
         out: Uninit<L>,
         l: &Mont<L>,
     ) -> Result<Elem<L, Unencoded>, error::Unspecified> {
-        out.write_copy_of_slice_padded(self.value.limbs())
+        out.write_copy_of_slice_padded(self.value().limbs())
             .map_err(error::erase::<LenMismatchError>)
             .and_then(|out| Elem::from_limbs(out, l))
     }
 
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Mont<'_, M> {
-        Mont::from_parts_unchecked_less_safe(&self.value, self.one.n0(), cpu_features)
+        let (value, _) = self.parts();
+        let value = Value::from_limbs_unchecked_less_safe(value, self.len_bits());
+        Mont::from_parts_unchecked_less_safe(value, &self.n0, cpu_features)
     }
 
-    pub(crate) fn one(&self) -> &One<M, E> {
-        &self.one
+    pub(crate) fn one(&self) -> One<'_, M, E> {
+        let (_, one) = self.parts();
+        One::<M, E>::from_limbs_unchecked_less_safe(one)
     }
 
     pub fn len_bits(&self) -> BitLength {
-        self.value.len_bits()
+        self.len_bits
     }
 }
 
-impl<M> IntoMont<M, RR> {
-    pub(crate) fn intoRRR(self, cpu: cpu::Features) -> IntoMont<M, RRR> {
-        let Self { value, one } = self;
-        let one = One::newRRR(one, &value, cpu);
-        IntoMont { value, one }
+impl<M> BoxedIntoMont<M, RR> {
+    pub(crate) fn intoRRR(self, cpu: cpu::Features) -> BoxedIntoMont<M, RRR> {
+        let Self {
+            mut storage,
+            n0,
+            len_bits,
+            m,
+            ..
+        } = self;
+        let (value, one) = IntoMont::<M, RR>::parts_mut(storage.as_mut());
+        let value = Value::<M>::from_limbs_unchecked_less_safe(value, len_bits);
+        let mm = Mont::from_parts_unchecked_less_safe(value, &self.n0, cpu);
+        let _: &[Limb] = limbs_square_mont(one, mm.limbs(), &self.n0, cpu)
+            .unwrap_or_else(unwrap_impossible_limb_slice_error);
+        BoxedIntoMont {
+            storage,
+            n0,
+            len_bits,
+            m,
+            encoding: PhantomData,
+        }
     }
 }
 
-impl<M: PublicModulus, E> IntoMont<M, E> {
-    pub fn be_bytes(&self) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + '_> {
-        LeadingZerosStripped::new(limb::unstripped_be_bytes(self.value.limbs()))
+impl<'a, M: PublicModulus, E> IntoMont<'a, M, E> {
+    pub fn be_bytes(&self) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + 'a> {
+        let (value, _) = self.parts();
+        LeadingZerosStripped::new(limb::unstripped_be_bytes(value))
     }
 }
 
 pub struct Mont<'a, M> {
-    limbs: &'a [Limb],
+    value: Value<'a, M>,
     n0: &'a N0,
-    len_bits: BitLength,
-    m: PhantomData<M>,
     cpu_features: cpu::Features,
 }
 
 impl<'a, M> Mont<'a, M> {
     pub(super) fn from_parts_unchecked_less_safe(
-        value: &'a Value<M>,
+        value: Value<'a, M>,
         n0: &'a N0,
         cpu: cpu::Features,
     ) -> Self {
         Mont {
-            limbs: value.limbs(),
+            value,
             n0,
-            len_bits: value.len_bits(),
-            m: PhantomData,
             cpu_features: cpu,
         }
     }
@@ -148,12 +250,12 @@ impl<'a, M> Mont<'a, M> {
 
 impl<M> Mont<'_, M> {
     pub fn alloc_uninit(&self) -> Uninit<M> {
-        Uninit::new_less_safe(self.limbs.len())
+        Uninit::new_less_safe(self.value.limbs().len())
     }
 
     #[inline]
     pub(in super::super) fn limbs(&self) -> &[Limb] {
-        self.limbs
+        self.value.limbs()
     }
 
     #[inline]
@@ -162,11 +264,11 @@ impl<M> Mont<'_, M> {
     }
 
     pub fn num_limbs(&self) -> NonZeroUsize {
-        NonZeroUsize::new(self.limbs.len()).unwrap_or_else(|| unreachable!())
+        NonZeroUsize::new(self.limbs().len()).unwrap_or_else(|| unreachable!())
     }
 
     pub fn len_bits(&self) -> BitLength {
-        self.len_bits
+        self.value.len_bits()
     }
 
     #[inline]

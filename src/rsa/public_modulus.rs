@@ -10,7 +10,7 @@ use core::ops::RangeInclusive;
 /// The modulus (n) of an RSA public key.
 #[derive(Clone)]
 pub struct PublicModulus {
-    value: bigint::IntoMont<N, RR>,
+    value: bigint::BoxedIntoMont<N, RR>,
 }
 
 /*
@@ -70,7 +70,7 @@ impl<'a> ValidatedInput<'a> {
 
     pub(super) fn build(&self, cpu_features: cpu::Features) -> PublicModulus {
         PublicModulus {
-            value: self.input.build_into_mont(cpu_features),
+            value: self.input.build_boxed_into_mont(cpu_features),
         }
     }
 }
@@ -80,15 +80,15 @@ impl PublicModulus {
     ///
     /// There are no leading zeros.
     pub fn be_bytes(&self) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
-        self.value.be_bytes()
+        self.value.reborrow().be_bytes()
     }
 
     /// The length of the modulus in bits.
     pub fn len_bits(&self) -> bits::BitLength {
-        self.value.len_bits()
+        self.value.reborrow().len_bits()
     }
 
-    pub(super) fn value(&self) -> &bigint::IntoMont<N, RR> {
-        &self.value
+    pub(super) fn value(&self) -> bigint::IntoMont<'_, N, RR> {
+        self.value.reborrow()
     }
 }
