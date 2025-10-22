@@ -53,7 +53,12 @@ fn test_write_fully_with_nonempty() {
     assert_eq!(
         Some([ARBITRARY].as_mut_slice()),
         uninit
-            .write_fully_with(|uninit| uninit.write_copy_of_slice_checked(&[ARBITRARY]))
+            .write_fully_with(|uninit| Ok(uninit
+                .write_copy_of_slice(&[ARBITRARY])
+                .unwrap_or_else(|_| unreachable!())
+                .uninit_empty()
+                .unwrap_or_else(|_| unreachable!())
+                .into_written()))
             .ok()
     );
 }
@@ -63,7 +68,11 @@ fn test_write_fully_with_nonempty_empty() {
     let mut uninit: [MaybeUninit<u8>; 1] = [MaybeUninit::uninit(); 1];
     let uninit = Uninit::from(uninit.as_mut());
     assert!(uninit
-        .write_fully_with(|uninit| uninit.write_copy_of_slice_checked(&[]))
+        .write_fully_with(|uninit| Ok(uninit
+            .write_copy_of_slice(&[])
+            .unwrap_or_else(|_| unreachable!())
+            .ignore_uninit()
+            .into_written()))
         .is_err());
 }
 
@@ -78,8 +87,11 @@ fn test_write_fully_with_nonempty_short() {
             let (ptr, len) = (u.start_ptr(), u.len());
 
             let (_, r) = u
-                .write_copy_of_slice_checked(&ARBITRARY)
+                .write_copy_of_slice(&ARBITRARY)
                 .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
+                .uninit_empty()
+                .unwrap_or_else(|_| unreachable!())
+                .into_written()
                 .split_last_mut()
                 .unwrap();
 
@@ -154,9 +166,11 @@ fn test_write_fully_with_nonempty_leak_without_box_same_lifeime() {
     let (uninit, after) = uninit.split_at_mut(LEN);
 
     let after = Uninit::from(after)
-        .write_copy_of_slice_checked(&[1, 2, 3])
-        .ok()
-        .unwrap();
+        .write_copy_of_slice(&[1, 2, 3])
+        .unwrap_or_else(|_| unreachable!())
+        .uninit_empty()
+        .unwrap_or_else(|_| unreachable!())
+        .into_written();
     assert_eq!(uninit.len(), after.len());
 
     let uninit = Uninit::from(uninit);
