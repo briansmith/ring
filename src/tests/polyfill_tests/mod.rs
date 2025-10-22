@@ -1,4 +1,4 @@
-// Copyright 2024 Brian Smith.
+// Copyright 2025 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,11 +12,4 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Integration tests for non-public APIs.
-
-mod bb_boolmask_tests;
-mod bb_bytes_tests;
-mod bits_tests;
-mod c_constant_time_tests;
-mod ownedmodulusvalue_tests;
-mod polyfill_tests;
+mod uninit_slice_tests;

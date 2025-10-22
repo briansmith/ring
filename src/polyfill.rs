@@ -80,7 +80,7 @@ pub mod prelude {
     pub(crate) use super::{
         atomic::AtomicPolyfills,
         boxed::{BoxMaybeUninitSlicePolyfills, BoxSlicePolyfills},
-        ptr::PointerPolyfills,
+        ptr::{ConstPointerPolyfills, PointerPolyfills},
         slice::{SliceOfArraysPolyfills, SlicePolyfills},
     };
 }

@@ -20,6 +20,18 @@ pub(crate) trait PointerPolyfills {
     fn cast_array_<const N: usize>(self) -> Self::ArrayPointer<N>;
 }
 
+#[allow(dead_code)]
+pub(crate) trait ConstPointerPolyfills {
+    fn addr(self) -> usize;
+}
+
+impl<T> ConstPointerPolyfills for *const T {
+    #[inline(always)]
+    fn addr(self) -> usize {
+        self as usize
+    }
+}
+
 impl<T> PointerPolyfills for *const T {
     type ArrayPointer<const N: usize> = *const [T; N];
 
@@ -50,4 +62,9 @@ pub fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 #[inline(always)]
 pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
     r
+}
+
+#[inline(always)]
+pub fn addr_eq<T>(p: *const T, q: *const T) -> bool {
+    p.cast::<()>() == q.cast::<()>()
 }

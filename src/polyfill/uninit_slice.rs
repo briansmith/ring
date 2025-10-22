@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::start_ptr::{StartMutPtr, StartPtr};
 use crate::{error::LenMismatchError, polyfill};
 use core::{marker::PhantomData, mem::MaybeUninit, ptr};
@@ -66,11 +69,10 @@ impl<'s, E: Copy> Uninit<'s, E> {
         Ok(unsafe { self.assume_init() })
     }
 
-    // `FnOnce(&'a mut MaybeUninit<[E]>)`.
-    //
-    // If `f` returns a slice with lifetime `a` and the same length as `self`, then
-    // it must have fully initialized every element of `self` or else it has done
-    // something unsound.
+    // If the result of `u.write_fully_with(f)` is `Ok(r)` then:
+    //    * `r.len() == u.len()`
+    //    * `r` has overwritten any elements of `self`.
+    //    * Either `r.as_ptr()` equals `u.as_ptr()` or `u.len() == 0` and `r.len() == 0`.
     pub fn write_fully_with<EI>(
         self,
         f: impl for<'a> FnOnce(Uninit<'a, E>) -> Result<&'a mut [E], EI>,
@@ -83,7 +85,13 @@ impl<'s, E: Copy> Uninit<'s, E> {
         if written.len() != len {
             Err(LenMismatchError::new(written.len()))?;
         }
-        debug_assert!(len == 0 || (written.as_ptr() == ptr));
+        // Verify the returned slice is actually `self` overwritten, but also
+        // allow any empty slice for usability.
+        if !polyfill::ptr::addr_eq(ptr, written.as_ptr()) && len != 0 {
+            // Abuse `LenMismatchError` for convenience; this is never going to
+            // happen anyway.
+            return Err(LenMismatchError::new(ptr.addr()));
+        }
         Ok(written)
     }
 
