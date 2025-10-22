@@ -329,7 +329,7 @@ pub mod testutil {
     ) -> Elem<M, Unencoded> {
         let bytes = test_case.consume_bytes(name);
         let limbs = Uninit::new_less_safe(num_limbs)
-            .write_from_be_byes_padded(untrusted::Input::from(&bytes))
+            .write_from_be_bytes_padded(untrusted::Input::from(&bytes))
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         Elem::assume_in_range_and_encoded_less_safe(limbs)
     }

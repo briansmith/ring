@@ -66,7 +66,7 @@ impl PrivateExponent {
 
         let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
         let mut limbs = Uninit::<M>::new_less_safe(num_limbs)
-            .write_from_be_byes_padded(input)
+            .write_from_be_bytes_padded(input)
             .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;
         limbs.as_mut().reverse();
         Ok(Self {
