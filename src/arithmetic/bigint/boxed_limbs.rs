@@ -83,7 +83,7 @@ impl<M> Uninit<M> {
 
     #[cfg(not(target_arch = "x86_64"))]
     pub(super) fn write_zeros(self) -> BoxedLimbs<M> {
-        self.write_from_iter_padded(iter::empty())
+        self.write_iter_padded(iter::empty())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
     }
 
@@ -92,7 +92,7 @@ impl<M> Uninit<M> {
         input: untrusted::Input,
     ) -> Result<BoxedLimbs<M>, LenMismatchError> {
         let input = limb::limbs_from_big_endian(input, 1..=self.len())?;
-        self.write_from_iter_padded(input)
+        self.write_iter_padded(input)
     }
 
     pub(super) fn write_copy_of_slice_checked(
@@ -106,7 +106,7 @@ impl<M> Uninit<M> {
         self,
         src: &[Limb],
     ) -> Result<BoxedLimbs<M>, LenMismatchError> {
-        self.write_from_iter_padded(src.iter().copied())
+        self.write_iter_padded(src.iter().copied())
     }
 
     pub(super) fn write_iter_checked(
@@ -123,7 +123,7 @@ impl<M> Uninit<M> {
         Ok(BoxedLimbs { limbs, m: self.m })
     }
 
-    pub(super) fn write_from_iter_padded(
+    pub(super) fn write_iter_padded(
         self,
         input: impl ExactSizeIterator<Item = Limb>,
     ) -> Result<BoxedLimbs<M>, LenMismatchError>
