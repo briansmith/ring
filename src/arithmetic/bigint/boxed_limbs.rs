@@ -21,7 +21,7 @@ use crate::{
     polyfill,
 };
 use alloc::{boxed::Box, vec::Vec};
-use core::{iter, marker::PhantomData};
+use core::marker::PhantomData;
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
 pub(super) struct BoxedLimbs<M> {
@@ -83,7 +83,7 @@ impl<M> Uninit<M> {
 
     #[cfg(not(target_arch = "x86_64"))]
     pub(super) fn write_zeros(self) -> BoxedLimbs<M> {
-        self.write_iter_padded(iter::empty())
+        self.write_iter_padded(core::iter::empty())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
     }
 
@@ -119,8 +119,7 @@ impl<M> Uninit<M> {
         if input.len() != self.len() {
             return Err(LenMismatchError::new(input.len()));
         }
-        let limbs = Vec::from_iter(input).into_boxed_slice();
-        Ok(BoxedLimbs { limbs, m: self.m })
+        self.write_iter_padded(input)
     }
 
     pub(super) fn write_iter_padded(
@@ -130,15 +129,16 @@ impl<M> Uninit<M> {
     where
         Limb: Copy,
     {
-        let padding_len = self
-            .len()
-            .checked_sub(input.len())
-            .ok_or_else(|| LenMismatchError::new(input.len()))?;
-        // TODO(MSRV-1.82): Use `iter::repeat_n`.
-        let limbs =
-            Vec::from_iter(input.chain(iter::repeat(Limb::from(limb::ZERO)).take(padding_len)))
-                .into_boxed_slice();
-        Ok(BoxedLimbs { limbs, m: self.m })
+        if input.len() > self.len {
+            return Err(LenMismatchError::new(input.len()));
+        }
+        let mut limbs = Vec::with_capacity(self.len);
+        limbs.extend(input);
+        limbs.resize(self.len, limb::ZERO);
+        Ok(BoxedLimbs {
+            limbs: limbs.into_boxed_slice(),
+            m: self.m,
+        })
     }
 
     pub(super) fn write_fully_with<EI>(
