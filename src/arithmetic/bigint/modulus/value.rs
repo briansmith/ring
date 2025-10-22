@@ -114,7 +114,7 @@ impl<'a> ValidatedInput<'a> {
 
     pub(crate) fn build_value<M>(&self) -> Value<M> {
         let limbs = Uninit::new_less_safe(self.num_limbs)
-            .write_from_be_byes_padded(self.input)
+            .write_from_be_bytes_padded(self.input)
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
         Value {
             limbs,

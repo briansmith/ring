@@ -73,7 +73,7 @@ impl<M> Uninit<M> {
         input: untrusted::Input<'_>,
         m: &Mont<M>,
     ) -> Result<Elem<M>, error::Unspecified> {
-        self.write_from_be_byes_padded(input)
+        self.write_from_be_bytes_padded(input)
             .map_err(error::erase::<LenMismatchError>)
             .and_then(|out| Elem::from_limbs(out, m))
     }

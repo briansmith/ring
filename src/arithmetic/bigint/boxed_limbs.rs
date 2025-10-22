@@ -87,7 +87,7 @@ impl<M> Uninit<M> {
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
     }
 
-    pub(super) fn write_from_be_byes_padded(
+    pub(super) fn write_from_be_bytes_padded(
         self,
         input: untrusted::Input,
     ) -> Result<BoxedLimbs<M>, LenMismatchError> {
