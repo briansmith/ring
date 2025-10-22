@@ -17,10 +17,23 @@ use crate::polyfill::prelude::*;
 
 use super::start_ptr::{StartMutPtr, StartPtr};
 use crate::{error::LenMismatchError, polyfill};
-use core::{marker::PhantomData, mem::MaybeUninit, ptr};
+use core::{
+    marker::PhantomData,
+    mem::{self, MaybeUninit},
+    ops::RangeTo,
+    ptr,
+};
 
 pub struct Uninit<'target, E> {
     target: &'target mut [MaybeUninit<E>],
+}
+
+impl<'target, E> Default for Uninit<'target, E> {
+    fn default() -> Self {
+        Self {
+            target: Default::default(),
+        }
+    }
 }
 
 impl<E> StartPtr for &Uninit<'_, E> {
@@ -39,37 +52,54 @@ impl<E> StartMutPtr for &mut Uninit<'_, E> {
     }
 }
 
-impl<E> Uninit<'_, E> {
+impl<'target, E> Uninit<'target, E> {
     pub fn len(&self) -> usize {
         self.target.len()
+    }
+
+    pub(super) fn split_off_mut(&mut self, range: RangeTo<usize>) -> Option<Uninit<'target, E>> {
+        if self.target.len() < range.end {
+            return None;
+        }
+        let (front, back) = mem::take(self).target.split_at_mut(range.end);
+        self.target = back;
+        Some(Uninit { target: front })
     }
 }
 
 // `E: Copy` to avoid `Drop` issues.
 impl<'target, E: Copy> Uninit<'target, E> {
     #[allow(dead_code)]
-    pub fn write_copy_of_slice_checked(
+    pub fn write_copy_of_slice(
         self,
         src: &[E],
-    ) -> Result<&'target mut [E], LenMismatchError> {
-        self.write_iter_checked(src.iter().copied())
+    ) -> Result<WriteResult<'target, E, Self, ()>, LenMismatchError> {
+        self.write_iter(src.iter().copied()).src_empty()
     }
 
-    pub fn write_iter_checked(
-        self,
-        mut iter: impl ExactSizeIterator<Item = E>,
-    ) -> Result<&'target mut [E], LenMismatchError>
-    where
-        E: Clone + Copy,
-    {
-        if iter.len() != self.len() {
-            return Err(LenMismatchError::new(iter.len()));
+    pub fn write_iter<Src: IntoIterator<Item = E>>(
+        mut self,
+        src: Src,
+    ) -> WriteResult<'target, E, Self, Src::IntoIter> {
+        let mut init_len = 0;
+        let mut src = src.into_iter();
+        self.target
+            .iter_mut()
+            .zip(src.by_ref())
+            .for_each(|(dst, src)| {
+                let _: &mut E = dst.write(src);
+                init_len += 1;
+            });
+        let written = self
+            .split_off_mut(..init_len)
+            .unwrap_or_else(|| unreachable!());
+        let written = unsafe { written.assume_init() };
+
+        WriteResult {
+            written,
+            dst_leftover: self,
+            src_leftover: src,
         }
-        self.target.iter_mut().enumerate().try_for_each(|(i, d)| {
-            let _: &mut E = d.write(iter.next().ok_or_else(|| LenMismatchError::new(i))?);
-            Ok(())
-        })?;
-        Ok(unsafe { self.assume_init() })
     }
 
     // If the result of `u.write_fully_with(f)` is `Ok(r)` then:
@@ -124,8 +154,8 @@ impl<'target, E> AliasedUninit<'target, E> {
     }
 }
 
-impl<'a, E> From<&'a mut [MaybeUninit<E>]> for Uninit<'a, E> {
-    fn from(target: &'a mut [MaybeUninit<E>]) -> Self {
+impl<'target, E> From<&'target mut [MaybeUninit<E>]> for Uninit<'target, E> {
+    fn from(target: &'target mut [MaybeUninit<E>]) -> Self {
         Self { target }
     }
 }
@@ -179,5 +209,74 @@ impl<'target, E> AliasedUninit<'target, E> {
         let target: *mut [MaybeUninit<E>] = self.target;
         let target = unsafe { &mut *target };
         Uninit { target }
+    }
+}
+
+pub struct WriteResult<'written, E, Dst, Src> {
+    written: &'written mut [E],
+    dst_leftover: Dst,
+    src_leftover: Src,
+}
+
+impl<'written, E, Dst, Src> WriteResult<'written, E, Dst, Src> {
+    #[cfg(test)]
+    pub fn ignore_uninit(self) -> WriteResult<'written, E, (), Src> {
+        self.take_uninit().0
+    }
+
+    #[inline(always)]
+    pub fn take_uninit(self) -> (WriteResult<'written, E, (), Src>, Dst) {
+        let WriteResult {
+            written,
+            dst_leftover,
+            src_leftover,
+        } = self;
+        (
+            WriteResult {
+                written,
+                dst_leftover: (),
+                src_leftover,
+            },
+            dst_leftover,
+        )
+    }
+
+    #[inline(always)]
+    pub fn src_empty(self) -> Result<WriteResult<'written, E, Dst, ()>, LenMismatchError>
+    where
+        Src: IntoIterator,
+    {
+        let WriteResult {
+            written,
+            dst_leftover,
+            src_leftover,
+        } = self;
+        let mut src_leftover = src_leftover.into_iter().peekable();
+        if src_leftover.next().is_some() {
+            return Err(LenMismatchError::new(src_leftover.size_hint().0));
+        }
+        Ok(WriteResult {
+            written,
+            dst_leftover,
+            src_leftover: (),
+        })
+    }
+}
+
+impl<'written, E, Src> WriteResult<'written, E, Uninit<'written, E>, Src> {
+    #[inline(always)]
+    pub fn uninit_empty(self) -> Result<WriteResult<'written, E, (), Src>, LenMismatchError> {
+        let (res, dst_leftover) = self.take_uninit();
+        if dst_leftover.len() != 0 {
+            return Err(LenMismatchError::new(dst_leftover.len()));
+        }
+        Ok(res)
+    }
+}
+
+impl<'written, E> WriteResult<'written, E, (), ()> {
+    #[inline(always)]
+    pub fn into_written(self) -> &'written mut [E] {
+        self.written
     }
 }

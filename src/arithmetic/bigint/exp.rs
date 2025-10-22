@@ -284,7 +284,9 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
     // "To improve cache locality" according to upstream.
     let (m_cached, _) = polyfill::slice::Uninit::from(m_cached)
-        .write_copy_of_slice_checked(m.limbs())?
+        .write_copy_of_slice(m.limbs())?
+        .uninit_empty()?
+        .into_written()
         .as_chunks();
 
     let out: Elem<M, RInverse> = elem_reduced(out, base_mod_n, m, other_prime_len_bits);
@@ -329,7 +331,10 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     scatter5(t0, table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
-    let acc = polyfill::slice::Uninit::from(acc).write_copy_of_slice_checked(base_cached)?;
+    let acc = polyfill::slice::Uninit::from(acc)
+        .write_copy_of_slice(base_cached)?
+        .uninit_empty()?
+        .into_written();
 
     // Fill in entries 1, 2, 4, 8, 16.
     scatter_powers_of_2(table, acc, m_cached, n0, LeakyWindow5::_1, cpu2)?;

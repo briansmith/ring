@@ -337,12 +337,13 @@ pub(crate) fn limbs_negative_odd<'r>(
     r: Uninit<'r, Limb>,
     a: &[Limb],
 ) -> Result<&'r mut [Limb], LenMismatchError> {
-    if r.len() != a.len() {
-        return Err(LenMismatchError::new(r.len()));
-    }
     // Two's complement step 1: flip all the bits.
     // The compiler should optimize this to vectorized (a ^ !0).
-    let r = r.write_iter_checked(a.iter().map(|&a| !a))?;
+    let r = r
+        .write_iter(a.iter().map(|&a| !a))
+        .uninit_empty()?
+        .src_empty()?
+        .into_written();
     // Two's complement step 2: Add one. Since `a` is odd, `r` is even. Thus we
     // can use a bitwise or for addition.
     r[0] |= 1;
