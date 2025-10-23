@@ -143,9 +143,6 @@ jobs:
 
       - run: rustup toolchain install --no-self-update --profile=minimal 1.66.0
 
-      - run: echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
-        shell: bash
-
       - run: sh mk/package.sh
         shell: bash
 
@@ -482,11 +479,6 @@ jobs:
 
       - if: ${{ contains(matrix.host_os, 'windows') && contains(matrix.target, '86') }}
         run: ./mk/install-build-tools.ps1
-
-      - if: ${{ matrix.target == 'aarch64-pc-windows-msvc' && !contains(matrix.host_os, 'arm') }}
-        run: |
-          echo "C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
-        shell: bash
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
