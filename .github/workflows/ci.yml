@@ -271,12 +271,12 @@ jobs:
           - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-22.04
 
-          # - target: arm64_32-apple-watchos
-          #   host_os: macos-15
-          #   rust_channel: nightly
-          #   mode: --release
-          #   # TODO: Run in the emulator.
-          #   cargo_options: --no-run -Z build-std
+          - target: arm64_32-apple-watchos
+            host_os: macos-15
+            rust_channel: nightly
+            mode: --release
+            # TODO: Run in the emulator.
+            cargo_options: --no-run -Z build-std
 
           - target: armv7-linux-androideabi
             host_os: ubuntu-22.04
