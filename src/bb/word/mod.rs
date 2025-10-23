@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{BoolMask, LeakyWord};
+use cfg_if::cfg_if;
 
 /// A native word that may hold a secret.
 ///
@@ -28,6 +29,7 @@ use super::{BoolMask, LeakyWord};
 pub(crate) type Word = LeakyWord;
 
 pub(crate) trait WordOps: Copy {
+    fn from_u8(a: &u8) -> Self;
     fn is_zero(self) -> BoolMask;
 }
 
@@ -47,4 +49,10 @@ impl From<LeakyWord> for Word {
 }
 */
 
-mod fallback;
+cfg_if! {
+    if #[cfg(target_arch = "aarch64")] {
+        mod aarch64;
+    } else {
+        mod fallback;
+    }
+}
