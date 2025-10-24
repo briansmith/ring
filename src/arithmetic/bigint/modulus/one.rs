@@ -24,7 +24,7 @@ use crate::{
     cpu,
     error::LenMismatchError,
     limb::{self, LIMB_BITS},
-    polyfill,
+    polyfill::slice::Cursor,
 };
 use core::mem::size_of;
 
@@ -45,14 +45,16 @@ impl<M, E> One<M, E> {
 }
 
 impl<M> One<M, R> {
-    pub(in super::super) fn fillR<'r>(
-        out: polyfill::slice::Uninit<'r, Limb>,
+    /// Writes the value of the Montgomery multiplication identity `R` for `m` to
+    /// `out`.
+    pub(in super::super) fn write_mont_identity<'r>(
+        out: &mut Cursor<'r, Limb>,
         m: &Mont<'_, M>,
     ) -> Result<&'r mut [Limb], LenMismatchError> {
         let r = m.limbs().len() * LIMB_BITS;
 
         // out = 2**r - m where m = self.
-        let out = limb::limbs_negative_odd(out, m.limbs())?;
+        let out = limb::write_negative_assume_odd(out, m.limbs())?;
 
         let lg_m = m.len_bits().as_bits();
         let leading_zero_bits_in_m = r - lg_m;
@@ -101,7 +103,7 @@ impl<M> One<M, RR> {
         let m = &Mont::from_parts_unchecked_less_safe(m, &n0, cpu);
 
         let mut acc = out
-            .write_fully_with(|out| One::fillR(out, m))
+            .write_fully_with(|uninit| One::write_mont_identity(&mut uninit.into_cursor(), m))
             .map(Elem::<M, R>::assume_in_range_and_encoded_less_safe)?;
 
         // 2**t * R can be calculated by t doublings starting with R.

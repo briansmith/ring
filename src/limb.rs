@@ -22,7 +22,7 @@ use crate::{
     bb, c,
     error::{self, LenMismatchError},
     polyfill::{
-        slice::{AliasingSlices, InOut, Uninit},
+        slice::{AliasingSlices, Cursor, InOut},
         sliceutil, usize_from_u32, ArrayFlatMap, StartMutPtr,
     },
     window5::Window5,
@@ -333,20 +333,22 @@ pub(crate) fn limbs_double_mod(r: &mut [Limb], m: &[Limb]) -> Result<(), LenMism
 }
 
 // *r = -a, assuming a is odd.
-pub(crate) fn limbs_negative_odd<'r>(
-    r: Uninit<'r, Limb>,
+pub(crate) fn write_negative_assume_odd<'r>(
+    r: &mut Cursor<'r, Limb>,
     a: &[Limb],
 ) -> Result<&'r mut [Limb], LenMismatchError> {
     // Two's complement step 1: flip all the bits.
     // The compiler should optimize this to vectorized (a ^ !0).
     let r = r
         .write_iter(a.iter().map(|&a| !a))
-        .uninit_empty()?
         .src_empty()?
         .into_written();
     // Two's complement step 2: Add one. Since `a` is odd, `r` is even. Thus we
     // can use a bitwise or for addition.
-    r[0] |= 1;
+    let Some(least_significant_limb) = r.get_mut(0) else {
+        return Err(LenMismatchError::new(a.len()));
+    };
+    *least_significant_limb |= 1;
     Ok(r)
 }
 

@@ -15,7 +15,10 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::start_ptr::{StartMutPtr, StartPtr};
+use super::{
+    start_ptr::{StartMutPtr, StartPtr},
+    uninit_slice_cursor::Cursor,
+};
 use crate::{error::LenMismatchError, polyfill};
 use core::{
     marker::PhantomData,
@@ -53,11 +56,25 @@ impl<E> StartMutPtr for &mut Uninit<'_, E> {
 }
 
 impl<'target, E> Uninit<'target, E> {
+    pub fn into_cursor(self) -> Cursor<'target, E> {
+        Cursor::from(self)
+    }
+
     pub fn len(&self) -> usize {
         self.target.len()
     }
 
-    pub(super) fn split_off_mut(&mut self, range: RangeTo<usize>) -> Option<Uninit<'target, E>> {
+    #[allow(dead_code)]
+    pub fn reborrow_mut(&mut self) -> Uninit<'_, E> {
+        Uninit {
+            target: self.target,
+        }
+    }
+
+    pub(super) fn split_off_mut<'s>(
+        &'s mut self,
+        range: RangeTo<usize>,
+    ) -> Option<Uninit<'target, E>> {
         if self.target.len() < range.end {
             return None;
         }
@@ -71,10 +88,21 @@ impl<'target, E> Uninit<'target, E> {
 impl<'target, E: Copy> Uninit<'target, E> {
     #[allow(dead_code)]
     pub fn write_copy_of_slice(
-        self,
+        mut self,
         src: &[E],
     ) -> Result<WriteResult<'target, E, Self, ()>, LenMismatchError> {
-        self.write_iter(src.iter().copied()).src_empty()
+        let Some(mut dst) = self.split_off_mut(..src.len()) else {
+            return Err(LenMismatchError::new(self.len()));
+        };
+        let written = unsafe {
+            ptr::copy_nonoverlapping(src.as_ptr(), dst.start_mut_ptr(), src.len());
+            dst.assume_init()
+        };
+        Ok(WriteResult {
+            written,
+            dst_leftover: self,
+            src_leftover: (),
+        })
     }
 
     pub fn write_iter<Src: IntoIterator<Item = E>>(
@@ -264,6 +292,7 @@ impl<'written, E, Dst, Src> WriteResult<'written, E, Dst, Src> {
 }
 
 impl<'written, E, Src> WriteResult<'written, E, Uninit<'written, E>, Src> {
+    #[allow(dead_code)]
     #[inline(always)]
     pub fn uninit_empty(self) -> Result<WriteResult<'written, E, (), Src>, LenMismatchError> {
         let (res, dst_leftover) = self.take_uninit();
