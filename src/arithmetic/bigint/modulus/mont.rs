@@ -14,7 +14,7 @@
 
 use super::super::{
     super::montgomery::{Unencoded, RR, RRR},
-    modulus::value::Value,
+    modulus::{value::Value, ValidatedInput},
     Elem, One, PublicModulus, Uninit, N0,
 };
 use crate::{
@@ -45,8 +45,14 @@ impl<M: PublicModulus, E> Clone for IntoMont<M, E> {
     }
 }
 
+impl ValidatedInput<'_> {
+    pub(crate) fn build_into_mont<M>(&self, cpu: cpu::Features) -> IntoMont<M, RR> {
+        self.build_value().into_into_mont(cpu)
+    }
+}
+
 impl<M> Value<M> {
-    pub fn into_into_mont(self, cpu: cpu::Features) -> IntoMont<M, RR> {
+    pub(super) fn into_into_mont(self, cpu: cpu::Features) -> IntoMont<M, RR> {
         let out = self.alloc_uninit();
         let one =
             One::newRR(out, &self, cpu).unwrap_or_else(|LenMismatchError { .. }| unreachable!());
