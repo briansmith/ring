@@ -11,6 +11,5 @@ pub fn consume_modulus<M>(
     ValidatedInput::try_from_be_bytes(value.as_slice().into())
         .map_err(error::erase::<KeyRejected>)
         .unwrap()
-        .build_value()
-        .into_into_mont(cpu::features())
+        .build_into_mont(cpu::features())
 }

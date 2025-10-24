@@ -462,7 +462,7 @@ impl ValidatedPrivatePrimeInput<'_> {
 
         // Steps 5.e and 5.f are omitted as explained above.
         PrivatePrime {
-            modulus: self.inner.build_value().into_into_mont(cpu_features),
+            modulus: self.inner.build_into_mont(cpu_features),
         }
     }
 }
