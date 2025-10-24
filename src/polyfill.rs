@@ -98,6 +98,7 @@ mod start_ptr;
 mod test;
 
 mod uninit_slice;
+mod uninit_slice_cursor;
 mod unwrap_const;
 
 pub use self::{

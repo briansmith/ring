@@ -150,7 +150,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         |init, uninit| {
             let r: Result<&mut [Limb], LimbSliceError> = match init.len() {
                 // table[0] = base**0 (i.e. 1).
-                0 => Ok(One::fillR(uninit, m)?),
+                0 => Ok(One::write_mont_identity(&mut uninit.into_cursor(), m)?),
 
                 // table[1] = base*R == (base/R * RRR)/R
                 1 => limbs_mul_mont(
@@ -282,6 +282,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let (acc, rest) = state.split_at_mut(m_len);
     let (base_cached, m_cached) = rest.split_at_mut(m_len);
 
+    let mut acc = polyfill::slice::Uninit::from(acc);
+
     // "To improve cache locality" according to upstream.
     let (m_cached, _) = polyfill::slice::Uninit::from(m_cached)
         .write_copy_of_slice(m.limbs())?
@@ -327,11 +329,11 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     // All entries in `table` will be Montgomery encoded.
 
     // t0 = table[0] = base**0 (i.e. 1).
-    let t0 = One::fillR(acc.as_mut().into(), m)?;
+    let t0 = One::write_mont_identity(&mut acc.reborrow_mut().into_cursor(), m)?;
     scatter5(t0, table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
-    let acc = polyfill::slice::Uninit::from(acc)
+    let acc = acc
         .write_copy_of_slice(base_cached)?
         .uninit_empty()?
         .into_written();
