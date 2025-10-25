@@ -128,6 +128,7 @@ impl SystemRandom {
     all(feature = "less-safe-getrandom-espidf", target_os = "espidf"),
     target_os = "aix",
     target_os = "android",
+    target_os = "cygwin",
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "fuchsia",
