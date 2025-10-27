@@ -19,8 +19,8 @@ use super::start_ptr::{StartMutPtr, StartPtr};
 use crate::{error::LenMismatchError, polyfill};
 use core::{marker::PhantomData, mem::MaybeUninit, ptr};
 
-pub struct Uninit<'a, E> {
-    target: &'a mut [MaybeUninit<E>],
+pub struct Uninit<'target, E> {
+    target: &'target mut [MaybeUninit<E>],
 }
 
 impl<E> StartPtr for &Uninit<'_, E> {
@@ -46,16 +46,19 @@ impl<E> Uninit<'_, E> {
 }
 
 // `E: Copy` to avoid `Drop` issues.
-impl<'s, E: Copy> Uninit<'s, E> {
+impl<'target, E: Copy> Uninit<'target, E> {
     #[allow(dead_code)]
-    pub fn write_copy_of_slice_checked(self, src: &[E]) -> Result<&'s mut [E], LenMismatchError> {
+    pub fn write_copy_of_slice_checked(
+        self,
+        src: &[E],
+    ) -> Result<&'target mut [E], LenMismatchError> {
         self.write_iter_checked(src.iter().copied())
     }
 
     pub fn write_iter_checked(
         self,
         mut iter: impl ExactSizeIterator<Item = E>,
-    ) -> Result<&'s mut [E], LenMismatchError>
+    ) -> Result<&'target mut [E], LenMismatchError>
     where
         E: Clone + Copy,
     {
@@ -76,7 +79,7 @@ impl<'s, E: Copy> Uninit<'s, E> {
     pub fn write_fully_with<EI>(
         self,
         f: impl for<'a> FnOnce(Uninit<'a, E>) -> Result<&'a mut [E], EI>,
-    ) -> Result<&'s mut [E], LenMismatchError>
+    ) -> Result<&'target mut [E], LenMismatchError>
     where
         LenMismatchError: From<EI>,
     {
@@ -95,11 +98,11 @@ impl<'s, E: Copy> Uninit<'s, E> {
         Ok(written)
     }
 
-    pub unsafe fn assume_init(self) -> &'s mut [E] {
-        let r: &'s mut [MaybeUninit<E>] = self.target;
+    pub unsafe fn assume_init(self) -> &'target mut [E] {
+        let r: &'target mut [MaybeUninit<E>] = self.target;
         let r: *mut [MaybeUninit<E>] = polyfill::ptr::from_mut(r);
         let r: *mut [E] = r as *mut [E];
-        let r: &'s mut [E] = unsafe { &mut *r };
+        let r: &'target mut [E] = unsafe { &mut *r };
         r
     }
 }
@@ -108,12 +111,12 @@ impl<'s, E: Copy> Uninit<'s, E> {
 // somebody might then unsoundly write `uninit` into it without using `unsafe`.
 // We avoid that problem here because `Uninit` never writes `uninit` and it
 // never exposes a `MaybeUninit<T>` (mutable) reference externally.
-impl<'a, E> AliasedUninit<'a, E> {
-    pub fn from_mut(target: &'a mut [E]) -> Self {
-        let target: &'a mut [E] = target;
+impl<'target, E> AliasedUninit<'target, E> {
+    pub fn from_mut(target: &'target mut [E]) -> Self {
+        let target: &'target mut [E] = target;
         let target: *mut [E] = target;
         let target: *mut [MaybeUninit<E>] = target as *mut [MaybeUninit<E>];
-        let _target: &'a mut [MaybeUninit<E>] = unsafe { &mut *target };
+        let _target: &'target mut [MaybeUninit<E>] = unsafe { &mut *target };
         Self {
             target,
             _a: PhantomData,
@@ -128,9 +131,9 @@ impl<'a, E> From<&'a mut [MaybeUninit<E>]> for Uninit<'a, E> {
 }
 
 // A pointer to an `Uninit` that remembers the `Uninit`'s lifetime.
-pub struct AliasedUninit<'a, E> {
+pub struct AliasedUninit<'target, E> {
     target: *mut [MaybeUninit<E>],
-    _a: PhantomData<&'a mut [MaybeUninit<E>]>,
+    _a: PhantomData<&'target mut [MaybeUninit<E>]>,
 }
 
 impl<E> StartPtr for &AliasedUninit<'_, E> {
@@ -154,8 +157,8 @@ impl<E> StartMutPtr for &mut AliasedUninit<'_, E> {
     }
 }
 
-impl<'a, E> From<Uninit<'a, E>> for AliasedUninit<'a, E> {
-    fn from(uninit: Uninit<'a, E>) -> Self {
+impl<'target, E> From<Uninit<'target, E>> for AliasedUninit<'target, E> {
+    fn from(uninit: Uninit<'target, E>) -> Self {
         Self {
             target: polyfill::ptr::from_mut(uninit.target),
             _a: PhantomData,
@@ -163,7 +166,7 @@ impl<'a, E> From<Uninit<'a, E>> for AliasedUninit<'a, E> {
     }
 }
 
-impl<'a, E> AliasedUninit<'a, E> {
+impl<'target, E> AliasedUninit<'target, E> {
     pub unsafe fn from_raw_parts_mut(start_ptr: *mut E, len: usize) -> Self {
         let start_ptr: *mut MaybeUninit<E> = <*mut E>::cast::<MaybeUninit<E>>(start_ptr);
         Self {
@@ -172,7 +175,7 @@ impl<'a, E> AliasedUninit<'a, E> {
         }
     }
 
-    pub unsafe fn deref_unchecked(self) -> Uninit<'a, E> {
+    pub unsafe fn deref_unchecked(self) -> Uninit<'target, E> {
         let target: *mut [MaybeUninit<E>] = self.target;
         let target = unsafe { &mut *target };
         Uninit { target }
