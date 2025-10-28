@@ -272,6 +272,7 @@ static inline void constant_time_conditional_memxor(void *dst, const void *src,
     *(v32u8*)&out[i] ^= masks & *(v32u8 const*)&in[i];
   }
   out += n_vec;
+  in += n_vec;
   n -= n_vec;
 #endif
   for (size_t i = 0; i < n; i++) {
