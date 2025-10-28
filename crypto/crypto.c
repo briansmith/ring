@@ -19,7 +19,7 @@
 // undesirable, so all assembly-referenced symbols should be hidden. CPU
 // capabilities are the only such symbols defined in C. Explicitly hide them,
 // rather than rely on being built with -fvisibility=hidden.
-#if defined(OPENSSL_WINDOWS)
+#if defined(OPENSSL_WINDOWS) || defined(__CYGWIN__)
 #define HIDDEN
 #else
 #define HIDDEN __attribute__((visibility("hidden")))
