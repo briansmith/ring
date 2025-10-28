@@ -745,7 +745,7 @@ static void table_select(ge_precomp *t, const int pos, const signed char b) {
   uint8_t bnegative = constant_time_msb_w(b);
   uint8_t babs = b - ((bnegative & b) << 1);
 
-  uint8_t t_bytes[3][32] = {
+  v32u8 t_bytes[3] = {
       {constant_time_is_zero_w(b) & 1}, {constant_time_is_zero_w(b) & 1}, {0}};
 #if defined(__clang__) // materialize for vectorization, 6% speedup
   __asm__("" : "+m" (t_bytes) : /*no inputs*/);
@@ -758,9 +758,9 @@ static void table_select(ge_precomp *t, const int pos, const signed char b) {
   }
 
   fe yplusx, yminusx, xy2d;
-  fe_frombytes_strict(&yplusx, t_bytes[0]);
-  fe_frombytes_strict(&yminusx, t_bytes[1]);
-  fe_frombytes_strict(&xy2d, t_bytes[2]);
+  fe_frombytes_strict(&yplusx, ((const aliasing_uint8_t*) t_bytes)[0]);
+  fe_frombytes_strict(&yminusx, ((const aliasing_uint8_t*) t_bytes)[1]);
+  fe_frombytes_strict(&xy2d, ((const aliasing_uint8_t*) t_bytes)[2]);
 
   fe_copy_lt(&t->yplusx, &yplusx);
   fe_copy_lt(&t->yminusx, &yminusx);
