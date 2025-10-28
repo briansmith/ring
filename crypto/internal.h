@@ -263,9 +263,12 @@ static inline void constant_time_conditional_memxor(void *dst, const void *src,
   debug_assert_nonsecret(!buffers_alias(dst, n, src, n));
   aliasing_uint8_t *out = dst;
   const aliasing_uint8_t *in = src;
-#if defined(__GNUC__) && !defined(__clang__)
+#if defined(__GNUC__)
   // gcc 13.2.0 doesn't automatically vectorize this loop regardless of barrier
   typedef aliasing_uint8_t v32u8 __attribute__((vector_size(32), aligned(1), may_alias));
+  if (_Alignof(v32u8) != 1) {
+  	n = 0;
+  }
   size_t n_vec = n&~(size_t)31;
   v32u8 masks = ((aliasing_uint8_t)mask-(v32u8){}); // broadcast
   for (size_t i = 0; i < n_vec; i += 32) {
