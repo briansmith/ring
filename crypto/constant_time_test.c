@@ -103,8 +103,8 @@ void bssl_constant_time_test_conditional_memcpy(uint8_t dst[256], const uint8_t 
  }
 
 // Exposes `constant_time_conditional_memxor` to Rust for tests only.
-void bssl_constant_time_test_conditional_memxor(uint8_t dst[256],
-                                               const uint8_t src[256],
+void bssl_constant_time_test_conditional_memxor(uint8_t dst[255],
+                                               const uint8_t src[255],
                                                crypto_word_t b) {
-  constant_time_conditional_memxor(dst, src, 256, b);
+  constant_time_conditional_memxor(dst, src, 255, b);
 }

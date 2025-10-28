@@ -65,8 +65,8 @@ fn constant_time_conditional_memcpy() -> Result<(), error::Unspecified> {
 fn constant_time_conditional_memxor() -> Result<(), error::Unspecified> {
     let rng = rand::SystemRandom::new();
     for _ in 0..256 {
-        let mut out = rand::generate::<[u8; 256]>(&rng)?.expose();
-        let input = rand::generate::<[u8; 256]>(&rng)?.expose();
+        let mut out = rand::generate::<[u8; 255]>(&rng)?.expose();
+        let input = rand::generate::<[u8; 255]>(&rng)?.expose();
 
         // Mask to 16 bits to make zero more likely than it would otherwise be.
         let b = (rand::generate::<[u8; 1]>(&rng)?.expose()[0] & 0x0f) != 0;
@@ -78,7 +78,7 @@ fn constant_time_conditional_memxor() -> Result<(), error::Unspecified> {
         };
 
         prefixed_extern! {
-            fn bssl_constant_time_test_conditional_memxor(dst: &mut [u8; 256], src: &[u8; 256], b: BoolMask);
+            fn bssl_constant_time_test_conditional_memxor(dst: &mut [u8; 255], src: &[u8; 255], b: BoolMask);
         }
         unsafe {
             bssl_constant_time_test_conditional_memxor(
