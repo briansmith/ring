@@ -69,7 +69,7 @@ fn digest_scalar_(n: &Modulus<N>, digest: &[u8]) -> Scalar {
 mod tests {
     use super::digest_bytes_scalar;
     use crate::testutil as test;
-    use crate::{cpu, digest, ec::suite_b::ops::*, limb};
+    use crate::{cpu, digest, ec::suite_b::ops::*};
 
     #[test]
     fn test() {
@@ -99,12 +99,8 @@ mod tests {
                 assert_eq!(output.len(), ops.scalar_ops.scalar_bytes_len());
                 assert_eq!(output.len(), n.bytes_len());
 
-                let expected = scalar_parse_big_endian_variable(
-                    n,
-                    limb::AllowZero::Yes,
-                    untrusted::Input::from(&output),
-                )
-                .unwrap();
+                let expected =
+                    scalar_parse_big_endian_variable(n, untrusted::Input::from(&output)).unwrap();
 
                 let actual = digest_bytes_scalar(n, &input);
                 assert_eq!(
