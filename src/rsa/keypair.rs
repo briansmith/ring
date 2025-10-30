@@ -334,18 +334,20 @@ impl KeyPair {
         let n = borrowed_public_key.n().value();
         let nm = &n.modulus(cpu_features);
 
+        let p = p.build(cpu_features);
+        let pim = &p.modulus.reborrow();
+        let pm = &pim.modulus(cpu_features);
+
         let q = q.build(cpu_features);
+        let qim = &q.modulus.reborrow();
+
         let q_mod_n_storage = nm.alloc_uninit();
-        let q_mod_n = q
-            .modulus
-            .reborrow()
+        let q_mod_n = qim
             .to_elem(q_mod_n_storage, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
-        let p = p.build(cpu_features);
+
         let p_mod_n_storage = nm.alloc_uninit();
-        let p_mod_n = p
-            .modulus
-            .reborrow()
+        let p_mod_n = pim
             .to_elem(p_mod_n_storage, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features);
@@ -367,9 +369,6 @@ impl KeyPair {
 
         // Step 6.b is omitted as explained above.
 
-        let pm = p.modulus.reborrow();
-        let pm = &pm.modulus(cpu_features);
-
         // 6.4.1.4.3 - Step 7.
 
         // Step 7.c.
@@ -378,20 +377,15 @@ impl KeyPair {
             .alloc_uninit()
             .into_elem_from_be_bytes_padded(qInv, pm)
             .map_err(|error::Unspecified| KeyRejected::invalid_component())?
-            .encode_mont(&p.modulus.reborrow(), cpu_features);
+            .encode_mont(pim, cpu_features);
 
         // Steps 7.d and 7.e are omitted per the documentation above, and
         // because we don't (in the long term) have a good way to do modulo
         // with an even modulus.
 
         // Step 7.f.
-        let q_mod_p = bigint::elem_reduced(
-            pm.alloc_uninit(),
-            &q_mod_n,
-            pm,
-            q.modulus.reborrow().len_bits(),
-        )
-        .encode_mont(&p.modulus.reborrow(), cpu_features);
+        let q_mod_p = bigint::elem_reduced(pm.alloc_uninit(), &q_mod_n, pm, qim.len_bits())
+            .encode_mont(pim, cpu_features);
         bigint::verify_inverses_consttime(&qInv, q_mod_p, pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
@@ -612,6 +606,9 @@ impl KeyPair {
         let n = borrowed_public.n().value();
         let nm = &n.modulus(cpu_features);
 
+        let p = &self.p.modulus.reborrow();
+        let q = &self.q.modulus.reborrow();
+
         // Step 1. The value zero is also rejected.
         let base = nm.alloc_uninit().into_elem_from_be_bytes_padded(base, nm)?;
 
@@ -619,44 +616,33 @@ impl KeyPair {
         let c = base;
 
         // Step 2.b.i.
-        let q_bits = self.q.modulus.reborrow().len_bits();
-        let m_1 = elem_exp_consttime(&c, &self.p, q_bits, cpu_features)?;
-        let m_2 = elem_exp_consttime(
-            &c,
-            &self.q,
-            self.p.modulus.reborrow().len_bits(),
-            cpu_features,
-        )?;
+        let m_1 = elem_exp_consttime(&c, &self.p, q.len_bits(), cpu_features)?;
+        let m_2 = elem_exp_consttime(&c, &self.q, p.len_bits(), cpu_features)?;
 
         // Step 2.b.ii isn't needed since there are only two primes.
 
         // Step 2.b.iii.
         let h = {
-            let p = &self.p.modulus.reborrow();
-            let p = &p.modulus(cpu_features);
-            let m_2 = bigint::elem_reduced_once(p.alloc_uninit(), &m_2, p, q_bits);
-            let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, p);
-            bigint::elem_mul(&self.qInv, m_1_minus_m_2, p)
+            let pm = &p.modulus(cpu_features);
+            let m_2 = bigint::elem_reduced_once(pm.alloc_uninit(), &m_2, pm, q.len_bits());
+            let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, pm);
+            bigint::elem_mul(&self.qInv, m_1_minus_m_2, pm)
         };
 
         // Step 2.b.iv. The reduction in the modular multiplication isn't
         // necessary because `h < p` and `p * q == n` implies `h * q < n`.
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
-        let p_bits = self.p.modulus.reborrow().len_bits();
         // The old `h` isn't used beyond this point, so its storage could be
         // reused.
-        let h = bigint::elem_widen(nm.alloc_uninit(), h, nm, p_bits)?;
+        let h = bigint::elem_widen(nm.alloc_uninit(), h, nm, p.len_bits())?;
         let q_mod_n_storage = nm.alloc_uninit();
-        let q_mod_n = self
-            .q
-            .modulus
-            .reborrow()
+        let q_mod_n = q
             .to_elem(q_mod_n_storage, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features);
         let q_times_h = bigint::elem_mul(&q_mod_n, h, nm);
-        let m_2 = bigint::elem_widen(nm.alloc_uninit(), m_2, nm, q_bits)?;
+        let m_2 = bigint::elem_widen(nm.alloc_uninit(), m_2, nm, q.len_bits())?;
         let m = bigint::elem_add(m_2, q_times_h, nm);
 
         // Step 2.b.v isn't needed since there are only two primes.
