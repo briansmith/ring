@@ -23,7 +23,7 @@ mod constant;
 #[cfg(feature = "alloc")]
 pub mod bigint;
 
-pub(crate) mod inout;
+mod exp_vartime;
 mod limbs;
 mod limbs512;
 pub mod montgomery;
@@ -43,5 +43,11 @@ cold_exhaustive_error! {
         len_mismatch => LenMismatch(LenMismatchError),
         too_short => TooShort(usize),
         too_long => TooLong(usize),
+    }
+}
+
+impl From<LenMismatchError> for LimbSliceError {
+    fn from(err: LenMismatchError) -> Self {
+        LimbSliceError::len_mismatch(err)
     }
 }

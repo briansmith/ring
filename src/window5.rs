@@ -35,6 +35,7 @@ impl LeakyWindow5 {
         self.0.checked_sub(1).map(Self)
     }
 
+    #[allow(dead_code)]
     #[inline]
     pub fn leak_usize(self) -> usize {
         #[allow(clippy::cast_possible_truncation)]

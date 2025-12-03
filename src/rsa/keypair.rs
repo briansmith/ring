@@ -13,8 +13,9 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
+    base::PublicExponent,
     padding::{self, RsaEncoding},
-    KeyPairComponents, PublicExponent, PublicKey, PublicKeyComponents, N,
+    public_key, KeyPairComponents, PublicKey, PublicKeyComponents, N,
 };
 
 /// RSA PKCS#1 1.5 signatures.
@@ -275,19 +276,12 @@ impl KeyPair {
         // Also, this limit might help with memory management decisions later.
 
         // Step 1.c. We validate e >= 65537.
-        let n = untrusted::Input::from(public_key.n);
-        let e = untrusted::Input::from(public_key.e);
-        let public_key = PublicKey::from_modulus_and_exponent(
-            n,
-            e,
+        let public_key = public_key::ValidatedInput::try_from_be_bytes(
+            public_key,
             BitLength::from_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
             PublicExponent::_65537,
-            cpu_features,
         )?;
-
-        let n_one = public_key.inner().n().oneRR();
-        let n = &public_key.inner().n().value(cpu_features);
 
         // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
 
@@ -303,35 +297,14 @@ impl KeyPair {
 
         // Steps 5.a and 5.b are omitted, as explained above.
 
-        let n_bits = public_key.inner().n().len_bits();
+        let n_bits = public_key.n().len_bits();
 
-        let p = PrivatePrime::new(p, n_bits, cpu_features)?;
-        let q = PrivatePrime::new(q, n_bits, cpu_features)?;
+        let p = ValidatedPrivatePrimeInput::new(p, n_bits)?;
+        let q = ValidatedPrivatePrimeInput::new(q, n_bits)?;
 
         // TODO: Step 5.i
         //
         // 3.b is unneeded since `n_bits` is derived here from `n`.
-
-        // 6.4.1.4.3 - Step 3.a (out of order).
-        //
-        // Verify that p * q == n. We restrict ourselves to modular
-        // multiplication. We rely on the fact that we've verified
-        // 0 < q < p < n. We check that q and p are close to sqrt(n) and then
-        // assume that these preconditions are enough to let us assume that
-        // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
-        let q_mod_n = q
-            .modulus
-            .to_elem(n)
-            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
-        let p_mod_n = p
-            .modulus
-            .to_elem(n)
-            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
-        let p_mod_n = bigint::elem_mul(n_one, p_mod_n, n);
-        let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, n);
-        if !pq_mod_n.is_zero() {
-            return Err(KeyRejected::inconsistent_components());
-        }
 
         // 6.4.1.4.3/6.4.1.2.1 - Step 6.
 
@@ -340,34 +313,80 @@ impl KeyPair {
         // First, validate `2**half_n_bits < d`. Since 2**half_n_bits has a bit
         // length of half_n_bits + 1, this check gives us 2**half_n_bits <= d,
         // and knowing d is odd makes the inequality strict.
-        let d = bigint::OwnedModulusValue::<D>::from_be_bytes(d)
-            .map_err(|_| KeyRejected::invalid_component())?;
-        if !(n_bits.half_rounded_up() < d.len_bits()) {
+        {
+            let d = bigint::modulus::ValidatedInput::try_from_be_bytes(d)
+                .map_err(|_| KeyRejected::invalid_component())?;
+            if !(n_bits.half_rounded_up() < d.len_bits()) {
+                return Err(KeyRejected::inconsistent_components());
+            }
+        }
+
+        // 6.4.1.4.3 - Step 3.a (out of order).
+        //
+        // Verify that p * q == n. We restrict ourselves to modular
+        // multiplication. We rely on the fact that we've verified
+        // 0 < q < p < n. We check that q and p are close to sqrt(n) and then
+        // assume that these preconditions are enough to let us assume that
+        // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
+        let public_key = PublicKey::new(public_key, cpu_features)?;
+
+        let borrowed_public_key = public_key.inner();
+        let n = borrowed_public_key.n().value();
+        let nm = &n.modulus(cpu_features);
+
+        let p = p.build(cpu_features);
+        let pim = &p.modulus.reborrow();
+        let pm = &pim.modulus(cpu_features);
+
+        let q = q.build(cpu_features);
+        let qim = &q.modulus.reborrow();
+
+        let q_mod_n_storage = nm.alloc_uninit();
+        let q_mod_n = qim
+            .to_elem(q_mod_n_storage, nm)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
+
+        let p_mod_n_storage = nm.alloc_uninit();
+        let pq_mod_n = pim
+            .to_elem(p_mod_n_storage, nm)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
+            .encode_mont(n, cpu_features)
+            .mul(&q_mod_n, nm);
+        if !pq_mod_n.is_zero() {
             return Err(KeyRejected::inconsistent_components());
         }
+
+        // 6.4.1.4.3/6.4.1.2.1 - Step 6.
+
         // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we don't have
-        // a good way of calculating LCM, so it is omitted, as explained above.
-        d.verify_less_than(n)
+        // a good way of calculating LCM, so just check the less strict condition
+        // that `d < n`.
+        let _d = nm
+            .alloc_uninit()
+            .into_elem_from_be_bytes_padded(d, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // Step 6.b is omitted as explained above.
 
-        let pm = &p.modulus.modulus(cpu_features);
-
         // 6.4.1.4.3 - Step 7.
 
         // Step 7.c.
-        let qInv = bigint::Elem::from_be_bytes_padded(qInv, pm)
-            .map_err(|error::Unspecified| KeyRejected::invalid_component())?;
+
+        let qInv = pm
+            .alloc_uninit()
+            .into_elem_from_be_bytes_padded(qInv, pm)
+            .map_err(|error::Unspecified| KeyRejected::invalid_component())?
+            .encode_mont(pim, cpu_features);
 
         // Steps 7.d and 7.e are omitted per the documentation above, and
         // because we don't (in the long term) have a good way to do modulo
         // with an even modulus.
 
         // Step 7.f.
-        let qInv = bigint::elem_mul(p.oneRR.as_ref(), qInv, pm);
-        let q_mod_p = bigint::elem_reduced(pm.alloc_zero(), &q_mod_n, pm, q.modulus.len_bits());
-        let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(), q_mod_p, pm);
+        let q_mod_p = pm
+            .alloc_uninit()
+            .elem_reduce_mont(&q_mod_n, pm, qim.len_bits())
+            .encode_mont(pim, cpu_features);
         bigint::verify_inverses_consttime(&qInv, q_mod_p, pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
@@ -407,18 +426,22 @@ impl signature::KeyPair for KeyPair {
     }
 }
 
-struct PrivatePrime<M> {
-    modulus: bigint::OwnedModulus<M>,
-    oneRR: bigint::One<M, RR>,
+struct ValidatedPrivatePrimeInput<'a> {
+    inner: bigint::modulus::ValidatedInput<'a>,
 }
 
-impl<M> PrivatePrime<M> {
+struct PrivatePrime<M> {
+    modulus: bigint::BoxedIntoMont<M, RR>,
+}
+
+impl ValidatedPrivatePrimeInput<'_> {
     fn new(
-        p: untrusted::Input,
+        p: untrusted::Input<'_>,
         n_bits: BitLength,
-        cpu_features: cpu::Features,
-    ) -> Result<Self, KeyRejected> {
-        let p = bigint::OwnedModulusValue::from_be_bytes(p)?;
+    ) -> Result<ValidatedPrivatePrimeInput<'_>, KeyRejected> {
+        // TODO: Move this validation earlier.
+        let p = bigint::modulus::ValidatedInput::try_from_be_bytes(p)
+            .map_err(|_| KeyRejected::invalid_component())?;
 
         // 5.c / 5.g:
         //
@@ -435,21 +458,22 @@ impl<M> PrivatePrime<M> {
             return Err(KeyRejected::private_modulus_len_not_multiple_of_512_bits());
         }
 
+        Ok(ValidatedPrivatePrimeInput { inner: p })
+    }
+
+    fn build<M>(self, cpu_features: cpu::Features) -> PrivatePrime<M> {
         // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
         // TODO: Step 5.h: Verify GCD(q - 1, e) == 1.
 
         // Steps 5.e and 5.f are omitted as explained above.
-        let p = bigint::OwnedModulus::from(p);
-        let pm = p.modulus(cpu_features);
-        let oneRR = bigint::One::newRR(pm.alloc_zero(), &pm);
-
-        Ok(Self { modulus: p, oneRR })
+        PrivatePrime {
+            modulus: self.inner.build_boxed_into_mont(cpu_features),
+        }
     }
 }
 
 struct PrivateCrtPrime<M> {
-    modulus: bigint::OwnedModulus<M>,
-    oneRRR: bigint::One<M, RRR>,
+    modulus: bigint::BoxedIntoMont<M, RRR>,
     exponent: bigint::PrivateExponent,
 }
 
@@ -461,7 +485,8 @@ impl<M> PrivateCrtPrime<M> {
         dP: untrusted::Input,
         cpu_features: cpu::Features,
     ) -> Result<Self, KeyRejected> {
-        let m = &p.modulus.modulus(cpu_features);
+        let m = p.modulus.reborrow();
+        let m = &m.modulus(cpu_features);
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
         let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, m)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
@@ -475,11 +500,8 @@ impl<M> PrivateCrtPrime<M> {
         // and `e`. TODO: Either prove that what we do is sufficient, or make
         // it so.
 
-        let oneRRR = bigint::One::newRRR(p.oneRR, m);
-
         Ok(Self {
-            modulus: p.modulus,
-            oneRRR,
+            modulus: p.modulus.intoRRR(cpu_features),
             exponent: dP,
         })
     }
@@ -491,14 +513,12 @@ fn elem_exp_consttime<M>(
     other_prime_len_bits: BitLength,
     cpu_features: cpu::Features,
 ) -> Result<bigint::Elem<M>, error::Unspecified> {
-    let m = &p.modulus.modulus(cpu_features);
     bigint::elem_exp_consttime(
-        m.alloc_zero(),
         c,
-        &p.oneRRR,
         &p.exponent,
-        m,
+        &p.modulus.reborrow(),
         other_prime_len_bits,
+        cpu_features,
     )
     .map_err(error::erase::<LimbSliceError>)
 }
@@ -509,8 +529,6 @@ fn elem_exp_consttime<M>(
 enum P {}
 
 enum Q {}
-
-enum D {}
 
 impl KeyPair {
     /// Computes the signature of `msg` and writes it into `signature`.
@@ -580,45 +598,52 @@ impl KeyPair {
         cpu_features: cpu::Features,
     ) -> Result<bigint::Elem<N>, error::Unspecified> {
         assert_eq!(base.len(), self.public().modulus_len());
+        let base = untrusted::Input::from(base);
 
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
 
-        let n = &self.public.inner().n().value(cpu_features);
-        let n_one = self.public.inner().n().oneRR();
+        let borrowed_public = self.public.inner();
+        let n = borrowed_public.n().value();
+        let nm = &n.modulus(cpu_features);
+
+        let p = &self.p.modulus.reborrow();
+        let q = &self.q.modulus.reborrow();
 
         // Step 1. The value zero is also rejected.
-        let base = bigint::Elem::from_be_bytes_padded(untrusted::Input::from(base), n)?;
+        let base = nm.alloc_uninit().into_elem_from_be_bytes_padded(base, nm)?;
 
         // Step 2
         let c = base;
 
         // Step 2.b.i.
-        let q_bits = self.q.modulus.len_bits();
-        let m_1 = elem_exp_consttime(&c, &self.p, q_bits, cpu_features)?;
-        let m_2 = elem_exp_consttime(&c, &self.q, self.p.modulus.len_bits(), cpu_features)?;
+        let m_1 = elem_exp_consttime(&c, &self.p, q.len_bits(), cpu_features)?;
+        let m_2 = elem_exp_consttime(&c, &self.q, p.len_bits(), cpu_features)?;
 
         // Step 2.b.ii isn't needed since there are only two primes.
 
         // Step 2.b.iii.
         let h = {
-            let p = &self.p.modulus.modulus(cpu_features);
-            let m_2 = bigint::elem_reduced_once(p.alloc_zero(), &m_2, p, q_bits);
-            let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, p);
-            bigint::elem_mul(&self.qInv, m_1_minus_m_2, p)
+            let pm = &p.modulus(cpu_features);
+            let m_2 = pm.alloc_uninit().elem_reduced_once(&m_2, pm, q.len_bits());
+            m_1.sub(&m_2, pm).mul(&self.qInv, pm)
         };
 
         // Step 2.b.iv. The reduction in the modular multiplication isn't
         // necessary because `h < p` and `p * q == n` implies `h * q < n`.
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
-        let p_bits = self.p.modulus.len_bits();
-        let h = bigint::elem_widen(n.alloc_zero(), h, n, p_bits)?;
-        let q_mod_n = self.q.modulus.to_elem(n)?;
-        let q_mod_n = bigint::elem_mul(n_one, q_mod_n, n);
-        let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
-        let m_2 = bigint::elem_widen(n.alloc_zero(), m_2, n, q_bits)?;
-        let m = bigint::elem_add(m_2, q_times_h, n);
+        // The old `h` isn't used beyond this point, so its storage could be
+        // reused.
+        let h = nm.alloc_uninit().elem_widen(&h, nm, p.len_bits())?;
+        let q_mod_n_storage = nm.alloc_uninit();
+        let q_times_h = q
+            .to_elem(q_mod_n_storage, nm)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
+            .encode_mont(n, cpu_features)
+            .mul(&h, nm);
+        let m_2 = nm.alloc_uninit().elem_widen(&m_2, nm, q.len_bits())?;
+        let m = m_2.add(&q_times_h, nm);
 
         // Step 2.b.v isn't needed since there are only two primes.
 
@@ -631,7 +656,7 @@ impl KeyPair {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = n.alloc_zero();
+            let verify = nm.alloc_uninit();
             let verify = self
                 .public
                 .inner()

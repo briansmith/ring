@@ -12,36 +12,32 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    super::{MAX_LIMBS, MIN_LIMBS},
-    BoxedLimbs, Modulus, PublicModulus,
-};
+use super::super::super::{MAX_LIMBS, MIN_LIMBS};
 use crate::{
     bb,
     bits::{BitLength, FromByteLen as _},
-    error::{self, InputTooLongError},
-    limb::{self, Limb, LIMB_BITS, LIMB_BYTES},
+    error::{self, InputTooLongError, LenMismatchError},
+    limb,
+    limb::{Limb, LIMB_BITS, LIMB_BYTES},
     polyfill::usize_from_u32,
 };
+use core::marker::PhantomData;
 
 /// `OwnedModulus`, without the overhead of Montgomery multiplication support.
-pub(crate) struct OwnedModulusValue<M> {
-    limbs: BoxedLimbs<M>, // Also `value >= 3`.
+pub(crate) struct Value<'a, M> {
+    limbs: &'a [Limb], // Also `value >= 3`.
+    len_bits: BitLength,
+    m: PhantomData<M>,
+}
 
+pub struct ValidatedInput<'a> {
+    input: untrusted::Input<'a>,
+    num_limbs: usize,
     len_bits: BitLength,
 }
 
-impl<M: PublicModulus> Clone for OwnedModulusValue<M> {
-    fn clone(&self) -> Self {
-        Self {
-            limbs: self.limbs.clone(),
-            len_bits: self.len_bits,
-        }
-    }
-}
-
-impl<M> OwnedModulusValue<M> {
-    pub(crate) fn from_be_bytes(input: untrusted::Input) -> Result<Self, error::KeyRejected> {
+impl<'a> ValidatedInput<'a> {
+    pub fn try_from_be_bytes(input: untrusted::Input<'a>) -> Result<Self, error::KeyRejected> {
         let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
         const _MODULUS_MIN_LIMBS_AT_LEAST_2: () = assert!(MIN_LIMBS >= 2);
         if num_limbs < MIN_LIMBS {
@@ -63,6 +59,7 @@ impl<M> OwnedModulusValue<M> {
             const _: () = _MODULUS_MIN_LIMBS_AT_LEAST_2;
             unreachable!();
         });
+
         // XXX: Variable-time operation on potentially-secret data. TODO: fix this.
         let leading_zeros = bb::byte_leading_zeros_vartime(hi);
 
@@ -79,26 +76,48 @@ impl<M> OwnedModulusValue<M> {
                 unreachable!()
             });
 
+        let lo = input.as_slice_less_safe().last().unwrap_or_else(|| {
+            // We know num_limbs >= 2 so there is at least one byte.
+            const _: () = _MODULUS_MIN_LIMBS_AT_LEAST_2;
+            unreachable!();
+        });
+        if bb::byte_is_even(lo).leak() {
+            return Err(error::KeyRejected::invalid_component());
+        };
+
         // Having at least 2 limbs where the high-order limb is nonzero implies
         // M >= 3 as required.
-
-        let mut limbs = BoxedLimbs::zero(num_limbs);
-        limb::parse_big_endian_and_pad_consttime(input, limbs.as_mut())
-            .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-        limb::limbs_reject_even_leak_bit(limbs.as_ref())
-            .map_err(|_: error::Unspecified| error::KeyRejected::invalid_component())?;
-
-        Ok(Self { limbs, len_bits })
+        Ok(Self {
+            input,
+            num_limbs,
+            len_bits,
+        })
     }
 
-    pub fn verify_less_than<L>(&self, l: &Modulus<L>) -> Result<(), error::Unspecified> {
-        if self.len_bits() > l.len_bits() {
-            return Err(error::Unspecified);
+    pub(super) fn limbs(&self) -> impl ExactSizeIterator<Item = Limb> + '_ {
+        limb::limbs_from_big_endian(self.input(), self.num_limbs..=self.num_limbs)
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
+    }
+
+    pub fn len_bits(&self) -> BitLength {
+        self.len_bits
+    }
+
+    pub fn input(&self) -> untrusted::Input<'_> {
+        self.input
+    }
+}
+
+impl<M> Value<'_, M> {
+    pub(super) fn from_limbs_unchecked_less_safe(
+        limbs: &[Limb],
+        len_bits: BitLength,
+    ) -> Value<'_, M> {
+        Value {
+            limbs,
+            len_bits,
+            m: PhantomData,
         }
-        if self.limbs.len() == l.limbs().len() {
-            limb::verify_limbs_less_than_limbs_leak_bit(self.limbs.as_ref(), l.limbs())?;
-        }
-        Ok(())
     }
 
     pub fn len_bits(&self) -> BitLength {
@@ -107,6 +126,6 @@ impl<M> OwnedModulusValue<M> {
 
     #[inline]
     pub(super) fn limbs(&self) -> &[Limb] {
-        self.limbs.as_ref()
+        self.limbs
     }
 }

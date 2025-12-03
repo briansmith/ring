@@ -19,22 +19,27 @@
 //! limbs use the native endianness.
 
 use crate::{
-    arithmetic::inout::{AliasingSlices2, AliasingSlices3, InOut},
     bb, c,
     error::{self, LenMismatchError},
-    polyfill::{sliceutil, usize_from_u32, ArrayFlatMap},
+    polyfill::{
+        slice::{AliasingSlices, Cursor, InOut},
+        sliceutil, usize_from_u32, ArrayFlatMap, StartMutPtr,
+    },
     window5::Window5,
 };
 use core::{iter, num::NonZeroUsize};
 
 #[cfg(feature = "alloc")]
 use core::num::Wrapping;
+use core::ops::RangeInclusive;
 
 // XXX: Not correct for x32 ABIs.
 pub type Limb = bb::Word;
 pub type LeakyLimb = bb::LeakyWord;
 pub const LIMB_BITS: usize = usize_from_u32(Limb::BITS);
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
+
+pub const ZERO: LeakyLimb = 0;
 
 pub type LimbMask = bb::BoolMask;
 
@@ -150,7 +155,7 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
     max_exclusive: &[Limb],
     result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
-    parse_big_endian_and_pad_consttime(input, result)?;
+    parse_big_endian_and_pad_consttime(input, result).map_err(error::erase::<LenMismatchError>)?;
     verify_limbs_less_than_limbs_leak_bit(result, max_exclusive)?;
     if allow_zero != AllowZero::Yes {
         if limbs_are_zero(result).leak() {
@@ -166,25 +171,29 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
 pub fn parse_big_endian_and_pad_consttime(
     input: untrusted::Input,
     result: &mut [Limb],
-) -> Result<(), error::Unspecified> {
-    if input.is_empty() {
-        return Err(error::Unspecified);
-    }
-    let input_limbs = input.as_slice_less_safe().rchunks(LIMB_BYTES).map(|chunk| {
-        let mut padded = [0; LIMB_BYTES];
-        sliceutil::overwrite_at_start(&mut padded[(LIMB_BYTES - chunk.len())..], chunk);
-        Limb::from_be_bytes(padded)
-    });
-    if input_limbs.len() > result.len() {
-        return Err(error::Unspecified);
-    }
-
+) -> Result<(), LenMismatchError> {
+    let input_limbs = limbs_from_big_endian(input, 1..=result.len())?;
     result
         .iter_mut()
         .zip(input_limbs.chain(iter::repeat(0)))
         .for_each(|(r, i)| *r = i);
-
     Ok(())
+}
+
+pub fn limbs_from_big_endian<'a>(
+    input: untrusted::Input<'a>,
+    len_bounds: RangeInclusive<usize>,
+) -> Result<impl ExactSizeIterator<Item = Limb> + 'a, LenMismatchError> {
+    let r = input.as_slice_less_safe().rchunks(LIMB_BYTES).map(|chunk| {
+        let mut padded = [0; LIMB_BYTES];
+        sliceutil::overwrite_at_start(&mut padded[(LIMB_BYTES - chunk.len())..], chunk);
+        Limb::from_be_bytes(padded)
+    });
+    let len = r.len();
+    if !len_bounds.contains(&len) {
+        return Err(LenMismatchError::new(len));
+    }
+    Ok(r)
 }
 
 pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
@@ -295,9 +304,11 @@ pub(crate) fn limbs_add_assign_mod(
         );
     }
     let num_limbs = NonZeroUsize::new(m.len()).ok_or_else(|| LenMismatchError::new(m.len()))?;
-    (InOut(a), b).with_non_dangling_non_null_pointers_rab(num_limbs, |r, a, b| {
+    (InOut(a), b).with_non_dangling_non_null_pointers(num_limbs, |mut r, [a, b]| {
         let m = m.as_ptr(); // Also non-dangling because `num_limbs` is non-zero.
-        unsafe { LIMBS_add_mod(r, a, b, m, num_limbs) }
+        unsafe {
+            LIMBS_add_mod(r.start_mut_ptr(), a, b, m, num_limbs);
+        }
     })
 }
 
@@ -312,25 +323,33 @@ pub(crate) fn limbs_double_mod(r: &mut [Limb], m: &[Limb]) -> Result<(), LenMism
             num_limbs: c::NonZero_size_t);
     }
     let num_limbs = NonZeroUsize::new(m.len()).ok_or_else(|| LenMismatchError::new(m.len()))?;
-    r.with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
+    r.with_non_dangling_non_null_pointers(num_limbs, |mut r, [a]| {
         let m = m.as_ptr(); // Also non-dangling because num_limbs > 0.
         unsafe {
-            LIMBS_shl_mod(r, a, m, num_limbs);
+            LIMBS_shl_mod(r.start_mut_ptr(), a, m, num_limbs);
         }
     })
+    .map(|_| ())
 }
 
 // *r = -a, assuming a is odd.
-pub(crate) fn limbs_negative_odd(r: &mut [Limb], a: &[Limb]) {
-    debug_assert_eq!(r.len(), a.len());
+pub(crate) fn write_negative_assume_odd<'r>(
+    r: &mut Cursor<'r, Limb>,
+    a: &[Limb],
+) -> Result<&'r mut [Limb], LenMismatchError> {
     // Two's complement step 1: flip all the bits.
     // The compiler should optimize this to vectorized (a ^ !0).
-    r.iter_mut().zip(a.iter()).for_each(|(r, &a)| {
-        *r = !a;
-    });
+    let r = r
+        .write_iter(a.iter().map(|&a| !a))
+        .src_empty()?
+        .into_written();
     // Two's complement step 2: Add one. Since `a` is odd, `r` is even. Thus we
     // can use a bitwise or for addition.
-    r[0] |= 1;
+    let Some(least_significant_limb) = r.get_mut(0) else {
+        return Err(LenMismatchError::new(a.len()));
+    };
+    *least_significant_limb |= 1;
+    Ok(r)
 }
 
 #[allow(clippy::useless_conversion)]
@@ -473,6 +492,7 @@ mod tests {
             assert_eq!(
                 Ok(()),
                 parse_big_endian_and_pad_consttime(inp, &mut result[..])
+                    .map_err(error::erase::<LenMismatchError>)
             );
             assert_eq!(&[0xfe, 0, 0, 0], &result);
         }
@@ -482,7 +502,11 @@ mod tests {
             let inp = [0xbe, 0xef, 0xf0, 0x0d];
             let inp = untrusted::Input::from(&inp);
             let mut result = [0; LIMBS].map(From::<LeakyLimb>::from);
-            assert_eq!(Ok(()), parse_big_endian_and_pad_consttime(inp, &mut result));
+            assert_eq!(
+                Ok(()),
+                parse_big_endian_and_pad_consttime(inp, &mut result)
+                    .map_err(error::erase::<LenMismatchError>)
+            );
             assert_eq!(&[0xbeeff00d, 0, 0, 0], &result);
         }
 
@@ -504,7 +528,7 @@ mod tests {
                 for (be_bytes, limbs) in TEST_CASES {
                     let mut buf = [0; 2];
                     parse_big_endian_and_pad_consttime(untrusted::Input::from(be_bytes), &mut buf)
-                        .unwrap();
+                        .map_err(error::erase::<LenMismatchError>).unwrap();
                     assert_eq!(limbs, &buf, "({be_bytes:x?}, {limbs:x?}");
                 }
             },
@@ -525,7 +549,7 @@ mod tests {
                 for (be_bytes, limbs) in TEST_CASES {
                     let mut buf = [0; 3];
                     parse_big_endian_and_pad_consttime(untrusted::Input::from(be_bytes), &mut buf)
-                        .unwrap();
+                        .map_err(error::erase::<LenMismatchError>).unwrap();
                     assert_eq!(limbs, &buf, "({be_bytes:x?}, {limbs:x?}");
                 }
             },

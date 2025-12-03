@@ -19,11 +19,7 @@
 
 //! RSA.
 
-use crate::{
-    arithmetic::bigint,
-    bits, error,
-    io::{self, der},
-};
+use crate::{arithmetic::bigint, bits, error, io::der};
 
 pub(crate) mod padding;
 
@@ -42,13 +38,13 @@ pub struct RsaParameters {
 }
 
 fn parse_public_key(
-    input: untrusted::Input,
-) -> Result<(io::Positive, io::Positive), error::Unspecified> {
+    input: untrusted::Input<'_>,
+) -> Result<PublicKeyComponents<&[u8]>, error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-            let n = der::positive_integer(input)?;
-            let e = der::positive_integer(input)?;
-            Ok((n, e))
+            let n = der::nonnegative_integer(input)?.as_slice_less_safe();
+            let e = der::nonnegative_integer(input)?.as_slice_less_safe();
+            Ok(PublicKeyComponents { n, e })
         })
     })
 }
@@ -59,16 +55,13 @@ enum N {}
 
 impl bigint::PublicModulus for N {}
 
+mod base;
 mod keypair;
 mod keypair_components;
-mod public_exponent;
 mod public_key;
 mod public_key_components;
-mod public_modulus;
 
 pub(crate) mod verification;
-
-use self::{public_exponent::PublicExponent, public_modulus::PublicModulus};
 
 pub use self::{
     keypair::KeyPair, keypair_components::KeyPairComponents, public_key::PublicKey,

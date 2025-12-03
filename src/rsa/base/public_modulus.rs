@@ -8,24 +8,9 @@ use crate::{
 use core::ops::RangeInclusive;
 
 /// The modulus (n) of an RSA public key.
-pub struct PublicModulus {
-    value: bigint::OwnedModulus<N>,
-    oneRR: bigint::One<N, RR>,
-}
-
-impl Clone for PublicModulus {
-    fn clone(&self) -> Self {
-        let PublicModulus { value, oneRR } = self;
-        let value = value.clone();
-
-        // XXX: Shouldn't really be needed just to call `alloc_zero()`,
-        // but not worth optimizing away.
-        let cpu = cpu::features();
-        let n = value.modulus(cpu);
-        let oneRR = oneRR.clone_into(n.alloc_zero());
-
-        Self { value, oneRR }
-    }
+#[derive(Clone)]
+pub struct PublicModulus<S> {
+    value: S,
 }
 
 /*
@@ -35,11 +20,14 @@ impl core::fmt::Debug for PublicModulus {
     }
 }*/
 
-impl PublicModulus {
-    pub(super) fn from_be_bytes(
-        n: untrusted::Input,
+pub struct ValidatedInput<'a> {
+    input: bigint::modulus::ValidatedInput<'a>,
+}
+
+impl<'a> ValidatedInput<'a> {
+    pub fn from_be_bytes(
+        n: &'a [u8],
         allowed_bit_lengths: RangeInclusive<bits::BitLength>,
-        cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
         // See `PublicKey::from_modulus_and_exponent` for background on the step
         // numbering.
@@ -53,8 +41,8 @@ impl PublicModulus {
         const MIN_BITS: bits::BitLength = bits::BitLength::from_bits(1024);
 
         // Step 3 / Step c for `n` (out of order).
-        let value = bigint::OwnedModulusValue::from_be_bytes(n)?;
-        let bits = value.len_bits();
+        let input = bigint::modulus::ValidatedInput::try_from_be_bytes(n.into())?;
+        let bits = input.len_bits();
 
         // Step 1 / Step a. XXX: SP800-56Br1 and SP800-89 require the length of
         // the public modulus to be exactly 2048 or 3072 bits, but we are more
@@ -69,13 +57,46 @@ impl PublicModulus {
         if bits > max_bits {
             return Err(error::KeyRejected::too_large());
         }
-        let value = bigint::OwnedModulus::from(value);
-        let m = value.modulus(cpu_features);
-        let oneRR = bigint::One::newRR(m.alloc_zero(), &m);
-
-        Ok(Self { value, oneRR })
+        Ok(Self { input })
     }
 
+    pub fn input(&self) -> untrusted::Input<'_> {
+        self.input.input()
+    }
+
+    pub fn len_bits(&self) -> bits::BitLength {
+        self.input.len_bits()
+    }
+
+    pub(super) fn build_boxed_into_mont(
+        &self,
+        cpu_features: cpu::Features,
+    ) -> PublicModulus<bigint::BoxedIntoMont<N, RR>> {
+        PublicModulus {
+            value: self.input.build_boxed_into_mont(cpu_features),
+        }
+    }
+
+    pub(super) fn build<'o>(
+        &self,
+        out: &'o mut bigint::OversizedUninit<2>,
+        cpu_features: cpu::Features,
+    ) -> PublicModulus<bigint::IntoMont<'o, N, RR>> {
+        PublicModulus {
+            value: self.input.build_into_mont(out, cpu_features),
+        }
+    }
+}
+
+impl PublicModulus<bigint::BoxedIntoMont<N, RR>> {
+    pub fn reborrow(&self) -> PublicModulus<bigint::IntoMont<'_, N, RR>> {
+        PublicModulus {
+            value: self.value.reborrow(),
+        }
+    }
+}
+
+impl PublicModulus<bigint::IntoMont<'_, N, RR>> {
     /// The big-endian encoding of the modulus.
     ///
     /// There are no leading zeros.
@@ -88,11 +109,7 @@ impl PublicModulus {
         self.value.len_bits()
     }
 
-    pub(super) fn value(&self, cpu_features: cpu::Features) -> bigint::Modulus<'_, N> {
-        self.value.modulus(cpu_features)
-    }
-
-    pub(super) fn oneRR(&self) -> &bigint::Elem<N, RR> {
-        self.oneRR.as_ref()
+    pub(in super::super) fn value(&self) -> &bigint::IntoMont<'_, N, RR> {
+        &self.value
     }
 }

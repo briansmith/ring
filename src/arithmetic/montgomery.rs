@@ -16,13 +16,13 @@
 use crate::polyfill::prelude::*;
 
 pub use super::n0::N0;
+use super::LimbSliceError;
 #[allow(unused_imports)]
 use super::MIN_LIMBS;
-use super::{
-    inout::{AliasSrc, AliasingSlices2, AliasingSlices3},
-    LimbSliceError,
+use crate::{
+    cpu,
+    polyfill::slice::{AliasSrc, AliasingSlices},
 };
-use crate::cpu;
 use cfg_if::cfg_if;
 
 // Indicates that the element is not encoded; there is no *R* factor
@@ -121,14 +121,18 @@ impl ProductEncoding for (RRR, RInverse) {
 
 #[allow(unused_imports)]
 use crate::{bssl, c, limb::Limb};
+use crate::{
+    error::LenMismatchError,
+    polyfill::{slice::Uninit, StartMutPtr},
+};
 
 #[inline(always)]
-pub(super) fn limbs_mul_mont(
-    in_out: impl AliasingSlices3<Limb>,
+pub(super) fn limbs_mul_mont<'o>(
+    in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
     n0: &N0,
     cpu: cpu::Features,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     #[allow(dead_code)]
     const MOD_FALLBACK: usize = 1; // No restriction.
     cfg_if! {
@@ -153,18 +157,14 @@ pub(super) fn limbs_mul_mont(
             })
         } else if #[cfg(target_arch = "x86")] {
             use crate::{cpu::GetFeature as _, cpu::intel::Sse2};
-            // The X86 implementation of `bn_mul_mont` has a minimum of 4.
+            // The X86 implementation of `bn_mul_mont_sse2` has a minimum of 4.
             const _MIN_LIMBS_AT_LEAST_4: () = assert!(MIN_LIMBS >= 4);
             if let Some(cpu) = cpu.get_feature() {
                 bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
-                    (MIN_LIMBS, MOD_FALLBACK, Sse2) => bn_mul_mont
+                    (MIN_LIMBS, MOD_FALLBACK, Sse2) => bn_mul_mont_sse2
                 })
             } else {
-                // This isn't really an FFI call; it's defined below.
-                unsafe {
-                    super::ffi::bn_mul_mont_ffi::<(), {MIN_LIMBS}, 1>(in_out, n, n0, (),
-                    bn_mul_mont_fallback)
-                }
+                super::limbs::fallback::mont::limbs_mul_mont(in_out, n, n0)
             }
         } else if #[cfg(target_arch = "x86_64")] {
             use crate::{cpu::GetFeature as _};
@@ -175,85 +175,22 @@ pub(super) fn limbs_mul_mont(
                 }
             }
             bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
-                (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_nohw
+                (MIN_LIMBS, MOD_FALLBACK, ()) => bn_mul_mont_sse2
             })
         } else {
-            // Use the fallback implementation implemented below through the
-            // FFI wrapper defined below, so that Rust and C code both go
-            // through `bn_mul_mont`.
-            bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {
-                (MIN_LIMBS, MOD_FALLBACK, cpu::Features) => bn_mul_mont
-            })
-        }
-    }
-}
-
-cfg_if! {
-    if  #[cfg(not(any(
-            all(target_arch = "aarch64", target_endian = "little"),
-            all(target_arch = "arm", target_endian = "little"),
-            target_arch = "x86_64")))] {
-
-        // TODO: Stop calling this from C and un-export it.
-        #[cfg(not(target_arch = "x86"))]
-        prefixed_export! {
-            unsafe extern "C" fn bn_mul_mont(
-                r: *mut Limb,
-                a: *const Limb,
-                b: *const Limb,
-                n: *const Limb,
-                n0: &N0,
-                num_limbs: c::NonZero_size_t,
-            ) {
-                unsafe { bn_mul_mont_fallback(r, a, b, n, n0, num_limbs) }
-            }
-        }
-
-        #[cfg_attr(target_arch = "x86", cold)]
-        #[cfg_attr(target_arch = "x86", inline(never))]
-        unsafe extern "C" fn bn_mul_mont_fallback(
-            r: *mut Limb,
-            a: *const Limb,
-            b: *const Limb,
-            n: *const Limb,
-            n0: &N0,
-            num_limbs: c::NonZero_size_t,
-        ) {
-            use super::MAX_LIMBS;
-
-            let num_limbs = num_limbs.get();
-
-            // The mutable pointer `r` may alias `a` and/or `b`, so the lifetimes of
-            // any slices for `a` or `b` must not overlap with the lifetime of any
-            // mutable for `r`.
-
-            // Nothing aliases `n`
-            let n = unsafe { core::slice::from_raw_parts(n, num_limbs) };
-
-            let mut tmp = [0; 2 * MAX_LIMBS];
-            let tmp = &mut tmp[..(2 * num_limbs)];
-            {
-                let a: &[Limb] = unsafe { core::slice::from_raw_parts(a, num_limbs) };
-                let b: &[Limb] = unsafe { core::slice::from_raw_parts(b, num_limbs) };
-                limbs_mul(tmp, a, b);
-            }
-            let r: &mut [Limb] = unsafe { core::slice::from_raw_parts_mut(r, num_limbs) };
-            limbs_from_mont_in_place(r, tmp, n, n0);
+            super::limbs::fallback::mont::limbs_mul_mont(in_out, n, n0)
         }
     }
 }
 
 // `bigint` needs then when the `alloc` feature is enabled. `bn_mul_mont` above needs this when
 // we are using the platforms for which we don't have `bn_mul_mont` in assembly.
-#[cfg(any(
-    feature = "alloc",
-    not(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        all(target_arch = "arm", target_endian = "little"),
-        target_arch = "x86_64"
-    ))
-))]
-pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N0) {
+pub(super) fn limbs_from_mont_in_place<'o>(
+    mut r: Uninit<'o, Limb>,
+    tmp: &mut [Limb],
+    m: &[Limb],
+    n0: &N0,
+) -> Result<&'o mut [Limb], LenMismatchError> {
     prefixed_extern! {
         fn bn_from_montgomery_in_place(
             r: *mut Limb,
@@ -266,54 +203,34 @@ pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Li
         ) -> bssl::Result;
     }
     let r_len = r.len();
-    let r = r.as_mut_ptr();
     let tmp_len = tmp.len();
     let tmp = tmp.as_mut_ptr();
     Result::from(unsafe {
-        bn_from_montgomery_in_place(r, r_len, tmp, tmp_len, m.as_ptr(), m.len(), n0)
+        bn_from_montgomery_in_place(
+            r.start_mut_ptr(),
+            r_len,
+            tmp,
+            tmp_len,
+            m.as_ptr(),
+            m.len(),
+            n0,
+        )
     })
-    .unwrap()
-}
-
-#[cfg(not(any(
-    all(target_arch = "aarch64", target_endian = "little"),
-    all(target_arch = "arm", target_endian = "little"),
-    target_arch = "x86_64"
-)))]
-fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
-    debug_assert_eq!(r.len(), 2 * a.len());
-    debug_assert_eq!(a.len(), b.len());
-    let ab_len = a.len();
-
-    r[..ab_len].fill(0);
-    for (i, &b_limb) in b.iter().enumerate() {
-        r[ab_len + i] = unsafe {
-            limbs_mul_add_limb(r[i..][..ab_len].as_mut_ptr(), a.as_ptr(), b_limb, ab_len)
-        };
-    }
-}
-
-#[cfg(any(
-    test,
-    not(any(
-        all(target_arch = "aarch64", target_endian = "little"),
-        all(target_arch = "arm", target_endian = "little"),
-        target_arch = "x86_64",
-    ))
-))]
-prefixed_extern! {
-    // `r` must not alias `a`
-    #[must_use]
-    fn limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
+    .map_err(|_| LenMismatchError::new(r_len))?;
+    Ok(unsafe { r.assume_init() })
 }
 
 /// r = r**2
-pub(super) fn limbs_square_mont(
-    in_out: impl AliasingSlices2<Limb> + AliasSrc<Limb>,
+pub(super) fn limbs_square_mont<'o, InOut>(
+    in_out: InOut,
     n: &[Limb],
     n0: &N0,
     cpu: cpu::Features,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError>
+where
+    InOut: AliasingSlices<'o, Limb, 1> + AliasSrc<0>,
+    <InOut as AliasSrc<0>>::Output: AliasingSlices<'o, Limb, 2>,
+{
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     {
         use super::limbs::aarch64;
@@ -331,48 +248,5 @@ pub(super) fn limbs_square_mont(
         }
     }
 
-    limbs_mul_mont(in_out.raa(), n, n0, cpu)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::MAX_LIMBS;
-    use super::*;
-    use crate::limb::Limb;
-
-    #[test]
-    // TODO: wasm
-    fn test_mul_add_words() {
-        const ZERO: Limb = 0;
-        const MAX: Limb = ZERO.wrapping_sub(1);
-        static TEST_CASES: &[(&[Limb], &[Limb], Limb, Limb, &[Limb])] = &[
-            (&[0], &[0], 0, 0, &[0]),
-            (&[MAX], &[0], MAX, 0, &[MAX]),
-            (&[0], &[MAX], MAX, MAX - 1, &[1]),
-            (&[MAX], &[MAX], MAX, MAX, &[0]),
-            (&[0, 0], &[MAX, MAX], MAX, MAX - 1, &[1, MAX]),
-            (&[1, 0], &[MAX, MAX], MAX, MAX - 1, &[2, MAX]),
-            (&[MAX, 0], &[MAX, MAX], MAX, MAX, &[0, 0]),
-            (&[0, 1], &[MAX, MAX], MAX, MAX, &[1, 0]),
-            (&[MAX, MAX], &[MAX, MAX], MAX, MAX, &[0, MAX]),
-        ];
-
-        for (i, (r_input, a, w, expected_retval, expected_r)) in TEST_CASES.iter().enumerate() {
-            let mut r = [0; MAX_LIMBS];
-            let r = {
-                let r = &mut r[..r_input.len()];
-                r.copy_from_slice(r_input);
-                r
-            };
-            assert_eq!(r.len(), a.len()); // Sanity check
-            let actual_retval =
-                unsafe { limbs_mul_add_limb(r.as_mut_ptr(), a.as_ptr(), *w, a.len()) };
-            assert_eq!(&r, expected_r, "{i}: {r:x?} != {expected_r:x?}");
-            assert_eq!(
-                actual_retval, *expected_retval,
-                "{}: {:x?} != {:x?}",
-                i, actual_retval, *expected_retval
-            );
-        }
-    }
+    limbs_mul_mont(in_out.alias_src(), n, n0, cpu)
 }

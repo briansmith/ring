@@ -12,16 +12,16 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{inout::AliasingSlices3, n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
+use super::{n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
 use crate::{
     c,
     limb::{Limb, LIMB_BITS},
-    polyfill::usize_from_u32,
+    polyfill::{slice::AliasingSlices, usize_from_u32, StartMutPtr},
 };
 use core::{mem::size_of, num::NonZeroUsize};
 
 const _MIN_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
-    // The x86 implementation of `bn_mul_mont`, at least, requires at least 4
+    // The x86 implementation of `bn_mul_mont_sse2` requires at least 4
     // limbs. Some other implementations seem to require at least two limbs.
     // This enforces the `|num| must be at least 128 / |BN_BITS2|` prerequisite
     // in bn/internal.h.
@@ -68,8 +68,8 @@ macro_rules! bn_mul_mont_ffi {
 }
 
 #[inline]
-pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const LEN_MIN: usize, const LEN_MOD: usize>(
-    in_out: impl AliasingSlices3<Limb>,
+pub(super) unsafe fn bn_mul_mont_ffi<'o, Cpu, const LEN_MIN: usize, const LEN_MOD: usize>(
+    in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
     n0: &N0,
     cpu: Cpu,
@@ -81,7 +81,7 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const LEN_MIN: usize, const LEN_MOD: u
         n0: &N0,
         len: c::NonZero_size_t,
     ),
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     assert_eq!(n.len() % LEN_MOD, 0); // The caller should guard against this.
     assert!(LEN_MIN >= MIN_LIMBS);
     if n.len() < LEN_MIN {
@@ -99,11 +99,13 @@ pub(super) unsafe fn bn_mul_mont_ffi<Cpu, const LEN_MIN: usize, const LEN_MOD: u
     if len.get() > MAX_LIMBS {
         return Err(LimbSliceError::too_long(n.len()));
     }
-    in_out
-        .with_non_dangling_non_null_pointers_rab(len, |r, a, b| {
-            let n = n.as_ptr();
-            let _: Cpu = cpu;
-            unsafe { f(r, a, b, n, n0, len) };
-        })
-        .map_err(LimbSliceError::len_mismatch)
+    let r = in_out.with_non_dangling_non_null_pointers(len, |mut r, [a, b]| {
+        let n = n.as_ptr();
+        let _: Cpu = cpu;
+        unsafe {
+            f(r.start_mut_ptr(), a, b, n, n0, len);
+            r.deref_unchecked().assume_init()
+        }
+    })?;
+    Ok(r)
 }

@@ -12,6 +12,4 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-pub(super) mod aarch64;
-pub(super) mod fallback;
-pub(super) mod x86_64;
+mod uninit_slice_tests;

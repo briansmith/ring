@@ -43,11 +43,12 @@ pub const fn usize_from_u64_saturated(x: u64) -> usize {
 #[macro_use]
 mod cold_error;
 
+mod aliasing_slices;
 mod array_flat_map;
 mod array_split_map;
-
 mod atomic;
-
+mod boxed;
+pub mod dynarray;
 pub mod partial_buffer;
 pub mod sliceutil;
 
@@ -78,7 +79,8 @@ pub mod prelude {
     // using Rust Nightly.
     pub(crate) use super::{
         atomic::AtomicPolyfills,
-        ptr::PointerPolyfills,
+        boxed::{BoxMaybeUninitSlicePolyfills, BoxSlicePolyfills},
+        ptr::{ConstPointerPolyfills, PointerPolyfills},
         slice::{SliceOfArraysPolyfills, SlicePolyfills},
     };
 }
@@ -95,6 +97,8 @@ mod start_ptr;
 #[cfg(test)]
 mod test;
 
+mod uninit_slice;
+mod uninit_slice_cursor;
 mod unwrap_const;
 
 pub use self::{

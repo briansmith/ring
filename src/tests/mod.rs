@@ -19,3 +19,4 @@ mod bb_bytes_tests;
 mod bits_tests;
 mod c_constant_time_tests;
 mod ownedmodulusvalue_tests;
+mod polyfill_tests;

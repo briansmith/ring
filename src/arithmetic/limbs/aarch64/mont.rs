@@ -17,14 +17,11 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::super::super::{
-    inout::{AliasingSlices2, AliasingSlices3},
-    n0::N0,
-    LimbSliceError, MAX_LIMBS, MIN_LIMBS,
-};
+use super::super::super::{n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
 use crate::{
     c,
     limb::{Limb, LIMB_BYTES},
+    polyfill::{slice::AliasingSlices, StartMutPtr},
 };
 use core::num::NonZeroUsize;
 
@@ -34,11 +31,11 @@ use core::num::NonZeroUsize;
 const _TWICE_MAX_LIMBS_LE_3KB: () = assert!((2 * MAX_LIMBS) * LIMB_BYTES <= 3 * 1024);
 
 #[inline]
-pub(in super::super::super) fn mul_mont(
-    in_out: impl AliasingSlices3<Limb>,
+pub(in super::super::super) fn mul_mont<'o>(
+    in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
     n0: &N0,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     const MIN_4X: usize = 4;
     const MOD_4X: usize = 4;
     const MOD_FALLBACK: usize = 1;
@@ -57,11 +54,11 @@ pub(in super::super::super) fn mul_mont(
 }
 
 #[inline]
-pub(in super::super::super) fn sqr_mont5(
-    in_out: impl AliasingSlices2<Limb>,
+pub(in super::super::super) fn sqr_mont5<'o>(
+    in_out: impl AliasingSlices<'o, Limb, 1>,
     n: &[[Limb; 8]],
     n0: &N0,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     prefixed_extern! {
         // `r` and/or 'a' may alias.
         // XXX: BoringSSL (kinda, implicitly) declares this to return `int`.
@@ -88,10 +85,12 @@ pub(in super::super::super) fn sqr_mont5(
         return Err(LimbSliceError::too_long(num_limbs.get()));
     }
 
-    in_out
-        .with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
-            let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
-            unsafe { bn_sqr8x_mont(r, a, a, n, n0, num_limbs) };
-        })
-        .map_err(LimbSliceError::len_mismatch)
+    let r = in_out.with_non_dangling_non_null_pointers(num_limbs, |mut r, [a]| {
+        let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
+        unsafe {
+            bn_sqr8x_mont(r.start_mut_ptr(), a, a, n, n0, num_limbs);
+            r.deref_unchecked().assume_init()
+        }
+    })?;
+    Ok(r)
 }

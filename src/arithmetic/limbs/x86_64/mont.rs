@@ -17,11 +17,10 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use crate::polyfill::SmallerChunks;
+use crate::polyfill::{slice::Uninit, SmallerChunks, StartMutPtr};
 
 use super::super::super::{
-    inout::{AliasingSlices2, AliasingSlices3},
-    limbs512::storage::{check_common, check_common_with_n},
+    limbs512::storage::{check_common, check_common_with_n, table_parts, table_parts_uninit},
     n0::N0,
     LimbSliceError, MAX_LIMBS,
 };
@@ -30,23 +29,24 @@ use crate::{
     cpu::intel::{Adx, Bmi1, Bmi2},
     error::LenMismatchError,
     limb::Limb,
+    polyfill::slice::AliasingSlices,
     window5::Window5,
 };
-use core::num::NonZeroUsize;
+use core::{mem::MaybeUninit, num::NonZeroUsize};
 
 const _512_IS_LIMB_BITS_TIMES_8: () = assert!(8 * Limb::BITS == 512);
 
 #[inline]
-pub(in super::super::super) fn mul_mont5(
-    r: &mut [[Limb; 8]],
-    a: &[[Limb; 8]],
-    b: &[[Limb; 8]],
+pub(in super::super::super) fn mul_mont5<'o>(
+    r: Uninit<'o, Limb>,
+    a: &[Limb],
+    b: &[Limb],
     m: &[[Limb; 8]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     mul_mont5_4x(
-        (r.as_flattened_mut(), a.as_flattened(), b.as_flattened()),
+        (r, a, b),
         SmallerChunks::as_smaller_chunks(m),
         n0,
         maybe_adx_bmi2,
@@ -56,12 +56,12 @@ pub(in super::super::super) fn mul_mont5(
 pub const MIN_4X: usize = 8;
 
 #[inline]
-pub(in super::super::super) fn mul_mont5_4x(
-    in_out: impl AliasingSlices3<Limb>,
+pub(in super::super::super) fn mul_mont5_4x<'o>(
+    in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[[Limb; 4]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     const MOD_4X: usize = 4;
     let n = n.as_flattened();
     if let Some(cpu) = maybe_adx_bmi2 {
@@ -76,12 +76,12 @@ pub(in super::super::super) fn mul_mont5_4x(
 }
 
 #[inline]
-pub(in super::super::super) fn sqr_mont5(
-    in_out: impl AliasingSlices2<Limb>,
+pub(in super::super::super) fn sqr_mont5<'o>(
+    in_out: impl AliasingSlices<'o, Limb, 1>,
     n: &[[Limb; 8]],
     n0: &N0,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
-) -> Result<(), LimbSliceError> {
+) -> Result<&'o mut [Limb], LimbSliceError> {
     prefixed_extern! {
         // `r` and/or 'a' may alias.
         // XXX: BoringSSL declares this to return `int`.
@@ -109,17 +109,19 @@ pub(in super::super::super) fn sqr_mont5(
         None => Limb::from(false),
     };
 
-    in_out
-        .with_non_dangling_non_null_pointers_ra(num_limbs, |r, a| {
-            let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
-            unsafe { bn_sqr8x_mont(r, a, mulx_adx_capable, n, n0, num_limbs) };
-        })
-        .map_err(LimbSliceError::len_mismatch)
+    let r = in_out.with_non_dangling_non_null_pointers(num_limbs, |mut r, [a]| {
+        let n = n.as_ptr(); // Non-dangling because num_limbs > 0.
+        unsafe {
+            bn_sqr8x_mont(r.start_mut_ptr(), a, mulx_adx_capable, n, n0, num_limbs);
+            r.deref_unchecked().assume_init()
+        }
+    })?;
+    Ok(r)
 }
 
 #[inline(always)]
 pub(in super::super::super) fn gather5(
-    r: &mut [[Limb; 8]],
+    r: &mut [Limb],
     table: &[[Limb; 8]],
     power: Window5,
 ) -> Result<(), LimbSliceError> {
@@ -132,18 +134,23 @@ pub(in super::super::super) fn gather5(
             table: *const Limb,
             power: Window5);
     }
-    let num_limbs = check_common(r, table)?;
-    let r = r.as_flattened_mut();
+    let num_limbs = check_common(r, table_parts(table))?;
     let table = table.as_flattened();
     unsafe { bn_gather5(r.as_mut_ptr(), num_limbs, table.as_ptr(), power) };
     Ok(())
 }
 
+// SAFETY: Entry `power` must have been scattered into the table.
+//
+// TODO: Have `scatter5` return a `ScatteredWindow5` that proves
+// that the window was scattered, and change this to take a
+// `ScatteredWindow5` instead of `(table, power)`, so that this
+// becomes safe.
 #[inline(always)]
-pub(in super::super::super) fn mul_mont_gather5_amm(
-    r: &mut [[Limb; 8]],
-    a: &[[Limb; 8]],
-    table: &[[Limb; 8]],
+pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
+    r: &mut [Limb],
+    a: &[Limb],
+    table: &[[MaybeUninit<Limb>; 8]],
     n: &[[Limb; 8]],
     n0: &N0,
     power: Window5,
@@ -173,18 +180,17 @@ pub(in super::super::super) fn mul_mont_gather5_amm(
             power: Window5,
         );
     }
-    let num_limbs = check_common_with_n(r, table, n)?;
-    let a = a.as_flattened();
+    let num_limbs = check_common_with_n(r, table_parts_uninit(table), n)?;
     if a.len() != num_limbs.get() {
-        return Err(LimbSliceError::len_mismatch(LenMismatchError::new(a.len())));
+        Err(LenMismatchError::new(a.len()))?;
     }
-    let r = r.as_flattened_mut();
     let r = r.as_mut_ptr();
     let a = a.as_ptr();
     let table = table.as_flattened();
-    let table = table.as_ptr();
+    let table = table.as_ptr().cast();
     let n = n.as_flattened();
     let n = n.as_ptr();
+    // SAFETY: We assume entry `power` was previously scattered into the tamble.
     if maybe_adx_bmi1_bmi2.is_some() {
         unsafe { bn_mulx4x_mont_gather5(r, a, table, n, n0, num_limbs, power) }
     } else {
@@ -196,7 +202,7 @@ pub(in super::super::super) fn mul_mont_gather5_amm(
 // SAFETY: `power` must be less than 32.
 #[inline(always)]
 pub(in super::super::super) fn power5_amm(
-    in_out: &mut [[Limb; 8]],
+    in_out: &mut [Limb],
     table: &[[Limb; 8]],
     n: &[[Limb; 8]],
     n0: &N0,
@@ -227,8 +233,7 @@ pub(in super::super::super) fn power5_amm(
             power: Window5,
         );
     }
-    let num_limbs = check_common_with_n(in_out, table, n)?;
-    let in_out = in_out.as_flattened_mut();
+    let num_limbs = check_common_with_n(in_out, table_parts(table), n)?;
     let r = in_out.as_mut_ptr();
     let a = in_out.as_ptr();
     let table = table.as_flattened();

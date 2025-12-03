@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{limb, BoxedLimbs, Limb, Modulus};
+use super::{limb, Limb, Mont};
 use crate::error;
 use alloc::boxed::Box;
 
@@ -26,9 +26,12 @@ impl PrivateExponent {
     // `p` is the modulus for which the exponent is in the interval [1, `p` - 1).
     pub fn from_be_bytes_padded<M>(
         input: untrusted::Input,
-        p: &Modulus<M>,
+        p: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
-        let mut dP = BoxedLimbs::from_be_bytes_padded_less_than(input, p)?;
+        let mut dP = p
+            .alloc_uninit()
+            .into_elem_from_be_bytes_padded(input, p)?
+            .leak_limbs_into_box_less_safe();
 
         // Proof that `dP < p - 1`:
         //
@@ -51,9 +54,10 @@ impl PrivateExponent {
     #[cfg(test)]
     pub fn from_be_bytes_for_test_only<M>(
         input: untrusted::Input,
-        p: &Modulus<M>,
+        p: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
-        use crate::limb::LIMB_BYTES;
+        use super::boxed_limbs::Uninit;
+        use crate::{error::LenMismatchError, limb::LIMB_BYTES};
 
         // Do exactly what `from_be_bytes_padded` does for any inputs it accepts.
         if let r @ Ok(_) = Self::from_be_bytes_padded(input, p) {
@@ -61,9 +65,9 @@ impl PrivateExponent {
         }
 
         let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
-        let mut limbs = BoxedLimbs::<M>::zero(num_limbs);
-        limb::parse_big_endian_and_pad_consttime(input, limbs.as_mut())
-            .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
+        let mut limbs = Uninit::<M>::new_less_safe(num_limbs)
+            .write_from_be_bytes_padded(input)
+            .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;
         limbs.as_mut().reverse();
         Ok(Self {
             limbs: limbs.into_limbs(),

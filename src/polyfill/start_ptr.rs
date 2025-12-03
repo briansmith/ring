@@ -29,6 +29,14 @@ impl<T, const N: usize> StartPtr for *const [T; N] {
     }
 }
 
+impl<T> StartPtr for *const [T] {
+    type Elem = T;
+    #[inline(always)]
+    fn start_ptr(self) -> *const Self::Elem {
+        self.cast::<Self::Elem>()
+    }
+}
+
 // TODO(MSRV feature(array_ptr_get)): Considering dropping this, depending on
 // how https://github.com/rust-lang/rust/issues/119834#issuecomment-3137563829
 // is resolved.

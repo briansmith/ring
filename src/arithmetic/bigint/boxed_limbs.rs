@@ -12,12 +12,15 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::Modulus;
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use crate::{
-    error,
+    error::LenMismatchError,
     limb::{self, Limb},
+    polyfill,
 };
-use alloc::{boxed::Box, vec};
+use alloc::{boxed::Box, vec::Vec};
 use core::marker::PhantomData;
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
@@ -40,23 +43,6 @@ impl<M> Clone for BoxedLimbs<M> {
 }
 
 impl<M> BoxedLimbs<M> {
-    pub(super) fn from_be_bytes_padded_less_than(
-        input: untrusted::Input,
-        m: &Modulus<M>,
-    ) -> Result<Self, error::Unspecified> {
-        let mut r = Self::zero(m.limbs().len());
-        limb::parse_big_endian_and_pad_consttime(input, r.as_mut())?;
-        limb::verify_limbs_less_than_limbs_leak_bit(r.as_ref(), m.limbs())?;
-        Ok(r)
-    }
-
-    pub(super) fn zero(len: usize) -> Self {
-        Self {
-            limbs: vec![0; len].into_boxed_slice(),
-            m: PhantomData,
-        }
-    }
-
     #[inline(always)]
     pub(super) fn as_ref(&self) -> &[Limb] {
         self.limbs.as_ref()
@@ -74,5 +60,102 @@ impl<M> BoxedLimbs<M> {
     #[inline(always)]
     pub(super) fn len(&self) -> usize {
         self.limbs.len()
+    }
+}
+
+pub struct Uninit<M> {
+    len: usize,
+    m: PhantomData<M>,
+}
+
+impl<M> Uninit<M> {
+    // "Less safe" because this is what binds `len` to `M`.
+    pub fn new_less_safe(len: usize) -> Self {
+        Self {
+            len,
+            m: PhantomData,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    #[cfg(not(target_arch = "x86_64"))]
+    pub(super) fn write_zeros(self) -> BoxedLimbs<M> {
+        self.write_iter_padded(core::iter::empty())
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
+    }
+
+    pub(super) fn write_from_be_bytes_padded(
+        self,
+        input: untrusted::Input,
+    ) -> Result<BoxedLimbs<M>, LenMismatchError> {
+        let input = limb::limbs_from_big_endian(input, 1..=self.len())?;
+        self.write_iter_padded(input)
+    }
+
+    pub(super) fn write_copy_of_slice_checked(
+        self,
+        src: &[Limb],
+    ) -> Result<BoxedLimbs<M>, LenMismatchError> {
+        self.write_iter_checked(src.iter().copied())
+    }
+
+    pub(super) fn write_copy_of_slice_padded(
+        self,
+        src: &[Limb],
+    ) -> Result<BoxedLimbs<M>, LenMismatchError> {
+        self.write_iter_padded(src.iter().copied())
+    }
+
+    pub(super) fn write_iter_checked(
+        self,
+        input: impl ExactSizeIterator<Item = Limb>,
+    ) -> Result<BoxedLimbs<M>, LenMismatchError>
+    where
+        Limb: Copy,
+    {
+        if input.len() != self.len() {
+            return Err(LenMismatchError::new(input.len()));
+        }
+        self.write_iter_padded(input)
+    }
+
+    pub(super) fn write_iter_padded(
+        self,
+        input: impl ExactSizeIterator<Item = Limb>,
+    ) -> Result<BoxedLimbs<M>, LenMismatchError>
+    where
+        Limb: Copy,
+    {
+        if input.len() > self.len {
+            return Err(LenMismatchError::new(input.len()));
+        }
+        let mut limbs = Vec::with_capacity(self.len);
+        limbs.extend(input);
+        limbs.resize(self.len, limb::ZERO);
+        Ok(BoxedLimbs {
+            limbs: limbs.into_boxed_slice(),
+            m: self.m,
+        })
+    }
+
+    pub(super) fn write_fully_with<EI>(
+        self,
+        f: impl for<'a> FnOnce(polyfill::slice::Uninit<'a, Limb>) -> Result<&'a mut [Limb], EI>,
+    ) -> Result<BoxedLimbs<M>, LenMismatchError>
+    where
+        LenMismatchError: From<EI>,
+    {
+        let m = self.m;
+        let mut uninit = Box::new_uninit_slice(self.len);
+        let (ptr, len) = (uninit.as_mut_ptr(), uninit.len());
+        let written = polyfill::slice::Uninit::from(uninit.as_mut()).write_fully_with(f)?;
+        // Postconditions of `polyfill::slice::Uninit::write_fully_with`.
+        debug_assert_eq!(written.len(), len);
+        debug_assert!(polyfill::ptr::addr_eq(written.as_ptr(), ptr.cast::<Limb>()) || len == 0); // cast_init
+        let limbs = unsafe { uninit.assume_init() };
+        Ok(BoxedLimbs { limbs, m })
     }
 }

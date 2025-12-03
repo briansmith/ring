@@ -15,9 +15,11 @@
 //! Verification of RSA signatures.
 
 use super::{
-    parse_public_key, public_key, PublicExponent, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
+    base::{public_key, PublicExponent},
+    parse_public_key, PublicKeyComponents, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
 };
 use crate::{
+    arithmetic::bigint,
     bits::{self, FromByteLen as _},
     cpu, digest,
     error::{self, InputTooLongError},
@@ -32,17 +34,8 @@ impl signature::VerificationAlgorithm for RsaParameters {
         signature: untrusted::Input,
         _: sealed::Arg,
     ) -> Result<(), error::Unspecified> {
-        let (n, e) = parse_public_key(public_key)?;
-        verify_rsa_(
-            self,
-            (
-                n.big_endian_without_leading_zero_as_input(),
-                e.big_endian_without_leading_zero_as_input(),
-            ),
-            msg,
-            signature,
-            cpu::features(),
-        )
+        let components = parse_public_key(public_key)?;
+        verify(self, components, msg, signature, cpu::features())
     }
 }
 
@@ -151,7 +144,7 @@ rsa_params!(
 
 pub use super::PublicKeyComponents as RsaPublicKeyComponents;
 
-impl<B> super::PublicKeyComponents<B>
+impl<B> PublicKeyComponents<B>
 where
     B: AsRef<[u8]>,
 {
@@ -181,12 +174,12 @@ where
         message: &[u8],
         signature: &[u8],
     ) -> Result<(), error::Unspecified> {
-        verify_rsa_(
+        verify(
             params,
-            (
-                untrusted::Input::from(self.n.as_ref()),
-                untrusted::Input::from(self.e.as_ref()),
-            ),
+            PublicKeyComponents {
+                n: self.n.as_ref(),
+                e: self.e.as_ref(),
+            },
             untrusted::Input::from(message),
             untrusted::Input::from(signature),
             cpu::features(),
@@ -194,9 +187,9 @@ where
     }
 }
 
-pub(crate) fn verify_rsa_(
+fn verify(
     params: &RsaParameters,
-    (n, e): (untrusted::Input, untrusted::Input),
+    components: PublicKeyComponents<&[u8]>,
     msg: untrusted::Input,
     signature: untrusted::Input,
     cpu_features: cpu::Features,
@@ -204,19 +197,19 @@ pub(crate) fn verify_rsa_(
     let max_bits: bits::BitLength =
         bits::BitLength::from_byte_len(PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)
             .map_err(error::erase::<InputTooLongError>)?;
+    let validated = public_key::ValidatedInput::try_from_be_bytes(
+        components,
+        params.min_bits,
+        max_bits,
+        PublicExponent::_3,
+    )?;
 
     // XXX: FIPS 186-4 seems to indicate that the minimum
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let key = public_key::Inner::from_modulus_and_exponent(
-        n,
-        e,
-        params.min_bits,
-        max_bits,
-        PublicExponent::_3,
-        cpu_features,
-    )?;
+    let mut out = bigint::OversizedUninit::<2>::new();
+    let key = validated.build(&mut out, cpu_features);
 
     // RFC 8017 Section 5.2.2: RSAVP1.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
