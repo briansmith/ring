@@ -118,12 +118,17 @@ mod tests {
         let maybe_sha512: Option<Sha512> = cpu::features().get_feature();
         let has_sha512 = maybe_sha512.is_some();
 
-        if cfg!(all(target_os = "macos", target_pointer_width = "64")) {
+        // Intentionally defer the assertion to runtime instead of compile time.
+        #[allow(clippy::assertions_on_constants)]
+        #[cfg(all(target_os = "macos", target_pointer_width = "64"))]
+        {
             // All aarch64-apple-darwin targets have SHA3 enabled statically...
             assert!(cfg!(target_feature = "sha3"));
             assert_eq!(has_sha512, cfg!(target_pointer_width = "64"));
         }
-        if cfg!(any(not(target_pointer_width = "64"), target_os = "watchos")) {
+
+        #[cfg(any(not(target_pointer_width = "64"), target_os = "watchos"))]
+        {
             assert!(!has_sha512);
         }
     }
