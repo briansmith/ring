@@ -107,5 +107,8 @@ pub(super) mod featureflags {
     static FEATURES: race::OnceNonZeroU32<race::AcquireRelease> = race::OnceNonZeroU32::new();
 
     // TODO(MSRV): 32-bit ARM doesn't support any static feature detection yet.
-    pub(in super::super) const STATIC_DETECTED: u32 = 0;
+    #[rustfmt::skip]
+    pub(in super::super) const STATIC_DETECTED: u32 = 0
+        | (if cfg!(target_os = "vita") { Neon::mask() } else { 0 })
+        ;
 }
