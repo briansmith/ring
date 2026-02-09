@@ -153,7 +153,7 @@ name = "ring"
 
 [dependencies]
 cfg-if = { version = "1.0.0", default-features = false }
-getrandom = { version = "0.2.10" }
+getrandom = { version = "0.3.4" }
 untrusted = { version = "0.9" }
 
 [target.'cfg(all(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")), any(target_os = "android", target_os = "linux")))'.dependencies]
@@ -186,7 +186,7 @@ std = ["alloc"]
 unstable-testing-arm-no-hw = []
 unstable-testing-arm-no-neon = []
 test_logging = []
-wasm32_unknown_unknown_js = ["getrandom/js"]
+wasm32_unknown_unknown_js = ["getrandom/wasm_js"]
 
 [package.metadata.cargo-semver-checks.lints]
 trait_marked_deprecated = { level = "warn" }
