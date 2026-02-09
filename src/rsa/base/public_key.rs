@@ -198,7 +198,7 @@ fn fill_be_bytes_n(
     out: &mut [u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN],
 ) -> &[u8] {
     let n_bytes = n_bits.as_usize_bytes_rounded_up();
-    let n_bytes_padded = ((n_bytes + (LIMB_BYTES - 1)) / LIMB_BYTES) * LIMB_BYTES;
+    let n_bytes_padded = n_bytes.next_multiple_of(LIMB_BYTES);
     let out = &mut out[..n_bytes_padded];
     elem.fill_be_bytes(out);
     let (padding, out) = out.split_at(n_bytes_padded - n_bytes);
