@@ -64,7 +64,7 @@ impl PrivateExponent {
             return r;
         }
 
-        let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
+        let num_limbs = input.len().div_ceil(LIMB_BYTES);
         let mut limbs = Uninit::<M>::new_less_safe(num_limbs)
             .write_from_be_bytes_padded(input)
             .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;

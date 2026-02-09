@@ -38,7 +38,7 @@ pub struct ValidatedInput<'a> {
 
 impl<'a> ValidatedInput<'a> {
     pub fn try_from_be_bytes(input: untrusted::Input<'a>) -> Result<Self, error::KeyRejected> {
-        let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
+        let num_limbs = input.len().div_ceil(LIMB_BYTES);
         const _MODULUS_MIN_LIMBS_AT_LEAST_2: () = assert!(MIN_LIMBS >= 2);
         if num_limbs < MIN_LIMBS {
             return Err(error::KeyRejected::too_small());
