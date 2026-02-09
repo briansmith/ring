@@ -37,7 +37,7 @@ use core::ops::RangeInclusive;
 pub type Limb = bb::Word;
 pub type LeakyLimb = bb::LeakyWord;
 pub const LIMB_BITS: usize = usize_from_u32(Limb::BITS);
-pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
+pub const LIMB_BYTES: usize = LIMB_BITS.div_ceil(8);
 
 pub const ZERO: LeakyLimb = 0;
 

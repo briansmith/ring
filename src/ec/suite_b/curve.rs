@@ -33,8 +33,8 @@ macro_rules! suite_b_curve {
         /// [Suite B Implementer's Guide to NIST SP 800-56A]:
         ///     https://github.com/briansmith/ring/blob/main/doc/ecdh.pdf
         pub static $NAME: ec::Curve = ec::Curve {
-            public_key_len: 1 + (2 * (($bits + 7) / 8)),
-            elem_scalar_seed_len: ($bits + 7) / 8,
+            public_key_len: 1 + (2 * $bits.div_ceil(8)),
+            elem_scalar_seed_len: $bits.div_ceil(8),
             id: $id,
             check_private_key_bytes: $check_private_key_bytes,
             generate_private_key: $generate_private_key,
@@ -74,7 +74,7 @@ macro_rules! suite_b_curve {
 
 suite_b_curve!(
     P256,
-    256,
+    256usize,
     &ec::suite_b::ops::p256::PRIVATE_KEY_OPS,
     ec::CurveID::P256,
     p256_check_private_key_bytes,
@@ -84,7 +84,7 @@ suite_b_curve!(
 
 suite_b_curve!(
     P384,
-    384,
+    384usize,
     &ec::suite_b::ops::p384::PRIVATE_KEY_OPS,
     ec::CurveID::P384,
     p384_check_private_key_bytes,
