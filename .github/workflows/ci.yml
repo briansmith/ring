@@ -349,7 +349,7 @@ jobs:
             host_os: windows-2025
 
           - target: x86_64-apple-darwin
-            host_os: macos-13
+            host_os: macos-15
 
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-22.04
@@ -662,7 +662,7 @@ jobs:
             host_os: ubuntu-24.04
 
           - target: x86_64-apple-darwin
-            host_os: macos-13
+            host_os: macos-15
 
           - target: i686-unknown-linux-gnu
             cpu_model: coreduo-v1
