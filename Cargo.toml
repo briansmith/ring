@@ -11,7 +11,10 @@ repository = "https://github.com/briansmith/ring"
 # Keep in sync with .github/workflows/ci.yml ("MSRV") and see the MSRV note
 # in cpu/arm.rs.
 # 1.66 is required on x86/x86_64 for https://github.com/rust-lang/rust/pull/101861.
-rust-version = "1.84"
+# Our `getrandom` dependency as of 0.4.2 has MSRV 1.85 on most targets; it
+# has MSRV 1.87 on wasm32-wasip3; see
+# https://github.com/rust-random/getrandom/pull/824.
+rust-version = "1.85"
 
 # Keep in sync with `links` below.
 # For normal (SemVer-compatible) updates, bump this to the next multiple of 1000
@@ -156,7 +159,10 @@ name = "ring"
 [dependencies]
 cfg-if = { version = "1.0.0", default-features = false }
 
-getrandom = { version = "0.2.10" }
+# `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo update -p getrandom`.
+# On wasm32-wasip3, this depends on a version of wasip3 that has a higher MSRV;
+# see https://github.com/rust-random/getrandom/pull/824.
+getrandom = { version = "0.4.2" }
 
 untrusted = { version = "0.9" }
 
@@ -165,14 +171,6 @@ libc = { version = "0.2.172", default-features = false }
 
 [target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_vendor = "apple", any(target_os = "ios", target_os = "macos", target_os = "tvos", target_os = "visionos", target_os = "watchos")))'.dependencies]
 libc = { version = "0.2.172", default-features = false }
-
-[target.'cfg(all(target_os = "linux", target_env = "musl"))'.dependencies]
-# https://github.com/rust-random/getrandom/pull/408
-getrandom = { version = "0.2.14" }
-
-[target.'cfg(target_os = "windows")'.dependencies]
-# https://github.com/rust-random/getrandom/pull/778
-getrandom = { version = "0.2.17" }
 
 [target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_os = "windows"))'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Threading"] }
@@ -198,7 +196,7 @@ std = ["alloc"]
 unstable-testing-arm-no-hw = []
 unstable-testing-arm-no-neon = []
 test_logging = []
-wasm32_unknown_unknown_js = ["getrandom/js"]
+wasm32_unknown_unknown_js = ["getrandom/wasm_js"]
 
 [package.metadata.cargo-semver-checks.lints]
 trait_marked_deprecated = { level = "warn" }
