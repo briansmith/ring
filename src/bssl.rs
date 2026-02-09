@@ -38,10 +38,7 @@ impl From<Result> for core::result::Result<(), error::Unspecified> {
 mod tests {
     mod result {
         use crate::bssl;
-        use core::{
-            ffi::c_int,
-            mem::{align_of, size_of},
-        };
+        use core::ffi::c_int;
 
         #[test]
         fn size_and_alignment() {

@@ -18,7 +18,7 @@ use crate::{
     limb::{Limb, LIMB_BITS},
     polyfill::{slice::AliasingSlices, usize_from_u32, StartMutPtr},
 };
-use core::{mem::size_of, num::NonZeroUsize};
+use core::num::NonZeroUsize;
 
 const _MIN_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
     // The x86 implementation of `bn_mul_mont_sse2` requires at least 4

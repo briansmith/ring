@@ -20,8 +20,6 @@
 use core::ops::{BitAnd, Shl};
 
 mod abi_assumptions {
-    use core::mem::size_of;
-
     // TOOD: Support targets that do not have SSE and SSE2 enabled, such as
     // x86_64-unknown-linux-none. See
     // https://github.com/briansmith/ring/issues/1793#issuecomment-1793243725,

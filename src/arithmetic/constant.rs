@@ -1,5 +1,4 @@
 use crate::limb::LeakyLimb;
-use core::mem::size_of;
 
 const fn parse_digit(d: u8) -> u8 {
     match d.to_ascii_lowercase() {

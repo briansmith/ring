@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::testutil;
-use core::{marker::PhantomData, mem::size_of};
+use core::marker::PhantomData;
 
 /// A ZST that can be added to any type to make the type `!Send`.
 #[derive(Clone, Copy)]

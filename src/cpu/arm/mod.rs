@@ -17,8 +17,6 @@
 use super::CAPS_STATIC;
 
 mod abi_assumptions {
-    use core::mem::size_of;
-
     const _ASSUMED_POINTER_SIZE: usize = 4;
     const _ASSUMED_USIZE_SIZE: () = assert!(size_of::<usize>() == _ASSUMED_POINTER_SIZE);
     const _ASSUMED_REF_SIZE: () = assert!(size_of::<&'static u8>() == _ASSUMED_POINTER_SIZE);

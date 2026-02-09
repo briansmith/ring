@@ -21,7 +21,7 @@ use super::{
     Overlapping, BLOCK_LEN,
 };
 use crate::{bb, polyfill::usize_from_u32};
-use core::{array, mem::size_of, num::NonZeroU32};
+use core::{array, num::NonZeroU32};
 
 #[derive(Clone)]
 pub enum Key {
@@ -239,7 +239,7 @@ fn swap_bits<const A: usize, const B: usize, const MASK_BYTE: u8, const SHIFT: u
     w: &mut [Word; 8],
 ) {
     // TODO: const MASK: Word = ...
-    let mask = Word::from_ne_bytes([MASK_BYTE; core::mem::size_of::<Word>()]);
+    let mask = Word::from_ne_bytes([MASK_BYTE; size_of::<Word>()]);
 
     // This is a variation on a delta swap.
     let swap = ((w[A] >> SHIFT) ^ w[B]) & mask;

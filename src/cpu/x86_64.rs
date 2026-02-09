@@ -20,8 +20,6 @@
 use core::ops::{BitAnd, Shl};
 
 mod abi_assumptions {
-    use core::mem::size_of;
-
     // TOOD: Support targets that do not have SSE and SSE2 enabled, such as
     // x86_64-unknown-linux-none. See
     // https://github.com/briansmith/ring/issues/1793#issuecomment-1793243725,
@@ -140,7 +138,7 @@ unsafe fn cpuid_all() -> CpuidSummary {
 }
 
 fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
-    use core::{mem::align_of, sync::atomic::AtomicU32};
+    use core::sync::atomic::AtomicU32;
 
     let CpuidSummary {
         is_intel,

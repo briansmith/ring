@@ -11,7 +11,7 @@ repository = "https://github.com/briansmith/ring"
 # Keep in sync with .github/workflows/ci.yml ("MSRV") and see the MSRV note
 # in cpu/arm.rs.
 # 1.66 is required on x86/x86_64 for https://github.com/rust-lang/rust/pull/101861.
-rust-version = "1.66.0"
+rust-version = "1.85.0"
 
 # Keep in sync with `links` below.
 version = "0.17.14"

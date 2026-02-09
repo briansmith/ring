@@ -17,7 +17,6 @@ use crate::polyfill::prelude::*;
 
 use super::{format_output, sha1, sha2, Algorithm, Output};
 use crate::cpu;
-use core::mem::size_of;
 
 pub(super) enum DynInitialState {
     As64(sha2::State64),

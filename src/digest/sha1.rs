@@ -23,7 +23,7 @@ use super::{
     },
     BlockLen, OutputLen,
 };
-use core::{mem::size_of, num::Wrapping};
+use core::num::Wrapping;
 
 pub(super) const BLOCK_LEN: BlockLen = BlockLen::_512;
 pub const CHAINING_LEN: usize = 160 / 8;

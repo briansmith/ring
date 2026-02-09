@@ -57,17 +57,15 @@ const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () =
 pub fn detect_features() -> u32 {
     #[cfg(all(target_pointer_width = "64", not(target_os = "watchos")))]
     fn detect_feature(name: &CStr) -> bool {
-        use crate::polyfill;
-        use core::mem::size_of_val;
+        use core::{mem::size_of_val, ptr};
         use libc::{c_int, c_void};
 
         let mut value: c_int = 0;
         let mut len = size_of_val(&value);
-        let value_ptr = polyfill::ptr::from_mut(&mut value).cast::<c_void>();
+        let value_ptr = ptr::from_mut(&mut value).cast::<c_void>();
         // SAFETY: `value_ptr` is a valid pointer to `value` and `len` is the size of `value`.
-        let rc = unsafe {
-            libc::sysctlbyname(name.as_ptr(), value_ptr, &mut len, core::ptr::null_mut(), 0)
-        };
+        let rc =
+            unsafe { libc::sysctlbyname(name.as_ptr(), value_ptr, &mut len, ptr::null_mut(), 0) };
         // All the conditions are separated so we can observe them in code coverage.
         if rc != 0 {
             return false;
@@ -90,13 +88,7 @@ pub fn detect_features() -> u32 {
 
     #[cfg(all(target_pointer_width = "64", not(target_os = "watchos")))]
     {
-        // TODO(MSRV-1.77): Use c"..." literal.
-        // TODO(MSRV-1.72): Use `CStr::from_bytes_with_nul`.
-        // TODO(MSRV-1.69): Use `CStr::from_bytes_until_nul`.
-        const SHA512_NAME: &CStr =
-            unsafe { CStr::from_bytes_with_nul_unchecked(b"hw.optional.armv8_2_sha512\0") };
-
-        if detect_feature(SHA512_NAME) {
+        if detect_feature(c"hw.optional.armv8_2_sha512") {
             features |= Sha512::mask();
         }
     }

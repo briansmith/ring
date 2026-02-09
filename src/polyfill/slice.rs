@@ -35,14 +35,6 @@ pub(crate) trait SlicePolyfills {
     type Elem;
     fn as_chunks<const N: usize>(&self) -> (&[[Self::Elem; N]], &[Self::Elem]);
     fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[Self::Elem; N]], &mut [Self::Elem]);
-    fn split_at_checked(&self, mid: usize) -> Option<(&[Self::Elem], &[Self::Elem])>;
-    fn split_at_mut_checked(
-        &mut self,
-        mid: usize,
-    ) -> Option<(&mut [Self::Elem], &mut [Self::Elem])>;
-    fn split_first_chunk_mut<const N: usize>(
-        &mut self,
-    ) -> Option<(&mut [Self::Elem; N], &mut [Self::Elem])>;
 }
 
 impl<T> SlicePolyfills for [T] {
@@ -70,42 +62,6 @@ impl<T> SlicePolyfills for [T] {
         let chunks = <*mut Self::Elem>::cast::<[Self::Elem; N]>(chunks.as_mut_ptr());
         let chunks = unsafe { core::slice::from_raw_parts_mut(chunks, len / N) };
         (chunks, remainder)
-    }
-
-    // Note that the libcore version is implemented in terms of
-    // `slice::split_at_unchecked()`, and `slice::split_at()` was changed to be
-    // implemented in terms of `split_at_checked`. For now, we implement this in
-    // terms of `split_at` and rely on the optimizer to eliminate the panic.
-    // TODO(MSRV-1.80): Use `slice::split_at_checked`.
-    #[inline]
-    fn split_at_checked(&self, mid: usize) -> Option<(&[Self::Elem], &[Self::Elem])> {
-        if self.len() >= mid {
-            Some(self.split_at(mid))
-        } else {
-            None
-        }
-    }
-
-    // TODO(MSRV-1.80): Use `slice::split_at_checked`.
-    #[inline]
-    fn split_at_mut_checked(
-        &mut self,
-        mid: usize,
-    ) -> Option<(&mut [Self::Elem], &mut [Self::Elem])> {
-        if self.len() >= mid {
-            Some(self.split_at_mut(mid))
-        } else {
-            None
-        }
-    }
-
-    // TODO(MSRV-1.77): Use `slice::split_first_chunk_mut`.
-    #[inline]
-    fn split_first_chunk_mut<const N: usize>(
-        &mut self,
-    ) -> Option<(&mut [Self::Elem; N], &mut [Self::Elem])> {
-        let (head, tail) = self.split_at_mut_checked(N)?;
-        head.try_into().ok().map(|head| (head, tail))
     }
 }
 

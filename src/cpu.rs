@@ -13,7 +13,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub(crate) use self::features::Features;
-use core::mem::size_of;
 
 macro_rules! impl_get_feature {
     {

@@ -17,7 +17,6 @@
 
 use super::{super::overlapping::IndexError, Counter, Key, Overlapping, BLOCK_LEN};
 use crate::{bb, polyfill::sliceutil};
-use core::mem::size_of;
 
 pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, mut in_out: Overlapping<'_>) {
     const SIGMA: [u32; 4] = [

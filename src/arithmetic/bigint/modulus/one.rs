@@ -24,7 +24,7 @@ use crate::{
     limb::{self, LIMB_BITS},
     polyfill::slice::Cursor,
 };
-use core::{marker::PhantomData, mem::size_of};
+use core::marker::PhantomData;
 
 // The value 1, Montgomery-encoded some number of times.
 pub struct One<'a, M, E> {
@@ -138,12 +138,7 @@ impl<M> One<'_, M, RR> {
         //   = lg((t * 2**b) / t)
         //   = lg(2**b)
         //   = b
-        // TODO(MSRV:1.67): const B: u32 = LIMB_BITS.ilog2();
-        const B: u32 = match size_of::<Limb>() {
-            8 => 6,
-            4 => 5,
-            _ => panic!("unsupported limb size"),
-        };
+        const B: u32 = LIMB_BITS.ilog2();
         #[allow(clippy::assertions_on_constants)]
         const _LIMB_BITS_IS_2_POW_B: () = assert!(LIMB_BITS == 1 << B);
         debug_assert_eq!(r, t * (1 << B));

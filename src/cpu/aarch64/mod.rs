@@ -17,8 +17,6 @@
 use super::CAPS_STATIC;
 
 mod abi_assumptions {
-    use core::mem::size_of;
-
     // arm64_32-apple-darwin code can call aarch64-apple-darwin assembly
     // functions, but aarch64-*_ilp32 functions CANNOT call
     // aarch64-* functions.

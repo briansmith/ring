@@ -141,7 +141,7 @@ jobs:
 
       - run: ./mk/install-build-tools.ps1
 
-      - run: rustup toolchain install --no-self-update --profile=minimal 1.66.0
+      - run: rustup toolchain install --no-self-update --profile=minimal 1.85.0
 
       - run: echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
         shell: bash
@@ -183,7 +183,6 @@ jobs:
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
           - riscv64gc-unknown-linux-gnu
-          - wasm32-wasi
           - wasm32-wasip1
           - wasm32-wasip2
           - x86_64-pc-windows-gnu
@@ -199,23 +198,10 @@ jobs:
         rust_channel:
           - stable
           # Keep in sync with Cargo.toml and similar `rust_channel` sections.
-          - 1.66.0 # MSRV
+          - 1.85.0 # MSRV
           # TODO: Move these to a daily/pre-release job.
           # - nightly
           # - beta
-
-        exclude:
-          # Not available anymore.
-          - target: wasm32-wasi
-            rust_channel: stable
-
-          # Not available.
-          - target: wasm32-wasip1
-            rust_channel: 1.66.0
-
-          # Not available.
-          - target: wasm32-wasip2
-            rust_channel: 1.66.0
 
         include:
           - target: aarch64-apple-darwin
@@ -254,13 +240,6 @@ jobs:
 
           - target: aarch64-pc-windows-msvc
             host_os: windows-11-arm
-
-          - target: aarch64-pc-windows-msvc
-            host_os: windows-11-arm
-            rust_channel: 1.66.0
-            mode: --release
-            # XXX: https://github.com/briansmith/ring/issues/2536
-            cargo_test_options: -- --skip=test_rsakeypair_private_exponent
 
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-22.04
@@ -382,12 +361,10 @@ jobs:
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
 
-      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.66.0') &&
-                !contains(matrix.host_os, 'windows') }}
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
 
-      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.66.0') &&
-                !contains(matrix.host_os, 'windows') }}
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   test-bench:
@@ -460,7 +437,7 @@ jobs:
           - stable
           - nightly
           # Keep in sync with Cargo.toml and similar `rust_channel` sections.
-          - 1.66.0 # MSRV
+          - 1.85.0 # MSRV
 
         include:
           - target: aarch64-unknown-linux-musl
@@ -499,12 +476,10 @@ jobs:
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
 
-      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.66.0') &&
-          !contains(matrix.host_os, 'windows') }}
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: rustup toolchain install --component=llvm-tools-preview ${{ matrix.rust_channel }}
 
-      - if: ${{ (matrix.target != 'aarch64-apple-ios' || matrix.rust_channel != '1.66.0') &&
-          !contains(matrix.host_os, 'windows') }}
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: mk/check-symbol-prefixes.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
 
   # The wasm32-unknown-unknown targets have a different set of feature sets and
