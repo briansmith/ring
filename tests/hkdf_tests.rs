@@ -71,7 +71,8 @@ fn hkdf_output_len_tests() {
             // Test zero length.
             let okm = prk.expand(&[b"info"], My(0)).unwrap();
             let result: My<Vec<u8>> = okm.into();
-            assert_eq!(&result.0, &[]);
+            const EMPTY: &[u8] = &[];
+            assert_eq!(&result.0, EMPTY);
         }
 
         let max_out_len = MAX_BLOCKS * alg.hmac_algorithm().digest_algorithm().output_len();
