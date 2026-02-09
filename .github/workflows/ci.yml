@@ -50,9 +50,9 @@ jobs:
             ~/.cargo/bin/cargo-audit
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-v2-cargo-audit-locked-0.20.1
+          key: ${{ runner.os }}-v2-cargo-audit-locked-0.22.1
 
-      - run: cargo install cargo-audit  --locked --vers "0.20.1"
+      - run: cargo install cargo-audit  --locked --vers "0.22.1"
 
       - uses: briansmith/actions-checkout@v4
         with:
@@ -99,9 +99,9 @@ jobs:
             ~/.cargo/bin/cargo-deny
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-v2-cargo-deny-locked-0.16.4
+          key: ${{ runner.os }}-v2-cargo-deny-locked-0.19.9
 
-      - run: cargo install cargo-deny --locked --vers "0.16.4"
+      - run: cargo install cargo-deny --locked --vers "0.19.0"
 
       - uses: briansmith/actions-checkout@v4
         with:
