@@ -13,10 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{nonce::Nonce, overlapping, quic::Sample, Overlapping, NONCE_LEN};
-use crate::{
-    cpu::{self, GetFeature as _},
-    polyfill::unwrap_const,
-};
+use crate::cpu::{self, GetFeature as _};
 use core::num::NonZero;
 
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
@@ -129,7 +126,7 @@ impl Counter {
     }
 
     pub fn increment(&mut self) -> Iv {
-        const ONE: NonZero<u32> = unwrap_const(NonZero::new(1));
+        const ONE: NonZero<u32> = NonZero::new(1).unwrap();
 
         let iv = Iv(self.0);
         self.increment_by_less_safe(ONE);

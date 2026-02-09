@@ -1,5 +1,5 @@
 use crate::error;
-use crate::polyfill::{unwrap_const, ArrayFlatMap, LeadingZerosStripped};
+use crate::polyfill::{ArrayFlatMap, LeadingZerosStripped};
 use core::num::NonZero;
 
 /// The exponent `e` of an RSA public key.
@@ -10,8 +10,8 @@ impl PublicExponent {
     #[cfg(test)]
     const ALL_CONSTANTS: [Self; 3] = [Self::_3, Self::_65537, Self::MAX];
 
-    pub(crate) const _3: Self = Self(unwrap_const(NonZero::new(3)));
-    pub(crate) const _65537: Self = Self(unwrap_const(NonZero::new(65537)));
+    pub(crate) const _3: Self = Self(NonZero::new(3).unwrap());
+    pub(crate) const _65537: Self = Self(NonZero::new(65537).unwrap());
 
     // This limit was chosen to bound the performance of the simple
     // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
@@ -24,7 +24,7 @@ impl PublicExponent {
     // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
     // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
     // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-    const MAX: Self = Self(unwrap_const(NonZero::new((1u64 << 33) - 1)));
+    const MAX: Self = Self(NonZero::new((1u64 << 33) - 1).unwrap());
 
     pub(super) fn from_be_bytes(
         input: untrusted::Input,

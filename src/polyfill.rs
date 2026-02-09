@@ -97,12 +97,8 @@ mod test;
 
 mod uninit_slice;
 mod uninit_slice_cursor;
-mod unwrap_const;
 
-pub use self::{
-    array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, notsend::NotSend,
-    unwrap_const::unwrap_const,
-};
+pub use self::{array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, notsend::NotSend};
 
 #[allow(unused_imports)]
 pub use self::{

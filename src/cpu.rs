@@ -67,8 +67,7 @@ macro_rules! impl_get_feature {
 
         impl Shift {
             const INITIALIZED_MASK: core::num::NonZero<u32> =
-                $crate::polyfill::unwrap_const(
-                    core::num::NonZero::new(1 << (Self::Initialized as u32)));
+                core::num::NonZero::new(1 << (Self::Initialized as u32)).unwrap();
         }
     }
 }
