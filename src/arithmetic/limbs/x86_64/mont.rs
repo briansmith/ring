@@ -32,7 +32,7 @@ use crate::{
     polyfill::slice::AliasingSlices,
     window5::Window5,
 };
-use core::{mem::MaybeUninit, num::NonZeroUsize};
+use core::{mem::MaybeUninit, num::NonZero};
 
 const _512_IS_LIMB_BITS_TIMES_8: () = assert!(8 * Limb::BITS == 512);
 
@@ -92,11 +92,11 @@ pub(in super::super::super) fn sqr_mont5<'o>(
             mulx_adx_capable: Limb,
             np: *const Limb,
             n0: &N0,
-            num: c::NonZero_size_t);
+            num: NonZero<c::size_t>);
     }
 
     let n = n.as_flattened();
-    let num_limbs = NonZeroUsize::new(n.len()).ok_or_else(|| LimbSliceError::too_short(n.len()))?;
+    let num_limbs = NonZero::new(n.len()).ok_or_else(|| LimbSliceError::too_short(n.len()))?;
 
     // Avoid stack overflow from the alloca inside.
     if num_limbs.get() > MAX_LIMBS {
@@ -130,7 +130,7 @@ pub(in super::super::super) fn gather5(
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
         fn bn_gather5(
             out: *mut Limb,
-            num: c::NonZero_size_t,
+            num: NonZero<c::size_t>,
             table: *const Limb,
             power: Window5);
     }
@@ -165,7 +165,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
             table: *const Limb,
             np: *const Limb,
             n0: &N0,
-            num: c::NonZero_size_t,
+            num: NonZero<c::size_t>,
             power: Window5,
         );
         // Upstream has `num: c_int` and `power: c_int`; see
@@ -176,7 +176,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
             table: *const Limb,
             np: *const Limb,
             n0: &N0,
-            num: c::NonZero_size_t,
+            num: NonZero<c::size_t>,
             power: Window5,
         );
     }
@@ -218,7 +218,7 @@ pub(in super::super::super) fn power5_amm(
             table: *const Limb,
             np: *const Limb,
             n0: &N0,
-            num: c::NonZero_size_t,
+            num: NonZero<c::size_t>,
             power: Window5,
         );
         // Upstream has `num: c_int` and `power: c_int`; see
@@ -229,7 +229,7 @@ pub(in super::super::super) fn power5_amm(
             table: *const Limb,
             np: *const Limb,
             n0: &N0,
-            num: c::NonZero_size_t,
+            num: NonZero<c::size_t>,
             power: Window5,
         );
     }

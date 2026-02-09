@@ -54,7 +54,7 @@ impl UpdateBlocks for Key {
                 xi: &mut Xi,
                 Htable: &Key,
                 inp: *const u8,
-                len: crate::c::NonZero_size_t,
+                len: crate::NonZero<c::size_t>,
             );
         }
         ffi::with_non_dangling_ptr(input, |input, len| unsafe {

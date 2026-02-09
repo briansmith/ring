@@ -21,13 +21,9 @@
 //! `usize` and `uintptr_t` are different sizes.
 //!
 //! TODO(MSRV, feature(c_size_t)): Use `core::{ffi::c_size_t}`.
-//! TODO(MSRV-1.79): Use `NonZero<c_size_t>`.
 
 // Keep in sync with the checks in base.h that verify these assumptions.
 
 #![allow(dead_code)]
 
-use core::num::NonZeroUsize;
-
 pub(crate) type size_t = usize;
-pub(crate) type NonZero_size_t = NonZeroUsize;

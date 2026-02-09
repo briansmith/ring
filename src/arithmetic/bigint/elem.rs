@@ -31,7 +31,7 @@ use crate::{
         StartMutPtr,
     },
 };
-use core::{marker::PhantomData, num::NonZeroUsize};
+use core::{marker::PhantomData, num::NonZero};
 
 /// Elements of ℤ/mℤ for some modulus *m*.
 //
@@ -259,10 +259,10 @@ impl<M, E> Elem<M, E> {
                 a: *const Limb,
                 b: *const Limb,
                 m: *const Limb,
-                num_limbs: c::NonZero_size_t,
+                num_limbs: NonZero<c::size_t>,
             );
         }
-        let num_limbs = NonZeroUsize::new(m.limbs().len()).unwrap();
+        let num_limbs = NonZero::new(m.limbs().len()).unwrap();
         let _: &[Limb] = (InOut(self.limbs.as_mut()), b.limbs.as_ref())
             .with_non_dangling_non_null_pointers(num_limbs, |mut r, [a, b]| {
                 let m = m.limbs().as_ptr(); // Also non-dangling because num_limbs is non-zero.

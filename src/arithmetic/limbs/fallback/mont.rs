@@ -60,7 +60,7 @@ cfg_if! {
                 b: *const Limb,
                 n: *const Limb,
                 n0: &N0,
-                num_limbs: c::NonZero_size_t,
+                num_limbs: NonZero<c::size_t>,
             ) {
                 unsafe { bn_mul_mont_fallback_impl(r, a, b, n, n0, num_limbs) }
             }
@@ -77,7 +77,7 @@ unsafe extern "C" fn bn_mul_mont_fallback_impl(
     b: *const Limb,
     n: *const Limb,
     n0: &N0,
-    num_limbs: c::NonZero_size_t,
+    num_limbs: core::num::NonZero<c::size_t>,
 ) {
     let num_limbs = num_limbs.get();
 
