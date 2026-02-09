@@ -74,9 +74,9 @@ jobs:
             ~/.cargo/bin/cargo-semver-checks
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-v2-cargo-semver-checks-0.44.0
+          key: ${{ runner.os }}-v2-cargo-semver-checks-0.46.0
 
-      - run: cargo install cargo-semver-checks --locked --vers "0.44.0"
+      - run: cargo install cargo-semver-checks --locked --vers "0.46.0"
 
       - uses: briansmith/actions-checkout@v4
         with:
