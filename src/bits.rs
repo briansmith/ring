@@ -117,7 +117,7 @@ impl BitLength<u64> {
     }
 }
 
-impl TryFrom<BitLength<u64>> for BitLength<core::num::NonZero<u64>> {
+impl TryFrom<BitLength<u64>> for BitLength<NonZero<u64>> {
     type Error = <NonZero<u64> as TryFrom<u64>>::Error;
 
     fn try_from(BitLength(value): BitLength<u64>) -> Result<Self, Self::Error> {
