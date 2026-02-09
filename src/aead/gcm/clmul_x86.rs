@@ -19,7 +19,7 @@ use super::{
     UpdateBlock, UpdateBlocks, Xi,
 };
 use crate::cpu;
-use core::{mem::MaybeUninit, slice};
+use core::{mem::MaybeUninit, num::NonZero, slice};
 
 #[derive(Clone)]
 #[repr(transparent)]
