@@ -94,10 +94,10 @@ pub(super) mod featureflags {
     pub(in super::super) use super::detect::FORCE_DYNAMIC_DETECTION;
     use super::*;
     use crate::{cpu, polyfill::once_cell::race};
-    use core::num::NonZeroU32;
+    use core::num::NonZero;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
-        fn init() -> NonZeroU32 {
+        fn init() -> NonZero<u32> {
             let detected = detect::detect_features();
             let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
                 !Neon::mask()
@@ -115,7 +115,7 @@ pub(super) mod featureflags {
 
         // SAFETY: This is the only caller. Any concurrent reading doesn't
         // affect the safety of the writing.
-        let _: NonZeroU32 = FEATURES.get_or_init(init);
+        let _: NonZero<u32> = FEATURES.get_or_init(init);
 
         // SAFETY: We initialized the CPU features as required.
         unsafe { cpu::Features::new_after_feature_flags_written_and_synced_unchecked() }

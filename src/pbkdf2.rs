@@ -31,7 +31,7 @@
 //!
 //! ```
 //! use ring::{digest, pbkdf2};
-//! use std::{collections::HashMap, num::NonZeroU32};
+//! use std::{collections::HashMap, num::NonZero};
 //!
 //! static PBKDF2_ALG: pbkdf2::Algorithm = pbkdf2::PBKDF2_HMAC_SHA256;
 //! const CREDENTIAL_LEN: usize = digest::SHA256_OUTPUT_LEN;
@@ -42,7 +42,7 @@
 //! }
 //!
 //! struct PasswordDatabase {
-//!     pbkdf2_iterations: NonZeroU32,
+//!     pbkdf2_iterations: NonZero<u32>,
 //!     db_salt_component: [u8; 16],
 //!
 //!     // Normally this would be a persistent database.
@@ -91,7 +91,7 @@
 //! fn main() {
 //!     // Normally these parameters would be loaded from a configuration file.
 //!     let mut db = PasswordDatabase {
-//!         pbkdf2_iterations: NonZeroU32::new(100_000).unwrap(),
+//!         pbkdf2_iterations: NonZero::new(100_000).unwrap(),
 //!         db_salt_component: [
 //!             // This value was generated from a secure PRNG.
 //!             0xd6, 0x26, 0x98, 0xda, 0xf4, 0xdc, 0x50, 0x52,
@@ -118,7 +118,7 @@ use crate::{
     error::{self, TooMuchOutputRequestedError},
     hmac::{self, InputTooLongError},
 };
-use core::num::NonZeroU32;
+use core::num::NonZero;
 
 /// A PBKDF2 algorithm.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -165,7 +165,7 @@ pub static PBKDF2_HMAC_SHA512: Algorithm = Algorithm(hmac::HMAC_SHA512);
 /// input to the underlying digest function.
 pub fn derive(
     algorithm: Algorithm,
-    iterations: NonZeroU32,
+    iterations: NonZero<u32>,
     salt: &[u8],
     secret: &[u8],
     out: &mut [u8],
@@ -178,7 +178,7 @@ pub fn derive(
 
 fn try_derive(
     algorithm: Algorithm,
-    iterations: NonZeroU32,
+    iterations: NonZero<u32>,
     salt: &[u8],
     secret: &[u8],
     out: &mut [u8],
@@ -215,7 +215,7 @@ fn try_derive(
 
 fn derive_block(
     secret: &hmac::Key,
-    iterations: NonZeroU32,
+    iterations: NonZero<u32>,
     salt: &[u8],
     idx: u32,
     out: &mut [u8],
@@ -278,7 +278,7 @@ cold_exhaustive_error! {
 /// | `previously_derived.len()` | dkLen (derived key length)
 pub fn verify(
     algorithm: Algorithm,
-    iterations: NonZeroU32,
+    iterations: NonZero<u32>,
     salt: &[u8],
     secret: &[u8],
     previously_derived: &[u8],
@@ -290,7 +290,7 @@ pub fn verify(
 
 fn try_verify(
     algorithm: Algorithm,
-    iterations: NonZeroU32,
+    iterations: NonZero<u32>,
     salt: &[u8],
     secret: &[u8],
     previously_derived: &[u8],

@@ -38,10 +38,10 @@ mod abi_assumptions {
 pub(super) mod featureflags {
     use super::{super::CAPS_STATIC, *};
     use crate::{cpu, polyfill::once_cell::race};
-    use core::num::NonZeroU32;
+    use core::num::NonZero;
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
-        let _: NonZeroU32 = FEATURES.get_or_init(|| {
+        let _: NonZero<u32> = FEATURES.get_or_init(|| {
             // SAFETY: `cpuid_all` assumes CPUID is available and that it is
             // compatible with Intel.
             let cpuid_results = unsafe { cpuid_all() };

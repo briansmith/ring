@@ -20,7 +20,7 @@ use crate::{bits::BitLength, c};
 use core::{
     ffi::{c_int, c_uint},
     mem::MaybeUninit,
-    num::{NonZero, NonZeroU32},
+    num::NonZero,
 };
 
 /// nonce || big-endian counter.
@@ -215,7 +215,7 @@ impl AES_KEY {
 
             let input = input.cast_array_::<BLOCK_LEN>();
             let output = output.cast_array_::<BLOCK_LEN>();
-            let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
+            let blocks_u32: NonZero<u32> = blocks.try_into().unwrap();
 
             // SAFETY:
             //  * `input` points to `blocks` blocks.
@@ -261,7 +261,7 @@ pub(super) unsafe fn ctr32_encrypt_blocks(
 
         let input = input.cast_array_::<BLOCK_LEN>();
         let output = output.cast_array_::<BLOCK_LEN>();
-        let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
+        let blocks_u32: NonZero<u32> = blocks.try_into().unwrap();
 
         // SAFETY:
         //  * `input` points to `blocks` blocks.
