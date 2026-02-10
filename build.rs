@@ -213,7 +213,7 @@ const ASM_TARGETS: &[AsmTarget] = &[
         perlasm_format: "linux64",
     },
     AsmTarget {
-        oss: &[ANDROID, FREEBSD, HORIZON, LINUX, NETBSD],
+        oss: &[ANDROID, FREEBSD, HORIZON, LINUX, NETBSD, VITA],
         arch: ARM,
         perlasm_format: "linux32",
     },
@@ -288,6 +288,7 @@ const NTO: &str = "nto";
 const OPENBSD: &str = "openbsd";
 const REDOX: &str = "redox";
 const SOLARIS: &str = "solaris";
+const VITA: &str = "vita";
 
 const WIN32N: &str = "win32n";
 const NASM: &str = "nasm";
