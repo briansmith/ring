@@ -27,7 +27,7 @@ use crate::{
     polyfill::slice::{AliasedUninit, AliasingSlices},
 };
 use cfg_if::cfg_if;
-use core::hint::unreachable_unchecked;
+use core::{hint::unreachable_unchecked, num::NonZero};
 
 #[allow(dead_code)]
 #[inline]
@@ -77,7 +77,7 @@ unsafe extern "C" fn bn_mul_mont_fallback_impl(
     b: *const Limb,
     n: *const Limb,
     n0: &N0,
-    num_limbs: core::num::NonZero<c::size_t>,
+    num_limbs: NonZero<c::size_t>,
 ) {
     let num_limbs = num_limbs.get();
 
