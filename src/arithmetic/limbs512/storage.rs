@@ -63,10 +63,9 @@ impl<const N: usize> AlignedStorage<N> {
     }
 }
 
-// TODO(MSRV-1.79): Just return the pointer `p` and then use `p.len()`.
 #[allow(dead_code)]
-pub fn table_parts_uninit<E, const N: usize>(table: &[[MaybeUninit<E>; N]]) -> *const [[E; N]] {
-    ptr::from_ref(table) as *const [[E; N]]
+pub fn as_const_uninit<E, const N: usize>(table: &[[E; N]]) -> *const [[MaybeUninit<E>; N]] {
+    ptr::from_ref(table) as *const [[MaybeUninit<E>; N]] // cast_uninit.
 }
 
 // Helps the compiler will be able to hoist all of these checks out of the
@@ -76,7 +75,7 @@ pub fn table_parts_uninit<E, const N: usize>(table: &[[MaybeUninit<E>; N]]) -> *
 #[inline(always)]
 pub(crate) fn check_common(
     a: &[Limb],
-    table_ptr: *const [[Limb; LIMBS_PER_CHUNK]],
+    table_ptr: *const [[MaybeUninit<Limb>; LIMBS_PER_CHUNK]],
 ) -> Result<NonZero<usize>, LimbSliceError> {
     let table_len = table_ptr.len();
     assert_eq!(table_ptr.start_ptr() as usize % 16, 0); // According to BoringSSL.
@@ -94,7 +93,7 @@ pub(crate) fn check_common(
 #[inline(always)]
 pub(crate) fn check_common_with_n(
     a: &[Limb],
-    table_ptr: *const [[Limb; LIMBS_PER_CHUNK]],
+    table_ptr: *const [[MaybeUninit<Limb>; LIMBS_PER_CHUNK]],
     n: &[[Limb; LIMBS_PER_CHUNK]],
 ) -> Result<NonZero<usize>, LimbSliceError> {
     // Choose `a` instead of `n` so that every function starts with

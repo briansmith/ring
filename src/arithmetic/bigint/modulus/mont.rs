@@ -111,7 +111,7 @@ impl ValidatedInput<'_> {
         uninit: &'o mut OversizedUninit<2>,
         cpu: cpu::Features,
     ) -> IntoMont<'o, M, RR> {
-        self.write_into_mont(&mut uninit.as_uninit().into_cursor(), cpu)
+        self.write_into_mont(&mut uninit.as_const_uninit().into_cursor(), cpu)
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
     }
 
