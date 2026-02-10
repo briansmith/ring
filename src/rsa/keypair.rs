@@ -454,7 +454,7 @@ impl ValidatedPrivatePrimeInput<'_> {
             return Err(KeyRejected::inconsistent_components());
         }
 
-        if p.len_bits().as_bits() % 512 != 0 {
+        if !p.len_bits().as_bits().is_multiple_of(512) {
             return Err(KeyRejected::private_modulus_len_not_multiple_of_512_bits());
         }
 

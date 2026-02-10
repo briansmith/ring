@@ -130,7 +130,7 @@ impl<E> Array<'_, E> {
     //
     // Potentially this is easier to optimize since it avoids multiplication.
     pub fn mid(&self) -> Option<&[E]> {
-        let adjust = if self.len % 2 == 0 {
+        let adjust = if self.len.is_multiple_of(2) {
             0
         } else {
             self.elems_per_item.get()

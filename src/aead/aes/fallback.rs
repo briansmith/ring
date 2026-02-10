@@ -696,7 +696,7 @@ fn setup_key_256(input: &[u8; 32]) -> Key {
             block2
         } else {
             let rcon = RCON[(i / 2) - 1];
-            if i % 2 == 0 {
+            if i.is_multiple_of(2) {
                 let sub = sub_block(&block2);
                 derive_round_key(&mut block1, sub, rcon)
             } else {

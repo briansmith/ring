@@ -36,7 +36,7 @@ pub(super) fn seal(
     in_out: &mut [u8],
 ) -> Result<Tag, InputTooLongError> {
     prefixed_extern! {
-        // Requires `len % STRIDE_LEN == 0 && len >= 3 * STRIDE_LEN`.
+        // Requires `len.is_multiple_of(STRIDE_LEN) && len >= 3 * STRIDE_LEN`.
         //
         // The upstream version has a different calling convention where it
         // accepts any `len` and returns the number of bytes processed
@@ -101,7 +101,7 @@ pub(super) fn open(
     in_out: Overlapping<'_>,
 ) -> Result<Tag, InputTooLongError> {
     prefixed_extern! {
-        // Requires `len % STRIDE_LEN == 0 && len != 0`.
+        // Requires `len.is_multiple_of(STRIDE_LEN) && len != 0`.
         //
         // The upstream version has a different calling convention where it
         // accepts any `len` and returns the number of bytes processed

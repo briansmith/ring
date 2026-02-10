@@ -83,7 +83,7 @@ pub(crate) fn elem_exp_consttime<N, P>(
 // operation.
 const ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS: usize = 2048 / LIMB_BITS;
 const _LIMBS_PER_CHUNK_DIVIDES_ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS: () =
-    assert!(ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS % limbs512::LIMBS_PER_CHUNK == 0);
+    assert!(ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS.is_multiple_of(limbs512::LIMBS_PER_CHUNK));
 const WINDOW_BITS: u32 = 5;
 const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
 const STORAGE_ENTRIES: usize = TABLE_ENTRIES + if cfg!(target_arch = "x86_64") { 3 } else { 0 };
@@ -104,7 +104,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         out.elem_reduce_mont(base_mod_n, m, other_prime_len_bits);
 
     let num_limbs = m.num_limbs();
-    if num_limbs.get() % limbs512::LIMBS_PER_CHUNK != 0 {
+    if !num_limbs.get().is_multiple_of(limbs512::LIMBS_PER_CHUNK) {
         Err(LenMismatchError::new(num_limbs.get()))?
     }
 
@@ -117,7 +117,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                 i: Window5,
             ) -> bssl::Result;
         }
-        if table.len() % 32 != 0 || acc.num_limbs() != table.len() / 32 {
+        if !table.len().is_multiple_of(32) || acc.num_limbs() != table.len() / 32 {
             return Err(LenMismatchError::new(acc.num_limbs()));
         }
         let acc = acc.leak_limbs_mut_less_safe();
@@ -162,7 +162,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                 ),
 
                 // table[2*i] = (n**i)**2/R
-                i if i % 2 == 0 => {
+                i if i.is_multiple_of(2) => {
                     let sqrt = init.mid().unwrap_or_else(|| unreachable!());
                     limbs_square_mont((uninit, sqrt), m.limbs(), m.n0(), m.cpu_features())
                 }
@@ -268,7 +268,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     const _TABLE_ENTRIES_IS_32: () = assert!(TABLE_ENTRIES == 32);
     const _STORAGE_ENTRIES_HAS_3_EXTRA: () = assert!(STORAGE_ENTRIES == TABLE_ENTRIES + 3);
 
-    assert!(STORAGE_LIMBS % (STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK) == 0); // TODO: `const`
+    assert!(STORAGE_LIMBS.is_multiple_of(STORAGE_ENTRIES * limbs512::LIMBS_PER_CHUNK)); // TODO: `const`
     let mut table = limbs512::storage::AlignedStorage::<STORAGE_LIMBS>::uninit();
     let table = table.aligned_chunks_mut(STORAGE_ENTRIES, cpe)?;
     let (table, state) = table.split_at_mut(TABLE_ENTRIES * cpe);

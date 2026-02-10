@@ -35,7 +35,7 @@ use core::{mem::MaybeUninit, num::NonZero, ptr};
 pub struct AlignedStorage<const N: usize>([MaybeUninit<Limb>; N]);
 
 const _LIMB_SIZE_DIVIDES_ALIGNMENT: () =
-    assert!(align_of::<AlignedStorage<1>>() % size_of::<Limb>() == 0);
+    assert!(align_of::<AlignedStorage<1>>().is_multiple_of(size_of::<Limb>()));
 
 impl<const N: usize> AlignedStorage<N> {
     pub fn uninit() -> Self {

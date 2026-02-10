@@ -243,7 +243,12 @@ mod aes_gcm_tests {
         }
 
         let rounded_down = in_out_len / BLOCK_LEN;
-        let blocks = rounded_down + (if in_out_len % BLOCK_LEN == 0 { 0 } else { 1 });
+        let blocks = rounded_down
+            + (if in_out_len.is_multiple_of(BLOCK_LEN) {
+                0
+            } else {
+                1
+            });
         let blocks = u32::try_from(blocks).ok().and_then(NonZero::new).unwrap();
 
         let nonce = Nonce::assume_unique_for_key([1; 12]);

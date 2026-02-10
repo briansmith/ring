@@ -40,7 +40,7 @@ pub(in super::super::super) fn mul_mont<'o>(
     const MOD_4X: usize = 4;
     const MOD_FALLBACK: usize = 1;
 
-    if n.len() >= MIN_4X && n.len() % MOD_4X == 0 {
+    if n.len() >= MIN_4X && n.len().is_multiple_of(MOD_4X) {
         const _CHKSTK_NOT_NEEDED: () = _TWICE_MAX_LIMBS_LE_3KB;
         bn_mul_mont_ffi!(in_out, n, n0, (), unsafe {
             (MIN_4X, MOD_4X, ()) => bn_mul4x_mont

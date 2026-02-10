@@ -142,7 +142,7 @@ pub(super) fn limbs_mul_mont<'o>(
         } else if #[cfg(all(target_arch = "arm", target_endian = "little"))] {
             const MIN_8X: usize = 8;
             const MOD_8X: usize = 8;
-            if n.len() >= MIN_8X && n.len() % MOD_8X == 0 {
+            if n.len() >= MIN_8X && n.len().is_multiple_of(MOD_8X) {
                 use crate::cpu::{GetFeature as _, arm::Neon};
                 if let Some(cpu) = cpu.get_feature() {
                     return bn_mul_mont_ffi!(in_out, n, n0, cpu, unsafe {

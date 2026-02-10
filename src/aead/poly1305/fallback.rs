@@ -110,7 +110,7 @@ impl State {
         })
     }
 
-    // `input.len % BLOCK_LEN == 0` must be true for every call except the
+    // `input.len.is_multiple_of(BLOCK_LEN)` must be true for every call except the
     // final one.
     pub(super) fn update_internal(&mut self, input: &[u8]) {
         let (whole, remainder) = input.as_chunks::<BLOCK_LEN>();

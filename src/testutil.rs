@@ -363,7 +363,7 @@ where
 /// Decode an string of hex digits into a sequence of bytes. The input must
 /// have an even number of digits.
 pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
-    if hex_str.len() % 2 != 0 {
+    if !hex_str.len().is_multiple_of(2) {
         return Err(String::from(
             "Hex string does not have an even number of digits",
         ));
