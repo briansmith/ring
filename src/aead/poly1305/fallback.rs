@@ -48,9 +48,8 @@ const _5: W32 = Wrapping(5);
 #[allow(non_upper_case_globals)]
 const _0x3ffffff: W32 = Wrapping(0x3ffffff);
 
-// XXX/TODO(MSRV): change to `pub(super)`.
 #[repr(align(64))]
-pub(in super::super) struct State {
+pub(super) struct State {
     r0: W32,
     r1: W32,
     r2: W32,
@@ -91,7 +90,7 @@ impl State {
         t3 >>= 8;
         let r4 = t3 & Wrapping(0x00fffff);
 
-        super::Context::Fallback(Self {
+        super::Context(super::ContextInner::Fallback(Self {
             r0,
             r1,
             r2,
@@ -107,7 +106,7 @@ impl State {
             h4: Wrapping(0),
             h0: Wrapping(0),
             key: *key,
-        })
+        }))
     }
 
     // `input.len.is_multiple_of(BLOCK_LEN)` must be true for every call except the

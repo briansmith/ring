@@ -192,10 +192,8 @@ impl fe1305x2 {
 // need to read the assembly code and see what assumptions it makes on the
 // layout of its inputs. We've already made `fe1305x2` 16-byte aligned and that
 // might be all we need.
-//
-// XXX/TODO(MSRV): change to `pub(super)`.
 #[repr(C, align(16))]
-pub(in super::super) struct State {
+pub(super) struct State {
     r: fe1305x2,
     h: fe1305x2,
     c: fe1305x2,
@@ -221,7 +219,7 @@ impl State {
         let rv_8_9 = Wrapping(0x00fffff) & (load32(t, 12) >> 8);
         let rv_10_11 = ZERO;
 
-        let mut result = super::Context::ArmNeon(Self {
+        let mut result = super::Context(super::ContextInner::ArmNeon(Self {
             r: fe1305x2 {
                 v: [
                     rv_0_1, rv_0_1, rv_2_3, rv_2_3, rv_4_5, rv_4_5, rv_6_7, rv_6_7, rv_8_9, rv_8_9,
@@ -239,7 +237,7 @@ impl State {
             key: *key,
 
             neon,
-        });
+        }));
         match &mut result {
             super::Context::ArmNeon(State {
                 r,

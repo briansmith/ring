@@ -51,7 +51,10 @@ impl Key {
     }
 }
 
-pub(super) enum Context {
+#[repr(transparent)]
+pub(super) struct Context(ContextInner);
+
+enum ContextInner {
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
     ArmNeon(arm_neon::State),
     Fallback(fallback::State),
@@ -77,19 +80,19 @@ impl Context {
     }
 
     fn update_internal(&mut self, input: &[u8]) {
-        match self {
+        match &mut self.0 {
             #[cfg(all(target_arch = "arm", target_endian = "little"))]
-            Self::ArmNeon(state) => state.update_internal(input),
-            Self::Fallback(state) => state.update_internal(input),
+            ContextInner::ArmNeon(state) => state.update_internal(input),
+            ContextInner::Fallback(state) => state.update_internal(input),
         }
     }
 
     pub(super) fn finish(mut self, input: &[u8]) -> Tag {
         self.update_internal(input);
-        match self {
+        match self.0 {
             #[cfg(all(target_arch = "arm", target_endian = "little"))]
-            Self::ArmNeon(state) => state.finish(),
-            Self::Fallback(state) => state.finish(),
+            ContextInner::ArmNeon(state) => state.finish(),
+            ContextInner::Fallback(state) => state.finish(),
         }
     }
 }
