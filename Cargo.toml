@@ -2,7 +2,7 @@
 build = "build.rs"
 categories = ["cryptography", "no-std"]
 description = "An experiment."
-edition = "2021"
+edition = "2024"
 keywords = ["crypto", "cryptography", "rand", "ECC", "RSA"]
 license = "Apache-2.0 AND ISC"
 name = "ring"
