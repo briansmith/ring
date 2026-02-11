@@ -22,7 +22,7 @@ macro_rules! sha2_ffi {
     ( $U:ty, $BLOCK_LEN:expr, unsafe { $Cpu:ty => $f:ident },
       $state:expr, $data:expr, $cpu:expr $(,)? ) => {{
         prefixed_extern! {
-            fn $f(
+            unsafe fn $f(
                 state: *mut [core::num::Wrapping<$U>; crate::digest::sha2::CHAINING_WORDS],
                 data: *const [u8; $BLOCK_LEN],
                 num: core::num::NonZero<$crate::c::size_t>);

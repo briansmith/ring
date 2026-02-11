@@ -19,7 +19,7 @@ use crate::{bssl, error};
 #[test]
 fn test_constant_time() -> Result<(), error::Unspecified> {
     prefixed_extern! {
-        fn bssl_constant_time_test_main() -> bssl::Result;
+        unsafe fn bssl_constant_time_test_main() -> bssl::Result;
     }
     Result::from(unsafe { bssl_constant_time_test_main() })
 }

@@ -86,7 +86,7 @@ pub(in super::super::super) fn sqr_mont5<'o>(
         // `r` and/or 'a' may alias.
         // XXX: BoringSSL declares this to return `int`.
         // `num` must be a non-zero multiple of 8.
-        fn bn_sqr8x_mont(
+        unsafe fn bn_sqr8x_mont(
             rp: *mut Limb,
             ap: *const Limb,
             mulx_adx_capable: Limb,
@@ -128,7 +128,7 @@ pub(in super::super::super) fn gather5(
     prefixed_extern! {
         // Upstream uses `num: c::size_t` too, and `power: c::size_t`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        fn bn_gather5(
+        unsafe fn bn_gather5(
             out: *mut Limb,
             num: NonZero<c::size_t>,
             table: *const Limb,
@@ -159,7 +159,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
     prefixed_extern! {
         // Upstream has `num: c_int` and `power: c_int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        fn bn_mul4x_mont_gather5(
+        unsafe fn bn_mul4x_mont_gather5(
             rp: *mut Limb,
             ap: *const Limb,
             table: *const Limb,
@@ -170,7 +170,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
         );
         // Upstream has `num: c_int` and `power: c_int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        fn bn_mulx4x_mont_gather5(
+        unsafe fn bn_mulx4x_mont_gather5(
             rp: *mut Limb,
             ap: *const Limb,
             table: *const Limb,
@@ -212,7 +212,7 @@ pub(in super::super::super) fn power5_amm(
     prefixed_extern! {
         // Upstream has `num: c_int` and `power: c_int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        fn bn_power5_nohw(
+        unsafe fn bn_power5_nohw(
             rp: *mut Limb,
             ap: *const Limb,
             table: *const Limb,
@@ -223,7 +223,7 @@ pub(in super::super::super) fn power5_amm(
         );
         // Upstream has `num: c_int` and `power: c_int`; see
         // `_MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES`.
-        fn bn_powerx5(
+        unsafe fn bn_powerx5(
             rp: *mut Limb,
             ap: *const Limb,
             table: *const Limb,

@@ -85,7 +85,7 @@ impl ExtPoint {
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
         if has_fe25519_adx(cpu) {
             prefixed_extern! {
-                fn x25519_ge_scalarmult_base_adx_wrapper(h: &mut ExtPoint, a: &Scalar);
+                unsafe fn x25519_ge_scalarmult_base_adx_wrapper(h: &mut ExtPoint, a: &Scalar);
             }
             unsafe {
                 x25519_ge_scalarmult_base_adx_wrapper(&mut r, scalar);
@@ -95,7 +95,7 @@ impl ExtPoint {
 
         let _ = cpu;
         prefixed_extern! {
-            fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar);
+            unsafe fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar);
         }
         unsafe {
             x25519_ge_scalarmult_base(&mut r, scalar);
@@ -184,10 +184,10 @@ pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
 }
 
 prefixed_extern! {
-    fn x25519_fe_invert(out: &mut Elem<T>, z: &Elem<T>);
-    fn x25519_fe_isnegative(elem: &Elem<T>) -> u8;
-    fn x25519_fe_mul_ttt(h: &mut Elem<T>, f: &Elem<T>, g: &Elem<T>);
-    fn x25519_fe_neg(f: &mut Elem<T>);
-    fn x25519_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem<T>);
-    fn x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &EncodedPoint) -> bssl::Result;
+    unsafe fn x25519_fe_invert(out: &mut Elem<T>, z: &Elem<T>);
+    unsafe fn x25519_fe_isnegative(elem: &Elem<T>) -> u8;
+    unsafe fn x25519_fe_mul_ttt(h: &mut Elem<T>, f: &Elem<T>, g: &Elem<T>);
+    unsafe fn x25519_fe_neg(f: &mut Elem<T>);
+    unsafe fn x25519_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem<T>);
+    unsafe fn x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &EncodedPoint) -> bssl::Result;
 }

@@ -191,7 +191,7 @@ impl Ed25519KeyPair {
         let cpu_features = cpu::features();
         signature::Signature::new(|signature_bytes| {
             prefixed_extern! {
-                fn x25519_sc_muladd(
+                unsafe fn x25519_sc_muladd(
                     s: &mut [u8; SCALAR_LEN],
                     a: &Scalar,
                     b: &Scalar,

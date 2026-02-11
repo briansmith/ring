@@ -41,7 +41,7 @@ pub(super) fn seal(
         // The upstream version has a different calling convention where it
         // accepts any `len` and returns the number of bytes processed
         // according to the above.
-        fn aesni_gcm_encrypt(
+        unsafe fn aesni_gcm_encrypt(
             input: *const u8,
             output: *mut u8,
             len: c::size_t,
@@ -106,7 +106,7 @@ pub(super) fn open(
         // The upstream version has a different calling convention where it
         // accepts any `len` and returns the number of bytes processed
         // according to the above.
-        fn aesni_gcm_decrypt(
+        unsafe fn aesni_gcm_decrypt(
             input: *const u8,
             output: *mut u8,
             len: c::size_t,

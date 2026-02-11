@@ -55,7 +55,7 @@ pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> Result<LimbMask, L
 #[inline]
 fn limbs_less_than_limbs(a: &[Limb], b: &[Limb]) -> Result<LimbMask, LenMismatchError> {
     prefixed_extern! {
-        fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: NonZero<c::size_t>)
+        unsafe fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: NonZero<c::size_t>)
             -> LimbMask;
     }
     // Use `b.len` because usually `b` will be the modulus which is likely to
@@ -126,7 +126,7 @@ pub fn verify_limbs_equal_1_leak_bit(a: &[Limb]) -> Result<(), error::Unspecifie
 #[inline]
 pub fn limbs_reduce_once(r: &mut [Limb], m: &[Limb]) -> Result<(), LenMismatchError> {
     prefixed_extern! {
-        fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: NonZero<c::size_t>);
+        unsafe fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: NonZero<c::size_t>);
     }
     let num_limbs = NonZero::new(r.len()).ok_or_else(|| LenMismatchError::new(m.len()))?;
     let r = r.as_mut_ptr(); // Non-dangling because num_limbs is non-zero.
@@ -238,12 +238,12 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window5) -> R, F: Fn(R, Window5) -> R>(
     const WINDOW_BITS: Wrapping<c::size_t> = Wrapping(5);
 
     prefixed_extern! {
-        fn LIMBS_window5_split_window(
+        unsafe fn LIMBS_window5_split_window(
             lower_limb: Limb,
             higher_limb: Limb,
             index_within_word: BitIndex,
         ) -> Window5;
-        fn LIMBS_window5_unsplit_window(limb: Limb, index_within_word: BitIndex) -> Window5;
+        unsafe fn LIMBS_window5_unsplit_window(limb: Limb, index_within_word: BitIndex) -> Window5;
     }
 
     let num_limbs = limbs.len();
@@ -295,7 +295,7 @@ pub(crate) fn limbs_add_assign_mod(
 ) -> Result<(), LenMismatchError> {
     prefixed_extern! {
         // `r` and `a` may alias.
-        fn LIMBS_add_mod(
+        unsafe fn LIMBS_add_mod(
             r: *mut Limb,
             a: *const Limb,
             b: *const Limb,
@@ -316,7 +316,7 @@ pub(crate) fn limbs_add_assign_mod(
 pub(crate) fn limbs_double_mod(r: &mut [Limb], m: &[Limb]) -> Result<(), LenMismatchError> {
     prefixed_extern! {
         // `r` and `a` may alias.
-        fn LIMBS_shl_mod(
+        unsafe fn LIMBS_shl_mod(
             r: *mut Limb,
             a: *const Limb,
             m: *const Limb,

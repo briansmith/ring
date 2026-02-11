@@ -122,7 +122,7 @@ fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
 prefixed_extern! {
     // `r` must not alias `a`
     #[must_use]
-    fn limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
+    unsafe fn limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
 }
 
 #[cfg(test)]

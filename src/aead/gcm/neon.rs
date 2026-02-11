@@ -32,7 +32,7 @@ impl Key {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     pub(in super::super) fn new(value: KeyValue, _cpu: cpu::aarch64::Neon) -> Self {
         prefixed_extern! {
-            fn gcm_init_neon(HTable: *mut Key, h: &KeyValue);
+            unsafe fn gcm_init_neon(HTable: *mut Key, h: &KeyValue);
         }
         let mut uninit = MaybeUninit::uninit();
         unsafe { gcm_init_neon(uninit.as_mut_ptr(), &value) };
@@ -42,7 +42,7 @@ impl Key {
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
     pub(in super::super) fn new(value: KeyValue, _cpu: cpu::arm::Neon) -> Self {
         prefixed_extern! {
-            fn gcm_init_neon(HTable: *mut Key, h: &KeyValue);
+            unsafe fn gcm_init_neon(HTable: *mut Key, h: &KeyValue);
         }
         let mut uninit = MaybeUninit::uninit();
         unsafe { gcm_init_neon(uninit.as_mut_ptr(), &value) };
@@ -53,7 +53,7 @@ impl Key {
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
         prefixed_extern! {
-            fn gcm_gmult_neon(xi: &mut Xi, Htable: &Key);
+            unsafe fn gcm_gmult_neon(xi: &mut Xi, Htable: &Key);
         }
         xi.bitxor_assign(a);
         unsafe { gcm_gmult_neon(xi, self) };
@@ -63,7 +63,7 @@ impl UpdateBlock for Key {
 impl UpdateBlocks for Key {
     fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]) {
         prefixed_extern! {
-            fn gcm_ghash_neon(
+            unsafe fn gcm_ghash_neon(
                 xi: &mut Xi,
                 Htable: &Key,
                 inp: *const u8,

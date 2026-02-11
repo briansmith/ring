@@ -700,7 +700,7 @@ mod tests {
     #[test]
     fn p384_elem_sub_test() {
         prefixed_extern! {
-            fn p384_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
+            unsafe fn p384_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
         }
         elem_sub_test(
             &p384::COMMON_OPS,
@@ -752,7 +752,7 @@ mod tests {
     #[test]
     fn p384_elem_div_by_2_test() {
         prefixed_extern! {
-            fn p384_elem_div_by_2(r: *mut Limb, a: *const Limb);
+            unsafe fn p384_elem_div_by_2(r: *mut Limb, a: *const Limb);
         }
         elem_div_by_2_test(
             &p384::COMMON_OPS,
@@ -788,7 +788,7 @@ mod tests {
     #[test]
     fn p256_elem_neg_test() {
         prefixed_extern! {
-            fn ecp_nistz256_neg(r: *mut Limb, a: *const Limb);
+            unsafe fn ecp_nistz256_neg(r: *mut Limb, a: *const Limb);
         }
         elem_neg_test(
             &p256::COMMON_OPS,
@@ -800,7 +800,7 @@ mod tests {
     #[test]
     fn p384_elem_neg_test() {
         prefixed_extern! {
-            fn p384_elem_neg(r: *mut Limb, a: *const Limb);
+            unsafe fn p384_elem_neg(r: *mut Limb, a: *const Limb);
         }
         elem_neg_test(
             &p384::COMMON_OPS,
@@ -909,7 +909,7 @@ mod tests {
     #[test]
     fn p256_scalar_square_test() {
         prefixed_extern! {
-            fn p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: LeakyWord);
+            unsafe fn p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: LeakyWord);
         }
         scalar_square_test(
             &p256::SCALAR_OPS,
@@ -1004,7 +1004,7 @@ mod tests {
     #[test]
     fn p256_point_sum_mixed_test() {
         prefixed_extern! {
-            fn p256_point_add_affine(
+            unsafe fn p256_point_add_affine(
                 r: *mut Limb,   // [p256::COMMON_OPS.num_limbs*3]
                 a: *const Limb, // [p256::COMMON_OPS.num_limbs*3]
                 b: *const Limb, // [p256::COMMON_OPS.num_limbs*2]
@@ -1049,7 +1049,7 @@ mod tests {
     #[test]
     fn p256_point_double_test() {
         prefixed_extern! {
-            fn p256_point_double(
+            unsafe fn p256_point_double(
                 r: *mut Limb,   // [p256::COMMON_OPS.num_limbs*3]
                 a: *const Limb, // [p256::COMMON_OPS.num_limbs*3]
             );
@@ -1064,7 +1064,7 @@ mod tests {
     #[test]
     fn p384_point_double_test() {
         prefixed_extern! {
-            fn p384_point_double(
+            unsafe fn p384_point_double(
                 r: *mut Limb,   // [p384::COMMON_OPS.num_limbs*3]
                 a: *const Limb, // [p384::COMMON_OPS.num_limbs*3]
             );

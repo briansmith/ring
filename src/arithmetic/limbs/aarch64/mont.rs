@@ -63,7 +63,7 @@ pub(in super::super::super) fn sqr_mont5<'o>(
         // `r` and/or 'a' may alias.
         // XXX: BoringSSL (kinda, implicitly) declares this to return `int`.
         // `num` must be a non-zero multiple of 8.
-        fn bn_sqr8x_mont(
+        unsafe fn bn_sqr8x_mont(
             rp: *mut Limb,
             ap: *const Limb,
             ap_again: *const Limb,

@@ -139,9 +139,9 @@ impl AES_KEY {
 // crypto/fipsmodule/aes/internal.h.
 #[allow(unused_macros)]
 macro_rules! prefixed_extern_set_encrypt_key {
-    { $name:ident } => {
+    { unsafe fn $name:ident } => {
         prefixed_extern! {
-            fn $name(user_key: *const u8,
+            unsafe fn $name(user_key: *const u8,
                      bits: $crate::aead::aes::ffi::KeyBitLength,
                      key: *mut crate::aead::aes::ffi::AES_KEY) -> core::ffi::c_int;
         }
@@ -150,9 +150,9 @@ macro_rules! prefixed_extern_set_encrypt_key {
 
 #[allow(unused_macros)]
 macro_rules! prefixed_extern_ctr32_encrypt_blocks {
-    { $name:ident } => {
+    { unsafe fn $name:ident } => {
         prefixed_extern! {
-            fn $name(
+            unsafe fn $name(
                 input: *const [u8; $crate::aead::aes::BLOCK_LEN],
                 output: *mut [u8; $crate::aead::aes::BLOCK_LEN],
                 blocks: core::num::NonZero<$crate::c::size_t>,
@@ -165,9 +165,9 @@ macro_rules! prefixed_extern_ctr32_encrypt_blocks {
 
 #[allow(unused_macros)]
 macro_rules! prefixed_extern_ctr32_encrypt_blocks_with_rd_keys {
-    { $name:ident } => {
+    { unsafe fn $name:ident } => {
         prefixed_extern! {
-            fn $name(
+            unsafe fn $name(
                 input: *const [u8; $crate::aead::aes::BLOCK_LEN],
                 output: *mut [u8; $crate::aead::aes::BLOCK_LEN],
                 blocks: core::num::NonZero<$crate::c::size_t>,

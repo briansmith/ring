@@ -97,7 +97,7 @@ fn p256_elem_inv_squared(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R> {
 
 fn p256_point_mul_base_impl(g_scalar: &Scalar, _cpu: cpu::Features) -> Point {
     prefixed_extern! {
-        fn p256_point_mul_base(
+        unsafe fn p256_point_mul_base(
             r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
             g_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         );
@@ -136,7 +136,7 @@ fn point_mul_base_vartime(g_scalar: &Scalar, cpu: cpu::Features) -> Point {
         if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"),
                          target_arch = "x86_64"))] {
             prefixed_extern! {
-                fn p256_point_mul_base_vartime(
+                unsafe fn p256_point_mul_base_vartime(
                     r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
                     g_scalar: *const Limb, // [COMMON_OPS.num_limbs]
                 );
@@ -286,34 +286,34 @@ fn p256_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
 }
 
 prefixed_extern! {
-    pub(super) fn p256_mul_mont(
+    pub(super) unsafe fn p256_mul_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
         b: *const Limb, // [COMMON_OPS.num_limbs]
     );
-    pub(super) fn p256_sqr_mont(
+    pub(super) unsafe fn p256_sqr_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
     );
 
-    fn p256_point_add(
+    unsafe fn p256_point_add(
         r: *mut Limb,   // [3][COMMON_OPS.num_limbs]
         a: *const Limb, // [3][COMMON_OPS.num_limbs]
         b: *const Limb, // [3][COMMON_OPS.num_limbs]
     );
-    fn p256_point_mul(
+    unsafe fn p256_point_mul(
         r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
     );
 
-    fn p256_scalar_mul_mont(
+    unsafe fn p256_scalar_mul_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
         b: *const Limb, // [COMMON_OPS.num_limbs]
     );
-    fn p256_scalar_sqr_rep_mont(
+    unsafe fn p256_scalar_sqr_rep_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
         rep: LeakyWord,

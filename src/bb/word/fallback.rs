@@ -5,7 +5,7 @@ impl WordOps for Word {
     fn is_zero(self) -> BoolMask {
         use crate::limb::{Limb, LimbMask}; // XXX: Backwards dependency.
         prefixed_extern! {
-            fn LIMB_is_zero(limb: Limb) -> LimbMask;
+            unsafe fn LIMB_is_zero(limb: Limb) -> LimbMask;
         }
         unsafe { LIMB_is_zero(self) }
     }

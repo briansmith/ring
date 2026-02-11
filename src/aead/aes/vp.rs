@@ -74,7 +74,7 @@ impl Key {
         *mut R: StartMutPtr<Elem = ffi::RdKey>,
     {
         prefixed_extern! {
-            fn vpaes_set_encrypt_key(user_key: *const u8, bits: ffi::KeyBitLength,
+            unsafe fn vpaes_set_encrypt_key(user_key: *const u8, bits: ffi::KeyBitLength,
                                      rd_keys: *mut ffi::RdKey);
         }
         unsafe {
@@ -88,7 +88,7 @@ impl Key {
 
     #[cfg(all(target_arch = "arm", target_endian = "little"))]
     pub(in super::super) fn new(bytes: KeyBytes<'_>, _cpu: cpu::arm::Neon) -> Self {
-        prefixed_extern_set_encrypt_key! { vpaes_set_encrypt_key }
+        prefixed_extern_set_encrypt_key! { unsafe fn vpaes_set_encrypt_key }
         Self {
             inner: unsafe { AES_KEY::new_using_set_encrypt_key(bytes, vpaes_set_encrypt_key) },
         }
@@ -101,7 +101,7 @@ impl Key {
 
     #[cfg(target_arch = "x86")]
     pub(in super::super) fn new(bytes: KeyBytes<'_>, _cpu: cpu::intel::Ssse3) -> Self {
-        prefixed_extern_set_encrypt_key! { vpaes_set_encrypt_key }
+        prefixed_extern_set_encrypt_key! { unsafe fn vpaes_set_encrypt_key }
         Self {
             inner: unsafe { AES_KEY::new_using_set_encrypt_key(bytes, vpaes_set_encrypt_key) },
         }
@@ -109,7 +109,7 @@ impl Key {
 
     #[cfg(target_arch = "x86_64")]
     pub(in super::super) fn new(bytes: KeyBytes<'_>, _cpu: cpu::intel::Ssse3) -> Self {
-        prefixed_extern_set_encrypt_key! { vpaes_set_encrypt_key }
+        prefixed_extern_set_encrypt_key! { unsafe fn vpaes_set_encrypt_key }
         Self {
             inner: unsafe { AES_KEY::new_using_set_encrypt_key(bytes, vpaes_set_encrypt_key) },
         }
@@ -134,7 +134,7 @@ impl EncryptBlock for Key {
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        prefixed_extern_ctr32_encrypt_blocks_with_rd_keys! { vpaes_ctr32_encrypt_blocks }
+        prefixed_extern_ctr32_encrypt_blocks_with_rd_keys! { unsafe fn vpaes_ctr32_encrypt_blocks }
         let (rd_keys, rounds) = match self {
             Self::Aes128(rd_keys) => (rd_keys.as_ptr(), ffi::Rounds::Aes128),
             Self::Aes256(rd_keys) => (rd_keys.as_ptr(), ffi::Rounds::Aes256),
@@ -148,7 +148,7 @@ impl EncryptCtr32 for Key {
 #[cfg(target_arch = "x86_64")]
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        prefixed_extern_ctr32_encrypt_blocks! { vpaes_ctr32_encrypt_blocks }
+        prefixed_extern_ctr32_encrypt_blocks! { unsafe fn vpaes_ctr32_encrypt_blocks }
         unsafe {
             self.inner
                 .ctr32_encrypt_blocks(in_out, ctr, vpaes_ctr32_encrypt_blocks)
@@ -160,7 +160,7 @@ impl EncryptCtr32 for Key {
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
         use super::{super::overlapping::IndexError, bs, BLOCK_LEN};
-        prefixed_extern_ctr32_encrypt_blocks! { vpaes_ctr32_encrypt_blocks }
+        prefixed_extern_ctr32_encrypt_blocks! { unsafe fn vpaes_ctr32_encrypt_blocks }
 
         let in_out = {
             let blocks = in_out.len() / BLOCK_LEN;
@@ -209,7 +209,7 @@ impl EncryptBlock for Key {
     fn encrypt_block(&self, mut block: Block) -> Block {
         prefixed_extern! {
             // `a` and `r` may alias.
-            fn vpaes_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
+            unsafe fn vpaes_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
         }
         let block_out: *mut Block = &mut block;
         unsafe {

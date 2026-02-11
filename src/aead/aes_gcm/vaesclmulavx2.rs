@@ -28,7 +28,7 @@ pub(super) fn seal_whole_vaes_clmul_avx2(
     in_out: &mut [[u8; BLOCK_LEN]],
 ) {
     prefixed_extern! {
-        fn aes_gcm_enc_update_vaes_avx2(
+        unsafe fn aes_gcm_enc_update_vaes_avx2(
             input: *const u8,
             output: *mut u8,
             len: c::size_t,
@@ -62,7 +62,7 @@ pub(super) fn open_whole_vaes_clmul_avx2(
     ctr: &mut Counter,
 ) {
     prefixed_extern! {
-        fn aes_gcm_dec_update_vaes_avx2(
+        unsafe fn aes_gcm_dec_update_vaes_avx2(
             input: *const u8,
             output: *mut u8,
             len: c::size_t,

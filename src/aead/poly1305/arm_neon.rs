@@ -41,8 +41,8 @@ impl fe1305x2 {
 
 prefixed_extern! {
     // `r` may alias with `x`.
-    fn openssl_poly1305_neon2_addmulmod(r: *mut fe1305x2, x: *const fe1305x2, y: &fe1305x2,
-                                        c: &fe1305x2);
+    unsafe fn openssl_poly1305_neon2_addmulmod(r: *mut fe1305x2, x: *const fe1305x2, y: &fe1305x2,
+                                               c: &fe1305x2);
 }
 
 fn addmulmod(r: &mut fe1305x2, x: &fe1305x2, y: &fe1305x2, c: &fe1305x2, _: Neon) {
@@ -58,7 +58,7 @@ fn addmulmod_assign(r: &mut fe1305x2, y: &fe1305x2, c: &fe1305x2, _: Neon) {
 fn blocks(r: &mut fe1305x2, precomp: &[fe1305x2; 2], input: &[u8], _: Neon) -> usize {
     prefixed_extern! {
         // TODO: `len: NonZero<c::size_t>`?
-        fn openssl_poly1305_neon2_blocks(
+        unsafe fn openssl_poly1305_neon2_blocks(
             x: &mut fe1305x2,
             precomp: &[fe1305x2; 2],
             input: *const u8,

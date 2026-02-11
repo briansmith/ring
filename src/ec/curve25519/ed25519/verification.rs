@@ -75,7 +75,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 }
 
 prefixed_extern! {
-    fn x25519_ge_double_scalarmult_vartime(
+    unsafe fn x25519_ge_double_scalarmult_vartime(
         r: &mut Point,
         a_coeff: &Scalar,
         a: &ExtPoint,
