@@ -22,7 +22,7 @@ use crate::{
     c,
     cpu::intel::{Avx2, VAesClmul},
 };
-use core::{mem::MaybeUninit, slice};
+use core::{mem::MaybeUninit, num::NonZero, slice};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -48,7 +48,7 @@ impl UpdateBlock for Key {
                 xi: &mut Xi,
                 Htable: &Key,
                 inp: *const u8,
-                len: c::NonZero_size_t,
+                len: NonZero<c::size_t>,
             );
         }
         let input = slice::from_ref(&a);

@@ -15,7 +15,8 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use crate::{bb, polyfill::ArraySplitMap};
+use crate::{bb, c, polyfill::ArraySplitMap};
+use core::num::NonZero;
 
 pub(in super::super) const BLOCK_LEN: usize = 16;
 pub(in super::super) type Block = [u8; BLOCK_LEN];
@@ -36,13 +37,13 @@ impl KeyValue {
 
 pub(super) fn with_non_dangling_ptr(
     input: &[[u8; BLOCK_LEN]],
-    f: impl FnOnce(*const u8, crate::c::NonZero_size_t),
+    f: impl FnOnce(*const u8, NonZero<c::size_t>),
 ) {
-    use core::num::NonZeroUsize;
+    use core::num::NonZero;
 
     let input = input.as_flattened();
 
-    let Some(input_len) = NonZeroUsize::new(input.len()) else {
+    let Some(input_len) = NonZero::new(input.len()) else {
         return;
     };
 

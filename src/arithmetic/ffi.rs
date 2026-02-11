@@ -18,7 +18,7 @@ use crate::{
     limb::{Limb, LIMB_BITS},
     polyfill::{slice::AliasingSlices, usize_from_u32, StartMutPtr},
 };
-use core::{mem::size_of, num::NonZeroUsize};
+use core::{mem::size_of, num::NonZero};
 
 const _MIN_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
     // The x86 implementation of `bn_mul_mont_sse2` requires at least 4
@@ -48,6 +48,7 @@ macro_rules! bn_mul_mont_ffi {
     ( $in_out:expr, $n:expr, $n0:expr, $cpu:expr,
       unsafe { ($MIN_LEN:expr, $MOD_LEN:expr, $Cpu:ty) => $f:ident }) => {{
         use crate::{c, limb::Limb};
+        use core::num::NonZero;
         prefixed_extern! {
             // `r` and/or 'a' and/or 'b' may alias.
             fn $f(
@@ -56,7 +57,7 @@ macro_rules! bn_mul_mont_ffi {
                 b: *const Limb,
                 n: *const Limb,
                 n0: &N0,
-                len: c::NonZero_size_t,
+                len: NonZero<c::size_t>,
             );
         }
         unsafe {
@@ -79,7 +80,7 @@ pub(super) unsafe fn bn_mul_mont_ffi<'o, Cpu, const LEN_MIN: usize, const LEN_MO
         b: *const Limb,
         n: *const Limb,
         n0: &N0,
-        len: c::NonZero_size_t,
+        len: NonZero<c::size_t>,
     ),
 ) -> Result<&'o mut [Limb], LimbSliceError> {
     assert_eq!(n.len() % LEN_MOD, 0); // The caller should guard against this.
@@ -87,7 +88,7 @@ pub(super) unsafe fn bn_mul_mont_ffi<'o, Cpu, const LEN_MIN: usize, const LEN_MO
     if n.len() < LEN_MIN {
         return Err(LimbSliceError::too_short(n.len()));
     }
-    let len = NonZeroUsize::new(n.len()).unwrap_or_else(|| {
+    let len = NonZero::new(n.len()).unwrap_or_else(|| {
         // Unreachable because we checked against `LEN_MIN`, and we checked
         // `LEN_MIN` is nonzero.
         unreachable!()

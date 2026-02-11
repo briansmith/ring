@@ -18,7 +18,7 @@ use crate::polyfill::{
     StartPtr,
 };
 use core::array;
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 
 pub(crate) trait AliasingSlices<'o, T, const INPUTS: usize> {
     /// The pointers passed to `f` will be valid and non-null, and will not
@@ -40,7 +40,7 @@ pub(crate) trait AliasingSlices<'o, T, const INPUTS: usize> {
     #[inline(always)]
     fn with_non_dangling_non_null_pointers<R>(
         self,
-        expected_len: NonZeroUsize,
+        expected_len: NonZero<usize>,
         f: impl FnOnce(AliasedUninit<'o, T>, [*const T; INPUTS]) -> R,
     ) -> Result<R, LenMismatchError>
     where

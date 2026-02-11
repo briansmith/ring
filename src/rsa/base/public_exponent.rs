@@ -1,17 +1,17 @@
 use crate::error;
 use crate::polyfill::{unwrap_const, ArrayFlatMap, LeadingZerosStripped};
-use core::num::NonZeroU64;
+use core::num::NonZero;
 
 /// The exponent `e` of an RSA public key.
 #[derive(Clone, Copy)]
-pub struct PublicExponent(NonZeroU64);
+pub struct PublicExponent(NonZero<u64>);
 
 impl PublicExponent {
     #[cfg(test)]
     const ALL_CONSTANTS: [Self; 3] = [Self::_3, Self::_65537, Self::MAX];
 
-    pub(crate) const _3: Self = Self(unwrap_const(NonZeroU64::new(3)));
-    pub(crate) const _65537: Self = Self(unwrap_const(NonZeroU64::new(65537)));
+    pub(crate) const _3: Self = Self(unwrap_const(NonZero::new(3)));
+    pub(crate) const _65537: Self = Self(unwrap_const(NonZero::new(65537)));
 
     // This limit was chosen to bound the performance of the simple
     // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
@@ -24,7 +24,7 @@ impl PublicExponent {
     // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
     // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
     // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-    const MAX: Self = Self(unwrap_const(NonZeroU64::new((1u64 << 33) - 1)));
+    const MAX: Self = Self(unwrap_const(NonZero::new((1u64 << 33) - 1)));
 
     pub(super) fn from_be_bytes(
         input: untrusted::Input,
@@ -58,7 +58,7 @@ impl PublicExponent {
         // `e >= 65537`. We enforce this when signing, but are more flexible in
         // verification, for compatibility. Only small public exponents are
         // supported.
-        let value = NonZeroU64::new(value).ok_or_else(error::KeyRejected::too_small)?;
+        let value = NonZero::new(value).ok_or_else(error::KeyRejected::too_small)?;
         if value < min_value.0 {
             return Err(error::KeyRejected::too_small());
         }
@@ -83,7 +83,7 @@ impl PublicExponent {
         LeadingZerosStripped::new(bytes)
     }
 
-    pub(super) fn value(self) -> NonZeroU64 {
+    pub(super) fn value(self) -> NonZero<u64> {
         self.0
     }
 }

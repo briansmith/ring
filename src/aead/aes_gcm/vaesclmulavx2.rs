@@ -19,7 +19,7 @@ use crate::polyfill::prelude::*;
 
 use super::{aes, gcm, Counter, Overlapping, BLOCK_LEN};
 use crate::c;
-use core::num::NonZeroU32;
+use core::num::NonZero;
 
 pub(super) fn seal_whole_vaes_clmul_avx2(
     aes_key: &aes::hw::Key,
@@ -44,7 +44,7 @@ pub(super) fn seal_whole_vaes_clmul_avx2(
     // must fit in `u32`.
     let blocks = u32::try_from(in_out.len() / BLOCK_LEN).unwrap();
 
-    if let Some(blocks) = NonZeroU32::new(blocks) {
+    if let Some(blocks) = NonZero::new(blocks) {
         let (htable, xi) = auth.inner();
         let len = in_out.len();
         let in_out = in_out.as_mut_ptr();
@@ -78,7 +78,7 @@ pub(super) fn open_whole_vaes_clmul_avx2(
     // must fit in `u32`.
     let blocks = u32::try_from(in_out.len() / BLOCK_LEN).unwrap();
 
-    if let Some(blocks) = NonZeroU32::new(blocks) {
+    if let Some(blocks) = NonZero::new(blocks) {
         let (htable, xi) = auth.inner();
         in_out.with_input_output_len(|input, output, len| unsafe {
             aes_gcm_dec_update_vaes_avx2(input, output, len, aes_key, ctr, htable, xi)
