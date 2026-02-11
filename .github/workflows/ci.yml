@@ -183,7 +183,6 @@ jobs:
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
           - riscv64gc-unknown-linux-gnu
-          - wasm32-wasi
           - wasm32-wasip1
           - wasm32-wasip2
           - x86_64-pc-windows-gnu
@@ -205,10 +204,6 @@ jobs:
           # - beta
 
         exclude:
-          # Not available anymore.
-          - target: wasm32-wasi
-            rust_channel: stable
-
           # Not available.
           - target: wasm32-wasip1
             rust_channel: 1.66.0
@@ -331,9 +326,6 @@ jobs:
           - target: s390x-unknown-linux-gnu
             mode: --release
             rust_channel: stable
-            host_os: ubuntu-22.04
-
-          - target: wasm32-wasi
             host_os: ubuntu-22.04
 
           - target: wasm32-wasip1
