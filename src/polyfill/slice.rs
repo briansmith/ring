@@ -40,9 +40,6 @@ pub(crate) trait SlicePolyfills {
         &mut self,
         mid: usize,
     ) -> Option<(&mut [Self::Elem], &mut [Self::Elem])>;
-    fn split_first_chunk_mut<const N: usize>(
-        &mut self,
-    ) -> Option<(&mut [Self::Elem; N], &mut [Self::Elem])>;
 }
 
 impl<T> SlicePolyfills for [T] {
@@ -97,15 +94,6 @@ impl<T> SlicePolyfills for [T] {
         } else {
             None
         }
-    }
-
-    // TODO(MSRV-1.77): Use `slice::split_first_chunk_mut`.
-    #[inline]
-    fn split_first_chunk_mut<const N: usize>(
-        &mut self,
-    ) -> Option<(&mut [Self::Elem; N], &mut [Self::Elem])> {
-        let (head, tail) = self.split_at_mut_checked(N)?;
-        head.try_into().ok().map(|head| (head, tail))
     }
 }
 
