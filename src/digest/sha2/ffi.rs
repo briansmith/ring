@@ -13,7 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::CHAINING_WORDS;
-use core::num::{NonZeroUsize, Wrapping};
+use crate::c;
+use core::num::{NonZero, Wrapping};
 
 /// `unsafe { T => f }` means it is safe to call `f` iff we can construct
 /// a value of type `T`.
@@ -24,7 +25,7 @@ macro_rules! sha2_ffi {
             fn $f(
                 state: *mut [core::num::Wrapping<$U>; crate::digest::sha2::CHAINING_WORDS],
                 data: *const [u8; $BLOCK_LEN],
-                num: crate::c::NonZero_size_t);
+                num: core::num::NonZero<$crate::c::size_t>);
         }
         // SAFETY: The user asserts that $f has the signature above and is safe
         // to call if additionally we have a value of type `$Cpu`, which we do.
@@ -54,10 +55,10 @@ pub(super) unsafe fn sha2_ffi<U, Cpu, const BLOCK_LEN: usize>(
     f: unsafe extern "C" fn(
         *mut [Wrapping<U>; CHAINING_WORDS],
         *const [u8; BLOCK_LEN],
-        crate::c::NonZero_size_t,
+        NonZero<c::size_t>,
     ),
 ) {
-    if let Some(blocks) = NonZeroUsize::new(data.len()) {
+    if let Some(blocks) = NonZero::new(data.len()) {
         let data = data.as_ptr();
         let _: Cpu = cpu;
         // SAFETY:

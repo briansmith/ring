@@ -23,7 +23,7 @@ use crate::{
     limb::{Limb, LIMB_BYTES},
     polyfill::{slice::AliasingSlices, StartMutPtr},
 };
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 
 // On Windows, at least, if a function stack allocates 4KB then it
 // must call `__chkstk` or do equivalent work. We check 3KB instead so
@@ -69,11 +69,11 @@ pub(in super::super::super) fn sqr_mont5<'o>(
             ap_again: *const Limb,
             np: *const Limb,
             n0: &N0,
-            num: c::NonZero_size_t);
+            num: NonZero<c::size_t>);
     }
 
     let n = n.as_flattened();
-    let num_limbs = NonZeroUsize::new(n.len()).ok_or_else(|| LimbSliceError::too_short(n.len()))?;
+    let num_limbs = NonZero::new(n.len()).ok_or_else(|| LimbSliceError::too_short(n.len()))?;
 
     // Avoid stack overflow from the alloca inside.
     //

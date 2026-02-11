@@ -21,7 +21,7 @@ use crate::{
     bits, cpu, error,
     limb::LIMB_BYTES,
 };
-use core::num::NonZeroU64;
+use core::num::NonZero;
 
 /// An RSA Public Key.
 #[derive(Clone)]
@@ -166,7 +166,7 @@ impl PublicKey<bigint::IntoMont<'_, N, RR>> {
         cpu_features: cpu::Features,
     ) -> bigint::Elem<N> {
         // The exponent was already checked to be at least 3.
-        let exponent_without_low_bit = NonZeroU64::try_from(self.e.value().get() & !1).unwrap();
+        let exponent_without_low_bit = NonZero::<u64>::try_from(self.e.value().get() & !1).unwrap();
         // The exponent was already checked to be odd.
         debug_assert_ne!(exponent_without_low_bit, self.e.value());
 

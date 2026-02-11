@@ -24,7 +24,7 @@ use crate::{
 };
 use core::{
     mem::{align_of, size_of, MaybeUninit},
-    num::NonZeroUsize,
+    num::NonZero,
     ptr,
 };
 // Some x86_64 assembly is written under the assumption that some of its
@@ -44,8 +44,7 @@ impl<const N: usize> AlignedStorage<N> {
     pub fn uninit() -> Self {
         assert_eq!(N % LIMBS_PER_CHUNK, 0); // TODO: const.
 
-        // TODO(MSRV-1.80): Use `Self([const { MaybeUninit::uninit() }; N])`.
-        Self(unsafe { MaybeUninit::<[MaybeUninit<Limb>; N]>::uninit().assume_init() })
+        Self([const { MaybeUninit::uninit() }; N])
     }
 
     // The result will have every chunk aligned on a 64 byte boundary.
@@ -90,10 +89,10 @@ pub fn table_parts_uninit<E, const N: usize>(
 pub(crate) fn check_common(
     a: &[Limb],
     table_parts: (*const [[Limb; LIMBS_PER_CHUNK]], usize),
-) -> Result<NonZeroUsize, LimbSliceError> {
+) -> Result<NonZero<usize>, LimbSliceError> {
     let (table_ptr, table_len) = table_parts;
     assert_eq!(table_ptr.start_ptr() as usize % 16, 0); // According to BoringSSL.
-    let num_limbs = NonZeroUsize::new(a.len()).ok_or_else(|| LimbSliceError::too_short(a.len()))?;
+    let num_limbs = NonZero::new(a.len()).ok_or_else(|| LimbSliceError::too_short(a.len()))?;
     if num_limbs.get() > MAX_LIMBS {
         return Err(LimbSliceError::too_long(a.len()));
     }
@@ -109,7 +108,7 @@ pub(crate) fn check_common_with_n(
     a: &[Limb],
     table_parts: (*const [[Limb; LIMBS_PER_CHUNK]], usize),
     n: &[[Limb; LIMBS_PER_CHUNK]],
-) -> Result<NonZeroUsize, LimbSliceError> {
+) -> Result<NonZero<usize>, LimbSliceError> {
     // Choose `a` instead of `n` so that every function starts with
     // `check_common` passing the exact same arguments, so that the compiler
     // can easily de-dupe the checks.

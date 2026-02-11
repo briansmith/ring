@@ -21,14 +21,14 @@
 use crate::polyfill::prelude::*;
 
 use crate::error::LenMismatchError;
-use core::{mem::MaybeUninit, num::NonZeroUsize};
+use core::{mem::MaybeUninit, num::NonZero};
 
 /// An uninitialized array of slices.
 ///
 /// E: Copy to avoid drop issues.
 pub struct Uninit<'e, E> {
     storage: &'e mut [MaybeUninit<E>],
-    elems_per_item: NonZeroUsize,
+    elems_per_item: NonZero<usize>,
     len: usize,
 }
 
@@ -42,7 +42,7 @@ impl<E: Copy> Uninit<'_, E> {
     pub fn new(
         storage: &'_ mut [MaybeUninit<E>],
         num_elems: usize,
-        elems_per_item: NonZeroUsize,
+        elems_per_item: NonZero<usize>,
     ) -> Result<Uninit<'_, E>, LenMismatchError> {
         let total_elems = num_elems
             .checked_mul(elems_per_item.get())
@@ -111,7 +111,7 @@ impl<E: Copy> Uninit<'_, E> {
 
 pub struct Array<'e, E> {
     storage: &'e mut [E],
-    elems_per_item: NonZeroUsize,
+    elems_per_item: NonZero<usize>,
     len: usize,
 }
 

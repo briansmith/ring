@@ -36,9 +36,11 @@
 use crate::polyfill::prelude::*;
 
 use cfg_if::cfg_if;
-use core::marker::PhantomData;
-use core::num::NonZeroU32;
-use core::sync::atomic::{self, AtomicU32};
+use core::{
+    marker::PhantomData,
+    num::NonZero,
+    sync::atomic::{self, AtomicU32},
+};
 
 pub trait Ordering {
     const ACQUIRE: atomic::Ordering;
@@ -88,9 +90,9 @@ impl<O: Ordering> OnceNonZeroU32<O> {
 
     /// Gets the underlying value.
     #[inline]
-    pub fn get(&self) -> Option<NonZeroU32> {
+    pub fn get(&self) -> Option<NonZero<u32>> {
         let val = self.inner.load(O::ACQUIRE);
-        NonZeroU32::new(val)
+        NonZero::new(val)
     }
 
     /// Get the reference to the underlying value, without checking if the cell
@@ -100,7 +102,7 @@ impl<O: Ordering> OnceNonZeroU32<O> {
     ///
     /// Caller must ensure that the cell is in initialized state, and that
     /// the contents are acquired by (synchronized to) this thread.
-    pub unsafe fn get_unchecked(&self) -> NonZeroU32 {
+    pub unsafe fn get_unchecked(&self) -> NonZero<u32> {
         // SAFETY: The caller is responsible for ensuring that the value
         // was initialized and that the contents have been acquired by
         // this thread. Assuming that, we can assume there will be no
@@ -117,7 +119,7 @@ impl<O: Ordering> OnceNonZeroU32<O> {
 
         // SAFETY: The caller is responsible for ensuring the value is
         // initialized and thus not zero.
-        unsafe { NonZeroU32::new_unchecked(val) }
+        unsafe { NonZero::new_unchecked(val) }
     }
 
     /// Gets the contents of the cell, initializing it with `f` if the cell was
@@ -126,9 +128,9 @@ impl<O: Ordering> OnceNonZeroU32<O> {
     /// If several threads concurrently run `get_or_init`, more than one `f` can
     /// be called. However, all threads will return the same value, produced by
     /// some `f`.
-    pub fn get_or_init<F>(&self, f: F) -> NonZeroU32
+    pub fn get_or_init<F>(&self, f: F) -> NonZero<u32>
     where
-        F: FnOnce() -> NonZeroU32,
+        F: FnOnce() -> NonZero<u32>,
     {
         match self.get() {
             Some(it) => it,
@@ -138,17 +140,17 @@ impl<O: Ordering> OnceNonZeroU32<O> {
 
     #[cold]
     #[inline(never)]
-    fn init(&self, f: impl FnOnce() -> NonZeroU32) -> NonZeroU32 {
+    fn init(&self, f: impl FnOnce() -> NonZero<u32>) -> NonZero<u32> {
         let nz = f();
         let mut val = nz.get();
         if let Err(old) = self.compare_exchange(nz) {
             val = old;
         }
-        unsafe { NonZeroU32::new_unchecked(val) }
+        unsafe { NonZero::new_unchecked(val) }
     }
 
     #[inline(always)]
-    fn compare_exchange(&self, val: NonZeroU32) -> Result<u32, u32> {
+    fn compare_exchange(&self, val: NonZero<u32>) -> Result<u32, u32> {
         self.inner
             .compare_exchange(0, val.get(), O::RELEASE, O::ACQUIRE)
     }

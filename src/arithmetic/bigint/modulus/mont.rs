@@ -32,7 +32,7 @@ use crate::{
     polyfill::{self, LeadingZerosStripped},
 };
 use alloc::boxed::Box;
-use core::{marker::PhantomData, num::NonZeroUsize};
+use core::{marker::PhantomData, num::NonZero};
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
@@ -272,8 +272,8 @@ impl<M> Mont<'_, M> {
         self.n0
     }
 
-    pub fn num_limbs(&self) -> NonZeroUsize {
-        NonZeroUsize::new(self.limbs().len()).unwrap_or_else(|| unreachable!())
+    pub fn num_limbs(&self) -> NonZero<usize> {
+        NonZero::new(self.limbs().len()).unwrap_or_else(|| unreachable!())
     }
 
     pub fn len_bits(&self) -> BitLength {

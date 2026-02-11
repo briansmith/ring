@@ -20,7 +20,7 @@ use crate::{bits::BitLength, c};
 use core::{
     ffi::{c_int, c_uint},
     mem::MaybeUninit,
-    num::{NonZeroU32, NonZeroUsize},
+    num::NonZero,
 };
 
 /// nonce || big-endian counter.
@@ -155,7 +155,7 @@ macro_rules! prefixed_extern_ctr32_encrypt_blocks {
             fn $name(
                 input: *const [u8; $crate::aead::aes::BLOCK_LEN],
                 output: *mut [u8; $crate::aead::aes::BLOCK_LEN],
-                blocks: $crate::c::NonZero_size_t,
+                blocks: core::num::NonZero<$crate::c::size_t>,
                 key: &$crate::aead::aes::ffi::AES_KEY,
                 ivec: &$crate::aead::aes::ffi::Counter,
             );
@@ -170,7 +170,7 @@ macro_rules! prefixed_extern_ctr32_encrypt_blocks_with_rd_keys {
             fn $name(
                 input: *const [u8; $crate::aead::aes::BLOCK_LEN],
                 output: *mut [u8; $crate::aead::aes::BLOCK_LEN],
-                blocks: $crate::c::NonZero_size_t,
+                blocks: core::num::NonZero<$crate::c::size_t>,
                 key: *const $crate::aead::aes::ffi::RdKey,
                 ivec: &$crate::aead::aes::ffi::Counter,
                 rounds: $crate::aead::aes::ffi::Rounds,
@@ -201,7 +201,7 @@ impl AES_KEY {
         f: unsafe extern "C" fn(
             input: *const [u8; BLOCK_LEN],
             output: *mut [u8; BLOCK_LEN],
-            blocks: c::NonZero_size_t,
+            blocks: NonZero<c::size_t>,
             key: &AES_KEY,
             ivec: &Counter,
         ),
@@ -209,13 +209,13 @@ impl AES_KEY {
         in_out.with_input_output_len(|input, output, len| {
             debug_assert_eq!(len % BLOCK_LEN, 0);
 
-            let Some(blocks) = NonZeroUsize::new(len / BLOCK_LEN) else {
+            let Some(blocks) = NonZero::new(len / BLOCK_LEN) else {
                 return;
             };
 
             let input = input.cast_array_::<BLOCK_LEN>();
             let output = output.cast_array_::<BLOCK_LEN>();
-            let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
+            let blocks_u32: NonZero<u32> = blocks.try_into().unwrap();
 
             // SAFETY:
             //  * `input` points to `blocks` blocks.
@@ -246,7 +246,7 @@ pub(super) unsafe fn ctr32_encrypt_blocks(
     f: unsafe extern "C" fn(
         input: *const [u8; BLOCK_LEN],
         output: *mut [u8; BLOCK_LEN],
-        blocks: c::NonZero_size_t,
+        blocks: NonZero<c::size_t>,
         rd_keys: *const RdKey,
         ivec: &Counter,
         rounds: Rounds,
@@ -255,13 +255,13 @@ pub(super) unsafe fn ctr32_encrypt_blocks(
     in_out.with_input_output_len(|input, output, len| {
         debug_assert_eq!(len % BLOCK_LEN, 0);
 
-        let Some(blocks) = NonZeroUsize::new(len / BLOCK_LEN) else {
+        let Some(blocks) = NonZero::new(len / BLOCK_LEN) else {
             return;
         };
 
         let input = input.cast_array_::<BLOCK_LEN>();
         let output = output.cast_array_::<BLOCK_LEN>();
-        let blocks_u32: NonZeroU32 = blocks.try_into().unwrap();
+        let blocks_u32: NonZero<u32> = blocks.try_into().unwrap();
 
         // SAFETY:
         //  * `input` points to `blocks` blocks.

@@ -16,7 +16,7 @@
 
 use super::{ffi, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
 use crate::{c, cpu::intel};
-use core::{mem::MaybeUninit, slice};
+use core::{mem::MaybeUninit, num::NonZero, slice};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -52,7 +52,7 @@ impl UpdateBlocks for Key {
                 xi: &mut Xi,
                 Htable: &Key,
                 inp: *const u8,
-                len: c::NonZero_size_t,
+                len: NonZero<c::size_t>,
             );
         }
         ffi::with_non_dangling_ptr(input, |input, len| unsafe {
