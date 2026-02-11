@@ -158,7 +158,7 @@ impl<'target, E: Copy> Uninit<'target, E> {
 
     pub unsafe fn assume_init(self) -> &'target mut [E] {
         let r: &'target mut [MaybeUninit<E>] = self.target;
-        let r: *mut [MaybeUninit<E>] = polyfill::ptr::from_mut(r);
+        let r: *mut [MaybeUninit<E>] = ptr::from_mut(r);
         let r: *mut [E] = r as *mut [E];
         let r: &'target mut [E] = unsafe { &mut *r };
         r
@@ -218,7 +218,7 @@ impl<E> StartMutPtr for &mut AliasedUninit<'_, E> {
 impl<'target, E> From<Uninit<'target, E>> for AliasedUninit<'target, E> {
     fn from(uninit: Uninit<'target, E>) -> Self {
         Self {
-            target: polyfill::ptr::from_mut(uninit.target),
+            target: ptr::from_mut(uninit.target),
             _a: PhantomData,
         }
     }

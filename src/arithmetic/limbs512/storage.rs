@@ -20,11 +20,12 @@ use crate::{
     arithmetic::{LimbSliceError, MAX_LIMBS},
     error::LenMismatchError,
     limb::Limb,
-    polyfill::{self, StartPtr},
+    polyfill::StartPtr,
 };
 use core::{
     mem::{align_of, size_of, MaybeUninit},
     num::NonZeroUsize,
+    ptr,
 };
 // Some x86_64 assembly is written under the assumption that some of its
 // input data and/or temporary storage is aligned to `MOD_EXP_CTIME_ALIGN`
@@ -78,10 +79,7 @@ pub fn table_parts<E, const N: usize>(r: &[[E; N]]) -> (*const [[E; N]], usize) 
 pub fn table_parts_uninit<E, const N: usize>(
     table: &[[MaybeUninit<E>; N]],
 ) -> (*const [[E; N]], usize) {
-    (
-        polyfill::ptr::from_ref(table) as *const [[E; N]],
-        table.len(),
-    )
+    (ptr::from_ref(table) as *const [[E; N]], table.len())
 }
 
 // Helps the compiler will be able to hoist all of these checks out of the
