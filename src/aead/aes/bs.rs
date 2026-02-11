@@ -28,9 +28,9 @@ pub(super) fn ctr32_encrypt_blocks_with_vpaes_key(
     prefixed_extern! {
         // bsaes_ctr32_encrypt_blocks requires transformation of an existing
         // VPAES key; there is no `bsaes_set_encrypt_key`.
-        fn vpaes_encrypt_key_to_bsaes(bsaes_key: *mut Key, vpaes_key: &vp::Key);
+        unsafe fn vpaes_encrypt_key_to_bsaes(bsaes_key: *mut Key, vpaes_key: &vp::Key);
     }
-    prefixed_extern_ctr32_encrypt_blocks! { bsaes_ctr32_encrypt_blocks }
+    prefixed_extern_ctr32_encrypt_blocks! { unsafe fn bsaes_ctr32_encrypt_blocks }
 
     // SAFETY:
     //   * The caller ensures `vpaes_key` was initialized by

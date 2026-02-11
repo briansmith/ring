@@ -28,7 +28,7 @@ pub(super) fn seal_whole(
     in_out: &mut [[u8; BLOCK_LEN]],
 ) {
     prefixed_extern! {
-        fn aes_gcm_enc_kernel(
+        unsafe fn aes_gcm_enc_kernel(
             input: *const [u8; BLOCK_LEN],
             in_bits: BitLength<NonZero<u64>>,
             output: *mut [u8; BLOCK_LEN],
@@ -68,7 +68,7 @@ pub(super) fn open_whole(
     ctr: &mut Counter,
 ) {
     prefixed_extern! {
-        fn aes_gcm_dec_kernel(
+        unsafe fn aes_gcm_dec_kernel(
             input: *const u8,
             in_bits: BitLength<NonZero<u64>>,
             output: *mut u8,

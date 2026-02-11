@@ -22,7 +22,7 @@ macro_rules! chacha20_ctr32_ffi {
     ( unsafe { ($MIN_LEN:expr, $Cpu:ty, $InOut:ty) => $f:ident },
       $key:expr, $counter:expr, $in_out:expr, $cpu:expr ) => {{
         prefixed_extern! {
-            fn $f(
+            unsafe fn $f(
                 out: *mut u8,
                 in_: *const u8,
                 in_len: crate::c::size_t,

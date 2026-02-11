@@ -73,7 +73,7 @@ pub(super) mod featureflags {
                 // `neon_available` is declared as `alignas(4) uint32_t` in the C code.
                 // AtomicU32 is `#[repr(C, align(4))]`.
                 prefixed_extern! {
-                    static neon_available: AtomicU32;
+                    unsafe static neon_available: AtomicU32;
                 }
                 // SAFETY: The C code only reads `neon_available`, and its
                 // reads are synchronized through the `OnceNonZeroU32`

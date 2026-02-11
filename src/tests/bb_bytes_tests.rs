@@ -25,7 +25,7 @@ fn constant_time_conditional_memcpy() {
     test_constant_time_conditional_mem_x::<LEN>(
         |b, out, input| {
             prefixed_extern! {
-                fn bssl_constant_time_test_conditional_memcpy(dst: &mut [u8; LEN], src: &[u8; LEN], b: BoolMask);
+                unsafe fn bssl_constant_time_test_conditional_memcpy(dst: &mut [u8; LEN], src: &[u8; LEN], b: BoolMask);
             }
             unsafe { bssl_constant_time_test_conditional_memcpy(out, input, b) }
         },
@@ -43,7 +43,7 @@ fn constant_time_conditional_memxor() {
     test_constant_time_conditional_mem_x::<LEN>(
         |b, out, input| {
             prefixed_extern! {
-                fn bssl_constant_time_test_conditional_memxor(dst: &mut [u8; LEN], src: &[u8; LEN], b: BoolMask);
+                unsafe fn bssl_constant_time_test_conditional_memxor(dst: &mut [u8; LEN], src: &[u8; LEN], b: BoolMask);
             }
             unsafe {
                 bssl_constant_time_test_conditional_memxor(out, input, b);

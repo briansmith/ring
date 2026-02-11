@@ -68,7 +68,7 @@ impl Key {
         _cpu: cpu::aarch64::Aes,
     ) {
         prefixed_extern! {
-            fn aes_hw_set_encrypt_key_128(
+            unsafe fn aes_hw_set_encrypt_key_128(
                 user_key: &<ffi::Aes128RoundKeys as ffi::RoundKeys>::UserKey,
                 ignored: BitLength<c_int>,
                 key: *mut ffi::Aes128RoundKeys);
@@ -82,7 +82,7 @@ impl Key {
         _cpu: cpu::aarch64::Aes,
     ) {
         prefixed_extern! {
-            fn aes_hw_set_encrypt_key_256(
+            unsafe fn aes_hw_set_encrypt_key_256(
                 user_key: &<ffi::Aes256RoundKeys as ffi::RoundKeys>::UserKey,
                 ignored: BitLength<c_int>,
                 key: *mut ffi::Aes256RoundKeys);
@@ -98,7 +98,7 @@ impl Key {
         _required_cpu_features: (cpu::intel::Aes, cpu::intel::Ssse3),
         _optional_cpu_features: Option<()>,
     ) -> Self {
-        prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key_base };
+        prefixed_extern_set_encrypt_key! { unsafe fn aes_hw_set_encrypt_key_base };
         Self {
             inner: unsafe {
                 AES_KEY::new_using_set_encrypt_key(bytes, aes_hw_set_encrypt_key_base)
@@ -112,8 +112,8 @@ impl Key {
         _required_cpu_features: (cpu::intel::Aes, cpu::intel::Ssse3),
         optional_cpu_features: Option<cpu::intel::Avx>,
     ) -> Self {
-        prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key_alt };
-        prefixed_extern_set_encrypt_key! { aes_hw_set_encrypt_key_base };
+        prefixed_extern_set_encrypt_key! { unsafe fn aes_hw_set_encrypt_key_alt };
+        prefixed_extern_set_encrypt_key! { unsafe fn aes_hw_set_encrypt_key_base };
         Self {
             inner: if let Some(cpu::intel::Avx { .. }) = optional_cpu_features {
                 // Ssse3 is required, but upstream only uses this if there is also Avx;
@@ -134,7 +134,7 @@ impl EncryptBlock for Key {
     #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     fn encrypt_iv_xor_block(&self, iv: Iv, mut block: Block) -> Block {
         prefixed_extern! {
-            fn aes_hw_encrypt_xor_block(iv: &Block, in_out: &mut Block,
+            unsafe fn aes_hw_encrypt_xor_block(iv: &Block, in_out: &mut Block,
                 rd_keys: *const ffi::RdKey, rounds: ffi::Rounds);
         }
         let (rd_keys, rounds) = self.rd_keys_and_rounds();
@@ -153,7 +153,7 @@ impl EncryptBlock for Key {
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 impl EncryptCtr32 for Key {
     fn ctr32_encrypt_within(&self, in_out: Overlapping<'_>, ctr: &mut Counter) {
-        prefixed_extern_ctr32_encrypt_blocks! { aes_hw_ctr32_encrypt_blocks }
+        prefixed_extern_ctr32_encrypt_blocks! { unsafe fn aes_hw_ctr32_encrypt_blocks }
         unsafe {
             self.inner
                 .ctr32_encrypt_blocks(in_out, ctr, aes_hw_ctr32_encrypt_blocks)

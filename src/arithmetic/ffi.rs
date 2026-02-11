@@ -51,7 +51,7 @@ macro_rules! bn_mul_mont_ffi {
         use core::num::NonZero;
         prefixed_extern! {
             // `r` and/or 'a' and/or 'b' may alias.
-            fn $f(
+            unsafe fn $f(
                 r: *mut Limb,
                 a: *const Limb,
                 b: *const Limb,

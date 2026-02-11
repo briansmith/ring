@@ -110,7 +110,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
     fn gather<M>(table: &[Limb], acc: &mut Elem<M, R>, i: Window5) -> Result<(), LenMismatchError> {
         prefixed_extern! {
-            fn LIMBS_select_512_32(
+            unsafe fn LIMBS_select_512_32(
                 r: *mut Limb,
                 table: *const Limb,
                 num_limbs: c::size_t,

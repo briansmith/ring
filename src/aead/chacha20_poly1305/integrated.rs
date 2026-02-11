@@ -20,9 +20,9 @@ use super::{
 use cfg_if::cfg_if;
 
 macro_rules! declare_open {
-    ( $name:ident ) => {
+    ( unsafe fn $name:ident ) => {
         prefixed_extern! {
-            fn $name(
+            unsafe fn $name(
                 out_plaintext: *mut u8,
                 ciphertext: *const u8,
                 plaintext_len: usize,
@@ -35,9 +35,9 @@ macro_rules! declare_open {
 }
 
 macro_rules! declare_seal {
-    ( $name:ident ) => {
+    ( unsafe fn $name:ident ) => {
         prefixed_extern! {
-            fn $name(
+            unsafe fn $name(
                 out_ciphertext: *mut u8,
                 plaintext: *const u8,
                 plaintext_len: usize,
@@ -109,7 +109,7 @@ pub(super) fn seal(
 
     cfg_if! {
         if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
-            declare_seal! { chacha20_poly1305_seal }
+            declare_seal! { unsafe fn chacha20_poly1305_seal }
             let _: Neon = required_cpu_features;
             let _: Option<()> = optional_cpu_features;
             tag = unsafe {
@@ -119,13 +119,13 @@ pub(super) fn seal(
         } else {
             let _: Sse41 = required_cpu_features;
             if matches!(optional_cpu_features, Some((Avx2 { .. }, Bmi2 { .. }))) {
-                declare_seal! { chacha20_poly1305_seal_avx2 }
+                declare_seal! { unsafe fn chacha20_poly1305_seal_avx2 }
                 tag = unsafe {
                     chacha20_poly1305_seal_avx2(in_out, in_out.cast_const(), len, ad, ad_len, &mut data);
                     &data.out.tag
                 };
             } else {
-                declare_seal! { chacha20_poly1305_seal_sse41 }
+                declare_seal! { unsafe fn chacha20_poly1305_seal_sse41 }
                 tag = unsafe {
                     chacha20_poly1305_seal_sse41(in_out, in_out.cast_const(), len, ad, ad_len, &mut data);
                     &data.out.tag
@@ -178,7 +178,7 @@ pub(super) fn open(
 
         cfg_if! {
             if #[cfg(all(target_arch = "aarch64", target_endian = "little"))] {
-                declare_open! { chacha20_poly1305_open }
+                declare_open! { unsafe fn chacha20_poly1305_open }
                 let _: Neon = required_cpu_features;
                 let _: Option<()> = optional_cpu_features;
                 tag = unsafe {
@@ -188,13 +188,13 @@ pub(super) fn open(
             } else {
                 let _: Sse41 = required_cpu_features;
                 if matches!(optional_cpu_features, Some((Avx2 { .. }, Bmi2 { .. }))) {
-                    declare_open! { chacha20_poly1305_open_avx2 }
+                    declare_open! { unsafe fn chacha20_poly1305_open_avx2 }
                     tag = unsafe {
                         chacha20_poly1305_open_avx2(output, input, len, ad, ad_len, &mut data);
                         &data.out.tag
                     };
                 } else {
-                    declare_open! { chacha20_poly1305_open_sse41 }
+                    declare_open! { unsafe fn chacha20_poly1305_open_sse41 }
                     tag = unsafe {
                         chacha20_poly1305_open_sse41(output, input, len, ad, ad_len, &mut data);
                         &data.out.tag

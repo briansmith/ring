@@ -29,7 +29,7 @@ impl Key {
         _required_cpu_features: (intel::ClMul, intel::Avx, intel::Movbe),
     ) -> Self {
         prefixed_extern! {
-            fn gcm_init_avx(HTable: *mut Key, h: &KeyValue);
+            unsafe fn gcm_init_avx(HTable: *mut Key, h: &KeyValue);
         }
         let mut uninit = MaybeUninit::<Key>::uninit();
         unsafe {
@@ -48,7 +48,7 @@ impl UpdateBlock for Key {
 impl UpdateBlocks for Key {
     fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]) {
         prefixed_extern! {
-            fn gcm_ghash_avx(
+            unsafe fn gcm_ghash_avx(
                 xi: &mut Xi,
                 Htable: &Key,
                 inp: *const u8,

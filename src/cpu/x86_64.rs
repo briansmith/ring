@@ -217,7 +217,7 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
 
         // Declared as `uint32_t` in the C code.
         prefixed_extern! {
-            static avx2_available: AtomicU32;
+            unsafe static avx2_available: AtomicU32;
         }
         // SAFETY: The C code only reads `avx2_available`, and its reads are
         // synchronized through the `OnceNonZeroU32` Acquire/Release
@@ -311,7 +311,7 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
     if adx_available && bmi2_available {
         // Declared as `uint32_t` in the C code.
         prefixed_extern! {
-            static adx_bmi2_available: AtomicU32;
+            unsafe static adx_bmi2_available: AtomicU32;
         }
         // SAFETY: The C code only reads `adx_bmi2_available`, and its
         // reads are synchronized through the `OnceNonZeroU32`

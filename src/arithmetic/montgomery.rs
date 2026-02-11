@@ -192,7 +192,7 @@ pub(super) fn limbs_from_mont_in_place<'o>(
     n0: &N0,
 ) -> Result<&'o mut [Limb], LenMismatchError> {
     prefixed_extern! {
-        fn bn_from_montgomery_in_place(
+        unsafe fn bn_from_montgomery_in_place(
             r: *mut Limb,
             num_r: c::size_t,
             a: *mut Limb,

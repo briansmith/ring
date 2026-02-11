@@ -254,7 +254,7 @@ impl<M, E> Elem<M, E> {
     pub fn sub(mut self, b: &Elem<M, E>, m: &Mont<M>) -> Elem<M, E> {
         prefixed_extern! {
             // `r` and `a` may alias.
-            fn LIMBS_sub_mod(
+            unsafe fn LIMBS_sub_mod(
                 r: *mut Limb,
                 a: *const Limb,
                 b: *const Limb,

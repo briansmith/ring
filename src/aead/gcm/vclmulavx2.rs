@@ -31,7 +31,7 @@ pub struct Key([ffi::U128; 12]);
 impl Key {
     pub(in super::super) fn new(value: KeyValue, _cpu: (Avx2, VAesClmul)) -> Self {
         prefixed_extern! {
-            fn gcm_init_vpclmulqdq_avx2(HTable: *mut Key, h: &KeyValue);
+            unsafe fn gcm_init_vpclmulqdq_avx2(HTable: *mut Key, h: &KeyValue);
         }
         let mut uninit = MaybeUninit::<Key>::uninit();
         unsafe {
@@ -44,7 +44,7 @@ impl Key {
 impl UpdateBlock for Key {
     fn update_block(&self, xi: &mut Xi, a: [u8; BLOCK_LEN]) {
         prefixed_extern! {
-            fn gcm_ghash_vpclmulqdq_avx2_16(
+            unsafe fn gcm_ghash_vpclmulqdq_avx2_16(
                 xi: &mut Xi,
                 Htable: &Key,
                 inp: *const u8,

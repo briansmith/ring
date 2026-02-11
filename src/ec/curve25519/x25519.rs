@@ -85,7 +85,7 @@ fn x25519_public_from_private(
     let A = ExtPoint::from_scalarmult_base(private_key.as_ref(), cpu_features);
 
     prefixed_extern! {
-        fn x25519_u_coordinate(out_public_value: &mut [u8; 32], A: &ExtPoint);
+        unsafe fn x25519_u_coordinate(out_public_value: &mut [u8; 32], A: &ExtPoint);
     }
     unsafe { x25519_u_coordinate(public_out, &A) }
 
@@ -119,7 +119,7 @@ fn x25519_ecdh(
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
         if super::ops::has_fe25519_adx(cpu_features) {
             prefixed_extern! {
-                fn x25519_scalar_mult_adx(
+                unsafe fn x25519_scalar_mult_adx(
                     out: &mut EncodedPoint,
                     scalar: &MaskedScalar,
                     point: &EncodedPoint,
@@ -129,7 +129,7 @@ fn x25519_ecdh(
         }
 
         prefixed_extern! {
-            fn x25519_scalar_mult_generic_masked(
+            unsafe fn x25519_scalar_mult_generic_masked(
                 out: &mut EncodedPoint,
                 scalar: &MaskedScalar,
                 point: &EncodedPoint,
@@ -168,7 +168,7 @@ fn x25519_neon(
     _cpu: cpu::arm::Neon,
 ) {
     prefixed_extern! {
-        fn x25519_NEON(
+        unsafe fn x25519_NEON(
             out: &mut EncodedPoint,
             scalar: &MaskedScalar,
             point: &EncodedPoint,

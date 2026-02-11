@@ -147,7 +147,7 @@ impl N0 {
         // n_mod_r = n % r. As explained in the documentation for `n0`, this is
         // done by taking the lowest `N0::LIMBS_USED` limbs of `n`.
         prefixed_extern! {
-            fn bn_neg_inv_mod_r_u64(n: u64) -> u64;
+            unsafe fn bn_neg_inv_mod_r_u64(n: u64) -> u64;
         }
 
         // XXX: u64::from isn't guaranteed to be constant time.

@@ -294,25 +294,25 @@ unsafe extern "C" fn p384_elem_sqr_mont(
 }
 
 prefixed_extern! {
-    fn p384_elem_mul_mont(
+    unsafe fn p384_elem_mul_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
         b: *const Limb, // [COMMON_OPS.num_limbs]
     );
 
-    fn p384_point_add(
+    unsafe fn p384_point_add(
         r: *mut Limb,   // [3][COMMON_OPS.num_limbs]
         a: *const Limb, // [3][COMMON_OPS.num_limbs]
         b: *const Limb, // [3][COMMON_OPS.num_limbs]
     );
-    fn p384_point_mul(
+    unsafe fn p384_point_mul(
         r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
     );
 
-    fn p384_scalar_mul_mont(
+    unsafe fn p384_scalar_mul_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
         b: *const Limb, // [COMMON_OPS.num_limbs]

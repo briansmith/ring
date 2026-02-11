@@ -31,7 +31,7 @@ impl Key {
         _cpu: (cpu::intel::ClMul, cpu::intel::Ssse3),
     ) -> Self {
         prefixed_extern! {
-            fn gcm_init_clmul(HTable: *mut Key, h: &KeyValue);
+            unsafe fn gcm_init_clmul(HTable: *mut Key, h: &KeyValue);
         }
         let mut uninit = MaybeUninit::<Key>::uninit();
         unsafe {
@@ -50,7 +50,7 @@ impl UpdateBlock for Key {
 impl UpdateBlocks for Key {
     fn update_blocks(&self, xi: &mut Xi, input: &[[u8; BLOCK_LEN]]) {
         prefixed_extern! {
-            fn gcm_ghash_clmul(
+            unsafe fn gcm_ghash_clmul(
                 xi: &mut Xi,
                 Htable: &Key,
                 inp: *const u8,
