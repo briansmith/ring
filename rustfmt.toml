@@ -1,4 +1,5 @@
 edition = "2018"
+style_edition = "2021"
 max_width = 100
 newline_style = "Unix"
 reorder_imports = true
