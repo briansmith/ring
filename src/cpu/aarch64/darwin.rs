@@ -90,13 +90,7 @@ pub fn detect_features() -> u32 {
 
     #[cfg(all(target_pointer_width = "64", not(target_os = "watchos")))]
     {
-        // TODO(MSRV-1.77): Use c"..." literal.
-        // TODO(MSRV-1.72): Use `CStr::from_bytes_with_nul`.
-        // TODO(MSRV-1.69): Use `CStr::from_bytes_until_nul`.
-        const SHA512_NAME: &CStr =
-            unsafe { CStr::from_bytes_with_nul_unchecked(b"hw.optional.armv8_2_sha512\0") };
-
-        if detect_feature(SHA512_NAME) {
+        if detect_feature(c"hw.optional.armv8_2_sha512") {
             features |= Sha512::mask();
         }
     }
