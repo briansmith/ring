@@ -43,8 +43,7 @@ impl<const N: usize> AlignedStorage<N> {
     pub fn uninit() -> Self {
         assert_eq!(N % LIMBS_PER_CHUNK, 0); // TODO: const.
 
-        // TODO(MSRV-1.80): Use `Self([const { MaybeUninit::uninit() }; N])`.
-        Self(unsafe { MaybeUninit::<[MaybeUninit<Limb>; N]>::uninit().assume_init() })
+        Self([const { MaybeUninit::uninit() }; N])
     }
 
     // The result will have every chunk aligned on a 64 byte boundary.

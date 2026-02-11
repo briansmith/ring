@@ -141,7 +141,7 @@ jobs:
 
       - run: ./mk/install-build-tools.ps1
 
-      - run: rustup toolchain install --no-self-update --profile=minimal 1.77.0
+      - run: rustup toolchain install --no-self-update --profile=minimal 1.83.0
 
       - run: echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
         shell: bash
@@ -199,7 +199,7 @@ jobs:
         rust_channel:
           - stable
           # Keep in sync with Cargo.toml and similar `rust_channel` sections.
-          - 1.77.0 # MSRV
+          - 1.83.0 # MSRV
           # TODO: Move these to a daily/pre-release job.
           # - nightly
           # - beta
@@ -208,14 +208,6 @@ jobs:
           # Not available anymore.
           - target: wasm32-wasi
             rust_channel: stable
-
-          # Not available.
-          - target: wasm32-wasip1
-            rust_channel: 1.66.0
-
-          # Not available.
-          - target: wasm32-wasip2
-            rust_channel: 1.66.0
 
         include:
           - target: aarch64-apple-darwin
@@ -436,7 +428,7 @@ jobs:
           - stable
           - nightly
           # Keep in sync with Cargo.toml and similar `rust_channel` sections.
-          - 1.77.0 # MSRV
+          - 1.83.0 # MSRV
 
         include:
           - target: aarch64-unknown-linux-musl

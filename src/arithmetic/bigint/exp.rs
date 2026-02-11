@@ -141,9 +141,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         Ok((acc, tmp))
     }
 
-    // TODO(MSRV): Use inline const: `[const { MaybeUniinit::uninit() }; ...]`.
     let mut storage: [MaybeUninit<Limb>; STORAGE_LIMBS] =
-        unsafe { MaybeUninit::uninit().assume_init() };
+        [const { MaybeUninit::uninit() }; STORAGE_LIMBS];
     let table = dynarray::Uninit::new(&mut storage, STORAGE_ENTRIES, num_limbs)?.init_fold(
         |init, uninit| {
             let r: Result<&'_ mut [Limb], LimbSliceError> = match init.len() {
