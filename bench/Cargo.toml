@@ -1,8 +1,13 @@
 [package]
-edition = "2021"
 name = "ring-bench"
 publish = false
 version = "0.1.0"
+edition = "2021"
+
+# Enable MSRV-aware resolver.
+resolver = "3"
+
+rust-version = "1.85"
 
 [dependencies]
 ring = { path = "../" }

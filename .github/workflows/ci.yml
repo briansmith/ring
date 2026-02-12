@@ -335,8 +335,8 @@ jobs:
       # MSRV testing uses fallback resolver configuration.
       - if: ${{ contains(matrix.rust_channel, '1.') }}
         run: |
-          cp .cargo/config-msrv.toml .cargo/config.toml
-          cargo +${{ matrix.rust_channel }} generate-lockfile
+          echo "CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback" >> $GITHUB_ENV
+          cargo +${{ matrix.rust_channel }} update
         shell: bash
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
@@ -457,8 +457,8 @@ jobs:
       # MSRV testing uses fallback resolver configuration.
       - if: ${{ contains(matrix.rust_channel, '1.') }}
         run: |
-          cp .cargo/config-msrv.toml .cargo/config.toml
-          cargo +${{ matrix.rust_channel }} generate-lockfile
+          echo "CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback" >> $GITHUB_ENV
+          cargo +${{ matrix.rust_channel }} update
         shell: bash
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
@@ -527,8 +527,8 @@ jobs:
       # MSRV testing uses fallback resolver configuration.
       - if: ${{ contains(matrix.rust_channel, '1.') }}
         run: |
-          cp .cargo/config-msrv.toml .cargo/config.toml
-          cargo +${{ matrix.rust_channel }} generate-lockfile
+          echo "CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback" >> $GITHUB_ENV
+          cargo +${{ matrix.rust_channel }} update
         shell: bash
 
       - run: |
