@@ -4,6 +4,11 @@ name = "ring-cavp"
 publish = false
 version = "0.1.0"
 
+# Enable MSRV-aware resolver.
+resolver = "3"
+
+rust-version = "1.85"
+
 [dev-dependencies]
 ring = { path = ".." }
 
