@@ -298,4 +298,46 @@ mod tests {
             assert!(matches!(result, Err(error::Unspecified)));
         }
     }
+
+    fn bytes_reader(bytes: &[u8]) -> untrusted::Reader {
+        return untrusted::Reader::new(untrusted::Input::from(bytes));
+    }
+
+    #[test]
+    fn test_bit_string_with_no_unused_bits() {
+        // Unexpected type
+        assert_eq!(
+            Err(error::Unspecified),
+            bit_string_with_no_unused_bits(&mut bytes_reader(&[0x01, 0x01, 0xff]))
+        );
+
+        // Unexpected nonexistent type
+        assert_eq!(
+            Err(error::Unspecified),
+            bit_string_with_no_unused_bits(&mut bytes_reader(&[0x42, 0xff, 0xff]))
+        );
+
+        // Unexpected empty input
+        assert_eq!(
+            Err(error::Unspecified),
+            bit_string_with_no_unused_bits(&mut bytes_reader(&[]))
+        );
+
+        // Valid input with non-zero unused bits
+        assert_eq!(
+            Err(error::Unspecified),
+            bit_string_with_no_unused_bits(&mut bytes_reader(&[0x03, 0x03, 0x04, 0x12, 0x34]))
+        );
+
+        // Valid input
+        assert_eq!(
+            untrusted::Input::from(&[0x12, 0x34]),
+            bit_string_with_no_unused_bits(&mut bytes_reader(&[0x03, 0x03, 0x00, 0x12, 0x34]))
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn fuzz_bit_string_with_no_unused_bits() {
+    }
 }
