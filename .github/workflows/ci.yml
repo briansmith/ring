@@ -568,10 +568,8 @@ jobs:
           - # debug
 
         # Coverage collection is Nightly-only.
-        # nightly-2026-02-11 is used to avoid
-        # https://github.com/rust-lang/cargo/issues/16634.
         rust_channel:
-          - nightly-2026-02-11
+          - nightly-2026-02-16
 
         # TODO: targets
         include:
@@ -592,7 +590,7 @@ jobs:
           - features: --features=unstable-testing-arm-no-hw,std
             target: aarch64-unknown-linux-gnu
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: arm-unknown-linux-gnueabi
@@ -604,7 +602,7 @@ jobs:
           - features: --features=unstable-testing-arm-no-neon,std
             target: armv7-unknown-linux-gnueabihf
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           # TODO: Use the -musl target after
@@ -614,7 +612,7 @@ jobs:
             cpu_model: # default
             features: --features=std
             mode: # debug
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: powerpc-unknown-linux-gnu
@@ -636,28 +634,28 @@ jobs:
             cpu_model: coreduo-v1
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: phenom-v1
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Conroe-v1
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Opteron_G4-v1
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           # Excavator is pre-Zen but with AVX2.
@@ -665,7 +663,7 @@ jobs:
             cpu_model: Opteron_G5-v1
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           # Excavator is pre-Zen but with AVX2.
@@ -673,84 +671,84 @@ jobs:
             cpu_model: EPYC-v1
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Conroe-v1
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Denverton-v2
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Denverton-v2
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Haswell
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Haswell
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Nehalem
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Nehalem
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: SandyBridge
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: SandyBridge
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-gnu
             cpu_model: Westmere
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
             cpu_model: Westmere
             features: --features=std
             mode: --release
-            rust_channel: nightly-2026-02-11
+            rust_channel: nightly-2026-02-16
             host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-musl
