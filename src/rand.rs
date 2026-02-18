@@ -19,6 +19,16 @@
 
 use crate::error;
 
+#[cfg(all(
+    target_arch = "wasm32",
+    any(
+        target_os = "wasi",
+        all(target_os = "unknown", feature = "wasm32_unknown_unknown_js")
+    )
+))]
+#[path = "rand/getrandom/lib.rs"]
+mod getrandom;
+
 /// A secure random number generator.
 pub trait SecureRandom: sealed::SecureRandom {
     /// Fills `dest` with random bytes.
@@ -165,6 +175,6 @@ impl SystemRandom {
 impl sealed::SecureRandom for SystemRandom {
     #[inline(always)]
     fn fill_impl(&self, dest: &mut [u8], _: crate::sealed::Arg) -> Result<(), error::Unspecified> {
-        getrandom::getrandom(dest).map_err(|_| error::Unspecified)
+        getrandom::fill(dest).map_err(|_| error::Unspecified)
     }
 }
