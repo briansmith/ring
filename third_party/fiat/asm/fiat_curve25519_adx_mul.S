@@ -1,7 +1,7 @@
 #include <ring-core/asm_base.h>
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-    (defined(__APPLE__) || defined(__ELF__))
+    (defined(__APPLE__) || defined(__ELF__) || defined(__CYGWIN__))
 
 .intel_syntax noprefix
 .text
@@ -10,8 +10,10 @@
 .global _fiat_curve25519_adx_mul
 _fiat_curve25519_adx_mul:
 #else
+#if defined(__ELF__)
 .type fiat_curve25519_adx_mul, @function
 .hidden fiat_curve25519_adx_mul
+#endif
 .global fiat_curve25519_adx_mul
 fiat_curve25519_adx_mul:
 #endif
