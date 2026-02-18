@@ -21,8 +21,9 @@ use crate::{
     ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve},
     error,
     io::der,
-    limb, sealed, signature,
+    sealed, signature,
 };
+use core::borrow::Borrow;
 
 /// An ECDSA verification algorithm.
 pub struct EcdsaVerificationAlgorithm {
@@ -114,17 +115,23 @@ impl EcdsaVerificationAlgorithm {
 
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
-        let r = scalar_parse_big_endian_variable(n, limb::AllowZero::No, r)?;
-        let s = scalar_parse_big_endian_variable(n, limb::AllowZero::No, s)?;
+        let r = scalar_parse_big_endian_variable(n, r)?;
+        let r = n
+            .nonzero_scalar_leak_nonzero(&r)
+            .ok_or(error::Unspecified)?;
+        let s = scalar_parse_big_endian_variable(n, s)?;
+        let s = n
+            .nonzero_scalar_leak_nonzero(&s)
+            .ok_or(error::Unspecified)?;
 
         // NSA Guide Step 4: "Compute w = s**−1 mod n, using the routine in
         // Appendix B.1."
-        let w = self.ops.scalar_inv_to_mont_vartime(&s, cpu);
+        let w = self.ops.scalar_inv_to_mont_vartime(s, cpu);
 
         // NSA Guide Step 5: "Compute u1 = (e * w) mod n, and compute
         // u2 = (r * w) mod n."
         let u1 = scalar_ops.scalar_product(&e, &w, cpu);
-        let u2 = scalar_ops.scalar_product(&r, &w, cpu);
+        let u2 = scalar_ops.scalar_product(r.borrow(), &w, cpu);
 
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
@@ -152,7 +159,7 @@ impl EcdsaVerificationAlgorithm {
             let x = q.elem_unencoded(x);
             q.elems_are_equal(&r_jacobian, &x).leak()
         }
-        let mut r = self.ops.scalar_as_elem(&r);
+        let mut r = self.ops.scalar_as_elem(r.borrow());
         if sig_r_equals_x(q, &r, &x, &z2) {
             return Ok(());
         }

@@ -20,7 +20,7 @@ use crate::{
     error::{self, LenMismatchError},
     limb::*,
 };
-use core::marker::PhantomData;
+use core::{borrow::Borrow, marker::PhantomData};
 
 use elem::{mul_mont, unary_op, unary_op_assign, unary_op_from_binary_op_assign};
 
@@ -416,7 +416,7 @@ pub struct PublicScalarOps {
         p_xy: &(Elem<R>, Elem<R>),
         cpu: cpu::Features,
     ) -> Point,
-    scalar_inv_to_mont_vartime: fn(s: &Scalar<Unencoded>, cpu: cpu::Features) -> Scalar<R>,
+    scalar_inv_to_mont_vartime: fn(s: NonZeroScalarRef<'_>, cpu: cpu::Features) -> Scalar<R>,
     pub(super) q_minus_n: PublicElem<Unencoded>,
 }
 
@@ -446,7 +446,7 @@ impl Modulus<Q> {
 impl PublicScalarOps {
     pub(super) fn scalar_inv_to_mont_vartime(
         &self,
-        s: &Scalar<Unencoded>,
+        s: NonZeroScalarRef<'_>,
         cpu: cpu::Features,
     ) -> Scalar<R> {
         (self.scalar_inv_to_mont_vartime)(s, cpu)
@@ -468,9 +468,12 @@ impl PrivateScalarOps {
     }
 
     /// Returns the modular inverse of `a` (mod `n`). Panics if `a` is zero.
-    pub(super) fn scalar_inv_to_mont(&self, a: &Scalar, cpu: cpu::Features) -> Scalar<R> {
-        assert!(!self.scalar_ops.common.is_zero(a));
-        let a = self.to_mont(a, cpu);
+    pub(super) fn scalar_inv_to_mont(
+        &self,
+        a: NonZeroScalarRef<'_>,
+        cpu: cpu::Features,
+    ) -> Scalar<R> {
+        let a = self.to_mont(a.borrow(), cpu);
         (self.scalar_inv_to_mont)(a, cpu)
     }
 }
@@ -502,7 +505,32 @@ impl Modulus<N> {
             encoding: PhantomData,
         }
     }
+
+    pub fn nonzero_scalar_leak_nonzero<'s, E: Encoding>(
+        &self,
+        scalar: &'s Scalar<E>,
+    ) -> Option<NonZeroScalarRef<'s, E>> {
+        if limbs_are_zero(&scalar.limbs[..self.num_limbs.into()]).leak() {
+            return cold_none();
+        }
+        Some(NonZeroScalarRef(scalar))
+    }
 }
+
+impl<E: Encoding> Borrow<Scalar<E>> for NonZeroScalarRef<'_, E> {
+    fn borrow(&self) -> &Scalar<E> {
+        self.0
+    }
+}
+
+#[cold]
+#[inline(never)]
+fn cold_none<T>() -> Option<T> {
+    None
+}
+
+#[derive(Clone, Copy)]
+pub struct NonZeroScalarRef<'a, E: Encoding = Unencoded>(&'a Scalar<E>);
 
 // Returns (`a` squared `squarings` times) * `b`.
 fn elem_sqr_mul(
@@ -554,14 +582,13 @@ pub(super) fn scalar_parse_big_endian_fixed_consttime(
 #[inline]
 pub(super) fn scalar_parse_big_endian_variable(
     n: &Modulus<N>,
-    allow_zero: AllowZero,
     bytes: untrusted::Input,
 ) -> Result<Scalar, error::Unspecified> {
     let num_limbs = n.num_limbs.into();
     let mut r = Scalar::zero();
     parse_big_endian_in_range_and_pad_consttime(
         bytes,
-        allow_zero,
+        AllowZero::Yes,
         &n.limbs[..num_limbs],
         &mut r.limbs[..num_limbs],
     )?;
@@ -615,12 +642,6 @@ mod tests {
     use super::*;
     use crate::testutil as test;
     use alloc::{format, vec, vec::Vec};
-
-    const ZERO_SCALAR: Scalar = Scalar {
-        limbs: [0; elem::NumLimbs::MAX],
-        m: PhantomData,
-        encoding: PhantomData,
-    };
 
     trait Convert<E: Encoding> {
         fn convert(self, q: &Modulus<Q>) -> Elem<E>;
@@ -954,18 +975,6 @@ mod tests {
 
             Ok(())
         })
-    }
-
-    #[test]
-    #[should_panic(expected = "!self.scalar_ops.common.is_zero(a)")]
-    fn p256_scalar_inv_to_mont_zero_panic_test() {
-        let _ = p256::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR, cpu::features());
-    }
-
-    #[test]
-    #[should_panic(expected = "!self.scalar_ops.common.is_zero(a)")]
-    fn p384_scalar_inv_to_mont_zero_panic_test() {
-        let _ = p384::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR, cpu::features());
     }
 
     #[test]
@@ -1381,7 +1390,7 @@ mod tests {
     fn consume_scalar(n: &Modulus<N>, test_case: &mut test::TestCase, name: &str) -> Scalar {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
-        scalar_parse_big_endian_variable(n, AllowZero::Yes, bytes).unwrap()
+        scalar_parse_big_endian_variable(n, bytes).unwrap()
     }
 
     fn consume_scalar_mont(
@@ -1391,7 +1400,7 @@ mod tests {
     ) -> Scalar<R> {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
-        let s = scalar_parse_big_endian_variable(n, AllowZero::Yes, bytes).unwrap();
+        let s = scalar_parse_big_endian_variable(n, bytes).unwrap();
         // “Transmute” it to a `Scalar<R>`.
         Scalar {
             limbs: s.limbs,
