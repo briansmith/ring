@@ -114,6 +114,20 @@ where
     }
 }
 
+impl<A, B, C, D> GetFeature<(A, B, C, D)> for features::Values
+where
+    features::Values: GetFeature<(A, B)>,
+    features::Values: GetFeature<(C, D)>,
+{
+    #[inline(always)]
+    fn get_feature(&self) -> Option<(A, B, C, D)> {
+        match (self.get_feature(), self.get_feature()) {
+            (Some((a, b)), Some((c, d))) => Some((a, b, c, d)),
+            _ => None,
+        }
+    }
+}
+
 impl<F> GetFeature<F> for Features
 where
     features::Values: GetFeature<F>,
