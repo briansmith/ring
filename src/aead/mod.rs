@@ -223,3 +223,6 @@ mod poly1305;
 pub mod quic;
 mod sealing_key;
 mod unbound_key;
+
+#[cfg(test)]
+mod tests;
