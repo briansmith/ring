@@ -113,7 +113,7 @@ mod tests {
     pub fn test_poly1305() {
         let cpu_features = cpu::features();
         test::run(
-            test_vector_file!("poly1305_test.txt"),
+            test_vector_file!("../poly1305_test.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
                 let key = test_case.consume_bytes("Key");

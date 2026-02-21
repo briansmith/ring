@@ -197,18 +197,21 @@ mod tests {
 
     #[test]
     pub fn test_aes() {
-        test::run(test_vector_file!("aes_tests.txt"), |section, test_case| {
-            assert_eq!(section, "");
-            let key = consume_key(test_case, "Key");
-            let input = test_case.consume_bytes("Input");
-            let block: Block = input.as_slice().try_into()?;
-            let expected_output = test_case.consume_bytes("Output");
+        test::run(
+            test_vector_file!("../aes_tests.txt"),
+            |section, test_case| {
+                assert_eq!(section, "");
+                let key = consume_key(test_case, "Key");
+                let input = test_case.consume_bytes("Input");
+                let block: Block = input.as_slice().try_into()?;
+                let expected_output = test_case.consume_bytes("Output");
 
-            let output = key.encrypt_block(block);
-            assert_eq!(output.as_ref(), &expected_output[..]);
+                let output = key.encrypt_block(block);
+                assert_eq!(output.as_ref(), &expected_output[..]);
 
-            Ok(())
-        })
+                Ok(())
+            },
+        )
     }
 
     fn consume_key(test_case: &mut test::TestCase, name: &str) -> Key {

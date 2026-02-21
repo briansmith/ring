@@ -256,7 +256,7 @@ mod tests {
         let mut buf = vec![0u8; 1300];
 
         test::run(
-            test_vector_file!("chacha_tests.txt"),
+            test_vector_file!("../chacha_tests.txt"),
             move |section, test_case| {
                 assert_eq!(section, "");
 

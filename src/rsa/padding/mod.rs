@@ -118,7 +118,7 @@ mod test {
     #[test]
     fn test_pss_padding_verify() {
         test::run(
-            test_vector_file!("rsa_pss_padding_tests.txt"),
+            test_vector_file!("../rsa_pss_padding_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -157,7 +157,7 @@ mod test {
     #[test]
     fn test_pss_padding_encode() {
         test::run(
-            test_vector_file!("rsa_pss_padding_tests.txt"),
+            test_vector_file!("../rsa_pss_padding_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
