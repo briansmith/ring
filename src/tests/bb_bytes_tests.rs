@@ -21,10 +21,11 @@ use crate::{
 
 #[test]
 fn constant_time_conditional_memcpy() {
-    test_constant_time_conditional_mem_x(
+    const LEN: usize = 4 * size_of::<u64>();
+    test_constant_time_conditional_mem_x::<LEN>(
         |b, out, input| {
             prefixed_extern! {
-                fn bssl_constant_time_test_conditional_memcpy(dst: &mut [u8; 256], src: &[u8; 256], b: BoolMask);
+                fn bssl_constant_time_test_conditional_memcpy(dst: &mut [u8; LEN], src: &[u8; LEN], b: BoolMask);
             }
             unsafe { bssl_constant_time_test_conditional_memcpy(out, input, b) }
         },
@@ -38,10 +39,11 @@ fn constant_time_conditional_memcpy() {
 
 #[test]
 fn constant_time_conditional_memxor() {
-    test_constant_time_conditional_mem_x(
+    const LEN: usize = 3 * 32;
+    test_constant_time_conditional_mem_x::<LEN>(
         |b, out, input| {
             prefixed_extern! {
-                fn bssl_constant_time_test_conditional_memxor(dst: &mut [u8; 256], src: &[u8; 256], b: BoolMask);
+                fn bssl_constant_time_test_conditional_memxor(dst: &mut [u8; LEN], src: &[u8; LEN], b: BoolMask);
             }
             unsafe {
                 bssl_constant_time_test_conditional_memxor(out, input, b);
