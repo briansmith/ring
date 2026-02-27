@@ -21,10 +21,13 @@ jobs:
       - run: cargo fmt --all -- --check
 
   clippy:
-    # Don't run duplicate `push` jobs for the repo owner's PRs.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ matrix.host_os }}
 
-    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        host_os:
+          - macos-15
+          - ubuntu-24.04
 
     steps:
       - run: rustup --version
