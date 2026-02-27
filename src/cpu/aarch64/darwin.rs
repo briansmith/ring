@@ -64,9 +64,8 @@ pub fn detect_features() -> u32 {
         let mut len = size_of_val(&value);
         let value_ptr = ptr::from_mut(&mut value).cast::<c_void>();
         // SAFETY: `value_ptr` is a valid pointer to `value` and `len` is the size of `value`.
-        let rc = unsafe {
-            libc::sysctlbyname(name.as_ptr(), value_ptr, &mut len, core::ptr::null_mut(), 0)
-        };
+        let rc =
+            unsafe { libc::sysctlbyname(name.as_ptr(), value_ptr, &mut len, ptr::null_mut(), 0) };
         // All the conditions are separated so we can observe them in code coverage.
         if rc != 0 {
             return false;
