@@ -9,7 +9,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - run: rustup --version
@@ -42,7 +42,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - run: rustup --version
@@ -64,7 +64,7 @@ jobs:
       - run: cargo audit --deny warnings
 
   cargo-semver-checks:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - run: rustup --version
@@ -89,7 +89,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - run: rustup --version
@@ -115,7 +115,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - run: rustup --version
@@ -241,7 +241,7 @@ jobs:
             cargo_options: --no-run -Z build-std
 
           - target: aarch64-linux-android
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
             # TODO: https://github.com/briansmith/ring/issues/486
             cargo_options: --no-run
 
@@ -249,13 +249,13 @@ jobs:
             host_os: windows-11-arm
 
           - target: aarch64-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: aarch64-unknown-linux-musl
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: arm-unknown-linux-gnueabi
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           # - target: arm64_32-apple-watchos
           #   host_os: macos-15
@@ -265,53 +265,53 @@ jobs:
           #   cargo_options: --no-run -Z build-std
 
           - target: armv7-linux-androideabi
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
             # TODO: https://github.com/briansmith/ring/issues/838
             cargo_options: --no-run
 
           - target: armv7-unknown-linux-musleabihf
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: i686-pc-windows-msvc
             host_os: windows-2025
 
           - target: i686-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: i686-unknown-linux-musl
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: powerpc-unknown-linux-gnu
             mode: --release
             rust_channel: stable
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: powerpc64-unknown-linux-gnu
             mode: --release
             rust_channel: stable
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: powerpc64le-unknown-linux-gnu
             mode: --release
             rust_channel: stable
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: riscv64gc-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: s390x-unknown-linux-gnu
             mode: --release
             rust_channel: stable
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: wasm32-wasi
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: wasm32-wasip1
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: wasm32-wasip2
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: x86_64-pc-windows-gnu
             host_os: windows-2025
@@ -323,10 +323,10 @@ jobs:
             host_os: macos-15
 
           - target: x86_64-unknown-linux-musl
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: x86_64-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
     steps:
       - uses: briansmith/actions-checkout@v4
@@ -363,7 +363,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: briansmith/actions-checkout@v4
@@ -433,13 +433,13 @@ jobs:
 
         include:
           - target: aarch64-unknown-linux-musl
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
           - target: i686-pc-windows-msvc
             host_os: windows-2025
 
           - target: x86_64-unknown-linux-gnu
-            host_os: ubuntu-22.04
+            host_os: ubuntu-24.04
 
     steps:
       - uses: briansmith/actions-checkout@v4
@@ -492,7 +492,7 @@ jobs:
           - --no-default-features --features=wasm32_unknown_unknown_js
 
         host_os:
-          - ubuntu-22.04
+          - ubuntu-24.04
         mode:
           - # debug
           - --release
