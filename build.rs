@@ -181,9 +181,30 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "-Wuninitialized",
         ];
         NON_MSVC_FLAGS
+    } else if compiler.is_like_clang_cl() {
+        static MSVC_FLAGS: &[&str] = &[
+            "/Gy",      // Enable function-level linking.
+            "/std:c11", // Standard
+            "/Zc:wchar_t",
+            "/Zc:forScope",
+            "/Zc:inline",
+            // Default warnings.
+            "/W4", // /Wall defaults to -Weverything (https://github.com/llvm/llvm-project/commit/f9b08a382cc1e0669805991849ad69efbd4703e8), use original W4 instead
+            // Warnings.
+            "/wd4127", // C4127: conditional expression is constant
+            "/wd4464", // C4464: relative include path contains '..'
+            "/wd4514", // C4514: <name>: unreferenced inline function has be
+            "/wd4710", // C4710: function not inlined
+            "/wd4711", // C4711: function 'function' selected for inline expansion
+            "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
+            "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
+                        * /Qspectre switch specified */
+        ];
+        MSVC_FLAGS
     } else {
         static MSVC_FLAGS: &[&str] = &[
-            "/Gy", // Enable function-level linking.
+            "/Gy",      // Enable function-level linking.
+            "/std:c11", // Standard
             "/Zc:wchar_t",
             "/Zc:forScope",
             "/Zc:inline",
@@ -591,9 +612,15 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
 
 fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_dir: &Path) {
     let compiler = c.get_compiler();
-    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
-    let compiler = if target.os == WINDOWS && target.arch == AARCH64 && !compiler.is_like_clang() {
-        let _ = c.compiler("clang");
+    let is_msvc_not_clang_cl = compiler.is_like_msvc() && !compiler.is_like_clang_cl();
+
+    // FIXME: On Windows AArch64, ring C code cannot be compiled using cl.exe, but must be compiled
+    // using the LLVM toolchain.  Use clang-cl, which is compatible with flags that are already in
+    // place (i.e. custom CFLAGS that the user provided to cc).
+    let compiler = if target.os == WINDOWS && target.arch == AARCH64 && is_msvc_not_clang_cl {
+        // FIXME: This requires clang-cl to be available in PATH, regardless of any explicit
+        // or custom path that the user might have provided to cc via the CC flag.
+        c.compiler("clang-cl");
         c.get_compiler()
     } else {
         compiler
@@ -616,11 +643,8 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
         let _ = c.define("NDEBUG", None);
     }
 
-    if target.arch == X86 {
-        let is_msvc_not_clang_cl = compiler.is_like_msvc() && !compiler.is_like_clang_cl();
-        if !is_msvc_not_clang_cl {
-            let _ = c.flag("-msse2");
-        }
+    if target.arch == X86 && !is_msvc_not_clang_cl {
+        let _ = c.flag("-msse2");
     }
 
     // Allow cross-compiling without a target sysroot for these targets.
