@@ -15,11 +15,10 @@
 //! X25519 Key agreement.
 
 use super::{
-    ops::{has_fe25519_adx, EncodedPoint, MaskedScalar, ELEM_LEN},
+    ops::{EncodedPoint, ExtPoint, MaskedScalar, ELEM_LEN},
     scalar::SCALAR_LEN,
 };
 use crate::{agreement, bb, cpu, ec, error, rand};
-use core::ffi::c_int;
 
 static CURVE25519: ec::Curve = ec::Curve {
     public_key_len: PUBLIC_KEY_LEN,
@@ -83,20 +82,12 @@ fn x25519_public_from_private(
         return Ok(());
     }
 
+    let A = ExtPoint::from_scalarmult_base(private_key.as_ref(), cpu_features);
+
     prefixed_extern! {
-        fn x25519_public_from_private_generic_masked(
-            public_key_out: &mut PublicKey,
-            private_key: &PrivateKey,
-            use_adx: c_int,
-        );
+        fn x25519_u_coordinate(out_public_value: &mut [u8; 32], A: &ExtPoint);
     }
-    unsafe {
-        x25519_public_from_private_generic_masked(
-            public_out,
-            &private_key,
-            has_fe25519_adx(cpu_features).into(),
-        );
-    }
+    unsafe { x25519_u_coordinate(public_out, &A) }
 
     Ok(())
 }
@@ -126,7 +117,7 @@ fn x25519_ecdh(
         }
 
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
-        if has_fe25519_adx(cpu_features) {
+        if super::ops::has_fe25519_adx(cpu_features) {
             prefixed_extern! {
                 fn x25519_scalar_mult_adx(
                     out: &mut EncodedPoint,
@@ -188,11 +179,8 @@ fn x25519_neon(
 
 const ELEM_AND_SCALAR_LEN: usize = ELEM_LEN;
 
-type PrivateKey = MaskedScalar;
 const PRIVATE_KEY_LEN: usize = ELEM_AND_SCALAR_LEN;
 
-// An X25519 public key as an encoded Curve25519 point.
-type PublicKey = [u8; PUBLIC_KEY_LEN];
 const PUBLIC_KEY_LEN: usize = ELEM_AND_SCALAR_LEN;
 
 // An X25519 shared secret as an encoded Curve25519 point.
