@@ -20,7 +20,7 @@ use crate::{
     bssl, cpu, error,
     limb::{Limb, LIMB_BITS},
 };
-use core::{ffi::c_int, marker::PhantomData};
+use core::marker::PhantomData;
 
 // Elem<T>` is `fe` in curve25519/internal.h.
 // Elem<L> is `fe_loose` in curve25519/internal.h.
@@ -81,11 +81,24 @@ impl ExtPoint {
             z: Elem::zero(),
             t: Elem::zero(),
         };
+
+        #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
+        if has_fe25519_adx(cpu) {
+            prefixed_extern! {
+                fn x25519_ge_scalarmult_base_adx_wrapper(h: &mut ExtPoint, a: &Scalar);
+            }
+            unsafe {
+                x25519_ge_scalarmult_base_adx_wrapper(&mut r, scalar);
+            }
+            return r;
+        }
+
+        let _ = cpu;
         prefixed_extern! {
-            fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar, has_fe25519_adx: c_int);
+            fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar);
         }
         unsafe {
-            x25519_ge_scalarmult_base(&mut r, scalar, has_fe25519_adx(cpu).into());
+            x25519_ge_scalarmult_base(&mut r, scalar);
         }
         r
     }
@@ -157,17 +170,17 @@ fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>, _cpu_features: cpu::Features
     bytes
 }
 
+#[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
 #[inline(always)]
 pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
-    cfg_if::cfg_if! {
-        if #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))] {
-            use cpu::{intel::{Adx, Bmi1, Bmi2}, GetFeature as _};
-            matches!(cpu.get_feature(), Some((Adx { .. }, Bmi1 { .. }, Bmi2 { .. })))
-        } else {
-            let _ = cpu;
-            false
-        }
-    }
+    use cpu::{
+        intel::{Adx, Bmi1, Bmi2},
+        GetFeature as _,
+    };
+    matches!(
+        cpu.get_feature(),
+        Some((Adx { .. }, Bmi1 { .. }, Bmi2 { .. }))
+    )
 }
 
 prefixed_extern! {
