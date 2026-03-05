@@ -47,6 +47,7 @@ if [ -n "${ANDROID_NDK_ROOT-}" ]; then
   android_tools=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin
 fi
 
+has_locked=
 for arg in $*; do
   case $arg in
     --target=*)
@@ -55,10 +56,20 @@ for arg in $*; do
     +*)
       toolchain=${arg#*+}
       ;;
+    --locked)
+      # TODO: enforce that this is after the command; see
+      # https://github.com/rust-lang/cargo/issues/11390.
+      has_locked=1
+      ;;
     *)
       ;;
   esac
 done
+
+if [ -z "${has_locked}" ]; then
+  echo "--locked is missing."
+  exit 1
+fi
 
 # See comments in install-build-tools.sh.
 llvm_version=20

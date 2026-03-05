@@ -19,6 +19,7 @@ IFS=$'\n\t'
 
 export NULL=""
 cargo clippy \
+  --locked \
   --all-features --all-targets \
   -- \
   --deny missing_docs \

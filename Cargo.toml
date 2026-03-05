@@ -166,7 +166,8 @@ libc = { version = "0.2.172", default-features = false }
 windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
-wasm-bindgen-test = { version = "0.3.37", default-features = false, features = ["std"] }
+# TODO(MSRV): Bump this. 0.3.55 is the last one that advertises a compatible MSRV.
+wasm-bindgen-test = { version = "0.3.55", default-features = false, features = ["std"] }
 
 [target.'cfg(any(unix, windows, target_os = "wasi"))'.dev-dependencies]
 libc = { version = "0.2.172", default-features = false }
