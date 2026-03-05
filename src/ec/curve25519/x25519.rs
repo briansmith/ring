@@ -126,17 +126,15 @@ fn x25519_ecdh(
         }
 
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
-        {
-            if has_fe25519_adx(cpu_features) {
-                prefixed_extern! {
-                    fn x25519_scalar_mult_adx(
-                        out: &mut EncodedPoint,
-                        scalar: &MaskedScalar,
-                        point: &EncodedPoint,
-                    );
-                }
-                return unsafe { x25519_scalar_mult_adx(out, scalar, point) };
+        if has_fe25519_adx(cpu_features) {
+            prefixed_extern! {
+                fn x25519_scalar_mult_adx(
+                    out: &mut EncodedPoint,
+                    scalar: &MaskedScalar,
+                    point: &EncodedPoint,
+                );
             }
+            return unsafe { x25519_scalar_mult_adx(out, scalar, point) };
         }
 
         prefixed_extern! {
