@@ -194,7 +194,9 @@ sparc64-unknown-linux-gnu)
     libc6-dev-sparc64-cross
   ;;
 wasm32-unknown-unknown)
-  cargo install wasm-bindgen-cli --bin wasm-bindgen-test-runner
+  # TODO(MSRV): Bump this. 0.2.105 is compatible with wasm-bindgen-test 0.3.55,
+  # which is the last version compatible with our MSRV.
+  cargo install --locked wasm-bindgen-cli --version 0.2.105 --bin wasm-bindgen-test-runner
   use_clang=1
   ;;
 wasm32-wasi|wasm32-wasip1|wasm32-wasip2)

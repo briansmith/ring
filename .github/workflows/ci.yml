@@ -61,8 +61,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: cargo generate-lockfile
-
       - run: cargo audit --deny warnings
 
   cargo-semver-checks:
@@ -346,11 +344,11 @@ jobs:
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
-          mk/cargo.sh +${{ matrix.rust_channel }} test -vv --lib --tests --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
+          mk/cargo.sh +${{ matrix.rust_channel }} test --locked -vv --lib --tests --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: |
-          cargo +${{ matrix.rust_channel }} test -vv --lib --tests --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
+          cargo +${{ matrix.rust_channel }} test --locked -vv --lib --tests --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
@@ -377,7 +375,7 @@ jobs:
 
       - run: rustup --version
 
-      - run: cargo test -p ring-bench --all-features --all-targets
+      - run: cargo test --locked -p ring-bench --all-features --all-targets
 
   test-doc:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
@@ -461,11 +459,11 @@ jobs:
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
-          mk/cargo.sh +${{ matrix.rust_channel }} test --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
+          mk/cargo.sh +${{ matrix.rust_channel }} test --locked --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: |
-          cargo +${{ matrix.rust_channel }} test --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
+          cargo +${{ matrix.rust_channel }} test --locked --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
@@ -522,10 +520,8 @@ jobs:
       - if: ${{ contains(matrix.host_os, 'windows') && contains(matrix.target, '86') }}
         run: ./mk/install-build-tools.ps1
 
-      - run: cargo +${{ matrix.rust_channel }} generate-lockfile
-
       - run: |
-          ${{ matrix.webdriver }} mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
+          ${{ matrix.webdriver }} mk/cargo.sh +${{ matrix.rust_channel }} test --locked -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
@@ -770,7 +766,7 @@ jobs:
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
-          RING_CPU_MODEL=${{ matrix.cpu_model }} RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
+          RING_CPU_MODEL=${{ matrix.cpu_model }} RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test --locked --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
 
       - uses: briansmith/codecov-codecov-action@v5
         with:
