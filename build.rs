@@ -80,6 +80,7 @@ mod env {
     define_env! { pub CARGO_PKG_VERSION_PATCH: SetByCargo }
     define_env! { pub CARGO_PKG_VERSION_PRE: SetByCargo }
     define_env! { pub DEBUG: SetByCargo }
+    define_env! { pub HOST: SetByCargo }
     define_env! { pub OUT_DIR: SetByCargo }
     define_env! { pub PERL_EXECUTABLE: RerunIfChanged }
     define_env! { pub RING_PREGENERATE_ASM: RerunIfChanged }
@@ -246,7 +247,7 @@ const ASM_TARGETS: &[AsmTarget] = &[
         perlasm_format: WIN32N,
     },
     AsmTarget {
-        oss: &[WINDOWS],
+        oss: &[WINDOWS, CYGWIN],
         arch: X86_64,
         perlasm_format: NASM,
     },
@@ -297,6 +298,7 @@ const NASM: &str = "nasm";
 const APPLE_ABI: &[&str] = &["ios", "macos", "tvos", "visionos", "watchos"];
 
 const WINDOWS: &str = "windows";
+const CYGWIN: &str = "cygwin";
 
 fn main() {
     // Avoid assuming the working directory is the same is the $CARGO_MANIFEST_DIR so that toolchains
@@ -651,7 +653,11 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir:
     let mut include_dir = include_dir.as_os_str().to_os_string();
     include_dir.push(OsString::from(String::from(std::path::MAIN_SEPARATOR)));
 
-    let mut c = Command::new("./target/tools/windows/nasm/nasm");
+    let mut c = Command::new(if env::var(&env::HOST).unwrap().contains("cygwin") {
+        "nasm"
+    } else {
+        "./target/tools/windows/nasm/nasm"
+    });
     let _ = c
         .arg("-o")
         .arg(out_file.to_str().expect("Invalid path"))
@@ -763,7 +769,19 @@ fn perlasm(
 }
 
 fn join_components_with_forward_slashes(path: &Path) -> OsString {
-    let parts = path.components().map(|c| c.as_os_str()).collect::<Vec<_>>();
+    let mut parts = path.components().map(|c| c.as_os_str()).collect::<Vec<_>>();
+    if env::var(&env::HOST).unwrap().contains("cygwin") {
+        // Most platforms treat `//foo` the same as `/foo`, but POSIX allows `//`
+        // specifically to have an implementation-defined behavior. Most platforms
+        // treat them equal, but Cygwin is not one of them.
+        //
+        // - POSIX.1-2024: https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap04.html#tag_04_16
+        // - gnulib notes: https://cgit.git.savannah.gnu.org/cgit/gnulib.git/plain/m4/double-slash-root.m4?id=f4038dcb346fccb58d910e2f0a62c0f45022d2a8
+
+        if parts[0] == OsStr::new("/") {
+            parts[0] = OsStr::new("");
+        }
+    }
     parts.join(OsStr::new("/"))
 }
 
