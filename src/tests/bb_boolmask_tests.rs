@@ -20,8 +20,8 @@ fn leak_in_test(a: BoolMask) -> bool {
 
 #[test]
 fn test_bool_mask_bitwise_and_is_logical_and() {
-    assert!(leak_in_test(BoolMask::TRUE & BoolMask::TRUE));
-    assert!(!leak_in_test(BoolMask::TRUE & BoolMask::FALSE));
-    assert!(!leak_in_test(BoolMask::FALSE & BoolMask::TRUE));
-    assert!(!leak_in_test(BoolMask::FALSE & BoolMask::FALSE));
+    assert!(leak_in_test(BoolMask::true_() & BoolMask::true_()));
+    assert!(!leak_in_test(BoolMask::true_() & BoolMask::false_()));
+    assert!(!leak_in_test(BoolMask::false_() & BoolMask::true_()));
+    assert!(!leak_in_test(BoolMask::false_() & BoolMask::false_()));
 }
