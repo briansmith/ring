@@ -81,12 +81,12 @@ struct CpuidSummary {
     leaf1_ecx: u32,
 }
 
-// SAFETY: This unconditionally uses CPUID because we don't have a good
-// way to detect CPUID and because we don't know of a CPU that supports
-// SSE2 (that we currently statically require) but doesn't support
-// CPUID. SGX is one environment where CPUID isn't allowed but where
-// SSE2 is statically supported. Ideally there would be a
-// `cfg!(target_feature = "cpuid")` we could use.
+// SAFETY: This unconditionally uses CPUID. See
+// https://github.com/rust-lang/stdarch/pull/1935#issuecomment-3407574977.
+// Also we don't know of a CPU that supports SSE2 (that we currently
+// statically require) but doesn't support CPUID. SGX is one environment
+// where CPUID isn't allowed but where SSE2 is statically supported.
+// TODO(MSRV-1.94): Remove `unsafe`.
 unsafe fn cpuid_all() -> CpuidSummary {
     use core::arch::x86 as arch;
 
@@ -94,10 +94,14 @@ unsafe fn cpuid_all() -> CpuidSummary {
     // see https://github.com/rust-lang/rust/pull/101861.
 
     // Intel: "21.1.1 Notes on Where to Start".
+    // TODO(MSRV-1.94): Remove `unsafe`.
+    // SAFETY: See the function-level safety comment.
     let leaf0 = unsafe { arch::__cpuid(0) };
 
     let (leaf1_edx, leaf1_ecx) = if leaf0.eax >= 1 {
         // SAFETY: `leaf0.eax >= 1` indicates leaf 1 is available.
+        // TODO(MSRV-1.94): Remove `unsafe`.
+        #[allow(unused_unsafe)]
         let leaf1 = unsafe { arch::__cpuid(1) };
         (leaf1.edx, leaf1.ecx)
     } else {
