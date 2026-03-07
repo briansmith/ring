@@ -182,23 +182,46 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
         ];
         NON_MSVC_FLAGS
     } else {
-        static MSVC_FLAGS: &[&str] = &[
-            "/Gy", // Enable function-level linking.
-            "/Zc:wchar_t",
-            "/Zc:forScope",
-            "/Zc:inline",
-            // Warnings.
-            "/Wall",
-            "/wd4127", // C4127: conditional expression is constant
-            "/wd4464", // C4464: relative include path contains '..'
-            "/wd4514", // C4514: <name>: unreferenced inline function has be
-            "/wd4710", // C4710: function not inlined
-            "/wd4711", // C4711: function 'function' selected for inline expansion
-            "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
-            "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
-                        * /Qspectre switch specified */
-        ];
-        MSVC_FLAGS
+        if !compiler.is_like_clang_cl() {
+            static MSVC_FLAGS: &[&str] = &[
+                "/Gy", // Enable function-level linking.
+                "/Zc:wchar_t",
+                "/Zc:forScope",
+                "/Zc:inline",
+                // Warnings.
+                "/Wall",
+                "/wd4127", // C4127: conditional expression is constant
+                "/wd4464", // C4464: relative include path contains '..'
+                "/wd4514", // C4514: <name>: unreferenced inline function has be
+                "/wd4710", // C4710: function not inlined
+                "/wd4711", // C4711: function 'function' selected for inline expansion
+                "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
+                "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
+                            * /Qspectre switch specified */
+            ];
+            MSVC_FLAGS
+        } else {
+            static CLANG_CL_FLAGS: &[&str] = &[
+                "/Gy", // Enable function-level linking.
+                "/Zc:wchar_t",
+                "/Zc:forScope",
+                "/Zc:inline",
+                "/std:c11",
+                // Warnings.
+                "/Wall",
+                "/wd4127", // C4127: conditional expression is constant
+                "/wd4464", // C4464: relative include path contains '..'
+                "/wd4514", // C4514: <name>: unreferenced inline function has be
+                "/wd4710", // C4710: function not inlined
+                "/wd4711", // C4711: function 'function' selected for inline expansion
+                "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
+                "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
+                            * /Qspectre switch specified */
+                "-Wno-pre-c11-compat", // Turn off C11 compat warnings (/Wall issues -Weverything to clang-cl)
+                "-Wno-declaration-after-statement", // Turn off C99 compat warnings
+            ];
+            CLANG_CL_FLAGS
+        }
     }
 }
 
@@ -591,8 +614,11 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
 
 fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_dir: &Path) {
     let compiler = c.get_compiler();
-    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
-    let compiler = if target.os == WINDOWS && target.arch == AARCH64 && !compiler.is_like_clang() {
+    // FIXME: On Windows AArch64 we currently must use Clang(-cl) to compile C code
+    let compiler = if target.os == WINDOWS
+        && target.arch == AARCH64
+        && !(compiler.is_like_clang() || compiler.is_like_clang_cl())
+    {
         let _ = c.compiler("clang");
         c.get_compiler()
     } else {
