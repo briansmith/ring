@@ -39,7 +39,11 @@ fn constant_time_conditional_memcpy() -> Result<(), error::Unspecified> {
             bssl_constant_time_test_conditional_memcpy(
                 &mut out,
                 &input,
-                if b { BoolMask::TRUE } else { BoolMask::FALSE },
+                if b {
+                    BoolMask::true_()
+                } else {
+                    BoolMask::false_()
+                },
             )
         }
         assert_eq!(ref_in, input);
@@ -72,7 +76,11 @@ fn constant_time_conditional_memxor() -> Result<(), error::Unspecified> {
             bssl_constant_time_test_conditional_memxor(
                 &mut out,
                 &input,
-                if b { BoolMask::TRUE } else { BoolMask::FALSE },
+                if b {
+                    BoolMask::true_()
+                } else {
+                    BoolMask::false_()
+                },
             );
         }
 

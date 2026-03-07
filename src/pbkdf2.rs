@@ -309,7 +309,7 @@ fn try_verify(
         hmac::Key::try_new(algorithm.0, secret, cpu).map_err(VerifyError::secret_too_long)?;
     let mut idx: u32 = 0;
 
-    let mut matches = bb::BoolMask::TRUE;
+    let mut matches = bb::BoolMask::true_();
 
     for previously_derived_chunk in previously_derived.chunks(output_len) {
         idx = idx.checked_add(1).ok_or_else(|| {

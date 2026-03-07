@@ -13,20 +13,25 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::Word;
-use core::ops;
+use core::{hint, ops};
 
 // BoolMask is either `BoolMask::TRUE` or `BoolMask::FALSE`.
 #[repr(transparent)]
 pub struct BoolMask(Word);
 
 impl BoolMask {
-    pub(crate) const TRUE: Self = Self(Word::MAX);
-    pub(crate) const FALSE: Self = Self(0);
+    pub fn true_() -> Self {
+        Self(hint::black_box(Word::MAX))
+    }
+
+    pub fn false_() -> Self {
+        Self(hint::black_box(0))
+    }
 
     /// Returns true if `self` is `BoolMask::TRUE`; otherwise, returns false
     /// (`self` is `BoolMask::FALSE`).
     pub(crate) fn leak(self) -> bool {
-        self.0 != 0
+        hint::black_box(self.0) != 0
     }
 }
 
