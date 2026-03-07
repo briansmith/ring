@@ -8,10 +8,13 @@ license = "Apache-2.0 AND ISC"
 name = "ring"
 repository = "https://github.com/briansmith/ring"
 
+# Enable MSRV-aware resolver.
+resolver = "3"
+
 # Keep in sync with .github/workflows/ci.yml ("MSRV") and see the MSRV note
 # in cpu/arm.rs.
 # 1.66 is required on x86/x86_64 for https://github.com/rust-lang/rust/pull/101861.
-rust-version = "1.83.0"
+rust-version = "1.85.0"
 
 # Keep in sync with `links` below.
 # For normal (SemVer-compatible) updates, bump this to the next multiple of 1000
@@ -155,7 +158,11 @@ name = "ring"
 
 [dependencies]
 cfg-if = { version = "1.0.0", default-features = false }
-getrandom = { version = "0.2.10" }
+
+# `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo update -p getrandom`.
+# On wasm32-wasip3, this depends on a version of wasip3 that has a higher MSRV.
+getrandom = { version = "0.4.2" }
+
 untrusted = { version = "0.9" }
 
 [target.'cfg(all(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")), any(target_os = "android", target_os = "linux")))'.dependencies]
@@ -188,7 +195,7 @@ std = ["alloc"]
 unstable-testing-arm-no-hw = []
 unstable-testing-arm-no-neon = []
 test_logging = []
-wasm32_unknown_unknown_js = ["getrandom/js"]
+wasm32_unknown_unknown_js = ["getrandom/wasm_js"]
 
 [package.metadata.cargo-semver-checks.lints]
 trait_marked_deprecated = { level = "warn" }
