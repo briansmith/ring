@@ -21,19 +21,13 @@ pub trait ArraySplitMap<I, O, const CN: usize, const ON: usize> {
     fn array_split_map(self, f: impl Fn([I; CN]) -> O) -> [O; ON];
 }
 
-macro_rules! impl_array_split_map {
-    { $IN:literal } => {
-        impl<I: Copy, O, const CN: usize, const ON: usize> ArraySplitMap<I, O, CN, ON> for [I; $IN] {
-            #[inline]
-            fn array_split_map(self, f: impl Fn([I; CN]) -> O) -> [O; ON] {
-                const { assert!(CN * ON == $IN) };
-                let (chunks, _): (&[[I; CN]], _) = self.as_chunks();
-                array::from_fn(|i| f(chunks[i]))
-            }
-        }
+impl<I: Copy, O, const IN: usize, const CN: usize, const ON: usize> ArraySplitMap<I, O, CN, ON>
+    for [I; IN]
+{
+    #[inline]
+    fn array_split_map(self, f: impl Fn([I; CN]) -> O) -> [O; ON] {
+        const { assert!(CN * ON == IN) };
+        let (chunks, _): (&[[I; CN]], _) = self.as_chunks();
+        array::from_fn(|i| f(chunks[i]))
     }
 }
-
-impl_array_split_map! { 12 }
-impl_array_split_map! { 16 }
-impl_array_split_map! { 32 }
