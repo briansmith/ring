@@ -75,10 +75,7 @@ pub mod prelude {
     // these modules and always use it with fully-qualified syntax. This is
     // particularly important to do since code coverage testing is done on
     // using Rust Nightly.
-    pub(crate) use super::{
-        ptr::{ConstPointerPolyfills, PointerPolyfills},
-        slice::SlicePolyfills,
-    };
+    pub(crate) use super::{ptr::PointerPolyfills, slice::SlicePolyfills};
 }
 
 mod notsend;
