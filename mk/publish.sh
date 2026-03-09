@@ -6,5 +6,6 @@ if [[ -n "$(git status --porcelain -- ':(exclude)pregenerated/')" ]]; then
   echo Repository is dirty.
   exit 1
 fi
-msrv=1.80.1
+# Using 1.81 or later will add `.cargo_vcs_info.json` to the crate.
+msrv=1.82
 cargo +${msrv} publish -p ring --allow-dirty

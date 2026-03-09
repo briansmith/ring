@@ -46,7 +46,6 @@ mod cold_error;
 mod aliasing_slices;
 mod array_flat_map;
 mod array_split_map;
-mod boxed;
 pub mod dynarray;
 pub mod partial_buffer;
 pub mod sliceutil;
@@ -77,7 +76,6 @@ pub mod prelude {
     // particularly important to do since code coverage testing is done on
     // using Rust Nightly.
     pub(crate) use super::{
-        boxed::{BoxMaybeUninitSlicePolyfills, BoxSlicePolyfills},
         ptr::{ConstPointerPolyfills, PointerPolyfills},
         slice::SlicePolyfills,
     };
