@@ -669,10 +669,11 @@ void x25519_ge_scalarmult_base_adx_recode(signed char e[64], const uint8_t a[32]
   // each e[i] is between -8 and 8
 }
 
+// `odd` is `true` for step 2 and `false` for step 4.
 RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573
 __attribute__((target("adx,bmi2")))
-void x25519_ge_scalarmult_base_adx_add_odd(ge_p3_4 *r, const signed char e[64]) {
-  for (unsigned i = 1; i < 64; i += 2) {
+void x25519_ge_scalarmult_base_adx_add(ge_p3_4 *r, const signed char e[64], bool odd) {
+  for (unsigned i = odd; i < 64; i += 2) {
     ge_precomp_4 t;
     table_select_4(&t, i / 2, e[i]);
     ge_p3_add_p3_precomp_4(r, r, &t);
@@ -686,16 +687,6 @@ void x25519_ge_scalarmult_base_adx_dbl_4_4(ge_p3_4 *r) {
   inline_x25519_ge_dbl_4(r, r, /*skip_t=*/true);
   inline_x25519_ge_dbl_4(r, r, /*skip_t=*/true);
   inline_x25519_ge_dbl_4(r, r, /*skip_t=*/false);
-}
-
-RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573
-__attribute__((target("adx,bmi2")))
-void x25519_ge_scalarmult_base_adx_add_even(ge_p3_4 *r, const signed char e[64]) {
-  for (unsigned i = 0; i < 64; i += 2) {
-    ge_precomp_4 t;
-    table_select_4(&t, i / 2, e[i]);
-    ge_p3_add_p3_precomp_4(r, r, &t);
-  }
 }
 
 RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573

@@ -34,9 +34,9 @@ pub fn scalarmult_base(a: &Scalar, _cpu: RequiredFeatures) -> P3 {
     };
     let mut r = ge_p3_4::new_0_1_1_0();
     unsafe {
-        x25519_ge_scalarmult_base_adx_add_odd(&mut r, e);
+        x25519_ge_scalarmult_base_adx_add(&mut r, e, true);
         x25519_ge_scalarmult_base_adx_dbl_4_4(&mut r);
-        x25519_ge_scalarmult_base_adx_add_even(&mut r, e);
+        x25519_ge_scalarmult_base_adx_add(&mut r, e, false);
     }
     let mut t: MaybeUninit<ge_p3_4_bytes> = MaybeUninit::uninit();
     let t = unsafe {
@@ -81,9 +81,8 @@ type fe4 = [u64; 4];
 prefixed_extern! {
     // Postcondition: `e` is a valid `E` for the value `a`.
     unsafe fn x25519_ge_scalarmult_base_adx_recode(e: &mut MaybeUninit<Digits>, a: &Scalar);
-    unsafe fn x25519_ge_scalarmult_base_adx_add_odd(r: &mut ge_p3_4, e: &Digits);
+    unsafe fn x25519_ge_scalarmult_base_adx_add(r: &mut ge_p3_4, e: &Digits, odd: bool);
     unsafe fn x25519_ge_scalarmult_base_adx_dbl_4_4(r: &mut ge_p3_4);
-    unsafe fn x25519_ge_scalarmult_base_adx_add_even(r: &mut ge_p3_4, e: &Digits);
     unsafe fn x25519_ge_scalarmult_base_adx_canon(t: &mut MaybeUninit<ge_p3_4_bytes>, r: &mut ge_p3_4);
     unsafe fn x25519_ge_scalarmult_base_adx_from_bytes(h: &mut MaybeUninit<P3>, t: &ge_p3_4_bytes);
 }
