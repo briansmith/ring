@@ -13,7 +13,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{overlapping, quic::Sample, Nonce};
+use super::{Nonce, overlapping, quic::Sample};
 use crate::cpu;
 use cfg_if::cfg_if;
 

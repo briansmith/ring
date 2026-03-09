@@ -13,8 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    super::{PublicKeyComponents, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN},
-    public_modulus, PublicExponent, PublicModulus,
+    super::{N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, PublicKeyComponents},
+    PublicExponent, PublicModulus, public_modulus,
 };
 use crate::{
     arithmetic::{bigint, montgomery::RR},

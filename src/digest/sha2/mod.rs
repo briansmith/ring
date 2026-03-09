@@ -15,8 +15,8 @@
 use super::BlockLen;
 
 pub(super) use self::{
-    sha2_32::{block_data_order_32, State32, SHA256_BLOCK_LEN},
-    sha2_64::{block_data_order_64, State64, SHA512_BLOCK_LEN},
+    sha2_32::{SHA256_BLOCK_LEN, State32, block_data_order_32},
+    sha2_64::{SHA512_BLOCK_LEN, State64, block_data_order_64},
 };
 
 pub(super) const CHAINING_WORDS: usize = 8;

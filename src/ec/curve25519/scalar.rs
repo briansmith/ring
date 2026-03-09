@@ -61,7 +61,7 @@ impl MaskedScalar {
             unsafe fn x25519_sc_mask(a: &mut [u8; SCALAR_LEN]);
         }
         let mut r = Self(Scalar(bytes));
-        unsafe { x25519_sc_mask(&mut r.0 .0) };
+        unsafe { x25519_sc_mask(&mut r.0.0) };
         r
     }
 

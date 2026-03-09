@@ -13,10 +13,9 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    aes, aes_gcm, chacha20_poly1305,
-    nonce::{Nonce, NONCE_LEN},
+    Aad, AuthError, ForgedPlaintext, KeyInner, TAG_LEN, Tag, aes, aes_gcm, chacha20_poly1305,
+    nonce::{NONCE_LEN, Nonce},
     overlapping::{IndexError, Overlapping},
-    Aad, AuthError, ForgedPlaintext, KeyInner, Tag, TAG_LEN,
 };
 use crate::{
     cpu,

@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Aes, Neon, PMull, Sha256, CAPS_STATIC};
+use super::{Aes, CAPS_STATIC, Neon, PMull, Sha256};
 #[cfg(all(target_pointer_width = "64", not(target_os = "watchos")))]
 use {super::Sha512, core::ffi::CStr};
 

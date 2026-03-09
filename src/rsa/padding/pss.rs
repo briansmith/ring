@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, mgf1, Padding, RsaEncoding, Verification};
+use super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, Padding, RsaEncoding, Verification, mgf1};
 use crate::{bb, bits, digest, error, rand, sealed};
 
 /// RSA PSS padding as described in [RFC 3447 Section 8.1].

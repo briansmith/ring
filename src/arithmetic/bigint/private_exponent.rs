@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{limb, Limb, Mont};
+use super::{Limb, Mont, limb};
 use crate::error;
 use alloc::boxed::Box;
 

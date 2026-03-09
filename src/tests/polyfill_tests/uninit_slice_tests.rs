@@ -14,7 +14,7 @@
 
 use crate::{
     error::LenMismatchError,
-    polyfill::{slice::Uninit, StartPtr},
+    polyfill::{StartPtr, slice::Uninit},
 };
 use core::{mem::MaybeUninit, ptr, slice};
 
@@ -69,13 +69,15 @@ fn test_write_fully_with_nonempty() {
 fn test_write_fully_with_nonempty_empty() {
     let mut uninit: [MaybeUninit<u8>; 1] = [MaybeUninit::uninit(); 1];
     let uninit = Uninit::from(uninit.as_mut());
-    assert!(uninit
-        .write_fully_with(|uninit| Ok(uninit
-            .write_copy_of_slice(&[])
-            .unwrap_or_else(|_| unreachable!())
-            .ignore_uninit()
-            .into_written()))
-        .is_err());
+    assert!(
+        uninit
+            .write_fully_with(|uninit| Ok(uninit
+                .write_copy_of_slice(&[])
+                .unwrap_or_else(|_| unreachable!())
+                .ignore_uninit()
+                .into_written()))
+            .is_err()
+    );
 }
 
 #[test]
@@ -84,26 +86,28 @@ fn test_write_fully_with_nonempty_short() {
     let mut uninit: [MaybeUninit<u8>; 3] = [MaybeUninit::uninit(); LEN];
     let uninit = Uninit::from(uninit.as_mut());
     const ARBITRARY: [u8; LEN] = [1, 1, 3];
-    assert!(uninit
-        .write_fully_with(|u| {
-            let (ptr, len) = (u.start_ptr(), u.len());
+    assert!(
+        uninit
+            .write_fully_with(|u| {
+                let (ptr, len) = (u.start_ptr(), u.len());
 
-            let (_, r) = u
-                .write_copy_of_slice(&ARBITRARY)
-                .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
-                .uninit_empty()
-                .unwrap_or_else(|_| unreachable!())
-                .into_written()
-                .split_last_mut()
-                .unwrap();
+                let (_, r) = u
+                    .write_copy_of_slice(&ARBITRARY)
+                    .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
+                    .uninit_empty()
+                    .unwrap_or_else(|_| unreachable!())
+                    .into_written()
+                    .split_last_mut()
+                    .unwrap();
 
-            // We're testing the case where the lengths don't match, but the addresses do.
-            assert_ne!(r.len(), len);
-            assert!(ptr::addr_eq(r.as_ptr(), ptr));
+                // We're testing the case where the lengths don't match, but the addresses do.
+                assert_ne!(r.len(), len);
+                assert!(ptr::addr_eq(r.as_ptr(), ptr));
 
-            Ok(r)
-        })
-        .is_err());
+                Ok(r)
+            })
+            .is_err()
+    );
 }
 
 #[cfg(feature = "alloc")]
@@ -114,19 +118,21 @@ fn test_write_fully_with_nonempty_box_leak() {
     let mut uninit: [MaybeUninit<u8>; 1] = [MaybeUninit::uninit(); 1];
     let uninit = Uninit::from(uninit.as_mut());
     const ARBITRARY: u8 = 1;
-    assert!(uninit
-        .write_fully_with(|u| {
-            let (ptr, len) = (u.start_ptr(), u.len());
+    assert!(
+        uninit
+            .write_fully_with(|u| {
+                let (ptr, len) = (u.start_ptr(), u.len());
 
-            let r: &mut [_] = Box::leak(Box::new([ARBITRARY]));
+                let r: &mut [_] = Box::leak(Box::new([ARBITRARY]));
 
-            // We're testing the case where the lengths match, but the addresses don't.
-            assert_eq!(r.len(), len);
-            assert!(!ptr::addr_eq(r.as_ptr(), ptr));
+                // We're testing the case where the lengths match, but the addresses don't.
+                assert_eq!(r.len(), len);
+                assert!(!ptr::addr_eq(r.as_ptr(), ptr));
 
-            Ok(r)
-        })
-        .is_err());
+                Ok(r)
+            })
+            .is_err()
+    );
 }
 
 #[test]
@@ -138,25 +144,27 @@ fn test_write_fully_with_nonempty_leak_without_box_longer_lifetime() {
     {
         let mut uninit: [MaybeUninit<u32>; LEN] = [MaybeUninit::uninit(); LEN];
         let uninit = Uninit::from(uninit.as_mut());
-        assert!(uninit
-            .write_fully_with(|u: Uninit<'_, u32>| {
-                let (ptr, len) = (u.start_ptr(), u.len());
+        assert!(
+            uninit
+                .write_fully_with(|u: Uninit<'_, u32>| {
+                    let (ptr, len) = (u.start_ptr(), u.len());
 
-                // SAFETY: This is safe because `longer_lifetime_non_empty` outlives `uninit`.
-                let r = unsafe {
-                    slice::from_raw_parts_mut(
-                        longer_lifetime_non_empty.as_mut_ptr(),
-                        longer_lifetime_non_empty.len(),
-                    )
-                };
+                    // SAFETY: This is safe because `longer_lifetime_non_empty` outlives `uninit`.
+                    let r = unsafe {
+                        slice::from_raw_parts_mut(
+                            longer_lifetime_non_empty.as_mut_ptr(),
+                            longer_lifetime_non_empty.len(),
+                        )
+                    };
 
-                // We're testing the case where the lengths match, but the addresses don't.
-                assert_eq!(r.len(), len);
-                assert!(!ptr::addr_eq(r.as_ptr(), ptr));
+                    // We're testing the case where the lengths match, but the addresses don't.
+                    assert_eq!(r.len(), len);
+                    assert!(!ptr::addr_eq(r.as_ptr(), ptr));
 
-                Ok(r)
-            })
-            .is_err());
+                    Ok(r)
+                })
+                .is_err()
+        );
     }
 }
 
@@ -176,20 +184,22 @@ fn test_write_fully_with_nonempty_leak_without_box_same_lifeime() {
     assert_eq!(uninit.len(), after.len());
 
     let uninit = Uninit::from(uninit);
-    assert!(uninit
-        .write_fully_with(|u: Uninit<'_, u32>| {
-            let (ptr, len) = (u.start_ptr(), u.len());
+    assert!(
+        uninit
+            .write_fully_with(|u: Uninit<'_, u32>| {
+                let (ptr, len) = (u.start_ptr(), u.len());
 
-            // Transmute the lifetime.
-            // SAFETY: This is safe because `after` has the same lifetime as it is part of the
-            // same allocation.
-            let r = unsafe { slice::from_raw_parts_mut(after.as_mut_ptr(), after.len()) };
+                // Transmute the lifetime.
+                // SAFETY: This is safe because `after` has the same lifetime as it is part of the
+                // same allocation.
+                let r = unsafe { slice::from_raw_parts_mut(after.as_mut_ptr(), after.len()) };
 
-            // We're testing the case where the lengths match, but the addresses don't.
-            assert_eq!(r.len(), len);
-            assert!(!ptr::addr_eq(r.as_ptr(), ptr));
+                // We're testing the case where the lengths match, but the addresses don't.
+                assert_eq!(r.len(), len);
+                assert!(!ptr::addr_eq(r.as_ptr(), ptr));
 
-            Ok(r)
-        })
-        .is_err());
+                Ok(r)
+            })
+            .is_err()
+    );
 }

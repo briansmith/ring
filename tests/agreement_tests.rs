@@ -117,12 +117,10 @@ fn agreement_agree_ephemeral() {
                          public key is invalid."
                     );
                 }
-                assert!(agreement::agree_ephemeral(
-                    dummy_private_key,
-                    &peer_public,
-                    kdf_not_called
-                )
-                .is_err());
+                assert!(
+                    agreement::agree_ephemeral(dummy_private_key, &peer_public, kdf_not_called)
+                        .is_err()
+                );
             }
         }
 

@@ -261,18 +261,20 @@ fn test_signature_rsa_pss_verify() {
             // Sanity check that we correctly DER-encoded the originally-
             // provided separate (n, e) components. When we add test vectors
             // for improperly-encoded signatures, we'll have to revisit this.
-            assert!(untrusted::Input::from(&public_key)
-                .read_all(error::Unspecified, |input| der::nested(
-                    input,
-                    der::Tag::Sequence,
-                    error::Unspecified,
-                    |input| {
-                        let _ = der::positive_integer(input)?;
-                        let _ = der::positive_integer(input)?;
-                        Ok(())
-                    }
-                ))
-                .is_ok());
+            assert!(
+                untrusted::Input::from(&public_key)
+                    .read_all(error::Unspecified, |input| der::nested(
+                        input,
+                        der::Tag::Sequence,
+                        error::Unspecified,
+                        |input| {
+                            let _ = der::positive_integer(input)?;
+                            let _ = der::positive_integer(input)?;
+                            Ok(())
+                        }
+                    ))
+                    .is_ok()
+            );
 
             let msg = test_case.consume_bytes("Msg");
             let sig = test_case.consume_bytes("Sig");

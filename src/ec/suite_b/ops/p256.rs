@@ -13,8 +13,9 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
+    PublicModulus,
     elem::{binary_op, binary_op_assign},
-    elem_sqr_mul, elem_sqr_mul_acc, PublicModulus, *,
+    elem_sqr_mul, elem_sqr_mul_acc, *,
 };
 use cfg_if::cfg_if;
 

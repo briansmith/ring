@@ -13,8 +13,9 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
+    PublicModulus,
     elem::{binary_op, binary_op_assign},
-    elem_sqr_mul, elem_sqr_mul_acc, PublicModulus, *,
+    elem_sqr_mul, elem_sqr_mul_acc, *,
 };
 
 pub(super) const NUM_LIMBS: usize = 384 / LIMB_BITS;
@@ -23,21 +24,35 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     num_limbs: elem::NumLimbs::P384,
 
     q: PublicModulus {
-        p: limbs_from_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff"),
-        rr: PublicElem::from_hex("10000000200000000fffffffe000000000000000200000000fffffffe00000001"),
+        p: limbs_from_hex(
+            "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff",
+        ),
+        rr: PublicElem::from_hex(
+            "10000000200000000fffffffe000000000000000200000000fffffffe00000001",
+        ),
     },
-    n: PublicElem::from_hex("ffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973"),
+    n: PublicElem::from_hex(
+        "ffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973",
+    ),
 
-    a: PublicElem::from_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffffffc0000000000000003fffffffc"),
-    b: PublicElem::from_hex("cd08114b604fbff9b62b21f41f022094e3374bee94938ae277f2209b1920022ef729add87a4c32ec081188719d412dcc"),
+    a: PublicElem::from_hex(
+        "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffffffc0000000000000003fffffffc",
+    ),
+    b: PublicElem::from_hex(
+        "cd08114b604fbff9b62b21f41f022094e3374bee94938ae277f2209b1920022ef729add87a4c32ec081188719d412dcc",
+    ),
 
     elem_mul_mont: p384_elem_mul_mont,
     elem_sqr_mont: p384_elem_sqr_mont,
 };
 
 pub(super) static GENERATOR: (PublicElem<R>, PublicElem<R>) = (
-    PublicElem::from_hex("4d3aadc2299e1513812ff723614ede2b6454868459a30eff879c3afc541b4d6e20e378e2a0d6ce383dd0756649c0b528"),
-    PublicElem::from_hex("2b78abc25a15c5e9dd8002263969a840c6c3521968f4ffd98bade7562e83b050a1bfa8bf7bb4a9ac23043dad4b03a4fe"),
+    PublicElem::from_hex(
+        "4d3aadc2299e1513812ff723614ede2b6454868459a30eff879c3afc541b4d6e20e378e2a0d6ce383dd0756649c0b528",
+    ),
+    PublicElem::from_hex(
+        "2b78abc25a15c5e9dd8002263969a840c6c3521968f4ffd98bade7562e83b050a1bfa8bf7bb4a9ac23043dad4b03a4fe",
+    ),
 );
 
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
@@ -136,7 +151,9 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
-    oneRR_mod_n: PublicScalar::from_hex("c84ee012b39bf213fb05b7a28266895d40d49174aab1cc5bc3e483afcb82947ff3d81e5df1aa4192d319b2419b409a9"),
+    oneRR_mod_n: PublicScalar::from_hex(
+        "c84ee012b39bf213fb05b7a28266895d40d49174aab1cc5bc3e483afcb82947ff3d81e5df1aa4192d319b2419b409a9",
+    ),
     scalar_inv_to_mont: p384_scalar_inv_to_mont,
 };
 

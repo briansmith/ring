@@ -15,7 +15,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::{format_output, sha1, sha2, Algorithm, Output};
+use super::{Algorithm, Output, format_output, sha1, sha2};
 use crate::cpu;
 use core::mem::size_of;
 

@@ -19,8 +19,9 @@ use crate::polyfill::prelude::*;
 
 use super::{
     super::overlapping::IndexError,
+    Aad, BLOCK_LEN, Overlapping, Tag,
     aes::{self, Counter, EncryptCtr32, OverlappingPartialBlock},
-    gcm, open_whole_partial_tail, Aad, Overlapping, Tag, BLOCK_LEN,
+    gcm, open_whole_partial_tail,
 };
 use crate::{c, error::InputTooLongError};
 

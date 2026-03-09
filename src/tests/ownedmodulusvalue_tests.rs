@@ -1,5 +1,5 @@
 use crate::{
-    arithmetic::{bigint::modulus::ValidatedInput, MIN_LIMBS},
+    arithmetic::{MIN_LIMBS, bigint::modulus::ValidatedInput},
     error::KeyRejected,
     limb::{LIMB_BITS, LIMB_BYTES},
 };

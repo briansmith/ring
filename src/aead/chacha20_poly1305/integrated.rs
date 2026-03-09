@@ -14,8 +14,9 @@
 
 use super::{
     super::{NONCE_LEN, TAG_LEN},
+    Aad, InputTooLongError, KEY_LEN, Key, Nonce, Tag,
     chacha::Overlapping,
-    check_input_lengths, Aad, InputTooLongError, Key, Nonce, Tag, KEY_LEN,
+    check_input_lengths,
 };
 use cfg_if::cfg_if;
 

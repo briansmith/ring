@@ -25,7 +25,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::{ffi::U128, KeyValue, UpdateBlock, UpdateBlocks, Xi, BLOCK_LEN};
+use super::{BLOCK_LEN, KeyValue, UpdateBlock, UpdateBlocks, Xi, ffi::U128};
 use crate::polyfill::ArraySplitMap as _;
 
 #[derive(Clone)]

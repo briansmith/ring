@@ -15,8 +15,8 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::{
-    ffi::{self, KeyValue, BLOCK_LEN},
     UpdateBlock, Xi,
+    ffi::{self, BLOCK_LEN, KeyValue},
 };
 use crate::{
     c,

@@ -33,8 +33,9 @@
 use crate::polyfill::prelude::*;
 
 use super::{
+    Aad, Nonce, Tag,
     chacha::{self, *},
-    chacha20_poly1305, cpu, poly1305, Aad, Nonce, Tag,
+    chacha20_poly1305, cpu, poly1305,
 };
 use crate::{
     bb,

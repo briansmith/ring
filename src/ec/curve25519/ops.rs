@@ -15,10 +15,10 @@
 //! Elliptic curve operations on the birationally equivalent curves Curve25519
 //! and Edwards25519.
 
-pub use super::scalar::{MaskedScalar, Scalar, SCALAR_LEN};
+pub use super::scalar::{MaskedScalar, SCALAR_LEN, Scalar};
 use crate::{
     bssl, cpu, error,
-    limb::{Limb, LIMB_BITS},
+    limb::{LIMB_BITS, Limb},
 };
 use core::marker::PhantomData;
 
@@ -174,8 +174,8 @@ fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>, _cpu_features: cpu::Features
 #[inline(always)]
 pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
     use cpu::{
-        intel::{Adx, Bmi1, Bmi2},
         GetFeature as _,
+        intel::{Adx, Bmi1, Bmi2},
     };
     matches!(
         cpu.get_feature(),

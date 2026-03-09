@@ -14,7 +14,7 @@
 
 //! EdDSA Signatures.
 
-use super::{super::ops::*, eddsa_digest, ED25519_PUBLIC_KEY_LEN};
+use super::{super::ops::*, ED25519_PUBLIC_KEY_LEN, eddsa_digest};
 use crate::{
     cpu, digest, error,
     io::der,
