@@ -5,7 +5,9 @@
 #include <stdint.h>
 #include <immintrin.h>
 
+// Keep in sync with Rust `fe4`.
 typedef uint64_t fe4[4];
+
 typedef uint8_t fiat_uint1;
 typedef int8_t fiat_int1;
 
@@ -546,6 +548,7 @@ void x25519_scalar_mult_adx(uint8_t out[32], const uint8_t scalar[32],
   OPENSSL_memcpy(out, x2, sizeof(fe4));
 }
 
+// Keep in sync with Rust `ge_p3_4`.
 typedef struct {
   fe4 X;
   fe4 Y;
@@ -645,8 +648,7 @@ static inline void table_select_4(ge_precomp_4 *t, const int pos,
 //   a[31] <= 127
 RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573
 __attribute__((target("adx,bmi2")))
-void x25519_ge_scalarmult_base_adx(uint8_t h[4][32], const uint8_t a[32]) {
-  signed char e[64];
+void x25519_ge_scalarmult_base_adx_recode(signed char e[64], const uint8_t a[32]) {
   signed char carry;
 
   for (unsigned i = 0; i < 32; ++i) {
@@ -665,31 +667,46 @@ void x25519_ge_scalarmult_base_adx(uint8_t h[4][32], const uint8_t a[32]) {
   }
   e[63] += carry;
   // each e[i] is between -8 and 8
+}
 
-  ge_p3_4 r = {{0}, {1}, {1}, {0}};
+RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573
+__attribute__((target("adx,bmi2")))
+void x25519_ge_scalarmult_base_adx_add_odd(ge_p3_4 *r, const signed char e[64]) {
   for (unsigned i = 1; i < 64; i += 2) {
     ge_precomp_4 t;
     table_select_4(&t, i / 2, e[i]);
-    ge_p3_add_p3_precomp_4(&r, &r, &t);
+    ge_p3_add_p3_precomp_4(r, r, &t);
   }
+}
 
-  inline_x25519_ge_dbl_4(&r, &r, /*skip_t=*/true);
-  inline_x25519_ge_dbl_4(&r, &r, /*skip_t=*/true);
-  inline_x25519_ge_dbl_4(&r, &r, /*skip_t=*/true);
-  inline_x25519_ge_dbl_4(&r, &r, /*skip_t=*/false);
+RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573
+__attribute__((target("adx,bmi2")))
+void x25519_ge_scalarmult_base_adx_dbl_4_4(ge_p3_4 *r) {
+  inline_x25519_ge_dbl_4(r, r, /*skip_t=*/true);
+  inline_x25519_ge_dbl_4(r, r, /*skip_t=*/true);
+  inline_x25519_ge_dbl_4(r, r, /*skip_t=*/true);
+  inline_x25519_ge_dbl_4(r, r, /*skip_t=*/false);
+}
 
+RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573
+__attribute__((target("adx,bmi2")))
+void x25519_ge_scalarmult_base_adx_add_even(ge_p3_4 *r, const signed char e[64]) {
   for (unsigned i = 0; i < 64; i += 2) {
     ge_precomp_4 t;
     table_select_4(&t, i / 2, e[i]);
-    ge_p3_add_p3_precomp_4(&r, &r, &t);
+    ge_p3_add_p3_precomp_4(r, r, &t);
   }
+}
 
+RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573
+__attribute__((target("adx,bmi2")))
+void x25519_ge_scalarmult_base_adx_canon(uint8_t h[4][32], ge_p3_4 *r) {
   // fe4 uses saturated 64-bit limbs, so converting to bytes is just a copy.
   // Satisfy stated precondition of fiat_25519_from_bytes; tests pass either way
-  fe4_canon(r.X, r.X);
-  fe4_canon(r.Y, r.Y);
-  fe4_canon(r.Z, r.Z);
-  fe4_canon(r.T, r.T);
+  fe4_canon(r->X, r->X);
+  fe4_canon(r->Y, r->Y);
+  fe4_canon(r->Z, r->Z);
+  fe4_canon(r->T, r->T);
   OPENSSL_STATIC_ASSERT(sizeof(ge_p3_4) == sizeof(uint8_t[4][32]), "");
-  OPENSSL_memcpy(h, &r, sizeof(ge_p3_4));
+  OPENSSL_memcpy(h, r, sizeof(ge_p3_4));
 }
