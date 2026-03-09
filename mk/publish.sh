@@ -7,5 +7,5 @@ if [[ -n "$(git status --porcelain -- ':(exclude)pregenerated/')" ]]; then
   exit 1
 fi
 # Using 1.81 or later will add `.cargo_vcs_info.json` to the crate.
-msrv=1.83
+msrv=1.84
 cargo +${msrv} publish -p ring --allow-dirty

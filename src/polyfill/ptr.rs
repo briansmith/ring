@@ -22,18 +22,6 @@ pub(crate) trait PointerPolyfills {
     fn cast_array_<const N: usize>(self) -> Self::ArrayPointer<N>;
 }
 
-#[allow(dead_code)]
-pub(crate) trait ConstPointerPolyfills {
-    fn addr(self) -> usize;
-}
-
-impl<T> ConstPointerPolyfills for *const T {
-    #[inline(always)]
-    fn addr(self) -> usize {
-        self as usize
-    }
-}
-
 impl<T> PointerPolyfills for *const T {
     type ArrayPointer<const N: usize> = *const [T; N];
 
