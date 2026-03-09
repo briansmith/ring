@@ -153,7 +153,7 @@ fn gmult(xi: &mut Xi, h: U128) {
 fn ghash(xi: &mut Xi, h: U128, input: &[[u8; BLOCK_LEN]]) {
     with_swapped_xi(xi, |swapped| {
         input.iter().for_each(|&input| {
-            let input = input.array_split_map(u64::from_be_bytes);
+            let input: [u64; 2] = input.array_split_map(u64::from_be_bytes);
             swapped[0] ^= input[1];
             swapped[1] ^= input[0];
             gcm_polyval_nohw(swapped, h);
