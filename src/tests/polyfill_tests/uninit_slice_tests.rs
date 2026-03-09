@@ -12,9 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::error::LenMismatchError;
-use crate::polyfill::{self, slice::Uninit, StartPtr};
-use core::{mem::MaybeUninit, slice};
+use crate::{
+    error::LenMismatchError,
+    polyfill::{slice::Uninit, StartPtr},
+};
+use core::{mem::MaybeUninit, ptr, slice};
 
 #[test]
 fn test_write_fully_with_empty() {
@@ -37,7 +39,7 @@ fn test_write_fully_with_empty() {
                 // doesn't have the same address, so punt on checking it.
                 // See https://users.rust-lang.org/t/slice-from-raw-parts-returns-a-different-address-in-const-context/85692/11?u=mxk
                 // and https://github.com/rust-lang/rust/issues/105536.
-                // assert!(polyfill::ptr::addr_eq(r.as_ptr(), ptr));
+                // assert!(ptr::addr_eq(r.as_ptr(), ptr));
 
                 Ok(r)
             })
@@ -97,7 +99,7 @@ fn test_write_fully_with_nonempty_short() {
 
             // We're testing the case where the lengths don't match, but the addresses do.
             assert_ne!(r.len(), len);
-            assert!(polyfill::ptr::addr_eq(r.as_ptr(), ptr));
+            assert!(ptr::addr_eq(r.as_ptr(), ptr));
 
             Ok(r)
         })
@@ -120,7 +122,7 @@ fn test_write_fully_with_nonempty_box_leak() {
 
             // We're testing the case where the lengths match, but the addresses don't.
             assert_eq!(r.len(), len);
-            assert!(!polyfill::ptr::addr_eq(r.as_ptr(), ptr));
+            assert!(!ptr::addr_eq(r.as_ptr(), ptr));
 
             Ok(r)
         })
@@ -150,7 +152,7 @@ fn test_write_fully_with_nonempty_leak_without_box_longer_lifetime() {
 
                 // We're testing the case where the lengths match, but the addresses don't.
                 assert_eq!(r.len(), len);
-                assert!(!polyfill::ptr::addr_eq(r.as_ptr(), ptr));
+                assert!(!ptr::addr_eq(r.as_ptr(), ptr));
 
                 Ok(r)
             })
@@ -185,7 +187,7 @@ fn test_write_fully_with_nonempty_leak_without_box_same_lifeime() {
 
             // We're testing the case where the lengths match, but the addresses don't.
             assert_eq!(r.len(), len);
-            assert!(!polyfill::ptr::addr_eq(r.as_ptr(), ptr));
+            assert!(!ptr::addr_eq(r.as_ptr(), ptr));
 
             Ok(r)
         })
