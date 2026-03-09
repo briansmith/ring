@@ -52,11 +52,6 @@ impl<T> PointerPolyfills for *mut T {
     }
 }
 
-#[inline(always)]
-pub fn addr_eq<T>(p: *const T, q: *const T) -> bool {
-    p.cast::<()>() == q.cast::<()>()
-}
-
 #[allow(dead_code)]
 #[inline(always)]
 pub const fn cast_init_slice_of_array<T, const N: usize>(

@@ -19,7 +19,7 @@ use super::{
     start_ptr::{StartMutPtr, StartPtr},
     uninit_slice_cursor::Cursor,
 };
-use crate::{error::LenMismatchError, polyfill};
+use crate::error::LenMismatchError;
 use core::{
     marker::PhantomData,
     mem::{self, MaybeUninit},
@@ -148,7 +148,7 @@ impl<'target, E: Copy> Uninit<'target, E> {
         }
         // Verify the returned slice is actually `self` overwritten, but also
         // allow any empty slice for usability.
-        if !polyfill::ptr::addr_eq(ptr, written.as_ptr()) && len != 0 {
+        if !ptr::addr_eq(ptr, written.as_ptr()) && len != 0 {
             // Abuse `LenMismatchError` for convenience; this is never going to
             // happen anyway.
             return Err(LenMismatchError::new(ptr.addr()));

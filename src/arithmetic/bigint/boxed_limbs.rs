@@ -21,7 +21,7 @@ use crate::{
     polyfill,
 };
 use alloc::{boxed::Box, vec::Vec};
-use core::marker::PhantomData;
+use core::{marker::PhantomData, ptr};
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
 pub(super) struct BoxedLimbs<M> {
@@ -154,7 +154,7 @@ impl<M> Uninit<M> {
         let written = polyfill::slice::Uninit::from(uninit.as_mut()).write_fully_with(f)?;
         // Postconditions of `polyfill::slice::Uninit::write_fully_with`.
         debug_assert_eq!(written.len(), len);
-        debug_assert!(polyfill::ptr::addr_eq(written.as_ptr(), ptr.cast::<Limb>()) || len == 0); // cast_init
+        debug_assert!(ptr::addr_eq(written.as_ptr(), ptr.cast::<Limb>()) || len == 0); // cast_init
         let limbs = unsafe { uninit.assume_init() };
         Ok(BoxedLimbs { limbs, m })
     }
