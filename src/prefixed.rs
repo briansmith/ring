@@ -33,14 +33,9 @@ macro_rules! prefixed_extern {
     } => {
         unsafe extern "C" {
             $(
-                prefixed_item! {
-                    $name
-                    {
-                        $( #[$meta] )*
-                        $vis unsafe fn $name ( $( $arg_pat : $arg_ty ),* ) $( -> $ret_ty )?;
-                    }
-
-                }
+                $( #[$meta] )*
+                #[link_name = concat!(prefix!(), stringify!($name))]
+                $vis unsafe fn $name ( $( $arg_pat : $arg_ty ),* ) $( -> $ret_ty )?;
             )+
         }
     };
@@ -51,13 +46,9 @@ macro_rules! prefixed_extern {
         $vis:vis unsafe static $name:ident: $typ:ty;
     } => {
         unsafe extern "C" {
-            prefixed_item! {
-                $name
-                {
-                    $( #[$meta] )*
-                    $vis unsafe static $name: $typ;
-                }
-            }
+            $( #[$meta] )*
+            #[link_name = concat!(prefix!(), stringify!($name))]
+            $vis unsafe static $name: $typ;
         }
     };
 }
@@ -79,15 +70,5 @@ macro_rules! prefixed_export {
         $( #[$meta] )*
         #[unsafe(export_name = concat!(prefix!(), stringify!($name)))]
         $vis unsafe extern "C" fn $name ( $( $arg_pat : $arg_ty ),* ) $body
-    };
-}
-
-macro_rules! prefixed_item {
-    {
-        $name:ident
-        { $item:item }
-    } => {
-        #[link_name = concat!(prefix!(), stringify!($name))]
-        $item
     };
 }
