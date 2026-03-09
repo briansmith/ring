@@ -40,7 +40,7 @@
 use crate::polyfill::prelude::*;
 
 use self::boxed_limbs::BoxedLimbs;
-use super::{montgomery::*, LimbSliceError, MAX_LIMBS};
+use super::{LimbSliceError, MAX_LIMBS, montgomery::*};
 use crate::{
     error::{self, LenMismatchError},
     limb::{self, Limb},
@@ -48,7 +48,7 @@ use crate::{
 pub(crate) use {
     self::{
         boxed_limbs::Uninit,
-        elem::{elem_verify_equal_consttime, verify_inverses_consttime, Elem},
+        elem::{Elem, elem_verify_equal_consttime, verify_inverses_consttime},
         exp::elem_exp_consttime,
         modulus::{BoxedIntoMont, IntoMont, Mont, One},
         oversized_uninit::OversizedUninit,

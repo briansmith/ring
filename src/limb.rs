@@ -22,8 +22,9 @@ use crate::{
     bb, c,
     error::{self, LenMismatchError},
     polyfill::{
+        ArrayFlatMap, StartMutPtr,
         slice::{AliasingSlices, Cursor, InOut},
-        sliceutil, usize_from_u32, ArrayFlatMap, StartMutPtr,
+        sliceutil, usize_from_u32,
     },
     window5::Window5,
 };

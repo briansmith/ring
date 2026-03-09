@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Aad, Algorithm, KeyInner, Nonce, Tag, UnboundKey, TAG_LEN};
+use super::{Aad, Algorithm, KeyInner, Nonce, TAG_LEN, Tag, UnboundKey};
 use crate::{
     cpu,
     error::{self, InputTooLongError},

@@ -15,7 +15,7 @@
 //! Building blocks.
 
 use crate::{
-    bb::{xor_assign_at_start_bytes, BoolMask},
+    bb::{BoolMask, xor_assign_at_start_bytes},
     rand,
 };
 

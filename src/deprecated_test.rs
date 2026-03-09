@@ -26,8 +26,8 @@ macro_rules! test_file {
 }
 
 pub use crate::testutil::{
-    compile_time_assert_clone, compile_time_assert_copy, compile_time_assert_eq,
-    compile_time_assert_send, compile_time_assert_sync, from_hex, run, File, TestCase,
+    File, TestCase, compile_time_assert_clone, compile_time_assert_copy, compile_time_assert_eq,
+    compile_time_assert_send, compile_time_assert_sync, from_hex, run,
 };
 
 #[cfg(feature = "std")]

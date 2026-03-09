@@ -13,17 +13,17 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
+    KeyPairComponents, N, PublicKey, PublicKeyComponents,
     base::PublicExponent,
     padding::{self, RsaEncoding},
-    public_key, KeyPairComponents, PublicKey, PublicKeyComponents, N,
+    public_key,
 };
 
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
     arithmetic::{
-        bigint,
+        LimbSliceError, bigint,
         montgomery::{R, RR, RRR},
-        LimbSliceError,
     },
     bits::BitLength,
     cpu, digest,

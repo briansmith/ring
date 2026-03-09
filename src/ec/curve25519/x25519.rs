@@ -15,7 +15,7 @@
 //! X25519 Key agreement.
 
 use super::{
-    ops::{EncodedPoint, ExtPoint, MaskedScalar, ELEM_LEN},
+    ops::{ELEM_LEN, EncodedPoint, ExtPoint, MaskedScalar},
     scalar::SCALAR_LEN,
 };
 use crate::{agreement, bb, cpu, ec, error, rand};

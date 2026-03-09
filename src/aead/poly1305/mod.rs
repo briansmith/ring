@@ -22,7 +22,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::{Tag, TAG_LEN};
+use super::{TAG_LEN, Tag};
 use crate::cpu;
 #[cfg(all(target_arch = "arm", target_endian = "little"))]
 use crate::cpu::GetFeature as _;

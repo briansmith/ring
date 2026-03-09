@@ -41,9 +41,8 @@ use crate::polyfill::prelude::*;
 
 use super::{
     super::{
-        limbs512,
-        montgomery::{RInverse, Unencoded, RRR},
-        LimbSliceError,
+        LimbSliceError, limbs512,
+        montgomery::{RInverse, RRR, Unencoded},
     },
     Elem, IntoMont, Mont, One, PrivateExponent, Uninit,
 };
@@ -51,7 +50,7 @@ use crate::{
     bits::BitLength,
     cpu,
     error::LenMismatchError,
-    limb::{self, Limb, LIMB_BITS},
+    limb::{self, LIMB_BITS, Limb},
     window5::Window5,
 };
 use core::mem::MaybeUninit;
@@ -97,7 +96,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
-    use super::super::montgomery::{limbs_mul_mont, limbs_square_mont, R};
+    use super::super::montgomery::{R, limbs_mul_mont, limbs_square_mont};
     use crate::{bssl, c, error, polyfill::dynarray};
 
     let base_rinverse: Elem<M, RInverse> =
@@ -214,7 +213,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     use super::{
         super::{
             limbs::x86_64::mont::{
-                gather5, mul_mont5, mul_mont_gather5_amm, power5_amm, sqr_mont5,
+                gather5, mul_mont_gather5_amm, mul_mont5, power5_amm, sqr_mont5,
             },
             limbs512::scatter::scatter5,
             montgomery::N0,
@@ -224,8 +223,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     };
     use crate::{
         cpu::{
-            intel::{Adx, Bmi2},
             GetFeature as _,
+            intel::{Adx, Bmi2},
         },
         polyfill::{self, sliceutil::as_chunks_exact},
         window5::LeakyWindow5,
@@ -372,7 +371,7 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 #[cfg(test)]
 mod tests {
     use super::super::elem::testutil::*;
-    use super::super::{modulus, unwrap_impossible_len_mismatch_error, PublicModulus};
+    use super::super::{PublicModulus, modulus, unwrap_impossible_len_mismatch_error};
     use super::*;
     use crate::cpu;
     use crate::testutil as test;

@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{nonce::Nonce, overlapping, quic::Sample, Overlapping, NONCE_LEN};
+use super::{NONCE_LEN, Overlapping, nonce::Nonce, overlapping, quic::Sample};
 use crate::cpu::{self, GetFeature as _};
 use core::num::NonZero;
 

@@ -18,7 +18,7 @@
 
 #![cfg(all(target_arch = "arm", target_endian = "little"))]
 
-use super::{Key, Tag, BLOCK_LEN};
+use super::{BLOCK_LEN, Key, Tag};
 use crate::{c, cpu::arm::Neon, polyfill::sliceutil};
 use core::{ffi::c_int, num::Wrapping};
 

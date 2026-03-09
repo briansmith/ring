@@ -17,7 +17,7 @@
 // (https://github.com/floodyberry/poly1305-donna) and released as public
 // domain.
 
-use super::super::{poly1305::*, Tag};
+use super::super::{Tag, poly1305::*};
 use crate::cpu;
 use crate::testutil as test;
 

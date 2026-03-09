@@ -15,7 +15,7 @@
 // Adapted from the public domain, estream code by D. Bernstein.
 // Adapted from the BoringSSL crypto/chacha/chacha.c.
 
-use super::{super::overlapping::IndexError, Counter, Key, Overlapping, BLOCK_LEN};
+use super::{super::overlapping::IndexError, BLOCK_LEN, Counter, Key, Overlapping};
 use crate::{bb, polyfill::sliceutil};
 use core::mem::size_of;
 

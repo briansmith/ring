@@ -15,10 +15,10 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-pub use super::n0::N0;
 use super::LimbSliceError;
 #[allow(unused_imports)]
 use super::MIN_LIMBS;
+pub use super::n0::N0;
 use crate::{
     cpu,
     polyfill::slice::{AliasSrc, AliasingSlices},
@@ -123,7 +123,7 @@ impl ProductEncoding for (RRR, RInverse) {
 use crate::{bssl, c, limb::Limb};
 use crate::{
     error::LenMismatchError,
-    polyfill::{slice::Uninit, StartMutPtr},
+    polyfill::{StartMutPtr, slice::Uninit},
 };
 
 #[inline(always)]

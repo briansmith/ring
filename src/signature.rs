@@ -259,39 +259,40 @@ use crate::{cpu, debug, ec, error, sealed};
 
 pub use crate::ec::{
     curve25519::ed25519::{
-        signing::Ed25519KeyPair,
-        verification::{EdDSAParameters, ED25519},
         ED25519_PUBLIC_KEY_LEN,
+        signing::Ed25519KeyPair,
+        verification::{ED25519, EdDSAParameters},
     },
     suite_b::ecdsa::{
         signing::{
-            EcdsaKeyPair, EcdsaSigningAlgorithm, ECDSA_P256_SHA256_ASN1_SIGNING,
-            ECDSA_P256_SHA256_FIXED_SIGNING, ECDSA_P384_SHA384_ASN1_SIGNING,
-            ECDSA_P384_SHA384_FIXED_SIGNING,
+            ECDSA_P256_SHA256_ASN1_SIGNING, ECDSA_P256_SHA256_FIXED_SIGNING,
+            ECDSA_P384_SHA384_ASN1_SIGNING, ECDSA_P384_SHA384_FIXED_SIGNING, EcdsaKeyPair,
+            EcdsaSigningAlgorithm,
         },
         verification::{
-            EcdsaVerificationAlgorithm, ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
-            ECDSA_P256_SHA384_ASN1, ECDSA_P384_SHA256_ASN1, ECDSA_P384_SHA384_ASN1,
-            ECDSA_P384_SHA384_FIXED,
+            ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED, ECDSA_P256_SHA384_ASN1,
+            ECDSA_P384_SHA256_ASN1, ECDSA_P384_SHA384_ASN1, ECDSA_P384_SHA384_FIXED,
+            EcdsaVerificationAlgorithm,
         },
     },
 };
 
 #[cfg(feature = "alloc")]
 pub use crate::rsa::{
+    RsaParameters,
     padding::{
-        RsaEncoding, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, RSA_PSS_SHA256,
-        RSA_PSS_SHA384, RSA_PSS_SHA512,
+        RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, RSA_PSS_SHA256, RSA_PSS_SHA384,
+        RSA_PSS_SHA512, RsaEncoding,
     },
     verification::{
-        RsaPublicKeyComponents, RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY,
+        RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY,
         RSA_PKCS1_1024_8192_SHA256_FOR_LEGACY_USE_ONLY,
         RSA_PKCS1_1024_8192_SHA512_FOR_LEGACY_USE_ONLY,
         RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY, RSA_PKCS1_2048_8192_SHA256,
         RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384,
         RSA_PSS_2048_8192_SHA256, RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
+        RsaPublicKeyComponents,
     },
-    RsaParameters,
 };
 
 /// An RSA key pair, used for signing.

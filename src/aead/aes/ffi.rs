@@ -15,7 +15,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::{KeyBytes, Overlapping, AES_128_KEY_LEN, AES_256_KEY_LEN, BLOCK_LEN};
+use super::{AES_128_KEY_LEN, AES_256_KEY_LEN, BLOCK_LEN, KeyBytes, Overlapping};
 use crate::{bits::BitLength, c};
 use core::{
     ffi::{c_int, c_uint},

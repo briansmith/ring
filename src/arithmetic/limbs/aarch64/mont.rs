@@ -17,11 +17,11 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::super::super::{n0::N0, LimbSliceError, MAX_LIMBS, MIN_LIMBS};
+use super::super::super::{LimbSliceError, MAX_LIMBS, MIN_LIMBS, n0::N0};
 use crate::{
     c,
-    limb::{Limb, LIMB_BYTES},
-    polyfill::{slice::AliasingSlices, StartMutPtr},
+    limb::{LIMB_BYTES, Limb},
+    polyfill::{StartMutPtr, slice::AliasingSlices},
 };
 use core::num::NonZero;
 

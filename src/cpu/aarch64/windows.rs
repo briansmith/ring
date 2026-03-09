@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Aes, Neon, PMull, Sha256, CAPS_STATIC};
+use super::{Aes, CAPS_STATIC, Neon, PMull, Sha256};
 use windows_sys::Win32::System::Threading::{
     IsProcessorFeaturePresent, PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE,
 };

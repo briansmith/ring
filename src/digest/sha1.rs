@@ -17,11 +17,11 @@
 use crate::polyfill::prelude::*;
 
 use super::{
-    sha2::{
-        fallback::{ch, maj, Word},
-        State32,
-    },
     BlockLen, OutputLen,
+    sha2::{
+        State32,
+        fallback::{Word, ch, maj},
+    },
 };
 use core::{mem::size_of, num::Wrapping};
 

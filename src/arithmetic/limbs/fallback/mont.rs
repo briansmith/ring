@@ -16,9 +16,9 @@
 use crate::polyfill::prelude::*;
 
 use super::super::super::{
-    ffi::bn_mul_mont_ffi,
-    montgomery::{limbs_from_mont_in_place, N0},
     LimbSliceError, MAX_LIMBS, MIN_LIMBS,
+    ffi::bn_mul_mont_ffi,
+    montgomery::{N0, limbs_from_mont_in_place},
 };
 use crate::{
     c,
