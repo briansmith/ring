@@ -44,7 +44,7 @@ impl<T> SlicePolyfills for [T] {
 
     #[inline]
     fn as_chunks<const N: usize>(&self) -> (&[[Self::Elem; N]], &[Self::Elem]) {
-        assert!(N != 0);
+        const { assert!(N != 0) };
         let len = self.len();
         let remainder_len = len % N;
         let (chunks, remainder) = self.split_at(len - remainder_len);
@@ -55,7 +55,7 @@ impl<T> SlicePolyfills for [T] {
 
     #[inline]
     fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[Self::Elem; N]], &mut [Self::Elem]) {
-        assert!(N != 0);
+        const { assert!(N != 0) };
         let len = self.len();
         let remainder_len = len % N;
         let (chunks, remainder) = self.split_at_mut(len - remainder_len);

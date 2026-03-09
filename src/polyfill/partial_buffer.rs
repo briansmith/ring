@@ -18,8 +18,9 @@ pub struct PartialBuffer<const LEN_MAX_PLUS_1: usize> {
 impl<const LEN_MAX_PLUS_1: usize> PartialBuffer<LEN_MAX_PLUS_1> {
     #[inline]
     pub fn new_zeroed() -> Self {
-        // TODO(MSRV): const { assert!(...) };
-        assert!(u8::try_from(LEN_MAX_PLUS_1 - 1).is_ok());
+        const {
+            assert!(pred_as_u8(LEN_MAX_PLUS_1).is_some());
+        };
         Self {
             // Zero the buffer and set `len = 0`. It's safety-critical that we
             // initialize the whole buffer so that the case where we're not
@@ -32,7 +33,8 @@ impl<const LEN_MAX_PLUS_1: usize> PartialBuffer<LEN_MAX_PLUS_1> {
     pub fn len(&self) -> PurportedLen<LEN_MAX_PLUS_1> {
         // TODO(MSRV): `const LEN_INDEX: usize = usize_from_u8(LEN_MAX);`
         // TODO(MSRV): `const LEN_INDEX` and make an associated const.
-        let LEN_INDEX: usize = LEN_MAX_PLUS_1 - 1;
+        let LEN_MAX: u8 = const { pred_as_u8(LEN_MAX_PLUS_1).unwrap() };
+        let LEN_INDEX: usize = LEN_MAX.into();
         PurportedLen(self.buffer_and_len[LEN_INDEX])
     }
 
@@ -40,7 +42,8 @@ impl<const LEN_MAX_PLUS_1: usize> PartialBuffer<LEN_MAX_PLUS_1> {
     fn set_purported_len(&mut self, PurportedLen(len): PurportedLen<LEN_MAX_PLUS_1>) {
         // TODO(MSRV): `const LEN_INDEX: usize = usize_from_u8(LEN_MAX);`
         // TODO(MSRV): `const LEN_INDEX` and make an associated const.
-        let LEN_INDEX: usize = LEN_MAX_PLUS_1 - 1;
+        let LEN_MAX: u8 = const { pred_as_u8(LEN_MAX_PLUS_1).unwrap() };
+        let LEN_INDEX: usize = LEN_MAX.into();
         self.buffer_and_len[LEN_INDEX] = len;
     }
 
@@ -90,11 +93,25 @@ impl<const LEN_MAX_PLUS_1: usize> TryFrom<usize> for PurportedLen<LEN_MAX_PLUS_1
 
     #[inline]
     fn try_from(value: usize) -> Result<Self, Self::Error> {
-        assert!(u8::try_from(LEN_MAX_PLUS_1 - 1).is_ok());
-        if value >= LEN_MAX_PLUS_1 {
+        let LEN_MAX: u8 = const { pred_as_u8(LEN_MAX_PLUS_1).unwrap() };
+        if value > LEN_MAX.into() {
             return Err(InputTooLongError::new(value));
         }
         #[allow(clippy::cast_possible_truncation)]
         Ok(Self(value as u8))
+    }
+}
+
+const fn pred_as_u8(n_plus_1: usize) -> Option<u8> {
+    const U8_MAX: usize = u8::MAX as usize;
+    if let Some(n) = n_plus_1.checked_sub(1) {
+        if n <= U8_MAX {
+            #[allow(clippy::cast_possible_truncation)]
+            Some(n as u8)
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }
