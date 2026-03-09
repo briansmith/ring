@@ -1,8 +1,8 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::{super::LimbSliceError, storage::table_parts_uninit, LIMBS_PER_CHUNK};
-use crate::{limb::Limb, window5::LeakyWindow5};
+use super::{super::LimbSliceError, LIMBS_PER_CHUNK};
+use crate::{limb::Limb, polyfill, window5::LeakyWindow5};
 use core::mem::MaybeUninit;
 
 // `a` is the `i`th entry to store into `table`, where `i` is NOT secret.
@@ -14,7 +14,8 @@ pub(in super::super::super) fn scatter5(
     i: LeakyWindow5,
 ) -> Result<(), LimbSliceError> {
     // Verify there are 32 elements the same length as `a`.
-    let _num_limbs = super::storage::check_common(a, table_parts_uninit(table))?;
+    let _num_limbs =
+        super::storage::check_common(a, polyfill::ptr::cast_init_slice_of_array(table))?;
     let i = i.leak_usize();
     table
         .as_flattened_mut()

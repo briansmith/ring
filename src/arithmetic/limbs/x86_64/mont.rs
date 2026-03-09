@@ -17,10 +17,10 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use crate::polyfill::{slice::Uninit, SmallerChunks, StartMutPtr};
+use crate::polyfill::{self, slice::Uninit, SmallerChunks, StartMutPtr};
 
 use super::super::super::{
-    limbs512::storage::{check_common, check_common_with_n, table_parts, table_parts_uninit},
+    limbs512::storage::{check_common, check_common_with_n},
     n0::N0,
     LimbSliceError, MAX_LIMBS,
 };
@@ -134,7 +134,7 @@ pub(in super::super::super) fn gather5(
             table: *const Limb,
             power: Window5);
     }
-    let num_limbs = check_common(r, table_parts(table))?;
+    let num_limbs = check_common(r, table)?;
     let table = table.as_flattened();
     unsafe { bn_gather5(r.as_mut_ptr(), num_limbs, table.as_ptr(), power) };
     Ok(())
@@ -180,7 +180,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
             power: Window5,
         );
     }
-    let num_limbs = check_common_with_n(r, table_parts_uninit(table), n)?;
+    let num_limbs = check_common_with_n(r, polyfill::ptr::cast_init_slice_of_array(table), n)?;
     if a.len() != num_limbs.get() {
         Err(LenMismatchError::new(a.len()))?;
     }
@@ -233,7 +233,7 @@ pub(in super::super::super) fn power5_amm(
             power: Window5,
         );
     }
-    let num_limbs = check_common_with_n(in_out, table_parts(table), n)?;
+    let num_limbs = check_common_with_n(in_out, table, n)?;
     let r = in_out.as_mut_ptr();
     let a = in_out.as_ptr();
     let table = table.as_flattened();
