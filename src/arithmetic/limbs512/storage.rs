@@ -25,7 +25,6 @@ use crate::{
 use core::{
     mem::{align_of, size_of, MaybeUninit},
     num::NonZero,
-    ptr,
 };
 // Some x86_64 assembly is written under the assumption that some of its
 // input data and/or temporary storage is aligned to `MOD_EXP_CTIME_ALIGN`
@@ -66,21 +65,6 @@ impl<const N: usize> AlignedStorage<N> {
     }
 }
 
-// TODO(MSRV-1.79)): Remove this as the caller can implicitly convert the
-// reference to a pointer `p` and then use `p.len()`.
-#[allow(dead_code)]
-pub fn table_parts<E, const N: usize>(r: &[[E; N]]) -> (*const [[E; N]], usize) {
-    (r, r.len())
-}
-
-// TODO(MSRV-1.79): Just return the pointer `p` and then use `p.len()`.
-#[allow(dead_code)]
-pub fn table_parts_uninit<E, const N: usize>(
-    table: &[[MaybeUninit<E>; N]],
-) -> (*const [[E; N]], usize) {
-    (ptr::from_ref(table) as *const [[E; N]], table.len())
-}
-
 // Helps the compiler will be able to hoist all of these checks out of the
 // loops in the caller. Try to help the compiler by doing the checks
 // consistently in each function and also by inlining this function and all the
@@ -88,14 +72,14 @@ pub fn table_parts_uninit<E, const N: usize>(
 #[inline(always)]
 pub(crate) fn check_common(
     a: &[Limb],
-    table_parts: (*const [[Limb; LIMBS_PER_CHUNK]], usize),
+    table_maybe_uninit: *const [[Limb; LIMBS_PER_CHUNK]],
 ) -> Result<NonZero<usize>, LimbSliceError> {
-    let (table_ptr, table_len) = table_parts;
-    assert_eq!(table_ptr.start_ptr() as usize % 16, 0); // According to BoringSSL.
+    assert_eq!(table_maybe_uninit.start_ptr() as usize % 16, 0); // According to BoringSSL.
     let num_limbs = NonZero::new(a.len()).ok_or_else(|| LimbSliceError::too_short(a.len()))?;
     if num_limbs.get() > MAX_LIMBS {
         return Err(LimbSliceError::too_long(a.len()));
     }
+    let table_len = table_maybe_uninit.len();
     if num_limbs.get() * (32 / LIMBS_PER_CHUNK) != table_len {
         Err(LenMismatchError::new(table_len))?;
     };
@@ -106,13 +90,13 @@ pub(crate) fn check_common(
 #[inline(always)]
 pub(crate) fn check_common_with_n(
     a: &[Limb],
-    table_parts: (*const [[Limb; LIMBS_PER_CHUNK]], usize),
+    table_maybe_uninit: *const [[Limb; LIMBS_PER_CHUNK]],
     n: &[[Limb; LIMBS_PER_CHUNK]],
 ) -> Result<NonZero<usize>, LimbSliceError> {
     // Choose `a` instead of `n` so that every function starts with
     // `check_common` passing the exact same arguments, so that the compiler
     // can easily de-dupe the checks.
-    let num_limbs = check_common(a, table_parts)?;
+    let num_limbs = check_common(a, table_maybe_uninit)?;
     let n = n.as_flattened();
     if n.len() != num_limbs.get() {
         Err(LenMismatchError::new(n.len()))?;

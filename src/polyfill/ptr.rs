@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use core::mem::MaybeUninit;
+
 #[allow(dead_code)]
 pub(crate) trait PointerPolyfills {
     type ArrayPointer<const N: usize>;
@@ -53,4 +55,12 @@ impl<T> PointerPolyfills for *mut T {
 #[inline(always)]
 pub fn addr_eq<T>(p: *const T, q: *const T) -> bool {
     p.cast::<()>() == q.cast::<()>()
+}
+
+#[allow(dead_code)]
+#[inline(always)]
+pub const fn cast_init_slice_of_array<T, const N: usize>(
+    p: *const [[MaybeUninit<T>; N]],
+) -> *const [[T; N]] {
+    p as *const [[T; N]]
 }
