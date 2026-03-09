@@ -231,7 +231,9 @@ impl<M> BoxedIntoMont<M, RR> {
 }
 
 impl<'a, M: PublicModulus, E> IntoMont<'a, M, E> {
-    pub fn be_bytes(&self) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + 'a> {
+    pub fn be_bytes(
+        &self,
+    ) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + 'a + use<'a, M, E>> {
         let (value, _) = self.parts();
         LeadingZerosStripped::new(limb::unstripped_be_bytes(value))
     }
