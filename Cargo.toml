@@ -155,7 +155,9 @@ name = "ring"
 
 [dependencies]
 cfg-if = { version = "1.0.0", default-features = false }
+
 getrandom = { version = "0.2.10" }
+
 untrusted = { version = "0.9" }
 
 [target.'cfg(all(any(all(target_arch = "aarch64", target_endian = "little"), all(target_arch = "arm", target_endian = "little")), any(target_os = "android", target_os = "linux")))'.dependencies]
@@ -163,6 +165,14 @@ libc = { version = "0.2.172", default-features = false }
 
 [target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_vendor = "apple", any(target_os = "ios", target_os = "macos", target_os = "tvos", target_os = "visionos", target_os = "watchos")))'.dependencies]
 libc = { version = "0.2.172", default-features = false }
+
+[target.'cfg(all(target_os = "linux", target_env = "musl"))'.dependencies]
+# https://github.com/rust-random/getrandom/pull/408
+getrandom = { version = "0.2.14" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# https://github.com/rust-random/getrandom/pull/778
+getrandom = { version = "0.2.17" }
 
 [target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_os = "windows"))'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Threading"] }
