@@ -42,6 +42,9 @@ mod dynstate;
 mod sha1;
 mod sha2;
 
+#[cfg(feature = "sm")]
+mod sm3;
+
 #[derive(Clone)]
 pub(crate) struct BlockContext {
     state: DynState,
@@ -379,6 +382,8 @@ enum AlgorithmID {
     SHA384,
     SHA512,
     SHA512_256,
+    #[cfg(feature = "sm")]
+    SM3,
 }
 
 impl PartialEq for Algorithm {
