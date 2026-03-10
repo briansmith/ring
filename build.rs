@@ -1034,7 +1034,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "x25519_ge_scalarmult_base",
         "x25519_ge_scalarmult_base_adx_recode",
         "x25519_ge_scalarmult_base_adx_add",
-        "x25519_ge_scalarmult_base_adx_dbl_4_4",
+        "x25519_ge_scalarmult_base_adx_dbl_4",
         "x25519_ge_scalarmult_base_adx_canon",
         "x25519_ge_scalarmult_base_adx_from_bytes",
         "x25519_public_from_private_generic_masked",

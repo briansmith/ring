@@ -562,8 +562,14 @@ typedef struct {
   fe4 xy2d;
 } ge_precomp_4;
 
+// This was named "inline_x25519_ge_dbl_4" but it was never inlined.
+RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573
 __attribute__((target("adx,bmi2")))
-static void inline_x25519_ge_dbl_4(ge_p3_4 *r, const ge_p3_4 *p, bool skip_t) {
+void x25519_ge_scalarmult_base_adx_dbl_4(ge_p3_4 *r, bool skip_t) {
+  // Originally this function accepted a separate `p` argument, but it was
+  // always used with `p` equal to `r`.
+  const ge_p3_4 *p = r;
+
   // Transcribed from a Coq function proven against affine coordinates.
   // https://github.com/mit-plv/fiat-crypto/blob/9943ba9e7d8f3e1c0054b2c94a5edca46ea73ef8/src/Curves/Edwards/XYZT/Basic.v#L136-L165
   fe4 trX, trZ, trT, t0, cX, cY, cZ, cT;
@@ -678,15 +684,6 @@ void x25519_ge_scalarmult_base_adx_add(ge_p3_4 *r, const signed char e[64], bool
     table_select_4(&t, i / 2, e[i]);
     ge_p3_add_p3_precomp_4(r, r, &t);
   }
-}
-
-RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573
-__attribute__((target("adx,bmi2")))
-void x25519_ge_scalarmult_base_adx_dbl_4_4(ge_p3_4 *r) {
-  inline_x25519_ge_dbl_4(r, r, /*skip_t=*/true);
-  inline_x25519_ge_dbl_4(r, r, /*skip_t=*/true);
-  inline_x25519_ge_dbl_4(r, r, /*skip_t=*/true);
-  inline_x25519_ge_dbl_4(r, r, /*skip_t=*/false);
 }
 
 RING_NOINLINE // https://github.com/rust-lang/rust/issues/116573
