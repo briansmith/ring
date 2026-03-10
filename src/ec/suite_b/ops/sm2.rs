@@ -29,7 +29,8 @@ use super::{
 use crate::{
     arithmetic::limbs_from_hex,
     bb::LeakyWord,
-    cpu, limb,
+    cpu, error,
+    limb::{big_endian_from_limbs, limbs_are_zero, limbs_equal_limbs_consttime, Limb},
 };
 
 pub(super) const NUM_LIMBS: usize = 256 / LIMB_BITS;
@@ -1034,12 +1035,12 @@ pub(in crate::ec::suite_b) fn sm2_negate_scalar_mont(cops: &CommonOps, a: &Scala
         let ni = n_limbs[i];
         let ai = a.limbs[i];
         let diff = ni.wrapping_sub(ai).wrapping_sub(borrow);
-        neg.limbs[i] = diff as limb::Limb;
+        neg.limbs[i] = diff as Limb;
         borrow = if ni < ai + borrow { 1 } else { 0 };
     }
 
     // Constant-time: if a == 0, return 0 (not n).
-    let a_is_zero = limb::limbs_are_zero(&a.limbs[..num_limbs]).leak();
+    let a_is_zero = limbs_are_zero(&a.limbs[..num_limbs]).leak();
     if a_is_zero {
         Scalar::zero()
     } else {
@@ -1073,7 +1074,7 @@ pub(in crate::ec::suite_b) fn sm2_compute_one_plus_d_inv(
     public_scalar_ops: &'static PublicScalarOps,
     d_mont: &Scalar<R>,
     cpu: cpu::Features,
-) -> Result<Scalar<R>, crate::error::KeyRejected> {
+) -> Result<Scalar<R>, error::KeyRejected> {
     let n = &scalar_ops.scalar_modulus(cpu);
 
     // Decode d from Montgomery: d_unenc = d_mont * 1 (via scalar_product with unencoded 1).
@@ -1089,7 +1090,7 @@ pub(in crate::ec::suite_b) fn sm2_compute_one_plus_d_inv(
 
     // d = n-1 is forbidden (1+d ≡ 0 mod n).
     if n.is_zero(&one_plus_d) {
-        return Err(crate::error::KeyRejected::invalid_component());
+        return Err(error::KeyRejected::invalid_component());
     }
 
     let inv = public_scalar_ops.scalar_inv_to_mont_vartime(&one_plus_d, cpu);
@@ -1111,7 +1112,7 @@ pub(in crate::ec::suite_b) fn sm2_scalar_mont_to_bytes(
     let mut one = Scalar::zero();
     one.limbs[0] = 1;
     let s_unenc = scalar_ops.scalar_product(s, &one, cpu);
-    crate::limb::big_endian_from_limbs(scalar_ops.leak_limbs(&s_unenc), out);
+    big_endian_from_limbs(scalar_ops.leak_limbs(&s_unenc), out);
 }
 
 /// Returns true iff `a == b` (constant-time comparison of scalars).
@@ -1124,7 +1125,7 @@ pub(in crate::ec::suite_b) fn sm2_scalars_equal(
     let b_limbs = scalar_ops.leak_limbs(b);
     // leak_limbs returns the "active" limbs slice (of the right length).
     // limbs_equal_limbs_consttime requires same length slices.
-    limb::limbs_equal_limbs_consttime(a_limbs, b_limbs)
+    limbs_equal_limbs_consttime(a_limbs, b_limbs)
         .map(|mask| mask.leak())
         .unwrap_or(false)
 }
@@ -1144,7 +1145,7 @@ pub(in crate::ec::suite_b) fn sm2_to_mont_scalar(
 pub(in crate::ec::suite_b) fn sm2_jacobian_x_affine_unenc(
     q: &Modulus<Q>,
     p: &Point,
-) -> Result<Elem<Unencoded>, crate::error::Unspecified> {
+) -> Result<Elem<Unencoded>, error::Unspecified> {
     let z = q.point_z(p);
     q.elem_verify_is_not_zero(&z)?;
 

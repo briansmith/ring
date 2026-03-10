@@ -29,8 +29,9 @@ use crate::{
     arithmetic::montgomery::*,
     cpu, digest, ec,
     ec::suite_b::{
+        curve,
         ops::*,
-        private_key::{affine_from_jacobian, random_scalar},
+        private_key::{affine_from_jacobian, private_key_as_scalar, random_scalar},
     },
     error, limb, pkcs8, rand, signature,
 };
@@ -141,7 +142,7 @@ impl Sm2KeyPair {
 
         let (seed, public_key) = key_pair.split();
         let n = &alg.private_scalar_ops.scalar_ops.scalar_modulus(cpu);
-        let d = crate::ec::suite_b::private_key::private_key_as_scalar(n, &seed);
+        let d = private_key_as_scalar(n, &seed);
         let d = alg.private_scalar_ops.to_mont(&d, cpu);
 
         // Precompute (1 + d)^{-1} mod n (used in SM2 signing formula).
@@ -327,7 +328,7 @@ impl AsRef<[u8]> for PublicKey {
 
 /// SM2 with SM3, fixed-length (64-byte) signatures (`r || s`).
 pub static SM2_SM3_FIXED_SIGNING: Sm2SigningAlgorithm = Sm2SigningAlgorithm {
-    curve: &crate::ec::suite_b::curve::SM2,
+    curve: &curve::SM2,
     private_scalar_ops: &sm2_ops::PRIVATE_SCALAR_OPS,
     private_key_ops: &sm2_ops::PRIVATE_KEY_OPS,
     public_scalar_ops: &sm2_ops::PUBLIC_SCALAR_OPS,
@@ -339,7 +340,7 @@ pub static SM2_SM3_FIXED_SIGNING: Sm2SigningAlgorithm = Sm2SigningAlgorithm {
 
 /// SM2 with SM3, ASN.1 DER-encoded signatures.
 pub static SM2_SM3_ASN1_SIGNING: Sm2SigningAlgorithm = Sm2SigningAlgorithm {
-    curve: &crate::ec::suite_b::curve::SM2,
+    curve: &curve::SM2,
     private_scalar_ops: &sm2_ops::PRIVATE_SCALAR_OPS,
     private_key_ops: &sm2_ops::PRIVATE_KEY_OPS,
     public_scalar_ops: &sm2_ops::PUBLIC_SCALAR_OPS,

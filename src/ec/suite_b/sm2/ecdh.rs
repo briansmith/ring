@@ -26,6 +26,7 @@
 use crate::{
     agreement, cpu, ec, error,
     ec::suite_b::{
+        curve,
         ops::sm2 as sm2_ops,
         private_key::{
             big_endian_affine_from_jacobian, private_key_as_scalar,
@@ -39,7 +40,7 @@ use crate::{
 /// Public keys are encoded in uncompressed form (`04 || x || y`, 65 bytes).
 /// The shared secret output is the x-coordinate of the product point, 32 bytes.
 pub static ECDH_SM2: agreement::Algorithm = agreement::Algorithm {
-    curve: &crate::ec::suite_b::curve::SM2,
+    curve: &curve::SM2,
     ecdh: sm2_ecdh,
 };
 

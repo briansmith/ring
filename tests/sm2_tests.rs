@@ -22,7 +22,7 @@ use ring::{
     agreement, rand,
     signature::{self, KeyPair},
 };
-use untrusted;
+use untrusted::Input;
 
 /// Test: SM2 sign/verify roundtrip with fixed-length signatures.
 #[test]
@@ -100,9 +100,9 @@ fn sm2_sign_verify_custom_id() {
     // Verify using verify_with_id with the correct custom ID.
     signature::SM2_SM3_FIXED
         .verify_with_id(
-            untrusted::Input::from(public_key.as_ref()),
-            untrusted::Input::from(message.as_slice()),
-            untrusted::Input::from(sig.as_ref()),
+            Input::from(public_key.as_ref()),
+            Input::from(message.as_slice()),
+            Input::from(sig.as_ref()),
             signer_id,
         )
         .expect("SM2 verification with custom ID failed");
