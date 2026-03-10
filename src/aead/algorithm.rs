@@ -119,6 +119,8 @@ pub(super) enum AlgorithmID {
     AES_128_GCM,
     AES_256_GCM,
     CHACHA20_POLY1305,
+    #[cfg(feature = "sm")]
+    SM4_128_GCM,
 }
 
 impl PartialEq for Algorithm {

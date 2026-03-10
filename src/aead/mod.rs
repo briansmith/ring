@@ -224,5 +224,10 @@ pub mod quic;
 mod sealing_key;
 mod unbound_key;
 
+#[cfg(feature = "sm")]
+mod sm4;
+#[cfg(feature = "sm")]
+mod sm4_gcm;
+
 #[cfg(test)]
 mod tests;
