@@ -26,6 +26,9 @@
 //! precautions (beyond those inherent in pure arithmetic) are not required
 //! here—in contrast to the SM2 and SM4 implementations.
 
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+
 use super::{BlockLen, sha2::State32};
 use core::num::Wrapping;
 

@@ -260,8 +260,12 @@ fn sub_p_if_gte(x: &mut [u64; 4], p: &[u64; 4]) -> u64 {
     use_sub
 }
 
-// 32-bit fallback: use 32-bit limbs (8 limbs for 256 bits)
+// 32-bit fallback: CIOS Montgomery multiply mod p using 32-bit limbs.
+// Reason: the separated multiply-then-reduce approach loses carries when n0=1
+// and inputs are near p, same issue as the 64-bit version. CIOS interleaves
+// multiply and reduce steps, tracking overflow in an extra limb.
 #[cfg(not(target_pointer_width = "64"))]
+#[allow(clippy::needless_range_loop, clippy::cast_possible_truncation)]
 unsafe fn mont_mul_p(r: *mut Limb, a: *const Limb, b: *const Limb) {
     // p as 8 × u32 limbs (little-endian)
     const P: [u32; 8] = [
@@ -274,38 +278,55 @@ unsafe fn mont_mul_p(r: *mut Limb, a: *const Limb, b: *const Limb) {
     let a = unsafe { core::slice::from_raw_parts(a, 8) };
     let b = unsafe { core::slice::from_raw_parts(b, 8) };
 
-    let mut t = [0u32; 16];
+    // CIOS: t[0..8] accumulate the partial result; t[8] is the carry word.
+    let mut t = [0u32; 9];
+
     for i in 0..8 {
-        let mut carry = 0u64;
+        // Add a[i] * b to t
+        let mut carry: u64 = 0;
         for j in 0..8 {
-            let prod = (a[i] as u64) * (b[j] as u64) + t[i + j] as u64 + carry;
-            t[i + j] = prod as u32;
-            carry = prod >> 32;
+            let cs = t[j] as u64 + (a[i] as u64) * (b[j] as u64) + carry;
+            t[j] = cs as u32;
+            carry = cs >> 32;
         }
-        t[i + 8] = carry as u32;
+        let cs = t[8] as u64 + carry;
+        t[8] = cs as u32;
+        let carry_hi = (cs >> 32) as u32;
+
+        // Reduction step: m = t[0] * n0 mod 2^32 = t[0] (n0 = 1)
+        let m = t[0];
+        let cs = t[0] as u64 + m as u64 * P[0] as u64;
+        t[0] = cs as u32;
+        let mut carry_r: u64 = cs >> 32;
+        for j in 1..8 {
+            let cs = t[j] as u64 + m as u64 * P[j] as u64 + carry_r;
+            t[j] = cs as u32;
+            carry_r = cs >> 32;
+        }
+        let cs = t[8] as u64 + carry_r;
+        t[8] = cs as u32;
+        let carry_hi2 = (cs >> 32) as u32 + carry_hi;
+
+        // Shift right by one limb
+        for k in 0..8 {
+            t[k] = t[k + 1];
+        }
+        t[8] = carry_hi2;
     }
 
-    // Montgomery reduction: n0 = 1 for 32-bit too (p mod 2^32 = 0xFFFFFFFF = -1 mod 2^32)
-    // Check: -p^{-1} mod 2^32 = -(-1) = 1 ✓
-    for i in 0..8 {
-        let u = t[i];
-        let mut carry = 0u64;
-        for j in 0..8 {
-            let prod = (u as u64) * (P[j] as u64) + t[i + j] as u64 + carry;
-            t[i + j] = prod as u32;
-            carry = prod >> 32;
+    let mut result: [u32; 8] = [t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]];
+    if t[8] != 0 {
+        // Reason: overflow bit means result >= 2^256 > p, must subtract p.
+        let mut borrow: u32 = 0;
+        for i in 0..8 {
+            let (s, b1) = result[i].overflowing_sub(P[i]);
+            let (s, b2) = s.overflowing_sub(borrow);
+            result[i] = s;
+            borrow = (b1 as u32) + (b2 as u32);
         }
-        let mut k = i + 8;
-        while carry != 0 && k < 16 {
-            let sum = t[k] as u64 + carry;
-            t[k] = sum as u32;
-            carry = sum >> 32;
-            k += 1;
-        }
+    } else {
+        sub_p_if_gte_32(&mut result, &P);
     }
-
-    let mut result: [u32; 8] = t[8..16].try_into().unwrap();
-    sub_p_if_gte_32(&mut result, &P);
     let out = unsafe { core::slice::from_raw_parts_mut(r, 8) };
     out.copy_from_slice(&result);
 }
@@ -428,7 +449,10 @@ fn sub_n_if_gte(x: &mut [u64; 4], n: &[u64; 4]) {
     }
 }
 
+// 32-bit fallback: CIOS Montgomery multiply mod n using 32-bit limbs.
+// Reason: same as mont_mul_p — the separated multiply/reduce loses carries.
 #[cfg(not(target_pointer_width = "64"))]
+#[allow(clippy::needless_range_loop, clippy::cast_possible_truncation)]
 unsafe fn mont_mul_n(r: *mut Limb, a: *const Limb, b: *const Limb) {
     const N: [u32; 8] = [
         0x39D54123, 0x53BBF409, // n[0..1]
@@ -437,42 +461,59 @@ unsafe fn mont_mul_n(r: *mut Limb, a: *const Limb, b: *const Limb) {
         0xFFFFFFFF, 0xFFFFFFFE, // n[6..7]
     ];
     // n0_32 = -n^{-1} mod 2^32
-    // n mod 2^32 = 0x39D54123; -n^{-1} mod 2^32 = 0x72350975
-    const N0: u32 = 0x72350975; // precomputed: -n^{-1} mod 2^32
+    const N0: u32 = 0x72350975;
 
     let a = unsafe { core::slice::from_raw_parts(a, 8) };
     let b = unsafe { core::slice::from_raw_parts(b, 8) };
 
-    let mut t = [0u32; 16];
-    for i in 0..8 {
-        let mut carry = 0u64;
-        for j in 0..8 {
-            let prod = (a[i] as u64) * (b[j] as u64) + t[i + j] as u64 + carry;
-            t[i + j] = prod as u32;
-            carry = prod >> 32;
-        }
-        t[i + 8] = carry as u32;
-    }
+    let mut t = [0u32; 9];
 
     for i in 0..8 {
-        let u = t[i].wrapping_mul(N0);
-        let mut carry = 0u64;
+        // Add a[i] * b to t
+        let mut carry: u64 = 0;
         for j in 0..8 {
-            let prod = (u as u64) * (N[j] as u64) + t[i + j] as u64 + carry;
-            t[i + j] = prod as u32;
-            carry = prod >> 32;
+            let cs = t[j] as u64 + (a[i] as u64) * (b[j] as u64) + carry;
+            t[j] = cs as u32;
+            carry = cs >> 32;
         }
-        let mut k = i + 8;
-        while carry != 0 && k < 16 {
-            let sum = t[k] as u64 + carry;
-            t[k] = sum as u32;
-            carry = sum >> 32;
-            k += 1;
+        let cs = t[8] as u64 + carry;
+        t[8] = cs as u32;
+        let carry_hi = (cs >> 32) as u32;
+
+        // Reduction step: m = t[0] * N0 mod 2^32
+        let m = t[0].wrapping_mul(N0);
+        let cs = t[0] as u64 + m as u64 * N[0] as u64;
+        t[0] = cs as u32;
+        let mut carry_r: u64 = cs >> 32;
+        for j in 1..8 {
+            let cs = t[j] as u64 + m as u64 * N[j] as u64 + carry_r;
+            t[j] = cs as u32;
+            carry_r = cs >> 32;
         }
+        let cs = t[8] as u64 + carry_r;
+        t[8] = cs as u32;
+        let carry_hi2 = (cs >> 32) as u32 + carry_hi;
+
+        // Shift right by one limb
+        for k in 0..8 {
+            t[k] = t[k + 1];
+        }
+        t[8] = carry_hi2;
     }
 
-    let mut result: [u32; 8] = t[8..16].try_into().unwrap();
-    sub_n_if_gte_32(&mut result, &N);
+    let mut result: [u32; 8] = [t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]];
+    if t[8] != 0 {
+        // Reason: overflow bit means result >= 2^256 > n, must subtract n.
+        let mut borrow: u32 = 0;
+        for i in 0..8 {
+            let (s, b1) = result[i].overflowing_sub(N[i]);
+            let (s, b2) = s.overflowing_sub(borrow);
+            result[i] = s;
+            borrow = (b1 as u32) + (b2 as u32);
+        }
+    } else {
+        sub_n_if_gte_32(&mut result, &N);
+    }
     let out = unsafe { core::slice::from_raw_parts_mut(r, 8) };
     out.copy_from_slice(&result);
 }
@@ -794,15 +835,15 @@ fn neg_elem(_q: &Modulus<Q>, a: &ElemR) -> ElemR {
     let p_limbs = &COMMON_OPS.q.p; // LeakyLimb array = raw p limbs
 
     let mut neg = Elem::<R>::zero();
-    let mut borrow: u64 = 0;
+    let mut borrow: Limb = 0;
     #[allow(clippy::needless_range_loop)]
     for i in 0..num_limbs {
-        let pi = p_limbs[i];
+        let pi = p_limbs[i] as Limb;
         let ai = a.limbs[i];
-        let diff = pi.wrapping_sub(ai).wrapping_sub(borrow);
-        // Reason: use wrapping arithmetic; borrow propagates like a subtraction carry.
-        neg.limbs[i] = diff as Limb;
-        borrow = if pi < ai + borrow { 1 } else { 0 };
+        let (s1, b1) = pi.overflowing_sub(ai);
+        let (s2, b2) = s1.overflowing_sub(borrow);
+        neg.limbs[i] = s2;
+        borrow = Limb::from(b1) + Limb::from(b2);
     }
 
     // If a was 0 (all limbs zero), then neg should also be 0.
@@ -1036,14 +1077,15 @@ pub(in crate::ec::suite_b) fn sm2_negate_scalar_mont(cops: &CommonOps, a: &Scala
     let n_limbs = &cops.n.limbs;
 
     let mut neg = Scalar::zero();
-    let mut borrow: u64 = 0;
+    let mut borrow: Limb = 0;
     #[allow(clippy::needless_range_loop)]
     for i in 0..num_limbs {
-        let ni = n_limbs[i];
+        let ni = n_limbs[i] as Limb;
         let ai = a.limbs[i];
-        let diff = ni.wrapping_sub(ai).wrapping_sub(borrow);
-        neg.limbs[i] = diff as Limb;
-        borrow = if ni < ai + borrow { 1 } else { 0 };
+        let (s1, b1) = ni.overflowing_sub(ai);
+        let (s2, b2) = s1.overflowing_sub(borrow);
+        neg.limbs[i] = s2;
+        borrow = Limb::from(b1) + Limb::from(b2);
     }
 
     // Constant-time: if a == 0, return 0 (not n).

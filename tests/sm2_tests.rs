@@ -15,237 +15,253 @@
 
 //! SM2 integration tests: signing, verification, PKCS#8, and ECDH.
 
-#![cfg(feature = "sm")]
 #![allow(missing_docs)]
 
-use ring::{
-    agreement, rand,
-    signature::{self, KeyPair},
-};
-
-/// Test: SM2 sign/verify roundtrip with fixed-length signatures.
+// Reason: When the `sm` feature is disabled, all SM2 tests are compiled out.
+// This no-op test ensures the binary contains at least one coverage-instrumented
+// function, preventing `llvm-cov` "no coverage data found" errors in CI.
+#[cfg(not(feature = "sm"))]
 #[test]
-fn sm2_sign_verify_fixed_roundtrip() {
-    let rng = rand::SystemRandom::new();
+fn sm2_feature_disabled() {}
 
-    let key_pair =
-        signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
+#[cfg(feature = "sm")]
+mod sm2 {
+    use ring::{
+        agreement, rand,
+        signature::{self, KeyPair},
+    };
 
-    let key_pair = signature::Sm2KeyPair::from_pkcs8(
-        &signature::SM2_SM3_FIXED_SIGNING,
-        key_pair.as_ref(),
-        &rng,
-    )
-    .unwrap();
+    /// Test: SM2 sign/verify roundtrip with fixed-length signatures.
+    #[test]
+    fn sign_verify_fixed_roundtrip() {
+        let rng = rand::SystemRandom::new();
 
-    let message = b"Hello, SM2!";
-    let sig = key_pair.sign(&rng, message).unwrap();
+        let key_pair =
+            signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
 
-    let public_key = key_pair.public_key();
-    signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, public_key.as_ref())
-        .verify(message, sig.as_ref())
-        .expect("SM2 fixed-length signature verification failed");
-}
-
-/// Test: SM2 sign/verify roundtrip with ASN.1 DER-encoded signatures.
-#[test]
-fn sm2_sign_verify_asn1_roundtrip() {
-    let rng = rand::SystemRandom::new();
-
-    let key_pair =
-        signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_ASN1_SIGNING, &rng).unwrap();
-
-    let key_pair = signature::Sm2KeyPair::from_pkcs8(
-        &signature::SM2_SM3_ASN1_SIGNING,
-        key_pair.as_ref(),
-        &rng,
-    )
-    .unwrap();
-
-    let message = b"Hello, SM2 ASN.1!";
-    let sig = key_pair.sign(&rng, message).unwrap();
-
-    let public_key = key_pair.public_key();
-    signature::UnparsedPublicKey::new(&signature::SM2_SM3_ASN1, public_key.as_ref())
-        .verify(message, sig.as_ref())
-        .expect("SM2 ASN.1 signature verification failed");
-}
-
-/// Test: SM2 sign with custom signer ID.
-#[test]
-fn sm2_sign_verify_custom_id() {
-    let rng = rand::SystemRandom::new();
-
-    let key_pair =
-        signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
-
-    let key_pair = signature::Sm2KeyPair::from_pkcs8(
-        &signature::SM2_SM3_FIXED_SIGNING,
-        key_pair.as_ref(),
-        &rng,
-    )
-    .unwrap();
-
-    let message = b"Custom ID test message";
-    let signer_id = b"user@example.com";
-    let sig = key_pair.sign_with_id(&rng, message, signer_id).unwrap();
-
-    // Verification with default ID should fail (different Z value).
-    let public_key = key_pair.public_key();
-    signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, public_key.as_ref())
-        .verify(message, sig.as_ref())
-        .expect_err("Verification with default ID should fail when signed with custom ID");
-
-    // Verify using verify_with_id with the correct custom ID.
-    signature::SM2_SM3_FIXED
-        .verify_with_id(
-            untrusted::Input::from(public_key.as_ref()),
-            untrusted::Input::from(message.as_slice()),
-            untrusted::Input::from(sig.as_ref()),
-            signer_id,
+        let key_pair = signature::Sm2KeyPair::from_pkcs8(
+            &signature::SM2_SM3_FIXED_SIGNING,
+            key_pair.as_ref(),
+            &rng,
         )
-        .expect("SM2 verification with custom ID failed");
-}
+        .unwrap();
 
-/// Test: tampered signature is rejected.
-#[test]
-fn sm2_tampered_signature_rejected() {
-    let rng = rand::SystemRandom::new();
+        let message = b"Hello, SM2!";
+        let sig = key_pair.sign(&rng, message).unwrap();
 
-    let key_pair =
-        signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
+        let public_key = key_pair.public_key();
+        signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, public_key.as_ref())
+            .verify(message, sig.as_ref())
+            .expect("SM2 fixed-length signature verification failed");
+    }
 
-    let key_pair = signature::Sm2KeyPair::from_pkcs8(
-        &signature::SM2_SM3_FIXED_SIGNING,
-        key_pair.as_ref(),
-        &rng,
-    )
-    .unwrap();
+    /// Test: SM2 sign/verify roundtrip with ASN.1 DER-encoded signatures.
+    #[test]
+    fn sign_verify_asn1_roundtrip() {
+        let rng = rand::SystemRandom::new();
 
-    let message = b"Tamper test";
-    let sig = key_pair.sign(&rng, message).unwrap();
+        let key_pair =
+            signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_ASN1_SIGNING, &rng).unwrap();
 
-    let mut tampered = sig.as_ref().to_vec();
-    tampered[0] ^= 1; // Flip a bit in r.
+        let key_pair = signature::Sm2KeyPair::from_pkcs8(
+            &signature::SM2_SM3_ASN1_SIGNING,
+            key_pair.as_ref(),
+            &rng,
+        )
+        .unwrap();
 
-    let public_key = key_pair.public_key();
-    signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, public_key.as_ref())
-        .verify(message, &tampered)
-        .expect_err("Tampered SM2 signature should be rejected");
-}
+        let message = b"Hello, SM2 ASN.1!";
+        let sig = key_pair.sign(&rng, message).unwrap();
 
-/// Test: wrong message is rejected.
-#[test]
-fn sm2_wrong_message_rejected() {
-    let rng = rand::SystemRandom::new();
+        let public_key = key_pair.public_key();
+        signature::UnparsedPublicKey::new(&signature::SM2_SM3_ASN1, public_key.as_ref())
+            .verify(message, sig.as_ref())
+            .expect("SM2 ASN.1 signature verification failed");
+    }
 
-    let key_pair =
-        signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
+    /// Test: SM2 sign with custom signer ID.
+    #[test]
+    fn sign_verify_custom_id() {
+        let rng = rand::SystemRandom::new();
 
-    let key_pair = signature::Sm2KeyPair::from_pkcs8(
-        &signature::SM2_SM3_FIXED_SIGNING,
-        key_pair.as_ref(),
-        &rng,
-    )
-    .unwrap();
+        let key_pair =
+            signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
 
-    let message = b"Original message";
-    let wrong_message = b"Wrong message";
-    let sig = key_pair.sign(&rng, message).unwrap();
+        let key_pair = signature::Sm2KeyPair::from_pkcs8(
+            &signature::SM2_SM3_FIXED_SIGNING,
+            key_pair.as_ref(),
+            &rng,
+        )
+        .unwrap();
 
-    let public_key = key_pair.public_key();
-    signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, public_key.as_ref())
-        .verify(wrong_message, sig.as_ref())
-        .expect_err("Wrong message should fail SM2 verification");
-}
+        let message = b"Custom ID test message";
+        let signer_id = b"user@example.com";
+        let sig = key_pair.sign_with_id(&rng, message, signer_id).unwrap();
 
-/// Test: PKCS#8 generate and parse roundtrip.
-#[test]
-fn sm2_pkcs8_roundtrip() {
-    let rng = rand::SystemRandom::new();
+        // Verification with default ID should fail (different Z value).
+        let public_key = key_pair.public_key();
+        signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, public_key.as_ref())
+            .verify(message, sig.as_ref())
+            .expect_err("Verification with default ID should fail when signed with custom ID");
 
-    let pkcs8 =
-        signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
+        // Verify using verify_with_id with the correct custom ID.
+        signature::SM2_SM3_FIXED
+            .verify_with_id(
+                untrusted::Input::from(public_key.as_ref()),
+                untrusted::Input::from(message.as_slice()),
+                untrusted::Input::from(sig.as_ref()),
+                signer_id,
+            )
+            .expect("SM2 verification with custom ID failed");
+    }
 
-    let key_pair1 =
-        signature::Sm2KeyPair::from_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, pkcs8.as_ref(), &rng)
-            .unwrap();
+    /// Test: tampered signature is rejected.
+    #[test]
+    fn tampered_signature_rejected() {
+        let rng = rand::SystemRandom::new();
 
-    // Re-generate PKCS#8 from the parsed key is not possible, but we can verify
-    // the public key is preserved by signing and verifying.
-    let message = b"PKCS8 roundtrip test";
-    let sig = key_pair1.sign(&rng, message).unwrap();
-    let pub_key = key_pair1.public_key();
+        let key_pair =
+            signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
 
-    signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, pub_key.as_ref())
-        .verify(message, sig.as_ref())
-        .expect("SM2 PKCS#8 roundtrip: sign/verify failed");
-}
+        let key_pair = signature::Sm2KeyPair::from_pkcs8(
+            &signature::SM2_SM3_FIXED_SIGNING,
+            key_pair.as_ref(),
+            &rng,
+        )
+        .unwrap();
 
-/// Test: SM2 ECDH key agreement produces the same shared secret.
-#[test]
-fn sm2_ecdh_roundtrip() {
-    let rng = rand::SystemRandom::new();
+        let message = b"Tamper test";
+        let sig = key_pair.sign(&rng, message).unwrap();
 
-    let alice_private =
-        agreement::EphemeralPrivateKey::generate(&agreement::ECDH_SM2, &rng).unwrap();
-    let alice_public = alice_private.compute_public_key().unwrap();
+        let mut tampered = sig.as_ref().to_vec();
+        tampered[0] ^= 1; // Flip a bit in r.
 
-    let bob_private = agreement::EphemeralPrivateKey::generate(&agreement::ECDH_SM2, &rng).unwrap();
-    let bob_public = bob_private.compute_public_key().unwrap();
+        let public_key = key_pair.public_key();
+        signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, public_key.as_ref())
+            .verify(message, &tampered)
+            .expect_err("Tampered SM2 signature should be rejected");
+    }
 
-    let alice_shared = agreement::agree_ephemeral(
-        alice_private,
-        &agreement::UnparsedPublicKey::new(&agreement::ECDH_SM2, bob_public.as_ref()),
-        |s| Ok::<Vec<u8>, ()>(s.to_vec()),
-    )
-    .unwrap();
+    /// Test: wrong message is rejected.
+    #[test]
+    fn wrong_message_rejected() {
+        let rng = rand::SystemRandom::new();
 
-    let bob_shared = agreement::agree_ephemeral(
-        bob_private,
-        &agreement::UnparsedPublicKey::new(&agreement::ECDH_SM2, alice_public.as_ref()),
-        |s| Ok::<Vec<u8>, ()>(s.to_vec()),
-    )
-    .unwrap();
+        let key_pair =
+            signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
 
-    assert_eq!(
-        alice_shared, bob_shared,
-        "SM2 ECDH shared secrets don't match"
-    );
-}
+        let key_pair = signature::Sm2KeyPair::from_pkcs8(
+            &signature::SM2_SM3_FIXED_SIGNING,
+            key_pair.as_ref(),
+            &rng,
+        )
+        .unwrap();
 
-/// Test: SM2 from_private_key_and_public_key constructor.
-#[test]
-fn sm2_from_private_and_public_key() {
-    let rng = rand::SystemRandom::new();
+        let message = b"Original message";
+        let wrong_message = b"Wrong message";
+        let sig = key_pair.sign(&rng, message).unwrap();
 
-    // Generate a key pair first via PKCS#8.
-    let pkcs8 =
-        signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
+        let public_key = key_pair.public_key();
+        signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, public_key.as_ref())
+            .verify(wrong_message, sig.as_ref())
+            .expect_err("Wrong message should fail SM2 verification");
+    }
 
-    let key_pair =
-        signature::Sm2KeyPair::from_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, pkcs8.as_ref(), &rng)
-            .unwrap();
+    /// Test: PKCS#8 generate and parse roundtrip.
+    #[test]
+    fn pkcs8_roundtrip() {
+        let rng = rand::SystemRandom::new();
 
-    let public_key_bytes = key_pair.public_key().as_ref().to_vec();
+        let pkcs8 =
+            signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
 
-    // Extract private key bytes from PKCS#8 (offset 0x24, length 32).
-    let pkcs8_bytes = pkcs8.as_ref();
-    let private_key_bytes = &pkcs8_bytes[0x24..0x44];
+        let key_pair1 = signature::Sm2KeyPair::from_pkcs8(
+            &signature::SM2_SM3_FIXED_SIGNING,
+            pkcs8.as_ref(),
+            &rng,
+        )
+        .unwrap();
 
-    let key_pair2 = signature::Sm2KeyPair::from_private_key_and_public_key(
-        &signature::SM2_SM3_FIXED_SIGNING,
-        private_key_bytes,
-        &public_key_bytes,
-        &rng,
-    )
-    .unwrap();
+        // Re-generate PKCS#8 from the parsed key is not possible, but we can verify
+        // the public key is preserved by signing and verifying.
+        let message = b"PKCS8 roundtrip test";
+        let sig = key_pair1.sign(&rng, message).unwrap();
+        let pub_key = key_pair1.public_key();
 
-    // Both key pairs should produce signatures verifiable by the same public key.
-    let message = b"from_private_key_and_public_key test";
-    let sig = key_pair2.sign(&rng, message).unwrap();
+        signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, pub_key.as_ref())
+            .verify(message, sig.as_ref())
+            .expect("SM2 PKCS#8 roundtrip: sign/verify failed");
+    }
 
-    signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, &public_key_bytes)
-        .verify(message, sig.as_ref())
-        .expect("SM2 from_private_key_and_public_key: verification failed");
+    /// Test: SM2 ECDH key agreement produces the same shared secret.
+    #[test]
+    fn ecdh_roundtrip() {
+        let rng = rand::SystemRandom::new();
+
+        let alice_private =
+            agreement::EphemeralPrivateKey::generate(&agreement::ECDH_SM2, &rng).unwrap();
+        let alice_public = alice_private.compute_public_key().unwrap();
+
+        let bob_private =
+            agreement::EphemeralPrivateKey::generate(&agreement::ECDH_SM2, &rng).unwrap();
+        let bob_public = bob_private.compute_public_key().unwrap();
+
+        let alice_shared = agreement::agree_ephemeral(
+            alice_private,
+            &agreement::UnparsedPublicKey::new(&agreement::ECDH_SM2, bob_public.as_ref()),
+            |s| Ok::<Vec<u8>, ()>(s.to_vec()),
+        )
+        .unwrap();
+
+        let bob_shared = agreement::agree_ephemeral(
+            bob_private,
+            &agreement::UnparsedPublicKey::new(&agreement::ECDH_SM2, alice_public.as_ref()),
+            |s| Ok::<Vec<u8>, ()>(s.to_vec()),
+        )
+        .unwrap();
+
+        assert_eq!(
+            alice_shared, bob_shared,
+            "SM2 ECDH shared secrets don't match"
+        );
+    }
+
+    /// Test: SM2 from_private_key_and_public_key constructor.
+    #[test]
+    fn from_private_and_public_key() {
+        let rng = rand::SystemRandom::new();
+
+        // Generate a key pair first via PKCS#8.
+        let pkcs8 =
+            signature::Sm2KeyPair::generate_pkcs8(&signature::SM2_SM3_FIXED_SIGNING, &rng).unwrap();
+
+        let key_pair = signature::Sm2KeyPair::from_pkcs8(
+            &signature::SM2_SM3_FIXED_SIGNING,
+            pkcs8.as_ref(),
+            &rng,
+        )
+        .unwrap();
+
+        let public_key_bytes = key_pair.public_key().as_ref().to_vec();
+
+        // Extract private key bytes from PKCS#8 (offset 0x24, length 32).
+        let pkcs8_bytes = pkcs8.as_ref();
+        let private_key_bytes = &pkcs8_bytes[0x24..0x44];
+
+        let key_pair2 = signature::Sm2KeyPair::from_private_key_and_public_key(
+            &signature::SM2_SM3_FIXED_SIGNING,
+            private_key_bytes,
+            &public_key_bytes,
+            &rng,
+        )
+        .unwrap();
+
+        // Both key pairs should produce signatures verifiable by the same public key.
+        let message = b"from_private_key_and_public_key test";
+        let sig = key_pair2.sign(&rng, message).unwrap();
+
+        signature::UnparsedPublicKey::new(&signature::SM2_SM3_FIXED, &public_key_bytes)
+            .verify(message, sig.as_ref())
+            .expect("SM2 from_private_key_and_public_key: verification failed");
+    }
 }

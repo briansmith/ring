@@ -4,6 +4,9 @@ name = "ring-bench"
 publish = false
 version = "0.1.0"
 
+[features]
+sm = ["ring/sm"]
+
 [dependencies]
 ring = { path = "../" }
 
@@ -34,3 +37,9 @@ path = "ecdsa.rs"
 name = "rsa"
 harness = false
 path = "rsa.rs"
+
+[[bench]]
+name = "sm"
+harness = false
+path = "sm.rs"
+required-features = ["sm"]
