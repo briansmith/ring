@@ -1,4 +1,4 @@
-// Copyright 2016 Brian Smith.
+// Copyright 2015-2026 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,14 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Elliptic curve operations and schemes using Curve25519.
+use crate::cpu::{
+    self, GetFeature as _,
+    intel::{Adx, Bmi1, Bmi2},
+};
 
-#[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
-mod adx;
+pub type RequiredFeatures = (Adx, Bmi1, Bmi2);
 
-pub mod ed25519;
-
-pub mod x25519;
-
-mod ops;
-mod scalar;
+#[inline(always)]
+pub(super) fn get_features(cpu: cpu::Features) -> Option<RequiredFeatures> {
+    cpu.get_feature()
+}

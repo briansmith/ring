@@ -74,7 +74,7 @@ impl P3 {
         let mut r = MaybeUninit::uninit();
 
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
-        if has_fe25519_adx(cpu) {
+        if super::adx::get_features(cpu).is_some() {
             prefixed_extern! {
                 unsafe fn x25519_ge_scalarmult_base_adx_wrapper(h: &mut MaybeUninit<P3>, a: &Scalar);
             }
@@ -152,19 +152,6 @@ fn encode_point(
     bytes[ELEM_LEN - 1] ^= sign_bit << 7;
 
     r
-}
-
-#[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
-#[inline(always)]
-pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
-    use cpu::{
-        GetFeature as _,
-        intel::{Adx, Bmi1, Bmi2},
-    };
-    matches!(
-        cpu.get_feature(),
-        Some((Adx { .. }, Bmi1 { .. }, Bmi2 { .. }))
-    )
 }
 
 prefixed_extern! {
