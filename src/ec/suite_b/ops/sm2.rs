@@ -23,10 +23,15 @@
 
 use super::{
     PublicModulus,
-    elem::{self, binary_op, binary_op_assign, mul_mont},
+    elem::{self, binary_op_assign, mul_mont},
     elem_sqr_mul, elem_sqr_mul_acc, *,
 };
-use crate::{arithmetic::limbs_from_hex, bb::LeakyWord, cpu};
+use crate::{
+    arithmetic::limbs_from_hex,
+    bb::LeakyWord,
+    cpu, error,
+    limb::{Limb, big_endian_from_limbs, limbs_are_zero, limbs_equal_limbs_consttime},
+};
 
 pub(super) const NUM_LIMBS: usize = 256 / LIMB_BITS;
 
@@ -152,6 +157,11 @@ unsafe extern "C" fn sm2_elem_sqr_mont(r: *mut Limb, a: *const Limb) {
 // the 8-limb buffer. CIOS interleaves multiply and reduce, using only 5 limbs,
 // and tracks the overflow in an extra bit — eliminating that problem.
 #[cfg(target_pointer_width = "64")]
+#[allow(
+    clippy::needless_range_loop,
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless
+)]
 unsafe fn mont_mul_p(r: *mut Limb, a: *const Limb, b: *const Limb) {
     // p as 4 × u64 limbs (little-endian)
     // p = FFFFFFFE FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF 00000000 FFFFFFFF FFFFFFFF
@@ -217,7 +227,7 @@ unsafe fn mont_mul_p(r: *mut Limb, a: *const Limb, b: *const Limb) {
             let (s, b1) = result[i].overflowing_sub(P[i]);
             let (s, b2) = s.overflowing_sub(borrow);
             result[i] = s;
-            borrow = (b1 as u64) + (b2 as u64);
+            borrow = u64::from(b1) + u64::from(b2);
         }
     } else {
         let _ = sub_p_if_gte(&mut result, &P);
@@ -229,6 +239,7 @@ unsafe fn mont_mul_p(r: *mut Limb, a: *const Limb, b: *const Limb) {
 
 // Conditionally subtract p from x if x >= p. Returns 1 if subtracted, 0 if not.
 #[cfg(target_pointer_width = "64")]
+#[allow(clippy::needless_range_loop, clippy::cast_possible_truncation)]
 fn sub_p_if_gte(x: &mut [u64; 4], p: &[u64; 4]) -> u64 {
     // Check if x >= p by attempting subtraction
     let mut borrow: u64 = 0;
@@ -237,10 +248,10 @@ fn sub_p_if_gte(x: &mut [u64; 4], p: &[u64; 4]) -> u64 {
         let (s, b1) = x[i].overflowing_sub(p[i]);
         let (s, b2) = s.overflowing_sub(borrow);
         tmp[i] = s;
-        borrow = (b1 as u64) + (b2 as u64);
+        borrow = u64::from(b1) + u64::from(b2);
     }
     // If borrow == 0, x >= p; use tmp. Otherwise keep x.
-    let use_sub = (borrow == 0) as u64;
+    let use_sub = u64::from(borrow == 0);
     // Reason: constant-time select: mask = 0xFFFF...FFFF if use_sub, else 0
     let mask = 0u64.wrapping_sub(use_sub);
     for i in 0..4 {
@@ -328,6 +339,11 @@ unsafe extern "C" fn sm2_scalar_mul_mont(r: *mut Limb, a: *const Limb, b: *const
 // CIOS Montgomery multiply mod n.
 // Reason: same as mont_mul_p — the naive separated multiply/reduce loses carries.
 #[cfg(target_pointer_width = "64")]
+#[allow(
+    clippy::needless_range_loop,
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless
+)]
 unsafe fn mont_mul_n(r: *mut Limb, a: *const Limb, b: *const Limb) {
     const N: [u64; 4] = [
         0x53BBF40939D54123, // n[0]
@@ -385,7 +401,7 @@ unsafe fn mont_mul_n(r: *mut Limb, a: *const Limb, b: *const Limb) {
             let (s, b1) = result[i].overflowing_sub(N[i]);
             let (s, b2) = s.overflowing_sub(borrow);
             result[i] = s;
-            borrow = (b1 as u64) + (b2 as u64);
+            borrow = u64::from(b1) + u64::from(b2);
         }
     } else {
         sub_n_if_gte(&mut result, &N);
@@ -395,6 +411,7 @@ unsafe fn mont_mul_n(r: *mut Limb, a: *const Limb, b: *const Limb) {
 }
 
 #[cfg(target_pointer_width = "64")]
+#[allow(clippy::needless_range_loop)]
 fn sub_n_if_gte(x: &mut [u64; 4], n: &[u64; 4]) {
     let mut borrow: u64 = 0;
     let mut tmp = [0u64; 4];
@@ -402,9 +419,9 @@ fn sub_n_if_gte(x: &mut [u64; 4], n: &[u64; 4]) {
         let (s, b1) = x[i].overflowing_sub(n[i]);
         let (s, b2) = s.overflowing_sub(borrow);
         tmp[i] = s;
-        borrow = (b1 as u64) + (b2 as u64);
+        borrow = u64::from(b1) + u64::from(b2);
     }
-    let use_sub = (borrow == 0) as u64;
+    let use_sub = u64::from(borrow == 0);
     let mask = 0u64.wrapping_sub(use_sub);
     for i in 0..4 {
         x[i] = (tmp[i] & mask) | (x[i] & !mask);
@@ -531,7 +548,7 @@ fn sm2_elem_inv_squared(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R> {
 
     // a^{0xFFFFFFFE} = (a^{0x7FFFFFFF})^2
     // Reason: FFFFFFFE = 2 * 7FFFFFFF. One squaring doubles the exponent.
-    let mut e_fffffffe = e_7fffffff.clone();
+    let mut e_fffffffe = e_7fffffff;
     q.elem_square(&mut e_fffffffe); // a^{0xFFFFFFFE}
 
     // Build the full exponent segment by segment.
@@ -613,10 +630,10 @@ fn point_double_inner(q: &Modulus<Q>, p: &Point) -> Point {
     let z2 = sqr(&z);
 
     // m = 3*(X - Z²)*(X + Z²)   [a = -3 optimization]
-    let x_minus_z2 = sub(x.clone(), &z2);
-    let x_plus_z2 = add(x.clone(), &z2);
+    let x_minus_z2 = sub(x, &z2);
+    let x_plus_z2 = add(x, &z2);
     let m_1 = mul(&x_minus_z2, &x_plus_z2);
-    let mut m = m_1.clone();
+    let mut m = m_1;
     q.add_assign(&mut m, &m_1);
     q.add_assign(&mut m, &m_1); // m = 3*(X-Z²)*(X+Z²)
 
@@ -630,10 +647,10 @@ fn point_double_inner(q: &Modulus<Q>, p: &Point) -> Point {
     let x3 = sub(m2, &dbl(&s));
 
     // Y3 = m*(s - X3) - 8*Y⁴
-    let s_minus_x3 = sub(s.clone(), &x3);
+    let s_minus_x3 = sub(s, &x3);
     let y4 = sqr(&y2);
     let eight_y4 = {
-        let mut r = y4.clone();
+        let mut r = y4;
         q.add_assign(&mut r, &y4);
         q.add_assign(&mut r, &y4);
         q.add_assign(&mut r, &y4);
@@ -705,7 +722,7 @@ fn point_add_inner(q: &Modulus<Q>, p1: &Point, p2: &Point) -> Point {
     let s2 = mul(&y2, &mul(&z1sq, &z1)); // Y2 * Z1^3
 
     // H = U2 - U1, R = S2 - S1
-    let h = sub(u2.clone(), &u1);
+    let h = sub(u2, &u1);
     let r = sub(s2, &s1);
 
     // If H = 0: either P1 = P2 (double) or P1 = -P2 (infinity)
@@ -726,7 +743,7 @@ fn point_add_inner(q: &Modulus<Q>, p1: &Point, p2: &Point) -> Point {
 
     // X3 = R^2 - HHH - 2*W
     let rr = sqr(&r);
-    let two_w = add(w.clone(), &w);
+    let two_w = add(w, &w);
     let x3 = sub(sub(rr, &hhh), &two_w);
 
     // Y3 = R*(W - X3) - S1*HHH
@@ -778,9 +795,10 @@ fn neg_elem(_q: &Modulus<Q>, a: &ElemR) -> ElemR {
 
     let mut neg = Elem::<R>::zero();
     let mut borrow: u64 = 0;
+    #[allow(clippy::needless_range_loop)]
     for i in 0..num_limbs {
-        let pi = p_limbs[i] as u64;
-        let ai = a.limbs[i] as u64;
+        let pi = p_limbs[i];
+        let ai = a.limbs[i];
         let diff = pi.wrapping_sub(ai).wrapping_sub(borrow);
         // Reason: use wrapping arithmetic; borrow propagates like a subtraction carry.
         neg.limbs[i] = diff as Limb;
@@ -963,15 +981,15 @@ fn sm2_twin_mul(
 // Strategy: process the 256-bit exponent in two halves.
 //   Upper 128 bits: FFFFFFFE FFFFFFFF FFFFFFFF FFFFFFFF
 //   Lower 128 bits: 7203DF6B 21C6052B 53BBF409 39D54121
-fn sm2_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
+#[allow(clippy::just_underscores_and_digits)]
+fn sm2_scalar_inv_to_mont(a: Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
     let _1 = &a;
 
     // Process upper 128 bits of n-2 = FFFFFFFE FFFFFFFF FFFFFFFF FFFFFFFF
     // using square-and-multiply (left-to-right).
     // Reason: simple and correct; can be optimized with an addition chain later.
     let upper_128: u128 = 0xFFFFFFFE_FFFFFFFF_FFFFFFFF_FFFFFFFF_u128;
-    let mut acc = _1.clone();
-    let mut found_one = true; // bit 127 of upper_128 is always 1
+    let mut acc = *_1;
     for bit_idx in (0..127u32).rev() {
         unary_op_assign(sm2_scalar_mul_mont_sqr, &mut acc);
         if (upper_128 >> bit_idx) & 1 == 1 {
@@ -988,7 +1006,6 @@ fn sm2_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
             binary_op_assign(sm2_scalar_mul_mont, &mut acc, _1);
         }
     }
-    let _ = found_one; // suppress warning
 
     acc
 }
@@ -1003,3 +1020,138 @@ pub(super) static GENERATOR: (PublicElem<R>, PublicElem<R>) = (
     PublicElem::from_hex("91167a5ee1c13b05d6a1ed99ac24c3c33e7981eddca6c05061328990f418029e"),
     PublicElem::from_hex("63cd65d481d735bd8d4cfb066e2a48f8c1f5e5788d3295fac1354e593c2d0ddd"),
 );
+
+// ── SM2 signing/verification helper functions ─────────────────────────────────
+//
+// These functions use `pub(in crate::ec::suite_b)` so that `suite_b::sm2` can
+// call them, while still having access to the private fields of `Elem` and
+// `CommonOps` that live inside the `ops` module.
+
+/// Computes `-a mod n` where `a` is in Montgomery form.
+///
+/// If `a` is zero, returns zero. Otherwise returns `n - a` (both in Montgomery
+/// form, since `n - a` in Montgomery form = `-a mod n` in Montgomery form).
+pub(in crate::ec::suite_b) fn sm2_negate_scalar_mont(cops: &CommonOps, a: &Scalar<R>) -> Scalar<R> {
+    let num_limbs = cops.num_limbs.into();
+    let n_limbs = &cops.n.limbs;
+
+    let mut neg = Scalar::zero();
+    let mut borrow: u64 = 0;
+    #[allow(clippy::needless_range_loop)]
+    for i in 0..num_limbs {
+        let ni = n_limbs[i];
+        let ai = a.limbs[i];
+        let diff = ni.wrapping_sub(ai).wrapping_sub(borrow);
+        neg.limbs[i] = diff as Limb;
+        borrow = if ni < ai + borrow { 1 } else { 0 };
+    }
+
+    // Constant-time: if a == 0, return 0 (not n).
+    let a_is_zero = limbs_are_zero(&a.limbs[..num_limbs]).leak();
+    if a_is_zero { Scalar::zero() } else { neg }
+}
+
+/// Converts digest bytes to a scalar mod n.
+///
+/// If the digest is longer than the scalar, takes the rightmost bytes.
+/// Uses partially-reduced parsing (allows values up to 2n).
+pub(in crate::ec::suite_b) fn sm2_digest_bytes_to_scalar(n: &Modulus<N>, bytes: &[u8]) -> Scalar {
+    let scalar_len = n.bytes_len();
+    let bytes = if bytes.len() > scalar_len {
+        &bytes[bytes.len() - scalar_len..]
+    } else {
+        bytes
+    };
+    scalar_parse_big_endian_partially_reduced_variable_consttime(n, untrusted::Input::from(bytes))
+        .unwrap_or_else(|_| Scalar::zero())
+}
+
+/// Precomputes `(1 + d)^{-1} mod n` from the private key `d` in Montgomery form.
+///
+/// Returns `Err` if `d == n - 1` (which would make `1 + d ≡ 0 mod n`).
+pub(in crate::ec::suite_b) fn sm2_compute_one_plus_d_inv(
+    scalar_ops: &'static ScalarOps,
+    public_scalar_ops: &'static PublicScalarOps,
+    d_mont: &Scalar<R>,
+    cpu: cpu::Features,
+) -> Result<Scalar<R>, error::KeyRejected> {
+    let n = &scalar_ops.scalar_modulus(cpu);
+
+    // Decode d from Montgomery: d_unenc = d_mont * 1 (via scalar_product with unencoded 1).
+    // Reason: scalar_product(a_mont, b_unenc) = a * b * R^{-1} mod n, so with b=1 we get d.
+    let mut one_unenc = Scalar::zero();
+    one_unenc.limbs[0] = 1;
+    let d_unenc = scalar_ops.scalar_product(d_mont, &one_unenc, cpu);
+
+    // Compute 1 + d as unencoded scalar.
+    let mut one_plus_d = Scalar::zero();
+    one_plus_d.limbs[0] = 1;
+    n.add_assign(&mut one_plus_d, &d_unenc);
+
+    // d = n-1 is forbidden (1+d ≡ 0 mod n).
+    if n.is_zero(&one_plus_d) {
+        return Err(error::KeyRejected::invalid_component());
+    }
+
+    let inv = public_scalar_ops.scalar_inv_to_mont_vartime(&one_plus_d, cpu);
+    Ok(inv)
+}
+
+/// Writes `scalar` (in Montgomery form) as big-endian bytes into `out`.
+///
+/// First decodes from Montgomery form via Montgomery multiplication by 1,
+/// then writes the limbs as big-endian.
+pub(in crate::ec::suite_b) fn sm2_scalar_mont_to_bytes(
+    scalar_ops: &ScalarOps,
+    s: &Scalar<R>,
+    out: &mut [u8],
+    cpu: cpu::Features,
+) {
+    // Decode from Montgomery by multiplying by unencoded 1.
+    // (R, Unencoded) -> R::Output = Unencoded
+    let mut one = Scalar::zero();
+    one.limbs[0] = 1;
+    let s_unenc = scalar_ops.scalar_product(s, &one, cpu);
+    big_endian_from_limbs(scalar_ops.leak_limbs(&s_unenc), out);
+}
+
+/// Returns true iff `a == b` (constant-time comparison of scalars).
+pub(in crate::ec::suite_b) fn sm2_scalars_equal(
+    scalar_ops: &ScalarOps,
+    a: &Scalar,
+    b: &Scalar,
+) -> bool {
+    let a_limbs = scalar_ops.leak_limbs(a);
+    let b_limbs = scalar_ops.leak_limbs(b);
+    // leak_limbs returns the "active" limbs slice (of the right length).
+    // limbs_equal_limbs_consttime requires same length slices.
+    limbs_equal_limbs_consttime(a_limbs, b_limbs)
+        .map(|mask| mask.leak())
+        .unwrap_or(false)
+}
+
+/// Converts a scalar from unencoded to Montgomery form (Scalar<R>).
+pub(in crate::ec::suite_b) fn sm2_to_mont_scalar(
+    s: &Scalar<Unencoded>,
+    cpu: cpu::Features,
+) -> Scalar<R> {
+    PRIVATE_SCALAR_OPS.to_mont(s, cpu)
+}
+
+/// Computes the affine x-coordinate of a Jacobian point on the SM2 curve.
+///
+/// Returns `Err` if the point is at infinity.
+/// The result is in unencoded (not Montgomery) form.
+pub(in crate::ec::suite_b) fn sm2_jacobian_x_affine_unenc(
+    q: &Modulus<Q>,
+    p: &Point,
+) -> Result<Elem<Unencoded>, error::Unspecified> {
+    let z = q.point_z(p);
+    q.elem_verify_is_not_zero(&z)?;
+
+    let x = q.point_x(p);
+    // Compute Z^{-2} via the inverse-squared function available on PRIVATE_KEY_OPS.
+    let zz_inv = PRIVATE_KEY_OPS.elem_inverse_squared(q, &z);
+    let x_aff = q.elem_product(&x, &zz_inv);
+    Ok(q.elem_unencoded(&x_aff))
+}

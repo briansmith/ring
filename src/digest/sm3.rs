@@ -100,14 +100,15 @@ fn compress(v: [u32; 8], block: &[u8; BLOCK_LEN.into()]) -> [u32; 8] {
     let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h] = v;
 
     // Rounds 0-15: FF = XOR (parity), GG = XOR (parity).
-    for j in 0usize..16 {
+    for j in 0u32..16 {
         // Reason: T_j is defined as T0 rotated left by j; since j < 32, no masking needed.
-        let t_j  = T0.rotate_left(j as u32);
+        let t_j  = T0.rotate_left(j);
         let ss1  = a.rotate_left(12).wrapping_add(e).wrapping_add(t_j).rotate_left(7);
         let ss2  = ss1 ^ a.rotate_left(12);
         // W'[j] = W[j] XOR W[j+4], used inline to avoid a separate array.
-        let tt1  = (a ^ b ^ c).wrapping_add(d).wrapping_add(ss2).wrapping_add(w[j] ^ w[j + 4]);
-        let tt2  = (e ^ f ^ g).wrapping_add(h).wrapping_add(ss1).wrapping_add(w[j]);
+        let jj = j as usize;
+        let tt1  = (a ^ b ^ c).wrapping_add(d).wrapping_add(ss2).wrapping_add(w[jj] ^ w[jj + 4]);
+        let tt2  = (e ^ f ^ g).wrapping_add(h).wrapping_add(ss1).wrapping_add(w[jj]);
         d = c;
         c = b.rotate_left(9);
         b = a;
@@ -119,15 +120,16 @@ fn compress(v: [u32; 8], block: &[u8; BLOCK_LEN.into()]) -> [u32; 8] {
     }
 
     // Rounds 16-63: FF = majority, GG = choice.
-    for j in 16usize..64 {
+    for j in 16u32..64 {
         // Reason: T_j is T1 rotated left by j; rotate_left wraps j > 31 via masking internally.
-        let t_j  = T1.rotate_left(j as u32);
+        let t_j  = T1.rotate_left(j);
         let ss1  = a.rotate_left(12).wrapping_add(e).wrapping_add(t_j).rotate_left(7);
         let ss2  = ss1 ^ a.rotate_left(12);
+        let jj = j as usize;
         let tt1  = ((a & b) | (a & c) | (b & c))
-            .wrapping_add(d).wrapping_add(ss2).wrapping_add(w[j] ^ w[j + 4]);
+            .wrapping_add(d).wrapping_add(ss2).wrapping_add(w[jj] ^ w[jj + 4]);
         let tt2  = ((e & f) | (!e & g))
-            .wrapping_add(h).wrapping_add(ss1).wrapping_add(w[j]);
+            .wrapping_add(h).wrapping_add(ss1).wrapping_add(w[jj]);
         d = c;
         c = b.rotate_left(9);
         b = a;
