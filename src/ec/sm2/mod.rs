@@ -43,4 +43,4 @@ pub(crate) const CURVE_OID: &[u8] = &[
     // 301   -> 82 2d
 ];
 
-// Placeholder for Phase 4/5 implementation.
+// SM2 ops are implemented in `crate::ec::suite_b::ops::sm2`.

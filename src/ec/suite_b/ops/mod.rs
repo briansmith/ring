@@ -1404,3 +1404,5 @@ mod tests {
 mod elem;
 pub mod p256;
 pub mod p384;
+#[cfg(feature = "sm")]
+pub mod sm2;
