@@ -12,14 +12,34 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use super::ops::{P3, Scalar};
 use crate::cpu::{
     self, GetFeature as _,
     intel::{Adx, Bmi1, Bmi2},
 };
+use core::mem::MaybeUninit;
 
 pub type RequiredFeatures = (Adx, Bmi1, Bmi2);
 
 #[inline(always)]
 pub(super) fn get_features(cpu: cpu::Features) -> Option<RequiredFeatures> {
     cpu.get_feature()
+}
+
+pub fn scalarmult_base(a: &Scalar, _cpu: RequiredFeatures) -> P3 {
+    prefixed_extern! {
+        unsafe fn x25519_ge_scalarmult_base_adx(t: &mut MaybeUninit<[[u8; 32]; 4]>, a: &Scalar);
+        unsafe fn x25519_ge_scalarmult_base_adx_from_bytes(h: &mut MaybeUninit<P3>, t: &[[u8; 32]; 4]);
+    }
+
+    let mut t = MaybeUninit::uninit();
+    let t = unsafe {
+        x25519_ge_scalarmult_base_adx(&mut t, a);
+        t.assume_init_ref()
+    };
+    let mut h = MaybeUninit::uninit();
+    unsafe {
+        x25519_ge_scalarmult_base_adx_from_bytes(&mut h, t);
+        h.assume_init()
+    }
 }
