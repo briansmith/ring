@@ -71,23 +71,16 @@ pub struct P3 {
 impl P3 {
     // Returns the result of multiplying the base point by the scalar in constant time.
     pub(super) fn from_scalarmult_base(scalar: &Scalar, cpu: cpu::Features) -> Self {
-        let mut r = MaybeUninit::uninit();
-
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
-        if super::adx::get_features(cpu).is_some() {
-            prefixed_extern! {
-                unsafe fn x25519_ge_scalarmult_base_adx_wrapper(h: &mut MaybeUninit<P3>, a: &Scalar);
-            }
-            return unsafe {
-                x25519_ge_scalarmult_base_adx_wrapper(&mut r, scalar);
-                r.assume_init()
-            };
+        if let Some(cpu) = super::adx::get_features(cpu) {
+            return super::adx::scalarmult_base(scalar, cpu);
         }
 
         let _ = cpu;
         prefixed_extern! {
             unsafe fn x25519_ge_scalarmult_base(h: &mut MaybeUninit<P3>, a: &Scalar);
         }
+        let mut r = MaybeUninit::uninit();
         unsafe {
             x25519_ge_scalarmult_base(&mut r, scalar);
             r.assume_init()
