@@ -37,6 +37,9 @@ pub use self::{
     unbound_key::UnboundKey,
 };
 
+#[cfg(feature = "sm")]
+pub use self::algorithm::SM4_128_GCM;
+
 /// A sequences of unique nonces.
 ///
 /// A given `NonceSequence` must never return the same `Nonce` twice from
@@ -124,6 +127,8 @@ impl<A> Eq for Aad<A> where A: Eq {}
 enum KeyInner {
     AesGcm(aes_gcm::Key),
     ChaCha20Poly1305(chacha20_poly1305::Key),
+    #[cfg(feature = "sm")]
+    Sm4Gcm(sm4_gcm::Key),
 }
 
 const fn max_input_len(block_len: usize, overhead_blocks_per_nonce: usize) -> usize {
