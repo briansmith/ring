@@ -1033,7 +1033,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "x25519_ge_frombytes_vartime",
         "x25519_ge_scalarmult_base",
         "x25519_ge_scalarmult_base_adx",
-        "x25519_ge_scalarmult_base_adx_wrapper",
+        "x25519_ge_scalarmult_base_adx_from_bytes",
         "x25519_public_from_private_generic_masked",
         "x25519_sc_mask",
         "x25519_sc_muladd",
