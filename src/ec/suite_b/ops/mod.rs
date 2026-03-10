@@ -1130,6 +1130,36 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "sm")]
+    #[test]
+    fn sm2_elem_mul_test() {
+        elem_mul_test(&sm2::COMMON_OPS, test_vector_file!("../ops/sm2_elem_mul_tests.txt"));
+    }
+
+    #[cfg(feature = "sm")]
+    #[test]
+    fn sm2_point_mul_test() {
+        let generator = (
+            Elem::from(&sm2::GENERATOR.0),
+            Elem::from(&sm2::GENERATOR.1),
+        );
+        point_mul_base_tests(
+            &sm2::PRIVATE_KEY_OPS,
+            |s, cpu| sm2::PRIVATE_KEY_OPS.point_mul(s, &generator, cpu),
+            test_vector_file!("../ops/sm2_point_mul_base_tests.txt"),
+        );
+    }
+
+    #[cfg(feature = "sm")]
+    #[test]
+    fn sm2_point_mul_base_test() {
+        point_mul_base_tests(
+            &sm2::PRIVATE_KEY_OPS,
+            |s, cpu| sm2::PRIVATE_KEY_OPS.point_mul_base(s, cpu),
+            test_vector_file!("../ops/sm2_point_mul_base_tests.txt"),
+        );
+    }
+
     #[test]
     fn p256_point_mul_serialized_test() {
         point_mul_serialized_test(

@@ -5,9 +5,9 @@
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
 //
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
 // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
 // SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
@@ -24,14 +24,13 @@
 //!
 //! # OID
 //! The SM2 curve OID is `1.2.156.10197.1.301` (curveSM2).
-//! DER encoding: `06 08 2A 86 48 CE 3D 03 01 07` is P-256; SM2 is:
-//! `06 08 2A 81 1C CF 55 01 82 2D`
+//! DER encoding: `06 08 2A 81 1C CF 55 01 82 2D`
 
 /// DER-encoded OID for the SM2 curve: 1.2.156.10197.1.301
 ///
 /// This is the curveSM2 object identifier as defined in GB/T 35276-2017
 /// and registered in IANA.
-#[allow(dead_code)] // Used in Phase 5 PKCS#8 template construction.
+#[allow(dead_code)] // Used in PKCS#8 template construction.
 pub(crate) const CURVE_OID: &[u8] = &[
     0x06, 0x08, // OID tag + length (8 bytes)
     0x2A, 0x81, 0x1C, 0xCF, 0x55, 0x01, 0x82, 0x2D,
@@ -43,4 +42,5 @@ pub(crate) const CURVE_OID: &[u8] = &[
     // 301   -> 82 2d
 ];
 
-// SM2 ops are implemented in `crate::ec::suite_b::ops::sm2`.
+// SM2 signing/verification/ecdh are implemented in
+// `crate::ec::suite_b::sm2` to access suite_b::ops internal types.

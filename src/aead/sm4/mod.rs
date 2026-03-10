@@ -199,14 +199,14 @@ impl Key {
                 let iv = ctr.increment();
                 let keystream = self.encrypt_block(*iv.as_ref());
                 let in_block: [u8; BLOCK_LEN] = unsafe {
-                    core::ptr::read(input.add(i * BLOCK_LEN) as *const [u8; BLOCK_LEN])
+                    core::ptr::read(input.add(i * BLOCK_LEN).cast::<[u8; BLOCK_LEN]>())
                 };
                 let mut out_block = ZERO_BLOCK;
                 for j in 0..BLOCK_LEN {
                     out_block[j] = in_block[j] ^ keystream[j];
                 }
                 unsafe {
-                    core::ptr::write(output.add(i * BLOCK_LEN) as *mut [u8; BLOCK_LEN], out_block);
+                    core::ptr::write(output.add(i * BLOCK_LEN).cast::<[u8; BLOCK_LEN]>(), out_block);
                 }
             }
         });
