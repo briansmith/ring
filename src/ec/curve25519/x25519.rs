@@ -109,18 +109,18 @@ fn x25519_ecdh(
         out: &mut UCoordinate,
         scalar: &MaskedScalar,
         point: &UCoordinate,
-        #[allow(unused_variables)] cpu_features: cpu::Features,
+        #[allow(unused_variables)] cpu: cpu::Features,
     ) {
         #[cfg(all(
             all(target_arch = "arm", target_endian = "little"),
             any(target_os = "android", target_os = "linux")
         ))]
-        if let Some(cpu) = <cpu::Features as cpu::GetFeature<_>>::get_feature(&cpu_features) {
+        if let Some(cpu) = <cpu::Features as cpu::GetFeature<_>>::get_feature(&cpu) {
             return x25519_neon(out, scalar, point, cpu);
         }
 
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
-        if super::ops::has_fe25519_adx(cpu_features) {
+        if super::adx::get_features(cpu).is_some() {
             prefixed_extern! {
                 unsafe fn x25519_scalar_mult_adx(
                     out: &mut UCoordinate,
