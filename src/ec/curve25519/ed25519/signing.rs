@@ -14,7 +14,7 @@
 
 //! EdDSA Signatures.
 
-use super::{super::ops::*, ED25519_PUBLIC_KEY_LEN, eddsa_digest};
+use super::{super::ops::*, eddsa_digest};
 use crate::{
     cpu, digest, error,
     io::der,
@@ -182,7 +182,7 @@ impl Ed25519KeyPair {
         Self {
             private_scalar,
             private_prefix: private_prefix.try_into().unwrap(),
-            public_key: PublicKey(a.into_encoded_point(cpu_features)),
+            public_key: PublicKey(a.into_compressed_encoding(cpu_features)),
         }
     }
 
@@ -210,7 +210,7 @@ impl Ed25519KeyPair {
             let nonce = Scalar::from_sha512_digest_reduced(nonce);
 
             let r = P3::from_scalarmult_base(&nonce, cpu_features);
-            signature_r.copy_from_slice(&r.into_encoded_point(cpu_features));
+            signature_r.copy_from_slice(r.into_compressed_encoding(cpu_features).as_ref());
             let hram_digest = eddsa_digest(signature_r, self.public_key.as_ref(), msg);
             let hram = Scalar::from_sha512_digest_reduced(hram_digest);
             unsafe {
@@ -236,7 +236,7 @@ impl signature::KeyPair for Ed25519KeyPair {
 }
 
 #[derive(Clone, Copy)]
-pub struct PublicKey([u8; ED25519_PUBLIC_KEY_LEN]);
+pub struct PublicKey(CompressedPoint);
 
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] {

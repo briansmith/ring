@@ -70,17 +70,17 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
             x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s);
             r.assume_init()
         };
-        let r_check = r.into_encoded_point(cpu_features);
-        if *signature_r != r_check {
+        let r_check = r.into_compressed_encoding(cpu_features);
+        if signature_r != r_check.as_ref() {
             return Err(error::Unspecified);
         }
         Ok(())
     }
 }
 
-fn from_encoded_point_vartime(encoded: &EncodedPoint) -> Result<P3, error::Unspecified> {
+fn from_encoded_point_vartime(encoded: &[u8; ELEM_LEN]) -> Result<P3, error::Unspecified> {
     prefixed_extern! {
-        unsafe fn x25519_ge_frombytes_vartime(h: &mut MaybeUninit<P3>, s: &EncodedPoint) -> bssl::Result;
+        unsafe fn x25519_ge_frombytes_vartime(h: &mut MaybeUninit<P3>, s: &[u8; ELEM_LEN]) -> bssl::Result;
     }
     let mut point = MaybeUninit::uninit();
     Result::from(unsafe { x25519_ge_frombytes_vartime(&mut point, encoded) })?;
