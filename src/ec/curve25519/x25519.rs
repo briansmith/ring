@@ -15,7 +15,7 @@
 //! X25519 Key agreement.
 
 use super::{
-    ops::{ELEM_LEN, EncodedPoint, ExtPoint, MaskedScalar},
+    ops::{ELEM_LEN, EncodedPoint, MaskedScalar, P3},
     scalar::SCALAR_LEN,
 };
 use crate::{agreement, bb, cpu, ec, error, rand};
@@ -82,10 +82,10 @@ fn x25519_public_from_private(
         return Ok(());
     }
 
-    let A = ExtPoint::from_scalarmult_base(private_key.as_ref(), cpu_features);
+    let A = P3::from_scalarmult_base(private_key.as_ref(), cpu_features);
 
     prefixed_extern! {
-        unsafe fn x25519_u_coordinate(out_public_value: &mut [u8; 32], A: &ExtPoint);
+        unsafe fn x25519_u_coordinate(out_public_value: &mut [u8; 32], A: &P3);
     }
     unsafe { x25519_u_coordinate(public_out, &A) }
 

@@ -78,9 +78,9 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
     }
 }
 
-fn from_encoded_point_vartime(encoded: &EncodedPoint) -> Result<ExtPoint, error::Unspecified> {
+fn from_encoded_point_vartime(encoded: &EncodedPoint) -> Result<P3, error::Unspecified> {
     prefixed_extern! {
-        unsafe fn x25519_ge_frombytes_vartime(h: &mut MaybeUninit<ExtPoint>, s: &EncodedPoint) -> bssl::Result;
+        unsafe fn x25519_ge_frombytes_vartime(h: &mut MaybeUninit<P3>, s: &EncodedPoint) -> bssl::Result;
     }
     let mut point = MaybeUninit::uninit();
     Result::from(unsafe { x25519_ge_frombytes_vartime(&mut point, encoded) })?;
@@ -89,9 +89,9 @@ fn from_encoded_point_vartime(encoded: &EncodedPoint) -> Result<ExtPoint, error:
 
 prefixed_extern! {
     unsafe fn x25519_ge_double_scalarmult_vartime(
-        r: &mut MaybeUninit<Point>,
+        r: &mut MaybeUninit<P2>,
         a_coeff: &Scalar,
-        a: &ExtPoint,
+        a: &P3,
         b_coeff: &Scalar,
     );
 }

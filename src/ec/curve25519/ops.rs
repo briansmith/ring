@@ -56,14 +56,14 @@ pub const ELEM_LEN: usize = 32;
 
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
 #[repr(C)]
-pub struct ExtPoint {
+pub struct P3 {
     x: Elem<Tight>,
     y: Elem<Tight>,
     z: Elem<Tight>,
     t: Elem<Tight>,
 }
 
-impl ExtPoint {
+impl P3 {
     // Returns the result of multiplying the base point by the scalar in constant time.
     pub(super) fn from_scalarmult_base(scalar: &Scalar, cpu: cpu::Features) -> Self {
         let mut r = MaybeUninit::uninit();
@@ -71,7 +71,7 @@ impl ExtPoint {
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
         if has_fe25519_adx(cpu) {
             prefixed_extern! {
-                unsafe fn x25519_ge_scalarmult_base_adx_wrapper(h: &mut MaybeUninit<ExtPoint>, a: &Scalar);
+                unsafe fn x25519_ge_scalarmult_base_adx_wrapper(h: &mut MaybeUninit<P3>, a: &Scalar);
             }
             return unsafe {
                 x25519_ge_scalarmult_base_adx_wrapper(&mut r, scalar);
@@ -81,7 +81,7 @@ impl ExtPoint {
 
         let _ = cpu;
         prefixed_extern! {
-            unsafe fn x25519_ge_scalarmult_base(h: &mut MaybeUninit<ExtPoint>, a: &Scalar);
+            unsafe fn x25519_ge_scalarmult_base(h: &mut MaybeUninit<P3>, a: &Scalar);
         }
         unsafe {
             x25519_ge_scalarmult_base(&mut r, scalar);
@@ -101,13 +101,13 @@ impl ExtPoint {
 
 // Keep this in sync with `ge_p2` in curve25519/internal.h.
 #[repr(C)]
-pub struct Point {
+pub struct P2 {
     x: Elem<Tight>,
     y: Elem<Tight>,
     z: Elem<Tight>,
 }
 
-impl Point {
+impl P2 {
     pub(super) fn into_encoded_point(self, cpu_features: cpu::Features) -> EncodedPoint {
         encode_point(self.x, self.y, self.z, cpu_features)
     }
