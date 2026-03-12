@@ -14,6 +14,9 @@
 
 //! Elliptic curve operations and schemes using Curve25519.
 
+#[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
+mod adx;
+
 pub mod ed25519;
 
 pub mod x25519;
