@@ -65,8 +65,11 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         let h_digest = eddsa_digest(signature_r, public_key, msg.as_slice_less_safe());
         let h = Scalar::from_sha512_digest_reduced(h_digest);
 
-        let mut r = Point::new_at_infinity();
-        unsafe { x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s) };
+        let mut r = MaybeUninit::uninit();
+        let r = unsafe {
+            x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s);
+            r.assume_init()
+        };
         let r_check = r.into_encoded_point(cpu_features);
         if *signature_r != r_check {
             return Err(error::Unspecified);
@@ -86,7 +89,7 @@ fn from_encoded_point_vartime(encoded: &EncodedPoint) -> Result<ExtPoint, error:
 
 prefixed_extern! {
     unsafe fn x25519_ge_double_scalarmult_vartime(
-        r: &mut Point,
+        r: &mut MaybeUninit<Point>,
         a_coeff: &Scalar,
         a: &ExtPoint,
         b_coeff: &Scalar,

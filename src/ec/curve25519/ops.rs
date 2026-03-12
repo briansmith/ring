@@ -37,15 +37,6 @@ impl Encoding for Tight {}
 
 const ELEM_LIMBS: usize = 5 * 64 / LIMB_BITS;
 
-impl<E: Encoding> Elem<E> {
-    fn zero() -> Self {
-        Self {
-            limbs: Default::default(),
-            encoding: PhantomData,
-        }
-    }
-}
-
 impl Elem<Tight> {
     fn negate(&mut self) {
         unsafe {
@@ -117,14 +108,6 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn new_at_infinity() -> Self {
-        Self {
-            x: Elem::zero(),
-            y: Elem::zero(),
-            z: Elem::zero(),
-        }
-    }
-
     pub(super) fn into_encoded_point(self, cpu_features: cpu::Features) -> EncodedPoint {
         encode_point(self.x, self.y, self.z, cpu_features)
     }
