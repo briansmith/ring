@@ -20,7 +20,7 @@ use crate::{
     cpu,
     limb::{LIMB_BITS, Limb},
 };
-use core::marker::PhantomData;
+use core::{marker::PhantomData, mem::MaybeUninit};
 
 // Elem<T>` is `fe` in curve25519/internal.h.
 // Elem<L> is `fe_loose` in curve25519/internal.h.
@@ -73,38 +73,29 @@ pub struct ExtPoint {
 }
 
 impl ExtPoint {
-    pub fn zero() -> Self {
-        Self {
-            x: Elem::zero(),
-            y: Elem::zero(),
-            z: Elem::zero(),
-            t: Elem::zero(),
-        }
-    }
-
     // Returns the result of multiplying the base point by the scalar in constant time.
     pub(super) fn from_scalarmult_base(scalar: &Scalar, cpu: cpu::Features) -> Self {
-        let mut r = Self::zero();
+        let mut r = MaybeUninit::uninit();
 
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
         if has_fe25519_adx(cpu) {
             prefixed_extern! {
-                unsafe fn x25519_ge_scalarmult_base_adx_wrapper(h: &mut ExtPoint, a: &Scalar);
+                unsafe fn x25519_ge_scalarmult_base_adx_wrapper(h: &mut MaybeUninit<ExtPoint>, a: &Scalar);
             }
-            unsafe {
+            return unsafe {
                 x25519_ge_scalarmult_base_adx_wrapper(&mut r, scalar);
-            }
-            return r;
+                r.assume_init()
+            };
         }
 
         let _ = cpu;
         prefixed_extern! {
-            unsafe fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar);
+            unsafe fn x25519_ge_scalarmult_base(h: &mut MaybeUninit<ExtPoint>, a: &Scalar);
         }
         unsafe {
             x25519_ge_scalarmult_base(&mut r, scalar);
+            r.assume_init()
         }
-        r
     }
 
     pub(super) fn into_encoded_point(self, cpu_features: cpu::Features) -> EncodedPoint {

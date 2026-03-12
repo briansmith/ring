@@ -16,6 +16,7 @@
 
 use super::{super::ops::*, eddsa_digest};
 use crate::{bssl, cpu, error, sealed, signature};
+use core::mem::MaybeUninit;
 
 /// Parameters for EdDSA signing and verification.
 pub struct EdDSAParameters;
@@ -76,10 +77,11 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 
 fn from_encoded_point_vartime(encoded: &EncodedPoint) -> Result<ExtPoint, error::Unspecified> {
     prefixed_extern! {
-        unsafe fn x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &EncodedPoint) -> bssl::Result;
+        unsafe fn x25519_ge_frombytes_vartime(h: &mut MaybeUninit<ExtPoint>, s: &EncodedPoint) -> bssl::Result;
     }
-    let mut point = ExtPoint::zero();
-    Result::from(unsafe { x25519_ge_frombytes_vartime(&mut point, encoded) }).map(|()| point)
+    let mut point = MaybeUninit::uninit();
+    Result::from(unsafe { x25519_ge_frombytes_vartime(&mut point, encoded) })?;
+    Ok(unsafe { point.assume_init() })
 }
 
 prefixed_extern! {
