@@ -130,22 +130,34 @@ impl Point {
     }
 }
 
-fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>, _cpu_features: cpu::Features) -> EncodedPoint {
+fn encode_point(
+    mut x: Elem<T>,
+    mut y: Elem<T>,
+    mut z: Elem<T>,
+    _cpu_features: cpu::Features,
+) -> EncodedPoint {
     let mut bytes = [0; ELEM_LEN];
 
-    let sign_bit: u8 = unsafe {
-        let mut recip = Elem::zero();
-        x25519_fe_invert(&mut recip, &z);
+    unsafe {
+        x25519_fe_invert(&mut z);
+    }
+    let recip = &mut z;
 
-        let mut x_over_z = Elem::zero();
-        x25519_fe_mul_ttt(&mut x_over_z, &x, &recip);
+    unsafe {
+        x25519_fe_mul_assign_tt(&mut x, recip);
+    }
+    let x_over_z = &x;
 
-        let mut y_over_z = Elem::zero();
-        x25519_fe_mul_ttt(&mut y_over_z, &y, &recip);
-        x25519_fe_tobytes(&mut bytes, &y_over_z);
+    unsafe {
+        x25519_fe_mul_assign_tt(&mut y, recip);
+    }
+    let y_over_z = &y;
 
-        x25519_fe_isnegative(&x_over_z)
-    };
+    unsafe {
+        x25519_fe_tobytes(&mut bytes, y_over_z);
+    }
+
+    let sign_bit: u8 = unsafe { x25519_fe_isnegative(x_over_z) };
 
     // The preceding computations must execute in constant time, but this
     // doesn't need to.
@@ -168,9 +180,9 @@ pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
 }
 
 prefixed_extern! {
-    unsafe fn x25519_fe_invert(out: &mut Elem<T>, z: &Elem<T>);
+    unsafe fn x25519_fe_invert(z: &mut Elem<T>);
     unsafe fn x25519_fe_isnegative(elem: &Elem<T>) -> u8;
-    unsafe fn x25519_fe_mul_ttt(h: &mut Elem<T>, f: &Elem<T>, g: &Elem<T>);
+    unsafe fn x25519_fe_mul_assign_tt(f: &mut Elem<T>, g: &Elem<T>);
     unsafe fn x25519_fe_neg(f: &mut Elem<T>);
     unsafe fn x25519_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem<T>);
 }

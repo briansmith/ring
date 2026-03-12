@@ -1026,7 +1026,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "x25519_NEON",
         "x25519_fe_invert",
         "x25519_fe_isnegative",
-        "x25519_fe_mul_ttt",
+        "x25519_fe_mul_assign_tt",
         "x25519_fe_neg",
         "x25519_fe_tobytes",
         "x25519_ge_double_scalarmult_vartime",
