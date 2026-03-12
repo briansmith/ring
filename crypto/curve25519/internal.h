@@ -94,7 +94,7 @@ static inline void fe_limbs_copy(fe_limb_t r[], const fe_limb_t a[]) {
 //   ge_p1p1 (completed): ((X:Z),(Y:T)) satisfying x=X/Z, y=Y/T
 //   ge_precomp (Duif): (y+x,y-x,2dxy)
 
-// Keep in sync with `Point` in curve25519/ops.rs.
+// Keep in sync with `P2` in curve25519/ops.rs.
 typedef struct {
   fe X;
   fe Y;
@@ -102,7 +102,7 @@ typedef struct {
 } ge_p2;
 
 
-// Keep in sync with `ExtPoint` in curve25519/ops.rs.
+// Keep in sync with `Point` in curve25519/ops.rs.
 typedef struct {
   fe X;
   fe Y;
