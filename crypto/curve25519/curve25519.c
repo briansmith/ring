@@ -1876,16 +1876,16 @@ void x25519_u_coordinate(uint8_t out_public_value[32], const ge_p3 *A) {
   CONSTTIME_DECLASSIFY(out_public_value, 32);
 }
 
-void x25519_fe_invert(fe *out, const fe *z) {
-  fe_invert(out, z);
+void x25519_fe_invert(fe *z) {
+  fe_invert(z, z);
 }
 
 uint8_t x25519_fe_isnegative(const fe *f) {
   return (uint8_t)fe_isnegative(f);
 }
 
-void x25519_fe_mul_ttt(fe *h, const fe *f, const fe *g) {
-  fe_mul_ttt(h, f, g);
+void x25519_fe_mul_assign_tt(fe *h, const fe *f) {
+  fe_mul_ttt(h, h, f);
 }
 
 void x25519_fe_neg(fe *f) {
