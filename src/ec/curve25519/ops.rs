@@ -45,13 +45,18 @@ impl Elem<Tight> {
     }
 }
 
-// An encoding of a curve point. If on Curve25519, it should be encoded as
-// described in Section 5 of [RFC 7748]. If on Edwards25519, it should be
-// encoded as described in section 5.1.2 of [RFC 8032].
-//
-// [RFC 7748] https://tools.ietf.org/html/rfc7748#section-5
 // [RFC 8032] https://tools.ietf.org/html/rfc8032#section-5.1.2
-pub type EncodedPoint = [u8; ELEM_LEN];
+// This is *NOT* the type to use for X25519 output.
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+pub struct CompressedPoint([u8; ELEM_LEN]);
+
+impl CompressedPoint {
+    pub fn as_ref(&self) -> &[u8; ELEM_LEN] {
+        &self.0
+    }
+}
+
 pub const ELEM_LEN: usize = 32;
 
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
@@ -89,7 +94,7 @@ impl P3 {
         }
     }
 
-    pub(super) fn into_encoded_point(self, cpu_features: cpu::Features) -> EncodedPoint {
+    pub(super) fn into_compressed_encoding(self, cpu_features: cpu::Features) -> CompressedPoint {
         encode_point(self.x, self.y, self.z, cpu_features)
     }
 
@@ -108,7 +113,7 @@ pub struct P2 {
 }
 
 impl P2 {
-    pub(super) fn into_encoded_point(self, cpu_features: cpu::Features) -> EncodedPoint {
+    pub(super) fn into_compressed_encoding(self, cpu_features: cpu::Features) -> CompressedPoint {
         encode_point(self.x, self.y, self.z, cpu_features)
     }
 }
@@ -118,9 +123,7 @@ fn encode_point(
     mut y: Elem<Tight>,
     mut z: Elem<Tight>,
     _cpu_features: cpu::Features,
-) -> EncodedPoint {
-    let mut bytes = [0; ELEM_LEN];
-
+) -> CompressedPoint {
     unsafe {
         x25519_fe_invert(&mut z);
     }
@@ -136,8 +139,10 @@ fn encode_point(
     }
     let y_over_z = &y;
 
+    let mut r = CompressedPoint([0u8; ELEM_LEN]);
+    let bytes = &mut r.0;
     unsafe {
-        x25519_fe_tobytes(&mut bytes, y_over_z);
+        x25519_fe_tobytes(bytes, y_over_z);
     }
 
     let sign_bit: u8 = unsafe { x25519_fe_isnegative(x_over_z) };
@@ -146,7 +151,7 @@ fn encode_point(
     // doesn't need to.
     bytes[ELEM_LEN - 1] ^= sign_bit << 7;
 
-    bytes
+    r
 }
 
 #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
@@ -167,5 +172,5 @@ prefixed_extern! {
     unsafe fn x25519_fe_isnegative(elem: &Elem<Tight>) -> u8;
     unsafe fn x25519_fe_mul_assign_tt(f: &mut Elem<Tight>, g: &Elem<Tight>);
     unsafe fn x25519_fe_neg(f: &mut Elem<Tight>);
-    unsafe fn x25519_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem<Tight>);
+    unsafe fn x25519_fe_tobytes(bytes: &mut [u8; ELEM_LEN], elem: &Elem<Tight>);
 }

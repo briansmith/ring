@@ -15,7 +15,7 @@
 //! X25519 Key agreement.
 
 use super::{
-    ops::{ELEM_LEN, EncodedPoint, MaskedScalar, P3},
+    ops::{ELEM_LEN, MaskedScalar, P3},
     scalar::SCALAR_LEN,
 };
 use crate::{agreement, bb, cpu, ec, error, rand};
@@ -59,12 +59,15 @@ fn x25519_generate_private_key(
     rng.fill(out)
 }
 
+// https://tools.ietf.org/html/rfc7748#section-5
+type UCoordinate = [u8; PUBLIC_KEY_LEN];
+
 fn x25519_public_from_private(
     public_out: &mut [u8],
     private_key: &ec::Seed,
     cpu_features: cpu::Features,
 ) -> Result<(), error::Unspecified> {
-    let public_out = public_out.try_into()?;
+    let public_out: &mut UCoordinate = public_out.try_into()?;
 
     let private_key: &[u8; SCALAR_LEN] = private_key.bytes_less_safe().try_into()?;
     let private_key = MaskedScalar::from_bytes_masked(*private_key);
@@ -85,7 +88,7 @@ fn x25519_public_from_private(
     let A = P3::from_scalarmult_base(private_key.as_ref(), cpu_features);
 
     prefixed_extern! {
-        unsafe fn x25519_u_coordinate(out_public_value: &mut [u8; 32], A: &P3);
+        unsafe fn x25519_u_coordinate(out_public_value: &mut UCoordinate, A: &P3);
     }
     unsafe { x25519_u_coordinate(public_out, &A) }
 
@@ -103,9 +106,9 @@ fn x25519_ecdh(
     let peer_public_key: &[u8; PUBLIC_KEY_LEN] = peer_public_key.as_slice_less_safe().try_into()?;
 
     fn scalar_mult(
-        out: &mut EncodedPoint,
+        out: &mut UCoordinate,
         scalar: &MaskedScalar,
-        point: &EncodedPoint,
+        point: &UCoordinate,
         #[allow(unused_variables)] cpu_features: cpu::Features,
     ) {
         #[cfg(all(
@@ -120,9 +123,9 @@ fn x25519_ecdh(
         if super::ops::has_fe25519_adx(cpu_features) {
             prefixed_extern! {
                 unsafe fn x25519_scalar_mult_adx(
-                    out: &mut EncodedPoint,
+                    out: &mut UCoordinate,
                     scalar: &MaskedScalar,
-                    point: &EncodedPoint,
+                    point: &UCoordinate,
                 );
             }
             return unsafe { x25519_scalar_mult_adx(out, scalar, point) };
@@ -130,9 +133,9 @@ fn x25519_ecdh(
 
         prefixed_extern! {
             unsafe fn x25519_scalar_mult_generic_masked(
-                out: &mut EncodedPoint,
+                out: &mut [u8; ELEM_LEN],
                 scalar: &MaskedScalar,
-                point: &EncodedPoint,
+                point: &[u8; ELEM_LEN],
             );
         }
         unsafe {
@@ -162,16 +165,16 @@ fn x25519_ecdh(
     any(target_os = "android", target_os = "linux")
 ))]
 fn x25519_neon(
-    out: &mut EncodedPoint,
+    out: &mut UCoordinate,
     scalar: &MaskedScalar,
-    point: &EncodedPoint,
+    point: &UCoordinate,
     _cpu: cpu::arm::Neon,
 ) {
     prefixed_extern! {
         unsafe fn x25519_NEON(
-            out: &mut EncodedPoint,
+            out: &mut UCoordinate,
             scalar: &MaskedScalar,
-            point: &EncodedPoint,
+            point: &UCoordinate,
         );
     }
     unsafe { x25519_NEON(out, scalar, point) }
