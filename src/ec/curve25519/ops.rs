@@ -22,8 +22,8 @@ use crate::{
 };
 use core::{marker::PhantomData, mem::MaybeUninit};
 
-// Elem<T>` is `fe` in curve25519/internal.h.
-// Elem<L> is `fe_loose` in curve25519/internal.h.
+// Elem<Tight>` is `fe` in curve25519/internal.h.
+// Elem<Loose> is `fe_loose` in curve25519/internal.h.
 // Keep this in sync with curve25519/internal.h.
 #[repr(C)]
 pub struct Elem<E: Encoding> {
@@ -32,8 +32,8 @@ pub struct Elem<E: Encoding> {
 }
 
 pub trait Encoding {}
-pub struct T;
-impl Encoding for T {}
+pub struct Tight;
+impl Encoding for Tight {}
 
 const ELEM_LIMBS: usize = 5 * 64 / LIMB_BITS;
 
@@ -46,7 +46,7 @@ impl<E: Encoding> Elem<E> {
     }
 }
 
-impl Elem<T> {
+impl Elem<Tight> {
     fn negate(&mut self) {
         unsafe {
             x25519_fe_neg(self);
@@ -66,10 +66,10 @@ pub const ELEM_LEN: usize = 32;
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
 #[repr(C)]
 pub struct ExtPoint {
-    x: Elem<T>,
-    y: Elem<T>,
-    z: Elem<T>,
-    t: Elem<T>,
+    x: Elem<Tight>,
+    y: Elem<Tight>,
+    z: Elem<Tight>,
+    t: Elem<Tight>,
 }
 
 impl ExtPoint {
@@ -111,9 +111,9 @@ impl ExtPoint {
 // Keep this in sync with `ge_p2` in curve25519/internal.h.
 #[repr(C)]
 pub struct Point {
-    x: Elem<T>,
-    y: Elem<T>,
-    z: Elem<T>,
+    x: Elem<Tight>,
+    y: Elem<Tight>,
+    z: Elem<Tight>,
 }
 
 impl Point {
@@ -131,9 +131,9 @@ impl Point {
 }
 
 fn encode_point(
-    mut x: Elem<T>,
-    mut y: Elem<T>,
-    mut z: Elem<T>,
+    mut x: Elem<Tight>,
+    mut y: Elem<Tight>,
+    mut z: Elem<Tight>,
     _cpu_features: cpu::Features,
 ) -> EncodedPoint {
     let mut bytes = [0; ELEM_LEN];
@@ -180,9 +180,9 @@ pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
 }
 
 prefixed_extern! {
-    unsafe fn x25519_fe_invert(z: &mut Elem<T>);
-    unsafe fn x25519_fe_isnegative(elem: &Elem<T>) -> u8;
-    unsafe fn x25519_fe_mul_assign_tt(f: &mut Elem<T>, g: &Elem<T>);
-    unsafe fn x25519_fe_neg(f: &mut Elem<T>);
-    unsafe fn x25519_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem<T>);
+    unsafe fn x25519_fe_invert(z: &mut Elem<Tight>);
+    unsafe fn x25519_fe_isnegative(elem: &Elem<Tight>) -> u8;
+    unsafe fn x25519_fe_mul_assign_tt(f: &mut Elem<Tight>, g: &Elem<Tight>);
+    unsafe fn x25519_fe_neg(f: &mut Elem<Tight>);
+    unsafe fn x25519_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem<Tight>);
 }
