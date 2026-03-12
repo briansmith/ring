@@ -106,9 +106,10 @@ pub(super) mod featureflags {
     // We have a separate flag for NEON, so we need Acquire/Release ordering.
     static FEATURES: race::OnceNonZeroU32<race::AcquireRelease> = race::OnceNonZeroU32::new();
 
-    // TODO(MSRV): 32-bit ARM doesn't support any static feature detection yet.
+    // XXX: 32-bit ARM doesn't support any static feature detection yet, except on nightly.
+    // `target_os = "vita"` always has NEON, but it doesn't have a stable toolchain.
     #[rustfmt::skip]
     pub(in super::super) const STATIC_DETECTED: u32 = 0
-        | (if cfg!(target_os = "vita") { Neon::mask() } else { 0 })
+        | (if cfg!(target_feature = "neon") { Neon::mask() } else { 0 })
         ;
 }
