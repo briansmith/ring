@@ -17,7 +17,7 @@
 
 pub use super::scalar::{MaskedScalar, SCALAR_LEN, Scalar};
 use crate::{
-    bssl, cpu, error,
+    cpu,
     limb::{LIMB_BITS, Limb},
 };
 use core::marker::PhantomData;
@@ -73,14 +73,18 @@ pub struct ExtPoint {
 }
 
 impl ExtPoint {
-    // Returns the result of multiplying the base point by the scalar in constant time.
-    pub(super) fn from_scalarmult_base(scalar: &Scalar, cpu: cpu::Features) -> Self {
-        let mut r = Self {
+    pub fn zero() -> Self {
+        Self {
             x: Elem::zero(),
             y: Elem::zero(),
             z: Elem::zero(),
             t: Elem::zero(),
-        };
+        }
+    }
+
+    // Returns the result of multiplying the base point by the scalar in constant time.
+    pub(super) fn from_scalarmult_base(scalar: &Scalar, cpu: cpu::Features) -> Self {
+        let mut r = Self::zero();
 
         #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
         if has_fe25519_adx(cpu) {
@@ -101,17 +105,6 @@ impl ExtPoint {
             x25519_ge_scalarmult_base(&mut r, scalar);
         }
         r
-    }
-
-    pub fn from_encoded_point_vartime(encoded: &EncodedPoint) -> Result<Self, error::Unspecified> {
-        let mut point = Self {
-            x: Elem::zero(),
-            y: Elem::zero(),
-            z: Elem::zero(),
-            t: Elem::zero(),
-        };
-
-        Result::from(unsafe { x25519_ge_frombytes_vartime(&mut point, encoded) }).map(|()| point)
     }
 
     pub(super) fn into_encoded_point(self, cpu_features: cpu::Features) -> EncodedPoint {
@@ -189,5 +182,4 @@ prefixed_extern! {
     unsafe fn x25519_fe_mul_ttt(h: &mut Elem<T>, f: &Elem<T>, g: &Elem<T>);
     unsafe fn x25519_fe_neg(f: &mut Elem<T>);
     unsafe fn x25519_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem<T>);
-    unsafe fn x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &EncodedPoint) -> bssl::Result;
 }
