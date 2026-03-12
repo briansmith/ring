@@ -15,7 +15,7 @@
 //! EdDSA Signatures.
 
 use super::{super::ops::*, eddsa_digest};
-use crate::{cpu, error, sealed, signature};
+use crate::{bssl, cpu, error, sealed, signature};
 
 /// Parameters for EdDSA signing and verification.
 pub struct EdDSAParameters;
@@ -58,7 +58,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 
         let signature_s = Scalar::from_bytes_checked(*signature_s)?;
 
-        let mut a = ExtPoint::from_encoded_point_vartime(public_key)?;
+        let mut a = from_encoded_point_vartime(public_key)?;
         a.invert_vartime();
 
         let h_digest = eddsa_digest(signature_r, public_key, msg.as_slice_less_safe());
@@ -72,6 +72,14 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         }
         Ok(())
     }
+}
+
+fn from_encoded_point_vartime(encoded: &EncodedPoint) -> Result<ExtPoint, error::Unspecified> {
+    prefixed_extern! {
+        unsafe fn x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &EncodedPoint) -> bssl::Result;
+    }
+    let mut point = ExtPoint::zero();
+    Result::from(unsafe { x25519_ge_frombytes_vartime(&mut point, encoded) }).map(|()| point)
 }
 
 prefixed_extern! {
