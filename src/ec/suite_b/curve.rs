@@ -91,3 +91,14 @@ suite_b_curve!(
     p384_generate_private_key,
     p384_public_from_private
 );
+
+#[cfg(feature = "sm")]
+suite_b_curve!(
+    SM2,
+    256usize,
+    &ec::suite_b::ops::sm2::PRIVATE_KEY_OPS,
+    ec::CurveID::SM2,
+    sm2_check_private_key_bytes,
+    sm2_generate_private_key,
+    sm2_public_from_private
+);

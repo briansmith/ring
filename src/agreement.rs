@@ -67,6 +67,9 @@ pub use crate::ec::{
     suite_b::ecdh::{ECDH_P256, ECDH_P384},
 };
 
+#[cfg(feature = "sm")]
+pub use crate::ec::suite_b::sm2::ecdh::ECDH_SM2;
+
 /// A key agreement algorithm.
 pub struct Algorithm {
     pub(crate) curve: &'static ec::Curve,

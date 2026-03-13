@@ -33,6 +33,12 @@ fn quic_chacha20() {
     test_quic(&quic::CHACHA20, test_file!("quic_chacha20_tests.txt"));
 }
 
+#[cfg(feature = "sm")]
+#[test]
+fn quic_sm4_128() {
+    test_quic(&quic::SM4_128, test_file!("quic_sm4_128_tests.txt"));
+}
+
 fn test_quic(alg: &'static quic::Algorithm, test_file: test::File) {
     test_key_len(alg);
     test_sample_len(alg);
