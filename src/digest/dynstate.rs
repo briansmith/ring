@@ -19,6 +19,9 @@ use super::{Algorithm, Output, format_output, sha1, sha2};
 use crate::cpu;
 use core::mem::size_of;
 
+#[cfg(feature = "sm")]
+use super::sm3;
+
 pub(super) enum DynInitialState {
     As64(sha2::State64),
     As32(sha2::State32),
@@ -132,4 +135,22 @@ pub(super) fn sha512_block_data_order<'d>(
     let (full_blocks, leftover) = data.as_chunks();
     sha2::block_data_order_64(state, full_blocks, cpu_features);
     (full_blocks.len() * sha2::SHA512_BLOCK_LEN.into(), leftover)
+}
+
+#[cfg(feature = "sm")]
+pub(super) fn sm3_block_data_order<'d>(
+    state: &mut DynState,
+    data: &'d [u8],
+    _cpu_features: cpu::Features,
+) -> (usize, &'d [u8]) {
+    let state = match state {
+        DynState::As32 { state, .. } => state,
+        _ => {
+            unreachable!();
+        }
+    };
+
+    let (full_blocks, leftover) = data.as_chunks();
+    sm3::sm3_block_data_order(state, full_blocks);
+    (full_blocks.as_flattened().len(), leftover)
 }

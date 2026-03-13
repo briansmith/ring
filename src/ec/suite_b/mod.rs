@@ -237,3 +237,6 @@ mod ops;
 
 mod private_key;
 mod public_key;
+
+#[cfg(feature = "sm")]
+pub(crate) mod sm2;

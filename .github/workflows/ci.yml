@@ -367,6 +367,7 @@ jobs:
       - run: rustup --version
 
       - run: cargo test --locked -p ring-bench --all-features --all-targets
+      - run: cargo test --locked -p ring-bench --features=sm --all-targets
 
   test-doc:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
@@ -407,6 +408,7 @@ jobs:
         features:
           - --no-default-features
           - --features=std,slow_tests
+          - --features=sm
 
         target:
           - aarch64-unknown-linux-musl

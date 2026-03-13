@@ -45,6 +45,8 @@ pub enum CurveID {
     Curve25519,
     P256,
     P384,
+    #[cfg(feature = "sm")]
+    SM2,
 }
 
 const ELEM_MAX_BITS: usize = 384;
@@ -66,3 +68,6 @@ pub const PKCS8_DOCUMENT_MAX_LEN: usize = 40 + SCALAR_MAX_BYTES + keys::PUBLIC_K
 pub mod curve25519;
 mod keys;
 pub mod suite_b;
+
+#[cfg(feature = "sm")]
+pub(crate) mod sm2;
