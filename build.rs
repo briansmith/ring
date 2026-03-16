@@ -587,14 +587,12 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
 }
 
 fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_dir: &Path) {
-    let compiler = c.get_compiler();
-    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
-    let compiler = if target.os == WINDOWS && target.arch == AARCH64 && !compiler.is_like_clang() {
-        let _ = c.compiler("clang");
-        c.get_compiler()
-    } else {
-        compiler
+    // FIXME: On Windows AArch64 we currently must use Clang to compile C code.
+    // clang-cl emulates the cl.exe command line, `$CFLAGS`, etc.
+    if target.os == WINDOWS && target.arch == AARCH64 {
+        let _: &_ = c.prefer_clang_cl_over_msvc(true);
     };
+    let compiler = c.get_compiler();
 
     let _ = c.include(c_root_dir.join("include"));
     let _ = c.include(include_dir);
