@@ -33,13 +33,11 @@ mod abi_assumptions {
     // audit all the `prefixed_extern!`s for AArch64 and change every pointer
     // to a not-yet-existing 64-bit "zero-extended pointer" type, and change
     // every other <64-bit parameter type to the corresponding 64-bit type.
+    //
+    // XXX: AArch64-ILP32 is untested.
     const _ASSUMED_POINTER_SIZE: usize =
         if cfg!(all(target_os = "watchos", target_pointer_width = "32")) {
-            todo!(); // Need to run tests for this ABI.
-            #[allow(unreachable_code)]
-            {
-                4
-            }
+            4
         } else {
             8
         };
