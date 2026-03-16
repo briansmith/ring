@@ -94,7 +94,7 @@
 #define OPENSSL_SMALL
 #endif
 
-#if defined(OPENSSL_AARCH64) && defined(OPENSSL_WINDOWS) && !defined(__clang__)
+#if defined(OPENSSL_AARCH64) && defined(OPENSSL_WINDOWS) && defined(__clang__)
 #error "Only clang-cl and clang are supported for aarch64-*-windows-*"
 #endif
 
