@@ -188,13 +188,9 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "/Zc:forScope",
             "/Zc:inline",
             // Warnings.
-            "/Wall",
+            "/W4",
             "/wd4127", // C4127: conditional expression is constant
             "/wd4464", // C4464: relative include path contains '..'
-            "/wd4514", // C4514: <name>: unreferenced inline function has be
-            "/wd4710", // C4710: function not inlined
-            "/wd4711", // C4711: function 'function' selected for inline expansion
-            "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
             "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
                         * /Qspectre switch specified */
         ];
