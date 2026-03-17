@@ -14,6 +14,8 @@
 
 //! Build the non-Rust components.
 
+#![allow(clippy::too_many_arguments)]
+
 // It seems like it would be a good idea to use `log!` for logging, but it
 // isn't worth having the external dependencies (one for the `log` crate, and
 // another for the concrete logging implementation). Instead we use `eprintln!`
@@ -350,10 +352,8 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     // don't do this for packaged builds.
     let force_warnings_into_errors = is_git;
 
-    let target = Target {
-        arch,
-        os,
-        env,
+    let target = Target { arch, os, env };
+    let profile = Profile {
         is_debug,
         force_warnings_into_errors,
     };
@@ -389,6 +389,7 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     build_c_code(
         asm_target,
         &target,
+        &profile,
         &generated_dir,
         c_root_dir,
         &out_dir,
@@ -438,7 +439,9 @@ struct Target {
     arch: String,
     os: String,
     env: String,
+}
 
+struct Profile {
     /// Is this a debug build? This affects whether assertions might be enabled
     /// in the C code. For packaged builds, this should always be `false`.
     is_debug: bool,
@@ -451,6 +454,7 @@ struct Target {
 fn build_c_code(
     asm_target: Option<&AsmTarget>,
     target: &Target,
+    profile: &Profile,
     generated_dir: &Path,
     c_root_dir: &Path,
     out_dir: &Path,
@@ -518,6 +522,7 @@ fn build_c_code(
             let srcs = srcs.iter().chain(asm_srcs);
             build_library(
                 target,
+                profile,
                 c_root_dir,
                 out_dir,
                 lib_name,
@@ -533,14 +538,20 @@ fn build_c_code(
     );
 }
 
-fn new_build(target: &Target, c_root_dir: &Path, include_dir: &Path) -> cc::Build {
+fn new_build(
+    target: &Target,
+    profile: &Profile,
+    c_root_dir: &Path,
+    include_dir: &Path,
+) -> cc::Build {
     let mut b = cc::Build::new();
-    configure_cc(&mut b, target, c_root_dir, include_dir);
+    configure_cc(&mut b, target, profile, c_root_dir, include_dir);
     b
 }
 
 fn build_library<'a>(
     target: &Target,
+    profile: &Profile,
     c_root_dir: &Path,
     out_dir: &Path,
     lib_name: &str,
@@ -548,7 +559,7 @@ fn build_library<'a>(
     include_dir: &Path,
     preassembled_objs: &[PathBuf],
 ) {
-    let mut c = new_build(target, c_root_dir, include_dir);
+    let mut c = new_build(target, profile, c_root_dir, include_dir);
 
     // Compile all the (dirty) source files into object files.
     srcs.for_each(|src| {
@@ -586,7 +597,13 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
     out_path
 }
 
-fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_dir: &Path) {
+fn configure_cc(
+    c: &mut cc::Build,
+    target: &Target,
+    profile: &Profile,
+    c_root_dir: &Path,
+    include_dir: &Path,
+) {
     // FIXME: On Windows AArch64 we currently must use Clang to compile C code.
     // clang-cl emulates the cl.exe command line, `$CFLAGS`, etc.
     if target.os == WINDOWS && target.arch == AARCH64 {
@@ -607,7 +624,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
         let _ = c.flag("-g3");
     };
 
-    if !target.is_debug {
+    if !profile.is_debug {
         let _ = c.define("NDEBUG", None);
     }
 
@@ -629,7 +646,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, c_root_dir: &Path, include_d
         }
     }
 
-    if target.force_warnings_into_errors {
+    if profile.force_warnings_into_errors {
         c.warnings_into_errors(true);
     }
 }
