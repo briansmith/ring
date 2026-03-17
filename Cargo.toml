@@ -1,5 +1,5 @@
 [package]
-build = "build.rs"
+build = "build/cargo.rs"
 categories = ["cryptography", "no-std"]
 description = "An experiment."
 edition = "2024"
@@ -40,7 +40,10 @@ include = [
     "pregenerated/*",
 
     "benches/*.rs",
-    "build.rs",
+
+    "build/build.rs",
+    "build/build/path.rs",
+    "build/cargo.rs",
 
     "crypto/chacha/asm/chacha-armv4.pl",
     "crypto/chacha/asm/chacha-armv8.pl",
