@@ -339,7 +339,11 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     let os = env::var(&env::CARGO_CFG_TARGET_OS).unwrap();
     let env = env::var(&env::CARGO_CFG_TARGET_ENV).unwrap();
     let endian = env::var(&env::CARGO_CFG_TARGET_ENDIAN).unwrap();
-    let is_little_endian = endian == "little";
+    let endian = if endian == "little" {
+        Endian::Little
+    } else {
+        Endian::Other
+    };
 
     let is_git = fs::metadata(c_root_dir.join(".git")).is_ok();
 
@@ -352,13 +356,18 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     // don't do this for packaged builds.
     let force_warnings_into_errors = is_git;
 
-    let target = Target { arch, os, env };
+    let target = Target {
+        arch,
+        os,
+        env,
+        endian,
+    };
     let profile = Profile {
         is_debug,
         force_warnings_into_errors,
     };
 
-    let asm_target = if is_little_endian {
+    let asm_target = if matches!(target.endian, Endian::Little) {
         ASM_TARGETS.iter().find(|asm_target| {
             asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
         })
@@ -439,6 +448,12 @@ struct Target {
     arch: String,
     os: String,
     env: String,
+    endian: Endian,
+}
+
+enum Endian {
+    Little,
+    Other,
 }
 
 struct Profile {
