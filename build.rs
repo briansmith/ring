@@ -321,8 +321,11 @@ fn main() {
     );
 
     let perl_exe = get_perl_exe();
+    let nasm_exe: &OsStr = "./target/tools/windows/nasm/nasm".as_ref();
+
     let tools = Tools {
         perl_exe: &perl_exe,
+        nasm_exe,
     };
 
     match env::var_os(&env::RING_PREGENERATE_ASM).as_deref() {
@@ -444,7 +447,7 @@ fn generate_sources_and_preassemble<'a>(
             // to install the assembler.
             let srcs = asm_srcs(perlasm_src_dsts);
             for src in srcs {
-                nasm(&src, asm_target.arch, out_dir, out_dir, c_root_dir);
+                tools.nasm(&src, asm_target.arch, out_dir, out_dir, c_root_dir);
             }
         }
     }
@@ -474,6 +477,7 @@ struct Profile {
 
 struct Tools<'a> {
     perl_exe: &'a Path,
+    nasm_exe: &'a OsStr,
 }
 
 fn build_c_code(
@@ -676,32 +680,34 @@ fn configure_cc(
     }
 }
 
-fn nasm(file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir: &Path) {
-    let out_file = obj_path(out_dir, file);
-    let oformat = match arch {
-        x if x == X86_64 => "win64",
-        x if x == X86 => "win32",
-        _ => panic!("unsupported arch: {arch}"),
-    };
+impl Tools<'_> {
+    fn nasm(&self, file: &Path, arch: &str, include_dir: &Path, out_dir: &Path, c_root_dir: &Path) {
+        let out_file = obj_path(out_dir, file);
+        let oformat = match arch {
+            x if x == X86_64 => "win64",
+            x if x == X86 => "win32",
+            _ => panic!("unsupported arch: {arch}"),
+        };
 
-    // Nasm requires that the path end in a path separator.
-    let mut include_dir = include_dir.as_os_str().to_os_string();
-    include_dir.push(OsString::from(String::from(std::path::MAIN_SEPARATOR)));
+        // Nasm requires that the path end in a path separator.
+        let mut include_dir = include_dir.as_os_str().to_os_string();
+        include_dir.push(OsString::from(String::from(std::path::MAIN_SEPARATOR)));
 
-    let mut c = Command::new("./target/tools/windows/nasm/nasm");
-    let _ = c
-        .arg("-o")
-        .arg(out_file.to_str().expect("Invalid path"))
-        .arg("-f")
-        .arg(oformat)
-        .arg("-i")
-        .arg("include/")
-        .arg("-i")
-        .arg(include_dir)
-        .arg("-Xgnu")
-        .arg("-gcv8")
-        .arg(c_root_dir.join(file));
-    run_command(c);
+        let mut c = Command::new(self.nasm_exe);
+        let _ = c
+            .arg("-o")
+            .arg(out_file.to_str().expect("Invalid path"))
+            .arg("-f")
+            .arg(oformat)
+            .arg("-i")
+            .arg("include/")
+            .arg("-i")
+            .arg(include_dir)
+            .arg("-Xgnu")
+            .arg("-gcv8")
+            .arg(c_root_dir.join(file));
+        run_command(c);
+    }
 }
 
 fn run_command_with_args(command_name: &Path, args: &[OsString]) {
