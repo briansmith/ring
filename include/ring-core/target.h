@@ -57,7 +57,10 @@
 #define OPENSSL_APPLE
 #endif
 
-#if defined(_WIN32)
+// Defining OPENSSL_WINDOWS for Cygwin probably wouldn't work upstream but it
+// should work fine for *ring* as all the cases where we distinguish Windows
+// from non-Windows in C code are to deal with ABI & toolchain differences.
+#if defined(_WIN32) || defined(__CYGWIN__)
 #define OPENSSL_WINDOWS
 #endif
 
