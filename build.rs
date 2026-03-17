@@ -805,12 +805,18 @@ fn get_command(var: &'static env::EnvVar, default: &str) -> PathBuf {
 // TODO: We should emit `cargo:rerun-if-changed-env` for the various
 // environment variables that affect the build.
 fn emit_rerun_if_changed() {
+    walk_non_root_sources(|path| {
+        println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
+    })
+}
+
+fn walk_non_root_sources(f: impl Fn(&Path)) {
     for path in &["crypto", "include", "third_party/fiat"] {
         walk_dir(&PathBuf::from(path), &|entry| {
             let path = entry.path();
             match path.extension().and_then(|ext| ext.to_str()) {
                 Some("c") | Some("S") | Some("h") | Some("inl") | Some("pl") | None => {
-                    println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
+                    f(&path);
                 }
                 _ => {
                     // Ignore other types of files.
