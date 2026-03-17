@@ -320,18 +320,23 @@ fn main() {
         &core_name_and_version
     );
 
+    let perl_exe = get_perl_exe();
+    let tools = Tools {
+        perl_exe: &perl_exe,
+    };
+
     match env::var_os(&env::RING_PREGENERATE_ASM).as_deref() {
         Some(s) if s == "1" => {
-            pregenerate_asm_main(&c_root_dir, &core_name_and_version);
+            pregenerate_asm_main(&tools, &c_root_dir, &core_name_and_version);
         }
-        None => ring_build_rs_main(&c_root_dir, &core_name_and_version),
+        None => ring_build_rs_main(&tools, &c_root_dir, &core_name_and_version),
         _ => {
             panic!("${} has an invalid value", &env::RING_PREGENERATE_ASM.name);
         }
     }
 }
 
-fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
+fn ring_build_rs_main(tools: &Tools, c_root_dir: &Path, core_name_and_version: &str) {
     let out_dir = env::var_os(&env::OUT_DIR).unwrap();
     let out_dir = PathBuf::from(out_dir);
 
@@ -387,6 +392,7 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
         c_root_dir.join(PREGENERATED)
     } else {
         generate_sources_and_preassemble(
+            &tools,
             &out_dir,
             asm_target.into_iter(),
             c_root_dir,
@@ -407,10 +413,11 @@ fn ring_build_rs_main(c_root_dir: &Path, core_name_and_version: &str) {
     emit_rerun_if_changed()
 }
 
-fn pregenerate_asm_main(c_root_dir: &Path, core_name_and_version: &str) {
+fn pregenerate_asm_main(tools: &Tools, c_root_dir: &Path, core_name_and_version: &str) {
     let pregenerated = c_root_dir.join(PREGENERATED);
     fs::create_dir(&pregenerated).unwrap();
     generate_sources_and_preassemble(
+        &tools,
         &pregenerated,
         ASM_TARGETS.iter(),
         c_root_dir,
@@ -419,6 +426,7 @@ fn pregenerate_asm_main(c_root_dir: &Path, core_name_and_version: &str) {
 }
 
 fn generate_sources_and_preassemble<'a>(
+    tools: &Tools,
     out_dir: &Path,
     asm_targets: impl Iterator<Item = &'a AsmTarget>,
     c_root_dir: &Path,
@@ -426,11 +434,9 @@ fn generate_sources_and_preassemble<'a>(
 ) {
     generate_prefix_symbols_headers(out_dir, core_name_and_version).unwrap();
 
-    let perl_exe = get_perl_exe();
-
     for asm_target in asm_targets {
         let perlasm_src_dsts = perlasm_src_dsts(out_dir, asm_target);
-        perlasm(&perl_exe, &perlasm_src_dsts, asm_target, c_root_dir);
+        tools.perlasm(&perlasm_src_dsts, asm_target, c_root_dir);
 
         if asm_target.use_nasm() {
             // Package pregenerated object files in addition to pregenerated
@@ -464,6 +470,10 @@ struct Profile {
     /// true: Force warnings to be treated as errors.
     /// false: Use the default behavior (perhaps determined by `$CFLAGS`, etc.)
     force_warnings_into_errors: bool,
+}
+
+struct Tools<'a> {
+    perl_exe: &'a Path,
 }
 
 fn build_c_code(
@@ -768,24 +778,21 @@ fn asm_path(out_dir: &Path, src: &Path, asm_target: &AsmTarget) -> PathBuf {
     out_dir.join(dst_filename).with_extension(extension)
 }
 
-fn perlasm(
-    perl_exe: &Path,
-    src_dst: &[(PathBuf, PathBuf)],
-    asm_target: &AsmTarget,
-    c_root_dir: &Path,
-) {
-    for (src, dst) in src_dst {
-        let mut args = vec![
-            join_components_with_forward_slashes(&c_root_dir.join(src)),
-            asm_target.perlasm_format.into(),
-        ];
-        if asm_target.arch == X86 {
-            args.push("-fPIC".into());
+impl Tools<'_> {
+    fn perlasm(&self, src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget, c_root_dir: &Path) {
+        for (src, dst) in src_dst {
+            let mut args = vec![
+                join_components_with_forward_slashes(&c_root_dir.join(src)),
+                asm_target.perlasm_format.into(),
+            ];
+            if asm_target.arch == X86 {
+                args.push("-fPIC".into());
+            }
+            // Work around PerlAsm issue for ARM and AAarch64 targets by replacing
+            // back slashes with forward slashes.
+            args.push(join_components_with_forward_slashes(dst));
+            run_command_with_args(self.perl_exe, &args);
         }
-        // Work around PerlAsm issue for ARM and AAarch64 targets by replacing
-        // back slashes with forward slashes.
-        args.push(join_components_with_forward_slashes(dst));
-        run_command_with_args(perl_exe, &args);
     }
 }
 
