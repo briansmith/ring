@@ -71,7 +71,7 @@ pub struct P3 {
 impl P3 {
     // Returns the result of multiplying the base point by the scalar in constant time.
     pub(super) fn from_scalarmult_base(scalar: &Scalar, cpu: cpu::Features) -> Self {
-        #[cfg(all(target_arch = "x86_64", not(windows)))]
+        #[cfg(all(target_arch = "x86_64", not(windows), not(target_os = "cygwin")))]
         if let Some(cpu) = super::adx::get_features(cpu) {
             return super::adx::scalarmult_base(scalar, cpu);
         }
