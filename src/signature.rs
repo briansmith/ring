@@ -277,6 +277,12 @@ pub use crate::ec::{
     },
 };
 
+#[cfg(feature = "sm")]
+pub use crate::ec::suite_b::sm2::{
+    signing::{SM2_SM3_ASN1_SIGNING, SM2_SM3_FIXED_SIGNING, Sm2KeyPair, Sm2SigningAlgorithm},
+    verification::{SM2_SM3_ASN1, SM2_SM3_FIXED, Sm2VerificationAlgorithm},
+};
+
 #[cfg(feature = "alloc")]
 pub use crate::rsa::{
     RsaParameters,
