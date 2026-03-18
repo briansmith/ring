@@ -187,7 +187,7 @@ const ASM_TARGETS: &[AsmTarget] = &[
         perlasm_format: WIN32N,
     },
     AsmTarget {
-        oss: &[WINDOWS],
+        oss: &[WINDOWS, CYGWIN],
         arch: X86_64,
         perlasm_format: NASM,
     },
@@ -253,6 +253,7 @@ const NASM: &str = "nasm";
 const APPLE_ABI: &[&str] = &["ios", "macos", "tvos", "visionos", "watchos"];
 
 const WINDOWS: &str = "windows";
+const CYGWIN: &str = "cygwin";
 
 pub fn generate_sources_and_preassemble<'a>(
     tools: &Tools,
@@ -344,7 +345,7 @@ pub fn build_c_code(
                 // them.
                 if extension == "S"
                     && (target.arch == X86_64 || target.arch == X86)
-                    && target.os == WINDOWS
+                    && (target.os == WINDOWS || target.os == CYGWIN)
                 {
                     return false;
                 }
