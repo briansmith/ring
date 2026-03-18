@@ -20,7 +20,7 @@ use crate::{
     error::{self, LenMismatchError, cold_none},
     limb::*,
 };
-use core::{borrow::Borrow, marker::PhantomData};
+use core::marker::PhantomData;
 
 use elem::{mul_mont, unary_op, unary_op_assign, unary_op_from_binary_op_assign};
 
@@ -33,10 +33,9 @@ type PublicElem<E> = elem::PublicElem<Q, E>;
 #[derive(Clone, Copy)]
 pub enum Q {}
 
-/// A scalar. Its value is in [0, n). Zero-valued scalars are forbidden in most
+/// A scalar. Its value is in [1, n). Zero-valued scalars are forbidden in most
 /// contexts.
 pub type Scalar<E = Unencoded> = elem::Elem<N, E>;
-type PublicScalar<E> = elem::PublicElem<N, E>;
 
 /// Represents the prime order *n* of the curve's group.
 #[derive(Clone, Copy)]
@@ -287,7 +286,7 @@ struct PublicModulus {
 pub struct PrivateKeyOps {
     pub common: &'static CommonOps,
     elem_inv_squared: fn(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R>,
-    point_mul_base_impl: fn(a: &Scalar, cpu: cpu::Features) -> Point,
+    point_mul_base_impl: fn(a: NonZero<&Scalar>, cpu: cpu::Features) -> Point,
     point_mul_impl: unsafe extern "C" fn(
         r: *mut Limb,          // [3][num_limbs]
         p_scalar: *const Limb, // [num_limbs]
@@ -303,18 +302,19 @@ impl PrivateKeyOps {
     }
 
     #[inline(always)]
-    pub(super) fn point_mul_base(&self, a: &Scalar, cpu: cpu::Features) -> Point {
+    pub(super) fn point_mul_base(&self, a: NonZero<&Scalar>, cpu: cpu::Features) -> Point {
         (self.point_mul_base_impl)(a, cpu)
     }
 
     #[inline(always)]
     pub(super) fn point_mul(
         &self,
-        p_scalar: &Scalar,
+        p_scalar: NonZero<&Scalar>,
         (p_x, p_y): &(Elem<R>, Elem<R>),
         _cpu: cpu::Features,
     ) -> Point {
         let mut r = Point::new_at_infinity();
+        let p_scalar: &Scalar = p_scalar.into();
         unsafe {
             (self.point_mul_impl)(
                 r.xyz.as_mut_ptr(),
@@ -394,14 +394,14 @@ impl ScalarOps {
     #[inline]
     pub(super) fn scalar_product<EA: Encoding, EB: Encoding>(
         &self,
-        a: &Scalar<EA>,
-        b: &Scalar<EB>,
+        a: NonZero<&Scalar<EA>>,
+        b: NonZero<&Scalar<EB>>,
         _cpu: cpu::Features,
-    ) -> Scalar<<(EA, EB) as ProductEncoding>::Output>
+    ) -> NonZero<Scalar<<(EA, EB) as ProductEncoding>::Output>>
     where
         (EA, EB): ProductEncoding,
     {
-        mul_mont(self.scalar_mul_mont, a, b)
+        NonZero(mul_mont(self.scalar_mul_mont, a.into(), b.into()))
     }
 }
 
@@ -411,12 +411,13 @@ pub struct PublicScalarOps {
     pub public_key_ops: &'static PublicKeyOps,
 
     pub(super) twin_mul_vartime: fn(
-        g_scalar: &Scalar,
-        p_scalar: &Scalar,
+        g_scalar: Option<NonZero<&Scalar>>,
+        p_scalar: NonZero<&Scalar>,
         p_xy: &(Elem<R>, Elem<R>),
         cpu: cpu::Features,
     ) -> Point,
-    scalar_inv_to_mont_vartime: fn(s: NonZeroScalarRef<'_>, cpu: cpu::Features) -> Scalar<R>,
+    scalar_inv_to_mont_vartime:
+        fn(s: NonZero<&Scalar<Unencoded>>, cpu: cpu::Features) -> NonZero<Scalar<R>>,
     pub(super) q_minus_n: PublicElem<Unencoded>,
 }
 
@@ -446,9 +447,9 @@ impl Modulus<Q> {
 impl PublicScalarOps {
     pub(super) fn scalar_inv_to_mont_vartime(
         &self,
-        s: NonZeroScalarRef<'_>,
+        s: NonZero<&Scalar>,
         cpu: cpu::Features,
-    ) -> Scalar<R> {
+    ) -> NonZero<Scalar<R>> {
         (self.scalar_inv_to_mont_vartime)(s, cpu)
     }
 }
@@ -457,24 +458,25 @@ impl PublicScalarOps {
 pub struct PrivateScalarOps {
     pub scalar_ops: &'static ScalarOps,
 
-    oneRR_mod_n: PublicScalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
+    oneRR_mod_n: NonZero<elem::PublicElem<N, RR>>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
     scalar_inv_to_mont: fn(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R>,
 }
 
 impl PrivateScalarOps {
-    pub(super) fn to_mont(&self, s: &Scalar<Unencoded>, cpu: cpu::Features) -> Scalar<R> {
+    pub(super) fn to_mont(&self, s: NonZero<&Scalar>, cpu: cpu::Features) -> NonZero<Scalar<R>> {
+        let oneRR_mod_n: &NonZero<elem::PublicElem<N, RR>> = &self.oneRR_mod_n;
         self.scalar_ops
-            .scalar_product(s, &Scalar::from(&self.oneRR_mod_n), cpu)
+            .scalar_product(s, NonZero(&Scalar::from(&oneRR_mod_n.0)), cpu)
     }
 
     /// Returns the modular inverse of `a` (mod `n`). Panics if `a` is zero.
     pub(super) fn scalar_inv_to_mont(
         &self,
-        a: NonZeroScalarRef<'_>,
+        a: NonZero<&Scalar>,
         cpu: cpu::Features,
-    ) -> Scalar<R> {
-        let a = self.to_mont(a.borrow(), cpu);
-        (self.scalar_inv_to_mont)(a, cpu)
+    ) -> NonZero<Scalar<R>> {
+        let a = self.to_mont(a, cpu);
+        NonZero((self.scalar_inv_to_mont)(a.0, cpu))
     }
 }
 
@@ -482,14 +484,18 @@ impl PrivateScalarOps {
 // multiplication.
 fn twin_mul_vartime_inefficient(
     ops: &PrivateKeyOps,
-    g_scalar: &Scalar,
-    p_scalar: &Scalar,
+    g_scalar: Option<NonZero<&Scalar>>,
+    p_scalar: NonZero<&Scalar>,
     p_xy: &(Elem<R>, Elem<R>),
     cpu: cpu::Features,
 ) -> Point {
-    let scaled_g = ops.point_mul_base(g_scalar, cpu);
     let scaled_p = ops.point_mul(p_scalar, p_xy, cpu);
-    ops.point_sum(&scaled_g, &scaled_p, cpu)
+    if let Some(g_scalar) = g_scalar {
+        let scaled_g = ops.point_mul_base(g_scalar, cpu);
+        ops.point_sum(&scaled_g, &scaled_p, cpu)
+    } else {
+        scaled_p
+    }
 }
 
 // This assumes n < q < 2*n.
@@ -509,19 +515,27 @@ impl Modulus<N> {
     pub fn nonzero_scalar_leak_nonzero<'s, E: Encoding>(
         &self,
         scalar: &'s Scalar<E>,
-    ) -> Option<NonZeroScalarRef<'s, E>> {
+    ) -> Option<NonZero<&'s Scalar<E>>> {
         if limbs_are_zero(&scalar.limbs[..self.num_limbs.into()]).leak() {
             return cold_none();
         }
-        Some(NonZeroScalarRef(scalar))
+        Some(NonZero(scalar))
     }
 }
 
 #[derive(Clone, Copy)]
-pub struct NonZeroScalarRef<'a, E: Encoding = Unencoded>(&'a Scalar<E>);
+pub struct NonZero<T>(T);
 
-impl<E: Encoding> Borrow<Scalar<E>> for NonZeroScalarRef<'_, E> {
-    fn borrow(&self) -> &Scalar<E> {
+impl<T> NonZero<T> {
+    pub fn as_ref(&self) -> NonZero<&T> {
+        NonZero(self.borrow())
+    }
+
+    fn borrow(&self) -> &T {
+        &self.0
+    }
+
+    pub fn into(self) -> T {
         self.0
     }
 }
@@ -569,8 +583,8 @@ pub(super) fn elem_parse_big_endian_fixed_consttime(
 pub(super) fn scalar_parse_big_endian_fixed_consttime(
     n: &Modulus<N>,
     bytes: untrusted::Input,
-) -> Result<Scalar, error::Unspecified> {
-    parse_big_endian_fixed_consttime(n, bytes, AllowZero::No)
+) -> Result<NonZero<Scalar>, error::Unspecified> {
+    parse_big_endian_fixed_consttime(n, bytes, AllowZero::No).map(NonZero)
 }
 
 #[inline]
@@ -914,8 +928,14 @@ mod tests {
             let a = consume_scalar(n, test_case, "a");
             let b = consume_scalar_mont(n, test_case, "b");
             let expected_result = consume_scalar(n, test_case, "r");
-            let actual_result = ops.scalar_product(&a, &b, cpu);
-            assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
+
+            if let (Some(a), Some(b)) = (
+                n.nonzero_scalar_leak_nonzero(&a),
+                n.nonzero_scalar_leak_nonzero(&b),
+            ) {
+                let actual_result: Scalar = ops.scalar_product(a, b, cpu).into();
+                assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
+            }
 
             Ok(())
         })
@@ -962,8 +982,8 @@ mod tests {
                 assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
             }
 
-            {
-                let actual_result = ops.scalar_product(&a, &a, cpu);
+            if let Some(a) = n.nonzero_scalar_leak_nonzero(&a) {
+                let actual_result: Scalar<RInverse> = ops.scalar_product(a, a, cpu).into();
                 assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
             }
 
@@ -1165,7 +1185,8 @@ mod tests {
 
             let expected_result = test_case.consume_bytes("r");
 
-            let product = priv_ops.point_mul(&p_scalar, &p, cpu::features());
+            let p_scalar = n.nonzero_scalar_leak_nonzero(&p_scalar).unwrap();
+            let product = priv_ops.point_mul(p_scalar, &p, cpu::features());
 
             let mut actual_result = vec![4u8; 1 + (2 * cops.len())];
             {
@@ -1206,7 +1227,7 @@ mod tests {
 
     pub(super) fn point_mul_base_tests(
         ops: &PrivateKeyOps,
-        f: impl Fn(&Scalar, cpu::Features) -> Point,
+        f: impl Fn(NonZero<&Scalar>, cpu::Features) -> Point,
         test_file: test::File,
     ) {
         let cpu = cpu::features();
@@ -1215,7 +1236,12 @@ mod tests {
             assert_eq!(section, "");
             let g_scalar = consume_scalar(n, test_case, "g_scalar");
             let expected_result: TestPoint<Unencoded> = consume_point(ops, test_case, "r");
-            let actual_result = f(&g_scalar, cpu);
+
+            // Skip zero scalar since we can't multiply by zero.
+            let Some(g_scalar) = n.nonzero_scalar_leak_nonzero(&g_scalar) else {
+                return Ok(());
+            };
+            let actual_result = f(g_scalar, cpu);
             assert_point_actual_equals_expected(ops, &actual_result, &expected_result);
             Ok(())
         })

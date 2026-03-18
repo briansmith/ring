@@ -23,7 +23,6 @@ use crate::{
     io::der,
     sealed, signature,
 };
-use core::borrow::Borrow;
 
 /// An ECDSA verification algorithm.
 pub struct EcdsaVerificationAlgorithm {
@@ -59,6 +58,7 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
         _: sealed::Arg,
     ) -> Result<(), error::Unspecified> {
         let cpu = cpu::features();
+        let n = &self.ops.scalar_ops.scalar_modulus(cpu);
         let e = {
             // NSA Guide Step 2: "Use the selected hash function to compute H =
             // Hash(M)."
@@ -66,11 +66,9 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
 
             // NSA Guide Step 3: "Convert the bit string H to an integer e as
             // described in Appendix B.2."
-            let n = &self.ops.scalar_ops.scalar_modulus(cpu);
             digest_scalar(n, &h)
         };
-
-        self.verify_digest(public_key, e, signature, cpu)
+        self.verify_digest(public_key, &e, signature, cpu)
     }
 }
 
@@ -79,7 +77,7 @@ impl EcdsaVerificationAlgorithm {
     fn verify_digest(
         &self,
         public_key: untrusted::Input,
-        e: Scalar,
+        e: &Scalar,
         signature: untrusted::Input,
         cpu: cpu::Features,
     ) -> Result<(), error::Unspecified> {
@@ -130,13 +128,16 @@ impl EcdsaVerificationAlgorithm {
 
         // NSA Guide Step 5: "Compute u1 = (e * w) mod n, and compute
         // u2 = (r * w) mod n."
-        let u1 = scalar_ops.scalar_product(&e, &w, cpu);
-        let u2 = scalar_ops.scalar_product(r.borrow(), &w, cpu);
+        let u1 = n
+            .nonzero_scalar_leak_nonzero(e)
+            .map(|e| scalar_ops.scalar_product(e, w.as_ref(), cpu));
+        let u2 = scalar_ops.scalar_product(r, w.as_ref(), cpu);
 
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
         // addition. If R is equal to the point at infinity, output INVALID."
-        let product = (self.ops.twin_mul_vartime)(&u1, &u2, &peer_pub_key, cpu);
+        let u1 = u1.as_ref().map(|u1| u1.as_ref());
+        let product = (self.ops.twin_mul_vartime)(u1, u2.as_ref(), &peer_pub_key, cpu);
 
         // Verify that the point we computed is on the curve; see
         // `verify_affine_point_is_on_the_curve_scaled` for details on why. It
@@ -159,7 +160,7 @@ impl EcdsaVerificationAlgorithm {
             let x = q.elem_unencoded(x);
             q.elems_are_equal(&r_jacobian, &x).leak()
         }
-        let mut r = self.ops.scalar_as_elem(r.borrow());
+        let mut r = self.ops.scalar_as_elem(r.into());
         if sig_r_equals_x(q, &r, &x, &z2) {
             return Ok(());
         }
@@ -286,7 +287,7 @@ mod tests {
     use alloc::{vec, vec::Vec};
 
     #[test]
-    fn test_digest_based_test_vectors() {
+    fn gtest_digest_based_test_vectors() {
         let cpu = cpu::features();
         test::run(
             test_vector_file!("../../../../crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt"),
@@ -302,7 +303,8 @@ mod tests {
                     public_key
                 };
 
-                let digest = test_case.consume_bytes("Digest");
+                let digest_bytes = test_case.consume_bytes("Digest");
+                extern crate std;
 
                 let sig = {
                     let mut sig = Vec::new();
@@ -322,15 +324,18 @@ mod tests {
                 };
                 let n = &alg.ops.scalar_ops.scalar_modulus(cpu);
 
-                let digest = super::super::digest_scalar::digest_bytes_scalar(n, &digest[..]);
+                let digest = super::super::digest_scalar::digest_bytes_scalar(n, &digest_bytes[..]);
                 let actual_result = alg.verify_digest(
                     untrusted::Input::from(&public_key[..]),
-                    digest,
+                    &digest,
                     untrusted::Input::from(&sig[..]),
                     cpu,
                 );
-                assert_eq!(actual_result.is_ok(), invalid.is_none());
-
+                assert_eq!(
+                    actual_result.is_ok(),
+                    invalid.is_none(),
+                    "{digest_bytes:x?}"
+                );
                 Ok(())
             },
         );

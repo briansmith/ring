@@ -120,7 +120,7 @@ fn p384_elem_inv_squared(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R> {
     acc
 }
 
-fn p384_point_mul_base_impl(a: &Scalar, cpu: cpu::Features) -> Point {
+fn p384_point_mul_base_impl(a: NonZero<&Scalar>, cpu: cpu::Features) -> Point {
     // XXX: Not efficient. TODO: Precompute multiples of the generator.
     let generator = (Elem::from(&GENERATOR.0), Elem::from(&GENERATOR.1));
     PRIVATE_KEY_OPS.point_mul(a, &generator, cpu)
@@ -151,9 +151,9 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
-    oneRR_mod_n: PublicScalar::from_hex(
+    oneRR_mod_n: NonZero(elem::PublicElem::from_hex(
         "c84ee012b39bf213fb05b7a28266895d40d49174aab1cc5bc3e483afcb82947ff3d81e5df1aa4192d319b2419b409a9",
-    ),
+    )),
     scalar_inv_to_mont: p384_scalar_inv_to_mont,
 };
 

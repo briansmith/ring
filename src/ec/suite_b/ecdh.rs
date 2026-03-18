@@ -127,7 +127,7 @@ fn ecdh(
     // TODO: this only needs common scalar ops
     let n = &private_key_ops.common.scalar_modulus(cpu);
     let my_private_key = private_key_as_scalar(n, my_private_key);
-    let product = private_key_ops.point_mul(&my_private_key, &peer_public_key, cpu);
+    let product = private_key_ops.point_mul(my_private_key.as_ref(), &peer_public_key, cpu);
 
     // NIST SP 800-56Ar2 Steps 2, 3, 4, and 5.
     // NSA Guide Steps 3 (point at infinity check) and 4.

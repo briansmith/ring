@@ -26,7 +26,6 @@ use crate::{
     io::der,
     limb, pkcs8, rand, signature,
 };
-use core::borrow::Borrow;
 
 /// An ECDSA signing algorithm.
 pub struct EcdsaSigningAlgorithm {
@@ -37,8 +36,8 @@ pub struct EcdsaSigningAlgorithm {
     pkcs8_template: &'static pkcs8::Template,
     format_rs: fn(
         ops: &'static ScalarOps,
-        r: NonZeroScalarRef<'_>,
-        s: NonZeroScalarRef<'_>,
+        r: NonZero<&Scalar>,
+        s: NonZero<&Scalar>,
         out: &mut [u8],
     ) -> usize,
     id: AlgorithmID,
@@ -64,7 +63,7 @@ impl Eq for EcdsaSigningAlgorithm {}
 
 /// An ECDSA key pair, used for signing.
 pub struct EcdsaKeyPair {
-    d: Scalar<R>,
+    d: NonZero<Scalar<R>>,
     nonce_key: NonceRandomKey,
     alg: &'static EcdsaSigningAlgorithm,
     public_key: PublicKey,
@@ -163,7 +162,7 @@ impl EcdsaKeyPair {
         let (seed, public_key) = key_pair.split();
         let n = &alg.private_scalar_ops.scalar_ops.scalar_modulus(cpu);
         let d = private_key::private_key_as_scalar(n, &seed);
-        let d = alg.private_scalar_ops.to_mont(&d, cpu);
+        let d = alg.private_scalar_ops.to_mont(d.as_ref(), cpu);
 
         let nonce_key = NonceRandomKey::new(alg, &seed, rng)?;
         Ok(Self {
@@ -252,15 +251,10 @@ impl EcdsaKeyPair {
             // XXX: iteration count?
             // Step 1.
             let k = private_key::random_scalar(self.alg.private_key_ops, n, rng)?;
-            let k = match n.nonzero_scalar_leak_nonzero(&k) {
-                Some(k) => k,
-                None => continue,
-            };
-            let k_inv = ops.scalar_inv_to_mont(k, cpu);
+            let k_inv = ops.scalar_inv_to_mont(k.as_ref(), cpu);
 
             // Step 2.
-            let r = private_key_ops.point_mul_base(k.borrow(), cpu);
-
+            let r = private_key_ops.point_mul_base(k.as_ref(), cpu);
             // Step 3.
             let r = {
                 let (x, _) = private_key::affine_from_jacobian(private_key_ops, q, &r)?;
@@ -279,18 +273,18 @@ impl EcdsaKeyPair {
 
             // Step 6.
             let s = {
-                let mut e_plus_dr = scalar_ops.scalar_product(&self.d, r.borrow(), cpu);
+                let mut e_plus_dr: Scalar =
+                    scalar_ops.scalar_product(self.d.as_ref(), r, cpu).into();
                 n.add_assign(&mut e_plus_dr, &e);
-                scalar_ops.scalar_product(&k_inv, &e_plus_dr, cpu)
-            };
-            let s = match n.nonzero_scalar_leak_nonzero(&s) {
-                Some(s) => s,
-                None => continue,
+                let Some(e_plus_dr) = n.nonzero_scalar_leak_nonzero(&e_plus_dr) else {
+                    continue;
+                };
+                scalar_ops.scalar_product(k_inv.as_ref(), e_plus_dr, cpu)
             };
 
             // Step 7 with encoding.
             return Ok(signature::Signature::new(|sig_bytes| {
-                (self.alg.format_rs)(scalar_ops, r, s, sig_bytes)
+                (self.alg.format_rs)(scalar_ops, r, s.as_ref(), sig_bytes)
             }));
         }
 
@@ -397,31 +391,31 @@ impl AsRef<[u8]> for PublicKey {
 
 fn format_rs_fixed(
     ops: &'static ScalarOps,
-    r: NonZeroScalarRef<'_>,
-    s: NonZeroScalarRef<'_>,
+    r: NonZero<&Scalar>,
+    s: NonZero<&Scalar>,
     out: &mut [u8],
 ) -> usize {
     let scalar_len = ops.scalar_bytes_len();
 
     let (r_out, rest) = out.split_at_mut(scalar_len);
-    limb::big_endian_from_limbs(ops.leak_limbs(r.borrow()), r_out);
+    limb::big_endian_from_limbs(ops.leak_limbs(r.into()), r_out);
 
     let (s_out, _) = rest.split_at_mut(scalar_len);
-    limb::big_endian_from_limbs(ops.leak_limbs(s.borrow()), s_out);
+    limb::big_endian_from_limbs(ops.leak_limbs(s.into()), s_out);
 
     2 * scalar_len
 }
 
 fn format_rs_asn1(
     ops: &'static ScalarOps,
-    r: NonZeroScalarRef<'_>,
-    s: NonZeroScalarRef<'_>,
+    r: NonZero<&Scalar>,
+    s: NonZero<&Scalar>,
     out: &mut [u8],
 ) -> usize {
-    fn format_integer_tlv(ops: &ScalarOps, a: NonZeroScalarRef<'_>, out: &mut [u8]) -> usize {
+    fn format_integer_tlv(ops: &ScalarOps, a: NonZero<&Scalar>, out: &mut [u8]) -> usize {
         let mut fixed = [0u8; ec::SCALAR_MAX_BYTES + 1];
         let fixed = &mut fixed[..(ops.scalar_bytes_len() + 1)];
-        limb::big_endian_from_limbs(ops.leak_limbs(a.borrow()), &mut fixed[1..]);
+        limb::big_endian_from_limbs(ops.leak_limbs(a.into()), &mut fixed[1..]);
 
         // Since `a_fixed_out` is an extra byte long, it is guaranteed to start
         // with a zero.

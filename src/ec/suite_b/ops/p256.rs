@@ -96,7 +96,7 @@ fn p256_elem_inv_squared(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R> {
     acc
 }
 
-fn p256_point_mul_base_impl(g_scalar: &Scalar, _cpu: cpu::Features) -> Point {
+fn p256_point_mul_base_impl(g_scalar: NonZero<&Scalar>, _cpu: cpu::Features) -> Point {
     prefixed_extern! {
         unsafe fn p256_point_mul_base(
             r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
@@ -105,6 +105,7 @@ fn p256_point_mul_base_impl(g_scalar: &Scalar, _cpu: cpu::Features) -> Point {
     }
 
     let mut r = Point::new_at_infinity();
+    let g_scalar: &Scalar = g_scalar.into();
     unsafe {
         p256_point_mul_base(r.xyz.as_mut_ptr(), g_scalar.limbs.as_ptr());
     }
@@ -132,7 +133,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_inv_to_mont_vartime: |s, cpu| PRIVATE_SCALAR_OPS.scalar_inv_to_mont(s, cpu),
 };
 
-fn point_mul_base_vartime(g_scalar: &Scalar, cpu: cpu::Features) -> Point {
+fn point_mul_base_vartime(g_scalar: NonZero<&Scalar>, cpu: cpu::Features) -> Point {
     cfg_if! {
         if #[cfg(any(all(target_arch = "aarch64", target_endian = "little"),
                          target_arch = "x86_64"))] {
@@ -142,6 +143,7 @@ fn point_mul_base_vartime(g_scalar: &Scalar, cpu: cpu::Features) -> Point {
                     g_scalar: *const Limb, // [COMMON_OPS.num_limbs]
                 );
             }
+            let g_scalar: &Scalar = g_scalar.into();
             let mut scaled_g = Point::new_at_infinity();
             let _ = cpu;
             unsafe {
@@ -157,24 +159,28 @@ fn point_mul_base_vartime(g_scalar: &Scalar, cpu: cpu::Features) -> Point {
 }
 
 fn twin_mul_vartime(
-    g_scalar: &Scalar,
-    p_scalar: &Scalar,
+    g_scalar: Option<NonZero<&Scalar>>,
+    p_scalar: NonZero<&Scalar>,
     p_xy: &(Elem<R>, Elem<R>),
     cpu: cpu::Features,
 ) -> Point {
     // XXX: This is inefficient for the same reason as `twin_mul_vartime_inefficient`
     // when we don't have `p256_point_mul_base_vartime`.
-    let scaled_g = point_mul_base_vartime(g_scalar, cpu);
     let scaled_p = PRIVATE_KEY_OPS.point_mul(p_scalar, p_xy, cpu);
-    PRIVATE_KEY_OPS.point_sum(&scaled_g, &scaled_p, cpu)
+    if let Some(g_scalar) = g_scalar {
+        let scaled_g = point_mul_base_vartime(g_scalar, cpu);
+        PRIVATE_KEY_OPS.point_sum(&scaled_g, &scaled_p, cpu)
+    } else {
+        scaled_p
+    }
 }
 
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
-    oneRR_mod_n: PublicScalar::from_hex(
+    oneRR_mod_n: NonZero(elem::PublicElem::from_hex(
         "66e12d94f3d956202845b2392b6bec594699799c49bd6fa683244c95be79eea2",
-    ),
+    )),
     scalar_inv_to_mont: p256_scalar_inv_to_mont,
 };
 
