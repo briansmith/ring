@@ -13,14 +13,54 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use std::{
-    ffi::{OsStr, OsString},
+    ffi::OsString,
     fs::{self, DirEntry},
-    path::Path,
+    path::{Component, Path, Prefix},
 };
 
-pub fn join_components_with_forward_slashes(path: &Path) -> OsString {
-    let parts = path.components().map(|c| c.as_os_str()).collect::<Vec<_>>();
-    parts.join(OsStr::new("/"))
+#[cfg_attr(not(test), allow(dead_code))]
+pub const TARGET_SUPPORTS_UNCS_AND_BACKSLASHES: bool = cfg!(target_os = "windows");
+
+// TODO: Preserve trailing slash. Currently this isn't needed.
+pub fn join_components_with_forward_slashes(path: &Path) -> Option<OsString> {
+    let mut result = OsString::new();
+    let mut needs_separator = false;
+
+    for component in path.components() {
+        match component {
+            Component::Prefix(p) => {
+                assert!(result.is_empty());
+                assert!(!needs_separator);
+                let kind = p.kind();
+                if let Prefix::UNC(server, share) = kind {
+                    result.push("//");
+                    result.push(server);
+                    result.push("/");
+                    result.push(share);
+                } else if kind.is_verbatim() {
+                    // We can't substitute forward slashes safely.
+                    return None;
+                } else {
+                    result.push(p.as_os_str());
+                }
+                assert!(!needs_separator);
+            }
+            Component::RootDir => {
+                // The result might not be empty if it started with another prefix like a drive.
+                result.push("/");
+                needs_separator = false;
+            }
+            Component::CurDir | Component::ParentDir | Component::Normal(_) => {
+                if needs_separator {
+                    result.push("/");
+                }
+                result.push(component.as_os_str());
+                needs_separator = true;
+            }
+        }
+    }
+
+    Some(result)
 }
 
 pub fn walk_dir(dir: &Path, cb: &impl Fn(&DirEntry)) {
