@@ -24,6 +24,9 @@ use crate::{
 };
 use core::ops::RangeFrom;
 
+#[cfg(feature = "sm")]
+use super::sm4_gcm;
+
 impl hkdf::KeyType for &'static Algorithm {
     #[inline]
     fn len(&self) -> usize {
@@ -119,6 +122,8 @@ pub(super) enum AlgorithmID {
     AES_128_GCM,
     AES_256_GCM,
     CHACHA20_POLY1305,
+    #[cfg(feature = "sm")]
+    SM4_128_GCM,
 }
 
 impl PartialEq for Algorithm {
@@ -254,4 +259,57 @@ fn chacha20_poly1305_open<'o>(
         ForgedPlaintext::Zero,
         cpu_features,
     )
+}
+
+/// SM4-128-GCM as specified in [RFC 8998].
+///
+/// The keys are 128 bits long and the nonces are 96 bits long.
+///
+/// **Warning**: This is an unaudited, experimental implementation.
+///
+/// [RFC 8998]: https://www.rfc-editor.org/rfc/rfc8998
+#[cfg(feature = "sm")]
+pub static SM4_128_GCM: Algorithm = Algorithm {
+    key_len: super::sm4::KEY_LEN,
+    init: sm4_gcm_init,
+    seal: sm4_gcm_seal,
+    open: sm4_gcm_open,
+    id: AlgorithmID::SM4_128_GCM,
+};
+
+#[cfg(feature = "sm")]
+fn sm4_gcm_init(key: &[u8], _cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified> {
+    let key: &[u8; super::sm4::KEY_LEN] = key.try_into().map_err(|_| error::Unspecified)?;
+    Ok(KeyInner::Sm4Gcm(sm4_gcm::Key::new(key)))
+}
+
+#[cfg(feature = "sm")]
+fn sm4_gcm_seal(
+    key: &KeyInner,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    in_out: &mut [u8],
+    _cpu_features: cpu::Features,
+) -> Result<Tag, InputTooLongError> {
+    let key = match key {
+        KeyInner::Sm4Gcm(key) => key,
+        _ => unreachable!(),
+    };
+    key.seal(nonce, aad, in_out)
+}
+
+#[cfg(feature = "sm")]
+fn sm4_gcm_open<'o>(
+    key: &KeyInner,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    in_out: Overlapping<'o, u8>,
+    received_tag: &Tag,
+    _cpu_features: cpu::Features,
+) -> Result<&'o mut [u8], AuthError> {
+    let key = match key {
+        KeyInner::Sm4Gcm(key) => key,
+        _ => unreachable!(),
+    };
+    key.open_within(nonce, aad, in_out, received_tag, ForgedPlaintext::Zero)
 }

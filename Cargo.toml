@@ -200,6 +200,9 @@ unstable-testing-arm-no-hw = []
 unstable-testing-arm-no-neon = []
 test_logging = []
 wasm32_unknown_unknown_js = ["getrandom/wasm_js"]
+# Enable Chinese national cryptography standards (SM2, SM3, SM4).
+# Note: These implementations are unaudited and experimental.
+sm = []
 
 [package.metadata.cargo-semver-checks.lints]
 trait_marked_deprecated = { level = "warn" }
