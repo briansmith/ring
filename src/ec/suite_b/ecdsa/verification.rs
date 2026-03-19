@@ -136,7 +136,7 @@ impl EcdsaVerificationAlgorithm {
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
         // addition. If R is equal to the point at infinity, output INVALID."
-        let product = (self.ops.twin_mul)(&u1, &u2, &peer_pub_key, cpu);
+        let product = (self.ops.twin_mul_vartime)(&u1, &u2, &peer_pub_key, cpu);
 
         // Verify that the point we computed is on the curve; see
         // `verify_affine_point_is_on_the_curve_scaled` for details on why. It

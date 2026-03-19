@@ -410,7 +410,7 @@ pub struct PublicScalarOps {
     pub scalar_ops: &'static ScalarOps,
     pub public_key_ops: &'static PublicKeyOps,
 
-    pub(super) twin_mul: fn(
+    pub(super) twin_mul_vartime: fn(
         g_scalar: &Scalar,
         p_scalar: &Scalar,
         p_xy: &(Elem<R>, Elem<R>),
@@ -480,7 +480,7 @@ impl PrivateScalarOps {
 
 // XXX: Inefficient and unnecessarily depends on `PrivateKeyOps`. TODO: implement interleaved wNAF
 // multiplication.
-fn twin_mul_inefficient(
+fn twin_mul_vartime_inefficient(
     ops: &PrivateKeyOps,
     g_scalar: &Scalar,
     p_scalar: &Scalar,
