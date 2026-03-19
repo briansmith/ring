@@ -467,9 +467,8 @@ impl PrivateScalarOps {
             .scalar_product(s, &Scalar::from(&self.oneRR_mod_n), cpu)
     }
 
-    /// Returns the modular inverse of `a` (mod `n`). Panics if `a` is zero.
+    /// Returns the modular inverse of `a` (mod `n`), or 0 if `a` is zero.
     pub(super) fn scalar_inv_to_mont(&self, a: &Scalar, cpu: cpu::Features) -> Scalar<R> {
-        assert!(!self.scalar_ops.common.is_zero(a));
         let a = self.to_mont(a, cpu);
         (self.scalar_inv_to_mont)(a, cpu)
     }
@@ -956,16 +955,19 @@ mod tests {
         })
     }
 
-    #[test]
-    #[should_panic(expected = "!self.scalar_ops.common.is_zero(a)")]
-    fn p256_scalar_inv_to_mont_zero_panic_test() {
-        let _ = p256::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR, cpu::features());
+    fn scalar_inv_to_mont_zero_test(ops: &PrivateScalarOps) {
+        let r = ops.scalar_inv_to_mont(&ZERO_SCALAR, cpu::features());
+        assert!(ops.scalar_ops.common.is_zero(&r))
     }
 
     #[test]
-    #[should_panic(expected = "!self.scalar_ops.common.is_zero(a)")]
-    fn p384_scalar_inv_to_mont_zero_panic_test() {
-        let _ = p384::PRIVATE_SCALAR_OPS.scalar_inv_to_mont(&ZERO_SCALAR, cpu::features());
+    fn p256_scalar_inv_to_mont_zero_test() {
+        scalar_inv_to_mont_zero_test(&p256::PRIVATE_SCALAR_OPS)
+    }
+
+    #[test]
+    fn p384_scalar_inv_to_mont_zero_test() {
+        scalar_inv_to_mont_zero_test(&p384::PRIVATE_SCALAR_OPS)
     }
 
     #[test]
