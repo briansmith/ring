@@ -213,8 +213,10 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     const B_1001: usize = 4;
     const B_1011: usize = 5;
     const B_1101: usize = 6;
-    const B_1111: usize = 7;
-    const DIGIT_COUNT: usize = 8;
+    const B_10111: usize = 7;
+    const B_11001: usize = 8;
+    const B_11011: usize = 9;
+    const DIGIT_COUNT: usize = 10;
 
     // Calculate the window values.
     let mut d = [Scalar::zero(); DIGIT_COUNT];
@@ -226,20 +228,18 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     d[B_1001] = mul(&d[B_111], b_10, cpu); // 9
     d[B_1011] = mul(&d[B_1001], b_10, cpu); // 11
     d[B_1101] = mul(&d[B_1011], b_10, cpu); // 13
-    d[B_1111] = mul(&d[B_1101], b_10, cpu); // 15
+    let b_10110 = &sqr(&d[B_1011], cpu); // 22
+    d[B_10111] = mul(&d[B_1], b_10110, cpu); // 23 = 12 + 13
+    d[B_11001] = mul(&d[B_10111], b_10, cpu); // 25 = 23 + 2
+    d[B_11011] = mul(&d[B_11001], b_10, cpu); // 27 = 25 + 2
 
     // ffffffffffffffffffffffffffffffffffffffffffffffff
-    let ff = sqr_mul(&d[B_1111], 0 + 4, &d[B_1111], cpu);
-    let ffff = sqr_mul(&ff, 0 + 8, &ff, cpu);
-    let ffffffff = sqr_mul(&ffff, 0 + 16, &ffff, cpu);
-    let ffffffffffffffff = sqr_mul(&ffffffff, 0 + 32, &ffffffff, cpu);
-    let ffffffffffffffffffffffff = sqr_mul(&ffffffffffffffff, 0 + 32, &ffffffff, cpu);
-    let mut acc = sqr_mul(
-        &ffffffffffffffffffffffff,
-        0 + 96,
-        &ffffffffffffffffffffffff,
-        cpu,
-    );
+    let x6 = &sqr_mul(&d[B_11001], 1, &d[B_1101], cpu); // 63
+    let x12 = &sqr_mul(x6, 6, x6, cpu);
+    let x24 = &sqr_mul(x12, 12, x12, cpu);
+    let x48 = &sqr_mul(x24, 24, x24, cpu);
+    let x96 = &sqr_mul(x48, 48, x48, cpu);
+    let mut acc = sqr_mul(x96, 96, x96, cpu);
 
     // The rest of the exponent, in binary, is:
     //
@@ -248,45 +248,40 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     //    1110110011101100000110010110101011001100110001010010100101110001
 
     #[allow(clippy::cast_possible_truncation)]
-    static REMAINING_WINDOWS: [(u8, u8); 39] = [
+    static REMAINING_WINDOWS: [(u8, u8); 34] = [
         (2, B_11 as u8),
         (3 + 3, B_111 as u8),
         (1 + 2, B_11 as u8),
-        (3 + 2, B_11 as u8),
-        (1 + 4, B_1001 as u8),
-        (4, B_1011 as u8),
-        (6 + 4, B_1111 as u8),
-        (3, B_101 as u8),
-        (4 + 1, B_1 as u8),
-        (4, B_1011 as u8),
-        (4, B_1001 as u8),
-        (1 + 4, B_1101 as u8),
+        (3 + 4, B_1101 as u8),
+        (2 + 5, B_11011 as u8),
+        (6 + 3, B_111 as u8),
         (4, B_1101 as u8),
-        (4, B_1111 as u8),
+        (4 + 5, B_11011 as u8),
+        (4, B_1001 as u8),
+        (1 + 5, B_11011 as u8),
+        (4, B_1011 as u8),
+        (3, B_111 as u8),
         (1 + 4, B_1011 as u8),
         (6 + 4, B_1101 as u8),
-        (5 + 4, B_1101 as u8),
-        (4, B_1011 as u8),
+        (5 + 5, B_11011 as u8),
+        (1 + 5, B_11001 as u8),
         (2 + 4, B_1001 as u8),
-        (2 + 1, B_1 as u8),
         (3 + 4, B_1011 as u8),
         (4 + 3, B_101 as u8),
         (2 + 3, B_111 as u8),
-        (1 + 4, B_1111 as u8),
+        (1 + 3, B_111 as u8),
+        (0 + 3, B_101 as u8),
+        (1 + 3, B_111 as u8),
+        (1 + 5, B_11001 as u8),
+        (0 + 5, B_11011 as u8),
+        (5 + 5, B_11001 as u8),
+        (1 + 4, B_1101 as u8),
         (1 + 4, B_1011 as u8),
-        (4, B_1011 as u8),
-        (2 + 3, B_111 as u8),
-        (1 + 2, B_11 as u8),
-        (5 + 2, B_11 as u8),
-        (2 + 4, B_1011 as u8),
-        (1 + 3, B_101 as u8),
-        (1 + 2, B_11 as u8),
         (2 + 2, B_11 as u8),
         (2 + 2, B_11 as u8),
         (3 + 3, B_101 as u8),
         (2 + 3, B_101 as u8),
-        (2 + 3, B_101 as u8),
-        (2, B_11 as u8),
+        (2 + 5, B_10111 as u8),
         (3 + 1, B_1 as u8),
     ];
 
