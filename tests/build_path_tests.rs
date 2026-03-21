@@ -14,7 +14,7 @@
 
 #![allow(missing_docs)]
 
-use self::path::{TARGET_SUPPORTS_UNCS_AND_BACKSLASHES, join_components_with_forward_slashes};
+use self::path::join_components_with_forward_slashes_if_windows;
 use std::{ffi::OsStr, path::Path};
 
 #[allow(dead_code)]
@@ -25,344 +25,205 @@ mod path;
 fn join_components_with_forward_slashes_tests() {
     struct Case {
         input: &'static str,
-        expected: &'static str,
+        expected_windows: &'static str,
     }
     const VALID_TEST_CASES: &[Case] = &[
         Case {
             input: r#"/"#,
-            expected: "/",
+            expected_windows: "/",
         },
         Case {
             input: r#"//"#,
-            expected: "/",
+            expected_windows: "/",
         },
         Case {
             input: r#"\"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "/"
-            } else {
-                r#"\"# // Backslash not interpreted as a separator
-            },
+            expected_windows: "/",
         },
         Case {
             input: r#"\\"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "/"
-            } else {
-                r#"\\"# // Backslash not interpreted as a separator
-            },
+            expected_windows: "/",
         },
         Case {
             input: r#"\\foo"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "/foo"
-            } else {
-                r#"\\foo"# // Backslash not interpreted as a separator
-            },
+            expected_windows: "/foo",
         },
         Case {
             input: r#"\\foo\bar"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//foo/bar/" // UNC with implied root
-            } else {
-                r#"\\foo\bar"# // Backslash not interpreted as a separator
-            },
+            expected_windows: "//foo/bar/", // UNC with implied root
         },
         Case {
             input: r#"//foo"#,
-            expected: "/foo", // Redundant slash removed.
+            expected_windows: "/foo", // Redundant slash removed.
         },
         Case {
             input: r#"//foo/bar"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//foo/bar/" // UNC with implied root
-            } else {
-                "/foo/bar"
-            },
+            expected_windows: "//foo/bar/", // UNC with implied root
         },
         Case {
             input: r#"\\server\share"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/" // UNC with implied root
-            } else {
-                r#"\\server\share"# // Backslash not interpreted as a separator
-            },
+            expected_windows: "//server/share/", // UNC with implied root
         },
         Case {
             input: r#"\\server\share\"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/" // UNC
-            } else {
-                r#"\\server\share\"# // Backslash not interpreted as a separator
-            },
+            expected_windows: "//server/share/", // UNC
         },
         Case {
             input: r#"\\server\share\foo"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo" // UNC
-            } else {
-                r#"\\server\share\foo"# // Backslash not interpreted as a separator
-            },
+            expected_windows: "//server/share/foo", // UNC
         },
         Case {
             input: r#"\\server\share\foo\bar"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo/bar" // UNC
-            } else {
-                r#"\\server\share\foo\bar"# // Backslash not interpreted as a separator
-            },
+            expected_windows: "//server/share/foo/bar", // UNC
         },
         Case {
             // XXX: trailing slash stripped
             input: r#"\\server\share\foo\bar\"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo/bar" // UNC
-            } else {
-                r#"\\server\share\foo\bar\"# // Backslash not interpreted as a separator
-            },
+            expected_windows: "//server/share/foo/bar", // UNC
         },
         Case {
             input: r#"//server/share"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/" // UNC with implied root
-            } else {
-                r#"/server/share"# // Redundant slash removed.
-            },
+            expected_windows: "//server/share/", // UNC with implied root
         },
         Case {
             input: r#"//server/share/"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/" // UNC
-            } else {
-                r#"/server/share"# // Redundant slash removed. XXX: trailing slash stripped.
-            },
+            expected_windows: "//server/share/", // UNC
         },
         Case {
             input: r#"//server/share/foo"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo" // UNC
-            } else {
-                // Redundant slash removed.
-                "/server/share/foo"
-            },
+            expected_windows: "//server/share/foo", // UNC
         },
         Case {
             input: r#"//server/share/foo/bar"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo/bar" // UNC
-            } else {
-                r#"/server/share/foo/bar"#
-            }, // Redundant slash removed.
+            expected_windows: "//server/share/foo/bar", // UNC
         },
         Case {
             // XXX: trailing slash stripped
             input: r#"//server/share/foo/bar/"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo/bar" // UNC
-            } else {
-                r#"/server/share/foo/bar"# // Redundant slash removed.
-            },
+            expected_windows: "//server/share/foo/bar", // UNC
         },
         Case {
             input: r#"//server\share"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/" // UNC with implied root
-            } else {
-                // Redundant slash removed. Backslash not interpreted as a separator.
-                r#"/server\share"#
-            },
+            expected_windows: "//server/share/", // UNC with implied root
         },
         Case {
             input: r#"//server\share/"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/" // UNC
-            } else {
-                // Redundant slash removed. Backslash not interpreted as a separator.
-                // XXX: trailing slash stripped.
-                r#"/server\share"#
-            },
+            expected_windows: "//server/share/", // UNC
         },
         Case {
             input: r#"//server\share/foo"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo" // UNC
-            } else {
-                // Redundant slash removed. Backslash not interpreted as a separator.
-                r#"/server\share/foo"#
-            },
+            expected_windows: "//server/share/foo", // UNC,
         },
         Case {
             input: r#"//server\share/foo/bar"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo/bar" // UNC
-            } else {
-                // Redundant slash removed. Backslash not interpreted as a separator.
-                r#"/server\share/foo/bar"#
-            },
+            expected_windows: "//server/share/foo/bar", // UNC
         },
         Case {
             // XXX: trailing slash stripped
             input: r#"//server\share/foo/bar/"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo/bar" // UNC
-            } else {
-                // Redundant slash removed. Backslash not interpreted as a separator.
-                r#"/server\share/foo/bar"#
-            },
+            expected_windows: "//server/share/foo/bar", // UNC
         },
         Case {
             input: r#"\\server\share"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/" // UNC with implied root
-            } else {
-                // Backslash not interpreted as a separator.
-                r#"\\server\share"#
-            },
+            expected_windows: "//server/share/", // UNC with implied root
         },
         Case {
             input: r#"\\server\share/"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/" // UNC
-            } else {
-                // Backslash not interpreted as a separator.
-                // XXX: trailing slash stripped.
-                r#"\\server\share"#
-            },
+            expected_windows: "//server/share/", // UNC
         },
         Case {
             input: r#"\\server\share/foo"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo" // UNC
-            } else {
-                // Backslash not interpreted as a separator.
-                r#"\\server\share/foo"#
-            },
+            expected_windows: "//server/share/foo", // UNC
         },
         Case {
             input: r#"\\server\share/foo/bar"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo/bar" // UNC
-            } else {
-                // Backslash not interpreted as a separator.
-                r#"\\server\share/foo/bar"#
-            },
+            expected_windows: "//server/share/foo/bar", // UNC
         },
         Case {
             // XXX: trailing slash stripped
             input: r#"\\server\share/foo/bar/"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo/bar" // UNC
-            } else {
-                // Backslash not interpreted as a separator.
-                r#"\\server\share/foo/bar"#
-            },
+            expected_windows: "//server/share/foo/bar", // UNC
         },
         Case {
             input: r#"//server/share\"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/" // UNC
-            } else {
-                // Redundant slash removed. Backslash not interpreted as a separator.
-                r#"/server/share\"#
-            },
+            expected_windows: "//server/share/", // UNC
         },
         Case {
             input: r#"//server/share\foo"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo" // UNC
-            } else {
-                // Redundant slash removed. Backslash not interpreted as a separator.
-                r#"/server/share\foo"#
-            },
+            expected_windows: "//server/share/foo", // UNC
         },
         Case {
             input: r#"//server/share/foo\bar"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo/bar" // UNC
-            } else {
-                // Redundant slash removed. Backslash not interpreted as a separator.
-                r#"/server/share/foo\bar"#
-            },
+            expected_windows: "//server/share/foo/bar", // UNC
         },
         Case {
             // XXX: trailing slash stripped
             input: r#"//server/share\foo/bar/"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "//server/share/foo/bar"
-            } else {
-                // Redundant slash removed. Backslash not interpreted as a separator.
-                r#"/server/share\foo/bar"#
-            },
+            expected_windows: "//server/share/foo/bar",
         },
         Case {
             input: r#"C:foo"#,
-            expected: "C:foo",
+            expected_windows: "C:foo",
         },
         Case {
             input: r#"C:\foo"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "C:/foo"
-            } else {
-                r#"C:\foo"# // Backslash not interpreted as a separator.
-            },
+            expected_windows: "C:/foo",
         },
         Case {
             input: r#"C:/foo"#,
-            expected: "C:/foo",
+            expected_windows: "C:/foo",
         },
         Case {
             input: r#"a\b"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "a/b"
-            } else {
-                r#"a\b"# // Backslash not interpreted as a separator.
-            },
+            expected_windows: "a/b",
         },
         Case {
             input: r#"/a/b"#,
-            expected: "/a/b",
+            expected_windows: "/a/b",
         },
         Case {
             input: r#"\a\b"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "/a/b"
-            } else {
-                r#"\a\b"# // Backslash not interpreted as a separator.
-            },
+            expected_windows: "/a/b",
         },
         Case {
             input: r#".\b"#,
-            expected: if TARGET_SUPPORTS_UNCS_AND_BACKSLASHES {
-                "./b"
-            } else {
-                r#".\b"# // Backslash not interpreted as a separator.
-            },
+            expected_windows: "./b",
         },
         Case {
             input: r#"../b"#,
-            expected: "../b",
+            expected_windows: "../b",
         },
         Case {
             input: r#"a/../b"#,
-            expected: "a/../b",
+            expected_windows: "a/../b",
         },
         Case {
             // XXX: Trailing slash is skipped.
             input: r#"a/./b/"#,
-            expected: "a/b",
+            expected_windows: "a/b",
         },
     ];
 
     let failures = VALID_TEST_CASES
         .iter()
-        .filter_map(|Case { input, expected }| {
-            let actual = join_components_with_forward_slashes(Path::new(input)).unwrap();
-            if actual == AsRef::<OsStr>::as_ref(expected) {
-                None
-            } else {
-                Some((input, actual, expected))
-            }
-        })
+        .filter_map(
+            |Case {
+                 input,
+                 expected_windows,
+             }| {
+                let actual = join_components_with_forward_slashes_if_windows(Path::new(input));
+                let expected = if cfg!(windows) {
+                    expected_windows
+                } else {
+                    input
+                };
+                if actual == AsRef::<OsStr>::as_ref(expected) {
+                    None
+                } else {
+                    Some((input, actual, expected))
+                }
+            },
+        )
         .collect::<Vec<_>>();
     assert_eq!(failures, &[]);
 }
