@@ -19,7 +19,7 @@
 // Avoid `std::env` here. All configuration should be done through `Target`,
 // `Profile`, and `Tools`.
 
-use self::path::{join_components_with_forward_slashes, walk_dir};
+use self::path::{join_components_with_forward_slashes_if_windows, walk_dir};
 use std::{
     ffi::{OsStr, OsString},
     fs,
@@ -614,8 +614,7 @@ impl Tools<'_> {
     fn perlasm(&self, src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget, c_root_dir: &Path) {
         for (src, dst) in src_dst {
             let mut args = vec![
-                join_components_with_forward_slashes(&c_root_dir.join(src))
-                    .expect("verbatim paths not supported"),
+                join_components_with_forward_slashes_if_windows(&c_root_dir.join(src)),
                 asm_target.perlasm_format.into(),
             ];
             if asm_target.arch == X86 {
@@ -623,9 +622,7 @@ impl Tools<'_> {
             }
             // Work around PerlAsm issue for ARM and AAarch64 targets by replacing
             // back slashes with forward slashes.
-            args.push(
-                join_components_with_forward_slashes(dst).expect("verbatim paths not supported"),
-            );
+            args.push(join_components_with_forward_slashes_if_windows(dst));
             run_command_with_args(self.perl_exe, &args);
         }
     }

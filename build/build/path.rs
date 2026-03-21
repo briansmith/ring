@@ -18,11 +18,23 @@ use std::{
     path::{Component, Path, Prefix},
 };
 
-#[cfg_attr(not(test), allow(dead_code))]
-pub const TARGET_SUPPORTS_UNCS_AND_BACKSLASHES: bool = cfg!(target_os = "windows");
+// TODO: Preserve trailing slash; currently this isn't needed.
+pub fn join_components_with_forward_slashes_if_windows(path: &Path) -> OsString {
+    if cfg!(windows) {
+        // Windows and UEFI but NOT Cygwin!
+        join_components_with_forward_slashes(path).expect("Verbatim paths not supported")
+    } else {
+        // There shouldn't be any backslashes to replace (backslash is a valid
+        // path character, often) and trying to do it uniformly for all targets
+        // causes problems because `std::Path::components()` doesn't parse
+        // "//server/path/foo/bar" as a UNC
+        // (https://github.com/rust-lang/rust/issues/154164).
+        path.into()
+    }
+}
 
-// TODO: Preserve trailing slash. Currently this isn't needed.
-pub fn join_components_with_forward_slashes(path: &Path) -> Option<OsString> {
+// TODO: Preserve trailing slash; currently this isn't needed.
+fn join_components_with_forward_slashes(path: &Path) -> Option<OsString> {
     let mut result = OsString::new();
     let mut needs_separator = false;
 
