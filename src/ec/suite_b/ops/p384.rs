@@ -216,22 +216,24 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     const B_1111: usize = 7;
     const DIGIT_COUNT: usize = 8;
 
+    // Calculate the window values.
     let mut d = [Scalar::zero(); DIGIT_COUNT];
     d[B_1] = a;
-    let b_10 = sqr(&d[B_1], cpu);
-    for i in B_11..DIGIT_COUNT {
-        d[i] = mul(&d[i - 1], &b_10, cpu);
-    }
+    let b_10 = &sqr(&d[B_1], cpu); // 2
+    d[B_11] = mul(&d[B_1], b_10, cpu); // 3
+    d[B_101] = mul(&d[B_11], b_10, cpu); // 5
+    d[B_111] = mul(&d[B_101], b_10, cpu); // 7
+    d[B_1001] = mul(&d[B_111], b_10, cpu); // 9
+    d[B_1011] = mul(&d[B_1001], b_10, cpu); // 11
+    d[B_1101] = mul(&d[B_1011], b_10, cpu); // 13
+    d[B_1111] = mul(&d[B_1101], b_10, cpu); // 15
 
+    // ffffffffffffffffffffffffffffffffffffffffffffffff
     let ff = sqr_mul(&d[B_1111], 0 + 4, &d[B_1111], cpu);
     let ffff = sqr_mul(&ff, 0 + 8, &ff, cpu);
     let ffffffff = sqr_mul(&ffff, 0 + 16, &ffff, cpu);
-
     let ffffffffffffffff = sqr_mul(&ffffffff, 0 + 32, &ffffffff, cpu);
-
     let ffffffffffffffffffffffff = sqr_mul(&ffffffffffffffff, 0 + 32, &ffffffff, cpu);
-
-    // ffffffffffffffffffffffffffffffffffffffffffffffff
     let mut acc = sqr_mul(
         &ffffffffffffffffffffffff,
         0 + 96,
