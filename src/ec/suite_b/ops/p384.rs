@@ -207,23 +207,24 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
 
     // Indexes into `d`.
     const B_1: usize = 0;
-    const B_11: usize = 1;
-    const B_101: usize = 2;
-    const B_111: usize = 3;
-    const B_1001: usize = 4;
-    const B_1011: usize = 5;
-    const B_1101: usize = 6;
-    const B_10111: usize = 7;
-    const B_11001: usize = 8;
-    const B_11011: usize = 9;
+    const B_101: usize = 1;
+    const B_111: usize = 2;
+    const B_1001: usize = 3;
+    const B_1011: usize = 4;
+    const B_1101: usize = 5;
+    const B_10111: usize = 6;
+    const B_11001: usize = 7;
+    const B_11011: usize = 8;
+    const B_110001: usize = 9;
     const DIGIT_COUNT: usize = 10;
 
     // Calculate the window values.
     let mut d = [Scalar::zero(); DIGIT_COUNT];
     d[B_1] = a;
+
     let b_10 = &sqr(&d[B_1], cpu); // 2
-    d[B_11] = mul(&d[B_1], b_10, cpu); // 3
-    d[B_101] = mul(&d[B_11], b_10, cpu); // 5
+    let b_100 = &sqr(b_10, cpu); // 4
+    d[B_101] = mul(&d[B_1], b_100, cpu); // 5
     d[B_111] = mul(&d[B_101], b_10, cpu); // 7
     d[B_1001] = mul(&d[B_111], b_10, cpu); // 9
     d[B_1011] = mul(&d[B_1001], b_10, cpu); // 11
@@ -232,6 +233,7 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     d[B_10111] = mul(b_10110, &d[B_1], cpu); // 23 = 22 + 1
     d[B_11001] = mul(&d[B_10111], b_10, cpu); // 25 = 23 + 2
     d[B_11011] = mul(&d[B_11001], b_10, cpu); // 27 = 25 + 2
+    d[B_110001] = mul(&d[B_11011], b_10110, cpu); // 49
 
     // ffffffffffffffffffffffffffffffffffffffffffffffff
     let x6 = &sqr_mul(&d[B_11001], 1, &d[B_1101], cpu); // 63
@@ -248,10 +250,9 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     //    1110110011101100000110010110101011001100110001010010100101110001
 
     #[allow(clippy::cast_possible_truncation)]
-    static REMAINING_WINDOWS: [(u8, u8); 34] = [
-        (2, B_11 as u8),
-        (3 + 3, B_111 as u8),
-        (1 + 2, B_11 as u8),
+    static REMAINING_WINDOWS: [(u8, u8); 33] = [
+        (0 + 6, B_110001 as u8),
+        (0 + 5, B_11011 as u8),
         (3 + 4, B_1101 as u8),
         (2 + 5, B_11011 as u8),
         (6 + 3, B_111 as u8),
@@ -277,8 +278,8 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
         (5 + 5, B_11001 as u8),
         (1 + 4, B_1101 as u8),
         (1 + 4, B_1011 as u8),
-        (2 + 2, B_11 as u8),
-        (2 + 2, B_11 as u8),
+        (2 + 5, B_11001 as u8),
+        (0 + 1, B_1 as u8),
         (3 + 3, B_101 as u8),
         (2 + 3, B_101 as u8),
         (2 + 5, B_10111 as u8),
