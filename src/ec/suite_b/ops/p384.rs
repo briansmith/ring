@@ -229,7 +229,7 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     d[B_1011] = mul(&d[B_1001], b_10, cpu); // 11
     d[B_1101] = mul(&d[B_1011], b_10, cpu); // 13
     let b_10110 = &sqr(&d[B_1011], cpu); // 22
-    d[B_10111] = mul(&d[B_1], b_10110, cpu); // 23 = 12 + 13
+    d[B_10111] = mul(b_10110, &d[B_1], cpu); // 23 = 22 + 1
     d[B_11001] = mul(&d[B_10111], b_10, cpu); // 25 = 23 + 2
     d[B_11011] = mul(&d[B_11001], b_10, cpu); // 27 = 25 + 2
 
