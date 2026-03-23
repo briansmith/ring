@@ -119,7 +119,7 @@ fn x25519_ecdh(
             return x25519_neon(out, scalar, point, cpu);
         }
 
-        #[cfg(all(target_arch = "x86_64", not(windows)))]
+        #[cfg(all(target_arch = "x86_64", not(windows), not(target_os = "cygwin")))]
         if super::adx::get_features(cpu).is_some() {
             prefixed_extern! {
                 unsafe fn x25519_scalar_mult_adx(
