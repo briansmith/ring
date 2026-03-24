@@ -14,11 +14,12 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::CHAINING_WORDS;
-use core::{
-    num::Wrapping,
-    ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Not, Shr},
+use {
+    super::CHAINING_WORDS,
+    core::{
+        num::Wrapping,
+        ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Not, Shr},
+    },
 };
 
 #[cfg_attr(

@@ -14,18 +14,19 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{
-    Aad, AuthError, ForgedPlaintext, Nonce, Tag,
-    chacha::{self, Counter, Overlapping},
-    poly1305,
+use {
+    super::{
+        Aad, AuthError, ForgedPlaintext, Nonce, Tag,
+        chacha::{self, Counter, Overlapping},
+        poly1305,
+    },
+    crate::{
+        cpu,
+        error::InputTooLongError,
+        polyfill::{sliceutil, u64_from_usize, usize_from_u64_saturated},
+    },
+    cfg_if::cfg_if,
 };
-use crate::{
-    cpu,
-    error::InputTooLongError,
-    polyfill::{sliceutil, u64_from_usize, usize_from_u64_saturated},
-};
-use cfg_if::cfg_if;
 
 cfg_if! {
     if #[cfg(any(

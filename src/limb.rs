@@ -18,21 +18,21 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use crate::{
-    bb, c,
-    error::{self, LenMismatchError},
-    polyfill::{
-        ArrayFlatMap, StartMutPtr,
-        slice::{AliasingSlices, Cursor, InOut},
-        sliceutil, usize_from_u32,
-    },
-    window5::Window5,
-};
-use core::{iter, num::NonZero};
-
 #[cfg(feature = "alloc")]
 use core::num::Wrapping;
-use core::ops::RangeInclusive;
+use {
+    crate::{
+        bb, c,
+        error::{self, LenMismatchError},
+        polyfill::{
+            ArrayFlatMap, StartMutPtr,
+            slice::{AliasingSlices, Cursor, InOut},
+            sliceutil, usize_from_u32,
+        },
+        window5::Window5,
+    },
+    core::{iter, num::NonZero, ops::RangeInclusive},
+};
 
 // XXX: Not correct for x32 ABIs.
 pub type Limb = bb::Word;
@@ -356,8 +356,7 @@ pub(crate) fn write_negative_assume_odd<'r>(
 #[allow(clippy::useless_conversion)]
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use alloc::vec::Vec;
+    use {super::*, alloc::vec::Vec};
 
     const MAX: LeakyLimb = LeakyLimb::MAX;
 

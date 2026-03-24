@@ -18,7 +18,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: cargo fmt --all -- --check
+      - run: rustup toolchain install nightly --profile minimal --component rustfmt
+      - run: cargo +nightly fmt --all -- --check
 
   clippy:
     runs-on: ${{ matrix.host_os }}

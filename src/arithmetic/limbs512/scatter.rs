@@ -1,9 +1,10 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{super::LimbSliceError, LIMBS_PER_CHUNK};
-use crate::{limb::Limb, polyfill, window5::LeakyWindow5};
-use core::mem::MaybeUninit;
+use {
+    super::{super::LimbSliceError, LIMBS_PER_CHUNK},
+    crate::{limb::Limb, polyfill, window5::LeakyWindow5},
+    core::mem::MaybeUninit,
+};
 
 // `a` is the `i`th entry to store into `table`, where `i` is NOT secret.
 // `table` has space for 32 entries the same size as `a`. Instead of storing

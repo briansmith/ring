@@ -15,8 +15,10 @@
 //! Functionality shared by operations on private keys (ECC keygen and
 //! ECDSA signing).
 
-use super::{ops::*, verify_affine_point_is_on_the_curve};
-use crate::{arithmetic::montgomery::R, cpu, ec, error, limb, rand};
+use {
+    super::{ops::*, verify_affine_point_is_on_the_curve},
+    crate::{arithmetic::montgomery::R, cpu, ec, error, limb, rand},
+};
 
 /// Generates a random scalar in the range [1, n).
 pub(super) fn random_scalar(

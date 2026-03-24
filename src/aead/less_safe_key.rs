@@ -12,12 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Aad, Algorithm, KeyInner, Nonce, TAG_LEN, Tag, UnboundKey};
-use crate::{
-    cpu,
-    error::{self, InputTooLongError},
+use {
+    super::{Aad, Algorithm, KeyInner, Nonce, TAG_LEN, Tag, UnboundKey},
+    crate::{
+        cpu,
+        error::{self, InputTooLongError},
+    },
+    core::ops::RangeFrom,
 };
-use core::ops::RangeFrom;
 
 /// Immutable keys for use in situations where `OpeningKey`/`SealingKey` and
 /// `NonceSequence` cannot reasonably be used.

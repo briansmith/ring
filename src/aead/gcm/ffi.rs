@@ -14,9 +14,10 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use crate::{bb, c, polyfill::ArraySplitMap};
-use core::num::NonZero;
+use {
+    crate::{bb, c, polyfill::ArraySplitMap},
+    core::num::NonZero,
+};
 
 pub(in super::super) const BLOCK_LEN: usize = 16;
 pub(in super::super) type Block = [u8; BLOCK_LEN];

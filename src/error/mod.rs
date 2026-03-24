@@ -14,12 +14,11 @@
 
 //! Error reporting.
 
-pub use self::{key_rejected::KeyRejected, unspecified::Unspecified};
-
 pub(crate) use self::{
     input_too_long::InputTooLongError, len_mismatch_error::LenMismatchError,
     too_much_output_requested::TooMuchOutputRequestedError,
 };
+pub use self::{key_rejected::KeyRejected, unspecified::Unspecified};
 
 mod input_too_long;
 mod into_unspecified;

@@ -13,12 +13,13 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub(crate) use crate::error::LenMismatchError;
-use crate::polyfill::{
-    StartPtr,
-    slice::{AliasedUninit, Uninit},
+use {
+    crate::polyfill::{
+        StartPtr,
+        slice::{AliasedUninit, Uninit},
+    },
+    core::{array, num::NonZero},
 };
-use core::array;
-use core::num::NonZero;
 
 pub(crate) trait AliasingSlices<'o, T, const INPUTS: usize> {
     /// The pointers passed to `f` will be valid and non-null, and will not

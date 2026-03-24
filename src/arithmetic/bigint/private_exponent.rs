@@ -12,9 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Limb, Mont, limb};
-use crate::error;
-use alloc::boxed::Box;
+use {
+    super::{Limb, Mont, limb},
+    crate::error,
+    alloc::boxed::Box,
+};
 
 pub struct PrivateExponent {
     // Unlike most `[Limb]` we deal with, these are stored most significant
@@ -56,8 +58,10 @@ impl PrivateExponent {
         input: untrusted::Input,
         p: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
-        use super::boxed_limbs::Uninit;
-        use crate::{error::LenMismatchError, limb::LIMB_BYTES};
+        use {
+            super::boxed_limbs::Uninit,
+            crate::{error::LenMismatchError, limb::LIMB_BYTES},
+        };
 
         // Do exactly what `from_be_bytes_padded` does for any inputs it accepts.
         if let r @ Ok(_) = Self::from_be_bytes_padded(input, p) {

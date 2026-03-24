@@ -20,7 +20,6 @@ use ring::{
 };
 #[allow(deprecated)]
 use ring::{test, test_file};
-
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 

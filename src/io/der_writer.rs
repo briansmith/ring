@@ -12,8 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{der::*, writer::*, *};
-use alloc::boxed::Box;
+use {
+    super::{der::*, writer::*, *},
+    alloc::boxed::Box,
+};
 
 pub(crate) fn write_positive_integer(
     output: &mut dyn Accumulator,

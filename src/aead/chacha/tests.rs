@@ -15,10 +15,11 @@
 
 extern crate alloc;
 
-use super::super::{chacha::*, overlapping::IndexError};
-use crate::error;
-use crate::testutil as test;
-use alloc::vec;
+use {
+    super::super::{chacha::*, overlapping::IndexError},
+    crate::{error, testutil as test},
+    alloc::vec,
+};
 
 const MAX_ALIGNMENT_AND_OFFSET: (usize, usize) = (15, 259);
 const MAX_ALIGNMENT_AND_OFFSET_SUBSET: (usize, usize) =

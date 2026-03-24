@@ -14,9 +14,7 @@
 
 #![cfg_attr(not(test), allow(dead_code))]
 
-use super::Overlapping;
-use crate::error::LenMismatchError;
-use core::array::TryFromSliceError;
+use {super::Overlapping, crate::error::LenMismatchError, core::array::TryFromSliceError};
 
 pub struct Array<'o, T, const N: usize> {
     // Invariant: N != 0.

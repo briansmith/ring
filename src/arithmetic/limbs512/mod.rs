@@ -12,8 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::limb::LIMB_BITS;
-use cfg_if::cfg_if;
+use {crate::limb::LIMB_BITS, cfg_if::cfg_if};
 
 cfg_if! {
     if #[cfg(target_arch = "x86_64")] {

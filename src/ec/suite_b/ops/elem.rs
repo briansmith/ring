@@ -12,17 +12,17 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::ec::suite_b::ops::{
-    p256::NUM_LIMBS as P256_NUM_LIMBS, p384::NUM_LIMBS as P384_NUM_LIMBS,
-};
-use crate::{
-    arithmetic::{
-        limbs_from_hex,
-        montgomery::{Encoding, ProductEncoding, Unencoded},
+use {
+    crate::{
+        arithmetic::{
+            limbs_from_hex,
+            montgomery::{Encoding, ProductEncoding, Unencoded},
+        },
+        ec::suite_b::ops::{p256::NUM_LIMBS as P256_NUM_LIMBS, p384::NUM_LIMBS as P384_NUM_LIMBS},
+        limb::{LeakyLimb, Limb},
     },
-    limb::{LeakyLimb, Limb},
+    core::marker::PhantomData,
 };
-use core::marker::PhantomData;
 
 #[derive(Clone, Copy)]
 pub(super) enum NumLimbs {

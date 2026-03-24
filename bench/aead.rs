@@ -13,11 +13,13 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #![allow(missing_docs)]
 
-use criterion::{BatchSize, BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
-use ring::{
-    aead::{self, BoundKey},
-    error,
-    rand::{SecureRandom, SystemRandom},
+use {
+    criterion::{BatchSize, BenchmarkId, Criterion, black_box, criterion_group, criterion_main},
+    ring::{
+        aead::{self, BoundKey},
+        error,
+        rand::{SecureRandom, SystemRandom},
+    },
 };
 
 static ALGORITHMS: &[(&str, &aead::Algorithm)] = &[

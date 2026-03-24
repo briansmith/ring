@@ -38,22 +38,23 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{
+use {
     super::{
-        LimbSliceError, limbs512,
-        montgomery::{RInverse, RRR, Unencoded},
+        super::{
+            LimbSliceError, limbs512,
+            montgomery::{RInverse, RRR, Unencoded},
+        },
+        Elem, IntoMont, Mont, One, PrivateExponent, Uninit,
     },
-    Elem, IntoMont, Mont, One, PrivateExponent, Uninit,
+    crate::{
+        bits::BitLength,
+        cpu,
+        error::LenMismatchError,
+        limb::{self, LIMB_BITS, Limb},
+        window5::Window5,
+    },
+    core::mem::MaybeUninit,
 };
-use crate::{
-    bits::BitLength,
-    cpu,
-    error::LenMismatchError,
-    limb::{self, LIMB_BITS, Limb},
-    window5::Window5,
-};
-use core::mem::MaybeUninit;
 
 pub(crate) fn elem_exp_consttime<N, P>(
     base: &Elem<N>,
@@ -96,8 +97,10 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
-    use super::super::montgomery::{R, limbs_mul_mont, limbs_square_mont};
-    use crate::{bssl, c, error, polyfill::dynarray};
+    use {
+        super::super::montgomery::{R, limbs_mul_mont, limbs_square_mont},
+        crate::{bssl, c, error, polyfill::dynarray},
+    };
 
     let base_rinverse: Elem<M, RInverse> =
         out.elem_reduce_mont(base_mod_n, m, other_prime_len_bits);
@@ -210,24 +213,26 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
-    use super::{
+    use {
         super::{
-            limbs::x86_64::mont::{
-                gather5, mul_mont_gather5_amm, mul_mont5, power5_amm, sqr_mont5,
+            super::{
+                limbs::x86_64::mont::{
+                    gather5, mul_mont_gather5_amm, mul_mont5, power5_amm, sqr_mont5,
+                },
+                limbs512::scatter::scatter5,
+                montgomery::N0,
             },
-            limbs512::scatter::scatter5,
-            montgomery::N0,
+            elem::from_montgomery_amm,
+            unwrap_impossible_limb_slice_error,
         },
-        elem::from_montgomery_amm,
-        unwrap_impossible_limb_slice_error,
-    };
-    use crate::{
-        cpu::{
-            GetFeature as _,
-            intel::{Adx, Bmi2},
+        crate::{
+            cpu::{
+                GetFeature as _,
+                intel::{Adx, Bmi2},
+            },
+            polyfill::{self, sliceutil::as_chunks_exact},
+            window5::LeakyWindow5,
         },
-        polyfill::{self, sliceutil::as_chunks_exact},
-        window5::LeakyWindow5,
     };
 
     let n0 = m.n0();
@@ -370,11 +375,15 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
 
 #[cfg(test)]
 mod tests {
-    use super::super::elem::testutil::*;
-    use super::super::{PublicModulus, modulus, unwrap_impossible_len_mismatch_error};
-    use super::*;
-    use crate::cpu;
-    use crate::testutil as test;
+    use {
+        super::{
+            super::{
+                PublicModulus, elem::testutil::*, modulus, unwrap_impossible_len_mismatch_error,
+            },
+            *,
+        },
+        crate::{cpu, testutil as test},
+    };
 
     // Type-level representation of an arbitrary modulus.
     struct M {}

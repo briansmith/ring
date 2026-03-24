@@ -12,11 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    bigint::{Elem, Mont, Uninit},
-    montgomery::R,
+use {
+    super::{
+        bigint::{Elem, Mont, Uninit},
+        montgomery::R,
+    },
+    core::num::NonZero,
 };
-use core::num::NonZero;
 
 /// Calculates base**exponent (mod m).
 ///

@@ -12,10 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{BlockLen, CHAINING_WORDS};
-use crate::cpu;
-use cfg_if::cfg_if;
-use core::num::Wrapping;
+use {
+    super::{BlockLen, CHAINING_WORDS},
+    crate::cpu,
+    cfg_if::cfg_if,
+    core::num::Wrapping,
+};
 
 pub(in super::super) const SHA256_BLOCK_LEN: BlockLen = BlockLen::_512;
 

@@ -21,8 +21,10 @@
 //! [AEAD]: https://eprint.iacr.org/2000/025.pdf
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use super::{Aad, Algorithm, BoundKey, LessSafeKey, NonceSequence, Tag, UnboundKey};
-use crate::error;
+use {
+    super::{Aad, Algorithm, BoundKey, LessSafeKey, NonceSequence, Tag, UnboundKey},
+    crate::error,
+};
 
 /// An AEAD key for encrypting and signing ("sealing"), bound to a nonce
 /// sequence.

@@ -14,8 +14,10 @@
 
 //! Elliptic curve operations on P-256 & P-384.
 
-use self::ops::*;
-use crate::{arithmetic::montgomery::*, cpu, ec, error, io::der, pkcs8};
+use {
+    self::ops::*,
+    crate::{arithmetic::montgomery::*, cpu, ec, error, io::der, pkcs8},
+};
 
 // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
 // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed modulo

@@ -119,9 +119,10 @@
 
 extern crate alloc;
 
-use alloc::{format, string::String, vec::Vec};
-
-use crate::{bits, digest, error};
+use {
+    crate::{bits, digest, error},
+    alloc::{format, string::String, vec::Vec},
+};
 
 #[cfg(any(feature = "std", feature = "test_logging"))]
 extern crate std;
@@ -550,8 +551,7 @@ pub mod rand {
 
 #[cfg(test)]
 mod tests {
-    use crate::error;
-    use crate::testutil as test;
+    use crate::{error, testutil as test};
 
     #[test]
     fn one_ok() {

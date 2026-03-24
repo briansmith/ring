@@ -1,7 +1,10 @@
-use super::super::super::montgomery::RR;
-use super::*;
-use crate::cpu;
-use crate::error::{self, KeyRejected};
+use {
+    super::{super::super::montgomery::RR, *},
+    crate::{
+        cpu,
+        error::{self, KeyRejected},
+    },
+};
 
 pub fn consume_modulus<M>(
     test_case: &mut crate::testutil::TestCase,

@@ -14,10 +14,11 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{Algorithm, Output, format_output, sha1, sha2};
-use crate::cpu;
-use core::mem::size_of;
+use {
+    super::{Algorithm, Output, format_output, sha1, sha2},
+    crate::cpu,
+    core::mem::size_of,
+};
 
 pub(super) enum DynInitialState {
     As64(sha2::State64),

@@ -16,14 +16,15 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{
-    super::overlapping::IndexError,
-    Aad, BLOCK_LEN, Overlapping, Tag,
-    aes::{self, Counter, EncryptCtr32, OverlappingPartialBlock},
-    gcm, open_whole_partial_tail,
+use {
+    super::{
+        super::overlapping::IndexError,
+        Aad, BLOCK_LEN, Overlapping, Tag,
+        aes::{self, Counter, EncryptCtr32, OverlappingPartialBlock},
+        gcm, open_whole_partial_tail,
+    },
+    crate::{c, error::InputTooLongError},
 };
-use crate::{c, error::InputTooLongError};
 
 const STRIDE_LEN: usize = 6 * BLOCK_LEN;
 

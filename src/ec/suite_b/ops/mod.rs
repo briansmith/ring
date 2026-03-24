@@ -12,17 +12,17 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{
-    arithmetic::limbs_from_hex,
-    arithmetic::montgomery::*,
-    bb::LeakyWord,
-    cpu,
-    error::{self, LenMismatchError},
-    limb::*,
+use {
+    crate::{
+        arithmetic::{limbs_from_hex, montgomery::*},
+        bb::LeakyWord,
+        cpu,
+        error::{self, LenMismatchError},
+        limb::*,
+    },
+    core::marker::PhantomData,
+    elem::{mul_mont, unary_op, unary_op_assign, unary_op_from_binary_op_assign},
 };
-use core::marker::PhantomData;
-
-use elem::{mul_mont, unary_op, unary_op_assign, unary_op_from_binary_op_assign};
 
 /// A field element, i.e. an element of ℤ/qℤ for the curve's field modulus
 /// *q*.
@@ -611,9 +611,11 @@ fn unwrap_impossible_len_mismatch_error<T>(LenMismatchError { .. }: LenMismatchE
 #[cfg(test)]
 mod tests {
     extern crate alloc;
-    use super::*;
-    use crate::testutil as test;
-    use alloc::{format, vec, vec::Vec};
+    use {
+        super::*,
+        crate::testutil as test,
+        alloc::{format, vec::Vec},
+    };
 
     const ZERO_SCALAR: Scalar = Scalar {
         limbs: [0; elem::NumLimbs::MAX],
@@ -1146,6 +1148,7 @@ mod tests {
         pub_ops: &PublicKeyOps,
         test_file: test::File,
     ) {
+        use alloc::vec;
         let cpu = cpu::features();
         let cops = pub_ops.common;
         let q = &cops.elem_modulus(cpu);
@@ -1366,6 +1369,7 @@ mod tests {
     }
 
     fn consume_elem(q: &Modulus<Q>, test_case: &mut test::TestCase, name: &str) -> Elem<R> {
+        use alloc::vec;
         let unpadded_bytes = test_case.consume_bytes(name);
         let mut bytes = vec![0; q.bytes_len() - unpadded_bytes.len()];
         bytes.extend(&unpadded_bytes);

@@ -15,10 +15,11 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{BLOCK_LEN, Key, TAG_LEN, Tag};
-use crate::polyfill::sliceutil;
-use core::num::Wrapping;
+use {
+    super::{BLOCK_LEN, Key, TAG_LEN, Tag},
+    crate::polyfill::sliceutil,
+    core::num::Wrapping,
+};
 
 type W32 = Wrapping<u32>;
 type W64 = Wrapping<u64>;

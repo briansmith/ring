@@ -67,9 +67,10 @@ fn digest_scalar_(n: &Modulus<N>, digest: &[u8]) -> Scalar {
 
 #[cfg(test)]
 mod tests {
-    use super::digest_bytes_scalar;
-    use crate::testutil as test;
-    use crate::{cpu, digest, ec::suite_b::ops::*, limb};
+    use {
+        super::digest_bytes_scalar,
+        crate::{cpu, digest, ec::suite_b::ops::*, limb, testutil as test},
+    };
 
     #[test]
     fn test() {

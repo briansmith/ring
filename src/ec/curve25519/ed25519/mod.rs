@@ -14,8 +14,7 @@
 
 //! EdDSA Signatures.
 
-use super::ops::ELEM_LEN;
-use crate::digest;
+use {super::ops::ELEM_LEN, crate::digest};
 
 pub mod signing;
 pub mod verification;

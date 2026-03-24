@@ -14,12 +14,14 @@
 
 #![cfg(all(target_arch = "aarch64", target_endian = "little"))]
 
-use super::{
-    UpdateBlock, Xi,
-    ffi::{self, BLOCK_LEN, KeyValue},
+use {
+    super::{
+        UpdateBlock, Xi,
+        ffi::{self, BLOCK_LEN, KeyValue},
+    },
+    crate::cpu,
+    core::mem::MaybeUninit,
 };
-use crate::cpu;
-use core::mem::MaybeUninit;
 
 #[derive(Clone)]
 #[repr(transparent)] // Used in FFI

@@ -13,17 +13,18 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #[allow(unused_imports)]
-use crate::polyfill::prelude::*;
-
-use super::LimbSliceError;
-#[allow(unused_imports)]
 use super::MIN_LIMBS;
 pub use super::n0::N0;
-use crate::{
-    cpu,
-    polyfill::slice::{AliasSrc, AliasingSlices},
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+use {
+    super::LimbSliceError,
+    crate::{
+        cpu,
+        polyfill::slice::{AliasSrc, AliasingSlices},
+    },
+    cfg_if::cfg_if,
 };
-use cfg_if::cfg_if;
 
 // Indicates that the element is not encoded; there is no *R* factor
 // that needs to be canceled out.
@@ -241,8 +242,7 @@ where
 
     #[cfg(target_arch = "x86_64")]
     {
-        use super::limbs::x86_64;
-        use crate::cpu::GetFeature as _;
+        use {super::limbs::x86_64, crate::cpu::GetFeature as _};
         if let (n, []) = n.as_chunks() {
             return x86_64::mont::sqr_mont5(in_out, n, n0, cpu.get_feature());
         }

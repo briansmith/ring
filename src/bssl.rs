@@ -12,8 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::error;
-use core::ffi::c_int;
+use {crate::error, core::ffi::c_int};
 
 /// An `int` returned from a foreign function containing **1** if the function
 /// was successful or **0** if an error occurred. This is the convention used by
@@ -37,10 +36,12 @@ impl From<Result> for core::result::Result<(), error::Unspecified> {
 #[cfg(test)]
 mod tests {
     mod result {
-        use crate::bssl;
-        use core::{
-            ffi::c_int,
-            mem::{align_of, size_of},
+        use {
+            crate::bssl,
+            core::{
+                ffi::c_int,
+                mem::{align_of, size_of},
+            },
         };
 
         #[test]

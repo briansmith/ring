@@ -16,23 +16,25 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use crate::polyfill::{self, SmallerChunks, StartMutPtr, slice::Uninit};
-
-use super::super::super::{
-    LimbSliceError, MAX_LIMBS,
-    limbs512::storage::{check_common, check_common_with_n},
-    n0::N0,
+use {
+    super::super::super::{
+        LimbSliceError, MAX_LIMBS,
+        limbs512::storage::{check_common, check_common_with_n},
+        n0::N0,
+    },
+    crate::{
+        c,
+        cpu::intel::{Adx, Bmi1, Bmi2},
+        error::LenMismatchError,
+        limb::Limb,
+        polyfill::{
+            self, SmallerChunks, StartMutPtr,
+            slice::{AliasingSlices, Uninit},
+        },
+        window5::Window5,
+    },
+    core::{mem::MaybeUninit, num::NonZero},
 };
-use crate::{
-    c,
-    cpu::intel::{Adx, Bmi1, Bmi2},
-    error::LenMismatchError,
-    limb::Limb,
-    polyfill::slice::AliasingSlices,
-    window5::Window5,
-};
-use core::{mem::MaybeUninit, num::NonZero};
 
 const _512_IS_LIMB_BITS_TIMES_8: () = assert!(8 * Limb::BITS == 512);
 

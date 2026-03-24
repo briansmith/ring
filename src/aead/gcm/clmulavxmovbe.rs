@@ -14,9 +14,11 @@
 
 #![cfg(target_arch = "x86_64")]
 
-use super::{BLOCK_LEN, KeyValue, UpdateBlock, UpdateBlocks, Xi, ffi};
-use crate::{c, cpu::intel};
-use core::{mem::MaybeUninit, num::NonZero, slice};
+use {
+    super::{BLOCK_LEN, KeyValue, UpdateBlock, UpdateBlocks, Xi, ffi},
+    crate::{c, cpu::intel},
+    core::{mem::MaybeUninit, num::NonZero, slice},
+};
 
 #[derive(Clone)]
 #[repr(transparent)]

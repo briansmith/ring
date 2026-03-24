@@ -21,13 +21,6 @@
 //! [AEAD]: https://eprint.iacr.org/2000/025.pdf
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use self::auth_error::AuthError;
-use crate::{
-    bb, cpu,
-    error::{self, InputTooLongError},
-    polyfill::{u64_from_usize, usize_from_u64_saturated},
-};
-
 pub use self::{
     algorithm::{AES_128_GCM, AES_256_GCM, Algorithm, CHACHA20_POLY1305},
     less_safe_key::LessSafeKey,
@@ -35,6 +28,14 @@ pub use self::{
     opening_key::OpeningKey,
     sealing_key::SealingKey,
     unbound_key::UnboundKey,
+};
+use {
+    self::auth_error::AuthError,
+    crate::{
+        bb, cpu,
+        error::{self, InputTooLongError},
+        polyfill::{u64_from_usize, usize_from_u64_saturated},
+    },
 };
 
 /// A sequences of unique nonces.

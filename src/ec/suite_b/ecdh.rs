@@ -14,8 +14,10 @@
 
 //! ECDH key agreement using the P-256 and P-384 curves.
 
-use super::{ops::*, private_key::*, public_key::*};
-use crate::{agreement, cpu, ec, error};
+use {
+    super::{ops::*, private_key::*, public_key::*},
+    crate::{agreement, cpu, ec, error},
+};
 
 /// A key agreement algorithm.
 macro_rules! ecdh {
@@ -146,9 +148,10 @@ fn ecdh(
 
 #[cfg(test)]
 mod tests {
-    use super::super::ops;
-    use crate::testutil as test;
-    use crate::{agreement, ec, limb};
+    use {
+        super::super::ops,
+        crate::{agreement, ec, limb, testutil as test},
+    };
 
     static SUPPORTED_SUITE_B_ALGS: [(&str, &agreement::Algorithm, &ec::Curve, &ops::CommonOps); 2] = [
         (

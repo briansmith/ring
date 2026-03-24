@@ -14,14 +14,15 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use crate::{
-    error::LenMismatchError,
-    limb::{self, Limb},
-    polyfill,
+use {
+    crate::{
+        error::LenMismatchError,
+        limb::{self, Limb},
+        polyfill,
+    },
+    alloc::{boxed::Box, vec::Vec},
+    core::{marker::PhantomData, ptr},
 };
-use alloc::{boxed::Box, vec::Vec};
-use core::{marker::PhantomData, ptr};
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
 pub(super) struct BoxedLimbs<M> {

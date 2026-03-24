@@ -14,13 +14,14 @@
 
 #![allow(missing_docs)]
 
-use core::num::NonZero;
-use ring::{digest, error, pbkdf2};
 #[allow(deprecated)]
 use ring::{test, test_file};
-
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
+use {
+    core::num::NonZero,
+    ring::{digest, error, pbkdf2},
+};
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 wasm_bindgen_test_configure!(run_in_browser);

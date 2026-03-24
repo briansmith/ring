@@ -1,11 +1,13 @@
-use crate::{
-    arithmetic::{bigint, montgomery::RR},
-    bits::{self, FromByteLen as _},
-    cpu,
-    error::{self, InputTooLongError},
-    rsa::N,
+use {
+    crate::{
+        arithmetic::{bigint, montgomery::RR},
+        bits::{self, FromByteLen as _},
+        cpu,
+        error::{self, InputTooLongError},
+        rsa::N,
+    },
+    core::ops::RangeInclusive,
 };
-use core::ops::RangeInclusive;
 
 /// The modulus (n) of an RSA public key.
 #[derive(Clone)]

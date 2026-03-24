@@ -14,14 +14,16 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use super::digest_scalar::digest_scalar;
-use crate::{
-    arithmetic::montgomery::*,
-    cpu, digest,
-    ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve},
-    error,
-    io::der,
-    limb, sealed, signature,
+use {
+    super::digest_scalar::digest_scalar,
+    crate::{
+        arithmetic::montgomery::*,
+        cpu, digest,
+        ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve},
+        error,
+        io::der,
+        limb, sealed, signature,
+    },
 };
 
 /// An ECDSA verification algorithm.
@@ -274,9 +276,11 @@ pub static ECDSA_P384_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificatio
 #[cfg(test)]
 mod tests {
     extern crate alloc;
-    use super::*;
-    use crate::testutil as test;
-    use alloc::{vec, vec::Vec};
+    use {
+        super::*,
+        crate::testutil as test,
+        alloc::{vec, vec::Vec},
+    };
 
     #[test]
     fn test_digest_based_test_vectors() {

@@ -14,13 +14,14 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{AES_128_KEY_LEN, AES_256_KEY_LEN, BLOCK_LEN, KeyBytes, Overlapping};
-use crate::{bits::BitLength, c};
-use core::{
-    ffi::{c_int, c_uint},
-    mem::MaybeUninit,
-    num::NonZero,
+use {
+    super::{AES_128_KEY_LEN, AES_256_KEY_LEN, BLOCK_LEN, KeyBytes, Overlapping},
+    crate::{bits::BitLength, c},
+    core::{
+        ffi::{c_int, c_uint},
+        mem::MaybeUninit,
+        num::NonZero,
+    },
 };
 
 /// nonce || big-endian counter.

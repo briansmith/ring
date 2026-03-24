@@ -12,14 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{NONCE_LEN, Overlapping, nonce::Nonce, overlapping, quic::Sample};
-use crate::cpu::{self, GetFeature as _};
-use core::num::NonZero;
-
 #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
 pub(super) use self::ffi::{RdKey, Rounds};
-
 pub(super) use ffi::Counter;
+use {
+    super::{NONCE_LEN, Overlapping, nonce::Nonce, overlapping, quic::Sample},
+    crate::cpu::{self, GetFeature as _},
+    core::num::NonZero,
+};
 
 #[macro_use]
 mod ffi;

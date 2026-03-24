@@ -19,9 +19,10 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use crate::error::LenMismatchError;
-use core::{mem::MaybeUninit, num::NonZero};
+use {
+    crate::error::LenMismatchError,
+    core::{mem::MaybeUninit, num::NonZero},
+};
 
 /// An uninitialized array of slices.
 ///

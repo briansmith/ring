@@ -21,8 +21,10 @@
 //! [AEAD]: https://eprint.iacr.org/2000/025.pdf
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use super::{Algorithm, LessSafeKey, MAX_KEY_LEN};
-use crate::{cpu, error, hkdf};
+use {
+    super::{Algorithm, LessSafeKey, MAX_KEY_LEN},
+    crate::{cpu, error, hkdf},
+};
 
 /// An AEAD key without a designated role or nonce sequence.
 pub struct UnboundKey {

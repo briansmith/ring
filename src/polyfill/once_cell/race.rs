@@ -34,12 +34,13 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use cfg_if::cfg_if;
-use core::{
-    marker::PhantomData,
-    num::NonZero,
-    sync::atomic::{self, AtomicU32},
+use {
+    cfg_if::cfg_if,
+    core::{
+        marker::PhantomData,
+        num::NonZero,
+        sync::atomic::{self, AtomicU32},
+    },
 };
 
 pub trait Ordering {

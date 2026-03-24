@@ -12,8 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::Word;
-use core::{hint, ops};
+use {
+    super::Word,
+    core::{hint, ops},
+};
 
 // BoolMask is either `BoolMask::TRUE` or `BoolMask::FALSE`.
 #[repr(transparent)]

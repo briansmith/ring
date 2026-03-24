@@ -13,10 +13,12 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #![allow(missing_docs)]
 
-use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
-use ring::{
-    agreement::{self, EphemeralPrivateKey, UnparsedPublicKey},
-    rand,
+use {
+    criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main},
+    ring::{
+        agreement::{self, EphemeralPrivateKey, UnparsedPublicKey},
+        rand,
+    },
 };
 
 static ALGORITHMS: &[(&str, &agreement::Algorithm)] = &[

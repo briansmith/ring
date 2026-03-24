@@ -12,12 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::BlockLen;
-
 pub(super) use self::{
     sha2_32::{SHA256_BLOCK_LEN, State32, block_data_order_32},
     sha2_64::{SHA512_BLOCK_LEN, State64, block_data_order_64},
 };
+use super::BlockLen;
 
 pub(super) const CHAINING_WORDS: usize = 8;
 

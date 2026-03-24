@@ -12,13 +12,15 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    super::{NONCE_LEN, TAG_LEN},
-    Aad, InputTooLongError, KEY_LEN, Key, Nonce, Tag,
-    chacha::Overlapping,
-    check_input_lengths,
+use {
+    super::{
+        super::{NONCE_LEN, TAG_LEN},
+        Aad, InputTooLongError, KEY_LEN, Key, Nonce, Tag,
+        chacha::Overlapping,
+        check_input_lengths,
+    },
+    cfg_if::cfg_if,
 };
-use cfg_if::cfg_if;
 
 macro_rules! declare_open {
     ( unsafe fn $name:ident ) => {

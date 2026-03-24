@@ -12,8 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::PublicKey;
-use core::iter::FromIterator;
+use {super::PublicKey, core::iter::FromIterator};
 
 /// RSA public key components.
 ///

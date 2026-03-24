@@ -57,8 +57,10 @@ const _AARCH64_APPLE_DARWIN_TARGETS_EXPECTED_FEATURES: () =
 pub fn detect_features() -> u32 {
     #[cfg(all(target_pointer_width = "64", not(target_os = "watchos")))]
     fn detect_feature(name: &CStr) -> bool {
-        use core::{mem::size_of_val, ptr};
-        use libc::{c_int, c_void};
+        use {
+            core::{mem::size_of_val, ptr},
+            libc::{c_int, c_void},
+        };
 
         let mut value: c_int = 0;
         let mut len = size_of_val(&value);
@@ -98,9 +100,10 @@ pub fn detect_features() -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::Sha512;
-    use super::*;
-    use crate::cpu::{self, GetFeature};
+    use {
+        super::{super::Sha512, *},
+        crate::cpu::{self, GetFeature},
+    };
 
     #[test]
     fn sha512_detection() {

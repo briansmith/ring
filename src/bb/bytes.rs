@@ -16,9 +16,10 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{BoolMask, LeakyWord, Word, WordOps};
-use crate::{bits::BitLength, error, polyfill::usize_from_u32};
+use {
+    super::{BoolMask, LeakyWord, Word, WordOps},
+    crate::{bits::BitLength, error, polyfill::usize_from_u32},
+};
 
 pub fn byte_leading_zeros_vartime(a: &u8) -> BitLength<usize> {
     BitLength::from_bits(usize_from_u32(a.leading_zeros()))

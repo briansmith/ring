@@ -14,9 +14,10 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use crate::{arithmetic::limbs_from_hex, digest, error, limb};
-use core::array;
+use {
+    crate::{arithmetic::limbs_from_hex, digest, error, limb},
+    core::array,
+};
 
 #[repr(transparent)]
 pub struct Scalar([u8; SCALAR_LEN]);

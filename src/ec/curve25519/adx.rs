@@ -12,12 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::ops::{P3, Scalar};
-use crate::cpu::{
-    self, GetFeature as _,
-    intel::{Adx, Bmi1, Bmi2},
+use {
+    super::ops::{P3, Scalar},
+    crate::cpu::{
+        self, GetFeature as _,
+        intel::{Adx, Bmi1, Bmi2},
+    },
+    core::mem::MaybeUninit,
 };
-use core::mem::MaybeUninit;
 
 pub type RequiredFeatures = (Adx, Bmi1, Bmi2);
 

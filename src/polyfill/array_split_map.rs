@@ -14,7 +14,6 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
 use core::array;
 
 pub trait ArraySplitMap<I, O, const CN: usize, const ON: usize> {

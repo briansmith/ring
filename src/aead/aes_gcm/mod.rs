@@ -14,19 +14,6 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{
-    Aad, AuthError, ForgedPlaintext, Nonce, Overlapping, Tag,
-    aes::{self, BLOCK_LEN, Counter, OverlappingPartialBlock, ZERO_BLOCK},
-    gcm,
-    overlapping::IndexError,
-};
-use crate::{
-    cpu,
-    error::InputTooLongError,
-    polyfill::{sliceutil::overwrite_at_start, usize_from_u64_saturated},
-};
-
 #[cfg(any(
     all(target_arch = "aarch64", target_endian = "little"),
     all(target_arch = "arm", target_endian = "little"),
@@ -34,6 +21,19 @@ use crate::{
     target_arch = "x86_64"
 ))]
 use cpu::GetFeature as _;
+use {
+    super::{
+        Aad, AuthError, ForgedPlaintext, Nonce, Overlapping, Tag,
+        aes::{self, BLOCK_LEN, Counter, OverlappingPartialBlock, ZERO_BLOCK},
+        gcm,
+        overlapping::IndexError,
+    },
+    crate::{
+        cpu,
+        error::InputTooLongError,
+        polyfill::{sliceutil::overwrite_at_start, usize_from_u64_saturated},
+    },
+};
 
 mod aarch64;
 mod aeshwclmulmovbe;

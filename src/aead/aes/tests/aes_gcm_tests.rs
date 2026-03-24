@@ -15,8 +15,10 @@
 // These AES-GCM-specific tests are here instead of in `aead/tess/` because
 // `Counter`'s API isn't visible at that level.
 
-use super::super::{super::aes_gcm::MAX_IN_OUT_LEN, *};
-use core::num::NonZero;
+use {
+    super::super::{super::aes_gcm::MAX_IN_OUT_LEN, *},
+    core::num::NonZero,
+};
 
 #[test]
 fn test_aes_gcm_counter_blocks_max() {

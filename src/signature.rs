@@ -255,8 +255,6 @@
 //! # }
 //! ```
 
-use crate::{cpu, debug, ec, error, sealed};
-
 pub use crate::ec::{
     curve25519::ed25519::{
         ED25519_PUBLIC_KEY_LEN,
@@ -276,7 +274,6 @@ pub use crate::ec::{
         },
     },
 };
-
 #[cfg(feature = "alloc")]
 pub use crate::rsa::{
     RsaParameters,
@@ -294,6 +291,7 @@ pub use crate::rsa::{
         RsaPublicKeyComponents,
     },
 };
+use crate::{cpu, debug, ec, error, sealed};
 
 /// An RSA key pair, used for signing.
 #[cfg(feature = "alloc")]

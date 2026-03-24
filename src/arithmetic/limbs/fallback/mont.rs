@@ -14,20 +14,21 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::super::super::{
-    LimbSliceError, MAX_LIMBS, MIN_LIMBS,
-    ffi::bn_mul_mont_ffi,
-    montgomery::{N0, limbs_from_mont_in_place},
+use {
+    super::super::super::{
+        LimbSliceError, MAX_LIMBS, MIN_LIMBS,
+        ffi::bn_mul_mont_ffi,
+        montgomery::{N0, limbs_from_mont_in_place},
+    },
+    crate::{
+        c,
+        error::LenMismatchError,
+        limb::Limb,
+        polyfill::slice::{AliasedUninit, AliasingSlices},
+    },
+    cfg_if::cfg_if,
+    core::{hint::unreachable_unchecked, num::NonZero},
 };
-use crate::{
-    c,
-    error::LenMismatchError,
-    limb::Limb,
-    polyfill::slice::{AliasedUninit, AliasingSlices},
-};
-use cfg_if::cfg_if;
-use core::{hint::unreachable_unchecked, num::NonZero};
 
 #[allow(dead_code)]
 #[inline]
@@ -127,8 +128,7 @@ prefixed_extern! {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::super::MAX_LIMBS;
-    use super::*;
+    use super::{super::super::super::MAX_LIMBS, *};
 
     #[test]
     // TODO: wasm

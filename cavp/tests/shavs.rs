@@ -52,13 +52,11 @@ mod digest_shavs {
         ( $file_name:ident, $algorithm_name:ident ) => {
             #[allow(non_snake_case)]
             mod $algorithm_name {
-                use super::run_known_answer_test;
-                use ring::digest;
                 #[allow(deprecated)]
                 use ring::test_file;
-
                 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
                 use wasm_bindgen_test::wasm_bindgen_test as test;
+                use {super::run_known_answer_test, ring::digest};
 
                 #[test]
                 fn short_msg_known_answer_test() {

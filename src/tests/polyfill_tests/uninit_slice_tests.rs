@@ -12,11 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{
-    error::LenMismatchError,
-    polyfill::{StartPtr, slice::Uninit},
+use {
+    crate::{
+        error::LenMismatchError,
+        polyfill::{StartPtr, slice::Uninit},
+    },
+    core::{mem::MaybeUninit, ptr, slice},
 };
-use core::{mem::MaybeUninit, ptr, slice};
 
 #[test]
 fn test_write_fully_with_empty() {

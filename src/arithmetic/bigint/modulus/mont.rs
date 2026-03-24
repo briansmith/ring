@@ -14,26 +14,26 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{
+use {
     super::{
-        super::montgomery::{RR, RRR, Unencoded, limbs_square_mont},
-        Elem, N0, One, OversizedUninit, PublicModulus, Uninit,
-        modulus::value::Value,
-        unwrap_impossible_limb_slice_error,
+        super::{
+            super::montgomery::{RR, RRR, Unencoded, limbs_square_mont},
+            Elem, N0, One, OversizedUninit, PublicModulus, Uninit,
+            modulus::value::Value,
+            unwrap_impossible_limb_slice_error,
+        },
+        ValidatedInput,
     },
-    ValidatedInput,
+    crate::{
+        bits::BitLength,
+        cpu,
+        error::{self, LenMismatchError},
+        limb::{self, LIMB_BITS, Limb},
+        polyfill::{self, LeadingZerosStripped, slice::Cursor},
+    },
+    alloc::boxed::Box,
+    core::{marker::PhantomData, num::NonZero},
 };
-use crate::polyfill::slice::Cursor;
-use crate::{
-    bits::BitLength,
-    cpu,
-    error::{self, LenMismatchError},
-    limb::{self, LIMB_BITS, Limb},
-    polyfill::{self, LeadingZerosStripped},
-};
-use alloc::boxed::Box;
-use core::{marker::PhantomData, num::NonZero};
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd

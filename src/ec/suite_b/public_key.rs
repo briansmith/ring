@@ -15,8 +15,10 @@
 //! Functionality shared by operations on public keys (ECDSA verification and
 //! ECDH agreement).
 
-use super::{ops::*, verify_affine_point_is_on_the_curve};
-use crate::{arithmetic::montgomery::*, error};
+use {
+    super::{ops::*, verify_affine_point_is_on_the_curve},
+    crate::{arithmetic::montgomery::*, error},
+};
 
 /// Parses a public key encoded in uncompressed form. The key is validated
 /// using the ECC Partial Public-Key Validation Routine from
@@ -67,9 +69,10 @@ pub(super) fn parse_uncompressed_point(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::cpu;
-    use crate::testutil as test;
+    use {
+        super::*,
+        crate::{cpu, testutil as test},
+    };
 
     #[test]
     fn parse_uncompressed_point_test() {

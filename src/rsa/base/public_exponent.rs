@@ -1,6 +1,10 @@
-use crate::error;
-use crate::polyfill::{ArrayFlatMap, LeadingZerosStripped};
-use core::num::NonZero;
+use {
+    crate::{
+        error,
+        polyfill::{ArrayFlatMap, LeadingZerosStripped},
+    },
+    core::num::NonZero,
+};
 
 /// The exponent `e` of an RSA public key.
 #[derive(Clone, Copy)]

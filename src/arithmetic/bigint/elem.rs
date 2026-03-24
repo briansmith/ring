@@ -14,24 +14,25 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{
-    super::{MAX_LIMBS, montgomery::*},
-    IntoMont, Mont, Uninit,
-    boxed_limbs::BoxedLimbs,
-    unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
-};
-use crate::{
-    bits::BitLength,
-    c, cpu,
-    error::{self, LenMismatchError},
-    limb::{self, Limb},
-    polyfill::{
-        StartMutPtr,
-        slice::{AliasingSlices, InOut},
+use {
+    super::{
+        super::{MAX_LIMBS, montgomery::*},
+        IntoMont, Mont, Uninit,
+        boxed_limbs::BoxedLimbs,
+        unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
     },
+    crate::{
+        bits::BitLength,
+        c, cpu,
+        error::{self, LenMismatchError},
+        limb::{self, Limb},
+        polyfill::{
+            StartMutPtr,
+            slice::{AliasingSlices, InOut},
+        },
+    },
+    core::{marker::PhantomData, num::NonZero},
 };
-use core::{marker::PhantomData, num::NonZero};
 
 /// Elements of ℤ/mℤ for some modulus *m*.
 //

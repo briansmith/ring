@@ -17,9 +17,10 @@
 // (https://github.com/floodyberry/poly1305-donna) and released as public
 // domain.
 
-use super::super::{Tag, poly1305::*};
-use crate::cpu;
-use crate::testutil as test;
+use {
+    super::super::{Tag, poly1305::*},
+    crate::{cpu, testutil as test},
+};
 
 // Adapted from BoringSSL's crypto/poly1305/poly1305_test.cc.
 #[test]

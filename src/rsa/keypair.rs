@@ -18,7 +18,6 @@ use super::{
     padding::{self, RsaEncoding},
     public_key,
 };
-
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
     arithmetic::{
@@ -672,9 +671,7 @@ impl KeyPair {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::testutil as test;
-    use alloc::vec;
+    use {super::*, crate::testutil as test, alloc::vec};
 
     #[test]
     fn test_rsakeypair_private_exponentiate() {

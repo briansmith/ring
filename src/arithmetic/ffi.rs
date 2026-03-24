@@ -12,13 +12,15 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{LimbSliceError, MAX_LIMBS, MIN_LIMBS, n0::N0};
-use crate::{
-    c,
-    limb::{LIMB_BITS, Limb},
-    polyfill::{StartMutPtr, slice::AliasingSlices, usize_from_u32},
+use {
+    super::{LimbSliceError, MAX_LIMBS, MIN_LIMBS, n0::N0},
+    crate::{
+        c,
+        limb::{LIMB_BITS, Limb},
+        polyfill::{StartMutPtr, slice::AliasingSlices, usize_from_u32},
+    },
+    core::{mem::size_of, num::NonZero},
 };
-use core::{mem::size_of, num::NonZero};
 
 const _MIN_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
     // The x86 implementation of `bn_mul_mont_sse2` requires at least 4
@@ -47,8 +49,10 @@ const _MAX_LIMBS_ADDRESSES_MEMORY_SAFETY_ISSUES: () = {
 macro_rules! bn_mul_mont_ffi {
     ( $in_out:expr, $n:expr, $n0:expr, $cpu:expr,
       unsafe { ($MIN_LEN:expr, $MOD_LEN:expr, $Cpu:ty) => $f:ident }) => {{
-        use crate::{c, limb::Limb};
-        use core::num::NonZero;
+        use {
+            crate::{c, limb::Limb},
+            core::num::NonZero,
+        };
         prefixed_extern! {
             // `r` and/or 'a' and/or 'b' may alias.
             unsafe fn $f(

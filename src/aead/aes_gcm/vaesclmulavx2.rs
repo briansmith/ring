@@ -16,10 +16,11 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{BLOCK_LEN, Counter, Overlapping, aes, gcm};
-use crate::c;
-use core::num::NonZero;
+use {
+    super::{BLOCK_LEN, Counter, Overlapping, aes, gcm},
+    crate::c,
+    core::num::NonZero,
+};
 
 pub(super) fn seal_whole_vaes_clmul_avx2(
     aes_key: &aes::hw::Key,

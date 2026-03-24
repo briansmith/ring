@@ -36,8 +36,10 @@ use super::Neon;
 pub const FORCE_DYNAMIC_DETECTION: u32 = !Neon::mask();
 
 pub fn detect_features() -> u32 {
-    use super::{Aes, CAPS_STATIC, PMull, Sha256, Sha512};
-    use libc::{AT_HWCAP, HWCAP_AES, HWCAP_PMULL, HWCAP_SHA2, HWCAP_SHA512, getauxval};
+    use {
+        super::{Aes, CAPS_STATIC, PMull, Sha256, Sha512},
+        libc::{AT_HWCAP, HWCAP_AES, HWCAP_PMULL, HWCAP_SHA2, HWCAP_SHA512, getauxval},
+    };
 
     let mut features = 0;
 

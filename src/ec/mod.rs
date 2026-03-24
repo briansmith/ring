@@ -12,9 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{cpu, error, rand};
-
 pub use self::keys::{KeyPair, PublicKey, Seed};
+use crate::{cpu, error, rand};
 
 pub struct Curve {
     pub public_key_len: usize,

@@ -16,14 +16,15 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::super::super::{LimbSliceError, MAX_LIMBS, MIN_LIMBS, n0::N0};
-use crate::{
-    c,
-    limb::{LIMB_BYTES, Limb},
-    polyfill::{StartMutPtr, slice::AliasingSlices},
+use {
+    super::super::super::{LimbSliceError, MAX_LIMBS, MIN_LIMBS, n0::N0},
+    crate::{
+        c,
+        limb::{LIMB_BYTES, Limb},
+        polyfill::{StartMutPtr, slice::AliasingSlices},
+    },
+    core::num::NonZero,
 };
-use core::num::NonZero;
 
 // On Windows, at least, if a function stack allocates 4KB then it
 // must call `__chkstk` or do equivalent work. We check 3KB instead so

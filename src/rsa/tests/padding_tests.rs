@@ -12,10 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::super::padding::*;
-use crate::testutil as test;
-use crate::{digest, error, sealed};
-use alloc::vec;
+use {
+    super::super::padding::*,
+    crate::{digest, error, sealed, testutil as test},
+    alloc::vec,
+};
 
 #[test]
 fn test_pss_padding_verify() {

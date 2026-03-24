@@ -12,16 +12,17 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::super::super::{MAX_LIMBS, MIN_LIMBS};
-use crate::{
-    bb,
-    bits::{BitLength, FromByteLen as _},
-    error::{self, InputTooLongError, LenMismatchError},
-    limb,
-    limb::{LIMB_BITS, LIMB_BYTES, Limb},
-    polyfill::usize_from_u32,
+use {
+    super::super::super::{MAX_LIMBS, MIN_LIMBS},
+    crate::{
+        bb,
+        bits::{BitLength, FromByteLen as _},
+        error::{self, InputTooLongError, LenMismatchError},
+        limb::{self, LIMB_BITS, LIMB_BYTES, Limb},
+        polyfill::usize_from_u32,
+    },
+    core::marker::PhantomData,
 };
-use core::marker::PhantomData;
 
 /// `OwnedModulus`, without the overhead of Montgomery multiplication support.
 pub(crate) struct Value<'a, M> {

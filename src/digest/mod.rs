@@ -18,25 +18,25 @@
 //! function should be used. Otherwise, the digest can be calculated in
 //! multiple steps using `Context`.
 
+pub(crate) use self::finish_error::FinishError;
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use self::{
-    dynstate::{DynInitialState, DynState},
-    sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
-};
-use crate::{
-    bits::{BitLength, FromByteLen as _},
-    cpu, debug, error,
-    polyfill::{
-        self,
-        partial_buffer::{PartialBuffer, PurportedLen},
-        sliceutil,
+use {
+    self::{
+        dynstate::{DynInitialState, DynState},
+        sha2::{SHA256_BLOCK_LEN, SHA512_BLOCK_LEN},
     },
+    crate::{
+        bits::{BitLength, FromByteLen as _},
+        cpu, debug, error,
+        polyfill::{
+            self,
+            partial_buffer::{PartialBuffer, PurportedLen},
+            sliceutil,
+        },
+    },
+    core::num::Wrapping,
 };
-use core::num::Wrapping;
-
-pub(crate) use self::finish_error::FinishError;
 
 mod dynstate;
 mod sha1;
@@ -620,9 +620,7 @@ impl OutputLen {
 mod tests {
     mod max_input {
         extern crate alloc;
-        use super::super::super::digest;
-        use crate::polyfill::u64_from_usize;
-        use alloc::vec;
+        use {super::super::super::digest, crate::polyfill::u64_from_usize, alloc::vec};
 
         macro_rules! max_input_tests {
             ( $algorithm_name:ident ) => {

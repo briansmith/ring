@@ -14,17 +14,18 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::LIMBS_PER_CHUNK;
-use crate::{
-    arithmetic::{LimbSliceError, MAX_LIMBS},
-    error::LenMismatchError,
-    limb::Limb,
-    polyfill::StartPtr,
-};
-use core::{
-    mem::{MaybeUninit, align_of, size_of},
-    num::NonZero,
+use {
+    super::LIMBS_PER_CHUNK,
+    crate::{
+        arithmetic::{LimbSliceError, MAX_LIMBS},
+        error::LenMismatchError,
+        limb::Limb,
+        polyfill::StartPtr,
+    },
+    core::{
+        mem::{MaybeUninit, align_of, size_of},
+        num::NonZero,
+    },
 };
 // Some x86_64 assembly is written under the assumption that some of its
 // input data and/or temporary storage is aligned to `MOD_EXP_CTIME_ALIGN`

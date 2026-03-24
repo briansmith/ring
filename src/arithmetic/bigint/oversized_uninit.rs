@@ -14,10 +14,11 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{Limb, MAX_LIMBS};
-use crate::polyfill;
-use core::mem::MaybeUninit;
+use {
+    super::{Limb, MAX_LIMBS},
+    crate::polyfill,
+    core::mem::MaybeUninit,
+};
 
 /// A buffer that has enough space to hold `N` values of the maximum size,
 /// hiding the representation of values from the user.

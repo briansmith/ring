@@ -18,9 +18,11 @@
 
 #![cfg(all(target_arch = "arm", target_endian = "little"))]
 
-use super::{BLOCK_LEN, Key, Tag};
-use crate::{c, cpu::arm::Neon, polyfill::sliceutil};
-use core::{ffi::c_int, num::Wrapping};
+use {
+    super::{BLOCK_LEN, Key, Tag},
+    crate::{c, cpu::arm::Neon, polyfill::sliceutil},
+    core::{ffi::c_int, num::Wrapping},
+};
 
 type W32 = Wrapping<u32>;
 const ZERO: W32 = Wrapping(0);

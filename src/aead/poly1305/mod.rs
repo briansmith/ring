@@ -19,14 +19,15 @@
 
 // TODO: enforce maximum input length.
 
-#[allow(unused_imports)]
-use crate::polyfill::prelude::*;
-
-use super::{TAG_LEN, Tag};
-use crate::cpu;
 #[cfg(all(target_arch = "arm", target_endian = "little"))]
 use crate::cpu::GetFeature as _;
-use core::slice;
+#[allow(unused_imports)]
+use crate::polyfill::prelude::*;
+use {
+    super::{TAG_LEN, Tag},
+    crate::cpu,
+    core::slice,
+};
 
 mod arm_neon;
 mod fallback;

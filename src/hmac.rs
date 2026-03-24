@@ -105,6 +105,7 @@
 //!
 //! [RFC 2104]: https://tools.ietf.org/html/rfc2104
 
+pub(crate) use crate::digest::InputTooLongError;
 use crate::{
     bb, cpu,
     digest::{self, Digest, FinishError},
@@ -112,8 +113,6 @@ use crate::{
     polyfill::partial_buffer::PartialBuffer,
     rand,
 };
-
-pub(crate) use crate::digest::InputTooLongError;
 
 /// An HMAC algorithm.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

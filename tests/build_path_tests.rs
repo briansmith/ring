@@ -14,8 +14,10 @@
 
 #![allow(missing_docs)]
 
-use self::path::join_components_with_forward_slashes_if_windows;
-use std::{ffi::OsStr, path::Path};
+use {
+    self::path::join_components_with_forward_slashes_if_windows,
+    std::{ffi::OsStr, path::Path},
+};
 
 #[allow(dead_code)]
 #[path = "../build/build/path.rs"]

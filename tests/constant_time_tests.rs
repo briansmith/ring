@@ -19,7 +19,6 @@ use constant_time::verify_slices_are_equal;
 #[allow(deprecated)]
 use ring::constant_time;
 use ring::{error, rand};
-
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 

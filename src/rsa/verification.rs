@@ -14,17 +14,19 @@
 
 //! Verification of RSA signatures.
 
-use super::{
-    PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, PublicKeyComponents, RsaParameters,
-    base::{PublicExponent, public_key},
-    parse_public_key,
-};
-use crate::{
-    arithmetic::bigint,
-    bits::{self, FromByteLen as _},
-    cpu, digest,
-    error::{self, InputTooLongError},
-    sealed, signature,
+use {
+    super::{
+        PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, PublicKeyComponents, RsaParameters,
+        base::{PublicExponent, public_key},
+        parse_public_key,
+    },
+    crate::{
+        arithmetic::bigint,
+        bits::{self, FromByteLen as _},
+        cpu, digest,
+        error::{self, InputTooLongError},
+        sealed, signature,
+    },
 };
 
 impl signature::VerificationAlgorithm for RsaParameters {

@@ -13,8 +13,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #![allow(missing_docs)]
 
-use criterion::{Criterion, criterion_group, criterion_main};
-use ring::signature::{RSA_PKCS1_2048_8192_SHA256, UnparsedPublicKey};
+use {
+    criterion::{Criterion, criterion_group, criterion_main},
+    ring::signature::{RSA_PKCS1_2048_8192_SHA256, UnparsedPublicKey},
+};
 
 macro_rules! verify_case {
     ( $modulus_bits:expr, $exponent_value:expr ) => {

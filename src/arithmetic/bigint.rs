@@ -38,12 +38,13 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use self::boxed_limbs::BoxedLimbs;
-use super::{LimbSliceError, MAX_LIMBS, montgomery::*};
-use crate::{
-    error::{self, LenMismatchError},
-    limb::{self, Limb},
+use {
+    self::boxed_limbs::BoxedLimbs,
+    super::{LimbSliceError, MAX_LIMBS, montgomery::*},
+    crate::{
+        error::{self, LenMismatchError},
+        limb::{self, Limb},
+    },
 };
 pub(crate) use {
     self::{
@@ -106,10 +107,10 @@ fn unwrap_impossible_limb_slice_error<T>(err: LimbSliceError) -> T {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::{elem::testutil::*, modulus::testutil::*};
-    use crate::cpu;
-    use crate::testutil as test;
+    use {
+        super::{elem::testutil::*, modulus::testutil::*, *},
+        crate::{cpu, testutil as test},
+    };
 
     // Type-level representation of an arbitrary modulus.
     struct M {}

@@ -13,10 +13,14 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #![allow(missing_docs)]
 
-use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
-use ring::{
-    rand,
-    signature::{self, EcdsaKeyPair, EcdsaSigningAlgorithm, EcdsaVerificationAlgorithm, KeyPair},
+use {
+    criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main},
+    ring::{
+        rand,
+        signature::{
+            self, EcdsaKeyPair, EcdsaSigningAlgorithm, EcdsaVerificationAlgorithm, KeyPair,
+        },
+    },
 };
 
 static ALGORITHMS: &[(&str, &EcdsaSigningAlgorithm, &EcdsaVerificationAlgorithm)] = &[

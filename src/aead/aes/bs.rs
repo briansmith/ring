@@ -14,8 +14,10 @@
 
 #![cfg(all(target_arch = "arm", target_endian = "little"))]
 
-use super::{Counter, Overlapping, ffi::AES_KEY, vp};
-use core::mem::MaybeUninit;
+use {
+    super::{Counter, Overlapping, ffi::AES_KEY, vp},
+    core::mem::MaybeUninit,
+};
 
 #[repr(transparent)]
 struct Key(AES_KEY);

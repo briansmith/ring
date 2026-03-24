@@ -14,9 +14,11 @@
 
 //! EdDSA Signatures.
 
-use super::{super::ops::*, eddsa_digest};
-use crate::{bssl, cpu, error, sealed, signature};
-use core::mem::MaybeUninit;
+use {
+    super::{super::ops::*, eddsa_digest},
+    crate::{bssl, cpu, error, sealed, signature},
+    core::mem::MaybeUninit,
+};
 
 /// Parameters for EdDSA signing and verification.
 pub struct EdDSAParameters;

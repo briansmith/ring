@@ -38,9 +38,11 @@ mod abi_assumptions {
 }
 
 pub(super) mod featureflags {
-    use super::{super::CAPS_STATIC, *};
-    use crate::{cpu, polyfill::once_cell::race};
-    use core::num::NonZero;
+    use {
+        super::{super::CAPS_STATIC, *},
+        crate::{cpu, polyfill::once_cell::race},
+        core::num::NonZero,
+    };
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
         let _: NonZero<u32> = FEATURES.get_or_init(|| {

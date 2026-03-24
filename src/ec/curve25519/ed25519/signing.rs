@@ -14,12 +14,14 @@
 
 //! EdDSA Signatures.
 
-use super::{super::ops::*, eddsa_digest};
-use crate::{
-    cpu, digest, error,
-    io::der,
-    pkcs8, rand,
-    signature::{self, KeyPair as SigningKeyPair},
+use {
+    super::{super::ops::*, eddsa_digest},
+    crate::{
+        cpu, digest, error,
+        io::der,
+        pkcs8, rand,
+        signature::{self, KeyPair as SigningKeyPair},
+    },
 };
 
 /// An Ed25519 key pair, for signing.

@@ -12,17 +12,19 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    Aad, AuthError, ForgedPlaintext, KeyInner, TAG_LEN, Tag, aes, aes_gcm, chacha20_poly1305,
-    nonce::{NONCE_LEN, Nonce},
-    overlapping::{IndexError, Overlapping},
+use {
+    super::{
+        Aad, AuthError, ForgedPlaintext, KeyInner, TAG_LEN, Tag, aes, aes_gcm, chacha20_poly1305,
+        nonce::{NONCE_LEN, Nonce},
+        overlapping::{IndexError, Overlapping},
+    },
+    crate::{
+        cpu,
+        error::{self, InputTooLongError},
+        hkdf,
+    },
+    core::ops::RangeFrom,
 };
-use crate::{
-    cpu,
-    error::{self, InputTooLongError},
-    hkdf,
-};
-use core::ops::RangeFrom;
 
 impl hkdf::KeyType for &'static Algorithm {
     #[inline]

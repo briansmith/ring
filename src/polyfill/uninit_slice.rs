@@ -14,17 +14,18 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{
-    start_ptr::{StartMutPtr, StartPtr},
-    uninit_slice_cursor::Cursor,
-};
-use crate::error::LenMismatchError;
-use core::{
-    marker::PhantomData,
-    mem::{self, MaybeUninit},
-    ops::RangeTo,
-    ptr,
+use {
+    super::{
+        start_ptr::{StartMutPtr, StartPtr},
+        uninit_slice_cursor::Cursor,
+    },
+    crate::error::LenMismatchError,
+    core::{
+        marker::PhantomData,
+        mem::{self, MaybeUninit},
+        ops::RangeTo,
+        ptr,
+    },
 };
 
 pub struct Uninit<'target, E> {

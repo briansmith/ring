@@ -14,17 +14,18 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::super::{
-    super::montgomery::{R, RR, limbs_square_mont},
-    Limb, Mont, unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
+use {
+    super::super::{
+        super::montgomery::{R, RR, limbs_square_mont},
+        Limb, Mont, unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
+    },
+    crate::{
+        error::LenMismatchError,
+        limb::{self, LIMB_BITS},
+        polyfill::slice::Cursor,
+    },
+    core::{marker::PhantomData, mem::size_of},
 };
-use crate::{
-    error::LenMismatchError,
-    limb::{self, LIMB_BITS},
-    polyfill::slice::Cursor,
-};
-use core::{marker::PhantomData, mem::size_of};
 
 // The value 1, Montgomery-encoded some number of times.
 pub struct One<'a, M, E> {

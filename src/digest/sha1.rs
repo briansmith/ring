@@ -15,15 +15,16 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{
-    BlockLen, OutputLen,
-    sha2::{
-        State32,
-        fallback::{Word, ch, maj},
+use {
+    super::{
+        BlockLen, OutputLen,
+        sha2::{
+            State32,
+            fallback::{Word, ch, maj},
+        },
     },
+    core::{mem::size_of, num::Wrapping},
 };
-use core::{mem::size_of, num::Wrapping};
 
 pub(super) const BLOCK_LEN: BlockLen = BlockLen::_512;
 pub const CHAINING_LEN: usize = 160 / 8;

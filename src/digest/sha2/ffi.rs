@@ -12,9 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::CHAINING_WORDS;
-use crate::c;
-use core::num::{NonZero, Wrapping};
+use {
+    super::CHAINING_WORDS,
+    crate::c,
+    core::num::{NonZero, Wrapping},
+};
 
 /// `unsafe { T => f }` means it is safe to call `f` iff we can construct
 /// a value of type `T`.

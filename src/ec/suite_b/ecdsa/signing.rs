@@ -14,17 +14,19 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use super::digest_scalar::digest_scalar;
-use crate::{
-    arithmetic::montgomery::*,
-    cpu, digest,
-    ec::{
-        self,
-        suite_b::{ops::*, private_key},
+use {
+    super::digest_scalar::digest_scalar,
+    crate::{
+        arithmetic::montgomery::*,
+        cpu, digest,
+        ec::{
+            self,
+            suite_b::{ops::*, private_key},
+        },
+        error,
+        io::der,
+        limb, pkcs8, rand, signature,
     },
-    error,
-    io::der,
-    limb, pkcs8, rand, signature,
 };
 /// An ECDSA signing algorithm.
 pub struct EcdsaSigningAlgorithm {
@@ -522,8 +524,7 @@ static EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
 
 #[cfg(test)]
 mod tests {
-    use crate::testutil as test;
-    use crate::{rand, signature};
+    use crate::{rand, signature, testutil as test};
 
     #[test]
     fn signature_ecdsa_sign_fixed_test() {

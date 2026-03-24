@@ -94,13 +94,11 @@ mod uninit_slice;
 mod uninit_slice_cursor;
 
 pub use self::{array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, notsend::NotSend};
-
 #[allow(unused_imports)]
 pub use self::{
     smaller_chunks::SmallerChunks,
     start_ptr::{StartMutPtr, StartPtr},
 };
-
 #[cfg(feature = "alloc")]
 pub use leading_zeros_skipped::LeadingZerosStripped;
 

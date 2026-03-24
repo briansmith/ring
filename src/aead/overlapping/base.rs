@@ -13,9 +13,11 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub use self::index_error::IndexError;
-use super::Array;
-use crate::error::LenMismatchError;
-use core::{mem, ops::RangeFrom};
+use {
+    super::Array,
+    crate::error::LenMismatchError,
+    core::{mem, ops::RangeFrom},
+};
 
 pub struct Overlapping<'o, T> {
     // Invariant: self.src.start <= in_out.len().

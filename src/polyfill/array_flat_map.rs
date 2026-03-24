@@ -58,8 +58,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use core::mem::size_of;
+    use {super::*, core::mem::size_of};
 
     #[test]
     fn test_array_flat_map() {

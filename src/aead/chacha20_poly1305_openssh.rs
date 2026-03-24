@@ -31,15 +31,16 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{
-    Aad, Nonce, Tag,
-    chacha::{self, *},
-    chacha20_poly1305, cpu, poly1305,
-};
-use crate::{
-    bb,
-    error::{self, InputTooLongError},
+use {
+    super::{
+        Aad, Nonce, Tag,
+        chacha::{self, *},
+        chacha20_poly1305, cpu, poly1305,
+    },
+    crate::{
+        bb,
+        error::{self, InputTooLongError},
+    },
 };
 
 /// A key for sealing packets.

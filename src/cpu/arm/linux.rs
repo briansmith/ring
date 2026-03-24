@@ -46,8 +46,10 @@ pub fn detect_features() -> u32 {
     // rely only on static feature detection.
     #[cfg(not(target_env = "uclibc"))]
     {
-        use super::CAPS_STATIC;
-        use libc::{AT_HWCAP, c_ulong, getauxval};
+        use {
+            super::CAPS_STATIC,
+            libc::{AT_HWCAP, c_ulong, getauxval},
+        };
 
         const HWCAP_NEON: c_ulong = 1 << 12;
 

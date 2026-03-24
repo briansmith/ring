@@ -12,16 +12,18 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    super::{N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, PublicKeyComponents},
-    PublicExponent, PublicModulus, public_modulus,
+use {
+    super::{
+        super::{N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, PublicKeyComponents},
+        PublicExponent, PublicModulus, public_modulus,
+    },
+    crate::{
+        arithmetic::{bigint, montgomery::RR},
+        bits, cpu, error,
+        limb::LIMB_BYTES,
+    },
+    core::num::NonZero,
 };
-use crate::{
-    arithmetic::{bigint, montgomery::RR},
-    bits, cpu, error,
-    limb::LIMB_BYTES,
-};
-use core::num::NonZero;
 
 /// An RSA Public Key.
 #[derive(Clone)]

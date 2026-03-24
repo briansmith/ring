@@ -19,13 +19,15 @@
 // Avoid `std::env` here. All configuration should be done through `Target`,
 // `Profile`, and `Tools`.
 
-use self::path::{join_components_with_forward_slashes_if_windows, walk_dir};
-use std::{
-    ffi::{OsStr, OsString},
-    fs,
-    io::Write,
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
+use {
+    self::path::{join_components_with_forward_slashes_if_windows, walk_dir},
+    std::{
+        ffi::{OsStr, OsString},
+        fs,
+        io::Write,
+        path::{Path, PathBuf},
+        process::{Command, Stdio},
+    },
 };
 
 mod path;

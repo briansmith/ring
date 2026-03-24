@@ -112,13 +112,15 @@
 //!     assert!(db.verify_password("alice", "@74d7]404j|W}6u").is_ok());
 //! }
 
-use self::{derive_error::DeriveError, verify_error::VerifyError};
-use crate::{
-    bb, cpu, digest,
-    error::{self, TooMuchOutputRequestedError},
-    hmac::{self, InputTooLongError},
+use {
+    self::{derive_error::DeriveError, verify_error::VerifyError},
+    crate::{
+        bb, cpu, digest,
+        error::{self, TooMuchOutputRequestedError},
+        hmac::{self, InputTooLongError},
+    },
+    core::num::NonZero,
 };
-use core::num::NonZero;
 
 /// A PBKDF2 algorithm.
 #[derive(Clone, Copy, PartialEq, Eq)]

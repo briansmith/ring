@@ -16,10 +16,11 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{BLOCK_LEN, Counter, Overlapping, aes, gcm};
-use crate::{bits::BitLength, polyfill::u64_from_usize};
-use core::num::NonZero;
+use {
+    super::{BLOCK_LEN, Counter, Overlapping, aes, gcm},
+    crate::{bits::BitLength, polyfill::u64_from_usize},
+    core::num::NonZero,
+};
 
 pub(super) fn seal_whole(
     aes_key: &aes::hw::Key,

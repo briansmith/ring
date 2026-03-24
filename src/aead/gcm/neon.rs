@@ -19,10 +19,11 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{BLOCK_LEN, KeyValue, UpdateBlock, UpdateBlocks, Xi, ffi};
-use crate::{c, cpu};
-use core::{mem::MaybeUninit, num::NonZero};
+use {
+    super::{BLOCK_LEN, KeyValue, UpdateBlock, UpdateBlocks, Xi, ffi},
+    crate::{c, cpu},
+    core::{mem::MaybeUninit, num::NonZero},
+};
 
 #[derive(Clone)]
 #[repr(transparent)]

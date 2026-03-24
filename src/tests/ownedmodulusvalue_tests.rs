@@ -1,9 +1,11 @@
-use crate::{
-    arithmetic::{MIN_LIMBS, bigint::modulus::ValidatedInput},
-    error::KeyRejected,
-    limb::{LIMB_BITS, LIMB_BYTES},
+use {
+    crate::{
+        arithmetic::{MIN_LIMBS, bigint::modulus::ValidatedInput},
+        error::KeyRejected,
+        limb::{LIMB_BITS, LIMB_BYTES},
+    },
+    alloc::vec::Vec,
 };
-use alloc::vec::Vec;
 
 // XXX: This only tests the bit length calculation and error handling; it
 // doesn't verify that the resultant modulus has the expected value.

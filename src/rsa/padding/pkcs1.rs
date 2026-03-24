@@ -12,8 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, Padding, RsaEncoding, Verification};
-use crate::{bits, digest, error, io::der, rand, sealed};
+use {
+    super::{super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, Padding, RsaEncoding, Verification},
+    crate::{bits, digest, error, io::der, rand, sealed},
+};
 
 /// PKCS#1 1.5 padding as described in [RFC 3447 Section 8.2].
 ///

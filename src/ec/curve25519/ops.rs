@@ -16,11 +16,13 @@
 //! and Edwards25519.
 
 pub use super::scalar::{MaskedScalar, SCALAR_LEN, Scalar};
-use crate::{
-    cpu,
-    limb::{LIMB_BITS, Limb},
+use {
+    crate::{
+        cpu,
+        limb::{LIMB_BITS, Limb},
+    },
+    core::{marker::PhantomData, mem::MaybeUninit},
 };
-use core::{marker::PhantomData, mem::MaybeUninit};
 
 // Elem<Tight>` is `fe` in curve25519/internal.h.
 // Elem<Loose> is `fe_loose` in curve25519/internal.h.

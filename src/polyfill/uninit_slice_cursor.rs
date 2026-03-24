@@ -14,10 +14,11 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::uninit_slice::{Uninit, WriteResult};
-use crate::error::LenMismatchError;
-use core::mem;
+use {
+    super::uninit_slice::{Uninit, WriteResult},
+    crate::error::LenMismatchError,
+    core::mem,
+};
 
 pub struct Cursor<'buf, E> {
     uninit: Uninit<'buf, E>,

@@ -12,8 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::Overlapping;
-use crate::error::InputTooLongError;
+use {super::Overlapping, crate::error::InputTooLongError};
 
 pub struct PartialBlock<'i, T, const BLOCK_LEN: usize> {
     // invariant: `self.in_out.len() < BLOCK_LEN`.

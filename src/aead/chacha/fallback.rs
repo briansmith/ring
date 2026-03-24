@@ -15,9 +15,11 @@
 // Adapted from the public domain, estream code by D. Bernstein.
 // Adapted from the BoringSSL crypto/chacha/chacha.c.
 
-use super::{super::overlapping::IndexError, BLOCK_LEN, Counter, Key, Overlapping};
-use crate::{bb, polyfill::sliceutil};
-use core::mem::size_of;
+use {
+    super::{super::overlapping::IndexError, BLOCK_LEN, Counter, Key, Overlapping},
+    crate::{bb, polyfill::sliceutil},
+    core::mem::size_of,
+};
 
 pub(super) fn ChaCha20_ctr32(key: &Key, counter: Counter, mut in_out: Overlapping<'_>) {
     const SIGMA: [u32; 4] = [

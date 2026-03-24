@@ -12,9 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Aes, CAPS_STATIC, Neon, PMull, Sha256};
-use windows_sys::Win32::System::Threading::{
-    IsProcessorFeaturePresent, PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE,
+use {
+    super::{Aes, CAPS_STATIC, Neon, PMull, Sha256},
+    windows_sys::Win32::System::Threading::{
+        IsProcessorFeaturePresent, PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE,
+    },
 };
 
 pub const FORCE_DYNAMIC_DETECTION: u32 = 0;

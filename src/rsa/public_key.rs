@@ -12,15 +12,16 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{N, base};
-use crate::{
-    arithmetic::{bigint, montgomery::RR},
-    cpu, error,
-    io::{self, der, der_writer},
-};
-use alloc::boxed::Box;
-
 pub(super) use base::public_key::ValidatedInput;
+use {
+    super::{N, base},
+    crate::{
+        arithmetic::{bigint, montgomery::RR},
+        cpu, error,
+        io::{self, der, der_writer},
+    },
+    alloc::boxed::Box,
+};
 
 /// An RSA Public Key.
 #[derive(Clone)]

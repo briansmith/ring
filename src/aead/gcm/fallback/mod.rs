@@ -24,9 +24,10 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-
-use super::{BLOCK_LEN, KeyValue, UpdateBlock, UpdateBlocks, Xi, ffi::U128};
-use crate::polyfill::ArraySplitMap as _;
+use {
+    super::{BLOCK_LEN, KeyValue, UpdateBlock, UpdateBlocks, Xi, ffi::U128},
+    crate::polyfill::ArraySplitMap as _,
+};
 
 #[derive(Clone)]
 pub struct Key {

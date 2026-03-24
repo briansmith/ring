@@ -92,9 +92,11 @@ impl_get_feature! {
 
 pub(super) mod featureflags {
     pub(in super::super) use super::detect::FORCE_DYNAMIC_DETECTION;
-    use super::*;
-    use crate::{cpu, polyfill::once_cell::race};
-    use core::num::NonZero;
+    use {
+        super::*,
+        crate::{cpu, polyfill::once_cell::race},
+        core::num::NonZero,
+    };
 
     pub(in super::super) fn get_or_init() -> cpu::Features {
         fn init() -> NonZero<u32> {
