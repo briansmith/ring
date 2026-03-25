@@ -58,7 +58,7 @@ pub struct Algorithm {
 impl Algorithm {
     /// The length of the key.
     #[inline(always)]
-    pub fn key_len(&self) -> usize {
+    pub const fn key_len(&self) -> usize {
         self.key_len
     }
 
@@ -66,13 +66,13 @@ impl Algorithm {
     ///
     /// See also `MAX_TAG_LEN`.
     #[inline(always)]
-    pub fn tag_len(&self) -> usize {
+    pub const fn tag_len(&self) -> usize {
         TAG_LEN
     }
 
     /// The length of the nonces.
     #[inline(always)]
-    pub fn nonce_len(&self) -> usize {
+    pub const fn nonce_len(&self) -> usize {
         NONCE_LEN
     }
 
