@@ -1,5 +1,5 @@
 [package]
-build = "build/cargo.rs"
+build = "build/main.rs"
 categories = ["cryptography", "no-std"]
 description = "An experiment."
 edition = "2024"

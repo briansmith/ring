@@ -13,28 +13,24 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 //! Build the non-Rust components.
+//!
+//! This module doesn't depend on any Cargo-set environment variables, other than
+//! what cc-rs depends on.
 
 // Avoid `std::env` here. All configuration should be done through `Target`,
-// `Profile`, and `Tools`.
-
-use self::{
+// `Profile`, and `Tools`. Avoid `cargo`.
+use super::{
+    Profile, Target,
+    c::build_library,
     path::{join_components_with_forward_slashes_if_windows, walk_dir},
     prefixed::generate_prefix_symbols_headers,
+    target::*,
 };
 use std::{
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
-
-mod path;
-mod prefixed;
-
-const X86: &str = "x86";
-const X86_64: &str = "x86_64";
-const AARCH64: &str = "aarch64";
-const ARM: &str = "arm";
-const WASM32: &str = "wasm32";
 
 #[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
@@ -103,45 +99,6 @@ const SHA512_ARMV8: &str = "crypto/fipsmodule/sha/asm/sha512-armv8.pl";
 const RING_TEST_SRCS: &[&str] = &[("crypto/constant_time_test.c")];
 
 pub const PREGENERATED: &str = "pregenerated";
-
-fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
-    if !compiler.is_like_msvc() {
-        static NON_MSVC_FLAGS: &[&str] = &[
-            "-fvisibility=hidden",
-            "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
-            "-Wall",
-            "-Wbad-function-cast",
-            "-Wcast-align",
-            "-Wcast-qual",
-            "-Wconversion",
-            "-Wmissing-field-initializers",
-            "-Wmissing-include-dirs",
-            "-Wnested-externs",
-            "-Wredundant-decls",
-            "-Wshadow",
-            "-Wsign-compare",
-            "-Wsign-conversion",
-            "-Wstrict-prototypes",
-            "-Wundef",
-            "-Wuninitialized",
-        ];
-        NON_MSVC_FLAGS
-    } else {
-        static MSVC_FLAGS: &[&str] = &[
-            "/Gy", // Enable function-level linking.
-            "/Zc:wchar_t",
-            "/Zc:forScope",
-            "/Zc:inline",
-            // Warnings.
-            "/W4",
-            "/wd4127", // C4127: conditional expression is constant
-            "/wd4464", // C4464: relative include path contains '..'
-            "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
-                        * /Qspectre switch specified */
-        ];
-        MSVC_FLAGS
-    }
-}
 
 // None means "any OS" or "any target". The first match in sequence order is
 // taken.
@@ -229,31 +186,8 @@ impl AsmTarget {
     }
 }
 
-const ANDROID: &str = "android";
-const DRAGONFLY: &str = "dragonfly";
-const FREEBSD: &str = "freebsd";
-const FUCHSIA: &str = "fuchsia";
-const HAIKU: &str = "haiku";
-const HORIZON: &str = "horizon";
-const HURD: &str = "hurd";
-const ILLUMOS: &str = "illumos";
-const LINUX: &str = "linux";
-const NETBSD: &str = "netbsd";
-const NTO: &str = "nto";
-const OPENBSD: &str = "openbsd";
-const REDOX: &str = "redox";
-const SOLARIS: &str = "solaris";
-const VITA: &str = "vita";
-
 const WIN32N: &str = "win32n";
 const NASM: &str = "nasm";
-
-/// Operating systems that have the same ABI as macOS on every architecture
-/// mentioned in `ASM_TARGETS`.
-const APPLE_ABI: &[&str] = &["ios", "macos", "tvos", "visionos", "watchos"];
-
-const WINDOWS: &str = "windows";
-const CYGWIN: &str = "cygwin";
 
 pub fn generate_sources_and_preassemble<'a>(
     tools: &Tools,
@@ -286,40 +220,12 @@ pub fn generate_sources_and_preassemble<'a>(
     }
 }
 
-pub struct Target {
-    pub arch: String,
-    pub os: String,
-    pub env: String,
-    pub endian: Endian,
-}
-
-pub enum Endian {
-    Little,
-    Other,
-}
-
-pub struct Profile {
-    /// Is this a debug build? This affects whether assertions might be enabled
-    /// in the C code. For packaged builds, this should always be `false`.
-    pub is_debug: bool,
-
-    /// true: Force warnings to be treated as errors.
-    /// false: Use the default behavior (perhaps determined by `$CFLAGS`, etc.)
-    pub force_warnings_into_errors: bool,
-}
-
-pub struct Tools<'a> {
-    pub perl_exe: &'a Path,
-    pub nasm_exe: &'a OsStr,
-}
-
 pub fn build_c_code(
     asm_target: Option<&AsmTarget>,
     target: &Target,
     profile: &Profile,
     generated_dir: &Path,
     c_root_dir: &Path,
-    out_dir: &Path,
     core_name_and_version: &str,
 ) {
     let (asm_srcs, obj_srcs) = if let Some(asm_target) = asm_target {
@@ -386,7 +292,6 @@ pub fn build_c_code(
                 target,
                 profile,
                 c_root_dir,
-                out_dir,
                 lib_name,
                 srcs,
                 generated_dir,
@@ -396,58 +301,8 @@ pub fn build_c_code(
 
     println!(
         "cargo:rustc-link-search=native={}",
-        out_dir.to_str().expect("Invalid path")
+        target.out_dir.to_str().expect("Invalid path")
     );
-}
-
-fn new_build(
-    target: &Target,
-    profile: &Profile,
-    c_root_dir: &Path,
-    include_dir: &Path,
-) -> cc::Build {
-    let mut b = cc::Build::new();
-    configure_cc(&mut b, target, profile, c_root_dir, include_dir);
-    b
-}
-
-fn build_library<'a>(
-    target: &Target,
-    profile: &Profile,
-    c_root_dir: &Path,
-    out_dir: &Path,
-    lib_name: &str,
-    srcs: impl Iterator<Item = &'a PathBuf>,
-    include_dir: &Path,
-    preassembled_objs: &[PathBuf],
-) {
-    let mut c = new_build(target, profile, c_root_dir, include_dir);
-
-    // Compile all the (dirty) source files into object files.
-    srcs.for_each(|src| {
-        c.file(c_root_dir.join(src));
-    });
-
-    preassembled_objs.iter().for_each(|obj| {
-        c.object(obj);
-    });
-
-    // Rebuild the library if necessary.
-    let lib_path = PathBuf::from(out_dir).join(format!("lib{lib_name}.a"));
-
-    // Handled below.
-    let _ = c.cargo_metadata(false);
-
-    c.compile(
-        lib_path
-            .file_name()
-            .and_then(|f| f.to_str())
-            .expect("No filename"),
-    );
-
-    // Link the library. This works even when the library doesn't need to be
-    // rebuilt.
-    println!("cargo:rustc-link-lib=static={lib_name}");
 }
 
 fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
@@ -459,58 +314,9 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
     out_path
 }
 
-fn configure_cc(
-    c: &mut cc::Build,
-    target: &Target,
-    profile: &Profile,
-    c_root_dir: &Path,
-    include_dir: &Path,
-) {
-    // FIXME: On Windows AArch64 we currently must use Clang to compile C code.
-    // clang-cl emulates the cl.exe command line, `$CFLAGS`, etc.
-    if target.os == WINDOWS && target.arch == AARCH64 {
-        let _: &_ = c.prefer_clang_cl_over_msvc(true);
-    };
-    let compiler = c.get_compiler();
-
-    let _ = c.include(c_root_dir.join("include"));
-    let _ = c.include(include_dir);
-    for f in cpp_flags(&compiler) {
-        let _ = c.flag(f);
-    }
-
-    if APPLE_ABI.contains(&target.os.as_str()) {
-        // ``-gfull`` is required for Darwin's |-dead_strip|.
-        let _ = c.flag("-gfull");
-    } else if !compiler.is_like_msvc() {
-        let _ = c.flag("-g3");
-    };
-
-    if !profile.is_debug {
-        let _ = c.define("NDEBUG", None);
-    }
-
-    if target.arch == X86 {
-        let is_msvc_not_clang_cl = compiler.is_like_msvc() && !compiler.is_like_clang_cl();
-        if !is_msvc_not_clang_cl {
-            let _ = c.flag("-msse2");
-        }
-    }
-
-    // Allow cross-compiling without a target sysroot for these targets.
-    if (target.arch == WASM32)
-        || (target.os == "linux" && target.env == "musl" && target.arch != X86_64)
-    {
-        // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
-        if compiler.is_like_clang() {
-            let _ = c.flag("-nostdlibinc");
-            let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
-        }
-    }
-
-    if profile.force_warnings_into_errors {
-        c.warnings_into_errors(true);
-    }
+pub struct Tools<'a> {
+    pub perl_exe: &'a Path,
+    pub nasm_exe: &'a OsStr,
 }
 
 impl Tools<'_> {
