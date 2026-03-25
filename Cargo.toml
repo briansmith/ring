@@ -41,9 +41,7 @@ include = [
 
     "benches/*.rs",
 
-    "build/build.rs",
-    "build/build/path.rs",
-    "build/cargo.rs",
+    "build/**/*.rs",
 
     "crypto/chacha/asm/chacha-armv4.pl",
     "crypto/chacha/asm/chacha-armv8.pl",

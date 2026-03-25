@@ -14,21 +14,21 @@
 
 //! Build the non-Rust components.
 
-#![allow(clippy::too_many_arguments)]
-
 // Avoid `std::env` here. All configuration should be done through `Target`,
 // `Profile`, and `Tools`.
 
-use self::path::{join_components_with_forward_slashes_if_windows, walk_dir};
+use self::{
+    path::{join_components_with_forward_slashes_if_windows, walk_dir},
+    prefixed::generate_prefix_symbols_headers,
+};
 use std::{
     ffi::{OsStr, OsString},
-    fs,
-    io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
 mod path;
+mod prefixed;
 
 const X86: &str = "x86";
 const X86_64: &str = "x86_64";
@@ -262,7 +262,13 @@ pub fn generate_sources_and_preassemble<'a>(
     c_root_dir: &Path,
     core_name_and_version: &str,
 ) {
-    generate_prefix_symbols_headers(out_dir, core_name_and_version).unwrap();
+    generate_prefix_symbols_headers(
+        out_dir,
+        core_name_and_version,
+        SYMBOLS_TO_RENAME,
+        SYMBOLS_TO_PREFIX,
+    )
+    .unwrap();
 
     for asm_target in asm_targets {
         let perlasm_src_dsts = perlasm_src_dsts(out_dir, asm_target);
@@ -645,252 +651,168 @@ pub fn walk_non_root_sources(f: impl Fn(&Path)) {
     }
 }
 
-/// Creates the necessary header files for symbol renaming.
-///
-/// For simplicity, both non-Nasm- and Nasm- style headers are always
-/// generated, even though local non-packaged builds need only one of them.
-fn generate_prefix_symbols_headers(
-    out_dir: &Path,
-    core_name_and_version: &str,
-) -> Result<(), std::io::Error> {
-    let prefix = &(String::from(core_name_and_version) + "_");
+// Rename some nistz256 assembly functions to match the names of their
+// polyfills.
+static SYMBOLS_TO_RENAME: &[(&str, &str)] = &[
+    ("ecp_nistz256_point_double", "p256_point_double"),
+    ("ecp_nistz256_point_add", "p256_point_add"),
+    ("ecp_nistz256_point_add_affine", "p256_point_add_affine"),
+    ("ecp_nistz256_ord_mul_mont", "p256_scalar_mul_mont"),
+    ("ecp_nistz256_ord_sqr_mont", "p256_scalar_sqr_rep_mont"),
+    ("ecp_nistz256_mul_mont", "p256_mul_mont"),
+    ("ecp_nistz256_sqr_mont", "p256_sqr_mont"),
+];
 
-    generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, prefix)?;
-
-    generate_prefix_symbols_header(
-        out_dir,
-        "prefix_symbols_asm.h",
-        '#',
-        Some("#if defined(__APPLE__)"),
-        prefix,
-    )?;
-
-    generate_prefix_symbols_header(
-        out_dir,
-        "prefix_symbols_nasm.inc",
-        '%',
-        Some("%ifidn __OUTPUT_FORMAT__,win32"),
-        prefix,
-    )?;
-
-    Ok(())
-}
-
-fn generate_prefix_symbols_header(
-    out_dir: &Path,
-    filename: &str,
-    pp: char,
-    prefix_condition: Option<&str>,
-    prefix: &str,
-) -> Result<(), std::io::Error> {
-    let dir = out_dir.join("ring_core_generated");
-    fs::create_dir_all(&dir)?;
-
-    let path = dir.join(filename);
-    let mut file = fs::File::create(path)?;
-
-    let filename_ident = filename.replace('.', "_").to_uppercase();
-    writeln!(
-        file,
-        r#"
-{pp}ifndef ring_core_generated_{filename_ident}
-{pp}define ring_core_generated_{filename_ident}
-"#
-    )?;
-
-    if let Some(prefix_condition) = prefix_condition {
-        writeln!(file, "{prefix_condition}")?;
-        writeln!(file, "{}", prefix_all_symbols(pp, "_", prefix))?;
-        writeln!(file, "{pp}else")?;
-    };
-    writeln!(file, "{}", prefix_all_symbols(pp, "", prefix))?;
-    if prefix_condition.is_some() {
-        writeln!(file, "{pp}endif")?
-    }
-
-    writeln!(file, "{pp}endif")?;
-
-    Ok(())
-}
-
-fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
-    // Rename some nistz256 assembly functions to match the names of their
-    // polyfills.
-    static SYMBOLS_TO_RENAME: &[(&str, &str)] = &[
-        ("ecp_nistz256_point_double", "p256_point_double"),
-        ("ecp_nistz256_point_add", "p256_point_add"),
-        ("ecp_nistz256_point_add_affine", "p256_point_add_affine"),
-        ("ecp_nistz256_ord_mul_mont", "p256_scalar_mul_mont"),
-        ("ecp_nistz256_ord_sqr_mont", "p256_scalar_sqr_rep_mont"),
-        ("ecp_nistz256_mul_mont", "p256_mul_mont"),
-        ("ecp_nistz256_sqr_mont", "p256_sqr_mont"),
-    ];
-
-    static SYMBOLS_TO_PREFIX: &[&str] = &[
-        "adx_bmi2_available",
-        "avx2_available",
-        "ChaCha20_ctr32",
-        "ChaCha20_ctr32_avx2",
-        "ChaCha20_ctr32_neon",
-        "ChaCha20_ctr32_nohw",
-        "ChaCha20_ctr32_ssse3",
-        "ChaCha20_ctr32_ssse3_4x",
-        "LIMB_is_zero",
-        "LIMBS_add_mod",
-        "LIMBS_are_zero",
-        "LIMBS_equal",
-        "LIMBS_less_than",
-        "LIMBS_reduce_once",
-        "LIMBS_select_512_32",
-        "LIMBS_shl_mod",
-        "LIMBS_sub_mod",
-        "LIMBS_window5_split_window",
-        "LIMBS_window5_unsplit_window",
-        "aes_gcm_dec_kernel",
-        "aes_gcm_dec_update_vaes_avx2",
-        "aes_gcm_enc_kernel",
-        "aes_gcm_enc_update_vaes_avx2",
-        "aes_hw_ctr32_encrypt_blocks",
-        "aes_hw_encrypt_xor_block",
-        "aes_hw_set_encrypt_key",
-        "aes_hw_set_encrypt_key_128",
-        "aes_hw_set_encrypt_key_256",
-        "aes_hw_set_encrypt_key_alt",
-        "aes_hw_set_encrypt_key_base",
-        "aesni_gcm_decrypt",
-        "aesni_gcm_encrypt",
-        "bn_from_montgomery_in_place",
-        "bn_gather5",
-        "bn_mul_mont_fallback",
-        "bn_mul_mont_nohw",
-        "bn_mul_mont_sse2",
-        "bn_mul4x_mont",
-        "bn_mulx4x_mont",
-        "bn_mul8x_mont_neon",
-        "bn_mul4x_mont_gather5",
-        "bn_mulx4x_mont_gather5",
-        "bn_neg_inv_mod_r_u64",
-        "bn_power5_nohw",
-        "bn_powerx5",
-        "bn_sqr8x_internal",
-        "bn_sqr8x_mont",
-        "bn_sqrx8x_internal",
-        "bsaes_ctr32_encrypt_blocks",
-        "bssl_constant_time_test_conditional_memcpy",
-        "bssl_constant_time_test_conditional_memxor",
-        "bssl_constant_time_test_main",
-        "chacha20_poly1305_open",
-        "chacha20_poly1305_open_avx2",
-        "chacha20_poly1305_open_sse41",
-        "chacha20_poly1305_seal",
-        "chacha20_poly1305_seal_avx2",
-        "chacha20_poly1305_seal_sse41",
-        "ecp_nistz256_mul_mont_adx",
-        "ecp_nistz256_mul_mont_nohw",
-        "ecp_nistz256_ord_mul_mont_adx",
-        "ecp_nistz256_ord_mul_mont_nohw",
-        "ecp_nistz256_ord_sqr_mont_adx",
-        "ecp_nistz256_ord_sqr_mont_nohw",
-        "ecp_nistz256_point_add_adx",
-        "ecp_nistz256_point_add_nohw",
-        "ecp_nistz256_point_add_affine_adx",
-        "ecp_nistz256_point_add_affine_nohw",
-        "ecp_nistz256_point_double_adx",
-        "ecp_nistz256_point_double_nohw",
-        "ecp_nistz256_select_w5_avx2",
-        "ecp_nistz256_select_w5_nohw",
-        "ecp_nistz256_select_w7_avx2",
-        "ecp_nistz256_select_w7_nohw",
-        "ecp_nistz256_sqr_mont_adx",
-        "ecp_nistz256_sqr_mont_nohw",
-        "fiat_curve25519_adx_mul",
-        "fiat_curve25519_adx_square",
-        "gcm_ghash_avx",
-        "gcm_ghash_clmul",
-        "gcm_ghash_neon",
-        "gcm_ghash_vpclmulqdq_avx2_16",
-        "gcm_gmult_clmul",
-        "gcm_gmult_neon",
-        "gcm_gmult_v8",
-        "gcm_init_avx",
-        "gcm_init_clmul",
-        "gcm_init_neon",
-        "gcm_init_v8",
-        "gcm_init_vpclmulqdq_avx2",
-        "k25519Precomp",
-        "limbs_mul_add_limb",
-        "little_endian_bytes_from_scalar",
-        "ecp_nistz256_neg",
-        "ecp_nistz256_select_w5",
-        "ecp_nistz256_select_w7",
-        "neon_available",
-        "p256_mul_mont",
-        "p256_point_add",
-        "p256_point_add_affine",
-        "p256_point_double",
-        "p256_point_mul",
-        "p256_point_mul_base",
-        "p256_point_mul_base_vartime",
-        "p256_scalar_mul_mont",
-        "p256_scalar_sqr_rep_mont",
-        "p256_sqr_mont",
-        "p384_elem_div_by_2",
-        "p384_elem_mul_mont",
-        "p384_elem_neg",
-        "p384_elem_sub",
-        "p384_point_add",
-        "p384_point_double",
-        "p384_point_mul",
-        "p384_scalar_mul_mont",
-        "openssl_poly1305_neon2_addmulmod",
-        "openssl_poly1305_neon2_blocks",
-        "sha256_block_data_order",
-        "sha256_block_data_order_avx",
-        "sha256_block_data_order_ssse3",
-        "sha256_block_data_order_hw",
-        "sha256_block_data_order_neon",
-        "sha256_block_data_order_nohw",
-        "sha512_block_data_order",
-        "sha512_block_data_order_avx",
-        "sha512_block_data_order_hw",
-        "sha512_block_data_order_neon",
-        "sha512_block_data_order_nohw",
-        "vpaes_ctr32_encrypt_blocks",
-        "vpaes_encrypt",
-        "vpaes_encrypt_key_to_bsaes",
-        "vpaes_set_encrypt_key",
-        "vpaes_set_encrypt_key",
-        "x25519_NEON",
-        "x25519_fe_invert",
-        "x25519_fe_isnegative",
-        "x25519_fe_mul_assign_tt",
-        "x25519_fe_neg",
-        "x25519_fe_tobytes",
-        "x25519_ge_double_scalarmult_vartime",
-        "x25519_ge_frombytes_vartime",
-        "x25519_ge_scalarmult_base",
-        "x25519_ge_scalarmult_base_adx",
-        "x25519_ge_scalarmult_base_adx_from_bytes",
-        "x25519_public_from_private_generic_masked",
-        "x25519_sc_mask",
-        "x25519_sc_muladd",
-        "x25519_sc_reduce",
-        "x25519_scalar_mult_adx",
-        "x25519_scalar_mult_generic_masked",
-        "x25519_u_coordinate",
-    ];
-
-    let mut out = String::new();
-
-    for (old, new) in SYMBOLS_TO_RENAME {
-        let line = format!("{pp}define {prefix_prefix}{old} {prefix_prefix}{new}\n");
-        out += &line;
-    }
-
-    for symbol in SYMBOLS_TO_PREFIX {
-        let line = format!("{pp}define {prefix_prefix}{symbol} {prefix_prefix}{prefix}{symbol}\n");
-        out += &line;
-    }
-
-    out
-}
+static SYMBOLS_TO_PREFIX: &[&str] = &[
+    "adx_bmi2_available",
+    "avx2_available",
+    "ChaCha20_ctr32",
+    "ChaCha20_ctr32_avx2",
+    "ChaCha20_ctr32_neon",
+    "ChaCha20_ctr32_nohw",
+    "ChaCha20_ctr32_ssse3",
+    "ChaCha20_ctr32_ssse3_4x",
+    "LIMB_is_zero",
+    "LIMBS_add_mod",
+    "LIMBS_are_zero",
+    "LIMBS_equal",
+    "LIMBS_less_than",
+    "LIMBS_reduce_once",
+    "LIMBS_select_512_32",
+    "LIMBS_shl_mod",
+    "LIMBS_sub_mod",
+    "LIMBS_window5_split_window",
+    "LIMBS_window5_unsplit_window",
+    "aes_gcm_dec_kernel",
+    "aes_gcm_dec_update_vaes_avx2",
+    "aes_gcm_enc_kernel",
+    "aes_gcm_enc_update_vaes_avx2",
+    "aes_hw_ctr32_encrypt_blocks",
+    "aes_hw_encrypt_xor_block",
+    "aes_hw_set_encrypt_key",
+    "aes_hw_set_encrypt_key_128",
+    "aes_hw_set_encrypt_key_256",
+    "aes_hw_set_encrypt_key_alt",
+    "aes_hw_set_encrypt_key_base",
+    "aesni_gcm_decrypt",
+    "aesni_gcm_encrypt",
+    "bn_from_montgomery_in_place",
+    "bn_gather5",
+    "bn_mul_mont_fallback",
+    "bn_mul_mont_nohw",
+    "bn_mul_mont_sse2",
+    "bn_mul4x_mont",
+    "bn_mulx4x_mont",
+    "bn_mul8x_mont_neon",
+    "bn_mul4x_mont_gather5",
+    "bn_mulx4x_mont_gather5",
+    "bn_neg_inv_mod_r_u64",
+    "bn_power5_nohw",
+    "bn_powerx5",
+    "bn_sqr8x_internal",
+    "bn_sqr8x_mont",
+    "bn_sqrx8x_internal",
+    "bsaes_ctr32_encrypt_blocks",
+    "bssl_constant_time_test_conditional_memcpy",
+    "bssl_constant_time_test_conditional_memxor",
+    "bssl_constant_time_test_main",
+    "chacha20_poly1305_open",
+    "chacha20_poly1305_open_avx2",
+    "chacha20_poly1305_open_sse41",
+    "chacha20_poly1305_seal",
+    "chacha20_poly1305_seal_avx2",
+    "chacha20_poly1305_seal_sse41",
+    "ecp_nistz256_mul_mont_adx",
+    "ecp_nistz256_mul_mont_nohw",
+    "ecp_nistz256_ord_mul_mont_adx",
+    "ecp_nistz256_ord_mul_mont_nohw",
+    "ecp_nistz256_ord_sqr_mont_adx",
+    "ecp_nistz256_ord_sqr_mont_nohw",
+    "ecp_nistz256_point_add_adx",
+    "ecp_nistz256_point_add_nohw",
+    "ecp_nistz256_point_add_affine_adx",
+    "ecp_nistz256_point_add_affine_nohw",
+    "ecp_nistz256_point_double_adx",
+    "ecp_nistz256_point_double_nohw",
+    "ecp_nistz256_select_w5_avx2",
+    "ecp_nistz256_select_w5_nohw",
+    "ecp_nistz256_select_w7_avx2",
+    "ecp_nistz256_select_w7_nohw",
+    "ecp_nistz256_sqr_mont_adx",
+    "ecp_nistz256_sqr_mont_nohw",
+    "fiat_curve25519_adx_mul",
+    "fiat_curve25519_adx_square",
+    "gcm_ghash_avx",
+    "gcm_ghash_clmul",
+    "gcm_ghash_neon",
+    "gcm_ghash_vpclmulqdq_avx2_16",
+    "gcm_gmult_clmul",
+    "gcm_gmult_neon",
+    "gcm_gmult_v8",
+    "gcm_init_avx",
+    "gcm_init_clmul",
+    "gcm_init_neon",
+    "gcm_init_v8",
+    "gcm_init_vpclmulqdq_avx2",
+    "k25519Precomp",
+    "limbs_mul_add_limb",
+    "little_endian_bytes_from_scalar",
+    "ecp_nistz256_neg",
+    "ecp_nistz256_select_w5",
+    "ecp_nistz256_select_w7",
+    "neon_available",
+    "p256_mul_mont",
+    "p256_point_add",
+    "p256_point_add_affine",
+    "p256_point_double",
+    "p256_point_mul",
+    "p256_point_mul_base",
+    "p256_point_mul_base_vartime",
+    "p256_scalar_mul_mont",
+    "p256_scalar_sqr_rep_mont",
+    "p256_sqr_mont",
+    "p384_elem_div_by_2",
+    "p384_elem_mul_mont",
+    "p384_elem_neg",
+    "p384_elem_sub",
+    "p384_point_add",
+    "p384_point_double",
+    "p384_point_mul",
+    "p384_scalar_mul_mont",
+    "openssl_poly1305_neon2_addmulmod",
+    "openssl_poly1305_neon2_blocks",
+    "sha256_block_data_order",
+    "sha256_block_data_order_avx",
+    "sha256_block_data_order_ssse3",
+    "sha256_block_data_order_hw",
+    "sha256_block_data_order_neon",
+    "sha256_block_data_order_nohw",
+    "sha512_block_data_order",
+    "sha512_block_data_order_avx",
+    "sha512_block_data_order_hw",
+    "sha512_block_data_order_neon",
+    "sha512_block_data_order_nohw",
+    "vpaes_ctr32_encrypt_blocks",
+    "vpaes_encrypt",
+    "vpaes_encrypt_key_to_bsaes",
+    "vpaes_set_encrypt_key",
+    "vpaes_set_encrypt_key",
+    "x25519_NEON",
+    "x25519_fe_invert",
+    "x25519_fe_isnegative",
+    "x25519_fe_mul_assign_tt",
+    "x25519_fe_neg",
+    "x25519_fe_tobytes",
+    "x25519_ge_double_scalarmult_vartime",
+    "x25519_ge_frombytes_vartime",
+    "x25519_ge_scalarmult_base",
+    "x25519_ge_scalarmult_base_adx",
+    "x25519_ge_scalarmult_base_adx_from_bytes",
+    "x25519_public_from_private_generic_masked",
+    "x25519_sc_mask",
+    "x25519_sc_muladd",
+    "x25519_sc_reduce",
+    "x25519_scalar_mult_adx",
+    "x25519_scalar_mult_generic_masked",
+    "x25519_u_coordinate",
+];
