@@ -99,13 +99,13 @@ impl hkdf::KeyType for &'static Algorithm {
 impl Algorithm {
     /// The length of the key.
     #[inline(always)]
-    pub fn key_len(&self) -> usize {
+    pub const fn key_len(&self) -> usize {
         self.key_len
     }
 
     /// The required sample length.
     #[inline(always)]
-    pub fn sample_len(&self) -> usize {
+    pub const fn sample_len(&self) -> usize {
         SAMPLE_LEN
     }
 }
