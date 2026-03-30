@@ -7,8 +7,8 @@ AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-Most of the C and assembly language code in *ring* comes from BoringSSL. 
-BoringSSL is a fork of OpenSSL. This quote from the BoringSSL README.md 
+Most of the C and assembly language code in *ring* comes from BoringSSL.
+BoringSSL is a fork of OpenSSL. This quote from the BoringSSL README.md
 discouraging you from using it applies to this project:
 
 > BoringSSL is a fork of OpenSSL that is designed to meet Google's needs.
@@ -31,9 +31,9 @@ the limitations of the side channel mitigations in this project.
 Toolchains & Targets
 --------------------
 
-Be especially weary about using toolchains (C compilers, etc.) or targets
+Be especially wary about using toolchains (C compilers, etc.) or targets
 that aren't supported by other projects, especially BoringSSL. The further you
-are from using the same version of Clang that Chrome uses, the more weary you
+are from using the same version of Clang that Chrome uses, the more wary you
 should be.
 
 
