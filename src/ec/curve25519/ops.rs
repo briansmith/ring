@@ -45,7 +45,7 @@ impl Elem<Tight> {
     }
 }
 
-// [RFC 8032] https://tools.ietf.org/html/rfc8032#section-5.1.2
+// [RFC 8032] https://www.rfc-editor.org/rfc/rfc8032#section-5.1.2
 // This is *NOT* the type to use for X25519 output.
 #[derive(Clone, Copy)]
 #[repr(transparent)]

@@ -16,7 +16,7 @@
 //!
 //! HKDF is specified in [RFC 5869].
 //!
-//! [RFC 5869]: https://tools.ietf.org/html/rfc5869
+//! [RFC 5869]: https://www.rfc-editor.org/rfc/rfc5869
 
 use crate::{error, hmac};
 
@@ -67,7 +67,7 @@ impl Salt {
 
     /// The [HKDF-Extract] operation.
     ///
-    /// [HKDF-Extract]: https://tools.ietf.org/html/rfc5869#section-2.2
+    /// [HKDF-Extract]: https://www.rfc-editor.org/rfc/rfc5869#section-2.2
     pub fn extract(&self, secret: &[u8]) -> Prk {
         // The spec says that if no salt is provided then a key of
         // `digest_alg.output_len` bytes of zeros is used. But, HMAC keys are
@@ -120,7 +120,7 @@ impl Prk {
 
     /// The [HKDF-Expand] operation.
     ///
-    /// [HKDF-Expand]: https://tools.ietf.org/html/rfc5869#section-2.3
+    /// [HKDF-Expand]: https://www.rfc-editor.org/rfc/rfc5869#section-2.3
     ///
     /// Fails if (and only if) `len` is too large.
     #[inline]

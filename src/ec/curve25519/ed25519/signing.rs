@@ -44,8 +44,8 @@ impl Ed25519KeyPair {
     /// as described in [RFC 5958 Section 2]; see [RFC 8410 Section 10.3] for an
     /// example.
     ///
-    /// [RFC 5958 Section 2]: https://tools.ietf.org/html/rfc5958#section-2
-    /// [RFC 8410 Section 10.3]: https://tools.ietf.org/html/rfc8410#section-10.3
+    /// [RFC 5958 Section 2]: https://www.rfc-editor.org/rfc/rfc5958#section-2
+    /// [RFC 8410 Section 10.3]: https://www.rfc-editor.org/rfc/rfc8410#section-10.3
     pub fn generate_pkcs8(
         rng: &dyn rand::SecureRandom,
     ) -> Result<pkcs8::Document, error::Unspecified> {

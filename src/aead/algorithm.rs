@@ -202,7 +202,7 @@ pub(super) fn aes_gcm_open<'o>(
 ///
 /// The keys are 256 bits long and the nonces are 96 bits long.
 ///
-/// [RFC 8439]: https://tools.ietf.org/html/rfc8439
+/// [RFC 8439]: https://www.rfc-editor.org/rfc/rfc8439
 pub static CHACHA20_POLY1305: Algorithm = Algorithm {
     key_len: chacha20_poly1305::KEY_LEN,
     init: chacha20_poly1305_init,

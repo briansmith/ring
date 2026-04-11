@@ -39,7 +39,7 @@ cfg_if! {
 pub(super) const KEY_LEN: usize = chacha::KEY_LEN;
 
 const MAX_IN_OUT_LEN: usize = super::max_input_len(64, 1);
-// https://tools.ietf.org/html/rfc8439#section-2.8
+// https://www.rfc-editor.org/rfc/rfc8439#section-2.8
 const _MAX_IN_OUT_LEN_BOUNDED_BY_RFC: () =
     assert!(MAX_IN_OUT_LEN == usize_from_u64_saturated(274_877_906_880u64));
 

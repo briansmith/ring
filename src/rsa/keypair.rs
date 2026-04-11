@@ -92,10 +92,10 @@ impl KeyPair {
     ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf
     ///
     /// [RFC 3447 Appendix A.1.2]:
-    ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
+    ///     https://www.rfc-editor.org/rfc/rfc3447#appendix-A.1.2
     ///
     /// [RFC 5958]:
-    ///     https://tools.ietf.org/html/rfc5958
+    ///     https://www.rfc-editor.org/rfc/rfc5958
     pub fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, KeyRejected> {
         const RSA_ENCRYPTION: &[u8] = include_bytes!("../data/alg-rsa-encryption.der");
         let (der, _) = pkcs8::unwrap_key_(
@@ -120,7 +120,7 @@ impl KeyPair {
     /// validated.
     ///
     /// [RFC 3447 Appendix A.1.2]:
-    ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
+    ///     https://www.rfc-editor.org/rfc/rfc3447#appendix-A.1.2
     ///
     /// [NIST SP-800-56B rev. 1]:
     ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf

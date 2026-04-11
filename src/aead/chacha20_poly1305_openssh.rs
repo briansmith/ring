@@ -27,7 +27,7 @@
 //!
 //! [chacha20-poly1305@openssh.com]:
 //!    http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.chacha20poly1305?annotate=HEAD
-//! [RFC 4253]: https://tools.ietf.org/html/rfc4253
+//! [RFC 4253]: https://www.rfc-editor.org/rfc/rfc4253
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;

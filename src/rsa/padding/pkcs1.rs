@@ -20,7 +20,7 @@ use crate::{bits, digest, error, io::der, rand, sealed};
 /// See "`RSA_PSS_*` Details\" in `ring::signature`'s module-level
 /// documentation for more details.
 ///
-/// [RFC 3447 Section 8.2]: https://tools.ietf.org/html/rfc3447#section-8.2
+/// [RFC 3447 Section 8.2]: https://www.rfc-editor.org/rfc/rfc3447#section-8.2
 #[derive(Debug)]
 pub struct PKCS1 {
     digest_alg: &'static digest::Algorithm,
@@ -67,7 +67,7 @@ impl Verification for PKCS1 {
 }
 
 // Implement padding procedure per EMSA-PKCS1-v1_5,
-// https://tools.ietf.org/html/rfc3447#section-9.2. This is used by both
+// https://www.rfc-editor.org/rfc/rfc3447#section-9.2. This is used by both
 // verification and signing so it needs to be able to handle moduli of the
 // minimum and maximum sizes for both operations.
 fn pkcs1_encode(pkcs1: &PKCS1, m_hash: digest::Digest, m_out: &mut [u8]) {

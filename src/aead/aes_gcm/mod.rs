@@ -521,8 +521,8 @@ pub(super) const MAX_IN_OUT_LEN: usize = super::max_input_len(BLOCK_LEN, 2);
 //
 // [NIST SP800-38D]:
 //    http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
-// [RFC 5116 Section 5.1]: https://tools.ietf.org/html/rfc5116#section-5.1
-// [RFC 5116 Section 5.2]: https://tools.ietf.org/html/rfc5116#section-5.2
+// [RFC 5116 Section 5.1]: https://www.rfc-editor.org/rfc/rfc5116#section-5.1
+// [RFC 5116 Section 5.2]: https://www.rfc-editor.org/rfc/rfc5116#section-5.2
 const _MAX_INPUT_LEN_BOUNDED_BY_NIST: () =
     assert!(MAX_IN_OUT_LEN == usize_from_u64_saturated(((1u64 << 39) - 256) / 8));
 

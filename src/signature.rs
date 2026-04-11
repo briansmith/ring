@@ -113,13 +113,13 @@
 //! [Suite B implementer's guide to FIPS 186-3]:
 //!     https://github.com/briansmith/ring/blob/main/doc/ecdsa.pdf
 //! [RFC 3279 Section 2.2.3]:
-//!     https://tools.ietf.org/html/rfc3279#section-2.2.3
+//!     https://www.rfc-editor.org/rfc/rfc3279#section-2.2.3
 //! [RFC 3447 Section 8.2]:
-//!     https://tools.ietf.org/html/rfc3447#section-7.2
+//!     https://www.rfc-editor.org/rfc/rfc3447#section-7.2
 //! [RFC 3447 Section 8.1]:
-//!     https://tools.ietf.org/html/rfc3447#section-8.1
+//!     https://www.rfc-editor.org/rfc/rfc3447#section-8.1
 //! [RFC 3447 Appendix-A.1.1]:
-//!     https://tools.ietf.org/html/rfc3447#appendix-A.1.1
+//!     https://www.rfc-editor.org/rfc/rfc3447#appendix-A.1.1
 //!
 //!
 //! # Examples
