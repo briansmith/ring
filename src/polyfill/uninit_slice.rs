@@ -105,6 +105,15 @@ impl<'target, E: Copy> Uninit<'target, E> {
         })
     }
 
+    pub fn write_filled_copy(&mut self, value: E)
+    where
+        E: Copy,
+    {
+        self.target.iter_mut().for_each(|uninit| {
+            let _: &mut E = uninit.write(value);
+        });
+    }
+
     pub fn write_iter<Src: IntoIterator<Item = E>>(
         mut self,
         src: Src,

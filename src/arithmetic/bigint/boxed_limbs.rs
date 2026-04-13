@@ -18,10 +18,10 @@ use crate::polyfill::prelude::*;
 use crate::{
     error::LenMismatchError,
     limb::{self, Limb},
-    polyfill,
+    polyfill::{self, slice::WriteResult},
 };
-use alloc::{boxed::Box, vec::Vec};
-use core::{marker::PhantomData, ptr};
+use alloc::boxed::Box;
+use core::{marker::PhantomData, mem::MaybeUninit, ptr};
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
 pub(super) struct BoxedLimbs<M> {
@@ -64,7 +64,7 @@ impl<M> BoxedLimbs<M> {
 }
 
 pub struct Uninit<M> {
-    len: usize,
+    limbs: Box<[MaybeUninit<Limb>]>,
     m: PhantomData<M>,
 }
 
@@ -72,13 +72,13 @@ impl<M> Uninit<M> {
     // "Less safe" because this is what binds `len` to `M`.
     pub fn new_less_safe(len: usize) -> Self {
         Self {
-            len,
+            limbs: Box::new_uninit_slice(len),
             m: PhantomData,
         }
     }
 
     pub fn len(&self) -> usize {
-        self.len
+        self.limbs.len()
     }
 
     #[cfg(not(target_arch = "x86_64"))]
@@ -123,22 +123,22 @@ impl<M> Uninit<M> {
     }
 
     pub(super) fn write_iter_padded(
-        self,
+        mut self,
         input: impl ExactSizeIterator<Item = Limb>,
     ) -> Result<BoxedLimbs<M>, LenMismatchError>
     where
         Limb: Copy,
     {
-        if input.len() > self.len {
+        // Don't do anything if the input is too long.
+        if input.len() > self.len() {
             return Err(LenMismatchError::new(input.len()));
         }
-        let mut limbs = Vec::with_capacity(self.len);
-        limbs.extend(input);
-        limbs.resize(self.len, limb::ZERO);
-        Ok(BoxedLimbs {
-            limbs: limbs.into_boxed_slice(),
-            m: self.m,
-        })
+        let uninit = polyfill::slice::Uninit::from(self.limbs.as_mut());
+        // We know there is no leftover input so we can ignore the `WriteResult`.
+        let (_, mut to_zero): (WriteResult<_, _, _>, _) = uninit.write_iter(input).take_uninit();
+        to_zero.write_filled_copy(Limb::from(limb::ZERO));
+        let limbs = unsafe { self.limbs.assume_init() };
+        Ok(BoxedLimbs { limbs, m: self.m })
     }
 
     pub(super) fn write_fully_with<EI>(
@@ -149,7 +149,7 @@ impl<M> Uninit<M> {
         LenMismatchError: From<EI>,
     {
         let m = self.m;
-        let mut uninit = Box::new_uninit_slice(self.len);
+        let mut uninit = self.limbs;
         let (ptr, len) = (uninit.as_mut_ptr(), uninit.len());
         let written = polyfill::slice::Uninit::from(uninit.as_mut()).write_fully_with(f)?;
         // Postconditions of `polyfill::slice::Uninit::write_fully_with`.
