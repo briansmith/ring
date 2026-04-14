@@ -42,6 +42,9 @@ mod dynstate;
 mod sha1;
 mod sha2;
 
+#[cfg(feature = "sm")]
+mod sm3;
+
 #[derive(Clone)]
 pub(crate) struct BlockContext {
     state: DynState,
@@ -379,6 +382,8 @@ enum AlgorithmID {
     SHA384,
     SHA512,
     SHA512_256,
+    #[cfg(feature = "sm")]
+    SM3,
 }
 
 impl PartialEq for Algorithm {
@@ -522,6 +527,34 @@ pub static SHA512_256: Algorithm = Algorithm {
     ]),
     id: AlgorithmID::SHA512_256,
 };
+
+/// SM3 as specified in [GB/T 32905-2016].
+///
+/// **Warning**: This is an unaudited, experimental implementation.
+///
+/// [GB/T 32905-2016]: https://www.oscca.gov.cn/sca/xxgk/2010-12/17/content_1002389.shtml
+#[cfg(feature = "sm")]
+pub static SM3: Algorithm = Algorithm {
+    output_len: OutputLen::_256,
+    chaining_len: SM3_OUTPUT_LEN,
+    block_len: sm3::BLOCK_LEN,
+    block_data_order: dynstate::sm3_block_data_order,
+    initial_state: DynInitialState::new32([
+        Wrapping(0x7380166fu32),
+        Wrapping(0x4914b2b9u32),
+        Wrapping(0x172442d7u32),
+        Wrapping(0xda8a0600u32),
+        Wrapping(0xa96f30bcu32),
+        Wrapping(0x163138aau32),
+        Wrapping(0xe38dee4du32),
+        Wrapping(0xb0fb0e4eu32),
+    ]),
+    id: AlgorithmID::SM3,
+};
+
+/// The length of the output of SM3, in bytes.
+#[cfg(feature = "sm")]
+pub const SM3_OUTPUT_LEN: usize = OutputLen::_256.into();
 
 #[derive(Clone, Copy)]
 struct Output([u8; MAX_OUTPUT_LEN]);
