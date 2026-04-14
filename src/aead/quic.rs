@@ -21,6 +21,9 @@ use crate::{
     cpu, error, hkdf,
 };
 
+#[cfg(feature = "sm")]
+use crate::aead::sm4;
+
 /// A key for generating QUIC Header Protection masks.
 pub struct HeaderProtectionKey {
     inner: KeyInner,
@@ -31,6 +34,8 @@ pub struct HeaderProtectionKey {
 enum KeyInner {
     Aes(aes::Key),
     ChaCha20(chacha::Key),
+    #[cfg(feature = "sm")]
+    Sm4(sm4::Key),
 }
 
 impl From<hkdf::Okm<'_, &'static Algorithm>> for HeaderProtectionKey {
@@ -117,6 +122,8 @@ enum AlgorithmID {
     AES_128,
     AES_256,
     CHACHA20,
+    #[cfg(feature = "sm")]
+    SM4_128,
 }
 
 impl PartialEq for Algorithm {
@@ -184,4 +191,35 @@ fn chacha20_new_mask(key: &KeyInner, sample: Sample) -> [u8; 5] {
     };
 
     chacha20_key.new_mask(sample)
+}
+
+/// SM4-128.
+///
+/// See [RFC 9001 Section 5.4](https://www.rfc-editor.org/rfc/rfc9001#section-5.4)
+/// and [RFC 8998](https://www.rfc-editor.org/rfc/rfc8998) for use of SM4 in QUIC.
+///
+/// **Warning**: This is an unaudited, experimental implementation.
+#[cfg(feature = "sm")]
+pub static SM4_128: Algorithm = Algorithm {
+    key_len: sm4::KEY_LEN,
+    init: sm4_init,
+    new_mask: sm4_new_mask,
+    id: AlgorithmID::SM4_128,
+};
+
+#[cfg(feature = "sm")]
+fn sm4_init(key: &[u8], _cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified> {
+    let key: &[u8; sm4::KEY_LEN] = key.try_into().map_err(|_| error::Unspecified)?;
+    Ok(KeyInner::Sm4(sm4::Key::new(key)))
+}
+
+#[cfg(feature = "sm")]
+fn sm4_new_mask(key: &KeyInner, sample: Sample) -> [u8; 5] {
+    let sm4_key = match key {
+        KeyInner::Sm4(key) => key,
+        _ => unreachable!(),
+    };
+    // Reason: QUIC header protection mask = first 5 bytes of E(K, sample).
+    let [b0, b1, b2, b3, b4, ..] = sm4_key.encrypt_block(sample);
+    [b0, b1, b2, b3, b4]
 }

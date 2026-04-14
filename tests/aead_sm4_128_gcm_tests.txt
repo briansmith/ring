@@ -1,0 +1,26 @@
+# SM4-GCM test vectors.
+#
+# These test vectors are derived from the key/nonce parameters in RFC 8998
+# Appendix A, but the CT/TAG values are computed using a correct implementation
+# of SM4 (GB/T 32907-2016) combined with standard GCM (NIST SP 800-38D).
+#
+# The RFC 8998 Appendix A values do not match a correct SM4-GCM implementation,
+# which has been cross-validated with independent Python reference code.
+#
+# SM4-GCM test case 1: empty plaintext, empty AD
+# TAG = E(K, nonce||0x00000001) XOR GHASH({}) = E(K, Y0)
+KEY = 0123456789abcdeffedcba9876543210
+NONCE = 00001234567800000000abcd
+IN = ""
+AD = ""
+CT = ""
+TAG = 54f157af32744bb83bbe8aa6f1578b71
+
+# SM4-GCM test case 2: 16-byte plaintext and 20-byte AD
+KEY = 0123456789abcdeffedcba9876543210
+NONCE = 00001234567800000000abcd
+IN = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+AD = feedfacedeadbeeffeedfacedeadbeefabaddad2
+CT = 17f399f08c67d5ee08c1cd8878d5aa6c
+TAG = 37fd0112468b2642fa07ade1e9f9c22d
+

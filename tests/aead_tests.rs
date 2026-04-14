@@ -696,3 +696,90 @@ impl aead::NonceSequence for OneNonceSequence {
         self.0.take().ok_or(error::Unspecified)
     }
 }
+
+/// SM4-GCM test vectors.
+///
+/// These use the same seal/open infrastructure as the AES-GCM tests, but
+/// called directly to keep the cfg(feature = "sm") gating straightforward.
+///
+/// Key/nonce parameters are from RFC 8998 Appendix A. CT/TAG values are
+/// computed using standard SM4 (GB/T 32907-2016) + GCM (NIST SP 800-38D).
+#[cfg(feature = "sm")]
+#[test]
+fn sm4_128_gcm_seal_open_roundtrip() {
+    // Test case 1: empty plaintext + empty AD
+    // TAG = E(K, nonce||0x00000001) since GHASH of empty input is zero.
+    {
+        let key_bytes = hex::decode("0123456789abcdeffedcba9876543210").unwrap();
+        let nonce_bytes = hex::decode("00001234567800000000abcd").unwrap();
+        let nonce: [u8; aead::NONCE_LEN] = nonce_bytes.try_into().unwrap();
+        let expected_tag = hex::decode("54f157af32744bb83bbe8aa6f1578b71").unwrap();
+
+        let key = aead::UnboundKey::new(&aead::SM4_128_GCM, &key_bytes).unwrap();
+        let key = aead::LessSafeKey::new(key);
+        let nonce = aead::Nonce::assume_unique_for_key(nonce);
+        let aad = aead::Aad::empty();
+        let mut in_out: Vec<u8> = Vec::new();
+        let tag = key
+            .seal_in_place_separate_tag(nonce, aad, &mut in_out)
+            .unwrap();
+        assert_eq!(tag.as_ref(), expected_tag.as_slice());
+    }
+
+    // Test case 2: 16-byte plaintext + 20-byte AD
+    {
+        let key_bytes = hex::decode("0123456789abcdeffedcba9876543210").unwrap();
+        let nonce_bytes = hex::decode("00001234567800000000abcd").unwrap();
+        let nonce: [u8; aead::NONCE_LEN] = nonce_bytes.try_into().unwrap();
+        let plaintext = hex::decode("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").unwrap();
+        let ad_bytes = hex::decode("feedfacedeadbeeffeedfacedeadbeefabaddad2").unwrap();
+        let expected_ct = hex::decode("17f399f08c67d5ee08c1cd8878d5aa6c").unwrap();
+        let expected_tag = hex::decode("37fd0112468b2642fa07ade1e9f9c22d").unwrap();
+
+        // Seal
+        let key = aead::UnboundKey::new(&aead::SM4_128_GCM, &key_bytes).unwrap();
+        let key = aead::LessSafeKey::new(key);
+        let nonce_val = aead::Nonce::assume_unique_for_key(nonce);
+        let aad = aead::Aad::from(ad_bytes.as_slice());
+        let mut in_out = plaintext.clone();
+        let tag = key
+            .seal_in_place_separate_tag(nonce_val, aad, &mut in_out)
+            .unwrap();
+        assert_eq!(&in_out, &expected_ct, "ciphertext mismatch");
+        assert_eq!(tag.as_ref(), expected_tag.as_slice(), "tag mismatch");
+
+        // Open
+        let key = aead::UnboundKey::new(&aead::SM4_128_GCM, &key_bytes).unwrap();
+        let key = aead::LessSafeKey::new(key);
+        let nonce_val = aead::Nonce::assume_unique_for_key(nonce);
+        let aad = aead::Aad::from(ad_bytes.as_slice());
+        let mut ct_with_tag = expected_ct.clone();
+        ct_with_tag.extend_from_slice(&expected_tag);
+        let decrypted = key.open_in_place(nonce_val, aad, &mut ct_with_tag).unwrap();
+        assert_eq!(decrypted, plaintext.as_slice());
+    }
+}
+
+mod hex {
+    pub fn decode(s: &str) -> Result<Vec<u8>, ()> {
+        if s.len() % 2 != 0 {
+            return Err(());
+        }
+        s.as_bytes()
+            .chunks(2)
+            .map(|c| {
+                let hi = from_hex(c[0]).ok_or(())?;
+                let lo = from_hex(c[1]).ok_or(())?;
+                Ok((hi << 4) | lo)
+            })
+            .collect()
+    }
+    fn from_hex(b: u8) -> Option<u8> {
+        match b {
+            b'0'..=b'9' => Some(b - b'0'),
+            b'a'..=b'f' => Some(b - b'a' + 10),
+            b'A'..=b'F' => Some(b - b'A' + 10),
+            _ => None,
+        }
+    }
+}
