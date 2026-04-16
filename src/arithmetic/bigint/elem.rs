@@ -17,34 +17,57 @@ use crate::polyfill::prelude::*;
 
 use super::{
     super::{MAX_LIMBS, montgomery::*},
-    IntoMont, Mont, Uninit,
-    boxed_limbs::BoxedLimbs,
-    unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
+    BoxedLimbs, IntoMont, Mont, OversizedUninit, Uninit, unwrap_impossible_len_mismatch_error,
+    unwrap_impossible_limb_slice_error,
 };
 use crate::{
     bits::BitLength,
     c, cpu,
     error::{self, LenMismatchError},
     limb::{self, Limb},
+    polyfill,
     polyfill::{
         StartMutPtr,
         slice::{AliasingSlices, InOut},
     },
 };
-use core::{marker::PhantomData, num::NonZero};
+use core::{iter, marker::PhantomData, num::NonZero};
+
+/// A boxed `Mut`.
+pub struct Elem<M, E = Unencoded> {
+    limbs: BoxedLimbs<M>,
+    encoding: PhantomData<E>,
+}
 
 /// Elements of ℤ/mℤ for some modulus *m*.
 //
 // Defaulting `E` to `Unencoded` is a convenience for callers from outside this
 // submodule. However, for maximum clarity, we always explicitly use
 // `Unencoded` within the `bigint` submodule.
-pub struct Elem<M, E = Unencoded> {
-    limbs: BoxedLimbs<M>,
+pub struct Mut<'l, M, E = Unencoded> {
+    limbs: &'l mut [Limb],
+
+    m: PhantomData<Mont<'l, M>>,
 
     /// The number of Montgomery factors that need to be canceled out from
     /// `value` to get the actual value.
     encoding: PhantomData<E>,
 }
+
+/// An immutable reference to a `Mut`.
+pub struct Ref<'l, M, E = Unencoded> {
+    limbs: &'l [Limb],
+    m: PhantomData<Mont<'l, M>>,
+    encoding: PhantomData<E>,
+}
+
+impl<'l, M, E> Clone for Ref<'l, M, E> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<M, E> Copy for Ref<'_, M, E> {}
 
 impl<M, E> Elem<M, E> {
     #[inline]
@@ -64,7 +87,26 @@ impl<M, E> Elem<M, E> {
         }
     }
 
-    #[allow(dead_code)]
+    // This is only exposed internally because we don't want external callers
+    // to borrow an `Elem<M, A>` into a `Mut<M, A>` and then compute a
+    // `Mut<M, B>` from it, as that would write a `B`-encoded element into the
+    // original `Elem`.
+    fn as_mut_internal(&mut self) -> Mut<'_, M, E> {
+        Mut {
+            limbs: self.limbs.as_mut(),
+            m: PhantomData,
+            encoding: self.encoding,
+        }
+    }
+
+    pub fn as_ref(&self) -> Ref<'_, M, E> {
+        Ref {
+            limbs: self.limbs.as_ref(),
+            m: PhantomData,
+            encoding: self.encoding,
+        }
+    }
+
     pub(super) fn num_limbs(&self) -> usize {
         self.limbs.len()
     }
@@ -73,7 +115,7 @@ impl<M, E> Elem<M, E> {
         self.limbs.as_ref()
     }
 
-    #[allow(dead_code)]
+    #[cfg(not(target_arch = "x86_64"))]
     pub(super) fn leak_limbs_mut_less_safe(&mut self) -> &mut [Limb] {
         self.limbs.as_mut()
     }
@@ -81,17 +123,95 @@ impl<M, E> Elem<M, E> {
     pub(super) fn leak_limbs_into_box_less_safe(self) -> BoxedLimbs<M> {
         self.limbs
     }
+}
 
-    pub fn clone_into(&self, out: Uninit<M>) -> Self {
+impl<'l, M, E> Mut<'l, M, E> {
+    #[inline]
+    fn assume_in_range_and_encoded_less_safe(limbs: &'l mut [Limb]) -> Self {
+        Self {
+            limbs,
+            m: PhantomData,
+            encoding: PhantomData,
+        }
+    }
+
+    pub fn as_ref(&self) -> Ref<'_, M, E> {
+        Ref::assume_in_range_and_encoded_less_safe(self.limbs)
+    }
+
+    pub(super) fn leak_limbs_mut_less_safe(self) -> &'l mut [Limb] {
+        self.limbs
+    }
+}
+
+impl<'l, M> Mut<'l, M, Unencoded> {
+    pub(super) fn from_limbs(
+        out: &'l mut [Limb],
+        m: &Mont<M>,
+    ) -> Result<Mut<'l, M, Unencoded>, error::Unspecified> {
+        limb::verify_limbs_less_than_limbs_leak_bit(out, m.limbs())?;
+        Ok(Mut::assume_in_range_and_encoded_less_safe(out))
+    }
+
+    pub fn from_be_bytes_padded<'out>(
+        input: untrusted::Input<'_>,
+        out: &'out mut OversizedUninit<1>,
+        m: &Mont<M>,
+    ) -> Result<Mut<'out, M>, error::Unspecified> {
+        let out = out
+            .as_uninit(..m.num_limbs().get())
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // because it's oversized.
+        Self::from_be_bytes_padded_(out, input, m)
+    }
+
+    pub(super) fn from_be_bytes_padded_<'out>(
+        out: polyfill::slice::Uninit<'out, Limb>,
+        input: untrusted::Input<'_>,
+        m: &Mont<M>,
+    ) -> Result<Mut<'out, M>, error::Unspecified> {
+        let num_limbs = m.num_limbs().get();
+        if out.len() != num_limbs {
+            return Err(error::Unspecified);
+        }
+        let input = limb::limbs_from_big_endian(input, 1..=num_limbs)
+            .map_err(error::erase::<LenMismatchError>)?;
+        let out = out
+            .write_iter(
+                input
+                    .chain(iter::repeat(Limb::from(limb::ZERO)))
+                    .take(num_limbs),
+            )
+            .src_empty()
+            .map_err(error::erase::<LenMismatchError>)?
+            .uninit_empty()
+            .map_err(error::erase::<LenMismatchError>)?
+            .into_written();
+        Mut::from_limbs(out, m)
+    }
+}
+
+impl<'l, M, E> Ref<'l, M, E> {
+    #[inline]
+    pub(super) fn assume_in_range_and_encoded_less_safe(limbs: &'l [Limb]) -> Self {
+        Self {
+            limbs,
+            m: PhantomData,
+            encoding: PhantomData,
+        }
+    }
+}
+
+impl<'l, M, E> Ref<'l, M, E> {
+    pub fn clone_into<'out>(&self, out: &'out mut OversizedUninit<1>) -> Mut<'out, M, E> {
         let limbs = out
-            .write_copy_of_slice_checked(self.limbs.as_ref())
-            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        Self::assume_in_range_and_encoded_less_safe(limbs)
+            .write_copy_of_slice(self.limbs, self.limbs.len())
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
+        Mut::assume_in_range_and_encoded_less_safe(limbs)
     }
 
     #[inline]
     pub fn is_zero(&self) -> bool {
-        limb::limbs_are_zero(self.limbs.as_ref()).leak()
+        limb::limbs_are_zero(self.limbs).leak()
     }
 }
 
@@ -122,67 +242,116 @@ impl<M> Elem<M, R> {
     }
 }
 
-impl<M> Elem<M, Unencoded> {
+impl<M> Ref<'_, M, Unencoded> {
     #[inline]
     pub fn fill_be_bytes(&self, out: &mut [u8]) {
         // See Falko Strenzke, "Manger's Attack revisited", ICICS 2010.
-        limb::big_endian_from_limbs(self.limbs.as_ref(), out)
+        limb::big_endian_from_limbs(self.limbs, out)
     }
 }
 
 impl<M, E> Elem<M, E> {
     pub(crate) fn encode_mont<OE>(
-        self,
+        mut self,
         im: &IntoMont<M, OE>,
         cpu: cpu::Features,
     ) -> Elem<M, <(E, OE) as ProductEncoding>::Output>
     where
         (E, OE): ProductEncoding,
     {
+        let _: Mut<'_, M, <(E, OE) as ProductEncoding>::Output> =
+            self.as_mut_internal().encode_mont(im, cpu);
+        Elem {
+            limbs: self.limbs,
+            encoding: PhantomData,
+        }
+    }
+}
+
+impl<'l, M, E> Mut<'l, M, E> {
+    pub(crate) fn encode_mont<OE>(
+        self,
+        im: &IntoMont<M, OE>,
+        cpu: cpu::Features,
+    ) -> Mut<'l, M, <(E, OE) as ProductEncoding>::Output>
+    where
+        (E, OE): ProductEncoding,
+    {
         let oneRR = im.one();
         let m = im.modulus(cpu);
 
-        let mut in_out = self.limbs;
+        let in_out = self.limbs;
         let _: &[Limb] = limbs_mul_mont(
-            (InOut(in_out.as_mut()), oneRR.leak_limbs_less_safe()),
+            (InOut(&mut *in_out), oneRR.leak_limbs_less_safe()),
             m.limbs(),
             m.n0(),
             m.cpu_features(),
         )
         .unwrap_or_else(unwrap_impossible_limb_slice_error);
-        Elem::assume_in_range_and_encoded_less_safe(in_out)
+        Mut::assume_in_range_and_encoded_less_safe(in_out)
     }
 }
 
 impl<M, E> Elem<M, E> {
     pub fn mul<BE>(
-        self,
+        mut self,
         b: &Elem<M, BE>,
         m: &Mont<M>,
     ) -> Elem<M, <(E, BE) as ProductEncoding>::Output>
     where
         (E, BE): ProductEncoding,
     {
-        let mut in_out = self.limbs;
+        let _: Mut<'_, M, <(E, BE) as ProductEncoding>::Output> =
+            self.as_mut_internal().mul(b.as_ref(), m);
+        Elem {
+            limbs: self.limbs,
+            encoding: PhantomData,
+        }
+    }
+
+    #[cfg(any(test, not(target_arch = "x86_64")))]
+    #[inline]
+    pub fn square(mut self, m: &Mont<M>) -> Elem<M, <(E, E) as ProductEncoding>::Output>
+    where
+        (E, E): ProductEncoding,
+    {
+        let _: Mut<'_, M, <(E, E) as ProductEncoding>::Output> = self.as_mut_internal().square(m);
+        Elem {
+            limbs: self.limbs,
+            encoding: PhantomData,
+        }
+    }
+}
+
+impl<'l, M, E> Mut<'l, M, E> {
+    pub fn mul<BE>(
+        self,
+        b: Ref<M, BE>,
+        m: &Mont<M>,
+    ) -> Mut<'l, M, <(E, BE) as ProductEncoding>::Output>
+    where
+        (E, BE): ProductEncoding,
+    {
+        let in_out = self.limbs;
         let _: &[Limb] = limbs_mul_mont(
-            (InOut(in_out.as_mut()), b.limbs.as_ref()),
+            (InOut(&mut *in_out), b.limbs),
             m.limbs(),
             m.n0(),
             m.cpu_features(),
         )
         .unwrap_or_else(unwrap_impossible_limb_slice_error);
-        Elem::assume_in_range_and_encoded_less_safe(in_out)
+        Mut::assume_in_range_and_encoded_less_safe(in_out)
     }
 
     #[inline]
-    pub fn square(self, m: &Mont<M>) -> Elem<M, <(E, E) as ProductEncoding>::Output>
+    pub fn square(self, m: &Mont<M>) -> Mut<'l, M, <(E, E) as ProductEncoding>::Output>
     where
         (E, E): ProductEncoding,
     {
-        let mut in_out = self.limbs;
-        let _: &[Limb] = limbs_square_mont(in_out.as_mut(), m.limbs(), m.n0(), m.cpu_features())
+        let in_out = self.limbs;
+        let _: &[Limb] = limbs_square_mont(&mut *in_out, m.limbs(), m.n0(), m.cpu_features())
             .unwrap_or_else(unwrap_impossible_limb_slice_error);
-        Elem::assume_in_range_and_encoded_less_safe(in_out)
+        Mut::assume_in_range_and_encoded_less_safe(in_out)
     }
 }
 
@@ -291,10 +460,10 @@ impl<M> Elem<M, Unencoded> {
     }
 }
 
-impl<M, E> Elem<M, E> {
+impl<M, E> Ref<'_, M, E> {
     #[inline]
-    pub fn verify_equals_consttime(&self, b: &Elem<M, E>) -> Result<(), error::Unspecified> {
-        let equal = limb::limbs_equal_limbs_consttime(self.limbs.as_ref(), b.limbs.as_ref())
+    pub fn verify_equals_consttime(&self, b: Ref<'_, M, E>) -> Result<(), error::Unspecified> {
+        let equal = limb::limbs_equal_limbs_consttime(self.limbs, b.limbs)
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         if !equal.leak() {
             return Err(error::Unspecified);
@@ -331,7 +500,7 @@ pub mod testutil {
     }
 
     pub fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
-        if a.verify_equals_consttime(b).is_err() {
+        if a.as_ref().verify_equals_consttime(b.as_ref()).is_err() {
             panic!("{:x?} != {:x?}", a.limbs.as_ref(), b.limbs.as_ref());
         }
     }

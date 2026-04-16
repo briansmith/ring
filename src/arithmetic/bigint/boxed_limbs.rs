@@ -87,6 +87,7 @@ impl<M> Uninit<M> {
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
     }
 
+    #[cfg(test)] // TODO: ditch this
     pub(super) fn write_from_be_bytes_padded(
         self,
         input: untrusted::Input,

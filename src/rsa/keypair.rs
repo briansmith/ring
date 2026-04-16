@@ -352,7 +352,7 @@ impl KeyPair {
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features)
             .mul(&q_mod_n, nm);
-        if !pq_mod_n.is_zero() {
+        if !pq_mod_n.as_ref().is_zero() {
             return Err(KeyRejected::inconsistent_components());
         }
 
@@ -578,7 +578,7 @@ impl KeyPair {
         let m = self.private_exponentiate(signature, cpu_features)?;
 
         // Step 3.
-        m.fill_be_bytes(signature);
+        m.as_ref().fill_be_bytes(signature);
 
         Ok(())
     }
@@ -653,11 +653,13 @@ impl KeyPair {
         // that is done other than basic checks on its size, oddness, and
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
-        let verify = nm.alloc_uninit();
+        let mut tmp1 = bigint::OversizedUninit::new();
+        let mut tmp2 = bigint::OversizedUninit::new();
         self.public
             .inner()
-            .exponentiate_elem(verify, &m, cpu_features)
-            .verify_equals_consttime(&c)?;
+            .exponentiate_elem(&mut tmp1, m.as_ref(), &mut tmp2, cpu_features)
+            .as_ref()
+            .verify_equals_consttime(c.as_ref())?;
 
         // Step 3 will be done by the caller.
 

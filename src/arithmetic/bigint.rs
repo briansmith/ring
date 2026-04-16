@@ -54,7 +54,7 @@ use crate::{
 };
 
 mod boxed_limbs;
-mod elem;
+pub(crate) mod elem;
 mod exp;
 pub mod modulus;
 mod oversized_uninit;
@@ -68,13 +68,15 @@ impl<M> Uninit<M> {
         input: untrusted::Input<'_>,
         m: &Mont<M>,
     ) -> Result<Elem<M>, error::Unspecified> {
-        self.write_from_be_bytes_padded(input)
-            .map_err(error::erase::<LenMismatchError>)
-            .and_then(|out| Elem::from_limbs(out, m))
+        let limbs = self.write_fully_with(|uninit| {
+            Ok(elem::Mut::from_be_bytes_padded_(uninit, input, m)?.leak_limbs_mut_less_safe())
+        })?;
+        Ok(Elem::assume_in_range_and_encoded_less_safe(limbs))
     }
 }
 
 impl<M> Elem<M, Unencoded> {
+    // TODO: DRY w.r.t. `Mut::from_limbs`.
     fn from_limbs(
         out: BoxedLimbs<M>,
         m: &Mont<M>,

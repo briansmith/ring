@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    bigint::{Elem, Mont, Uninit},
+    bigint::{Mont, OversizedUninit, elem},
     montgomery::R,
 };
 use core::num::NonZero;
@@ -27,8 +27,13 @@ use core::num::NonZero;
 /// weight of `exponent`.
 // TODO: The test coverage needs to be expanded, e.g. test with the largest
 // accepted exponent and with the most common values of 65537 and 3.
-impl<M> Elem<M, R> {
-    pub(crate) fn exp_vartime(self, out: Uninit<M>, exponent: NonZero<u64>, m: &Mont<M>) -> Self {
+impl<M> elem::Ref<'_, M, R> {
+    pub(crate) fn exp_vartime<'out>(
+        self,
+        out: &'out mut OversizedUninit<1>,
+        exponent: NonZero<u64>,
+        m: &Mont<M>,
+    ) -> elem::Mut<'out, M, R> {
         // Use what [Knuth] calls the "S-and-X binary method", i.e. variable-time
         // square-and-multiply that scans the exponent from the most significant
         // bit to the least significant bit (left-to-right). Left-to-right requires
@@ -47,14 +52,14 @@ impl<M> Elem<M, R> {
         // [Knuth]: The Art of Computer Programming, Volume 2: Seminumerical
         //          Algorithms (3rd Edition), Section 4.6.3.
         let exponent = exponent.get();
-        let mut acc = self.clone_into(out);
+        let mut acc: elem::Mut<'out, _, _> = self.clone_into(out);
         let mut bit = 1 << (64 - 1 - exponent.leading_zeros());
         debug_assert!((exponent & bit) != 0);
         while bit > 1 {
             bit >>= 1;
             acc = acc.square(m);
             if (exponent & bit) != 0 {
-                acc = acc.mul(&self, m);
+                acc = acc.mul(self, m);
             }
         }
         acc

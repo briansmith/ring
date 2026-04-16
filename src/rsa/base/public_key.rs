@@ -143,28 +143,31 @@ impl PublicKey<bigint::IntoMont<'_, N, RR>> {
         // RFC 8017 Section 5.2.2: RSAVP1.
 
         // Step 1.
-        let s = n.alloc_uninit().into_elem_from_be_bytes_padded(base, n)?;
-        if s.is_zero() {
+        let mut s = bigint::OversizedUninit::new();
+        let s = bigint::elem::Mut::from_be_bytes_padded(base, &mut s, n)?;
+        if s.as_ref().is_zero() {
             return Err(error::Unspecified);
         }
 
         // Step 2.
-        let m = n.alloc_uninit();
-        let m = self.exponentiate_elem(m, &s, cpu_features);
+        let mut m = bigint::OversizedUninit::new();
+        let mut tmp = bigint::OversizedUninit::new();
+        let m = self.exponentiate_elem(&mut m, s.as_ref(), &mut tmp, cpu_features);
 
         // Step 3.
-        Ok(fill_be_bytes_n(m, self.n.len_bits(), out_buffer))
+        Ok(fill_be_bytes_n(m.as_ref(), self.n.len_bits(), out_buffer))
     }
 
     /// Calculates base**e (mod n).
     ///
     /// This is constant-time with respect to `base` only.
-    pub(in super::super) fn exponentiate_elem(
+    pub(in super::super) fn exponentiate_elem<'out>(
         &self,
-        out: bigint::Uninit<N>,
-        base: &bigint::Elem<N>,
+        out: &'out mut bigint::OversizedUninit<1>,
+        base: bigint::elem::Ref<N>,
+        tmp: &mut bigint::OversizedUninit<1>,
         cpu_features: cpu::Features,
-    ) -> bigint::Elem<N> {
+    ) -> bigint::elem::Mut<'out, N> {
         // The exponent was already checked to be at least 3.
         let exponent_without_low_bit = NonZero::<u64>::try_from(self.e.value().get() & !1).unwrap();
         // The exponent was already checked to be odd.
@@ -177,10 +180,10 @@ impl PublicKey<bigint::IntoMont<'_, N, RR>> {
         // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
         // weight of 2. The maximum bit length and maximum Hamming weight of the
         // exponent is bounded by the value of `PublicExponent::MAX`.
-        let tmp = nm.alloc_uninit();
         let acc = base
             .clone_into(tmp)
             .encode_mont(n, cpu_features)
+            .as_ref()
             .exp_vartime(out, exponent_without_low_bit, nm);
 
         // Now do the multiplication for the low bit and convert out of the Montgomery domain.
@@ -193,11 +196,11 @@ impl PublicKey<bigint::IntoMont<'_, N, RR>> {
 /// the modulus `n`.
 ///
 /// `n_bits` must be the bit length of the public modulus `n`.
-fn fill_be_bytes_n(
-    elem: bigint::Elem<N>,
+fn fill_be_bytes_n<'out>(
+    elem: bigint::elem::Ref<'_, N>,
     n_bits: bits::BitLength,
-    out: &mut [u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN],
-) -> &[u8] {
+    out: &'out mut [u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN],
+) -> &'out [u8] {
     let n_bytes = n_bits.as_usize_bytes_rounded_up();
     let n_bytes_padded = n_bytes.next_multiple_of(LIMB_BYTES);
     let out = &mut out[..n_bytes_padded];
