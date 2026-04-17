@@ -136,8 +136,8 @@ impl<M> Uninit<M> {
         }
         let uninit = polyfill::slice::Uninit::from(self.limbs.as_mut());
         // We know there is no leftover input so we can ignore the `WriteResult`.
-        let (_, mut to_zero): (WriteResult<_, _, _>, _) = uninit.write_iter(input).take_uninit();
-        to_zero.write_filled_copy(Limb::from(limb::ZERO));
+        let (_, to_zero): (WriteResult<_, _, _>, _) = uninit.write_iter(input).take_uninit();
+        let _: &_ = to_zero.write_filled_copy(Limb::from(limb::ZERO));
         let limbs = unsafe { self.limbs.assume_init() };
         Ok(BoxedLimbs { limbs, m: self.m })
     }

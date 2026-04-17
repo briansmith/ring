@@ -21,6 +21,7 @@ use super::{
 };
 use crate::error::{self, LenMismatchError};
 use core::{
+    iter,
     marker::PhantomData,
     mem::{self, MaybeUninit},
     ops::RangeTo,
@@ -102,13 +103,11 @@ impl<'target, E: Copy> Uninit<'target, E> {
         })
     }
 
-    pub fn write_filled_copy(&mut self, value: E)
+    pub fn write_filled_copy(self, value: E) -> &'target [E]
     where
-        E: Copy,
+        E: Copy, // To avoid concerns about `value.clone()` panicking
     {
-        self.target.iter_mut().for_each(|uninit| {
-            let _: &mut E = uninit.write(value);
-        });
+        self.write_iter(iter::repeat(value)).written
     }
 
     pub fn write_iter<Src: IntoIterator<Item = E>>(
