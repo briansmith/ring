@@ -54,6 +54,13 @@ pub struct Mut<'l, M, E = Unencoded> {
     encoding: PhantomData<E>,
 }
 
+/// An "almost-Montgomery" (i.e. almost-reduced) `Mut`.
+pub(super) struct MutAmm<'l, M> {
+    // `limbs` is assumed to be Montgomery-encoded (`R`).
+    limbs: &'l mut [Limb],
+    m: PhantomData<Mont<'l, M>>,
+}
+
 /// An immutable reference to a `Mut`.
 pub struct Ref<'l, M, E = Unencoded> {
     limbs: &'l [Limb],
@@ -78,15 +85,6 @@ impl<M, E> Elem<M, E> {
         }
     }
 
-    #[cfg(not(target_arch = "x86_64"))]
-    #[inline]
-    pub(super) fn transmute_encoding_less_safe<RE>(self) -> Elem<M, RE> {
-        Elem {
-            limbs: self.limbs,
-            encoding: PhantomData,
-        }
-    }
-
     // This is only exposed internally because we don't want external callers
     // to borrow an `Elem<M, A>` into a `Mut<M, A>` and then compute a
     // `Mut<M, B>` from it, as that would write a `B`-encoded element into the
@@ -105,10 +103,6 @@ impl<M, E> Elem<M, E> {
             m: PhantomData,
             encoding: self.encoding,
         }
-    }
-
-    pub(super) fn leak_limbs_less_safe(&self) -> &[Limb] {
-        self.limbs.as_ref()
     }
 
     pub(super) fn leak_limbs_into_box_less_safe(self) -> BoxedLimbs<M> {
@@ -130,8 +124,7 @@ impl<'l, M, E> Mut<'l, M, E> {
         Ref::assume_in_range_and_encoded_less_safe(self.limbs)
     }
 
-    #[cfg(not(target_arch = "x86_64"))]
-    pub(super) fn leak_limbs_mut_less_safe(&mut self) -> &mut [Limb] {
+    pub(super) fn leak_limbs_less_safe(&self) -> &[Limb] {
         self.limbs
     }
 
@@ -196,12 +189,16 @@ impl<'l, M, E> Ref<'l, M, E> {
         }
     }
 
+    #[cfg(any(test, target_arch = "x86_64"))]
     pub fn num_limbs(&self) -> usize {
         self.limbs.len()
     }
-}
 
-impl<'l, M, E> Ref<'l, M, E> {
+    #[cfg(test)]
+    pub(super) fn leak_limbs_less_safe(&self) -> &[Limb] {
+        self.limbs
+    }
+
     pub fn clone_into<'out>(&self, out: &'out mut OversizedUninit<1>) -> Mut<'out, M, E> {
         let limbs = out
             .write_copy_of_slice(self.limbs, self.limbs.len())
@@ -215,30 +212,55 @@ impl<'l, M, E> Ref<'l, M, E> {
     }
 }
 
-/// Does a Montgomery reduction on `limbs` assuming they are Montgomery-encoded ('R') and assuming
-/// they are the same size as `m`, but perhaps not reduced mod `m`. The result will be
-/// fully reduced mod `m`.
-///
-/// WARNING: Takes a `Storage` as an in/out value.
-pub(super) fn from_montgomery_amm<M>(mut in_out: BoxedLimbs<M>, m: &Mont<M>) -> Elem<M, Unencoded> {
-    let mut one = [0; MAX_LIMBS];
-    one[0] = 1;
-    let one = &one[..m.limbs().len()];
-    let _: &[Limb] = limbs_mul_mont(
-        (InOut(in_out.as_mut()), one),
-        m.limbs(),
-        m.n0(),
-        m.cpu_features(),
-    )
-    .unwrap_or_else(unwrap_impossible_limb_slice_error);
-    Elem::assume_in_range_and_encoded_less_safe(in_out)
+impl<'l, M> MutAmm<'l, M> {
+    #[cfg(target_arch = "x86_64")]
+    pub(super) fn copy_from_limbs_assume_amm_and_encoded(
+        out: &'l mut OversizedUninit<1>,
+        src: &mut [Limb],
+    ) -> Result<Self, LenMismatchError> {
+        let limbs = out.write_copy_of_slice(src, src.len())?;
+        Ok(Self {
+            limbs,
+            m: PhantomData,
+        })
+    }
+
+    /// Does a Montgomery reduction on `self`. The result will be
+    /// fully reduced mod `m`.
+    ///
+    /// Remember that `MutAmm` is always Montgomery-encoded ('R').
+    pub(super) fn reduced_mont(
+        self,
+        m: &Mont<M>,
+    ) -> Result<Mut<'l, M, Unencoded>, LenMismatchError> {
+        if self.limbs.len() != m.num_limbs().get() {
+            return Err(LenMismatchError::new(self.limbs.len()));
+        }
+        let limbs = self.limbs;
+
+        let mut one = [0; MAX_LIMBS];
+        one[0] = 1;
+        let one = &one[..m.limbs().len()];
+        let _: &[Limb] = limbs_mul_mont(
+            (InOut(&mut *limbs), one),
+            m.limbs(),
+            m.n0(),
+            m.cpu_features(),
+        )
+        .unwrap_or_else(unwrap_impossible_limb_slice_error);
+        Ok(Mut::assume_in_range_and_encoded_less_safe(limbs))
+    }
 }
 
 #[cfg(any(test, not(target_arch = "x86_64")))]
-impl<M> Elem<M, R> {
+impl<'l, M> Mut<'l, M, R> {
     #[inline]
-    pub fn into_unencoded(self, m: &Mont<M>) -> Elem<M, Unencoded> {
-        from_montgomery_amm(self.limbs, m)
+    pub fn into_unencoded(self, m: &Mont<M>) -> Result<Mut<'l, M, Unencoded>, LenMismatchError> {
+        let amm = MutAmm {
+            limbs: self.limbs,
+            m: self.m,
+        };
+        amm.reduced_mont(m)
     }
 }
 
@@ -307,19 +329,6 @@ impl<M, E> Elem<M, E> {
             encoding: PhantomData,
         }
     }
-
-    #[cfg(any(test, not(target_arch = "x86_64")))]
-    #[inline]
-    pub fn square(mut self, m: &Mont<M>) -> Elem<M, <(E, E) as ProductEncoding>::Output>
-    where
-        (E, E): ProductEncoding,
-    {
-        let _: Mut<'_, M, <(E, E) as ProductEncoding>::Output> = self.as_mut_internal().square(m);
-        Elem {
-            limbs: self.limbs,
-            encoding: PhantomData,
-        }
-    }
 }
 
 impl<'l, M, E> Mut<'l, M, E> {
@@ -357,7 +366,7 @@ impl<'l, M, E> Mut<'l, M, E> {
 impl<M> Uninit<M> {
     pub fn elem_reduced_once<Larger>(
         self,
-        a: &Elem<Larger>,
+        a: Ref<'_, Larger>,
         m: &Mont<M>,
         other_modulus_len_bits: BitLength,
     ) -> Elem<M, Unencoded> {
@@ -371,37 +380,44 @@ impl<M> Uninit<M> {
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         Elem::<M, Unencoded>::assume_in_range_and_encoded_less_safe(r)
     }
+}
 
+impl<'l, M, E> Ref<'l, M, E> {
     #[inline]
-    pub fn elem_reduce_mont<Larger>(
+    pub fn reduced_mont<'out, Smaller>(
         self,
-        a: &Elem<Larger, Unencoded>,
-        m: &Mont<M>,
+        out: &'out mut OversizedUninit<1>,
+        m: &Mont<Smaller>,
         other_prime_len_bits: BitLength,
-    ) -> Elem<M, RInverse> {
+    ) -> Mut<'out, Smaller, RInverse> {
         // This is stricter than required mathematically but this is what we
         // guarantee and this is easier to check. The real requirement is that
         // that `a < m*R` where `R` is the Montgomery `R` for `m`.
         assert_eq!(other_prime_len_bits, m.len_bits());
 
         // `limbs_from_mont_in_place` requires this.
-        assert_eq!(a.limbs.len(), m.limbs().len() * 2);
+        assert_eq!(self.limbs.len(), m.limbs().len() * 2);
 
         let mut tmp = [0; MAX_LIMBS];
-        let tmp = &mut tmp[..a.limbs.len()];
-        tmp.copy_from_slice(a.limbs.as_ref());
+        let tmp = &mut tmp[..self.limbs.len()];
+        tmp.copy_from_slice(self.limbs);
 
-        self.write_fully_with(|out| {
+        let out = out
+            .as_uninit(..m.num_limbs().get())
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
+        out.write_fully_with(|out| {
             limbs_from_mont_in_place(out, tmp, m.limbs(), m.n0())
                 .map_err(error::erase::<LenMismatchError>)
         })
-        .map(Elem::<M, RInverse>::assume_in_range_and_encoded_less_safe)
+        .map(Mut::<Smaller, RInverse>::assume_in_range_and_encoded_less_safe)
         .unwrap_or_else(|_: error::Unspecified| unreachable!())
     }
+}
 
+impl<M> Uninit<M> {
     pub fn elem_widen<Smaller>(
         self,
-        a: &Elem<Smaller, Unencoded>,
+        a: Ref<'_, Smaller, Unencoded>,
         m: &Mont<M>,
         smaller_modulus_bits: BitLength,
     ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
@@ -421,8 +437,10 @@ impl<M, E> Elem<M, E> {
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         self
     }
+}
 
-    pub fn sub(mut self, b: &Elem<M, E>, m: &Mont<M>) -> Elem<M, E> {
+impl<M, E> Mut<'_, M, E> {
+    pub fn sub(self, b: &Elem<M, E>, m: &Mont<M>) -> Self {
         prefixed_extern! {
             // `r` and `a` may alias.
             unsafe fn LIMBS_sub_mod(
@@ -434,7 +452,7 @@ impl<M, E> Elem<M, E> {
             );
         }
         let num_limbs = NonZero::new(m.limbs().len()).unwrap();
-        let _: &[Limb] = (InOut(self.limbs.as_mut()), b.limbs.as_ref())
+        let _: &[Limb] = (InOut(&mut *self.limbs), b.limbs.as_ref())
             .with_non_dangling_non_null_pointers(num_limbs, |mut r, [a, b]| {
                 let m = m.limbs().as_ptr(); // Also non-dangling because num_limbs is non-zero.
                 unsafe {
@@ -447,15 +465,15 @@ impl<M, E> Elem<M, E> {
     }
 }
 
-impl<M> Elem<M, Unencoded> {
+impl<M> Mut<'_, M, Unencoded> {
     /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
     pub fn verify_inverse_consttime(
         self,
-        b: &Elem<M, R>,
+        b: Ref<'_, M, R>,
         m: &Mont<M>,
     ) -> Result<(), error::Unspecified> {
-        let r = self.mul(b.as_ref(), m);
-        limb::verify_limbs_equal_1_leak_bit(r.limbs.as_ref())
+        let r = self.mul(b, m);
+        limb::verify_limbs_equal_1_leak_bit(r.limbs)
     }
 }
 
@@ -498,9 +516,13 @@ pub mod testutil {
         Elem::assume_in_range_and_encoded_less_safe(limbs)
     }
 
-    pub fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
-        if a.as_ref().verify_equals_consttime(b.as_ref()).is_err() {
-            panic!("{:x?} != {:x?}", a.limbs.as_ref(), b.limbs.as_ref());
+    pub fn assert_elem_eq<M, E>(a: Ref<'_, M, E>, b: Ref<'_, M, E>) {
+        if a.verify_equals_consttime(b).is_err() {
+            panic!(
+                "{:x?} != {:x?}",
+                a.leak_limbs_less_safe(),
+                b.leak_limbs_less_safe()
+            );
         }
     }
 }

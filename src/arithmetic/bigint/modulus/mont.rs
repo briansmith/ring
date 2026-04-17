@@ -18,7 +18,7 @@ use crate::polyfill::prelude::*;
 use super::{
     super::{
         super::montgomery::{RR, RRR, Unencoded, limbs_square_mont},
-        Elem, N0, One, OversizedUninit, PublicModulus, Uninit, elem,
+        Elem, N0, One, OversizedUninit, PublicModulus, Uninit,
         modulus::value::Value,
         unwrap_impossible_limb_slice_error,
     },
@@ -261,17 +261,6 @@ impl<'a, M> Mont<'a, M> {
 }
 
 impl<M> Mont<'_, M> {
-    // Zero is the same in every encoding.
-    #[cfg_attr(target_arch = "x86_64", allow(dead_code))]
-    #[inline]
-    pub fn zero<'l, E>(&self, uninit: &'l mut OversizedUninit<1>) -> elem::Mut<'l, M, E> {
-        let limbs = uninit
-            .as_uninit(..self.num_limbs().get())
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!()) // because it is oversized.
-            .write_filled_copy(Limb::from(limb::ZERO));
-        elem::Mut::assume_in_range_and_encoded_less_safe(limbs)
-    }
-
     pub fn alloc_uninit(&self) -> Uninit<M> {
         Uninit::new_less_safe(self.value.limbs().len())
     }

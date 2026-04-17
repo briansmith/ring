@@ -130,11 +130,14 @@ mod tests {
                 let m_owned = m_owned.reborrow();
                 let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModMul", &m);
-                let a = consume_elem(test_case, "A", &m).encode_mont(&m_owned, cpu_features);
+                let mut a = consume_elem(test_case, "A", &m).encode_mont(&m_owned, cpu_features);
+                let a = a.as_mut_internal();
                 let b = consume_elem(test_case, "B", &m).encode_mont(&m_owned, cpu_features);
                 let actual_result = a.mul(b.as_ref(), &m);
-                let actual_result = actual_result.into_unencoded(&m);
-                assert_elem_eq(&actual_result, &expected_result);
+                let actual_result = actual_result
+                    .into_unencoded(&m)
+                    .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+                assert_elem_eq(actual_result.as_ref(), expected_result.as_ref());
 
                 Ok(())
             },
@@ -153,10 +156,13 @@ mod tests {
                 let m_owned = m_owned.reborrow();
                 let m = m_owned.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "ModSquare", &m);
-                let a = consume_elem(test_case, "A", &m).encode_mont(&m_owned, cpu_features);
+                let mut a = consume_elem(test_case, "A", &m).encode_mont(&m_owned, cpu_features);
+                let a = a.as_mut_internal();
                 let actual_result = a.square(&m);
-                let actual_result = actual_result.into_unencoded(&m);
-                assert_elem_eq(&actual_result, &expected_result);
+                let actual_result = actual_result
+                    .into_unencoded(&m)
+                    .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+                assert_elem_eq(actual_result.as_ref(), expected_result.as_ref());
 
                 Ok(())
             },
@@ -177,18 +183,19 @@ mod tests {
                 let m_ = m_.reborrow();
                 let m = m_.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "R", &m);
-                let a = consume_elem_unchecked::<M>(
+                let mut a = consume_elem_unchecked::<M>(
                     test_case,
                     "A",
                     expected_result.as_ref().num_limbs() * 2,
                 );
+                let a = a.as_mut_internal();
                 let other_modulus_len_bits = m_.len_bits();
-
-                let actual_result = m
-                    .alloc_uninit()
-                    .elem_reduce_mont(&a, &m, other_modulus_len_bits)
+                let mut actual_result = OversizedUninit::new();
+                let actual_result = a
+                    .as_ref()
+                    .reduced_mont(&mut actual_result, &m, other_modulus_len_bits)
                     .encode_mont(&m_, cpu_features);
-                assert_elem_eq(&actual_result, &expected_result);
+                assert_elem_eq(actual_result.as_ref(), expected_result.as_ref());
 
                 Ok(())
             },
@@ -214,8 +221,8 @@ mod tests {
 
                 let actual_result =
                     m.alloc_uninit()
-                        .elem_reduced_once(&a, &m, other_modulus_len_bits);
-                assert_elem_eq(&actual_result, &expected_result);
+                        .elem_reduced_once(a.as_ref(), &m, other_modulus_len_bits);
+                assert_elem_eq(actual_result.as_ref(), expected_result.as_ref());
 
                 Ok(())
             },

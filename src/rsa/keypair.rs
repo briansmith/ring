@@ -383,10 +383,12 @@ impl KeyPair {
         // with an even modulus.
 
         // Step 7.f.
-        pm.alloc_uninit()
-            .elem_reduce_mont(&q_mod_n, pm, qim.len_bits())
+        let mut tmp = bigint::OversizedUninit::new();
+        q_mod_n
+            .as_ref()
+            .reduced_mont(&mut tmp, pm, qim.len_bits())
             .encode_mont(pim, cpu_features)
-            .verify_inverse_consttime(&qInv, pm)
+            .verify_inverse_consttime(qInv.as_ref(), pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // This should never fail since `n` and `e` were validated above.
@@ -506,19 +508,22 @@ impl<M> PrivateCrtPrime<M> {
     }
 }
 
-fn elem_exp_consttime<M>(
-    c: &bigint::Elem<N>,
+fn elem_exp_consttime<'out, M>(
+    out: &'out mut bigint::OversizedUninit<1>,
+    c: &bigint::elem::Elem<N>,
     p: &PrivateCrtPrime<M>,
     other_prime_len_bits: BitLength,
     cpu_features: cpu::Features,
-) -> Result<bigint::Elem<M>, error::Unspecified> {
-    c.exp_consttime(
-        &p.exponent,
-        &p.modulus.reborrow(),
-        other_prime_len_bits,
-        cpu_features,
-    )
-    .map_err(error::erase::<LimbSliceError>)
+) -> Result<bigint::elem::Mut<'out, M>, error::Unspecified> {
+    c.as_ref()
+        .exp_consttime(
+            out,
+            &p.exponent,
+            &p.modulus.reborrow(),
+            other_prime_len_bits,
+            cpu_features,
+        )
+        .map_err(error::erase::<LimbSliceError>)
 }
 
 // Type-level representations of the different moduli used in RSA signing, in
@@ -614,16 +619,21 @@ impl KeyPair {
         // Step 2
         let c = base;
 
+        let mut tmp1 = bigint::OversizedUninit::new();
+        let mut tmp2 = bigint::OversizedUninit::new();
+
         // Step 2.b.i.
-        let m_1 = elem_exp_consttime(&c, &self.p, q.len_bits(), cpu_features)?;
-        let m_2 = elem_exp_consttime(&c, &self.q, p.len_bits(), cpu_features)?;
+        let m_1 = elem_exp_consttime(&mut tmp1, &c, &self.p, q.len_bits(), cpu_features)?;
+        let m_2 = elem_exp_consttime(&mut tmp2, &c, &self.q, p.len_bits(), cpu_features)?;
 
         // Step 2.b.ii isn't needed since there are only two primes.
 
         // Step 2.b.iii.
         let h = {
             let pm = &p.modulus(cpu_features);
-            let m_2 = pm.alloc_uninit().elem_reduced_once(&m_2, pm, q.len_bits());
+            let m_2 = pm
+                .alloc_uninit()
+                .elem_reduced_once(m_2.as_ref(), pm, q.len_bits());
             m_1.sub(&m_2, pm).mul(self.qInv.as_ref(), pm)
         };
 
@@ -633,14 +643,16 @@ impl KeyPair {
         // non-modular arithmetic.
         // The old `h` isn't used beyond this point, so its storage could be
         // reused.
-        let h = nm.alloc_uninit().elem_widen(&h, nm, p.len_bits())?;
+        let h = nm.alloc_uninit().elem_widen(h.as_ref(), nm, p.len_bits())?;
         let q_mod_n_storage = nm.alloc_uninit();
         let q_times_h = q
             .to_elem(q_mod_n_storage, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features)
             .mul(h.as_ref(), nm);
-        let m_2 = nm.alloc_uninit().elem_widen(&m_2, nm, q.len_bits())?;
+        let m_2 = nm
+            .alloc_uninit()
+            .elem_widen(m_2.as_ref(), nm, q.len_bits())?;
         let m = m_2.add(&q_times_h, nm);
 
         // Step 2.b.v isn't needed since there are only two primes.
@@ -653,8 +665,6 @@ impl KeyPair {
         // that is done other than basic checks on its size, oddness, and
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
-        let mut tmp1 = bigint::OversizedUninit::new();
-        let mut tmp2 = bigint::OversizedUninit::new();
         self.public
             .inner()
             .exponentiate_elem(&mut tmp1, m.as_ref(), &mut tmp2, cpu_features)

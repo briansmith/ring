@@ -42,9 +42,9 @@ use crate::polyfill::prelude::*;
 use super::{
     super::{
         LimbSliceError, limbs512,
-        montgomery::{RInverse, RRR, Unencoded},
+        montgomery::{RRR, Unencoded},
     },
-    Elem, IntoMont, Mont, One, PrivateExponent, Uninit,
+    IntoMont, Mont, One, OversizedUninit, PrivateExponent, elem,
 };
 use crate::{
     bits::BitLength,
@@ -55,17 +55,17 @@ use crate::{
 };
 use core::mem::MaybeUninit;
 
-impl<N> Elem<N, Unencoded> {
-    pub(crate) fn exp_consttime<P>(
-        &self,
+impl<N> elem::Ref<'_, N, Unencoded> {
+    pub(crate) fn exp_consttime<'out, P>(
+        self,
+        out: &'out mut OversizedUninit<1>,
         exponent: &PrivateExponent,
         p: &IntoMont<P, RRR>,
         other_prime_len_bits: BitLength,
         cpu: cpu::Features,
-    ) -> Result<Elem<P, Unencoded>, LimbSliceError> {
+    ) -> Result<elem::Mut<'out, P, Unencoded>, LimbSliceError> {
         let oneRRR = p.one();
         let p = &p.modulus(cpu);
-        let out = p.alloc_uninit();
 
         // `elem_exp_consttime_inner` is parameterized on `STORAGE_LIMBS` only so
         // we can run tests with larger-than-supported-in-operation test vectors.
@@ -90,33 +90,35 @@ const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
 const STORAGE_ENTRIES: usize = TABLE_ENTRIES + if cfg!(target_arch = "x86_64") { 3 } else { 0 };
 
 #[cfg(not(target_arch = "x86_64"))]
-fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
-    out: Uninit<M>,
-    base_mod_n: &Elem<N>,
+fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
+    out: &'out mut OversizedUninit<1>,
+    base_mod_n: elem::Ref<'_, N, Unencoded>,
     oneRRR: &One<'_, M, RRR>,
     exponent: &PrivateExponent,
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
-) -> Result<Elem<M, Unencoded>, LimbSliceError> {
+) -> Result<elem::Mut<'out, M, Unencoded>, LimbSliceError> {
     use super::{
         super::montgomery::{R, limbs_mul_mont, limbs_square_mont},
         OversizedUninit, elem,
     };
-    use crate::{bssl, c, error, polyfill::dynarray};
+    use crate::{
+        bssl, c, error,
+        polyfill::{self, StartMutPtr, dynarray},
+    };
 
-    let base_rinverse: Elem<M, RInverse> =
-        out.elem_reduce_mont(base_mod_n, m, other_prime_len_bits);
+    let base_rinverse = base_mod_n.reduced_mont(out, m, other_prime_len_bits);
 
     let num_limbs = m.num_limbs();
     if num_limbs.get() % limbs512::LIMBS_PER_CHUNK != 0 {
         Err(LenMismatchError::new(num_limbs.get()))?
     }
 
-    fn gather<M>(
+    fn gather<'out, M>(
+        mut out: polyfill::slice::Uninit<'out, Limb>,
         table: &[Limb],
-        acc: &mut elem::Mut<M, R>,
         i: Window5,
-    ) -> Result<(), LenMismatchError> {
+    ) -> Result<elem::Mut<'out, M, R>, LenMismatchError> {
         prefixed_extern! {
             unsafe fn LIMBS_select_512_32(
                 r: *mut Limb,
@@ -125,28 +127,30 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                 i: Window5,
             ) -> bssl::Result;
         }
-        if table.len() % 32 != 0 || acc.as_ref().num_limbs() != table.len() / 32 {
-            return Err(LenMismatchError::new(acc.as_ref().num_limbs()));
+        if table.len() % 32 != 0 || out.len() != table.len() / 32 {
+            return Err(LenMismatchError::new(out.len()));
         }
-        let acc = acc.leak_limbs_mut_less_safe();
-        let acc_len = acc.len();
-        Result::from(unsafe { LIMBS_select_512_32(acc.as_mut_ptr(), table.as_ptr(), acc_len, i) })
-            .map_err(|_: error::Unspecified| LenMismatchError::new(acc.len()))
+        Result::from(unsafe {
+            LIMBS_select_512_32(out.start_mut_ptr(), table.as_ptr(), out.len(), i)
+        })
+        .map_err(|_: error::Unspecified| LenMismatchError::new(out.len()))?;
+        let r = unsafe { out.assume_init() };
+        Ok(elem::Mut::assume_in_range_and_encoded_less_safe(r))
     }
 
-    fn power<'tmp, M>(
+    fn power<'acc, M>(
         table: &[Limb],
-        mut acc: Elem<M, R>,
+        mut acc: elem::Mut<'acc, M, R>,
         m: &Mont<M>,
         i: Window5,
-        mut tmp: elem::Mut<'tmp, M, R>,
-    ) -> Result<(Elem<M, R>, elem::Mut<'tmp, M, R>), LenMismatchError> {
+        tmp: polyfill::slice::Uninit<'_, Limb>,
+    ) -> Result<elem::Mut<'acc, M, R>, LenMismatchError> {
         for _ in 0..WINDOW_BITS {
             acc = acc.square(m);
         }
-        gather(table, &mut tmp, i)?;
+        let tmp = gather(tmp, table, i)?;
         let acc = acc.mul(tmp.as_ref(), m);
-        Ok((acc, tmp))
+        Ok(acc)
     }
 
     let mut storage: [MaybeUninit<Limb>; STORAGE_LIMBS] =
@@ -191,44 +195,45 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     )?;
     let table: &[Limb] = table.as_flattened();
 
-    // Recycle the storage; the value will get overwritten.
-    let mut acc = base_rinverse.transmute_encoding_less_safe::<R>();
+    let mut tmp: OversizedUninit<1> = OversizedUninit::new();
+    let mut tmp = tmp
+        .as_uninit(..num_limbs.get())
+        .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
 
-    // TODO: We shouldn't need to write zeros here.
-    let mut tmp = OversizedUninit::new();
-    let tmp = m.zero(&mut tmp);
-
-    let (acc, _) = limb::fold_5_bit_windows(
+    let acc = limb::fold_5_bit_windows(
         exponent.limbs(),
         |initial_window| {
-            gather(table, &mut acc.as_mut_internal(), initial_window)
-                .unwrap_or_else(|_| unreachable!());
-            (acc, tmp)
+            let out = out
+                .as_uninit(..num_limbs.get())
+                .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
+            gather(out, table, initial_window).unwrap_or_else(|_| unreachable!())
         },
-        |(acc, tmp), window| power(table, acc, m, window, tmp).unwrap_or_else(|_| unreachable!()),
+        |acc, window| {
+            power(table, acc, m, window, tmp.reborrow_mut()).unwrap_or_else(|_| unreachable!())
+        },
     );
 
-    Ok(acc.into_unencoded(m))
+    Ok(acc.into_unencoded(m)?)
 }
 
 #[cfg(target_arch = "x86_64")]
-fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
-    out: Uninit<M>,
-    base_mod_n: &Elem<N>,
+fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
+    out: &'out mut OversizedUninit<1>,
+    base_mod_n: elem::Ref<'_, N, Unencoded>,
     oneRRR: &One<M, RRR>,
     exponent: &PrivateExponent,
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
-) -> Result<Elem<M, Unencoded>, LimbSliceError> {
+) -> Result<elem::Mut<'out, M, Unencoded>, LimbSliceError> {
     use super::{
         super::{
             limbs::x86_64::mont::{
                 gather5, mul_mont_gather5_amm, mul_mont5, power5_amm, sqr_mont5,
             },
             limbs512::scatter::scatter5,
-            montgomery::N0,
+            montgomery::{N0, RInverse},
         },
-        elem::from_montgomery_amm,
+        elem::MutAmm,
         unwrap_impossible_limb_slice_error,
     };
     use crate::{
@@ -246,8 +251,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let cpu3 = m.cpu_features().get_feature();
 
     let m_len = m.num_limbs();
-    if base_mod_n.as_ref().num_limbs() != 2 * m_len.get() {
-        Err(LenMismatchError::new(base_mod_n.as_ref().num_limbs()))?;
+    if base_mod_n.num_limbs() != 2 * m_len.get() {
+        Err(LenMismatchError::new(base_mod_n.num_limbs()))?;
     }
 
     let m_len = m.limbs().len();
@@ -297,8 +302,9 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         .into_written()
         .as_chunks();
 
-    let out: Elem<M, RInverse> = out.elem_reduce_mont(base_mod_n, m, other_prime_len_bits);
-    let base_rinverse = out.leak_limbs_less_safe();
+    let base_mod_m: elem::Mut<'_, M, RInverse> =
+        base_mod_n.reduced_mont(out, m, other_prime_len_bits);
+    let base_rinverse = base_mod_m.leak_limbs_less_safe();
 
     // base_cached = base*R == (base/R * RRR)/R
     let base_cached: &[Limb] = mul_mont5(
@@ -309,7 +315,6 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         n0,
         cpu2,
     )?;
-    let mut out = out.leak_limbs_into_box_less_safe(); // recycle.
 
     // Fill in all the powers of 2 of `acc` into the table using only squaring and without any
     // gathering, storing the last calculated power into `acc`.
@@ -374,14 +379,16 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         },
     );
 
-    out.as_mut().copy_from_slice(acc);
-    Ok(from_montgomery_amm(out, m))
+    let out: MutAmm<'out, M> = MutAmm::copy_from_limbs_assume_amm_and_encoded(out, acc)?;
+    Ok(out.reduced_mont(m)?)
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::elem::testutil::*;
-    use super::super::{PublicModulus, modulus, unwrap_impossible_len_mismatch_error};
+    use super::super::{
+        Elem, PublicModulus, Uninit, modulus, unwrap_impossible_len_mismatch_error,
+    };
     use super::*;
     use crate::cpu;
     use crate::testutil as test;
@@ -424,23 +431,36 @@ mod tests {
                 let other_modulus_len_bits = m.len_bits();
                 let base: Elem<N> = {
                     let limbs = Uninit::new_less_safe(base.as_ref().num_limbs() * 2)
-                        .write_copy_of_slice_padded(base.leak_limbs_less_safe())
+                        .write_copy_of_slice_padded(base.as_ref().leak_limbs_less_safe())
                         .unwrap_or_else(unwrap_impossible_len_mismatch_error);
                     Elem::<N, Unencoded>::assume_in_range_and_encoded_less_safe(limbs)
                 };
 
                 let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
+                let mut actual_result = OversizedUninit::new();
+                let mut actual_result_2 = OversizedUninit::new();
                 let actual_result = if !too_big {
-                    base.exp_consttime(&e, im, other_modulus_len_bits, cpu_features)
+                    base.as_ref().exp_consttime(
+                        &mut actual_result,
+                        &e,
+                        im,
+                        other_modulus_len_bits,
+                        cpu_features,
+                    )
                 } else {
-                    let actual_result =
-                        base.exp_consttime(&e, im, other_modulus_len_bits, cpu_features);
+                    let actual_result = base.as_ref().exp_consttime(
+                        &mut actual_result,
+                        &e,
+                        im,
+                        other_modulus_len_bits,
+                        cpu_features,
+                    );
                     // TODO: Be more specific with which error we expect?
                     assert!(actual_result.is_err());
                     // Try again with a larger-than-normally-supported limit
                     elem_exp_consttime_inner::<_, _, { (4096 / LIMB_BITS) * STORAGE_ENTRIES }>(
-                        m.alloc_uninit(),
-                        &base,
+                        &mut actual_result_2,
+                        base.as_ref(),
                         &im.one(),
                         &e,
                         &m,
@@ -448,7 +468,7 @@ mod tests {
                     )
                 };
                 match actual_result {
-                    Ok(r) => assert_elem_eq(&r, &expected_result),
+                    Ok(r) => assert_elem_eq(r.as_ref(), expected_result.as_ref()),
                     Err(LimbSliceError::LenMismatch { .. }) => panic!(),
                     Err(LimbSliceError::TooLong { .. }) => panic!(),
                     Err(LimbSliceError::TooShort { .. }) => panic!(),

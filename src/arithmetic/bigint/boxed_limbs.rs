@@ -56,11 +56,6 @@ impl<M> BoxedLimbs<M> {
     pub(super) fn into_limbs(self) -> Box<[Limb]> {
         self.limbs
     }
-
-    #[inline(always)]
-    pub(super) fn len(&self) -> usize {
-        self.limbs.len()
-    }
 }
 
 pub struct Uninit<M> {

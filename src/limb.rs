@@ -227,10 +227,10 @@ pub fn unstripped_be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> 
 ///
 /// Panics if `limbs` is empty.
 #[cfg(feature = "alloc")]
-pub fn fold_5_bit_windows<R, I: FnOnce(Window5) -> R, F: Fn(R, Window5) -> R>(
+pub fn fold_5_bit_windows<R, I: FnOnce(Window5) -> R, F: FnMut(R, Window5) -> R>(
     limbs: &[Limb],
     init: I,
-    fold: F,
+    mut fold: F,
 ) -> R {
     #[derive(Clone, Copy)]
     #[repr(transparent)]
