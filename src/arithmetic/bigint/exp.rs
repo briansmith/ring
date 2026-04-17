@@ -98,7 +98,10 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
 ) -> Result<Elem<M, Unencoded>, LimbSliceError> {
-    use super::super::montgomery::{R, limbs_mul_mont, limbs_square_mont};
+    use super::{
+        super::montgomery::{R, limbs_mul_mont, limbs_square_mont},
+        OversizedUninit, elem,
+    };
     use crate::{bssl, c, error, polyfill::dynarray};
 
     let base_rinverse: Elem<M, RInverse> =
@@ -109,7 +112,11 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
         Err(LenMismatchError::new(num_limbs.get()))?
     }
 
-    fn gather<M>(table: &[Limb], acc: &mut Elem<M, R>, i: Window5) -> Result<(), LenMismatchError> {
+    fn gather<M>(
+        table: &[Limb],
+        acc: &mut elem::Mut<M, R>,
+        i: Window5,
+    ) -> Result<(), LenMismatchError> {
         prefixed_extern! {
             unsafe fn LIMBS_select_512_32(
                 r: *mut Limb,
@@ -118,8 +125,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
                 i: Window5,
             ) -> bssl::Result;
         }
-        if table.len() % 32 != 0 || acc.num_limbs() != table.len() / 32 {
-            return Err(LenMismatchError::new(acc.num_limbs()));
+        if table.len() % 32 != 0 || acc.as_ref().num_limbs() != table.len() / 32 {
+            return Err(LenMismatchError::new(acc.as_ref().num_limbs()));
         }
         let acc = acc.leak_limbs_mut_less_safe();
         let acc_len = acc.len();
@@ -127,18 +134,18 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
             .map_err(|_: error::Unspecified| LenMismatchError::new(acc.len()))
     }
 
-    fn power<M>(
+    fn power<'tmp, M>(
         table: &[Limb],
         mut acc: Elem<M, R>,
         m: &Mont<M>,
         i: Window5,
-        mut tmp: Elem<M, R>,
-    ) -> Result<(Elem<M, R>, Elem<M, R>), LenMismatchError> {
+        mut tmp: elem::Mut<'tmp, M, R>,
+    ) -> Result<(Elem<M, R>, elem::Mut<'tmp, M, R>), LenMismatchError> {
         for _ in 0..WINDOW_BITS {
             acc = acc.square(m);
         }
         gather(table, &mut tmp, i)?;
-        let acc = acc.mul(&tmp, m);
+        let acc = acc.mul(tmp.as_ref(), m);
         Ok((acc, tmp))
     }
 
@@ -188,13 +195,14 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let mut acc = base_rinverse.transmute_encoding_less_safe::<R>();
 
     // TODO: We shouldn't need to write zeros here.
-    let tmp = m.alloc_uninit().write_zeros();
-    let tmp = Elem::<M, R>::assume_in_range_and_encoded_less_safe(tmp);
+    let mut tmp = OversizedUninit::new();
+    let tmp = m.zero(&mut tmp);
 
     let (acc, _) = limb::fold_5_bit_windows(
         exponent.limbs(),
         |initial_window| {
-            gather(table, &mut acc, initial_window).unwrap_or_else(|_| unreachable!());
+            gather(table, &mut acc.as_mut_internal(), initial_window)
+                .unwrap_or_else(|_| unreachable!());
             (acc, tmp)
         },
         |(acc, tmp), window| power(table, acc, m, window, tmp).unwrap_or_else(|_| unreachable!()),
@@ -238,8 +246,8 @@ fn elem_exp_consttime_inner<N, M, const STORAGE_LIMBS: usize>(
     let cpu3 = m.cpu_features().get_feature();
 
     let m_len = m.num_limbs();
-    if base_mod_n.num_limbs() != 2 * m_len.get() {
-        Err(LenMismatchError::new(base_mod_n.num_limbs()))?;
+    if base_mod_n.as_ref().num_limbs() != 2 * m_len.get() {
+        Err(LenMismatchError::new(base_mod_n.as_ref().num_limbs()))?;
     }
 
     let m_len = m.limbs().len();
@@ -415,7 +423,7 @@ mod tests {
                 struct N {}
                 let other_modulus_len_bits = m.len_bits();
                 let base: Elem<N> = {
-                    let limbs = Uninit::new_less_safe(base.num_limbs() * 2)
+                    let limbs = Uninit::new_less_safe(base.as_ref().num_limbs() * 2)
                         .write_copy_of_slice_padded(base.leak_limbs_less_safe())
                         .unwrap_or_else(unwrap_impossible_len_mismatch_error);
                     Elem::<N, Unencoded>::assume_in_range_and_encoded_less_safe(limbs)

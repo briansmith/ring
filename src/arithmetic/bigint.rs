@@ -69,7 +69,7 @@ impl<M> Uninit<M> {
         m: &Mont<M>,
     ) -> Result<Elem<M>, error::Unspecified> {
         let limbs = self.write_fully_with(|uninit| {
-            Ok(elem::Mut::from_be_bytes_padded_(uninit, input, m)?.leak_limbs_mut_less_safe())
+            Ok(elem::Mut::from_be_bytes_padded_(uninit, input, m)?.leak_limbs_into_mut_less_safe())
         })?;
         Ok(Elem::assume_in_range_and_encoded_less_safe(limbs))
     }
@@ -132,7 +132,7 @@ mod tests {
                 let expected_result = consume_elem(test_case, "ModMul", &m);
                 let a = consume_elem(test_case, "A", &m).encode_mont(&m_owned, cpu_features);
                 let b = consume_elem(test_case, "B", &m).encode_mont(&m_owned, cpu_features);
-                let actual_result = a.mul(&b, &m);
+                let actual_result = a.mul(b.as_ref(), &m);
                 let actual_result = actual_result.into_unencoded(&m);
                 assert_elem_eq(&actual_result, &expected_result);
 
@@ -177,8 +177,11 @@ mod tests {
                 let m_ = m_.reborrow();
                 let m = m_.modulus(cpu_features);
                 let expected_result = consume_elem(test_case, "R", &m);
-                let a =
-                    consume_elem_unchecked::<M>(test_case, "A", expected_result.num_limbs() * 2);
+                let a = consume_elem_unchecked::<M>(
+                    test_case,
+                    "A",
+                    expected_result.as_ref().num_limbs() * 2,
+                );
                 let other_modulus_len_bits = m_.len_bits();
 
                 let actual_result = m

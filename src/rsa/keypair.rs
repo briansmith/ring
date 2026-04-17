@@ -351,7 +351,7 @@ impl KeyPair {
             .to_elem(p_mod_n_storage, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features)
-            .mul(&q_mod_n, nm);
+            .mul(q_mod_n.as_ref(), nm);
         if !pq_mod_n.as_ref().is_zero() {
             return Err(KeyRejected::inconsistent_components());
         }
@@ -624,7 +624,7 @@ impl KeyPair {
         let h = {
             let pm = &p.modulus(cpu_features);
             let m_2 = pm.alloc_uninit().elem_reduced_once(&m_2, pm, q.len_bits());
-            m_1.sub(&m_2, pm).mul(&self.qInv, pm)
+            m_1.sub(&m_2, pm).mul(self.qInv.as_ref(), pm)
         };
 
         // Step 2.b.iv. The reduction in the modular multiplication isn't
@@ -639,7 +639,7 @@ impl KeyPair {
             .to_elem(q_mod_n_storage, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features)
-            .mul(&h, nm);
+            .mul(h.as_ref(), nm);
         let m_2 = nm.alloc_uninit().elem_widen(&m_2, nm, q.len_bits())?;
         let m = m_2.add(&q_times_h, nm);
 

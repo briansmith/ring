@@ -81,12 +81,6 @@ impl<M> Uninit<M> {
         self.limbs.len()
     }
 
-    #[cfg(not(target_arch = "x86_64"))]
-    pub(super) fn write_zeros(self) -> BoxedLimbs<M> {
-        self.write_iter_padded(core::iter::empty())
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
-    }
-
     #[cfg(test)] // TODO: ditch this
     pub(super) fn write_from_be_bytes_padded(
         self,

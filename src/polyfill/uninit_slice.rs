@@ -103,7 +103,7 @@ impl<'target, E: Copy> Uninit<'target, E> {
         })
     }
 
-    pub fn write_filled_copy(self, value: E) -> &'target [E]
+    pub fn write_filled_copy(self, value: E) -> &'target mut [E]
     where
         E: Copy, // To avoid concerns about `value.clone()` panicking
     {

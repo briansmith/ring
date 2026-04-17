@@ -91,7 +91,7 @@ impl<M, E> Elem<M, E> {
     // to borrow an `Elem<M, A>` into a `Mut<M, A>` and then compute a
     // `Mut<M, B>` from it, as that would write a `B`-encoded element into the
     // original `Elem`.
-    fn as_mut_internal(&mut self) -> Mut<'_, M, E> {
+    pub(super) fn as_mut_internal(&mut self) -> Mut<'_, M, E> {
         Mut {
             limbs: self.limbs.as_mut(),
             m: PhantomData,
@@ -107,17 +107,8 @@ impl<M, E> Elem<M, E> {
         }
     }
 
-    pub(super) fn num_limbs(&self) -> usize {
-        self.limbs.len()
-    }
-
     pub(super) fn leak_limbs_less_safe(&self) -> &[Limb] {
         self.limbs.as_ref()
-    }
-
-    #[cfg(not(target_arch = "x86_64"))]
-    pub(super) fn leak_limbs_mut_less_safe(&mut self) -> &mut [Limb] {
-        self.limbs.as_mut()
     }
 
     pub(super) fn leak_limbs_into_box_less_safe(self) -> BoxedLimbs<M> {
@@ -127,7 +118,7 @@ impl<M, E> Elem<M, E> {
 
 impl<'l, M, E> Mut<'l, M, E> {
     #[inline]
-    fn assume_in_range_and_encoded_less_safe(limbs: &'l mut [Limb]) -> Self {
+    pub(super) fn assume_in_range_and_encoded_less_safe(limbs: &'l mut [Limb]) -> Self {
         Self {
             limbs,
             m: PhantomData,
@@ -139,7 +130,12 @@ impl<'l, M, E> Mut<'l, M, E> {
         Ref::assume_in_range_and_encoded_less_safe(self.limbs)
     }
 
-    pub(super) fn leak_limbs_mut_less_safe(self) -> &'l mut [Limb] {
+    #[cfg(not(target_arch = "x86_64"))]
+    pub(super) fn leak_limbs_mut_less_safe(&mut self) -> &mut [Limb] {
+        self.limbs
+    }
+
+    pub(super) fn leak_limbs_into_mut_less_safe(self) -> &'l mut [Limb] {
         self.limbs
     }
 }
@@ -198,6 +194,10 @@ impl<'l, M, E> Ref<'l, M, E> {
             m: PhantomData,
             encoding: PhantomData,
         }
+    }
+
+    pub fn num_limbs(&self) -> usize {
+        self.limbs.len()
     }
 }
 
@@ -295,14 +295,13 @@ impl<'l, M, E> Mut<'l, M, E> {
 impl<M, E> Elem<M, E> {
     pub fn mul<BE>(
         mut self,
-        b: &Elem<M, BE>,
+        b: Ref<'_, M, BE>,
         m: &Mont<M>,
     ) -> Elem<M, <(E, BE) as ProductEncoding>::Output>
     where
         (E, BE): ProductEncoding,
     {
-        let _: Mut<'_, M, <(E, BE) as ProductEncoding>::Output> =
-            self.as_mut_internal().mul(b.as_ref(), m);
+        let _: Mut<'_, M, <(E, BE) as ProductEncoding>::Output> = self.as_mut_internal().mul(b, m);
         Elem {
             limbs: self.limbs,
             encoding: PhantomData,
@@ -455,7 +454,7 @@ impl<M> Elem<M, Unencoded> {
         b: &Elem<M, R>,
         m: &Mont<M>,
     ) -> Result<(), error::Unspecified> {
-        let r = self.mul(b, m);
+        let r = self.mul(b.as_ref(), m);
         limb::verify_limbs_equal_1_leak_bit(r.limbs.as_ref())
     }
 }
