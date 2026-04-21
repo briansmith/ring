@@ -579,7 +579,8 @@ impl KeyPair {
         // with Garner's algorithm.
 
         // Steps 1 and 2.
-        let m = self.private_exponentiate(signature, cpu_features)?;
+        let mut tmp = bigint::OversizedUninit::<1>::new();
+        let m = self.private_exponentiate(&mut tmp, signature, cpu_features)?;
 
         // Step 3.
         m.as_ref().fill_be_bytes(signature);
@@ -594,11 +595,12 @@ impl KeyPair {
     /// leaked that would endanger the private key.
     ///
     /// Panics if `in_out` is not `self.public().modulus_len()`.
-    fn private_exponentiate(
+    fn private_exponentiate<'out>(
         &self,
+        out: &'out mut bigint::OversizedUninit<1>,
         base: &[u8],
         cpu_features: cpu::Features,
-    ) -> Result<bigint::Elem<N>, error::Unspecified> {
+    ) -> Result<bigint::elem::Mut<'out, N>, error::Unspecified> {
         assert_eq!(base.len(), self.public().modulus_len());
         let base = untrusted::Input::from(base);
 
@@ -621,18 +623,19 @@ impl KeyPair {
 
         let mut tmp1 = bigint::OversizedUninit::new();
         let mut tmp2 = bigint::OversizedUninit::new();
-        let mut tmp3 = bigint::OversizedUninit::new();
+
+        let tmp3 = &mut *out; // Abuse `out` for temporary storage.
 
         // Step 2.b.i.
-        let m_1 = elem_exp_consttime(&mut tmp1, c, &self.p, q.len_bits(), &mut tmp3, cpu_features)?;
-        let m_2 = elem_exp_consttime(&mut tmp2, c, &self.q, p.len_bits(), &mut tmp3, cpu_features)?;
+        let m_1 = elem_exp_consttime(&mut tmp1, c, &self.p, q.len_bits(), tmp3, cpu_features)?;
+        let m_2 = elem_exp_consttime(&mut tmp2, c, &self.q, p.len_bits(), tmp3, cpu_features)?;
 
         // Step 2.b.ii isn't needed since there are only two primes.
 
         // Step 2.b.iii.
         let h = {
             let pm = &p.modulus(cpu_features);
-            let m_2 = pm.elem_reduced_once(&mut tmp3, m_2.as_ref(), q.len_bits());
+            let m_2 = pm.elem_reduced_once(tmp3, m_2.as_ref(), q.len_bits());
             m_1.sub(m_2.as_ref(), pm).mul(self.qInv.as_ref(), pm)
         };
 
@@ -640,18 +643,17 @@ impl KeyPair {
         // necessary because `h < p` and `p * q == n` implies `h * q < n`.
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
-        // The old `h` isn't used beyond this point, so its storage could be
-        // reused.
-        let h = nm.alloc_uninit().elem_widen(h.as_ref(), nm, p.len_bits())?;
+        let h = h.as_ref().widen(tmp3, nm, p.len_bits())?;
         let q_times_h = q
             .to_elem(&mut tmp1, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features)
             .mul(h.as_ref(), nm);
-        let m_2 = nm
-            .alloc_uninit()
-            .elem_widen(m_2.as_ref(), nm, q.len_bits())?;
-        let m = m_2.add(q_times_h.as_ref(), nm);
+        // Stop abusing `out`; `tmp3` is no longer available.
+        let m: bigint::elem::Mut<'out, _> = m_2
+            .as_ref()
+            .widen(out, nm, q.len_bits())?
+            .add(q_times_h.as_ref(), nm);
 
         // Step 2.b.v isn't needed since there are only two primes.
 
@@ -678,6 +680,7 @@ impl KeyPair {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::arithmetic::bigint::OversizedUninit;
     use crate::testutil as test;
     use alloc::vec;
 
@@ -706,7 +709,9 @@ mod tests {
                     let mut padded = vec![0; key.public.modulus_len()];
                     let zeroes = padded.len() - test_case.len();
                     padded[zeroes..].copy_from_slice(test_case);
-                    let _: bigint::Elem<_> = key.private_exponentiate(&padded, cpu).unwrap();
+                    let mut tmp = OversizedUninit::<1>::new();
+                    let _: bigint::elem::Mut<'_, _> =
+                        key.private_exponentiate(&mut tmp, &padded, cpu).unwrap();
                 }
                 Ok(())
             },

@@ -17,7 +17,7 @@ use crate::polyfill::prelude::*;
 
 use super::{
     super::{MAX_LIMBS, montgomery::*},
-    BoxedLimbs, IntoMont, Mont, OversizedUninit, Uninit, unwrap_impossible_len_mismatch_error,
+    BoxedLimbs, IntoMont, Mont, OversizedUninit, unwrap_impossible_len_mismatch_error,
     unwrap_impossible_limb_slice_error,
 };
 use crate::{
@@ -397,32 +397,33 @@ impl<'l, M, E> Ref<'l, M, E> {
     }
 }
 
-impl<M> Uninit<M> {
-    pub fn elem_widen<Smaller>(
+impl<'l, M, E> Ref<'l, M, E> {
+    pub fn widen<'out, Larger>(
         self,
-        a: Ref<'_, Smaller, Unencoded>,
-        m: &Mont<M>,
+        out: &'out mut OversizedUninit<1>,
+        m: &Mont<Larger>,
         smaller_modulus_bits: BitLength,
-    ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+    ) -> Result<Mut<'out, Larger, Unencoded>, error::Unspecified> {
         if smaller_modulus_bits >= m.len_bits() {
             return Err(error::Unspecified);
         }
-        let r = self
-            .write_copy_of_slice_padded(a.limbs.as_ref())
-            .map_err(error::erase::<LenMismatchError>)?;
-        Ok(Elem::assume_in_range_and_encoded_less_safe(r))
-    }
-}
-
-impl<M, E> Elem<M, E> {
-    pub fn add(mut self, b: Ref<'_, M, E>, m: &Mont<M>) -> Elem<M, E> {
-        limb::limbs_add_assign_mod(self.limbs.as_mut(), b.limbs, m.limbs())
-            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        self
+        let out = out
+            .as_uninit(..m.num_limbs().get())
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
+        let r = out
+            .write_copy_of_slice_padded(self.limbs, Limb::from(limb::ZERO))
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        Ok(Mut::assume_in_range_and_encoded_less_safe(r))
     }
 }
 
 impl<M, E> Mut<'_, M, E> {
+    pub fn add(self, b: Ref<'_, M, E>, m: &Mont<M>) -> Self {
+        limb::limbs_add_assign_mod(self.limbs, b.limbs, m.limbs())
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+        self
+    }
+
     pub fn sub(self, b: Ref<'_, M, E>, m: &Mont<M>) -> Self {
         prefixed_extern! {
             // `r` and `a` may alias.
@@ -474,6 +475,7 @@ impl<M, E> Ref<'_, M, E> {
 
 #[cfg(test)]
 pub mod testutil {
+    use super::super::boxed_limbs::Uninit;
     use super::*;
 
     pub fn consume_elem<M>(

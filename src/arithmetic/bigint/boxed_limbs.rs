@@ -15,13 +15,12 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use crate::{
-    error::{self, LenMismatchError},
-    limb::{self, Limb},
-    polyfill,
-};
+use crate::{error, limb::Limb, polyfill};
 use alloc::boxed::Box;
 use core::{marker::PhantomData, mem::MaybeUninit, ptr};
+
+#[cfg(test)]
+use crate::{error::LenMismatchError, limb};
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
 pub(super) struct BoxedLimbs<M> {
@@ -86,6 +85,7 @@ impl<M> Uninit<M> {
         self.write_iter_padded(input)
     }
 
+    #[cfg(test)]
     pub(super) fn write_copy_of_slice_padded(
         self,
         src: &[Limb],
@@ -93,6 +93,7 @@ impl<M> Uninit<M> {
         self.write_iter_padded(src.iter().copied())
     }
 
+    #[cfg(test)]
     pub(super) fn write_iter_padded(
         mut self,
         input: impl ExactSizeIterator<Item = Limb>,

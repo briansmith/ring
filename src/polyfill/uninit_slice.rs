@@ -145,6 +145,7 @@ impl<'target, E: Copy> Uninit<'target, E> {
         }
     }
 
+    #[cfg(test)]
     pub fn write_iter_padded(
         mut self,
         input: impl ExactSizeIterator<Item = E>,
