@@ -346,22 +346,22 @@ impl<'l, M, E> Mut<'l, M, E> {
     }
 }
 
-impl<M> Uninit<M> {
-    pub fn elem_reduced_once<Larger>(
-        self,
+impl<M> Mont<'_, M> {
+    pub fn elem_reduced_once<'out, Larger>(
+        &self,
+        out: &'out mut OversizedUninit<1>,
         a: Ref<'_, Larger>,
-        m: &Mont<M>,
         other_modulus_len_bits: BitLength,
-    ) -> Elem<M, Unencoded> {
-        assert_eq!(m.len_bits(), other_modulus_len_bits);
+    ) -> Mut<'out, M, Unencoded> {
+        assert_eq!(self.len_bits(), other_modulus_len_bits);
         // TODO: We should add a variant of `limbs_reduced_once` that does the
         // reduction out-of-place, to eliminate this copy.
-        let mut r = self
-            .write_copy_of_slice_checked(a.limbs.as_ref())
+        let r = out
+            .write_copy_of_slice(a.limbs.as_ref(), self.num_limbs().get())
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
+        limb::limbs_reduce_once(&mut *r, self.limbs())
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        limb::limbs_reduce_once(r.as_mut(), m.limbs())
-            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        Elem::<M, Unencoded>::assume_in_range_and_encoded_less_safe(r)
+        Mut::<M, Unencoded>::assume_in_range_and_encoded_less_safe(r)
     }
 }
 
@@ -423,7 +423,7 @@ impl<M, E> Elem<M, E> {
 }
 
 impl<M, E> Mut<'_, M, E> {
-    pub fn sub(self, b: &Elem<M, E>, m: &Mont<M>) -> Self {
+    pub fn sub(self, b: Ref<'_, M, E>, m: &Mont<M>) -> Self {
         prefixed_extern! {
             // `r` and `a` may alias.
             unsafe fn LIMBS_sub_mod(
@@ -435,7 +435,7 @@ impl<M, E> Mut<'_, M, E> {
             );
         }
         let num_limbs = NonZero::new(m.limbs().len()).unwrap();
-        let _: &[Limb] = (InOut(&mut *self.limbs), b.limbs.as_ref())
+        let _: &[Limb] = (InOut(&mut *self.limbs), b.limbs)
             .with_non_dangling_non_null_pointers(num_limbs, |mut r, [a, b]| {
                 let m = m.limbs().as_ptr(); // Also non-dangling because num_limbs is non-zero.
                 unsafe {

@@ -72,6 +72,7 @@ impl<M> Uninit<M> {
         }
     }
 
+    #[cfg(test)]
     pub fn len(&self) -> usize {
         self.limbs.len()
     }
@@ -85,31 +86,11 @@ impl<M> Uninit<M> {
         self.write_iter_padded(input)
     }
 
-    pub(super) fn write_copy_of_slice_checked(
-        self,
-        src: &[Limb],
-    ) -> Result<BoxedLimbs<M>, LenMismatchError> {
-        self.write_iter_checked(src.iter().copied())
-    }
-
     pub(super) fn write_copy_of_slice_padded(
         self,
         src: &[Limb],
     ) -> Result<BoxedLimbs<M>, LenMismatchError> {
         self.write_iter_padded(src.iter().copied())
-    }
-
-    pub(super) fn write_iter_checked(
-        self,
-        input: impl ExactSizeIterator<Item = Limb>,
-    ) -> Result<BoxedLimbs<M>, LenMismatchError>
-    where
-        Limb: Copy,
-    {
-        if input.len() != self.len() {
-            return Err(LenMismatchError::new(input.len()));
-        }
-        self.write_iter_padded(input)
     }
 
     pub(super) fn write_iter_padded(
