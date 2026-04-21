@@ -1,0 +1,19 @@
+# SM2 field element multiplication test vectors.
+# All values are in Montgomery form (a_mont = a * R mod p, where R = 2^256).
+# Operation: r = a_mont * b_mont * R^{-1} mod p  (Montgomery multiply).
+
+# 2 * 3 = 6 (in Montgomery form)
+a = 0000000200000000000000000000000000000001fffffffe0000000000000002
+b = 0000000300000000000000000000000000000002fffffffd0000000000000003
+r = 0000000600000000000000000000000000000005fffffffa0000000000000006
+
+# (-1) * (-1) = 1 mod p
+a = fffffffdfffffffffffffffffffffffffffffffe00000001fffffffffffffffe
+b = fffffffdfffffffffffffffffffffffffffffffe00000001fffffffffffffffe
+r = 0000000100000000000000000000000000000000ffffffff0000000000000001
+
+# Gx_mont * Gy_mont (generator coordinates in Montgomery form)
+a = 91167a5ee1c13b05d6a1ed99ac24c3c33e7981eddca6c05061328990f418029e
+b = 63cd65d481d735bd8d4cfb066e2a48f8c1f5e5788d3295fac1354e593c2d0ddd
+r = 3e701f9cfee326466c068e9d5436f65c86d6fc241cbba6de98463c88f994fe04
+

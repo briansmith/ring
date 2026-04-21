@@ -37,6 +37,12 @@
 //!         on esp-idf despite the likelihood that RNG is not secure.
 //!         This feature only works with <code>os = espidf</code> targets.
 //!         See <a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/random.html">
+//! <tr><td><code>sm</code>
+//!     <td>Enable Chinese National Standard (GB/T) cryptographic algorithms:
+//!         SM3 (hash, GB/T 32905-2016), SM4-GCM (AEAD, GB/T 32907-2016),
+//!         and SM2 (signature and ECDH, GB/T 32918.1/2/3-2016).
+//!         These are pure-Rust implementations without hardware acceleration.
+//!         <strong>Warning</strong>: These implementations are unaudited.
 //! <tr><td><code>std</code>
 //!     <td>Enable features that use libstd, in particular
 //!         <code>std::error::Error</code> integration. Implies `alloc`.
