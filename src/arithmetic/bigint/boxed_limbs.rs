@@ -57,14 +57,14 @@ impl<M> BoxedLimbs<M> {
     }
 }
 
-pub struct Uninit<M> {
+pub(super) struct Uninit<M> {
     limbs: Box<[MaybeUninit<Limb>]>,
     m: PhantomData<M>,
 }
 
 impl<M> Uninit<M> {
     // "Less safe" because this is what binds `len` to `M`.
-    pub fn new_less_safe(len: usize) -> Self {
+    pub(super) fn new_less_safe(len: usize) -> Self {
         Self {
             limbs: Box::new_uninit_slice(len),
             m: PhantomData,

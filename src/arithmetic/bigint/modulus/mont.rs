@@ -18,7 +18,7 @@ use crate::polyfill::prelude::*;
 use super::{
     super::{
         super::montgomery::{RR, RRR, Unencoded, limbs_square_mont},
-        N0, One, OversizedUninit, PublicModulus, Uninit, elem,
+        N0, One, OversizedUninit, PublicModulus, elem,
         modulus::value::Value,
         unwrap_impossible_limb_slice_error,
     },
@@ -264,10 +264,6 @@ impl<'a, M> Mont<'a, M> {
 }
 
 impl<M> Mont<'_, M> {
-    pub fn alloc_uninit(&self) -> Uninit<M> {
-        Uninit::new_less_safe(self.value.limbs().len())
-    }
-
     #[inline]
     pub(in super::super) fn limbs(&self) -> &[Limb] {
         self.value.limbs()

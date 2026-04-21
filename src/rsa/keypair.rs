@@ -371,9 +371,7 @@ impl KeyPair {
 
         // Step 7.c.
 
-        let qInv = pm
-            .alloc_uninit()
-            .into_elem_from_be_bytes_padded(qInv, pm)
+        let qInv = bigint::Elem::from_be_bytes_padded(qInv, pm)
             .map_err(|error::Unspecified| KeyRejected::invalid_component())?
             .encode_mont(pim, cpu_features);
 

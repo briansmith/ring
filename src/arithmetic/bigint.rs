@@ -41,7 +41,6 @@ use crate::polyfill::prelude::*;
 
 use self::boxed_limbs::BoxedLimbs;
 pub(crate) use self::{
-    boxed_limbs::Uninit,
     elem::Elem,
     modulus::{BoxedIntoMont, IntoMont, Mont, One},
     oversized_uninit::OversizedUninit,
@@ -62,13 +61,13 @@ mod private_exponent;
 
 pub trait PublicModulus {}
 
-impl<M> Uninit<M> {
-    pub fn into_elem_from_be_bytes_padded(
-        self,
+impl<M> Elem<M> {
+    pub fn from_be_bytes_padded(
         input: untrusted::Input<'_>,
         m: &Mont<M>,
     ) -> Result<Elem<M>, error::Unspecified> {
-        let limbs = self.write_fully_with(|uninit| {
+        let uninit = boxed_limbs::Uninit::new_less_safe(m.num_limbs().get());
+        let limbs = uninit.write_fully_with(|uninit| {
             Ok(elem::Mut::from_be_bytes_padded_(uninit, input, m)?.leak_limbs_into_mut_less_safe())
         })?;
         Ok(Elem::assume_in_range_and_encoded_less_safe(limbs))
