@@ -115,8 +115,8 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m_owned = consume_modulus::<M>(test_case, "M");
-                let m_owned = m_owned.reborrow();
+                let mut tmp = OversizedUninit::<2>::new();
+                let m_owned = consume_modulus::<M>(&mut tmp, test_case, "M");
                 let m = m_owned.modulus(cpu_features);
                 let mut tmp = OversizedUninit::<1>::new();
                 let expected_result = consume_elem(&mut tmp, test_case, "ModMul", &m);
@@ -145,8 +145,8 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let m_owned = consume_modulus::<M>(test_case, "M");
-                let m_owned = m_owned.reborrow();
+                let mut tmp = OversizedUninit::<2>::new();
+                let m_owned = consume_modulus::<M>(&mut tmp, test_case, "M");
                 let m = m_owned.modulus(cpu_features);
                 let mut tmp = OversizedUninit::<1>::new();
                 let expected_result = consume_elem(&mut tmp, test_case, "ModSquare", &m);
@@ -174,8 +174,8 @@ mod tests {
 
                 struct M {}
 
-                let m_ = consume_modulus::<M>(test_case, "M");
-                let m_ = m_.reborrow();
+                let mut tmp = OversizedUninit::<2>::new();
+                let m_ = consume_modulus::<M>(&mut tmp, test_case, "M");
                 let m = m_.modulus(cpu_features);
                 let mut tmp = OversizedUninit::<1>::new();
                 let expected_result = consume_elem(&mut tmp, test_case, "R", &m);
@@ -208,8 +208,8 @@ mod tests {
                 struct M {}
                 struct O {}
 
-                let m = consume_modulus::<M>(test_case, "m");
-                let m = m.reborrow();
+                let mut tmp = OversizedUninit::<2>::new();
+                let m = consume_modulus::<M>(&mut tmp, test_case, "m");
                 let m = m.modulus(cpu_features);
                 let a = consume_elem_unchecked::<O>(test_case, "a", m.limbs().len());
                 let mut tmp = OversizedUninit::<1>::new();
