@@ -75,17 +75,6 @@ impl<M> Uninit<M> {
     }
 }
 
-impl<M> Elem<M, Unencoded> {
-    // TODO: DRY w.r.t. `Mut::from_limbs`.
-    fn from_limbs(
-        out: BoxedLimbs<M>,
-        m: &Mont<M>,
-    ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        limb::verify_limbs_less_than_limbs_leak_bit(out.as_ref(), m.limbs())?;
-        Ok(Elem::assume_in_range_and_encoded_less_safe(out))
-    }
-}
-
 #[cold]
 #[inline(never)]
 fn unwrap_impossible_len_mismatch_error<T>(LenMismatchError { .. }: LenMismatchError) -> T {

@@ -18,7 +18,7 @@ use crate::polyfill::prelude::*;
 use crate::{
     error::{self, LenMismatchError},
     limb::{self, Limb},
-    polyfill::{self, slice::WriteResult},
+    polyfill,
 };
 use alloc::boxed::Box;
 use core::{marker::PhantomData, mem::MaybeUninit, ptr};
@@ -119,14 +119,8 @@ impl<M> Uninit<M> {
     where
         Limb: Copy,
     {
-        // Don't do anything if the input is too long.
-        if input.len() > self.len() {
-            return Err(LenMismatchError::new(input.len()));
-        }
-        let uninit = polyfill::slice::Uninit::from(self.limbs.as_mut());
-        // We know there is no leftover input so we can ignore the `WriteResult`.
-        let (_, to_zero): (WriteResult<_, _, _>, _) = uninit.write_iter(input).take_uninit();
-        let _: &_ = to_zero.write_filled_copy(Limb::from(limb::ZERO));
+        let _: &_ = polyfill::slice::Uninit::from(self.limbs.as_mut())
+            .write_iter_padded(input, Limb::from(limb::ZERO))?;
         let limbs = unsafe { self.limbs.assume_init() };
         Ok(BoxedLimbs { limbs, m: self.m })
     }

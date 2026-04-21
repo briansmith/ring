@@ -18,7 +18,7 @@ use crate::polyfill::prelude::*;
 use super::{
     super::{
         super::montgomery::{RR, RRR, Unencoded, limbs_square_mont},
-        Elem, N0, One, OversizedUninit, PublicModulus, Uninit,
+        N0, One, OversizedUninit, PublicModulus, Uninit, elem,
         modulus::value::Value,
         unwrap_impossible_limb_slice_error,
     },
@@ -181,14 +181,17 @@ impl<'a, M, E> IntoMont<'a, M, E> {
         (value, one)
     }
 
-    pub fn to_elem<L>(
+    pub fn to_elem<'l, L>(
         &self,
-        out: Uninit<L>,
+        out: &'l mut OversizedUninit<1>,
         l: &Mont<L>,
-    ) -> Result<Elem<L, Unencoded>, error::Unspecified> {
-        out.write_copy_of_slice_padded(self.value().limbs())
-            .map_err(error::erase::<LenMismatchError>)
-            .and_then(|out| Elem::from_limbs(out, l))
+    ) -> Result<elem::Mut<'l, L, Unencoded>, error::Unspecified> {
+        let limbs = out
+            .as_uninit(..l.num_limbs().get())
+            .map_err(error::erase::<LenMismatchError>)?
+            .write_copy_of_slice_padded(self.value().limbs(), Limb::from(limb::ZERO))
+            .map_err(error::erase::<LenMismatchError>)?;
+        elem::Mut::from_limbs(limbs, l)
     }
 
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Mont<'_, M> {

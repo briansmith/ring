@@ -103,6 +103,16 @@ impl<'target, E: Copy> Uninit<'target, E> {
         })
     }
 
+    pub fn write_copy_of_slice_padded(
+        mut self,
+        src: &[E],
+        padding: E,
+    ) -> Result<&'target mut [E], LenMismatchError> {
+        let (_, to_zero) = self.reborrow_mut().write_copy_of_slice(src)?.take_uninit();
+        let _: &_ = to_zero.write_filled_copy(padding);
+        Ok(unsafe { self.assume_init() })
+    }
+
     pub fn write_filled_copy(self, value: E) -> &'target mut [E]
     where
         E: Copy, // To avoid concerns about `value.clone()` panicking
@@ -133,6 +143,25 @@ impl<'target, E: Copy> Uninit<'target, E> {
             dst_leftover: self,
             src_leftover: src,
         }
+    }
+
+    pub fn write_iter_padded(
+        mut self,
+        input: impl ExactSizeIterator<Item = E>,
+        padding: E,
+    ) -> Result<&'target mut [E], LenMismatchError> {
+        // Don't do anything if the input is too long.
+        if input.len() > self.len() {
+            return Err(LenMismatchError::new(input.len()));
+        }
+        // We know there is no leftover input so we can ignore the `WriteResult`.
+        let (_, to_zero): (WriteResult<_, _, _>, _) = self
+            .reborrow_mut()
+            .write_iter(input)
+            .src_empty()?
+            .take_uninit();
+        let _: &_ = to_zero.write_filled_copy(padding);
+        Ok(unsafe { self.assume_init() })
     }
 
     // If the result of `u.write_fully_with(f)` is `Ok(r)` then:

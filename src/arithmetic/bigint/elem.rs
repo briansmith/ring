@@ -314,23 +314,6 @@ impl<'l, M, E> Mut<'l, M, E> {
     }
 }
 
-impl<M, E> Elem<M, E> {
-    pub fn mul<BE>(
-        mut self,
-        b: Ref<'_, M, BE>,
-        m: &Mont<M>,
-    ) -> Elem<M, <(E, BE) as ProductEncoding>::Output>
-    where
-        (E, BE): ProductEncoding,
-    {
-        let _: Mut<'_, M, <(E, BE) as ProductEncoding>::Output> = self.as_mut_internal().mul(b, m);
-        Elem {
-            limbs: self.limbs,
-            encoding: PhantomData,
-        }
-    }
-}
-
 impl<'l, M, E> Mut<'l, M, E> {
     pub fn mul<BE>(
         self,
@@ -432,8 +415,8 @@ impl<M> Uninit<M> {
 }
 
 impl<M, E> Elem<M, E> {
-    pub fn add(mut self, b: &Elem<M, E>, m: &Mont<M>) -> Elem<M, E> {
-        limb::limbs_add_assign_mod(self.limbs.as_mut(), b.limbs.as_ref(), m.limbs())
+    pub fn add(mut self, b: Ref<'_, M, E>, m: &Mont<M>) -> Elem<M, E> {
+        limb::limbs_add_assign_mod(self.limbs.as_mut(), b.limbs, m.limbs())
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         self
     }

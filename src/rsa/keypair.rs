@@ -330,6 +330,9 @@ impl KeyPair {
         // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
         let public_key = PublicKey::new(public_key, cpu_features)?;
 
+        let mut tmp1 = bigint::OversizedUninit::<1>::new();
+        let mut tmp2 = bigint::OversizedUninit::<1>::new();
+
         let borrowed_public_key = public_key.inner();
         let n = borrowed_public_key.n().value();
         let nm = &n.modulus(cpu_features);
@@ -341,14 +344,12 @@ impl KeyPair {
         let q = q.build(cpu_features);
         let qim = &q.modulus.reborrow();
 
-        let q_mod_n_storage = nm.alloc_uninit();
         let q_mod_n = qim
-            .to_elem(q_mod_n_storage, nm)
+            .to_elem(&mut tmp1, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
-        let p_mod_n_storage = nm.alloc_uninit();
         let pq_mod_n = pim
-            .to_elem(p_mod_n_storage, nm)
+            .to_elem(&mut tmp2, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features)
             .mul(q_mod_n.as_ref(), nm);
@@ -361,9 +362,7 @@ impl KeyPair {
         // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we don't have
         // a good way of calculating LCM, so just check the less strict condition
         // that `d < n`.
-        let _d = nm
-            .alloc_uninit()
-            .into_elem_from_be_bytes_padded(d, nm)
+        let _d = bigint::elem::Mut::from_be_bytes_padded(&mut tmp2, d, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // Step 6.b is omitted as explained above.
@@ -383,10 +382,9 @@ impl KeyPair {
         // with an even modulus.
 
         // Step 7.f.
-        let mut tmp = bigint::OversizedUninit::new();
         q_mod_n
             .as_ref()
-            .reduced_mont(&mut tmp, pm, qim.len_bits())
+            .reduced_mont(&mut tmp2, pm, qim.len_bits())
             .encode_mont(pim, cpu_features)
             .verify_inverse_consttime(qInv.as_ref(), pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
@@ -646,16 +644,15 @@ impl KeyPair {
         // The old `h` isn't used beyond this point, so its storage could be
         // reused.
         let h = nm.alloc_uninit().elem_widen(h.as_ref(), nm, p.len_bits())?;
-        let q_mod_n_storage = nm.alloc_uninit();
         let q_times_h = q
-            .to_elem(q_mod_n_storage, nm)
+            .to_elem(&mut tmp1, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features)
             .mul(h.as_ref(), nm);
         let m_2 = nm
             .alloc_uninit()
             .elem_widen(m_2.as_ref(), nm, q.len_bits())?;
-        let m = m_2.add(&q_times_h, nm);
+        let m = m_2.add(q_times_h.as_ref(), nm);
 
         // Step 2.b.v isn't needed since there are only two primes.
 
