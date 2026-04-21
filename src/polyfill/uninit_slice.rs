@@ -19,7 +19,7 @@ use super::{
     start_ptr::{StartMutPtr, StartPtr},
     uninit_slice_cursor::Cursor,
 };
-use crate::error::LenMismatchError;
+use crate::error::{self, LenMismatchError};
 use core::{
     marker::PhantomData,
     mem::{self, MaybeUninit},
@@ -143,24 +143,19 @@ impl<'target, E: Copy> Uninit<'target, E> {
     //    * `r.len() == u.len()`
     //    * `r` has overwritten any elements of `self`.
     //    * Either `r.as_ptr()` equals `u.as_ptr()` or `u.len() == 0` and `r.len() == 0`.
-    pub fn write_fully_with<EI>(
+    pub fn write_fully_with(
         self,
-        f: impl for<'a> FnOnce(Uninit<'a, E>) -> Result<&'a mut [E], EI>,
-    ) -> Result<&'target mut [E], LenMismatchError>
-    where
-        LenMismatchError: From<EI>,
-    {
+        f: impl for<'a> FnOnce(Uninit<'a, E>) -> Result<&'a mut [E], error::Unspecified>,
+    ) -> Result<&'target mut [E], error::Unspecified> {
         let (len, ptr) = (self.len(), self.start_ptr());
         let written = f(self)?;
         if written.len() != len {
-            Err(LenMismatchError::new(written.len()))?;
+            Err(error::erase(LenMismatchError::new(written.len())))?;
         }
         // Verify the returned slice is actually `self` overwritten, but also
         // allow any empty slice for usability.
         if !ptr::addr_eq(ptr, written.as_ptr()) && len != 0 {
-            // Abuse `LenMismatchError` for convenience; this is never going to
-            // happen anyway.
-            return Err(LenMismatchError::new(ptr.addr()));
+            return Err(error::Unspecified);
         }
         Ok(written)
     }

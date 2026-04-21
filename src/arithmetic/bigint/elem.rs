@@ -223,9 +223,12 @@ impl<M> Uninit<M> {
         let tmp = &mut tmp[..a.limbs.len()];
         tmp.copy_from_slice(a.limbs.as_ref());
 
-        self.write_fully_with(|out| limbs_from_mont_in_place(out, tmp, m.limbs(), m.n0()))
-            .map(Elem::<M, RInverse>::assume_in_range_and_encoded_less_safe)
-            .unwrap_or_else(unwrap_impossible_len_mismatch_error)
+        self.write_fully_with(|out| {
+            limbs_from_mont_in_place(out, tmp, m.limbs(), m.n0())
+                .map_err(error::erase::<LenMismatchError>)
+        })
+        .map(Elem::<M, RInverse>::assume_in_range_and_encoded_less_safe)
+        .unwrap_or_else(|_: error::Unspecified| unreachable!())
     }
 
     pub fn elem_widen<Smaller>(

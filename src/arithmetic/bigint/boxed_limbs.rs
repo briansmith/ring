@@ -16,7 +16,7 @@
 use crate::polyfill::prelude::*;
 
 use crate::{
-    error::LenMismatchError,
+    error::{self, LenMismatchError},
     limb::{self, Limb},
     polyfill::{self, slice::WriteResult},
 };
@@ -141,13 +141,12 @@ impl<M> Uninit<M> {
         Ok(BoxedLimbs { limbs, m: self.m })
     }
 
-    pub(super) fn write_fully_with<EI>(
+    pub(super) fn write_fully_with(
         self,
-        f: impl for<'a> FnOnce(polyfill::slice::Uninit<'a, Limb>) -> Result<&'a mut [Limb], EI>,
-    ) -> Result<BoxedLimbs<M>, LenMismatchError>
-    where
-        LenMismatchError: From<EI>,
-    {
+        f: impl for<'a> FnOnce(
+            polyfill::slice::Uninit<'a, Limb>,
+        ) -> Result<&'a mut [Limb], error::Unspecified>,
+    ) -> Result<BoxedLimbs<M>, error::Unspecified> {
         let m = self.m;
         let mut uninit = self.limbs;
         let (ptr, len) = (uninit.as_mut_ptr(), uninit.len());
