@@ -613,7 +613,8 @@ impl KeyPair {
         let q = &self.q.modulus.reborrow();
 
         // Step 1. The value zero is also rejected.
-        let base = nm.alloc_uninit().into_elem_from_be_bytes_padded(base, nm)?;
+        let mut base_storage = bigint::OversizedUninit::<1>::new();
+        let base = bigint::elem::Mut::from_be_bytes_padded(&mut base_storage, base, nm)?;
 
         // Step 2
         let c = base.as_ref();
