@@ -277,7 +277,6 @@ pub use crate::ec::{
     },
 };
 
-#[cfg(feature = "alloc")]
 pub use crate::rsa::{
     RsaParameters,
     padding::{

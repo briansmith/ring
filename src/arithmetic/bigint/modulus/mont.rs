@@ -32,8 +32,10 @@ use crate::{
     limb::{self, LIMB_BITS, Limb},
     polyfill::{LeadingZerosStripped, slice::Uninit},
 };
-use alloc::boxed::Box;
 use core::{marker::PhantomData, num::NonZero};
+
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
@@ -47,6 +49,7 @@ pub struct IntoMont<'a, M, E> {
     encoding: PhantomData<E>,
 }
 
+#[cfg(feature = "alloc")]
 pub struct BoxedIntoMont<M, E> {
     storage: Box<[Limb]>,
     len_bits: BitLength,
@@ -55,6 +58,7 @@ pub struct BoxedIntoMont<M, E> {
     encoding: PhantomData<E>,
 }
 
+#[cfg(feature = "alloc")]
 impl<M: PublicModulus, E> Clone for BoxedIntoMont<M, E> {
     fn clone(&self) -> Self {
         Self {
@@ -67,6 +71,7 @@ impl<M: PublicModulus, E> Clone for BoxedIntoMont<M, E> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<M, E> BoxedIntoMont<M, E> {
     pub fn reborrow(&self) -> IntoMont<'_, M, E> {
         IntoMont {
@@ -80,6 +85,7 @@ impl<M, E> BoxedIntoMont<M, E> {
 }
 
 impl ValidatedInput<'_> {
+    #[cfg(feature = "alloc")]
     pub(crate) fn build_boxed_into_mont<M>(&self, cpu: cpu::Features) -> BoxedIntoMont<M, RR> {
         let limbs = self.limbs();
         let mut uninit = Box::new_uninit_slice(limbs.len() * 2);
@@ -210,6 +216,7 @@ impl<'a, M, E> IntoMont<'a, M, E> {
     }
 }
 
+#[cfg(any(test, feature = "alloc"))]
 impl<M> BoxedIntoMont<M, RR> {
     pub(crate) fn intoRRR(self, cpu: cpu::Features) -> BoxedIntoMont<M, RRR> {
         let Self {

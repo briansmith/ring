@@ -68,6 +68,7 @@ impl<'a> ValidatedInput<'a> {
         self.input.len_bits()
     }
 
+    #[cfg(feature = "alloc")]
     pub(super) fn build_boxed_into_mont(
         &self,
         cpu_features: cpu::Features,
@@ -88,6 +89,7 @@ impl<'a> ValidatedInput<'a> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl PublicModulus<bigint::BoxedIntoMont<N, RR>> {
     pub fn reborrow(&self) -> PublicModulus<bigint::IntoMont<'_, N, RR>> {
         PublicModulus {

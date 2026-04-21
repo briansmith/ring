@@ -33,6 +33,7 @@ use crate::{
 use core::{iter, marker::PhantomData, num::NonZero};
 
 /// A boxed `Mut`.
+#[cfg(feature = "alloc")]
 pub struct Boxed<M, E = Unencoded> {
     limbs: alloc::boxed::Box<[Limb]>,
     m: PhantomData<M>,
@@ -76,6 +77,7 @@ impl<'l, M, E> Clone for Ref<'l, M, E> {
 
 impl<M, E> Copy for Ref<'_, M, E> {}
 
+#[cfg(feature = "alloc")]
 impl<M, E> Boxed<M, E> {
     // "Less safe" because this binds `M` to the value (and length) of `limbs`.
     #[inline]
@@ -282,6 +284,7 @@ impl<M> Ref<'_, M, Unencoded> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<M, E> Boxed<M, E> {
     pub(crate) fn encode_mont<OE>(
         mut self,

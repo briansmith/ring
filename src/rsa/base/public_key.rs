@@ -74,6 +74,7 @@ impl<'a> ValidatedInput<'a> {
         self.e_input
     }
 
+    #[cfg(feature = "alloc")]
     pub(in super::super) fn build_boxed(
         &self,
         cpu: cpu::Features,
@@ -96,6 +97,7 @@ impl<'a> ValidatedInput<'a> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl PublicKey<bigint::BoxedIntoMont<N, RR>> {
     pub fn reborrow(&self) -> PublicKey<bigint::IntoMont<'_, N, RR>> {
         PublicKey {

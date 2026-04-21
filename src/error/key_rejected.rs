@@ -73,12 +73,10 @@ impl KeyRejected {
         Self("PublicKeyIsMissing")
     }
 
-    #[cfg(feature = "alloc")]
     pub(crate) const fn too_small() -> Self {
         Self("TooSmall")
     }
 
-    #[cfg(feature = "alloc")]
     pub(crate) fn too_large() -> Self {
         Self("TooLarge")
     }

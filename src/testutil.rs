@@ -117,8 +117,10 @@
 //! stack trace to the line in the test code that panicked: entry 9 in the
 //! stack trace pointing to line 652 of the file `example.rs`.
 
+#[cfg(any(test, feature = "alloc"))]
 extern crate alloc;
 
+#[cfg(any(test, feature = "alloc"))]
 use alloc::{format, string::String, vec::Vec};
 
 use crate::{bits, digest, error};
@@ -156,11 +158,13 @@ pub const fn compile_time_assert_std_error_error<T: std::error::Error>() {}
 /// typos and omissions.
 ///
 /// Requires the `alloc` default feature to be enabled.
+#[cfg(any(test, feature = "alloc"))]
 #[derive(Debug)]
 pub struct TestCase {
     attributes: Vec<(String, String, bool)>,
 }
 
+#[cfg(any(test, feature = "alloc"))]
 impl TestCase {
     /// Maps the string "true" to true and the string "false" to false.
     pub fn consume_bool(&mut self, key: &str) -> bool {
@@ -314,6 +318,7 @@ pub struct File<'a> {
 /// Parses test cases out of the given file, calling `f` on each vector until
 /// `f` fails or until all the test vectors have been read. `f` can indicate
 /// failure either by returning `Err()` or by panicking.
+#[cfg(any(test, feature = "alloc"))]
 pub fn run<F>(test_file: File, mut f: F)
 where
     F: FnMut(&str, &mut TestCase) -> Result<(), error::Unspecified>,
@@ -362,6 +367,7 @@ where
 
 /// Decode an string of hex digits into a sequence of bytes. The input must
 /// have an even number of digits.
+#[cfg(any(test, feature = "alloc"))]
 pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     if hex_str.len() % 2 != 0 {
         return Err(String::from(
@@ -378,6 +384,7 @@ pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     Ok(result)
 }
 
+#[cfg(any(test, feature = "alloc"))]
 fn from_hex_digit(d: u8) -> Result<u8, String> {
     use core::ops::RangeInclusive;
     const DECIMAL: (u8, RangeInclusive<u8>) = (0, b'0'..=b'9');
@@ -391,6 +398,7 @@ fn from_hex_digit(d: u8) -> Result<u8, String> {
     Err(format!("Invalid hex digit '{}'", d as char))
 }
 
+#[cfg(any(test, feature = "alloc"))]
 fn parse_test_case(
     current_section: &mut String,
     lines: &mut dyn Iterator<Item = &str>,

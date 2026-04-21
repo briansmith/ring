@@ -13,7 +13,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #![allow(missing_docs)]
-#![cfg(feature = "alloc")]
 
 use ring::{
     error,
@@ -30,6 +29,7 @@ use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 wasm_bindgen_test_configure!(run_in_browser);
 
+#[cfg(feature = "alloc")]
 #[test]
 fn rsa_from_pkcs8_test() {
     test::run(
@@ -133,6 +133,7 @@ fn test_signature_rsa_pss_sign() {
 
 // `KeyPair::sign` requires that the output buffer is the same length as
 // the public key modulus. Test what happens when it isn't the same length.
+#[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_pkcs1_sign_output_buffer_len() {
     // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
@@ -159,7 +160,6 @@ fn test_signature_rsa_pkcs1_sign_output_buffer_len() {
     }
 }
 
-#[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_pkcs1_verify() {
     let sha1_params = &[
@@ -240,7 +240,6 @@ fn test_signature_rsa_pkcs1_verify() {
     );
 }
 
-#[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_pss_verify() {
     test::run(
@@ -291,7 +290,6 @@ fn test_signature_rsa_pss_verify() {
 
 // Test for `primitive::verify()`. Read public key parts from a file
 // and use them to verify a signature.
-#[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_primitive_verification() {
     test::run(
@@ -333,6 +331,7 @@ fn rsa_test_keypair_coverage() {
     );
 }
 
+#[cfg(feature = "alloc")]
 fn test_public_key_coverage(key: &rsa::PublicKey) {
     // Test `AsRef<[u8]>`
     const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");

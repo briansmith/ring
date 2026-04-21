@@ -20,7 +20,6 @@ mod ffi;
 
 mod constant;
 
-#[cfg(feature = "alloc")]
 pub mod bigint;
 
 mod exp_vartime;

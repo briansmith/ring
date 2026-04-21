@@ -98,13 +98,11 @@ impl BitLength<usize> {
         (self.0 / 8) + round_up
     }
 
-    #[cfg(feature = "alloc")]
     #[inline]
     pub(crate) fn try_sub_1(self) -> Result<Self, crate::error::Unspecified> {
         self.checked_sub(Self(1)).ok_or(crate::error::Unspecified)
     }
 
-    #[cfg(feature = "alloc")]
     pub(crate) fn checked_sub(self, rhs: Self) -> Option<Self> {
         self.0.checked_sub(rhs.0).map(Self)
     }

@@ -38,12 +38,10 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
-use alloc::boxed::Box;
 
 pub(crate) use self::{
-    modulus::{BoxedIntoMont, IntoMont, Mont, One},
+    modulus::{IntoMont, Mont, One},
     oversized_uninit::OversizedUninit,
-    private_exponent::PrivateExponent,
 };
 use super::{LimbSliceError, MAX_LIMBS, montgomery::*};
 use crate::{
@@ -53,18 +51,26 @@ use crate::{
 };
 
 pub(crate) mod elem;
+#[cfg(feature = "alloc")]
 mod exp;
 pub mod modulus;
 mod oversized_uninit;
+#[cfg(feature = "alloc")]
 mod private_exponent;
+
+#[cfg(feature = "alloc")]
+pub(crate) use self::{modulus::BoxedIntoMont, private_exponent::PrivateExponent};
 
 pub trait PublicModulus {}
 
+#[cfg(feature = "alloc")]
 impl<M> elem::Boxed<M> {
     pub fn from_be_bytes_padded(
         input: untrusted::Input<'_>,
         m: &Mont<M>,
     ) -> Result<elem::Boxed<M>, error::Unspecified> {
+        use alloc::boxed::Box;
+
         let mut uninit = Box::new_uninit_slice(m.num_limbs().get());
         let _: &mut _ = Uninit::from(uninit.as_mut()).write_fully_with(|uninit| {
             Ok(elem::Mut::from_be_bytes_padded_(uninit, input, m)?.leak_limbs_into_mut_less_safe())

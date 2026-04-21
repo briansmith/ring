@@ -37,6 +37,7 @@ pub trait Padding: 'static + Sync + core::fmt::Debug {
     }
 }
 
+#[cfg(feature = "alloc")]
 pub(super) fn encode(
     encoding: &dyn RsaEncoding,
     m_hash: digest::Digest,
@@ -50,7 +51,6 @@ pub(super) fn encode(
 /// An RSA signature encoding as described in [RFC 3447 Section 8].
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
-#[cfg(feature = "alloc")]
 pub trait RsaEncoding: Padding {
     #[doc(hidden)]
     fn encode_(

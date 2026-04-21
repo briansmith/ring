@@ -25,6 +25,7 @@ macro_rules! test_file {
     };
 }
 
+#[cfg(any(test, feature = "alloc"))]
 pub use crate::testutil::{
     File, TestCase, compile_time_assert_clone, compile_time_assert_copy, compile_time_assert_eq,
     compile_time_assert_send, compile_time_assert_sync, from_hex, run,

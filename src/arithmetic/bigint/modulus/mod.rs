@@ -5,7 +5,10 @@ pub(super) mod testutil;
 mod value;
 
 pub(crate) use self::{
-    mont::{BoxedIntoMont, IntoMont, Mont},
+    mont::{IntoMont, Mont},
     one::One,
     value::ValidatedInput,
 };
+
+#[cfg(feature = "alloc")]
+pub(crate) use self::mont::BoxedIntoMont;

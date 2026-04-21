@@ -50,7 +50,6 @@ pub mod dynarray;
 pub mod partial_buffer;
 pub mod sliceutil;
 
-#[cfg(feature = "alloc")]
 mod leading_zeros_skipped;
 
 #[cfg(any(
@@ -101,7 +100,6 @@ pub use self::{
     start_ptr::{StartMutPtr, StartPtr},
 };
 
-#[cfg(feature = "alloc")]
 pub use leading_zeros_skipped::LeadingZerosStripped;
 
 #[cfg(test)]

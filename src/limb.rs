@@ -30,7 +30,6 @@ use crate::{
 };
 use core::{iter, num::NonZero};
 
-#[cfg(feature = "alloc")]
 use core::num::Wrapping;
 use core::ops::RangeInclusive;
 
@@ -101,7 +100,6 @@ pub fn limbs_are_zero(limbs: &[Limb]) -> LimbMask {
 
 /// Leaks one bit of information (other than the lengths of the inputs):
 /// Whether the given limbs are even.
-#[cfg(any(test, feature = "alloc"))]
 #[inline]
 pub fn limbs_reject_even_leak_bit(limbs: &[Limb]) -> Result<(), error::Unspecified> {
     let bottom = *limbs.first().ok_or(error::Unspecified)?;
@@ -111,7 +109,6 @@ pub fn limbs_reject_even_leak_bit(limbs: &[Limb]) -> Result<(), error::Unspecifi
     Ok(())
 }
 
-#[cfg(any(test, feature = "alloc"))]
 #[inline]
 pub fn verify_limbs_equal_1_leak_bit(a: &[Limb]) -> Result<(), error::Unspecified> {
     if let [bottom, ref rest @ ..] = *a {

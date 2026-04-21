@@ -59,14 +59,17 @@ enum N {}
 impl bigint::PublicModulus for N {}
 
 mod base;
+#[cfg(feature = "alloc")]
 mod keypair;
+#[cfg(feature = "alloc")]
 mod keypair_components;
+#[cfg(feature = "alloc")]
 mod public_key;
 mod public_key_components;
 
 pub(crate) mod verification;
 
-pub use self::{
-    keypair::KeyPair, keypair_components::KeyPairComponents, public_key::PublicKey,
-    public_key_components::PublicKeyComponents,
-};
+#[cfg(feature = "alloc")]
+pub use self::{keypair::KeyPair, keypair_components::KeyPairComponents, public_key::PublicKey};
+
+pub use self::public_key_components::PublicKeyComponents;

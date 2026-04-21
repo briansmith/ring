@@ -149,7 +149,6 @@ pub mod pbkdf2;
 pub mod pkcs8;
 pub mod rand;
 
-#[cfg(feature = "alloc")]
 pub mod rsa;
 
 pub mod signature;
