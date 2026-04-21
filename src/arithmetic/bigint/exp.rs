@@ -416,8 +416,10 @@ mod tests {
                     .intoRRR(cpu_features);
                 let im = &im.reborrow();
                 let m = im.modulus(cpu_features);
-                let expected_result = consume_elem(test_case, "ModExp", &m);
-                let base = consume_elem(test_case, "A", &m);
+                let mut tmp1 = OversizedUninit::<1>::new();
+                let mut tmp2 = OversizedUninit::<1>::new();
+                let expected_result = consume_elem(&mut tmp1, test_case, "ModExp", &m);
+                let base = consume_elem(&mut tmp2, test_case, "A", &m);
                 let e = {
                     let bytes = test_case.consume_bytes("E");
                     PrivateExponent::from_be_bytes_for_test_only(untrusted::Input::from(&bytes), &m)

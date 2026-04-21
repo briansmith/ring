@@ -478,15 +478,14 @@ pub mod testutil {
     use super::super::boxed_limbs::Uninit;
     use super::*;
 
-    pub fn consume_elem<M>(
+    pub fn consume_elem<'out, M>(
+        out: &'out mut OversizedUninit<1>,
         test_case: &mut crate::testutil::TestCase,
         name: &str,
         m: &Mont<M>,
-    ) -> Elem<M, Unencoded> {
+    ) -> Mut<'out, M, Unencoded> {
         let value = test_case.consume_bytes(name);
-        m.alloc_uninit()
-            .into_elem_from_be_bytes_padded(untrusted::Input::from(&value), m)
-            .unwrap()
+        Mut::from_be_bytes_padded(out, untrusted::Input::from(&value), m).unwrap()
     }
 
     pub fn consume_elem_unchecked<M>(
