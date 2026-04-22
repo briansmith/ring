@@ -19,9 +19,6 @@ use crate::{error, limb::Limb, polyfill};
 use alloc::boxed::Box;
 use core::{marker::PhantomData, mem::MaybeUninit, ptr};
 
-#[cfg(test)]
-use crate::{error::LenMismatchError, limb};
-
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
 pub(super) struct BoxedLimbs<M> {
     limbs: Box<[Limb]>,
@@ -69,34 +66,6 @@ impl<M> Uninit<M> {
             limbs: Box::new_uninit_slice(len),
             m: PhantomData,
         }
-    }
-
-    #[cfg(test)]
-    pub fn len(&self) -> usize {
-        self.limbs.len()
-    }
-
-    #[cfg(test)] // TODO: ditch this
-    pub(super) fn write_from_be_bytes_padded(
-        self,
-        input: untrusted::Input,
-    ) -> Result<BoxedLimbs<M>, LenMismatchError> {
-        let input = limb::limbs_from_big_endian(input, 1..=self.len())?;
-        self.write_iter_padded(input)
-    }
-
-    #[cfg(test)]
-    pub(super) fn write_iter_padded(
-        mut self,
-        input: impl ExactSizeIterator<Item = Limb>,
-    ) -> Result<BoxedLimbs<M>, LenMismatchError>
-    where
-        Limb: Copy,
-    {
-        let _: &_ = polyfill::slice::Uninit::from(self.limbs.as_mut())
-            .write_iter_padded(input, Limb::from(limb::ZERO))?;
-        let limbs = unsafe { self.limbs.assume_init() };
-        Ok(BoxedLimbs { limbs, m: self.m })
     }
 
     pub(super) fn write_fully_with(

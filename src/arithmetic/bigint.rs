@@ -178,7 +178,9 @@ mod tests {
                 let m = m_.modulus(cpu_features);
                 let mut tmp = OversizedUninit::<1>::new();
                 let expected_result = consume_elem(&mut tmp, test_case, "R", &m);
+                let mut tmp = OversizedUninit::<1>::new();
                 let a = consume_elem_unchecked::<M>(
+                    &mut tmp,
                     test_case,
                     "A",
                     expected_result.as_ref().num_limbs() * 2,
@@ -210,7 +212,8 @@ mod tests {
                 let mut tmp = OversizedUninit::<2>::new();
                 let m = consume_modulus::<M>(&mut tmp, test_case, "m");
                 let m = m.modulus(cpu_features);
-                let a = consume_elem_unchecked::<O>(test_case, "a", m.limbs().len());
+                let mut tmp = OversizedUninit::<1>::new();
+                let a = consume_elem_unchecked::<O>(&mut tmp, test_case, "a", m.limbs().len());
                 let mut tmp = OversizedUninit::<1>::new();
                 let expected_result = consume_elem::<M>(&mut tmp, test_case, "r", &m);
                 let other_modulus_len_bits = m.len_bits();

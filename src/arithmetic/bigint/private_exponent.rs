@@ -53,8 +53,8 @@ impl PrivateExponent {
         input: untrusted::Input,
         p: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
-        use super::boxed_limbs::Uninit;
-        use crate::{error::LenMismatchError, limb::LIMB_BYTES};
+        use super::{boxed_limbs::Uninit, elem};
+        use crate::limb::LIMB_BYTES;
 
         // Do exactly what `from_be_bytes_padded` does for any inputs it accepts.
         if let r @ Ok(_) = Self::from_be_bytes_padded(input, p) {
@@ -62,9 +62,11 @@ impl PrivateExponent {
         }
 
         let num_limbs = input.len().div_ceil(LIMB_BYTES);
-        let mut limbs = Uninit::<M>::new_less_safe(num_limbs)
-            .write_from_be_bytes_padded(input)
-            .map_err(|LenMismatchError { .. }| error::KeyRejected::unexpected_error())?;
+
+        let uninit = Uninit::<M>::new_less_safe(num_limbs);
+        let mut limbs = uninit
+            .write_fully_with(|uninit| elem::limbs_from_be_bytes_padded(uninit, input, num_limbs))
+            .map_err(|_: error::Unspecified| error::KeyRejected::unexpected_error())?;
         limbs.as_mut().reverse();
         Ok(Self {
             limbs: limbs.into_limbs(),

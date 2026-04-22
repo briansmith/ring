@@ -142,41 +142,49 @@ impl<'l, M> Mut<'l, M, Unencoded> {
         Ok(Mut::assume_in_range_and_encoded_less_safe(out))
     }
 
-    pub fn from_be_bytes_padded<'out>(
-        out: &'out mut OversizedUninit<1>,
+    pub fn from_be_bytes_padded(
+        out: &'l mut OversizedUninit<1>,
         input: untrusted::Input<'_>,
         m: &Mont<M>,
-    ) -> Result<Mut<'out, M>, error::Unspecified> {
+    ) -> Result<Self, error::Unspecified> {
         let out = out
             .as_uninit(..m.num_limbs().get())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // because it's oversized.
         Self::from_be_bytes_padded_(out, input, m)
     }
 
-    pub(super) fn from_be_bytes_padded_<'out>(
-        out: polyfill::slice::Uninit<'out, Limb>,
+    pub(super) fn from_be_bytes_padded_(
+        out: polyfill::slice::Uninit<'l, Limb>,
         input: untrusted::Input<'_>,
         m: &Mont<M>,
-    ) -> Result<Mut<'out, M>, error::Unspecified> {
-        let num_limbs = m.num_limbs().get();
-        if out.len() != num_limbs {
-            return Err(error::Unspecified);
-        }
-        let input = limb::limbs_from_big_endian(input, 1..=num_limbs)
-            .map_err(error::erase::<LenMismatchError>)?;
-        let out = out
-            .write_iter(
-                input
-                    .chain(iter::repeat(Limb::from(limb::ZERO)))
-                    .take(num_limbs),
-            )
-            .src_empty()
-            .map_err(error::erase::<LenMismatchError>)?
-            .uninit_empty()
-            .map_err(error::erase::<LenMismatchError>)?
-            .into_written();
-        Mut::from_limbs(out, m)
+    ) -> Result<Self, error::Unspecified> {
+        let limbs = limbs_from_be_bytes_padded(out, input, m.num_limbs().get())?;
+        Self::from_limbs(limbs, m)
     }
+}
+
+pub(super) fn limbs_from_be_bytes_padded<'out>(
+    out: polyfill::slice::Uninit<'out, Limb>,
+    input: untrusted::Input<'_>,
+    num_limbs: usize,
+) -> Result<&'out mut [Limb], error::Unspecified> {
+    if out.len() != num_limbs {
+        return Err(error::Unspecified);
+    }
+    let input = limb::limbs_from_big_endian(input, 1..=num_limbs)
+        .map_err(error::erase::<LenMismatchError>)?;
+    let out = out
+        .write_iter(
+            input
+                .chain(iter::repeat(Limb::from(limb::ZERO)))
+                .take(num_limbs),
+        )
+        .src_empty()
+        .map_err(error::erase::<LenMismatchError>)?
+        .uninit_empty()
+        .map_err(error::erase::<LenMismatchError>)?
+        .into_written();
+    Ok(out)
 }
 
 impl<'l, M, E> Ref<'l, M, E> {
@@ -475,7 +483,6 @@ impl<M, E> Ref<'_, M, E> {
 
 #[cfg(test)]
 pub mod testutil {
-    use super::super::boxed_limbs::Uninit;
     use super::*;
 
     pub fn consume_elem<'out, M>(
@@ -488,16 +495,19 @@ pub mod testutil {
         Mut::from_be_bytes_padded(out, untrusted::Input::from(&value), m).unwrap()
     }
 
-    pub fn consume_elem_unchecked<M>(
+    pub fn consume_elem_unchecked<'out, M>(
+        out: &'out mut OversizedUninit<1>,
         test_case: &mut crate::testutil::TestCase,
         name: &str,
         num_limbs: usize,
-    ) -> Elem<M, Unencoded> {
+    ) -> Mut<'out, M, Unencoded> {
         let bytes = test_case.consume_bytes(name);
-        let limbs = Uninit::new_less_safe(num_limbs)
-            .write_from_be_bytes_padded(untrusted::Input::from(&bytes))
+        let bytes = untrusted::Input::from(&bytes);
+        let out = out
+            .as_uninit(..num_limbs)
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        Elem::assume_in_range_and_encoded_less_safe(limbs)
+        let limbs = limbs_from_be_bytes_padded(out, bytes, num_limbs).unwrap();
+        Mut::assume_in_range_and_encoded_less_safe(limbs)
     }
 
     pub fn assert_elem_eq<M, E>(a: Ref<'_, M, E>, b: Ref<'_, M, E>) {

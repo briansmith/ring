@@ -145,26 +145,6 @@ impl<'target, E: Copy> Uninit<'target, E> {
         }
     }
 
-    #[cfg(test)]
-    pub fn write_iter_padded(
-        mut self,
-        input: impl ExactSizeIterator<Item = E>,
-        padding: E,
-    ) -> Result<&'target mut [E], LenMismatchError> {
-        // Don't do anything if the input is too long.
-        if input.len() > self.len() {
-            return Err(LenMismatchError::new(input.len()));
-        }
-        // We know there is no leftover input so we can ignore the `WriteResult`.
-        let (_, to_zero): (WriteResult<_, _, _>, _) = self
-            .reborrow_mut()
-            .write_iter(input)
-            .src_empty()?
-            .take_uninit();
-        let _: &_ = to_zero.write_filled_copy(padding);
-        Ok(unsafe { self.assume_init() })
-    }
-
     // If the result of `u.write_fully_with(f)` is `Ok(r)` then:
     //    * `r.len() == u.len()`
     //    * `r` has overwritten any elements of `self`.
