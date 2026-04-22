@@ -86,14 +86,6 @@ impl<M> Uninit<M> {
     }
 
     #[cfg(test)]
-    pub(super) fn write_copy_of_slice_padded(
-        self,
-        src: &[Limb],
-    ) -> Result<BoxedLimbs<M>, LenMismatchError> {
-        self.write_iter_padded(src.iter().copied())
-    }
-
-    #[cfg(test)]
     pub(super) fn write_iter_padded(
         mut self,
         input: impl ExactSizeIterator<Item = Limb>,

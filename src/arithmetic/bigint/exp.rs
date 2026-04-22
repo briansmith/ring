@@ -389,9 +389,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
 #[cfg(test)]
 mod tests {
     use super::super::elem::testutil::*;
-    use super::super::{
-        Elem, PublicModulus, Uninit, modulus, unwrap_impossible_len_mismatch_error,
-    };
+    use super::super::{PublicModulus, elem, modulus};
     use super::*;
     use crate::cpu;
     use crate::testutil as test;
@@ -432,12 +430,15 @@ mod tests {
                 // Pretend there's another prime of equal length.
                 struct N {}
                 let other_modulus_len_bits = m.len_bits();
-                let base: Elem<N> = {
-                    let limbs = Uninit::new_less_safe(base.as_ref().num_limbs() * 2)
-                        .write_copy_of_slice_padded(base.as_ref().leak_limbs_less_safe())
-                        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-                    Elem::<N, Unencoded>::assume_in_range_and_encoded_less_safe(limbs)
-                };
+                let mut tmp = OversizedUninit::<1>::new();
+                let base = tmp
+                    .write_copy_of_slice_padded(
+                        base.as_ref().leak_limbs_less_safe(),
+                        base.as_ref().num_limbs() * 2,
+                    )
+                    .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+                let base: elem::Mut<'_, N, Unencoded> =
+                    elem::Mut::assume_in_range_and_encoded_less_safe(base);
 
                 let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
                 let mut actual_result = OversizedUninit::new();
