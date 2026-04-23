@@ -30,7 +30,7 @@ use crate::{
     cpu,
     error::{self, LenMismatchError},
     limb::{self, LIMB_BITS, Limb},
-    polyfill::{self, LeadingZerosStripped},
+    polyfill::{LeadingZerosStripped, slice::Uninit},
 };
 use alloc::boxed::Box;
 use core::{marker::PhantomData, num::NonZero};
@@ -83,7 +83,7 @@ impl ValidatedInput<'_> {
     pub(crate) fn build_boxed_into_mont<M>(&self, cpu: cpu::Features) -> BoxedIntoMont<M, RR> {
         let limbs = self.limbs();
         let mut uninit = Box::new_uninit_slice(limbs.len() * 2);
-        let borrowed = polyfill::slice::Uninit::from(uninit.as_mut());
+        let borrowed = Uninit::from(uninit.as_mut());
         let mut cursor = borrowed.into_cursor();
         let IntoMont {
             storage: _,

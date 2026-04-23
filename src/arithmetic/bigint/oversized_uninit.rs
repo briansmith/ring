@@ -16,7 +16,7 @@
 use crate::polyfill::prelude::*;
 
 use super::{Limb, MAX_LIMBS};
-use crate::{error::LenMismatchError, polyfill};
+use crate::{error::LenMismatchError, polyfill::slice::Uninit};
 use core::{mem::MaybeUninit, ops::RangeTo};
 
 /// A buffer that has enough space to hold `N` values of the maximum size,
@@ -28,14 +28,11 @@ impl<const N: usize> OversizedUninit<N> {
         Self(unsafe { MaybeUninit::uninit().assume_init() })
     }
 
-    pub(super) fn as_uninit_whole(&mut self) -> polyfill::slice::Uninit<'_, Limb> {
-        polyfill::slice::Uninit::from(self.0.as_flattened_mut())
+    pub(super) fn as_uninit_whole(&mut self) -> Uninit<'_, Limb> {
+        Uninit::from(self.0.as_flattened_mut())
     }
 
-    pub fn as_uninit(
-        &mut self,
-        len: RangeTo<usize>,
-    ) -> Result<polyfill::slice::Uninit<'_, Limb>, LenMismatchError> {
+    pub fn as_uninit(&mut self, len: RangeTo<usize>) -> Result<Uninit<'_, Limb>, LenMismatchError> {
         self.as_uninit_whole()
             .split_off_mut(len)
             .ok_or_else(|| LenMismatchError::new(len.end))

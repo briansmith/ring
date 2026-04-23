@@ -26,10 +26,9 @@ use crate::{
     c, cpu,
     error::{self, LenMismatchError},
     limb::{self, Limb},
-    polyfill,
     polyfill::{
         StartMutPtr,
-        slice::{AliasingSlices, InOut},
+        slice::{AliasingSlices, InOut, Uninit},
     },
 };
 use core::{iter, marker::PhantomData, num::NonZero};
@@ -155,7 +154,7 @@ impl<'l, M> Mut<'l, M, Unencoded> {
     }
 
     pub(super) fn from_be_bytes_padded_(
-        out: polyfill::slice::Uninit<'l, Limb>,
+        out: Uninit<'l, Limb>,
         input: untrusted::Input<'_>,
         m: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
@@ -165,7 +164,7 @@ impl<'l, M> Mut<'l, M, Unencoded> {
 }
 
 pub(super) fn limbs_from_be_bytes_padded<'out>(
-    out: polyfill::slice::Uninit<'out, Limb>,
+    out: Uninit<'out, Limb>,
     input: untrusted::Input<'_>,
     num_limbs: usize,
 ) -> Result<&'out mut [Limb], error::Unspecified> {

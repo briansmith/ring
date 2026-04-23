@@ -51,6 +51,7 @@ use crate::{
     cpu,
     error::LenMismatchError,
     limb::{self, LIMB_BITS, Limb},
+    polyfill::slice::Uninit,
     window5::Window5,
 };
 use core::mem::MaybeUninit;
@@ -107,7 +108,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     };
     use crate::{
         bssl, c, error,
-        polyfill::{self, StartMutPtr, dynarray},
+        polyfill::{StartMutPtr, dynarray},
     };
 
     let base_rinverse = base_mod_n.reduced_mont(out, m, other_prime_len_bits);
@@ -118,7 +119,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     }
 
     fn gather<'out, M>(
-        mut out: polyfill::slice::Uninit<'out, Limb>,
+        mut out: Uninit<'out, Limb>,
         table: &[Limb],
         i: Window5,
     ) -> Result<elem::Mut<'out, M, R>, LenMismatchError> {
@@ -146,7 +147,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         mut acc: elem::Mut<'acc, M, R>,
         m: &Mont<M>,
         i: Window5,
-        tmp: polyfill::slice::Uninit<'_, Limb>,
+        tmp: Uninit<'_, Limb>,
     ) -> Result<elem::Mut<'acc, M, R>, LenMismatchError> {
         for _ in 0..WINDOW_BITS {
             acc = acc.square(m);
@@ -244,7 +245,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
             GetFeature as _,
             intel::{Adx, Bmi2},
         },
-        polyfill::{self, sliceutil::as_chunks_exact},
+        polyfill::sliceutil::as_chunks_exact,
         window5::LeakyWindow5,
     };
 
@@ -296,10 +297,10 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     let (acc, rest) = state.split_at_mut(m_len);
     let (base_cached, m_cached) = rest.split_at_mut(m_len);
 
-    let mut acc = polyfill::slice::Uninit::from(acc);
+    let mut acc = Uninit::from(acc);
 
     // "To improve cache locality" according to upstream.
-    let (m_cached, _) = polyfill::slice::Uninit::from(m_cached)
+    let (m_cached, _) = Uninit::from(m_cached)
         .write_copy_of_slice(m.limbs())?
         .uninit_empty()?
         .into_written()
@@ -365,7 +366,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         unsafe { mul_mont_gather5_amm(acc, base_cached, table, m_cached, n0, power, cpu3) }?;
         scatter_powers_of_2(table, acc, m_cached, n0, i, cpu2)?;
     }
-    let table = polyfill::slice::Uninit::from(table.as_flattened_mut());
+    let table = Uninit::from(table.as_flattened_mut());
     let table = unsafe { table.assume_init() };
     let (table, _) = table.as_chunks();
 
@@ -389,7 +390,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
 #[cfg(test)]
 mod tests {
     use super::super::elem::testutil::*;
-    use super::super::{PublicModulus, elem, modulus};
+    use super::super::{PublicModulus, elem, modulus, unwrap_impossible_len_mismatch_error};
     use super::*;
     use crate::cpu;
     use crate::testutil as test;
@@ -434,9 +435,11 @@ mod tests {
                 let other_modulus_len_bits = m.len_bits();
                 let mut tmp = OversizedUninit::<1>::new();
                 let base = tmp
+                    .as_uninit(..(base.as_ref().num_limbs() * 2))
+                    .unwrap_or_else(unwrap_impossible_len_mismatch_error)
                     .write_copy_of_slice_padded(
                         base.as_ref().leak_limbs_less_safe(),
-                        base.as_ref().num_limbs() * 2,
+                        Limb::from(limb::ZERO),
                     )
                     .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
                 let base: elem::Mut<'_, N, Unencoded> =
