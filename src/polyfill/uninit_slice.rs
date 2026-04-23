@@ -71,10 +71,7 @@ impl<'target, E> Uninit<'target, E> {
         }
     }
 
-    pub(super) fn split_off_mut<'s>(
-        &'s mut self,
-        range: RangeTo<usize>,
-    ) -> Option<Uninit<'target, E>> {
+    pub fn split_off_mut<'s>(&'s mut self, range: RangeTo<usize>) -> Option<Uninit<'target, E>> {
         if self.target.len() < range.end {
             return None;
         }

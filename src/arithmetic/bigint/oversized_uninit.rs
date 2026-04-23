@@ -28,7 +28,7 @@ impl<const N: usize> OversizedUninit<N> {
         Self(unsafe { MaybeUninit::uninit().assume_init() })
     }
 
-    pub(super) fn as_uninit(&mut self) -> polyfill::slice::Uninit<'_, Limb> {
-        self.0.as_flattened_mut().into()
+    pub(super) fn as_uninit_whole(&mut self) -> polyfill::slice::Uninit<'_, Limb> {
+        polyfill::slice::Uninit::from(self.0.as_flattened_mut())
     }
 }
