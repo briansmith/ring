@@ -17,9 +17,8 @@ use crate::polyfill::prelude::*;
 
 use super::{
     super::{MAX_LIMBS, montgomery::*},
-    IntoMont, Mont, OversizedUninit,
-    boxed_limbs::BoxedLimbs,
-    unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
+    IntoMont, Mont, OversizedUninit, unwrap_impossible_len_mismatch_error,
+    unwrap_impossible_limb_slice_error,
 };
 use crate::{
     bits::BitLength,
@@ -35,7 +34,8 @@ use core::{iter, marker::PhantomData, num::NonZero};
 
 /// A boxed `Mut`.
 pub struct Boxed<M, E = Unencoded> {
-    limbs: BoxedLimbs<M>,
+    limbs: alloc::boxed::Box<[Limb]>,
+    m: PhantomData<M>,
     encoding: PhantomData<E>,
 }
 
@@ -77,10 +77,12 @@ impl<'l, M, E> Clone for Ref<'l, M, E> {
 impl<M, E> Copy for Ref<'_, M, E> {}
 
 impl<M, E> Boxed<M, E> {
+    // "Less safe" because this binds `M` to the value (and length) of `limbs`.
     #[inline]
-    pub(super) fn assume_in_range_and_encoded_less_safe(limbs: BoxedLimbs<M>) -> Self {
+    pub(super) fn assume_in_range_and_encoded_less_safe(limbs: alloc::boxed::Box<[Limb]>) -> Self {
         Self {
             limbs,
+            m: PhantomData,
             encoding: PhantomData,
         }
     }
@@ -105,7 +107,7 @@ impl<M, E> Boxed<M, E> {
         }
     }
 
-    pub(super) fn leak_limbs_into_box_less_safe(self) -> BoxedLimbs<M> {
+    pub(super) fn leak_limbs_into_box_less_safe(self) -> alloc::boxed::Box<[Limb]> {
         self.limbs
     }
 }
@@ -293,6 +295,7 @@ impl<M, E> Boxed<M, E> {
             self.as_mut_internal().encode_mont(im, cpu);
         Boxed {
             limbs: self.limbs,
+            m: PhantomData,
             encoding: PhantomData,
         }
     }

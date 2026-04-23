@@ -38,6 +38,7 @@
 
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
+use alloc::boxed::Box;
 
 pub(crate) use self::{
     modulus::{BoxedIntoMont, IntoMont, Mont, One},
@@ -48,9 +49,9 @@ use super::{LimbSliceError, MAX_LIMBS, montgomery::*};
 use crate::{
     error::{self, LenMismatchError},
     limb::{self, Limb},
+    polyfill::slice::Uninit,
 };
 
-mod boxed_limbs;
 pub(crate) mod elem;
 mod exp;
 pub mod modulus;
@@ -63,11 +64,12 @@ impl<M> elem::Boxed<M> {
     pub fn from_be_bytes_padded(
         input: untrusted::Input<'_>,
         m: &Mont<M>,
-    ) -> Result<Self, error::Unspecified> {
-        let uninit = boxed_limbs::Uninit::new_less_safe(m.num_limbs().get());
-        let limbs = uninit.write_fully_with(|uninit| {
+    ) -> Result<elem::Boxed<M>, error::Unspecified> {
+        let mut uninit = Box::new_uninit_slice(m.num_limbs().get());
+        let _: &mut _ = Uninit::from(uninit.as_mut()).write_fully_with(|uninit| {
             Ok(elem::Mut::from_be_bytes_padded_(uninit, input, m)?.leak_limbs_into_mut_less_safe())
         })?;
+        let limbs = unsafe { uninit.assume_init() };
         Ok(elem::Boxed::assume_in_range_and_encoded_less_safe(limbs))
     }
 }

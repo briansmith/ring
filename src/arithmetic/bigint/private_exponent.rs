@@ -39,11 +39,9 @@ impl PrivateExponent {
         //
         // Further we know `dP != 0` because `dP` is not even.
         limb::limbs_reject_even_leak_bit(dP.as_ref())?;
-        dP.as_mut().reverse();
 
-        Ok(Self {
-            limbs: dP.into_limbs(),
-        })
+        dP.as_mut().reverse();
+        Ok(Self { limbs: dP })
     }
 
     // Create a `PrivateExponent` with a value that we do not support in
@@ -53,8 +51,8 @@ impl PrivateExponent {
         input: untrusted::Input,
         p: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
-        use super::{boxed_limbs::Uninit, elem};
-        use crate::limb::LIMB_BYTES;
+        use super::elem;
+        use crate::{limb::LIMB_BYTES, polyfill::slice::Uninit};
 
         // Do exactly what `from_be_bytes_padded` does for any inputs it accepts.
         if let r @ Ok(_) = Self::from_be_bytes_padded(input, p) {
@@ -63,14 +61,14 @@ impl PrivateExponent {
 
         let num_limbs = input.len().div_ceil(LIMB_BYTES);
 
-        let uninit = Uninit::<M>::new_less_safe(num_limbs);
-        let mut limbs = uninit
+        let mut uninit = Box::new_uninit_slice(num_limbs);
+        let _: &mut _ = Uninit::from(uninit.as_mut())
             .write_fully_with(|uninit| elem::limbs_from_be_bytes_padded(uninit, input, num_limbs))
             .map_err(|_: error::Unspecified| error::KeyRejected::unexpected_error())?;
+        let mut limbs = unsafe { uninit.assume_init() };
+
         limbs.as_mut().reverse();
-        Ok(Self {
-            limbs: limbs.into_limbs(),
-        })
+        Ok(Self { limbs })
     }
 
     #[inline]
