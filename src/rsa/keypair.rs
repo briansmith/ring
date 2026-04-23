@@ -36,7 +36,7 @@ use crate::{
 pub struct KeyPair {
     p: PrivateCrtPrime<P>,
     q: PrivateCrtPrime<Q>,
-    qInv: bigint::Elem<P, R>,
+    qInv: bigint::elem::Boxed<P, R>,
     public: PublicKey,
 }
 
@@ -371,7 +371,7 @@ impl KeyPair {
 
         // Step 7.c.
 
-        let qInv = bigint::Elem::from_be_bytes_padded(qInv, pm)
+        let qInv = bigint::elem::Boxed::from_be_bytes_padded(qInv, pm)
             .map_err(|error::Unspecified| KeyRejected::invalid_component())?
             .encode_mont(pim, cpu_features);
 

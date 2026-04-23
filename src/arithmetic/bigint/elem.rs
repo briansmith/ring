@@ -17,8 +17,9 @@ use crate::polyfill::prelude::*;
 
 use super::{
     super::{MAX_LIMBS, montgomery::*},
-    BoxedLimbs, IntoMont, Mont, OversizedUninit, unwrap_impossible_len_mismatch_error,
-    unwrap_impossible_limb_slice_error,
+    IntoMont, Mont, OversizedUninit,
+    boxed_limbs::BoxedLimbs,
+    unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
 };
 use crate::{
     bits::BitLength,
@@ -34,7 +35,7 @@ use crate::{
 use core::{iter, marker::PhantomData, num::NonZero};
 
 /// A boxed `Mut`.
-pub struct Elem<M, E = Unencoded> {
+pub struct Boxed<M, E = Unencoded> {
     limbs: BoxedLimbs<M>,
     encoding: PhantomData<E>,
 }
@@ -76,7 +77,7 @@ impl<'l, M, E> Clone for Ref<'l, M, E> {
 
 impl<M, E> Copy for Ref<'_, M, E> {}
 
-impl<M, E> Elem<M, E> {
+impl<M, E> Boxed<M, E> {
     #[inline]
     pub(super) fn assume_in_range_and_encoded_less_safe(limbs: BoxedLimbs<M>) -> Self {
         Self {
@@ -280,18 +281,18 @@ impl<M> Ref<'_, M, Unencoded> {
     }
 }
 
-impl<M, E> Elem<M, E> {
+impl<M, E> Boxed<M, E> {
     pub(crate) fn encode_mont<OE>(
         mut self,
         im: &IntoMont<M, OE>,
         cpu: cpu::Features,
-    ) -> Elem<M, <(E, OE) as ProductEncoding>::Output>
+    ) -> Boxed<M, <(E, OE) as ProductEncoding>::Output>
     where
         (E, OE): ProductEncoding,
     {
         let _: Mut<'_, M, <(E, OE) as ProductEncoding>::Output> =
             self.as_mut_internal().encode_mont(im, cpu);
-        Elem {
+        Boxed {
             limbs: self.limbs,
             encoding: PhantomData,
         }
