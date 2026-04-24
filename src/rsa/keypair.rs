@@ -655,14 +655,12 @@ impl KeyPair {
         // that is done other than basic checks on its size, oddness, and
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
-        {
-            let verify = nm.alloc_uninit();
-            let verify = self
-                .public
-                .inner()
-                .exponentiate_elem(verify, &m, cpu_features);
-            bigint::elem_verify_equal_consttime(&verify, &c)?;
-        }
+        let verify = nm.alloc_uninit();
+        let verify = self
+            .public
+            .inner()
+            .exponentiate_elem(verify, &m, cpu_features);
+        bigint::elem_verify_equal_consttime(&verify, &c)?;
 
         // Step 3 will be done by the caller.
 
