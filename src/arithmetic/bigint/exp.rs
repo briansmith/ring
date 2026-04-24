@@ -62,6 +62,7 @@ impl<N> elem::Ref<'_, N, Unencoded> {
         exponent: &PrivateExponent,
         p: &IntoMont<P, RRR>,
         other_prime_len_bits: BitLength,
+        tmp: &mut OversizedUninit<1>,
         cpu: cpu::Features,
     ) -> Result<elem::Mut<'out, P, Unencoded>, LimbSliceError> {
         let oneRRR = p.one();
@@ -76,6 +77,7 @@ impl<N> elem::Ref<'_, N, Unencoded> {
             exponent,
             p,
             other_prime_len_bits,
+            tmp,
         )
     }
 }
@@ -97,10 +99,11 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     exponent: &PrivateExponent,
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
+    tmp: &mut OversizedUninit<1>,
 ) -> Result<elem::Mut<'out, M, Unencoded>, LimbSliceError> {
     use super::{
         super::montgomery::{R, limbs_mul_mont, limbs_square_mont},
-        OversizedUninit, elem,
+        elem,
     };
     use crate::{
         bssl, c, error,
@@ -195,7 +198,6 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     )?;
     let table: &[Limb] = table.as_flattened();
 
-    let mut tmp: OversizedUninit<1> = OversizedUninit::new();
     let mut tmp = tmp
         .as_uninit(..num_limbs.get())
         .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
@@ -224,6 +226,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     exponent: &PrivateExponent,
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
+    _tmp: &mut OversizedUninit<1>,
 ) -> Result<elem::Mut<'out, M, Unencoded>, LimbSliceError> {
     use super::{
         super::{
@@ -439,12 +442,14 @@ mod tests {
                 let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
                 let mut actual_result = OversizedUninit::new();
                 let mut actual_result_2 = OversizedUninit::new();
+                let mut tmp = OversizedUninit::new();
                 let actual_result = if !too_big {
                     base.as_ref().exp_consttime(
                         &mut actual_result,
                         &e,
                         im,
                         other_modulus_len_bits,
+                        &mut tmp,
                         cpu_features,
                     )
                 } else {
@@ -453,6 +458,7 @@ mod tests {
                         &e,
                         im,
                         other_modulus_len_bits,
+                        &mut tmp,
                         cpu_features,
                     );
                     // TODO: Be more specific with which error we expect?
@@ -465,6 +471,7 @@ mod tests {
                         &e,
                         &m,
                         other_modulus_len_bits,
+                        &mut tmp,
                     )
                 };
                 match actual_result {

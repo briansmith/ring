@@ -513,6 +513,7 @@ fn elem_exp_consttime<'out, M>(
     c: bigint::elem::Ref<'_, N>,
     p: &PrivateCrtPrime<M>,
     other_prime_len_bits: BitLength,
+    tmp: &mut bigint::OversizedUninit<1>,
     cpu_features: cpu::Features,
 ) -> Result<bigint::elem::Mut<'out, M>, error::Unspecified> {
     c.exp_consttime(
@@ -520,6 +521,7 @@ fn elem_exp_consttime<'out, M>(
         &p.exponent,
         &p.modulus.reborrow(),
         other_prime_len_bits,
+        tmp,
         cpu_features,
     )
     .map_err(error::erase::<LimbSliceError>)
@@ -620,10 +622,11 @@ impl KeyPair {
 
         let mut tmp1 = bigint::OversizedUninit::new();
         let mut tmp2 = bigint::OversizedUninit::new();
+        let mut tmp3 = bigint::OversizedUninit::new();
 
         // Step 2.b.i.
-        let m_1 = elem_exp_consttime(&mut tmp1, c, &self.p, q.len_bits(), cpu_features)?;
-        let m_2 = elem_exp_consttime(&mut tmp2, c, &self.q, p.len_bits(), cpu_features)?;
+        let m_1 = elem_exp_consttime(&mut tmp1, c, &self.p, q.len_bits(), &mut tmp3, cpu_features)?;
+        let m_2 = elem_exp_consttime(&mut tmp2, c, &self.q, p.len_bits(), &mut tmp3, cpu_features)?;
 
         // Step 2.b.ii isn't needed since there are only two primes.
 
