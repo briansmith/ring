@@ -276,27 +276,28 @@ impl<M, E> Elem<M, E> {
     }
 }
 
-/// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
-pub fn verify_inverses_consttime<M>(
-    a: Elem<M, Unencoded>,
-    b: &Elem<M, R>,
-    m: &Mont<M>,
-) -> Result<(), error::Unspecified> {
-    let r = a.mul(b, m);
-    limb::verify_limbs_equal_1_leak_bit(r.limbs.as_ref())
+impl<M> Elem<M, Unencoded> {
+    /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
+    pub fn verify_inverse_consttime(
+        self,
+        b: &Elem<M, R>,
+        m: &Mont<M>,
+    ) -> Result<(), error::Unspecified> {
+        let r = self.mul(b, m);
+        limb::verify_limbs_equal_1_leak_bit(r.limbs.as_ref())
+    }
 }
 
-#[inline]
-pub fn elem_verify_equal_consttime<M, E>(
-    a: &Elem<M, E>,
-    b: &Elem<M, E>,
-) -> Result<(), error::Unspecified> {
-    let equal = limb::limbs_equal_limbs_consttime(a.limbs.as_ref(), b.limbs.as_ref())
-        .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-    if !equal.leak() {
-        return Err(error::Unspecified);
+impl<M, E> Elem<M, E> {
+    #[inline]
+    pub fn verify_equals_consttime(&self, b: &Elem<M, E>) -> Result<(), error::Unspecified> {
+        let equal = limb::limbs_equal_limbs_consttime(self.limbs.as_ref(), b.limbs.as_ref())
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+        if !equal.leak() {
+            return Err(error::Unspecified);
+        }
+        Ok(())
     }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -327,7 +328,7 @@ pub mod testutil {
     }
 
     pub fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
-        if elem_verify_equal_consttime(a, b).is_err() {
+        if a.verify_equals_consttime(b).is_err() {
             panic!("{:x?} != {:x?}", a.limbs.as_ref(), b.limbs.as_ref());
         }
     }

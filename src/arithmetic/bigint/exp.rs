@@ -55,27 +55,29 @@ use crate::{
 };
 use core::mem::MaybeUninit;
 
-pub(crate) fn elem_exp_consttime<N, P>(
-    base: &Elem<N>,
-    exponent: &PrivateExponent,
-    p: &IntoMont<P, RRR>,
-    other_prime_len_bits: BitLength,
-    cpu: cpu::Features,
-) -> Result<Elem<P, Unencoded>, LimbSliceError> {
-    let oneRRR = p.one();
-    let p = &p.modulus(cpu);
-    let out = p.alloc_uninit();
+impl<N> Elem<N, Unencoded> {
+    pub(crate) fn exp_consttime<P>(
+        &self,
+        exponent: &PrivateExponent,
+        p: &IntoMont<P, RRR>,
+        other_prime_len_bits: BitLength,
+        cpu: cpu::Features,
+    ) -> Result<Elem<P, Unencoded>, LimbSliceError> {
+        let oneRRR = p.one();
+        let p = &p.modulus(cpu);
+        let out = p.alloc_uninit();
 
-    // `elem_exp_consttime_inner` is parameterized on `STORAGE_LIMBS` only so
-    // we can run tests with larger-than-supported-in-operation test vectors.
-    elem_exp_consttime_inner::<N, P, { ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS * STORAGE_ENTRIES }>(
-        out,
-        base,
-        &oneRRR,
-        exponent,
-        p,
-        other_prime_len_bits,
-    )
+        // `elem_exp_consttime_inner` is parameterized on `STORAGE_LIMBS` only so
+        // we can run tests with larger-than-supported-in-operation test vectors.
+        elem_exp_consttime_inner::<N, P, { ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS * STORAGE_ENTRIES }>(
+            out,
+            self,
+            &oneRRR,
+            exponent,
+            p,
+            other_prime_len_bits,
+        )
+    }
 }
 
 // The maximum modulus size supported for `elem_exp_consttime` in normal
@@ -421,10 +423,10 @@ mod tests {
 
                 let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
                 let actual_result = if !too_big {
-                    elem_exp_consttime(&base, &e, im, other_modulus_len_bits, cpu_features)
+                    base.exp_consttime(&e, im, other_modulus_len_bits, cpu_features)
                 } else {
                     let actual_result =
-                        elem_exp_consttime(&base, &e, im, other_modulus_len_bits, cpu_features);
+                        base.exp_consttime(&e, im, other_modulus_len_bits, cpu_features);
                     // TODO: Be more specific with which error we expect?
                     assert!(actual_result.is_err());
                     // Try again with a larger-than-normally-supported limit

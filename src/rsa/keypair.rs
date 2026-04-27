@@ -383,11 +383,10 @@ impl KeyPair {
         // with an even modulus.
 
         // Step 7.f.
-        let q_mod_p = pm
-            .alloc_uninit()
+        pm.alloc_uninit()
             .elem_reduce_mont(&q_mod_n, pm, qim.len_bits())
-            .encode_mont(pim, cpu_features);
-        bigint::verify_inverses_consttime(q_mod_p, &qInv, pm)
+            .encode_mont(pim, cpu_features)
+            .verify_inverse_consttime(&qInv, pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // This should never fail since `n` and `e` were validated above.
@@ -513,8 +512,7 @@ fn elem_exp_consttime<M>(
     other_prime_len_bits: BitLength,
     cpu_features: cpu::Features,
 ) -> Result<bigint::Elem<M>, error::Unspecified> {
-    bigint::elem_exp_consttime(
-        c,
+    c.exp_consttime(
         &p.exponent,
         &p.modulus.reborrow(),
         other_prime_len_bits,
@@ -656,11 +654,10 @@ impl KeyPair {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         let verify = nm.alloc_uninit();
-        let verify = self
-            .public
+        self.public
             .inner()
-            .exponentiate_elem(verify, &m, cpu_features);
-        bigint::elem_verify_equal_consttime(&verify, &c)?;
+            .exponentiate_elem(verify, &m, cpu_features)
+            .verify_equals_consttime(&c)?;
 
         // Step 3 will be done by the caller.
 
