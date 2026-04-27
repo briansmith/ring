@@ -278,11 +278,11 @@ impl<M, E> Elem<M, E> {
 
 /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
 pub fn verify_inverses_consttime<M>(
-    a: &Elem<M, R>,
-    b: Elem<M, Unencoded>,
+    a: Elem<M, Unencoded>,
+    b: &Elem<M, R>,
     m: &Mont<M>,
 ) -> Result<(), error::Unspecified> {
-    let r = b.mul(a, m);
+    let r = a.mul(b, m);
     limb::verify_limbs_equal_1_leak_bit(r.limbs.as_ref())
 }
 

@@ -387,7 +387,7 @@ impl KeyPair {
             .alloc_uninit()
             .elem_reduce_mont(&q_mod_n, pm, qim.len_bits())
             .encode_mont(pim, cpu_features);
-        bigint::verify_inverses_consttime(&qInv, q_mod_p, pm)
+        bigint::verify_inverses_consttime(q_mod_p, &qInv, pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // This should never fail since `n` and `e` were validated above.
