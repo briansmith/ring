@@ -143,8 +143,8 @@ impl<'l, M> Mut<'l, M, Unencoded> {
     }
 
     pub fn from_be_bytes_padded<'out>(
-        input: untrusted::Input<'_>,
         out: &'out mut OversizedUninit<1>,
+        input: untrusted::Input<'_>,
         m: &Mont<M>,
     ) -> Result<Mut<'out, M>, error::Unspecified> {
         let out = out

@@ -144,7 +144,7 @@ impl PublicKey<bigint::IntoMont<'_, N, RR>> {
 
         // Step 1.
         let mut s = bigint::OversizedUninit::new();
-        let s = bigint::elem::Mut::from_be_bytes_padded(base, &mut s, n)?;
+        let s = bigint::elem::Mut::from_be_bytes_padded(&mut s, base, n)?;
         if s.as_ref().is_zero() {
             return Err(error::Unspecified);
         }
