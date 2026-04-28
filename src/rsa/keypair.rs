@@ -510,20 +510,19 @@ impl<M> PrivateCrtPrime<M> {
 
 fn elem_exp_consttime<'out, M>(
     out: &'out mut bigint::OversizedUninit<1>,
-    c: &bigint::elem::Elem<N>,
+    c: bigint::elem::Ref<'_, N>,
     p: &PrivateCrtPrime<M>,
     other_prime_len_bits: BitLength,
     cpu_features: cpu::Features,
 ) -> Result<bigint::elem::Mut<'out, M>, error::Unspecified> {
-    c.as_ref()
-        .exp_consttime(
-            out,
-            &p.exponent,
-            &p.modulus.reborrow(),
-            other_prime_len_bits,
-            cpu_features,
-        )
-        .map_err(error::erase::<LimbSliceError>)
+    c.exp_consttime(
+        out,
+        &p.exponent,
+        &p.modulus.reborrow(),
+        other_prime_len_bits,
+        cpu_features,
+    )
+    .map_err(error::erase::<LimbSliceError>)
 }
 
 // Type-level representations of the different moduli used in RSA signing, in
@@ -617,14 +616,14 @@ impl KeyPair {
         let base = nm.alloc_uninit().into_elem_from_be_bytes_padded(base, nm)?;
 
         // Step 2
-        let c = base;
+        let c = base.as_ref();
 
         let mut tmp1 = bigint::OversizedUninit::new();
         let mut tmp2 = bigint::OversizedUninit::new();
 
         // Step 2.b.i.
-        let m_1 = elem_exp_consttime(&mut tmp1, &c, &self.p, q.len_bits(), cpu_features)?;
-        let m_2 = elem_exp_consttime(&mut tmp2, &c, &self.q, p.len_bits(), cpu_features)?;
+        let m_1 = elem_exp_consttime(&mut tmp1, c, &self.p, q.len_bits(), cpu_features)?;
+        let m_2 = elem_exp_consttime(&mut tmp2, c, &self.q, p.len_bits(), cpu_features)?;
 
         // Step 2.b.ii isn't needed since there are only two primes.
 
@@ -669,7 +668,7 @@ impl KeyPair {
             .inner()
             .exponentiate_elem(&mut tmp1, m.as_ref(), &mut tmp2, cpu_features)
             .as_ref()
-            .verify_equals_consttime(c.as_ref())?;
+            .verify_equals_consttime(c)?;
 
         // Step 3 will be done by the caller.
 
