@@ -162,7 +162,7 @@ pub(crate) fn key_pair_from_pkcs8(
     let (ec_private_key, _) = pkcs8::unwrap_key(template, pkcs8::Version::V1Only, input)?;
     let (private_key, public_key) =
         ec_private_key.read_all(error::KeyRejected::invalid_encoding(), |input| {
-            // https://tools.ietf.org/html/rfc5915#section-3
+            // https://www.rfc-editor.org/rfc/rfc5915#section-3
             der::nested(
                 input,
                 der::Tag::Sequence,

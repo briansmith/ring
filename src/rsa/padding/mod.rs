@@ -49,7 +49,7 @@ pub(super) fn encode(
 
 /// An RSA signature encoding as described in [RFC 3447 Section 8].
 ///
-/// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
+/// [RFC 3447 Section 8]: https://www.rfc-editor.org/rfc/rfc3447#section-8
 #[cfg(feature = "alloc")]
 pub trait RsaEncoding: Padding {
     #[doc(hidden)]
@@ -78,7 +78,7 @@ pub trait RsaEncoding: Padding {
 /// Verification of an RSA signature encoding as described in
 /// [RFC 3447 Section 8].
 ///
-/// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
+/// [RFC 3447 Section 8]: https://www.rfc-editor.org/rfc/rfc3447#section-8
 pub trait Verification: Padding {
     fn verify(
         &self,
@@ -89,7 +89,7 @@ pub trait Verification: Padding {
 }
 
 // Masks `out` with the output of the mask-generating function MGF1 as
-// described in https://tools.ietf.org/html/rfc3447#appendix-B.2.1.
+// described in https://www.rfc-editor.org/rfc/rfc3447#appendix-B.2.1.
 fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], out: &mut [u8]) {
     let digest_len = digest_alg.output_len();
 

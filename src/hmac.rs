@@ -103,7 +103,7 @@
 //! # Ok::<(), ring::error::Unspecified>(())
 //! ```
 //!
-//! [RFC 2104]: https://tools.ietf.org/html/rfc2104
+//! [RFC 2104]: https://www.rfc-editor.org/rfc/rfc2104
 
 use crate::{
     bb, cpu,
@@ -174,7 +174,7 @@ impl Key {
     /// The key will be `digest_alg.output_len` bytes long, based on the
     /// recommendation in [RFC 2104 Section 3].
     ///
-    /// [RFC 2104 Section 3]: https://tools.ietf.org/html/rfc2104#section-3
+    /// [RFC 2104 Section 3]: https://www.rfc-editor.org/rfc/rfc2104#section-3
     pub fn generate(
         algorithm: Algorithm,
         rng: &dyn rand::SecureRandom,

@@ -35,8 +35,8 @@ static CURVE25519: ec::Curve = ec::Curve {
 /// result of the X25519 operation is zero; see the notes on the
 /// "all-zero value" in [RFC 7748 section 6.1].
 ///
-/// [RFC 7748]: https://tools.ietf.org/html/rfc7748
-/// [RFC 7748 section 6.1]: https://tools.ietf.org/html/rfc7748#section-6.1
+/// [RFC 7748]: https://www.rfc-editor.org/rfc/rfc7748
+/// [RFC 7748 section 6.1]: https://www.rfc-editor.org/rfc/rfc7748#section-6.1
 pub static X25519: agreement::Algorithm = agreement::Algorithm {
     curve: &CURVE25519,
     ecdh: x25519_ecdh,
@@ -59,7 +59,7 @@ fn x25519_generate_private_key(
     rng.fill(out)
 }
 
-// https://tools.ietf.org/html/rfc7748#section-5
+// https://www.rfc-editor.org/rfc/rfc7748#section-5
 type UCoordinate = [u8; PUBLIC_KEY_LEN];
 
 fn x25519_public_from_private(

@@ -75,8 +75,8 @@ impl EcdsaKeyPair {
     /// not have a `parameters` field so the generated key is compatible with
     /// PKCS#11.
     ///
-    /// [RFC 5915]: https://tools.ietf.org/html/rfc5915
-    /// [RFC 5958 Section 2]: https://tools.ietf.org/html/rfc5958#section-2
+    /// [RFC 5915]: https://www.rfc-editor.org/rfc/rfc5915
+    /// [RFC 5958 Section 2]: https://www.rfc-editor.org/rfc/rfc5958#section-2
     pub fn generate_pkcs8(
         alg: &'static EcdsaSigningAlgorithm,
         rng: &dyn rand::SecureRandom,

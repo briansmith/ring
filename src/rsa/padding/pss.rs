@@ -20,7 +20,7 @@ use crate::{bb, bits, digest, error, rand, sealed};
 /// See "`RSA_PSS_*` Details\" in `ring::signature`'s module-level
 /// documentation for more details.
 ///
-/// [RFC 3447 Section 8.1]: https://tools.ietf.org/html/rfc3447#section-8.1
+/// [RFC 3447 Section 8.1]: https://www.rfc-editor.org/rfc/rfc3447#section-8.1
 #[allow(clippy::upper_case_acronyms)] // TODO: Until we implement cargo-semver-checks
 #[derive(Debug)]
 pub struct PSS {
@@ -35,7 +35,7 @@ impl Padding for PSS {
 
 impl RsaEncoding for PSS {
     // Implement padding procedure per EMSA-PSS,
-    // https://tools.ietf.org/html/rfc3447#section-9.1.
+    // https://www.rfc-editor.org/rfc/rfc3447#section-9.1.
     fn encode_(
         &self,
         m_hash: digest::Digest,
@@ -99,7 +99,7 @@ impl RsaEncoding for PSS {
 }
 
 impl Verification for PSS {
-    // RSASSA-PSS-VERIFY from https://tools.ietf.org/html/rfc3447#section-8.1.2
+    // RSASSA-PSS-VERIFY from https://www.rfc-editor.org/rfc/rfc3447#section-8.1.2
     // where steps 1, 2(a), and 2(b) have been done for us.
     fn verify(
         &self,
@@ -126,7 +126,7 @@ impl Verification for PSS {
         let em = m;
 
         // The rest of this function is EMSA-PSS-VERIFY from
-        // https://tools.ietf.org/html/rfc3447#section-9.1.2.
+        // https://www.rfc-editor.org/rfc/rfc3447#section-9.1.2.
 
         // Steps 1 and 2 are done by the caller to produce `m_hash`.
 
