@@ -192,12 +192,11 @@ mod tests {
                     "A",
                     expected_result.as_ref().num_limbs() * 2,
                 );
-                let other_modulus_len_bits = m_.len_bits();
                 let mut tmp1 = OversizedUninit::<1>::new();
                 let mut tmp2 = OversizedUninit::<1>::new();
                 let actual_result = a
                     .as_ref()
-                    .reduced_mont(&mut tmp1, &m, other_modulus_len_bits, &mut tmp2)
+                    .reduced_mont(&mut tmp1, &m, &mut tmp2)
                     .encode_mont(&m_, cpu_features);
                 assert_elem_eq(actual_result.as_ref(), expected_result.as_ref());
 
@@ -224,11 +223,8 @@ mod tests {
                 let a = consume_elem_unchecked::<O>(&mut tmp, test_case, "a", m.limbs().len());
                 let mut tmp = OversizedUninit::<1>::new();
                 let expected_result = consume_elem::<M>(&mut tmp, test_case, "r", &m);
-                let other_modulus_len_bits = m.len_bits();
                 let mut tmp = OversizedUninit::<1>::new();
-                let actual_result = a
-                    .as_ref()
-                    .reduced_once(&mut tmp, &m, other_modulus_len_bits);
+                let actual_result = a.as_ref().reduced_once(&mut tmp, &m);
                 assert_elem_eq(actual_result.as_ref(), expected_result.as_ref());
 
                 Ok(())

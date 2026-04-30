@@ -47,7 +47,6 @@ use super::{
     IntoMont, Mont, One, OversizedUninit, PrivateExponent, elem,
 };
 use crate::{
-    bits::BitLength,
     cpu,
     error::LenMismatchError,
     limb::{self, LIMB_BITS, Limb},
@@ -62,7 +61,6 @@ impl<N> elem::Ref<'_, N, Unencoded> {
         out: &'out mut OversizedUninit<1>,
         exponent: &PrivateExponent,
         p: &IntoMont<P, RRR>,
-        other_prime_len_bits: BitLength,
         tmp: &mut OversizedUninit<1>,
         cpu: cpu::Features,
     ) -> Result<elem::Mut<'out, P, Unencoded>, LimbSliceError> {
@@ -72,13 +70,7 @@ impl<N> elem::Ref<'_, N, Unencoded> {
         // `elem_exp_consttime_inner` is parameterized on `STORAGE_LIMBS` only so
         // we can run tests with larger-than-supported-in-operation test vectors.
         elem_exp_consttime_inner::<N, P, { ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS * STORAGE_ENTRIES }>(
-            out,
-            self,
-            &oneRRR,
-            exponent,
-            p,
-            other_prime_len_bits,
-            tmp,
+            out, self, &oneRRR, exponent, p, tmp,
         )
     }
 }
@@ -99,7 +91,6 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     oneRRR: &One<'_, M, RRR>,
     exponent: &PrivateExponent,
     m: &Mont<M>,
-    other_prime_len_bits: BitLength,
     tmp: &mut OversizedUninit<1>,
 ) -> Result<elem::Mut<'out, M, Unencoded>, LimbSliceError> {
     use super::{
@@ -111,7 +102,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         polyfill::{StartMutPtr, dynarray},
     };
 
-    let base_rinverse = base_mod_n.reduced_mont(out, m, other_prime_len_bits, tmp);
+    let base_rinverse = base_mod_n.reduced_mont(out, m, tmp);
 
     let num_limbs = m.num_limbs();
     if num_limbs.get() % limbs512::LIMBS_PER_CHUNK != 0 {
@@ -163,7 +154,10 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         |init, uninit| {
             let r: Result<&'_ mut [Limb], LimbSliceError> = match init.len() {
                 // table[0] = base**0 (i.e. 1).
-                0 => Ok(One::write_mont_identity(&mut uninit.into_cursor(), m)?),
+                0 => Ok(One::write_mont_identity_assuming_full_upper_limb(
+                    &mut uninit.into_cursor(),
+                    m,
+                )?),
 
                 // table[1] = base*R == (base/R * RRR)/R
                 1 => limbs_mul_mont(
@@ -227,7 +221,6 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     oneRRR: &One<M, RRR>,
     exponent: &PrivateExponent,
     m: &Mont<M>,
-    other_prime_len_bits: BitLength,
     tmp: &mut OversizedUninit<1>,
 ) -> Result<elem::Mut<'out, M, Unencoded>, LimbSliceError> {
     use super::{
@@ -307,8 +300,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         .into_written()
         .as_chunks();
 
-    let base_mod_m: elem::Mut<'_, M, RInverse> =
-        base_mod_n.reduced_mont(out, m, other_prime_len_bits, tmp);
+    let base_mod_m: elem::Mut<'_, M, RInverse> = base_mod_n.reduced_mont(out, m, tmp);
     let base_rinverse = base_mod_m.leak_limbs_less_safe();
 
     // base_cached = base*R == (base/R * RRR)/R
@@ -345,7 +337,10 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     // All entries in `table` will be Montgomery encoded.
 
     // t0 = table[0] = base**0 (i.e. 1).
-    let t0 = One::write_mont_identity(&mut acc.reborrow_mut().into_cursor(), m)?;
+    let t0 = One::write_mont_identity_assuming_full_upper_limb(
+        &mut acc.reborrow_mut().into_cursor(),
+        m,
+    )?;
     scatter5(t0, table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
@@ -433,7 +428,6 @@ mod tests {
                 // some other prime of the same length. Fake that here.
                 // Pretend there's another prime of equal length.
                 struct N {}
-                let other_modulus_len_bits = m.len_bits();
                 let mut tmp = OversizedUninit::<1>::new();
                 let base = tmp
                     .as_uninit(..(base.as_ref().num_limbs() * 2))
@@ -451,20 +445,13 @@ mod tests {
                 let mut actual_result_2 = OversizedUninit::new();
                 let mut tmp = OversizedUninit::new();
                 let actual_result = if !too_big {
-                    base.as_ref().exp_consttime(
-                        &mut actual_result,
-                        &e,
-                        im,
-                        other_modulus_len_bits,
-                        &mut tmp,
-                        cpu_features,
-                    )
+                    base.as_ref()
+                        .exp_consttime(&mut actual_result, &e, im, &mut tmp, cpu_features)
                 } else {
                     let actual_result = base.as_ref().exp_consttime(
                         &mut actual_result,
                         &e,
                         im,
-                        other_modulus_len_bits,
                         &mut tmp,
                         cpu_features,
                     );
@@ -477,7 +464,6 @@ mod tests {
                         &im.one(),
                         &e,
                         &m,
-                        other_modulus_len_bits,
                         &mut tmp,
                     )
                 };

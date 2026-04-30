@@ -108,7 +108,7 @@ impl PublicModulus<bigint::IntoMont<'_, N, RR>> {
 
     /// The length of the modulus in bits.
     pub fn len_bits(&self) -> bits::BitLength {
-        self.value.len_bits()
+        self.value.len_bits_vartime()
     }
 
     pub(in super::super) fn value(&self) -> &bigint::IntoMont<'_, N, RR> {

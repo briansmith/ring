@@ -26,7 +26,6 @@ use core::marker::PhantomData;
 /// `OwnedModulus`, without the overhead of Montgomery multiplication support.
 pub(crate) struct Value<'a, M> {
     limbs: &'a [Limb], // Also `value >= 3`.
-    len_bits: BitLength,
     m: PhantomData<M>,
 }
 
@@ -109,19 +108,11 @@ impl<'a> ValidatedInput<'a> {
 }
 
 impl<M> Value<'_, M> {
-    pub(super) fn from_limbs_unchecked_less_safe(
-        limbs: &[Limb],
-        len_bits: BitLength,
-    ) -> Value<'_, M> {
+    pub(super) fn from_limbs_unchecked_less_safe(limbs: &[Limb]) -> Value<'_, M> {
         Value {
             limbs,
-            len_bits,
             m: PhantomData,
         }
-    }
-
-    pub fn len_bits(&self) -> BitLength {
-        self.len_bits
     }
 
     #[inline]

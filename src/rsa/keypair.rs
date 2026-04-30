@@ -383,7 +383,7 @@ impl KeyPair {
         // Step 7.f.
         q_mod_n
             .as_ref()
-            .reduced_mont(&mut tmp2, pm, qim.len_bits(), &mut tmp3)
+            .reduced_mont(&mut tmp2, pm, &mut tmp3)
             .encode_mont(pim, cpu_features)
             .verify_inverse_consttime(qInv.as_ref(), pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
@@ -509,19 +509,11 @@ fn elem_exp_consttime<'out, M>(
     out: &'out mut bigint::OversizedUninit<1>,
     c: bigint::elem::Ref<'_, N>,
     p: &PrivateCrtPrime<M>,
-    other_prime_len_bits: BitLength,
     tmp: &mut bigint::OversizedUninit<1>,
     cpu_features: cpu::Features,
 ) -> Result<bigint::elem::Mut<'out, M>, error::Unspecified> {
-    c.exp_consttime(
-        out,
-        &p.exponent,
-        &p.modulus.reborrow(),
-        other_prime_len_bits,
-        tmp,
-        cpu_features,
-    )
-    .map_err(error::erase::<LimbSliceError>)
+    c.exp_consttime(out, &p.exponent, &p.modulus.reborrow(), tmp, cpu_features)
+        .map_err(error::erase::<LimbSliceError>)
 }
 
 // Type-level representations of the different moduli used in RSA signing, in
@@ -626,15 +618,15 @@ impl KeyPair {
         let tmp3 = &mut *out; // Abuse `out` for temporary storage.
 
         // Step 2.b.i.
-        let m_1 = elem_exp_consttime(&mut tmp1, c, &self.p, q.len_bits(), tmp3, cpu_features)?;
-        let m_2 = elem_exp_consttime(&mut tmp2, c, &self.q, p.len_bits(), tmp3, cpu_features)?;
+        let m_1 = elem_exp_consttime(&mut tmp1, c, &self.p, tmp3, cpu_features)?;
+        let m_2 = elem_exp_consttime(&mut tmp2, c, &self.q, tmp3, cpu_features)?;
 
         // Step 2.b.ii isn't needed since there are only two primes.
 
         // Step 2.b.iii.
         let h = {
             let pm = &p.modulus(cpu_features);
-            let m_2 = m_2.as_ref().reduced_once(tmp3, pm, q.len_bits());
+            let m_2 = m_2.as_ref().reduced_once(tmp3, pm);
             m_1.sub(m_2.as_ref(), pm).mul(self.qInv.as_ref(), pm)
         };
 
@@ -642,17 +634,15 @@ impl KeyPair {
         // necessary because `h < p` and `p * q == n` implies `h * q < n`.
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
-        let h = h.as_ref().widen(tmp3, nm, p.len_bits())?;
+        let h = h.as_ref().widen(tmp3, nm)?;
         let q_times_h = q
             .to_elem(&mut tmp1, nm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?
             .encode_mont(n, cpu_features)
             .mul(h.as_ref(), nm);
         // Stop abusing `out`; `tmp3` is no longer available.
-        let m: bigint::elem::Mut<'out, _> = m_2
-            .as_ref()
-            .widen(out, nm, q.len_bits())?
-            .add(q_times_h.as_ref(), nm);
+        let m: bigint::elem::Mut<'out, _> =
+            m_2.as_ref().widen(out, nm)?.add(q_times_h.as_ref(), nm);
 
         // Step 2.b.v isn't needed since there are only two primes.
 

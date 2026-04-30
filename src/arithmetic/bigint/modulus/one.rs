@@ -20,6 +20,7 @@ use super::super::{
     Limb, Mont, unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
 };
 use crate::{
+    bits::BitLength,
     error::LenMismatchError,
     limb::{self, LIMB_BITS},
     polyfill::slice::Cursor,
@@ -48,18 +49,23 @@ impl<M, E> One<'_, M, E> {
 }
 
 impl<M> One<'_, M, R> {
-    /// Writes the value of the Montgomery multiplication identity `R` for `m` to
-    /// `out`.
-    pub(in super::super) fn write_mont_identity<'r>(
+    pub(in super::super) fn write_mont_identity_assuming_full_upper_limb<'r>(
         out: &mut Cursor<'r, Limb>,
         m: &Mont<'_, M>,
     ) -> Result<&'r mut [Limb], LenMismatchError> {
-        let r = m.limbs().len() * LIMB_BITS;
-
         // out = 2**r - m where m = self.
-        let out = limb::write_negative_assume_odd(out, m.limbs())?;
+        limb::write_negative_assume_odd(out, m.limbs())
+    }
 
-        let lg_m = m.len_bits().as_bits();
+    pub(in super::super) fn write_mont_identity<'r>(
+        out: &mut Cursor<'r, Limb>,
+        m: &Mont<'_, M>,
+        m_bit_len: BitLength,
+    ) -> Result<&'r mut [Limb], LenMismatchError> {
+        let out = Self::write_mont_identity_assuming_full_upper_limb(out, m)?;
+
+        let r = m.limbs().len() * LIMB_BITS;
+        let lg_m = m_bit_len.as_bits();
         let leading_zero_bits_in_m = r - lg_m;
 
         // When m's length is a multiple of LIMB_BITS, which is the case we

@@ -20,7 +20,6 @@ use super::{
     unwrap_impossible_limb_slice_error,
 };
 use crate::{
-    bits::BitLength,
     c, cpu,
     error::{self, LenMismatchError},
     limb::{self, Limb},
@@ -366,13 +365,13 @@ impl<'l, M, E> Mut<'l, M, E> {
 }
 
 impl<M> Ref<'_, M, Unencoded> {
-    pub fn reduced_once<'out, Smaller>(
+    // Returns self % S, assuming self < 2*S. (When P*Q=M and P and Q have the
+    // same bit length, `M.ilog2()/2`, then P < 2*Q and Q < 2*P.)
+    pub fn reduced_once<'out, P>(
         self,
         out: &'out mut OversizedUninit<1>,
-        m: &Mont<Smaller>,
-        other_modulus_len_bits: BitLength,
-    ) -> Mut<'out, Smaller, Unencoded> {
-        assert_eq!(m.len_bits(), other_modulus_len_bits);
+        m: &Mont<P>,
+    ) -> Mut<'out, P, Unencoded> {
         // TODO: We should add a variant of `limbs_reduced_once` that does the
         // reduction out-of-place, to eliminate this copy.
         let r = out
@@ -380,38 +379,35 @@ impl<M> Ref<'_, M, Unencoded> {
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
         limb::limbs_reduce_once(&mut *r, m.limbs())
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        Mut::<Smaller, Unencoded>::assume_in_range_and_encoded_less_safe(r)
+        Mut::<P, Unencoded>::assume_in_range_and_encoded_less_safe(r)
     }
 }
 
-impl<'l, M, E> Ref<'l, M, E> {
+impl<'l, M> Ref<'l, M, Unencoded> {
+    // Assumes self < S*R_S where R_S is the Montgomery 1 for S, and returns
+    // self/R mod S. (When P*Q=M and P and Q have the same bit length,
+    // `M.ilog2()/2`, then P < R_Q and Q < R_P.)
     #[inline]
-    pub fn reduced_mont<'out, Smaller>(
+    pub fn reduced_mont<'out, P>(
         self,
         out: &'out mut OversizedUninit<1>,
-        m: &Mont<Smaller>,
-        other_prime_len_bits: BitLength,
+        p: &Mont<P>,
         tmp: &mut OversizedUninit<1>,
-    ) -> Mut<'out, Smaller, RInverse> {
-        // This is stricter than required mathematically but this is what we
-        // guarantee and this is easier to check. The real requirement is that
-        // that `a < m*R` where `R` is the Montgomery `R` for `m`.
-        assert_eq!(other_prime_len_bits, m.len_bits());
-
+    ) -> Mut<'out, P, RInverse> {
         // `limbs_from_mont_in_place` requires this.
-        assert_eq!(self.limbs.len(), m.limbs().len() * 2);
+        assert_eq!(self.limbs.len(), p.limbs().len() * 2);
 
         let tmp = tmp
             .write_copy_of_slice(self.limbs, self.limbs.len())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
         let out = out
-            .as_uninit(..m.num_limbs().get())
+            .as_uninit(..p.num_limbs().get())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
         out.write_fully_with(|out| {
-            limbs_from_mont_in_place(out, tmp, m.limbs(), m.n0())
+            limbs_from_mont_in_place(out, tmp, p.limbs(), p.n0())
                 .map_err(error::erase::<LenMismatchError>)
         })
-        .map(Mut::<Smaller, RInverse>::assume_in_range_and_encoded_less_safe)
+        .map(Mut::<P, RInverse>::assume_in_range_and_encoded_less_safe)
         .unwrap_or_else(|_: error::Unspecified| unreachable!())
     }
 }
@@ -421,11 +417,7 @@ impl<'l, M, E> Ref<'l, M, E> {
         self,
         out: &'out mut OversizedUninit<1>,
         m: &Mont<Larger>,
-        smaller_modulus_bits: BitLength,
     ) -> Result<Mut<'out, Larger, Unencoded>, error::Unspecified> {
-        if smaller_modulus_bits >= m.len_bits() {
-            return Err(error::Unspecified);
-        }
         let out = out
             .as_uninit(..m.num_limbs().get())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.

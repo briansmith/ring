@@ -24,13 +24,16 @@ use super::{
     },
     ValidatedInput,
 };
-use crate::polyfill::slice::Cursor;
 use crate::{
     bits::BitLength,
     cpu,
     error::{self, LenMismatchError},
     limb::{self, LIMB_BITS, Limb},
-    polyfill::{LeadingZerosStripped, slice::Uninit},
+    polyfill::{
+        LeadingZerosStripped,
+        slice::{Cursor, Uninit},
+        usize_from_u32,
+    },
 };
 use core::{marker::PhantomData, num::NonZero};
 
@@ -43,7 +46,6 @@ use alloc::boxed::Box;
 /// the modular inversion code.
 pub struct IntoMont<'a, M, E> {
     storage: &'a [Limb],
-    len_bits: BitLength,
     n0: N0,
     m: PhantomData<M>,
     encoding: PhantomData<E>,
@@ -52,7 +54,6 @@ pub struct IntoMont<'a, M, E> {
 #[cfg(feature = "alloc")]
 pub struct BoxedIntoMont<M, E> {
     storage: Box<[Limb]>,
-    len_bits: BitLength,
     n0: N0,
     m: PhantomData<M>,
     encoding: PhantomData<E>,
@@ -64,7 +65,6 @@ impl<M: PublicModulus, E> Clone for BoxedIntoMont<M, E> {
         Self {
             storage: self.storage.clone(),
             n0: self.n0,
-            len_bits: self.len_bits,
             m: self.m,
             encoding: self.encoding,
         }
@@ -76,7 +76,6 @@ impl<M, E> BoxedIntoMont<M, E> {
     pub fn reborrow(&self) -> IntoMont<'_, M, E> {
         IntoMont {
             storage: &self.storage,
-            len_bits: self.len_bits,
             n0: self.n0,
             m: self.m,
             encoding: PhantomData,
@@ -93,7 +92,6 @@ impl ValidatedInput<'_> {
         let mut cursor = borrowed.into_cursor();
         let IntoMont {
             storage: _,
-            len_bits,
             n0,
             m,
             encoding,
@@ -106,7 +104,6 @@ impl ValidatedInput<'_> {
         let storage = unsafe { uninit.assume_init() };
         BoxedIntoMont {
             storage,
-            len_bits,
             n0,
             m,
             encoding,
@@ -129,16 +126,15 @@ impl ValidatedInput<'_> {
     ) -> Result<IntoMont<'o, M, RR>, LenMismatchError> {
         let (storage, n0) = out.try_write_with(|out| {
             let value = out.write_iter(self.limbs()).src_empty()?.into_written();
-            let value = Value::<M>::from_limbs_unchecked_less_safe(value, self.len_bits());
+            let value = Value::<M>::from_limbs_unchecked_less_safe(value);
             let n0 = N0::calculate_from(&value);
             let m = &Mont::from_parts_unchecked_less_safe(value, &n0, cpu);
-            let one = One::write_mont_identity(out, m)?;
+            let one = One::write_mont_identity(out, m, self.len_bits())?;
             One::mul_r(one, m)?;
             Ok(n0)
         })?;
         Ok(IntoMont {
             storage,
-            len_bits: self.len_bits(),
             n0,
             m: PhantomData,
             encoding: PhantomData,
@@ -173,7 +169,7 @@ impl N0 {
 impl<'a, M, E> IntoMont<'a, M, E> {
     fn value(&self) -> Value<'_, M> {
         let (value, _) = self.parts();
-        Value::from_limbs_unchecked_less_safe(value, self.len_bits)
+        Value::from_limbs_unchecked_less_safe(value)
     }
 
     fn parts(&self) -> (&'a [Limb], &'a [Limb]) {
@@ -202,7 +198,7 @@ impl<'a, M, E> IntoMont<'a, M, E> {
 
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Mont<'_, M> {
         let (value, _) = self.parts();
-        let value = Value::from_limbs_unchecked_less_safe(value, self.len_bits());
+        let value = Value::from_limbs_unchecked_less_safe(value);
         Mont::from_parts_unchecked_less_safe(value, &self.n0, cpu_features)
     }
 
@@ -210,9 +206,18 @@ impl<'a, M, E> IntoMont<'a, M, E> {
         let (_, one) = self.parts();
         One::<M, E>::from_limbs_unchecked_less_safe(one)
     }
+}
 
-    pub fn len_bits(&self) -> BitLength {
-        self.len_bits
+impl<'a, M: PublicModulus, E> IntoMont<'a, M, E> {
+    pub fn len_bits_vartime(&self) -> BitLength {
+        let (value, _) = self.parts();
+        let leading_zero_bits = value
+            .last()
+            .map(|high| usize_from_u32(high.leading_zeros()))
+            .unwrap_or(0);
+        // TODO: Can't overflow because.
+        let total_bits = value.len() * LIMB_BITS;
+        BitLength::from_bits(total_bits - leading_zero_bits)
     }
 }
 
@@ -220,21 +225,16 @@ impl<'a, M, E> IntoMont<'a, M, E> {
 impl<M> BoxedIntoMont<M, RR> {
     pub(crate) fn intoRRR(self, cpu: cpu::Features) -> BoxedIntoMont<M, RRR> {
         let Self {
-            mut storage,
-            n0,
-            len_bits,
-            m,
-            ..
+            mut storage, n0, m, ..
         } = self;
         let (value, one) = IntoMont::<M, RR>::parts_mut(storage.as_mut());
-        let value = Value::<M>::from_limbs_unchecked_less_safe(value, len_bits);
+        let value = Value::<M>::from_limbs_unchecked_less_safe(value);
         let mm = Mont::from_parts_unchecked_less_safe(value, &self.n0, cpu);
         let _: &[Limb] = limbs_square_mont(one, mm.limbs(), &self.n0, cpu)
             .unwrap_or_else(unwrap_impossible_limb_slice_error);
         BoxedIntoMont {
             storage,
             n0,
-            len_bits,
             m,
             encoding: PhantomData,
         }
@@ -283,10 +283,6 @@ impl<M> Mont<'_, M> {
 
     pub fn num_limbs(&self) -> NonZero<usize> {
         NonZero::new(self.limbs().len()).unwrap_or_else(|| unreachable!())
-    }
-
-    pub fn len_bits(&self) -> BitLength {
-        self.value.len_bits()
     }
 
     #[inline]
