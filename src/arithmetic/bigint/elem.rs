@@ -360,22 +360,22 @@ impl<'l, M, E> Mut<'l, M, E> {
     }
 }
 
-impl<M> Mont<'_, M> {
-    pub fn elem_reduced_once<'out, Larger>(
-        &self,
+impl<M> Ref<'_, M, Unencoded> {
+    pub fn reduced_once<'out, Smaller>(
+        self,
         out: &'out mut OversizedUninit<1>,
-        a: Ref<'_, Larger>,
+        m: &Mont<Smaller>,
         other_modulus_len_bits: BitLength,
-    ) -> Mut<'out, M, Unencoded> {
-        assert_eq!(self.len_bits(), other_modulus_len_bits);
+    ) -> Mut<'out, Smaller, Unencoded> {
+        assert_eq!(m.len_bits(), other_modulus_len_bits);
         // TODO: We should add a variant of `limbs_reduced_once` that does the
         // reduction out-of-place, to eliminate this copy.
         let r = out
-            .write_copy_of_slice(a.limbs.as_ref(), self.num_limbs().get())
+            .write_copy_of_slice(self.limbs.as_ref(), m.num_limbs().get())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
-        limb::limbs_reduce_once(&mut *r, self.limbs())
+        limb::limbs_reduce_once(&mut *r, m.limbs())
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        Mut::<M, Unencoded>::assume_in_range_and_encoded_less_safe(r)
+        Mut::<Smaller, Unencoded>::assume_in_range_and_encoded_less_safe(r)
     }
 }
 

@@ -633,7 +633,7 @@ impl KeyPair {
         // Step 2.b.iii.
         let h = {
             let pm = &p.modulus(cpu_features);
-            let m_2 = pm.elem_reduced_once(tmp3, m_2.as_ref(), q.len_bits());
+            let m_2 = m_2.as_ref().reduced_once(tmp3, pm, q.len_bits());
             m_1.sub(m_2.as_ref(), pm).mul(self.qInv.as_ref(), pm)
         };
 

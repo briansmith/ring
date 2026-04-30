@@ -224,8 +224,9 @@ mod tests {
                 let expected_result = consume_elem::<M>(&mut tmp, test_case, "r", &m);
                 let other_modulus_len_bits = m.len_bits();
                 let mut tmp = OversizedUninit::<1>::new();
-                let actual_result =
-                    m.elem_reduced_once(&mut tmp, a.as_ref(), other_modulus_len_bits);
+                let actual_result = a
+                    .as_ref()
+                    .reduced_once(&mut tmp, &m, other_modulus_len_bits);
                 assert_elem_eq(actual_result.as_ref(), expected_result.as_ref());
 
                 Ok(())
