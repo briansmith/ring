@@ -21,8 +21,15 @@ use super::MIN_LIMBS;
 pub use super::n0::N0;
 use crate::{
     cpu,
-    polyfill::slice::{AliasSrc, AliasingSlices},
+    error::LenMismatchError,
+    limb::Limb,
+    polyfill::{
+        StartMutPtr,
+        slice::Uninit,
+        slice::{AliasSrc, AliasingSlices},
+    },
 };
+
 use cfg_if::cfg_if;
 
 // Indicates that the element is not encoded; there is no *R* factor
@@ -119,13 +126,6 @@ impl ProductEncoding for (RRR, RInverse) {
     type Output = <(RInverse, RRR) as ProductEncoding>::Output;
 }
 
-#[allow(unused_imports)]
-use crate::{bssl, c, limb::Limb};
-use crate::{
-    error::LenMismatchError,
-    polyfill::{StartMutPtr, slice::Uninit},
-};
-
 #[inline(always)]
 pub(super) fn limbs_mul_mont<'o>(
     in_out: impl AliasingSlices<'o, Limb, 2>,
@@ -191,6 +191,7 @@ pub(super) fn limbs_from_mont_in_place<'o>(
     m: &[Limb],
     n0: &N0,
 ) -> Result<&'o mut [Limb], LenMismatchError> {
+    use crate::{bssl, c};
     prefixed_extern! {
         unsafe fn bn_from_montgomery_in_place(
             r: *mut Limb,
