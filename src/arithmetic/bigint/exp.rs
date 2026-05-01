@@ -199,7 +199,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     )?;
     let table: &[Limb] = table.as_flattened();
 
-    let mut tmp = tmp
+    let mut tmp_slice = tmp
         .as_uninit(..num_limbs.get())
         .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
 
@@ -212,11 +212,11 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
             gather(out, table, initial_window).unwrap_or_else(|_| unreachable!())
         },
         |acc, window| {
-            power(table, acc, m, window, tmp.reborrow_mut()).unwrap_or_else(|_| unreachable!())
+            power(table, acc, m, window, tmp_slice.reborrow_mut()).unwrap_or_else(|_| unreachable!())
         },
     );
 
-    Ok(acc.into_unencoded(m)?)
+    Ok(acc.into_unencoded(m, tmp)?)
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -227,7 +227,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     exponent: &PrivateExponent,
     m: &Mont<M>,
     other_prime_len_bits: BitLength,
-    _tmp: &mut OversizedUninit<1>,
+    tmp: &mut OversizedUninit<1>,
 ) -> Result<elem::Mut<'out, M, Unencoded>, LimbSliceError> {
     use super::{
         super::{
@@ -384,7 +384,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     );
 
     let out: MutAmm<'out, M> = MutAmm::copy_from_limbs_assume_amm_and_encoded(out, acc)?;
-    Ok(out.reduced_mont(m)?)
+    Ok(out.reduced_mont(m, tmp)?)
 }
 
 #[cfg(test)]

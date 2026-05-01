@@ -133,7 +133,7 @@ mod tests {
                     consume_elem(&mut tmp, test_case, "B", &m).encode_mont(&m_owned, cpu_features);
                 let actual_result = a.mul(b.as_ref(), &m);
                 let actual_result = actual_result
-                    .into_unencoded(&m)
+                    .into_unencoded(&m, &mut tmp)
                     .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
                 assert_elem_eq(actual_result.as_ref(), expected_result.as_ref());
 
@@ -159,8 +159,9 @@ mod tests {
                 let a =
                     consume_elem(&mut tmp, test_case, "A", &m).encode_mont(&m_owned, cpu_features);
                 let actual_result = a.square(&m);
+                let mut tmp = OversizedUninit::<1>::new();
                 let actual_result = actual_result
-                    .into_unencoded(&m)
+                    .into_unencoded(&m, &mut tmp)
                     .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
                 assert_elem_eq(actual_result.as_ref(), expected_result.as_ref());
 

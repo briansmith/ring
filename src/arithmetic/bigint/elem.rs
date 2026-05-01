@@ -244,17 +244,19 @@ impl<'l, M> MutAmm<'l, M> {
     pub(super) fn reduced_mont(
         self,
         m: &Mont<M>,
+        tmp: &mut OversizedUninit<1>,
     ) -> Result<Mut<'l, M, Unencoded>, LenMismatchError> {
         if self.limbs.len() != m.num_limbs().get() {
             return Err(LenMismatchError::new(self.limbs.len()));
         }
         let limbs = self.limbs;
 
-        let mut one = [0; MAX_LIMBS];
+        let one = tmp.as_uninit(
+            ..m.num_limbs().get())?
+            .write_filled_copy(Limb::from(limb::ZERO));
         one[0] = 1;
-        let one = &one[..m.limbs().len()];
         let _: &[Limb] = limbs_mul_mont(
-            (InOut(&mut *limbs), one),
+            (InOut(&mut *limbs), &*one),
             m.limbs(),
             m.n0(),
             m.cpu_features(),
@@ -267,12 +269,12 @@ impl<'l, M> MutAmm<'l, M> {
 #[cfg(any(test, not(target_arch = "x86_64")))]
 impl<'l, M> Mut<'l, M, R> {
     #[inline]
-    pub fn into_unencoded(self, m: &Mont<M>) -> Result<Mut<'l, M, Unencoded>, LenMismatchError> {
+    pub fn into_unencoded(self, m: &Mont<M>, tmp: &mut OversizedUninit<1>) -> Result<Mut<'l, M, Unencoded>, LenMismatchError> {
         let amm = MutAmm {
             limbs: self.limbs,
             m: self.m,
         };
-        amm.reduced_mont(m)
+        amm.reduced_mont(m, tmp)
     }
 }
 
