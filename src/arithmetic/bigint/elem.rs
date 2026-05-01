@@ -16,8 +16,7 @@
 use crate::polyfill::prelude::*;
 
 use super::{
-    super::{MAX_LIMBS, montgomery::*},
-    IntoMont, Mont, OversizedUninit, unwrap_impossible_len_mismatch_error,
+    super::montgomery::*, IntoMont, Mont, OversizedUninit, unwrap_impossible_len_mismatch_error,
     unwrap_impossible_limb_slice_error,
 };
 use crate::{
@@ -251,8 +250,8 @@ impl<'l, M> MutAmm<'l, M> {
         }
         let limbs = self.limbs;
 
-        let one = tmp.as_uninit(
-            ..m.num_limbs().get())?
+        let one = tmp
+            .as_uninit(..m.num_limbs().get())?
             .write_filled_copy(Limb::from(limb::ZERO));
         one[0] = 1;
         let _: &[Limb] = limbs_mul_mont(
@@ -269,7 +268,11 @@ impl<'l, M> MutAmm<'l, M> {
 #[cfg(any(test, not(target_arch = "x86_64")))]
 impl<'l, M> Mut<'l, M, R> {
     #[inline]
-    pub fn into_unencoded(self, m: &Mont<M>, tmp: &mut OversizedUninit<1>) -> Result<Mut<'l, M, Unencoded>, LenMismatchError> {
+    pub fn into_unencoded(
+        self,
+        m: &Mont<M>,
+        tmp: &mut OversizedUninit<1>,
+    ) -> Result<Mut<'l, M, Unencoded>, LenMismatchError> {
         let amm = MutAmm {
             limbs: self.limbs,
             m: self.m,
@@ -388,6 +391,7 @@ impl<'l, M, E> Ref<'l, M, E> {
         out: &'out mut OversizedUninit<1>,
         m: &Mont<Smaller>,
         other_prime_len_bits: BitLength,
+        tmp: &mut OversizedUninit<1>,
     ) -> Mut<'out, Smaller, RInverse> {
         // This is stricter than required mathematically but this is what we
         // guarantee and this is easier to check. The real requirement is that
@@ -397,10 +401,9 @@ impl<'l, M, E> Ref<'l, M, E> {
         // `limbs_from_mont_in_place` requires this.
         assert_eq!(self.limbs.len(), m.limbs().len() * 2);
 
-        let mut tmp = [0; MAX_LIMBS];
-        let tmp = &mut tmp[..self.limbs.len()];
-        tmp.copy_from_slice(self.limbs);
-
+        let tmp = tmp
+            .write_copy_of_slice(self.limbs, self.limbs.len())
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
         let out = out
             .as_uninit(..m.num_limbs().get())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.

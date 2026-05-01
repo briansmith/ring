@@ -332,6 +332,7 @@ impl KeyPair {
 
         let mut tmp1 = bigint::OversizedUninit::<1>::new();
         let mut tmp2 = bigint::OversizedUninit::<1>::new();
+        let mut tmp3 = bigint::OversizedUninit::<1>::new();
 
         let borrowed_public_key = public_key.inner();
         let n = borrowed_public_key.n().value();
@@ -382,7 +383,7 @@ impl KeyPair {
         // Step 7.f.
         q_mod_n
             .as_ref()
-            .reduced_mont(&mut tmp2, pm, qim.len_bits())
+            .reduced_mont(&mut tmp2, pm, qim.len_bits(), &mut tmp3)
             .encode_mont(pim, cpu_features)
             .verify_inverse_consttime(qInv.as_ref(), pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;

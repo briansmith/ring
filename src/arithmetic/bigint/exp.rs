@@ -111,7 +111,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         polyfill::{StartMutPtr, dynarray},
     };
 
-    let base_rinverse = base_mod_n.reduced_mont(out, m, other_prime_len_bits);
+    let base_rinverse = base_mod_n.reduced_mont(out, m, other_prime_len_bits, tmp);
 
     let num_limbs = m.num_limbs();
     if num_limbs.get() % limbs512::LIMBS_PER_CHUNK != 0 {
@@ -212,7 +212,8 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
             gather(out, table, initial_window).unwrap_or_else(|_| unreachable!())
         },
         |acc, window| {
-            power(table, acc, m, window, tmp_slice.reborrow_mut()).unwrap_or_else(|_| unreachable!())
+            power(table, acc, m, window, tmp_slice.reborrow_mut())
+                .unwrap_or_else(|_| unreachable!())
         },
     );
 
@@ -307,7 +308,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         .as_chunks();
 
     let base_mod_m: elem::Mut<'_, M, RInverse> =
-        base_mod_n.reduced_mont(out, m, other_prime_len_bits);
+        base_mod_n.reduced_mont(out, m, other_prime_len_bits, tmp);
     let base_rinverse = base_mod_m.leak_limbs_less_safe();
 
     // base_cached = base*R == (base/R * RRR)/R
