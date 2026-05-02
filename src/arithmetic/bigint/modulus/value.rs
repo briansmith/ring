@@ -107,7 +107,7 @@ impl<'a> ValidatedInput<'a> {
     }
 }
 
-impl<M> Value<'_, M> {
+impl<'a, M> Value<'a, M> {
     pub(super) fn from_limbs_unchecked_less_safe(limbs: &[Limb]) -> Value<'_, M> {
         Value {
             limbs,
@@ -116,7 +116,7 @@ impl<M> Value<'_, M> {
     }
 
     #[inline]
-    pub(super) fn limbs(&self) -> &[Limb] {
+    pub(super) fn limbs(&self) -> &'a [Limb] {
         self.limbs
     }
 }

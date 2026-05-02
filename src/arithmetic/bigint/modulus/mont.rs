@@ -167,7 +167,7 @@ impl N0 {
 }
 
 impl<'a, M, E> IntoMont<'a, M, E> {
-    fn value(&self) -> Value<'_, M> {
+    fn value(&self) -> Value<'a, M> {
         let (value, _) = self.parts();
         Value::from_limbs_unchecked_less_safe(value)
     }
@@ -197,9 +197,7 @@ impl<'a, M, E> IntoMont<'a, M, E> {
     }
 
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Mont<'_, M> {
-        let (value, _) = self.parts();
-        let value = Value::from_limbs_unchecked_less_safe(value);
-        Mont::from_parts_unchecked_less_safe(value, &self.n0, cpu_features)
+        Mont::from_parts_unchecked_less_safe(self.value(), &self.n0, cpu_features)
     }
 
     pub(crate) fn one(&self) -> One<'_, M, E> {
@@ -210,7 +208,7 @@ impl<'a, M, E> IntoMont<'a, M, E> {
 
 impl<'a, M: PublicModulus, E> IntoMont<'a, M, E> {
     pub fn len_bits_vartime(&self) -> BitLength {
-        let (value, _) = self.parts();
+        let value = self.value().limbs();
         let leading_zero_bits = value
             .last()
             .map(|high| usize_from_u32(high.leading_zeros()))
@@ -245,8 +243,7 @@ impl<'a, M: PublicModulus, E> IntoMont<'a, M, E> {
     pub fn be_bytes(
         &self,
     ) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + 'a + use<'a, M, E>> {
-        let (value, _) = self.parts();
-        LeadingZerosStripped::new(limb::unstripped_be_bytes(value))
+        LeadingZerosStripped::new(limb::unstripped_be_bytes(self.value().limbs()))
     }
 }
 
