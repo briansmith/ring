@@ -17,10 +17,9 @@ use crate::polyfill::prelude::*;
 
 use super::{
     super::{
-        super::montgomery::{RR, RRR, Unencoded, limbs_square_mont},
+        super::montgomery::{RR, RRR, Unencoded},
         N0, One, OversizedUninit, PublicModulus, elem,
         modulus::value::Value,
-        unwrap_impossible_limb_slice_error,
     },
     ValidatedInput,
 };
@@ -228,8 +227,8 @@ impl<M> BoxedIntoMont<M, RR> {
         let (value, one) = IntoMont::<M, RR>::parts_mut(storage.as_mut());
         let value = Value::<M>::from_limbs_unchecked_less_safe(value);
         let mm = Mont::from_parts_unchecked_less_safe(value, &self.n0, cpu);
-        let _: &[Limb] = limbs_square_mont(one, mm.limbs(), &self.n0, cpu)
-            .unwrap_or_else(unwrap_impossible_limb_slice_error);
+        let _: elem::Mut<'_, M, RRR> =
+            elem::Mut::<'_, M, RR>::assume_in_range_and_encoded_less_safe(one).square(&mm); // in place
         BoxedIntoMont {
             storage,
             n0,
