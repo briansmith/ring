@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    bigint::{Mont, OversizedUninit, elem},
+    bigint::{Mont, elem},
     montgomery::R,
 };
 use core::num::NonZero;
@@ -30,7 +30,7 @@ use core::num::NonZero;
 impl<M> elem::Ref<'_, M, R> {
     pub(crate) fn exp_vartime<'out>(
         self,
-        out: &'out mut OversizedUninit<1>,
+        out: &'out mut elem::OversizedUninit,
         exponent: NonZero<u64>,
         m: &Mont<M>,
     ) -> elem::Mut<'out, M, R> {

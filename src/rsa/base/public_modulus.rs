@@ -80,7 +80,7 @@ impl<'a> ValidatedInput<'a> {
 
     pub(super) fn build<'o>(
         &self,
-        out: &'o mut bigint::OversizedUninit<2>,
+        out: &'o mut bigint::modulus::OversizedUninit,
         cpu_features: cpu::Features,
     ) -> PublicModulus<bigint::IntoMont<'o, N, RR>> {
         PublicModulus {

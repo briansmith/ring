@@ -1,11 +1,12 @@
 use super::super::super::montgomery::RR;
 use super::*;
-use crate::arithmetic::bigint::OversizedUninit;
-use crate::cpu;
-use crate::error::{self, KeyRejected};
+use crate::{
+    cpu,
+    error::{self, KeyRejected},
+};
 
 pub fn consume_modulus<'out, M>(
-    out: &'out mut OversizedUninit<2>,
+    out: &'out mut OversizedUninit,
     test_case: &mut crate::testutil::TestCase,
     name: &str,
 ) -> IntoMont<'out, M, RR> {

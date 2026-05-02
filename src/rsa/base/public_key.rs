@@ -87,7 +87,7 @@ impl<'a> ValidatedInput<'a> {
 
     pub(in super::super) fn build<'o>(
         &self,
-        out: &'o mut bigint::OversizedUninit<2>,
+        out: &'o mut bigint::modulus::OversizedUninit,
         cpu: cpu::Features,
     ) -> PublicKey<bigint::IntoMont<'o, N, RR>> {
         PublicKey {
@@ -145,15 +145,15 @@ impl PublicKey<bigint::IntoMont<'_, N, RR>> {
         // RFC 8017 Section 5.2.2: RSAVP1.
 
         // Step 1.
-        let mut s = bigint::OversizedUninit::new();
+        let mut s = bigint::elem::OversizedUninit::new();
         let s = bigint::elem::Mut::from_be_bytes_padded(&mut s, base, n)?;
         if s.as_ref().is_zero() {
             return Err(error::Unspecified);
         }
 
         // Step 2.
-        let mut m = bigint::OversizedUninit::new();
-        let mut tmp = bigint::OversizedUninit::new();
+        let mut m = bigint::elem::OversizedUninit::new();
+        let mut tmp = bigint::elem::OversizedUninit::new();
         let m = self.exponentiate_elem(&mut m, s.as_ref(), &mut tmp, cpu_features);
 
         // Step 3.
@@ -165,9 +165,9 @@ impl PublicKey<bigint::IntoMont<'_, N, RR>> {
     /// This is constant-time with respect to `base` only.
     pub(in super::super) fn exponentiate_elem<'out>(
         &self,
-        out: &'out mut bigint::OversizedUninit<1>,
+        out: &'out mut bigint::elem::OversizedUninit,
         base: bigint::elem::Ref<N>,
-        tmp: &mut bigint::OversizedUninit<1>,
+        tmp: &mut bigint::elem::OversizedUninit,
         cpu_features: cpu::Features,
     ) -> bigint::elem::Mut<'out, N> {
         // The exponent was already checked to be at least 3.

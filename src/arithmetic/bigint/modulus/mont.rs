@@ -18,7 +18,7 @@ use crate::polyfill::prelude::*;
 use super::{
     super::{
         super::montgomery::{RR, RRR, Unencoded},
-        N0, One, OversizedUninit, PublicModulus, elem,
+        MAX_LIMBS, N0, One, PublicModulus, elem,
         modulus::value::Value,
     },
     ValidatedInput,
@@ -34,7 +34,7 @@ use crate::{
         usize_from_u32,
     },
 };
-use core::{marker::PhantomData, num::NonZero};
+use core::{marker::PhantomData, mem::MaybeUninit, num::NonZero};
 
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
@@ -82,11 +82,23 @@ impl<M, E> BoxedIntoMont<M, E> {
     }
 }
 
+pub struct OversizedUninit([MaybeUninit<Limb>; Self::CAPACITY]);
+
+impl OversizedUninit {
+    const CAPACITY: usize = into_mont_storage_len_from_num_limbs(MAX_LIMBS).unwrap();
+
+    pub const fn new() -> Self {
+        Self([const { MaybeUninit::uninit() }; Self::CAPACITY])
+    }
+}
+
 impl ValidatedInput<'_> {
     #[cfg(feature = "alloc")]
     pub(crate) fn build_boxed_into_mont<M>(&self, cpu: cpu::Features) -> BoxedIntoMont<M, RR> {
         let limbs = self.limbs();
-        let mut uninit = Box::new_uninit_slice(limbs.len() * 2);
+        let storage_len =
+            into_mont_storage_len_from_num_limbs(limbs.len()).unwrap_or_else(|| unreachable!()); // Because `MAX_LIMBS` is small.
+        let mut uninit = Box::new_uninit_slice(storage_len);
         let borrowed = Uninit::from(uninit.as_mut());
         let mut cursor = borrowed.into_cursor();
         let IntoMont {
@@ -111,11 +123,14 @@ impl ValidatedInput<'_> {
 
     pub(crate) fn build_into_mont<'o, M>(
         &self,
-        uninit: &'o mut OversizedUninit<2>,
+        uninit: &'o mut OversizedUninit,
         cpu: cpu::Features,
     ) -> IntoMont<'o, M, RR> {
-        self.write_into_mont(&mut uninit.as_uninit_whole().into_cursor(), cpu)
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
+        self.write_into_mont(
+            &mut Uninit::from(uninit.0.as_mut_slice()).into_cursor(),
+            cpu,
+        )
+        .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
     }
 
     fn write_into_mont<'o, M>(
@@ -139,6 +154,10 @@ impl ValidatedInput<'_> {
             encoding: PhantomData,
         })
     }
+}
+
+const fn into_mont_storage_len_from_num_limbs(num_limbs: usize) -> Option<usize> {
+    num_limbs.checked_add(num_limbs)
 }
 
 impl N0 {
@@ -184,7 +203,7 @@ impl<'a, M, E> IntoMont<'a, M, E> {
 
     pub fn to_elem<'l, L>(
         &self,
-        out: &'l mut OversizedUninit<1>,
+        out: &'l mut elem::OversizedUninit,
         l: &Mont<L>,
     ) -> Result<elem::Mut<'l, L, Unencoded>, error::Unspecified> {
         let limbs = out

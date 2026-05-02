@@ -21,19 +21,15 @@ use core::{mem::MaybeUninit, ops::RangeTo};
 
 /// A buffer that has enough space to hold `N` values of the maximum size,
 /// hiding the representation of values from the user.
-pub struct OversizedUninit<const N: usize>([[MaybeUninit<Limb>; MAX_LIMBS]; N]);
+pub struct OversizedUninit([MaybeUninit<Limb>; MAX_LIMBS]);
 
-impl<const N: usize> OversizedUninit<N> {
+impl OversizedUninit {
     pub fn new() -> Self {
         Self(unsafe { MaybeUninit::uninit().assume_init() })
     }
 
-    pub(super) fn as_uninit_whole(&mut self) -> Uninit<'_, Limb> {
-        Uninit::from(self.0.as_flattened_mut())
-    }
-
     pub fn as_uninit(&mut self, len: RangeTo<usize>) -> Result<Uninit<'_, Limb>, LenMismatchError> {
-        self.as_uninit_whole()
+        Uninit::from(self.0.as_mut_slice())
             .split_off_mut(len)
             .ok_or_else(|| LenMismatchError::new(len.end))
     }

@@ -209,7 +209,7 @@ fn verify(
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let mut out = bigint::OversizedUninit::<2>::new();
+    let mut out = bigint::modulus::OversizedUninit::new();
     let key = validated.build(&mut out, cpu_features);
 
     // RFC 8017 Section 5.2.2: RSAVP1.
