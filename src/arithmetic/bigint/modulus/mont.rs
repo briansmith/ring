@@ -128,8 +128,8 @@ impl ValidatedInput<'_> {
             let value = Value::<M>::from_limbs_unchecked_less_safe(value);
             let n0 = N0::calculate_from(&value);
             let m = &Mont::from_parts_unchecked_less_safe(value, &n0, cpu);
-            let one = One::write_mont_identity(out, m, self.len_bits())?;
-            One::mul_r(one, m)?;
+            let _: elem::Mut<'_, M, RR> =
+                One::write_mont_identity(out, m, self.len_bits())?.mul_r(m)?; // in place.
             Ok(n0)
         })?;
         Ok(IntoMont {

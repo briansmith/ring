@@ -130,6 +130,10 @@ impl<'l, M, E> Mut<'l, M, E> {
         self.limbs
     }
 
+    pub(super) fn leak_limbs_mut_less_safe(&mut self) -> &mut [Limb] {
+        self.limbs
+    }
+
     pub(super) fn leak_limbs_into_mut_less_safe(self) -> &'l mut [Limb] {
         self.limbs
     }

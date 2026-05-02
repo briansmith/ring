@@ -16,8 +16,8 @@
 use crate::polyfill::prelude::*;
 
 use super::super::{
-    super::montgomery::{R, RR, limbs_square_mont},
-    Limb, Mont, unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
+    super::montgomery::{R, RR},
+    Limb, Mont, elem, unwrap_impossible_len_mismatch_error,
 };
 use crate::{
     bits::BitLength,
@@ -52,17 +52,18 @@ impl<M> One<'_, M, R> {
     pub(in super::super) fn write_mont_identity_assuming_full_upper_limb<'r>(
         out: &mut Cursor<'r, Limb>,
         m: &Mont<'_, M>,
-    ) -> Result<&'r mut [Limb], LenMismatchError> {
+    ) -> Result<elem::Mut<'r, M, R>, LenMismatchError> {
         // out = 2**r - m where m = self.
-        limb::write_negative_assume_odd(out, m.limbs())
+        let r = limb::write_negative_assume_odd(out, m.limbs())?;
+        Ok(elem::Mut::<'r, M, R>::assume_in_range_and_encoded_less_safe(r))
     }
 
     pub(in super::super) fn write_mont_identity<'r>(
         out: &mut Cursor<'r, Limb>,
         m: &Mont<'_, M>,
         m_bit_len: BitLength,
-    ) -> Result<&'r mut [Limb], LenMismatchError> {
-        let out = Self::write_mont_identity_assuming_full_upper_limb(out, m)?;
+    ) -> Result<elem::Mut<'r, M, R>, LenMismatchError> {
+        let mut out = Self::write_mont_identity_assuming_full_upper_limb(out, m)?;
 
         let r = m.limbs().len() * LIMB_BITS;
         let lg_m = m_bit_len.as_bits();
@@ -76,12 +77,12 @@ impl<M> One<'_, M, R> {
             // Correct out to 2**(lg m) (mod m).
             // `write_mont_identity_assuming_full_upper_limb` flipped all the
             // leading zero bits to ones. Flip them back.
-            *out.last_mut().unwrap() &= (!0) >> leading_zero_bits_in_m;
+            *out.leak_limbs_mut_less_safe().last_mut().unwrap() &= (!0) >> leading_zero_bits_in_m;
 
             // Now we have out == 2**(lg m) (mod m). Keep doubling until we get
             // to 2**r (mod m).
             for _ in 0..leading_zero_bits_in_m {
-                limb::limbs_double_mod(out, m.limbs())?;
+                limb::limbs_double_mod(out.leak_limbs_mut_less_safe(), m.limbs())?;
             }
         }
 
@@ -89,15 +90,18 @@ impl<M> One<'_, M, R> {
     }
 }
 
-impl<M> One<'_, M, RR> {
-    // `in_out *= R (mod_m)`, where R is the Montgomery multiplication identity
+impl<'l, M> elem::Mut<'l, M, R> {
+    // `self *= R (mod_m)`, where R is the Montgomery multiplication identity
     // element (a * R / R = a).
     //
     // Even though the assembly on some 32-bit platforms works with 64-bit
     // values, using `LIMB_BITS` here, rather than `N0::LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0::LIMBS_USED` is either one or two.
-    pub(crate) fn mul_r(in_out: &mut [Limb], m: &Mont<'_, M>) -> Result<(), LenMismatchError> {
+    pub(crate) fn mul_r(
+        mut self,
+        m: &Mont<'_, M>,
+    ) -> Result<elem::Mut<'l, M, RR>, LenMismatchError> {
         // The number of limbs in the numbers involved.
         let w = m.limbs().len();
 
@@ -121,7 +125,7 @@ impl<M> One<'_, M, RR> {
         debug_assert!(d <= t);
         debug_assert!(t < r);
         for _ in 0..t {
-            limb::limbs_double_mod(in_out, m.limbs())
+            limb::limbs_double_mod(self.leak_limbs_mut_less_safe(), m.limbs())
                 .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         }
 
@@ -155,9 +159,13 @@ impl<M> One<'_, M, RR> {
         const _LIMB_BITS_IS_2_POW_B: () = assert!(LIMB_BITS == 1 << B);
         debug_assert_eq!(r, t * (1 << B));
         for _ in 0..B {
-            let _: &[Limb] = limbs_square_mont(&mut *in_out, m.limbs(), m.n0(), m.cpu_features())
-                .unwrap_or_else(unwrap_impossible_limb_slice_error);
+            self = self.square(m);
         }
-        Ok(())
+
+        Ok(
+            elem::Mut::<'l, M, RR>::assume_in_range_and_encoded_less_safe(
+                self.leak_limbs_into_mut_less_safe(),
+            ),
+        )
     }
 }

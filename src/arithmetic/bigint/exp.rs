@@ -157,7 +157,8 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
                 0 => Ok(One::write_mont_identity_assuming_full_upper_limb(
                     &mut uninit.into_cursor(),
                     m,
-                )?),
+                )?
+                .leak_limbs_into_mut_less_safe()),
 
                 // table[1] = base*R == (base/R * RRR)/R
                 1 => limbs_mul_mont(
@@ -341,7 +342,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         &mut acc.reborrow_mut().into_cursor(),
         m,
     )?;
-    scatter5(t0, table, LeakyWindow5::_0)?;
+    scatter5(t0.leak_limbs_less_safe(), table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
     let acc = acc
