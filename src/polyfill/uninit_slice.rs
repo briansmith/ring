@@ -238,6 +238,11 @@ impl<'target, E> AliasedUninit<'target, E> {
 }
 
 impl<'buf, E: Copy> Cursor<'buf, E> {
+    pub fn write(&mut self, value: E) -> Result<&'buf mut E, LenMismatchError> {
+        let [r] = self.write_repeat_array::<1>(value)?;
+        Ok(r)
+    }
+
     pub fn write_repeat_array<const N: usize>(
         &mut self,
         value: E,
