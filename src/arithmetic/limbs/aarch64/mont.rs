@@ -34,7 +34,7 @@ const _TWICE_MAX_LIMBS_LE_3KB: () = assert!((2 * MAX_LIMBS) * LIMB_BYTES <= 3 * 
 pub(in super::super::super) fn mul_mont<'o>(
     in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
-    n0: &N0,
+    n0: N0<'_>,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
     const MIN_4X: usize = 4;
     const MOD_4X: usize = 4;
@@ -57,7 +57,7 @@ pub(in super::super::super) fn mul_mont<'o>(
 pub(in super::super::super) fn sqr_mont5<'o>(
     in_out: impl AliasingSlices<'o, Limb, 1>,
     n: &[[Limb; 8]],
-    n0: &N0,
+    n0: N0<'_>,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
     prefixed_extern! {
         // `r` and/or 'a' may alias.
@@ -68,7 +68,7 @@ pub(in super::super::super) fn sqr_mont5<'o>(
             ap: *const Limb,
             ap_again: *const Limb,
             np: *const Limb,
-            n0: &N0,
+            n0: N0<'_>,
             num: NonZero<c::size_t>);
     }
 

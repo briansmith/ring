@@ -130,7 +130,7 @@ impl ProductEncoding for (RRR, RInverse) {
 pub(super) fn limbs_mul_mont<'o>(
     in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
-    n0: &N0,
+    n0: N0<'_>,
     cpu: cpu::Features,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
     #[allow(dead_code)]
@@ -189,7 +189,7 @@ pub(super) fn limbs_from_mont_in_place<'o>(
     mut r: Uninit<'o, Limb>,
     tmp: &mut [Limb],
     m: &[Limb],
-    n0: &N0,
+    n0: N0<'_>,
 ) -> Result<&'o mut [Limb], LenMismatchError> {
     use crate::{bssl, c};
     prefixed_extern! {
@@ -200,7 +200,7 @@ pub(super) fn limbs_from_mont_in_place<'o>(
             num_a: c::size_t,
             n: *const Limb,
             num_n: c::size_t,
-            n0: &N0,
+            n0: N0<'_>,
         ) -> bssl::Result;
     }
     let r_len = r.len();
@@ -225,7 +225,7 @@ pub(super) fn limbs_from_mont_in_place<'o>(
 pub(super) fn limbs_square_mont<'o, InOut>(
     in_out: InOut,
     n: &[Limb],
-    n0: &N0,
+    n0: N0<'_>,
     cpu: cpu::Features,
 ) -> Result<&'o mut [Limb], LimbSliceError>
 where

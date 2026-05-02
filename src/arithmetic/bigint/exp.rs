@@ -320,7 +320,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         table: &mut [[MaybeUninit<Limb>; 8]],
         mut acc: &mut [Limb],
         m_cached: &[[Limb; 8]],
-        n0: &N0,
+        n0: N0<'_>,
         mut i: LeakyWindow5,
         cpu: Option<(Adx, Bmi2)>,
     ) -> Result<(), LimbSliceError> {

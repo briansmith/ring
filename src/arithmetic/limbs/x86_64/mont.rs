@@ -42,7 +42,7 @@ pub(in super::super::super) fn mul_mont5<'o>(
     a: &[Limb],
     b: &[Limb],
     m: &[[Limb; 8]],
-    n0: &N0,
+    n0: N0<'_>,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
     mul_mont5_4x(
@@ -59,7 +59,7 @@ pub const MIN_4X: usize = 8;
 pub(in super::super::super) fn mul_mont5_4x<'o>(
     in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[[Limb; 4]],
-    n0: &N0,
+    n0: N0<'_>,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
     const MOD_4X: usize = 4;
@@ -79,7 +79,7 @@ pub(in super::super::super) fn mul_mont5_4x<'o>(
 pub(in super::super::super) fn sqr_mont5<'o>(
     in_out: impl AliasingSlices<'o, Limb, 1>,
     n: &[[Limb; 8]],
-    n0: &N0,
+    n0: N0<'_>,
     maybe_adx_bmi2: Option<(Adx, Bmi2)>,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
     prefixed_extern! {
@@ -91,7 +91,7 @@ pub(in super::super::super) fn sqr_mont5<'o>(
             ap: *const Limb,
             mulx_adx_capable: Limb,
             np: *const Limb,
-            n0: &N0,
+            n0: N0<'_>,
             num: NonZero<c::size_t>);
     }
 
@@ -152,7 +152,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
     a: &[Limb],
     table: &[[MaybeUninit<Limb>; 8]],
     n: &[[Limb; 8]],
-    n0: &N0,
+    n0: N0<'_>,
     power: Window5,
     maybe_adx_bmi1_bmi2: Option<(Adx, Bmi1, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
@@ -164,7 +164,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
             ap: *const Limb,
             table: *const Limb,
             np: *const Limb,
-            n0: &N0,
+            n0: N0<'_>,
             num: NonZero<c::size_t>,
             power: Window5,
         );
@@ -175,7 +175,7 @@ pub(in super::super::super) unsafe fn mul_mont_gather5_amm(
             ap: *const Limb,
             table: *const Limb,
             np: *const Limb,
-            n0: &N0,
+            n0: N0<'_>,
             num: NonZero<c::size_t>,
             power: Window5,
         );
@@ -205,7 +205,7 @@ pub(in super::super::super) fn power5_amm(
     in_out: &mut [Limb],
     table: &[[Limb; 8]],
     n: &[[Limb; 8]],
-    n0: &N0,
+    n0: N0<'_>,
     power: Window5,
     maybe_adx_bmi1_bmi2: Option<(Adx, Bmi1, Bmi2)>,
 ) -> Result<(), LimbSliceError> {
@@ -217,7 +217,7 @@ pub(in super::super::super) fn power5_amm(
             ap: *const Limb,
             table: *const Limb,
             np: *const Limb,
-            n0: &N0,
+            n0: N0<'_>,
             num: NonZero<c::size_t>,
             power: Window5,
         );
@@ -228,7 +228,7 @@ pub(in super::super::super) fn power5_amm(
             ap: *const Limb,
             table: *const Limb,
             np: *const Limb,
-            n0: &N0,
+            n0: N0<'_>,
             num: NonZero<c::size_t>,
             power: Window5,
         );

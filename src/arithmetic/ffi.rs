@@ -56,7 +56,7 @@ macro_rules! bn_mul_mont_ffi {
                 a: *const Limb,
                 b: *const Limb,
                 n: *const Limb,
-                n0: &N0,
+                n0: N0<'_>,
                 len: NonZero<c::size_t>,
             );
         }
@@ -72,14 +72,14 @@ macro_rules! bn_mul_mont_ffi {
 pub(super) unsafe fn bn_mul_mont_ffi<'o, Cpu, const LEN_MIN: usize, const LEN_MOD: usize>(
     in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
-    n0: &N0,
+    n0: N0<'_>,
     cpu: Cpu,
     f: unsafe extern "C" fn(
         r: *mut Limb,
         a: *const Limb,
         b: *const Limb,
         n: *const Limb,
-        n0: &N0,
+        n0: N0<'_>,
         len: NonZero<c::size_t>,
     ),
 ) -> Result<&'o mut [Limb], LimbSliceError> {

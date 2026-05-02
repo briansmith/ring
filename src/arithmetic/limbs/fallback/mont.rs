@@ -34,7 +34,7 @@ use core::{hint::unreachable_unchecked, num::NonZero};
 pub(crate) fn limbs_mul_mont<'o>(
     in_out: impl AliasingSlices<'o, Limb, 2>,
     n: &[Limb],
-    n0: &N0,
+    n0: N0<'_>,
 ) -> Result<&'o mut [Limb], LimbSliceError> {
     const MOD_FALLBACK: usize = 1;
     // Use the fallback implementation through the FFI wrapper when it is defined
@@ -59,7 +59,7 @@ cfg_if! {
                 a: *const Limb,
                 b: *const Limb,
                 n: *const Limb,
-                n0: &N0,
+                n0: N0<'_>,
                 num_limbs: NonZero<c::size_t>,
             ) {
                 unsafe { bn_mul_mont_fallback_impl(r, a, b, n, n0, num_limbs) }
@@ -76,7 +76,7 @@ unsafe extern "C" fn bn_mul_mont_fallback_impl(
     a: *const Limb,
     b: *const Limb,
     n: *const Limb,
-    n0: &N0,
+    n0: N0<'_>,
     num_limbs: NonZero<c::size_t>,
 ) {
     let num_limbs = num_limbs.get();
