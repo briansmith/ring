@@ -44,8 +44,9 @@ use alloc::boxed::Box;
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
 /// the modular inversion code.
 pub struct IntoMont<'a, M, E> {
+    // Invariant: `Mont::storage` followed hy `num_limbs` limbs with the value
+    // 1 encoded with encoding `E`.
     storage: &'a [Limb],
-    n0: N0,
     m: PhantomData<M>,
     encoding: PhantomData<E>,
 }
@@ -53,7 +54,6 @@ pub struct IntoMont<'a, M, E> {
 #[cfg(feature = "alloc")]
 pub struct BoxedIntoMont<M, E> {
     storage: Box<[Limb]>,
-    n0: N0,
     m: PhantomData<M>,
     encoding: PhantomData<E>,
 }
@@ -63,7 +63,6 @@ impl<M: PublicModulus, E> Clone for BoxedIntoMont<M, E> {
     fn clone(&self) -> Self {
         Self {
             storage: self.storage.clone(),
-            n0: self.n0,
             m: self.m,
             encoding: self.encoding,
         }
@@ -75,7 +74,6 @@ impl<M, E> BoxedIntoMont<M, E> {
     pub fn reborrow(&self) -> IntoMont<'_, M, E> {
         IntoMont {
             storage: &self.storage,
-            n0: self.n0,
             m: self.m,
             encoding: PhantomData,
         }
@@ -103,7 +101,6 @@ impl ValidatedInput<'_> {
         let mut cursor = borrowed.into_cursor();
         let IntoMont {
             storage: _,
-            n0,
             m,
             encoding,
         } = self
@@ -115,7 +112,6 @@ impl ValidatedInput<'_> {
         let storage = unsafe { uninit.assume_init() };
         BoxedIntoMont {
             storage,
-            n0,
             m,
             encoding,
         }
@@ -138,18 +134,21 @@ impl ValidatedInput<'_> {
         out: &mut Cursor<'o, Limb>,
         cpu: cpu::Features,
     ) -> Result<IntoMont<'o, M, RR>, LenMismatchError> {
-        let (storage, n0) = out.try_write_with(|out| {
-            let value = out.write_iter(self.limbs()).src_empty()?.into_written();
-            let value = Value::<M>::from_limbs_unchecked_less_safe(value);
-            let n0 = N0::calculate_from(&value);
-            let m = &Mont::from_parts_unchecked_less_safe(value, &n0, cpu);
+        let (storage, ()) = out.try_write_with(|out| {
+            let (mont_storage, ()) = out.try_write_with(|out| {
+                // We can't compute `n0` until after we've written `value`.
+                let n0_placeholder = out.write_repeat_array::<{ N0::LIMBS_USED }>(limb::ZERO)?;
+                let value = out.write_iter(self.limbs()).src_empty()?.into_written();
+                N0::write_into(n0_placeholder, value);
+                Ok(())
+            })?;
+            let m = &Mont::<'_, M>::from_storage_unchecked_less_safe(mont_storage, cpu);
             let _: elem::Mut<'_, M, RR> =
                 One::write_mont_identity(out, m, self.len_bits())?.mul_r(m)?; // in place.
-            Ok(n0)
+            Ok(())
         })?;
         Ok(IntoMont {
             storage,
-            n0,
             m: PhantomData,
             encoding: PhantomData,
         })
@@ -157,48 +156,32 @@ impl ValidatedInput<'_> {
 }
 
 const fn into_mont_storage_len_from_num_limbs(num_limbs: usize) -> Option<usize> {
-    num_limbs.checked_add(num_limbs)
-}
-
-impl N0 {
-    #[allow(clippy::useless_conversion)]
-    pub(super) fn calculate_from<M>(value: &Value<M>) -> Self {
-        let m = value.limbs();
-
-        // n_mod_r = n % r. As explained in the documentation for `n0`, this is
-        // done by taking the lowest `N0::LIMBS_USED` limbs of `n`.
-        prefixed_extern! {
-            unsafe fn bn_neg_inv_mod_r_u64(n: u64) -> u64;
-        }
-
-        // XXX: u64::from isn't guaranteed to be constant time.
-        let mut n_mod_r: u64 = u64::from(m[0]);
-
-        if N0::LIMBS_USED == 2 {
-            // XXX: If we use `<< LIMB_BITS` here then 64-bit builds
-            // fail to compile because of `deny(exceeding_bitshifts)`.
-            debug_assert_eq!(LIMB_BITS, 32);
-            n_mod_r |= u64::from(value.limbs()[1]) << 32;
-        }
-        N0::precalculated(unsafe { bn_neg_inv_mod_r_u64(n_mod_r) })
-    }
+    let Some(num_limbs_2) = num_limbs.checked_add(num_limbs) else {
+        return None;
+    };
+    MONT_PREFIX_LEN.checked_add(num_limbs_2)
 }
 
 impl<'a, M, E> IntoMont<'a, M, E> {
     fn value(&self) -> Value<'a, M> {
-        let (value, _) = self.parts();
+        let (mont, _) = self.split_mont();
+        let (_, value) = mont
+            .split_first_chunk::<{ MONT_PREFIX_LEN }>()
+            .unwrap_or_else(|| unreachable!()); // Ensured by invariant.
         Value::from_limbs_unchecked_less_safe(value)
     }
 
-    fn parts(&self) -> (&'a [Limb], &'a [Limb]) {
-        self.storage
-            .as_ref()
-            .split_at(self.storage.as_ref().len() / 2)
+    fn split_mont(&self) -> (&'a [Limb], &'a [Limb]) {
+        let num_limbs = (self.storage.len() - MONT_PREFIX_LEN) / 2;
+        self.storage.as_ref().split_at(MONT_PREFIX_LEN + num_limbs)
     }
 
-    fn parts_mut(storage: &mut [Limb]) -> (&[Limb], &mut [Limb]) {
-        let (value, one) = storage.split_at_mut(storage.len() / 2);
-        (value, one)
+    fn split_mont_mut(storage: &mut [Limb]) -> (&[Limb], &mut [Limb]) {
+        let num_limbs = (storage.len() - MONT_PREFIX_LEN) / 2;
+        let (mont, one) = storage
+            .split_at_mut_checked(MONT_PREFIX_LEN + num_limbs)
+            .unwrap_or_else(|| unreachable!()); // by invariant.
+        (mont, one)
     }
 
     pub fn to_elem<'l, L>(
@@ -215,11 +198,12 @@ impl<'a, M, E> IntoMont<'a, M, E> {
     }
 
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Mont<'_, M> {
-        Mont::from_parts_unchecked_less_safe(self.value(), &self.n0, cpu_features)
+        let (mont, _) = self.split_mont();
+        Mont::from_storage_unchecked_less_safe(mont, cpu_features)
     }
 
     pub(crate) fn one(&self) -> One<'_, M, E> {
-        let (_, one) = self.parts();
+        let (_, one) = self.split_mont();
         One::<M, E>::from_limbs_unchecked_less_safe(one)
     }
 }
@@ -240,17 +224,13 @@ impl<'a, M: PublicModulus, E> IntoMont<'a, M, E> {
 #[cfg(any(test, feature = "alloc"))]
 impl<M> BoxedIntoMont<M, RR> {
     pub(crate) fn intoRRR(self, cpu: cpu::Features) -> BoxedIntoMont<M, RRR> {
-        let Self {
-            mut storage, n0, m, ..
-        } = self;
-        let (value, one) = IntoMont::<M, RR>::parts_mut(storage.as_mut());
-        let value = Value::<M>::from_limbs_unchecked_less_safe(value);
-        let mm = Mont::from_parts_unchecked_less_safe(value, &self.n0, cpu);
+        let Self { mut storage, m, .. } = self;
+        let (mont, one) = IntoMont::<M, RR>::split_mont_mut(storage.as_mut());
+        let mm = Mont::from_storage_unchecked_less_safe(mont, cpu);
         let _: elem::Mut<'_, M, RRR> =
             elem::Mut::<'_, M, RR>::assume_in_range_and_encoded_less_safe(one).square(&mm); // in place
         BoxedIntoMont {
             storage,
-            n0,
             m,
             encoding: PhantomData,
         }
@@ -265,21 +245,28 @@ impl<'a, M: PublicModulus, E> IntoMont<'a, M, E> {
     }
 }
 
+// See the invariant of `Mont::storage`.
+const MONT_PREFIX_LEN: usize = N0::LIMBS_USED;
+
 pub struct Mont<'a, M> {
-    value: Value<'a, M>,
-    n0: &'a N0,
+    // Invariant: Contains `N0::LIMBS_USED` limbs containing the value
+    // `Self::n0()` followed by the limbs of `Self::limbs()`.
+    storage: &'a [Limb],
+    m: PhantomData<M>,
     cpu_features: cpu::Features,
 }
 
 impl<'a, M> Mont<'a, M> {
-    pub(super) fn from_parts_unchecked_less_safe(
-        value: Value<'a, M>,
-        n0: &'a N0,
+    // "Less safe" because this assumes `storage` encodes a valid `Mont`.
+    // This should only be used where `storage` has been written by this
+    // module.
+    pub(super) fn from_storage_unchecked_less_safe(
+        storage: &'a [Limb],
         cpu: cpu::Features,
     ) -> Self {
         Mont {
-            value,
-            n0,
+            storage,
+            m: PhantomData,
             cpu_features: cpu,
         }
     }
@@ -288,12 +275,20 @@ impl<'a, M> Mont<'a, M> {
 impl<M> Mont<'_, M> {
     #[inline]
     pub(in super::super) fn limbs(&self) -> &[Limb] {
-        self.value.limbs()
+        let (_n0, value) = self
+            .storage
+            .split_first_chunk::<{ MONT_PREFIX_LEN }>()
+            .unwrap_or_else(|| unreachable!());
+        value
     }
 
     #[inline]
-    pub(in super::super) fn n0(&self) -> &N0 {
-        self.n0
+    pub(in super::super) fn n0(&self) -> N0<'_> {
+        let (n0, _value) = self
+            .storage
+            .split_first_chunk::<{ N0::LIMBS_USED }>()
+            .unwrap_or_else(|| unreachable!());
+        N0::from_limbs_unchecked_less_safe(n0)
     }
 
     pub fn num_limbs(&self) -> NonZero<usize> {

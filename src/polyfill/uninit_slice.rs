@@ -21,6 +21,7 @@ use super::{
 };
 use crate::error::LenMismatchError;
 use core::{
+    array::TryFromSliceError,
     iter,
     marker::PhantomData,
     mem::{self, MaybeUninit},
@@ -233,6 +234,28 @@ impl<'target, E> AliasedUninit<'target, E> {
         let target: *mut [MaybeUninit<E>] = self.target;
         let target = unsafe { &mut *target };
         Uninit { target }
+    }
+}
+
+impl<'buf, E: Copy> Cursor<'buf, E> {
+    pub fn write_repeat_array<const N: usize>(
+        &mut self,
+        value: E,
+    ) -> Result<&'buf mut [E; N], LenMismatchError> {
+        let r = self.write_repeat_slice(value, N)?;
+        Ok(r.try_into()
+            .unwrap_or_else(|TryFromSliceError { .. }| unreachable!()))
+    }
+
+    pub fn write_repeat_slice(
+        &mut self,
+        value: E,
+        repeat: usize,
+    ) -> Result<&'buf mut [E], LenMismatchError> {
+        Ok(self
+            .write_iter(iter::repeat_n(value, repeat))
+            .src_empty()?
+            .into_written())
     }
 }
 
