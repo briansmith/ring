@@ -138,6 +138,7 @@ impl ValidatedInput<'_> {
             let (mont_storage, ()) = out.try_write_with(|out| {
                 // We can't compute `n0` until after we've written `value`.
                 let n0_placeholder = out.write_repeat_array::<{ N0::LIMBS_USED }>(limb::ZERO)?;
+                let _num_limbs = out.write(limb::limb_from_usize(self.limbs().len()))?;
                 let value = out.write_iter(self.limbs()).src_empty()?.into_written();
                 N0::write_into(n0_placeholder, value);
                 Ok(())
@@ -246,11 +247,19 @@ impl<'a, M: PublicModulus, E> IntoMont<'a, M, E> {
 }
 
 // See the invariant of `Mont::storage`.
-const MONT_PREFIX_LEN: usize = N0::LIMBS_USED;
+const MONT_PREFIX_LEN: usize = N0::LIMBS_USED + 1;
 
 pub struct Mont<'a, M> {
     // Invariant: Contains `N0::LIMBS_USED` limbs containing the value
-    // `Self::n0()` followed by the limbs of `Self::limbs()`.
+    // `Self::n0()` followed by one limb containing the length of
+    // `Self::limbs()`, followed by the limbs of `Self::limbs()`.
+    //
+    // When `N0::LIMBS_USED` is 1 on a 64-bit target, the prefix will be
+    // 128 bits, so if `storage` is 128-bit aligned then the value limbs
+    // will be too. XXX: On 32-bit x86, the alignment will be off because
+    // `N0::LIMBS_USED` is 2. TODO: Does this affect performance at all?;
+    // we make no effort to align the storage but the allocator is likely
+    // to align it to 128 bits.
     storage: &'a [Limb],
     m: PhantomData<M>,
     cpu_features: cpu::Features,
@@ -275,7 +284,7 @@ impl<'a, M> Mont<'a, M> {
 impl<M> Mont<'_, M> {
     #[inline]
     pub(in super::super) fn limbs(&self) -> &[Limb] {
-        let (_n0, value) = self
+        let (_n0_num_limbs, value) = self
             .storage
             .split_first_chunk::<{ MONT_PREFIX_LEN }>()
             .unwrap_or_else(|| unreachable!());

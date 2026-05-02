@@ -43,6 +43,13 @@ pub const ZERO: LeakyLimb = 0;
 
 pub type LimbMask = bb::BoolMask;
 
+pub fn limb_from_usize(value: usize) -> Limb {
+    match_target_word_bits! {
+        64 => { value as u64 },
+        32 => { value as u32 },
+    }
+}
+
 #[inline]
 pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> Result<LimbMask, LenMismatchError> {
     if a.len() != b.len() {
