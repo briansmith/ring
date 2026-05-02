@@ -73,8 +73,9 @@ impl<M> One<'_, M, R> {
         // out == 2**r - m == 2**r (mod m).
         if leading_zero_bits_in_m != 0 {
             debug_assert!(leading_zero_bits_in_m < LIMB_BITS);
-            // Correct out to 2**(lg m) (mod m). `limbs_negative_odd` flipped
-            // all the leading zero bits to ones. Flip them back.
+            // Correct out to 2**(lg m) (mod m).
+            // `write_mont_identity_assuming_full_upper_limb` flipped all the
+            // leading zero bits to ones. Flip them back.
             *out.last_mut().unwrap() &= (!0) >> leading_zero_bits_in_m;
 
             // Now we have out == 2**(lg m) (mod m). Keep doubling until we get
