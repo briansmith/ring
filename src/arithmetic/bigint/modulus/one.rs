@@ -17,7 +17,7 @@ use crate::polyfill::prelude::*;
 
 use super::super::{
     super::montgomery::{R, RR},
-    Limb, Mont, elem, unwrap_impossible_len_mismatch_error,
+    Limb, Mont, elem,
 };
 use crate::{
     bits::BitLength,
@@ -82,7 +82,7 @@ impl<M> One<'_, M, R> {
             // Now we have out == 2**(lg m) (mod m). Keep doubling until we get
             // to 2**r (mod m).
             for _ in 0..leading_zero_bits_in_m {
-                limb::limbs_double_mod(out.leak_limbs_mut_less_safe(), m.limbs())?;
+                out = out.double(m);
             }
         }
 
@@ -125,8 +125,7 @@ impl<'l, M> elem::Mut<'l, M, R> {
         debug_assert!(d <= t);
         debug_assert!(t < r);
         for _ in 0..t {
-            limb::limbs_double_mod(self.leak_limbs_mut_less_safe(), m.limbs())
-                .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+            self = self.double(m);
         }
 
         // Because t | r:

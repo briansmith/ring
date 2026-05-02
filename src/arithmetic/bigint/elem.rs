@@ -439,6 +439,12 @@ impl<M, E> Mut<'_, M, E> {
         self
     }
 
+    pub fn double(self, m: &Mont<M>) -> Self {
+        limb::limbs_double_mod(self.limbs, m.limbs())
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
+        self
+    }
+
     pub fn sub(self, b: Ref<'_, M, E>, m: &Mont<M>) -> Self {
         prefixed_extern! {
             // `r` and `a` may alias.
