@@ -44,7 +44,7 @@ use super::{
         LimbSliceError, limbs512,
         montgomery::{RRR, Unencoded},
     },
-    IntoMont, Mont, One, OversizedUninit, PrivateExponent, elem,
+    IntoMont, Mont, One, PrivateExponent, elem,
 };
 use crate::{
     cpu,
@@ -58,10 +58,10 @@ use core::mem::MaybeUninit;
 impl<N> elem::Ref<'_, N, Unencoded> {
     pub(crate) fn exp_consttime<'out, P>(
         self,
-        out: &'out mut OversizedUninit<1>,
+        out: &'out mut elem::OversizedUninit,
         exponent: &PrivateExponent,
         p: &IntoMont<P, RRR>,
-        tmp: &mut OversizedUninit<1>,
+        tmp: &mut elem::OversizedUninit,
         cpu: cpu::Features,
     ) -> Result<elem::Mut<'out, P, Unencoded>, LimbSliceError> {
         let oneRRR = p.one();
@@ -86,12 +86,12 @@ const STORAGE_ENTRIES: usize = TABLE_ENTRIES + if cfg!(target_arch = "x86_64") {
 
 #[cfg(not(target_arch = "x86_64"))]
 fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
-    out: &'out mut OversizedUninit<1>,
+    out: &'out mut elem::OversizedUninit,
     base_mod_n: elem::Ref<'_, N, Unencoded>,
     oneRRR: &One<'_, M, RRR>,
     exponent: &PrivateExponent,
     m: &Mont<M>,
-    tmp: &mut OversizedUninit<1>,
+    tmp: &mut elem::OversizedUninit,
 ) -> Result<elem::Mut<'out, M, Unencoded>, LimbSliceError> {
     use super::{
         super::montgomery::{R, limbs_mul_mont, limbs_square_mont},
@@ -217,12 +217,12 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
 
 #[cfg(target_arch = "x86_64")]
 fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
-    out: &'out mut OversizedUninit<1>,
+    out: &'out mut elem::OversizedUninit,
     base_mod_n: elem::Ref<'_, N, Unencoded>,
     oneRRR: &One<M, RRR>,
     exponent: &PrivateExponent,
     m: &Mont<M>,
-    tmp: &mut OversizedUninit<1>,
+    tmp: &mut elem::OversizedUninit,
 ) -> Result<elem::Mut<'out, M, Unencoded>, LimbSliceError> {
     use super::{
         super::{
@@ -414,8 +414,8 @@ mod tests {
                     .intoRRR(cpu_features);
                 let im = &im.reborrow();
                 let m = im.modulus(cpu_features);
-                let mut tmp1 = OversizedUninit::<1>::new();
-                let mut tmp2 = OversizedUninit::<1>::new();
+                let mut tmp1 = elem::OversizedUninit::new();
+                let mut tmp2 = elem::OversizedUninit::new();
                 let expected_result = consume_elem(&mut tmp1, test_case, "ModExp", &m);
                 let base = consume_elem(&mut tmp2, test_case, "A", &m);
                 let e = {
@@ -429,7 +429,7 @@ mod tests {
                 // some other prime of the same length. Fake that here.
                 // Pretend there's another prime of equal length.
                 struct N {}
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let base = tmp
                     .as_uninit(..(base.as_ref().num_limbs() * 2))
                     .unwrap_or_else(unwrap_impossible_len_mismatch_error)
@@ -442,9 +442,9 @@ mod tests {
                     elem::Mut::assume_in_range_and_encoded_less_safe(base);
 
                 let too_big = m.limbs().len() > ELEM_EXP_CONSTTIME_MAX_MODULUS_LIMBS;
-                let mut actual_result = OversizedUninit::new();
-                let mut actual_result_2 = OversizedUninit::new();
-                let mut tmp = OversizedUninit::new();
+                let mut actual_result = elem::OversizedUninit::new();
+                let mut actual_result_2 = elem::OversizedUninit::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let actual_result = if !too_big {
                     base.as_ref()
                         .exp_consttime(&mut actual_result, &e, im, &mut tmp, cpu_features)

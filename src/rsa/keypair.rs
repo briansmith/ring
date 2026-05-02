@@ -330,9 +330,9 @@ impl KeyPair {
         // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
         let public_key = PublicKey::new(public_key, cpu_features)?;
 
-        let mut tmp1 = bigint::OversizedUninit::<1>::new();
-        let mut tmp2 = bigint::OversizedUninit::<1>::new();
-        let mut tmp3 = bigint::OversizedUninit::<1>::new();
+        let mut tmp1 = bigint::elem::OversizedUninit::new();
+        let mut tmp2 = bigint::elem::OversizedUninit::new();
+        let mut tmp3 = bigint::elem::OversizedUninit::new();
 
         let borrowed_public_key = public_key.inner();
         let n = borrowed_public_key.n().value();
@@ -506,10 +506,10 @@ impl<M> PrivateCrtPrime<M> {
 }
 
 fn elem_exp_consttime<'out, M>(
-    out: &'out mut bigint::OversizedUninit<1>,
+    out: &'out mut bigint::elem::OversizedUninit,
     c: bigint::elem::Ref<'_, N>,
     p: &PrivateCrtPrime<M>,
-    tmp: &mut bigint::OversizedUninit<1>,
+    tmp: &mut bigint::elem::OversizedUninit,
     cpu_features: cpu::Features,
 ) -> Result<bigint::elem::Mut<'out, M>, error::Unspecified> {
     c.exp_consttime(out, &p.exponent, &p.modulus.reborrow(), tmp, cpu_features)
@@ -570,7 +570,7 @@ impl KeyPair {
         // with Garner's algorithm.
 
         // Steps 1 and 2.
-        let mut tmp = bigint::OversizedUninit::<1>::new();
+        let mut tmp = bigint::elem::OversizedUninit::new();
         let m = self.private_exponentiate(&mut tmp, signature, cpu_features)?;
 
         // Step 3.
@@ -588,7 +588,7 @@ impl KeyPair {
     /// Panics if `in_out` is not `self.public().modulus_len()`.
     fn private_exponentiate<'out>(
         &self,
-        out: &'out mut bigint::OversizedUninit<1>,
+        out: &'out mut bigint::elem::OversizedUninit,
         base: &[u8],
         cpu_features: cpu::Features,
     ) -> Result<bigint::elem::Mut<'out, N>, error::Unspecified> {
@@ -606,14 +606,14 @@ impl KeyPair {
         let q = &self.q.modulus.reborrow();
 
         // Step 1. The value zero is also rejected.
-        let mut base_storage = bigint::OversizedUninit::<1>::new();
+        let mut base_storage = bigint::elem::OversizedUninit::new();
         let base = bigint::elem::Mut::from_be_bytes_padded(&mut base_storage, base, nm)?;
 
         // Step 2
         let c = base.as_ref();
 
-        let mut tmp1 = bigint::OversizedUninit::new();
-        let mut tmp2 = bigint::OversizedUninit::new();
+        let mut tmp1 = bigint::elem::OversizedUninit::new();
+        let mut tmp2 = bigint::elem::OversizedUninit::new();
 
         let tmp3 = &mut *out; // Abuse `out` for temporary storage.
 
@@ -669,7 +669,7 @@ impl KeyPair {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::arithmetic::bigint::OversizedUninit;
+    use crate::arithmetic::bigint::elem::OversizedUninit;
     use crate::testutil as test;
     use alloc::vec;
 
@@ -698,7 +698,7 @@ mod tests {
                     let mut padded = vec![0; key.public.modulus_len()];
                     let zeroes = padded.len() - test_case.len();
                     padded[zeroes..].copy_from_slice(test_case);
-                    let mut tmp = OversizedUninit::<1>::new();
+                    let mut tmp = OversizedUninit::new();
                     let _: bigint::elem::Mut<'_, _> =
                         key.private_exponentiate(&mut tmp, &padded, cpu).unwrap();
                 }

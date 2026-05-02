@@ -39,10 +39,7 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-pub(crate) use self::{
-    modulus::{IntoMont, Mont, One},
-    oversized_uninit::OversizedUninit,
-};
+pub(crate) use self::modulus::{IntoMont, Mont, One};
 use super::{LimbSliceError, MAX_LIMBS, montgomery::*};
 use crate::{
     error::{self, LenMismatchError},
@@ -119,15 +116,15 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let mut tmp = OversizedUninit::<2>::new();
+                let mut tmp = modulus::OversizedUninit::new();
                 let m_owned = consume_modulus::<M>(&mut tmp, test_case, "M");
                 let m = m_owned.modulus(cpu_features);
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let expected_result = consume_elem(&mut tmp, test_case, "ModMul", &m);
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let a =
                     consume_elem(&mut tmp, test_case, "A", &m).encode_mont(&m_owned, cpu_features);
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let b =
                     consume_elem(&mut tmp, test_case, "B", &m).encode_mont(&m_owned, cpu_features);
                 let actual_result = a.mul(b.as_ref(), &m);
@@ -149,16 +146,16 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                let mut tmp = OversizedUninit::<2>::new();
+                let mut tmp = modulus::OversizedUninit::new();
                 let m_owned = consume_modulus::<M>(&mut tmp, test_case, "M");
                 let m = m_owned.modulus(cpu_features);
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let expected_result = consume_elem(&mut tmp, test_case, "ModSquare", &m);
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let a =
                     consume_elem(&mut tmp, test_case, "A", &m).encode_mont(&m_owned, cpu_features);
                 let actual_result = a.square(&m);
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let actual_result = actual_result
                     .into_unencoded(&m, &mut tmp)
                     .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
@@ -179,20 +176,20 @@ mod tests {
 
                 struct M {}
 
-                let mut tmp = OversizedUninit::<2>::new();
+                let mut tmp = modulus::OversizedUninit::new();
                 let m_ = consume_modulus::<M>(&mut tmp, test_case, "M");
                 let m = m_.modulus(cpu_features);
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let expected_result = consume_elem(&mut tmp, test_case, "R", &m);
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let a = consume_elem_unchecked::<M>(
                     &mut tmp,
                     test_case,
                     "A",
                     expected_result.as_ref().num_limbs() * 2,
                 );
-                let mut tmp1 = OversizedUninit::<1>::new();
-                let mut tmp2 = OversizedUninit::<1>::new();
+                let mut tmp1 = elem::OversizedUninit::new();
+                let mut tmp2 = elem::OversizedUninit::new();
                 let actual_result = a
                     .as_ref()
                     .reduced_mont(&mut tmp1, &m, &mut tmp2)
@@ -215,14 +212,14 @@ mod tests {
                 struct M {}
                 struct O {}
 
-                let mut tmp = OversizedUninit::<2>::new();
+                let mut tmp = modulus::OversizedUninit::new();
                 let m = consume_modulus::<M>(&mut tmp, test_case, "m");
                 let m = m.modulus(cpu_features);
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let a = consume_elem_unchecked::<O>(&mut tmp, test_case, "a", m.limbs().len());
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let expected_result = consume_elem::<M>(&mut tmp, test_case, "r", &m);
-                let mut tmp = OversizedUninit::<1>::new();
+                let mut tmp = elem::OversizedUninit::new();
                 let actual_result = a.as_ref().reduced_once(&mut tmp, &m);
                 assert_elem_eq(actual_result.as_ref(), expected_result.as_ref());
 

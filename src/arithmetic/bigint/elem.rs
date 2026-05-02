@@ -16,7 +16,7 @@
 use crate::polyfill::prelude::*;
 
 use super::{
-    super::montgomery::*, IntoMont, Mont, OversizedUninit, unwrap_impossible_len_mismatch_error,
+    super::montgomery::*, IntoMont, Mont, unwrap_impossible_len_mismatch_error,
     unwrap_impossible_limb_slice_error,
 };
 use crate::{
@@ -29,6 +29,9 @@ use crate::{
     },
 };
 use core::{iter, marker::PhantomData, num::NonZero};
+
+// TODO: Move here?
+pub(crate) use super::oversized_uninit::OversizedUninit;
 
 /// A boxed `Mut`.
 #[cfg(feature = "alloc")]
@@ -149,7 +152,7 @@ impl<'l, M> Mut<'l, M, Unencoded> {
     }
 
     pub fn from_be_bytes_padded(
-        out: &'l mut OversizedUninit<1>,
+        out: &'l mut OversizedUninit,
         input: untrusted::Input<'_>,
         m: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
@@ -213,7 +216,7 @@ impl<'l, M, E> Ref<'l, M, E> {
         self.limbs
     }
 
-    pub fn clone_into<'out>(&self, out: &'out mut OversizedUninit<1>) -> Mut<'out, M, E> {
+    pub fn clone_into<'out>(&self, out: &'out mut OversizedUninit) -> Mut<'out, M, E> {
         let limbs = out
             .write_copy_of_slice(self.limbs, self.limbs.len())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
@@ -229,7 +232,7 @@ impl<'l, M, E> Ref<'l, M, E> {
 impl<'l, M> MutAmm<'l, M> {
     #[cfg(target_arch = "x86_64")]
     pub(super) fn copy_from_limbs_assume_amm_and_encoded(
-        out: &'l mut OversizedUninit<1>,
+        out: &'l mut OversizedUninit,
         src: &mut [Limb],
     ) -> Result<Self, LenMismatchError> {
         let limbs = out.write_copy_of_slice(src, src.len())?;
@@ -246,7 +249,7 @@ impl<'l, M> MutAmm<'l, M> {
     pub(super) fn reduced_mont(
         self,
         m: &Mont<M>,
-        tmp: &mut OversizedUninit<1>,
+        tmp: &mut OversizedUninit,
     ) -> Result<Mut<'l, M, Unencoded>, LenMismatchError> {
         if self.limbs.len() != m.num_limbs().get() {
             return Err(LenMismatchError::new(self.limbs.len()));
@@ -274,7 +277,7 @@ impl<'l, M> Mut<'l, M, R> {
     pub fn into_unencoded(
         self,
         m: &Mont<M>,
-        tmp: &mut OversizedUninit<1>,
+        tmp: &mut OversizedUninit,
     ) -> Result<Mut<'l, M, Unencoded>, LenMismatchError> {
         let amm = MutAmm {
             limbs: self.limbs,
@@ -373,7 +376,7 @@ impl<M> Ref<'_, M, Unencoded> {
     // same bit length, `M.ilog2()/2`, then P < 2*Q and Q < 2*P.)
     pub fn reduced_once<'out, P>(
         self,
-        out: &'out mut OversizedUninit<1>,
+        out: &'out mut OversizedUninit,
         m: &Mont<P>,
     ) -> Mut<'out, P, Unencoded> {
         // TODO: We should add a variant of `limbs_reduced_once` that does the
@@ -394,9 +397,9 @@ impl<'l, M> Ref<'l, M, Unencoded> {
     #[inline]
     pub fn reduced_mont<'out, P>(
         self,
-        out: &'out mut OversizedUninit<1>,
+        out: &'out mut OversizedUninit,
         p: &Mont<P>,
-        tmp: &mut OversizedUninit<1>,
+        tmp: &mut OversizedUninit,
     ) -> Mut<'out, P, RInverse> {
         // `limbs_from_mont_in_place` requires this.
         assert_eq!(self.limbs.len(), p.limbs().len() * 2);
@@ -417,7 +420,7 @@ impl<'l, M> Ref<'l, M, Unencoded> {
 impl<'l, M, E> Ref<'l, M, E> {
     pub fn widen<'out, Larger>(
         self,
-        out: &'out mut OversizedUninit<1>,
+        out: &'out mut OversizedUninit,
         m: &Mont<Larger>,
     ) -> Result<Mut<'out, Larger, Unencoded>, error::Unspecified> {
         let out = out
@@ -497,7 +500,7 @@ pub mod testutil {
     use super::*;
 
     pub fn consume_elem<'out, M>(
-        out: &'out mut OversizedUninit<1>,
+        out: &'out mut OversizedUninit,
         test_case: &mut crate::testutil::TestCase,
         name: &str,
         m: &Mont<M>,
@@ -507,7 +510,7 @@ pub mod testutil {
     }
 
     pub fn consume_elem_unchecked<'out, M>(
-        out: &'out mut OversizedUninit<1>,
+        out: &'out mut OversizedUninit,
         test_case: &mut crate::testutil::TestCase,
         name: &str,
         num_limbs: usize,
