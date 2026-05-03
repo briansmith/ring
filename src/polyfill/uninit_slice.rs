@@ -201,7 +201,14 @@ impl<'target, E> From<&'target mut [MaybeUninit<E>]> for Uninit<'target, E> {
 // A pointer to an `Uninit` that remembers the `Uninit`'s lifetime.
 pub struct AliasedUninit<'target, E> {
     target: *mut [MaybeUninit<E>],
-    _a: PhantomData<&'target mut [MaybeUninit<E>]>,
+    // `()` is a zero-sized type, whereas `[MaybeUninit<E>]` isn't. From
+    // https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#aliasing,
+    // "One interesting side effect of these rules is that references and
+    // pointers to Zero Sized Types never alias each other, because their span
+    // length is always 0 bytes." So this allows us to mention `'target`
+    // basically without any other effect, or even alluding to any other
+    // effect.
+    _a: PhantomData<&'target mut ()>,
 }
 
 impl<E> StartPtr for &AliasedUninit<'_, E> {
