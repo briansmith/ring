@@ -351,7 +351,7 @@ impl PublicKeyOps {
     ) -> Result<Elem<R>, error::Unspecified> {
         let _cpu = cpu::features();
         let encoded_value = input.read_bytes(self.common.len())?;
-        let parsed = elem_parse_big_endian_fixed_consttime(q, encoded_value)?;
+        let parsed = parse_big_endian_fixed_consttime(q, encoded_value, AllowZero::Yes)?;
         let mut r = Elem::zero();
         let rr = Elem::from(&self.common.q.rr);
         // Montgomery encode (elem_to_mont).
@@ -535,22 +535,6 @@ fn elem_sqr_mul_acc(
 }
 
 #[inline]
-pub(super) fn elem_parse_big_endian_fixed_consttime(
-    q: &Modulus<Q>,
-    bytes: untrusted::Input,
-) -> Result<Elem<Unencoded>, error::Unspecified> {
-    parse_big_endian_fixed_consttime(q, bytes, AllowZero::Yes)
-}
-
-#[inline]
-pub(super) fn scalar_parse_big_endian_fixed_consttime(
-    n: &Modulus<N>,
-    bytes: untrusted::Input,
-) -> Result<Scalar, error::Unspecified> {
-    parse_big_endian_fixed_consttime(n, bytes, AllowZero::No)
-}
-
-#[inline]
 pub(super) fn scalar_parse_big_endian_variable(
     n: &Modulus<N>,
     allow_zero: AllowZero,
@@ -583,7 +567,7 @@ pub(super) fn scalar_parse_big_endian_partially_reduced_variable_consttime(
     Ok(r)
 }
 
-fn parse_big_endian_fixed_consttime<M>(
+pub(super) fn parse_big_endian_fixed_consttime<M>(
     m: &Modulus<M>,
     bytes: untrusted::Input,
     allow_zero: AllowZero,
@@ -1298,7 +1282,8 @@ mod tests {
         let num_limbs = q.num_limbs.into();
         let bytes = test::from_hex(elems[i]).unwrap();
         let bytes = untrusted::Input::from(&bytes);
-        let r: Elem<Unencoded> = elem_parse_big_endian_fixed_consttime(q, bytes).unwrap();
+        let r: Elem<Unencoded> =
+            parse_big_endian_fixed_consttime(q, bytes, AllowZero::Yes).unwrap();
         // XXX: “Transmute” this to `Elem<R>` limbs.
         limbs_out[(i * num_limbs)..((i + 1) * num_limbs)].copy_from_slice(&r.limbs[..num_limbs]);
     }
@@ -1318,7 +1303,7 @@ mod tests {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
             let unencoded: Elem<Unencoded> =
-                elem_parse_big_endian_fixed_consttime(q, bytes).unwrap();
+                parse_big_endian_fixed_consttime(q, bytes, AllowZero::Yes).unwrap();
             // XXX: “Transmute” this to `Elem<R>` limbs.
             Elem {
                 limbs: unencoded.limbs,
@@ -1371,7 +1356,8 @@ mod tests {
         bytes.extend(&unpadded_bytes);
 
         let bytes = untrusted::Input::from(&bytes);
-        let r: Elem<Unencoded> = elem_parse_big_endian_fixed_consttime(q, bytes).unwrap();
+        let r: Elem<Unencoded> =
+            parse_big_endian_fixed_consttime(q, bytes, AllowZero::Yes).unwrap();
         // XXX: “Transmute” this to an `Elem<R>`.
         Elem {
             limbs: r.limbs,
