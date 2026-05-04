@@ -847,9 +847,9 @@ mod tests {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
-            let mut a = consume_elem(q, test_case, "a");
-            let b = consume_elem(q, test_case, "b");
-            let r = consume_elem(q, test_case, "r");
+            let mut a = consume_elem_mont(q, test_case, "a");
+            let b = consume_elem_mont(q, test_case, "b");
+            let r = consume_elem_mont(q, test_case, "r");
             q.elem_mul(&mut a, &b);
             assert_limbs_are_equal(ops, &a.limbs, &r.limbs);
 
@@ -1350,14 +1350,17 @@ mod tests {
         }
     }
 
-    fn consume_elem(q: &Modulus<Q>, test_case: &mut test::TestCase, name: &str) -> Elem<R> {
+    fn consume_elem(q: &Modulus<Q>, test_case: &mut test::TestCase, name: &str) -> Elem<Unencoded> {
         let unpadded_bytes = test_case.consume_bytes(name);
         let mut bytes = vec![0; q.bytes_len() - unpadded_bytes.len()];
         bytes.extend(&unpadded_bytes);
 
         let bytes = untrusted::Input::from(&bytes);
-        let r: Elem<Unencoded> =
-            parse_big_endian_fixed_consttime(q, bytes, AllowZero::Yes).unwrap();
+        parse_big_endian_fixed_consttime(q, bytes, AllowZero::Yes).unwrap()
+    }
+
+    fn consume_elem_mont(q: &Modulus<Q>, test_case: &mut test::TestCase, name: &str) -> Elem<R> {
+        let r = consume_elem(q, test_case, name);
         // XXX: “Transmute” this to an `Elem<R>`.
         Elem {
             limbs: r.limbs,
