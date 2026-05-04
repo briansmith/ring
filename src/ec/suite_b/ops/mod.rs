@@ -1377,9 +1377,7 @@ mod tests {
         test_case: &mut test::TestCase,
         name: &str,
     ) -> Scalar<R> {
-        let bytes = test_case.consume_bytes(name);
-        let bytes = untrusted::Input::from(&bytes);
-        let s = scalar_parse_big_endian_variable(n, AllowZero::Yes, bytes).unwrap();
+        let s = consume_scalar(n, test_case, name);
         // “Transmute” it to a `Scalar<R>`.
         Scalar {
             limbs: s.limbs,
