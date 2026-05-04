@@ -16,7 +16,12 @@
 //! ECDSA signing).
 
 use super::{ops::*, verify_affine_point_is_on_the_curve};
-use crate::{arithmetic::montgomery::R, cpu, ec, error, limb, rand};
+use crate::{
+    arithmetic::montgomery::R,
+    cpu, ec, error,
+    limb::{self, AllowZero},
+    rand,
+};
 
 /// Generates a random scalar in the range [1, n).
 pub(super) fn random_scalar(
@@ -125,7 +130,7 @@ pub(super) fn scalar_from_big_endian_bytes(
     // way, we avoid needing to compute or store the value (n - 1), we avoid the
     // need to implement a function to add one to a scalar, and we avoid needing
     // to convert the scalar back into an array of bytes.
-    scalar_parse_big_endian_fixed_consttime(n, untrusted::Input::from(bytes))
+    parse_big_endian_fixed_consttime(n, untrusted::Input::from(bytes), AllowZero::No)
 }
 
 pub(super) fn public_from_private(
