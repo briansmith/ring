@@ -188,19 +188,12 @@ impl fe1305x2 {
     }
 }
 
-// TODO: Does this really need to be `#[repr(C)]` or `#[repr(align(16))`]? We
-// need to read the assembly code and see what assumptions it makes on the
-// layout of its inputs. We've already made `fe1305x2` 16-byte aligned and that
-// might be all we need.
-//
 // XXX/TODO(MSRV): change to `pub(super)`.
-#[repr(C, align(16))]
 pub(in super::super) struct State {
     r: fe1305x2,
     h: fe1305x2,
     c: fe1305x2,
     precomp: [fe1305x2; 2],
-    data: [u8; data_len()], // TODO: Does the assembly code use this?
 
     buf: [u8; 2 * BLOCK_LEN],
     buf_used: c::size_t,
@@ -231,7 +224,6 @@ impl State {
             h: fe1305x2 { v: [ZERO; 12] },
             c: fe1305x2 { v: [ZERO; 12] },
             precomp: [fe1305x2 { v: [ZERO; 12] }; 2],
-            data: [0u8; data_len()],
 
             buf: Default::default(),
             buf_used: 0,
@@ -334,10 +326,6 @@ impl State {
         h.v[8] += c.v[8];
         Tag(h.to_bytes())
     }
-}
-
-const fn data_len() -> usize {
-    128
 }
 
 fn store32<'o>(output: &'o mut [u8; BLOCK_LEN], i: usize, value: W32) {
