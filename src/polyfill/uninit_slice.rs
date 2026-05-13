@@ -19,7 +19,7 @@ use super::{
     start_ptr::{StartMutPtr, StartPtr},
     uninit_slice_cursor::Cursor,
 };
-use crate::error::{self, LenMismatchError};
+use crate::error::LenMismatchError;
 use core::{
     iter,
     marker::PhantomData,
@@ -145,27 +145,6 @@ impl<'target, E: Copy> Uninit<'target, E> {
         }
     }
 
-    // If the result of `u.write_fully_with(f)` is `Ok(r)` then:
-    //    * `r.len() == u.len()`
-    //    * `r` has overwritten any elements of `self`.
-    //    * Either `r.as_ptr()` equals `u.as_ptr()` or `u.len() == 0` and `r.len() == 0`.
-    pub fn write_fully_with(
-        self,
-        f: impl for<'a> FnOnce(Uninit<'a, E>) -> Result<&'a mut [E], error::Unspecified>,
-    ) -> Result<&'target mut [E], error::Unspecified> {
-        let (len, ptr) = (self.len(), self.start_ptr());
-        let written = f(self)?;
-        if written.len() != len {
-            Err(error::erase(LenMismatchError::new(written.len())))?;
-        }
-        // Verify the returned slice is actually `self` overwritten, but also
-        // allow any empty slice for usability.
-        if !ptr::addr_eq(ptr, written.as_ptr()) && len != 0 {
-            return Err(error::Unspecified);
-        }
-        Ok(written)
-    }
-
     pub unsafe fn assume_init(self) -> &'target mut [E] {
         let r: &'target mut [MaybeUninit<E>] = self.target;
         let r: *mut [MaybeUninit<E>] = ptr::from_mut(r);
@@ -264,11 +243,6 @@ pub struct WriteResult<'written, E, Dst, Src> {
 }
 
 impl<'written, E, Dst, Src> WriteResult<'written, E, Dst, Src> {
-    #[cfg(test)]
-    pub fn ignore_uninit(self) -> WriteResult<'written, E, (), Src> {
-        self.take_uninit().0
-    }
-
     #[inline(always)]
     pub fn take_uninit(self) -> (WriteResult<'written, E, (), Src>, Dst) {
         let WriteResult {
