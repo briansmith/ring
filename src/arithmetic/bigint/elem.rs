@@ -232,9 +232,8 @@ impl<'l, M> MutAmm<'l, M> {
         out: &'l mut OversizedUninit<1>,
         src: &mut [Limb],
     ) -> Result<Self, LenMismatchError> {
-        let limbs = out.write_copy_of_slice(src, src.len())?;
         Ok(Self {
-            limbs,
+            limbs: out.write_copy_of_slice(src, src.len())?,
             m: PhantomData,
         })
     }

@@ -85,10 +85,10 @@ impl<'target, E> Uninit<'target, E> {
 // `E: Copy` to avoid `Drop` issues.
 impl<'target, E: Copy> Uninit<'target, E> {
     #[allow(dead_code)]
-    pub fn write_copy_of_slice(
+    pub fn write_copy_of_slice<'src>(
         mut self,
-        src: &[E],
-    ) -> Result<WriteResult<'target, E, Self, ()>, LenMismatchError> {
+        src: &'src [E],
+    ) -> Result<(&'target mut [E], Self), LenMismatchError> {
         let Some(mut dst) = self.split_off_mut(..src.len()) else {
             return Err(LenMismatchError::new(self.len()));
         };
@@ -96,11 +96,7 @@ impl<'target, E: Copy> Uninit<'target, E> {
             ptr::copy_nonoverlapping(src.as_ptr(), dst.start_mut_ptr(), src.len());
             dst.assume_init()
         };
-        Ok(WriteResult {
-            written,
-            dst_leftover: self,
-            src_leftover: (),
-        })
+        Ok((written, self))
     }
 
     pub fn write_copy_of_slice_padded(
@@ -108,7 +104,7 @@ impl<'target, E: Copy> Uninit<'target, E> {
         src: &[E],
         padding: E,
     ) -> Result<&'target mut [E], LenMismatchError> {
-        let (_, to_zero) = self.reborrow_mut().write_copy_of_slice(src)?.take_uninit();
+        let (_, to_zero) = self.reborrow_mut().write_copy_of_slice(src)?;
         let _: &_ = to_zero.write_filled_copy(padding);
         Ok(unsafe { self.assume_init() })
     }

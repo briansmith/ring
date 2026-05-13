@@ -43,11 +43,10 @@ impl<const N: usize> OversizedUninit<N> {
         a: &[Limb],
         expected_len: usize,
     ) -> Result<&mut [Limb], LenMismatchError> {
-        Ok(self
-            .as_uninit(..expected_len)?
-            .write_copy_of_slice(a)?
-            .uninit_empty()
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
-            .into_written())
+        if a.len() != expected_len {
+            return Err(LenMismatchError::new(a.len()));
+        }
+        let (written, _) = self.as_uninit_whole().write_copy_of_slice(a)?;
+        Ok(written)
     }
 }
