@@ -407,12 +407,10 @@ impl<'l, M> Ref<'l, M, Unencoded> {
         let out = out
             .as_uninit(..p.num_limbs().get())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
-        out.write_fully_with(|out| {
-            limbs_from_mont_in_place(out, tmp, p.limbs(), p.n0())
-                .map_err(error::erase::<LenMismatchError>)
-        })
-        .map(Mut::<P, RInverse>::assume_in_range_and_encoded_less_safe)
-        .unwrap_or_else(|_: error::Unspecified| unreachable!())
+        limbs_from_mont_in_place(out, tmp, p.limbs(), p.n0())
+            .map_err(error::erase::<LenMismatchError>)
+            .map(Mut::<P, RInverse>::assume_in_range_and_encoded_less_safe)
+            .unwrap_or_else(|_: error::Unspecified| unreachable!())
     }
 }
 

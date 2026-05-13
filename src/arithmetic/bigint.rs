@@ -72,9 +72,8 @@ impl<M> elem::Boxed<M> {
         use alloc::boxed::Box;
 
         let mut uninit = Box::new_uninit_slice(m.num_limbs().get());
-        let _: &mut _ = Uninit::from(uninit.as_mut()).write_fully_with(|uninit| {
-            Ok(elem::Mut::from_be_bytes_padded_(uninit, input, m)?.leak_limbs_into_mut_less_safe())
-        })?;
+        let _ = elem::Mut::from_be_bytes_padded_(Uninit::from(uninit.as_mut()), input, m)?
+            .leak_limbs_into_mut_less_safe();
         let limbs = unsafe { uninit.assume_init() };
         Ok(elem::Boxed::assume_in_range_and_encoded_less_safe(limbs))
     }
