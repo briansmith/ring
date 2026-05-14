@@ -23,7 +23,7 @@ use crate::{
     bits::BitLength,
     error::LenMismatchError,
     limb::{self, LIMB_BITS},
-    polyfill::slice::Cursor,
+    polyfill::slice::Uninit,
 };
 use core::{marker::PhantomData, mem::size_of};
 
@@ -50,7 +50,7 @@ impl<M, E> One<'_, M, E> {
 
 impl<M> One<'_, M, R> {
     pub(in super::super) fn write_mont_identity_assuming_full_upper_limb<'r>(
-        out: &mut Cursor<'r, Limb>,
+        out: Uninit<'r, Limb>,
         m: &Mont<'_, M>,
     ) -> Result<elem::Mut<'r, M, R>, LenMismatchError> {
         // out = 2**r - m where m = self.
@@ -59,7 +59,7 @@ impl<M> One<'_, M, R> {
     }
 
     pub(in super::super) fn write_mont_identity<'r>(
-        out: &mut Cursor<'r, Limb>,
+        out: Uninit<'r, Limb>,
         m: &Mont<'_, M>,
         m_bit_len: BitLength,
     ) -> Result<elem::Mut<'r, M, R>, LenMismatchError> {

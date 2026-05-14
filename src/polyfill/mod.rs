@@ -90,7 +90,6 @@ mod start_ptr;
 mod test;
 
 mod uninit_slice;
-mod uninit_slice_cursor;
 
 pub use self::{array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, notsend::NotSend};
 

@@ -24,8 +24,7 @@
 
 pub(crate) use super::{
     aliasing_slices::{AliasSrc, AliasingSlices, InOut},
-    uninit_slice::{AliasedUninit, Uninit},
-    uninit_slice_cursor::Cursor,
+    uninit_slice::{AliasedUninit, Buf, Cursor, Uninit},
 };
 
 #[allow(dead_code)]
