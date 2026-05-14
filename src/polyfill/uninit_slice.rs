@@ -125,8 +125,12 @@ impl<'target, E: Copy> Uninit<'target, E> {
         src: &[E],
         padding: E,
     ) -> Result<&'target mut [E], LenMismatchError> {
-        let (_, to_zero) = self.reborrow_mut().write_copy_of_slice(src)?.take_uninit();
-        let _: &_ = to_zero.write_filled_copy(padding);
+        let WriteResult {
+            written: _,
+            dst_leftover,
+            src_leftover: (),
+        } = self.reborrow_mut().write_copy_of_slice(src)?;
+        let _: &_ = dst_leftover.write_filled_copy(padding);
         Ok(unsafe { self.assume_init() })
     }
 
