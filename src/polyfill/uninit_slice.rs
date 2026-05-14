@@ -121,13 +121,15 @@ impl<'target, E: Copy> Uninit<'target, E> {
     }
 
     pub fn write_copy_of_slice_padded(
-        mut self,
+        self,
         src: &[E],
         padding: E,
     ) -> Result<&'target mut [E], LenMismatchError> {
-        let (_, to_zero) = self.reborrow_mut().write_copy_of_slice(src)?.take_uninit();
-        let _: &_ = to_zero.write_filled_copy(padding);
-        Ok(unsafe { self.assume_init() })
+        let mut buf = Buf::from(self);
+        buf.unfilled().write_copy_of_slice(src)?;
+        let padding_len = buf.unfilled().capacity();
+        buf.unfilled().write_repeat(padding, padding_len)?;
+        Ok(buf.into_filled_mut())
     }
 
     pub fn write_filled_copy(self, value: E) -> &'target mut [E]
@@ -349,6 +351,17 @@ impl<E: Copy> Cursor<'_, '_, E> {
 
     pub fn write(&mut self, value: E) -> Result<(), LenMismatchError> {
         self.write_repeat(value, 1)
+    }
+
+    pub fn write_copy_of_slice(&mut self, src: &[E]) -> Result<(), LenMismatchError> {
+        let unfilled = self.buf.unfilled_uninit();
+        let WriteResult {
+            written,
+            dst_leftover: _,
+            src_leftover: (),
+        } = unfilled.write_copy_of_slice(src)?;
+        self.buf.filled += written.len();
+        Ok(())
     }
 
     pub fn write_repeat(&mut self, value: E, repeat: usize) -> Result<(), LenMismatchError> {
