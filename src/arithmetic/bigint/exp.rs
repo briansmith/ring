@@ -154,11 +154,10 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         |init, uninit| {
             let r: Result<&'_ mut [Limb], LimbSliceError> = match init.len() {
                 // table[0] = base**0 (i.e. 1).
-                0 => Ok(One::write_mont_identity_assuming_full_upper_limb(
-                    &mut uninit.into_cursor(),
-                    m,
-                )?
-                .leak_limbs_into_mut_less_safe()),
+                0 => Ok(
+                    One::write_mont_identity_assuming_full_upper_limb(uninit, m)?
+                        .leak_limbs_into_mut_less_safe(),
+                ),
 
                 // table[1] = base*R == (base/R * RRR)/R
                 1 => limbs_mul_mont(
@@ -338,10 +337,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     // All entries in `table` will be Montgomery encoded.
 
     // t0 = table[0] = base**0 (i.e. 1).
-    let t0 = One::write_mont_identity_assuming_full_upper_limb(
-        &mut acc.reborrow_mut().into_cursor(),
-        m,
-    )?;
+    let t0 = One::write_mont_identity_assuming_full_upper_limb(acc.reborrow_mut(), m)?;
     scatter5(t0.leak_limbs_less_safe(), table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).

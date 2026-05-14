@@ -30,7 +30,7 @@ use crate::{
     limb::{self, LIMB_BITS, Limb},
     polyfill::{
         LeadingZerosStripped,
-        slice::{Cursor, Uninit},
+        slice::{Buf, Cursor, Uninit},
         usize_from_u32,
     },
 };
@@ -97,23 +97,17 @@ impl ValidatedInput<'_> {
         let storage_len =
             into_mont_storage_len_from_num_limbs(limbs.len()).unwrap_or_else(|| unreachable!()); // Because `MAX_LIMBS` is small.
         let mut uninit = Box::new_uninit_slice(storage_len);
-        let borrowed = Uninit::from(uninit.as_mut());
-        let mut cursor = borrowed.into_cursor();
-        let IntoMont {
-            storage: _,
-            m,
-            encoding,
-        } = self
-            .write_into_mont(&mut cursor, cpu)
+        let mut buf = Buf::from(Uninit::from(uninit.as_mut()));
+        self.write_into_mont_RR::<M>(buf.unfilled(), cpu)
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
-        cursor
-            .check_at_end()
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        if buf.filled().len() != uninit.len() {
+            unreachable!()
+        };
         let storage = unsafe { uninit.assume_init() };
         BoxedIntoMont {
             storage,
-            m,
-            encoding,
+            m: PhantomData,
+            encoding: PhantomData,
         }
     }
 
@@ -122,36 +116,53 @@ impl ValidatedInput<'_> {
         uninit: &'o mut OversizedUninit,
         cpu: cpu::Features,
     ) -> IntoMont<'o, M, RR> {
-        self.write_into_mont(
-            &mut Uninit::from(uninit.0.as_mut_slice()).into_cursor(),
-            cpu,
-        )
-        .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
-    }
-
-    fn write_into_mont<'o, M>(
-        &self,
-        out: &mut Cursor<'o, Limb>,
-        cpu: cpu::Features,
-    ) -> Result<IntoMont<'o, M, RR>, LenMismatchError> {
-        let (storage, ()) = out.try_write_with(|out| {
-            let (mont_storage, ()) = out.try_write_with(|out| {
-                // We can't compute `n0` until after we've written `value`.
-                let n0_placeholder = out.write_repeat_array::<{ N0::LIMBS_USED }>(limb::ZERO)?;
-                let _num_limbs = out.write(limb::limb_from_usize(self.limbs().len()))?;
-                let value = out.write_iter(self.limbs()).src_empty()?.into_written();
-                N0::write_into(n0_placeholder, value);
-                Ok(())
-            })?;
-            let m = &Mont::<'_, M>::from_storage_unchecked_less_safe(mont_storage, cpu);
-            let _: elem::Mut<'_, M, RR> =
-                One::write_mont_identity(out, m, self.len_bits())?.mul_r(m)?; // in place.
-            Ok(())
-        })?;
-        Ok(IntoMont {
-            storage,
+        let mut buf = Buf::from(Uninit::from(uninit.0.as_mut_slice()));
+        self.write_into_mont_RR::<M>(buf.unfilled(), cpu)
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
+        IntoMont {
+            storage: buf.into_filled_mut(),
             m: PhantomData,
             encoding: PhantomData,
+        }
+    }
+
+    fn write_into_mont_RR<M>(
+        &self,
+        mut out: Cursor<'_, '_, Limb>,
+        cpu: cpu::Features,
+    ) -> Result<(), LenMismatchError> {
+        let storage_num_limbs = into_mont_storage_len_from_num_limbs(self.limbs().len())
+            .unwrap_or_else(|| unreachable!()); // Already validated
+        if out.capacity() < storage_num_limbs {
+            return Err(LenMismatchError::new(out.capacity()));
+        }
+        out.with_unfilled_buf(|out| {
+            // We can't compute `n0` until after we've written `value`.
+            out.unfilled().write_repeat(limb::ZERO, N0::LIMBS_USED)?;
+            out.unfilled()
+                .write(limb::limb_from_usize(self.limbs().len()))?;
+            let (_value, _empty) = out.unfilled().write_iter(self.limbs());
+            let (n0, rest) = out
+                .filled_mut()
+                .split_first_chunk_mut::<{ N0::LIMBS_USED }>()
+                .unwrap_or_else(|| unreachable!()); // Since we just wrote it.
+            let (_num_limbs, value) = rest.split_first().unwrap_or_else(|| unreachable!()); // Since we just wrote it.
+            N0::write_into(n0, value);
+
+            let one_pos = out.filled().len();
+
+            // Placeholder for the value of 1*RR.
+            out.unfilled()
+                .write_repeat(limb::ZERO, self.limbs().len())?;
+            let (mont, one) = out
+                .filled_mut()
+                .split_at_mut_checked(one_pos)
+                .unwrap_or_else(|| unreachable!()); // Since we just wrote it.
+            let m = &Mont::<'_, M>::from_storage_unchecked_less_safe(mont, cpu);
+
+            let _: elem::Mut<'_, _, RR> =
+                One::write_mont_identity(Uninit::from(one), m, self.len_bits())?.mul_r(m)?; // in place.
+            Ok(())
         })
     }
 }

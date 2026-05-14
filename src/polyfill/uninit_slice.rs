@@ -15,18 +15,15 @@
 #[allow(unused_imports)]
 use crate::polyfill::prelude::*;
 
-use super::{
-    start_ptr::{StartMutPtr, StartPtr},
-    uninit_slice_cursor::Cursor,
-};
+use super::start_ptr::{StartMutPtr, StartPtr};
 use crate::error::LenMismatchError;
 use core::{
-    array::TryFromSliceError,
     iter,
     marker::PhantomData,
     mem::{self, MaybeUninit},
     ops::RangeTo,
     ptr,
+    slice::SliceIndex,
 };
 
 pub struct Uninit<'target, E> {
@@ -58,10 +55,6 @@ impl<E> StartMutPtr for &mut Uninit<'_, E> {
 }
 
 impl<'target, E> Uninit<'target, E> {
-    pub fn into_cursor(self) -> Cursor<'target, E> {
-        Cursor::from(self)
-    }
-
     pub fn len(&self) -> usize {
         self.target.len()
     }
@@ -71,6 +64,29 @@ impl<'target, E> Uninit<'target, E> {
         Uninit {
             target: self.target,
         }
+    }
+
+    fn get_internal<I>(&self, range: I) -> Option<&[MaybeUninit<E>]>
+    where
+        I: SliceIndex<[MaybeUninit<E>], Output = [MaybeUninit<E>]>,
+    {
+        self.target.get(range)
+    }
+
+    pub fn get_mut<I>(&mut self, range: I) -> Option<Uninit<'_, E>>
+    where
+        I: SliceIndex<[MaybeUninit<E>], Output = [MaybeUninit<E>]>,
+    {
+        let target = self.target.get_mut(range)?;
+        Some(Uninit { target })
+    }
+
+    pub fn split_at_mut_checked(
+        self,
+        mid: usize,
+    ) -> Option<(Uninit<'target, E>, Uninit<'target, E>)> {
+        let (before, after) = self.target.split_at_mut_checked(mid)?;
+        Some((Self { target: before }, Self { target: after }))
     }
 
     pub fn split_off_mut<'s>(&'s mut self, range: RangeTo<usize>) -> Option<Uninit<'target, E>> {
@@ -158,15 +174,28 @@ impl<'target, E: Copy> Uninit<'target, E> {
 // Generally it isn't safe to cast `mut T` to `mut MaybeUninit<T>` because
 // somebody might then unsoundly write `uninit` into it without using `unsafe`.
 // We avoid that problem here because `Uninit` never writes `uninit` and it
-// never exposes a `MaybeUninit<T>` (mutable) reference externally.
-impl<'target, E> AliasedUninit<'target, E> {
-    pub fn from_mut(target: &'target mut [E]) -> Self {
+// never exposes a `MaybeUninit<T>` (mutable) reference externally (with a
+// non-`unsafe` API).
+impl<'target, E> From<&'target mut [E]> for Uninit<'target, E> {
+    fn from(target: &'target mut [E]) -> Self {
         let target: &'target mut [E] = target;
         let target: *mut [E] = target;
         let target: *mut [MaybeUninit<E>] = target as *mut [MaybeUninit<E>];
-        let _target: &'target mut [MaybeUninit<E>] = unsafe { &mut *target };
+        let target: &'target mut [MaybeUninit<E>] = unsafe { &mut *target };
+        Self { target }
+    }
+}
+
+// Generally it isn't safe to cast `mut T` to `mut MaybeUninit<T>` because
+// somebody might then unsoundly write `uninit` into it without using `unsafe`.
+// We avoid that problem here because `AliasedUninit` never writes `uninit` and
+// it never exposes a `MaybeUninit<T>` (mutable) reference externally (with a
+// non-`unsafe` API).
+impl<'target, E> AliasedUninit<'target, E> {
+    pub fn from_mut(target: &'target mut [E]) -> Self {
+        let target = Uninit::from(target);
         Self {
-            target,
+            target: target.target,
             _a: PhantomData,
         }
     }
@@ -237,30 +266,137 @@ impl<'target, E> AliasedUninit<'target, E> {
     }
 }
 
-impl<'buf, E: Copy> Cursor<'buf, E> {
-    pub fn write(&mut self, value: E) -> Result<&'buf mut E, LenMismatchError> {
-        let [r] = self.write_repeat_array::<1>(value)?;
-        Ok(r)
+/// A writable (and readable) buffer analogous to `core::io::BorrowedBuf`.
+pub struct Buf<'target, E> {
+    storage: Uninit<'target, E>,
+    filled: usize,
+}
+
+impl<'target, E: Copy> From<Uninit<'target, E>> for Buf<'target, E> {
+    fn from(storage: Uninit<'target, E>) -> Self {
+        Self { storage, filled: 0 }
+    }
+}
+
+impl<'target, E: Copy> Buf<'target, E> {
+    pub fn filled<'s>(&'s self) -> &'s [E] {
+        let filled = self
+            .storage
+            .get_internal(..self.filled)
+            .unwrap_or_else(|| unreachable!()); // due to invariant
+
+        // TODO(MSRV-1.93: Use `unsafe { filled.assume_init_ref() }`):
+        let filled: &'s [MaybeUninit<E>] = filled;
+        let filled: *const [MaybeUninit<E>] = filled;
+        let filled: *const [E] = filled as *const [E];
+        let filled: &'s [E] = unsafe { &*filled };
+        filled
     }
 
-    pub fn write_repeat_array<const N: usize>(
-        &mut self,
-        value: E,
-    ) -> Result<&'buf mut [E; N], LenMismatchError> {
-        let r = self.write_repeat_slice(value, N)?;
-        Ok(r.try_into()
-            .unwrap_or_else(|TryFromSliceError { .. }| unreachable!()))
+    pub fn filled_mut(&mut self) -> &mut [E] {
+        let filled = self
+            .storage
+            .get_mut(..self.filled)
+            .unwrap_or_else(|| unreachable!()); // By invariant
+        // SAFETY: By invariant
+        unsafe { filled.assume_init() }
     }
 
-    pub fn write_repeat_slice(
-        &mut self,
-        value: E,
-        repeat: usize,
-    ) -> Result<&'buf mut [E], LenMismatchError> {
-        Ok(self
-            .write_iter(iter::repeat_n(value, repeat))
-            .src_empty()?
-            .into_written())
+    pub fn into_filled_mut(self) -> &'target mut [E] {
+        let (filled, _unfilled) = self.split_filled_mut();
+        filled
+    }
+
+    pub fn unfilled(&mut self) -> Cursor<'target, '_, E> {
+        Cursor { buf: self }
+    }
+
+    fn unfilled_uninit(&mut self) -> Uninit<'_, E> {
+        let unfilled = self
+            .storage
+            .target
+            .get_mut(self.filled..)
+            .unwrap_or_else(|| {
+                unreachable!() // due to invariant
+            });
+        Uninit::from(unfilled)
+    }
+
+    fn split_filled_mut(self) -> (&'target mut [E], Uninit<'target, E>) {
+        let (filled, unfilled) = self
+            .storage
+            .split_at_mut_checked(self.filled)
+            .unwrap_or_else(|| unreachable!()); // by invariant.
+        // SAFETY: by invariant.
+        let filled = unsafe { filled.assume_init() };
+        (filled, unfilled)
+    }
+}
+
+/// A writable cursor analogous to `core::io::BorrowedCursor`.
+///
+/// We don't attempt to implement the collapsing of `target` and ``buf` into
+/// a single lifetime.
+pub struct Cursor<'target, 'buf, E> {
+    buf: &'buf mut Buf<'target, E>,
+}
+
+impl<E: Copy> Cursor<'_, '_, E> {
+    pub fn capacity(&self) -> usize {
+        // Can't overflow due to invariant
+        self.buf.storage.target.len() - self.buf.filled
+    }
+
+    pub fn write(&mut self, value: E) -> Result<(), LenMismatchError> {
+        self.write_repeat(value, 1)
+    }
+
+    pub fn write_repeat(&mut self, value: E, repeat: usize) -> Result<(), LenMismatchError> {
+        if self.capacity() < repeat {
+            return Err(LenMismatchError::new(self.capacity()));
+        }
+        let (_written, _src_leftover) = self.write_iter(iter::repeat_n(value, repeat));
+        Ok(())
+    }
+
+    pub fn write_iter<Src: IntoIterator<Item = E>>(&mut self, src: Src) -> (&mut [E], Src::IntoIter)
+    where
+        E: Copy,
+    {
+        // TODO: Deal with panics.
+        let start = self.buf.filled;
+        let WriteResult {
+            written,
+            dst_leftover: _,
+            src_leftover,
+        } = self.buf.unfilled_uninit().write_iter(src);
+        let written_len = written.len();
+        // Can't overflow because `wr.written` is a slice of `self.buf.storage`.
+        self.buf.filled += written_len;
+        let (_existing, written) = self
+            .buf
+            .filled_mut()
+            .split_at_mut_checked(start)
+            .unwrap_or_else(|| unreachable!());
+        (written, src_leftover)
+    }
+
+    /// See `core::io::BorrowedCursor::with_unfilled_buf`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `f` replaces `Buf` with a different one.
+    pub fn with_unfilled_buf<R>(&mut self, f: impl FnOnce(&mut Buf<'_, E>) -> R) -> R {
+        let mut buf = Buf::from(self.buf.unfilled_uninit());
+        let ptr = buf.storage.start_ptr();
+        let len = buf.storage.target.len();
+        let res = f(&mut buf);
+        assert!(ptr::addr_eq(buf.storage.start_ptr(), ptr));
+        assert!(buf.storage.len() <= len);
+        self.buf.filled += buf.filled;
+        // The above assertions ensure our invariant is maintained.
+        debug_assert!(self.buf.filled <= self.buf.storage.len());
+        res
     }
 }
 
