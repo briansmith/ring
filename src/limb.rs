@@ -21,7 +21,6 @@
 use crate::{
     bb, c,
     error::{self, LenMismatchError},
-    limb,
     polyfill::{
         ArrayFlatMap, StartMutPtr,
         slice::{AliasingSlices, Buf, InOut, Uninit},
@@ -190,11 +189,11 @@ pub fn limbs_from_be_bytes_padded<'out>(
     if out.len() != num_limbs {
         return Err(LenMismatchError::new(num_limbs));
     }
-    let input = limb::limbs_from_big_endian(input, 1..=num_limbs)?;
+    let input = limbs_from_big_endian(input, 1..=num_limbs)?;
     let mut out = Buf::from(out);
     let (_filled, _empty) = out.unfilled().write_iter(input);
     let num_zeros = num_limbs - out.filled().len();
-    out.unfilled().write_repeated(limb::ZERO, num_zeros)?;
+    out.unfilled().write_repeat(ZERO, num_zeros)?;
     Ok(out.into_filled_mut())
 }
 
@@ -360,11 +359,15 @@ pub(crate) fn write_negative_assume_odd<'r>(
     if a.len() != r.len() {
         return Err(LenMismatchError::new(a.len()));
     }
-    let r = r
-        .write_iter(a.iter().map(|&a| !a))
-        .src_empty()?
-        .uninit_empty()?
-        .into_written();
+
+    let mut buf = Buf::from(r);
+    let mut r = buf.unfilled();
+    a.iter().for_each(|a| {
+        r.write(!a)
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // checked above
+    });
+    let r = buf.into_filled_mut();
+
     // Two's complement step 2: Add one. Since `a` is odd, `r` is even. Thus we
     // can use a bitwise or for addition.
     let Some(least_significant_limb) = r.get_mut(0) else {
