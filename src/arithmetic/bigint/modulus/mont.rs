@@ -93,9 +93,9 @@ impl OversizedUninit {
 impl ValidatedInput<'_> {
     #[cfg(feature = "alloc")]
     pub(crate) fn build_boxed_into_mont<M>(&self, cpu: cpu::Features) -> BoxedIntoMont<M, RR> {
-        let limbs = self.limbs();
+        let num_limbs = self.num_limbs();
         let storage_len =
-            into_mont_storage_len_from_num_limbs(limbs.len()).unwrap_or_else(|| unreachable!()); // Because `MAX_LIMBS` is small.
+            into_mont_storage_len_from_num_limbs(num_limbs).unwrap_or_else(|| unreachable!()); // Because `MAX_LIMBS` is small.
         let mut uninit = Box::new_uninit_slice(storage_len);
         let mut buf = Buf::from(Uninit::from(uninit.as_mut()));
         self.write_into_mont_RR::<M>(buf.unfilled(), cpu)
@@ -131,17 +131,17 @@ impl ValidatedInput<'_> {
         mut out: Cursor<'_, '_, Limb>,
         cpu: cpu::Features,
     ) -> Result<(), LenMismatchError> {
-        let storage_num_limbs = into_mont_storage_len_from_num_limbs(self.limbs().len())
-            .unwrap_or_else(|| unreachable!()); // Already validated
+        let num_limbs = self.num_limbs();
+        let storage_num_limbs =
+            into_mont_storage_len_from_num_limbs(num_limbs).unwrap_or_else(|| unreachable!()); // Already validated
         if out.capacity() < storage_num_limbs {
             return Err(LenMismatchError::new(out.capacity()));
         }
         out.with_unfilled_buf(|out| {
             // We can't compute `n0` until after we've written `value`.
             out.unfilled().write_repeat(limb::ZERO, N0::LIMBS_USED)?;
-            out.unfilled()
-                .write(limb::limb_from_usize(self.limbs().len()))?;
-            let (_value, _empty) = out.unfilled().write_iter(self.limbs());
+            out.unfilled().write(limb::limb_from_usize(num_limbs))?;
+            limb::limbs_from_be_bytes_padded(out.unfilled(), self.input(), num_limbs)?;
             let (n0, rest) = out
                 .filled_mut()
                 .split_first_chunk_mut::<{ N0::LIMBS_USED }>()
@@ -152,8 +152,7 @@ impl ValidatedInput<'_> {
             let one_pos = out.filled().len();
 
             // Placeholder for the value of 1*RR.
-            out.unfilled()
-                .write_repeat(limb::ZERO, self.limbs().len())?;
+            out.unfilled().write_repeat(limb::ZERO, num_limbs)?;
             let (mont, one) = out
                 .filled_mut()
                 .split_at_mut_checked(one_pos)
