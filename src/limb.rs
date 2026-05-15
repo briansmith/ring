@@ -23,7 +23,7 @@ use crate::{
     error::{self, LenMismatchError},
     polyfill::{
         ArrayFlatMap, StartMutPtr,
-        slice::{AliasingSlices, Buf, InOut, Uninit},
+        slice::{AliasingSlices, Buf, Cursor, InOut, Uninit},
         sliceutil, usize_from_u32,
     },
     window5::Window5,
@@ -178,23 +178,23 @@ pub fn parse_big_endian_and_pad_consttime(
     result: &mut [Limb],
 ) -> Result<(), LenMismatchError> {
     let result_len = result.len();
-    limbs_from_be_bytes_padded(Uninit::from(result), input, result_len).map(|_| ())
+    let mut buf = Buf::from(Uninit::from(result));
+    limbs_from_be_bytes_padded(buf.unfilled(), input, result_len).map(|_| ())
 }
 
 pub fn limbs_from_be_bytes_padded<'out>(
-    out: Uninit<'out, Limb>,
+    mut out: Cursor<'out, '_, Limb>,
     input: untrusted::Input<'_>,
     num_limbs: usize,
-) -> Result<&'out mut [Limb], LenMismatchError> {
-    if out.len() != num_limbs {
+) -> Result<(), LenMismatchError> {
+    if out.capacity() < num_limbs {
         return Err(LenMismatchError::new(num_limbs));
     }
     let input = limbs_from_big_endian(input, 1..=num_limbs)?;
-    let mut out = Buf::from(out);
-    let (_filled, _empty) = out.unfilled().write_iter(input);
-    let num_zeros = num_limbs - out.filled().len();
-    out.unfilled().write_repeat(ZERO, num_zeros)?;
-    Ok(out.into_filled_mut())
+    let num_zeros = num_limbs - input.len();
+    let (_filled, _empty) = out.write_iter(input);
+    out.write_repeat(ZERO, num_zeros)?;
+    Ok(())
 }
 
 pub fn limbs_from_big_endian<'a>(
