@@ -166,9 +166,10 @@ impl<'l, M> Mut<'l, M, Unencoded> {
         input: untrusted::Input<'_>,
         m: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
-        let limbs = limb::limbs_from_be_bytes_padded(out, input, m.num_limbs().get())
+        let mut buf = Buf::from(out);
+        limb::limbs_from_be_bytes_padded(buf.unfilled(), input, m.num_limbs().get())
             .map_err(error::erase::<LenMismatchError>)?;
-        Self::from_limbs(limbs, m)
+        Self::from_limbs(buf.into_filled_mut(), m)
     }
 }
 
@@ -498,9 +499,10 @@ pub mod testutil {
         let out = out
             .as_uninit(..num_limbs)
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        let limbs = limb::limbs_from_be_bytes_padded(out, bytes, num_limbs)
+        let mut buf = Buf::from(out);
+        limb::limbs_from_be_bytes_padded(buf.unfilled(), bytes, num_limbs)
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        Mut::assume_in_range_and_encoded_less_safe(limbs)
+        Mut::assume_in_range_and_encoded_less_safe(buf.into_filled_mut())
     }
 
     pub fn assert_elem_eq<M, E>(a: Ref<'_, M, E>, b: Ref<'_, M, E>) {
