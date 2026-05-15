@@ -18,7 +18,6 @@ use crate::polyfill::prelude::*;
 use super::start_ptr::{StartMutPtr, StartPtr};
 use crate::error::LenMismatchError;
 use core::{
-    iter,
     marker::PhantomData,
     mem::{self, MaybeUninit},
     ops::RangeTo,
@@ -126,13 +125,6 @@ impl<'target, E: Copy> Uninit<'target, E> {
         let num_zeros = buf.unfilled().capacity();
         buf.unfilled().write_repeat(padding, num_zeros)?;
         Ok(buf.into_filled_mut())
-    }
-
-    fn write_filled_copy(self, value: E) -> &'target mut [E]
-    where
-        E: Copy, // To avoid concerns about `value.clone()` panicking
-    {
-        self.write_iter(iter::repeat(value)).written
     }
 
     pub fn write_iter<Src: IntoIterator<Item = E>>(
@@ -354,8 +346,15 @@ impl<E: Copy> Cursor<'_, '_, E> {
         let to_fill = unfilled
             .split_off_mut(..repeat)
             .ok_or_else(|| LenMismatchError::new(capacity))?;
+
+        // TODO(MSRV feature(maybe_uninit_fill)): Use
+        // `to_fill.target.write_filled(value)` if it is optimized for `Copy`.
+        to_fill.target.iter_mut().for_each(|out| {
+            let _: &mut _ = out.write(value);
+        });
+
         // Can't overflow since `written` is a subslice of `self.buf.storage`.
-        self.buf.filled += to_fill.write_filled_copy(value).len();
+        self.buf.filled += repeat;
         Ok(())
     }
 
