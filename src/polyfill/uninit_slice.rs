@@ -436,27 +436,6 @@ impl<'written, E, Dst, Src> WriteResult<'written, E, Dst, Src> {
             dst_leftover,
         )
     }
-
-    #[inline(always)]
-    pub fn src_empty(self) -> Result<WriteResult<'written, E, Dst, ()>, LenMismatchError>
-    where
-        Src: IntoIterator,
-    {
-        let WriteResult {
-            written,
-            dst_leftover,
-            src_leftover,
-        } = self;
-        let mut src_leftover = src_leftover.into_iter().peekable();
-        if src_leftover.next().is_some() {
-            return Err(LenMismatchError::new(src_leftover.size_hint().0));
-        }
-        Ok(WriteResult {
-            written,
-            dst_leftover,
-            src_leftover: (),
-        })
-    }
 }
 
 impl<'written, E, Src> WriteResult<'written, E, Uninit<'written, E>, Src> {
