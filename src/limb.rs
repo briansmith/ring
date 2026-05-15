@@ -201,9 +201,10 @@ pub fn limbs_from_be_bytes_padded<'out>(
     let num_zeros = num_limbs - input_limbs.len();
     input_limbs.for_each(|input| {
         out.write(input)
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!()) // Because we checked above.
     });
-    out.write_repeat(ZERO, num_zeros)
+    out.write_repeat(ZERO, num_zeros);
+    Ok(())
 }
 
 pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
