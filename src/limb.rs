@@ -28,10 +28,7 @@ use crate::{
     },
     window5::Window5,
 };
-use core::{
-    num::{NonZero, Wrapping},
-    ops::RangeInclusive,
-};
+use core::num::{NonZero, Wrapping};
 
 // XXX: Not correct for x32 ABIs.
 pub type Limb = bb::Word;
@@ -187,30 +184,26 @@ pub fn limbs_from_be_bytes_padded<'out>(
     input: untrusted::Input<'_>,
     num_limbs: usize,
 ) -> Result<(), LenMismatchError> {
-    if out.capacity() < num_limbs {
-        return Err(LenMismatchError::new(num_limbs));
-    }
-    let input = limbs_from_big_endian(input, 1..=num_limbs)?;
-    let num_zeros = num_limbs - input.len();
-    let (_filled, _empty) = out.write_iter(input);
-    out.write_repeat(ZERO, num_zeros)?;
-    Ok(())
-}
-
-pub fn limbs_from_big_endian<'a>(
-    input: untrusted::Input<'a>,
-    len_bounds: RangeInclusive<usize>,
-) -> Result<impl ExactSizeIterator<Item = Limb> + 'a, LenMismatchError> {
-    let r = input.as_slice_less_safe().rchunks(LIMB_BYTES).map(|chunk| {
+    let input_limbs = input.as_slice_less_safe().rchunks(LIMB_BYTES).map(|chunk| {
         let mut padded = [0; LIMB_BYTES];
         sliceutil::overwrite_at_start(&mut padded[(LIMB_BYTES - chunk.len())..], chunk);
         Limb::from_be_bytes(padded)
     });
-    let len = r.len();
-    if !len_bounds.contains(&len) {
-        return Err(LenMismatchError::new(len));
+    if input_limbs.len() == 0 {
+        return Err(LenMismatchError::new(input_limbs.len()));
     }
-    Ok(r)
+    if input_limbs.len() > num_limbs {
+        return Err(LenMismatchError::new(input_limbs.len()));
+    }
+    if out.capacity() < num_limbs {
+        return Err(LenMismatchError::new(num_limbs));
+    }
+    let num_zeros = num_limbs - input_limbs.len();
+    input_limbs.for_each(|input| {
+        out.write(input)
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
+    });
+    out.write_repeat(ZERO, num_zeros)
 }
 
 pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {

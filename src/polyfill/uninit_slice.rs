@@ -127,31 +127,6 @@ impl<'target, E: Copy> Uninit<'target, E> {
         Ok(buf.into_filled_mut())
     }
 
-    pub fn write_iter<Src: IntoIterator<Item = E>>(
-        mut self,
-        src: Src,
-    ) -> WriteResult<'target, E, Self, Src::IntoIter> {
-        let mut init_len = 0;
-        let mut src = src.into_iter();
-        self.target
-            .iter_mut()
-            .zip(src.by_ref())
-            .for_each(|(dst, src)| {
-                let _: &mut E = dst.write(src);
-                init_len += 1;
-            });
-        let written = self
-            .split_off_mut(..init_len)
-            .unwrap_or_else(|| unreachable!());
-        let written = unsafe { written.assume_init() };
-
-        WriteResult {
-            written,
-            dst_leftover: self,
-            src_leftover: src,
-        }
-    }
-
     pub unsafe fn assume_init(self) -> &'target mut [E] {
         let r: &'target mut [MaybeUninit<E>] = self.target;
         let r: *mut [MaybeUninit<E>] = ptr::from_mut(r);
@@ -370,33 +345,6 @@ impl<E: Copy> Cursor<'_, '_, E> {
         Ok(())
     }
 
-    pub fn write_iter<Src: IntoIterator<Item = E>>(
-        &mut self,
-        src: Src,
-    ) -> (&mut [E], Src::IntoIter) {
-        // TODO: Deal with panics.
-        let start = self.buf.filled;
-        let WriteResult {
-            written,
-            dst_leftover: _,
-            src_leftover,
-        } = self.buf.unfilled_uninit().write_iter(src);
-        let written_len = written.len();
-        // Can't overflow because `wr.written` is a slice of `self.buf.storage`.
-        self.buf.filled += written_len;
-        let (_existing, written) = self
-            .buf
-            .filled_mut()
-            .split_at_mut_checked(start)
-            .unwrap_or_else(|| unreachable!());
-        (written, src_leftover)
-    }
-
-    /// See `core::io::BorrowedCursor::with_unfilled_buf`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `f` replaces `Buf` with a different one.
     pub fn with_unfilled_buf<R>(&mut self, f: impl FnOnce(&mut Buf<'_, E>) -> R) -> R {
         let mut buf = Buf::from(self.buf.unfilled_uninit());
         let ptr = buf.storage.start_ptr();
