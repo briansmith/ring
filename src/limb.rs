@@ -359,11 +359,15 @@ pub(crate) fn write_negative_assume_odd<'r>(
     if a.len() != r.len() {
         return Err(LenMismatchError::new(a.len()));
     }
-    let r = r
-        .write_iter(a.iter().map(|&a| !a))
-        .src_empty()?
-        .uninit_empty()?
-        .into_written();
+
+    let mut buf = Buf::from(r);
+    let mut r = buf.unfilled();
+    a.iter().for_each(|a| {
+        r.write(!a)
+            .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // checked above
+    });
+    let r = buf.into_filled_mut();
+
     // Two's complement step 2: Add one. Since `a` is odd, `r` is even. Thus we
     // can use a bitwise or for addition.
     let Some(least_significant_limb) = r.get_mut(0) else {
