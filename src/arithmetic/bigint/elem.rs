@@ -25,10 +25,10 @@ use crate::{
     limb::{self, Limb},
     polyfill::{
         StartMutPtr,
-        slice::{AliasingSlices, InOut, Uninit},
+        slice::{AliasingSlices, Buf, InOut, Uninit},
     },
 };
-use core::{iter, marker::PhantomData, num::NonZero};
+use core::{marker::PhantomData, num::NonZero};
 
 // TODO: Move here?
 pub(crate) use super::oversized_uninit::OversizedUninit;
@@ -182,18 +182,13 @@ pub(super) fn limbs_from_be_bytes_padded<'out>(
     }
     let input = limb::limbs_from_big_endian(input, 1..=num_limbs)
         .map_err(error::erase::<LenMismatchError>)?;
-    let out = out
-        .write_iter(
-            input
-                .chain(iter::repeat(Limb::from(limb::ZERO)))
-                .take(num_limbs),
-        )
-        .src_empty()
-        .map_err(error::erase::<LenMismatchError>)?
-        .uninit_empty()
-        .map_err(error::erase::<LenMismatchError>)?
-        .into_written();
-    Ok(out)
+    let mut out = Buf::from(out);
+    let (_filled, _empty) = out.unfilled().write_iter(input);
+    let num_zeros = num_limbs - out.filled().len();
+    out.unfilled()
+        .write_repeat(limb::ZERO, num_zeros)
+        .map_err(error::erase::<LenMismatchError>)?;
+    Ok(out.into_filled_mut())
 }
 
 impl<'l, M, E> Ref<'l, M, E> {
