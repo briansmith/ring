@@ -25,11 +25,10 @@ use crate::{
     limb::{self, Limb},
     polyfill::{
         StartMutPtr,
-        slice::{AliasingSlices, InOut, Uninit},
+        slice::{AliasingSlices, Buf, InOut, Uninit},
     },
 };
 use core::{marker::PhantomData, num::NonZero};
-
 // TODO: Move here?
 pub(crate) use super::oversized_uninit::OversizedUninit;
 
@@ -228,15 +227,17 @@ impl<'l, M> MutAmm<'l, M> {
         m: &Mont<M>,
         tmp: &mut OversizedUninit,
     ) -> Result<Mut<'l, M, Unencoded>, LenMismatchError> {
-        if self.limbs.len() != m.num_limbs().get() {
+        let num_limbs = m.num_limbs();
+        if self.limbs.len() != num_limbs.get() {
             return Err(LenMismatchError::new(self.limbs.len()));
         }
         let limbs = self.limbs;
 
-        let one = tmp
-            .as_uninit(..m.num_limbs().get())?
-            .write_filled_copy(Limb::from(limb::ZERO));
-        one[0] = 1;
+        let mut buf = Buf::from(tmp.as_uninit(..num_limbs.get())?);
+        buf.unfilled().write(1)?;
+        buf.unfilled()
+            .write_repeat(Limb::from(limb::ZERO), num_limbs.get() - 1)?;
+        let one = buf.into_filled_mut();
         let _: &[Limb] = limbs_mul_mont(
             (InOut(&mut *limbs), &*one),
             m.limbs(),
