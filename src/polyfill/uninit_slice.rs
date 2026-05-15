@@ -103,35 +103,29 @@ impl<'target, E> Uninit<'target, E> {
 impl<'target, E: Copy> Uninit<'target, E> {
     #[allow(dead_code)]
     pub fn write_copy_of_slice(
-        mut self,
+        self,
         src: &[E],
     ) -> Result<WriteResult<'target, E, Self, ()>, LenMismatchError> {
-        let Some(mut dst) = self.split_off_mut(..src.len()) else {
-            return Err(LenMismatchError::new(self.len()));
-        };
-        let written = unsafe {
-            ptr::copy_nonoverlapping(src.as_ptr(), dst.start_mut_ptr(), src.len());
-            dst.assume_init()
-        };
+        let mut buf = Buf::from(self);
+        buf.unfilled().write_copy_of_slice(src)?;
+        let (written, dst_leftover) = buf.split_filled_mut();
         Ok(WriteResult {
             written,
-            dst_leftover: self,
+            dst_leftover,
             src_leftover: (),
         })
     }
 
     pub fn write_copy_of_slice_padded(
-        mut self,
+        self,
         src: &[E],
         padding: E,
     ) -> Result<&'target mut [E], LenMismatchError> {
-        let WriteResult {
-            written: _,
-            dst_leftover,
-            src_leftover: (),
-        } = self.reborrow_mut().write_copy_of_slice(src)?;
-        let _: &_ = dst_leftover.write_filled_copy(padding);
-        Ok(unsafe { self.assume_init() })
+        let mut buf = Buf::from(self);
+        buf.unfilled().write_copy_of_slice(src)?;
+        let num_zeros = buf.unfilled().capacity();
+        buf.unfilled().write_repeat(padding, num_zeros)?;
+        Ok(buf.into_filled_mut())
     }
 
     pub fn write_filled_copy(self, value: E) -> &'target mut [E]
@@ -362,6 +356,18 @@ impl<E: Copy> Cursor<'_, '_, E> {
             .ok_or_else(|| LenMismatchError::new(capacity))?;
         // Can't overflow since `written` is a subslice of `self.buf.storage`.
         self.buf.filled += to_fill.write_filled_copy(value).len();
+        Ok(())
+    }
+
+    pub fn write_copy_of_slice(&mut self, src: &[E]) -> Result<(), LenMismatchError> {
+        let mut dst = self.buf.unfilled_uninit();
+        if dst.len() < src.len() {
+            return Err(LenMismatchError::new(dst.len()));
+        }
+        unsafe {
+            ptr::copy_nonoverlapping(src.as_ptr(), dst.start_mut_ptr(), src.len());
+        };
+        self.buf.filled += src.len();
         Ok(())
     }
 
