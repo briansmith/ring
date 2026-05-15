@@ -25,7 +25,7 @@ use crate::{
     limb::{self, Limb},
     polyfill::{
         StartMutPtr,
-        slice::{AliasingSlices, Buf, InOut, Uninit},
+        slice::{AliasingSlices, InOut, Uninit},
     },
 };
 use core::{marker::PhantomData, num::NonZero};
@@ -167,28 +167,10 @@ impl<'l, M> Mut<'l, M, Unencoded> {
         input: untrusted::Input<'_>,
         m: &Mont<M>,
     ) -> Result<Self, error::Unspecified> {
-        let limbs = limbs_from_be_bytes_padded(out, input, m.num_limbs().get())?;
+        let limbs = limb::limbs_from_be_bytes_padded(out, input, m.num_limbs().get())
+            .map_err(error::erase::<LenMismatchError>)?;
         Self::from_limbs(limbs, m)
     }
-}
-
-pub(super) fn limbs_from_be_bytes_padded<'out>(
-    out: Uninit<'out, Limb>,
-    input: untrusted::Input<'_>,
-    num_limbs: usize,
-) -> Result<&'out mut [Limb], error::Unspecified> {
-    if out.len() != num_limbs {
-        return Err(error::Unspecified);
-    }
-    let input = limb::limbs_from_big_endian(input, 1..=num_limbs)
-        .map_err(error::erase::<LenMismatchError>)?;
-    let mut out = Buf::from(out);
-    let (_filled, _empty) = out.unfilled().write_iter(input);
-    let num_zeros = num_limbs - out.filled().len();
-    out.unfilled()
-        .write_repeat(limb::ZERO, num_zeros)
-        .map_err(error::erase::<LenMismatchError>)?;
-    Ok(out.into_filled_mut())
 }
 
 impl<'l, M, E> Ref<'l, M, E> {
@@ -515,7 +497,8 @@ pub mod testutil {
         let out = out
             .as_uninit(..num_limbs)
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
-        let limbs = limbs_from_be_bytes_padded(out, bytes, num_limbs).unwrap();
+        let limbs = limb::limbs_from_be_bytes_padded(out, bytes, num_limbs)
+            .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         Mut::assume_in_range_and_encoded_less_safe(limbs)
     }
 
