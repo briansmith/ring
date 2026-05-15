@@ -365,10 +365,10 @@ impl<E: Copy> Cursor<'_, '_, E> {
         Ok(())
     }
 
-    pub fn write_iter<Src: IntoIterator<Item = E>>(&mut self, src: Src) -> (&mut [E], Src::IntoIter)
-    where
-        E: Copy,
-    {
+    pub fn write_iter<Src: IntoIterator<Item = E>>(
+        &mut self,
+        src: Src,
+    ) -> (&mut [E], Src::IntoIter) {
         // TODO: Deal with panics.
         let start = self.buf.filled;
         let WriteResult {
