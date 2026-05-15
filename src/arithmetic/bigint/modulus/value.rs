@@ -16,8 +16,7 @@ use super::super::super::{MAX_LIMBS, MIN_LIMBS};
 use crate::{
     bb,
     bits::{BitLength, FromByteLen as _},
-    error::{self, InputTooLongError, LenMismatchError},
-    limb,
+    error::{self, InputTooLongError},
     limb::{LIMB_BITS, LIMB_BYTES, Limb},
     polyfill::usize_from_u32,
 };
@@ -93,9 +92,8 @@ impl<'a> ValidatedInput<'a> {
         })
     }
 
-    pub(super) fn limbs(&self) -> impl ExactSizeIterator<Item = Limb> + '_ {
-        limb::limbs_from_big_endian(self.input(), self.num_limbs..=self.num_limbs)
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
+    pub(super) fn num_limbs(&self) -> usize {
+        self.num_limbs
     }
 
     pub fn len_bits(&self) -> BitLength {
