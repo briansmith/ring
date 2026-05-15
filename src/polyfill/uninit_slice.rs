@@ -103,19 +103,15 @@ impl<'target, E> Uninit<'target, E> {
 impl<'target, E: Copy> Uninit<'target, E> {
     #[allow(dead_code)]
     pub fn write_copy_of_slice(
-        mut self,
+        self,
         src: &[E],
     ) -> Result<WriteResult<'target, E, Self, ()>, LenMismatchError> {
-        let Some(mut dst) = self.split_off_mut(..src.len()) else {
-            return Err(LenMismatchError::new(self.len()));
-        };
-        let written = unsafe {
-            ptr::copy_nonoverlapping(src.as_ptr(), dst.start_mut_ptr(), src.len());
-            dst.assume_init()
-        };
+        let mut buf = Buf::from(self);
+        buf.unfilled().write_copy_of_slice(src)?;
+        let (written, dst_leftover) = buf.split_filled_mut();
         Ok(WriteResult {
             written,
-            dst_leftover: self,
+            dst_leftover,
             src_leftover: (),
         })
     }
@@ -354,13 +350,14 @@ impl<E: Copy> Cursor<'_, '_, E> {
     }
 
     pub fn write_copy_of_slice(&mut self, src: &[E]) -> Result<(), LenMismatchError> {
-        let unfilled = self.buf.unfilled_uninit();
-        let WriteResult {
-            written,
-            dst_leftover: _,
-            src_leftover: (),
-        } = unfilled.write_copy_of_slice(src)?;
-        self.buf.filled += written.len();
+        let mut dst = self.buf.unfilled_uninit();
+        if dst.len() < src.len() {
+            return Err(LenMismatchError::new(dst.len()));
+        }
+        unsafe {
+            ptr::copy_nonoverlapping(src.as_ptr(), dst.start_mut_ptr(), src.len());
+        };
+        self.buf.filled += src.len();
         Ok(())
     }
 
