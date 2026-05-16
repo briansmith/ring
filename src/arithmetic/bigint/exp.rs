@@ -298,13 +298,13 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         .write_copy_of_slice(m.limbs())?
         .as_chunks();
 
+    // Use `out` as a temporary variable.
     let base_mod_m: elem::Mut<'_, M, RInverse> = base_mod_n.reduced_mont(out, m, tmp);
-    let base_rinverse = base_mod_m.leak_limbs_less_safe();
 
     // base_cached = base*R == (base/R * RRR)/R
     let base_cached: &[Limb] = mul_mont5(
         base_cached.into(),
-        base_rinverse,
+        base_mod_m.leak_limbs_less_safe(),
         oneRRR,
         m_cached,
         n0,
