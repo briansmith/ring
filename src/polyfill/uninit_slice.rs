@@ -351,10 +351,13 @@ impl<E: Copy> Cursor<'_, '_, E> {
     }
 
     pub fn write_repeat(&mut self, value: E, repeat: usize) -> Result<(), LenMismatchError> {
-        if self.capacity() < repeat {
-            return Err(LenMismatchError::new(self.capacity()));
-        }
-        let (_written, _src_leftover) = self.write_iter(iter::repeat_n(value, repeat));
+        let mut unfilled = self.buf.unfilled_uninit();
+        let capacity = unfilled.len();
+        let to_fill = unfilled
+            .split_off_mut(..repeat)
+            .ok_or_else(|| LenMismatchError::new(capacity))?;
+        // Can't overflow since `written` is a subslice of `self.buf.storage`.
+        self.buf.filled += to_fill.write_filled_copy(value).len();
         Ok(())
     }
 
