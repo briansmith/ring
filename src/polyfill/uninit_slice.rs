@@ -100,7 +100,6 @@ impl<'target, E> Uninit<'target, E> {
 
 // `E: Copy` to avoid `Drop` issues.
 impl<'target, E: Copy> Uninit<'target, E> {
-    #[allow(dead_code)]
     pub fn write_copy_of_slice(
         self,
         src: &[E],

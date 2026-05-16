@@ -203,7 +203,7 @@ pub fn limbs_from_be_bytes_padded<'out>(
         out.write(input)
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()) // Because we checked above.
     });
-    out.write_repeat(ZERO, num_zeros);
+    out.write_repeat(ZERO, num_zeros)?;
     Ok(())
 }
 
