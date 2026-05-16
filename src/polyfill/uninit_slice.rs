@@ -100,18 +100,13 @@ impl<'target, E> Uninit<'target, E> {
 
 // `E: Copy` to avoid `Drop` issues.
 impl<'target, E: Copy> Uninit<'target, E> {
-    pub fn write_copy_of_slice(
-        self,
-        src: &[E],
-    ) -> Result<WriteResult<'target, E, Self, ()>, LenMismatchError> {
+    pub fn write_copy_of_slice(self, src: &[E]) -> Result<&'target mut [E], LenMismatchError> {
+        if self.len() != src.len() {
+            return Err(LenMismatchError::new(self.len()));
+        }
         let mut buf = Buf::from(self);
         buf.unfilled().write_copy_of_slice(src)?;
-        let (written, dst_leftover) = buf.split_filled_mut();
-        Ok(WriteResult {
-            written,
-            dst_leftover,
-            src_leftover: (),
-        })
+        Ok(buf.into_filled_mut())
     }
 
     pub fn write_copy_of_slice_padded(
@@ -355,49 +350,5 @@ impl<E: Copy> Cursor<'_, '_, E> {
         // The above assertions ensure our invariant is maintained.
         debug_assert!(self.buf.filled <= self.buf.storage.len());
         res
-    }
-}
-
-pub struct WriteResult<'written, E, Dst, Src> {
-    written: &'written mut [E],
-    dst_leftover: Dst,
-    src_leftover: Src,
-}
-
-impl<'written, E, Dst, Src> WriteResult<'written, E, Dst, Src> {
-    #[inline(always)]
-    pub fn take_uninit(self) -> (WriteResult<'written, E, (), Src>, Dst) {
-        let WriteResult {
-            written,
-            dst_leftover,
-            src_leftover,
-        } = self;
-        (
-            WriteResult {
-                written,
-                dst_leftover: (),
-                src_leftover,
-            },
-            dst_leftover,
-        )
-    }
-}
-
-impl<'written, E, Src> WriteResult<'written, E, Uninit<'written, E>, Src> {
-    #[allow(dead_code)]
-    #[inline(always)]
-    pub fn uninit_empty(self) -> Result<WriteResult<'written, E, (), Src>, LenMismatchError> {
-        let (res, dst_leftover) = self.take_uninit();
-        if dst_leftover.len() != 0 {
-            return Err(LenMismatchError::new(dst_leftover.len()));
-        }
-        Ok(res)
-    }
-}
-
-impl<'written, E> WriteResult<'written, E, (), ()> {
-    #[inline(always)]
-    pub fn into_written(self) -> &'written mut [E] {
-        self.written
     }
 }
