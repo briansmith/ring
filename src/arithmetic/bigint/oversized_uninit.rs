@@ -34,16 +34,11 @@ impl OversizedUninit {
             .ok_or_else(|| LenMismatchError::new(len.end))
     }
 
-    pub fn write_copy_of_slice(
+    pub fn write_copy_of_slice_exact(
         &mut self,
         a: &[Limb],
         expected_len: usize,
     ) -> Result<&mut [Limb], LenMismatchError> {
-        Ok(self
-            .as_uninit(..expected_len)?
-            .write_copy_of_slice(a)?
-            .uninit_empty()
-            .unwrap_or_else(|LenMismatchError { .. }| unreachable!())
-            .into_written())
+        self.as_uninit(..expected_len)?.write_copy_of_slice_exact(a)
     }
 }

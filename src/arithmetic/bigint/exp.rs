@@ -295,9 +295,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
 
     // "To improve cache locality" according to upstream.
     let (m_cached, _) = Uninit::from(m_cached)
-        .write_copy_of_slice(m.limbs())?
-        .uninit_empty()?
-        .into_written()
+        .write_copy_of_slice_exact(m.limbs())?
         .as_chunks();
 
     let base_mod_m: elem::Mut<'_, M, RInverse> = base_mod_n.reduced_mont(out, m, tmp);
@@ -341,10 +339,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     scatter5(t0.leak_limbs_less_safe(), table, LeakyWindow5::_0)?;
 
     // acc = base**1 (i.e. base).
-    let acc = acc
-        .write_copy_of_slice(base_cached)?
-        .uninit_empty()?
-        .into_written();
+    let acc = acc.write_copy_of_slice_exact(base_cached)?;
 
     // Fill in entries 1, 2, 4, 8, 16.
     scatter_powers_of_2(table, acc, m_cached, n0, LeakyWindow5::_1, cpu2)?;

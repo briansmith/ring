@@ -195,7 +195,7 @@ impl<'l, M, E> Ref<'l, M, E> {
 
     pub fn clone_into<'out>(&self, out: &'out mut OversizedUninit) -> Mut<'out, M, E> {
         let limbs = out
-            .write_copy_of_slice(self.limbs, self.limbs.len())
+            .write_copy_of_slice_exact(self.limbs, self.limbs.len())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
         Mut::assume_in_range_and_encoded_less_safe(limbs)
     }
@@ -212,7 +212,7 @@ impl<'l, M> MutAmm<'l, M> {
         out: &'l mut OversizedUninit,
         src: &mut [Limb],
     ) -> Result<Self, LenMismatchError> {
-        let limbs = out.write_copy_of_slice(src, src.len())?;
+        let limbs = out.write_copy_of_slice_exact(src, src.len())?;
         Ok(Self {
             limbs,
             m: PhantomData,
@@ -361,7 +361,7 @@ impl<M> Ref<'_, M, Unencoded> {
         // TODO: We should add a variant of `limbs_reduced_once` that does the
         // reduction out-of-place, to eliminate this copy.
         let r = out
-            .write_copy_of_slice(self.limbs.as_ref(), m.num_limbs().get())
+            .write_copy_of_slice_exact(self.limbs.as_ref(), m.num_limbs().get())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
         limb::limbs_reduce_once(&mut *r, m.limbs())
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
@@ -384,7 +384,7 @@ impl<'l, M> Ref<'l, M, Unencoded> {
         assert_eq!(self.limbs.len(), p.limbs().len() * 2);
 
         let tmp = tmp
-            .write_copy_of_slice(self.limbs, self.limbs.len())
+            .write_copy_of_slice_exact(self.limbs, self.limbs.len())
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!()); // Because it's oversized.
         let out = out
             .as_uninit(..p.num_limbs().get())
