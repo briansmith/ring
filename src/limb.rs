@@ -23,16 +23,15 @@ use crate::{
     error::{self, LenMismatchError},
     polyfill::{
         ArrayFlatMap, StartMutPtr,
-        slice::{AliasingSlices, InOut},
+        slice::{AliasingSlices, Buf, InOut, Uninit},
         sliceutil, usize_from_u32,
     },
     window5::Window5,
 };
-use core::{iter, num::NonZero};
-
-use crate::polyfill::slice::Uninit;
-use core::num::Wrapping;
-use core::ops::RangeInclusive;
+use core::{
+    num::{NonZero, Wrapping},
+    ops::RangeInclusive,
+};
 
 // XXX: Not correct for x32 ABIs.
 pub type Limb = bb::Word;
@@ -178,12 +177,24 @@ pub fn parse_big_endian_and_pad_consttime(
     input: untrusted::Input,
     result: &mut [Limb],
 ) -> Result<(), LenMismatchError> {
-    let input_limbs = limbs_from_big_endian(input, 1..=result.len())?;
-    result
-        .iter_mut()
-        .zip(input_limbs.chain(iter::repeat(0)))
-        .for_each(|(r, i)| *r = i);
-    Ok(())
+    let result_len = result.len();
+    limbs_from_be_bytes_padded(Uninit::from(result), input, result_len).map(|_| ())
+}
+
+pub fn limbs_from_be_bytes_padded<'out>(
+    out: Uninit<'out, Limb>,
+    input: untrusted::Input<'_>,
+    num_limbs: usize,
+) -> Result<&'out mut [Limb], LenMismatchError> {
+    if out.len() != num_limbs {
+        return Err(LenMismatchError::new(num_limbs));
+    }
+    let input = limbs_from_big_endian(input, 1..=num_limbs)?;
+    let mut out = Buf::from(out);
+    let (_filled, _empty) = out.unfilled().write_iter(input);
+    let num_zeros = num_limbs - out.filled().len();
+    out.unfilled().write_repeat(ZERO, num_zeros)?;
+    Ok(out.into_filled_mut())
 }
 
 pub fn limbs_from_big_endian<'a>(
