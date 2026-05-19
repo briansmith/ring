@@ -149,19 +149,12 @@ impl ValidatedInput<'_> {
             let (_num_limbs, value) = rest.split_first().unwrap_or_else(|| unreachable!()); // Since we just wrote it.
             N0::write_into(n0, value);
 
-            let one_pos = out.filled().len();
-
-            // Placeholder for the value of 1*RR.
-            out.unfilled().write_repeat(limb::ZERO, num_limbs)?;
-            let (mont, one) = out
-                .filled_mut()
-                .split_at_mut_checked(one_pos)
-                .unwrap_or_else(|| unreachable!()); // Since we just wrote it.
-            let m = &Mont::<'_, M>::from_storage_unchecked_less_safe(mont, cpu);
-
-            let _: elem::Mut<'_, _, RR> =
-                One::write_mont_identity(Uninit::from(one), m, self.len_bits())?.mul_r(m)?; // in place.
-            Ok(())
+            out.try_write_with(num_limbs, |init, uninit| {
+                let m = &Mont::<'_, M>::from_storage_unchecked_less_safe(init, cpu);
+                let r: elem::Mut<'_, _, RR> =
+                    One::write_mont_identity(uninit, m, self.len_bits())?.mul_r(m)?; // in place.
+                Ok(r.leak_limbs_into_mut_less_safe())
+            })
         })
     }
 }
