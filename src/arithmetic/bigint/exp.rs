@@ -99,7 +99,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     };
     use crate::{
         bssl, c, error,
-        polyfill::{StartMutPtr, dynarray},
+        polyfill::{StartMutPtr, slice::Buf},
     };
 
     let base_rinverse = base_mod_n.reduced_mont(out, m, tmp);
@@ -148,50 +148,54 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         Ok(acc)
     }
 
-    let mut storage: [MaybeUninit<Limb>; STORAGE_LIMBS] =
+    let mut table: [MaybeUninit<Limb>; STORAGE_LIMBS] =
         [const { MaybeUninit::uninit() }; STORAGE_LIMBS];
-    let table = dynarray::Uninit::new(&mut storage, STORAGE_ENTRIES, num_limbs)?.init_fold(
-        |init, uninit| {
-            let r: Result<&'_ mut [Limb], LimbSliceError> = match init.len() {
-                // table[0] = base**0 (i.e. 1).
-                0 => Ok(
-                    One::write_mont_identity_assuming_full_upper_limb(uninit, m)?
-                        .leak_limbs_into_mut_less_safe(),
-                ),
+    let mut table = Buf::from(Uninit::from(table.as_mut()));
 
-                // table[1] = base*R == (base/R * RRR)/R
-                1 => limbs_mul_mont(
-                    (
-                        uninit,
-                        base_rinverse.leak_limbs_less_safe(),
-                        oneRRR.leak_limbs_less_safe(),
-                    ),
-                    m.limbs(),
-                    m.n0(),
-                    m.cpu_features(),
-                ),
+    // table[0] = base**0 (i.e. 1).
+    table.try_write_with::<LenMismatchError>(num_limbs.get(), |_init, uninit| {
+        Ok(
+            One::write_mont_identity_assuming_full_upper_limb(uninit, m)?
+                .leak_limbs_into_mut_less_safe(),
+        )
+    })?;
 
-                // table[2*i] = (n**i)**2/R
-                i if i % 2 == 0 => {
-                    let sqrt = init.mid().unwrap_or_else(|| unreachable!());
-                    limbs_square_mont((uninit, sqrt), m.limbs(), m.n0(), m.cpu_features())
-                }
+    // table[1] = base*R == (base/R * RRR)/R
+    table.try_write_with(num_limbs.get(), |_init, uninit| {
+        limbs_mul_mont(
+            (
+                uninit,
+                base_rinverse.leak_limbs_less_safe(),
+                oneRRR.leak_limbs_less_safe(),
+            ),
+            m.limbs(),
+            m.n0(),
+            m.cpu_features(),
+        )
+    })?;
 
-                // table[i + 1] = n**1*n**i/R
-                _ => {
-                    let one = init.get(1).unwrap_or_else(|| unreachable!());
-                    let previous = init.last().unwrap_or_else(|| unreachable!());
-                    limbs_mul_mont((uninit, one, previous), m.limbs(), m.n0(), m.cpu_features())
-                }
-            };
-            r.map_err(|e| match e {
-                LimbSliceError::LenMismatch(e) => e, // Also unreachable.
-                LimbSliceError::TooLong(_) => unreachable!(),
-                LimbSliceError::TooShort(_) => unreachable!(),
-            })
-        },
-    )?;
-    let table: &[Limb] = table.as_flattened();
+    for _i in 1..16 {
+        let n = num_limbs.get();
+
+        // table[2*i] = (n**i)**2/R
+        table.try_write_with(n, |init, uninit| {
+            let sqrt_start = init.len() / 2;
+            let sqrt = init
+                .get(sqrt_start..(sqrt_start + n))
+                .unwrap_or_else(|| unreachable!());
+            limbs_square_mont((uninit, sqrt), m.limbs(), m.n0(), m.cpu_features())
+        })?;
+
+        // table[2*i + 1] = (n**1)*(n**(2*i))/R
+        table.try_write_with(n, |init, uninit| {
+            let one = init.get(n..(n + n)).unwrap_or_else(|| unreachable!());
+            let previous = init
+                .get((init.len() - n)..)
+                .unwrap_or_else(|| unreachable!());
+            limbs_mul_mont((uninit, one, previous), m.limbs(), m.n0(), m.cpu_features())
+        })?;
+    }
+    let table: &[Limb] = table.into_filled();
 
     let mut tmp_slice = tmp
         .as_uninit(..num_limbs.get())

@@ -264,6 +264,11 @@ impl<'target, E: Copy> Buf<'target, E> {
         unsafe { filled.assume_init() }
     }
 
+    #[cfg_attr(target_arch = "x86_64", expect(dead_code))]
+    pub fn into_filled(self) -> &'target [E] {
+        self.into_filled_mut()
+    }
+
     pub fn into_filled_mut(self) -> &'target mut [E] {
         let (filled, _unfilled) = self.split_filled_mut();
         filled
@@ -292,6 +297,44 @@ impl<'target, E: Copy> Buf<'target, E> {
         // SAFETY: by invariant.
         let filled = unsafe { filled.assume_init() };
         (filled, unfilled)
+    }
+
+    fn split_at_spare_mut(&mut self) -> (&mut [E], Uninit<'_, E>) {
+        let (filled, unfilled) = self
+            .storage
+            .reborrow_mut()
+            .split_at_mut_checked(self.filled)
+            .unwrap_or_else(|| unreachable!()); // by invariant.
+        // SAFETY: by invariant.
+        let filled = unsafe { filled.assume_init() };
+        (filled, unfilled)
+    }
+
+    /// Reserves the first `len` bytes of the unfilled space as `to_fill`, then
+    /// calls `f(filled, to_fill)` where `filled` is the filled space. If `f`
+    /// returns `Ok(filled)`, then `filled` must be `to_fill`, filled in.
+    #[cfg_attr(target_arch = "x86_64", expect(dead_code))]
+    pub fn try_write_with<Err>(
+        &mut self,
+        len: usize,
+        f: impl for<'a> FnOnce(&mut [E], Uninit<'a, E>) -> Result<&'a mut [E], Err>,
+    ) -> Result<(), Err>
+    where
+        Err: From<LenMismatchError>,
+    {
+        let (filled, mut unfilled) = self.split_at_spare_mut();
+        let Some(to_fill) = unfilled.get_mut(..len) else {
+            return Err(LenMismatchError::new(unfilled.len()))?;
+        };
+        let len_and_ptr: *const [MaybeUninit<E>] = ptr::from_ref(to_fill.target);
+        let len_and_ptr: *const [E] = len_and_ptr as *const [E]; // cast_init
+        let res = f(filled, to_fill)?;
+        if !ptr::eq(res, len_and_ptr) {
+            // XXX: It could have been the address that was different.
+            Err(LenMismatchError::new(res.len()))?;
+        }
+        self.filled += res.len();
+        Ok(())
     }
 }
 
