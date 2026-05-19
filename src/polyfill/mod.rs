@@ -46,7 +46,6 @@ mod cold_error;
 mod aliasing_slices;
 mod array_flat_map;
 mod array_split_map;
-pub mod dynarray;
 pub mod partial_buffer;
 pub mod sliceutil;
 
