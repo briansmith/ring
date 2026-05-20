@@ -149,7 +149,7 @@ impl ValidatedInput<'_> {
             let (_num_limbs, value) = rest.split_first().unwrap_or_else(|| unreachable!()); // Since we just wrote it.
             N0::write_into(n0, value);
 
-            out.try_write_with(num_limbs, |init, uninit| {
+            out.with_filled_and_unfilled_buf_checked(num_limbs, |init, uninit| {
                 let m = &Mont::<'_, M>::from_storage_unchecked_less_safe(init, cpu);
                 let r: elem::Mut<'_, _, RR> =
                     One::write_mont_identity(uninit, m, self.len_bits())?.mul_r(m)?; // in place.
