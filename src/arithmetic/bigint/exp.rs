@@ -93,10 +93,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     m: &Mont<M>,
     tmp: &mut elem::OversizedUninit,
 ) -> Result<elem::Mut<'out, M, Unencoded>, LimbSliceError> {
-    use super::{
-        super::montgomery::{R, limbs_mul_mont, limbs_square_mont},
-        elem,
-    };
+    use super::{super::montgomery::R, elem};
     use crate::{
         bssl, c, error,
         polyfill::{StartMutPtr, slice::Buf},
@@ -160,16 +157,10 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
 
     // table[1] = base*R == (base/R * RRR)/R
     table.write_with(num_limbs.get(), |_init, uninit| {
-        limbs_mul_mont(
-            (
-                uninit,
-                base_rinverse.leak_limbs_less_safe(),
-                oneRRR.leak_limbs_less_safe(),
-            ),
-            m.limbs(),
-            m.n0(),
-            m.cpu_features(),
-        )
+        base_rinverse
+            .as_ref()
+            .mul(uninit, oneRRR.as_ref(), m)
+            .map(elem::Mut::leak_limbs_into_mut_less_safe)
     })?;
 
     for _i in 1..16 {
@@ -178,19 +169,25 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         // table[2*i] = (n**i)**2/R
         table.write_with(n, |init, uninit| {
             let sqrt_start = init.len() / 2;
-            let sqrt = init
-                .get(sqrt_start..(sqrt_start + n))
-                .unwrap_or_else(|| unreachable!());
-            limbs_square_mont((uninit, sqrt), m.limbs(), m.n0(), m.cpu_features())
+            let sqrt = elem::Ref::<'_, M, R>::assume_in_range_and_encoded_less_safe(
+                init.get(sqrt_start..(sqrt_start + n))
+                    .unwrap_or_else(|| unreachable!()),
+            );
+            sqrt.squared(uninit, m)
+                .map(elem::Mut::leak_limbs_into_mut_less_safe)
         })?;
 
         // table[2*i + 1] = (n**1)*(n**(2*i))/R
         table.write_with(n, |init, uninit| {
-            let one = init.get(n..(n + n)).unwrap_or_else(|| unreachable!());
-            let previous = init
-                .get((init.len() - n)..)
-                .unwrap_or_else(|| unreachable!());
-            limbs_mul_mont((uninit, one, previous), m.limbs(), m.n0(), m.cpu_features())
+            let one = elem::Ref::<'_, M, R>::assume_in_range_and_encoded_less_safe(
+                init.get(n..(n + n)).unwrap_or_else(|| unreachable!()),
+            );
+            let previous = elem::Ref::<'_, M, R>::assume_in_range_and_encoded_less_safe(
+                init.get((init.len() - n)..)
+                    .unwrap_or_else(|| unreachable!()),
+            );
+            one.mul(uninit, previous, m)
+                .map(elem::Mut::leak_limbs_into_mut_less_safe)
         })?;
     }
     let table: &[Limb] = table.into_filled();
@@ -261,7 +258,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         .ok_or_else(|| LenMismatchError::new(m_len))?
         .len();
 
-    let oneRRR = oneRRR.leak_limbs_less_safe();
+    let oneRRR = oneRRR.as_ref();
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.
@@ -307,7 +304,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     let base_cached: &[Limb] = mul_mont5(
         base_cached.into(),
         base_rinverse,
-        oneRRR,
+        oneRRR.leak_limbs_less_safe(),
         m_cached,
         n0,
         cpu2,

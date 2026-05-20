@@ -43,8 +43,8 @@ impl<M, E> One<'_, M, E> {
         }
     }
 
-    pub(in super::super) fn leak_limbs_less_safe(&self) -> &[Limb] {
-        self.value
+    pub(in super::super) fn as_ref(&self) -> elem::Ref<'_, M, E> {
+        elem::Ref::assume_in_range_and_encoded_less_safe(self.value)
     }
 }
 
