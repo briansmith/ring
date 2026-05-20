@@ -16,8 +16,8 @@
 use crate::polyfill::prelude::*;
 
 use super::{
-    super::montgomery::*, IntoMont, Mont, unwrap_impossible_len_mismatch_error,
-    unwrap_impossible_limb_slice_error,
+    super::{LimbSliceError, montgomery::*},
+    IntoMont, Mont, unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
 };
 use crate::{
     c, cpu,
@@ -29,6 +29,7 @@ use crate::{
     },
 };
 use core::{marker::PhantomData, num::NonZero};
+
 // TODO: Move here?
 pub(crate) use super::oversized_uninit::OversizedUninit;
 
@@ -128,6 +129,7 @@ impl<'l, M, E> Mut<'l, M, E> {
         Ref::assume_in_range_and_encoded_less_safe(self.limbs)
     }
 
+    #[cfg(target_arch = "x86_64")]
     pub(super) fn leak_limbs_less_safe(&self) -> &[Limb] {
         self.limbs
     }
@@ -188,7 +190,7 @@ impl<'l, M, E> Ref<'l, M, E> {
         self.limbs.len()
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, target_arch = "x86_64"))]
     pub(super) fn leak_limbs_less_safe(&self) -> &[Limb] {
         self.limbs
     }
@@ -303,18 +305,7 @@ impl<'l, M, E> Mut<'l, M, E> {
     where
         (E, OE): ProductEncoding,
     {
-        let oneRR = im.one();
-        let m = im.modulus(cpu);
-
-        let in_out = self.limbs;
-        let _: &[Limb] = limbs_mul_mont(
-            (InOut(&mut *in_out), oneRR.leak_limbs_less_safe()),
-            m.limbs(),
-            m.n0(),
-            m.cpu_features(),
-        )
-        .unwrap_or_else(unwrap_impossible_limb_slice_error);
-        Mut::assume_in_range_and_encoded_less_safe(in_out)
+        self.mul(im.one().as_ref(), &im.modulus(cpu))
     }
 }
 
@@ -366,6 +357,40 @@ impl<M> Ref<'_, M, Unencoded> {
         limb::limbs_reduce_once(&mut *r, m.limbs())
             .unwrap_or_else(unwrap_impossible_len_mismatch_error);
         Mut::<P, Unencoded>::assume_in_range_and_encoded_less_safe(r)
+    }
+}
+
+#[cfg_attr(target_arch = "x86_64", expect(dead_code))]
+impl<M, E> Ref<'_, M, E> {
+    pub fn mul<'r, BE>(
+        self,
+        r: Uninit<'r, Limb>,
+        b: Ref<M, BE>,
+        m: &Mont<M>,
+    ) -> Result<Mut<'r, M, <(E, BE) as ProductEncoding>::Output>, LimbSliceError>
+    where
+        (E, BE): ProductEncoding,
+    {
+        let r = limbs_mul_mont(
+            (r, self.limbs, b.limbs),
+            m.limbs(),
+            m.n0(),
+            m.cpu_features(),
+        )?;
+        Ok(Mut::assume_in_range_and_encoded_less_safe(r))
+    }
+
+    #[inline]
+    pub fn squared<'r>(
+        self,
+        r: Uninit<'r, Limb>,
+        m: &Mont<M>,
+    ) -> Result<Mut<'r, M, <(E, E) as ProductEncoding>::Output>, LimbSliceError>
+    where
+        (E, E): ProductEncoding,
+    {
+        let r = limbs_square_mont((r, self.limbs), m.limbs(), m.n0(), m.cpu_features())?;
+        Ok(Mut::assume_in_range_and_encoded_less_safe(r))
     }
 }
 
