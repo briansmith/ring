@@ -153,13 +153,13 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
     let mut table = Buf::from(Uninit::from(table.as_mut()));
 
     // table[0] = base**0 (i.e. 1).
-    table.with_filled_and_unfilled_buf_checked(num_limbs.get(), |_init, uninit| {
+    table.write_with(num_limbs.get(), |_init, uninit| {
         One::write_mont_identity_assuming_full_upper_limb(uninit, m)
             .map(elem::Mut::leak_limbs_into_mut_less_safe)
     })?;
 
     // table[1] = base*R == (base/R * RRR)/R
-    table.with_filled_and_unfilled_buf_checked(num_limbs.get(), |_init, uninit| {
+    table.write_with(num_limbs.get(), |_init, uninit| {
         limbs_mul_mont(
             (
                 uninit,
@@ -176,7 +176,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         let n = num_limbs.get();
 
         // table[2*i] = (n**i)**2/R
-        table.with_filled_and_unfilled_buf_checked(n, |init, uninit| {
+        table.write_with(n, |init, uninit| {
             let sqrt_start = init.len() / 2;
             let sqrt = init
                 .get(sqrt_start..(sqrt_start + n))
@@ -185,7 +185,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
         })?;
 
         // table[2*i + 1] = (n**1)*(n**(2*i))/R
-        table.with_filled_and_unfilled_buf_checked(n, |init, uninit| {
+        table.write_with(n, |init, uninit| {
             let one = init.get(n..(n + n)).unwrap_or_else(|| unreachable!());
             let previous = init
                 .get((init.len() - n)..)

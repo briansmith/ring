@@ -313,7 +313,7 @@ impl<'target, E: Copy> Buf<'target, E> {
     /// Reserves the first `len` bytes of the unfilled space as `to_fill`, then
     /// calls `f(filled, to_fill)` where `filled` is the filled space. If `f`
     /// returns `Ok(filled)`, then `filled` must be `to_fill`, filled in.
-    pub fn with_filled_and_unfilled_buf_checked<Err: From<LenMismatchError>>(
+    pub fn write_with<Err: From<LenMismatchError>>(
         &mut self,
         len: usize,
         f: impl for<'a> FnOnce(&mut [E], Uninit<'a, E>) -> Result<&'a mut [E], Err>,
