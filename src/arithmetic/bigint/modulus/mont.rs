@@ -20,6 +20,7 @@ use super::{
         super::montgomery::{RR, RRR, Unencoded},
         MAX_LIMBS, N0, One, PublicModulus, elem,
         modulus::value::Value,
+        unwrap_impossible_limb_slice_error,
     },
     ValidatedInput,
 };
@@ -150,7 +151,8 @@ impl ValidatedInput<'_> {
             N0::write_into(n0, value);
 
             out.write_with(num_limbs, |init, uninit| {
-                let m = &Mont::<'_, M>::from_storage_unchecked_less_safe(init, cpu);
+                let m = &Mont::<'_, M>::from_storage_unchecked_less_safe(init, cpu)
+                    .unwrap_or_else(unwrap_impossible_limb_slice_error); // Since we just wrote it.
                 let r: elem::Mut<'_, _, RR> =
                     One::write_mont_identity(uninit, m, self.len_bits())?.mul_r(m)?; // in place.
                 Ok(r.leak_limbs_into_mut_less_safe())
@@ -204,6 +206,7 @@ impl<'a, M, E> IntoMont<'a, M, E> {
     pub(crate) fn modulus(&self, cpu_features: cpu::Features) -> Mont<'_, M> {
         let (mont, _) = self.split_mont();
         Mont::from_storage_unchecked_less_safe(mont, cpu_features)
+            .unwrap_or_else(unwrap_impossible_limb_slice_error)
     }
 
     pub(crate) fn one(&self) -> One<'_, M, E> {
@@ -230,7 +233,8 @@ impl<M> BoxedIntoMont<M, RR> {
     pub(crate) fn intoRRR(self, cpu: cpu::Features) -> BoxedIntoMont<M, RRR> {
         let Self { mut storage, m, .. } = self;
         let (mont, one) = IntoMont::<M, RR>::split_mont_mut(storage.as_mut());
-        let mm = Mont::from_storage_unchecked_less_safe(mont, cpu);
+        let mm = Mont::from_storage_unchecked_less_safe(mont, cpu)
+            .unwrap_or_else(unwrap_impossible_limb_slice_error); // Since we just wrote it.
         let _: elem::Mut<'_, M, RRR> =
             elem::Mut::<'_, M, RR>::assume_in_range_and_encoded_less_safe(one).square(&mm); // in place
         BoxedIntoMont {
@@ -252,43 +256,82 @@ impl<'a, M: PublicModulus, E> IntoMont<'a, M, E> {
 // See the invariant of `Mont::storage`.
 const MONT_PREFIX_LEN: usize = N0::LIMBS_USED + 1;
 
-pub struct Mont<'a, M> {
-    // Invariant: Contains `N0::LIMBS_USED` limbs containing the value
-    // `Self::n0()` followed by one limb containing the length of
-    // `Self::limbs()`, followed by the limbs of `Self::limbs()`.
-    //
-    // When `N0::LIMBS_USED` is 1 on a 64-bit target, the prefix will be
-    // 128 bits, so if `storage` is 128-bit aligned then the value limbs
-    // will be too. XXX: On 32-bit x86, the alignment will be off because
-    // `N0::LIMBS_USED` is 2. TODO: Does this affect performance at all?;
-    // we make no effort to align the storage but the allocator is likely
-    // to align it to 128 bits.
-    storage: &'a [Limb],
-    m: PhantomData<M>,
-    cpu_features: cpu::Features,
-}
+mod base {
+    use super::*;
+    use crate::arithmetic::{LimbSliceError, MIN_LIMBS};
 
-impl<'a, M> Mont<'a, M> {
-    // "Less safe" because this assumes `storage` encodes a valid `Mont`.
-    // This should only be used where `storage` has been written by this
-    // module.
-    pub(super) fn from_storage_unchecked_less_safe(
+    pub struct Mont<'a, M> {
+        // Safety Invariant: Contains `N0::LIMBS_USED` limbs containing the
+        // value `Self::n0()` followed by one limb containing the length of
+        // `Self::limbs()`, followed by the limbs of `Self::limbs()`.
+        //
+        // Safety Invariant: `Self::limbs()` will be non-empty, and users
+        // may rely on this for soundness, especially to infer that
+        // pointers to slices of the same length are non-dangling.
+        //
+        // (Safety?) Invariant: `Self::limbs()` will contain at least
+        // `MIN_LIMBS` limbs. (Does anything rely on this for *safety*?
+        // Assume so.)
+        //
+        // Safety Invariant: `Self::limbs()` will never be more than
+        // `MAX_LIMBS`, and users may rely on this for soundness,
+        // especially to avoid stack overflow.
+        //
+        //
+        // When `N0::LIMBS_USED` is 1 on a 64-bit target, the prefix will be
+        // 128 bits, so if `storage` is 128-bit aligned then the value limbs
+        // will be too. XXX: On 32-bit x86, the alignment will be off because
+        // `N0::LIMBS_USED` is 2. TODO: Does this affect performance at all?;
+        // we make no effort to align the storage but the allocator is likely
+        // to align it to 128 bits.
         storage: &'a [Limb],
-        cpu: cpu::Features,
-    ) -> Self {
-        Mont {
-            storage,
-            m: PhantomData,
-            cpu_features: cpu,
+        pub(super) m: PhantomData<M>,
+        pub(super) cpu_features: cpu::Features,
+    }
+
+    impl<'a, M> Mont<'a, M> {
+        // "Less safe" because this assumes `storage` encodes a valid `Mont`.
+        // This should only be used where `storage` has been written by this
+        // module.
+        pub(super) fn from_storage_unchecked_less_safe(
+            storage: &'a [Limb],
+            cpu: cpu::Features,
+        ) -> Result<Self, LimbSliceError> {
+            // Enforce the length-related invariants (only).
+            let Some((&[.., num_limbs], value)) = storage.split_first_chunk::<MONT_PREFIX_LEN>()
+            else {
+                return Err(LenMismatchError::new(storage.len()))?;
+            };
+            let num_limbs = limb::usize_from_limb(num_limbs);
+            if num_limbs != value.len() {
+                return Err(LenMismatchError::new(storage.len()))?;
+            }
+            if num_limbs < MIN_LIMBS {
+                return Err(LimbSliceError::too_short(num_limbs));
+            }
+            if num_limbs > MAX_LIMBS {
+                return Err(LimbSliceError::too_long(num_limbs));
+            }
+            Ok(Mont {
+                storage,
+                m: PhantomData,
+                cpu_features: cpu,
+            })
+        }
+
+        pub(super) fn storage(&self) -> &[Limb] {
+            self.storage
         }
     }
 }
+
+pub use self::base::Mont;
 
 impl<M> Mont<'_, M> {
     #[inline]
     pub(in super::super) fn limbs(&self) -> &[Limb] {
         let (_n0_num_limbs, value) = self
-            .storage
+            .storage()
             .split_first_chunk::<{ MONT_PREFIX_LEN }>()
             .unwrap_or_else(|| unreachable!());
         value
@@ -297,7 +340,7 @@ impl<M> Mont<'_, M> {
     #[inline]
     pub(in super::super) fn n0(&self) -> N0<'_> {
         let (n0, _value) = self
-            .storage
+            .storage()
             .split_first_chunk::<{ N0::LIMBS_USED }>()
             .unwrap_or_else(|| unreachable!());
         N0::from_limbs_unchecked_less_safe(n0)

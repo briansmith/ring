@@ -47,6 +47,15 @@ pub fn limb_from_usize(value: usize) -> Limb {
     }
 }
 
+// There is no truncation, by construction.
+#[allow(clippy::cast_possible_truncation)]
+pub fn usize_from_limb(value: Limb) -> usize {
+    match_target_word_bits! {
+        64 => { value as usize },
+        32 => { value as usize },
+    }
+}
+
 #[inline]
 pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> Result<LimbMask, LenMismatchError> {
     if a.len() != b.len() {
