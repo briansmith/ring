@@ -137,7 +137,7 @@ impl ValidatedInput<'_> {
         if out.capacity() < storage_num_limbs {
             return Err(LenMismatchError::new(out.capacity()));
         }
-        out.with_unfilled_buf(|out| {
+        out.with_unfilled_buf_checked(|out| {
             // We can't compute `n0` until after we've written `value`.
             out.unfilled().write_repeat(limb::ZERO, N0::LIMBS_USED)?;
             out.unfilled().write(limb::limb_from_usize(num_limbs))?;
