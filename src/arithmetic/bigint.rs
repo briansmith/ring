@@ -87,8 +87,17 @@ fn unwrap_impossible_len_mismatch_error<T>(LenMismatchError { .. }: LenMismatchE
 fn unwrap_impossible_limb_slice_error<T>(err: LimbSliceError) -> T {
     match err {
         LimbSliceError::LenMismatch(_) => unreachable!(),
-        LimbSliceError::TooShort(_) => unreachable!(),
-        LimbSliceError::TooLong(_) => unreachable!(),
+        LimbSliceError::ModulusTooShort(_) => unreachable!(),
+        LimbSliceError::ModulusTooLong(_) => unreachable!(),
+    }
+}
+
+#[cold]
+fn limb_slice_error_must_be_len_mismatch_error(err: LimbSliceError) -> LenMismatchError {
+    match err {
+        LimbSliceError::LenMismatch(err) => err,
+        LimbSliceError::ModulusTooLong(_) => unreachable!(), // since `m: Mont`.
+        LimbSliceError::ModulusTooShort(_) => unreachable!(), // since `m: Mont`.
     }
 }
 

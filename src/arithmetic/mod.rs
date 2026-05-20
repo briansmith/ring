@@ -40,8 +40,14 @@ pub const MAX_LIMBS: usize = 8192 / LIMB_BITS;
 cold_exhaustive_error! {
     enum limb_slice_error::LimbSliceError {
         len_mismatch => LenMismatch(LenMismatchError),
-        too_short => TooShort(usize),
-        too_long => TooLong(usize),
+        /// "Too short" checks should only be done against the modulus,
+        /// not against other inputs. Callers rely on this
+        /// to reject these cases as impossible, if they've already
+        /// checked the modulus length.
+        modulus_too_short => ModulusTooShort(usize),
+        /// "Too long" checks should only be done against the modulus,
+        /// for the same reason as "too short" checks.
+        modulus_too_long => ModulusTooLong(usize),
     }
 }
 

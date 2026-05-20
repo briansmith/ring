@@ -96,11 +96,12 @@ pub(in super::super::super) fn sqr_mont5<'o>(
     }
 
     let n = n.as_flattened();
-    let num_limbs = NonZero::new(n.len()).ok_or_else(|| LimbSliceError::too_short(n.len()))?;
+    let num_limbs =
+        NonZero::new(n.len()).ok_or_else(|| LimbSliceError::modulus_too_short(n.len()))?;
 
     // Avoid stack overflow from the alloca inside.
     if num_limbs.get() > MAX_LIMBS {
-        return Err(LimbSliceError::too_long(num_limbs.get()));
+        return Err(LimbSliceError::modulus_too_long(num_limbs.get()));
     }
 
     // `Limb::from(mulx_adx.is_some())`, but intentionally branchy.

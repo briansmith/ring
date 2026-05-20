@@ -86,7 +86,7 @@ pub(super) unsafe fn bn_mul_mont_ffi<'o, Cpu, const LEN_MIN: usize, const LEN_MO
     assert_eq!(n.len() % LEN_MOD, 0); // The caller should guard against this.
     assert!(LEN_MIN >= MIN_LIMBS);
     if n.len() < LEN_MIN {
-        return Err(LimbSliceError::too_short(n.len()));
+        return Err(LimbSliceError::modulus_too_short(n.len()));
     }
     let len = NonZero::new(n.len()).unwrap_or_else(|| {
         // Unreachable because we checked against `LEN_MIN`, and we checked
@@ -98,7 +98,7 @@ pub(super) unsafe fn bn_mul_mont_ffi<'o, Cpu, const LEN_MIN: usize, const LEN_MO
     // `2*len` + a non-trivial fixed amount.
 
     if len.get() > MAX_LIMBS {
-        return Err(LimbSliceError::too_long(n.len()));
+        return Err(LimbSliceError::modulus_too_long(n.len()));
     }
     let r = in_out.with_non_dangling_non_null_pointers(len, |mut r, [a, b]| {
         let n = n.as_ptr();

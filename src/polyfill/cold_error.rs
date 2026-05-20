@@ -73,6 +73,7 @@ macro_rules! cold_exhaustive_error {
     {
         enum $mod_name:ident::$Error:ident {
             $(
+                $( #[$meta:meta] )*
                 $constructor:ident => $Variant:ident($ValueType:ty),
             )+
         }
@@ -83,12 +84,14 @@ macro_rules! cold_exhaustive_error {
 
             pub enum $Error {
                 $(
+                    $( #[$meta] )*
                     $Variant(#[allow(dead_code)] $ValueType)
                 ),+
             }
 
             impl $Error {
                 $(
+                    $( #[$meta] )*
                     #[cold]
                     #[inline(never)]
                     pub(super) fn $constructor(value: $ValueType) -> Self {

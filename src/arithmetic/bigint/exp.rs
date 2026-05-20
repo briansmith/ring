@@ -461,8 +461,8 @@ mod tests {
                 match actual_result {
                     Ok(r) => assert_elem_eq(r.as_ref(), expected_result.as_ref()),
                     Err(LimbSliceError::LenMismatch { .. }) => panic!(),
-                    Err(LimbSliceError::TooLong { .. }) => panic!(),
-                    Err(LimbSliceError::TooShort { .. }) => panic!(),
+                    Err(LimbSliceError::ModulusTooLong { .. }) => panic!(),
+                    Err(LimbSliceError::ModulusTooShort { .. }) => panic!(),
                 };
 
                 Ok(())

@@ -16,8 +16,8 @@
 use crate::polyfill::prelude::*;
 
 use super::{
-    super::{LimbSliceError, montgomery::*},
-    IntoMont, Mont, unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
+    super::montgomery::*, IntoMont, Mont, limb_slice_error_must_be_len_mismatch_error,
+    unwrap_impossible_len_mismatch_error, unwrap_impossible_limb_slice_error,
 };
 use crate::{
     c, cpu,
@@ -367,17 +367,18 @@ impl<M, E> Ref<'_, M, E> {
         r: Uninit<'r, Limb>,
         b: Ref<M, BE>,
         m: &Mont<M>,
-    ) -> Result<Mut<'r, M, <(E, BE) as ProductEncoding>::Output>, LimbSliceError>
+    ) -> Result<Mut<'r, M, <(E, BE) as ProductEncoding>::Output>, LenMismatchError>
     where
         (E, BE): ProductEncoding,
     {
-        let r = limbs_mul_mont(
+        limbs_mul_mont(
             (r, self.limbs, b.limbs),
             m.limbs(),
             m.n0(),
             m.cpu_features(),
-        )?;
-        Ok(Mut::assume_in_range_and_encoded_less_safe(r))
+        )
+        .map(Mut::assume_in_range_and_encoded_less_safe)
+        .map_err(limb_slice_error_must_be_len_mismatch_error) // because `m: Mont`
     }
 
     #[inline]
@@ -385,12 +386,13 @@ impl<M, E> Ref<'_, M, E> {
         self,
         r: Uninit<'r, Limb>,
         m: &Mont<M>,
-    ) -> Result<Mut<'r, M, <(E, E) as ProductEncoding>::Output>, LimbSliceError>
+    ) -> Result<Mut<'r, M, <(E, E) as ProductEncoding>::Output>, LenMismatchError>
     where
         (E, E): ProductEncoding,
     {
-        let r = limbs_square_mont((r, self.limbs), m.limbs(), m.n0(), m.cpu_features())?;
-        Ok(Mut::assume_in_range_and_encoded_less_safe(r))
+        limbs_square_mont((r, self.limbs), m.limbs(), m.n0(), m.cpu_features())
+            .map(Mut::assume_in_range_and_encoded_less_safe)
+            .map_err(limb_slice_error_must_be_len_mismatch_error) // because `m: Mont`
     }
 }
 
