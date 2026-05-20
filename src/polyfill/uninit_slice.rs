@@ -397,6 +397,7 @@ impl<E: Copy> Cursor<'_, '_, E> {
         // for us to support that case. It is important that the address is the
         // same and the length isn't longer.
         if !ptr::eq(buf.storage.target, ptr_and_len) {
+            // XXX: It could have been the address that was different.
             Err(LenMismatchError::new(buf.storage.target.len()))?;
         }
         debug_assert!(buf.filled <= buf.storage.len()); // invariant
