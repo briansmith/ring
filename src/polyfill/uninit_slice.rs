@@ -387,17 +387,21 @@ impl<E: Copy> Cursor<'_, '_, E> {
 
     /// See `core::io::BorrowedCursor::with_unfilled_buf`.
     ///
-    /// # Panics
-    ///
-    /// Panics if `f` replaces `Buf` with a different one.
-    pub fn with_unfilled_buf<R>(&mut self, f: impl FnOnce(&mut Buf<'_, E>) -> R) -> R {
+    /// `f` must not replace the `Buf` it is given with a different one;
+    /// i.e. it must not assign into the mutable reference it is given.
+    pub fn with_unfilled_buf_checked<R, Err: From<LenMismatchError>>(
+        &mut self,
+        f: impl FnOnce(&mut Buf<'_, E>) -> Result<R, Err>,
+    ) -> Result<R, Err> {
         let mut buf = Buf::from(self.buf.unfilled_uninit());
         let ptr_and_len: *const [MaybeUninit<E>] = ptr::from_ref(buf.storage.target);
         let res = f(&mut buf);
         // It would be OK if the length became shorter, but there's no reason
         // for us to support that case. It is important that the address is the
         // same and the length isn't longer.
-        assert!(ptr::eq(buf.storage.target, ptr_and_len));
+        if !ptr::eq(buf.storage.target, ptr_and_len) {
+            Err(LenMismatchError::new(buf.storage.target.len()))?;
+        }
         debug_assert!(buf.filled <= buf.storage.len()); // invariant
         self.buf.filled += buf.filled;
         // The above assertions ensure our invariant is maintained.
