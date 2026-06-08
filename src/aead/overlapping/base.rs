@@ -61,7 +61,7 @@ impl<'o, T> Overlapping<'o, T> {
         let len = self.len();
         let reborrowed = Overlapping {
             in_out: &mut self.in_out[..],
-            src: self.src.clone(),
+            src: self.src,
         };
         let r = f(reborrowed)?;
         Ok((&mut self.in_out[..len], r))
