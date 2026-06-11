@@ -88,6 +88,7 @@ mod start_ptr;
 #[cfg(test)]
 mod test;
 
+pub(crate) mod uninit;
 mod uninit_slice;
 
 pub use self::{array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, notsend::NotSend};

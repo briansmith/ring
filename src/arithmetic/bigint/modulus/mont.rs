@@ -32,7 +32,7 @@ use crate::{
     polyfill::{
         LeadingZerosStripped,
         slice::{Buf, Cursor},
-        usize_from_u32,
+        uninit, usize_from_u32,
     },
 };
 use core::{marker::PhantomData, mem::MaybeUninit, num::NonZero};
@@ -148,7 +148,7 @@ impl ValidatedInput<'_> {
                 .split_first_chunk_mut::<{ N0::LIMBS_USED }>()
                 .unwrap_or_else(|| unreachable!()); // Since we just wrote it.
             let (_num_limbs, value) = rest.split_first().unwrap_or_else(|| unreachable!()); // Since we just wrote it.
-            N0::write_into(n0, value);
+            N0::write_into(uninit::Uninit::from(n0), value)?;
 
             out.write_with(num_limbs, |init, uninit| {
                 let m = &Mont::<'_, M>::from_storage_unchecked_less_safe(init, cpu)

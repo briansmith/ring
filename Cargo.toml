@@ -80,7 +80,6 @@ include = [
     "crypto/fipsmodule/bn/asm/x86_64-mont5.pl",
     "crypto/fipsmodule/bn/internal.h",
     "crypto/fipsmodule/bn/montgomery.c",
-    "crypto/fipsmodule/bn/montgomery_inv.c",
     "crypto/fipsmodule/ec/asm/p256-armv8-asm.pl",
     "crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl",
     "crypto/fipsmodule/ec/ecp_nistz.c",
