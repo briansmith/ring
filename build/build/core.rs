@@ -36,7 +36,6 @@ use std::{
 const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/curve25519/curve25519.c"),
     (&[], "crypto/fipsmodule/bn/montgomery.c"),
-    (&[], "crypto/fipsmodule/bn/montgomery_inv.c"),
     (&[], "crypto/fipsmodule/ec/ecp_nistz.c"),
     (&[], "crypto/fipsmodule/ec/gfp_p256.c"),
     (&[], "crypto/fipsmodule/ec/gfp_p384.c"),

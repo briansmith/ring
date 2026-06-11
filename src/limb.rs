@@ -56,6 +56,18 @@ pub fn usize_from_limb(value: Limb) -> usize {
     }
 }
 
+/// `truncate_u32` returns the lower 32 bits of `value`. If `LIMB_BITS` is
+/// less than 32 then this function won't be defined.
+#[allow(clippy::cast_possible_truncation)]
+#[inline(always)]
+pub fn truncate_u32(value: Limb) -> u32 {
+    const { assert!(LIMB_BITS >= 32) };
+    match_target_word_bits! {
+        64 => { value as u32 },
+        32 => { value },
+    }
+}
+
 #[inline]
 pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> Result<LimbMask, LenMismatchError> {
     if a.len() != b.len() {
