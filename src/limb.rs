@@ -184,7 +184,7 @@ pub fn parse_big_endian_and_pad_consttime(
     result: &mut [Limb],
 ) -> Result<(), LenMismatchError> {
     let result_len = result.len();
-    let mut buf = Buf::from(Uninit::from(result));
+    let mut buf = Buf::from(result);
     limbs_from_be_bytes_padded(buf.unfilled(), input, result_len).map(|_| ())
 }
 

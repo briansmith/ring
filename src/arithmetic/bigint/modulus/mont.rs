@@ -31,7 +31,7 @@ use crate::{
     limb::{self, LIMB_BITS, Limb},
     polyfill::{
         LeadingZerosStripped,
-        slice::{Buf, Cursor, Uninit},
+        slice::{Buf, Cursor},
         usize_from_u32,
     },
 };
@@ -98,7 +98,7 @@ impl ValidatedInput<'_> {
         let storage_len =
             into_mont_storage_len_from_num_limbs(num_limbs).unwrap_or_else(|| unreachable!()); // Because `MAX_LIMBS` is small.
         let mut uninit = Box::new_uninit_slice(storage_len);
-        let mut buf = Buf::from(Uninit::from(uninit.as_mut()));
+        let mut buf = Buf::from(uninit.as_mut());
         self.write_into_mont_RR::<M>(buf.unfilled(), cpu)
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
         if buf.filled().len() != uninit.len() {
@@ -117,7 +117,7 @@ impl ValidatedInput<'_> {
         uninit: &'o mut OversizedUninit,
         cpu: cpu::Features,
     ) -> IntoMont<'o, M, RR> {
-        let mut buf = Buf::from(Uninit::from(uninit.0.as_mut_slice()));
+        let mut buf = Buf::from(uninit.0.as_mut_slice());
         self.write_into_mont_RR::<M>(buf.unfilled(), cpu)
             .unwrap_or_else(|LenMismatchError { .. }| unreachable!());
         IntoMont {
