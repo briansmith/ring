@@ -147,7 +147,7 @@ fn elem_exp_consttime_inner<'out, N, M, const STORAGE_LIMBS: usize>(
 
     let mut table: [MaybeUninit<Limb>; STORAGE_LIMBS] =
         [const { MaybeUninit::uninit() }; STORAGE_LIMBS];
-    let mut table = Buf::from(Uninit::from(table.as_mut()));
+    let mut table = Buf::from(table.as_mut());
 
     // table[0] = base**0 (i.e. 1).
     table.write_with(num_limbs.get(), |_init, uninit| {

@@ -234,9 +234,15 @@ pub struct Buf<'target, E> {
     filled: usize,
 }
 
-impl<'target, E: Copy> From<Uninit<'target, E>> for Buf<'target, E> {
-    fn from(storage: Uninit<'target, E>) -> Self {
-        Self { storage, filled: 0 }
+impl<'target, E, T> From<T> for Buf<'target, E>
+where
+    T: Into<Uninit<'target, E>>,
+{
+    fn from(storage: T) -> Self {
+        Self {
+            storage: storage.into(),
+            filled: 0,
+        }
     }
 }
 
