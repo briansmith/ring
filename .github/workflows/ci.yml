@@ -744,16 +744,7 @@ jobs:
       - run: RING_CPU_MODEL=${{ matrix.cpu_model }} RING_COVERAGE=1 mk/install-build-tools.sh +${{ matrix.rust_channel }} --target=${{ matrix.target }}
         shell: sh
 
-      - if: ${{ contains(matrix.host_os, 'windows') && contains(matrix.target, '86') }}
-        run: ./mk/install-build-tools.ps1
-
-      - if: ${{ !contains(matrix.host_os, 'windows') }}
-        run: |
+      - run: |
           RING_CPU_MODEL=${{ matrix.cpu_model }} RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test --locked --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
 
-      - uses: briansmith/codecov-codecov-action@v5
-        with:
-          directory: ./target/${{ matrix.target }}/debug/coverage/reports
-          fail_ci_if_error: true
-          token: ${{ secrets.CODECOV_TOKEN }}
-          verbose: true
+      - run: ./mk/install-coverage-tools.sh
