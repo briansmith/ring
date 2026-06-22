@@ -14,7 +14,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -32,7 +32,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -47,7 +47,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-cache@v4
+      - uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8
         with:
           path: |
             ~/.cargo/bin/cargo-audit
@@ -57,7 +57,7 @@ jobs:
 
       - run: cargo install cargo-audit  --locked --vers "0.22.1"
 
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -69,7 +69,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-cache@v4
+      - uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8
         with:
           path: |
             ~/.cargo/bin/cargo-semver-checks
@@ -79,7 +79,7 @@ jobs:
 
       - run: cargo install cargo-semver-checks --locked --vers "0.46.0"
 
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -94,7 +94,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-cache@v4
+      - uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8
         with:
           path: |
             ~/.cargo/bin/cargo-deny
@@ -104,7 +104,7 @@ jobs:
 
       - run: cargo install cargo-deny --locked --vers "0.19.0"
 
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -120,7 +120,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -136,7 +136,7 @@ jobs:
     steps:
       - run: rustup --version
 
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -317,7 +317,7 @@ jobs:
             host_os: ubuntu-24.04
 
     steps:
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -354,7 +354,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -380,7 +380,7 @@ jobs:
     steps:
       - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }}
 
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -430,7 +430,7 @@ jobs:
             host_os: ubuntu-24.04
 
     steps:
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -493,7 +493,7 @@ jobs:
           - CHROMEDRIVER=$CHROMEWEBDRIVER/chromedriver
 
     steps:
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -737,7 +737,7 @@ jobs:
             host_os: ubuntu-24.04
 
     steps:
-      - uses: briansmith/actions-checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
 
@@ -751,7 +751,7 @@ jobs:
         run: |
           RING_CPU_MODEL=${{ matrix.cpu_model }} RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test --locked --lib --tests -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }} ${{ matrix.cargo_test_options }}
 
-      - uses: briansmith/codecov-codecov-action@v5
+      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           directory: ./target/${{ matrix.target }}/debug/coverage/reports
           fail_ci_if_error: true
