@@ -28,12 +28,10 @@ use crate::{
 pub struct EcdsaVerificationAlgorithm {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
-    split_rs:
-        for<'a> fn(
-            ops: &'static ScalarOps,
-            input: &mut untrusted::Reader<'a>,
-        )
-            -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified>,
+    split_rs: for<'a> fn(
+        ops: &'static ScalarOps,
+        input: &mut untrusted::Reader<'a>,
+    ) -> Result<UnverifiedSig<'a>, error::Unspecified>,
     id: AlgorithmID,
 }
 
@@ -57,6 +55,10 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
         signature: untrusted::Input,
         _: sealed::Arg,
     ) -> Result<(), error::Unspecified> {
+        let signature = signature.read_all(error::Unspecified, |input| {
+            (self.split_rs)(self.ops.scalar_ops, input)
+        })?;
+
         let cpu = cpu::features();
         let e = {
             // NSA Guide Step 2: "Use the selected hash function to compute H =
@@ -73,19 +75,25 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
     }
 }
 
+struct UnverifiedSig<'a> {
+    pub r: untrusted::Input<'a>,
+    pub s: untrusted::Input<'a>,
+}
+
 impl EcdsaVerificationAlgorithm {
     /// This is intentionally not public.
     fn verify_digest(
         &self,
         public_key: untrusted::Input,
         e: Scalar,
-        signature: untrusted::Input,
+        UnverifiedSig { r, s }: UnverifiedSig<'_>,
         cpu: cpu::Features,
     ) -> Result<(), error::Unspecified> {
         // NSA Suite B Implementer's Guide to ECDSA Section 3.4.2.
 
         let public_key_ops = self.ops.public_key_ops;
         let scalar_ops = self.ops.scalar_ops;
+
         let q = &public_key_ops.common.elem_modulus(cpu);
         let n = &scalar_ops.scalar_modulus(cpu);
 
@@ -107,10 +115,6 @@ impl EcdsaVerificationAlgorithm {
         // parameters are hard-coded into the source. Prerequisite #3 is
         // handled by `parse_uncompressed_point`.
         let peer_pub_key = parse_uncompressed_point(public_key_ops, q, public_key)?;
-
-        let (r, s) = signature.read_all(error::Unspecified, |input| {
-            (self.split_rs)(scalar_ops, input)
-        })?;
 
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
@@ -168,24 +172,24 @@ impl EcdsaVerificationAlgorithm {
     }
 }
 
-fn split_rs_fixed<'a>(
+fn split_rs_fixed<'input>(
     ops: &'static ScalarOps,
-    input: &mut untrusted::Reader<'a>,
-) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified> {
+    input: &mut untrusted::Reader<'input>,
+) -> Result<UnverifiedSig<'input>, error::Unspecified> {
     let scalar_len = ops.scalar_bytes_len();
     let r = input.read_bytes(scalar_len)?;
     let s = input.read_bytes(scalar_len)?;
-    Ok((r, s))
+    Ok(UnverifiedSig { r, s })
 }
 
-fn split_rs_asn1<'a>(
+fn split_rs_asn1<'input>(
     _ops: &'static ScalarOps,
-    input: &mut untrusted::Reader<'a>,
-) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified> {
+    input: &mut untrusted::Reader<'input>,
+) -> Result<UnverifiedSig<'input>, error::Unspecified> {
     der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
         let r = der::positive_integer(input)?.big_endian_without_leading_zero_as_input();
         let s = der::positive_integer(input)?.big_endian_without_leading_zero_as_input();
-        Ok((r, s))
+        Ok(UnverifiedSig { r, s })
     })
 }
 
@@ -276,7 +280,7 @@ mod tests {
     extern crate alloc;
     use super::*;
     use crate::testutil as test;
-    use alloc::{vec, vec::Vec};
+    use alloc::vec;
 
     #[test]
     fn test_digest_based_test_vectors() {
@@ -297,11 +301,11 @@ mod tests {
 
                 let digest = test_case.consume_bytes("Digest");
 
-                let sig = {
-                    let mut sig = Vec::new();
-                    sig.extend(&test_case.consume_bytes("R"));
-                    sig.extend(&test_case.consume_bytes("S"));
-                    sig
+                let r = test_case.consume_bytes("R");
+                let s = test_case.consume_bytes("S");
+                let rs = UnverifiedSig {
+                    r: r.as_slice().into(),
+                    s: s.as_slice().into(),
                 };
 
                 let invalid = test_case.consume_optional_string("Invalid");
@@ -316,12 +320,8 @@ mod tests {
                 let n = &alg.ops.scalar_ops.scalar_modulus(cpu);
 
                 let digest = super::super::digest_scalar::digest_bytes_scalar(n, &digest[..]);
-                let actual_result = alg.verify_digest(
-                    untrusted::Input::from(&public_key[..]),
-                    digest,
-                    untrusted::Input::from(&sig[..]),
-                    cpu,
-                );
+                let actual_result =
+                    alg.verify_digest(untrusted::Input::from(&public_key[..]), digest, rs, cpu);
                 assert_eq!(actual_result.is_ok(), invalid.is_none());
 
                 Ok(())
