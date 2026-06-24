@@ -16,7 +16,9 @@
 
 use super::{super::ops::*, eddsa_digest};
 use crate::{
-    cpu, digest, error,
+    cpu,
+    digest::{self, Digest},
+    error,
     io::der,
     pkcs8, rand,
     signature::{self, KeyPair as SigningKeyPair},
@@ -51,7 +53,8 @@ impl Ed25519KeyPair {
     ) -> Result<pkcs8::Document, error::Unspecified> {
         let cpu_features = cpu::features();
         let seed: [u8; SEED_LEN] = rand::generate(rng)?.expose();
-        let key_pair = Self::from_seed_(&seed, cpu_features);
+        let key_pair = Self::from_seed_(&seed, cpu_features)
+            .map_err(error::erase::<digest::InputTooLongError>)?;
         Ok(pkcs8::wrap_key(
             &PKCS8_TEMPLATE,
             &seed[..],
@@ -167,11 +170,15 @@ impl Ed25519KeyPair {
         let seed = seed
             .try_into()
             .map_err(|_| error::KeyRejected::invalid_encoding())?;
-        Ok(Self::from_seed_(seed, cpu::features()))
+        Self::from_seed_(seed, cpu::features())
+            .map_err(|digest::InputTooLongError { .. }| error::KeyRejected::too_large())
     }
 
-    fn from_seed_(seed: &Seed, cpu_features: cpu::Features) -> Self {
-        let h = digest::digest(&digest::SHA512, seed);
+    fn from_seed_(
+        seed: &Seed,
+        cpu_features: cpu::Features,
+    ) -> Result<Self, digest::InputTooLongError> {
+        let h = Digest::compute_from(&digest::SHA512, seed, cpu_features)?;
         let (private_scalar, private_prefix) = h.as_ref().split_at(SCALAR_LEN);
 
         let private_scalar =
@@ -179,11 +186,11 @@ impl Ed25519KeyPair {
 
         let a = P3::from_scalarmult_base(&private_scalar, cpu_features);
 
-        Self {
+        Ok(Self {
             private_scalar,
             private_prefix: private_prefix.try_into().unwrap(),
             public_key: PublicKey(a.into_compressed_encoding(cpu_features)),
-        }
+        })
     }
 
     /// Returns the signature of the message `msg`.
