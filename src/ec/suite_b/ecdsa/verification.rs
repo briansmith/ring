@@ -17,7 +17,8 @@
 use super::digest_scalar::digest_scalar;
 use crate::{
     arithmetic::montgomery::*,
-    cpu, digest,
+    cpu,
+    digest::{self, Digest},
     ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve},
     error,
     io::der,
@@ -61,7 +62,8 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
         let e = {
             // NSA Guide Step 2: "Use the selected hash function to compute H =
             // Hash(M)."
-            let h = digest::digest(self.digest_alg, msg.as_slice_less_safe());
+            let h = Digest::compute_from(self.digest_alg, msg.as_slice_less_safe(), cpu)
+                .map_err(error::erase::<digest::InputTooLongError>)?;
 
             // NSA Guide Step 3: "Convert the bit string H to an integer e as
             // described in Appendix B.2."
