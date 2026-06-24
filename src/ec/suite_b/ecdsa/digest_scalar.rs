@@ -16,8 +16,7 @@
 
 use crate::{digest, ec::suite_b::ops::*};
 
-/// Calculate the digest of `msg` using the digest algorithm `digest_alg`. Then
-/// convert the digest to a scalar in the range [0, n) as described in
+/// Convert the digest to a scalar in the range [0, n) as described in
 /// NIST's FIPS 186-4 Section 4.2. Note that this is one of the few cases where
 /// a `Scalar` is allowed to have the value zero.
 ///
