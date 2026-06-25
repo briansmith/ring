@@ -26,7 +26,8 @@ use crate::{
         montgomery::{R, RR, RRR},
     },
     bits::BitLength,
-    cpu, digest,
+    cpu,
+    digest::{self, Digest},
     error::{self, KeyRejected},
     io::der,
     pkcs8, rand, sealed, signature,
@@ -554,7 +555,8 @@ impl KeyPair {
             return Err(error::Unspecified);
         }
 
-        let m_hash = digest::digest(padding_alg.digest_alg_(sealed::Arg), msg);
+        let m_hash = Digest::compute_from(padding_alg.digest_alg_(sealed::Arg), msg, cpu_features)
+            .map_err(error::erase::<digest::InputTooLongError>)?;
 
         // Use the output buffer as the scratch space for the signature to
         // reduce the required stack space.

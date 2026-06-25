@@ -22,7 +22,8 @@ use super::{
 use crate::{
     arithmetic::bigint,
     bits::{self, FromByteLen as _},
-    cpu, digest,
+    cpu,
+    digest::{self, Digest},
     error::{self, InputTooLongError},
     sealed, signature,
 };
@@ -217,10 +218,12 @@ fn verify(
     let decoded = key.exponentiate(signature, &mut decoded, cpu_features)?;
 
     // Verify the padded message is correct.
-    let m_hash = digest::digest(
+    let m_hash = Digest::compute_from(
         params.padding_alg.digest_alg_(sealed::Arg),
         msg.as_slice_less_safe(),
-    );
+        cpu_features,
+    )
+    .map_err(error::erase::<digest::InputTooLongError>)?;
     untrusted::Input::from(decoded).read_all(error::Unspecified, |m| {
         params.padding_alg.verify(m_hash, m, key.n().len_bits())
     })
