@@ -269,7 +269,7 @@ impl EcdsaKeyPair {
             // Step 4 is done by the caller.
 
             // Step 5.
-            let e = digest_scalar(n, h);
+            let e = digest_scalar(n, h.as_ref());
 
             // Step 6.
             let s = {
