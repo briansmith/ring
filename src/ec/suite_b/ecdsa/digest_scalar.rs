@@ -14,7 +14,7 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use crate::{digest, ec::suite_b::ops::*};
+use crate::ec::suite_b::ops::*;
 
 /// Convert the digest to a scalar in the range [0, n) as described in
 /// NIST's FIPS 186-4 Section 4.2. Note that this is one of the few cases where
@@ -41,18 +41,7 @@ use crate::{digest, ec::suite_b::ops::*};
 /// right will give a value less than 2**255, which is less than `n`. The
 /// analogous argument applies for P-384. However, it does *not* apply in
 /// general; for example, it doesn't apply to P-521.
-pub(super) fn digest_scalar(n: &Modulus<N>, msg: &digest::Digest) -> Scalar {
-    digest_scalar_(n, msg.as_ref())
-}
-
-#[cfg(test)]
-pub(super) fn digest_bytes_scalar(n: &Modulus<N>, digest: &[u8]) -> Scalar {
-    digest_scalar_(n, digest)
-}
-
-// This is a separate function solely so that we can test specific digest
-// values like all-zero values and values larger than `n`.
-fn digest_scalar_(n: &Modulus<N>, digest: &[u8]) -> Scalar {
+pub(super) fn digest_scalar(n: &Modulus<N>, digest: &[u8]) -> Scalar {
     let len = n.bytes_len();
     let digest = if digest.len() > len {
         &digest[..len]
@@ -66,9 +55,9 @@ fn digest_scalar_(n: &Modulus<N>, digest: &[u8]) -> Scalar {
 
 #[cfg(test)]
 mod tests {
-    use super::digest_bytes_scalar;
+    use super::*;
     use crate::testutil as test;
-    use crate::{cpu, digest, ec::suite_b::ops::*, limb};
+    use crate::{cpu, digest, limb};
 
     #[test]
     fn test() {
@@ -105,7 +94,7 @@ mod tests {
                 )
                 .unwrap();
 
-                let actual = digest_bytes_scalar(n, &input);
+                let actual = digest_scalar(n, &input);
                 assert_eq!(
                     ops.scalar_ops.leak_limbs(&actual),
                     ops.scalar_ops.leak_limbs(&expected)

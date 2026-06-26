@@ -41,7 +41,13 @@ enum AlgorithmID {
     ECDSA_P256_SHA256_ASN1,
     ECDSA_P256_SHA256_FIXED,
     ECDSA_P256_SHA384_ASN1,
+    #[cfg(test)]
+    #[allow(dead_code)]
+    ECDSA_P256_SHA384_FIXED,
     ECDSA_P384_SHA256_ASN1,
+    #[cfg(test)]
+    #[allow(dead_code)]
+    ECDSA_P384_SHA256_FIXED,
     ECDSA_P384_SHA384_ASN1,
     ECDSA_P384_SHA384_FIXED,
 }
@@ -61,19 +67,12 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
         })?;
 
         let cpu = cpu::features();
-        let e = {
-            // NSA Guide Step 2: "Use the selected hash function to compute H =
-            // Hash(M)."
-            let h = Digest::compute_from(self.digest_alg, msg.as_slice_less_safe(), cpu)
-                .map_err(error::erase::<digest::InputTooLongError>)?;
+        // NSA Guide Step 2: "Use the selected hash function to compute H =
+        // Hash(M)."
+        let h = Digest::compute_from(self.digest_alg, msg.as_slice_less_safe(), cpu)
+            .map_err(error::erase::<digest::InputTooLongError>)?;
 
-            // NSA Guide Step 3: "Convert the bit string H to an integer e as
-            // described in Appendix B.2."
-            let n = &self.ops.scalar_ops.scalar_modulus(cpu);
-            digest_scalar(n, &h)
-        };
-
-        self.verify_digest(public_key, e, signature, cpu)
+        self.verify_digest(public_key, h.as_ref(), signature, cpu)
     }
 }
 
@@ -87,17 +86,22 @@ impl EcdsaVerificationAlgorithm {
     fn verify_digest(
         &self,
         public_key: untrusted::Input,
-        e: Scalar,
+        h: &[u8],
         UnverifiedSig { r, s }: UnverifiedSig<'_>,
         cpu: cpu::Features,
     ) -> Result<(), error::Unspecified> {
+        let n = &self.ops.scalar_ops.scalar_modulus(cpu);
+
+        // NSA Guide Step 3: "Convert the bit string H to an integer e as
+        // described in Appendix B.2."
+        let e = digest_scalar(n, h);
+
         // NSA Suite B Implementer's Guide to ECDSA Section 3.4.2.
 
         let public_key_ops = self.ops.public_key_ops;
         let scalar_ops = self.ops.scalar_ops;
 
         let q = &public_key_ops.common.elem_modulus(cpu);
-        let n = &scalar_ops.scalar_modulus(cpu);
 
         // NSA Guide Prerequisites:
         //
@@ -248,6 +252,14 @@ pub static ECDSA_P256_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificatio
     id: AlgorithmID::ECDSA_P256_SHA384_ASN1,
 };
 
+#[cfg(test)]
+static ECDSA_P256_SHA384_FIXED: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
+    ops: &p256::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA384,
+    split_rs: split_rs_fixed,
+    id: AlgorithmID::ECDSA_P256_SHA384_FIXED,
+};
+
 /// *Not recommended*. Verification of ASN.1 DER-encoded ECDSA signatures using
 /// the P-384 curve and SHA-256.
 ///
@@ -263,6 +275,14 @@ pub static ECDSA_P384_SHA256_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificatio
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
     id: AlgorithmID::ECDSA_P384_SHA256_ASN1,
+};
+
+#[cfg(test)]
+static ECDSA_P384_SHA256_FIXED: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
+    ops: &p384::PUBLIC_SCALAR_OPS,
+    digest_alg: &digest::SHA256,
+    split_rs: split_rs_fixed,
+    id: AlgorithmID::ECDSA_P384_SHA256_FIXED,
 };
 
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-384 curve
@@ -312,18 +332,17 @@ mod tests {
 
                 let invalid = test_case.consume_optional_string("Invalid");
 
-                let alg = match curve_name.as_str() {
-                    "P-256" => &ECDSA_P256_SHA256_FIXED,
-                    "P-384" => &ECDSA_P384_SHA384_FIXED,
-                    _ => {
-                        panic!("Unsupported curve: {}", curve_name);
+                let alg = match (curve_name.as_str(), digest.len()) {
+                    ("P-256", digest::SHA384_OUTPUT_LEN) => &ECDSA_P256_SHA384_FIXED,
+                    ("P-384", digest::SHA256_OUTPUT_LEN) => &ECDSA_P384_SHA256_FIXED,
+                    ("P-384", digest::SHA384_OUTPUT_LEN) => &ECDSA_P384_SHA384_FIXED,
+                    ("P-256", digest::SHA256_OUTPUT_LEN) => &ECDSA_P256_SHA256_FIXED,
+                    (_, len) => {
+                        panic!("Unsupported curve: ({}, {})", curve_name, len);
                     }
                 };
-                let n = &alg.ops.scalar_ops.scalar_modulus(cpu);
-
-                let digest = super::super::digest_scalar::digest_bytes_scalar(n, &digest[..]);
                 let actual_result =
-                    alg.verify_digest(untrusted::Input::from(&public_key[..]), digest, rs, cpu);
+                    alg.verify_digest(untrusted::Input::from(&public_key[..]), &digest, rs, cpu);
                 assert_eq!(actual_result.is_ok(), invalid.is_none());
 
                 Ok(())
