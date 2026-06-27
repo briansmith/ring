@@ -67,11 +67,10 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
         })?;
 
         let cpu = cpu::features();
-        // NSA Guide Step 2: "Use the selected hash function to compute H =
-        // Hash(M)."
+
+        // FIPS 186-5 6.4.2.
         let h = Digest::compute_from(self.digest_alg, msg.as_slice_less_safe(), cpu)
             .map_err(error::erase::<digest::InputTooLongError>)?;
-
         self.verify_digest(public_key, h.as_ref(), signature, cpu)
     }
 }
@@ -90,57 +89,29 @@ impl EcdsaVerificationAlgorithm {
         UnverifiedSig { r, s }: UnverifiedSig<'_>,
         cpu: cpu::Features,
     ) -> Result<(), error::Unspecified> {
-        let n = &self.ops.scalar_ops.scalar_modulus(cpu);
-
-        // NSA Guide Step 3: "Convert the bit string H to an integer e as
-        // described in Appendix B.2."
-        let e = digest_scalar(n, h);
-
-        // NSA Suite B Implementer's Guide to ECDSA Section 3.4.2.
+        // FIPS 186-5 6.4.2.
 
         let public_key_ops = self.ops.public_key_ops;
         let scalar_ops = self.ops.scalar_ops;
-
         let q = &public_key_ops.common.elem_modulus(cpu);
+        let n = &self.ops.scalar_ops.scalar_modulus(cpu);
 
-        // NSA Guide Prerequisites:
-        //
-        //    Prior to accepting a verified digital signature as valid the
-        //    verifier shall have:
-        //
-        //    1. assurance of the signatory’s claimed identity,
-        //    2. an authentic copy of the domain parameters, (q, FR, a, b, SEED,
-        //       G, n, h),
-        //    3. assurance of the validity of the public key, and
-        //    4. assurance that the claimed signatory actually possessed the
-        //       private key that was used to generate the digital signature at
-        //       the time that the signature was generated.
-        //
-        // Prerequisites #1 and #4 are outside the scope of what this function
-        // can do. Prerequisite #2 is handled implicitly as the domain
-        // parameters are hard-coded into the source. Prerequisite #3 is
-        // handled by `parse_uncompressed_point`.
+        // "The validity of the public key [...] **should** also be checked."
         let peer_pub_key = parse_uncompressed_point(public_key_ops, q, public_key)?;
 
-        // NSA Guide Step 1: "If r and s are not both integers in the interval
-        // [1, n − 1], output INVALID."
         let r = scalar_parse_big_endian_variable(n, limb::AllowZero::No, r)?;
         let s = scalar_parse_big_endian_variable(n, limb::AllowZero::No, s)?;
+        // Step 2 was done by the caller, out of order.
+        let e = digest_scalar(n, h);
+        let s_inv = self.ops.scalar_inv_to_mont_vartime(&s, cpu);
+        let u = scalar_ops.scalar_product(&e, &s_inv, cpu);
+        let v = scalar_ops.scalar_product(&r, &s_inv, cpu);
+        let R1 = (self.ops.twin_mul)(&u, &v, &peer_pub_key, cpu);
 
-        // NSA Guide Step 4: "Compute w = s**−1 mod n, using the routine in
-        // Appendix B.1."
-        let w = self.ops.scalar_inv_to_mont_vartime(&s, cpu);
-
-        // NSA Guide Step 5: "Compute u1 = (e * w) mod n, and compute
-        // u2 = (r * w) mod n."
-        let u1 = scalar_ops.scalar_product(&e, &w, cpu);
-        let u2 = scalar_ops.scalar_product(&r, &w, cpu);
-
-        // NSA Guide Step 6: "Compute the elliptic curve point
-        // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
-        // addition. If R is equal to the point at infinity, output INVALID."
-        let product = (self.ops.twin_mul)(&u1, &u2, &peer_pub_key, cpu);
-
+        // Steps 7-9. Instead, we use Greg Maxwell's trick to avoid the
+        // inversion mod `q` that would be necessary to compute the
+        // affine X coordinate.
+        //
         // Verify that the point we computed is on the curve; see
         // `verify_affine_point_is_on_the_curve_scaled` for details on why. It
         // would be more secure to do the check on the affine coordinates if we
@@ -148,15 +119,8 @@ impl EcdsaVerificationAlgorithm {
         // `verify_affine_point_is_on_the_curve_scaled` for details on why).
         // But, we're going to avoid converting to affine for performance
         // reasons, so we do the verification using the Jacobian coordinates.
-        let z2 = verify_jacobian_point_is_on_the_curve(q, &product)?;
-
-        // NSA Guide Step 7: "Compute v = xR mod n."
-        // NSA Guide Step 8: "Compare v and r0. If v = r0, output VALID;
-        // otherwise, output INVALID."
-        //
-        // Instead, we use Greg Maxwell's trick to avoid the inversion mod `q`
-        // that would be necessary to compute the affine X coordinate.
-        let x = q.point_x(&product);
+        let z2 = verify_jacobian_point_is_on_the_curve(q, &R1)?;
+        let x = q.point_x(&R1);
         fn sig_r_equals_x(q: &Modulus<Q>, r: &Elem<Unencoded>, x: &Elem<R>, z2: &Elem<R>) -> bool {
             let r_jacobian = q.elem_product(z2, r);
             let x = q.elem_unencoded(x);
@@ -173,7 +137,6 @@ impl EcdsaVerificationAlgorithm {
                 return Ok(());
             }
         }
-
         Err(error::Unspecified)
     }
 }
