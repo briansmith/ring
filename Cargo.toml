@@ -162,7 +162,7 @@ cfg-if = { version = "1.0.0", default-features = false }
 # `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo update -p getrandom`.
 # On wasm32-wasip3, this depends on a version of wasip3 that has a higher MSRV;
 # see https://github.com/rust-random/getrandom/pull/824.
-getrandom = { version = "0.4.2" }
+getrandom = { version = "0.4.3" }
 
 untrusted = { version = "0.9" }
 
