@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Aes, CAPS_STATIC, Neon, PMull, Sha256};
-use windows_sys::Win32::System::Threading::{
+use crate::polyfill::aarch64_windows::Windows::Win32::System::Threading::{
     IsProcessorFeaturePresent, PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE,
 };
 
