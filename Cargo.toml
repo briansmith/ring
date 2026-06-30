@@ -172,8 +172,8 @@ libc = { version = "0.2.172", default-features = false }
 [target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_vendor = "apple", any(target_os = "ios", target_os = "macos", target_os = "tvos", target_os = "visionos", target_os = "watchos")))'.dependencies]
 libc = { version = "0.2.172", default-features = false }
 
-[target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_os = "windows"))'.dependencies]
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Threading"] }
+[target.'cfg(all(target_arch = "aarch64", target_os = "windows"))'.dependencies]
+windows-link = { version = "0.2.1" }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen-test = { version = "0.3.64", default-features = false, features = ["std"] }
@@ -236,9 +236,12 @@ overflow-checks = true
 
 [workspace]
 members = [
-    # intentionally not a default member so that `cargo test` doesn't cause criterion.rs and all its
+    # Not a default member so that `cargo test` doesn't cause criterion.rs and all its
     # dependencies to get built.
     "bench",
+
+    # Not a defailt member as we regenerate bindings manually.
+    "build/bindgen",
 
     "cavp",
 ]

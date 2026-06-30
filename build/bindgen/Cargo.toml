@@ -1,0 +1,11 @@
+[package]
+name = "ring-bindgen"
+edition = "2024"
+publish = false
+version = "0.1.0"
+
+[[bin]]
+name = "bindgen"
+
+[dependencies]
+windows-bindgen = "0.66"

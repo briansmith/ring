@@ -91,6 +91,9 @@ mod test;
 pub(crate) mod uninit;
 mod uninit_slice;
 
+#[cfg(all(target_arch = "aarch64", target_os = "windows"))]
+pub(crate) mod aarch64_windows;
+
 pub use self::{array_flat_map::ArrayFlatMap, array_split_map::ArraySplitMap, notsend::NotSend};
 
 #[allow(unused_imports)]
