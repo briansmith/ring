@@ -390,7 +390,6 @@ dependencies = [
  "libc",
  "untrusted",
  "wasm-bindgen-test",
- "windows-sys",
 ]
 
 [[package]]
