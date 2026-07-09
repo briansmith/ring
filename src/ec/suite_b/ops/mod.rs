@@ -457,7 +457,7 @@ impl PublicScalarOps {
 pub struct PrivateScalarOps {
     pub scalar_ops: &'static ScalarOps,
 
-    oneRR_mod_n: PublicScalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
+    oneRR_mod_n: PublicScalar<RR>, // 1 * R**2 (mod n). TODO: Use One<RR>.
     scalar_inv_to_mont: fn(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R>,
 }
 
