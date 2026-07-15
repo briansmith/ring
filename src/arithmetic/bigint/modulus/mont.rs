@@ -300,11 +300,11 @@ mod base {
             // Enforce the length-related invariants (only).
             let Some((&[.., num_limbs], value)) = storage.split_first_chunk::<MONT_PREFIX_LEN>()
             else {
-                return Err(LenMismatchError::new(storage.len()))?;
+                return Err(LenMismatchError::new(storage.len()).into());
             };
             let num_limbs = limb::usize_from_limb(num_limbs);
             if num_limbs != value.len() {
-                return Err(LenMismatchError::new(storage.len()))?;
+                return Err(LenMismatchError::new(storage.len()).into());
             }
             if num_limbs < MIN_LIMBS {
                 return Err(LimbSliceError::too_short(num_limbs));
