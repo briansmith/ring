@@ -38,7 +38,7 @@ fn agreement_traits() {
     test::compile_time_assert_sync::<agreement::EphemeralPrivateKey>();
 
     assert_eq!(
-        format!("{:?}", &private_key),
+        format!("{:?}", private_key),
         "EphemeralPrivateKey { algorithm: Algorithm { curve: P256 } }"
     );
 
