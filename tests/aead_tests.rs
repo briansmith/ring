@@ -345,7 +345,7 @@ where
     let mut in_out = vec![123u8; 4096];
 
     for &in_prefix_len in in_prefix_lengths.iter() {
-        in_out.truncate(0);
+        in_out.clear();
         in_out.resize(in_prefix_len, 123);
         in_out.extend_from_slice(tc.ciphertext);
         in_out.extend_from_slice(tc.tag);
