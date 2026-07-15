@@ -55,7 +55,7 @@ fn main() {
         _ => {
             panic!(
                 "${} has an invalid value",
-                &cargo::env::RING_PREGENERATE_ASM.name
+                cargo::env::RING_PREGENERATE_ASM.name
             );
         }
     }
