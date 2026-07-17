@@ -37,9 +37,6 @@
 //!         on esp-idf despite the likelihood that RNG is not secure.
 //!         This feature only works with <code>os = espidf</code> targets.
 //!         See <a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/random.html">
-//! <tr><td><code>std</code>
-//!     <td>Enable features that use libstd, in particular
-//!         <code>std::error::Error</code> integration. Implies `alloc`.
 //! <tr><td><code>wasm32_unknown_unknown_js</code>
 //!     <td>When this feature is enabled, for the wasm32-unknown-unknown target,
 //!         Web APIs will be used to implement features like `ring::rand` that
