@@ -31,7 +31,7 @@ const MAX_ALIGNMENT_AND_OFFSET_SUBSET: (usize, usize) =
 
 #[test]
 fn chacha20_test_default() {
-    // Always use `MAX_OFFSET` if we hav assembly code.
+    // Always use `MAX_OFFSET` if we have assembly code.
     let max_offset = if cfg!(any(
         all(target_arch = "aarch64", target_endian = "little"),
         all(target_arch = "arm", target_endian = "little"),

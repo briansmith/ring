@@ -21,7 +21,7 @@ use crate::{arithmetic::montgomery::*, cpu, ec, error, io::der, pkcs8};
 // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed modulo
 // p."
 //
-// That is, verify that (x, y) is on the curve, which is true iif:
+// That is, verify that (x, y) is on the curve, which is true iff:
 //
 //     y**2 == x**3 + a*x + b (mod q)
 //
