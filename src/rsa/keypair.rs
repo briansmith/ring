@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    KeyPairComponents, N, PublicKey, PublicKeyComponents,
+    KeyPairComponents, N, PublicKey,
     base::PublicExponent,
     padding::{self, RsaEncoding},
     public_key,
@@ -106,6 +106,7 @@ impl KeyPair {
         Self::from_der(der.as_slice_less_safe())
     }
 
+    /// [KeyPairComponents::from_der] followed by [Self::from_components].
     pub fn from_der(input: &[u8]) -> Result<Self, KeyRejected> {
         Self::from_components(&KeyPairComponents::from_der(input)?)
     }
@@ -155,28 +156,13 @@ impl KeyPair {
     ///     instead). However, *ring*'s checks would not be sufficient for
     ///     validating a key pair for use by some other system; that other
     ///     system must check the value of `d` itself if `d` is to be used.
-    pub fn from_components<Public, Private>(
+    pub fn from_components<Public: AsRef<[u8]>, Private: AsRef<[u8]>>(
         components: &KeyPairComponents<Public, Private>,
-    ) -> Result<Self, KeyRejected>
-    where
-        Public: AsRef<[u8]>,
-        Private: AsRef<[u8]>,
-    {
-        let components = KeyPairComponents {
-            public_key: PublicKeyComponents {
-                n: components.public_key.n.as_ref(),
-                e: components.public_key.e.as_ref(),
-            },
-            d: components.d.as_ref(),
-            p: components.p.as_ref(),
-            q: components.q.as_ref(),
-            dP: components.dP.as_ref(),
-            dQ: components.dQ.as_ref(),
-            qInv: components.qInv.as_ref(),
-        };
-        Self::from_components_(&components, cpu::features())
+    ) -> Result<Self, KeyRejected> {
+        Self::from_components_(&components.into(), cpu::features())
     }
 
+    // TODO(SemVer): Merge `Self::from_components` with this.
     fn from_components_(
         &KeyPairComponents {
             public_key,

@@ -94,6 +94,28 @@ impl<'a> KeyPairComponents<&'a [u8], &'a [u8]> {
     }
 }
 
+impl<'a, Public, Private> From<&'a KeyPairComponents<Public, Private>>
+    for KeyPairComponents<&'a [u8]>
+where
+    Public: AsRef<[u8]>,
+    Private: AsRef<[u8]>,
+{
+    fn from(src: &'a KeyPairComponents<Public, Private>) -> Self {
+        Self {
+            public_key: PublicKeyComponents {
+                n: src.public_key.n.as_ref(),
+                e: src.public_key.e.as_ref(),
+            },
+            d: src.d.as_ref(),
+            p: src.p.as_ref(),
+            q: src.q.as_ref(),
+            dP: src.dP.as_ref(),
+            dQ: src.dQ.as_ref(),
+            qInv: src.qInv.as_ref(),
+        }
+    }
+}
+
 impl<Public, Private> core::fmt::Debug for KeyPairComponents<Public, Private>
 where
     PublicKeyComponents<Public>: core::fmt::Debug,
