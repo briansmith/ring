@@ -96,6 +96,8 @@ impl KeyPair {
     ///
     /// [RFC 5958]:
     ///     https://tools.ietf.org/html/rfc5958
+    //
+    // TODO: Move this to `KeyPairComponents` after deciding which OID(s) to support.
     pub fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, KeyRejected> {
         const RSA_ENCRYPTION: &[u8] = include_bytes!("../data/alg-rsa-encryption.der");
         let (der, _) = pkcs8::unwrap_key_(
