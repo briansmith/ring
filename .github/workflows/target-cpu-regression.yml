@@ -1,0 +1,43 @@
+# Reproduces the aarch64-apple `-Ctarget-cpu` bug fixed in
+# src/cpu/aarch64/darwin.rs. Without that fix these jobs fail with:
+#
+#     error[E0080]: evaluation panicked: assertion failed:
+#         (CAPS_STATIC & MIN_STATIC_FEATURES) == MIN_STATIC_FEATURES
+#
+# `native` is what users pass, but which CPU LLVM picks for it depends on the
+# runner (see https://github.com/rust-lang/rust/issues/93889), so `generic` is
+# the deterministic case; both are tested.
+name: target-cpu-regression
+permissions:
+  contents: read
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+jobs:
+  apple:
+    runs-on: macos-15
+
+    env:
+      CC_ENABLE_DEBUG_OUTPUT: 1
+      RUSTFLAGS: -Ctarget-cpu=${{ matrix.target_cpu }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target_cpu:
+          - generic
+          - native
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - run: mk/install-build-tools.sh +stable --target=aarch64-apple-darwin
+        shell: sh
+
+      - run: |
+          echo "RUSTFLAGS=${RUSTFLAGS}"
+          rustc --print cfg --target=aarch64-apple-darwin ${RUSTFLAGS} | grep target_feature
+          mk/cargo.sh +stable test --locked -vv --lib --tests --target=aarch64-apple-darwin
