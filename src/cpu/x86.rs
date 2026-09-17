@@ -162,7 +162,6 @@ fn cpuid_to_caps_and_set_c_flags(r: CpuidSummary) -> u32 {
         // usually `-none-` targets, will not support dynamically-detected use
         // of SIMD registers via CPUID. A whole different mechanism is needed
         // to support them. Same for i*86-*-none targets.
-        let leaf1_edx = cpuid[0];
         let sse1_available = check(leaf1_edx, 25);
         let sse2_available = check(leaf1_edx, 26);
         if sse1_available && sse2_available {
