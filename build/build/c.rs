@@ -143,10 +143,8 @@ fn configure_cc(
         let _ = c.flag(f);
     }
 
-    if APPLE_ABI.contains(&target.os.as_str()) {
-        // ``-gfull`` is required for Darwin's |-dead_strip|.
-        let _ = c.flag("-gfull");
-    } else if !compiler.is_like_msvc() {
+    // Honor Cargo's debug info setting on Apple targets for reproducible releases.
+    if !APPLE_ABI.contains(&target.os.as_str()) && !compiler.is_like_msvc() {
         let _ = c.flag("-g3");
     };
 
