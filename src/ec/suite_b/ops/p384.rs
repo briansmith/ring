@@ -205,43 +205,28 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
         binary_op_assign(p384_scalar_mul_mont, acc, b)
     }
 
-    // Indexes into `d`.
-    const B_1: usize = 0;
-    const B_101: usize = 1;
-    const B_111: usize = 2;
-    const B_1001: usize = 3;
-    const B_1011: usize = 4;
-    const B_1101: usize = 5;
-    const B_10111: usize = 6;
-    const B_11001: usize = 7;
-    const B_11011: usize = 8;
-    const B_110001: usize = 9;
-    const DIGIT_COUNT: usize = 10;
+    let b_1 = &a;
 
-    // Calculate the window values.
-    let mut d = [Scalar::zero(); DIGIT_COUNT];
-    d[B_1] = a;
-
-    let b_10 = &sqr(&d[B_1], cpu); // 2
-    let b_100 = &sqr(b_10, cpu); // 4
-    d[B_101] = mul(&d[B_1], b_100, cpu); // 5
-    d[B_111] = mul(&d[B_101], b_10, cpu); // 7
-    d[B_1001] = mul(&d[B_111], b_10, cpu); // 9
-    d[B_1011] = mul(&d[B_1001], b_10, cpu); // 11
-    d[B_1101] = mul(&d[B_1011], b_10, cpu); // 13
-    let b_10110 = &sqr(&d[B_1011], cpu); // 22
-    d[B_10111] = mul(b_10110, &d[B_1], cpu); // 23 = 22 + 1
-    d[B_11001] = mul(&d[B_10111], b_10, cpu); // 25 = 23 + 2
-    d[B_11011] = mul(&d[B_11001], b_10, cpu); // 27 = 25 + 2
-    d[B_110001] = mul(&d[B_11011], b_10110, cpu); // 49
+    let b_10 = sqr(b_1, cpu); // 2
+    let b_100 = sqr(&b_10, cpu); // 4
+    let b_101 = mul(b_1, &b_100, cpu); // 5
+    let b_111 = mul(&b_101, &b_10, cpu); // 7
+    let b_1001 = mul(&b_111, &b_10, cpu); // 9
+    let b_1011 = mul(&b_1001, &b_10, cpu); // 11
+    let b_1101 = mul(&b_1011, &b_10, cpu); // 13
+    let b_10110 = sqr(&b_1011, cpu); // 22
+    let b_10111 = mul(&b_10110, b_1, cpu); // 23 = 22 + 1
+    let b_11001 = mul(&b_10111, &b_10, cpu); // 25 = 23 + 2
+    let b_11011 = mul(&b_11001, &b_10, cpu); // 27 = 25 + 2
+    let b_110001 = mul(&b_11011, &b_10110, cpu); // 49
 
     // ffffffffffffffffffffffffffffffffffffffffffffffff
-    let x6 = &sqr_mul(&d[B_11001], 1, &d[B_1101], cpu); // 63
-    let x12 = &sqr_mul(x6, 6, x6, cpu);
-    let x24 = &sqr_mul(x12, 12, x12, cpu);
-    let x48 = &sqr_mul(x24, 24, x24, cpu);
-    let x96 = &sqr_mul(x48, 48, x48, cpu);
-    let mut acc = sqr_mul(x96, 96, x96, cpu);
+    let x6 = sqr_mul(&b_11001, 1, &b_1101, cpu); // 63
+    let x12 = sqr_mul(&x6, 6, &x6, cpu);
+    let x24 = sqr_mul(&x12, 12, &x12, cpu);
+    let x48 = sqr_mul(&x24, 24, &x24, cpu);
+    let x96 = sqr_mul(&x48, 48, &x48, cpu);
+    let mut acc = sqr_mul(&x96, 96, &x96, cpu);
 
     // The rest of the exponent, in binary, is:
     //
@@ -249,51 +234,39 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     //    0101100000011010000011011011001001001000101100001010011101111010
     //    1110110011101100000110010110101011001100110001010010100101110001
 
-    #[allow(clippy::cast_possible_truncation)]
-    static REMAINING_WINDOWS: [(u8, u8); 33] = [
-        (0 + 6, B_110001 as u8),
-        (0 + 5, B_11011 as u8),
-        (3 + 4, B_1101 as u8),
-        (2 + 5, B_11011 as u8),
-        (6 + 3, B_111 as u8),
-        (4, B_1101 as u8),
-        (4 + 5, B_11011 as u8),
-        (4, B_1001 as u8),
-        (1 + 5, B_11011 as u8),
-        (4, B_1011 as u8),
-        (3, B_111 as u8),
-        (1 + 4, B_1011 as u8),
-        (6 + 4, B_1101 as u8),
-        (5 + 5, B_11011 as u8),
-        (1 + 5, B_11001 as u8),
-        (2 + 4, B_1001 as u8),
-        (3 + 4, B_1011 as u8),
-        (4 + 3, B_101 as u8),
-        (2 + 3, B_111 as u8),
-        (1 + 3, B_111 as u8),
-        (0 + 3, B_101 as u8),
-        (1 + 3, B_111 as u8),
-        (1 + 5, B_11001 as u8),
-        (0 + 5, B_11011 as u8),
-        (5 + 5, B_11001 as u8),
-        (1 + 4, B_1101 as u8),
-        (1 + 4, B_1011 as u8),
-        (2 + 5, B_11001 as u8),
-        (0 + 1, B_1 as u8),
-        (3 + 3, B_101 as u8),
-        (2 + 3, B_101 as u8),
-        (2 + 5, B_10111 as u8),
-        (3 + 1, B_1 as u8),
-    ];
-
-    for &(squarings, digit) in &REMAINING_WINDOWS[..] {
-        sqr_mul_acc(
-            &mut acc,
-            LeakyWord::from(squarings),
-            &d[usize::from(digit)],
-            cpu,
-        );
-    }
+    sqr_mul_acc(&mut acc, 0 + 6, &b_110001, cpu);
+    sqr_mul_acc(&mut acc, 0 + 5, &b_11011, cpu);
+    sqr_mul_acc(&mut acc, 3 + 4, &b_1101, cpu);
+    sqr_mul_acc(&mut acc, 2 + 5, &b_11011, cpu);
+    sqr_mul_acc(&mut acc, 6 + 3, &b_111, cpu);
+    sqr_mul_acc(&mut acc, 4, &b_1101, cpu);
+    sqr_mul_acc(&mut acc, 4 + 5, &b_11011, cpu);
+    sqr_mul_acc(&mut acc, 4, &b_1001, cpu);
+    sqr_mul_acc(&mut acc, 1 + 5, &b_11011, cpu);
+    sqr_mul_acc(&mut acc, 4, &b_1011, cpu);
+    sqr_mul_acc(&mut acc, 3, &b_111, cpu);
+    sqr_mul_acc(&mut acc, 1 + 4, &b_1011, cpu);
+    sqr_mul_acc(&mut acc, 6 + 4, &b_1101, cpu);
+    sqr_mul_acc(&mut acc, 5 + 5, &b_11011, cpu);
+    sqr_mul_acc(&mut acc, 1 + 5, &b_11001, cpu);
+    sqr_mul_acc(&mut acc, 2 + 4, &b_1001, cpu);
+    sqr_mul_acc(&mut acc, 3 + 4, &b_1011, cpu);
+    sqr_mul_acc(&mut acc, 4 + 3, &b_101, cpu);
+    sqr_mul_acc(&mut acc, 2 + 3, &b_111, cpu);
+    sqr_mul_acc(&mut acc, 1 + 3, &b_111, cpu);
+    sqr_mul_acc(&mut acc, 0 + 3, &b_101, cpu);
+    sqr_mul_acc(&mut acc, 1 + 3, &b_111, cpu);
+    sqr_mul_acc(&mut acc, 1 + 5, &b_11001, cpu);
+    sqr_mul_acc(&mut acc, 0 + 5, &b_11011, cpu);
+    sqr_mul_acc(&mut acc, 5 + 5, &b_11001, cpu);
+    sqr_mul_acc(&mut acc, 1 + 4, &b_1101, cpu);
+    sqr_mul_acc(&mut acc, 1 + 4, &b_1011, cpu);
+    sqr_mul_acc(&mut acc, 2 + 5, &b_11001, cpu);
+    sqr_mul_acc(&mut acc, 0 + 1, b_1, cpu);
+    sqr_mul_acc(&mut acc, 3 + 3, &b_101, cpu);
+    sqr_mul_acc(&mut acc, 2 + 3, &b_101, cpu);
+    sqr_mul_acc(&mut acc, 2 + 5, &b_10111, cpu);
+    sqr_mul_acc(&mut acc, 3 + 1, b_1, cpu);
 
     acc
 }
