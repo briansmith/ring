@@ -130,6 +130,7 @@ impl SystemRandom {
     target_os = "android",
     target_os = "cygwin",
     target_os = "dragonfly",
+    target_os = "emscripten",
     target_os = "freebsd",
     target_os = "fuchsia",
     target_os = "haiku",
