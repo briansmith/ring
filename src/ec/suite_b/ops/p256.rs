@@ -178,7 +178,6 @@ pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_inv_to_mont: p256_scalar_inv_to_mont,
 };
 
-#[allow(clippy::just_underscores_and_digits)]
 fn p256_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:
@@ -226,29 +225,29 @@ fn p256_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
         binary_op_assign(p256_scalar_mul_mont, acc, b);
     }
 
-    let _1 = &a;
+    let b_1 = &a;
 
-    let _10 = sqr(_1, cpu); // 2
-    let _100 = sqr(&_10, cpu); // 4
-    let _101 = mul(&_100, _1, cpu); // 5
-    let _111 = mul(&_101, &_10, cpu); // 7
+    let b_10 = sqr(b_1, cpu); // 2
+    let b_100 = sqr(&b_10, cpu); // 4
+    let b_101 = mul(&b_100, b_1, cpu); // 5
+    let b_111 = mul(&b_101, &b_10, cpu); // 7
 
-    let _1000 = sqr(&_100, cpu); // 8
-    let _10000 = sqr(&_1000, cpu); // 16
-    let _100000 = sqr(&_10000, cpu); // 32
+    let b_1000 = sqr(&b_100, cpu); // 8
+    let b_10000 = sqr(&b_1000, cpu); // 16
+    let b_100000 = sqr(&b_10000, cpu); // 32
 
-    let _100111 = mul(&_111, &_100000, cpu); // 39 = 7 + 32
-    let _101011 = mul(&_100, &_100111, cpu); // 43 = 4 + 39
-    let _101111 = mul(&_100, &_101011, cpu); // 47 = 4 + 39
-    let _1001111 = mul(&_100000, &_101111, cpu); // 79 = 32 + 47
-    let _86 = sqr(&_101011, cpu); // 86 = 43 * 2
-    let _1011011 = mul(&_101, &_86, cpu); // 91 = 5 + 86
-    let _92 = mul(_1, &_1011011, cpu); // 92 = 1 + 91
-    let _1100011 = mul(&_111, &_92, cpu); // 99 = 7 + 92
-    let _10111111 = mul(&_92, &_1100011, cpu); // 191 = 92 + 99
-    let _11011111 = mul(&_100000, &_10111111, cpu); // 223 = 32 + 191
+    let b_100111 = mul(&b_111, &b_100000, cpu); // 39 = 7 + 32
+    let b_101011 = mul(&b_100, &b_100111, cpu); // 43 = 4 + 39
+    let b_101111 = mul(&b_100, &b_101011, cpu); // 47 = 4 + 39
+    let b_1001111 = mul(&b_100000, &b_101111, cpu); // 79 = 32 + 47
+    let b_86 = sqr(&b_101011, cpu); // 86 = 43 * 2
+    let b_1011011 = mul(&b_101, &b_86, cpu); // 91 = 5 + 86
+    let b_92 = mul(b_1, &b_1011011, cpu); // 92 = 1 + 91
+    let b_1100011 = mul(&b_111, &b_92, cpu); // 99 = 7 + 92
+    let b_10111111 = mul(&b_92, &b_1100011, cpu); // 191 = 92 + 99
+    let b_11011111 = mul(&b_100000, &b_10111111, cpu); // 223 = 32 + 191
 
-    let ff = mul(&_100000, &_11011111, cpu); // 255 = 32 + 223
+    let ff = mul(&b_100000, &b_11011111, cpu); // 255 = 32 + 223
     let ffff = sqr_mul(&ff, 0 + 8, &ff, cpu);
     let ffffffff = sqr_mul(&ffff, 0 + 16, &ffff, cpu);
 
@@ -263,25 +262,25 @@ fn p256_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     //    1011110011100110111110101010110110100111000101111001111010000100
     //    1111001110111001110010101100001011111100011000110010010101001111
 
-    sqr_mul_acc(&mut acc, 6, &_101111, cpu);
-    sqr_mul_acc(&mut acc, 2 + 3, &_111, cpu);
-    sqr_mul_acc(&mut acc, 2 + 8, &_11011111, cpu);
-    sqr_mul_acc(&mut acc, 1 + 3, &_101, cpu);
-    sqr_mul_acc(&mut acc, 1 + 7, &_1011011, cpu);
-    sqr_mul_acc(&mut acc, 1 + 6, &_100111, cpu);
-    sqr_mul_acc(&mut acc, 3 + 6, &_101111, cpu);
-    sqr_mul_acc(&mut acc, 2 + 3, &_111, cpu);
-    sqr_mul_acc(&mut acc, 3, &_101, cpu);
-    sqr_mul_acc(&mut acc, 4 + 7, &_1001111, cpu);
-    sqr_mul_acc(&mut acc, 2 + 3, &_111, cpu);
-    sqr_mul_acc(&mut acc, 1 + 3, &_111, cpu);
-    sqr_mul_acc(&mut acc, 2 + 3, &_111, cpu);
-    sqr_mul_acc(&mut acc, 2 + 6, &_101011, cpu);
-    sqr_mul_acc(&mut acc, 4 + 8, &_10111111, cpu);
-    sqr_mul_acc(&mut acc, 3 + 7, &_1100011, cpu);
-    sqr_mul_acc(&mut acc, 2 + 1, _1, cpu);
-    sqr_mul_acc(&mut acc, 2 + 3, &_101, cpu);
-    sqr_mul_acc(&mut acc, 1 + 7, &_1001111, cpu);
+    sqr_mul_acc(&mut acc, 6, &b_101111, cpu);
+    sqr_mul_acc(&mut acc, 2 + 3, &b_111, cpu);
+    sqr_mul_acc(&mut acc, 2 + 8, &b_11011111, cpu);
+    sqr_mul_acc(&mut acc, 1 + 3, &b_101, cpu);
+    sqr_mul_acc(&mut acc, 1 + 7, &b_1011011, cpu);
+    sqr_mul_acc(&mut acc, 1 + 6, &b_100111, cpu);
+    sqr_mul_acc(&mut acc, 3 + 6, &b_101111, cpu);
+    sqr_mul_acc(&mut acc, 2 + 3, &b_111, cpu);
+    sqr_mul_acc(&mut acc, 3, &b_101, cpu);
+    sqr_mul_acc(&mut acc, 4 + 7, &b_1001111, cpu);
+    sqr_mul_acc(&mut acc, 2 + 3, &b_111, cpu);
+    sqr_mul_acc(&mut acc, 1 + 3, &b_111, cpu);
+    sqr_mul_acc(&mut acc, 2 + 3, &b_111, cpu);
+    sqr_mul_acc(&mut acc, 2 + 6, &b_101011, cpu);
+    sqr_mul_acc(&mut acc, 4 + 8, &b_10111111, cpu);
+    sqr_mul_acc(&mut acc, 3 + 7, &b_1100011, cpu);
+    sqr_mul_acc(&mut acc, 2 + 1, b_1, cpu);
+    sqr_mul_acc(&mut acc, 2 + 3, &b_101, cpu);
+    sqr_mul_acc(&mut acc, 1 + 7, &b_1001111, cpu);
 
     acc
 }
