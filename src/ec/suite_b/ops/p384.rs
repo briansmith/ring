@@ -15,7 +15,7 @@
 use super::{
     PublicModulus,
     elem::{binary_op, binary_op_assign},
-    elem_sqr_mul, elem_sqr_mul_acc, *,
+    elem_sqr_rep, *,
 };
 
 pub(super) const NUM_LIMBS: usize = 384 / LIMB_BITS;
@@ -72,45 +72,60 @@ fn p384_elem_inv_squared(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R> {
     //      ffffffff0000000000000000fffffffc
 
     #[inline]
-    fn sqr_mul(q: &Modulus<Q>, a: &Elem<R>, squarings: LeakyWord, b: &Elem<R>) -> Elem<R> {
-        elem_sqr_mul(&COMMON_OPS, a, squarings, b, q.cpu())
+    fn sqr_rep<const REP: LeakyWord>(q: &Modulus<Q>, a: &Elem<R>) -> Elem<R> {
+        elem_sqr_rep(
+            &COMMON_OPS,
+            a,
+            const { NonZero::new(REP).unwrap() },
+            q.cpu(),
+        )
     }
 
     #[inline]
-    fn sqr_mul_acc(q: &Modulus<Q>, a: &mut Elem<R>, squarings: LeakyWord, b: &Elem<R>) {
-        elem_sqr_mul_acc(&COMMON_OPS, a, squarings, b, q.cpu())
+    fn sqr_rep_acc<const REP: LeakyWord>(q: &Modulus<Q>, acc: &mut Elem<R>) {
+        *acc = sqr_rep::<REP>(q, acc);
+    }
+
+    #[inline]
+    fn sqr_mul<const REP: LeakyWord>(q: &Modulus<Q>, a: &Elem<R>, b: &Elem<R>) -> Elem<R> {
+        q.elem_product(&sqr_rep::<REP>(q, a), b)
+    }
+
+    #[inline]
+    fn sqr_mul_acc<const REP: LeakyWord>(q: &Modulus<Q>, acc: &mut Elem<R>, b: &Elem<R>) {
+        sqr_rep_acc::<REP>(q, acc);
+        q.elem_mul(acc, b)
     }
 
     let b_1 = &a;
-    let b_11 = sqr_mul(q, b_1, 1, b_1);
-    let b_111 = sqr_mul(q, &b_11, 1, b_1);
-    let f_11 = sqr_mul(q, &b_111, 3, &b_111);
-    let fff = sqr_mul(q, &f_11, 6, &f_11);
-    let fff_111 = sqr_mul(q, &fff, 3, &b_111);
-    let fffffff_11 = sqr_mul(q, &fff_111, 15, &fff_111);
+    let b_11 = sqr_mul::<1>(q, b_1, b_1);
+    let b_111 = sqr_mul::<1>(q, &b_11, b_1);
+    let f_11 = sqr_mul::<3>(q, &b_111, &b_111);
+    let fff = sqr_mul::<6>(q, &f_11, &f_11);
+    let fff_111 = sqr_mul::<3>(q, &fff, &b_111);
+    let fffffff_11 = sqr_mul::<15>(q, &fff_111, &fff_111);
 
-    let fffffffffffffff = sqr_mul(q, &fffffff_11, 30, &fffffff_11);
+    let fffffffffffffff = sqr_mul::<30>(q, &fffffff_11, &fffffff_11);
 
-    let ffffffffffffffffffffffffffffff = sqr_mul(q, &fffffffffffffff, 60, &fffffffffffffff);
+    let ffffffffffffffffffffffffffffff = sqr_mul::<60>(q, &fffffffffffffff, &fffffffffffffff);
 
     // ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-    let mut acc = sqr_mul(
+    let mut acc = sqr_mul::<120>(
         q,
         &ffffffffffffffffffffffffffffff,
-        120,
         &ffffffffffffffffffffffffffffff,
     );
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff_111
-    sqr_mul_acc(q, &mut acc, 15, &fff_111);
+    sqr_mul_acc::<15>(q, &mut acc, &fff_111);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
-    sqr_mul_acc(q, &mut acc, 1 + 30, &fffffff_11);
-    sqr_mul_acc(q, &mut acc, 2, &b_11);
+    sqr_mul_acc::<{ 1 + 30 }>(q, &mut acc, &fffffff_11);
+    sqr_mul_acc::<2>(q, &mut acc, &b_11);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
     // 0000000000000000fffffff_11
-    sqr_mul_acc(q, &mut acc, 64 + 30, &fffffff_11);
+    sqr_mul_acc::<{ 64 + 30 }>(q, &mut acc, &fffffff_11);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
     // 0000000000000000fffffffc
@@ -168,40 +183,38 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     //    0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf\
     //      581a0db248b0a77aecec196accc52971
 
+    #[inline]
     fn mul(a: &Scalar<R>, b: &Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
         binary_op(p384_scalar_mul_mont, a, b)
     }
 
-    fn sqr(a: &Scalar<R>, _cpu: cpu::Features) -> Scalar<R> {
-        binary_op(p384_scalar_mul_mont, a, a)
+    #[inline]
+    fn sqr(a: &Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
+        sqr_rep::<1>(a, cpu)
     }
 
-    fn sqr_mut(a: &mut Scalar<R>, _cpu: cpu::Features) {
-        unary_op_from_binary_op_assign(p384_scalar_mul_mont, a);
+    #[inline]
+    fn sqr_rep<const REP: LeakyWord>(a: &Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
+        scalar_sqr_rep(a, const { NonZero::new(REP).unwrap() }, cpu)
     }
 
-    // Returns (`a` squared `squarings` times) * `b`.
-    fn sqr_mul(
+    #[inline]
+    fn sqr_rep_acc<const REP: LeakyWord>(acc: &mut Scalar<R>, cpu: cpu::Features) {
+        *acc = sqr_rep::<REP>(acc, cpu);
+    }
+
+    #[inline]
+    fn sqr_mul<const REP: LeakyWord>(
         a: &Scalar<R>,
-        squarings: LeakyWord,
         b: &Scalar<R>,
         cpu: cpu::Features,
     ) -> Scalar<R> {
-        debug_assert!(squarings >= 1);
-        let mut tmp = sqr(a, cpu);
-        for _ in 1..squarings {
-            sqr_mut(&mut tmp, cpu);
-        }
-        mul(&tmp, b, cpu)
+        mul(&sqr_rep::<REP>(a, cpu), b, cpu)
     }
 
-    // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: LeakyWord, b: &Scalar<R>, cpu: cpu::Features) {
-        debug_assert!(squarings >= 1);
-        for _ in 0..squarings {
-            sqr_mut(acc, cpu);
-        }
-        let _: cpu::Features = cpu;
+    #[inline]
+    fn sqr_mul_acc<const REP: LeakyWord>(acc: &mut Scalar<R>, b: &Scalar<R>, cpu: cpu::Features) {
+        sqr_rep_acc::<REP>(acc, cpu);
         binary_op_assign(p384_scalar_mul_mont, acc, b)
     }
 
@@ -221,12 +234,12 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     let b_110001 = mul(&b_11011, &b_10110, cpu); // 49
 
     // ffffffffffffffffffffffffffffffffffffffffffffffff
-    let x6 = sqr_mul(&b_11001, 1, &b_1101, cpu); // 63
-    let x12 = sqr_mul(&x6, 6, &x6, cpu);
-    let x24 = sqr_mul(&x12, 12, &x12, cpu);
-    let x48 = sqr_mul(&x24, 24, &x24, cpu);
-    let x96 = sqr_mul(&x48, 48, &x48, cpu);
-    let mut acc = sqr_mul(&x96, 96, &x96, cpu);
+    let x6 = sqr_mul::<1>(&b_11001, &b_1101, cpu); // 63
+    let x12 = sqr_mul::<6>(&x6, &x6, cpu);
+    let x24 = sqr_mul::<12>(&x12, &x12, cpu);
+    let x48 = sqr_mul::<24>(&x24, &x24, cpu);
+    let x96 = sqr_mul::<48>(&x48, &x48, cpu);
+    let mut acc = sqr_mul::<96>(&x96, &x96, cpu);
 
     // The rest of the exponent, in binary, is:
     //
@@ -234,41 +247,50 @@ fn p384_scalar_inv_to_mont(a: Scalar<R>, cpu: cpu::Features) -> Scalar<R> {
     //    0101100000011010000011011011001001001000101100001010011101111010
     //    1110110011101100000110010110101011001100110001010010100101110001
 
-    sqr_mul_acc(&mut acc, 0 + 6, &b_110001, cpu);
-    sqr_mul_acc(&mut acc, 0 + 5, &b_11011, cpu);
-    sqr_mul_acc(&mut acc, 3 + 4, &b_1101, cpu);
-    sqr_mul_acc(&mut acc, 2 + 5, &b_11011, cpu);
-    sqr_mul_acc(&mut acc, 6 + 3, &b_111, cpu);
-    sqr_mul_acc(&mut acc, 4, &b_1101, cpu);
-    sqr_mul_acc(&mut acc, 4 + 5, &b_11011, cpu);
-    sqr_mul_acc(&mut acc, 4, &b_1001, cpu);
-    sqr_mul_acc(&mut acc, 1 + 5, &b_11011, cpu);
-    sqr_mul_acc(&mut acc, 4, &b_1011, cpu);
-    sqr_mul_acc(&mut acc, 3, &b_111, cpu);
-    sqr_mul_acc(&mut acc, 1 + 4, &b_1011, cpu);
-    sqr_mul_acc(&mut acc, 6 + 4, &b_1101, cpu);
-    sqr_mul_acc(&mut acc, 5 + 5, &b_11011, cpu);
-    sqr_mul_acc(&mut acc, 1 + 5, &b_11001, cpu);
-    sqr_mul_acc(&mut acc, 2 + 4, &b_1001, cpu);
-    sqr_mul_acc(&mut acc, 3 + 4, &b_1011, cpu);
-    sqr_mul_acc(&mut acc, 4 + 3, &b_101, cpu);
-    sqr_mul_acc(&mut acc, 2 + 3, &b_111, cpu);
-    sqr_mul_acc(&mut acc, 1 + 3, &b_111, cpu);
-    sqr_mul_acc(&mut acc, 0 + 3, &b_101, cpu);
-    sqr_mul_acc(&mut acc, 1 + 3, &b_111, cpu);
-    sqr_mul_acc(&mut acc, 1 + 5, &b_11001, cpu);
-    sqr_mul_acc(&mut acc, 0 + 5, &b_11011, cpu);
-    sqr_mul_acc(&mut acc, 5 + 5, &b_11001, cpu);
-    sqr_mul_acc(&mut acc, 1 + 4, &b_1101, cpu);
-    sqr_mul_acc(&mut acc, 1 + 4, &b_1011, cpu);
-    sqr_mul_acc(&mut acc, 2 + 5, &b_11001, cpu);
-    sqr_mul_acc(&mut acc, 0 + 1, b_1, cpu);
-    sqr_mul_acc(&mut acc, 3 + 3, &b_101, cpu);
-    sqr_mul_acc(&mut acc, 2 + 3, &b_101, cpu);
-    sqr_mul_acc(&mut acc, 2 + 5, &b_10111, cpu);
-    sqr_mul_acc(&mut acc, 3 + 1, b_1, cpu);
+    sqr_mul_acc::<{ 0 + 6 }>(&mut acc, &b_110001, cpu);
+    sqr_mul_acc::<{ 0 + 5 }>(&mut acc, &b_11011, cpu);
+    sqr_mul_acc::<{ 3 + 4 }>(&mut acc, &b_1101, cpu);
+    sqr_mul_acc::<{ 2 + 5 }>(&mut acc, &b_11011, cpu);
+    sqr_mul_acc::<{ 6 + 3 }>(&mut acc, &b_111, cpu);
+    sqr_mul_acc::<4>(&mut acc, &b_1101, cpu);
+    sqr_mul_acc::<{ 4 + 5 }>(&mut acc, &b_11011, cpu);
+    sqr_mul_acc::<4>(&mut acc, &b_1001, cpu);
+    sqr_mul_acc::<{ 1 + 5 }>(&mut acc, &b_11011, cpu);
+    sqr_mul_acc::<4>(&mut acc, &b_1011, cpu);
+    sqr_mul_acc::<3>(&mut acc, &b_111, cpu);
+    sqr_mul_acc::<{ 1 + 4 }>(&mut acc, &b_1011, cpu);
+    sqr_mul_acc::<{ 6 + 4 }>(&mut acc, &b_1101, cpu);
+    sqr_mul_acc::<{ 5 + 5 }>(&mut acc, &b_11011, cpu);
+    sqr_mul_acc::<{ 1 + 5 }>(&mut acc, &b_11001, cpu);
+    sqr_mul_acc::<{ 2 + 4 }>(&mut acc, &b_1001, cpu);
+    sqr_mul_acc::<{ 3 + 4 }>(&mut acc, &b_1011, cpu);
+    sqr_mul_acc::<{ 4 + 3 }>(&mut acc, &b_101, cpu);
+    sqr_mul_acc::<{ 2 + 3 }>(&mut acc, &b_111, cpu);
+    sqr_mul_acc::<{ 1 + 3 }>(&mut acc, &b_111, cpu);
+    sqr_mul_acc::<{ 0 + 3 }>(&mut acc, &b_101, cpu);
+    sqr_mul_acc::<{ 1 + 3 }>(&mut acc, &b_111, cpu);
+    sqr_mul_acc::<{ 1 + 5 }>(&mut acc, &b_11001, cpu);
+    sqr_mul_acc::<{ 0 + 5 }>(&mut acc, &b_11011, cpu);
+    sqr_mul_acc::<{ 5 + 5 }>(&mut acc, &b_11001, cpu);
+    sqr_mul_acc::<{ 1 + 4 }>(&mut acc, &b_1101, cpu);
+    sqr_mul_acc::<{ 1 + 4 }>(&mut acc, &b_1011, cpu);
+    sqr_mul_acc::<{ 2 + 5 }>(&mut acc, &b_11001, cpu);
+    sqr_mul_acc::<{ 0 + 1 }>(&mut acc, b_1, cpu);
+    sqr_mul_acc::<{ 3 + 3 }>(&mut acc, &b_101, cpu);
+    sqr_mul_acc::<{ 2 + 3 }>(&mut acc, &b_101, cpu);
+    sqr_mul_acc::<{ 2 + 5 }>(&mut acc, &b_10111, cpu);
+    sqr_mul_acc::<{ 3 + 1 }>(&mut acc, b_1, cpu);
 
     acc
+}
+
+// Returns `a` squared `rep` times.
+fn scalar_sqr_rep(a: &Scalar<R>, rep: NonZero<LeakyWord>, _cpu: cpu::Features) -> Scalar<R> {
+    let mut r = binary_op(p384_scalar_mul_mont, a, a);
+    for _ in 1..rep.get() {
+        unary_op_from_binary_op_assign(p384_scalar_mul_mont, &mut r);
+    }
+    r
 }
 
 unsafe extern "C" fn p384_elem_sqr_mont(

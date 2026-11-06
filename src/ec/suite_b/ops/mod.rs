@@ -20,7 +20,7 @@ use crate::{
     error::{self, LenMismatchError},
     limb::*,
 };
-use core::marker::PhantomData;
+use core::{marker::PhantomData, num::NonZero};
 
 use elem::{mul_mont, unary_op, unary_op_assign, unary_op_from_binary_op_assign};
 
@@ -503,35 +503,18 @@ impl Modulus<N> {
     }
 }
 
-// Returns (`a` squared `squarings` times) * `b`.
-fn elem_sqr_mul(
+// Returns `a` squared `rep` times.
+fn elem_sqr_rep(
     ops: &CommonOps,
     a: &Elem<R>,
-    squarings: LeakyWord,
-    b: &Elem<R>,
+    rep: NonZero<LeakyWord>,
     cpu: cpu::Features,
 ) -> Elem<R> {
-    debug_assert!(squarings >= 1);
-    let mut tmp = ops.elem_squared(a, cpu);
-    for _ in 1..squarings {
-        ops.elem_square(&mut tmp, cpu);
+    let mut r = ops.elem_squared(a, cpu);
+    for _ in 1..rep.get() {
+        ops.elem_square(&mut r, cpu);
     }
-    ops.elem_product(&tmp, b, cpu)
-}
-
-// Sets `acc` = (`acc` squared `squarings` times) * `b`.
-fn elem_sqr_mul_acc(
-    ops: &CommonOps,
-    acc: &mut Elem<R>,
-    squarings: LeakyWord,
-    b: &Elem<R>,
-    cpu: cpu::Features,
-) {
-    debug_assert!(squarings >= 1);
-    for _ in 0..squarings {
-        ops.elem_square(acc, cpu);
-    }
-    ops.elem_mul(acc, b, cpu)
+    r
 }
 
 #[inline]
