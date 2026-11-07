@@ -75,9 +75,9 @@ jobs:
             ~/.cargo/bin/cargo-semver-checks
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-v2-cargo-semver-checks-0.46.0
+          key: ${{ runner.os }}-v2-cargo-semver-checks-0.51.0
 
-      - run: cargo install cargo-semver-checks --locked --vers "0.46.0"
+      - run: cargo install cargo-semver-checks --locked --vers "0.51.0"
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
